@@ -26,6 +26,15 @@
 - Maintain integer scaling for pixel-perfect rendering
 - Hero movement, AI, pit crystal logic, and building effects should always operate via events
 - Ensure the game continues running in idle while the player interacts with other desktop apps
+- **Build Requirements**: 
+  - Run `getFNA.sh` before building to initialize FNA submodule and dependencies
+  - Both FNA and Nez submodules must be properly initialized before building
+- **Nez Architecture Compliance**:
+  - Game1 should inherit from `Nez.Core`, not override Draw() or Update() methods
+  - Scenes should inherit from `Nez.Scene` and override Initialize() for setup
+  - Use Nez.Time class instead of custom GameTime management
+  - WorldState should be separate from Scene logic
+  - All components under ECS/Components/, Scenes under ECS/Scenes/
 - Copilot should generate:
   - Event classes and handlers
   - Systems that process events deterministically

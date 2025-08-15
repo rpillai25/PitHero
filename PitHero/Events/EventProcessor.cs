@@ -70,8 +70,8 @@ namespace PitHero.Events
         /// </summary>
         public void Update(float deltaTime)
         {
-            // Update game time
-            _worldState.GameTime += deltaTime;
+            // Note: Game time is now managed by Nez.Time.TotalTime
+            // No need to manually track time in WorldState
             
             // Update all systems
             foreach (var system in _systems)

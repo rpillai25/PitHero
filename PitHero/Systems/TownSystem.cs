@@ -1,6 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
-using PitHero.Components;
+using PitHero.ECS.Components;
 using PitHero.ECS;
 using PitHero.Events;
 

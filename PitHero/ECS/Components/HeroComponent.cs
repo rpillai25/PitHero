@@ -1,7 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 
-namespace PitHero.Components
+namespace PitHero.ECS.Components
 {
     /// <summary>
     /// Component for heroes in the game

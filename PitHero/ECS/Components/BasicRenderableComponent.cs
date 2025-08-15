@@ -2,7 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Nez;
 
-namespace PitHero.Components
+namespace PitHero.ECS.Components
 {
     /// <summary>
     /// Basic renderable component that wraps Nez's RenderableComponent for simple rendering

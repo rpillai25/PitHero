@@ -1,6 +1,6 @@
 using Nez;
 
-namespace PitHero.Components
+namespace PitHero.ECS.Components
 {
     /// <summary>
     /// Component for town buildings

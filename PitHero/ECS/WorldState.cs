@@ -8,7 +8,7 @@ namespace PitHero.ECS
 {
     /// <summary>
     /// Contains all entities and global game state
-    /// Wraps Nez Scene for entity management
+    /// Wraps Nez Scene for entity management, separate from Scene rendering logic
     /// </summary>
     public class WorldState
     {
@@ -18,18 +18,13 @@ namespace PitHero.ECS
         public WorldState()
         {
             _scene = new Scene();
-            GameTime = 0.0;
+            // Note: Use Nez.Time.TotalTime instead of custom GameTime
         }
         
         /// <summary>
         /// The underlying Nez scene
         /// </summary>
         public Scene Scene => _scene;
-        
-        /// <summary>
-        /// Current game time in seconds
-        /// </summary>
-        public double GameTime { get; set; }
         
         /// <summary>
         /// Add an entity to the world

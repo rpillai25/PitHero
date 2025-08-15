@@ -1,7 +1,7 @@
 using System;
 using Microsoft.Xna.Framework;
 using Nez;
-using PitHero.Components;
+using PitHero.ECS.Components;
 using PitHero.ECS;
 using PitHero.Events;
 
@@ -58,7 +58,7 @@ namespace PitHero.Systems
             var pitId = (uint)(worldState.EntityCount + 1);
             
             // Create and process a pit spawn event
-            var pitEvent = new PitEvent(worldState.GameTime, pitId, position, "spawn", 1f);
+            var pitEvent = new PitEvent(Time.TotalTime, pitId, position, "spawn", 1f);
             HandlePitEvent(pitEvent, worldState);
         }
         

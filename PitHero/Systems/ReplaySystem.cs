@@ -7,6 +7,8 @@ namespace PitHero.Systems
 {
     /// <summary>
     /// System that handles replay functionality by processing events from the event log
+    /// Note: This system may need separate time tracking for replay purposes since
+    /// it needs to manage replay time independently from live game time (Nez.Time.TotalTime)
     /// </summary>
     public class ReplaySystem : BaseSystem
     {
@@ -83,7 +85,8 @@ namespace PitHero.Systems
             
             // Create a separate world state for replay
             _replayWorldState = new WorldState();
-            _replayWorldState.GameTime = startTime;
+            // TODO: Replay system needs refactoring to handle time management without WorldState.GameTime
+            // _replayWorldState.GameTime = startTime;
         }
         
         /// <summary>
@@ -153,7 +156,8 @@ namespace PitHero.Systems
                 _replayCurrentTime = 0.0;
                 _currentEventIndex = 0;
                 _replayWorldState.Clear();
-                _replayWorldState.GameTime = _replayStartTime;
+                // TODO: Replay system needs refactoring to handle time management without WorldState.GameTime
+                // _replayWorldState.GameTime = _replayStartTime;
             }
             
             // Fast-forward to the target time
@@ -187,7 +191,8 @@ namespace PitHero.Systems
             // of the live world state
             
             // For now, we'll just update the replay world state's game time
-            _replayWorldState.GameTime = gameEvent.GameTime;
+            // TODO: Replay system needs refactoring to handle time management without WorldState.GameTime
+            // _replayWorldState.GameTime = gameEvent.GameTime;
             
             // In a complete implementation, you would:
             // 1. Have instances of all systems that can operate on the replay world state

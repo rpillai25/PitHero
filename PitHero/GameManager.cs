@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Nez;
@@ -78,7 +77,7 @@ namespace PitHero
             // Create a temporary entity to get its ID for the event
             var tempHero = new Entity("TempHero");
             var heroId = tempHero.Id;
-            var spawnEvent = new HeroSpawnEvent(_worldState.GameTime, heroId, position, health);
+            var spawnEvent = new HeroSpawnEvent(Time.TotalTime, heroId, position, health);
             ProcessEvent(spawnEvent);
         }
         
@@ -90,7 +89,7 @@ namespace PitHero
             // Create a temporary entity to get its ID for the event
             var tempBuilding = new Entity("TempBuilding");
             var buildingId = tempBuilding.Id;
-            var buildingEvent = new BuildingPlaceEvent(_worldState.GameTime, buildingId, position, buildingType);
+            var buildingEvent = new BuildingPlaceEvent(Time.TotalTime, buildingId, position, buildingType);
             ProcessEvent(buildingEvent);
         }
         
@@ -99,7 +98,7 @@ namespace PitHero
         /// </summary>
         public void TriggerPitEvent(uint pitId, Vector2 position, string eventType, float crystalPower = 1f)
         {
-            var pitEvent = new PitEvent(_worldState.GameTime, pitId, position, eventType, crystalPower);
+            var pitEvent = new PitEvent(Time.TotalTime, pitId, position, eventType, crystalPower);
             ProcessEvent(pitEvent);
         }
         
@@ -123,7 +122,8 @@ namespace PitHero
         {
             _eventLog.Clear();
             _worldState.Clear();
-            _worldState.GameTime = 0.0;
+            // Note: Game time is managed by Nez.Time.TotalTime, no need to reset manually
+            // _worldState.GameTime = 0.0; // Removed - use Nez.Time instead
             
             // Spawn a single hero
             SpawnHero(new Vector2(100, GameConfig.InternalWorldHeight / 2));
