@@ -67,7 +67,7 @@ namespace PitHero
         {
             GraphicsDevice.Clear(GameConfig.BackgroundColor);
 
-            _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+            _spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.AlphaBlend, SamplerState.PointClamp, null, null);
 
             // Render the current world state
             RenderWorldState(_gameManager.WorldState);

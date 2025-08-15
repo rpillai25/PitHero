@@ -9,11 +9,11 @@ namespace PitHero.Components
     /// </summary>
     public class BasicRenderableComponent : RenderableComponent
     {
-        public Color Color { get; set; } = Color.White;
+        public new Color Color { get; set; } = Color.White;
         public int RenderWidth { get; set; } = 32;
         public int RenderHeight { get; set; } = 32;
         
-        public Rectangle Bounds => new Rectangle(
+        public new Rectangle Bounds => new Rectangle(
             (int)Transform.Position.X,
             (int)Transform.Position.Y,
             RenderWidth,

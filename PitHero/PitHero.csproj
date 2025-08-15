@@ -13,22 +13,18 @@
     
     <!-- Reference FNA, Nez, ImGui and Persistence projects. Optionally add a Farseer reference here and in the .sln file -->
     
-    <!-- Nez Framework Reference temporarily using MG38 until FNA is properly setup -->
+    <!-- FNA and Nez Framework References -->
     <ItemGroup>
-      <ProjectReference Include="..\Nez\Nez.Portable\Nez.MG38.csproj" />
-    </ItemGroup>
-    
-    <!-- MonoGame Framework Reference (temporary until FNA is setup) -->
-    <ItemGroup>
-      <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.1.303" />
+      <ProjectReference Include="..\FNA\FNA.Core.csproj" />
+      <ProjectReference Include="..\Nez\Nez.Portable\Nez.FNA.Core.csproj" />
     </ItemGroup>
     
     <!-- MSTest Framework for testing -->
-    <ItemGroup>
+    <!--<ItemGroup>
       <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.7.2" />
       <PackageReference Include="MSTest.TestAdapter" Version="3.1.1" />
       <PackageReference Include="MSTest.TestFramework" Version="3.1.1" />
-    </ItemGroup>
+    </ItemGroup>-->
     
     <!-- Includes Nez default effects and textures -->
     <ItemGroup>
