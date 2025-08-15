@@ -1,5 +1,5 @@
 using Microsoft.Xna.Framework;
-using PitHero.ECS;
+using Nez;
 
 namespace PitHero.Components
 {
@@ -64,8 +64,8 @@ namespace PitHero.Components
         public int ZOrder { get; set; } = 0;
         
         public Rectangle Bounds => new Rectangle(
-            (int)Entity.Position.X,
-            (int)Entity.Position.Y,
+            (int)Transform.Position.X,
+            (int)Transform.Position.Y,
             Width,
             Height
         );

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Nez;
 using PitHero.ECS;
 using PitHero.Systems;
 

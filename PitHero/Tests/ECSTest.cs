@@ -1,5 +1,6 @@
 using System;
 using Microsoft.Xna.Framework;
+using Nez;
 using PitHero;
 using PitHero.Events;
 using PitHero.ECS;

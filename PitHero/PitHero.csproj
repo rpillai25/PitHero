@@ -17,6 +17,11 @@
       <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.1.303" />
     </ItemGroup>
     
+    <!-- Nez Framework Reference -->
+    <ItemGroup>
+      <ProjectReference Include="..\Nez\Nez.Portable\Nez.MG38.csproj" />
+    </ItemGroup>
+    
     <!-- Include the Content directory -->
     <ItemGroup>
         <Content Include="Content/**/*.*" Exclude="**/*.fx; Content/Content-Goes-Here.txt">

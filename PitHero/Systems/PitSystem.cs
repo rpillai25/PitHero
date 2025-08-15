@@ -1,5 +1,6 @@
 using System;
 using Microsoft.Xna.Framework;
+using Nez;
 using PitHero.Components;
 using PitHero.ECS;
 using PitHero.Events;
@@ -50,13 +51,13 @@ namespace PitHero.Systems
         
         private void SpawnRandomPit(WorldState worldState)
         {
-            var random = new Random();
+            var random = new System.Random();
             var position = new Vector2(
                 random.Next(GameConfig.PitWidth, GameConfig.InternalWorldWidth - GameConfig.PitWidth),
                 random.Next(GameConfig.PitHeight, GameConfig.InternalWorldHeight - GameConfig.PitHeight)
             );
             
-            var pitId = worldState.EntityCount + 1;
+            var pitId = (uint)(worldState.EntityCount + 1);
             
             // Create and process a pit spawn event
             var pitEvent = new PitEvent(worldState.GameTime, pitId, position, "spawn", 1f);

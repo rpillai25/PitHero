@@ -7,11 +7,11 @@ namespace PitHero.Events
     /// </summary>
     public class HeroSpawnEvent : BaseEvent
     {
-        public int HeroId { get; }
+        public uint HeroId { get; }
         public Vector2 Position { get; }
         public float Health { get; }
         
-        public HeroSpawnEvent(double gameTime, int heroId, Vector2 position, float health = 100f)
+        public HeroSpawnEvent(double gameTime, uint heroId, Vector2 position, float health = 100f)
             : base(gameTime)
         {
             HeroId = heroId;
@@ -25,12 +25,12 @@ namespace PitHero.Events
     /// </summary>
     public class HeroMoveEvent : BaseEvent
     {
-        public int HeroId { get; }
+        public uint HeroId { get; }
         public Vector2 FromPosition { get; }
         public Vector2 ToPosition { get; }
         public Vector2 Velocity { get; }
         
-        public HeroMoveEvent(double gameTime, int heroId, Vector2 fromPosition, Vector2 toPosition, Vector2 velocity)
+        public HeroMoveEvent(double gameTime, uint heroId, Vector2 fromPosition, Vector2 toPosition, Vector2 velocity)
             : base(gameTime)
         {
             HeroId = heroId;
@@ -45,11 +45,11 @@ namespace PitHero.Events
     /// </summary>
     public class HeroDeathEvent : BaseEvent
     {
-        public int HeroId { get; }
+        public uint HeroId { get; }
         public Vector2 Position { get; }
         public string DeathCause { get; }
         
-        public HeroDeathEvent(double gameTime, int heroId, Vector2 position, string deathCause)
+        public HeroDeathEvent(double gameTime, uint heroId, Vector2 position, string deathCause)
             : base(gameTime)
         {
             HeroId = heroId;
@@ -63,11 +63,11 @@ namespace PitHero.Events
     /// </summary>
     public class BuildingPlaceEvent : BaseEvent
     {
-        public int BuildingId { get; }
+        public uint BuildingId { get; }
         public Vector2 Position { get; }
         public string BuildingType { get; }
         
-        public BuildingPlaceEvent(double gameTime, int buildingId, Vector2 position, string buildingType)
+        public BuildingPlaceEvent(double gameTime, uint buildingId, Vector2 position, string buildingType)
             : base(gameTime)
         {
             BuildingId = buildingId;
@@ -81,12 +81,12 @@ namespace PitHero.Events
     /// </summary>
     public class PitEvent : BaseEvent
     {
-        public int PitId { get; }
+        public uint PitId { get; }
         public Vector2 Position { get; }
         public string EventType { get; }
         public float CrystalPower { get; }
         
-        public PitEvent(double gameTime, int pitId, Vector2 position, string eventType, float crystalPower = 1f)
+        public PitEvent(double gameTime, uint pitId, Vector2 position, string eventType, float crystalPower = 1f)
             : base(gameTime)
         {
             PitId = pitId;

@@ -1,23 +1,30 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Nez;
 using PitHero.Events;
 
 namespace PitHero.ECS
 {
     /// <summary>
     /// Contains all entities and global game state
+    /// Wraps Nez Scene for entity management
     /// </summary>
     public class WorldState
     {
-        private readonly Dictionary<int, Entity> _entities;
+        private readonly Scene _scene;
         private readonly object _lock = new object();
         
         public WorldState()
         {
-            _entities = new Dictionary<int, Entity>();
+            _scene = new Scene();
             GameTime = 0.0;
         }
+        
+        /// <summary>
+        /// The underlying Nez scene
+        /// </summary>
+        public Scene Scene => _scene;
         
         /// <summary>
         /// Current game time in seconds
@@ -34,21 +41,28 @@ namespace PitHero.ECS
                 
             lock (_lock)
             {
-                if (_entities.ContainsKey(entity.Id))
-                    throw new InvalidOperationException($"Entity with ID {entity.Id} already exists in world");
-                    
-                _entities[entity.Id] = entity;
+                _scene.AddEntity(entity);
             }
         }
         
         /// <summary>
         /// Remove an entity from the world
         /// </summary>
-        public bool RemoveEntity(int entityId)
+        public bool RemoveEntity(uint entityId)
         {
             lock (_lock)
             {
-                return _entities.Remove(entityId);
+                // Find entity by ID without using GetEntity to avoid double-locking
+                for (int i = 0; i < _scene.Entities.Count; i++)
+                {
+                    var entity = _scene.Entities[i];
+                    if (entity != null && entity.Id == entityId)
+                    {
+                        entity.Destroy();
+                        return true;
+                    }
+                }
+                return false;
             }
         }
         
@@ -60,17 +74,28 @@ namespace PitHero.ECS
             if (entity == null)
                 return false;
                 
-            return RemoveEntity(entity.Id);
+            lock (_lock)
+            {
+                entity.Destroy();
+                return true;
+            }
         }
         
         /// <summary>
         /// Get an entity by ID
         /// </summary>
-        public Entity GetEntity(int entityId)
+        public Entity GetEntity(uint entityId)
         {
             lock (_lock)
             {
-                return _entities.TryGetValue(entityId, out var entity) ? entity : null;
+                // Since Nez doesn't provide FindEntity by ID, we need to iterate
+                for (int i = 0; i < _scene.Entities.Count; i++)
+                {
+                    var entity = _scene.Entities[i];
+                    if (entity != null && entity.Id == entityId)
+                        return entity;
+                }
+                return null;
             }
         }
         
@@ -81,7 +106,14 @@ namespace PitHero.ECS
         {
             lock (_lock)
             {
-                return _entities.Values.ToList().AsReadOnly();
+                var entities = new List<Entity>();
+                for (int i = 0; i < _scene.Entities.Count; i++)
+                {
+                    var entity = _scene.Entities[i];
+                    if (entity != null)
+                        entities.Add(entity);
+                }
+                return entities.AsReadOnly();
             }
         }
         
@@ -92,10 +124,14 @@ namespace PitHero.ECS
         {
             lock (_lock)
             {
-                return _entities.Values
-                    .Where(entity => entity.HasComponent<T>())
-                    .ToList()
-                    .AsReadOnly();
+                var entities = new List<Entity>();
+                for (int i = 0; i < _scene.Entities.Count; i++)
+                {
+                    var entity = _scene.Entities[i];
+                    if (entity != null && entity.GetComponent<T>() != null)
+                        entities.Add(entity);
+                }
+                return entities.AsReadOnly();
             }
         }
         
@@ -106,10 +142,14 @@ namespace PitHero.ECS
         {
             lock (_lock)
             {
-                return _entities.Values
-                    .Where(entity => entity.Name == name)
-                    .ToList()
-                    .AsReadOnly();
+                var entities = new List<Entity>();
+                for (int i = 0; i < _scene.Entities.Count; i++)
+                {
+                    var entity = _scene.Entities[i];
+                    if (entity != null && entity.Name == name)
+                        entities.Add(entity);
+                }
+                return entities.AsReadOnly();
             }
         }
         
@@ -120,7 +160,7 @@ namespace PitHero.ECS
         {
             lock (_lock)
             {
-                _entities.Clear();
+                _scene.DestroyAllEntities();
             }
         }
         
@@ -133,7 +173,7 @@ namespace PitHero.ECS
             {
                 lock (_lock)
                 {
-                    return _entities.Count;
+                    return _scene.Entities.Count;
                 }
             }
         }

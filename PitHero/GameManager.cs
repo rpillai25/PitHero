@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using Nez;
 using PitHero.ECS;
 using PitHero.Events;
 using PitHero.Systems;
@@ -16,8 +17,6 @@ namespace PitHero
         private readonly WorldState _worldState;
         private readonly EventProcessor _eventProcessor;
         private readonly List<ISystem> _systems;
-        
-        private int _nextEntityId = 1;
         
         public EventLog EventLog => _eventLog;
         public WorldState WorldState => _worldState;
@@ -76,7 +75,9 @@ namespace PitHero
         /// </summary>
         public void SpawnHero(Vector2 position, float health = 100f)
         {
-            var heroId = _nextEntityId++;
+            // Create a temporary entity to get its ID for the event
+            var tempHero = new Entity("TempHero");
+            var heroId = tempHero.Id;
             var spawnEvent = new HeroSpawnEvent(_worldState.GameTime, heroId, position, health);
             ProcessEvent(spawnEvent);
         }
@@ -86,7 +87,9 @@ namespace PitHero
         /// </summary>
         public void PlaceBuilding(Vector2 position, string buildingType)
         {
-            var buildingId = _nextEntityId++;
+            // Create a temporary entity to get its ID for the event
+            var tempBuilding = new Entity("TempBuilding");
+            var buildingId = tempBuilding.Id;
             var buildingEvent = new BuildingPlaceEvent(_worldState.GameTime, buildingId, position, buildingType);
             ProcessEvent(buildingEvent);
         }
@@ -94,7 +97,7 @@ namespace PitHero
         /// <summary>
         /// Trigger a pit event
         /// </summary>
-        public void TriggerPitEvent(int pitId, Vector2 position, string eventType, float crystalPower = 1f)
+        public void TriggerPitEvent(uint pitId, Vector2 position, string eventType, float crystalPower = 1f)
         {
             var pitEvent = new PitEvent(_worldState.GameTime, pitId, position, eventType, crystalPower);
             ProcessEvent(pitEvent);
@@ -121,7 +124,6 @@ namespace PitHero
             _eventLog.Clear();
             _worldState.Clear();
             _worldState.GameTime = 0.0;
-            _nextEntityId = 1;
             
             // Spawn some initial heroes for testing
             SpawnHero(new Vector2(100, GameConfig.InternalWorldHeight / 2));
