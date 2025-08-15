@@ -12,6 +12,7 @@ namespace PitHero
         #region Win32 API Constants
         private const int SWP_NOZORDER = 0x0004;
         private const int SWP_NOSIZE = 0x0001;
+        private const int SWP_NOMOVE = 0x0002;
         private const int SWP_SHOWWINDOW = 0x0040;
         private const int SWP_NOACTIVATE = 0x0010;
         
@@ -30,6 +31,10 @@ namespace PitHero
         
         private const uint WS_EX_TOPMOST = 0x00000008;
         private const uint WS_EX_TRANSPARENT = 0x00000020;
+        
+        // System metrics constants
+        private const int SM_CXSCREEN = 0;
+        private const int SM_CYSCREEN = 1;
         #endregion
 
         #region Win32 API Imports
@@ -50,6 +55,9 @@ namespace PitHero
 
         [DllImport("user32.dll")]
         private static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("user32.dll")]
+        private static extern int GetSystemMetrics(int nIndex);
 
         [StructLayout(LayoutKind.Sequential)]
         private struct RECT
@@ -117,8 +125,16 @@ namespace PitHero
         private static void MakeBorderless(IntPtr hwnd)
         {
             var style = (uint)GetWindowLong(hwnd, GWL_STYLE);
+            var originalStyle = style;
+            
+            // Remove all window decorations
             style &= ~(WS_BORDER | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX);
-            SetWindowLong(hwnd, GWL_STYLE, style);
+            
+            var result = SetWindowLong(hwnd, GWL_STYLE, style);
+            Console.WriteLine($"Window style changed from 0x{originalStyle:X} to 0x{style:X}, result: {result}");
+            
+            // Force window to redraw with new style
+            SetWindowPos(hwnd, 0, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_SHOWWINDOW);
         }
 
         /// <summary>
@@ -126,12 +142,9 @@ namespace PitHero
         /// </summary>
         private static void PositionAtBottom(IntPtr hwnd)
         {
-            // Get desktop dimensions
-            IntPtr desktop = GetDesktopWindow();
-            GetClientRect(desktop, out RECT desktopRect);
-
-            int screenWidth = desktopRect.Right;
-            int screenHeight = desktopRect.Bottom;
+            // Get full screen dimensions using GetSystemMetrics
+            int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+            int screenHeight = GetSystemMetrics(SM_CYSCREEN);
 
             // Position window at bottom center
             int windowWidth = GameConfig.VirtualWidth;
@@ -139,6 +152,8 @@ namespace PitHero
             int x = (screenWidth - windowWidth) / 2; // Center horizontally
             int y = screenHeight - windowHeight; // Bottom of screen
 
+            Console.WriteLine($"Screen: {screenWidth}x{screenHeight}, Window: {windowWidth}x{windowHeight}, Position: ({x}, {y})");
+            
             SetWindowPos(hwnd, 0, x, y, windowWidth, windowHeight, SWP_NOZORDER | SWP_SHOWWINDOW);
         }
 
@@ -189,8 +204,5 @@ namespace PitHero
                 Console.WriteLine($"Failed to update window position: {ex.Message}");
             }
         }
-
-        // Missing constant
-        private const uint SWP_NOMOVE = 0x0002;
     }
 }
