@@ -2,7 +2,6 @@
 .vs
 FNA/
 ImGui.NET/
-fnalibs/
 PitHero/bin
 PitHero/obj
 PitHero/CompiledContent/bin
