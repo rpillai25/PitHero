@@ -49,12 +49,11 @@ namespace PitHero.Systems
                 EffectRadius = GetBuildingEffectRadius(buildingEvent.BuildingType)
             };
             
-            var renderComponent = new RenderComponent
+            var renderComponent = new BasicRenderableComponent
             {
                 Color = GameConfig.TownColor,
-                Width = GameConfig.TownBuildingWidth,
-                Height = GameConfig.TownBuildingHeight,
-                ZOrder = 2
+                RenderWidth = GameConfig.TownBuildingWidth,
+                RenderHeight = GameConfig.TownBuildingHeight
             };
             
             building.AddComponent(buildingComponent);

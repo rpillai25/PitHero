@@ -12,20 +12,18 @@ namespace PitHero.Systems
     /// </summary>
     public class PitSystem : BaseSystem
     {
-        private float _timeSinceLastPitSpawn;
+        private bool _hasActivePit;
         
         protected override void OnUpdate(WorldState worldState, float deltaTime)
         {
-            _timeSinceLastPitSpawn += deltaTime;
-            
-            // Automatically spawn pits at intervals
-            if (_timeSinceLastPitSpawn >= GameConfig.PitSpawnInterval)
+            // Ensure there's always one active pit
+            if (!_hasActivePit)
             {
-                SpawnRandomPit(worldState);
-                _timeSinceLastPitSpawn = 0f;
+                SpawnMainPit(worldState);
+                _hasActivePit = true;
             }
             
-            // Update existing pits
+            // Update the single active pit
             var pits = worldState.GetEntitiesWithComponent<PitComponent>();
             foreach (var pit in pits)
             {
@@ -33,7 +31,7 @@ namespace PitHero.Systems
                 
                 if (pitComponent.IsActive)
                 {
-                    // Pits could have periodic effects, crystal power changes, etc.
+                    // Update pit effects, crystal power changes, etc.
                     UpdatePitEffects(pit, pitComponent, worldState, deltaTime);
                 }
             }
@@ -49,19 +47,19 @@ namespace PitHero.Systems
             }
         }
         
-        private void SpawnRandomPit(WorldState worldState)
+        private void SpawnMainPit(WorldState worldState)
         {
-            var random = new System.Random();
+            // Create the single main pit at a fixed position with configured size
             var position = new Vector2(
-                random.Next(GameConfig.PitWidth, GameConfig.InternalWorldWidth - GameConfig.PitWidth),
-                random.Next(GameConfig.PitHeight, GameConfig.InternalWorldHeight - GameConfig.PitHeight)
+                GameConfig.InternalWorldWidth / 2,
+                GameConfig.InternalWorldHeight / 2
             );
             
             var pitId = (uint)(worldState.EntityCount + 1);
             
             // Create and process a pit spawn event
             var pitEvent = new PitEvent(worldState.GameTime, pitId, position, "spawn", 1f);
-            // Note: In a real implementation, this would go through the EventProcessor
+            HandlePitEvent(pitEvent, worldState);
         }
         
         private void HandlePitEvent(PitEvent pitEvent, WorldState worldState)
@@ -98,12 +96,11 @@ namespace PitHero.Systems
                 EffectRadius = 100f
             };
             
-            var renderComponent = new RenderComponent
+            var renderComponent = new BasicRenderableComponent
             {
                 Color = GameConfig.PitColor,
-                Width = GameConfig.PitWidth,
-                Height = GameConfig.PitHeight,
-                ZOrder = 1
+                RenderWidth = GameConfig.PitWidth,
+                RenderHeight = GameConfig.PitHeight
             };
             
             pit.AddComponent(pitComponent);
@@ -121,7 +118,7 @@ namespace PitHero.Systems
             {
                 pitComponent.IsActive = true;
                 
-                var renderComponent = pit.GetComponent<RenderComponent>();
+                var renderComponent = pit.GetComponent<BasicRenderableComponent>();
                 if (renderComponent != null)
                 {
                     renderComponent.Color = GameConfig.PitColor;
@@ -138,7 +135,7 @@ namespace PitHero.Systems
             {
                 pitComponent.IsActive = false;
                 
-                var renderComponent = pit.GetComponent<RenderComponent>();
+                var renderComponent = pit.GetComponent<BasicRenderableComponent>();
                 if (renderComponent != null)
                 {
                     renderComponent.Color = Color.DarkRed;

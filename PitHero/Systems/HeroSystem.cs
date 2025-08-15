@@ -81,11 +81,11 @@ namespace PitHero.Systems
                 MaxHealth = spawnEvent.Health
             };
             
-            var renderComponent = new RenderComponent
+            var renderComponent = new BasicRenderableComponent
             {
                 Color = GameConfig.HeroColor,
-                Width = GameConfig.HeroWidth,
-                Height = GameConfig.HeroHeight
+                RenderWidth = GameConfig.HeroWidth,
+                RenderHeight = GameConfig.HeroHeight
             };
             
             hero.AddComponent(heroComponent);
@@ -115,7 +115,7 @@ namespace PitHero.Systems
                 heroComponent.Velocity = Vector2.Zero;
                 
                 // Could change render color to indicate death
-                var renderComponent = hero.GetComponent<RenderComponent>();
+                var renderComponent = hero.GetComponent<BasicRenderableComponent>();
                 if (renderComponent != null)
                 {
                     renderComponent.Color = Color.Gray;

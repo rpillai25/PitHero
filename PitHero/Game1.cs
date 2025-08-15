@@ -93,7 +93,7 @@ namespace PitHero
             
             foreach (var entity in entities)
             {
-                var renderComponent = entity.GetComponent<Components.RenderComponent>();
+                var renderComponent = entity.GetComponent<Components.BasicRenderableComponent>();
                 if (renderComponent != null && entity.Enabled)
                 {
                     // Create a simple colored rectangle for each entity
@@ -112,7 +112,7 @@ namespace PitHero
             
             foreach (var entity in entities)
             {
-                var renderComponent = entity.GetComponent<Components.RenderComponent>();
+                var renderComponent = entity.GetComponent<Components.BasicRenderableComponent>();
                 if (renderComponent != null && entity.Enabled)
                 {
                     var texture = CreateColorTexture(renderComponent.Color);

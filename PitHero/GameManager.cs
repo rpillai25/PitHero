@@ -125,9 +125,8 @@ namespace PitHero
             _worldState.Clear();
             _worldState.GameTime = 0.0;
             
-            // Spawn some initial heroes for testing
+            // Spawn a single hero
             SpawnHero(new Vector2(100, GameConfig.InternalWorldHeight / 2));
-            SpawnHero(new Vector2(150, GameConfig.InternalWorldHeight / 2 + 50));
         }
         
         /// <summary>

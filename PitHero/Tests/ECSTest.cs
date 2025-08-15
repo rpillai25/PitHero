@@ -1,5 +1,6 @@
 using System;
 using Microsoft.Xna.Framework;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Nez;
 using PitHero;
 using PitHero.Events;
@@ -9,22 +10,13 @@ using PitHero.Components;
 namespace PitHero.Tests
 {
     /// <summary>
-    /// Simple test to verify the ECS structure works without graphics
+    /// MSTest tests to verify the ECS structure works without graphics
     /// </summary>
+    [TestClass]
     public class ECSTest
     {
-        public static void RunTests()
-        {
-            Console.WriteLine("Starting ECS Tests...");
-            
-            TestBasicEntityCreation();
-            TestEventSystem();
-            TestGameManager();
-            
-            Console.WriteLine("All ECS tests passed!");
-        }
-        
-        private static void TestBasicEntityCreation()
+        [TestMethod]
+        public void TestBasicEntityCreation()
         {
             Console.WriteLine("Testing basic entity creation...");
             
@@ -35,7 +27,7 @@ namespace PitHero.Tests
             hero.Position = new Vector2(100, 200);
             
             var heroComponent = new HeroComponent { Health = 100f };
-            var renderComponent = new RenderComponent { Color = Color.Blue };
+            var renderComponent = new BasicRenderableComponent { Color = Color.Blue };
             
             hero.AddComponent(heroComponent);
             hero.AddComponent(renderComponent);
@@ -44,23 +36,21 @@ namespace PitHero.Tests
             
             // Verify entity was added
             var retrievedHero = worldState.GetEntity(hero.Id);
-            if (retrievedHero == null)
-                throw new Exception("Failed to retrieve added entity");
+            Assert.IsNotNull(retrievedHero, "Failed to retrieve added entity");
                 
             // Verify components
             var retrievedHeroComp = retrievedHero.GetComponent<HeroComponent>();
-            var retrievedRenderComp = retrievedHero.GetComponent<RenderComponent>();
+            var retrievedRenderComp = retrievedHero.GetComponent<BasicRenderableComponent>();
             
-            if (retrievedHeroComp == null || retrievedRenderComp == null)
-                throw new Exception("Failed to retrieve entity components");
-                
-            if (retrievedHeroComp.Health != 100f)
-                throw new Exception("Component data not preserved");
+            Assert.IsNotNull(retrievedHeroComp, "Failed to retrieve hero component");
+            Assert.IsNotNull(retrievedRenderComp, "Failed to retrieve render component");
+            Assert.AreEqual(100f, retrievedHeroComp.Health, "Component data not preserved");
                 
             Console.WriteLine("✓ Basic entity creation test passed");
         }
         
-        private static void TestEventSystem()
+        [TestMethod]
+        public void TestEventSystem()
         {
             Console.WriteLine("Testing event system...");
             
@@ -76,16 +66,14 @@ namespace PitHero.Tests
             
             // Verify event was logged
             var events = eventLog.GetAllEvents();
-            if (events.Count != 1)
-                throw new Exception("Event was not logged");
-                
-            if (events[0].Id != spawnEvent.Id)
-                throw new Exception("Wrong event logged");
+            Assert.AreEqual(1, events.Count, "Event was not logged");
+            Assert.AreEqual(spawnEvent.Id, events[0].Id, "Wrong event logged");
                 
             Console.WriteLine("✓ Event system test passed");
         }
         
-        private static void TestGameManager()
+        [TestMethod]
+        public void TestGameManager()
         {
             Console.WriteLine("Testing game manager...");
             
@@ -94,22 +82,19 @@ namespace PitHero.Tests
             // Start a new game
             gameManager.StartNewGame();
             
-            // Verify initial state
-            if (gameManager.WorldState.EntityCount < 2) // Should have spawned 2 heroes
-                throw new Exception("Game manager did not initialize properly");
+            // Verify initial state - should have spawned 1 hero
+            Assert.IsTrue(gameManager.WorldState.EntityCount >= 1, "Game manager did not initialize properly");
                 
             // Test spawning additional hero
             var initialCount = gameManager.WorldState.EntityCount;
             gameManager.SpawnHero(new Vector2(300, 300));
             
-            if (gameManager.WorldState.EntityCount != initialCount + 1)
-                throw new Exception("Game manager spawn hero failed");
+            Assert.AreEqual(initialCount + 1, gameManager.WorldState.EntityCount, "Game manager spawn hero failed");
                 
             // Test building placement
             gameManager.PlaceBuilding(new Vector2(400, 400), "healing_tower");
             
-            if (gameManager.WorldState.EntityCount != initialCount + 2)
-                throw new Exception("Game manager place building failed");
+            Assert.AreEqual(initialCount + 2, gameManager.WorldState.EntityCount, "Game manager place building failed");
                 
             Console.WriteLine("✓ Game manager test passed");
         }
