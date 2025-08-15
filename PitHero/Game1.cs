@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using System;
 
 namespace PitHero
 {
@@ -21,11 +22,20 @@ namespace PitHero
             // Set virtual resolution
             _graphics.PreferredBackBufferWidth = GameConfig.VirtualWidth;
             _graphics.PreferredBackBufferHeight = GameConfig.VirtualHeight;
+            
+            // Configure window for horizontal strip at bottom of screen
+            Window.AllowUserResizing = false;
+            Window.Title = "PitHero";
         }
 
         protected override void Initialize()
         {
             base.Initialize();
+            
+            // Configure window as horizontal strip docked at bottom
+            WindowManager.ConfigureHorizontalStrip(this, 
+                alwaysOnTop: GameConfig.AlwaysOnTop, 
+                clickThrough: GameConfig.ClickThrough);
             
             // Initialize the event-driven game manager
             _gameManager = new GameManager();
@@ -45,6 +55,12 @@ namespace PitHero
             _gameManager.Update(deltaTime);
 
             base.Update(gameTime);
+        }
+        
+        protected override void OnExiting(object sender, EventArgs args)
+        {
+            // Clean up resources if needed
+            base.OnExiting(sender, args);
         }
 
         protected override void Draw(GameTime gameTime)

@@ -13,6 +13,11 @@ namespace PitHero
         public const int InternalWorldWidth = 1920;
         public const int InternalWorldHeight = 800;
         
+        // Window Configuration
+        public const bool AlwaysOnTop = true;
+        public const bool ClickThrough = false;
+        public const bool BorderlessWindow = true;
+        
         // Hero Configuration
         public const int HeroWidth = 32;
         public const int HeroHeight = 32;
