@@ -48,6 +48,9 @@ namespace PitHero
         private static extern int SetWindowLong(IntPtr hWnd, int nIndex, uint dwNewLong);
 
         [DllImport("user32.dll")]
+        private static extern int SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+        [DllImport("user32.dll")]
         private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
         [DllImport("user32.dll")]
@@ -92,19 +95,19 @@ namespace PitHero
                     return;
                 }
 
-                // Make the window borderless
-                MakeBorderless(hwnd);
-
-                // Position at bottom of screen
-                PositionAtBottom(hwnd);
-
-                // Set always on top if requested
-                if (alwaysOnTop)
+                // 1. Set FNA borderless property (required for FNA/Nez)
+                if (window is Microsoft.Xna.Framework.GameWindow gw)
                 {
-                    SetAlwaysOnTop(hwnd, true);
+                    gw.IsBorderlessEXT = true;
                 }
 
-                // Set click-through if requested
+                // 2. Remove all window decorations (Win32 styles)
+                MakeBorderless(hwnd);
+
+                // 3. Position at bottom of screen and set always-on-top
+                PositionAtBottom(hwnd, alwaysOnTop);
+
+                // 4. Set click-through if requested
                 if (clickThrough)
                 {
                     SetClickThrough(hwnd, true);
@@ -138,23 +141,24 @@ namespace PitHero
         }
 
         /// <summary>
-        /// Positions the window at the bottom of the screen
+        /// Positions the window at the bottom of the screen and sets always-on-top
         /// </summary>
-        private static void PositionAtBottom(IntPtr hwnd)
+        private static void PositionAtBottom(IntPtr hwnd, bool alwaysOnTop)
         {
-            // Get full screen dimensions using GetSystemMetrics
             int screenWidth = GetSystemMetrics(SM_CXSCREEN);
             int screenHeight = GetSystemMetrics(SM_CYSCREEN);
 
-            // Position window at bottom center
             int windowWidth = GameConfig.VirtualWidth;
             int windowHeight = GameConfig.VirtualHeight;
-            int x = (screenWidth - windowWidth) / 2; // Center horizontally
-            int y = screenHeight - windowHeight; // Bottom of screen
+            int x = (screenWidth - windowWidth) / 2;
+            int y = screenHeight - windowHeight;
 
             Console.WriteLine($"Screen: {screenWidth}x{screenHeight}, Window: {windowWidth}x{windowHeight}, Position: ({x}, {y})");
-            
-            SetWindowPos(hwnd, 0, x, y, windowWidth, windowHeight, SWP_NOZORDER | SWP_SHOWWINDOW);
+
+            int insertAfter = alwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST;
+
+            // Set window position and size explicitly
+            SetWindowPos(hwnd, insertAfter, x, y, windowWidth, windowHeight, SWP_SHOWWINDOW | SWP_NOACTIVATE);
         }
 
         /// <summary>
@@ -196,7 +200,7 @@ namespace PitHero
                 IntPtr hwnd = game.Window.Handle;
                 if (hwnd != IntPtr.Zero)
                 {
-                    PositionAtBottom(hwnd);
+                    PositionAtBottom(hwnd, true);
                 }
             }
             catch (Exception ex)

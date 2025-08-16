@@ -19,7 +19,7 @@ namespace PitHero.ECS.Scenes
 
             // Set design resolution for the scene
             SetDesignResolution(GameConfig.VirtualWidth, GameConfig.VirtualHeight, SceneResolutionPolicy.None);
-            
+
             // Initialize the event-driven game manager
             _gameManager = new GameManager();
             _gameManager.StartNewGame();
@@ -29,6 +29,7 @@ namespace PitHero.ECS.Scenes
                 .SetPosition(new Vector2(150, 150))
                 .AddComponent(new PrototypeSpriteRenderer(20, 20));
         }
+
 
         public override void Update()
         {

@@ -14,10 +14,6 @@
     <!-- Reference FNA, Nez, ImGui and Persistence projects. Optionally add a Farseer reference here and in the .sln file -->
     
     <!-- FNA and Nez Framework References -->
-    <ItemGroup>
-      <ProjectReference Include="..\FNA\FNA.Core.csproj" />
-      <ProjectReference Include="..\Nez\Nez.Portable\Nez.FNA.Core.csproj" />
-    </ItemGroup>
     
     <!-- MSTest Framework for testing -->
     <!--<ItemGroup>
@@ -88,6 +84,10 @@
             <Link>lib64\%(RecursiveDir)%(Filename)%(Extension)</Link>
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
+    </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\FNA\FNA.Core.csproj" />
+      <ProjectReference Include="..\Nez\Nez.Portable\Nez.FNA.Core.csproj" />
     </ItemGroup>
     
 </Project>

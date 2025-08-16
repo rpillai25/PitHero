@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Nez;
 using PitHero.ECS.Scenes;
 
@@ -19,6 +20,7 @@ namespace PitHero
             // Set the scene - this handles Update/Draw logic
             Scene = new MainGameScene();
 
+
 #if DEBUG
             // Debug console setup if needed
             // System.Diagnostics.Debug.Listeners.Add(new System.Diagnostics.TextWriterTraceListener(System.Console.Out));
@@ -30,9 +32,8 @@ namespace PitHero
             base.LoadContent();
             
             // Configure window as horizontal strip docked at bottom
-            // This is done here instead of Initialize() to ensure window is fully created
-            WindowManager.ConfigureHorizontalStrip(this, 
-                alwaysOnTop: GameConfig.AlwaysOnTop, 
+            WindowManager.ConfigureHorizontalStrip(this,
+                alwaysOnTop: GameConfig.AlwaysOnTop,
                 clickThrough: GameConfig.ClickThrough);
         }
     }
