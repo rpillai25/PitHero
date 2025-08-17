@@ -1,7 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System;
-using System.Runtime.InteropServices;
+using SDL3;
 
 namespace PitHero
 {
@@ -11,28 +11,6 @@ namespace PitHero
     /// </summary>
     public static class WindowManager
     {
-        private const int SDL_TRUE = 1;
-        private const int SDL_FALSE = 0;
-
-        [DllImport("SDL3.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void SDL_SetWindowPosition(IntPtr window, int x, int y);
-
-        [DllImport("SDL3.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void SDL_SetWindowAlwaysOnTop(IntPtr window, int on);
-
-        [DllImport("SDL3.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void SDL_GetCurrentDisplayMode(int displayIndex, out SDL_DisplayMode mode);
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct SDL_DisplayMode
-        {
-            public uint format;
-            public int w;
-            public int h;
-            public int refresh_rate;
-            public IntPtr driverdata;
-        }
-
         /// <summary>
         /// Configures the game window as a horizontal strip docked at the bottom of the screen.
         /// </summary>
@@ -46,58 +24,54 @@ namespace PitHero
                 return;
             }
 
-            //// Get display size
-            //SDL_DisplayMode displayMode;
-            //SDL_GetCurrentDisplayMode(0, out displayMode);
-
             int windowWidth = GameConfig.VirtualWidth;
             int windowHeight = GameConfig.VirtualHeight;
 
-            // Clamp window size to display size
-            windowWidth = Math.Min(windowWidth, GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width);
-            windowHeight = Math.Min(windowHeight, GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height);
+            // Clamp to current display
+            var displayMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+            windowWidth = Math.Min(windowWidth, displayMode.Width);
+            windowHeight = Math.Min(windowHeight, displayMode.Height);
 
-            int x = Math.Max(0, (GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Width - windowWidth) / 2);
-            int y = Math.Max(0, GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height - windowHeight); // Clamp to bottom
+            int x = Math.Max(0, (displayMode.Width - windowWidth) / 2);
+            int y = Math.Max(0, displayMode.Height - windowHeight);
 
-            // Ensure window is not offscreen at the bottom
-            if (y + windowHeight > GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height)
-                y = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode.Height - windowHeight;
+            if (y + windowHeight > displayMode.Height)
+                y = displayMode.Height - windowHeight;
             if (y < 0)
                 y = 0;
 
-            // Set borderless via FNA/Nez API
+            // Borderless
             if (window is Microsoft.Xna.Framework.GameWindow gw)
-            {
                 gw.IsBorderlessEXT = true;
-            }
 
-            SDL_SetWindowPosition(sdlWindow, x, y);
-            SDL_SetWindowAlwaysOnTop(sdlWindow, alwaysOnTop ? SDL_TRUE : SDL_FALSE);
+            SDL.SDL_SetWindowPosition(sdlWindow, x, y);
+            SDL.SDL_SetWindowAlwaysOnTop(sdlWindow, alwaysOnTop ? true : false);
 
             Console.WriteLine($"Window configured as horizontal strip at ({x},{y}) - Always on top: {alwaysOnTop}");
         }
 
         /// <summary>
-        /// Sets the window position.
+        /// Sets the window position (clamped to >= 0).
         /// </summary>
         public static void SetPosition(Game game, int x, int y)
         {
             IntPtr sdlWindow = game.Window.Handle;
             if (sdlWindow == IntPtr.Zero)
                 return;
-            SDL_SetWindowPosition(sdlWindow, Math.Max(0, x), Math.Max(0, y));
+
+            SDL.SDL_SetWindowPosition(sdlWindow, Math.Max(0, x), Math.Max(0, y));
         }
 
         /// <summary>
-        /// Sets the window always-on-top state.
+        /// Sets/unsets always-on-top.
         /// </summary>
         public static void SetAlwaysOnTop(Game game, bool alwaysOnTop)
         {
             IntPtr sdlWindow = game.Window.Handle;
             if (sdlWindow == IntPtr.Zero)
                 return;
-            SDL_SetWindowAlwaysOnTop(sdlWindow, alwaysOnTop ? SDL_TRUE : SDL_FALSE);
+
+            SDL.SDL_SetWindowAlwaysOnTop(sdlWindow, alwaysOnTop ? true : false);
         }
     }
 }
