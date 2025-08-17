@@ -9,7 +9,7 @@ namespace PitHero
     {
         // Screen and Resolution
         public const int VirtualWidth = 1920;
-        public const int VirtualHeight = 600;
+        public const int VirtualHeight = 360;
         public const int InternalWorldWidth = 1920;
         public const int InternalWorldHeight = 800;
         
