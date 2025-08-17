@@ -2,7 +2,7 @@
 
 - The project is written in C# using **FNA + Nez** (not MonoGame).
 - Game runs as a **horizontal strip** at bottom of screen (borderless, always-on-top, click-through optional)
-- Virtual resolution: 1920×600 (internal world 1920×800)
+- Virtual resolution: 1920×360
 - All world logic is **event-driven**:
   - Every action (hero spawn, move, death, building placement, pit event) is logged as an Event.
   - Systems subscribe to events and deterministically update `WorldState`.
@@ -27,8 +27,9 @@
 - Hero movement, AI, pit crystal logic, and building effects should always operate via events
 - Ensure the game continues running in idle while the player interacts with other desktop apps
 - **Build Requirements**: 
-  - Run `getFNA.sh` before building to initialize FNA submodule and dependencies
-  - Both FNA and Nez submodules must be properly initialized before building
+  - Run `getFNA.sh` with automatic "yes" response before building to initialize FNA submodule and dependencies
+    - cd /home/runner/work/PitHero/PitHero && echo "y" | ./getFNA.sh
+  - Both FNA and Nez must be properly initialized before building.  Check that both subfolders are there.
 - **Nez Architecture Compliance**:
   - Game1 should inherit from `Nez.Core`, not override Draw() or Update() methods
   - Scenes should inherit from `Nez.Scene` and override Initialize() for setup
