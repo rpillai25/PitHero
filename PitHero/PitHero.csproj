@@ -22,6 +22,18 @@
       <PackageReference Include="MSTest.TestFramework" Version="3.1.1" />
     </ItemGroup>-->
     
+    <!-- Includes Nez default effects and textures -->
+    <ItemGroup>
+        <Content Include="../Nez/DefaultContent/MonoGameEffects/**/*.fxb">
+            <Link>Content/nez/effects/%(RecursiveDir)%(Filename)%(Extension)</Link>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <Content Include="../Nez/DefaultContent/textures/**/*.xnb">
+            <Link>Content/nez/textures/%(RecursiveDir)%(Filename)%(Extension)</Link>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
+    
     <!-- Include the Content directory (except for .fx files, since we use .fxb at runtime) -->
     <ItemGroup>
         <Content Include="Content/**/*.*" Exclude="**/*.fx; Content/Content-Goes-Here.txt">
@@ -55,7 +67,9 @@
     </PropertyGroup>
     <ItemGroup>
       <PackageReference Include="MonoGame.Framework.WindowsDX" Version="3.8.4" />
-      <PackageReference Include="Nez" Version="0.10.0" />
+    </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\Nez\Nez.Portable\Nez.MG38.csproj" />
     </ItemGroup>
     
 </Project>
