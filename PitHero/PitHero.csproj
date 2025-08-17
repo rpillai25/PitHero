@@ -11,9 +11,9 @@
                 <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     </PropertyGroup>
     
-    <!-- Reference FNA, Nez, ImGui and Persistence projects. Optionally add a Farseer reference here and in the .sln file -->
+    <!-- Reference MonoGame, Nez, ImGui and Persistence projects. Optionally add a Farseer reference here and in the .sln file -->
     
-    <!-- FNA and Nez Framework References -->
+    <!-- MonoGame and Nez Framework References -->
     
     <!-- MSTest Framework for testing -->
     <!--<ItemGroup>
