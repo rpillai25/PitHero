@@ -10,7 +10,7 @@ namespace PitHero
         public Game1() : base(GameConfig.VirtualWidth, GameConfig.VirtualHeight, false, "PitHero")
         {
             // Set up for pixel-perfect rendering - uncomment for scaled pixel art
-            // System.Environment.SetEnvironmentVariable("FNA_OPENGL_BACKBUFFER_SCALE_NEAREST", "1");
+            System.Environment.SetEnvironmentVariable("FNA_OPENGL_BACKBUFFER_SCALE_NEAREST", "1");
         }
 
         protected override void Initialize()
@@ -30,12 +30,15 @@ namespace PitHero
         protected override void LoadContent()
         {
             base.LoadContent();
-            
+
             // Configure window as horizontal strip docked at bottom
+            //WindowManager.ConfigureHorizontalStrip(this,
+            //    alwaysOnTop: GameConfig.AlwaysOnTop,
+            //    clickThrough: GameConfig.ClickThrough);
             WindowManager.ConfigureHorizontalStrip(this,
-                alwaysOnTop: GameConfig.AlwaysOnTop,
-                clickThrough: GameConfig.ClickThrough);
+                alwaysOnTop: GameConfig.AlwaysOnTop);
         }
+
     }
 }
 
