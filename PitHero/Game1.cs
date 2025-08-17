@@ -1,33 +1,44 @@
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Nez;
-using Nez.ImGuiTools;
+using PitHero.ECS.Scenes;
 
 namespace PitHero
 {
     class Game1 : Core
     {
-        public Game1() : base()
+        public Game1() : base(GameConfig.VirtualWidth, GameConfig.VirtualHeight, false, "PitHero")
         {
-			// uncomment this line for scaled pixel art games
-			// System.Environment.SetEnvironmentVariable("FNA_OPENGL_BACKBUFFER_SCALE_NEAREST", "1");
+            // Set up for pixel-perfect rendering - uncomment for scaled pixel art
+            System.Environment.SetEnvironmentVariable("FNA_OPENGL_BACKBUFFER_SCALE_NEAREST", "1");
         }
 
-        override protected void Initialize()
+        protected override void Initialize()
         {
             base.Initialize();
 
-            Scene = new DefaultScene();
+            // Set the scene - this handles Update/Draw logic
+            Scene = new MainGameScene();
+
 
 #if DEBUG
-            //System.Diagnostics.Debug.Listeners.Add(new System.Diagnostics.TextWriterTraceListener(System.Console.Out));
-
-            // optionally render Nez in an ImGui window
-			var imGuiManager = new ImGuiManager();
-			Core.RegisterGlobalManager(imGuiManager);
-
-			// optionally load up ImGui DLL if not using the above setup so that its command gets loaded in the DebugConsole
-			//System.Reflection.Assembly.Load("Nez.ImGui")
+            // Debug console setup if needed
+            // System.Diagnostics.Debug.Listeners.Add(new System.Diagnostics.TextWriterTraceListener(System.Console.Out));
 #endif
         }
+
+        protected override void LoadContent()
+        {
+            base.LoadContent();
+
+            // Configure window as horizontal strip docked at bottom
+            //WindowManager.ConfigureHorizontalStrip(this,
+            //    alwaysOnTop: GameConfig.AlwaysOnTop,
+            //    clickThrough: GameConfig.ClickThrough);
+            WindowManager.ConfigureHorizontalStrip(this,
+                alwaysOnTop: GameConfig.AlwaysOnTop);
+        }
+
     }
 }
 
