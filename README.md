@@ -1,9 +1,10 @@
-# FNA VSCode Template
-Start new FNA projects with Nez quickly and easily with handy setup scripts, a versatile boilerplate project, and convenient Visual Studio Code integration.
+# PitHero - Event-Driven Game
+A 2D event-driven game built with MonoGame 3.8.4 and Nez framework.
 
+This project has been converted from FNA to MonoGame 3.8.4 (OpenGL) for enhanced compatibility and features.
 
 ## Features ##
-- Super simple setup scripts that downloads and installs Nez, FNA and its native libraries for you
+- MonoGame 3.8.4 with Nez framework integration
 - Boilerplate project already included -- no need to wrestle with MSBuild configurations or writing yet another Game1 class
 - Visual Studio Code tasks for building and running your game, compiling T4 templates, cleaning/restoring your project, compiling .fx files and building content with the MonoGame Pipeline tool
 - In-editor debugging support with the Mono Debugger
@@ -20,23 +21,23 @@ Start new FNA projects with Nez quickly and easily with handy setup scripts, a v
 
 
 ## Setup Instructions ##
-1. Download and unzip the ZIP archive (don't clone the repo!)
-2. Run `./getFNA.sh` (macOS) or `./getFNA.ps1` (windows) to download the latest Nez, FNA and fnalibs to the directory. You can run this script again if you want to update either FNA or the fnalibs at a later point.
-3. Open the root folder that contains the .sln file in Visual Studio Code or the .sln file directly in Visual Studio. Note that only Visual Studio Code has an effect builder command.
+1. Clone or download the repository
+2. Run `dotnet restore` to restore NuGet packages (MonoGame.Framework.DesktopGL 3.8.4 and Nez dependencies)
+3. Open the root folder that contains the .sln file in Visual Studio Code or the .sln file directly in Visual Studio
 
-That's it! Now you're ready to build and run the base project. If you get missing DLL errors (pointing at SDL) when running in Visual Studio copy the FNA libs into your `/usr/local/lib` folder. With Visual Studio Code, `DYLD_LIBRARY_PATH` is set automatically so it won't run into the DLL not found error. Nez is setup as a submodule so you can update it in the normal fashion.
+That's it! Now you're ready to build and run the project with MonoGame. Nez is setup as a submodule so you can update it in the normal fashion.
 
 When developing, raw content (files not processed by the Pipeline tool) should be placed in the `Content` folders subfolders and anything that needs processing should go in the `CompiledContent` folder and added to the Pipeline tool.
 
 The setup process will also init a git repo for you with Nez added as a submodule.
 
-If you want to see the output of `Debug.*` calls in the VS Code Debug Console, you have to install a listener by adding this somewhere in your code (Game1 by default has one for you): `System.Diagnostics.Debug.Listeners.Add(new System.Diagnostics.TextWriterTraceListener(System.Console.Out));` Pixel art games should also uncomment a line in the Game1.cs file setting the `FNA_OPENGL_BACKBUFFER_SCALE_NEAREST` environment variable when using FNA.
+If you want to see debug output, use `Nez.Debug.Log()` calls which will output to the console. For traditional .NET debugging, you can still use `System.Diagnostics.Debug` calls in the VS Code Debug Console by adding a listener: `System.Diagnostics.Debug.Listeners.Add(new System.Diagnostics.TextWriterTraceListener(System.Console.Out));`
 
 
 ## Build Tasks ##
 - **Restore Project:** Restores the .csproj. Run it again whenever you change the .csproj file.
 - **Restore and Rebuild Nez:** Fetches the latest version of Nez from GitHub, restores and rebuilds Nez
-- **Build (Debug/Release):** Builds the project with the specified configuration but does not run it. This also runs MGCB.exe, copies over everything in the `Content` and `CompiledContent` subdirectories and the fnalibs.
+- **Build (Debug/Release):** Builds the project with the specified configuration but does not run it. This also runs MGCB.exe and copies over everything in the `Content` and `CompiledContent` subdirectories.
 - **Build and Run (Debug/Release):** Builds and runs the project. On MacOS, it runs the output with Mono. On Windows, it runs the output with .NET Framework.
 - **Clean Project:** Cleans the output directories and all their subdirectories.
 - **Build Effects:** Runs `fxc.exe` on all of the `.fx` files found in the Content/ subdirectories and outputs corresponding `.fxb` files that can be loaded through the Content Manager at runtime.
@@ -47,5 +48,8 @@ If you want to see the output of `Debug.*` calls in the VS Code Debug Console, y
 
 
 ## License and Credits ##
-FNA VSCode Template is released under the Microsoft Public License.
-Many thanks to Andrew Russell for his [FNA Template](https://github.com/AndrewRussellNet/FNA-Template), from which I learned a lot (and borrowed a little).
+PitHero is released under the Microsoft Public License.
+
+Originally based on FNA VSCode Template. Many thanks to Andrew Russell for his [FNA Template](https://github.com/AndrewRussellNet/FNA-Template), from which the project structure was learned.
+
+This project has been converted from FNA to MonoGame 3.8.4 for enhanced compatibility.
