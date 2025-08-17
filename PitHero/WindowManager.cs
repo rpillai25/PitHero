@@ -6,32 +6,21 @@ using System.Runtime.InteropServices;
 namespace PitHero
 {
     /// <summary>
-    /// Cross-backend window manager for FNA/Nez using SDL3.
+    /// Cross-platform window manager for MonoGame/Nez using Win32 APIs.
     /// Supports setting window position and always-on-top.
     /// </summary>
     public static class WindowManager
     {
-        private const int SDL_TRUE = 1;
-        private const int SDL_FALSE = 0;
+        private const int HWND_TOPMOST = -1;
+        private const int HWND_NOTOPMOST = -2;
+        private const uint SWP_NOMOVE = 0x0002;
+        private const uint SWP_NOSIZE = 0x0001;
 
-        [DllImport("SDL3.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void SDL_SetWindowPosition(IntPtr window, int x, int y);
+        [DllImport("user32.dll")]
+        private static extern bool SetWindowPos(IntPtr hWnd, int hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
 
-        [DllImport("SDL3.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void SDL_SetWindowAlwaysOnTop(IntPtr window, int on);
-
-        [DllImport("SDL3.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void SDL_GetCurrentDisplayMode(int displayIndex, out SDL_DisplayMode mode);
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct SDL_DisplayMode
-        {
-            public uint format;
-            public int w;
-            public int h;
-            public int refresh_rate;
-            public IntPtr driverdata;
-        }
+        [DllImport("user32.dll")]
+        private static extern bool MoveWindow(IntPtr hWnd, int x, int y, int nWidth, int nHeight, bool bRepaint);
 
         /// <summary>
         /// Configures the game window as a horizontal strip docked at the bottom of the screen.
@@ -39,16 +28,12 @@ namespace PitHero
         public static void ConfigureHorizontalStrip(Game game, bool alwaysOnTop = true)
         {
             var window = game.Window;
-            IntPtr sdlWindow = window.Handle;
-            if (sdlWindow == IntPtr.Zero)
+            IntPtr windowHandle = window.Handle;
+            if (windowHandle == IntPtr.Zero)
             {
-                Console.WriteLine("Could not get SDL window handle.");
+                Nez.Debug.Log("Could not get window handle.");
                 return;
             }
-
-            //// Get display size
-            //SDL_DisplayMode displayMode;
-            //SDL_GetCurrentDisplayMode(0, out displayMode);
 
             int windowWidth = GameConfig.VirtualWidth;
             int windowHeight = GameConfig.VirtualHeight;
@@ -66,16 +51,19 @@ namespace PitHero
             if (y < 0)
                 y = 0;
 
-            // Set borderless via FNA/Nez API
+            // Set borderless via MonoGame API
             if (window is Microsoft.Xna.Framework.GameWindow gw)
             {
-                gw.IsBorderlessEXT = true;
+                gw.IsBorderless = true;
             }
 
-            SDL_SetWindowPosition(sdlWindow, x, y);
-            SDL_SetWindowAlwaysOnTop(sdlWindow, alwaysOnTop ? SDL_TRUE : SDL_FALSE);
+            // Move window to position
+            MoveWindow(windowHandle, x, y, windowWidth, windowHeight, true);
+            
+            // Set always on top
+            SetWindowPos(windowHandle, alwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 
-            Console.WriteLine($"Window configured as horizontal strip at ({x},{y}) - Always on top: {alwaysOnTop}");
+            Nez.Debug.Log($"Window configured as horizontal strip at ({x},{y}) - Always on top: {alwaysOnTop}");
         }
 
         /// <summary>
@@ -83,10 +71,11 @@ namespace PitHero
         /// </summary>
         public static void SetPosition(Game game, int x, int y)
         {
-            IntPtr sdlWindow = game.Window.Handle;
-            if (sdlWindow == IntPtr.Zero)
+            IntPtr windowHandle = game.Window.Handle;
+            if (windowHandle == IntPtr.Zero)
                 return;
-            SDL_SetWindowPosition(sdlWindow, Math.Max(0, x), Math.Max(0, y));
+                
+            MoveWindow(windowHandle, Math.Max(0, x), Math.Max(0, y), GameConfig.VirtualWidth, GameConfig.VirtualHeight, true);
         }
 
         /// <summary>
@@ -94,10 +83,11 @@ namespace PitHero
         /// </summary>
         public static void SetAlwaysOnTop(Game game, bool alwaysOnTop)
         {
-            IntPtr sdlWindow = game.Window.Handle;
-            if (sdlWindow == IntPtr.Zero)
+            IntPtr windowHandle = game.Window.Handle;
+            if (windowHandle == IntPtr.Zero)
                 return;
-            SDL_SetWindowAlwaysOnTop(sdlWindow, alwaysOnTop ? SDL_TRUE : SDL_FALSE);
+                
+            SetWindowPos(windowHandle, alwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
         }
     }
 }
