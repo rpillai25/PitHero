@@ -1,8 +1,10 @@
 # GitHub Copilot Instructions – Pit Hero Event-Driven Version
 
 - The project is written in C# using **FNA + Nez** (not MonoGame).
-- Game runs as a **horizontal strip** at bottom of screen (borderless, always-on-top, click-through optional)
-- Virtual resolution: 1920×360
+- Game runs as a **full-height overlay** at full screen resolution (borderless, always-on-top, selective click-through)
+- Virtual resolution: 1920×1080
+- Playable area: 1920×360 at bottom of screen (initially clickable)
+- Upper area: 1920×720 (initially click-through, can be made clickable for overlays)
 - All world logic is **event-driven**:
   - Every action (hero spawn, move, death, building placement, pit event) is logged as an Event.
   - Systems subscribe to events and deterministically update `WorldState`.

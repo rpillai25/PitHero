@@ -9,9 +9,15 @@ namespace PitHero
     {
         // Screen and Resolution
         public const int VirtualWidth = 1920;
-        public const int VirtualHeight = 360;
+        public const int VirtualHeight = 1080;
         public const int InternalWorldWidth = 1920;
-        public const int InternalWorldHeight = 800;
+        public const int InternalWorldHeight = 360;  // Game world matches playable area height
+        
+        // Playable Area (bottom section that's initially clickable)
+        public const int PlayableAreaWidth = 1920;
+        public const int PlayableAreaHeight = 360;
+        public const int PlayableAreaX = 0;
+        public const int PlayableAreaY = VirtualHeight - PlayableAreaHeight; // 720
         
         // Window Configuration
         public const bool AlwaysOnTop = true;
