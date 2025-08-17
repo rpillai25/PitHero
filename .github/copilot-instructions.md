@@ -1,6 +1,6 @@
 # GitHub Copilot Instructions – Pit Hero Event-Driven Version
 
-- The project is written in C# using **FNA + Nez** (not MonoGame).
+- The project is written in C# using **MonoGame 3.8.4 (DirectX) + Nez**.
 - Game runs as a **horizontal strip** at bottom of screen (borderless, always-on-top, click-through optional)
 - Virtual resolution: 1920×360
 - All world logic is **event-driven**:
@@ -18,7 +18,7 @@
   - **Single Pit**: There is only ever 1 active pit with configured size (not random size)
   - **Individual Components**: Each component class should be in its own file
   - **MSTest**: Use standard MSTest framework for testing, not custom test runners
-  - **Nez Boilerplate**: Keep Program.cs as standard Nez boilerplate (FNA setup)
+  - **Nez Boilerplate**: Keep Program.cs as standard Nez boilerplate (MonoGame setup)
 - Rendering/UI:
   - Live strip renders current `WorldState`
   - Replay overlay renders events from `EventLog` without altering live state
@@ -27,9 +27,8 @@
 - Hero movement, AI, pit crystal logic, and building effects should always operate via events
 - Ensure the game continues running in idle while the player interacts with other desktop apps
 - **Build Requirements**: 
-  - Run `getFNA.sh` with automatic "yes" response before building to initialize FNA submodule and dependencies
-    - cd /home/runner/work/PitHero/PitHero && echo "y" | ./getFNA.sh
-  - Both FNA and Nez must be properly initialized before building.  Check that both subfolders are there.
+  - Standard .NET build process with `dotnet build` or `dotnet run`
+  - Nez must be properly initialized before building. Check that the Nez subfolder is there.
 - **Nez Architecture Compliance**:
   - Game1 should inherit from `Nez.Core`, not override Draw() or Update() methods
   - Scenes should inherit from `Nez.Scene` and override Initialize() for setup
