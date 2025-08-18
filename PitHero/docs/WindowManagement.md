@@ -5,7 +5,7 @@ This document describes the window management features that configure PitHero as
 ## Features
 
 ### Horizontal Strip Display
-- **Resolution**: 1920×600 virtual resolution as specified in game requirements
+- **Resolution**: 1920×360 virtual resolution as specified in game requirements
 - **Position**: Automatically positioned at the bottom center of the screen
 - **Borderless**: Removes window border, title bar, and system controls
 - **Always on Top**: Stays above other applications (configurable)
