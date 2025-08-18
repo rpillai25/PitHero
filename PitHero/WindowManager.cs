@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System;
 using SDL3;
+using Nez;
 
 namespace PitHero
 {
@@ -20,7 +21,7 @@ namespace PitHero
             IntPtr sdlWindow = window.Handle;
             if (sdlWindow == IntPtr.Zero)
             {
-                Console.WriteLine("Could not get SDL window handle.");
+                Debug.Log("Could not get SDL window handle.");
                 return;
             }
 
@@ -47,7 +48,7 @@ namespace PitHero
             SDL.SDL_SetWindowPosition(sdlWindow, x, y);
             SDL.SDL_SetWindowAlwaysOnTop(sdlWindow, alwaysOnTop ? true : false);
 
-            Console.WriteLine($"Window configured as horizontal strip at ({x},{y}) - Always on top: {alwaysOnTop}");
+            Debug.Log($"Window configured as horizontal strip at ({x},{y}) - Always on top: {alwaysOnTop}");
         }
 
         /// <summary>
@@ -60,7 +61,7 @@ namespace PitHero
             IntPtr sdlWindow = window.Handle;
             if (sdlWindow == IntPtr.Zero)
             {
-                Console.WriteLine("Could not get SDL window handle.");
+                Debug.Log("Could not get SDL window handle.");
                 return;
             }
 
@@ -81,7 +82,7 @@ namespace PitHero
             SDL.SDL_SetWindowSize(sdlWindow, windowWidth, windowHeight);
             SDL.SDL_SetWindowAlwaysOnTop(sdlWindow, alwaysOnTop);
 
-            Console.WriteLine($"Window configured as bottom docked strip {windowWidth}x{windowHeight} at ({x},{y}) - Always on top: {alwaysOnTop}");
+            Debug.Log($"Window configured as bottom docked strip {windowWidth}x{windowHeight} at ({x},{y}) - Always on top: {alwaysOnTop}");
         }
 
         /// <summary>

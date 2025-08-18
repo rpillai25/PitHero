@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using Nez.Tiled;
 
 namespace PitHero.ECS.Components
 {
@@ -12,6 +13,7 @@ namespace PitHero.ECS.Components
         private Vector2 _lastMousePosition;
         private bool _isPanning;
         private Vector2 _defaultCameraPosition;
+        private Rectangle _tileMapBounds;
 
         public override void OnAddedToEntity()
         {
@@ -34,6 +36,9 @@ namespace PitHero.ECS.Components
                 _defaultCameraPosition = new Vector2(GameConfig.VirtualWidth / 2f, GameConfig.VirtualHeight / 2f);
                 _camera.Position = _defaultCameraPosition;
             }
+
+            // Get TileMap bounds for panning constraints
+            InitializeTileMapBounds();
         }
 
         public void Update()
@@ -51,7 +56,7 @@ namespace PitHero.ECS.Components
             if (Input.MiddleMouseButtonPressed)
             {
                 _camera.RawZoom = GameConfig.CameraDefaultZoom;
-                _camera.Position = _defaultCameraPosition;
+                _camera.Position = ConstrainCameraPosition(_defaultCameraPosition);
                 return;
             }
 
@@ -81,20 +86,19 @@ namespace PitHero.ECS.Components
                     var worldPosDelta = mouseWorldPos - newMouseWorldPos;
                     
                     // Round to integer pixels to avoid artifacts
-                    _camera.Position += new Vector2(
+                    var desiredPosition = _camera.Position + new Vector2(
                         (float)System.Math.Round(worldPosDelta.X),
                         (float)System.Math.Round(worldPosDelta.Y)
                     );
+
+                    // Constrain camera position to TileMap bounds
+                    _camera.Position = ConstrainCameraPosition(desiredPosition);
                 }
             }
         }
 
         private void HandlePanInput()
         {
-            // Only allow panning if zoom is greater than 1f
-            if (_camera.RawZoom <= 1f)
-                return;
-
             var currentMousePosition = Input.ScaledMousePosition;
 
             // Start panning when right mouse button is pressed
@@ -119,13 +123,86 @@ namespace PitHero.ECS.Components
                 var panDelta = -mouseDelta * GameConfig.CameraPanSpeed / _camera.RawZoom;
                 
                 // Round to integer pixels to avoid artifacts
-                _camera.Position += new Vector2(
+                var newPosition = _camera.Position + new Vector2(
                     (float)System.Math.Round(panDelta.X),
                     (float)System.Math.Round(panDelta.Y)
                 );
+
+                // Constrain camera position to TileMap bounds
+                newPosition = ConstrainCameraPosition(newPosition);
+                _camera.Position = newPosition;
                 
                 _lastMousePosition = currentMousePosition;
             }
+        }
+
+        /// <summary>
+        /// Initialize TileMap bounds by finding the TiledMapRenderer in the scene
+        /// </summary>
+        private void InitializeTileMapBounds()
+        {
+            // Default bounds based on TMX file: 60×12 tiles at 32×32 pixels each
+            _tileMapBounds = new Rectangle(0, 0, 1920, 384);
+
+            // Try to get actual bounds from TiledMapRenderer if available
+            var tiledEntity = Entity.Scene.FindEntity("tilemap");
+            if (tiledEntity != null)
+            {
+                var tiledMapRenderer = tiledEntity.GetComponent<TiledMapRenderer>();
+                if (tiledMapRenderer != null && tiledMapRenderer.TiledMap != null)
+                {
+                    var tiledMap = tiledMapRenderer.TiledMap;
+                    _tileMapBounds = new Rectangle(0, 0, 
+                        tiledMap.Width * tiledMap.TileWidth, 
+                        tiledMap.Height * tiledMap.TileHeight);
+                    Debug.Log($"TileMap bounds initialized: {_tileMapBounds}");
+                }
+                else
+                {
+                    Debug.Log("TiledMapRenderer or TiledMap not found, using default bounds");
+                }
+            }
+            else
+            {
+                Debug.Log("Tilemap entity not found, using default bounds");
+            }
+        }
+
+        /// <summary>
+        /// Constrains camera position to ensure viewport doesn't go outside TileMap bounds
+        /// </summary>
+        private Vector2 ConstrainCameraPosition(Vector2 desiredPosition)
+        {
+            // Calculate viewport size based on current zoom
+            var viewportWidth = GameConfig.VirtualWidth / _camera.RawZoom;
+            var viewportHeight = GameConfig.VirtualHeight / _camera.RawZoom;
+
+            // Calculate camera bounds (camera position is center of viewport)
+            var minX = _tileMapBounds.X + viewportWidth / 2f;
+            var maxX = _tileMapBounds.Right - viewportWidth / 2f;
+            var minY = _tileMapBounds.Y + viewportHeight / 2f;
+            var maxY = _tileMapBounds.Bottom - viewportHeight / 2f;
+
+            // If viewport is larger than tilemap, center it
+            if (viewportWidth >= _tileMapBounds.Width)
+            {
+                desiredPosition.X = _tileMapBounds.X + _tileMapBounds.Width / 2f;
+            }
+            else
+            {
+                desiredPosition.X = MathHelper.Clamp(desiredPosition.X, minX, maxX);
+            }
+
+            if (viewportHeight >= _tileMapBounds.Height)
+            {
+                desiredPosition.Y = _tileMapBounds.Y + _tileMapBounds.Height / 2f;
+            }
+            else
+            {
+                desiredPosition.Y = MathHelper.Clamp(desiredPosition.Y, minY, maxY);
+            }
+
+            return desiredPosition;
         }
     }
 }
