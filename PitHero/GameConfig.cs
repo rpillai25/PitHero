@@ -32,6 +32,13 @@ namespace PitHero
         public const int TownBuildingWidth = 48;
         public const int TownBuildingHeight = 48;
         
+        // Camera Configuration
+        public const float CameraDefaultZoom = 1f; // default zoom level
+        public const float CameraMinimumZoom = 1f; // can't zoom out past default
+        public const float CameraMaximumZoom = 10f; // can zoom in really close
+        public const float CameraZoomSpeed = 0.001f; // zoom sensitivity per mouse wheel notch
+        public const float CameraPanSpeed = 1f; // pan speed multiplier
+        
         // Game Timing
         public const float GameTickInterval = 1f / 60f; // 60 FPS
         public const float EventProcessingInterval = 1f / 120f; // 120 Hz event processing
@@ -44,5 +51,8 @@ namespace PitHero
         public static readonly Color PitColor = Color.Red;
         public static readonly Color TownColor = Color.Green;
         public static readonly Color BackgroundColor = Color.Black;
+
+        // Tags
+        public const int TAG_TILEMAP = 1; // Tag for tilemap entities
     }
 }
