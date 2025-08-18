@@ -108,5 +108,49 @@ namespace PitHero
 
             SDL.SDL_SetWindowAlwaysOnTop(sdlWindow, alwaysOnTop ? true : false);
         }
+
+        /// <summary>
+        /// Docks the window to the top of the screen with optional Y offset for fine-tuning.
+        /// </summary>
+        public static void DockTop(Game game, int yOffset = 0)
+        {
+            IntPtr sdlWindow = game.Window.Handle;
+            if (sdlWindow == IntPtr.Zero)
+                return;
+
+            var displayMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+            int windowWidth = displayMode.Width;
+            int windowHeight = (int)(displayMode.Height / 3);
+
+            int x = 0;
+            int y = Math.Max(0, yOffset);
+
+            SDL.SDL_SetWindowPosition(sdlWindow, x, y);
+            SDL.SDL_SetWindowSize(sdlWindow, windowWidth, windowHeight);
+
+            Debug.Log($"Window docked to top at ({x},{y}) with size {windowWidth}x{windowHeight}");
+        }
+
+        /// <summary>
+        /// Docks the window to the bottom of the screen with optional Y offset for fine-tuning.
+        /// </summary>
+        public static void DockBottom(Game game, int yOffset = 0)
+        {
+            IntPtr sdlWindow = game.Window.Handle;
+            if (sdlWindow == IntPtr.Zero)
+                return;
+
+            var displayMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+            int windowWidth = displayMode.Width;
+            int windowHeight = (int)(displayMode.Height / 3);
+
+            int x = 0;
+            int y = Math.Max(0, displayMode.Height - windowHeight + yOffset);
+
+            SDL.SDL_SetWindowPosition(sdlWindow, x, y);
+            SDL.SDL_SetWindowSize(sdlWindow, windowWidth, windowHeight);
+
+            Debug.Log($"Window docked to bottom at ({x},{y}) with size {windowWidth}x{windowHeight}");
+        }
     }
 }
