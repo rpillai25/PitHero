@@ -155,7 +155,7 @@ namespace PitHero.ECS.Components
                     _tileMapBounds = new Rectangle(0, 0, 
                         tiledMap.Width * tiledMap.TileWidth, 
                         tiledMap.Height * tiledMap.TileHeight);
-                    Debug.Log($"TileMap bounds initialized: {_tileMapBounds}");
+                    Debug.Log($"TileMap bounds initialized: X={_tileMapBounds.X}, Y={_tileMapBounds.Y}, Width={_tileMapBounds.Width}, Height={_tileMapBounds.Height}");
                 }
                 else
                 {
