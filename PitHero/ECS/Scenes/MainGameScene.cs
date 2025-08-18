@@ -33,7 +33,7 @@ namespace PitHero.ECS.Scenes
             // Create the entity for the tilemap
             var tiledEntity = CreateEntity("tilemap");
             // Optionally set a tag if you want to query by tag later
-            // tiledEntity.SetTag(GameConfig.TAG_TILEMAP);
+            tiledEntity.SetTag(GameConfig.TAG_TILEMAP);
 
             // Add TiledMapRenderer, specifying the collision layer
             var tiledMapRenderer = tiledEntity.AddComponent(new TiledMapRenderer(tmxMap, "Collision"));

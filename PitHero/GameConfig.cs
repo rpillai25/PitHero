@@ -51,5 +51,8 @@ namespace PitHero
         public static readonly Color PitColor = Color.Red;
         public static readonly Color TownColor = Color.Green;
         public static readonly Color BackgroundColor = Color.Black;
+
+        // Tags
+        public const int TAG_TILEMAP = 1; // Tag for tilemap entities
     }
 }
