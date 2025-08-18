@@ -19,6 +19,11 @@ namespace PitHero.ECS.Scenes
             SetDesignResolution(GameConfig.VirtualWidth, GameConfig.VirtualHeight, SceneResolutionPolicy.BestFit);
             ClearColor = Color.Transparent;
 
+            // Add camera controller for zoom and pan functionality
+            var cameraEntity = CreateEntity("camera-controller");
+            cameraEntity.AddComponent(Camera);
+            cameraEntity.AddComponent(new CameraControllerComponent());
+
             _gameManager = new GameManager();
             _gameManager.StartNewGame();
 
