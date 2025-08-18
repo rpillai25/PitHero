@@ -22,11 +22,11 @@ namespace PitHero.ECS.Components
                 _camera = Entity.Scene.Camera;
             }
 
-            // Set up initial camera zoom limits
+            // Set up initial camera zoom limits using Nez's built-in methods
             if (_camera != null)
             {
-                _camera.MinimumZoom = GameConfig.CameraMinimumZoom;
-                _camera.MaximumZoom = GameConfig.CameraMaximumZoom;
+                _camera.SetMinimumZoom(GameConfig.CameraMinimumZoom);
+                _camera.SetMaximumZoom(GameConfig.CameraMaximumZoom);
                 _camera.RawZoom = GameConfig.CameraDefaultZoom;
             }
         }
@@ -46,6 +46,9 @@ namespace PitHero.ECS.Components
             var wheelDelta = Input.MouseWheelDelta;
             if (wheelDelta != 0)
             {
+                // Store current mouse position in world coordinates
+                var mouseWorldPos = _camera.ScreenToWorldPoint(Input.ScaledMousePosition);
+                
                 // Calculate new zoom level
                 var zoomChange = wheelDelta * GameConfig.CameraZoomSpeed;
                 var newZoom = _camera.RawZoom + zoomChange;
@@ -53,7 +56,13 @@ namespace PitHero.ECS.Components
                 // Clamp zoom to the configured limits
                 newZoom = MathHelper.Clamp(newZoom, GameConfig.CameraMinimumZoom, GameConfig.CameraMaximumZoom);
                 
+                // Set the new zoom
                 _camera.RawZoom = newZoom;
+                
+                // Adjust camera position so it zooms towards the mouse cursor
+                var newMouseWorldPos = _camera.ScreenToWorldPoint(Input.ScaledMousePosition);
+                var worldPosDelta = mouseWorldPos - newMouseWorldPos;
+                _camera.Position += worldPosDelta;
             }
         }
 
