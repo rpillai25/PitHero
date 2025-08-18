@@ -35,7 +35,7 @@ namespace PitHero
             //WindowManager.ConfigureHorizontalStrip(this,
             //    alwaysOnTop: GameConfig.AlwaysOnTop,
             //    clickThrough: GameConfig.ClickThrough);
-            WindowManager.ConfigureHorizontalStrip(this,
+            WindowManager.ConfigureHorizontalStripOneThird(this,
                 alwaysOnTop: GameConfig.AlwaysOnTop);
         }
 

@@ -16,7 +16,7 @@ namespace PitHero.ECS.Scenes
         {
             base.Initialize();
 
-            SetDesignResolution(GameConfig.VirtualWidth, GameConfig.VirtualHeight, SceneResolutionPolicy.None);
+            SetDesignResolution(GameConfig.VirtualWidth, GameConfig.VirtualHeight, SceneResolutionPolicy.BestFit);
             ClearColor = Color.Transparent;
 
             _gameManager = new GameManager();

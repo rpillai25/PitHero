@@ -51,6 +51,40 @@ namespace PitHero
         }
 
         /// <summary>
+        /// Configures the game window as a horizontal strip docked at the bottom of the screen,
+        /// taking up 1/3 of the screen height.
+        /// </summary>
+        public static void ConfigureHorizontalStripOneThird(Game game, bool alwaysOnTop = true)
+        {
+            var window = game.Window;
+            IntPtr sdlWindow = window.Handle;
+            if (sdlWindow == IntPtr.Zero)
+            {
+                Console.WriteLine("Could not get SDL window handle.");
+                return;
+            }
+
+            var displayMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+            int displayWidth = displayMode.Width;
+            int displayHeight = displayMode.Height;
+
+            int windowWidth = displayWidth;
+            int windowHeight = (int)(displayHeight / 3);
+
+            int x = 0;
+            int y = displayHeight - windowHeight;
+
+            if (window is Microsoft.Xna.Framework.GameWindow gw)
+                gw.IsBorderlessEXT = true;
+
+            SDL.SDL_SetWindowPosition(sdlWindow, x, y);
+            SDL.SDL_SetWindowSize(sdlWindow, windowWidth, windowHeight);
+            SDL.SDL_SetWindowAlwaysOnTop(sdlWindow, alwaysOnTop);
+
+            Console.WriteLine($"Window configured as bottom docked strip {windowWidth}x{windowHeight} at ({x},{y}) - Always on top: {alwaysOnTop}");
+        }
+
+        /// <summary>
         /// Sets the window position (clamped to >= 0).
         /// </summary>
         public static void SetPosition(Game game, int x, int y)
