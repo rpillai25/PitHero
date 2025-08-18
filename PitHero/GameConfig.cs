@@ -36,7 +36,7 @@ namespace PitHero
         public const float CameraDefaultZoom = 1f; // default zoom level
         public const float CameraMinimumZoom = 1f; // can't zoom out past default
         public const float CameraMaximumZoom = 10f; // can zoom in really close
-        public const float CameraZoomSpeed = 0.1f; // zoom sensitivity per mouse wheel notch
+        public const float CameraZoomSpeed = 0.001f; // zoom sensitivity per mouse wheel notch
         public const float CameraPanSpeed = 1f; // pan speed multiplier
         
         // Game Timing

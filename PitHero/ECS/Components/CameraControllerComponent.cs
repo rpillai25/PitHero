@@ -11,6 +11,7 @@ namespace PitHero.ECS.Components
         private Camera _camera;
         private Vector2 _lastMousePosition;
         private bool _isPanning;
+        private Vector2 _defaultCameraPosition;
 
         public override void OnAddedToEntity()
         {
@@ -28,6 +29,10 @@ namespace PitHero.ECS.Components
                 _camera.SetMinimumZoom(GameConfig.CameraMinimumZoom);
                 _camera.SetMaximumZoom(GameConfig.CameraMaximumZoom);
                 _camera.RawZoom = GameConfig.CameraDefaultZoom;
+                
+                // Store the default position for resetting and ensure camera starts centered
+                _defaultCameraPosition = new Vector2(GameConfig.VirtualWidth / 2f, GameConfig.VirtualHeight / 2f);
+                _camera.Position = _defaultCameraPosition;
             }
         }
 
@@ -42,6 +47,14 @@ namespace PitHero.ECS.Components
 
         private void HandleZoomInput()
         {
+            // Handle middle mouse button click to reset zoom
+            if (Input.MiddleMouseButtonPressed)
+            {
+                _camera.RawZoom = GameConfig.CameraDefaultZoom;
+                _camera.Position = _defaultCameraPosition;
+                return;
+            }
+
             // Get mouse wheel delta for zooming
             var wheelDelta = Input.MouseWheelDelta;
             if (wheelDelta != 0)
@@ -49,25 +62,39 @@ namespace PitHero.ECS.Components
                 // Store current mouse position in world coordinates
                 var mouseWorldPos = _camera.ScreenToWorldPoint(Input.ScaledMousePosition);
                 
-                // Calculate new zoom level
-                var zoomChange = wheelDelta * GameConfig.CameraZoomSpeed;
-                var newZoom = _camera.RawZoom + zoomChange;
+                // Calculate new zoom level using integer increments
+                var currentZoom = (int)_camera.RawZoom;
+                var zoomChange = wheelDelta > 0 ? 1 : -1; // Increment/decrement by 1
+                var newZoom = currentZoom + zoomChange;
                 
-                // Clamp zoom to the configured limits
-                newZoom = MathHelper.Clamp(newZoom, GameConfig.CameraMinimumZoom, GameConfig.CameraMaximumZoom);
+                // Clamp zoom to the configured limits (integer values only)
+                newZoom = (int)MathHelper.Clamp(newZoom, GameConfig.CameraMinimumZoom, GameConfig.CameraMaximumZoom);
                 
-                // Set the new zoom
-                _camera.RawZoom = newZoom;
-                
-                // Adjust camera position so it zooms towards the mouse cursor
-                var newMouseWorldPos = _camera.ScreenToWorldPoint(Input.ScaledMousePosition);
-                var worldPosDelta = mouseWorldPos - newMouseWorldPos;
-                _camera.Position += worldPosDelta;
+                // Only update if zoom actually changed
+                if (newZoom != currentZoom)
+                {
+                    // Set the new zoom
+                    _camera.RawZoom = (float)newZoom;
+                    
+                    // Adjust camera position so it zooms towards the mouse cursor
+                    var newMouseWorldPos = _camera.ScreenToWorldPoint(Input.ScaledMousePosition);
+                    var worldPosDelta = mouseWorldPos - newMouseWorldPos;
+                    
+                    // Round to integer pixels to avoid artifacts
+                    _camera.Position += new Vector2(
+                        (float)System.Math.Round(worldPosDelta.X),
+                        (float)System.Math.Round(worldPosDelta.Y)
+                    );
+                }
             }
         }
 
         private void HandlePanInput()
         {
+            // Only allow panning if zoom is greater than 1f
+            if (_camera.RawZoom <= 1f)
+                return;
+
             var currentMousePosition = Input.ScaledMousePosition;
 
             // Start panning when right mouse button is pressed
@@ -91,7 +118,11 @@ namespace PitHero.ECS.Components
                 // Scale by zoom level so panning feels consistent at different zoom levels
                 var panDelta = -mouseDelta * GameConfig.CameraPanSpeed / _camera.RawZoom;
                 
-                _camera.Position += panDelta;
+                // Round to integer pixels to avoid artifacts
+                _camera.Position += new Vector2(
+                    (float)System.Math.Round(panDelta.X),
+                    (float)System.Math.Round(panDelta.Y)
+                );
                 
                 _lastMousePosition = currentMousePosition;
             }

@@ -10,7 +10,7 @@ namespace PitHero
         public Game1() : base(GameConfig.VirtualWidth, GameConfig.VirtualHeight, false, "PitHero")
         {
             // Set up for pixel-perfect rendering - uncomment for scaled pixel art
-            //System.Environment.SetEnvironmentVariable("FNA_OPENGL_BACKBUFFER_SCALE_NEAREST", "1");
+            System.Environment.SetEnvironmentVariable("FNA_OPENGL_BACKBUFFER_SCALE_NEAREST", "1");
         }
 
         protected override void Initialize()
