@@ -18,7 +18,7 @@ namespace PitHero
             base.Initialize();
 
             // Set the scene - this handles Update/Draw logic
-            Scene = new MainGameScene();
+            Scene = new TitleScreenScene();
 
 
 #if DEBUG

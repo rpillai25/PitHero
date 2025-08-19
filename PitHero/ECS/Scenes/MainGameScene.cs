@@ -14,6 +14,16 @@ namespace PitHero.ECS.Scenes
     {
         private GameManager _gameManager;
         private SettingsUI _settingsUI;
+        private string _mapPath;
+
+        public MainGameScene() : this("Content/Tilemaps/PitHero.tmx")
+        {
+        }
+
+        public MainGameScene(string mapPath)
+        {
+            _mapPath = mapPath;
+        }
 
         public override void Initialize()
         {
@@ -31,7 +41,7 @@ namespace PitHero.ECS.Scenes
             _gameManager.StartNewGame();
 
             // --- Load TMX map and set up TiledMapRenderer ---
-            var tmxMap = Core.Content.LoadTiledMap("Content/Tilemaps/PitHero.tmx");
+            var tmxMap = Core.Content.LoadTiledMap(_mapPath);
 
             // Create the entity for the tilemap
             var tiledEntity = CreateEntity("tilemap");
