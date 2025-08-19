@@ -273,8 +273,46 @@ namespace PitHero.UI
 
         private void ShowQuitConfirmation()
         {
+            // Ensure layout is up to date so GetX/GetY/GetWidth/GetHeight are valid
+            _settingsWindow.Validate();
+            _sessionTabButton.Validate();
+            _confirmationDialog.Validate();
+
+            // Base window (Settings) position in stage coordinates
+            float winX = _settingsWindow.GetX();
+            float winY = _settingsWindow.GetY();
+
+            // Session tab position relative to window
+            float tabX = _sessionTabButton.GetX();
+            float tabY = _sessionTabButton.GetY();
+            float tabH = _sessionTabButton.GetHeight();
+
+            // Convert to stage coordinates
+            float sessionTabStageX = winX + tabX;
+            float sessionTabStageY = winY + tabY;
+
+            // Desired dialog position: directly left of the Session tab
+            const float padding = 8f;
+            float dialogW = _confirmationDialog.GetWidth();
+            float dialogH = _confirmationDialog.GetHeight();
+
+            float targetX = sessionTabStageX - dialogW - padding;
+            float targetY = sessionTabStageY + (tabH - dialogH) / 2f;
+
+            // Clamp inside stage bounds
+            if (targetX < 0) targetX = 0;
+            if (targetY < 0) targetY = 0;
+            float stageW = _stage.GetWidth();
+            float stageH = _stage.GetHeight();
+            if (targetX + dialogW > stageW) targetX = stageW - dialogW;
+            if (targetY + dialogH > stageH) targetY = stageH - dialogH;
+
+            _confirmationDialog.SetPosition(targetX, targetY);
+
+            if (_confirmationDialog.GetStage() == null)
+                _stage.AddElement(_confirmationDialog);
+
             _confirmationDialog.SetVisible(true);
-            _stage.AddElement(_confirmationDialog);
             _confirmationDialog.ToFront();
         }
 
