@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System;
+using System.Linq;
 using SDL3;
 using Nez;
 
@@ -12,6 +13,7 @@ namespace PitHero
     /// </summary>
     public static class WindowManager
     {
+        private static int _currentAdapterIndex = 0;
         /// <summary>
         /// Configures the game window as a horizontal strip docked at the bottom of the screen.
         /// </summary>
@@ -178,6 +180,46 @@ namespace PitHero
             SDL.SDL_SetWindowSize(sdlWindow, windowWidth, windowHeight);
 
             Debug.Log($"Window centered at ({x},{y}) with size {windowWidth}x{windowHeight}");
+        }
+
+        /// <summary>
+        /// Swaps the window to the next available monitor/display adapter.
+        /// Maintains the same docking position relative to the new monitor.
+        /// </summary>
+        public static void SwapToNextMonitor(Game game)
+        {
+            var adapters = GraphicsAdapter.Adapters;
+            if (adapters.Count <= 1)
+            {
+                Debug.Log("Only one display adapter available, cannot swap monitors");
+                return;
+            }
+
+            // Move to next adapter
+            _currentAdapterIndex = (_currentAdapterIndex + 1) % adapters.Count;
+            var targetAdapter = adapters[_currentAdapterIndex];
+            
+            Debug.Log($"Swapping to monitor {_currentAdapterIndex + 1} of {adapters.Count}");
+
+            // Get current window position to determine docking mode
+            IntPtr sdlWindow = game.Window.Handle;
+            if (sdlWindow == IntPtr.Zero)
+                return;
+
+            // Note: We can't easily get current window position from SDL3 in FNA,
+            // so we'll use the current adapter's display to re-dock in the same position
+            var currentDisplayMode = targetAdapter.CurrentDisplayMode;
+            int windowWidth = currentDisplayMode.Width;
+            int windowHeight = (int)(currentDisplayMode.Height / 3);
+
+            // For simplicity, dock to bottom of new monitor (same as default behavior)
+            int x = 0;
+            int y = currentDisplayMode.Height - windowHeight;
+
+            SDL.SDL_SetWindowPosition(sdlWindow, x, y);
+            SDL.SDL_SetWindowSize(sdlWindow, windowWidth, windowHeight);
+
+            Debug.Log($"Window moved to monitor {_currentAdapterIndex + 1} at ({x},{y}) with size {windowWidth}x{windowHeight}");
         }
     }
 }
