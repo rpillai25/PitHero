@@ -2,7 +2,6 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
 using PitHero.ECS.Scenes;
-using static System.Formats.Asn1.AsnWriter;
 
 namespace PitHero.UI
 {

@@ -1,6 +1,5 @@
 using Microsoft.Xna.Framework;
 using Nez;
-using Nez.Tiled;
 
 namespace PitHero.ECS.Components
 {
