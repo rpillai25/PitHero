@@ -35,9 +35,9 @@ namespace PitHero.UI
             var titleSprite = uiAtlas.GetSprite("PitHeroTitle");
             _titleLogo = new Image(titleSprite);
             
-            // Center the logo horizontally and position it in upper portion of screen
+            // Center the logo horizontally and position it higher to allow more space for buttons
             float logoX = (_stage.GetWidth() - titleSprite.SourceRect.Width) / 2f;
-            float logoY = GameConfig.VirtualHeight * 0.15f; // 15% from top
+            float logoY = GameConfig.VirtualHeight * 0.10f; // 10% from top (moved higher)
             
             _titleLogo.SetPosition(logoX, logoY);
             _stage.AddElement(_titleLogo);
@@ -62,16 +62,14 @@ namespace PitHero.UI
             loadButton.OnClicked += (button) => { /* TODO: Implement load functionality */ };
             quitButton.OnClicked += (button) => ShowQuitConfirmation();
 
-            // Add buttons to table, centered below the logo
-            _mainMenuTable.Add(newButton).Size(buttonWidth, buttonHeight).SetPadBottom(20);
-            _mainMenuTable.Row();
-            _mainMenuTable.Add(loadButton).Size(buttonWidth, buttonHeight).SetPadBottom(20);
-            _mainMenuTable.Row();
+            // Add buttons to table horizontally with spacing
+            _mainMenuTable.Add(newButton).Size(buttonWidth, buttonHeight).SetPadRight(20);
+            _mainMenuTable.Add(loadButton).Size(buttonWidth, buttonHeight).SetPadRight(20);
             _mainMenuTable.Add(quitButton).Size(buttonWidth, buttonHeight);
 
             // Center the table vertically in the lower portion of the screen
             _mainMenuTable.Center();
-            _mainMenuTable.SetY(_stage.GetHeight() * 0.6f); // Start at 60% down the screen
+            _mainMenuTable.SetY(_stage.GetHeight() * 0.5f); // Start at 50% down the screen
 
             _stage.AddElement(_mainMenuTable);
         }
@@ -95,16 +93,16 @@ namespace PitHero.UI
             largeMapButton.OnClicked += (button) => StartGame("Content/Tilemaps/PitHeroLarge.tmx");
             backButton.OnClicked += (button) => ShowMainMenu();
 
-            // Add buttons to table
-            _mapSelectionTable.Add(normalMapButton).Size(buttonWidth, buttonHeight).SetPadBottom(20);
+            // Add map selection buttons horizontally
+            _mapSelectionTable.Add(normalMapButton).Size(buttonWidth, buttonHeight).SetPadRight(20);
+            _mapSelectionTable.Add(largeMapButton).Size(buttonWidth, buttonHeight);
             _mapSelectionTable.Row();
-            _mapSelectionTable.Add(largeMapButton).Size(buttonWidth, buttonHeight).SetPadBottom(20);
-            _mapSelectionTable.Row();
-            _mapSelectionTable.Add(backButton).Size(buttonWidth, buttonHeight);
+            // Add back button on next row, centered
+            _mapSelectionTable.Add(backButton).Size(buttonWidth, buttonHeight).SetColspan(2).SetPadTop(20);
 
             // Center the table
             _mapSelectionTable.Center();
-            _mapSelectionTable.SetY(_stage.GetHeight() * 0.6f);
+            _mapSelectionTable.SetY(_stage.GetHeight() * 0.5f);
 
             // Initially hidden
             _mapSelectionTable.SetVisible(false);

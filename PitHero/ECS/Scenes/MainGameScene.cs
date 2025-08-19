@@ -15,6 +15,7 @@ namespace PitHero.ECS.Scenes
         private GameManager _gameManager;
         private SettingsUI _settingsUI;
         private string _mapPath;
+        private bool _isInitializationComplete = false;
 
         public MainGameScene() : this("Content/Tilemaps/PitHero.tmx")
         {
@@ -40,6 +41,33 @@ namespace PitHero.ECS.Scenes
             _gameManager = new GameManager();
             _gameManager.StartNewGame();
 
+            // Set up UI overlay using ScreenSpaceRenderer first
+            SetupUIOverlay();
+        }
+
+        public override void Begin()
+        {
+            base.Begin();
+            
+            // Load the map after the scene is fully constructed and ready
+            if (!_isInitializationComplete)
+            {
+                LoadMap();
+                
+                // Add other entities/components after map is loaded
+                CreateEntity("demo-entity")
+                    .SetPosition(new Vector2(500, 150))
+                    .AddComponent(new PrototypeSpriteRenderer(20, 20));
+                
+                _isInitializationComplete = true;
+            }
+        }
+
+        private void LoadMap()
+        {
+            if (string.IsNullOrEmpty(_mapPath))
+                return;
+
             // --- Load TMX map and set up TiledMapRenderer ---
             var tmxMap = Core.Content.LoadTiledMap(_mapPath);
 
@@ -56,14 +84,6 @@ namespace PitHero.ECS.Scenes
             // tiledMapRenderer.RenderLayer = 10;
             // tiledMapRenderer.Material = Material.StencilWrite(1);
             // tiledMapRenderer.Material.Effect = Core.Content.LoadNezEffect<SpriteAlphaTestEffect>();
-
-            // Add other entities/components as needed
-            CreateEntity("demo-entity")
-                .SetPosition(new Vector2(500, 150))
-                .AddComponent(new PrototypeSpriteRenderer(20, 20));
-
-            // Set up UI overlay using ScreenSpaceRenderer
-            SetupUIOverlay();
         }
 
         private void SetupUIOverlay()
