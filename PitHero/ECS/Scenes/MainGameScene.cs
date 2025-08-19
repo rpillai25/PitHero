@@ -16,6 +16,7 @@ namespace PitHero.ECS.Scenes
         private SettingsUI _settingsUI;
         private string _mapPath;
         private bool _isInitializationComplete = false;
+        private CameraControllerComponent _cameraController;
 
         public MainGameScene() : this("Content/Tilemaps/PitHero.tmx")
         {
@@ -36,7 +37,7 @@ namespace PitHero.ECS.Scenes
             // Add camera controller for zoom and pan functionality
             var cameraEntity = CreateEntity("camera-controller");
             cameraEntity.AddComponent(Camera);
-            cameraEntity.AddComponent(new CameraControllerComponent());
+            _cameraController = cameraEntity.AddComponent(new CameraControllerComponent());
 
             _gameManager = new GameManager();
             _gameManager.StartNewGame();
@@ -84,6 +85,9 @@ namespace PitHero.ECS.Scenes
             // tiledMapRenderer.RenderLayer = 10;
             // tiledMapRenderer.Material = Material.StencilWrite(1);
             // tiledMapRenderer.Material.Effect = Core.Content.LoadNezEffect<SpriteAlphaTestEffect>();
+
+            // Configure camera zoom limits based on the loaded map
+            _cameraController?.ConfigureZoomForMap(_mapPath);
         }
 
         private void SetupUIOverlay()

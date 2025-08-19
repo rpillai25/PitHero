@@ -14,6 +14,8 @@ namespace PitHero.ECS.Components
         private bool _isPanning;
         private Vector2 _defaultCameraPosition;
         private Rectangle _tileMapBounds;
+        private float _currentMinimumZoom = GameConfig.CameraMinimumZoom;
+        private float _currentMaximumZoom = GameConfig.CameraMaximumZoom;
 
         public override void OnAddedToEntity()
         {
@@ -28,8 +30,8 @@ namespace PitHero.ECS.Components
             // Set up initial camera zoom limits using Nez's built-in methods
             if (_camera != null)
             {
-                _camera.SetMinimumZoom(GameConfig.CameraMinimumZoom);
-                _camera.SetMaximumZoom(GameConfig.CameraMaximumZoom);
+                _camera.SetMinimumZoom(_currentMinimumZoom);
+                _camera.SetMaximumZoom(_currentMaximumZoom);
                 _camera.RawZoom = GameConfig.CameraDefaultZoom;
                 
                 // Store the default position for resetting and ensure camera starts centered
@@ -67,19 +69,22 @@ namespace PitHero.ECS.Components
                 // Store current mouse position in world coordinates
                 var mouseWorldPos = _camera.ScreenToWorldPoint(Input.ScaledMousePosition);
                 
-                // Calculate new zoom level using integer increments
-                var currentZoom = (int)_camera.RawZoom;
-                var zoomChange = wheelDelta > 0 ? 1 : -1; // Increment/decrement by 1
+                // Calculate new zoom level using integer or decimal increments
+                var currentZoom = _camera.RawZoom;
+                var zoomChange = wheelDelta > 0 ? 0.1f : -0.1f; // Increment/decrement by 0.1
                 var newZoom = currentZoom + zoomChange;
                 
-                // Clamp zoom to the configured limits (integer values only)
-                newZoom = (int)MathHelper.Clamp(newZoom, GameConfig.CameraMinimumZoom, GameConfig.CameraMaximumZoom);
+                // Clamp zoom to the configured limits
+                newZoom = MathHelper.Clamp(newZoom, _currentMinimumZoom, _currentMaximumZoom);
+                
+                // Round to one decimal place to avoid floating point precision issues
+                newZoom = (float)System.Math.Round(newZoom, 1);
                 
                 // Only update if zoom actually changed
-                if (newZoom != currentZoom)
+                if (System.Math.Abs(newZoom - currentZoom) > 0.01f)
                 {
                     // Set the new zoom
-                    _camera.RawZoom = (float)newZoom;
+                    _camera.RawZoom = newZoom;
                     
                     // Adjust camera position so it zooms towards the mouse cursor
                     var newMouseWorldPos = _camera.ScreenToWorldPoint(Input.ScaledMousePosition);
@@ -203,6 +208,34 @@ namespace PitHero.ECS.Components
             }
 
             return desiredPosition;
+        }
+
+        /// <summary>
+        /// Configure zoom limits based on the map being loaded
+        /// </summary>
+        /// <param name="mapPath">Path to the map file</param>
+        public void ConfigureZoomForMap(string mapPath)
+        {
+            // Determine if this is a large map and set appropriate zoom limits
+            if (!string.IsNullOrEmpty(mapPath) && mapPath.Contains("Large"))
+            {
+                // Large map: allow zoom out to 0.1x
+                _currentMinimumZoom = GameConfig.CameraMinimumZoomLargeMap;
+                Debug.Log($"Large map detected: Zoom out enabled (minimum zoom: {_currentMinimumZoom}x)");
+            }
+            else
+            {
+                // Normal map: standard zoom limits (no zoom out below 1x)
+                _currentMinimumZoom = GameConfig.CameraMinimumZoom;
+                Debug.Log($"Normal map detected: Zoom out disabled (minimum zoom: {_currentMinimumZoom}x)");
+            }
+
+            // Update camera zoom limits if camera is available
+            if (_camera != null)
+            {
+                _camera.SetMinimumZoom(_currentMinimumZoom);
+                _camera.SetMaximumZoom(_currentMaximumZoom);
+            }
         }
     }
 }
