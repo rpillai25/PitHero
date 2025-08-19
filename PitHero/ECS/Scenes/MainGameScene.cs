@@ -14,6 +14,18 @@ namespace PitHero.ECS.Scenes
     {
         private GameManager _gameManager;
         private SettingsUI _settingsUI;
+        private string _mapPath;
+        private bool _isInitializationComplete = false;
+        private CameraControllerComponent _cameraController;
+
+        public MainGameScene() : this("Content/Tilemaps/PitHero.tmx")
+        {
+        }
+
+        public MainGameScene(string mapPath)
+        {
+            _mapPath = mapPath;
+        }
 
         public override void Initialize()
         {
@@ -25,13 +37,40 @@ namespace PitHero.ECS.Scenes
             // Add camera controller for zoom and pan functionality
             var cameraEntity = CreateEntity("camera-controller");
             cameraEntity.AddComponent(Camera);
-            cameraEntity.AddComponent(new CameraControllerComponent());
+            _cameraController = cameraEntity.AddComponent(new CameraControllerComponent());
 
             _gameManager = new GameManager();
             _gameManager.StartNewGame();
 
+            // Set up UI overlay using ScreenSpaceRenderer first
+            SetupUIOverlay();
+        }
+
+        public override void Begin()
+        {
+            base.Begin();
+            
+            // Load the map after the scene is fully constructed and ready
+            if (!_isInitializationComplete)
+            {
+                LoadMap();
+                
+                // Add other entities/components after map is loaded
+                CreateEntity("demo-entity")
+                    .SetPosition(new Vector2(500, 150))
+                    .AddComponent(new PrototypeSpriteRenderer(20, 20));
+                
+                _isInitializationComplete = true;
+            }
+        }
+
+        private void LoadMap()
+        {
+            if (string.IsNullOrEmpty(_mapPath))
+                return;
+
             // --- Load TMX map and set up TiledMapRenderer ---
-            var tmxMap = Core.Content.LoadTiledMap("Content/Tilemaps/PitHero.tmx");
+            var tmxMap = Core.Content.LoadTiledMap(_mapPath);
 
             // Create the entity for the tilemap
             var tiledEntity = CreateEntity("tilemap");
@@ -47,13 +86,8 @@ namespace PitHero.ECS.Scenes
             // tiledMapRenderer.Material = Material.StencilWrite(1);
             // tiledMapRenderer.Material.Effect = Core.Content.LoadNezEffect<SpriteAlphaTestEffect>();
 
-            // Add other entities/components as needed
-            CreateEntity("demo-entity")
-                .SetPosition(new Vector2(500, 150))
-                .AddComponent(new PrototypeSpriteRenderer(20, 20));
-
-            // Set up UI overlay using ScreenSpaceRenderer
-            SetupUIOverlay();
+            // Configure camera zoom limits based on the loaded map
+            _cameraController?.ConfigureZoomForMap(_mapPath);
         }
 
         private void SetupUIOverlay()

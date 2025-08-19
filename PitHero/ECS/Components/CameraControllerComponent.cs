@@ -1,6 +1,5 @@
 using Microsoft.Xna.Framework;
 using Nez;
-using Nez.Tiled;
 
 namespace PitHero.ECS.Components
 {
@@ -14,6 +13,8 @@ namespace PitHero.ECS.Components
         private bool _isPanning;
         private Vector2 _defaultCameraPosition;
         private Rectangle _tileMapBounds;
+        private float _currentMinimumZoom = GameConfig.CameraMinimumZoom;
+        private float _currentMaximumZoom = GameConfig.CameraMaximumZoom;
 
         public override void OnAddedToEntity()
         {
@@ -28,8 +29,8 @@ namespace PitHero.ECS.Components
             // Set up initial camera zoom limits using Nez's built-in methods
             if (_camera != null)
             {
-                _camera.SetMinimumZoom(GameConfig.CameraMinimumZoom);
-                _camera.SetMaximumZoom(GameConfig.CameraMaximumZoom);
+                _camera.SetMinimumZoom(_currentMinimumZoom);
+                _camera.SetMaximumZoom(_currentMaximumZoom);
                 _camera.RawZoom = GameConfig.CameraDefaultZoom;
                 
                 // Store the default position for resetting and ensure camera starts centered
@@ -67,19 +68,47 @@ namespace PitHero.ECS.Components
                 // Store current mouse position in world coordinates
                 var mouseWorldPos = _camera.ScreenToWorldPoint(Input.ScaledMousePosition);
                 
-                // Calculate new zoom level using integer increments
-                var currentZoom = (int)_camera.RawZoom;
-                var zoomChange = wheelDelta > 0 ? 1 : -1; // Increment/decrement by 1
-                var newZoom = currentZoom + zoomChange;
+                // Calculate new zoom level using integer increments only to avoid tile artifacts
+                var currentZoom = _camera.RawZoom;
+                float newZoom;
                 
-                // Clamp zoom to the configured limits (integer values only)
-                newZoom = (int)MathHelper.Clamp(newZoom, GameConfig.CameraMinimumZoom, GameConfig.CameraMaximumZoom);
+                if (wheelDelta > 0)
+                {
+                    // Zoom in: go to next integer level or 0.5x -> 1x
+                    if (currentZoom == 0.5f)
+                    {
+                        newZoom = 1f;
+                    }
+                    else
+                    {
+                        newZoom = (float)System.Math.Floor(currentZoom) + 1f;
+                    }
+                }
+                else
+                {
+                    // Zoom out: go to previous integer level or 1x -> 0.5x (if allowed)
+                    if (currentZoom <= 1f)
+                    {
+                        newZoom = _currentMinimumZoom; // Will be 0.5f for large maps, 1f for normal maps
+                    }
+                    else
+                    {
+                        newZoom = (float)System.Math.Floor(currentZoom) - 1f;
+                        if (newZoom < 1f)
+                        {
+                            newZoom = 1f;
+                        }
+                    }
+                }
+                
+                // Clamp zoom to the configured limits
+                newZoom = MathHelper.Clamp(newZoom, _currentMinimumZoom, _currentMaximumZoom);
                 
                 // Only update if zoom actually changed
-                if (newZoom != currentZoom)
+                if (System.Math.Abs(newZoom - currentZoom) > 0.01f)
                 {
                     // Set the new zoom
-                    _camera.RawZoom = (float)newZoom;
+                    _camera.RawZoom = newZoom;
                     
                     // Adjust camera position so it zooms towards the mouse cursor
                     var newMouseWorldPos = _camera.ScreenToWorldPoint(Input.ScaledMousePosition);
@@ -203,6 +232,34 @@ namespace PitHero.ECS.Components
             }
 
             return desiredPosition;
+        }
+
+        /// <summary>
+        /// Configure zoom limits based on the map being loaded
+        /// </summary>
+        /// <param name="mapPath">Path to the map file</param>
+        public void ConfigureZoomForMap(string mapPath)
+        {
+            // Determine if this is a large map and set appropriate zoom limits
+            if (!string.IsNullOrEmpty(mapPath) && mapPath.Contains("Large"))
+            {
+                // Large map: allow zoom out to 0.5x (clean divisor to avoid artifacts)
+                _currentMinimumZoom = GameConfig.CameraMinimumZoomLargeMap;
+                Debug.Log($"Large map detected: Zoom out enabled (minimum zoom: {_currentMinimumZoom}x)");
+            }
+            else
+            {
+                // Normal map: standard zoom limits (no zoom out below 1x)
+                _currentMinimumZoom = GameConfig.CameraMinimumZoom;
+                Debug.Log($"Normal map detected: Zoom out disabled (minimum zoom: {_currentMinimumZoom}x)");
+            }
+
+            // Update camera zoom limits if camera is available
+            if (_camera != null)
+            {
+                _camera.SetMinimumZoom(_currentMinimumZoom);
+                _camera.SetMaximumZoom(_currentMaximumZoom);
+            }
         }
     }
 }
