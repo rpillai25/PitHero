@@ -139,19 +139,19 @@ namespace PitHero.UI
         {
             _mainTable.Clear();
 
-            // Position gear button at right edge, vertically centered
-            // 16 pixels from right edge with 16 pixels padding = 32 pixels from right
+            // Create a new row for the gear button and settings window
             _mainTable.Add().SetExpandX(); // Take up left space
-            _mainTable.Add(_gearButton).Right().SetPadRight(32);
-            _mainTable.Row();
 
-            // Add settings window positioned to the left of gear button when visible
             if (_isVisible)
             {
-                // Position settings window to the left of gear button
-                _mainTable.Add(_settingsWindow).Right().SetPadRight(64); // 32 for gear + 32 for window offset
-                _mainTable.Add(); // Empty cell for gear button space
+                // Add settings window to the left of gear button in the same row
+                _mainTable.Add(_settingsWindow).Right().SetPadRight(0); // 32 for gear + 32 for window offset
             }
+
+            // Always add gear button in the same cell, right edge
+            _mainTable.Add(_gearButton).Right().SetPadRight(16);
+
+            _mainTable.Row();
         }
 
         private void ToggleSettingsVisibility()
