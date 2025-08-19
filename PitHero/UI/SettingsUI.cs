@@ -87,8 +87,8 @@ namespace PitHero.UI
             
             // Tab header area (for future expansion)
             var tabHeader = new Table();
-            tabHeader.Add(new Label("Window", skin)).PadBottom(10);
-            mainContainer.Add(tabHeader).ExpandX().FillX();
+            tabHeader.Add(new Label("Window", skin)).SetPadBottom(10);
+            mainContainer.Add(tabHeader).SetExpandX().SetFillX();
             mainContainer.Row();
             
             // Tab content area
@@ -193,9 +193,8 @@ namespace PitHero.UI
 
         private void UpdateSliderRange(float min, float max)
         {
-            // Update slider range
-            _yOffsetSlider.SetMinimum(min);
-            _yOffsetSlider.SetMaximum(max);
+            // Update slider range using SetMinMax method
+            _yOffsetSlider.SetMinMax(min, max);
         }
 
         private void ApplyCurrentWindowPosition()
