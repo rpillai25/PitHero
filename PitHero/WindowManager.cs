@@ -123,7 +123,8 @@ namespace PitHero
             int windowHeight = (int)(displayMode.Height / 3);
 
             int x = 0;
-            int y = Math.Max(0, yOffset);
+            // Clamp Y to ensure window stays onscreen (minimum 0, maximum leaves some window visible)
+            int y = Math.Max(0, Math.Min(yOffset, displayMode.Height - 100)); // Keep at least 100px visible
 
             SDL.SDL_SetWindowPosition(sdlWindow, x, y);
             SDL.SDL_SetWindowSize(sdlWindow, windowWidth, windowHeight);
@@ -145,7 +146,9 @@ namespace PitHero
             int windowHeight = (int)(displayMode.Height / 3);
 
             int x = 0;
-            int y = Math.Max(0, displayMode.Height - windowHeight + yOffset);
+            // Clamp Y to ensure window stays onscreen 
+            int baseY = displayMode.Height - windowHeight;
+            int y = Math.Max(100, Math.Min(baseY + yOffset, displayMode.Height - 100)); // Keep at least 100px visible
 
             SDL.SDL_SetWindowPosition(sdlWindow, x, y);
             SDL.SDL_SetWindowSize(sdlWindow, windowWidth, windowHeight);

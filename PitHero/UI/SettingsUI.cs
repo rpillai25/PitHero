@@ -77,15 +77,25 @@ namespace PitHero.UI
 
         private void CreateSettingsWindow(Skin skin)
         {
-            // For simplicity, use a basic Window instead of TabPane for now
-            // This can be enhanced later to use full TabPane functionality
+            // Create settings window with TabPane-style interface
             var windowStyle = skin.Get<WindowStyle>();
             _settingsWindow = new Window("Settings", windowStyle);
             _settingsWindow.SetSize(400, 300);
             
-            // Create Window tab content
+            // Create tabbed interface - we'll use buttons for tab switching in the future
+            var mainContainer = new Table();
+            
+            // Tab header area (for future expansion)
+            var tabHeader = new Table();
+            tabHeader.Add(new Label("Window", skin)).PadBottom(10);
+            mainContainer.Add(tabHeader).ExpandX().FillX();
+            mainContainer.Row();
+            
+            // Tab content area
             var windowContent = CreateWindowTab(skin);
-            _settingsWindow.Add(windowContent).Expand().Fill();
+            mainContainer.Add(windowContent).Expand().Fill();
+            
+            _settingsWindow.Add(mainContainer).Expand().Fill();
 
             // Initially hidden
             _settingsWindow.SetVisible(false);
@@ -101,7 +111,8 @@ namespace PitHero.UI
             windowTable.Add(_yOffsetLabel).SetPadBottom(10);
             windowTable.Row();
 
-            _yOffsetSlider = new Slider(-100, 100, 1, false, skin);
+            // Create slider with initial range for bottom dock
+            _yOffsetSlider = new Slider(-200, 0, 1, false, skin);
             _yOffsetSlider.SetValue(0);
             _yOffsetSlider.OnChanged += (value) => {
                 _currentYOffset = (int)value;
@@ -129,15 +140,17 @@ namespace PitHero.UI
             _mainTable.Clear();
 
             // Position gear button at right edge, vertically centered
-            // 32 pixels from right edge with 16 pixels padding = 48 pixels from right
+            // 16 pixels from right edge with 16 pixels padding = 32 pixels from right
             _mainTable.Add().SetExpandX(); // Take up left space
-            _mainTable.Add(_gearButton).Right().SetPadRight(48);
+            _mainTable.Add(_gearButton).Right().SetPadRight(32);
             _mainTable.Row();
 
-            // Add settings TabPane in center when visible
+            // Add settings window positioned to the left of gear button when visible
             if (_isVisible)
             {
-                _mainTable.Add(_settingsWindow).Center().SetColspan(2);
+                // Position settings window to the left of gear button
+                _mainTable.Add(_settingsWindow).Right().SetPadRight(64); // 32 for gear + 32 for window offset
+                _mainTable.Add(); // Empty cell for gear button space
             }
         }
 
@@ -154,6 +167,13 @@ namespace PitHero.UI
         {
             _isDockedTop = true;
             _isDockedBottom = false;
+            
+            // Reset Y offset and update slider range for top dock (0 to 200)
+            _currentYOffset = 0;
+            UpdateSliderRange(0, 200);
+            _yOffsetSlider.SetValue(0);
+            _yOffsetLabel.SetText("Y Offset: 0");
+            
             ApplyCurrentWindowPosition();
         }
 
@@ -161,7 +181,21 @@ namespace PitHero.UI
         {
             _isDockedTop = false;
             _isDockedBottom = true;
+            
+            // Reset Y offset and update slider range for bottom dock (-200 to 0)
+            _currentYOffset = 0;
+            UpdateSliderRange(-200, 0);
+            _yOffsetSlider.SetValue(0);
+            _yOffsetLabel.SetText("Y Offset: 0");
+            
             ApplyCurrentWindowPosition();
+        }
+
+        private void UpdateSliderRange(float min, float max)
+        {
+            // Update slider range
+            _yOffsetSlider.SetMinimum(min);
+            _yOffsetSlider.SetMaximum(max);
         }
 
         private void ApplyCurrentWindowPosition()
