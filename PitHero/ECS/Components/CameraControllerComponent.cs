@@ -69,16 +69,41 @@ namespace PitHero.ECS.Components
                 // Store current mouse position in world coordinates
                 var mouseWorldPos = _camera.ScreenToWorldPoint(Input.ScaledMousePosition);
                 
-                // Calculate new zoom level using integer or decimal increments
+                // Calculate new zoom level using integer increments only to avoid tile artifacts
                 var currentZoom = _camera.RawZoom;
-                var zoomChange = wheelDelta > 0 ? 0.1f : -0.1f; // Increment/decrement by 0.1
-                var newZoom = currentZoom + zoomChange;
+                float newZoom;
+                
+                if (wheelDelta > 0)
+                {
+                    // Zoom in: go to next integer level or 0.5x -> 1x
+                    if (currentZoom == 0.5f)
+                    {
+                        newZoom = 1f;
+                    }
+                    else
+                    {
+                        newZoom = (float)System.Math.Floor(currentZoom) + 1f;
+                    }
+                }
+                else
+                {
+                    // Zoom out: go to previous integer level or 1x -> 0.5x (if allowed)
+                    if (currentZoom <= 1f)
+                    {
+                        newZoom = _currentMinimumZoom; // Will be 0.5f for large maps, 1f for normal maps
+                    }
+                    else
+                    {
+                        newZoom = (float)System.Math.Floor(currentZoom) - 1f;
+                        if (newZoom < 1f)
+                        {
+                            newZoom = 1f;
+                        }
+                    }
+                }
                 
                 // Clamp zoom to the configured limits
                 newZoom = MathHelper.Clamp(newZoom, _currentMinimumZoom, _currentMaximumZoom);
-                
-                // Round to one decimal place to avoid floating point precision issues
-                newZoom = (float)System.Math.Round(newZoom, 1);
                 
                 // Only update if zoom actually changed
                 if (System.Math.Abs(newZoom - currentZoom) > 0.01f)
@@ -219,7 +244,7 @@ namespace PitHero.ECS.Components
             // Determine if this is a large map and set appropriate zoom limits
             if (!string.IsNullOrEmpty(mapPath) && mapPath.Contains("Large"))
             {
-                // Large map: allow zoom out to 0.1x
+                // Large map: allow zoom out to 0.5x (clean divisor to avoid artifacts)
                 _currentMinimumZoom = GameConfig.CameraMinimumZoomLargeMap;
                 Debug.Log($"Large map detected: Zoom out enabled (minimum zoom: {_currentMinimumZoom}x)");
             }
