@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
 using PitHero.ECS.Scenes;
+using static System.Formats.Asn1.AsnWriter;
 
 namespace PitHero.UI
 {
@@ -166,6 +167,10 @@ namespace PitHero.UI
         {
             // Create and switch to the main game scene with the selected map
             var mainGameScene = new MainGameScene(mapPath);
+            Color grassColor = new Color(71, 114, 56);
+            mainGameScene.ClearColor = grassColor;   // Set background
+            // Optional: letterbox bars (if any) also blue
+            mainGameScene.LetterboxColor = grassColor;
             Core.Scene = mainGameScene;
         }
 

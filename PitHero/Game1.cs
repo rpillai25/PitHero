@@ -17,14 +17,12 @@ namespace PitHero
         {
             base.Initialize();
 
-            // Set the scene - this handles Update/Draw logic
-            Scene = new TitleScreenScene();
+            var scene = new TitleScreenScene();
+            scene.ClearColor = Color.CornflowerBlue;   // Set background
+            // Optional: letterbox bars (if any) also blue
+            scene.LetterboxColor = Color.CornflowerBlue;
 
-
-#if DEBUG
-            // Debug console setup if needed
-            // System.Diagnostics.Debug.Listeners.Add(new System.Diagnostics.TextWriterTraceListener(System.Console.Out));
-#endif
+            Scene = scene;
         }
 
         protected override void LoadContent()
