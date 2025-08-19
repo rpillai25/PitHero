@@ -58,11 +58,15 @@ namespace PitHero.ECS.Scenes
 
         private void SetupUIOverlay()
         {
+            // Add ScreenSpaceRenderer for UI that uses its own camera which doesn't move
+            var screenSpaceRenderer = new ScreenSpaceRenderer(100, 999);
+            AddRenderer(screenSpaceRenderer);
+
             // Create UI entity with UICanvas component for screen-space UI
             var uiEntity = CreateEntity("ui-overlay");
             var uiCanvas = uiEntity.AddComponent(new UICanvas());
             uiCanvas.IsFullScreen = true;
-            uiCanvas.RenderLayer = 999; // Render on top
+            uiCanvas.RenderLayer = 999; // Render on screen space layer
 
             // Initialize settings UI
             _settingsUI = new SettingsUI(Core.Instance);
