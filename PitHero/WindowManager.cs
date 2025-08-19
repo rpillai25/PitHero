@@ -155,5 +155,29 @@ namespace PitHero
 
             Debug.Log($"Window docked to bottom at ({x},{y}) with size {windowWidth}x{windowHeight}");
         }
+
+        /// <summary>
+        /// Centers the window on the screen with optional Y offset for fine-tuning.
+        /// </summary>
+        public static void DockCenter(Game game, int yOffset = 0)
+        {
+            IntPtr sdlWindow = game.Window.Handle;
+            if (sdlWindow == IntPtr.Zero)
+                return;
+
+            var displayMode = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
+            int windowWidth = displayMode.Width;
+            int windowHeight = (int)(displayMode.Height / 3);
+
+            int x = 0; // Keep full width
+            // Center the window vertically with optional offset
+            int centerY = (displayMode.Height - windowHeight) / 2;
+            int y = Math.Max(100, Math.Min(centerY + yOffset, displayMode.Height - 100)); // Keep at least 100px visible
+
+            SDL.SDL_SetWindowPosition(sdlWindow, x, y);
+            SDL.SDL_SetWindowSize(sdlWindow, windowWidth, windowHeight);
+
+            Debug.Log($"Window centered at ({x},{y}) with size {windowWidth}x{windowHeight}");
+        }
     }
 }

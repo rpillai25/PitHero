@@ -19,12 +19,14 @@ namespace PitHero.UI
         private Slider _yOffsetSlider;
         private TextButton _dockTopButton;
         private TextButton _dockBottomButton;
+        private TextButton _dockCenterButton;
         private Label _yOffsetLabel;
 
         private Game _game;
         private int _currentYOffset = 0;
         private bool _isDockedTop = false;
         private bool _isDockedBottom = true; // Default to bottom dock
+        private bool _isDockedCenter = false;
 
         public SettingsUI(Game game)
         {
@@ -130,7 +132,12 @@ namespace PitHero.UI
 
             _dockBottomButton = new TextButton("Dock Bottom", skin);
             _dockBottomButton.OnClicked += (button) => DockBottom();
-            windowTable.Add(_dockBottomButton).Width(150);
+            windowTable.Add(_dockBottomButton).Width(150).SetPadBottom(10);
+            windowTable.Row();
+
+            _dockCenterButton = new TextButton("Dock Center", skin);
+            _dockCenterButton.OnClicked += (button) => DockCenter();
+            windowTable.Add(_dockCenterButton).Width(150);
 
             return windowTable;
         }
@@ -167,6 +174,7 @@ namespace PitHero.UI
         {
             _isDockedTop = true;
             _isDockedBottom = false;
+            _isDockedCenter = false;
             
             // Reset Y offset and update slider range for top dock (0 to 200)
             _currentYOffset = 0;
@@ -181,10 +189,26 @@ namespace PitHero.UI
         {
             _isDockedTop = false;
             _isDockedBottom = true;
+            _isDockedCenter = false;
             
             // Reset Y offset and update slider range for bottom dock (-200 to 0)
             _currentYOffset = 0;
             UpdateSliderRange(-200, 0);
+            _yOffsetSlider.SetValue(0);
+            _yOffsetLabel.SetText("Y Offset: 0");
+            
+            ApplyCurrentWindowPosition();
+        }
+
+        private void DockCenter()
+        {
+            _isDockedTop = false;
+            _isDockedBottom = false;
+            _isDockedCenter = true;
+            
+            // Reset Y offset and update slider range for center dock (-200 to 200)
+            _currentYOffset = 0;
+            UpdateSliderRange(-200, 200);
             _yOffsetSlider.SetValue(0);
             _yOffsetLabel.SetText("Y Offset: 0");
             
@@ -206,6 +230,10 @@ namespace PitHero.UI
             else if (_isDockedBottom)
             {
                 WindowManager.DockBottom(_game, _currentYOffset);
+            }
+            else if (_isDockedCenter)
+            {
+                WindowManager.DockCenter(_game, _currentYOffset);
             }
         }
 
