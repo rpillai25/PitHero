@@ -69,7 +69,7 @@ namespace PitHero.UI
 
             // Center the table vertically in the lower portion of the screen
             _mainMenuTable.Center();
-            _mainMenuTable.SetY(_stage.GetHeight() * 0.5f); // Start at 50% down the screen
+            _mainMenuTable.SetY(_stage.GetHeight() * 0.25f); // Start at 25% down the screen
 
             _stage.AddElement(_mainMenuTable);
         }
@@ -102,7 +102,7 @@ namespace PitHero.UI
 
             // Center the table
             _mapSelectionTable.Center();
-            _mapSelectionTable.SetY(_stage.GetHeight() * 0.5f);
+            _mapSelectionTable.SetY(_stage.GetHeight() * 0.25f);
 
             // Initially hidden
             _mapSelectionTable.SetVisible(false);
