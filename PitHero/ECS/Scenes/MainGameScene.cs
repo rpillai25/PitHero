@@ -1,7 +1,9 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Tiled;
+using Nez.UI;
 using PitHero.ECS.Components;
+using PitHero.UI;
 
 namespace PitHero.ECS.Scenes
 {
@@ -11,6 +13,7 @@ namespace PitHero.ECS.Scenes
     public class MainGameScene : Scene
     {
         private GameManager _gameManager;
+        private SettingsUI _settingsUI;
 
         public override void Initialize()
         {
@@ -48,6 +51,26 @@ namespace PitHero.ECS.Scenes
             CreateEntity("demo-entity")
                 .SetPosition(new Vector2(500, 150))
                 .AddComponent(new PrototypeSpriteRenderer(20, 20));
+
+            // Set up UI overlay using ScreenSpaceRenderer
+            SetupUIOverlay();
+        }
+
+        private void SetupUIOverlay()
+        {
+            // Add ScreenSpaceRenderer for UI that uses its own camera which doesn't move
+            var screenSpaceRenderer = new ScreenSpaceRenderer(100, 999);
+            AddRenderer(screenSpaceRenderer);
+
+            // Create UI entity with UICanvas component for screen-space UI
+            var uiEntity = CreateEntity("ui-overlay");
+            var uiCanvas = uiEntity.AddComponent(new UICanvas());
+            uiCanvas.IsFullScreen = true;
+            uiCanvas.RenderLayer = 999; // Render on screen space layer
+
+            // Initialize settings UI
+            _settingsUI = new SettingsUI(Core.Instance);
+            _settingsUI.InitializeUI(uiCanvas.Stage);
         }
 
         public override void Update()
@@ -55,6 +78,9 @@ namespace PitHero.ECS.Scenes
             base.Update();
             float deltaTime = Time.DeltaTime;
             _gameManager.Update(deltaTime);
+            
+            // Update settings UI
+            _settingsUI?.Update();
         }
     }
 }
