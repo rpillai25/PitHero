@@ -11,11 +11,11 @@ namespace PitHero.ECS.Components
     {
         public float MoveSpeed { get; set; } = GameConfig.HeroMoveSpeed;
 
-        // Track whether hero is adjacent to or inside the pit
-        public bool IsAdjacentToPit { get; set; }
-        public bool IsInsidePit { get; set; }
-        public bool JustJumpedOutOfPit { get; set; }
-        public bool IsAtCenter { get; set; }
+        // GOAP-specific pit boundary flags
+        public bool AdjacentToPitBoundaryFromOutside { get; set; }
+        public bool AdjacentToPitBoundaryFromInside { get; set; }
+        public bool EnteredPit { get; set; }
+        public Direction? PitApproachDirection { get; set; }
 
         // Pit configuration - collision rectangle from (1,2) to (12,10), center at (6,6)
         private readonly Rectangle _pitCollisionRect = new Rectangle(
@@ -33,7 +33,12 @@ namespace PitHero.ECS.Components
         public override void OnAddedToEntity()
         {
             base.OnAddedToEntity();
-            // Initialize any hero-specific logic
+            
+            // Initialize GOAP flags to clean state
+            AdjacentToPitBoundaryFromOutside = false;
+            AdjacentToPitBoundaryFromInside = false;
+            EnteredPit = false;
+            PitApproachDirection = null;
         }
 
         /// <summary>
@@ -43,32 +48,30 @@ namespace PitHero.ECS.Components
         {
             base.OnTriggerEnter(other, local);
             
+            Debug.Log($"[HeroComponent] OnTriggerEnter: other.Entity.Name={other.Entity.Name}, " +
+                      $"other.Entity.Tag={other.Entity.Tag}, " +
+                      $"other.PhysicsLayer={other.PhysicsLayer}, " +
+                      $"HeroPos={Entity.Transform.Position.X},{Entity.Transform.Position.Y}");
+            
             // Handle pit trigger separately from tilemap
             if (other.Entity.Tag == GameConfig.TAG_PIT)
             {
+                Debug.Log("[HeroComponent] Detected pit trigger entry");
                 HandlePitTriggerEnter();
                 return;
             }
             
-            // Handle tilemap triggers for position tracking
+            // Handle tilemap triggers for FogOfWar clearing
             if (!IsTileMapCollision(other))
                 return;
 
+            Debug.Log("[HeroComponent] Detected tilemap trigger entry");
             var tileCoords = GetTileCoordinates(Entity.Transform.Position, GameConfig.TileSize);
-
             var inside = _pitCollisionRect.Contains(tileCoords);
-            IsInsidePit = inside;
-
-            // Adjacent: NOT inside, but within radius from pit center
-            if (!inside)
-            {
-                var dist = DistanceTiles(tileCoords, _pitCenter);
-                IsAdjacentToPit = dist <= GameConfig.PitAdjacencyRadiusTiles;
-            }
 
             if (inside)
             {
-                // milestone + fog clear (as before)
+                // milestone + fog clear when entering pit area via tilemap
                 var historian = Entity.GetComponent<Historian>();
                 historian?.RecordMilestone(MilestoneType.FirstJumpIntoPit, Time.TotalTime);
                 ClearFogOfWarAroundPosition(tileCoords);
@@ -89,35 +92,38 @@ namespace PitHero.ECS.Components
                 return;
             }
             
-            if (!IsTileMapCollision(other))
-                return;
-
-            var tileCoords = GetTileCoordinates(Entity.Transform.Position, GameConfig.TileSize);
-
-            var inside = _pitCollisionRect.Contains(tileCoords);
-            IsInsidePit = inside;
-
-            if (!inside)
-            {
-                // Leaving pit -> just jumped out
-                if (JustJumpedOutOfPit == false && IsInsidePit)
-                {
-                    JustJumpedOutOfPit = true;
-                    var historian = Entity.GetComponent<Historian>();
-                    historian?.RecordMilestone(MilestoneType.FirstJumpOutOfPit, Time.TotalTime);
-                }
-
-                var dist = DistanceTiles(tileCoords, _pitCenter);
-                IsAdjacentToPit = dist <= GameConfig.PitAdjacencyRadiusTiles;
-                if (dist > GameConfig.PitAdjacencyRadiusTiles)
-                    IsAdjacentToPit = false;
-            }
+            // No additional tilemap exit handling needed
         }
 
         private void HandlePitTriggerEnter()
         {
-            IsInsidePit = true;
-            IsAdjacentToPit = false;
+            var currentTile = GetCurrentTilePosition();
+            
+            Debug.Log($"[HeroComponent] HandlePitTriggerEnter: currentTile={currentTile.X},{currentTile.Y}, " +
+                      $"pitBounds=({_pitCollisionRect.X},{_pitCollisionRect.Y},{_pitCollisionRect.Width},{_pitCollisionRect.Height})");
+            
+            // Determine approach direction based on current position relative to pit boundaries
+            PitApproachDirection = DetermineApproachDirection(currentTile);
+            
+            // Check if we're approaching from outside the pit boundary
+            var wasOutside = !_pitCollisionRect.Contains(currentTile);
+            
+            Debug.Log($"[HeroComponent] wasOutside={wasOutside}, approachDirection={PitApproachDirection}");
+            
+            // Reset conflicting states first
+            AdjacentToPitBoundaryFromOutside = false;
+            AdjacentToPitBoundaryFromInside = false;
+            
+            if (wasOutside)
+            {
+                AdjacentToPitBoundaryFromOutside = true;
+                Debug.Log($"[HeroComponent] Set AdjacentToPitBoundaryFromOutside=true, direction: {PitApproachDirection}");
+            }
+            else
+            {
+                AdjacentToPitBoundaryFromInside = true;
+                Debug.Log($"[HeroComponent] Set AdjacentToPitBoundaryFromInside=true (already inside pit boundary)");
+            }
             
             var historian = Entity.GetComponent<Historian>();
             historian?.RecordMilestone(MilestoneType.FirstJumpIntoPit, Time.TotalTime);
@@ -128,16 +134,59 @@ namespace PitHero.ECS.Components
 
         private void HandlePitTriggerExit()
         {
-            IsInsidePit = false;
-            JustJumpedOutOfPit = true;
+            // Reset all GOAP flags when leaving pit trigger
+            AdjacentToPitBoundaryFromInside = false;
+            AdjacentToPitBoundaryFromOutside = false;
+            EnteredPit = false;
+            PitApproachDirection = null;
             
             var historian = Entity.GetComponent<Historian>();
             historian?.RecordMilestone(MilestoneType.FirstJumpOutOfPit, Time.TotalTime);
+        }
+
+        /// <summary>
+        /// Determine which direction the hero is approaching the pit from
+        /// </summary>
+        private Direction? DetermineApproachDirection(Point currentTile)
+        {
+            var pitBounds = _pitCollisionRect;
             
-            // Check if we're still adjacent
-            var tileCoords = GetTileCoordinates(Entity.Transform.Position, GameConfig.TileSize);
-            var dist = DistanceTiles(tileCoords, _pitCenter);
-            IsAdjacentToPit = dist <= GameConfig.PitAdjacencyRadiusTiles;
+            // Check if at specific corner positions
+            if (currentTile.X == pitBounds.Left && currentTile.Y == pitBounds.Top)
+                return Direction.DownRight; // Upper left corner
+            if (currentTile.X == pitBounds.Right - 1 && currentTile.Y == pitBounds.Top)
+                return Direction.DownLeft; // Upper right corner
+            if (currentTile.X == pitBounds.Right - 1 && currentTile.Y == pitBounds.Bottom - 1)
+                return Direction.UpLeft; // Lower right corner
+            if (currentTile.X == pitBounds.Left && currentTile.Y == pitBounds.Bottom - 1)
+                return Direction.UpRight; // Lower left corner
+            
+            // Check cardinal directions
+            if (currentTile.X < pitBounds.Left)
+                return Direction.Right; // Approaching from left
+            if (currentTile.X >= pitBounds.Right)
+                return Direction.Left; // Approaching from right
+            if (currentTile.Y < pitBounds.Top)
+                return Direction.Down; // Approaching from above
+            if (currentTile.Y >= pitBounds.Bottom)
+                return Direction.Up; // Approaching from below
+            
+            return null; // Already inside
+        }
+
+        /// <summary>
+        /// Get current tile position using TileByTileMover if available
+        /// </summary>
+        private Point GetCurrentTilePosition()
+        {
+            var tileMover = Entity.GetComponent<TileByTileMover>();
+            if (tileMover != null)
+            {
+                return tileMover.GetCurrentTileCoordinates();
+            }
+            
+            // Fallback to manual calculation
+            return GetTileCoordinates(Entity.Transform.Position, GameConfig.TileSize);
         }
 
         /// <summary>

@@ -67,8 +67,8 @@ namespace PitHero.ECS.Scenes
         private void SpawnPit()
         {
             var pitEntity = CreateEntity("pit");
-            pitEntity.Tag = GameConfig.TAG_PIT;
-
+            pitEntity.SetTag(GameConfig.TAG_PIT); // Make sure this is set!
+            
             // Calculate pit bounds in world coordinates with padding
             var pitWorldBounds = CalculatePitWorldBounds();
             
@@ -86,14 +86,14 @@ namespace PitHero.ECS.Scenes
             // Add trigger collider covering the pit area
             var pitCollider = pitEntity.AddComponent(new BoxCollider(pitWorldBounds.Width, pitWorldBounds.Height));
             pitCollider.IsTrigger = true; // Make it a trigger so it doesn't block movement
-            Flags.SetFlag(ref pitCollider.CollidesWithLayers, GameConfig.PhysicsHeroWorldLayer);
             Flags.SetFlagExclusive(ref pitCollider.PhysicsLayer, GameConfig.PhysicsPitLayer);
 
             // Add controller component
             pitEntity.AddComponent(new PitControllerComponent());
 
-            Debug.Log($"[MainGameScene] Created logical pit with trigger collider at X: {pitWorldBounds.X}, " +
-                $"Y: {pitWorldBounds.Y}, Width: {pitWorldBounds.Width}, Height: {pitWorldBounds.Height}");
+            Debug.Log($"[MainGameScene] Created pit entity with Tag={pitEntity.Tag} at position {pitEntity.Transform.Position.X},{pitEntity.Transform.Position.Y}");
+            Debug.Log($"[MainGameScene] Pit trigger collider bounds: X={pitWorldBounds.X}, " +
+                $"Y={pitWorldBounds.Y}, Width={pitWorldBounds.Width}, Height={pitWorldBounds.Height}");
         }
 
         private Rectangle CalculatePitWorldBounds()
@@ -122,6 +122,9 @@ namespace PitHero.ECS.Scenes
             var heroStart = HeroActionBase.GetMapCenterWorldPosition();
             var hero = CreateEntity("hero").SetPosition(heroStart);
 
+            Debug.Log($"[MainGameScene] Hero spawned at position {heroStart.X},{heroStart.Y} , tile coordinates: " +
+                      $"({(int)(heroStart.X / GameConfig.TileSize)}, {(int)(heroStart.Y / GameConfig.TileSize)})");
+
             hero.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
             // Use centered collider constructor - this creates a collider centered on the entity
             var collider = hero.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));
@@ -141,14 +144,9 @@ namespace PitHero.ECS.Scenes
             {
                 Health = 100,
                 MaxHealth = 100,
-                MoveSpeed = 140f,
-                IsAtCenter = true,
-                IsInsidePit = false,
-                IsAdjacentToPit = false,
-                JustJumpedOutOfPit = false
+                MoveSpeed = 140f
             });
             hero.AddComponent(new Historian());
-            hero.AddComponent(new HeroSensorComponent()).SetUpdateOrder(-10);
             hero.AddComponent(new HeroGoapAgent());
         }
 

@@ -72,6 +72,9 @@ namespace PitHero
         // Pit collider padding (pixels around tile boundaries)
         public const int PitColliderPadding = 4;
 
+        // Jump movement configuration
+        public const float JumpMovementSpeed = 4.0f; // tiles per second for pit jumping (faster than normal movement)
+
         // Colors
         public static readonly Color HeroColor = Color.Blue;
         public static readonly Color PitColor = Color.Red;

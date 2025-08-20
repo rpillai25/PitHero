@@ -22,13 +22,16 @@ namespace PitHero.ECS.Components
 
             if (!_agent.HasActionPlan())
             {
-                if (_agent.Plan())
+                // Enable debug planning to see what's happening
+                if (_agent.Plan(debugPlan: true))
                 {
                     Debug.Log($"[GOAP] Plan created: {string.Join(" -> ", _agent.Actions)}");
                 }
                 else
                 {
                     Debug.Log($"[GOAP] No plan found. Current state: {_agent.DescribeCurrentState()}");
+                    Debug.Log($"[GOAP] Goal state: {_agent.GetGoalState().Describe(_agent.Planner)}");
+                    Debug.Log($"[GOAP] Planner description:\n{_agent.DescribePlanner()}");
                 }
             }
 
@@ -44,25 +47,42 @@ namespace PitHero.ECS.Components
     public class HeroAgent : Agent
     {
         private readonly HeroComponent _hero;
+        
+        // Make planner accessible for debugging
+        public ActionPlanner Planner => _planner;
 
         public HeroAgent(HeroComponent hero)
         {
             _hero = hero;
 
-            // Only add the MoveLeft action
+            // Add all available actions
             _planner.AddAction(new MoveLeftAction());
+            _planner.AddAction(new JumpIntoPitAction());
         }
 
         public override GoapWorldState GetWorldState()
         {
             var ws = GoapWorldState.Create(_planner);
             
-            // Set the hero as initialized (always true once the component is added)
+            // Only set the states that are actually true
             ws.Set("HeroInitialized", true);
             
-            // Set moving left state (initially false)
-            ws.Set("MovingLeft", false);
+            // Only set MovingLeft if actually moving left
+            var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
+            if (tileMover != null && tileMover.IsMoving && tileMover.CurrentDirection == Direction.Left)
+            {
+                ws.Set("MovingLeft", true);
+            }
             
+            // Only set pit states if they're actually true
+            if (_hero.AdjacentToPitBoundaryFromOutside)
+                ws.Set("AdjacentToPitBoundaryFromOutside", true);
+            if (_hero.AdjacentToPitBoundaryFromInside)
+                ws.Set("AdjacentToPitBoundaryFromInside", true);
+            if (_hero.EnteredPit)
+                ws.Set("EnteredPit", true);
+            
+            Debug.Log($"[GOAP] Actual state bits: HeroInit=true, others=false");
             return ws;
         }
 
@@ -70,8 +90,10 @@ namespace PitHero.ECS.Components
         {
             var goal = GoapWorldState.Create(_planner);
             
-            // Goal is to be moving left
-            goal.Set("MovingLeft", true);
+            // Final objective: hero ends up inside the pit
+            goal.Set("EnteredPit", true);
+            // (Optional) also require inside-boundary flag:
+            // goal.Set("AdjacentToPitBoundaryFromInside", true);
             
             return goal;
         }

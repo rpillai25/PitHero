@@ -186,7 +186,7 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Snap entity position to tile grid boundaries accounting for centered collider
         /// </summary>
-        private void SnapToTileGrid()
+        public void SnapToTileGrid()
         {
             var pos = Entity.Transform.Position;
             
@@ -220,6 +220,14 @@ namespace PitHero.ECS.Components
                     return new Vector2(-_tileSize, 0);
                 case Direction.Right:
                     return new Vector2(_tileSize, 0);
+                case Direction.UpLeft:
+                    return new Vector2(-_tileSize, -_tileSize);
+                case Direction.UpRight:
+                    return new Vector2(_tileSize, -_tileSize);
+                case Direction.DownLeft:
+                    return new Vector2(-_tileSize, _tileSize);
+                case Direction.DownRight:
+                    return new Vector2(_tileSize, _tileSize);
                 default:
                     return Vector2.Zero;
             }
@@ -238,13 +246,17 @@ namespace PitHero.ECS.Components
     }
 
     /// <summary>
-    /// Cardinal directions for tile-based movement
+    /// Cardinal and diagonal directions for tile-based movement
     /// </summary>
     public enum Direction
     {
         Up,
         Down,
         Left,
-        Right
+        Right,
+        UpLeft,
+        UpRight,
+        DownLeft,
+        DownRight
     }
 }

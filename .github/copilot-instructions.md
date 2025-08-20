@@ -21,8 +21,14 @@
     - `Collision`: The collision layer	
 	- `FogOfWar`: The FogOfWar layer (4 surrounding FogOfWar tiles cleared whenever Hero lands on tile underneath)
 - Keep all constants (sizes, positions, movement speeds) in `GameConfig.cs`
+- If a private method needs to be called from another class, change that method to be public.
+- Avoid the use of Reflection.
 - Maintain integer scaling for pixel-perfect rendering
 - Ensure the game continues running in idle while the player interacts with other desktop apps
+- **Debug Logging Requirements**:
+  - Use Nez.Debug for all logs
+  - When logging Vectors and Points, log the X & Y components individually.  You can't just write the Vector/Point itself.
+  - When logging Rectangles, log the X, Y, Width, and Height individually.  You can't just write the Rectangle itself.
 - **Build Requirements**: 
   - Run `getFNA.sh` with automatic "yes" response before building to initialize FNA submodule and dependencies
     - cd /home/runner/work/PitHero/PitHero && echo "y" | ./getFNA.sh
