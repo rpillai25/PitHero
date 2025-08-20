@@ -1,72 +1,46 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Tiled;
-using Nez.UI;
 using PitHero.ECS.Components;
 using PitHero.UI;
 
 namespace PitHero.ECS.Scenes
 {
-    /// <summary>
-    /// Main game scene that handles game logic following Nez architecture
-    /// </summary>
     public class MainGameScene : Scene
     {
-        private GameManager _gameManager;
         private SettingsUI _settingsUI;
         private string _mapPath;
-        private bool _isInitializationComplete = false;
+        private bool _isInitializationComplete;
         private CameraControllerComponent _cameraController;
+        private TmxMap _tmxMap; // Store reference to the map
 
-        public MainGameScene() : this("Content/Tilemaps/PitHero.tmx")
-        {
-        }
-
-        public MainGameScene(string mapPath)
-        {
-            _mapPath = mapPath;
-        }
+        public MainGameScene() : this("Content/Tilemaps/PitHero.tmx") { }
+        public MainGameScene(string mapPath) { _mapPath = mapPath; }
 
         public override void Initialize()
         {
             base.Initialize();
-
             SetDesignResolution(GameConfig.VirtualWidth, GameConfig.VirtualHeight, SceneResolutionPolicy.BestFit);
             ClearColor = Color.Transparent;
 
-            // Add camera controller for zoom and pan functionality
             var cameraEntity = CreateEntity("camera-controller");
             cameraEntity.AddComponent(Camera);
             _cameraController = cameraEntity.AddComponent(new CameraControllerComponent());
 
-            _gameManager = new GameManager();
-            _gameManager.StartNewGame();
-
-            // Set up UI overlay using ScreenSpaceRenderer first
             SetupUIOverlay();
         }
 
         public override void Begin()
         {
             base.Begin();
-            
-            // Load the map after the scene is fully constructed and ready
-            if (!_isInitializationComplete)
-            {
-                LoadMap();
-                
-                // Add other entities/components after map is loaded
-                var hero = CreateEntity(GameConfig.EntityHero)
-                    .SetPosition(new Vector2(500, 150))
-                    .AddComponent(new PrototypeSpriteRenderer(20, 20));
-                var heroCollider = hero.AddComponent<BoxCollider>();
-                //Meant for colliders that hero can move into
-                Flags.SetFlagExclusive(ref heroCollider.CollidesWithLayers, GameConfig.PhysicsTileMapLayer);
-                Flags.SetFlagExclusive(ref heroCollider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
+            if (_isInitializationComplete)
+                return;
 
+            LoadMap();
+            SpawnPit();
+            SpawnHero();
 
-                _isInitializationComplete = true;
-            }
+            _isInitializationComplete = true;
         }
 
         private void LoadMap()
@@ -74,46 +48,126 @@ namespace PitHero.ECS.Scenes
             if (string.IsNullOrEmpty(_mapPath))
                 return;
 
-            // --- Load TMX map and set up TiledMapRenderer ---
-            var tmxMap = Core.Content.LoadTiledMap(_mapPath);
+            _tmxMap = Core.Content.LoadTiledMap(_mapPath);
+            var tiledEntity = CreateEntity("tilemap").SetTag(GameConfig.TAG_TILEMAP);
 
-            // Create the entity for the tilemap
-            var tiledEntity = CreateEntity("tilemap");
-            // Optionally set a tag if you want to query by tag later
-            tiledEntity.SetTag(GameConfig.TAG_TILEMAP);
-
-            // Add TiledMapRenderer, specifying the collision layer
-            var baseLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(tmxMap, "Collision"));
-            // Only render the "Base" layer (do not render "Collision" layer)
+            var baseLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(_tmxMap, "Collision"));
             baseLayerRenderer.SetLayerToRender("Base");
-            // Optionally set render layer, material, or effect if needed:
             baseLayerRenderer.RenderLayer = GameConfig.RenderLayerBase;
-            // baseLayerRenderer.Material = Material.StencilWrite(1);
-            // baseLayerRenderer.Material.Effect = Core.Content.LoadNezEffect<SpriteAlphaTestEffect>();
 
-            var fogOfWarLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(tmxMap));
-            // Set the fog of war layer to render the "FogOfWar" layer
-            fogOfWarLayerRenderer.SetLayerToRender("FogOfWar");
-            baseLayerRenderer.SetRenderLayer(GameConfig.RenderLayerFogOfWar);
+            var fogLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(_tmxMap));
+            fogLayerRenderer.SetLayerToRender("FogOfWar");
+            fogLayerRenderer.SetRenderLayer(GameConfig.RenderLayerFogOfWar);
 
+            tiledEntity.AddComponent<FogOfWarHelper>();
 
-            // Configure camera zoom limits based on the loaded map
             _cameraController?.ConfigureZoomForMap(_mapPath);
+        }
+
+        private void SpawnPit()
+        {
+            var pitEntity = CreateEntity("pit");
+            
+            // Calculate pit bounds in world coordinates with padding
+            var pitWorldBounds = CalculatePitWorldBounds();
+            
+            // Position the pit entity at the center of the bounds
+            pitEntity.SetPosition(pitWorldBounds.Center.ToVector2());
+
+            // Add logical pit component
+            pitEntity.AddComponent(new PitComponent
+            {
+                CrystalPower = 1f,
+                IsActive = true,
+                EffectRadius = 100f
+            });
+
+            // Add trigger collider covering the pit area
+            var pitCollider = pitEntity.AddComponent(new BoxCollider(pitWorldBounds.Width, pitWorldBounds.Height));
+            pitCollider.IsTrigger = true; // Make it a trigger so it doesn't block movement
+            Flags.SetFlagExclusive(ref pitCollider.PhysicsLayer, GameConfig.PhysicsPitLayer);
+
+            // Add controller component
+            pitEntity.AddComponent(new PitControllerComponent());
+
+            Debug.Log($"[MainGameScene] Created logical pit with trigger collider at X: {pitWorldBounds.X}, " +
+                $"Y: {pitWorldBounds.Y}, Width: {pitWorldBounds.Width}, Height: {pitWorldBounds.Height}");
+        }
+
+        private Rectangle CalculatePitWorldBounds()
+        {
+            // Convert tile coordinates to world coordinates
+            var topLeftWorld = new Vector2(
+                GameConfig.PitRectX * GameConfig.TileSize - GameConfig.PitColliderPadding,
+                GameConfig.PitRectY * GameConfig.TileSize - GameConfig.PitColliderPadding
+            );
+
+            var bottomRightWorld = new Vector2(
+                (GameConfig.PitRectX + GameConfig.PitRectWidth) * GameConfig.TileSize + GameConfig.PitColliderPadding,
+                (GameConfig.PitRectY + GameConfig.PitRectHeight) * GameConfig.TileSize + GameConfig.PitColliderPadding
+            );
+
+            return new Rectangle(
+                (int)topLeftWorld.X,
+                (int)topLeftWorld.Y,
+                (int)(bottomRightWorld.X - topLeftWorld.X),
+                (int)(bottomRightWorld.Y - topLeftWorld.Y)
+            );
+        }
+
+        private void SpawnHero()
+        {
+            var heroStart = HeroActionBase.GetMapCenterWorldPosition();
+            var hero = CreateEntity("hero").SetPosition(heroStart);
+
+            hero.AddComponent(new PrototypeSpriteRenderer(20, 20));
+            var collider = hero.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));
+            
+            // Hero collides with both tilemap and pit layers
+            Flags.SetFlag(ref collider.CollidesWithLayers, GameConfig.PhysicsTileMapLayer);
+            Flags.SetFlag(ref collider.CollidesWithLayers, GameConfig.PhysicsPitLayer);
+            Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
+
+            // Add TiledMapMover for collision handling
+            if (_tmxMap != null)
+            {
+                var collisionLayer = _tmxMap.GetLayer<TmxLayer>("Collision");
+                if (collisionLayer != null)
+                {
+                    var tiledMover = hero.AddComponent(new TiledMapMover(collisionLayer));
+                    Debug.Log("[MainGameScene] Added TiledMapMover to hero with collision layer");
+                }
+                else
+                {
+                    Debug.Warn("[MainGameScene] Could not find 'Collision' layer in tilemap for TiledMapMover");
+                }
+            }
+
+            hero.AddComponent(new HeroComponent
+            {
+                Health = 100,
+                MaxHealth = 100,
+                MoveSpeed = 140f,
+                IsAtCenter = true,
+                IsInsidePit = false,
+                IsAdjacentToPit = false,
+                JustJumpedOutOfPit = false
+            });
+            hero.AddComponent(new Historian());
+            hero.AddComponent(new HeroSensorComponent()).SetUpdateOrder(-10);
+            hero.AddComponent(new HeroGoapAgent());
         }
 
         private void SetupUIOverlay()
         {
-            // Add ScreenSpaceRenderer for UI that uses its own camera which doesn't move
             var screenSpaceRenderer = new ScreenSpaceRenderer(100, 999);
             AddRenderer(screenSpaceRenderer);
 
-            // Create UI entity with UICanvas component for screen-space UI
             var uiEntity = CreateEntity("ui-overlay");
             var uiCanvas = uiEntity.AddComponent(new UICanvas());
             uiCanvas.IsFullScreen = true;
-            uiCanvas.RenderLayer = 999; // Render on screen space layer
+            uiCanvas.RenderLayer = 999;
 
-            // Initialize settings UI
             _settingsUI = new SettingsUI(Core.Instance);
             _settingsUI.InitializeUI(uiCanvas.Stage);
         }
@@ -121,10 +175,6 @@ namespace PitHero.ECS.Scenes
         public override void Update()
         {
             base.Update();
-            float deltaTime = Time.DeltaTime;
-            _gameManager.Update(deltaTime);
-            
-            // Update settings UI
             _settingsUI?.Update();
         }
     }
