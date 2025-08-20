@@ -67,9 +67,14 @@ namespace PitHero.ECS.Scenes
         private void SpawnPit()
         {
             var pitEntity = CreateEntity("pit");
-            var pitPos = HeroActionBase.GetPitCenterWorldPosition();
-            pitEntity.SetPosition(pitPos);
+            
+            // Calculate pit bounds in world coordinates with padding
+            var pitWorldBounds = CalculatePitWorldBounds();
+            
+            // Position the pit entity at the center of the bounds
+            pitEntity.SetPosition(pitWorldBounds.Center.ToVector2());
 
+            // Add logical pit component
             pitEntity.AddComponent(new PitComponent
             {
                 CrystalPower = 1f,
@@ -77,14 +82,37 @@ namespace PitHero.ECS.Scenes
                 EffectRadius = 100f
             });
 
-            pitEntity.AddComponent(new BasicRenderableComponent
-            {
-                Color = GameConfig.PitColor,
-                RenderWidth = GameConfig.PitWidth,
-                RenderHeight = GameConfig.PitHeight
-            });
+            // Add trigger collider covering the pit area
+            var pitCollider = pitEntity.AddComponent(new BoxCollider(pitWorldBounds.Width, pitWorldBounds.Height));
+            pitCollider.IsTrigger = true; // Make it a trigger so it doesn't block movement
+            Flags.SetFlagExclusive(ref pitCollider.PhysicsLayer, GameConfig.PhysicsPitLayer);
 
+            // Add controller component
             pitEntity.AddComponent(new PitControllerComponent());
+
+            Debug.Log($"[MainGameScene] Created logical pit with trigger collider at X: {pitWorldBounds.X}, " +
+                $"Y: {pitWorldBounds.Y}, Width: {pitWorldBounds.Width}, Height: {pitWorldBounds.Height}");
+        }
+
+        private Rectangle CalculatePitWorldBounds()
+        {
+            // Convert tile coordinates to world coordinates
+            var topLeftWorld = new Vector2(
+                GameConfig.PitRectX * GameConfig.TileSize - GameConfig.PitColliderPadding,
+                GameConfig.PitRectY * GameConfig.TileSize - GameConfig.PitColliderPadding
+            );
+
+            var bottomRightWorld = new Vector2(
+                (GameConfig.PitRectX + GameConfig.PitRectWidth) * GameConfig.TileSize + GameConfig.PitColliderPadding,
+                (GameConfig.PitRectY + GameConfig.PitRectHeight) * GameConfig.TileSize + GameConfig.PitColliderPadding
+            );
+
+            return new Rectangle(
+                (int)topLeftWorld.X,
+                (int)topLeftWorld.Y,
+                (int)(bottomRightWorld.X - topLeftWorld.X),
+                (int)(bottomRightWorld.Y - topLeftWorld.Y)
+            );
         }
 
         private void SpawnHero()
@@ -94,7 +122,10 @@ namespace PitHero.ECS.Scenes
 
             hero.AddComponent(new PrototypeSpriteRenderer(20, 20));
             var collider = hero.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));
-            Flags.SetFlagExclusive(ref collider.CollidesWithLayers, GameConfig.PhysicsTileMapLayer);
+            
+            // Hero collides with both tilemap and pit layers
+            Flags.SetFlag(ref collider.CollidesWithLayers, GameConfig.PhysicsTileMapLayer);
+            Flags.SetFlag(ref collider.CollidesWithLayers, GameConfig.PhysicsPitLayer);
             Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
 
             // Add TiledMapMover for collision handling

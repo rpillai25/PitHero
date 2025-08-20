@@ -56,7 +56,7 @@ namespace PitHero
         public const int PitCenterTileX = 6;
         public const int PitCenterTileY = 6;
 
-        // Map “center” (MUST be outside pit)
+        // Map "center" (MUST be outside pit)
         public const int MapCenterTileX = 33;
         public const int MapCenterTileY = 6;
 
@@ -65,6 +65,9 @@ namespace PitHero
 
         // Adjacency ring radius in tiles (outside pit)
         public const int PitAdjacencyRadiusTiles = 2;
+
+        // Pit collider padding (pixels around tile boundaries)
+        public const int PitColliderPadding = 4;
 
         // Colors
         public static readonly Color HeroColor = Color.Blue;
@@ -81,9 +84,10 @@ namespace PitHero
         public const int RenderLayerActors = 50; // Actors and entities layer
         public const int RenderLayerFogOfWar = 1;   // Fog of war layer above everything
 
-        // Physic Layers (determins which layer an entity is on for collision)
+        // Physics Layers (determines which layer an entity is on for collision)
         public const int PhysicsTileMapLayer = 0;   // Tilemap "Collision" layer
         public const int PhysicsHeroWorldLayer = 1; // Hero layer for collision
+        public const int PhysicsPitLayer = 2;       // Pit trigger layer
 
         // Entity names
         public const string EntityHero = "Hero";
