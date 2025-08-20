@@ -5,83 +5,151 @@ using System.Collections.Generic;
 namespace PitHero.ECS.Components
 {
     /// <summary>
-    /// A mover that constrains movement to tile-by-tile increments in cardinal directions only.
-    /// Movement is in 32-pixel increments and entities are snapped to tile coordinates.
+    /// A mover that moves entities in tile-based increments over time, respecting movement speed.
+    /// Movement is constrained to cardinal directions and entities are snapped to tile boundaries.
     /// Handles trigger detection and prevents movement through solid colliders.
     /// </summary>
-    public class TileByTileMover : Component
+    public class TileByTileMover : Component, IUpdatable
     {
         private ColliderTriggerHelper _triggerHelper;
         private readonly int _tileSize = GameConfig.TileSize;
         
         /// <summary>
-        /// If true, movement is currently in progress and new movement requests will be ignored
+        /// Movement speed in tiles per second
+        /// </summary>
+        public float MovementSpeed { get; set; } = 2.0f; // 2 tiles per second by default
+        
+        /// <summary>
+        /// If true, movement is currently in progress
         /// </summary>
         public bool IsMoving { get; private set; }
+        
+        /// <summary>
+        /// Current movement direction (null if not moving)
+        /// </summary>
+        public Direction? CurrentDirection { get; private set; }
+        
+        /// <summary>
+        /// Starting position of current movement
+        /// </summary>
+        private Vector2 _moveStartPosition;
+        
+        /// <summary>
+        /// Target position of current movement
+        /// </summary>
+        private Vector2 _moveTargetPosition;
+        
+        /// <summary>
+        /// Progress of current movement (0.0 to 1.0)
+        /// </summary>
+        private float _moveProgress;
 
         public override void OnAddedToEntity()
         {
             _triggerHelper = new ColliderTriggerHelper(Entity);
         }
 
+        public void Update()
+        {
+            if (IsMoving)
+            {
+                UpdateMovement();
+            }
+        }
+
         /// <summary>
-        /// Attempt to move the entity one tile in the specified direction
+        /// Start moving the entity in the specified direction
         /// </summary>
-        /// <param name="direction">Cardinal direction to move (Up, Down, Left, Right)</param>
-        /// <returns>True if movement was successful, false if blocked</returns>
-        public bool TryMoveInDirection(Direction direction)
+        /// <param name="direction">Cardinal direction to move</param>
+        /// <returns>True if movement started, false if blocked or already moving</returns>
+        public bool StartMoving(Direction direction)
         {
             if (IsMoving)
                 return false;
 
             var motion = GetMotionVector(direction);
-            return TryMove(motion);
+            
+            // Check if movement is possible
+            if (!CanMove(motion))
+                return false;
+
+            // Start the movement
+            _moveStartPosition = Entity.Transform.Position;
+            _moveTargetPosition = _moveStartPosition + motion;
+            _moveProgress = 0f;
+            CurrentDirection = direction;
+            IsMoving = true;
+
+            Debug.Log($"[TileByTileMover] Started moving {direction} from {_moveStartPosition.X},{_moveStartPosition.Y} to {_moveTargetPosition.X},{_moveTargetPosition.Y}");
+            return true;
         }
 
         /// <summary>
-        /// Attempt to move the entity by the specified motion vector (will be snapped to tile boundaries)
+        /// Stop current movement immediately and snap to current tile
         /// </summary>
-        /// <param name="motion">Movement vector</param>
-        /// <returns>True if movement was successful, false if blocked</returns>
-        public bool TryMove(Vector2 motion)
+        public void StopMoving()
         {
             if (IsMoving)
-                return false;
+            {
+                IsMoving = false;
+                CurrentDirection = null;
+                SnapToTileGrid();
+                Debug.Log($"[TileByTileMover] Movement stopped at {Entity.Transform.Position}");
+            }
+        }
 
-            // Snap motion to tile increments in cardinal directions only
-            motion = SnapMotionToTile(motion);
-            
-            if (motion == Vector2.Zero)
-                return false;
+        /// <summary>
+        /// Update the current movement progress
+        /// </summary>
+        private void UpdateMovement()
+        {
+            if (!IsMoving)
+                return;
 
-            // Get the entity's collider
+            // Calculate movement progress based on speed and delta time
+            var progressDelta = MovementSpeed * Time.DeltaTime;
+            _moveProgress += progressDelta;
+
+            if (_moveProgress >= 1.0f)
+            {
+                // Movement complete
+                _moveProgress = 1.0f;
+                Entity.Transform.Position = _moveTargetPosition;
+                SnapToTileGrid();
+                
+                // Update triggers after reaching destination
+                _triggerHelper?.Update();
+                
+                IsMoving = false;
+                CurrentDirection = null;
+                
+                Debug.Log($"[TileByTileMover] Movement completed at {Entity.Transform.Position.X},{Entity.Transform.Position.Y}");
+            }
+            else
+            {
+                // Interpolate position
+                Entity.Transform.Position = Vector2.Lerp(_moveStartPosition, _moveTargetPosition, _moveProgress);
+            }
+        }
+
+        /// <summary>
+        /// Check if movement in the specified direction is possible
+        /// </summary>
+        private bool CanMove(Vector2 motion)
+        {
             var collider = Entity.GetComponent<Collider>();
             if (collider == null)
-            {
-                // No collider, just move directly
-                Entity.Transform.Position += motion;
-                SnapToTileGrid();
-                _triggerHelper?.Update();
                 return true;
-            }
 
             // Check for collisions using Nez's collision system
             CollisionResult collisionResult;
-            if (CalculateMovement(ref motion, out collisionResult))
-            {
-                // Hit a solid collider, movement blocked
-                return false;
-            }
-
-            // Apply the movement
-            ApplyMovement(motion);
-            return true;
+            return !CalculateMovement(motion, out collisionResult);
         }
 
         /// <summary>
         /// Calculates movement taking collisions into account, based on Nez.Mover.CalculateMovement
         /// </summary>
-        private bool CalculateMovement(ref Vector2 motion, out CollisionResult collisionResult)
+        private bool CalculateMovement(Vector2 motion, out CollisionResult collisionResult)
         {
             collisionResult = new CollisionResult();
 
@@ -110,49 +178,6 @@ namespace PitHero.ECS.Components
             }
 
             return false;
-        }
-
-        /// <summary>
-        /// Applies movement and updates trigger detection, based on Nez.Mover.ApplyMovement
-        /// </summary>
-        private void ApplyMovement(Vector2 motion)
-        {
-            IsMoving = true;
-            
-            // Move entity to its new position
-            Entity.Transform.Position += motion;
-            
-            // Snap to tile grid to ensure precise positioning
-            SnapToTileGrid();
-
-            // Update trigger detection - this will fire ITriggerListener events
-            _triggerHelper?.Update();
-            
-            IsMoving = false;
-        }
-
-        /// <summary>
-        /// Snap motion to tile increments and cardinal directions only
-        /// </summary>
-        private Vector2 SnapMotionToTile(Vector2 motion)
-        {
-            // Determine the dominant direction
-            var absX = System.Math.Abs(motion.X);
-            var absY = System.Math.Abs(motion.Y);
-
-            if (absX > absY)
-            {
-                // Horizontal movement
-                return new Vector2(motion.X > 0 ? _tileSize : -_tileSize, 0);
-            }
-            else if (absY > absX)
-            {
-                // Vertical movement
-                return new Vector2(0, motion.Y > 0 ? _tileSize : -_tileSize);
-            }
-
-            // No clear dominant direction or zero motion
-            return Vector2.Zero;
         }
 
         /// <summary>

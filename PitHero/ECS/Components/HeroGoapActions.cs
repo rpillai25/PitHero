@@ -4,7 +4,7 @@ using Nez;
 namespace PitHero.ECS.Components
 {
     /// <summary>
-    /// Simple test action that moves the hero left one tile at a time using TileByTileMover
+    /// Action that moves the hero left continuously using timed tile-based movement
     /// </summary>
     public class MoveLeftAction : HeroActionBase
     {
@@ -28,28 +28,24 @@ namespace PitHero.ECS.Components
                 return false;
             }
 
-            // Check if the mover is currently moving (prevents overlapping movements)
-            if (tileMover.IsMoving)
+            // If not currently moving, try to start moving left
+            if (!tileMover.IsMoving)
             {
-                // Still moving, action not complete
-                return false;
-            }
-
-            // Attempt to move one tile to the left
-            bool moveSuccessful = tileMover.TryMoveInDirection(Direction.Left);
-            
-            if (!moveSuccessful)
-            {
-                Debug.Log("[MoveLeft] Movement blocked - collision detected or invalid move");
-                // Movement was blocked, but action is considered complete
-                return true;
+                bool moveStarted = tileMover.StartMoving(Direction.Left);
+                
+                if (!moveStarted)
+                {
+                    Debug.Log("[MoveLeft] Movement blocked - collision detected");
+                    // Movement was blocked, action is complete
+                    return true;
+                }
+                
+                Debug.Log("[MoveLeft] Started moving left");
             }
             
-            Debug.Log("[MoveLeft] Successfully moved one tile left");
-            
-            // For now, this action completes after one tile movement
-            // In the future, this could be modified to continue moving until blocked
-            return true;
+            // Action continues as long as we're moving left
+            // This allows the movement to complete over multiple frames
+            return !tileMover.IsMoving || tileMover.CurrentDirection != Direction.Left;
         }
     }
 }

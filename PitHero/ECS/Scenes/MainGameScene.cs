@@ -130,6 +130,8 @@ namespace PitHero.ECS.Scenes
 
             // Add TileByTileMover for tile-based movement with trigger detection
             hero.AddComponent(new TileByTileMover());
+            var tileMover = hero.GetComponent<TileByTileMover>();
+            tileMover.MovementSpeed = GameConfig.HeroMovementSpeed; // Set desired speed in tiles per second
             Debug.Log("[MainGameScene] Added TileByTileMover to hero for tile-based movement");
 
             hero.AddComponent(new HeroComponent
