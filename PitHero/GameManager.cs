@@ -39,12 +39,10 @@ namespace PitHero
             var heroSystem = new HeroSystem();
             var pitSystem = new PitSystem();
             var townSystem = new TownSystem();
-            var replaySystem = new ReplaySystem();
             
             _systems.Add(heroSystem);
             _systems.Add(pitSystem);
             _systems.Add(townSystem);
-            _systems.Add(replaySystem);
             
             // Register systems with the event processor
             foreach (var system in _systems)
@@ -125,53 +123,9 @@ namespace PitHero
             // Note: Game time is managed by Nez.Time.TotalTime, no need to reset manually
             // _worldState.GameTime = 0.0; // Removed - use Nez.Time instead
             
-            // Spawn a single hero
-            SpawnHero(new Vector2(100, GameConfig.InternalWorldHeight / 2));
-        }
-        
-        /// <summary>
-        /// Start replay mode
-        /// </summary>
-        public void StartReplay(double startTime, double endTime)
-        {
-            var replaySystem = GetSystem<ReplaySystem>();
-            replaySystem?.StartReplay(_eventLog, startTime, endTime);
-        }
-        
-        /// <summary>
-        /// Start full replay from the beginning
-        /// </summary>
-        public void StartFullReplay()
-        {
-            var replaySystem = GetSystem<ReplaySystem>();
-            replaySystem?.StartFullReplay(_eventLog);
-        }
-        
-        /// <summary>
-        /// Stop replay mode
-        /// </summary>
-        public void StopReplay()
-        {
-            var replaySystem = GetSystem<ReplaySystem>();
-            replaySystem?.StopReplay();
-        }
-        
-        /// <summary>
-        /// Get replay world state for rendering
-        /// </summary>
-        public WorldState GetReplayWorldState()
-        {
-            var replaySystem = GetSystem<ReplaySystem>();
-            return replaySystem?.GetReplayWorldState();
-        }
-        
-        /// <summary>
-        /// Check if currently in replay mode
-        /// </summary>
-        public bool IsReplaying()
-        {
-            var replaySystem = GetSystem<ReplaySystem>();
-            return replaySystem?.IsReplaying ?? false;
+            // Spawn a single hero at the center of the map (world coordinates)
+            var centerPosition = new Vector2(10 * 64 + 32, 6 * 64 + 32); // Tile (10,6) center
+            SpawnHero(centerPosition);
         }
     }
 }

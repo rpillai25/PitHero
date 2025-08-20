@@ -18,33 +18,12 @@ namespace PitHero.Systems
             foreach (var hero in heroes)
             {
                 var heroComponent = hero.GetComponent<HeroComponent>();
-                
-                if (!heroComponent.IsAlive)
+                if (heroComponent == null || !heroComponent.IsAlive)
                     continue;
-                    
-                // Update hero position based on velocity
-                if (heroComponent.Velocity != Vector2.Zero)
-                {
-                    var newPosition = hero.Position + heroComponent.Velocity * deltaTime;
-                    
-                    // Keep hero within world bounds
-                    newPosition.X = MathHelper.Clamp(newPosition.X, 0, GameConfig.InternalWorldWidth - GameConfig.HeroWidth);
-                    newPosition.Y = MathHelper.Clamp(newPosition.Y, 0, GameConfig.InternalWorldHeight - GameConfig.HeroHeight);
-                    
-                    if (newPosition != hero.Position)
-                    {
-                        var oldPosition = hero.Position;
-                        hero.Position = newPosition;
-                        
-                        // Could emit a HeroMoveEvent here for detailed tracking
-                    }
-                }
-                
-                // Simple AI: heroes automatically move towards the right
-                if (heroComponent.Velocity == Vector2.Zero)
-                {
-                    heroComponent.Velocity = new Vector2(heroComponent.MoveSpeed, 0);
-                }
+
+                // Update GOAP agent instead of simple AI
+                var goapAgent = hero.GetComponent<HeroGoapAgent>();
+                goapAgent?.Update();
             }
         }
         
@@ -78,8 +57,12 @@ namespace PitHero.Systems
             var heroComponent = new HeroComponent
             {
                 Health = spawnEvent.Health,
-                MaxHealth = spawnEvent.Health
+                MaxHealth = spawnEvent.Health,
+                IsAtCenter = true // Hero starts at center
             };
+            
+            var historian = new Historian();
+            var goapAgent = new HeroGoapAgent();
             
             var renderComponent = new BasicRenderableComponent
             {
@@ -88,8 +71,15 @@ namespace PitHero.Systems
                 RenderHeight = GameConfig.HeroHeight
             };
             
+            // Add collider for trigger detection
+            var collider = new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight);
+            collider.PhysicsLayer = GameConfig.PhysicsHeroWorldLayer;
+            
             hero.AddComponent(heroComponent);
+            hero.AddComponent(historian);
+            hero.AddComponent(goapAgent);
             hero.AddComponent(renderComponent);
+            hero.AddComponent(collider);
             
             worldState.AddEntity(hero);
         }
@@ -113,6 +103,14 @@ namespace PitHero.Systems
             {
                 heroComponent.Health = 0f;
                 heroComponent.Velocity = Vector2.Zero;
+                
+                // Display milestone summary on death
+                var historian = hero.GetComponent<Historian>();
+                if (historian != null)
+                {
+                    var summary = historian.GenerateSummary();
+                    Debug.Log($"Hero died! {summary}");
+                }
                 
                 // Could change render color to indicate death
                 var renderComponent = hero.GetComponent<BasicRenderableComponent>();

@@ -96,6 +96,8 @@ namespace PitHero.ECS.Scenes
             fogOfWarLayerRenderer.SetLayerToRender("FogOfWar");
             baseLayerRenderer.SetRenderLayer(GameConfig.RenderLayerFogOfWar);
 
+            // Add FogOfWar helper component
+            tiledEntity.AddComponent<FogOfWarHelper>();
 
             // Configure camera zoom limits based on the loaded map
             _cameraController?.ConfigureZoomForMap(_mapPath);

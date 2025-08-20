@@ -84,26 +84,6 @@ namespace PitHero.Events
         }
         
         /// <summary>
-        /// Replay events from the event log (for replay functionality)
-        /// </summary>
-        public void ReplayEvents(double startTime, double endTime)
-        {
-            var events = _eventLog.GetEventsInTimeRange(startTime, endTime);
-            
-            foreach (var gameEvent in events)
-            {
-                // Process through all systems (but don't log again)
-                foreach (var system in _systems)
-                {
-                    if (system.Enabled)
-                    {
-                        system.ProcessEvent(gameEvent, _worldState);
-                    }
-                }
-            }
-        }
-        
-        /// <summary>
         /// Get all registered systems
         /// </summary>
         public IReadOnlyList<ISystem> GetSystems()
