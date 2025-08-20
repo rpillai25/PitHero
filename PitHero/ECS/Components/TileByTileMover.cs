@@ -47,6 +47,9 @@ namespace PitHero.ECS.Components
         public override void OnAddedToEntity()
         {
             _triggerHelper = new ColliderTriggerHelper(Entity);
+            
+            // Ensure the entity starts properly aligned to the tile grid
+            SnapToTileGrid();
         }
 
         public void Update()
@@ -181,14 +184,25 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Snap entity position to tile grid boundaries
+        /// Snap entity position to tile grid boundaries accounting for centered collider
         /// </summary>
         private void SnapToTileGrid()
         {
             var pos = Entity.Transform.Position;
-            var snappedX = System.Math.Round(pos.X / _tileSize) * _tileSize;
-            var snappedY = System.Math.Round(pos.Y / _tileSize) * _tileSize;
-            Entity.Transform.Position = new Vector2((float)snappedX, (float)snappedY);
+            
+            // Account for the centered collider offset when calculating tile position
+            var colliderCenterOffset = new Vector2(GameConfig.HeroWidth / 2f, GameConfig.HeroHeight / 2f);
+            var colliderTopLeft = pos - colliderCenterOffset;
+            
+            // Calculate which tile the collider's top-left should be in
+            var tileX = (int)System.Math.Floor(colliderTopLeft.X / _tileSize);
+            var tileY = (int)System.Math.Floor(colliderTopLeft.Y / _tileSize);
+            
+            // Position entity so collider aligns with tile boundaries
+            var tileCorner = new Vector2(tileX * _tileSize, tileY * _tileSize);
+            Entity.Transform.Position = tileCorner + colliderCenterOffset;
+            
+            Debug.Log($"[TileByTileMover] Snapped to tile grid: ({tileX},{tileY}) at world position ({Entity.Transform.Position.X},{Entity.Transform.Position.Y})");
         }
 
         /// <summary>
@@ -212,12 +226,14 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Get current tile coordinates of the entity
+        /// Get current tile coordinates of the entity based on collider position
         /// </summary>
         public Point GetCurrentTileCoordinates()
         {
             var pos = Entity.Transform.Position;
-            return new Point((int)(pos.X / _tileSize), (int)(pos.Y / _tileSize));
+            var colliderCenterOffset = new Vector2(GameConfig.HeroWidth / 2f, GameConfig.HeroHeight / 2f);
+            var colliderTopLeft = pos - colliderCenterOffset;
+            return new Point((int)System.Math.Floor(colliderTopLeft.X / _tileSize), (int)System.Math.Floor(colliderTopLeft.Y / _tileSize));
         }
     }
 

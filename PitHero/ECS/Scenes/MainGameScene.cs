@@ -120,7 +120,8 @@ namespace PitHero.ECS.Scenes
             var heroStart = HeroActionBase.GetMapCenterWorldPosition();
             var hero = CreateEntity("hero").SetPosition(heroStart);
 
-            hero.AddComponent(new PrototypeSpriteRenderer(20, 20));
+            hero.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
+            // Use centered collider constructor - this creates a collider centered on the entity
             var collider = hero.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));
             
             // Hero collides with both tilemap and pit layers

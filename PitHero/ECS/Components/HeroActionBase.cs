@@ -17,9 +17,17 @@ namespace PitHero.ECS.Components
 
         private static int TileSize => GameConfig.TileSize; // ensure single source of truth
 
+        /// <summary>
+        /// Position entity at tile corner adjusted for centered collider offset
+        /// This ensures the collider aligns perfectly with tile boundaries
+        /// </summary>
         public static Vector2 TileToWorldPosition(Point tileCoords)
         {
-            return new Vector2(tileCoords.X * TileSize + TileSize / 2f, tileCoords.Y * TileSize + TileSize / 2f);
+            // Position the entity so that when the centered collider is applied,
+            // the collider edges align with tile boundaries
+            var tileCorner = new Vector2(tileCoords.X * TileSize, tileCoords.Y * TileSize);
+            var colliderCenterOffset = new Vector2(GameConfig.HeroWidth / 2f, GameConfig.HeroHeight / 2f);
+            return tileCorner + colliderCenterOffset;
         }
 
         public static Vector2 GetPitCenterWorldPosition()
