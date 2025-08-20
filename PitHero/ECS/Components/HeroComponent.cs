@@ -12,14 +12,23 @@ namespace PitHero.ECS.Components
         public float MoveSpeed { get; set; } = GameConfig.HeroMoveSpeed;
 
         // Track whether hero is adjacent to or inside the pit
-        public bool IsAdjacentToPit { get; private set; }
-        public bool IsInsidePit { get; private set; }
+        public bool IsAdjacentToPit { get; set; }
+        public bool IsInsidePit { get; set; }
         public bool JustJumpedOutOfPit { get; set; }
         public bool IsAtCenter { get; set; }
 
         // Pit configuration - collision rectangle from (1,2) to (12,10), center at (6,6)
-        private readonly Rectangle _pitCollisionRect = new Rectangle(1, 2, 12, 9); // width=12-1+1=12, height=10-2+1=9
-        private readonly Point _pitCenter = new Point(6, 6);
+        private readonly Rectangle _pitCollisionRect = new Rectangle(
+            GameConfig.PitRectX,
+            GameConfig.PitRectY,
+            GameConfig.PitRectWidth,
+            GameConfig.PitRectHeight
+        );
+        private readonly Point _pitCenter = new Point(GameConfig.PitCenterTileX, GameConfig.PitCenterTileY);
+
+        // Helper: distance in tiles
+        private float DistanceTiles(Point a, Point b) =>
+            Vector2.Distance(new Vector2(a.X, a.Y), new Vector2(b.X, b.Y));
 
         public override void OnAddedToEntity()
         {
@@ -33,31 +42,27 @@ namespace PitHero.ECS.Components
         public override void OnTriggerEnter(Collider other, Collider local)
         {
             base.OnTriggerEnter(other, local);
+            if (!IsTileMapCollision(other))
+                return;
 
-            if (IsTileMapCollision(other))
+            var tileCoords = GetTileCoordinates(Entity.Transform.Position, GameConfig.TileSize);
+
+            var inside = _pitCollisionRect.Contains(tileCoords);
+            IsInsidePit = inside;
+
+            // Adjacent: NOT inside, but within radius from pit center
+            if (!inside)
             {
-                var heroPosition = Entity.Transform.Position;
-                var tileCoords = GetTileCoordinates(heroPosition);
+                var dist = DistanceTiles(tileCoords, _pitCenter);
+                IsAdjacentToPit = dist <= GameConfig.PitAdjacencyRadiusTiles;
+            }
 
-                // Check if the collider's tile is within the pit collision rectangle
-                if (_pitCollisionRect.Contains(tileCoords))
-                {
-                    IsAdjacentToPit = true;
-                    
-                    // If hero is exactly inside the pit area, mark as inside pit
-                    if (tileCoords.X >= _pitCollisionRect.X && tileCoords.X < _pitCollisionRect.X + _pitCollisionRect.Width &&
-                        tileCoords.Y >= _pitCollisionRect.Y && tileCoords.Y < _pitCollisionRect.Y + _pitCollisionRect.Height)
-                    {
-                        IsInsidePit = true;
-                        
-                        // Record milestone for first jump into pit
-                        var historian = Entity.GetComponent<Historian>();
-                        historian?.RecordMilestone(MilestoneType.FirstJumpIntoPit, Time.TotalTime);
-                        
-                        // Clear FogOfWar in 4 cardinal directions (side effect)
-                        ClearFogOfWarAroundPosition(tileCoords);
-                    }
-                }
+            if (inside)
+            {
+                // milestone + fog clear (as before)
+                var historian = Entity.GetComponent<Historian>();
+                historian?.RecordMilestone(MilestoneType.FirstJumpIntoPit, Time.TotalTime);
+                ClearFogOfWarAroundPosition(tileCoords);
             }
         }
 
@@ -67,26 +72,28 @@ namespace PitHero.ECS.Components
         public override void OnTriggerExit(Collider other, Collider local)
         {
             base.OnTriggerExit(other, local);
+            if (!IsTileMapCollision(other))
+                return;
 
-            if (IsTileMapCollision(other))
+            var tileCoords = GetTileCoordinates(Entity.Transform.Position, GameConfig.TileSize);
+
+            var inside = _pitCollisionRect.Contains(tileCoords);
+            IsInsidePit = inside;
+
+            if (!inside)
             {
-                var heroPosition = Entity.Transform.Position;
-                var tileCoords = GetTileCoordinates(heroPosition);
-
-                // Check if hero is leaving the pit area
-                if (!_pitCollisionRect.Contains(tileCoords))
+                // Leaving pit -> just jumped out
+                if (JustJumpedOutOfPit == false && IsInsidePit) // (preceding value) handled above
                 {
-                    if (IsInsidePit)
-                    {
-                        IsInsidePit = false;
-                        JustJumpedOutOfPit = true;
-                        
-                        // Record milestone for first jump out of pit
-                        var historian = Entity.GetComponent<Historian>();
-                        historian?.RecordMilestone(MilestoneType.FirstJumpOutOfPit, Time.TotalTime);
-                    }
-                    IsAdjacentToPit = false;
+                    JustJumpedOutOfPit = true;
+                    var historian = Entity.GetComponent<Historian>();
+                    historian?.RecordMilestone(MilestoneType.FirstJumpOutOfPit, Time.TotalTime);
                 }
+
+                var dist = DistanceTiles(tileCoords, _pitCenter);
+                IsAdjacentToPit = dist <= GameConfig.PitAdjacencyRadiusTiles;
+                if (dist > GameConfig.PitAdjacencyRadiusTiles)
+                    IsAdjacentToPit = false;
             }
         }
 
@@ -118,8 +125,10 @@ namespace PitHero.ECS.Components
         /// </summary>
         public bool CheckAdjacentToPit(Vector2 position)
         {
-            var tileCoords = GetTileCoordinates(position);
-            return _pitCollisionRect.Contains(tileCoords);
+            var tile = GetTileCoordinates(position, GameConfig.TileSize);
+            if (_pitCollisionRect.Contains(tile))
+                return false; // inside is not "adjacent"
+            return DistanceTiles(tile, _pitCenter) <= GameConfig.PitAdjacencyRadiusTiles;
         }
 
         /// <summary>
@@ -127,9 +136,8 @@ namespace PitHero.ECS.Components
         /// </summary>
         public bool CheckInsidePit(Vector2 position)
         {
-            var tileCoords = GetTileCoordinates(position);
-            return tileCoords.X >= _pitCollisionRect.X && tileCoords.X < _pitCollisionRect.X + _pitCollisionRect.Width &&
-                   tileCoords.Y >= _pitCollisionRect.Y && tileCoords.Y < _pitCollisionRect.Y + _pitCollisionRect.Height;
+            var tile = GetTileCoordinates(position, GameConfig.TileSize);
+            return _pitCollisionRect.Contains(tile);
         }
 
         /// <summary>

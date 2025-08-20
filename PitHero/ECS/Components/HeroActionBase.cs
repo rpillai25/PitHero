@@ -13,56 +13,44 @@ namespace PitHero.ECS.Components
         {
         }
 
-        /// <summary>
-        /// Execute the action. Returns true when action is complete.
-        /// </summary>
         public abstract bool Execute(HeroComponent hero);
 
-        /// <summary>
-        /// Helper method to move hero towards a target position
-        /// </summary>
         protected bool MoveTowards(HeroComponent hero, Vector2 targetPosition, float deltaTime)
         {
             var currentPosition = hero.Entity.Transform.Position;
-            var direction = Vector2.Normalize(targetPosition - currentPosition);
-            var distance = Vector2.Distance(currentPosition, targetPosition);
+            var toTarget = targetPosition - currentPosition;
+            var distance = toTarget.Length();
 
-            if (distance < 5f) // Close enough threshold
+            if (distance < 5f)
             {
                 hero.Entity.Transform.Position = targetPosition;
-                return true; // Reached target
+                return true;
             }
 
-            // Move towards target
-            var movement = direction * hero.MoveSpeed * deltaTime;
-            hero.Entity.Transform.Position = currentPosition + movement;
-            
-            return false; // Still moving
+            if (distance > 0.0001f)
+            {
+                var direction = toTarget / distance;
+                var movement = direction * hero.MoveSpeed * deltaTime;
+                // Clamp so we don’t overshoot
+                if (movement.Length() > distance)
+                    movement = direction * distance;
+                hero.Entity.Transform.Position = currentPosition + movement;
+            }
+
+            return false;
         }
 
-        /// <summary>
-        /// Convert tile coordinates to world position
-        /// </summary>
-        protected Vector2 TileToWorldPosition(Point tileCoords, int tileSize = 64)
+        private static int TileSize => GameConfig.TileSize; // ensure single source of truth
+
+        public static Vector2 TileToWorldPosition(Point tileCoords)
         {
-            return new Vector2(tileCoords.X * tileSize + tileSize / 2, tileCoords.Y * tileSize + tileSize / 2);
+            return new Vector2(tileCoords.X * TileSize + TileSize / 2f, tileCoords.Y * TileSize + TileSize / 2f);
         }
 
-        /// <summary>
-        /// Get world position of pit center
-        /// </summary>
-        protected Vector2 GetPitCenterWorldPosition()
-        {
-            return TileToWorldPosition(new Point(6, 6));
-        }
+        public static Vector2 GetPitCenterWorldPosition()
+            => TileToWorldPosition(new Point(GameConfig.PitCenterTileX, GameConfig.PitCenterTileY));
 
-        /// <summary>
-        /// Get world position of map center
-        /// </summary>
-        protected Vector2 GetMapCenterWorldPosition()
-        {
-            // Assuming map center is at tile (10, 6) - adjust as needed
-            return TileToWorldPosition(new Point(10, 6));
-        }
+        public static Vector2 GetMapCenterWorldPosition()
+            => TileToWorldPosition(new Point(GameConfig.MapCenterTileX, GameConfig.MapCenterTileY));
     }
 }

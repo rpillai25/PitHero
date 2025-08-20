@@ -3,49 +3,45 @@ using Nez;
 
 namespace PitHero.ECS.Components
 {
-    /// <summary>
-    /// GOAP Action: Move from center to adjacent to pit
-    /// </summary>
     public class MoveToPitAction : HeroActionBase
     {
         public MoveToPitAction() : base("MoveToPit", 2)
         {
-            // Precondition: Hero is at center
+            // Removed strict IsAtCenter precondition so we can approach pit from anywhere not already adjacent/inside
+            SetPrecondition("IsInsidePit", false);
+            SetPrecondition("IsAdjacentToPit", false);
             SetPrecondition("IsAtCenter", true);
-            
-            // Effect: Hero is adjacent to pit
-            SetPostcondition("IsAtCenter", false);
+            SetPrecondition("JustOut", false);
+
             SetPostcondition("IsAdjacentToPit", true);
+            SetPostcondition("IsAtCenter", false);
         }
 
         public override bool Execute(HeroComponent hero)
         {
-            var pitCenterPosition = GetPitCenterWorldPosition();
+            if (hero.IsInsidePit) return true; // Shouldn't happen due to preconditions; fail-safe
             
-            // Move towards the pit center (which should trigger adjacency)
-            var moved = MoveTowards(hero, pitCenterPosition, Time.DeltaTime);
-            
-            if (moved || hero.IsAdjacentToPit)
+            var pit = GetPitCenterWorldPosition();
+            var done = MoveTowards(hero, pit, Time.DeltaTime);
+
+            // Acquire adjacency using tile helper (more exact)
+            if (!hero.IsAdjacentToPit && hero.CheckAdjacentToPit(hero.Entity.Transform.Position))
+                hero.IsAdjacentToPit = true;
+
+            if (hero.IsAdjacentToPit || done)
             {
                 hero.IsAtCenter = false;
-                return true; // Action completed
+                return true;
             }
-            
-            return false; // Still moving
+            return false;
         }
     }
 
-    /// <summary>
-    /// GOAP Action: Jump into the pit
-    /// </summary>
     public class JumpIntoPitAction : HeroActionBase
     {
         public JumpIntoPitAction() : base("JumpIntoPit", 1)
         {
-            // Precondition: Hero is adjacent to pit
             SetPrecondition("IsAdjacentToPit", true);
-            
-            // Effect: Hero is inside pit
             SetPostcondition("IsAdjacentToPit", false);
             SetPostcondition("IsInsidePit", true);
         }
@@ -55,36 +51,26 @@ namespace PitHero.ECS.Components
             if (!hero.IsAdjacentToPit)
                 return false;
 
-            // Calculate jump destination (towards pit center)
             var currentPosition = hero.Entity.Transform.Position;
             var pitCenter = GetPitCenterWorldPosition();
-            var jumpDirection = Vector2.Normalize(pitCenter - currentPosition);
-            var jumpDistance = 96f; // Jump over collision tile (1.5 tiles)
-            
-            var jumpTarget = currentPosition + jumpDirection * jumpDistance;
-            
-            // Perform the jump (instant teleport for simplicity)
-            hero.Entity.Transform.Position = jumpTarget;
-            
-            // Record milestone
-            var historian = hero.Entity.GetComponent<Historian>();
-            historian?.RecordMilestone(MilestoneType.FirstJumpIntoPit, Time.TotalTime);
-            
-            return true; // Action completed
+            var dir = Vector2.Normalize(pitCenter - currentPosition);
+            var jumpDistance = 96f;
+
+            hero.Entity.Transform.Position = currentPosition + dir * jumpDistance;
+            hero.IsInsidePit = true;
+
+            hero.Entity.GetComponent<Historian>()?
+                .RecordMilestone(MilestoneType.FirstJumpIntoPit, Time.TotalTime);
+
+            return true;
         }
     }
 
-    /// <summary>
-    /// GOAP Action: Jump out of the pit
-    /// </summary>
     public class JumpOutOfPitAction : HeroActionBase
     {
         public JumpOutOfPitAction() : base("JumpOutOfPit", 1)
         {
-            // Precondition: Hero is inside pit
             SetPrecondition("IsInsidePit", true);
-            
-            // Effect: Hero is adjacent to pit and just jumped out
             SetPostcondition("IsInsidePit", false);
             SetPostcondition("JustJumpedOutOfPit", true);
         }
@@ -94,62 +80,49 @@ namespace PitHero.ECS.Components
             if (!hero.IsInsidePit)
                 return false;
 
-            // Jump to an adjacent tile outside the collision rectangle
-            var currentPosition = hero.Entity.Transform.Position;
+            var current = hero.Entity.Transform.Position;
             var mapCenter = GetMapCenterWorldPosition();
-            var jumpDirection = Vector2.Normalize(mapCenter - currentPosition);
-            var jumpDistance = 128f; // Jump outside pit collision area (2 tiles)
-            
-            var jumpTarget = currentPosition + jumpDirection * jumpDistance;
-            
-            // Perform the jump (instant teleport for simplicity)
-            hero.Entity.Transform.Position = jumpTarget;
-            
+            var dir = Vector2.Normalize(mapCenter - current);
+            var jumpDistance = 128f;
+
+            hero.Entity.Transform.Position = current + dir * jumpDistance;
+            hero.IsInsidePit = false;
             hero.JustJumpedOutOfPit = true;
-            
-            // Record milestone
-            var historian = hero.Entity.GetComponent<Historian>();
-            historian?.RecordMilestone(MilestoneType.FirstJumpOutOfPit, Time.TotalTime);
-            
-            return true; // Action completed
+
+            hero.Entity.GetComponent<Historian>()?
+                .RecordMilestone(MilestoneType.FirstJumpOutOfPit, Time.TotalTime);
+
+            return true;
         }
     }
 
-    /// <summary>
-    /// GOAP Action: Move from pit area back to center
-    /// </summary>
     public class MoveToCenterAction : HeroActionBase
     {
         public MoveToCenterAction() : base("MoveToCenter", 2)
         {
-            // Precondition: Just jumped out of pit
             SetPrecondition("JustJumpedOutOfPit", true);
-            
-            // Effect: Hero is at center
             SetPostcondition("JustJumpedOutOfPit", false);
             SetPostcondition("IsAtCenter", true);
         }
 
         public override bool Execute(HeroComponent hero)
         {
-            var centerPosition = GetMapCenterWorldPosition();
-            
-            // Move towards the center
-            var moved = MoveTowards(hero, centerPosition, Time.DeltaTime);
-            
-            if (moved)
+            var center = GetMapCenterWorldPosition();
+            var reached = MoveTowards(hero, center, Time.DeltaTime);
+
+            if (Vector2.Distance(hero.Entity.Transform.Position, center) <= 12f)
+                reached = true;
+
+            if (reached)
             {
                 hero.IsAtCenter = true;
                 hero.JustJumpedOutOfPit = false;
-                
-                // Record milestone
-                var historian = hero.Entity.GetComponent<Historian>();
-                historian?.RecordMilestone(MilestoneType.ReturnedToCenter, Time.TotalTime);
-                
-                return true; // Action completed
+                hero.Entity.GetComponent<Historian>()?
+                    .RecordMilestone(MilestoneType.ReturnedToCenter, Time.TotalTime);
+                return true;
             }
-            
-            return false; // Still moving
+
+            return false;
         }
     }
 }

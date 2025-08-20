@@ -1,103 +1,85 @@
-using System.Collections.Generic;
-using Microsoft.Xna.Framework;
 using Nez;
 using Nez.AI.GOAP;
+using GoapWorldState = Nez.AI.GOAP.WorldState;
 
 namespace PitHero.ECS.Components
 {
-    /// <summary>
-    /// GOAP Agent component for Hero AI
-    /// </summary>
-    public class HeroGoapAgent : Component
+    public class HeroGoapAgent : Component, IUpdatable
     {
-        private Agent _agent;
-        private HeroComponent _heroComponent;
+        private HeroAgent _agent;
+        private HeroComponent _hero;
         private Historian _historian;
 
         public override void OnAddedToEntity()
         {
-            base.OnAddedToEntity();
-            
-            _heroComponent = Entity.GetComponent<HeroComponent>();
+            _hero = Entity.GetComponent<HeroComponent>();
             _historian = Entity.GetComponent<Historian>();
-            
-            // Initialize GOAP agent with actions
-            _agent = new HeroAgent(_heroComponent, _historian);
+            _agent = new HeroAgent(_hero, _historian);
         }
 
         public void Update()
         {
-            if (_agent != null)
-            {
-                // Plan and execute actions
-                if (!_agent.HasActionPlan())
-                {
-                    var hasPlans = _agent.Plan();
-                    if (!hasPlans)
-                    {
-                        // No valid plan found, wait or create default behavior
-                        return;
-                    }
-                }
+            if (_agent == null || _hero == null)
+                return;
 
-                // Execute current action
-                if (_agent.HasActionPlan())
+            if (!_agent.HasActionPlan())
+            {
+                if (_agent.Plan())
                 {
-                    var currentAction = _agent.Actions.Peek();
-                    if (currentAction is HeroActionBase heroAction)
-                    {
-                        if (heroAction.Execute(_heroComponent))
-                        {
-                            // Action completed, remove from stack
-                            _agent.Actions.Pop();
-                        }
-                    }
+                    Debug.Log($"[GOAP] Plan: {string.Join(" -> ", _agent.Actions)}");
                 }
+                else
+                {
+                    var h = _hero;
+                    Debug.Log($"[GOAP] No plan. Flags: Inside={h.IsInsidePit} Adjacent={h.IsAdjacentToPit} AtCenter={h.IsAtCenter} JustOut={h.JustJumpedOutOfPit}");
+                    Debug.Log($"[GOAP] Actions Spec:\n{_agent.DescribePlanner()}");
+                }
+            }
+
+            if (_agent.HasActionPlan())
+            {
+                var action = _agent.Actions.Peek();
+                if (action is HeroActionBase heroAction && heroAction.Execute(_hero))
+                    _agent.Actions.Pop();
             }
         }
     }
 
-    /// <summary>
-    /// Concrete GOAP Agent implementation for Hero
-    /// </summary>
     public class HeroAgent : Agent
     {
-        private readonly HeroComponent _heroComponent;
+        private readonly HeroComponent _hero;
         private readonly Historian _historian;
 
-        public HeroAgent(HeroComponent heroComponent, Historian historian)
+        public HeroAgent(HeroComponent hero, Historian historian)
         {
-            _heroComponent = heroComponent;
+            _hero = hero;
             _historian = historian;
 
-            // Add all available actions
             _planner.AddAction(new MoveToPitAction());
             _planner.AddAction(new JumpIntoPitAction());
             _planner.AddAction(new JumpOutOfPitAction());
             _planner.AddAction(new MoveToCenterAction());
         }
 
-        public override Nez.AI.GOAP.WorldState GetWorldState()
+        public override GoapWorldState GetWorldState()
         {
-            var worldState = Nez.AI.GOAP.WorldState.Create(_planner);
-            
-            // Set current state based on hero position and status
-            worldState.Set("IsAtCenter", _heroComponent.IsAtCenter);
-            worldState.Set("IsAdjacentToPit", _heroComponent.IsAdjacentToPit);
-            worldState.Set("IsInsidePit", _heroComponent.IsInsidePit);
-            worldState.Set("JustJumpedOutOfPit", _heroComponent.JustJumpedOutOfPit);
-            
-            return worldState;
+            var ws = GoapWorldState.Create(_planner);
+            ws.Set("IsAtCenter", _hero.IsAtCenter);
+            ws.Set("IsAdjacentToPit", _hero.IsAdjacentToPit);
+            ws.Set("IsInsidePit", _hero.IsInsidePit);
+            ws.Set("JustJumpedOutOfPit", _hero.JustJumpedOutOfPit);
+            return ws;
         }
 
-        public override Nez.AI.GOAP.WorldState GetGoalState()
+        public override GoapWorldState GetGoalState()
         {
-            var goalState = Nez.AI.GOAP.WorldState.Create(_planner);
-            
-            // Goal: Return to center after jumping out of pit
-            goalState.Set("IsAtCenter", true);
-            
-            return goalState;
+            var goal = GoapWorldState.Create(_planner);
+            goal.Set("IsAtCenter", true);
+            return goal;
         }
+
+        // Debug helpers
+        public string DescribePlanner() => _planner.Describe();
+        public string DescribeCurrentState() => GetWorldState().Describe(_planner);
     }
 }
