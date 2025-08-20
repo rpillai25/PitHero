@@ -128,20 +128,9 @@ namespace PitHero.ECS.Scenes
             Flags.SetFlag(ref collider.CollidesWithLayers, GameConfig.PhysicsPitLayer);
             Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
 
-            // Add TiledMapMover for collision handling
-            if (_tmxMap != null)
-            {
-                var collisionLayer = _tmxMap.GetLayer<TmxLayer>("Collision");
-                if (collisionLayer != null)
-                {
-                    var tiledMover = hero.AddComponent(new TiledMapMover(collisionLayer));
-                    Debug.Log("[MainGameScene] Added TiledMapMover to hero with collision layer");
-                }
-                else
-                {
-                    Debug.Warn("[MainGameScene] Could not find 'Collision' layer in tilemap for TiledMapMover");
-                }
-            }
+            // Add TileByTileMover for tile-based movement with trigger detection
+            hero.AddComponent(new TileByTileMover());
+            Debug.Log("[MainGameScene] Added TileByTileMover to hero for tile-based movement");
 
             hero.AddComponent(new HeroComponent
             {

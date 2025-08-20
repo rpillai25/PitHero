@@ -1,11 +1,10 @@
 using Microsoft.Xna.Framework;
 using Nez;
-using Nez.Tiled;
 
 namespace PitHero.ECS.Components
 {
     /// <summary>
-    /// Simple test action that moves the hero left indefinitely using TiledMapMover for collision handling
+    /// Simple test action that moves the hero left one tile at a time using TileByTileMover
     /// </summary>
     public class MoveLeftAction : HeroActionBase
     {
@@ -20,34 +19,37 @@ namespace PitHero.ECS.Components
 
         public override bool Execute(HeroComponent hero)
         {
-            // Get the TiledMapMover component from the hero entity
-            var tiledMover = hero.Entity.GetComponent<TiledMapMover>();
-            var boxCollider = hero.Entity.GetComponent<BoxCollider>();
+            // Get the TileByTileMover component from the hero entity
+            var tileMover = hero.Entity.GetComponent<TileByTileMover>();
             
-            if (tiledMover == null || boxCollider == null)
+            if (tileMover == null)
             {
-                Debug.Warn("MoveLeftAction: Hero entity missing TiledMapMover or BoxCollider component");
+                Debug.Warn("MoveLeftAction: Hero entity missing TileByTileMover component");
                 return false;
             }
 
-            // Create movement vector pointing left
-            var movement = new Vector2(-hero.MoveSpeed * Time.DeltaTime, 0);
-            
-            // Create collision state for the TiledMapMover
-            var collisionState = new TiledMapMover.CollisionState();
-            
-            // Use TiledMapMover to move the hero left with collision detection
-            tiledMover.Move(movement, boxCollider, collisionState);
-            
-            // Log collision info for debugging
-            if (collisionState.HasCollision)
+            // Check if the mover is currently moving (prevents overlapping movements)
+            if (tileMover.IsMoving)
             {
-                Debug.Log($"[MoveLeft] Collision detected: Left={collisionState.Left}, Right={collisionState.Right}, Above={collisionState.Above}, Below={collisionState.Below}");
+                // Still moving, action not complete
+                return false;
+            }
+
+            // Attempt to move one tile to the left
+            bool moveSuccessful = tileMover.TryMoveInDirection(Direction.Left);
+            
+            if (!moveSuccessful)
+            {
+                Debug.Log("[MoveLeft] Movement blocked - collision detected or invalid move");
+                // Movement was blocked, but action is considered complete
+                return true;
             }
             
-            // This action continues indefinitely (never returns true)
-            // The hero will keep moving left until stopped by collision
-            return false;
+            Debug.Log("[MoveLeft] Successfully moved one tile left");
+            
+            // For now, this action completes after one tile movement
+            // In the future, this could be modified to continue moving until blocked
+            return true;
         }
     }
 }

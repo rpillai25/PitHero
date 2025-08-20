@@ -42,6 +42,15 @@ namespace PitHero.ECS.Components
         public override void OnTriggerEnter(Collider other, Collider local)
         {
             base.OnTriggerEnter(other, local);
+            
+            // Handle pit trigger separately from tilemap
+            if (other.PhysicsLayer == GameConfig.PhysicsPitLayer)
+            {
+                HandlePitTriggerEnter();
+                return;
+            }
+            
+            // Handle tilemap triggers for position tracking
             if (!IsTileMapCollision(other))
                 return;
 
@@ -72,6 +81,14 @@ namespace PitHero.ECS.Components
         public override void OnTriggerExit(Collider other, Collider local)
         {
             base.OnTriggerExit(other, local);
+            
+            // Handle pit trigger separately
+            if (other.PhysicsLayer == GameConfig.PhysicsPitLayer)
+            {
+                HandlePitTriggerExit();
+                return;
+            }
+            
             if (!IsTileMapCollision(other))
                 return;
 
@@ -83,7 +100,7 @@ namespace PitHero.ECS.Components
             if (!inside)
             {
                 // Leaving pit -> just jumped out
-                if (JustJumpedOutOfPit == false && IsInsidePit) // (preceding value) handled above
+                if (JustJumpedOutOfPit == false && IsInsidePit)
                 {
                     JustJumpedOutOfPit = true;
                     var historian = Entity.GetComponent<Historian>();
@@ -95,6 +112,32 @@ namespace PitHero.ECS.Components
                 if (dist > GameConfig.PitAdjacencyRadiusTiles)
                     IsAdjacentToPit = false;
             }
+        }
+
+        private void HandlePitTriggerEnter()
+        {
+            IsInsidePit = true;
+            IsAdjacentToPit = false;
+            
+            var historian = Entity.GetComponent<Historian>();
+            historian?.RecordMilestone(MilestoneType.FirstJumpIntoPit, Time.TotalTime);
+            
+            var tileCoords = GetTileCoordinates(Entity.Transform.Position, GameConfig.TileSize);
+            ClearFogOfWarAroundPosition(tileCoords);
+        }
+
+        private void HandlePitTriggerExit()
+        {
+            IsInsidePit = false;
+            JustJumpedOutOfPit = true;
+            
+            var historian = Entity.GetComponent<Historian>();
+            historian?.RecordMilestone(MilestoneType.FirstJumpOutOfPit, Time.TotalTime);
+            
+            // Check if we're still adjacent
+            var tileCoords = GetTileCoordinates(Entity.Transform.Position, GameConfig.TileSize);
+            var dist = DistanceTiles(tileCoords, _pitCenter);
+            IsAdjacentToPit = dist <= GameConfig.PitAdjacencyRadiusTiles;
         }
 
         /// <summary>
