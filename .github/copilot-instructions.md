@@ -13,6 +13,8 @@
   - All components inherit from `Nez.Component`
   - Systems like `HeroSystem`, `PitSystem`, `TownSystem`, and `ReplaySystem` process events
   - Use `Nez.RenderableComponent` or custom extensions for rendering
+  - Hero has a collider whose PhysicsLayer is GameConfig.PhysicsHeroWorldLayer.  The PhysicsLayer determines which colliders collide with this
+  - Hero collider currently collides with TileMap (GameConfig.PhysicsTileMapLayer)
 - Architecture constraints:
   - **Single Hero**: There is only ever 1 active hero at a time (no multiple heroes)
   - **Single Pit**: There is only ever 1 active pit with configured size (not random size)

@@ -56,10 +56,15 @@ namespace PitHero.ECS.Scenes
                 LoadMap();
                 
                 // Add other entities/components after map is loaded
-                CreateEntity("demo-entity")
+                var hero = CreateEntity(GameConfig.EntityHero)
                     .SetPosition(new Vector2(500, 150))
                     .AddComponent(new PrototypeSpriteRenderer(20, 20));
-                
+                var heroCollider = hero.AddComponent<BoxCollider>();
+                //Meant for colliders that hero can move into
+                Flags.SetFlagExclusive(ref heroCollider.CollidesWithLayers, GameConfig.PhysicsTileMapLayer);
+                Flags.SetFlagExclusive(ref heroCollider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
+
+
                 _isInitializationComplete = true;
             }
         }

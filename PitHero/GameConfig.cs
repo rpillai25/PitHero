@@ -55,10 +55,18 @@ namespace PitHero
 
         // Tags
         public const int TAG_TILEMAP = 1; // Tag for tilemap entities
+        public const int TAG_HERO = 2; // Tag for hero entity
 
         // Render Layers (the lower the number, the higher the layer)
         public const int RenderLayerBase = 100; // Background layer
         public const int RenderLayerActors = 50; // Actors and entities layer
         public const int RenderLayerFogOfWar = 1;   // Fog of war layer above everything
+
+        // Physic Layers (determins which layer an entity is on for collision)
+        public const int PhysicsTileMapLayer = 0;   // Tilemap "Collision" layer
+        public const int PhysicsHeroWorldLayer = 1; // Hero layer for collision
+
+        // Entity names
+        public const string EntityHero = "Hero";
     }
 }
