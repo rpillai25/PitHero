@@ -67,7 +67,8 @@ namespace PitHero.ECS.Scenes
         private void SpawnPit()
         {
             var pitEntity = CreateEntity("pit");
-            
+            pitEntity.Tag = GameConfig.TAG_PIT;
+
             // Calculate pit bounds in world coordinates with padding
             var pitWorldBounds = CalculatePitWorldBounds();
             
@@ -85,6 +86,7 @@ namespace PitHero.ECS.Scenes
             // Add trigger collider covering the pit area
             var pitCollider = pitEntity.AddComponent(new BoxCollider(pitWorldBounds.Width, pitWorldBounds.Height));
             pitCollider.IsTrigger = true; // Make it a trigger so it doesn't block movement
+            Flags.SetFlag(ref pitCollider.CollidesWithLayers, GameConfig.PhysicsHeroWorldLayer);
             Flags.SetFlagExclusive(ref pitCollider.PhysicsLayer, GameConfig.PhysicsPitLayer);
 
             // Add controller component

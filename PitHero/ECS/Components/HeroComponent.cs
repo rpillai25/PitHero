@@ -44,7 +44,7 @@ namespace PitHero.ECS.Components
             base.OnTriggerEnter(other, local);
             
             // Handle pit trigger separately from tilemap
-            if (other.PhysicsLayer == GameConfig.PhysicsPitLayer)
+            if (other.Entity.Tag == GameConfig.TAG_PIT)
             {
                 HandlePitTriggerEnter();
                 return;
