@@ -16,6 +16,9 @@ namespace PitHero
         {
             base.Initialize();
 
+            // Disable pausing when focus is lost - essential for idle game behavior
+            PauseOnFocusLost = false;
+
             var scene = new TitleScreenScene();
             scene.ClearColor = Color.CornflowerBlue;   // Set background
             // Optional: letterbox bars (if any) also blue
