@@ -78,13 +78,19 @@ namespace PitHero.ECS.Scenes
             tiledEntity.SetTag(GameConfig.TAG_TILEMAP);
 
             // Add TiledMapRenderer, specifying the collision layer
-            var tiledMapRenderer = tiledEntity.AddComponent(new TiledMapRenderer(tmxMap, "Collision"));
+            var baseLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(tmxMap, "Collision"));
             // Only render the "Base" layer (do not render "Collision" layer)
-            tiledMapRenderer.SetLayerToRender("Base");
+            baseLayerRenderer.SetLayerToRender("Base");
             // Optionally set render layer, material, or effect if needed:
-            // tiledMapRenderer.RenderLayer = 10;
-            // tiledMapRenderer.Material = Material.StencilWrite(1);
-            // tiledMapRenderer.Material.Effect = Core.Content.LoadNezEffect<SpriteAlphaTestEffect>();
+            baseLayerRenderer.RenderLayer = GameConfig.RenderLayerBase;
+            // baseLayerRenderer.Material = Material.StencilWrite(1);
+            // baseLayerRenderer.Material.Effect = Core.Content.LoadNezEffect<SpriteAlphaTestEffect>();
+
+            var fogOfWarLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(tmxMap));
+            // Set the fog of war layer to render the "FogOfWar" layer
+            fogOfWarLayerRenderer.SetLayerToRender("FogOfWar");
+            baseLayerRenderer.SetRenderLayer(GameConfig.RenderLayerFogOfWar);
+
 
             // Configure camera zoom limits based on the loaded map
             _cameraController?.ConfigureZoomForMap(_mapPath);

@@ -55,5 +55,10 @@ namespace PitHero
 
         // Tags
         public const int TAG_TILEMAP = 1; // Tag for tilemap entities
+
+        // Render Layers (the lower the number, the higher the layer)
+        public const int RenderLayerBase = 100; // Background layer
+        public const int RenderLayerActors = 50; // Actors and entities layer
+        public const int RenderLayerFogOfWar = 1;   // Fog of war layer above everything
     }
 }

@@ -21,6 +21,10 @@
   - **Nez Boilerplate**: Keep Program.cs as standard Nez boilerplate (FNA setup)
 - Rendering/UI:
   - Live strip renders current `WorldState`
+  - TileMap Layers
+    - `Base`: The lowest layer
+    - `Collision`: The collision layer	
+	- `FogOfWar`: The FogOfWar layer (4 surrounding FogOfWar tiles cleared whenever Hero lands on tile underneath)
   - Replay overlay renders events from `EventLog` without altering live state
 - Keep all constants (sizes, positions, movement speeds) in `GameConfig.cs`
 - Maintain integer scaling for pixel-perfect rendering
