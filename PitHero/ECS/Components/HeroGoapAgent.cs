@@ -8,13 +8,11 @@ namespace PitHero.ECS.Components
     {
         private HeroAgent _agent;
         private HeroComponent _hero;
-        private Historian _historian;
 
         public override void OnAddedToEntity()
         {
             _hero = Entity.GetComponent<HeroComponent>();
-            _historian = Entity.GetComponent<Historian>();
-            _agent = new HeroAgent(_hero, _historian);
+            _agent = new HeroAgent(_hero);
         }
 
         public void Update()
@@ -26,13 +24,11 @@ namespace PitHero.ECS.Components
             {
                 if (_agent.Plan())
                 {
-                    Debug.Log($"[GOAP] Plan: {string.Join(" -> ", _agent.Actions)}");
+                    Debug.Log($"[GOAP] Plan created: {string.Join(" -> ", _agent.Actions)}");
                 }
                 else
                 {
-                    var h = _hero;
-                    Debug.Log($"[GOAP] No plan. Flags: Inside={h.IsInsidePit} Adjacent={h.IsAdjacentToPit} AtCenter={h.IsAtCenter} JustOut={h.JustJumpedOutOfPit}");
-                    Debug.Log($"[GOAP] Actions Spec:\n{_agent.DescribePlanner()}");
+                    Debug.Log($"[GOAP] No plan found. Current state: {_agent.DescribeCurrentState()}");
                 }
             }
 
@@ -48,33 +44,35 @@ namespace PitHero.ECS.Components
     public class HeroAgent : Agent
     {
         private readonly HeroComponent _hero;
-        private readonly Historian _historian;
 
-        public HeroAgent(HeroComponent hero, Historian historian)
+        public HeroAgent(HeroComponent hero)
         {
             _hero = hero;
-            _historian = historian;
 
-            _planner.AddAction(new MoveToPitAction());
-            _planner.AddAction(new JumpIntoPitAction());
-            _planner.AddAction(new JumpOutOfPitAction());
-            _planner.AddAction(new MoveToCenterAction());
+            // Only add the MoveLeft action
+            _planner.AddAction(new MoveLeftAction());
         }
 
         public override GoapWorldState GetWorldState()
         {
             var ws = GoapWorldState.Create(_planner);
-            ws.Set("IsAtCenter", _hero.IsAtCenter);
-            ws.Set("IsAdjacentToPit", _hero.IsAdjacentToPit);
-            ws.Set("IsInsidePit", _hero.IsInsidePit);
-            ws.Set("JustJumpedOutOfPit", _hero.JustJumpedOutOfPit);
+            
+            // Set the hero as initialized (always true once the component is added)
+            ws.Set("HeroInitialized", true);
+            
+            // Set moving left state (initially false)
+            ws.Set("MovingLeft", false);
+            
             return ws;
         }
 
         public override GoapWorldState GetGoalState()
         {
             var goal = GoapWorldState.Create(_planner);
-            goal.Set("IsAtCenter", true);
+            
+            // Goal is to be moving left
+            goal.Set("MovingLeft", true);
+            
             return goal;
         }
 

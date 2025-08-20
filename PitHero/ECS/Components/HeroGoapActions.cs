@@ -1,127 +1,52 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using Nez.Tiled;
 
 namespace PitHero.ECS.Components
 {
-    public class MoveToPitAction : HeroActionBase
+    /// <summary>
+    /// Simple test action that moves the hero left indefinitely using TiledMapMover for collision handling
+    /// </summary>
+    public class MoveLeftAction : HeroActionBase
     {
-        public MoveToPitAction() : base("MoveToPit", 2)
+        public MoveLeftAction() : base("MoveLeft", 1)
         {
-            // Removed strict IsAtCenter precondition so we can approach pit from anywhere not already adjacent/inside
-            SetPrecondition("IsInsidePit", false);
-            SetPrecondition("IsAdjacentToPit", false);
-            SetPrecondition("IsAtCenter", true);
-            SetPrecondition("JustOut", false);
-
-            SetPostcondition("IsAdjacentToPit", true);
-            SetPostcondition("IsAtCenter", false);
-        }
-
-        public override bool Execute(HeroComponent hero)
-        {
-            if (hero.IsInsidePit) return true; // Shouldn't happen due to preconditions; fail-safe
+            // Only precondition is that the hero entity has been initialized
+            SetPrecondition("HeroInitialized", true);
             
-            var pit = GetPitCenterWorldPosition();
-            var done = MoveTowards(hero, pit, Time.DeltaTime);
+            // Postcondition is that the hero is moving left
+            SetPostcondition("MovingLeft", true);
+        }
 
-            // Acquire adjacency using tile helper (more exact)
-            if (!hero.IsAdjacentToPit && hero.CheckAdjacentToPit(hero.Entity.Transform.Position))
-                hero.IsAdjacentToPit = true;
-
-            if (hero.IsAdjacentToPit || done)
+        public override bool Execute(HeroComponent hero)
+        {
+            // Get the TiledMapMover component from the hero entity
+            var tiledMover = hero.Entity.GetComponent<TiledMapMover>();
+            var boxCollider = hero.Entity.GetComponent<BoxCollider>();
+            
+            if (tiledMover == null || boxCollider == null)
             {
-                hero.IsAtCenter = false;
-                return true;
-            }
-            return false;
-        }
-    }
-
-    public class JumpIntoPitAction : HeroActionBase
-    {
-        public JumpIntoPitAction() : base("JumpIntoPit", 1)
-        {
-            SetPrecondition("IsAdjacentToPit", true);
-            SetPostcondition("IsAdjacentToPit", false);
-            SetPostcondition("IsInsidePit", true);
-        }
-
-        public override bool Execute(HeroComponent hero)
-        {
-            if (!hero.IsAdjacentToPit)
+                Debug.Warn("MoveLeftAction: Hero entity missing TiledMapMover or BoxCollider component");
                 return false;
-
-            var currentPosition = hero.Entity.Transform.Position;
-            var pitCenter = GetPitCenterWorldPosition();
-            var dir = Vector2.Normalize(pitCenter - currentPosition);
-            var jumpDistance = 96f;
-
-            hero.Entity.Transform.Position = currentPosition + dir * jumpDistance;
-            hero.IsInsidePit = true;
-
-            hero.Entity.GetComponent<Historian>()?
-                .RecordMilestone(MilestoneType.FirstJumpIntoPit, Time.TotalTime);
-
-            return true;
-        }
-    }
-
-    public class JumpOutOfPitAction : HeroActionBase
-    {
-        public JumpOutOfPitAction() : base("JumpOutOfPit", 1)
-        {
-            SetPrecondition("IsInsidePit", true);
-            SetPostcondition("IsInsidePit", false);
-            SetPostcondition("JustJumpedOutOfPit", true);
-        }
-
-        public override bool Execute(HeroComponent hero)
-        {
-            if (!hero.IsInsidePit)
-                return false;
-
-            var current = hero.Entity.Transform.Position;
-            var mapCenter = GetMapCenterWorldPosition();
-            var dir = Vector2.Normalize(mapCenter - current);
-            var jumpDistance = 128f;
-
-            hero.Entity.Transform.Position = current + dir * jumpDistance;
-            hero.IsInsidePit = false;
-            hero.JustJumpedOutOfPit = true;
-
-            hero.Entity.GetComponent<Historian>()?
-                .RecordMilestone(MilestoneType.FirstJumpOutOfPit, Time.TotalTime);
-
-            return true;
-        }
-    }
-
-    public class MoveToCenterAction : HeroActionBase
-    {
-        public MoveToCenterAction() : base("MoveToCenter", 2)
-        {
-            SetPrecondition("JustJumpedOutOfPit", true);
-            SetPostcondition("JustJumpedOutOfPit", false);
-            SetPostcondition("IsAtCenter", true);
-        }
-
-        public override bool Execute(HeroComponent hero)
-        {
-            var center = GetMapCenterWorldPosition();
-            var reached = MoveTowards(hero, center, Time.DeltaTime);
-
-            if (Vector2.Distance(hero.Entity.Transform.Position, center) <= 12f)
-                reached = true;
-
-            if (reached)
-            {
-                hero.IsAtCenter = true;
-                hero.JustJumpedOutOfPit = false;
-                hero.Entity.GetComponent<Historian>()?
-                    .RecordMilestone(MilestoneType.ReturnedToCenter, Time.TotalTime);
-                return true;
             }
 
+            // Create movement vector pointing left
+            var movement = new Vector2(-hero.MoveSpeed * Time.DeltaTime, 0);
+            
+            // Create collision state for the TiledMapMover
+            var collisionState = new TiledMapMover.CollisionState();
+            
+            // Use TiledMapMover to move the hero left with collision detection
+            tiledMover.Move(movement, boxCollider, collisionState);
+            
+            // Log collision info for debugging
+            if (collisionState.HasCollision)
+            {
+                Debug.Log($"[MoveLeft] Collision detected: Left={collisionState.Left}, Right={collisionState.Right}, Above={collisionState.Above}, Below={collisionState.Below}");
+            }
+            
+            // This action continues indefinitely (never returns true)
+            // The hero will keep moving left until stopped by collision
             return false;
         }
     }

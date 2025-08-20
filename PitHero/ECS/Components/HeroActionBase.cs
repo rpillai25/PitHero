@@ -15,31 +15,6 @@ namespace PitHero.ECS.Components
 
         public abstract bool Execute(HeroComponent hero);
 
-        protected bool MoveTowards(HeroComponent hero, Vector2 targetPosition, float deltaTime)
-        {
-            var currentPosition = hero.Entity.Transform.Position;
-            var toTarget = targetPosition - currentPosition;
-            var distance = toTarget.Length();
-
-            if (distance < 5f)
-            {
-                hero.Entity.Transform.Position = targetPosition;
-                return true;
-            }
-
-            if (distance > 0.0001f)
-            {
-                var direction = toTarget / distance;
-                var movement = direction * hero.MoveSpeed * deltaTime;
-                // Clamp so we don’t overshoot
-                if (movement.Length() > distance)
-                    movement = direction * distance;
-                hero.Entity.Transform.Position = currentPosition + movement;
-            }
-
-            return false;
-        }
-
         private static int TileSize => GameConfig.TileSize; // ensure single source of truth
 
         public static Vector2 TileToWorldPosition(Point tileCoords)

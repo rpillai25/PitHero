@@ -57,7 +57,7 @@ namespace PitHero
         public const int PitCenterTileY = 6;
 
         // Map “center” (MUST be outside pit)
-        public const int MapCenterTileX = 15;
+        public const int MapCenterTileX = 33;
         public const int MapCenterTileY = 6;
 
         // Sensor radii (in pixels)

@@ -12,6 +12,7 @@ namespace PitHero.ECS.Scenes
         private string _mapPath;
         private bool _isInitializationComplete;
         private CameraControllerComponent _cameraController;
+        private TmxMap _tmxMap; // Store reference to the map
 
         public MainGameScene() : this("Content/Tilemaps/PitHero.tmx") { }
         public MainGameScene(string mapPath) { _mapPath = mapPath; }
@@ -47,14 +48,14 @@ namespace PitHero.ECS.Scenes
             if (string.IsNullOrEmpty(_mapPath))
                 return;
 
-            var tmxMap = Core.Content.LoadTiledMap(_mapPath);
+            _tmxMap = Core.Content.LoadTiledMap(_mapPath);
             var tiledEntity = CreateEntity("tilemap").SetTag(GameConfig.TAG_TILEMAP);
 
-            var baseLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(tmxMap, "Collision"));
+            var baseLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(_tmxMap, "Collision"));
             baseLayerRenderer.SetLayerToRender("Base");
             baseLayerRenderer.RenderLayer = GameConfig.RenderLayerBase;
 
-            var fogLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(tmxMap));
+            var fogLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(_tmxMap));
             fogLayerRenderer.SetLayerToRender("FogOfWar");
             fogLayerRenderer.SetRenderLayer(GameConfig.RenderLayerFogOfWar);
 
@@ -95,6 +96,21 @@ namespace PitHero.ECS.Scenes
             var collider = hero.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));
             Flags.SetFlagExclusive(ref collider.CollidesWithLayers, GameConfig.PhysicsTileMapLayer);
             Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
+
+            // Add TiledMapMover for collision handling
+            if (_tmxMap != null)
+            {
+                var collisionLayer = _tmxMap.GetLayer<TmxLayer>("Collision");
+                if (collisionLayer != null)
+                {
+                    var tiledMover = hero.AddComponent(new TiledMapMover(collisionLayer));
+                    Debug.Log("[MainGameScene] Added TiledMapMover to hero with collision layer");
+                }
+                else
+                {
+                    Debug.Warn("[MainGameScene] Could not find 'Collision' layer in tilemap for TiledMapMover");
+                }
+            }
 
             hero.AddComponent(new HeroComponent
             {
