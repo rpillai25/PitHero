@@ -40,4 +40,4 @@
   - Use Nez.Time class instead of custom GameTime management
   - All components under ECS/Components/, Scenes under ECS/Scenes/
   - If a Service needs to be easily accessed in multiple places, register it with Core.Services.AddService() and then get it from anywhere with Core.Services.GetService<Service>()
-  
+  - Any Conditions for the GOAP framework should be added to GoapConstants for strong typing

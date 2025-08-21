@@ -13,14 +13,14 @@ namespace PitHero.AI
     {
         private bool _isJumping = false;
         
-        public JumpIntoPitAction() : base("JumpIntoPit", 1)
+        public JumpIntoPitAction() : base(GoapConstants.JumpIntoPitAction, 1)
         {
             // Precondition: Hero must be adjacent to pit boundary from outside
-            SetPrecondition("AdjacentToPitBoundaryFromOutside", true);
+            SetPrecondition(GoapConstants.AdjacentToPitBoundaryFromOutside, true);
             
             // Postconditions: Hero enters pit and is now adjacent to boundary from inside
-            SetPostcondition("EnteredPit", true);
-            SetPostcondition("AdjacentToPitBoundaryFromInside", true);
+            SetPostcondition(GoapConstants.EnteredPit, true);
+            SetPostcondition(GoapConstants.AdjacentToPitBoundaryFromInside, true);
         }
 
         public override bool Execute(HeroComponent hero)
@@ -117,7 +117,7 @@ namespace PitHero.AI
             var entity = hero.Entity;
             
             // Start the movement coroutine
-            Core.StartCoroutine(JumpMovementCoroutine(entity, targetPosition, GameConfig.HeroMovementSpeed));
+            Core.StartCoroutine(JumpMovementCoroutine(entity, targetPosition, GameConfig.HeroMovementSpeed * 2));
         }
 
         /// <summary>

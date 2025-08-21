@@ -25,22 +25,22 @@ namespace PitHero.AI
             var ws = WorldState.Create(_planner);
 
             // Only set the states that are actually true
-            ws.Set("HeroInitialized", true);
+            ws.Set(GoapConstants.HeroInitialized, true);
 
             // Only set MovingLeft if actually moving left
             var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
             if (tileMover != null && tileMover.IsMoving && tileMover.CurrentDirection == Direction.Left)
             {
-                ws.Set("MovingLeft", true);
+                ws.Set(GoapConstants.MovingLeft, true);
             }
 
             // Only set pit states if they're actually true
             if (_hero.AdjacentToPitBoundaryFromOutside)
-                ws.Set("AdjacentToPitBoundaryFromOutside", true);
+                ws.Set(GoapConstants.AdjacentToPitBoundaryFromOutside, true);
             if (_hero.AdjacentToPitBoundaryFromInside)
-                ws.Set("AdjacentToPitBoundaryFromInside", true);
+                ws.Set(GoapConstants.AdjacentToPitBoundaryFromInside, true);
             if (_hero.EnteredPit)
-                ws.Set("EnteredPit", true);
+                ws.Set(GoapConstants.EnteredPit, true);
 
             Debug.Log($"[GOAP] Actual state bits: HeroInit=true, others=false");
             return ws;
@@ -51,7 +51,7 @@ namespace PitHero.AI
             var goal = WorldState.Create(_planner);
 
             // Final objective: hero ends up inside the pit
-            goal.Set("EnteredPit", true);
+            goal.Set(GoapConstants.EnteredPit, true);
             // (Optional) also require inside-boundary flag:
             // goal.Set("AdjacentToPitBoundaryFromInside", true);
 

@@ -9,13 +9,13 @@ namespace PitHero.AI
     /// </summary>
     public class MoveLeftAction : HeroActionBase
     {
-        public MoveLeftAction() : base("MoveLeft", 1)
+        public MoveLeftAction() : base(GoapConstants.MoveLeftAction, 1)
         {
             // Precondition: Hero must be initialized and NOT already at pit boundary
-            SetPrecondition("HeroInitialized", true);
+            SetPrecondition(GoapConstants.HeroInitialized, true);
             
             // Postcondition: Hero will be adjacent to pit boundary from outside
-            SetPostcondition("AdjacentToPitBoundaryFromOutside", true);
+            SetPostcondition(GoapConstants.AdjacentToPitBoundaryFromOutside, true);
         }
 
         public override bool Execute(HeroComponent hero)
