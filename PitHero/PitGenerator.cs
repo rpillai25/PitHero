@@ -38,10 +38,10 @@ namespace PitHero
         {
             // Calculate valid placement area (excluding 1-tile perimeter)
             // Pit area: (1,2) to (12,10) in tiles
-            // Valid interior: (2,3) to (11,9) in tiles  
+            // Valid interior: (2,3) to (10,9) in tiles  (excludes rightmost edge)
             var validMinX = GameConfig.PitRectX + 1; // 2
             var validMinY = GameConfig.PitRectY + 1; // 3
-            var validMaxX = GameConfig.PitRectX + GameConfig.PitRectWidth - 2; // 11
+            var validMaxX = GameConfig.PitRectX + GameConfig.PitRectWidth - 3; // 10
             var validMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // 9
             
             Debug.Log($"[PitGenerator] Valid placement area: tiles ({validMinX},{validMinY}) to ({validMaxX},{validMaxY})");
