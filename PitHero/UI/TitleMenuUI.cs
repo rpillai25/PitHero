@@ -112,14 +112,14 @@ namespace PitHero.UI
         private void CreateQuitConfirmationDialog(Skin skin)
         {
             var windowStyle = skin.Get<WindowStyle>();
-            _quitConfirmationDialog = new Window("Really Exit?", windowStyle);
+            _quitConfirmationDialog = new Window("Really Quit?", windowStyle);
             _quitConfirmationDialog.SetSize(300, 150);
             
             var dialogTable = new Table();
             dialogTable.Pad(20);
             
             // Message
-            dialogTable.Add(new Label("Are you sure you want to exit?", skin)).SetPadBottom(20);
+            dialogTable.Add(new Label("Are you sure you want to quit?", skin)).SetPadBottom(20);
             dialogTable.Row();
             
             // Button row
