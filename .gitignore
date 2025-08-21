@@ -6,6 +6,8 @@ PitHero/bin
 PitHero/obj
 PitHero/CompiledContent/bin
 PitHero/CompiledContent/obj
+PitHero.Tests/bin
+PitHero.Tests/obj
 .mgstats
 imgui.ini
 imgui_log.txt
