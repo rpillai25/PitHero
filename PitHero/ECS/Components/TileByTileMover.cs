@@ -244,19 +244,4 @@ namespace PitHero.ECS.Components
             return new Point((int)System.Math.Floor(colliderTopLeft.X / _tileSize), (int)System.Math.Floor(colliderTopLeft.Y / _tileSize));
         }
     }
-
-    /// <summary>
-    /// Cardinal and diagonal directions for tile-based movement
-    /// </summary>
-    public enum Direction
-    {
-        Up,
-        Down,
-        Left,
-        Right,
-        UpLeft,
-        UpRight,
-        DownLeft,
-        DownRight
-    }
 }

@@ -11,8 +11,5 @@
     <Compile Update="ECS\Components\PitComponent.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Update="ECS\Components\TownBuildingComponent.cs">
-      <SubType>Component</SubType>
-    </Compile>
   </ItemGroup>
 </Project>

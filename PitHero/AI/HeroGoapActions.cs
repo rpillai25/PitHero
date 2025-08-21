@@ -1,7 +1,8 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using PitHero.ECS.Components;
 
-namespace PitHero.ECS.Components
+namespace PitHero.AI
 {
     /// <summary>
     /// Action that moves the hero left until blocked or reaches pit boundary

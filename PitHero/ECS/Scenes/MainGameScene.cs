@@ -1,8 +1,10 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Tiled;
+using PitHero.AI;
 using PitHero.ECS.Components;
 using PitHero.UI;
+using PitHero.Util;
 
 namespace PitHero.ECS.Scenes
 {
@@ -49,6 +51,7 @@ namespace PitHero.ECS.Scenes
                 return;
 
             _tmxMap = Core.Content.LoadTiledMap(_mapPath);
+            Core.Services.AddService(new TiledMapService(_tmxMap));
             var tiledEntity = CreateEntity("tilemap").SetTag(GameConfig.TAG_TILEMAP);
 
             var baseLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(_tmxMap, "Collision"));
@@ -58,8 +61,6 @@ namespace PitHero.ECS.Scenes
             var fogLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(_tmxMap));
             fogLayerRenderer.SetLayerToRender("FogOfWar");
             fogLayerRenderer.SetRenderLayer(GameConfig.RenderLayerFogOfWar);
-
-            tiledEntity.AddComponent<FogOfWarHelper>();
 
             _cameraController?.ConfigureZoomForMap(_mapPath);
         }
@@ -87,9 +88,6 @@ namespace PitHero.ECS.Scenes
             var pitCollider = pitEntity.AddComponent(new BoxCollider(pitWorldBounds.Width, pitWorldBounds.Height));
             pitCollider.IsTrigger = true; // Make it a trigger so it doesn't block movement
             Flags.SetFlagExclusive(ref pitCollider.PhysicsLayer, GameConfig.PhysicsPitLayer);
-
-            // Add controller component
-            pitEntity.AddComponent(new PitControllerComponent());
 
             Debug.Log($"[MainGameScene] Created pit entity with Tag={pitEntity.Tag} at position {pitEntity.Transform.Position.X},{pitEntity.Transform.Position.Y}");
             Debug.Log($"[MainGameScene] Pit trigger collider bounds: X={pitWorldBounds.X}, " +
@@ -147,7 +145,7 @@ namespace PitHero.ECS.Scenes
                 MoveSpeed = 140f
             });
             hero.AddComponent(new Historian());
-            hero.AddComponent(new HeroGoapAgent());
+            hero.AddComponent(new HeroGoapAgentComponent());
         }
 
         private void SetupUIOverlay()

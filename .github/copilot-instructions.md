@@ -23,6 +23,7 @@
 - Keep all constants (sizes, positions, movement speeds) in `GameConfig.cs`
 - If a private method needs to be called from another class, change that method to be public.
 - Avoid the use of Reflection.
+- Do not add multiple classes to a single file. Classes should be in their own file.  Structs are an exception to this rule.
 - Maintain integer scaling for pixel-perfect rendering
 - Ensure the game continues running in idle while the player interacts with other desktop apps
 - **Debug Logging Requirements**:
@@ -38,3 +39,5 @@
   - Scenes should inherit from `Nez.Scene` and override Initialize() for setup
   - Use Nez.Time class instead of custom GameTime management
   - All components under ECS/Components/, Scenes under ECS/Scenes/
+  - If a Service needs to be easily accessed in multiple places, register it with Core.Services.AddService() and then get it from anywhere with Core.Services.GetService<Service>()
+  

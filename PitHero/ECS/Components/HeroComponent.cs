@@ -74,7 +74,6 @@ namespace PitHero.ECS.Components
                 // milestone + fog clear when entering pit area via tilemap
                 var historian = Entity.GetComponent<Historian>();
                 historian?.RecordMilestone(MilestoneType.FirstJumpIntoPit, Time.TotalTime);
-                ClearFogOfWarAroundPosition(tileCoords);
             }
         }
 
@@ -129,7 +128,6 @@ namespace PitHero.ECS.Components
             historian?.RecordMilestone(MilestoneType.FirstJumpIntoPit, Time.TotalTime);
             
             var tileCoords = GetTileCoordinates(Entity.Transform.Position, GameConfig.TileSize);
-            ClearFogOfWarAroundPosition(tileCoords);
         }
 
         private void HandlePitTriggerExit()
@@ -187,29 +185,6 @@ namespace PitHero.ECS.Components
             
             // Fallback to manual calculation
             return GetTileCoordinates(Entity.Transform.Position, GameConfig.TileSize);
-        }
-
-        /// <summary>
-        /// Clear FogOfWar in the 4 cardinal directions around the given position
-        /// This is a side effect when hero enters the pit
-        /// </summary>
-        private void ClearFogOfWarAroundPosition(Point centerTile)
-        {
-            // Find FogOfWar helper in the scene
-            var scene = Entity.Scene;
-            if (scene != null)
-            {
-                for (int i = 0; i < scene.Entities.Count; i++)
-                {
-                    var entity = scene.Entities[i];
-                    var fogHelper = entity?.GetComponent<FogOfWarHelper>();
-                    if (fogHelper != null)
-                    {
-                        fogHelper.ClearFogOfWarAroundTile(centerTile.X, centerTile.Y);
-                        break;
-                    }
-                }
-            }
         }
 
         /// <summary>

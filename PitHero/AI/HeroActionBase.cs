@@ -1,8 +1,9 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.AI.GOAP;
+using PitHero.ECS.Components;
 
-namespace PitHero.ECS.Components
+namespace PitHero.AI
 {
     /// <summary>
     /// Base class for all Hero GOAP actions

@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.ECS.Scenes;
+using PitHero.Util;
 
 namespace PitHero
 {

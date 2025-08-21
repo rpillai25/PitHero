@@ -1,8 +1,10 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using PitHero.ECS.Components;
+using PitHero.Util;
 using System.Collections;
 
-namespace PitHero.ECS.Components
+namespace PitHero.AI
 {
     /// <summary>
     /// Action that causes the hero to jump into the pit when adjacent to pit boundary from outside
@@ -111,7 +113,7 @@ namespace PitHero.ECS.Components
         /// </summary>
         private void StartJumpMovement(HeroComponent hero, Point targetTile)
         {
-            var targetPosition = HeroActionBase.TileToWorldPosition(targetTile);
+            var targetPosition = TileToWorldPosition(targetTile);
             var entity = hero.Entity;
             
             // Start the movement coroutine
@@ -149,7 +151,14 @@ namespace PitHero.ECS.Components
             {
                 tileMover.SnapToTileGrid();
             }
-            
+
+            var tiledMapService = Core.Services.GetService<TiledMapService>();
+            tiledMapService.ClearFogOfWarAroundTile(
+                (int)(targetPosition.X / GameConfig.TileSize),
+                (int)(targetPosition.Y / GameConfig.TileSize)
+            );
+
+
             Debug.Log($"[JumpIntoPit] Jump movement completed at {entity.Transform.Position.X},{entity.Transform.Position.Y}");
         }
     }
