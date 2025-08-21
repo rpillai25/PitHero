@@ -85,6 +85,10 @@ namespace PitHero
         public const int TAG_TILEMAP = 1; // Tag for tilemap entities
         public const int TAG_HERO = 2; // Tag for hero entity
         public const int TAG_PIT = 3; // Tag for pit entity
+        public const int TAG_OBSTACLE = 4; // Tag for obstacle entities
+        public const int TAG_TREASURE = 5; // Tag for treasure entities
+        public const int TAG_MONSTER = 6; // Tag for monster entities
+        public const int TAG_WIZARD_ORB = 7; // Tag for wizard orb entity
 
         // Render Layers (the lower the number, the higher the layer)
         public const int RenderLayerBase = 100; // Background layer

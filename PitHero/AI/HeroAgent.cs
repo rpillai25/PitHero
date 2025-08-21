@@ -27,6 +27,10 @@ namespace PitHero.AI
             // Only set the states that are actually true
             ws.Set(GoapConstants.HeroInitialized, true);
 
+            // Set pit initialized state
+            if (_hero.PitInitialized)
+                ws.Set(GoapConstants.PitInitialized, true);
+
             // Only set MovingLeft if actually moving left
             var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
             if (tileMover != null && tileMover.IsMoving && tileMover.CurrentDirection == Direction.Left)

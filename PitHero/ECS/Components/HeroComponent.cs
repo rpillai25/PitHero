@@ -12,6 +12,7 @@ namespace PitHero.ECS.Components
         public float MoveSpeed { get; set; } = GameConfig.HeroMoveSpeed;
 
         // GOAP-specific pit boundary flags
+        public bool PitInitialized { get; set; }
         public bool AdjacentToPitBoundaryFromOutside { get; set; }
         public bool AdjacentToPitBoundaryFromInside { get; set; }
         public bool EnteredPit { get; set; }
@@ -35,6 +36,7 @@ namespace PitHero.ECS.Components
             base.OnAddedToEntity();
             
             // Initialize GOAP flags to clean state
+            PitInitialized = false;
             AdjacentToPitBoundaryFromOutside = false;
             AdjacentToPitBoundaryFromInside = false;
             EnteredPit = false;

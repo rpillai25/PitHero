@@ -40,6 +40,7 @@ namespace PitHero.ECS.Scenes
 
             LoadMap();
             SpawnPit();
+            GeneratePitContent();
             SpawnHero();
 
             _isInitializationComplete = true;
@@ -115,6 +116,16 @@ namespace PitHero.ECS.Scenes
             );
         }
 
+        private void GeneratePitContent()
+        {
+            Debug.Log("[MainGameScene] Generating pit content");
+            
+            var pitGenerator = new PitGenerator(this);
+            pitGenerator.Generate(1);
+            
+            Debug.Log("[MainGameScene] Pit content generation complete");
+        }
+
         private void SpawnHero()
         {
             var heroStart = HeroActionBase.GetMapCenterWorldPosition();
@@ -142,7 +153,8 @@ namespace PitHero.ECS.Scenes
             {
                 Health = 100,
                 MaxHealth = 100,
-                MoveSpeed = 140f
+                MoveSpeed = 140f,
+                PitInitialized = true // Pit content has been generated
             });
             hero.AddComponent(new Historian());
             hero.AddComponent(new HeroGoapAgentComponent());

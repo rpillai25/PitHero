@@ -10,6 +10,7 @@ namespace PitHero.AI
     {
         // State names (Conditions)
         public const string HeroInitialized = "HeroInitialized";
+        public const string PitInitialized = "PitInitialized";
         public const string MovingLeft = "MovingLeft";
         public const string AdjacentToPitBoundaryFromOutside = "AdjacentToPitBoundaryFromOutside";
         public const string AdjacentToPitBoundaryFromInside = "AdjacentToPitBoundaryFromInside";
