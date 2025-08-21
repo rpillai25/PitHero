@@ -1,4 +1,4 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36109.1
 MinimumVisualStudioVersion = 10.0.40219.1
@@ -7,6 +7,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nez.FNA.Core", "Nez\Nez.Portable\Nez.FNA.Core.csproj", "{4B1106E6-BDAF-B1E1-D8BF-A7616A81CCAE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FNA.Core", "FNA\FNA.Core.csproj", "{79BEDD4F-E303-6916-9C85-343F19F70E29}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PitHero.Tests", "PitHero.Tests\PitHero.Tests.csproj", "{262D43A1-A360-48E9-ACFE-9081BF6A2BCA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -26,6 +28,10 @@ Global
 		{79BEDD4F-E303-6916-9C85-343F19F70E29}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{79BEDD4F-E303-6916-9C85-343F19F70E29}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{79BEDD4F-E303-6916-9C85-343F19F70E29}.Release|Any CPU.Build.0 = Release|Any CPU
+		{262D43A1-A360-48E9-ACFE-9081BF6A2BCA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{262D43A1-A360-48E9-ACFE-9081BF6A2BCA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{262D43A1-A360-48E9-ACFE-9081BF6A2BCA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{262D43A1-A360-48E9-ACFE-9081BF6A2BCA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

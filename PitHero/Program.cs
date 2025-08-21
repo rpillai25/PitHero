@@ -22,15 +22,6 @@ namespace PitHero
 
         public static void Main(string[] args)
         {
-            // Check for test arguments
-            if (args.Length > 0 && args[0] == "--test")
-            {
-                Console.WriteLine("Running PitHero Tests...");
-                Tests.TitleScreenTests.RunTests();
-                Tests.PitGeneratorTests.RunTests();
-                return;
-            }
-
             if (Environment.OSVersion.Platform == PlatformID.Win32NT)
             {
                 try
