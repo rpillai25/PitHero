@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using System.Collections.Generic;
+using PitHero.Util;
 
 namespace PitHero.ECS.Components
 {
@@ -122,6 +123,14 @@ namespace PitHero.ECS.Components
                 
                 // Update triggers after reaching destination
                 _triggerHelper?.Update();
+
+                // Clear fog around the tile we just arrived at
+                var tms = Core.Services.GetService<TiledMapService>();
+                if (tms != null)
+                {
+                    var tile = GetCurrentTileCoordinates();
+                    tms.ClearFogOfWarAroundTile(tile.X, tile.Y);
+                }
                 
                 IsMoving = false;
                 CurrentDirection = null;
