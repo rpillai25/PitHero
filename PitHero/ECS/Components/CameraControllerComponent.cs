@@ -1,12 +1,13 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using PitHero.Services;
 
 namespace PitHero.ECS.Components
 {
     /// <summary>
     /// Component that handles camera zoom and pan controls via mouse input
     /// </summary>
-    public class CameraControllerComponent : Component, IUpdatable
+    public class CameraControllerComponent : Component, IUpdatable, IPausableComponent
     {
         private Camera _camera;
         private Vector2 _lastMousePosition;
@@ -15,6 +16,12 @@ namespace PitHero.ECS.Components
         private Rectangle _tileMapBounds;
         private float _currentMinimumZoom = GameConfig.CameraMinimumZoom;
         private float _currentMaximumZoom = GameConfig.CameraMaximumZoom;
+
+        /// <summary>
+        /// Gets whether this component should respect the global pause state.
+        /// Camera controls are allowed during pause for UI navigation.
+        /// </summary>
+        public bool ShouldPause => false;
 
         public override void OnAddedToEntity()
         {
@@ -45,6 +52,11 @@ namespace PitHero.ECS.Components
         public void Update()
         {
             if (_camera == null)
+                return;
+
+            // Check if game is paused and this component should pause
+            var pauseService = Core.Services.GetService<PauseService>();
+            if (pauseService?.IsPaused == true && ShouldPause)
                 return;
 
             HandleZoomInput();

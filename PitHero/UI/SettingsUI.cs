@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
+using PitHero.Services;
 
 namespace PitHero.UI
 {
@@ -401,6 +402,14 @@ namespace PitHero.UI
         {
             _isVisible = !_isVisible;
             _settingsWindow.SetVisible(_isVisible);
+            
+            // Control pause state based on settings visibility
+            var pauseService = Core.Services.GetService<PauseService>();
+            if (pauseService != null)
+            {
+                pauseService.IsPaused = _isVisible;
+            }
+            
             if (_isVisible)
                 _settingsWindow.ToFront();
 

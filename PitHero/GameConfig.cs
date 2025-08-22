@@ -94,7 +94,9 @@ namespace PitHero
         public const int RenderLayerBase = 100; // Background layer
         public const int RenderLayerActors = 50; // Actors and entities layer
         public const int RenderLayerFogOfWar = 2;   // Fog of war layer above most things
-        public const int TransparentPauseOverlay = 1; // Transparent overlay for paused action when UI is active
+
+        public const int RenderLayerUI = 998; // UI layer (always on top)
+        public const int TransparentPauseOverlay = 999; // Transparent overlay for paused action when UI is active
 
         // Physics Layers (determines which layer an entity is on for collision)
         public const int PhysicsTileMapLayer = 0;   // Tilemap "Collision" layer

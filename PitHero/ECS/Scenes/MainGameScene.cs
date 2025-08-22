@@ -3,6 +3,7 @@ using Nez;
 using Nez.AI.Pathfinding;
 using Nez.Tiled;
 using PitHero.ECS.Components;
+using PitHero.Services;
 using PitHero.UI;
 using PitHero.Util;
 
@@ -15,6 +16,7 @@ namespace PitHero.ECS.Scenes
         private bool _isInitializationComplete;
         private CameraControllerComponent _cameraController;
         private TmxMap _tmxMap; // Store reference to the map
+        private Entity _pauseOverlayEntity; // Pause overlay entity
 
         public MainGameScene() : this("Content/Tilemaps/PitHero.tmx") { }
         public MainGameScene(string mapPath) { _mapPath = mapPath; }
@@ -198,13 +200,26 @@ namespace PitHero.ECS.Scenes
 
         private void SetupUIOverlay()
         {
-            var screenSpaceRenderer = new ScreenSpaceRenderer(100, 999);
+            var screenSpaceRenderer = new ScreenSpaceRenderer(100, [GameConfig.TransparentPauseOverlay, GameConfig.RenderLayerUI]);
             AddRenderer(screenSpaceRenderer);
+
+            // Create pause overlay entity
+            _pauseOverlayEntity = CreateEntity("pause-overlay");
+            _pauseOverlayEntity.SetPosition(0, 0); // Top-left corner
+
+            // Size to backbuffer for ScreenSpaceRenderer and set origin to top-left
+            var pauseOverlay = _pauseOverlayEntity.AddComponent(
+                new PrototypeSpriteRenderer(Screen.Width * 2, Screen.Height * 2)
+            );
+            pauseOverlay.SetOrigin(Vector2.Zero); // or pauseOverlay.SetOriginNormalized(Vector2.Zero);
+            pauseOverlay.SetColor(new Color(0, 0, 0, 150));
+            pauseOverlay.SetRenderLayer(GameConfig.TransparentPauseOverlay);
+            _pauseOverlayEntity.SetEnabled(false); // Initially hidden
 
             var uiEntity = CreateEntity("ui-overlay");
             var uiCanvas = uiEntity.AddComponent(new UICanvas());
             uiCanvas.IsFullScreen = true;
-            uiCanvas.RenderLayer = 999;
+            uiCanvas.RenderLayer = GameConfig.RenderLayerUI;
 
             _settingsUI = new SettingsUI(Core.Instance);
             _settingsUI.InitializeUI(uiCanvas.Stage);
@@ -214,6 +229,13 @@ namespace PitHero.ECS.Scenes
         {
             base.Update();
             _settingsUI?.Update();
+
+            // Update pause overlay visibility based on pause state
+            var pauseService = Core.Services.GetService<PauseService>();
+            if (pauseService != null && _pauseOverlayEntity != null)
+            {
+                _pauseOverlayEntity.SetEnabled(pauseService.IsPaused);
+            }
         }
     }
 }
