@@ -1,9 +1,8 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using Nez.AI.Pathfinding;
 using Nez.Tiled;
-using PitHero;
 using PitHero.Util;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -188,6 +187,21 @@ namespace PitHero
 
                 // Add collision component
                 var collider = entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
+
+                // Register obstacle tiles as A* walls so pathfinding avoids them
+                if (tag == GameConfig.TAG_OBSTACLE)
+                {
+                    var astarGraph = Core.Services.GetService<AstarGridGraph>();
+                    if (astarGraph != null)
+                    {
+                        astarGraph.Walls.Add(tilePos);
+                        Debug.Log($"[PitGenerator] Added obstacle tile to A* walls at ({tilePos.X},{tilePos.Y})");
+                    }
+                    else
+                    {
+                        Debug.Warn("[PitGenerator] A* graph not found when adding obstacle walls");
+                    }
+                }
 
                 Debug.Log($"[PitGenerator] Created {entityTypeName} at tile ({tilePos.X},{tilePos.Y}), world ({worldPos.X},{worldPos.Y})");
             }

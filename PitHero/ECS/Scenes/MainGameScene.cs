@@ -2,7 +2,6 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.AI.Pathfinding;
 using Nez.Tiled;
-using PitHero.AI;
 using PitHero.ECS.Components;
 using PitHero.UI;
 using PitHero.Util;
@@ -86,13 +85,10 @@ namespace PitHero.ECS.Scenes
                 return;
             }
 
-            // Create AStarGridGraph using the collision layer
+            // Build graph from the entire Collision layer: any present tile is a wall
             var astarGraph = new AstarGridGraph(collisionLayer);
-            
-            // Register the pathfinding graph as a service
             Core.Services.AddService(astarGraph);
-            
-            Debug.Log("[MainGameScene] AStarGridGraph pathfinding service registered");
+            Debug.Log($"[MainGameScene] AStarGridGraph pathfinding service registered with {astarGraph.Walls.Count} walls from Collision layer");
         }
 
         private void SpawnPit()
@@ -120,11 +116,9 @@ namespace PitHero.ECS.Scenes
             Flags.SetFlagExclusive(ref pitCollider.PhysicsLayer, GameConfig.PhysicsPitLayer);
 
             Debug.Log($"[MainGameScene] Created pit entity with Tag={pitEntity.Tag} at position {pitEntity.Transform.Position.X},{pitEntity.Transform.Position.Y}");
-            Debug.Log($"[MainGameScene] Pit trigger collider bounds: X={pitWorldBounds.X}, " +
-                $"Y={pitWorldBounds.Y}, Width={pitWorldBounds.Width}, Height={pitWorldBounds.Height}");
+            Debug.Log($"[MainGameScene] Pit trigger collider bounds: X={pitWorldBounds.X}, Y={pitWorldBounds.Y}, Width={pitWorldBounds.Width}, Height={pitWorldBounds.Height}");
             
-            // Add pit obstacles to pathfinding graph
-            AddPitObstaclesToPathfinding();
+            // Do NOT add synthetic pit walls here. Collision layer + generated obstacles will populate walls.
         }
 
         private Rectangle CalculatePitWorldBounds()
@@ -148,29 +142,6 @@ namespace PitHero.ECS.Scenes
             );
         }
 
-        private void AddPitObstaclesToPathfinding()
-        {
-            var astarGraph = Core.Services.GetService<AstarGridGraph>();
-            if (astarGraph == null)
-            {
-                Debug.Warn("[MainGameScene] AStarGridGraph not found, cannot add pit obstacles");
-                return;
-            }
-
-            // Add pit area tiles as obstacles for pathfinding
-            // The pit area spans from (PitRectX, PitRectY) to (PitRectX + PitRectWidth - 1, PitRectY + PitRectHeight - 1)
-            for (int x = GameConfig.PitRectX; x < GameConfig.PitRectX + GameConfig.PitRectWidth; x++)
-            {
-                for (int y = GameConfig.PitRectY; y < GameConfig.PitRectY + GameConfig.PitRectHeight; y++)
-                {
-                    // Add this tile as an obstacle in the pathfinding graph
-                    astarGraph.Walls.Add(new Point(x, y));
-                }
-            }
-            
-            Debug.Log($"[MainGameScene] Added {GameConfig.PitRectWidth * GameConfig.PitRectHeight} pit obstacle tiles to pathfinding graph");
-        }
-
         private void GeneratePitContent()
         {
             Debug.Log("[MainGameScene] Generating pit content");
@@ -187,10 +158,9 @@ namespace PitHero.ECS.Scenes
             var rightmostPitTile = GameConfig.PitRectX + GameConfig.PitRectWidth - 1; // 12
             var minHeroTileX = rightmostPitTile + 8; // 20
             var maxHeroTileX = 50; // Leave some space from map edge
-            var heroTileY = GameConfig.MapCenterTileY; // Keep same Y as pit entrance for simplicity
             
-            var random = new System.Random();
-            var heroTileX = random.Next(minHeroTileX, maxHeroTileX + 1);
+            var heroTileX = Random.Range(minHeroTileX, maxHeroTileX + 1);
+            var heroTileY = Random.Range(1, 8);
             
             var heroStart = new Vector2(
                 heroTileX * GameConfig.TileSize + GameConfig.TileSize / 2,
@@ -203,18 +173,15 @@ namespace PitHero.ECS.Scenes
                       $"({heroTileX}, {heroTileY}) - {minHeroTileX - rightmostPitTile} tiles from pit edge");
 
             hero.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
-            // Use centered collider constructor - this creates a collider centered on the entity
             var collider = hero.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));
             
-            // Hero collides with both tilemap and pit layers
             Flags.SetFlag(ref collider.CollidesWithLayers, GameConfig.PhysicsTileMapLayer);
             Flags.SetFlag(ref collider.CollidesWithLayers, GameConfig.PhysicsPitLayer);
             Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
 
-            // Add TileByTileMover for tile-based movement with trigger detection
             hero.AddComponent(new TileByTileMover());
             var tileMover = hero.GetComponent<TileByTileMover>();
-            tileMover.MovementSpeed = GameConfig.HeroMovementSpeed; // Set desired speed in tiles per second
+            tileMover.MovementSpeed = GameConfig.HeroMovementSpeed;
             Debug.Log("[MainGameScene] Added TileByTileMover to hero for tile-based movement");
 
             hero.AddComponent(new HeroComponent
@@ -222,7 +189,7 @@ namespace PitHero.ECS.Scenes
                 Health = 100,
                 MaxHealth = 100,
                 MoveSpeed = 140f,
-                PitInitialized = true // Pit content has been generated
+                PitInitialized = true
             });
             hero.AddComponent(new Historian());
             hero.AddComponent(new HeroGoapAgentComponent());
