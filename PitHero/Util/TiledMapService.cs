@@ -1,5 +1,7 @@
 ﻿using Nez;
 using Nez.Tiled;
+using Microsoft.Xna.Framework;
+using Nez.AI.Pathfinding;
 
 namespace PitHero.Util
 {
@@ -46,8 +48,6 @@ namespace PitHero.Util
                 Debug.Log("WARNING: Layer null for SetTile!!!");
                 return;
             }
-            //var newTile = new TmxLayerTile(tiledMap, tileIndex, x, y);
-            //layer.SetTile(newTile);
             layer.SetTile(x, y, tileIndex);
         }
 
@@ -56,14 +56,6 @@ namespace PitHero.Util
             return (y * CurrentMap.Width + x < 0 || y * CurrentMap.Width + x >= CurrentMap.Width * CurrentMap.Height);
         }
 
-        // Pseudocode:
-        // 1. If CurrentMap is null, return (nothing to clear).
-        // 2. Get FogOfWar layer from CurrentMap (typed as TmxLayer). If null, return.
-        // 3. Bounds check tileX/tileY against layer Width/Height. If OOB, return.
-        // 4. Log that we are checking this tile.
-        // 5. Retrieve tile via fogLayer.GetTile(tileX, tileY). If null (already cleared), return.
-        // 6. Call RemoveTile helper (uses CurrentMap) to remove tile.
-        // 7. Log removal.
         public void ClearFogOfWarTile(int tileX, int tileY)
         {
             if (CurrentMap == null)
@@ -96,7 +88,7 @@ namespace PitHero.Util
         }
 
         /// <summary>
-        /// Clear FogOfWar in the 4 cardinal directions around a center tile
+        /// Clear FogOfWar in the 4 cardinal directions around a center tile and diagonals if those diagonal tiles are obstacles
         /// </summary>
         /// <param name="centerTileX">Center tile X coordinate</param>
         /// <param name="centerTileY">Center tile Y coordinate</param>
@@ -109,6 +101,33 @@ namespace PitHero.Util
             ClearFogOfWarTile(centerTileX + 1, centerTileY); // Right
             ClearFogOfWarTile(centerTileX, centerTileY - 1); // Up
             ClearFogOfWarTile(centerTileX, centerTileY + 1); // Down
+
+            // Clear diagonal fog only if that diagonal tile is an obstacle in the A* grid
+            var astarGraph = Core.Services.GetService<AstarGridGraph>();
+            if (astarGraph == null)
+                return;
+
+            // Upper-left
+            TryClearDiagonalIfObstacle(astarGraph, centerTileX - 1, centerTileY - 1);
+            // Upper-right
+            TryClearDiagonalIfObstacle(astarGraph, centerTileX + 1, centerTileY - 1);
+            // Lower-left
+            TryClearDiagonalIfObstacle(astarGraph, centerTileX - 1, centerTileY + 1);
+            // Lower-right
+            TryClearDiagonalIfObstacle(astarGraph, centerTileX + 1, centerTileY + 1);
+        }
+
+        /// <summary>
+        /// Clears the fog at (x,y) if the A* graph marks that tile as a wall/obstacle
+        /// </summary>
+        private void TryClearDiagonalIfObstacle(AstarGridGraph astarGraph, int x, int y)
+        {
+            // AstarGridGraph.Walls contains both Collision tiles and spawned obstacles.
+            // Treasures/monsters are NOT added to Walls, so they won’t trigger diagonal clearing.
+            if (astarGraph.Walls.Contains(new Point(x, y)))
+            {
+                ClearFogOfWarTile(x, y);
+            }
         }
     }
 }
