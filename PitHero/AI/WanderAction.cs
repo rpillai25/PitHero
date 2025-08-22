@@ -18,12 +18,13 @@ namespace PitHero.AI
         private Point _targetTile;
         private bool _hasSelectedTarget;
 
+        // Track last failed target to avoid reselect loop
+        private Point _lastFailedTarget;
+        private bool _hasLastFailedTarget;
+
         public WanderAction() : base(GoapConstants.WanderAction, 1)
         {
-            // Precondition: Hero must be inside the pit
             SetPrecondition(GoapConstants.EnteredPit, true);
-            
-            // Postcondition: Map will be explored
             SetPostcondition(GoapConstants.MapExplored, true);
         }
 
@@ -37,7 +38,7 @@ namespace PitHero.AI
             {
                 Debug.Warn("WanderAction: Hero entity missing TileByTileMover component");
                 ResetInternal();
-                return true; // fail/finish this action
+                return true;
             }
 
             // Select a target if we haven't yet for this execution
@@ -85,6 +86,10 @@ namespace PitHero.AI
                 if (_currentPath == null || _currentPath.Count == 0)
                 {
                     Debug.Warn($"[Wander] Could not find path from {currentTile.X},{currentTile.Y} to {_targetTile.X},{_targetTile.Y}");
+                    // Remember failed target to avoid immediate reselection
+                    _lastFailedTarget = _targetTile;
+                    _hasLastFailedTarget = true;
+
                     ResetInternal();
                     return false; // try a different target next tick
                 }
@@ -101,8 +106,17 @@ namespace PitHero.AI
                 if (direction.HasValue)
                 {
                     Debug.Log($"[Wander] Moving {direction.Value} to tile {nextTile.X},{nextTile.Y}");
-                    tileMover.StartMoving(direction.Value);
-                    _pathIndex++;
+                    var moveStarted = tileMover.StartMoving(direction.Value);
+                    if (moveStarted)
+                    {
+                        _pathIndex++;
+                    }
+                    else
+                    {
+                        Debug.Log("[Wander] Movement blocked, recalculating path");
+                        // Recalculate path next frame
+                        _currentPath = null;
+                    }
                 }
                 else
                 {
@@ -116,7 +130,7 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Find the nearest tile that is still covered by fog of war
+        /// Find the nearest tile that is still covered by fog of war and passable
         /// </summary>
         private Point? FindNearestUnknownTile(HeroComponent hero)
         {
@@ -133,6 +147,8 @@ namespace PitHero.AI
                 Debug.Warn("[Wander] FogOfWar layer not found");
                 return null;
             }
+
+            var astarGraph = Core.Services.GetService<AstarGridGraph>();
 
             var heroTile = hero.Entity.GetComponent<TileByTileMover>()?.GetCurrentTileCoordinates() 
                          ?? GetTileCoordinates(hero.Entity.Transform.Position, GameConfig.TileSize);
@@ -151,6 +167,14 @@ namespace PitHero.AI
                         var tile = fogLayer.GetTile(x, y);
                         if (tile != null) // Tile has fog (unknown)
                         {
+                            // Skip the last failed target to avoid loops
+                            if (_hasLastFailedTarget && _lastFailedTarget.X == x && _lastFailedTarget.Y == y)
+                                continue;
+
+                            // Skip impassable tiles in the A* graph (walls/collision/obstacles)
+                            if (astarGraph != null && astarGraph.Walls.Contains(new Point(x, y)))
+                                continue;
+
                             // Calculate distance from hero to this tile
                             var distance = Vector2.Distance(
                                 new Vector2(heroTile.X, heroTile.Y),
@@ -186,17 +210,21 @@ namespace PitHero.AI
         {
             try
             {
-                // Get the AStarGridGraph from the scene service
                 var astarGraph = Core.Services.GetService<AstarGridGraph>();
-                
                 if (astarGraph == null)
                 {
                     Debug.Warn("[Wander] AStarGridGraph service not found");
                     return null;
                 }
 
+                // Early out if target is not passable
+                if (astarGraph.Walls.Contains(target))
+                {
+                    Debug.Warn($"[Wander] Target {target.X},{target.Y} is not passable");
+                    return null;
+                }
+
                 Debug.Log($"[Wander] Calculating path from {start.X},{start.Y} to {target.X},{target.Y}");
-                
                 var path = astarGraph.Search(start, target);
                 
                 if (path != null && path.Count > 0)
@@ -255,6 +283,7 @@ namespace PitHero.AI
             _currentPath = null;
             _pathIndex = 0;
             _hasSelectedTarget = false;
+            // Keep _lastFailedTarget so we don't reselect it immediately
         }
     }
 }
