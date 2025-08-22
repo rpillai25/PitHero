@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using Nez.AI.Pathfinding;
 using Nez.Tiled;
 using PitHero.AI;
 using PitHero.ECS.Components;
@@ -64,6 +65,34 @@ namespace PitHero.ECS.Scenes
             fogLayerRenderer.SetRenderLayer(GameConfig.RenderLayerFogOfWar);
 
             _cameraController?.ConfigureZoomForMap(_mapPath);
+            
+            // Set up pathfinding after map is loaded
+            SetupPathfinding();
+        }
+
+        private void SetupPathfinding()
+        {
+            if (_tmxMap == null)
+            {
+                Debug.Warn("[MainGameScene] Cannot setup pathfinding without tilemap");
+                return;
+            }
+
+            // Get the collision layer for pathfinding
+            var collisionLayer = _tmxMap.GetLayer<TmxLayer>("Collision");
+            if (collisionLayer == null)
+            {
+                Debug.Warn("[MainGameScene] No 'Collision' layer found in tilemap for pathfinding");
+                return;
+            }
+
+            // Create AStarGridGraph using the collision layer
+            var astarGraph = new AstarGridGraph(collisionLayer);
+            
+            // Register the pathfinding graph as a service
+            Core.Services.AddService(astarGraph);
+            
+            Debug.Log("[MainGameScene] AStarGridGraph pathfinding service registered");
         }
 
         private void SpawnPit()
@@ -93,6 +122,9 @@ namespace PitHero.ECS.Scenes
             Debug.Log($"[MainGameScene] Created pit entity with Tag={pitEntity.Tag} at position {pitEntity.Transform.Position.X},{pitEntity.Transform.Position.Y}");
             Debug.Log($"[MainGameScene] Pit trigger collider bounds: X={pitWorldBounds.X}, " +
                 $"Y={pitWorldBounds.Y}, Width={pitWorldBounds.Width}, Height={pitWorldBounds.Height}");
+            
+            // Add pit obstacles to pathfinding graph
+            AddPitObstaclesToPathfinding();
         }
 
         private Rectangle CalculatePitWorldBounds()
@@ -116,6 +148,29 @@ namespace PitHero.ECS.Scenes
             );
         }
 
+        private void AddPitObstaclesToPathfinding()
+        {
+            var astarGraph = Core.Services.GetService<AstarGridGraph>();
+            if (astarGraph == null)
+            {
+                Debug.Warn("[MainGameScene] AStarGridGraph not found, cannot add pit obstacles");
+                return;
+            }
+
+            // Add pit area tiles as obstacles for pathfinding
+            // The pit area spans from (PitRectX, PitRectY) to (PitRectX + PitRectWidth - 1, PitRectY + PitRectHeight - 1)
+            for (int x = GameConfig.PitRectX; x < GameConfig.PitRectX + GameConfig.PitRectWidth; x++)
+            {
+                for (int y = GameConfig.PitRectY; y < GameConfig.PitRectY + GameConfig.PitRectHeight; y++)
+                {
+                    // Add this tile as an obstacle in the pathfinding graph
+                    astarGraph.Walls.Add(new Point(x, y));
+                }
+            }
+            
+            Debug.Log($"[MainGameScene] Added {GameConfig.PitRectWidth * GameConfig.PitRectHeight} pit obstacle tiles to pathfinding graph");
+        }
+
         private void GeneratePitContent()
         {
             Debug.Log("[MainGameScene] Generating pit content");
@@ -128,11 +183,24 @@ namespace PitHero.ECS.Scenes
 
         private void SpawnHero()
         {
-            var heroStart = HeroActionBase.GetMapCenterWorldPosition();
+            // Calculate random position at least 8 tiles to the right of rightmost pit edge
+            var rightmostPitTile = GameConfig.PitRectX + GameConfig.PitRectWidth - 1; // 12
+            var minHeroTileX = rightmostPitTile + 8; // 20
+            var maxHeroTileX = 50; // Leave some space from map edge
+            var heroTileY = GameConfig.MapCenterTileY; // Keep same Y as pit entrance for simplicity
+            
+            var random = new System.Random();
+            var heroTileX = random.Next(minHeroTileX, maxHeroTileX + 1);
+            
+            var heroStart = new Vector2(
+                heroTileX * GameConfig.TileSize + GameConfig.TileSize / 2,
+                heroTileY * GameConfig.TileSize + GameConfig.TileSize / 2
+            );
+            
             var hero = CreateEntity("hero").SetPosition(heroStart);
 
-            Debug.Log($"[MainGameScene] Hero spawned at position {heroStart.X},{heroStart.Y} , tile coordinates: " +
-                      $"({(int)(heroStart.X / GameConfig.TileSize)}, {(int)(heroStart.Y / GameConfig.TileSize)})");
+            Debug.Log($"[MainGameScene] Hero spawned at random position {heroStart.X},{heroStart.Y} , tile coordinates: " +
+                      $"({heroTileX}, {heroTileY}) - {minHeroTileX - rightmostPitTile} tiles from pit edge");
 
             hero.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
             // Use centered collider constructor - this creates a collider centered on the entity

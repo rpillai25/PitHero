@@ -16,7 +16,7 @@ namespace PitHero.AI
             _hero = hero;
 
             // Add all available actions
-            _planner.AddAction(new MoveLeftAction());
+            _planner.AddAction(new MoveToPitAction());
             _planner.AddAction(new JumpIntoPitAction());
         }
 
@@ -31,11 +31,12 @@ namespace PitHero.AI
             if (_hero.PitInitialized)
                 ws.Set(GoapConstants.PitInitialized, true);
 
-            // Only set MovingLeft if actually moving left
+            // Check if MoveToPitAction is currently executing
             var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
-            if (tileMover != null && tileMover.IsMoving && tileMover.CurrentDirection == Direction.Left)
+            if (tileMover != null && tileMover.IsMoving && !_hero.AdjacentToPitBoundaryFromOutside)
             {
-                ws.Set(GoapConstants.MovingLeft, true);
+                // Hero is moving but hasn't reached pit boundary yet - assume MovingToPit
+                ws.Set(GoapConstants.MovingToPit, true);
             }
 
             // Only set pit states if they're actually true
