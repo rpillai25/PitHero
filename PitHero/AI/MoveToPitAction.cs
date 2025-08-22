@@ -11,9 +11,21 @@ namespace PitHero.AI
     /// </summary>
     public class MoveToPitAction : HeroActionBase
     {
+        private static readonly Point[] s_candidateTargets = new Point[]
+        {
+            new Point(13, 3),
+            new Point(13, 4),
+            new Point(13, 5),
+            new Point(13, 6),
+            new Point(13, 7),
+            new Point(13, 8),
+            new Point(13, 9)
+        };
+
         private List<Point> _currentPath;
         private int _pathIndex;
-        private Point _targetTile = new Point(13, 6); // Target tile just outside pit entrance
+        private Point _targetTile; // Chosen at runtime from candidates
+        private bool _hasSelectedTarget;
 
         public MoveToPitAction() : base(GoapConstants.MoveToPitAction, 1)
         {
@@ -25,6 +37,9 @@ namespace PitHero.AI
             SetPostcondition(GoapConstants.AdjacentToPitBoundaryFromOutside, true);
         }
 
+        /// <summary>
+        /// Execute the action each frame; moves along path toward chosen pit-adjacent target
+        /// </summary>
         public override bool Execute(HeroComponent hero)
         {
             // Get the TileByTileMover component from the hero entity
@@ -33,7 +48,17 @@ namespace PitHero.AI
             if (tileMover == null)
             {
                 Debug.Warn("MoveToPitAction: Hero entity missing TileByTileMover component");
-                return false;
+                ResetInternal();
+                return true; // complete as failed
+            }
+
+            // Choose a target if we have not yet selected one for this execution
+            if (!_hasSelectedTarget)
+            {
+                var idx = Nez.Random.NextInt(s_candidateTargets.Length);
+                _targetTile = s_candidateTargets[idx];
+                _hasSelectedTarget = true;
+                Debug.Log($"[MoveToPit] Selected target tile {_targetTile.X},{_targetTile.Y}");
             }
 
             // Check if we're already at the target position
@@ -43,6 +68,7 @@ namespace PitHero.AI
                 Debug.Log($"[MoveToPit] Reached target tile {_targetTile.X},{_targetTile.Y} - action complete");
                 hero.AdjacentToPitBoundaryFromOutside = true;
                 hero.PitApproachDirection = Direction.Left; // Approaching from right side of pit
+                ResetInternal();
                 return true;
             }
 
@@ -55,6 +81,7 @@ namespace PitHero.AI
                 if (_currentPath == null || _currentPath.Count == 0)
                 {
                     Debug.Warn($"[MoveToPit] Could not find path from {currentTile.X},{currentTile.Y} to {_targetTile.X},{_targetTile.Y}");
+                    ResetInternal();
                     return true; // Complete the action as failed
                 }
                 
@@ -83,7 +110,7 @@ namespace PitHero.AI
                         }
                         else
                         {
-                            Debug.Log($"[MoveToPit] Movement blocked, recalculating path");
+                            Debug.Log("[MoveToPit] Movement blocked, recalculating path");
                             _currentPath = null; // Force recalculation next frame
                         }
                     }
@@ -101,11 +128,12 @@ namespace PitHero.AI
                         Debug.Log($"[MoveToPit] Reached target tile {_targetTile.X},{_targetTile.Y} - action complete");
                         hero.AdjacentToPitBoundaryFromOutside = true;
                         hero.PitApproachDirection = Direction.Left; // Approaching from right side of pit
+                        ResetInternal();
                         return true;
                     }
                     else
                     {
-                        Debug.Log($"[MoveToPit] Path completed but not at target, recalculating");
+                        Debug.Log("[MoveToPit] Path completed but not at target, recalculating");
                         _currentPath = null; // Force recalculation next frame
                     }
                 }
@@ -173,6 +201,16 @@ namespace PitHero.AI
             
             Debug.Warn($"[MoveToPit] Non-adjacent tiles: from {from.X},{from.Y} to {to.X},{to.Y}");
             return null;
+        }
+
+        /// <summary>
+        /// Reset internal execution state so future runs can reselect target
+        /// </summary>
+        private void ResetInternal()
+        {
+            _currentPath = null;
+            _pathIndex = 0;
+            _hasSelectedTarget = false;
         }
     }
 }
