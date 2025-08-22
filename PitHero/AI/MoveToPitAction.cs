@@ -11,7 +11,8 @@ namespace PitHero.AI
     /// </summary>
     public class MoveToPitAction : HeroActionBase
     {
-        private static readonly Point[] s_candidateTargets = new Point[]
+        // Fallback candidate targets - used if PitWidthManager is not available
+        private static readonly Point[] s_fallbackCandidateTargets = new Point[]
         {
             new Point(13, 3),
             new Point(13, 4),
@@ -55,8 +56,10 @@ namespace PitHero.AI
             // Choose a target if we have not yet selected one for this execution
             if (!_hasSelectedTarget)
             {
-                var idx = Nez.Random.NextInt(s_candidateTargets.Length);
-                _targetTile = s_candidateTargets[idx];
+                // Get current candidate targets from PitWidthManager
+                var candidateTargets = GetCurrentCandidateTargets();
+                var idx = Nez.Random.NextInt(candidateTargets.Length);
+                _targetTile = candidateTargets[idx];
                 _hasSelectedTarget = true;
                 Debug.Log($"[MoveToPit] Selected target tile {_targetTile.X},{_targetTile.Y}");
             }
@@ -201,6 +204,23 @@ namespace PitHero.AI
             
             Debug.Warn($"[MoveToPit] Non-adjacent tiles: from {from.X},{from.Y} to {to.X},{to.Y}");
             return null;
+        }
+
+        /// <summary>
+        /// Get current candidate targets from PitWidthManager, or fallback if not available
+        /// </summary>
+        private Point[] GetCurrentCandidateTargets()
+        {
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            if (pitWidthManager != null)
+            {
+                return pitWidthManager.GetCurrentPitCandidateTargets();
+            }
+            else
+            {
+                Debug.Warn("[MoveToPit] PitWidthManager not available, using fallback targets");
+                return s_fallbackCandidateTargets;
+            }
         }
 
         /// <summary>

@@ -69,6 +69,9 @@ namespace PitHero.ECS.Scenes
             
             // Set up pathfinding after map is loaded
             SetupPathfinding();
+            
+            // Initialize pit width manager after map and services are set up
+            SetupPitWidthManager();
         }
 
         private void SetupPathfinding()
@@ -91,6 +94,14 @@ namespace PitHero.ECS.Scenes
             var astarGraph = new AstarGridGraph(collisionLayer);
             Core.Services.AddService(astarGraph);
             Debug.Log($"[MainGameScene] AStarGridGraph pathfinding service registered with {astarGraph.Walls.Count} walls from Collision layer");
+        }
+
+        private void SetupPitWidthManager()
+        {
+            var pitWidthManager = new PitWidthManager();
+            pitWidthManager.Initialize();
+            Core.Services.AddService(pitWidthManager);
+            Debug.Log("[MainGameScene] PitWidthManager initialized and registered as service");
         }
 
         private void SpawnPit()
