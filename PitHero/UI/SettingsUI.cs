@@ -281,38 +281,26 @@ namespace PitHero.UI
 
         private void ShowQuitConfirmation()
         {
-            // Ensure layout is up to date so GetX/GetY/GetWidth/GetHeight are valid
+            // Ensure layout is up to date so sizes are valid
             _settingsWindow.Validate();
-            _sessionTabButton.Validate();
             _confirmationDialog.Validate();
 
-            // Base window (Settings) position in stage coordinates
+            // Settings window position and size
             float winX = _settingsWindow.GetX();
             float winY = _settingsWindow.GetY();
-
-            // Session tab position relative to window
-            float tabX = _sessionTabButton.GetX();
-            float tabY = _sessionTabButton.GetY();
-            float tabH = _sessionTabButton.GetHeight();
-
-            // Convert to stage coordinates
-            float sessionTabStageX = winX + tabX;
-            float sessionTabStageY = winY + tabY;
-
-            // Desired dialog position: directly left of the Session tab
-            const float padding = 8f;
             float dialogW = _confirmationDialog.GetWidth();
             float dialogH = _confirmationDialog.GetHeight();
 
-            float targetX = sessionTabStageX - dialogW - padding;
-            float targetY = sessionTabStageY + (tabH - dialogH) / 2f;
+            // Desired: directly left of the Settings window, same Y
+            const float padding = 8f;
+            float targetX = winX - dialogW - padding;
+            float targetY = winY;
 
             // Clamp inside stage bounds
-            if (targetX < 0) targetX = 0;
-            if (targetY < 0) targetY = 0;
             float stageW = _stage.GetWidth();
             float stageH = _stage.GetHeight();
-            if (targetX + dialogW > stageW) targetX = stageW - dialogW;
+            if (targetX < 0) targetX = 0;
+            if (targetY < 0) targetY = 0;
             if (targetY + dialogH > stageH) targetY = stageH - dialogH;
 
             _confirmationDialog.SetPosition(targetX, targetY);
