@@ -1,6 +1,5 @@
 using Microsoft.Xna.Framework;
 using Nez;
-using Nez.UI;
 using PitHero.UI;
 
 namespace PitHero.ECS.Scenes

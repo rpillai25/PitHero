@@ -1,4 +1,3 @@
-using System.Linq;
 using Microsoft.Xna.Framework;
 using Nez;
 
@@ -34,9 +33,9 @@ namespace PitHero.ECS.Components
         public override void OnAddedToEntity()
         {
             base.OnAddedToEntity();
-            
-            // Initialize GOAP flags to clean state
-            PitInitialized = false;
+
+            // Do not override PitInitialized here; it may be set by the spawner.
+            // Initialize other GOAP flags to clean state
             AdjacentToPitBoundaryFromOutside = false;
             AdjacentToPitBoundaryFromInside = false;
             EnteredPit = false;
@@ -92,8 +91,6 @@ namespace PitHero.ECS.Components
                 HandlePitTriggerExit();
                 return;
             }
-            
-            // No additional tilemap exit handling needed
         }
 
         private void HandlePitTriggerEnter()

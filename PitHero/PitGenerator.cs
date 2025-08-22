@@ -5,7 +5,7 @@ using PitHero;
 using PitHero.Util;
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using Nez.AI.Pathfinding;
 
 namespace PitHero
 {
@@ -22,18 +22,13 @@ namespace PitHero
         {
             _scene = scene;
             _random = new System.Random();
-            _collisionTiles = new HashSet<Point>();
+            _collisionTiles = new HashSet<Point>(64);
         }
 
-        /// <summary>
-        /// Generates pit content for the specified level
-        /// </summary>
-        /// <param name="level">The pit level to generate</param>
         public void Generate(int level)
         {
             Debug.Log($"[PitGenerator] Generating pit content for level {level}");
 
-            // For level 1, generate fixed entities
             if (level == 1)
             {
                 GenerateLevel1();
@@ -42,9 +37,6 @@ namespace PitHero
 
         private void GenerateLevel1()
         {
-            // Calculate valid placement area (excluding 1-tile perimeter)
-            // Pit area: (1,2) to (12,10) in tiles
-            // Valid interior: (2,3) to (10,9) in tiles  (excludes rightmost edge)
             var validMinX = GameConfig.PitRectX + 1; // 2
             var validMinY = GameConfig.PitRectY + 1; // 3
             var validMaxX = GameConfig.PitRectX + GameConfig.PitRectWidth - 3; // 10
@@ -52,10 +44,8 @@ namespace PitHero
             
             Debug.Log($"[PitGenerator] Valid placement area: tiles ({validMinX},{validMinY}) to ({validMaxX},{validMaxY})");
 
-            // Initialize collision tracking with tilemap collision tiles
             InitializeCollisionTiles(validMinX, validMinY, validMaxX, validMaxY);
 
-            // Generate entities with pathfinding validation
             var maxAttempts = 10;
             bool validLayoutGenerated = false;
 
@@ -63,29 +53,25 @@ namespace PitHero
             {
                 Debug.Log($"[PitGenerator] Generation attempt {attempt}");
                 
-                // Keep track of used positions to avoid overlaps
-                var usedPositions = new HashSet<Point>();
-                var obstaclePositions = new HashSet<Point>();
-                var targetPositions = new List<Point>(); // Treasures, monsters, wizard orbs
+                var usedPositions = new HashSet<Point>(64);
+                var obstaclePositions = new HashSet<Point>(16);
+                var targetPositions = new List<Point>(8);
 
-                // Generate obstacles first
                 var obstacles = GenerateEntityPositions(10, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "obstacles");
                 obstaclePositions.UnionWith(obstacles);
                 usedPositions.UnionWith(obstacles);
 
-                // Generate target entities
                 var treasures = GenerateEntityPositions(2, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "treasures");
                 var monsters = GenerateEntityPositions(2, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "monsters");
                 var wizardOrbs = GenerateEntityPositions(1, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "wizard orbs");
 
-                targetPositions.AddRange(treasures);
-                targetPositions.AddRange(monsters);
-                targetPositions.AddRange(wizardOrbs);
+                // Manual AddRange without LINQ
+                for (int i = 0; i < treasures.Count; i++) targetPositions.Add(treasures[i]);
+                for (int i = 0; i < monsters.Count; i++) targetPositions.Add(monsters[i]);
+                for (int i = 0; i < wizardOrbs.Count; i++) targetPositions.Add(wizardOrbs[i]);
 
-                // Validate that all targets are reachable
                 if (ValidateAllTargetsReachable(obstaclePositions, targetPositions, validMinX, validMinY, validMaxX, validMaxY))
                 {
-                    // Valid layout found - create the actual entities
                     CreateEntitiesAtPositions(obstacles, GameConfig.TAG_OBSTACLE, Color.Gray, "obstacle");
                     CreateEntitiesAtPositions(treasures, GameConfig.TAG_TREASURE, Color.Yellow, "treasure");
                     CreateEntitiesAtPositions(monsters, GameConfig.TAG_MONSTER, Color.Red, "monster");
@@ -104,7 +90,6 @@ namespace PitHero
             if (!validLayoutGenerated)
             {
                 Debug.Log($"[PitGenerator] Warning: Could not generate valid layout after {maxAttempts} attempts");
-                // Fallback to a simple safe layout
                 GenerateFallbackLayout(validMinX, validMinY, validMaxX, validMaxY);
             }
         }
@@ -113,7 +98,6 @@ namespace PitHero
         {
             _collisionTiles.Clear();
 
-            // Get tilemap service to check for collision tiles
             var tiledMapService = Core.Services.GetService<TiledMapService>();
             if (tiledMapService?.CurrentMap == null)
             {
@@ -128,13 +112,12 @@ namespace PitHero
                 return;
             }
 
-            // Check each tile in the valid area for collisions
             for (int x = minX; x <= maxX; x++)
             {
                 for (int y = minY; y <= maxY; y++)
                 {
                     var tile = collisionLayer.GetTile(x, y);
-                    if (tile != null && tile.Gid != 0) // Non-empty tile indicates collision
+                    if (tile != null && tile.Gid != 0)
                     {
                         _collisionTiles.Add(new Point(x, y));
                         Debug.Log($"[PitGenerator] Found collision tile at ({x},{y})");
@@ -147,12 +130,12 @@ namespace PitHero
 
         private List<Point> GenerateEntityPositions(int count, int minX, int minY, int maxX, int maxY, HashSet<Point> usedPositions, string entityType)
         {
-            var positions = new List<Point>();
+            var positions = new List<Point>(count);
             
             for (int i = 0; i < count; i++)
             {
                 Point tilePos = GetRandomUnusedPosition(minX, minY, maxX, maxY, usedPositions);
-                if (tilePos.X == -1) // No valid position found
+                if (tilePos.X == -1)
                 {
                     Debug.Log($"[PitGenerator] Warning: Could not find valid position for {entityType} {i + 1}");
                     continue;
@@ -171,23 +154,35 @@ namespace PitHero
             {
                 var tilePos = positions[i];
                 
-                // Convert tile position to world position (center of tile)
                 var worldPos = new Vector2(
                     tilePos.X * GameConfig.TileSize + GameConfig.TileSize / 2,
                     tilePos.Y * GameConfig.TileSize + GameConfig.TileSize / 2
                 );
 
-                // Create entity
-                var entity = _scene.CreateEntity($"{entityTypeName}_{i + 1}");
+                // Avoid dynamic strings for entity names; duplicate names are acceptable
+                var entity = _scene.CreateEntity(entityTypeName);
                 entity.SetTag(tag);
                 entity.SetPosition(worldPos);
 
-                // Add visual component with specified color
                 var renderer = entity.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
                 renderer.Color = color;
+                renderer.SetRenderLayer(GameConfig.RenderLayerActors);
 
-                // Add collision component
-                var collider = entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
+                entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
+
+                if (tag == GameConfig.TAG_OBSTACLE)
+                {
+                    var astarGraph = Core.Services.GetService<AstarGridGraph>();
+                    if (astarGraph != null)
+                    {
+                        astarGraph.Walls.Add(tilePos);
+                        Debug.Log($"[PitGenerator] Added obstacle tile to A* walls at ({tilePos.X},{tilePos.Y})");
+                    }
+                    else
+                    {
+                        Debug.Warn("[PitGenerator] A* graph not found when adding obstacle walls");
+                    }
+                }
 
                 Debug.Log($"[PitGenerator] Created {entityTypeName} at tile ({tilePos.X},{tilePos.Y}), world ({worldPos.X},{worldPos.Y})");
             }
@@ -201,10 +196,6 @@ namespace PitHero
                 return true;
             }
 
-            // Hero starts at map center, which should be outside the pit
-            var heroStartTile = new Point(GameConfig.MapCenterTileX, GameConfig.MapCenterTileY);
-            
-            // Find the closest accessible tile to the pit boundary as our starting point for pathfinding
             var pitEntryPoint = FindPitEntryPoint(obstaclePositions, minX, minY, maxX, maxY);
             if (!pitEntryPoint.HasValue)
             {
@@ -214,9 +205,9 @@ namespace PitHero
 
             Debug.Log($"[PitGenerator] Using pit entry point ({pitEntryPoint.Value.X},{pitEntryPoint.Value.Y}) for pathfinding validation");
 
-            // Check if each target is reachable from the pit entry point
-            foreach (var target in targetPositions)
+            for (int i = 0; i < targetPositions.Count; i++)
             {
+                var target = targetPositions[i];
                 if (!IsPathExists(pitEntryPoint.Value, target, obstaclePositions, minX, minY, maxX, maxY))
                 {
                     Debug.Log($"[PitGenerator] Target at ({target.X},{target.Y}) is not reachable");
@@ -230,16 +221,14 @@ namespace PitHero
 
         private Point? FindPitEntryPoint(HashSet<Point> obstaclePositions, int minX, int minY, int maxX, int maxY)
         {
-            // Try to find an accessible tile near the pit boundary
-            // Check the perimeter of the valid area first
-            var potentialEntries = new List<Point>();
+            // Scan perimeter and return first open tile without allocating intermediate lists
 
             // Top edge
             for (int x = minX; x <= maxX; x++)
             {
                 var point = new Point(x, minY);
                 if (!IsBlocked(point, obstaclePositions))
-                    potentialEntries.Add(point);
+                    return point;
             }
 
             // Bottom edge
@@ -247,7 +236,7 @@ namespace PitHero
             {
                 var point = new Point(x, maxY);
                 if (!IsBlocked(point, obstaclePositions))
-                    potentialEntries.Add(point);
+                    return point;
             }
 
             // Left edge
@@ -255,7 +244,7 @@ namespace PitHero
             {
                 var point = new Point(minX, y);
                 if (!IsBlocked(point, obstaclePositions))
-                    potentialEntries.Add(point);
+                    return point;
             }
 
             // Right edge
@@ -263,27 +252,26 @@ namespace PitHero
             {
                 var point = new Point(maxX, y);
                 if (!IsBlocked(point, obstaclePositions))
-                    potentialEntries.Add(point);
+                    return point;
             }
 
-            return potentialEntries.FirstOrDefault();
+            return null;
         }
 
         private bool IsPathExists(Point start, Point target, HashSet<Point> obstaclePositions, int minX, int minY, int maxX, int maxY)
         {
-            // Simple BFS pathfinding
-            var queue = new Queue<Point>();
-            var visited = new HashSet<Point>();
+            var queue = new Queue<Point>(32);
+            var visited = new HashSet<Point>(64);
             
             queue.Enqueue(start);
             visited.Add(start);
 
             var directions = new Point[]
             {
-                new Point(0, 1),   // Down
-                new Point(0, -1),  // Up
-                new Point(1, 0),   // Right
-                new Point(-1, 0)   // Left
+                new Point(0, 1),
+                new Point(0, -1),
+                new Point(1, 0),
+                new Point(-1, 0)
             };
 
             while (queue.Count > 0)
@@ -292,22 +280,20 @@ namespace PitHero
                 
                 if (current == target)
                 {
-                    return true; // Path found
+                    return true;
                 }
 
-                foreach (var dir in directions)
+                for (int i = 0; i < 4; i++)
                 {
+                    var dir = directions[i];
                     var next = new Point(current.X + dir.X, current.Y + dir.Y);
                     
-                    // Check bounds
                     if (next.X < minX || next.X > maxX || next.Y < minY || next.Y > maxY)
                         continue;
                     
-                    // Check if already visited
                     if (visited.Contains(next))
                         continue;
                     
-                    // Check if blocked
                     if (IsBlocked(next, obstaclePositions))
                         continue;
                     
@@ -316,12 +302,11 @@ namespace PitHero
                 }
             }
 
-            return false; // No path found
+            return false;
         }
 
         private bool IsBlocked(Point position, HashSet<Point> obstaclePositions)
         {
-            // Check if position is blocked by tilemap collision or obstacles
             return _collisionTiles.Contains(position) || obstaclePositions.Contains(position);
         }
 
@@ -329,15 +314,13 @@ namespace PitHero
         {
             Debug.Log("[PitGenerator] Generating fallback safe layout");
             
-            // Create a simple layout with guaranteed paths
-            // Place obstacles only in corners and edges, leaving center areas clear
-            var safeObstacles = new List<Point>
+            var safeObstacles = new List<Point>(10)
             {
-                new Point(minX, minY),       // Top-left
-                new Point(maxX, minY),       // Top-right
-                new Point(minX, maxY),       // Bottom-left
-                new Point(maxX, maxY),       // Bottom-right
-                new Point(minX + 1, minY),   // Additional safe obstacles
+                new Point(minX, minY),
+                new Point(maxX, minY),
+                new Point(minX, maxY),
+                new Point(maxX, maxY),
+                new Point(minX + 1, minY),
                 new Point(maxX - 1, minY),
                 new Point(minX, minY + 1),
                 new Point(maxX, minY + 1),
@@ -345,11 +328,10 @@ namespace PitHero
                 new Point(maxX - 2, maxY)
             };
 
-            // Place targets in easily accessible positions
             var centerX = (minX + maxX) / 2;
             var centerY = (minY + maxY) / 2;
             
-            var safeTargets = new List<(Point pos, int tag, Color color, string name)>
+            var safeTargets = new List<(Point pos, int tag, Color color, string name)>(5)
             {
                 (new Point(centerX, centerY), GameConfig.TAG_TREASURE, Color.Yellow, "treasure"),
                 (new Point(centerX + 1, centerY), GameConfig.TAG_TREASURE, Color.Yellow, "treasure"),
@@ -358,13 +340,12 @@ namespace PitHero
                 (new Point(centerX, centerY - 1), GameConfig.TAG_WIZARD_ORB, Color.Blue, "wizard_orb")
             };
 
-            // Create obstacle entities
             CreateEntitiesAtPositions(safeObstacles, GameConfig.TAG_OBSTACLE, Color.Gray, "obstacle");
 
-            // Create target entities
-            foreach (var (pos, tag, color, name) in safeTargets)
+            for (int i = 0; i < safeTargets.Count; i++)
             {
-                CreateEntitiesAtPositions(new List<Point> { pos }, tag, color, name);
+                var t = safeTargets[i];
+                CreateEntitiesAtPositions(new List<Point>(1) { t.pos }, t.tag, t.color, t.name);
             }
 
             Debug.Log("[PitGenerator] Fallback layout created with guaranteed paths");
@@ -372,10 +353,9 @@ namespace PitHero
 
         private Point GetRandomUnusedPosition(int minX, int minY, int maxX, int maxY, HashSet<Point> usedPositions)
         {
-            // Calculate total available spots
             int totalSpots = (maxX - minX + 1) * (maxY - minY + 1);
             int attempts = 0;
-            int maxAttempts = totalSpots * 2; // Allow extra attempts for safety
+            int maxAttempts = totalSpots * 2;
 
             while (attempts < maxAttempts)
             {
@@ -391,20 +371,7 @@ namespace PitHero
                 attempts++;
             }
 
-            // If we can't find a spot, return invalid position
             return new Point(-1, -1);
-        }
-
-        private string GetEntityTypeName(int tag)
-        {
-            switch (tag)
-            {
-                case GameConfig.TAG_OBSTACLE: return "obstacle";
-                case GameConfig.TAG_TREASURE: return "treasure";
-                case GameConfig.TAG_MONSTER: return "monster";
-                case GameConfig.TAG_WIZARD_ORB: return "wizard_orb";
-                default: return "unknown";
-            }
         }
     }
 }

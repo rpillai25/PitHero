@@ -16,7 +16,7 @@ namespace PitHero.AI
             _hero = hero;
 
             // Add all available actions
-            _planner.AddAction(new MoveLeftAction());
+            _planner.AddAction(new MoveToPitAction());
             _planner.AddAction(new JumpIntoPitAction());
         }
 
@@ -27,18 +27,15 @@ namespace PitHero.AI
             // Only set the states that are actually true
             ws.Set(GoapConstants.HeroInitialized, true);
 
-            // Set pit initialized state
             if (_hero.PitInitialized)
                 ws.Set(GoapConstants.PitInitialized, true);
 
-            // Only set MovingLeft if actually moving left
             var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
-            if (tileMover != null && tileMover.IsMoving && tileMover.CurrentDirection == Direction.Left)
+            if (tileMover != null && tileMover.IsMoving && !_hero.AdjacentToPitBoundaryFromOutside)
             {
-                ws.Set(GoapConstants.MovingLeft, true);
+                ws.Set(GoapConstants.MovingToPit, true);
             }
 
-            // Only set pit states if they're actually true
             if (_hero.AdjacentToPitBoundaryFromOutside)
                 ws.Set(GoapConstants.AdjacentToPitBoundaryFromOutside, true);
             if (_hero.AdjacentToPitBoundaryFromInside)
@@ -46,23 +43,20 @@ namespace PitHero.AI
             if (_hero.EnteredPit)
                 ws.Set(GoapConstants.EnteredPit, true);
 
-            Debug.Log($"[GOAP] Actual state bits: HeroInit=true, others=false");
+            Debug.Log($"[GOAP] State: PitInitialized={_hero.PitInitialized}, " +
+                      $"AdjOut={_hero.AdjacentToPitBoundaryFromOutside}, " +
+                      $"AdjIn={_hero.AdjacentToPitBoundaryFromInside}, " +
+                      $"EnteredPit={_hero.EnteredPit}");
             return ws;
         }
 
         public override WorldState GetGoalState()
         {
             var goal = WorldState.Create(_planner);
-
-            // Final objective: hero ends up inside the pit
             goal.Set(GoapConstants.EnteredPit, true);
-            // (Optional) also require inside-boundary flag:
-            // goal.Set("AdjacentToPitBoundaryFromInside", true);
-
             return goal;
         }
 
-        // Debug helpers
         public string DescribePlanner() => _planner.Describe();
         public string DescribeCurrentState() => GetWorldState().Describe(_planner);
     }

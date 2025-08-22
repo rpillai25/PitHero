@@ -2,6 +2,7 @@
 
 - The project is written in C# using **FNA + Nez** (not MonoGame).
 - Run dotnet test PitHero.Tests/ for unit tests after code changes are complete and solution builds
+- /// <summary> Comment all methods with a very concise summary
 - Game runs as a **horizontal strip** at bottom of screen (borderless, always-on-top, click-through optional)
 - Virtual resolution: 1920×360
 - ECS pattern using **Nez framework**:
@@ -42,3 +43,10 @@
   - All components under ECS/Components/, Scenes under ECS/Scenes/
   - If a Service needs to be easily accessed in multiple places, register it with Core.Services.AddService() and then get it from anywhere with Core.Services.GetService<Service>()
   - Any Conditions for the GOAP framework should be added to GoapConstants for strong typing
+- ** AOT compilation compliance**:
+  - Avoid garbage generation
+  - Only use strings as const. Do not use strings dynamically (e.g. string concatenation, patterns...), this is the most common source of garbage.  The exception to this is in Debug.Log statements.
+  - Avoid allocating anything with the new keyword during your game loop, e.g. pre-allocate everything ahead of using them during gameplay.
+  - Avoid using LINQ
+  - If you are using collections, initialize them with a large enough capacity to avoid their internal data structure being silently recreated.
+  - Use for loops instead of foreach loops
