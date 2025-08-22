@@ -44,6 +44,7 @@ namespace PitHero.ECS.Scenes
             SpawnPit();
             GeneratePitContent();
             SpawnHero();
+            AddPitLevelTestComponent();
 
             _isInitializationComplete = true;
         }
@@ -136,7 +137,14 @@ namespace PitHero.ECS.Scenes
 
         private Rectangle CalculatePitWorldBounds()
         {
-            // Convert tile coordinates to world coordinates
+            // Use dynamic pit bounds from PitWidthManager if available
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            if (pitWidthManager != null)
+            {
+                return pitWidthManager.CalculateCurrentPitWorldBounds();
+            }
+
+            // Fallback to default static calculation
             var topLeftWorld = new Vector2(
                 GameConfig.PitRectX * GameConfig.TileSize - GameConfig.PitColliderPadding,
                 GameConfig.PitRectY * GameConfig.TileSize - GameConfig.PitColliderPadding
@@ -234,6 +242,45 @@ namespace PitHero.ECS.Scenes
 
             _settingsUI = new SettingsUI(Core.Instance);
             _settingsUI.InitializeUI(uiCanvas.Stage);
+        }
+
+        private void AddPitLevelTestComponent()
+        {
+            var testEntity = CreateEntity("pit-level-test");
+            testEntity.AddComponent(new PitLevelTestComponent());
+            Debug.Log("[MainGameScene] Added PitLevelTestComponent - Press number keys 0-9 to test pit level changes");
+        }
+
+        /// <summary>
+        /// Update the pit collider bounds to match the current dynamic pit width
+        /// </summary>
+        public void UpdatePitColliderBounds()
+        {
+            var pitEntity = FindEntity("pit");
+            if (pitEntity == null)
+            {
+                Debug.Error("[MainGameScene] Could not find pit entity to update collider bounds");
+                return;
+            }
+
+            var pitCollider = pitEntity.GetComponent<BoxCollider>();
+            if (pitCollider == null)
+            {
+                Debug.Error("[MainGameScene] Pit entity missing BoxCollider component");
+                return;
+            }
+
+            // Calculate new pit bounds
+            var newPitBounds = CalculatePitWorldBounds();
+
+            // Update collider size
+            pitCollider.SetWidth(newPitBounds.Width);
+            pitCollider.SetHeight(newPitBounds.Height);
+
+            // Update pit entity position to center of new bounds
+            pitEntity.SetPosition(newPitBounds.Center.ToVector2());
+
+            Debug.Log($"[MainGameScene] Updated pit collider bounds: X={newPitBounds.X}, Y={newPitBounds.Y}, Width={newPitBounds.Width}, Height={newPitBounds.Height}");
         }
 
         public override void Update()

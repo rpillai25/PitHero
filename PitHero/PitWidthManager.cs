@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Tiled;
 using PitHero.Util;
+using PitHero.ECS.Scenes;
 using System.Collections.Generic;
 
 namespace PitHero
@@ -182,6 +183,26 @@ namespace PitHero
             // Update the current pit right edge
             _currentPitRightEdge = lastXCoordinate;
             Debug.Log($"[PitWidthManager] Pit extension complete. New right edge: {_currentPitRightEdge}");
+
+            // Notify the scene to update pit collider bounds
+            UpdatePitColliderBounds();
+        }
+
+        /// <summary>
+        /// Notify the main game scene to update pit collider bounds
+        /// </summary>
+        private void UpdatePitColliderBounds()
+        {
+            // Find the MainGameScene and call its update method
+            var scene = Core.Scene as MainGameScene;
+            if (scene != null)
+            {
+                scene.UpdatePitColliderBounds();
+            }
+            else
+            {
+                Debug.Warn("[PitWidthManager] Could not find MainGameScene to update pit collider bounds");
+            }
         }
 
         /// <summary>
@@ -263,6 +284,63 @@ namespace PitHero
 
             Debug.Log($"[PitWidthManager] Generated {candidates.Length} candidate targets at x={targetX}");
             return candidates;
+        }
+
+        /// <summary>
+        /// Calculate the current dynamic pit bounds in world coordinates
+        /// </summary>
+        public Rectangle CalculateCurrentPitWorldBounds()
+        {
+            if (!_isInitialized)
+            {
+                Debug.Warn("[PitWidthManager] Manager not initialized, returning default pit bounds");
+                return CalculateDefaultPitWorldBounds();
+            }
+
+            // Calculate dynamic width based on current right edge
+            int dynamicPitWidth = _currentPitRightEdge - GameConfig.PitRectX + 1;
+
+            // Convert tile coordinates to world coordinates
+            var topLeftWorld = new Vector2(
+                GameConfig.PitRectX * GameConfig.TileSize - GameConfig.PitColliderPadding,
+                GameConfig.PitRectY * GameConfig.TileSize - GameConfig.PitColliderPadding
+            );
+
+            var bottomRightWorld = new Vector2(
+                (GameConfig.PitRectX + dynamicPitWidth) * GameConfig.TileSize + GameConfig.PitColliderPadding,
+                (GameConfig.PitRectY + GameConfig.PitRectHeight) * GameConfig.TileSize + GameConfig.PitColliderPadding
+            );
+
+            return new Rectangle(
+                (int)topLeftWorld.X,
+                (int)topLeftWorld.Y,
+                (int)(bottomRightWorld.X - topLeftWorld.X),
+                (int)(bottomRightWorld.Y - topLeftWorld.Y)
+            );
+        }
+
+        /// <summary>
+        /// Calculate the default static pit bounds for fallback
+        /// </summary>
+        private Rectangle CalculateDefaultPitWorldBounds()
+        {
+            // Convert tile coordinates to world coordinates
+            var topLeftWorld = new Vector2(
+                GameConfig.PitRectX * GameConfig.TileSize - GameConfig.PitColliderPadding,
+                GameConfig.PitRectY * GameConfig.TileSize - GameConfig.PitColliderPadding
+            );
+
+            var bottomRightWorld = new Vector2(
+                (GameConfig.PitRectX + GameConfig.PitRectWidth) * GameConfig.TileSize + GameConfig.PitColliderPadding,
+                (GameConfig.PitRectY + GameConfig.PitRectHeight) * GameConfig.TileSize + GameConfig.PitColliderPadding
+            );
+
+            return new Rectangle(
+                (int)topLeftWorld.X,
+                (int)topLeftWorld.Y,
+                (int)(bottomRightWorld.X - topLeftWorld.X),
+                (int)(bottomRightWorld.Y - topLeftWorld.Y)
+            );
         }
     }
 }

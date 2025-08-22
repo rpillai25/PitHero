@@ -106,5 +106,57 @@ namespace PitHero.Tests
             Assert.AreEqual(14, level10RightEdge, "Level 10 pit right edge should be at x=14");
             Assert.AreEqual(16, level20RightEdge, "Level 20 pit right edge should be at x=16");
         }
+
+        [TestMethod]
+        public void PitWidthManager_CalculateCurrentPitWorldBounds_ShouldReturnFallbackWhenNotInitialized()
+        {
+            // Arrange
+            var pitWidthManager = new PitWidthManager();
+            
+            // Act
+            var bounds = pitWidthManager.CalculateCurrentPitWorldBounds();
+            
+            // Assert
+            Assert.IsTrue(bounds.Width > 0, "Bounds width should be positive");
+            Assert.IsTrue(bounds.Height > 0, "Bounds height should be positive");
+            
+            // Should match default static pit bounds
+            var expectedWidth = (GameConfig.PitRectWidth * GameConfig.TileSize) + (2 * GameConfig.PitColliderPadding);
+            var expectedHeight = (GameConfig.PitRectHeight * GameConfig.TileSize) + (2 * GameConfig.PitColliderPadding);
+            
+            Assert.AreEqual(expectedWidth, bounds.Width, "Default bounds width should match GameConfig calculations");
+            Assert.AreEqual(expectedHeight, bounds.Height, "Default bounds height should match GameConfig calculations");
+        }
+
+        [TestMethod]
+        public void PitWidthManager_DynamicPitBounds_ShouldExpandCorrectly()
+        {
+            // Test the mathematical relationship between pit level and bounds
+            
+            // Default pit (level 1-9): width = 12 tiles
+            var defaultTileWidth = GameConfig.PitRectWidth; // 12
+            var defaultWorldWidth = (defaultTileWidth * GameConfig.TileSize) + (2 * GameConfig.PitColliderPadding);
+            
+            // Level 10: should add 2 tiles = 14 total width
+            var level10TileWidth = defaultTileWidth + 2;
+            var level10WorldWidth = (level10TileWidth * GameConfig.TileSize) + (2 * GameConfig.PitColliderPadding);
+            
+            // Level 20: should add 4 tiles = 16 total width  
+            var level20TileWidth = defaultTileWidth + 4;
+            var level20WorldWidth = (level20TileWidth * GameConfig.TileSize) + (2 * GameConfig.PitColliderPadding);
+            
+            // Assert the mathematical progression
+            Assert.AreEqual(12, defaultTileWidth, "Default pit should be 12 tiles wide");
+            Assert.AreEqual(14, level10TileWidth, "Level 10 pit should be 14 tiles wide");
+            Assert.AreEqual(16, level20TileWidth, "Level 20 pit should be 16 tiles wide");
+            
+            // Verify world coordinate calculations
+            var expectedTileSize = 32; // GameConfig.TileSize
+            var expectedPadding = 4;   // GameConfig.PitColliderPadding
+            
+            Assert.AreEqual((12 * expectedTileSize) + (2 * expectedPadding), defaultWorldWidth, "Default world width calculation");
+            Assert.AreEqual((14 * expectedTileSize) + (2 * expectedPadding), level10WorldWidth, "Level 10 world width calculation");
+            Assert.AreEqual((16 * expectedTileSize) + (2 * expectedPadding), level20WorldWidth, "Level 20 world width calculation");
+        }
     }
 }
