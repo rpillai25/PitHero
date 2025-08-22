@@ -44,7 +44,7 @@ namespace PitHero.AI
             {
                 Debug.Log($"[MoveToPit] Reached target tile {_targetTile.X},{_targetTile.Y} - action complete");
                 hero.AdjacentToPitBoundaryFromOutside = true;
-                hero.PitApproachDirection = Direction.Right; // Approaching from right side
+                hero.PitApproachDirection = Direction.Left; // Approaching from right side of pit
                 return true;
             }
 
@@ -102,7 +102,7 @@ namespace PitHero.AI
                     {
                         Debug.Log($"[MoveToPit] Reached target tile {_targetTile.X},{_targetTile.Y} - action complete");
                         hero.AdjacentToPitBoundaryFromOutside = true;
-                        hero.PitApproachDirection = Direction.Right;
+                        hero.PitApproachDirection = Direction.Left; // Approaching from right side of pit
                         return true;
                     }
                     else
