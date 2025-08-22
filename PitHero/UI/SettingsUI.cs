@@ -49,6 +49,10 @@ namespace PitHero.UI
         private bool _isDockedCenter = false;
         private bool _alwaysOnTop = true; // Track current always-on-top state
 
+        // Add these fields
+        private float _lastStageW = -1f;
+        private float _lastStageH = -1f;
+
         public SettingsUI(Game game)
         {
             _game = game;
@@ -64,7 +68,7 @@ namespace PitHero.UI
             // Use default skin
             var skin = Skin.CreateDefaultSkin();
 
-            // Create main table for layout
+            // Create main table for layout (kept to avoid breaking other UI expectations)
             _mainTable = new Table();
             _mainTable.SetFillParent(true);
             _stage.AddElement(_mainTable);
@@ -74,6 +78,10 @@ namespace PitHero.UI
 
             // Create settings TabPane (initially hidden)
             CreateSettingsWindow(skin);
+
+            // Ensure both elements are added directly to the stage for absolute positioning
+            _stage.AddElement(_gearButton);
+            _stage.AddElement(_settingsWindow);
 
             // Set up initial layout
             LayoutUI();
@@ -345,31 +353,69 @@ namespace PitHero.UI
             }
         }
 
+        /// <summary>Applies visibility and positions gear/settings window</summary>
         private void LayoutUI()
         {
-            _mainTable.Clear();
+            // Keep elements on the stage
+            if (_gearButton.GetStage() == null)
+                _stage.AddElement(_gearButton);
 
-            // Create a new row for the gear button and settings window
-            _mainTable.Add().SetExpandX(); // Take up left space
+            if (_settingsWindow.GetStage() == null)
+                _stage.AddElement(_settingsWindow);
+
+            // Apply visibility and position
+            _settingsWindow.SetVisible(_isVisible);
+            PositionUI();
+        }
+
+        private void PositionUI()
+        {
+            float stageW = _stage.GetWidth();
+            float stageH = _stage.GetHeight();
+
+            // Gear size
+            float gearW = _gearButton.GetWidth();
+            float gearH = _gearButton.GetHeight();
+
+            // Top middle: (middleX, 4px down from top)
+            float gearX = (stageW - gearW) * 0.5f;
+            float gearY = 2f;
+            _gearButton.SetPosition(gearX, gearY);
 
             if (_isVisible)
             {
-                // Add settings window to the left of gear button in the same row
-                _mainTable.Add(_settingsWindow).Right().SetPadRight(0); // 32 for gear + 32 for window offset
+                // Settings window directly to the right of the gear
+                const float padding = 4f;
+                float winW = _settingsWindow.GetWidth();
+                float winH = _settingsWindow.GetHeight();
+
+                float winX = gearX + gearW + padding;
+                float winY = gearY + padding;
+
+                // If it overflows to the right, show it to the left of the gear
+                if (winX + winW > stageW)
+                    winX = gearX - padding - winW;
+
+                // Clamp inside stage vertically and horizontally
+                if (winX < 0) winX = 0;
+                if (winY < 0) winY = 0;
+                if (winY + winH > stageH) winY = stageH - winH;
+
+                _settingsWindow.SetPosition(winX, winY);
             }
 
-            // Always add gear button in the same cell, right edge
-            _mainTable.Add(_gearButton).Right().SetPadRight(16);
-
-            _mainTable.Row();
+            _lastStageW = stageW;
+            _lastStageH = stageH;
         }
 
+        /// <summary>Toggles the settings window visibility and repositions UI</summary>
         private void ToggleSettingsVisibility()
         {
             _isVisible = !_isVisible;
             _settingsWindow.SetVisible(_isVisible);
-            
-            // Re-layout to show/hide the TabPane
+            if (_isVisible)
+                _settingsWindow.ToFront();
+
             LayoutUI();
         }
 
@@ -442,10 +488,15 @@ namespace PitHero.UI
 
         /// <summary>
         /// Updates the UI (called from scene update if needed)
+        /// Leaving this here but doing nothing, because for now windows size never changes
         /// </summary>
         public void Update()
         {
-            // Handle any per-frame UI updates if needed
+            // Re-center on window resize
+            //float stageW = _stage.GetWidth();
+            //float stageH = _stage.GetHeight();
+            //if (stageW != _lastStageW || stageH != _lastStageH)
+            //    PositionUI();
         }
     }
 }
