@@ -212,7 +212,7 @@ namespace PitHero.ECS.Scenes
                 new PrototypeSpriteRenderer(Screen.Width * 2, Screen.Height * 2)
             );
             pauseOverlay.SetOrigin(Vector2.Zero); // or pauseOverlay.SetOriginNormalized(Vector2.Zero);
-            pauseOverlay.SetColor(new Color(0, 0, 0, 150));
+            pauseOverlay.SetColor(new Color(0, 0, 0, 100));
             pauseOverlay.SetRenderLayer(GameConfig.TransparentPauseOverlay);
             _pauseOverlayEntity.SetEnabled(false); // Initially hidden
 
