@@ -200,21 +200,26 @@ namespace PitHero.ECS.Scenes
 
         private void SetupUIOverlay()
         {
-            var screenSpaceRenderer = new ScreenSpaceRenderer(100, 999);
+            var screenSpaceRenderer = new ScreenSpaceRenderer(100, [GameConfig.TransparentPauseOverlay, GameConfig.RenderLayerUI]);
             AddRenderer(screenSpaceRenderer);
 
             // Create pause overlay entity
             _pauseOverlayEntity = CreateEntity("pause-overlay");
-            _pauseOverlayEntity.SetPosition(0, 0); // Top left corner
-            var pauseOverlay = _pauseOverlayEntity.AddComponent(new PrototypeSpriteRenderer(GameConfig.VirtualWidth, GameConfig.VirtualHeight));
-            pauseOverlay.SetColor(new Color(255, 255, 255, 150)); // Transparent white overlay as specified
+            _pauseOverlayEntity.SetPosition(0, 0); // Top-left corner
+
+            // Size to backbuffer for ScreenSpaceRenderer and set origin to top-left
+            var pauseOverlay = _pauseOverlayEntity.AddComponent(
+                new PrototypeSpriteRenderer(Screen.Width * 2, Screen.Height * 2)
+            );
+            pauseOverlay.SetOrigin(Vector2.Zero); // or pauseOverlay.SetOriginNormalized(Vector2.Zero);
+            pauseOverlay.SetColor(new Color(0, 0, 0, 150));
             pauseOverlay.SetRenderLayer(GameConfig.TransparentPauseOverlay);
             _pauseOverlayEntity.SetEnabled(false); // Initially hidden
 
             var uiEntity = CreateEntity("ui-overlay");
             var uiCanvas = uiEntity.AddComponent(new UICanvas());
             uiCanvas.IsFullScreen = true;
-            uiCanvas.RenderLayer = 999;
+            uiCanvas.RenderLayer = GameConfig.RenderLayerUI;
 
             _settingsUI = new SettingsUI(Core.Instance);
             _settingsUI.InitializeUI(uiCanvas.Stage);
