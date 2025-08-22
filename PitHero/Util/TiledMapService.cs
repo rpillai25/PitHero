@@ -102,6 +102,8 @@ namespace PitHero.Util
         /// <param name="centerTileY">Center tile Y coordinate</param>
         public void ClearFogOfWarAroundTile(int centerTileX, int centerTileY)
         {
+            // Clear tile at center position
+            ClearFogOfWarTile(centerTileX, centerTileY);
             // Clear tiles in 4 cardinal directions
             ClearFogOfWarTile(centerTileX - 1, centerTileY); // Left
             ClearFogOfWarTile(centerTileX + 1, centerTileY); // Right

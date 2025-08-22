@@ -166,6 +166,7 @@ namespace PitHero
 
                 var renderer = entity.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
                 renderer.Color = color;
+                renderer.SetRenderLayer(GameConfig.RenderLayerActors);
 
                 entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
 
