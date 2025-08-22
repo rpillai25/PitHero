@@ -260,6 +260,9 @@ namespace PitHero
 
             // Notify the scene to update pit collider bounds
             UpdatePitColliderBounds();
+            
+            // Regenerate pit content for the new size
+            RegeneratePitContent();
         }
 
         /// <summary>
@@ -276,6 +279,27 @@ namespace PitHero
             else
             {
                 Debug.Warn("[PitWidthManager] Could not find MainGameScene to update pit collider bounds");
+            }
+        }
+
+        /// <summary>
+        /// Regenerate pit content after pit width changes
+        /// </summary>
+        private void RegeneratePitContent()
+        {
+            Debug.Log("[PitWidthManager] Regenerating pit content after width change");
+            
+            // Find the MainGameScene and regenerate pit content
+            var scene = Core.Scene as MainGameScene;
+            if (scene != null)
+            {
+                var pitGenerator = new PitGenerator(scene);
+                pitGenerator.RegenerateForCurrentLevel();
+                Debug.Log("[PitWidthManager] Pit content regeneration complete");
+            }
+            else
+            {
+                Debug.Warn("[PitWidthManager] Could not find MainGameScene to regenerate pit content");
             }
         }
 

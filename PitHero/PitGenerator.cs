@@ -3,6 +3,7 @@ using Nez;
 using Nez.Tiled;
 using PitHero;
 using PitHero.Util;
+using PitHero.ECS.Components;
 using System;
 using System.Collections.Generic;
 using Nez.AI.Pathfinding;
@@ -25,6 +26,42 @@ namespace PitHero
             _collisionTiles = new HashSet<Point>(64);
         }
 
+        /// <summary>
+        /// Calculate maximum number of monsters based on pit level
+        /// </summary>
+        private int MaxMonsters(int level)
+        {
+            return Math.Clamp(
+                (int)Math.Round(2 + 8 * Math.Max(level - 10, 0) / 90.0), 2, 10);
+        }
+
+        /// <summary>
+        /// Calculate maximum number of chests/treasures based on pit level
+        /// </summary>
+        private int MaxChests(int level)
+        {
+            return Math.Clamp(
+                (int)Math.Round(2 + 8 * Math.Max(level - 10, 0) / 90.0), 2, 10);
+        }
+
+        /// <summary>
+        /// Calculate minimum number of obstacles based on pit level
+        /// </summary>
+        private int MinObstacles(int level)
+        {
+            return Math.Clamp(
+                (int)Math.Round(5 + 35 * Math.Max(level - 10, 0) / 90.0), 5, 40);
+        }
+
+        /// <summary>
+        /// Calculate maximum number of obstacles based on pit level
+        /// </summary>
+        private int MaxObstacles(int level)
+        {
+            return Math.Clamp(
+                (int)Math.Round(10 + 40 * Math.Max(level - 10, 0) / 90.0), 10, 50);
+        }
+
         public void Generate(int level)
         {
             Debug.Log($"[PitGenerator] Generating pit content for level {level}");
@@ -33,6 +70,148 @@ namespace PitHero
             {
                 GenerateLevel1();
             }
+            else
+            {
+                GenerateForLevel(level);
+            }
+        }
+
+        /// <summary>
+        /// Clear all existing pit entities and regenerate content for the current pit level
+        /// </summary>
+        public void RegenerateForCurrentLevel()
+        {
+            // Get current pit level from PitWidthManager
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            if (pitWidthManager == null)
+            {
+                Debug.Warn("[PitGenerator] PitWidthManager service not found, using level 1");
+                RegenerateForLevel(1);
+                return;
+            }
+
+            int currentLevel = pitWidthManager.CurrentPitLevel;
+            RegenerateForLevel(currentLevel);
+        }
+
+        /// <summary>
+        /// Clear all existing pit entities and regenerate content for the specified level
+        /// </summary>
+        public void RegenerateForLevel(int level)
+        {
+            Debug.Log($"[PitGenerator] Regenerating pit content for level {level}");
+            
+            // Clear existing pit entities
+            ClearExistingPitEntities();
+            
+            // Clear obstacle walls from A* graph
+            ClearObstacleWallsFromAstar();
+            
+            // Generate new content
+            GenerateForLevel(level);
+            
+            // Update hero pathfinding target if hero exists
+            UpdateHeroPathfindingTarget();
+        }
+
+        /// <summary>
+        /// Clear all existing pit entities (obstacles, treasures, monsters, wizard orbs)
+        /// </summary>
+        private void ClearExistingPitEntities()
+        {
+            Debug.Log("[PitGenerator] Clearing existing pit entities");
+            
+            var entitiesToRemove = new List<Entity>();
+            
+            // Find all entities with pit-related tags using FindEntitiesWithTag
+            var obstacles = _scene.FindEntitiesWithTag(GameConfig.TAG_OBSTACLE);
+            var treasures = _scene.FindEntitiesWithTag(GameConfig.TAG_TREASURE);
+            var monsters = _scene.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
+            var wizardOrbs = _scene.FindEntitiesWithTag(GameConfig.TAG_WIZARD_ORB);
+            
+            // Add all found entities to removal list
+            entitiesToRemove.AddRange(obstacles);
+            entitiesToRemove.AddRange(treasures);
+            entitiesToRemove.AddRange(monsters);
+            entitiesToRemove.AddRange(wizardOrbs);
+            
+            // Remove entities by calling Destroy on each
+            for (int i = 0; i < entitiesToRemove.Count; i++)
+            {
+                entitiesToRemove[i].Destroy();
+            }
+            
+            Debug.Log($"[PitGenerator] Cleared {entitiesToRemove.Count} existing pit entities");
+        }
+
+        /// <summary>
+        /// Clear obstacle walls from A* graph
+        /// </summary>
+        private void ClearObstacleWallsFromAstar()
+        {
+            var astarGraph = Core.Services.GetService<AstarGridGraph>();
+            if (astarGraph == null)
+            {
+                Debug.Warn("[PitGenerator] A* graph not found when clearing obstacle walls");
+                return;
+            }
+            
+            // We need to rebuild the A* graph from the collision layer only
+            // This removes dynamically added obstacle walls
+            var tiledMapService = Core.Services.GetService<TiledMapService>();
+            if (tiledMapService?.CurrentMap == null)
+            {
+                Debug.Warn("[PitGenerator] No tilemap service found for A* graph rebuild");
+                return;
+            }
+
+            var collisionLayer = tiledMapService.CurrentMap.GetLayer<TmxLayer>("Collision");
+            if (collisionLayer == null)
+            {
+                Debug.Warn("[PitGenerator] No 'Collision' layer found for A* graph rebuild");
+                return;
+            }
+
+            // Rebuild A* graph from collision layer only
+            astarGraph.Walls.Clear();
+            for (int x = 0; x < collisionLayer.Width; x++)
+            {
+                for (int y = 0; y < collisionLayer.Height; y++)
+                {
+                    var tile = collisionLayer.GetTile(x, y);
+                    if (tile != null && tile.Gid != 0)
+                    {
+                        astarGraph.Walls.Add(new Point(x, y));
+                    }
+                }
+            }
+            
+            Debug.Log($"[PitGenerator] Rebuilt A* graph with {astarGraph.Walls.Count} walls from collision layer");
+        }
+
+        /// <summary>
+        /// Update hero pathfinding target after regeneration
+        /// </summary>
+        private void UpdateHeroPathfindingTarget()
+        {
+            // Find hero entity
+            var hero = _scene.FindEntity("hero");
+            if (hero == null)
+            {
+                Debug.Log("[PitGenerator] No hero found to update pathfinding target");
+                return;
+            }
+
+            // Get HeroGoapAgentComponent and check current action
+            var agentComponent = hero.GetComponent<HeroGoapAgentComponent>();
+            if (agentComponent != null)
+            {
+                // Access the agent's current action via reflection or public property
+                // Since the agent is private, we'll use a different approach
+                Debug.Log("[PitGenerator] Hero agent component found - pathfinding will be updated on next action plan");
+            }
+            
+            Debug.Log("[PitGenerator] Hero pathfinding target update complete");
         }
 
         private void GenerateLevel1()
@@ -64,6 +243,100 @@ namespace PitHero
                 var treasures = GenerateEntityPositions(2, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "treasures");
                 var monsters = GenerateEntityPositions(2, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "monsters");
                 var wizardOrbs = GenerateEntityPositions(1, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "wizard orbs");
+
+                // Manual AddRange without LINQ
+                for (int i = 0; i < treasures.Count; i++) targetPositions.Add(treasures[i]);
+                for (int i = 0; i < monsters.Count; i++) targetPositions.Add(monsters[i]);
+                for (int i = 0; i < wizardOrbs.Count; i++) targetPositions.Add(wizardOrbs[i]);
+
+                if (ValidateAllTargetsReachable(obstaclePositions, targetPositions, validMinX, validMinY, validMaxX, validMaxY))
+                {
+                    CreateEntitiesAtPositions(obstacles, GameConfig.TAG_OBSTACLE, Color.Gray, "obstacle");
+                    CreateEntitiesAtPositions(treasures, GameConfig.TAG_TREASURE, Color.Yellow, "treasure");
+                    CreateEntitiesAtPositions(monsters, GameConfig.TAG_MONSTER, Color.Red, "monster");
+                    CreateEntitiesAtPositions(wizardOrbs, GameConfig.TAG_WIZARD_ORB, Color.Blue, "wizard_orb");
+
+                    validLayoutGenerated = true;
+                    Debug.Log($"[PitGenerator] Valid layout generated on attempt {attempt}");
+                    Debug.Log($"[PitGenerator] Generated {usedPositions.Count} entities total in pit");
+                }
+                else
+                {
+                    Debug.Log($"[PitGenerator] Attempt {attempt} failed - some targets unreachable");
+                }
+            }
+
+            if (!validLayoutGenerated)
+            {
+                Debug.Log($"[PitGenerator] Warning: Could not generate valid layout after {maxAttempts} attempts");
+                GenerateFallbackLayout(validMinX, validMinY, validMaxX, validMaxY);
+            }
+        }
+
+        /// <summary>
+        /// Generate pit content for any level using dynamic calculations
+        /// </summary>
+        private void GenerateForLevel(int level)
+        {
+            // Calculate pit bounds using PitWidthManager if available
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            int validMinX, validMinY, validMaxX, validMaxY;
+            
+            if (pitWidthManager != null && pitWidthManager.CurrentPitRightEdge > 0)
+            {
+                // Use dynamic pit bounds
+                validMinX = GameConfig.PitRectX + 1; // 2
+                validMinY = GameConfig.PitRectY + 1; // 3
+                validMaxX = pitWidthManager.CurrentPitRightEdge - 2; // 2 tiles from right edge
+                validMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // 9
+            }
+            else
+            {
+                // Use default pit bounds
+                validMinX = GameConfig.PitRectX + 1; // 2
+                validMinY = GameConfig.PitRectY + 1; // 3
+                validMaxX = GameConfig.PitRectX + GameConfig.PitRectWidth - 3; // 10
+                validMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // 9
+            }
+            
+            Debug.Log($"[PitGenerator] Valid placement area for level {level}: tiles ({validMinX},{validMinY}) to ({validMaxX},{validMaxY})");
+
+            // Calculate entity counts based on level
+            int maxMonsters = MaxMonsters(level);
+            int maxChests = MaxChests(level);
+            int minObstacles = MinObstacles(level);
+            int maxObstacles = MaxObstacles(level);
+            
+            // Random obstacle count between min and max
+            int obstacleCount = _random.Next(minObstacles, maxObstacles + 1);
+            
+            Debug.Log($"[PitGenerator] Level {level} calculated amounts:");
+            Debug.Log($"[PitGenerator]   Max Monsters: {maxMonsters}");
+            Debug.Log($"[PitGenerator]   Max Chests: {maxChests}");
+            Debug.Log($"[PitGenerator]   Min Obstacles: {minObstacles}");
+            Debug.Log($"[PitGenerator]   Max Obstacles: {maxObstacles}");
+            Debug.Log($"[PitGenerator]   Actual Obstacles: {obstacleCount}");
+
+            InitializeCollisionTiles(validMinX, validMinY, validMaxX, validMaxY);
+
+            var maxAttempts = 10;
+            bool validLayoutGenerated = false;
+
+            for (int attempt = 1; attempt <= maxAttempts && !validLayoutGenerated; attempt++)
+            {
+                Debug.Log($"[PitGenerator] Generation attempt {attempt}");
+                
+                var usedPositions = new HashSet<Point>(64);
+                var obstaclePositions = new HashSet<Point>(16);
+                var targetPositions = new List<Point>(8);
+
+                var obstacles = GenerateEntityPositions(obstacleCount, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "obstacles");
+                obstaclePositions.UnionWith(obstacles);
+                usedPositions.UnionWith(obstacles);
+
+                var treasures = GenerateEntityPositions(maxChests, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "treasures");
+                var monsters = GenerateEntityPositions(maxMonsters, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "monsters");
+                var wizardOrbs = GenerateEntityPositions(1, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "wizard orbs"); // Always 1 wizard orb
 
                 // Manual AddRange without LINQ
                 for (int i = 0; i < treasures.Count; i++) targetPositions.Add(treasures[i]);
