@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using System.Collections.Generic;
+using PitHero.Services;
 using PitHero.Util;
 
 namespace PitHero.ECS.Components
@@ -10,7 +11,7 @@ namespace PitHero.ECS.Components
     /// Movement is constrained to cardinal directions and entities are snapped to tile boundaries.
     /// Handles trigger detection and prevents movement through solid colliders.
     /// </summary>
-    public class TileByTileMover : Component, IUpdatable
+    public class TileByTileMover : Component, IUpdatable, IPausableComponent
     {
         private ColliderTriggerHelper _triggerHelper;
         private readonly int _tileSize = GameConfig.TileSize;
@@ -45,6 +46,11 @@ namespace PitHero.ECS.Components
         /// </summary>
         private float _moveProgress;
 
+        /// <summary>
+        /// Gets whether this component should respect the global pause state
+        /// </summary>
+        public bool ShouldPause => true;
+
         public override void OnAddedToEntity()
         {
             _triggerHelper = new ColliderTriggerHelper(Entity);
@@ -55,6 +61,11 @@ namespace PitHero.ECS.Components
 
         public void Update()
         {
+            // Check if game is paused
+            var pauseService = Core.Services.GetService<PauseService>();
+            if (pauseService?.IsPaused == true)
+                return;
+
             if (IsMoving)
             {
                 UpdateMovement();

@@ -3,6 +3,7 @@ using Nez;
 using Nez.AI.Pathfinding;
 using Nez.Tiled;
 using PitHero.ECS.Components;
+using PitHero.Services;
 using PitHero.UI;
 using PitHero.Util;
 
@@ -15,6 +16,7 @@ namespace PitHero.ECS.Scenes
         private bool _isInitializationComplete;
         private CameraControllerComponent _cameraController;
         private TmxMap _tmxMap; // Store reference to the map
+        private Entity _pauseOverlayEntity; // Pause overlay entity
 
         public MainGameScene() : this("Content/Tilemaps/PitHero.tmx") { }
         public MainGameScene(string mapPath) { _mapPath = mapPath; }
@@ -201,6 +203,14 @@ namespace PitHero.ECS.Scenes
             var screenSpaceRenderer = new ScreenSpaceRenderer(100, 999);
             AddRenderer(screenSpaceRenderer);
 
+            // Create pause overlay entity
+            _pauseOverlayEntity = CreateEntity("pause-overlay");
+            _pauseOverlayEntity.SetPosition(0, 0); // Top left corner
+            var pauseOverlay = _pauseOverlayEntity.AddComponent(new PrototypeSpriteRenderer(GameConfig.VirtualWidth, GameConfig.VirtualHeight));
+            pauseOverlay.SetColor(new Color(255, 255, 255, 150)); // Transparent white overlay as specified
+            pauseOverlay.SetRenderLayer(GameConfig.TransparentPauseOverlay);
+            _pauseOverlayEntity.SetEnabled(false); // Initially hidden
+
             var uiEntity = CreateEntity("ui-overlay");
             var uiCanvas = uiEntity.AddComponent(new UICanvas());
             uiCanvas.IsFullScreen = true;
@@ -214,6 +224,13 @@ namespace PitHero.ECS.Scenes
         {
             base.Update();
             _settingsUI?.Update();
+
+            // Update pause overlay visibility based on pause state
+            var pauseService = Core.Services.GetService<PauseService>();
+            if (pauseService != null && _pauseOverlayEntity != null)
+            {
+                _pauseOverlayEntity.SetEnabled(pauseService.IsPaused);
+            }
         }
     }
 }

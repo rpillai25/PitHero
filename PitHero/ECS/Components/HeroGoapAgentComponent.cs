@@ -1,12 +1,18 @@
 using Nez;
 using PitHero.AI;
+using PitHero.Services;
 
 namespace PitHero.ECS.Components
 {
-    public class HeroGoapAgentComponent : Component, IUpdatable
+    public class HeroGoapAgentComponent : Component, IUpdatable, IPausableComponent
     {
         private HeroAgent _agent;
         private HeroComponent _hero;
+
+        /// <summary>
+        /// Gets whether this component should respect the global pause state
+        /// </summary>
+        public bool ShouldPause => true;
 
         public override void OnAddedToEntity()
         {
@@ -16,6 +22,11 @@ namespace PitHero.ECS.Components
 
         public void Update()
         {
+            // Check if game is paused
+            var pauseService = Core.Services.GetService<PauseService>();
+            if (pauseService?.IsPaused == true)
+                return;
+
             if (_agent == null || _hero == null)
                 return;
 
