@@ -376,7 +376,7 @@ namespace PitHero
             }
 
             // Calculate dynamic width based on current right edge
-            int dynamicPitWidth = _currentPitRightEdge - GameConfig.PitRectX + 1;
+            int dynamicPitWidth = _currentPitRightEdge - GameConfig.PitRectX;
 
             // Convert tile coordinates to world coordinates
             var topLeftWorld = new Vector2(
