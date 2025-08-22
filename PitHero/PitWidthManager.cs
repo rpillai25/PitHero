@@ -21,6 +21,7 @@ namespace PitHero
         private Dictionary<int, int> _baseInnerFloor;
         private Dictionary<int, int> _collisionInnerFloor;
         private int _fogOfWarIndex;
+        private int _groundTileIndex; // Ground tile recorded from (19,1)
         
         // Track current pit state
         private int _currentPitLevel = 1;
@@ -72,6 +73,11 @@ namespace PitHero
             _fogOfWarIndex = fogTile?.Gid ?? 0;
             Debug.Log($"[PitWidthManager] Recorded FogOfWar index: {_fogOfWarIndex}");
 
+            // Record ground tile at (19,1)
+            var groundTile = baseLayer.GetTile(19, 1);
+            _groundTileIndex = groundTile?.Gid ?? 0;
+            Debug.Log($"[PitWidthManager] Recorded ground tile index: {_groundTileIndex}");
+
             // Initialize baseOuterFloor and collisionOuterFloor from coordinates (13,1) to (13,11)
             InitializeTilePattern(_baseOuterFloor, baseLayer, 13, 1, 11, "baseOuterFloor");
             InitializeTilePattern(_collisionOuterFloor, collisionLayer, 13, 1, 11, "collisionOuterFloor");
@@ -96,13 +102,16 @@ namespace PitHero
         /// </summary>
         private void InitializeTilePattern(Dictionary<int, int> dictionary, TmxLayer layer, int x, int startY, int endY, string patternName)
         {
+            int nonZeroCount = 0;
             for (int y = startY; y <= endY; y++)
             {
                 var tile = layer.GetTile(x, y);
                 int tileIndex = tile?.Gid ?? 0;
                 dictionary[y] = tileIndex;
                 Debug.Log($"[PitWidthManager] {patternName}[{y}] = {tileIndex}");
+                if (tileIndex != 0) nonZeroCount++;
             }
+            Debug.Log($"[PitWidthManager] {patternName} total: {dictionary.Count} tiles, {nonZeroCount} non-zero");
         }
 
         /// <summary>
@@ -122,9 +131,64 @@ namespace PitHero
                 return;
             }
 
+            var previousLevel = _currentPitLevel;
+            var previousRightEdge = _currentPitRightEdge;
+            
             Debug.Log($"[PitWidthManager] Setting pit level from {_currentPitLevel} to {newLevel}");
             _currentPitLevel = newLevel;
+            
+            // Calculate new right edge
+            int innerFloorTilesToExtend = ((int)(_currentPitLevel / 10)) * 2;
+            int newRightEdge = 12 + innerFloorTilesToExtend + (innerFloorTilesToExtend > 0 ? 2 : 0); // +2 for inner wall and outer floor
+            
+            // If sizing down, clear tiles first
+            if (newRightEdge < previousRightEdge)
+            {
+                ClearTilesFromXToEnd(newRightEdge + 1);
+            }
+            
             RegeneratePitWidth();
+        }
+
+        /// <summary>
+        /// Clear tiles from a given x coordinate to x=33 to clean up when sizing down
+        /// </summary>
+        private void ClearTilesFromXToEnd(int startX)
+        {
+            if (!_isInitialized)
+            {
+                Debug.Error("[PitWidthManager] Cannot clear tiles - manager not initialized");
+                return;
+            }
+
+            var tiledMapService = Core.Services.GetService<TiledMapService>();
+            if (tiledMapService == null)
+            {
+                Debug.Error("[PitWidthManager] TiledMapService not available for clearing tiles");
+                return;
+            }
+
+            Debug.Log($"[PitWidthManager] Clearing tiles from x={startX} to x=33, y=1 to y=11");
+
+            for (int x = startX; x <= 33; x++)
+            {
+                for (int y = 1; y <= 11; y++)
+                {
+                    // Set Base layer to ground tile
+                    if (_groundTileIndex != 0)
+                    {
+                        tiledMapService.SetTile("Base", x, y, _groundTileIndex);
+                    }
+
+                    // Remove Collision layer tiles
+                    tiledMapService.RemoveTile("Collision", x, y);
+
+                    // Remove FogOfWar layer tiles
+                    tiledMapService.RemoveTile("FogOfWar", x, y);
+                }
+            }
+
+            Debug.Log($"[PitWidthManager] Cleared tiles from x={startX} to x=33");
         }
 
         /// <summary>
@@ -238,8 +302,12 @@ namespace PitHero
                     tiledMapService.RemoveTile("Collision", x, y);
                 }
 
-                // Set FogOfWar layer tile
-                if (_fogOfWarIndex != 0)
+                // Set FogOfWar layer tile - only for y=3 to y=9 and not for baseInnerWall or baseOuterFloor columns
+                bool shouldSetFogOfWar = (y >= 3 && y <= 9) && 
+                                        !columnType.Contains("inner wall") && 
+                                        !columnType.Contains("outer floor");
+                
+                if (shouldSetFogOfWar && _fogOfWarIndex != 0)
                 {
                     tiledMapService.SetTile("FogOfWar", x, y, _fogOfWarIndex);
                 }

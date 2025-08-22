@@ -1,3 +1,4 @@
+#if DEBUG
 using Microsoft.Xna.Framework.Input;
 using Nez;
 using PitHero.Services;
@@ -8,6 +9,7 @@ namespace PitHero.ECS.Components
     /// Component for testing pit level changes via keyboard input
     /// Press 1-9 keys to set pit level to 10, 20, 30, etc.
     /// Press 0 to reset to level 1
+    /// Only available in DEBUG builds and only works when Settings Menu is active (game paused)
     /// </summary>
     public class PitLevelTestComponent : Component, IUpdatable, IPausableComponent
     {
@@ -27,6 +29,25 @@ namespace PitHero.ECS.Components
 
         public void Update()
         {
+            // Only function when settings menu is active (game is paused)
+            var pauseService = Core.Services.GetService<PauseService>();
+            if (pauseService == null || !pauseService.IsPaused)
+            {
+                return; // Don't process inputs unless game is paused (settings menu active)
+            }
+
+            // Check if hero is in pit - if so, don't allow testing
+            var heroEntity = Entity.Scene.FindEntity("hero");
+            if (heroEntity != null)
+            {
+                var heroComponent = heroEntity.GetComponent<HeroComponent>();
+                if (heroComponent != null && heroComponent.CheckInsidePit(heroEntity.Transform.Position))
+                {
+                    // Hero is in pit, don't allow pit level testing
+                    return;
+                }
+            }
+
             var currentKeyboardState = Keyboard.GetState();
             
             // Check for number key presses
@@ -71,3 +92,4 @@ namespace PitHero.ECS.Components
         }
     }
 }
+#endif
