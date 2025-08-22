@@ -32,14 +32,12 @@ namespace PitHero.AI
         /// </summary>
         public override bool Execute(HeroComponent hero)
         {
-            // Get the TileByTileMover component from the hero entity
             var tileMover = hero.Entity.GetComponent<TileByTileMover>();
-            
             if (tileMover == null)
             {
                 Debug.Warn("WanderAction: Hero entity missing TileByTileMover component");
                 ResetInternal();
-                return true; // complete as failed
+                return true; // fail/finish this action
             }
 
             // Select a target if we haven't yet for this execution
@@ -50,7 +48,7 @@ namespace PitHero.AI
                 {
                     Debug.Log("[Wander] No unknown tiles found - exploration complete");
                     ResetInternal();
-                    return true; // Complete the action successfully
+                    return true; // All done
                 }
 
                 _targetTile = nearestUnknownTile.Value;
@@ -60,21 +58,22 @@ namespace PitHero.AI
 
             // Get current tile position
             var currentTile = tileMover.GetCurrentTileCoordinates();
-            
+
             // Check if we've reached the target
             if (currentTile.X == _targetTile.X && currentTile.Y == _targetTile.Y)
             {
                 Debug.Log($"[Wander] Reached target tile {_targetTile.X},{_targetTile.Y}");
-                
+
                 // Clear fog of war around this tile
                 var tiledMapService = Core.Services.GetService<TiledMapService>();
                 if (tiledMapService != null)
                 {
                     tiledMapService.ClearFogOfWarAroundTile(currentTile.X, currentTile.Y);
                 }
-                
+
+                // Prepare to pick a new target next tick. Keep action running.
                 ResetInternal();
-                return true; // Complete the action
+                return false; // continue exploring
             }
 
             // If we don't have a path yet, calculate one
@@ -82,37 +81,34 @@ namespace PitHero.AI
             {
                 _currentPath = CalculatePathToTarget(hero, currentTile, _targetTile);
                 _pathIndex = 0;
-                
+
                 if (_currentPath == null || _currentPath.Count == 0)
                 {
                     Debug.Warn($"[Wander] Could not find path from {currentTile.X},{currentTile.Y} to {_targetTile.X},{_targetTile.Y}");
                     ResetInternal();
-                    return true; // Complete the action as failed
+                    return false; // try a different target next tick
                 }
-                
+
                 Debug.Log($"[Wander] Calculated path with {_currentPath.Count} steps");
             }
 
             // If not currently moving, start moving to the next tile in the path
-            if (!tileMover.IsMoving)
+            if (!tileMover.IsMoving && _pathIndex < _currentPath.Count)
             {
-                if (_pathIndex < _currentPath.Count)
+                var nextTile = _currentPath[_pathIndex];
+                var direction = GetDirectionToTile(currentTile, nextTile);
+
+                if (direction.HasValue)
                 {
-                    var nextTile = _currentPath[_pathIndex];
-                    var direction = GetDirectionToTile(currentTile, nextTile);
-                    
-                    if (direction.HasValue)
-                    {
-                        Debug.Log($"[Wander] Moving {direction.Value} to tile {nextTile.X},{nextTile.Y}");
-                        tileMover.StartMoving(direction.Value);
-                        _pathIndex++;
-                    }
-                    else
-                    {
-                        Debug.Warn($"[Wander] Invalid movement from {currentTile.X},{currentTile.Y} to {nextTile.X},{nextTile.Y}");
-                        ResetInternal();
-                        return true; // Complete as failed
-                    }
+                    Debug.Log($"[Wander] Moving {direction.Value} to tile {nextTile.X},{nextTile.Y}");
+                    tileMover.StartMoving(direction.Value);
+                    _pathIndex++;
+                }
+                else
+                {
+                    Debug.Warn($"[Wander] Invalid movement from {currentTile.X},{currentTile.Y} to {nextTile.X},{nextTile.Y}");
+                    ResetInternal();
+                    return false; // try a different target next tick
                 }
             }
 
