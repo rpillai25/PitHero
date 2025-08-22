@@ -144,7 +144,7 @@ namespace PitHero
             // If sizing down, clear tiles first
             if (newRightEdge < previousRightEdge)
             {
-                ClearTilesFromXToEnd(newRightEdge + 1);
+                ClearTilesFromXToEnd(newRightEdge);
             }
             
             RegeneratePitWidth();
@@ -183,6 +183,16 @@ namespace PitHero
                     // Remove Collision layer tiles
                     tiledMapService.RemoveTile("Collision", x, y);
 
+                    // Remove FogOfWar layer tiles
+                    tiledMapService.RemoveTile("FogOfWar", x, y);
+                }
+            }
+
+            //Clear fog of war from inner wall and outer floor columns to the left of startX
+            for (int x = startX-2; x <= startX; x++)
+            {
+                for (int y = 1; y <= 11; y++)
+                {
                     // Remove FogOfWar layer tiles
                     tiledMapService.RemoveTile("FogOfWar", x, y);
                 }
