@@ -159,7 +159,6 @@ namespace PitHero
                     tilePos.Y * GameConfig.TileSize + GameConfig.TileSize / 2
                 );
 
-                // Avoid dynamic strings for entity names; duplicate names are acceptable
                 var entity = _scene.CreateEntity(entityTypeName);
                 entity.SetTag(tag);
                 entity.SetPosition(worldPos);
@@ -168,10 +167,11 @@ namespace PitHero
                 renderer.Color = color;
                 renderer.SetRenderLayer(GameConfig.RenderLayerActors);
 
-                entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
+                var collider = entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
 
                 if (tag == GameConfig.TAG_OBSTACLE)
                 {
+                    // Obstacles block both physics and pathfinding
                     var astarGraph = Core.Services.GetService<AstarGridGraph>();
                     if (astarGraph != null)
                     {
@@ -182,6 +182,13 @@ namespace PitHero
                     {
                         Debug.Warn("[PitGenerator] A* graph not found when adding obstacle walls");
                     }
+                    // Leave collider defaults so hero collides with obstacle (physics layer 0)
+                }
+                else
+                {
+                    // Non-obstacles should NOT block movement. Make them triggers and put them on a layer the hero doesn't collide with.
+                    collider.IsTrigger = true;
+                    Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
                 }
 
                 Debug.Log($"[PitGenerator] Created {entityTypeName} at tile ({tilePos.X},{tilePos.Y}), world ({worldPos.X},{worldPos.Y})");
