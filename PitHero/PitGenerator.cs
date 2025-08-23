@@ -88,6 +88,7 @@ namespace PitHero
 
         /// <summary>
         /// Clear all existing pit entities and regenerate content for the specified level
+        /// This method now works with a clean tilemap restored by PitWidthManager 
         /// </summary>
         public void RegenerateForLevel(int level)
         {
@@ -96,18 +97,17 @@ namespace PitHero
             // Clear existing pit entities
             ClearExistingPitEntities();
             
-            // Clear obstacle walls from A* graph
-            ClearObstacleWallsFromAstar();
+            // Since PitWidthManager now restores tilemap to clean state before calling this,
+            // we can simply rebuild the A* graph fresh like in initial generation
+            RebuildAstarGraphFromCleanTilemap();
             
-            // Reset hero pathfinding state immediately after A* graph is cleared
-            // This prevents the hero from using stale pathfinding data during regeneration
+            // Reset hero pathfinding state
             UpdateHeroPathfindingTarget();
             
-            // Generate new content
+            // Generate new content (exactly like initial generation)
             GenerateForLevel(level);
             
-            // Final validation after regeneration
-            ValidateAstarGraphConsistency();
+            Debug.Log($"[PitGenerator] Pit regeneration complete for level {level}");
         }
 
         /// <summary>
@@ -141,42 +141,36 @@ namespace PitHero
         }
 
         /// <summary>
-        /// Clear obstacle walls from A* graph
+        /// Rebuild the A* graph from the clean tilemap after restoration
+        /// This is simpler than the previous approach since tilemap is now in clean state
         /// </summary>
-        private void ClearObstacleWallsFromAstar()
+        private void RebuildAstarGraphFromCleanTilemap()
         {
             var astarGraph = Core.Services.GetService<AstarGridGraph>();
             if (astarGraph == null)
             {
-                Debug.Warn("[PitGenerator] A* graph not found when clearing obstacle walls");
+                Debug.Warn("[PitGenerator] A* graph not found when rebuilding from clean tilemap");
                 return;
             }
             
-            // We need to rebuild the A* graph from the collision layer only
-            // This removes dynamically added obstacle walls
             var tiledMapService = Core.Services.GetService<TiledMapService>();
             if (tiledMapService?.CurrentMap == null)
             {
-                Debug.Warn("[PitGenerator] No tilemap service found for A* graph refresh");
+                Debug.Warn("[PitGenerator] No tilemap service found for A* graph rebuild");
                 return;
             }
 
             var collisionLayer = tiledMapService.CurrentMap.GetLayer<TmxLayer>("Collision");
             if (collisionLayer == null)
             {
-                Debug.Warn("[PitGenerator] No 'Collision' layer found for A* graph refresh");
+                Debug.Warn("[PitGenerator] No 'Collision' layer found for A* graph rebuild");
                 return;
             }
 
-            // Completely rebuild A* graph from scratch
+            // Completely rebuild A* graph from the clean tilemap
             astarGraph.Walls.Clear();
             
-            // Get pit width manager to understand current pit bounds
-            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
-            int explorableAreaMinY = GameConfig.PitRectY + 1; // y=3
-            int explorableAreaMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // y=9
-            
-            // Add all collision layer tiles, but with special handling for expanded pit area
+            // Add all collision layer tiles (tilemap is now in clean state after restoration)
             for (int x = 0; x < collisionLayer.Width; x++)
             {
                 for (int y = 0; y < collisionLayer.Height; y++)
@@ -184,31 +178,12 @@ namespace PitHero
                     var tile = collisionLayer.GetTile(x, y);
                     if (tile != null && tile.Gid != 0)
                     {
-                        // Special check: if this is in the explorable area of an expanded pit, 
-                        // verify it should really be a wall
-                        bool isInExpandedPitArea = false;
-                        if (pitWidthManager != null && pitWidthManager.CurrentPitRightEdge > GameConfig.PitRectX + GameConfig.PitRectWidth - 1)
-                        {
-                            int expandedAreaStartX = GameConfig.PitRectX + GameConfig.PitRectWidth;
-                            isInExpandedPitArea = x >= expandedAreaStartX && x <= pitWidthManager.CurrentPitRightEdge &&
-                                                 y >= explorableAreaMinY && y <= explorableAreaMaxY;
-                        }
-                        
-                        if (isInExpandedPitArea)
-                        {
-                            Debug.Warn($"[PitGenerator] Skipping collision tile at ({x},{y}) in expanded pit explorable area to prevent pathfinding blocks");
-                        }
-                        else
-                        {
-                            astarGraph.Walls.Add(new Point(x, y));
-                        }
+                        astarGraph.Walls.Add(new Point(x, y));
                     }
                 }
             }
 
-            // Note: Generated obstacles will be added to the A* graph when they are created in CreateEntitiesAtPositions()
-            
-            Debug.Log($"[PitGenerator] A* graph refreshed with {astarGraph.Walls.Count} walls from collision layer");
+            Debug.Log($"[PitGenerator] A* graph rebuilt from clean tilemap with {astarGraph.Walls.Count} walls");
         }
 
         /// <summary>
@@ -383,9 +358,6 @@ namespace PitHero
                 Debug.Log($"[PitGenerator] Warning: Could not generate valid layout after {maxAttempts} attempts");
                 GenerateFallbackLayout(validMinX, validMinY, validMaxX, validMaxY);
             }
-
-            // Final validation: ensure A* graph is consistent after all entity creation
-            ValidateAstarGraphConsistency();
         }
 
         /// <summary>
@@ -873,146 +845,6 @@ namespace PitHero
             }
 
             return new Point(-1, -1);
-        }
-
-        /// <summary>
-        /// Validate that the A* graph is consistent with actual obstacle entities
-        /// This helps prevent pathfinding/collision mismatches after regeneration
-        /// </summary>
-        private void ValidateAstarGraphConsistency()
-        {
-            var astarGraph = Core.Services.GetService<AstarGridGraph>();
-            if (astarGraph == null)
-            {
-                Debug.Warn("[PitGenerator] A* graph not available for consistency validation");
-                return;
-            }
-
-            // Count obstacle entities in the scene
-            var obstacleEntities = _scene.FindEntitiesWithTag(GameConfig.TAG_OBSTACLE);
-            var obstacleCount = obstacleEntities.Count;
-            
-            // Count obstacle walls in A* graph (excluding collision tiles)
-            var astarObstacleCount = astarGraph.Walls.Count - _collisionTiles.Count;
-            
-            Debug.Log($"[PitGenerator] A* graph consistency check:");
-            Debug.Log($"[PitGenerator]   Obstacle entities: {obstacleCount}");
-            Debug.Log($"[PitGenerator]   A* obstacle walls: {astarObstacleCount}");
-            Debug.Log($"[PitGenerator]   Total A* walls: {astarGraph.Walls.Count}");
-            Debug.Log($"[PitGenerator]   Collision tiles: {_collisionTiles.Count}");
-            
-            // Special validation for expanded pit area
-            ValidateExpandedPitArea(astarGraph);
-            
-            if (obstacleCount != astarObstacleCount)
-            {
-                Debug.Warn($"[PitGenerator] A* graph inconsistency detected! " +
-                          $"Entity count ({obstacleCount}) != A* obstacle count ({astarObstacleCount})");
-                          
-                // Try to detect which obstacles are mismatched
-                var entityPositions = new HashSet<Point>();
-                foreach (var entity in obstacleEntities)
-                {
-                    var tilePos = GetTileCoordinates(entity.Transform.Position, GameConfig.TileSize);
-                    entityPositions.Add(tilePos);
-                }
-                
-                var astarObstaclePositions = new HashSet<Point>();
-                foreach (var wall in astarGraph.Walls)
-                {
-                    if (!_collisionTiles.Contains(wall))
-                    {
-                        astarObstaclePositions.Add(wall);
-                    }
-                }
-                
-                // Find mismatches
-                var entitiesWithoutAstar = new List<Point>();
-                var astarWithoutEntities = new List<Point>();
-                
-                foreach (var pos in entityPositions)
-                {
-                    if (!astarObstaclePositions.Contains(pos))
-                        entitiesWithoutAstar.Add(pos);
-                }
-                
-                foreach (var pos in astarObstaclePositions)
-                {
-                    if (!entityPositions.Contains(pos))
-                        astarWithoutEntities.Add(pos);
-                }
-                
-                if (entitiesWithoutAstar.Count > 0)
-                {
-                    Debug.Warn($"[PitGenerator] Found {entitiesWithoutAstar.Count} obstacle entities not in A* graph");
-                }
-                
-                if (astarWithoutEntities.Count > 0)
-                {
-                    Debug.Warn($"[PitGenerator] Found {astarWithoutEntities.Count} A* walls without corresponding entities");
-                }
-            }
-            else
-            {
-                Debug.Log("[PitGenerator] A* graph consistency validation passed");
-            }
-        }
-        
-        /// <summary>
-        /// Special validation for expanded pit area to detect pathfinding issues in the rightmost area
-        /// </summary>
-        private void ValidateExpandedPitArea(AstarGridGraph astarGraph)
-        {
-            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
-            if (pitWidthManager == null || pitWidthManager.CurrentPitRightEdge <= GameConfig.PitRectX + GameConfig.PitRectWidth - 1)
-            {
-                Debug.Log("[PitGenerator] No pit expansion detected, skipping expanded area validation");
-                return;
-            }
-            
-            int expandedAreaStartX = GameConfig.PitRectX + GameConfig.PitRectWidth; // Start of expanded area
-            int expandedAreaEndX = pitWidthManager.CurrentPitRightEdge;
-            int explorableStartY = GameConfig.PitRectY + 1; // y=3
-            int explorableEndY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // y=9
-            
-            Debug.Log($"[PitGenerator] Validating expanded pit area: x={expandedAreaStartX} to {expandedAreaEndX}, y={explorableStartY} to {explorableEndY}");
-            
-            var blockedTilesInExpandedArea = new List<Point>();
-            var totalExpandedTiles = 0;
-            
-            // Check for blocked tiles in the explorable expanded area
-            for (int x = expandedAreaStartX; x <= expandedAreaEndX; x++)
-            {
-                for (int y = explorableStartY; y <= explorableEndY; y++)
-                {
-                    totalExpandedTiles++;
-                    var point = new Point(x, y);
-                    
-                    if (astarGraph.Walls.Contains(point))
-                    {
-                        blockedTilesInExpandedArea.Add(point);
-                        Debug.Warn($"[PitGenerator] Found blocked tile in expanded area at ({x},{y})");
-                    }
-                }
-            }
-            
-            if (blockedTilesInExpandedArea.Count > 0)
-            {
-                Debug.Warn($"[PitGenerator] Expanded area validation failed: {blockedTilesInExpandedArea.Count}/{totalExpandedTiles} tiles are blocked");
-                Debug.Warn($"[PitGenerator] This may cause pathfinding issues in the rightmost area after pit expansion");
-            }
-            else
-            {
-                Debug.Log($"[PitGenerator] Expanded area validation passed: {totalExpandedTiles} tiles are passable");
-            }
-        }
-        
-        /// <summary>
-        /// Helper method to get tile coordinates from world position
-        /// </summary>
-        private Point GetTileCoordinates(Vector2 worldPosition, int tileSize)
-        {
-            return new Point((int)(worldPosition.X / tileSize), (int)(worldPosition.Y / tileSize));
         }
     }
 }
