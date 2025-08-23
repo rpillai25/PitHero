@@ -43,10 +43,10 @@ namespace PitHero.ECS.Scenes
             LoadMap();
             SpawnPit();
 
-            // Set starting pit level to 9 (after pit exists to avoid early collider warnings)
+            //// Set starting pit level to 9 (after pit exists to avoid early collider warnings)
             //var pitWidthManager = Core.Services.GetService<PitWidthManager>();
             //if (pitWidthManager != null)
-            //    pitWidthManager.SetPitLevel(90);
+            //    pitWidthManager.SetPitLevel(40);
 
             SpawnHero();
             AddPitLevelTestComponent();
@@ -191,7 +191,7 @@ namespace PitHero.ECS.Scenes
                       $"({heroTileX}, {heroTileY}) - {minHeroTileX - rightmostPitTile} tiles from pit edge");
 
             var heroRenderer = hero.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
-            heroRenderer.SetRenderLayer(GameConfig.RenderLayerActors);
+            heroRenderer.SetRenderLayer(GameConfig.RenderLayerHero);
             var collider = hero.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));
             
             Flags.SetFlag(ref collider.CollidesWithLayers, GameConfig.PhysicsTileMapLayer);
