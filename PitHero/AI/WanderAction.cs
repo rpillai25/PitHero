@@ -156,10 +156,33 @@ namespace PitHero.AI
             Point? nearestUnknownTile = null;
             float shortestDistance = float.MaxValue;
 
-            // Scan the pit area for tiles still covered by fog
-            for (int x = GameConfig.PitRectX; x < GameConfig.PitRectX + GameConfig.PitRectWidth; x++)
+            // Get dynamic pit bounds from PitWidthManager
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            int pitMinX, pitMinY, pitMaxX, pitMaxY;
+            
+            if (pitWidthManager != null && pitWidthManager.CurrentPitRightEdge > 0)
             {
-                for (int y = GameConfig.PitRectY; y < GameConfig.PitRectY + GameConfig.PitRectHeight; y++)
+                // Use dynamic pit bounds
+                pitMinX = GameConfig.PitRectX;
+                pitMinY = GameConfig.PitRectY;
+                pitMaxX = pitWidthManager.CurrentPitRightEdge;
+                pitMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 1;
+                Debug.Log($"[Wander] Using dynamic pit bounds: ({pitMinX},{pitMinY}) to ({pitMaxX},{pitMaxY})");
+            }
+            else
+            {
+                // Fallback to default pit bounds
+                pitMinX = GameConfig.PitRectX;
+                pitMinY = GameConfig.PitRectY;
+                pitMaxX = GameConfig.PitRectX + GameConfig.PitRectWidth - 1;
+                pitMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 1;
+                Debug.Log($"[Wander] Using default pit bounds: ({pitMinX},{pitMinY}) to ({pitMaxX},{pitMaxY})");
+            }
+
+            // Scan the pit area for tiles still covered by fog
+            for (int x = pitMinX; x <= pitMaxX; x++)
+            {
+                for (int y = pitMinY; y <= pitMaxY; y++)
                 {
                     // Check if this tile is within bounds and has fog
                     if (x >= 0 && y >= 0 && x < fogLayer.Width && y < fogLayer.Height)
