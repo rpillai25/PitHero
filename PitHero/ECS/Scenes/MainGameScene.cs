@@ -48,7 +48,6 @@ namespace PitHero.ECS.Scenes
             //if (pitWidthManager != null)
             //    pitWidthManager.SetPitLevel(90);
 
-            GeneratePitContent();
             SpawnHero();
             AddPitLevelTestComponent();
 
@@ -167,22 +166,6 @@ namespace PitHero.ECS.Scenes
                 (int)(bottomRightWorld.X - topLeftWorld.X),
                 (int)(bottomRightWorld.Y - topLeftWorld.Y)
             );
-        }
-
-        private void GeneratePitContent()
-        {
-            Debug.Log("[MainGameScene] Generating pit content");
-            
-            var pitGenerator = new PitGenerator(this);
-            
-            // Get current pit level from PitWidthManager instead of hardcoding level 1
-            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
-            int pitLevel = pitWidthManager?.CurrentPitLevel ?? 1;
-            
-            Debug.Log($"[MainGameScene] Generating pit content for level {pitLevel}");
-            pitGenerator.Generate(pitLevel);
-            
-            Debug.Log("[MainGameScene] Pit content generation complete");
         }
 
         private void SpawnHero()
