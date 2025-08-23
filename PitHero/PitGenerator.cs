@@ -153,19 +153,21 @@ namespace PitHero
             var tiledMapService = Core.Services.GetService<TiledMapService>();
             if (tiledMapService?.CurrentMap == null)
             {
-                Debug.Warn("[PitGenerator] No tilemap service found for A* graph rebuild");
+                Debug.Warn("[PitGenerator] No tilemap service found for A* graph refresh");
                 return;
             }
 
             var collisionLayer = tiledMapService.CurrentMap.GetLayer<TmxLayer>("Collision");
             if (collisionLayer == null)
             {
-                Debug.Warn("[PitGenerator] No 'Collision' layer found for A* graph rebuild");
+                Debug.Warn("[PitGenerator] No 'Collision' layer found for A* graph refresh");
                 return;
             }
 
-            // Rebuild A* graph from collision layer only
+            // Completely rebuild A* graph from scratch
             astarGraph.Walls.Clear();
+            
+            // Add all collision layer tiles
             for (int x = 0; x < collisionLayer.Width; x++)
             {
                 for (int y = 0; y < collisionLayer.Height; y++)
@@ -177,8 +179,10 @@ namespace PitHero
                     }
                 }
             }
+
+            // Note: Generated obstacles will be added to the A* graph when they are created in CreateEntitiesAtPositions()
             
-            Debug.Log($"[PitGenerator] Rebuilt A* graph with {astarGraph.Walls.Count} walls from collision layer");
+            Debug.Log($"[PitGenerator] A* graph refreshed with {astarGraph.Walls.Count} walls from collision layer");
         }
 
         /// <summary>
@@ -194,16 +198,64 @@ namespace PitHero
                 return;
             }
 
-            // Get HeroGoapAgentComponent and check current action
+            // Force refresh of A* graph to ensure hero has up-to-date pathfinding information
+            //RefreshAstarGraph();
+
+            // Get HeroGoapAgentComponent to potentially reset current action
             var agentComponent = hero.GetComponent<HeroGoapAgentComponent>();
             if (agentComponent != null)
             {
-                // Access the agent's current action via reflection or public property
-                // Since the agent is private, we'll use a different approach
                 Debug.Log("[PitGenerator] Hero agent component found - pathfinding will be updated on next action plan");
             }
             
             Debug.Log("[PitGenerator] Hero pathfinding target update complete");
+        }
+
+        /// <summary>
+        /// Force refresh of the A* graph to ensure it reflects the current state after regeneration
+        /// </summary>
+        private void RefreshAstarGraph()
+        {
+            var astarGraph = Core.Services.GetService<AstarGridGraph>();
+            if (astarGraph == null)
+            {
+                Debug.Warn("[PitGenerator] A* graph not found when refreshing");
+                return;
+            }
+
+            var tiledMapService = Core.Services.GetService<TiledMapService>();
+            if (tiledMapService?.CurrentMap == null)
+            {
+                Debug.Warn("[PitGenerator] No tilemap service found for A* graph refresh");
+                return;
+            }
+
+            var collisionLayer = tiledMapService.CurrentMap.GetLayer<TmxLayer>("Collision");
+            if (collisionLayer == null)
+            {
+                Debug.Warn("[PitGenerator] No 'Collision' layer found for A* graph refresh");
+                return;
+            }
+
+            // Completely rebuild A* graph from scratch
+            astarGraph.Walls.Clear();
+            
+            // Add all collision layer tiles
+            for (int x = 0; x < collisionLayer.Width; x++)
+            {
+                for (int y = 0; y < collisionLayer.Height; y++)
+                {
+                    var tile = collisionLayer.GetTile(x, y);
+                    if (tile != null && tile.Gid != 0)
+                    {
+                        astarGraph.Walls.Add(new Point(x, y));
+                    }
+                }
+            }
+
+            // Note: Generated obstacles will be added to the A* graph when they are created in CreateEntitiesAtPositions()
+            
+            Debug.Log($"[PitGenerator] A* graph refreshed with {astarGraph.Walls.Count} walls from collision layer");
         }
 
         /// <summary>
