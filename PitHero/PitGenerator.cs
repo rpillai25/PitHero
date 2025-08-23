@@ -222,7 +222,7 @@ namespace PitHero
                 // Use dynamic pit bounds
                 validMinX = GameConfig.PitRectX + 1; // 2
                 validMinY = GameConfig.PitRectY + 1; // 3
-                validMaxX = pitWidthManager.CurrentPitRightEdge - 2; // 2 tiles from right edge
+                validMaxX = pitWidthManager.CurrentPitRightEdge - 3; // 2 tiles from right edge
                 validMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // 9
             }
             else

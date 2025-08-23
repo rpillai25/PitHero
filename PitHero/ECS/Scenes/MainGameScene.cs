@@ -42,6 +42,12 @@ namespace PitHero.ECS.Scenes
 
             LoadMap();
             SpawnPit();
+
+            // Set starting pit level to 9 (after pit exists to avoid early collider warnings)
+            //var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            //if (pitWidthManager != null)
+            //    pitWidthManager.SetPitLevel(90);
+
             GeneratePitContent();
             SpawnHero();
             AddPitLevelTestComponent();
@@ -182,7 +188,9 @@ namespace PitHero.ECS.Scenes
         private void SpawnHero()
         {
             // Calculate random position at least 8 tiles to the right of rightmost pit edge
-            var rightmostPitTile = GameConfig.PitRectX + GameConfig.PitRectWidth - 1; // 12
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            var rightmostPitTile = pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth - 1);
+
             var minHeroTileX = rightmostPitTile + 8; // 20
             var maxHeroTileX = 50; // Leave some space from map edge
             
