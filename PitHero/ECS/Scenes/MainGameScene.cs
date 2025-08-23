@@ -172,7 +172,9 @@ namespace PitHero.ECS.Scenes
         {
             // Calculate random position at least 8 tiles to the right of rightmost pit edge
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
-            var rightmostPitTile = pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth - 1);
+            //var rightmostPitTile = pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth - 1);
+            var pitWidth = pitWidthManager?.CurrentPitRectWidthTiles ?? GameConfig.PitRectWidth;
+            var rightmostPitTile = GameConfig.PitRectX + pitWidth - 1;
 
             var minHeroTileX = rightmostPitTile + 8; // 20
             var maxHeroTileX = 50; // Leave some space from map edge

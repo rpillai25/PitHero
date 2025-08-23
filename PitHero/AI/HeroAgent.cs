@@ -26,6 +26,7 @@ namespace PitHero.AI
         public override WorldState GetWorldState()
         {
             var ws = WorldState.Create(_planner);
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
 
             ws.Set(GoapConstants.HeroInitialized, true);
 
@@ -53,9 +54,9 @@ namespace PitHero.AI
                 if (fogLayer != null)
                 {
                     var anyFog = false;
-                    for (var x = GameConfig.PitRectX; x < GameConfig.PitRectX + GameConfig.PitRectWidth && !anyFog; x++)
+                    for (var x = GameConfig.PitRectX; x < GameConfig.PitRectX + pitWidthManager.CurrentPitRectWidthTiles && !anyFog; x++)
                     {
-                        for (var y = GameConfig.PitRectY; y < GameConfig.PitRectY + GameConfig.PitRectHeight; y++)
+                        for (var y = GameConfig.PitRectY; y < GameConfig.PitRectY + pitWidthManager.CurrentPitRectHeightTiles; y++)
                         {
                             if (x >= 0 && y >= 0 && x < fogLayer.Width && y < fogLayer.Height)
                             {

@@ -273,7 +273,7 @@ namespace PitHero
                 validMinX = GameConfig.PitRectX + 1; // 2
                 validMinY = GameConfig.PitRectY + 1; // 3
                 validMaxX = pitWidthManager.CurrentPitRightEdge - 3; // 2 tiles from right edge
-                validMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // 9
+                validMaxY = GameConfig.PitRectY + pitWidthManager?.CurrentPitRectHeightTiles ?? GameConfig.PitRectHeight - 2; // 9
             }
             else
             {
