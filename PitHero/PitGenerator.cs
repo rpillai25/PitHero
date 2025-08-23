@@ -99,11 +99,12 @@ namespace PitHero
             // Clear obstacle walls from A* graph
             ClearObstacleWallsFromAstar();
             
+            // Reset hero pathfinding state immediately after A* graph is cleared
+            // This prevents the hero from using stale pathfinding data during regeneration
+            UpdateHeroPathfindingTarget();
+            
             // Generate new content
             GenerateForLevel(level);
-            
-            // Update hero pathfinding target if hero exists
-            UpdateHeroPathfindingTarget();
         }
 
         /// <summary>
@@ -357,6 +358,9 @@ namespace PitHero
                 Debug.Log($"[PitGenerator] Warning: Could not generate valid layout after {maxAttempts} attempts");
                 GenerateFallbackLayout(validMinX, validMinY, validMaxX, validMaxY);
             }
+
+            // Final validation: ensure A* graph is consistent after all entity creation
+            ValidateAstarGraphConsistency();
         }
 
         /// <summary>
@@ -844,6 +848,43 @@ namespace PitHero
             }
 
             return new Point(-1, -1);
+        }
+
+        /// <summary>
+        /// Validate that the A* graph is consistent with actual obstacle entities
+        /// This helps prevent pathfinding/collision mismatches after regeneration
+        /// </summary>
+        private void ValidateAstarGraphConsistency()
+        {
+            var astarGraph = Core.Services.GetService<AstarGridGraph>();
+            if (astarGraph == null)
+            {
+                Debug.Warn("[PitGenerator] A* graph not available for consistency validation");
+                return;
+            }
+
+            // Count obstacle entities in the scene
+            var obstacleEntities = _scene.FindEntitiesWithTag(GameConfig.TAG_OBSTACLE);
+            var obstacleCount = obstacleEntities.Count;
+            
+            // Count obstacle walls in A* graph (excluding collision tiles)
+            var astarObstacleCount = astarGraph.Walls.Count - _collisionTiles.Count;
+            
+            Debug.Log($"[PitGenerator] A* graph consistency check:");
+            Debug.Log($"[PitGenerator]   Obstacle entities: {obstacleCount}");
+            Debug.Log($"[PitGenerator]   A* obstacle walls: {astarObstacleCount}");
+            Debug.Log($"[PitGenerator]   Total A* walls: {astarGraph.Walls.Count}");
+            Debug.Log($"[PitGenerator]   Collision tiles: {_collisionTiles.Count}");
+            
+            if (obstacleCount != astarObstacleCount)
+            {
+                Debug.Warn($"[PitGenerator] A* graph inconsistency detected! " +
+                          $"Entity count ({obstacleCount}) != A* obstacle count ({astarObstacleCount})");
+            }
+            else
+            {
+                Debug.Log("[PitGenerator] A* graph consistency validation passed");
+            }
         }
     }
 }
