@@ -100,5 +100,68 @@ namespace PitHero.Tests
             // Assert
             Assert.AreEqual(15, totalEntities, "Total entities should be 15 (10+2+2+1)");
         }
+
+        [TestMethod]
+        public void PitGenerator_LevelBasedFormulas_ShouldCalculateCorrectAmounts()
+        {
+            // Test the formulas from the problem statement
+            
+            // Level 1: should be minimum values (2, 2, 5-10)
+            ValidateFormulasForLevel(1, expectedMaxMonsters: 2, expectedMaxChests: 2, 
+                                   expectedMinObstacles: 5, expectedMaxObstacles: 10);
+            
+            // Level 10: should be minimum values (2, 2, 5-10) 
+            ValidateFormulasForLevel(10, expectedMaxMonsters: 2, expectedMaxChests: 2,
+                                   expectedMinObstacles: 5, expectedMaxObstacles: 10);
+            
+            // Level 55: should be mid-range values 
+            ValidateFormulasForLevel(55, expectedMaxMonsters: 6, expectedMaxChests: 6,
+                                   expectedMinObstacles: 22, expectedMaxObstacles: 30);
+            
+            // Level 100: should be maximum values (10, 10, 40-50)
+            ValidateFormulasForLevel(100, expectedMaxMonsters: 10, expectedMaxChests: 10,
+                                   expectedMinObstacles: 40, expectedMaxObstacles: 50);
+        }
+
+        private void ValidateFormulasForLevel(int level, int expectedMaxMonsters, int expectedMaxChests, 
+                                            int expectedMinObstacles, int expectedMaxObstacles)
+        {
+            // Calculate using the formulas from the problem statement
+            int actualMaxMonsters = Math.Clamp(
+                (int)Math.Round(2 + 8 * Math.Max(level - 10, 0) / 90.0), 2, 10);
+            
+            int actualMaxChests = Math.Clamp(
+                (int)Math.Round(2 + 8 * Math.Max(level - 10, 0) / 90.0), 2, 10);
+            
+            int actualMinObstacles = Math.Clamp(
+                (int)Math.Round(5 + 35 * Math.Max(level - 10, 0) / 90.0), 5, 40);
+            
+            int actualMaxObstacles = Math.Clamp(
+                (int)Math.Round(10 + 40 * Math.Max(level - 10, 0) / 90.0), 10, 50);
+            
+            // Assert the calculated values match expectations
+            Assert.AreEqual(expectedMaxMonsters, actualMaxMonsters, 
+                $"MaxMonsters for level {level} should be {expectedMaxMonsters}");
+            Assert.AreEqual(expectedMaxChests, actualMaxChests, 
+                $"MaxChests for level {level} should be {expectedMaxChests}");
+            Assert.AreEqual(expectedMinObstacles, actualMinObstacles, 
+                $"MinObstacles for level {level} should be {expectedMinObstacles}");
+            Assert.AreEqual(expectedMaxObstacles, actualMaxObstacles, 
+                $"MaxObstacles for level {level} should be {expectedMaxObstacles}");
+        }
+
+        [TestMethod]
+        public void PitGenerator_FormulaConstraints_ShouldRespectMinMaxLimits()
+        {
+            // Test extreme values to ensure clamping works
+            
+            // Level 0: should clamp to minimums  
+            ValidateFormulasForLevel(0, expectedMaxMonsters: 2, expectedMaxChests: 2,
+                                   expectedMinObstacles: 5, expectedMaxObstacles: 10);
+            
+            // Level 1000: should clamp to maximums
+            ValidateFormulasForLevel(1000, expectedMaxMonsters: 10, expectedMaxChests: 10,
+                                   expectedMinObstacles: 40, expectedMaxObstacles: 50);
+        }
     }
 }

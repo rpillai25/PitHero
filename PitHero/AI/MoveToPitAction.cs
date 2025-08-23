@@ -232,5 +232,13 @@ namespace PitHero.AI
             _pathIndex = 0;
             _hasSelectedTarget = false;
         }
+
+        /// <summary>
+        /// Public method to reset the action's internal state for target recalculation
+        /// </summary>
+        public void ResetTargetSelection()
+        {
+            ResetInternal();
+        }
     }
 }

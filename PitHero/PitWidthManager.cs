@@ -260,6 +260,9 @@ namespace PitHero
 
             // Notify the scene to update pit collider bounds
             UpdatePitColliderBounds();
+            
+            // Regenerate pit content for the new size
+            RegeneratePitContent();
         }
 
         /// <summary>
@@ -277,6 +280,68 @@ namespace PitHero
             {
                 Debug.Warn("[PitWidthManager] Could not find MainGameScene to update pit collider bounds");
             }
+        }
+
+        /// <summary>
+        /// Regenerate pit content after pit width changes
+        /// </summary>
+        private void RegeneratePitContent()
+        {
+            Debug.Log("[PitWidthManager] Regenerating pit content after width change");
+            
+            // Regenerate FogOfWar for the entire current pit area
+            RegenerateFogOfWar();
+            
+            // Find the MainGameScene and regenerate pit content
+            var scene = Core.Scene as MainGameScene;
+            if (scene != null)
+            {
+                var pitGenerator = new PitGenerator(scene);
+                pitGenerator.RegenerateForCurrentLevel();
+                Debug.Log("[PitWidthManager] Pit content regeneration complete");
+            }
+            else
+            {
+                Debug.Warn("[PitWidthManager] Could not find MainGameScene to regenerate pit content");
+            }
+        }
+
+        /// <summary>
+        /// Regenerate FogOfWar tiles for the entire current pit area
+        /// </summary>
+        private void RegenerateFogOfWar()
+        {
+            if (!_isInitialized)
+            {
+                Debug.Error("[PitWidthManager] Cannot regenerate FogOfWar - manager not initialized");
+                return;
+            }
+
+            var tiledMapService = Core.Services.GetService<TiledMapService>();
+            if (tiledMapService == null)
+            {
+                Debug.Error("[PitWidthManager] TiledMapService not available for regenerating FogOfWar");
+                return;
+            }
+
+            if (_fogOfWarIndex == 0)
+            {
+                Debug.Warn("[PitWidthManager] No FogOfWar tile index recorded, skipping FogOfWar regeneration");
+                return;
+            }
+
+            Debug.Log($"[PitWidthManager] Regenerating FogOfWar for entire pit area from x=2 to x={_currentPitRightEdge}, y=3 to y=9");
+
+            // Add FogOfWar tiles for the entire current pit area (y=3 to y=9 for the explorable pit interior)
+            for (int x = 2; x <= _currentPitRightEdge - 2; x++) // Start from x=2 (first explorable column)
+            {
+                for (int y = 3; y <= 9; y++) // y=3 to y=9 is the explorable pit interior
+                {
+                    tiledMapService.SetTile("FogOfWar", x, y, _fogOfWarIndex);
+                }
+            }
+
+            Debug.Log($"[PitWidthManager] FogOfWar regeneration complete");
         }
 
         /// <summary>

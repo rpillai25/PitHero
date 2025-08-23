@@ -42,7 +42,12 @@ namespace PitHero.ECS.Scenes
 
             LoadMap();
             SpawnPit();
-            GeneratePitContent();
+
+            // Set starting pit level to 9 (after pit exists to avoid early collider warnings)
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            if (pitWidthManager != null)
+                pitWidthManager.SetPitLevel(40);
+
             SpawnHero();
             AddPitLevelTestComponent();
 
@@ -163,20 +168,12 @@ namespace PitHero.ECS.Scenes
             );
         }
 
-        private void GeneratePitContent()
-        {
-            Debug.Log("[MainGameScene] Generating pit content");
-            
-            var pitGenerator = new PitGenerator(this);
-            pitGenerator.Generate(1);
-            
-            Debug.Log("[MainGameScene] Pit content generation complete");
-        }
-
         private void SpawnHero()
         {
             // Calculate random position at least 8 tiles to the right of rightmost pit edge
-            var rightmostPitTile = GameConfig.PitRectX + GameConfig.PitRectWidth - 1; // 12
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            var rightmostPitTile = pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth - 1);
+
             var minHeroTileX = rightmostPitTile + 8; // 20
             var maxHeroTileX = 50; // Leave some space from map edge
             
@@ -194,7 +191,7 @@ namespace PitHero.ECS.Scenes
                       $"({heroTileX}, {heroTileY}) - {minHeroTileX - rightmostPitTile} tiles from pit edge");
 
             var heroRenderer = hero.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
-            heroRenderer.SetRenderLayer(GameConfig.RenderLayerActors);
+            heroRenderer.SetRenderLayer(GameConfig.RenderLayerHero);
             var collider = hero.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));
             
             Flags.SetFlag(ref collider.CollidesWithLayers, GameConfig.PhysicsTileMapLayer);

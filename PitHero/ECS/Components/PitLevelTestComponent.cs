@@ -37,16 +37,16 @@ namespace PitHero.ECS.Components
             }
 
             // Check if hero is in pit - if so, don't allow testing
-            var heroEntity = Entity.Scene.FindEntity("hero");
-            if (heroEntity != null)
-            {
-                var heroComponent = heroEntity.GetComponent<HeroComponent>();
-                if (heroComponent != null && heroComponent.CheckInsidePit(heroEntity.Transform.Position))
-                {
-                    // Hero is in pit, don't allow pit level testing
-                    return;
-                }
-            }
+            //var heroEntity = Entity.Scene.FindEntity("hero");
+            //if (heroEntity != null)
+            //{
+            //    var heroComponent = heroEntity.GetComponent<HeroComponent>();
+            //    if (heroComponent != null && heroComponent.CheckInsidePit(heroEntity.Transform.Position))
+            //    {
+            //        // Hero is in pit, don't allow pit level testing
+            //        return;
+            //    }
+            //}
 
             var currentKeyboardState = Keyboard.GetState();
             
