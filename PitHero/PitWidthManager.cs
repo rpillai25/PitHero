@@ -23,11 +23,6 @@ namespace PitHero
         private int _fogOfWarIndex;
         private int _groundTileIndex; // Ground tile recorded from (19,1)
         
-        // Store original tilemap state for restoration during regeneration
-        private Dictionary<Point, int> _originalBaseTiles; // Original Base layer tiles from x=13 to x=33
-        private Dictionary<Point, int> _originalCollisionTiles; // Original Collision layer tiles from x=13 to x=33
-        private Dictionary<Point, int> _originalFogOfWarTiles; // Original FogOfWar layer tiles from x=13 to x=33
-        
         // Track current pit state
         private int _currentPitLevel = 1;
         private int _currentPitRightEdge; // The rightmost x coordinate of the current pit
@@ -55,17 +50,13 @@ namespace PitHero
                 return;
             }
 
+            // Initialize dictionaries for tile patterns
             _baseOuterFloor = new Dictionary<int, int>();
             _collisionOuterFloor = new Dictionary<int, int>();
             _baseInnerWall = new Dictionary<int, int>();
             _collisionInnerWall = new Dictionary<int, int>();
             _baseInnerFloor = new Dictionary<int, int>();
             _collisionInnerFloor = new Dictionary<int, int>();
-
-            // Initialize dictionaries for storing original tilemap state
-            _originalBaseTiles = new Dictionary<Point, int>();
-            _originalCollisionTiles = new Dictionary<Point, int>();
-            _originalFogOfWarTiles = new Dictionary<Point, int>();
             // Get layer references
             var baseLayer = tiledMapService.CurrentMap.GetLayer<TmxLayer>("Base");
             var collisionLayer = tiledMapService.CurrentMap.GetLayer<TmxLayer>("Collision");
@@ -99,9 +90,6 @@ namespace PitHero
             InitializeTilePattern(_baseInnerFloor, baseLayer, 11, 1, 11, "baseInnerFloor");
             InitializeTilePattern(_collisionInnerFloor, collisionLayer, 11, 1, 11, "collisionInnerFloor");
 
-            // Store original tilemap state for regeneration purposes (x=13 to x=33, y=1 to y=11)
-            StoreOriginalTilemapState(baseLayer, collisionLayer, fogOfWarLayer);
-
             // Set initial pit right edge (default pit goes from x=1 to x=12, so rightmost is 12)
             _currentPitRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth - 1; // 1 + 12 - 1 = 12
 
@@ -127,40 +115,8 @@ namespace PitHero
         }
 
         /// <summary>
-        /// Store the original state of the tilemap from x=13 to x=33 for restoration during regeneration
-        /// This allows regeneration to start from a clean slate like initial generation
-        /// </summary>
-        private void StoreOriginalTilemapState(TmxLayer baseLayer, TmxLayer collisionLayer, TmxLayer fogOfWarLayer)
-        {
-            Debug.Log("[PitWidthManager] Storing original tilemap state for regeneration");
-            
-            // Store original tiles from x=13 to x=33 (area that may be modified during pit extension)
-            for (int x = 13; x <= 33; x++)
-            {
-                for (int y = 1; y <= 11; y++)
-                {
-                    var point = new Point(x, y);
-                    
-                    // Store Base layer tile
-                    var baseTile = baseLayer.GetTile(x, y);
-                    _originalBaseTiles[point] = baseTile?.Gid ?? 0;
-                    
-                    // Store Collision layer tile  
-                    var collisionTile = collisionLayer.GetTile(x, y);
-                    _originalCollisionTiles[point] = collisionTile?.Gid ?? 0;
-                    
-                    // Store FogOfWar layer tile
-                    var fogTile = fogOfWarLayer.GetTile(x, y);
-                    _originalFogOfWarTiles[point] = fogTile?.Gid ?? 0;
-                }
-            }
-            
-            Debug.Log($"[PitWidthManager] Stored {_originalBaseTiles.Count} original tile states for restoration");
-        }
-
-        /// <summary>
         /// Set the pit level and regenerate the pit width accordingly
-        /// This method ensures regeneration starts from a clean slate like initial generation
+        /// This method works on a fresh map loaded from disk
         /// </summary>
         public void SetPitLevel(int newLevel)
         {
@@ -182,82 +138,11 @@ namespace PitHero
             Debug.Log($"[PitWidthManager] Setting pit level from {_currentPitLevel} to {newLevel}");
             _currentPitLevel = newLevel;
             
-            // ALWAYS restore tilemap to original state first to ensure clean slate regeneration
-            // This makes regeneration work exactly like initial generation
-            RestoreTilemapToOriginalState();
-            
-            // Reset pit right edge to default before regenerating
+            // Reset pit right edge to default before extending
             _currentPitRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth - 1; // Reset to 12
             
-            // Now regenerate from clean state (like initial generation)
+            // Generate pit extensions on fresh map (like initial generation)
             RegeneratePitWidth();
-        }
-
-        /// <summary>
-        /// Restore the tilemap to its original state from x=13 to x=33
-        /// This ensures regeneration starts from a clean slate like initial generation
-        /// </summary>
-        private void RestoreTilemapToOriginalState()
-        {
-            if (!_isInitialized)
-            {
-                Debug.Error("[PitWidthManager] Cannot restore tilemap - manager not initialized");
-                return;
-            }
-
-            var tiledMapService = Core.Services.GetService<TiledMapService>();
-            if (tiledMapService == null)
-            {
-                Debug.Error("[PitWidthManager] TiledMapService not available for tilemap restoration");
-                return;
-            }
-
-            Debug.Log("[PitWidthManager] Restoring tilemap to original state for clean slate regeneration");
-
-            // Restore all tiles from x=13 to x=33 to their original state
-            foreach (var kvp in _originalBaseTiles)
-            {
-                var point = kvp.Key;
-                var originalTileIndex = kvp.Value;
-                
-                // Restore Base layer
-                if (originalTileIndex != 0)
-                {
-                    tiledMapService.SetTile("Base", point.X, point.Y, originalTileIndex);
-                }
-                else
-                {
-                    tiledMapService.RemoveTile("Base", point.X, point.Y);
-                }
-                
-                // Restore Collision layer
-                if (_originalCollisionTiles.TryGetValue(point, out int originalCollisionIndex))
-                {
-                    if (originalCollisionIndex != 0)
-                    {
-                        tiledMapService.SetTile("Collision", point.X, point.Y, originalCollisionIndex);
-                    }
-                    else
-                    {
-                        tiledMapService.RemoveTile("Collision", point.X, point.Y);
-                    }
-                }
-                
-                // Restore FogOfWar layer
-                if (_originalFogOfWarTiles.TryGetValue(point, out int originalFogIndex))
-                {
-                    if (originalFogIndex != 0)
-                    {
-                        tiledMapService.SetTile("FogOfWar", point.X, point.Y, originalFogIndex);
-                    }
-                    else
-                    {
-                        tiledMapService.RemoveTile("FogOfWar", point.X, point.Y);
-                    }
-                }
-            }
-
-            Debug.Log("[PitWidthManager] Tilemap restoration complete - ready for clean pit generation");
         }
 
         /// <summary>

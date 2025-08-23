@@ -88,18 +88,18 @@ namespace PitHero
 
         /// <summary>
         /// Clear all existing pit entities and regenerate content for the specified level
-        /// This method now works with a clean tilemap restored by PitWidthManager 
+        /// This method now works with a freshly reloaded map from disk
         /// </summary>
         public void RegenerateForLevel(int level)
         {
-            Debug.Log($"[PitGenerator] Regenerating pit content for level {level}");
+            Debug.Log($"[PitGenerator] Regenerating pit content for level {level} on fresh map");
             
-            // Clear existing pit entities
+            // Clear existing pit entities (this is called from MainGameScene.ClearAllPitEntities as well,
+            // but keeping here for safety in case this method is called directly)
             ClearExistingPitEntities();
             
-            // Since PitWidthManager now restores tilemap to clean state before calling this,
-            // we can simply rebuild the A* graph fresh like in initial generation
-            RebuildAstarGraphFromCleanTilemap();
+            // Since we're working with a fresh map, we can simply rebuild the A* graph fresh
+            RebuildAstarGraphFromFreshMap();
             
             // Reset hero pathfinding state
             UpdateHeroPathfindingTarget();
@@ -107,7 +107,7 @@ namespace PitHero
             // Generate new content (exactly like initial generation)
             GenerateForLevel(level);
             
-            Debug.Log($"[PitGenerator] Pit regeneration complete for level {level}");
+            Debug.Log($"[PitGenerator] Pit regeneration complete for level {level} on fresh map");
         }
 
         /// <summary>
@@ -141,15 +141,15 @@ namespace PitHero
         }
 
         /// <summary>
-        /// Rebuild the A* graph from the clean tilemap after restoration
-        /// This is simpler than the previous approach since tilemap is now in clean state
+        /// Rebuild the A* graph from the fresh map loaded from disk
+        /// This is simpler than previous approaches since map is truly fresh
         /// </summary>
-        private void RebuildAstarGraphFromCleanTilemap()
+        private void RebuildAstarGraphFromFreshMap()
         {
             var astarGraph = Core.Services.GetService<AstarGridGraph>();
             if (astarGraph == null)
             {
-                Debug.Warn("[PitGenerator] A* graph not found when rebuilding from clean tilemap");
+                Debug.Warn("[PitGenerator] A* graph not found when rebuilding from fresh map");
                 return;
             }
             
@@ -167,10 +167,10 @@ namespace PitHero
                 return;
             }
 
-            // Completely rebuild A* graph from the clean tilemap
+            // Completely rebuild A* graph from the fresh map
             astarGraph.Walls.Clear();
             
-            // Add all collision layer tiles (tilemap is now in clean state after restoration)
+            // Add all collision layer tiles (fresh map from disk, no modifications)
             for (int x = 0; x < collisionLayer.Width; x++)
             {
                 for (int y = 0; y < collisionLayer.Height; y++)
@@ -183,7 +183,7 @@ namespace PitHero
                 }
             }
 
-            Debug.Log($"[PitGenerator] A* graph rebuilt from clean tilemap with {astarGraph.Walls.Count} walls");
+            Debug.Log($"[PitGenerator] A* graph rebuilt from fresh map with {astarGraph.Walls.Count} walls");
         }
 
         /// <summary>

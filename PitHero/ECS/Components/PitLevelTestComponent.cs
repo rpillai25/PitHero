@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework.Input;
 using Nez;
 using PitHero.Services;
+using PitHero.ECS.Scenes;
 
 namespace PitHero.ECS.Components
 {
@@ -66,10 +67,10 @@ namespace PitHero.ECS.Components
 
         private void HandleNumberKeyPress(int number)
         {
-            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
-            if (pitWidthManager == null)
+            var scene = Entity.Scene as MainGameScene;
+            if (scene == null)
             {
-                Debug.Error("[PitLevelTest] PitWidthManager service not found");
+                Debug.Error("[PitLevelTest] Not in MainGameScene, cannot test pit levels");
                 return;
             }
 
@@ -83,12 +84,16 @@ namespace PitHero.ECS.Components
                 newLevel = number * 10; // 1 = level 10, 2 = level 20, etc.
             }
 
-            Debug.Log($"[PitLevelTest] Setting pit level to {newLevel} (key {number} pressed)");
-            pitWidthManager.SetPitLevel(newLevel);
+            Debug.Log($"[PitLevelTest] Setting pit level to {newLevel} (key {number} pressed) using fresh map regeneration");
+            scene.ReloadMapAndRegeneratePit(newLevel);
 
-            // Log the current state
-            var extensionTiles = ((int)(newLevel / 10)) * 2;
-            Debug.Log($"[PitLevelTest] Level {newLevel}: extending by {extensionTiles} tiles, right edge now at x={pitWidthManager.CurrentPitRightEdge}");
+            // Log the current state after regeneration
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            if (pitWidthManager != null)
+            {
+                var extensionTiles = ((int)(newLevel / 10)) * 2;
+                Debug.Log($"[PitLevelTest] Level {newLevel}: extending by {extensionTiles} tiles, right edge now at x={pitWidthManager.CurrentPitRightEdge}");
+            }
         }
     }
 }

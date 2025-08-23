@@ -6,6 +6,7 @@ using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.UI;
 using PitHero.Util;
+using System.Collections.Generic;
 
 namespace PitHero.ECS.Scenes
 {
@@ -280,6 +281,193 @@ namespace PitHero.ECS.Scenes
             pitEntity.SetPosition(newPitBounds.Center.ToVector2());
 
             Debug.Log($"[MainGameScene] Updated pit collider bounds: X={newPitBounds.X}, Y={newPitBounds.Y}, Width={newPitBounds.Width}, Height={newPitBounds.Height}");
+        }
+
+        /// <summary>
+        /// Reload the map from disk and regenerate pit content with a completely fresh slate
+        /// This approach ensures identical behavior to initial generation
+        /// </summary>
+        public void ReloadMapAndRegeneratePit(int newPitLevel)
+        {
+            Debug.Log($"[MainGameScene] Starting fresh map reload and pit regeneration to level {newPitLevel}");
+            
+            // 1. Preserve hero state before reload
+            var heroState = PreserveHeroStateForRegeneration();
+            
+            // 2. Clear all pit entities from cache (obstacles, chests, monsters)
+            ClearAllPitEntities();
+            
+            // 3. Reload map from disk as if this was the first load
+            ReloadMapFromDisk();
+            
+            // 4. Clear GOAP state but preserve EnteredPit status 
+            ClearHeroGoapState(heroState);
+            
+            // 5. Regenerate pit on fresh map as if this was the first time
+            RegeneratePitOnFreshMap(newPitLevel);
+            
+            Debug.Log($"[MainGameScene] Fresh map reload and pit regeneration to level {newPitLevel} complete");
+        }
+
+        /// <summary>
+        /// Preserve hero state information before map reload
+        /// </summary>
+        private HeroRegenerationState PreserveHeroStateForRegeneration()
+        {
+            var hero = FindEntity("hero");
+            if (hero == null)
+            {
+                Debug.Warn("[MainGameScene] No hero found for state preservation");
+                return new HeroRegenerationState { IsHeroInPit = false };
+            }
+
+            var heroComponent = hero.GetComponent<HeroComponent>();
+            if (heroComponent == null)
+            {
+                Debug.Warn("[MainGameScene] Hero missing HeroComponent for state preservation");
+                return new HeroRegenerationState { IsHeroInPit = false };
+            }
+
+            // Check if hero is currently in the pit by checking EnteredPit status
+            bool isInPit = heroComponent.EnteredPit;
+            
+            Debug.Log($"[MainGameScene] Preserved hero state: IsInPit={isInPit}");
+            return new HeroRegenerationState { IsHeroInPit = isInPit };
+        }
+
+        /// <summary>
+        /// Clear all pit entities (obstacles, chests, monsters, wizard orbs) from cache
+        /// </summary>
+        private void ClearAllPitEntities()
+        {
+            Debug.Log("[MainGameScene] Clearing all pit entities from cache");
+            
+            var entitiesToRemove = new List<Entity>();
+            
+            // Find all entities with pit-related tags
+            var obstacles = FindEntitiesWithTag(GameConfig.TAG_OBSTACLE);
+            var treasures = FindEntitiesWithTag(GameConfig.TAG_TREASURE);
+            var monsters = FindEntitiesWithTag(GameConfig.TAG_MONSTER);
+            var wizardOrbs = FindEntitiesWithTag(GameConfig.TAG_WIZARD_ORB);
+            
+            // Add all found entities to removal list
+            entitiesToRemove.AddRange(obstacles);
+            entitiesToRemove.AddRange(treasures);
+            entitiesToRemove.AddRange(monsters);
+            entitiesToRemove.AddRange(wizardOrbs);
+            
+            // Remove entities
+            for (int i = 0; i < entitiesToRemove.Count; i++)
+            {
+                entitiesToRemove[i].Destroy();
+            }
+            
+            Debug.Log($"[MainGameScene] Cleared {entitiesToRemove.Count} pit entities from cache");
+        }
+
+        /// <summary>
+        /// Reload the map from disk, completely resetting all tilemap layers
+        /// </summary>
+        private void ReloadMapFromDisk()
+        {
+            Debug.Log("[MainGameScene] Reloading map from disk for fresh state");
+            
+            // Remove existing tilemap entities
+            var existingTilemaps = FindEntitiesWithTag(GameConfig.TAG_TILEMAP);
+            for (int i = 0; i < existingTilemaps.Count; i++)
+            {
+                existingTilemaps[i].Destroy();
+            }
+            
+            // Load fresh map from disk
+            _tmxMap = Core.Content.LoadTiledMap(_mapPath);
+            
+            // Update TiledMapService with fresh map
+            Core.Services.RemoveService(typeof(TiledMapService));
+            Core.Services.AddService(new TiledMapService(_tmxMap));
+            
+            // Recreate tilemap entity with fresh map
+            var tiledEntity = CreateEntity("tilemap").SetTag(GameConfig.TAG_TILEMAP);
+
+            var baseLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(_tmxMap, "Collision"));
+            baseLayerRenderer.SetLayerToRender("Base");
+            baseLayerRenderer.RenderLayer = GameConfig.RenderLayerBase;
+
+            var fogLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(_tmxMap));
+            fogLayerRenderer.SetLayerToRender("FogOfWar");
+            fogLayerRenderer.SetRenderLayer(GameConfig.RenderLayerFogOfWar);
+            
+            // Rebuild pathfinding with fresh map
+            SetupPathfinding();
+            
+            Debug.Log("[MainGameScene] Map reloaded from disk with fresh tilemap layers");
+        }
+
+        /// <summary>
+        /// Clear hero GOAP state but preserve EnteredPit status based on hero position
+        /// </summary>
+        private void ClearHeroGoapState(HeroRegenerationState heroState)
+        {
+            Debug.Log("[MainGameScene] Clearing hero GOAP state while preserving pit status");
+            
+            var hero = FindEntity("hero");
+            if (hero == null)
+            {
+                Debug.Warn("[MainGameScene] No hero found for GOAP state clearing");
+                return;
+            }
+
+            // Reset GOAP agent
+            var agentComponent = hero.GetComponent<HeroGoapAgentComponent>();
+            if (agentComponent != null)
+            {
+                agentComponent.ResetActionPlan();
+            }
+
+            // Reset hero component state but preserve EnteredPit if hero was in pit
+            var heroComponent = hero.GetComponent<HeroComponent>();
+            if (heroComponent != null)
+            {
+                // Reset adjacency states
+                heroComponent.AdjacentToPitBoundaryFromOutside = false;
+                heroComponent.AdjacentToPitBoundaryFromInside = false;
+                
+                // Preserve EnteredPit status based on hero's position before regeneration
+                heroComponent.EnteredPit = heroState.IsHeroInPit;
+                
+                Debug.Log($"[MainGameScene] Hero GOAP state cleared. EnteredPit preserved as: {heroComponent.EnteredPit}");
+            }
+        }
+
+        /// <summary>
+        /// Regenerate pit on the fresh map as if this was the first time
+        /// </summary>
+        private void RegeneratePitOnFreshMap(int newPitLevel)
+        {
+            Debug.Log($"[MainGameScene] Regenerating pit on fresh map for level {newPitLevel}");
+            
+            // Remove and recreate PitWidthManager with fresh map
+            Core.Services.RemoveService(typeof(PitWidthManager));
+            SetupPitWidthManager();
+            
+            // Set pit level (this will trigger fresh pit generation on the clean map)
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            if (pitWidthManager != null)
+            {
+                pitWidthManager.SetPitLevel(newPitLevel);
+            }
+            else
+            {
+                Debug.Error("[MainGameScene] Failed to get PitWidthManager for fresh pit regeneration");
+            }
+        }
+
+        /// <summary>
+        /// Helper struct to preserve hero state during regeneration
+        /// </summary>
+        private struct HeroRegenerationState
+        {
+            public bool IsHeroInPit;
         }
 
         public override void Update()
