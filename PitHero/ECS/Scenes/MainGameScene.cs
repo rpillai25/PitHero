@@ -168,7 +168,13 @@ namespace PitHero.ECS.Scenes
             Debug.Log("[MainGameScene] Generating pit content");
             
             var pitGenerator = new PitGenerator(this);
-            pitGenerator.Generate(1);
+            
+            // Get current pit level from PitWidthManager instead of hardcoding level 1
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            int pitLevel = pitWidthManager?.CurrentPitLevel ?? 1;
+            
+            Debug.Log($"[MainGameScene] Generating pit content for level {pitLevel}");
+            pitGenerator.Generate(pitLevel);
             
             Debug.Log("[MainGameScene] Pit content generation complete");
         }

@@ -66,14 +66,8 @@ namespace PitHero
         {
             Debug.Log($"[PitGenerator] Generating pit content for level {level}");
 
-            if (level == 1)
-            {
-                GenerateLevel1();
-            }
-            else
-            {
-                GenerateForLevel(level);
-            }
+            // Always use dynamic generation, even for level 1
+            GenerateForLevel(level);
         }
 
         /// <summary>
@@ -212,65 +206,6 @@ namespace PitHero
             }
             
             Debug.Log("[PitGenerator] Hero pathfinding target update complete");
-        }
-
-        private void GenerateLevel1()
-        {
-            var validMinX = GameConfig.PitRectX + 1; // 2
-            var validMinY = GameConfig.PitRectY + 1; // 3
-            var validMaxX = GameConfig.PitRectX + GameConfig.PitRectWidth - 3; // 10
-            var validMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // 9
-            
-            Debug.Log($"[PitGenerator] Valid placement area: tiles ({validMinX},{validMinY}) to ({validMaxX},{validMaxY})");
-
-            InitializeCollisionTiles(validMinX, validMinY, validMaxX, validMaxY);
-
-            var maxAttempts = 10;
-            bool validLayoutGenerated = false;
-
-            for (int attempt = 1; attempt <= maxAttempts && !validLayoutGenerated; attempt++)
-            {
-                Debug.Log($"[PitGenerator] Generation attempt {attempt}");
-                
-                var usedPositions = new HashSet<Point>(64);
-                var obstaclePositions = new HashSet<Point>(16);
-                var targetPositions = new List<Point>(8);
-
-                var obstacles = GenerateEntityPositions(10, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "obstacles");
-                obstaclePositions.UnionWith(obstacles);
-                usedPositions.UnionWith(obstacles);
-
-                var treasures = GenerateEntityPositions(2, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "treasures");
-                var monsters = GenerateEntityPositions(2, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "monsters");
-                var wizardOrbs = GenerateEntityPositions(1, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "wizard orbs");
-
-                // Manual AddRange without LINQ
-                for (int i = 0; i < treasures.Count; i++) targetPositions.Add(treasures[i]);
-                for (int i = 0; i < monsters.Count; i++) targetPositions.Add(monsters[i]);
-                for (int i = 0; i < wizardOrbs.Count; i++) targetPositions.Add(wizardOrbs[i]);
-
-                if (ValidateAllTargetsReachable(obstaclePositions, targetPositions, validMinX, validMinY, validMaxX, validMaxY))
-                {
-                    CreateEntitiesAtPositions(obstacles, GameConfig.TAG_OBSTACLE, Color.Gray, "obstacle");
-                    CreateEntitiesAtPositions(treasures, GameConfig.TAG_TREASURE, Color.Yellow, "treasure");
-                    CreateEntitiesAtPositions(monsters, GameConfig.TAG_MONSTER, Color.Red, "monster");
-                    CreateEntitiesAtPositions(wizardOrbs, GameConfig.TAG_WIZARD_ORB, Color.Blue, "wizard_orb");
-
-                    validLayoutGenerated = true;
-                    Debug.Log($"[PitGenerator] Valid layout generated on attempt {attempt}");
-                    Debug.Log($"[PitGenerator] Generated {usedPositions.Count} entities total in pit");
-                }
-                else
-                {
-                    Debug.Log($"[PitGenerator] Attempt {attempt} failed - some targets unreachable");
-                }
-            }
-
-            if (!validLayoutGenerated)
-            {
-                Debug.Log($"[PitGenerator] Warning: Could not generate valid layout after {maxAttempts} attempts");
-                GenerateFallbackLayout(validMinX, validMinY, validMaxX, validMaxY);
-            }
         }
 
         /// <summary>
