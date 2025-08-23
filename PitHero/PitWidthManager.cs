@@ -360,10 +360,19 @@ namespace PitHero
                     tiledMapService.SetTile("Base", x, y, baseTileIndex);
                 }
 
-                // Set Collision layer tile (or remove if 0/null)
+                // Handle collision tiles with special logic for explorable area
+                bool isExplorableArea = (y >= 3 && y <= 9);
+                bool isInnerFloorColumn = columnType.Contains("inner floor");
+                
                 if (collisionPattern.TryGetValue(y, out int collisionTileIndex))
                 {
-                    if (collisionTileIndex != 0)
+                    // For inner floor columns in explorable area, never set collision tiles to ensure pathfinding works
+                    if (isInnerFloorColumn && isExplorableArea)
+                    {
+                        Debug.Log($"[PitWidthManager] Clearing collision for inner floor at ({x},{y}) to ensure pathfinding");
+                        tiledMapService.RemoveTile("Collision", x, y);
+                    }
+                    else if (collisionTileIndex != 0)
                     {
                         tiledMapService.SetTile("Collision", x, y, collisionTileIndex);
                     }
@@ -378,7 +387,7 @@ namespace PitHero
                 }
 
                 // Set FogOfWar layer tile - only for y=3 to y=9 and not for baseInnerWall or baseOuterFloor columns
-                bool shouldSetFogOfWar = (y >= 3 && y <= 9) && 
+                bool shouldSetFogOfWar = isExplorableArea && 
                                         !columnType.Contains("inner wall") && 
                                         !columnType.Contains("outer floor");
                 

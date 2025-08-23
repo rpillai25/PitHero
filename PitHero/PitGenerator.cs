@@ -171,7 +171,12 @@ namespace PitHero
             // Completely rebuild A* graph from scratch
             astarGraph.Walls.Clear();
             
-            // Add all collision layer tiles
+            // Get pit width manager to understand current pit bounds
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            int explorableAreaMinY = GameConfig.PitRectY + 1; // y=3
+            int explorableAreaMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // y=9
+            
+            // Add all collision layer tiles, but with special handling for expanded pit area
             for (int x = 0; x < collisionLayer.Width; x++)
             {
                 for (int y = 0; y < collisionLayer.Height; y++)
@@ -179,7 +184,24 @@ namespace PitHero
                     var tile = collisionLayer.GetTile(x, y);
                     if (tile != null && tile.Gid != 0)
                     {
-                        astarGraph.Walls.Add(new Point(x, y));
+                        // Special check: if this is in the explorable area of an expanded pit, 
+                        // verify it should really be a wall
+                        bool isInExpandedPitArea = false;
+                        if (pitWidthManager != null && pitWidthManager.CurrentPitRightEdge > GameConfig.PitRectX + GameConfig.PitRectWidth - 1)
+                        {
+                            int expandedAreaStartX = GameConfig.PitRectX + GameConfig.PitRectWidth;
+                            isInExpandedPitArea = x >= expandedAreaStartX && x <= pitWidthManager.CurrentPitRightEdge &&
+                                                 y >= explorableAreaMinY && y <= explorableAreaMaxY;
+                        }
+                        
+                        if (isInExpandedPitArea)
+                        {
+                            Debug.Warn($"[PitGenerator] Skipping collision tile at ({x},{y}) in expanded pit explorable area to prevent pathfinding blocks");
+                        }
+                        else
+                        {
+                            astarGraph.Walls.Add(new Point(x, y));
+                        }
                     }
                 }
             }
@@ -879,6 +901,9 @@ namespace PitHero
             Debug.Log($"[PitGenerator]   Total A* walls: {astarGraph.Walls.Count}");
             Debug.Log($"[PitGenerator]   Collision tiles: {_collisionTiles.Count}");
             
+            // Special validation for expanded pit area
+            ValidateExpandedPitArea(astarGraph);
+            
             if (obstacleCount != astarObstacleCount)
             {
                 Debug.Warn($"[PitGenerator] A* graph inconsistency detected! " +
@@ -930,6 +955,55 @@ namespace PitHero
             else
             {
                 Debug.Log("[PitGenerator] A* graph consistency validation passed");
+            }
+        }
+        
+        /// <summary>
+        /// Special validation for expanded pit area to detect pathfinding issues in the rightmost area
+        /// </summary>
+        private void ValidateExpandedPitArea(AstarGridGraph astarGraph)
+        {
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            if (pitWidthManager == null || pitWidthManager.CurrentPitRightEdge <= GameConfig.PitRectX + GameConfig.PitRectWidth - 1)
+            {
+                Debug.Log("[PitGenerator] No pit expansion detected, skipping expanded area validation");
+                return;
+            }
+            
+            int expandedAreaStartX = GameConfig.PitRectX + GameConfig.PitRectWidth; // Start of expanded area
+            int expandedAreaEndX = pitWidthManager.CurrentPitRightEdge;
+            int explorableStartY = GameConfig.PitRectY + 1; // y=3
+            int explorableEndY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // y=9
+            
+            Debug.Log($"[PitGenerator] Validating expanded pit area: x={expandedAreaStartX} to {expandedAreaEndX}, y={explorableStartY} to {explorableEndY}");
+            
+            var blockedTilesInExpandedArea = new List<Point>();
+            var totalExpandedTiles = 0;
+            
+            // Check for blocked tiles in the explorable expanded area
+            for (int x = expandedAreaStartX; x <= expandedAreaEndX; x++)
+            {
+                for (int y = explorableStartY; y <= explorableEndY; y++)
+                {
+                    totalExpandedTiles++;
+                    var point = new Point(x, y);
+                    
+                    if (astarGraph.Walls.Contains(point))
+                    {
+                        blockedTilesInExpandedArea.Add(point);
+                        Debug.Warn($"[PitGenerator] Found blocked tile in expanded area at ({x},{y})");
+                    }
+                }
+            }
+            
+            if (blockedTilesInExpandedArea.Count > 0)
+            {
+                Debug.Warn($"[PitGenerator] Expanded area validation failed: {blockedTilesInExpandedArea.Count}/{totalExpandedTiles} tiles are blocked");
+                Debug.Warn($"[PitGenerator] This may cause pathfinding issues in the rightmost area after pit expansion");
+            }
+            else
+            {
+                Debug.Log($"[PitGenerator] Expanded area validation passed: {totalExpandedTiles} tiles are passable");
             }
         }
         
