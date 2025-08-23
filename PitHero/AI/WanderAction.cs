@@ -21,6 +21,11 @@ namespace PitHero.AI
         // Track last failed target to avoid reselect loop
         private Point _lastFailedTarget;
         private bool _hasLastFailedTarget;
+        
+        // Track movement blocking to detect persistent issues
+        private int _movementBlockedCount;
+        private Point _lastBlockedTarget;
+        private bool _hasLastBlockedTarget;
 
         public WanderAction() : base(GoapConstants.WanderAction, 1)
         {
@@ -114,6 +119,31 @@ namespace PitHero.AI
                     else
                     {
                         Debug.Log("[Wander] Movement blocked, recalculating path");
+                        
+                        // Track movement blocking for this target
+                        if (!_hasLastBlockedTarget || _lastBlockedTarget.X != _targetTile.X || _lastBlockedTarget.Y != _targetTile.Y)
+                        {
+                            // First time this target is blocked
+                            _lastBlockedTarget = _targetTile;
+                            _hasLastBlockedTarget = true;
+                            _movementBlockedCount = 1;
+                        }
+                        else
+                        {
+                            // Same target blocked multiple times
+                            _movementBlockedCount++;
+                        }
+                        
+                        // If this target has been blocked too many times, abandon it
+                        if (_movementBlockedCount >= 3)
+                        {
+                            Debug.Warn($"[Wander] Target {_targetTile.X},{_targetTile.Y} blocked {_movementBlockedCount} times, abandoning target");
+                            _lastFailedTarget = _targetTile;
+                            _hasLastFailedTarget = true;
+                            ResetInternal();
+                            return false; // Try a different target next tick
+                        }
+                        
                         // Recalculate path next frame
                         _currentPath = null;
                     }
@@ -307,6 +337,9 @@ namespace PitHero.AI
             _pathIndex = 0;
             _hasSelectedTarget = false;
             // Keep _lastFailedTarget so we don't reselect it immediately
+            // Reset movement blocking tracking when selecting new target
+            _movementBlockedCount = 0;
+            _hasLastBlockedTarget = false;
         }
 
         /// <summary>
@@ -320,6 +353,9 @@ namespace PitHero.AI
             _hasSelectedTarget = false;
             // Also clear last failed target since pit has regenerated
             _hasLastFailedTarget = false;
+            // Clear movement blocking tracking
+            _movementBlockedCount = 0;
+            _hasLastBlockedTarget = false;
         }
     }
 }

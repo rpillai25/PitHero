@@ -105,6 +105,9 @@ namespace PitHero
             
             // Generate new content
             GenerateForLevel(level);
+            
+            // Final validation after regeneration
+            ValidateAstarGraphConsistency();
         }
 
         /// <summary>
@@ -880,11 +883,62 @@ namespace PitHero
             {
                 Debug.Warn($"[PitGenerator] A* graph inconsistency detected! " +
                           $"Entity count ({obstacleCount}) != A* obstacle count ({astarObstacleCount})");
+                          
+                // Try to detect which obstacles are mismatched
+                var entityPositions = new HashSet<Point>();
+                foreach (var entity in obstacleEntities)
+                {
+                    var tilePos = GetTileCoordinates(entity.Transform.Position, GameConfig.TileSize);
+                    entityPositions.Add(tilePos);
+                }
+                
+                var astarObstaclePositions = new HashSet<Point>();
+                foreach (var wall in astarGraph.Walls)
+                {
+                    if (!_collisionTiles.Contains(wall))
+                    {
+                        astarObstaclePositions.Add(wall);
+                    }
+                }
+                
+                // Find mismatches
+                var entitiesWithoutAstar = new List<Point>();
+                var astarWithoutEntities = new List<Point>();
+                
+                foreach (var pos in entityPositions)
+                {
+                    if (!astarObstaclePositions.Contains(pos))
+                        entitiesWithoutAstar.Add(pos);
+                }
+                
+                foreach (var pos in astarObstaclePositions)
+                {
+                    if (!entityPositions.Contains(pos))
+                        astarWithoutEntities.Add(pos);
+                }
+                
+                if (entitiesWithoutAstar.Count > 0)
+                {
+                    Debug.Warn($"[PitGenerator] Found {entitiesWithoutAstar.Count} obstacle entities not in A* graph");
+                }
+                
+                if (astarWithoutEntities.Count > 0)
+                {
+                    Debug.Warn($"[PitGenerator] Found {astarWithoutEntities.Count} A* walls without corresponding entities");
+                }
             }
             else
             {
                 Debug.Log("[PitGenerator] A* graph consistency validation passed");
             }
+        }
+        
+        /// <summary>
+        /// Helper method to get tile coordinates from world position
+        /// </summary>
+        private Point GetTileCoordinates(Vector2 worldPosition, int tileSize)
+        {
+            return new Point((int)(worldPosition.X / tileSize), (int)(worldPosition.Y / tileSize));
         }
     }
 }
