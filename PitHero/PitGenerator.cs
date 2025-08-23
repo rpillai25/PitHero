@@ -198,14 +198,16 @@ namespace PitHero
                 return;
             }
 
-            // Force refresh of A* graph to ensure hero has up-to-date pathfinding information
-            //RefreshAstarGraph();
-
-            // Get HeroGoapAgentComponent to potentially reset current action
+            // Get HeroGoapAgentComponent to reset current action plan
             var agentComponent = hero.GetComponent<HeroGoapAgentComponent>();
             if (agentComponent != null)
             {
-                Debug.Log("[PitGenerator] Hero agent component found - pathfinding will be updated on next action plan");
+                Debug.Log("[PitGenerator] Resetting hero action plan after pit regeneration");
+                agentComponent.ResetActionPlan();
+            }
+            else
+            {
+                Debug.Warn("[PitGenerator] Hero GOAP agent component not found");
             }
             
             Debug.Log("[PitGenerator] Hero pathfinding target update complete");

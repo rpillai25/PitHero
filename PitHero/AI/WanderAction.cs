@@ -308,5 +308,18 @@ namespace PitHero.AI
             _hasSelectedTarget = false;
             // Keep _lastFailedTarget so we don't reselect it immediately
         }
+
+        /// <summary>
+        /// Public method to reset the action's state, typically called after pit regeneration
+        /// </summary>
+        public void ResetActionState()
+        {
+            Debug.Log("[Wander] Resetting action state after pit regeneration");
+            _currentPath = null;
+            _pathIndex = 0;
+            _hasSelectedTarget = false;
+            // Also clear last failed target since pit has regenerated
+            _hasLastFailedTarget = false;
+        }
     }
 }

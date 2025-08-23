@@ -20,6 +20,31 @@ namespace PitHero.ECS.Components
             _agent = new HeroAgent(_hero);
         }
 
+        /// <summary>
+        /// Reset the current action plan, typically called after pit regeneration
+        /// This forces the agent to replan and recalculate paths with updated world state
+        /// </summary>
+        public void ResetActionPlan()
+        {
+            Debug.Log("[HeroGoapAgent] Resetting action plan after pit regeneration");
+            
+            if (_agent?.Actions != null)
+            {
+                // Check if current action is WanderAction and reset its state before clearing plan
+                if (_agent.Actions.Count > 0)
+                {
+                    var currentAction = _agent.Actions.Peek();
+                    if (currentAction is WanderAction wanderAction)
+                    {
+                        wanderAction.ResetActionState();
+                    }
+                }
+                
+                // Clear current action plan - this will force replanning on next update
+                _agent.Actions.Clear();
+            }
+        }
+
         public void Update()
         {
             // Check if game is paused
