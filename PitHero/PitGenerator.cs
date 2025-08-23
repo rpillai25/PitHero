@@ -278,20 +278,24 @@ namespace PitHero
                 for (int i = 0; i < monsters.Count; i++) targetPositions.Add(monsters[i]);
                 for (int i = 0; i < wizardOrbs.Count; i++) targetPositions.Add(wizardOrbs[i]);
 
-                if (ValidateAllTargetsReachable(obstaclePositions, targetPositions, validMinX, validMinY, validMaxX, validMaxY))
+                // Remove problematic obstacles to ensure all targets are reachable
+                var validObstacles = EnsureTargetsReachable(obstaclePositions, targetPositions, validMinX, validMinY, validMaxX, validMaxY);
+
+                if (validObstacles.Count > 0 || targetPositions.Count == 0)
                 {
-                    CreateEntitiesAtPositions(obstacles, GameConfig.TAG_OBSTACLE, Color.Gray, "obstacle");
+                    CreateEntitiesAtPositions(validObstacles, GameConfig.TAG_OBSTACLE, Color.Gray, "obstacle");
                     CreateEntitiesAtPositions(treasures, GameConfig.TAG_TREASURE, Color.Yellow, "treasure");
                     CreateEntitiesAtPositions(monsters, GameConfig.TAG_MONSTER, Color.Red, "monster");
                     CreateEntitiesAtPositions(wizardOrbs, GameConfig.TAG_WIZARD_ORB, Color.Blue, "wizard_orb");
 
                     validLayoutGenerated = true;
                     Debug.Log($"[PitGenerator] Valid layout generated on attempt {attempt}");
-                    Debug.Log($"[PitGenerator] Generated {usedPositions.Count} entities total in pit");
+                    Debug.Log($"[PitGenerator] Generated {validObstacles.Count + targetPositions.Count} entities total in pit");
+                    Debug.Log($"[PitGenerator] Final obstacle count: {validObstacles.Count} (removed {obstacles.Count - validObstacles.Count} problematic obstacles)");
                 }
                 else
                 {
-                    Debug.Log($"[PitGenerator] Attempt {attempt} failed - some targets unreachable");
+                    Debug.Log($"[PitGenerator] Attempt {attempt} failed - could not create valid layout");
                 }
             }
 
@@ -300,6 +304,206 @@ namespace PitHero
                 Debug.Log($"[PitGenerator] Warning: Could not generate valid layout after {maxAttempts} attempts");
                 GenerateFallbackLayout(validMinX, validMinY, validMaxX, validMaxY);
             }
+        }
+
+        /// <summary>
+        /// Remove obstacles that block access to targets or create enclosed areas
+        /// </summary>
+        private List<Point> EnsureTargetsReachable(HashSet<Point> obstaclePositions, List<Point> targetPositions, int minX, int minY, int maxX, int maxY)
+        {
+            if (targetPositions.Count == 0)
+            {
+                Debug.Log("[PitGenerator] No targets to validate, keeping all obstacles");
+                return new List<Point>(obstaclePositions);
+            }
+
+            var workingObstacles = new HashSet<Point>(obstaclePositions);
+            var removedObstacles = new List<Point>(16);
+            int maxRemovalAttempts = obstaclePositions.Count;
+            
+            Debug.Log($"[PitGenerator] Starting obstacle removal validation with {workingObstacles.Count} obstacles and {targetPositions.Count} targets");
+
+            for (int attempt = 0; attempt < maxRemovalAttempts; attempt++)
+            {
+                var pitEntryPoint = FindPitEntryPoint(workingObstacles, minX, minY, maxX, maxY);
+                if (!pitEntryPoint.HasValue)
+                {
+                    Debug.Log("[PitGenerator] No pit entry point found, removing random obstacle");
+                    var randomObstacle = GetRandomObstacle(workingObstacles);
+                    if (randomObstacle.HasValue)
+                    {
+                        workingObstacles.Remove(randomObstacle.Value);
+                        removedObstacles.Add(randomObstacle.Value);
+                    }
+                    continue;
+                }
+
+                // Find unreachable targets
+                var unreachableTargets = new List<Point>(8);
+                for (int i = 0; i < targetPositions.Count; i++)
+                {
+                    var target = targetPositions[i];
+                    if (!IsPathExists(pitEntryPoint.Value, target, workingObstacles, minX, minY, maxX, maxY))
+                    {
+                        unreachableTargets.Add(target);
+                    }
+                }
+
+                // Find enclosed areas (areas with no path to pit entry)
+                var enclosedAreas = FindEnclosedAreas(workingObstacles, pitEntryPoint.Value, minX, minY, maxX, maxY);
+
+                if (unreachableTargets.Count == 0 && enclosedAreas.Count == 0)
+                {
+                    Debug.Log($"[PitGenerator] All targets reachable and no enclosed areas found after {attempt} obstacle removals");
+                    break;
+                }
+
+                // Remove the most problematic obstacle
+                var obstacleToRemove = FindMostProblematicObstacle(workingObstacles, unreachableTargets, enclosedAreas, pitEntryPoint.Value, minX, minY, maxX, maxY);
+                if (obstacleToRemove.HasValue)
+                {
+                    workingObstacles.Remove(obstacleToRemove.Value);
+                    removedObstacles.Add(obstacleToRemove.Value);
+                    Debug.Log($"[PitGenerator] Removed problematic obstacle at ({obstacleToRemove.Value.X},{obstacleToRemove.Value.Y})");
+                }
+                else
+                {
+                    Debug.Log("[PitGenerator] Could not identify problematic obstacle to remove");
+                    break;
+                }
+            }
+
+            Debug.Log($"[PitGenerator] Obstacle removal complete. Removed {removedObstacles.Count} obstacles");
+            return new List<Point>(workingObstacles);
+        }
+
+        /// <summary>
+        /// Find areas that are completely enclosed by obstacles
+        /// </summary>
+        private List<Point> FindEnclosedAreas(HashSet<Point> obstaclePositions, Point entryPoint, int minX, int minY, int maxX, int maxY)
+        {
+            var reachableAreas = new HashSet<Point>(64);
+            var queue = new Queue<Point>(32);
+            
+            queue.Enqueue(entryPoint);
+            reachableAreas.Add(entryPoint);
+
+            var directions = new Point[]
+            {
+                new Point(0, 1), new Point(0, -1), new Point(1, 0), new Point(-1, 0)
+            };
+
+            // Flood fill from entry point to find all reachable areas
+            while (queue.Count > 0)
+            {
+                var current = queue.Dequeue();
+                
+                for (int i = 0; i < 4; i++)
+                {
+                    var dir = directions[i];
+                    var next = new Point(current.X + dir.X, current.Y + dir.Y);
+                    
+                    if (next.X < minX || next.X > maxX || next.Y < minY || next.Y > maxY)
+                        continue;
+                    
+                    if (reachableAreas.Contains(next))
+                        continue;
+                    
+                    if (IsBlocked(next, obstaclePositions))
+                        continue;
+                    
+                    queue.Enqueue(next);
+                    reachableAreas.Add(next);
+                }
+            }
+
+            // Find enclosed areas (open spaces not reachable from entry point)
+            var enclosedAreas = new List<Point>(16);
+            for (int x = minX; x <= maxX; x++)
+            {
+                for (int y = minY; y <= maxY; y++)
+                {
+                    var point = new Point(x, y);
+                    if (!IsBlocked(point, obstaclePositions) && !reachableAreas.Contains(point))
+                    {
+                        enclosedAreas.Add(point);
+                    }
+                }
+            }
+
+            if (enclosedAreas.Count > 0)
+            {
+                Debug.Log($"[PitGenerator] Found {enclosedAreas.Count} enclosed area tiles");
+            }
+
+            return enclosedAreas;
+        }
+
+        /// <summary>
+        /// Find the obstacle that is blocking the most targets or contributing to enclosed areas
+        /// </summary>
+        private Point? FindMostProblematicObstacle(HashSet<Point> obstaclePositions, List<Point> unreachableTargets, List<Point> enclosedAreas, Point entryPoint, int minX, int minY, int maxX, int maxY)
+        {
+            Point? bestObstacle = null;
+            int bestScore = 0;
+
+            foreach (var obstacle in obstaclePositions)
+            {
+                // Temporarily remove this obstacle
+                var tempObstacles = new HashSet<Point>(obstaclePositions);
+                tempObstacles.Remove(obstacle);
+
+                int score = 0;
+
+                // Count how many previously unreachable targets become reachable
+                for (int i = 0; i < unreachableTargets.Count; i++)
+                {
+                    var target = unreachableTargets[i];
+                    if (IsPathExists(entryPoint, target, tempObstacles, minX, minY, maxX, maxY))
+                    {
+                        score += 10; // High weight for making targets reachable
+                    }
+                }
+
+                // Count how many previously enclosed areas become reachable
+                for (int i = 0; i < enclosedAreas.Count; i++)
+                {
+                    var area = enclosedAreas[i];
+                    if (IsPathExists(entryPoint, area, tempObstacles, minX, minY, maxX, maxY))
+                    {
+                        score += 1; // Lower weight for opening enclosed areas
+                    }
+                }
+
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    bestObstacle = obstacle;
+                }
+            }
+
+            return bestObstacle;
+        }
+
+        /// <summary>
+        /// Get a random obstacle from the set
+        /// </summary>
+        private Point? GetRandomObstacle(HashSet<Point> obstaclePositions)
+        {
+            if (obstaclePositions.Count == 0)
+                return null;
+
+            int randomIndex = _random.Next(0, obstaclePositions.Count);
+            int currentIndex = 0;
+            
+            foreach (var obstacle in obstaclePositions)
+            {
+                if (currentIndex == randomIndex)
+                    return obstacle;
+                currentIndex++;
+            }
+
+            return null;
         }
 
         private void InitializeCollisionTiles(int minX, int minY, int maxX, int maxY)
