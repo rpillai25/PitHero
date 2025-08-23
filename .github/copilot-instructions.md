@@ -37,6 +37,7 @@
     - cd /home/runner/work/PitHero/PitHero && echo "y" | ./getFNA.sh
   - Both FNA and Nez must be properly initialized before building.  Check that both subfolders are there.
 - **Nez Architecture Compliance**:
+  - For random numbers user Nez.Random instead of System.Random
   - Game1 should inherit from `Nez.Core`, not override Draw() or Update() methods
   - Scenes should inherit from `Nez.Scene` and override Initialize() for setup
   - Use Nez.Time class instead of custom GameTime management

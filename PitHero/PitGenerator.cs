@@ -16,13 +16,11 @@ namespace PitHero
     public class PitGenerator
     {
         private Scene _scene;
-        private System.Random _random;
         private HashSet<Point> _collisionTiles;
 
         public PitGenerator(Scene scene)
         {
             _scene = scene;
-            _random = new System.Random();
             _collisionTiles = new HashSet<Point>(64);
         }
 
@@ -242,15 +240,16 @@ namespace PitHero
             int minObstacles = MinObstacles(level);
             int maxObstacles = MaxObstacles(level);
             
-            // Random obstacle count between min and max
-            int obstacleCount = _random.Next(minObstacles, maxObstacles + 1);
+            // Calculate actual entity counts with variance
+            int obstacleCount = Nez.Random.Range(minObstacles, maxObstacles + 1);
+            int chestCount = Nez.Random.Range(maxChests / 2, maxChests + 1);
+            int monsterCount = Nez.Random.Range(maxMonsters / 2, maxMonsters + 1);
             
             Debug.Log($"[PitGenerator] Level {level} calculated amounts:");
-            Debug.Log($"[PitGenerator]   Max Monsters: {maxMonsters}");
-            Debug.Log($"[PitGenerator]   Max Chests: {maxChests}");
+            Debug.Log($"[PitGenerator]   Max Monsters: {maxMonsters}, Actual: {monsterCount}");
+            Debug.Log($"[PitGenerator]   Max Chests: {maxChests}, Actual: {chestCount}");
             Debug.Log($"[PitGenerator]   Min Obstacles: {minObstacles}");
-            Debug.Log($"[PitGenerator]   Max Obstacles: {maxObstacles}");
-            Debug.Log($"[PitGenerator]   Actual Obstacles: {obstacleCount}");
+            Debug.Log($"[PitGenerator]   Max Obstacles: {maxObstacles}, Actual: {obstacleCount}");
 
             InitializeCollisionTiles(validMinX, validMinY, validMaxX, validMaxY);
 
@@ -269,8 +268,8 @@ namespace PitHero
                 obstaclePositions.UnionWith(obstacles);
                 usedPositions.UnionWith(obstacles);
 
-                var treasures = GenerateEntityPositions(maxChests, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "treasures");
-                var monsters = GenerateEntityPositions(maxMonsters, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "monsters");
+                var treasures = GenerateEntityPositions(chestCount, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "treasures");
+                var monsters = GenerateEntityPositions(monsterCount, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "monsters");
                 var wizardOrbs = GenerateEntityPositions(1, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "wizard orbs"); // Always 1 wizard orb
 
                 // Manual AddRange without LINQ
@@ -493,7 +492,7 @@ namespace PitHero
             if (obstaclePositions.Count == 0)
                 return null;
 
-            int randomIndex = _random.Next(0, obstaclePositions.Count);
+            int randomIndex = Nez.Random.Range(0, obstaclePositions.Count);
             int currentIndex = 0;
             
             foreach (var obstacle in obstaclePositions)
@@ -778,8 +777,8 @@ namespace PitHero
 
             while (attempts < maxAttempts)
             {
-                int x = _random.Next(minX, maxX + 1);
-                int y = _random.Next(minY, maxY + 1);
+                int x = Nez.Random.Range(minX, maxX + 1);
+                int y = Nez.Random.Range(minY, maxY + 1);
                 var pos = new Point(x, y);
 
                 if (!usedPositions.Contains(pos) && !_collisionTiles.Contains(pos))
