@@ -306,6 +306,9 @@ namespace PitHero.ECS.Scenes
             // 5. Regenerate pit on fresh map as if this was the first time
             RegeneratePitOnFreshMap(newPitLevel);
             
+            // 6. Perform post-regeneration cleanup (FogOfWar clearing for heroes inside pit)
+            PostRegenerationCleanup(heroState);
+            
             Debug.Log($"[MainGameScene] Fresh map reload and pit regeneration to level {newPitLevel} complete");
         }
 
@@ -440,6 +443,35 @@ namespace PitHero.ECS.Scenes
         }
 
         /// <summary>
+        /// Clear FogOfWar around the hero's current position when regenerating while inside pit
+        /// </summary>
+        private void ClearFogOfWarAroundHero(Entity hero)
+        {
+            Debug.Log("[MainGameScene] Clearing FogOfWar around hero's current position after regeneration");
+            
+            var tileByTileMover = hero.GetComponent<TileByTileMover>();
+            if (tileByTileMover == null)
+            {
+                Debug.Warn("[MainGameScene] Hero missing TileByTileMover for FogOfWar clearing");
+                return;
+            }
+            
+            var tiledMapService = Core.Services.GetService<TiledMapService>();
+            if (tiledMapService == null)
+            {
+                Debug.Warn("[MainGameScene] TiledMapService not available for FogOfWar clearing");
+                return;
+            }
+            
+            // Get hero's current tile coordinates
+            var heroTileCoords = tileByTileMover.GetCurrentTileCoordinates();
+            Debug.Log($"[MainGameScene] Clearing FogOfWar around hero at tile ({heroTileCoords.X}, {heroTileCoords.Y})");
+            
+            // Clear FogOfWar around the hero's position
+            tiledMapService.ClearFogOfWarAroundTile(heroTileCoords.X, heroTileCoords.Y);
+        }
+
+        /// <summary>
         /// Regenerate pit on the fresh map as if this was the first time
         /// </summary>
         private void RegeneratePitOnFreshMap(int newPitLevel)
@@ -459,6 +491,24 @@ namespace PitHero.ECS.Scenes
             else
             {
                 Debug.Error("[MainGameScene] Failed to get PitWidthManager for fresh pit regeneration");
+            }
+        }
+
+        /// <summary>
+        /// Clear FogOfWar around hero position after pit regeneration (for heroes inside pit)
+        /// </summary>
+        private void PostRegenerationCleanup(HeroRegenerationState heroState)
+        {
+            Debug.Log("[MainGameScene] Performing post-regeneration cleanup");
+            
+            // If hero was in pit, clear FogOfWar around his current position after regeneration
+            if (heroState.IsHeroInPit)
+            {
+                var hero = FindEntity("hero");
+                if (hero != null)
+                {
+                    ClearFogOfWarAroundHero(hero);
+                }
             }
         }
 

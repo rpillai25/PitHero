@@ -42,6 +42,14 @@ namespace PitHero.ECS.Components
                 
                 // Clear current action plan - this will force replanning on next update
                 _agent.Actions.Clear();
+                Debug.Log("[HeroGoapAgent] Action plan cleared, agent will replan on next update");
+            }
+            
+            // Force immediate planning if agent exists
+            if (_agent != null)
+            {
+                Debug.Log("[HeroGoapAgent] Forcing immediate replan after regeneration");
+                // This will be handled in the next Update cycle
             }
         }
 

@@ -298,15 +298,24 @@ namespace PitHero
             // Set tiles from y=1 to y=11
             for (int y = 1; y <= 11; y++)
             {
+                // Handle collision tiles with special logic for explorable area
+                bool isExplorableArea = (y >= 3 && y <= 9);
+                bool isInnerFloorColumn = columnType.Contains("inner floor");
+                bool isInnerWallColumn = columnType.Contains("inner wall");
+                bool isOuterFloorColumn = columnType.Contains("outer floor");
+                
                 // Set Base layer tile
                 if (basePattern.TryGetValue(y, out int baseTileIndex) && baseTileIndex != 0)
                 {
                     tiledMapService.SetTile("Base", x, y, baseTileIndex);
+                    Debug.Log($"[PitWidthManager] Set {columnType} Base tile at ({x},{y}) = {baseTileIndex}");
                 }
-
-                // Handle collision tiles with special logic for explorable area
-                bool isExplorableArea = (y >= 3 && y <= 9);
-                bool isInnerFloorColumn = columnType.Contains("inner floor");
+                else if (isOuterFloorColumn && y == 1 && _groundTileIndex != 0)
+                {
+                    // For outer floor columns at y=1, use ground tile if no base pattern exists
+                    tiledMapService.SetTile("Base", x, y, _groundTileIndex);
+                    Debug.Log($"[PitWidthManager] Set {columnType} ground tile at ({x},{y}) = {_groundTileIndex}");
+                }
                 
                 if (collisionPattern.TryGetValue(y, out int collisionTileIndex))
                 {
@@ -319,25 +328,31 @@ namespace PitHero
                     else if (collisionTileIndex != 0)
                     {
                         tiledMapService.SetTile("Collision", x, y, collisionTileIndex);
+                        Debug.Log($"[PitWidthManager] Set {columnType} Collision tile at ({x},{y}) = {collisionTileIndex}");
                     }
                     else
                     {
                         tiledMapService.RemoveTile("Collision", x, y);
+                        Debug.Log($"[PitWidthManager] Removed {columnType} Collision tile at ({x},{y})");
                     }
                 }
                 else
                 {
                     tiledMapService.RemoveTile("Collision", x, y);
+                    Debug.Log($"[PitWidthManager] No collision pattern for {columnType} at ({x},{y}), removing tile");
                 }
 
                 // Set FogOfWar layer tile - only for y=3 to y=9 and not for baseInnerWall or baseOuterFloor columns
-                bool shouldSetFogOfWar = isExplorableArea && 
-                                        !columnType.Contains("inner wall") && 
-                                        !columnType.Contains("outer floor");
+                bool shouldSetFogOfWar = isExplorableArea && !isInnerWallColumn && !isOuterFloorColumn;
                 
                 if (shouldSetFogOfWar && _fogOfWarIndex != 0)
                 {
                     tiledMapService.SetTile("FogOfWar", x, y, _fogOfWarIndex);
+                    Debug.Log($"[PitWidthManager] Set {columnType} FogOfWar tile at ({x},{y}) = {_fogOfWarIndex}");
+                }
+                else if (isExplorableArea)
+                {
+                    Debug.Log($"[PitWidthManager] Skipping FogOfWar for {columnType} at ({x},{y}) - isInnerWall={isInnerWallColumn}, isOuterFloor={isOuterFloorColumn}");
                 }
             }
         }
