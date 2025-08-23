@@ -274,18 +274,30 @@ namespace PitHero
                 return;
             }
 
-            Debug.Log($"[PitWidthManager] Regenerating FogOfWar for entire pit area from x=2 to x={_currentPitRightEdge}, y=3 to y=9");
+            // Calculate the correct explorable area bounds
+            // The pit structure is: inner floors (explorable) + inner wall + outer floor
+            // So explorable area ends just before the inner wall
+            int explorableRightEdge = _currentPitRightEdge - 2; // Exclude inner wall and outer floor
+            
+            // Ensure we have a reasonable minimum explorable area
+            if (explorableRightEdge < 11)
+            {
+                explorableRightEdge = 11; // At least cover the original pit area (x=2 to x=11)
+            }
 
-            // Add FogOfWar tiles for the entire current pit area (y=3 to y=9 for the explorable pit interior)
-            for (int x = 2; x <= _currentPitRightEdge - 2; x++) // Start from x=2 (first explorable column)
+            Debug.Log($"[PitWidthManager] Regenerating FogOfWar for entire pit area from x=2 to x={explorableRightEdge}, y=3 to y=9 (currentPitRightEdge={_currentPitRightEdge})");
+
+            // Add FogOfWar tiles for the entire current pit explorable area (y=3 to y=9)
+            for (int x = 2; x <= explorableRightEdge; x++) // Start from x=2 (first explorable column)
             {
                 for (int y = 3; y <= 9; y++) // y=3 to y=9 is the explorable pit interior
                 {
                     tiledMapService.SetTile("FogOfWar", x, y, _fogOfWarIndex);
+                    Debug.Log($"[PitWidthManager] Set FogOfWar tile at ({x},{y}) = {_fogOfWarIndex}");
                 }
             }
 
-            Debug.Log($"[PitWidthManager] FogOfWar regeneration complete");
+            Debug.Log($"[PitWidthManager] FogOfWar regeneration complete - covered area from x=2 to x={explorableRightEdge}");
         }
 
         /// <summary>
