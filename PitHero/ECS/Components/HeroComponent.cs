@@ -14,6 +14,12 @@ namespace PitHero.ECS.Components
         public bool AdjacentToPitBoundaryFromInside { get; set; }
         public bool InsidePit { get; set; }
         public Direction? PitApproachDirection { get; set; }
+        
+        // GOAP-specific wizard orb workflow flags
+        public bool ActivatedWizardOrb { get; set; }
+        public bool MovingToInsidePitEdge { get; set; }
+        public bool ReadyToJumpOutOfPit { get; set; }
+        public bool MovingToPitGenPoint { get; set; }
 
         private PitWidthManager _pitWidthManager;
 
@@ -56,6 +62,12 @@ namespace PitHero.ECS.Components
             AdjacentToPitBoundaryFromInside = false;
             InsidePit = false;
             PitApproachDirection = null;
+            
+            // Initialize wizard orb workflow flags
+            ActivatedWizardOrb = false;
+            MovingToInsidePitEdge = false;
+            ReadyToJumpOutOfPit = false;
+            MovingToPitGenPoint = false;
         }
 
         /// <summary>
@@ -154,6 +166,12 @@ namespace PitHero.ECS.Components
             AdjacentToPitBoundaryFromOutside = false;
             InsidePit = false;
             PitApproachDirection = null;
+            
+            // Reset wizard orb workflow flags when leaving pit
+            ActivatedWizardOrb = false;
+            MovingToInsidePitEdge = false;
+            ReadyToJumpOutOfPit = false;
+            MovingToPitGenPoint = false;
             
             var historian = Entity.GetComponent<Historian>();
             historian?.RecordMilestone(MilestoneType.FirstJumpOutOfPit, Time.TotalTime);

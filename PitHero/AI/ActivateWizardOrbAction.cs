@@ -52,6 +52,8 @@ namespace PitHero.AI
 
             // Set hero state flags
             hero.PitInitialized = false; // Pit will be regenerated later
+            hero.ActivatedWizardOrb = true;
+            hero.MovingToInsidePitEdge = true;
             
             Debug.Log("[ActivateWizardOrb] Wizard orb activation complete - pit level queued");
             return true; // Action complete

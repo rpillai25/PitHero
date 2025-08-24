@@ -52,6 +52,8 @@ namespace PitHero.AI
             {
                 Debug.Log($"[MovingToInsidePitEdge] Reached target tile {_targetTile.X},{_targetTile.Y} - action complete");
                 hero.AdjacentToPitBoundaryFromInside = true;
+                hero.ReadyToJumpOutOfPit = true;
+                hero.MovingToInsidePitEdge = false; // Clear the moving flag
                 ResetInternal();
                 return true;
             }
@@ -111,6 +113,8 @@ namespace PitHero.AI
                     {
                         Debug.Log($"[MovingToInsidePitEdge] Reached target tile {_targetTile.X},{_targetTile.Y} - action complete");
                         hero.AdjacentToPitBoundaryFromInside = true;
+                        hero.ReadyToJumpOutOfPit = true;
+                        hero.MovingToInsidePitEdge = false; // Clear the moving flag
                         ResetInternal();
                         return true;
                     }

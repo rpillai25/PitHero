@@ -118,6 +118,16 @@ namespace PitHero.AI
             if (_hero.InsidePit)
                 ws.Set(GoapConstants.InsidePit, true);
 
+            // Wizard orb workflow states
+            if (_hero.ActivatedWizardOrb)
+                ws.Set(GoapConstants.ActivatedWizardOrb, true);
+            if (_hero.MovingToInsidePitEdge)
+                ws.Set(GoapConstants.MovingToInsidePitEdge, true);
+            if (_hero.ReadyToJumpOutOfPit)
+                ws.Set(GoapConstants.ReadyToJumpOutOfPit, true);
+            if (_hero.MovingToPitGenPoint)
+                ws.Set(GoapConstants.MovingToPitGenPoint, true);
+
             // Mark exploration complete when FogOfWar is fully cleared inside the pit rect
             var tms = Core.Services.GetService<TiledMapService>();
             if (tms?.CurrentMap != null)
@@ -173,6 +183,9 @@ namespace PitHero.AI
             // Check if wizard orb has been found (fog cleared around it)
             CheckWizardOrbFound(ws, tms);
 
+            // Check additional positional states
+            CheckAdditionalStates(ws);
+
             Debug.Log($"[HeroStateMachine] State: PitInitialized={_hero.PitInitialized}, " +
                       $"AdjOut={_hero.AdjacentToPitBoundaryFromOutside}, " +
                       $"AdjIn={_hero.AdjacentToPitBoundaryFromInside}, " +
@@ -224,6 +237,77 @@ namespace PitHero.AI
                         Debug.Log($"[HeroStateMachine] Wizard orb found at tile {tilePos.X},{tilePos.Y}");
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Check additional positional states like AtWizardOrb and AtPitGenPoint
+        /// </summary>
+        private void CheckAdditionalStates(WorldState ws)
+        {
+            if (_hero?.Entity == null)
+                return;
+
+            var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
+            var currentTile = tileMover?.GetCurrentTileCoordinates() ?? 
+                new Point((int)(_hero.Entity.Transform.Position.X / GameConfig.TileSize),
+                         (int)(_hero.Entity.Transform.Position.Y / GameConfig.TileSize));
+
+            // Check if at wizard orb
+            CheckAtWizardOrb(ws, currentTile);
+
+            // Check if at pit generation point (34, 6)
+            if (currentTile.X == 34 && currentTile.Y == 6)
+            {
+                ws.Set(GoapConstants.AtPitGenPoint, true);
+            }
+
+            // Check if outside pit (not inside pit area)
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            var pitBounds = GetPitBounds(pitWidthManager);
+            if (!pitBounds.Contains(currentTile))
+            {
+                ws.Set(GoapConstants.OutsidePit, true);
+            }
+        }
+
+        /// <summary>
+        /// Check if hero is at wizard orb position
+        /// </summary>
+        private void CheckAtWizardOrb(WorldState ws, Point heroTile)
+        {
+            var scene = Core.Scene;
+            if (scene == null)
+                return;
+
+            var wizardOrbEntities = scene.FindEntitiesWithTag(GameConfig.TAG_WIZARD_ORB);
+            if (wizardOrbEntities.Count == 0)
+                return;
+
+            var wizardOrbEntity = wizardOrbEntities[0];
+            var orbWorldPos = wizardOrbEntity.Transform.Position;
+            var orbTile = new Point((int)(orbWorldPos.X / GameConfig.TileSize), 
+                                  (int)(orbWorldPos.Y / GameConfig.TileSize));
+
+            if (heroTile.X == orbTile.X && heroTile.Y == orbTile.Y)
+            {
+                ws.Set(GoapConstants.AtWizardOrb, true);
+            }
+        }
+
+        /// <summary>
+        /// Get pit bounds rectangle for checking inside/outside
+        /// </summary>
+        private Rectangle GetPitBounds(PitWidthManager pitWidthManager)
+        {
+            if (pitWidthManager != null)
+            {
+                var width = pitWidthManager.CurrentPitRectWidthTiles;
+                return new Rectangle(GameConfig.PitRectX, GameConfig.PitRectY, width, GameConfig.PitRectHeight);
+            }
+            else
+            {
+                return new Rectangle(GameConfig.PitRectX, GameConfig.PitRectY, GameConfig.PitRectWidth, GameConfig.PitRectHeight);
             }
         }
 

@@ -47,6 +47,9 @@ namespace PitHero.AI
                 // Regenerate the pit with the queued level
                 RegeneratePitAtGenPoint(hero);
                 
+                // Clear movement flag after reaching destination
+                hero.MovingToPitGenPoint = false;
+                
                 ResetInternal();
                 return true;
             }
@@ -108,6 +111,9 @@ namespace PitHero.AI
                         
                         // Regenerate the pit with the queued level
                         RegeneratePitAtGenPoint(hero);
+                        
+                        // Clear movement flag after reaching destination
+                        hero.MovingToPitGenPoint = false;
                         
                         ResetInternal();
                         return true;

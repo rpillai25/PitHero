@@ -40,6 +40,8 @@ namespace PitHero.AI
                 hero.InsidePit = false;
                 hero.AdjacentToPitBoundaryFromInside = false;
                 hero.AdjacentToPitBoundaryFromOutside = false; // No longer adjacent after jumping out
+                hero.ReadyToJumpOutOfPit = false; // Clear the ready flag
+                hero.MovingToPitGenPoint = true; // Set flag for next action
                 
                 Debug.Log("[JumpOutOfPit] Jump out completed successfully");
                 return true; // Action complete
