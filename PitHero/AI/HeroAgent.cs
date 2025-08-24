@@ -54,20 +54,44 @@ namespace PitHero.AI
                 if (fogLayer != null)
                 {
                     var anyFog = false;
-                    for (var x = GameConfig.PitRectX; x < GameConfig.PitRectX + pitWidthManager.CurrentPitRectWidthTiles && !anyFog; x++)
+                    int totalFogTiles = 0;
+                    
+                    // Use the same explorable area bounds as WanderAction
+                    int explorationMinX, explorationMinY, explorationMaxX, explorationMaxY;
+                    
+                    if (pitWidthManager != null)
                     {
-                        for (var y = GameConfig.PitRectY; y < GameConfig.PitRectY + GameConfig.PitRectHeight; y++)
+                        explorationMinX = GameConfig.PitRectX + 1; // x=2
+                        explorationMinY = GameConfig.PitRectY + 1; // y=3  
+                        explorationMaxX = pitWidthManager.CurrentPitRightEdge - 2; // Last explorable column
+                        explorationMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // y=9
+                    }
+                    else
+                    {
+                        explorationMinX = GameConfig.PitRectX + 1; // 2
+                        explorationMinY = GameConfig.PitRectY + 1; // 3
+                        explorationMaxX = GameConfig.PitRectX + GameConfig.PitRectWidth - 2; // 11
+                        explorationMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // 9
+                    }
+                    
+                    for (var x = explorationMinX; x <= explorationMaxX && !anyFog; x++)
+                    {
+                        for (var y = explorationMinY; y <= explorationMaxY; y++)
                         {
                             if (x >= 0 && y >= 0 && x < fogLayer.Width && y < fogLayer.Height)
                             {
-                                if (fogLayer.GetTile(x, y) != null)
+                                var fogTile = fogLayer.GetTile(x, y);
+                                if (fogTile != null)
                                 {
+                                    totalFogTiles++;
                                     anyFog = true;
                                     break;
                                 }
                             }
                         }
                     }
+
+                    Debug.Log($"[HeroAgent] Exploration check in area ({explorationMinX},{explorationMinY}) to ({explorationMaxX},{explorationMaxY}): {totalFogTiles} fog tiles remaining, anyFog={anyFog}");
 
                     if (!anyFog)
                         ws.Set(GoapConstants.MapExplored, true);

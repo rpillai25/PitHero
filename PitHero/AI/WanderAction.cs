@@ -44,7 +44,8 @@ namespace PitHero.AI
             // Select a target if we haven't yet for this execution
             if (!_hasSelectedTarget)
             {
-                var nearestUnknownTile = FindNearestUnknownTile(hero);
+                var heroTile = tileMover.GetCurrentTileCoordinates();
+                var nearestUnknownTile = FindNearestUnknownTile(hero, heroTile);
                 if (!nearestUnknownTile.HasValue)
                 {
                     Debug.Log("[Wander] No unknown tiles found - exploration complete");
@@ -132,52 +133,52 @@ namespace PitHero.AI
         /// <summary>
         /// Find the nearest tile that is still covered by fog of war and passable
         /// </summary>
-        private Point? FindNearestUnknownTile(HeroComponent hero)
+        private Point? FindNearestUnknownTile(HeroComponent hero, Point heroTile)
         {
-            var tiledMapService = Core.Services.GetService<TiledMapService>();
-            if (tiledMapService?.CurrentMap == null)
+            var tms = Core.Services.GetService<TiledMapService>();
+            if (tms?.CurrentMap == null)
             {
-                Debug.Warn("[Wander] TiledMapService or CurrentMap not found");
+                Debug.Warn("[Wander] No tilemap service available");
                 return null;
             }
 
-            var fogLayer = tiledMapService.CurrentMap.GetLayer<TmxLayer>("FogOfWar");
+            var fogLayer = tms.CurrentMap.GetLayer<TmxLayer>("FogOfWar");
             if (fogLayer == null)
             {
-                Debug.Warn("[Wander] FogOfWar layer not found");
+                Debug.Warn("[Wander] No FogOfWar layer found");
                 return null;
             }
-
-            var astarGraph = Core.Services.GetService<AstarGridGraph>();
-
-            var heroTile = hero.Entity.GetComponent<TileByTileMover>()?.GetCurrentTileCoordinates() 
-                         ?? GetTileCoordinates(hero.Entity.Transform.Position, GameConfig.TileSize);
 
             Point? nearestUnknownTile = null;
             float shortestDistance = float.MaxValue;
 
-            // Get dynamic pit bounds from PitWidthManager
+            // Get pit bounds from PitWidthManager
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
             int pitMinX, pitMinY, pitMaxX, pitMaxY;
             
-            if (pitWidthManager != null && pitWidthManager.CurrentPitRightEdge > 0)
+            if (pitWidthManager != null)
             {
-                // Use dynamic pit bounds
-                pitMinX = GameConfig.PitRectX;
-                pitMinY = GameConfig.PitRectY;
-                pitMaxX = pitWidthManager.CurrentPitRightEdge;
-                pitMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 1;
-                Debug.Log($"[Wander] Using dynamic pit bounds: ({pitMinX},{pitMinY}) to ({pitMaxX},{pitMaxY})");
+                // The explorable area is the inner area, excluding walls
+                // Left wall is at PitRectX (x=1), so explorable starts at PitRectX + 1 (x=2)
+                // Right wall is at CurrentPitRightEdge - 1, so explorable ends at CurrentPitRightEdge - 2
+                pitMinX = GameConfig.PitRectX + 1; // x=2 (first explorable column)
+                pitMinY = GameConfig.PitRectY + 1; // y=3 (first explorable row)
+                pitMaxX = pitWidthManager.CurrentPitRightEdge - 2; // Last explorable column (before inner wall)
+                pitMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // y=9 (last explorable row)
+                Debug.Log($"[Wander] Using dynamic pit bounds: explorable area ({pitMinX},{pitMinY}) to ({pitMaxX},{pitMaxY}), pit right edge={pitWidthManager.CurrentPitRightEdge}");
             }
             else
             {
-                // Fallback to default pit bounds
-                pitMinX = GameConfig.PitRectX;
-                pitMinY = GameConfig.PitRectY;
-                pitMaxX = GameConfig.PitRectX + GameConfig.PitRectWidth - 1;
-                pitMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 1;
-                Debug.Log($"[Wander] Using default pit bounds: ({pitMinX},{pitMinY}) to ({pitMaxX},{pitMaxY})");
+                // Use default pit bounds
+                pitMinX = GameConfig.PitRectX + 1; // 2
+                pitMinY = GameConfig.PitRectY + 1; // 3
+                pitMaxX = GameConfig.PitRectX + GameConfig.PitRectWidth - 2; // 11
+                pitMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // 9
+                Debug.Log($"[Wander] Using default pit bounds: explorable area ({pitMinX},{pitMinY}) to ({pitMaxX},{pitMaxY})");
             }
+
+            int fogTileCount = 0;
+            int passableFogTileCount = 0;
 
             // Scan the pit area for tiles still covered by fog
             for (int x = pitMinX; x <= pitMaxX; x++)
@@ -190,13 +191,29 @@ namespace PitHero.AI
                         var tile = fogLayer.GetTile(x, y);
                         if (tile != null) // Tile has fog (unknown)
                         {
+                            fogTileCount++;
+                            
                             // Skip the last failed target to avoid loops
                             if (_hasLastFailedTarget && _lastFailedTarget.X == x && _lastFailedTarget.Y == y)
+                            {
+                                Debug.Log($"[Wander] Skipping last failed target at ({x},{y})");
                                 continue;
+                            }
 
-                            // Skip impassable tiles in the A* graph (walls/collision/obstacles)
-                            if (astarGraph != null && astarGraph.Walls.Contains(new Point(x, y)))
+                            // Check if tile is passable using hero's pathfinding component
+                            bool isPassable = true;
+                            if (hero.IsPathfindingInitialized)
+                            {
+                                isPassable = hero.IsPassable(new Point(x, y));
+                            }
+                            
+                            if (!isPassable)
+                            {
+                                Debug.Log($"[Wander] Tile ({x},{y}) has fog but is not passable");
                                 continue;
+                            }
+                            
+                            passableFogTileCount++;
 
                             // Calculate distance from hero to this tile
                             var distance = Vector2.Distance(
@@ -213,6 +230,8 @@ namespace PitHero.AI
                     }
                 }
             }
+
+            Debug.Log($"[Wander] Found {fogTileCount} fog tiles total, {passableFogTileCount} passable fog tiles");
 
             if (nearestUnknownTile.HasValue)
             {
@@ -233,31 +252,19 @@ namespace PitHero.AI
         {
             try
             {
-                var astarGraph = Core.Services.GetService<AstarGridGraph>();
-                if (astarGraph == null)
+                // Use the hero's pathfinding component instead of global service
+                if (!hero.IsPathfindingInitialized)
                 {
-                    Debug.Warn("[Wander] AStarGridGraph service not found");
-                    return null;
-                }
-
-                // Early out if target is not passable
-                if (astarGraph.Walls.Contains(target))
-                {
-                    Debug.Warn($"[Wander] Target {target.X},{target.Y} is not passable");
+                    Debug.Warn("[Wander] Hero pathfinding not initialized");
                     return null;
                 }
 
                 Debug.Log($"[Wander] Calculating path from {start.X},{start.Y} to {target.X},{target.Y}");
-                var path = astarGraph.Search(start, target);
+                var path = hero.CalculatePath(start, target);
                 
                 if (path != null && path.Count > 0)
                 {
                     Debug.Log($"[Wander] Found path with {path.Count} steps");
-                    // Remove the first point if it's the current position
-                    if (path.Count > 0 && path[0].X == start.X && path[0].Y == start.Y)
-                    {
-                        path.RemoveAt(0);
-                    }
                 }
                 else
                 {

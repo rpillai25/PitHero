@@ -2,6 +2,7 @@
 using Nez.Tiled;
 using Microsoft.Xna.Framework;
 using Nez.AI.Pathfinding;
+using PitHero.ECS.Components;
 
 namespace PitHero.Util
 {
@@ -102,19 +103,26 @@ namespace PitHero.Util
             ClearFogOfWarTile(centerTileX, centerTileY - 1); // Up
             ClearFogOfWarTile(centerTileX, centerTileY + 1); // Down
 
-            // Clear diagonal fog only if that diagonal tile is an obstacle in the A* grid
-            var astarGraph = Core.Services.GetService<AstarGridGraph>();
-            if (astarGraph == null)
-                return;
-
-            // Upper-left
-            TryClearDiagonalIfObstacle(astarGraph, centerTileX - 1, centerTileY - 1);
-            // Upper-right
-            TryClearDiagonalIfObstacle(astarGraph, centerTileX + 1, centerTileY - 1);
-            // Lower-left
-            TryClearDiagonalIfObstacle(astarGraph, centerTileX - 1, centerTileY + 1);
-            // Lower-right
-            TryClearDiagonalIfObstacle(astarGraph, centerTileX + 1, centerTileY + 1);
+            // Clear diagonal fog only if that diagonal tile is an obstacle
+            // Find the hero to access its pathfinding graph
+            var heroEntity = Core.Scene?.FindEntity("hero");
+            if (heroEntity != null)
+            {
+                var heroComponent = heroEntity.GetComponent<HeroComponent>();
+                if (heroComponent != null && heroComponent.IsPathfindingInitialized)
+                {
+                    var astarGraph = heroComponent.PathfindingGraph;
+                    
+                    // Upper-left
+                    TryClearDiagonalIfObstacle(astarGraph, centerTileX - 1, centerTileY - 1);
+                    // Upper-right
+                    TryClearDiagonalIfObstacle(astarGraph, centerTileX + 1, centerTileY - 1);
+                    // Lower-left
+                    TryClearDiagonalIfObstacle(astarGraph, centerTileX - 1, centerTileY + 1);
+                    // Lower-right
+                    TryClearDiagonalIfObstacle(astarGraph, centerTileX + 1, centerTileY + 1);
+                }
+            }
         }
 
         /// <summary>

@@ -129,52 +129,29 @@ namespace PitHero
         }
 
         /// <summary>
-        /// Clear obstacle walls from A* graph
+        /// Clear obstacle walls from hero's A* graph
         /// </summary>
         private void ClearObstacleWallsFromAstar()
         {
-            var astarGraph = Core.Services.GetService<AstarGridGraph>();
-            if (astarGraph == null)
+            // Find hero entity to access its pathfinding component
+            var hero = _scene.FindEntity("hero");
+            if (hero == null)
             {
-                Debug.Warn("[PitGenerator] A* graph not found when clearing obstacle walls");
-                return;
-            }
-            
-            // We need to rebuild the A* graph from the collision layer only
-            // This removes dynamically added obstacle walls
-            var tiledMapService = Core.Services.GetService<TiledMapService>();
-            if (tiledMapService?.CurrentMap == null)
-            {
-                Debug.Warn("[PitGenerator] No tilemap service found for A* graph refresh");
+                Debug.Warn("[PitGenerator] No hero found when clearing obstacle walls");
                 return;
             }
 
-            var collisionLayer = tiledMapService.CurrentMap.GetLayer<TmxLayer>("Collision");
-            if (collisionLayer == null)
+            var heroComponent = hero.GetComponent<HeroComponent>();
+            if (heroComponent == null || !heroComponent.IsPathfindingInitialized)
             {
-                Debug.Warn("[PitGenerator] No 'Collision' layer found for A* graph refresh");
+                Debug.Warn("[PitGenerator] Hero pathfinding not initialized when clearing obstacle walls");
                 return;
             }
-
-            // Completely rebuild A* graph from scratch
-            astarGraph.Walls.Clear();
             
-            // Add all collision layer tiles
-            for (int x = 0; x < collisionLayer.Width; x++)
-            {
-                for (int y = 0; y < collisionLayer.Height; y++)
-                {
-                    var tile = collisionLayer.GetTile(x, y);
-                    if (tile != null && tile.Gid != 0)
-                    {
-                        astarGraph.Walls.Add(new Point(x, y));
-                    }
-                }
-            }
-
-            // Note: Generated obstacles will be added to the A* graph when they are created in CreateEntitiesAtPositions()
+            // Refresh the hero's pathfinding to clear dynamically added obstacles
+            heroComponent.RefreshPathfinding();
             
-            Debug.Log($"[PitGenerator] A* graph refreshed with {astarGraph.Walls.Count} walls from collision layer");
+            Debug.Log($"[PitGenerator] Hero pathfinding refreshed with {heroComponent.PathfindingGraph.Walls.Count} walls from collision layer");
         }
 
         /// <summary>
@@ -580,15 +557,24 @@ namespace PitHero
                 if (tag == GameConfig.TAG_OBSTACLE)
                 {
                     // Obstacles block both physics and pathfinding
-                    var astarGraph = Core.Services.GetService<AstarGridGraph>();
-                    if (astarGraph != null)
+                    // Find hero entity to add wall to its pathfinding graph
+                    var hero = _scene.FindEntity("hero");
+                    if (hero != null)
                     {
-                        astarGraph.Walls.Add(tilePos);
-                        Debug.Log($"[PitGenerator] Added obstacle tile to A* walls at ({tilePos.X},{tilePos.Y})");
+                        var heroComponent = hero.GetComponent<HeroComponent>();
+                        if (heroComponent != null && heroComponent.IsPathfindingInitialized)
+                        {
+                            heroComponent.AddWall(tilePos);
+                            Debug.Log($"[PitGenerator] Added obstacle tile to hero pathfinding at ({tilePos.X},{tilePos.Y})");
+                        }
+                        else
+                        {
+                            Debug.Log($"[PitGenerator] Hero found but pathfinding not initialized for obstacle at ({tilePos.X},{tilePos.Y})");
+                        }
                     }
                     else
                     {
-                        Debug.Warn("[PitGenerator] A* graph not found when adding obstacle walls");
+                        Debug.Log($"[PitGenerator] No hero found when creating obstacle at ({tilePos.X},{tilePos.Y}) - will be added to pathfinding when hero spawns");
                     }
                     // Leave collider defaults so hero collides with obstacle (physics layer 0)
                 }

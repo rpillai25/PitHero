@@ -166,7 +166,16 @@ namespace PitHero.ECS.Components
 
             // Check for collisions using Nez's collision system
             CollisionResult collisionResult;
-            return !CalculateMovement(motion, out collisionResult);
+            bool isBlocked = CalculateMovement(motion, out collisionResult);
+            
+            if (isBlocked)
+            {
+                var targetPos = Entity.Transform.Position + motion;
+                var targetTile = new Point((int)(targetPos.X / _tileSize), (int)(targetPos.Y / _tileSize));
+                Debug.Log($"[TileByTileMover] Movement to tile ({targetTile.X},{targetTile.Y}) blocked by collision with {collisionResult.Collider?.Entity.Name ?? "unknown"}");
+            }
+            
+            return !isBlocked;
         }
 
         /// <summary>

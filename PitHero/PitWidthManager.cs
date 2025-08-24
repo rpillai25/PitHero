@@ -435,8 +435,8 @@ namespace PitHero
                 };
             }
 
-            // Calculate the rightmost accessible x coordinate (right edge + 1)
-            int targetX = _currentPitRightEdge + 1;
+            // Calculate the rightmost accessible x coordinate (right edge)
+            int targetX = _currentPitRightEdge;
 
             // Generate candidate targets along the right edge
             var candidates = new Point[]
@@ -466,7 +466,7 @@ namespace PitHero
             }
 
             // Calculate dynamic width (inclusive of both edges)
-            int dynamicPitWidth = _currentPitRightEdge - GameConfig.PitRectX + 1;
+            int dynamicPitWidth = _currentPitRightEdge - GameConfig.PitRectX;
 
             // Convert tile coordinates to world coordinates
             var topLeftWorld = new Vector2(

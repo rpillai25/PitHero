@@ -6,7 +6,7 @@ namespace PitHero.ECS.Components
     /// <summary>
     /// Component for heroes in the game
     /// </summary>
-    public class HeroComponent : ActorComponent
+    public class HeroComponent : PathfindingActorComponent
     {
         public float MoveSpeed { get; set; } = GameConfig.HeroMoveSpeed;
 

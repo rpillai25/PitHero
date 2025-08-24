@@ -153,27 +153,20 @@ namespace PitHero.AI
         {
             try
             {
-                // Get the AStarGridGraph from the scene service
-                var astarGraph = Core.Services.GetService<AstarGridGraph>();
-                
-                if (astarGraph == null)
+                // Use the hero's pathfinding component instead of global service
+                if (!hero.IsPathfindingInitialized)
                 {
-                    Debug.Warn("[MoveToPit] AStarGridGraph service not found");
+                    Debug.Warn("[MoveToPit] Hero pathfinding not initialized");
                     return null;
                 }
 
                 Debug.Log($"[MoveToPit] Calculating path from {start.X},{start.Y} to {target.X},{target.Y}");
                 
-                var path = astarGraph.Search(start, target);
+                var path = hero.CalculatePath(start, target);
                 
                 if (path != null && path.Count > 0)
                 {
                     Debug.Log($"[MoveToPit] Found path with {path.Count} steps");
-                    // Remove the first point if it's the current position
-                    if (path.Count > 0 && path[0].X == start.X && path[0].Y == start.Y)
-                    {
-                        path.RemoveAt(0);
-                    }
                 }
                 else
                 {
