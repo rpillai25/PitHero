@@ -133,12 +133,15 @@ namespace PitHero
         /// </summary>
         private void ClearObstacleWallsFromAstar()
         {
-            var astarGraph = Core.Services.GetService<AstarGridGraph>();
-            if (astarGraph == null)
+            // Find the hero in the scene to get the AstarGridGraph
+            var hero = _scene.FindEntity("hero")?.GetComponent<HeroComponent>();
+            if (hero?.AstarGraph == null)
             {
-                Debug.Warn("[PitGenerator] A* graph not found when clearing obstacle walls");
+                Debug.Warn("[PitGenerator] Hero with AstarGridGraph not found when clearing obstacle walls");
                 return;
             }
+            
+            var astarGraph = hero.AstarGraph;
             
             // We need to rebuild the A* graph from the collision layer only
             // This removes dynamically added obstacle walls
@@ -580,15 +583,16 @@ namespace PitHero
                 if (tag == GameConfig.TAG_OBSTACLE)
                 {
                     // Obstacles block both physics and pathfinding
-                    var astarGraph = Core.Services.GetService<AstarGridGraph>();
-                    if (astarGraph != null)
+                    // Find the hero in the scene to get the AstarGridGraph
+                    var hero = _scene.FindEntity("hero")?.GetComponent<HeroComponent>();
+                    if (hero?.AstarGraph != null)
                     {
-                        astarGraph.Walls.Add(tilePos);
+                        hero.AstarGraph.Walls.Add(tilePos);
                         Debug.Log($"[PitGenerator] Added obstacle tile to A* walls at ({tilePos.X},{tilePos.Y})");
                     }
                     else
                     {
-                        Debug.Warn("[PitGenerator] A* graph not found when adding obstacle walls");
+                        Debug.Warn("[PitGenerator] Hero with AstarGridGraph not found when adding obstacle walls");
                     }
                     // Leave collider defaults so hero collides with obstacle (physics layer 0)
                 }

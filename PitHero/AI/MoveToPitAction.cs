@@ -153,12 +153,12 @@ namespace PitHero.AI
         {
             try
             {
-                // Get the AStarGridGraph from the scene service
-                var astarGraph = Core.Services.GetService<AstarGridGraph>();
+                // Get the AStarGridGraph from the hero component
+                var astarGraph = hero.AstarGraph;
                 
                 if (astarGraph == null)
                 {
-                    Debug.Warn("[MoveToPit] AStarGridGraph service not found");
+                    Debug.Warn("[MoveToPit] AStarGridGraph not found on hero component");
                     return null;
                 }
 

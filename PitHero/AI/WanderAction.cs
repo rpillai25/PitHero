@@ -148,7 +148,7 @@ namespace PitHero.AI
                 return null;
             }
 
-            var astarGraph = Core.Services.GetService<AstarGridGraph>();
+            var astarGraph = hero.AstarGraph;
 
             var heroTile = hero.Entity.GetComponent<TileByTileMover>()?.GetCurrentTileCoordinates() 
                          ?? GetTileCoordinates(hero.Entity.Transform.Position, GameConfig.TileSize);
@@ -233,10 +233,10 @@ namespace PitHero.AI
         {
             try
             {
-                var astarGraph = Core.Services.GetService<AstarGridGraph>();
+                var astarGraph = hero.AstarGraph;
                 if (astarGraph == null)
                 {
-                    Debug.Warn("[Wander] AStarGridGraph service not found");
+                    Debug.Warn("[Wander] AStarGridGraph not found on hero component");
                     return null;
                 }
 
