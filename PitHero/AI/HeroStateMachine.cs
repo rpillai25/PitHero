@@ -73,6 +73,14 @@ namespace PitHero.AI
         private WorldState GetWorldState()
         {
             var ws = WorldState.Create(_planner);
+            
+            // Safety check for null hero
+            if (_hero == null)
+            {
+                Debug.Warn("[HeroStateMachine] GetWorldState: Hero component is null");
+                return ws;
+            }
+
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
 
             ws.Set(GoapConstants.HeroInitialized, true);
@@ -179,7 +187,27 @@ namespace PitHero.AI
             else
             {
                 Debug.Log("[HeroStateMachine] No action plan satisfied our goals");
-                // Stay in Idle and try again next update
+                // Stay in Idle and try again in Idle_Tick
+            }
+        }
+
+        void Idle_Tick()
+        {
+            // If we don't have a plan, try planning again
+            if (_actionPlan == null || _actionPlan.Count == 0)
+            {
+                // Only retry every few updates to avoid excessive planning
+                if (elapsedTimeInState > 1.0f) // Wait 1 second before retry
+                {
+                    Debug.Log("[HeroStateMachine] Retrying action planning...");
+                    _actionPlan = _planner.Plan(GetWorldState(), GetGoalState());
+
+                    if (_actionPlan != null && _actionPlan.Count > 0)
+                    {
+                        Debug.Log($"[HeroStateMachine] Got an action plan with {_actionPlan.Count} actions: {string.Join(" -> ", _actionPlan)}");
+                        CurrentState = HeroState.GoTo;
+                    }
+                }
             }
         }
 
