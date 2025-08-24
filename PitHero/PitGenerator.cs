@@ -589,37 +589,6 @@ namespace PitHero
             }
         }
 
-        private bool ValidateAllTargetsReachable(HashSet<Point> obstaclePositions, List<Point> targetPositions, int minX, int minY, int maxX, int maxY)
-        {
-            if (targetPositions.Count == 0)
-            {
-                Debug.Log("[PitGenerator] No targets to validate");
-                return true;
-            }
-
-            var pitEntryPoint = FindPitEntryPoint(obstaclePositions, minX, minY, maxX, maxY);
-            if (!pitEntryPoint.HasValue)
-            {
-                Debug.Log("[PitGenerator] No accessible entry point to pit found");
-                return false;
-            }
-
-            Debug.Log($"[PitGenerator] Using pit entry point ({pitEntryPoint.Value.X},{pitEntryPoint.Value.Y}) for pathfinding validation");
-
-            for (int i = 0; i < targetPositions.Count; i++)
-            {
-                var target = targetPositions[i];
-                if (!IsPathExists(pitEntryPoint.Value, target, obstaclePositions, minX, minY, maxX, maxY))
-                {
-                    Debug.Log($"[PitGenerator] Target at ({target.X},{target.Y}) is not reachable");
-                    return false;
-                }
-            }
-
-            Debug.Log($"[PitGenerator] All {targetPositions.Count} targets are reachable");
-            return true;
-        }
-
         private Point? FindPitEntryPoint(HashSet<Point> obstaclePositions, int minX, int minY, int maxX, int maxY)
         {
             // Scan perimeter and return first open tile without allocating intermediate lists

@@ -72,6 +72,7 @@ namespace PitHero.ECS.Components
             }
 
             Debug.Log($"[PitLevelTest] Setting pit level to {newLevel} (key {number} pressed)");
+            pitWidthManager.ReinitRightEdge(); // Reset to initial state before applying new level
             pitWidthManager.SetPitLevel(newLevel);
 
             // Log the current state

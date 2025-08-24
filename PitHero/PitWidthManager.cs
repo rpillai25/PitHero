@@ -116,10 +116,15 @@ namespace PitHero
             InitializeTilePattern(_collisionInnerFloor, collisionLayer, 11, 1, 11, "collisionInnerFloor");
 
             // Set initial pit right edge (default pit goes from x=1 to x=12, so rightmost is 12)
-            _currentPitRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth - 1; // 1 + 12 - 1 = 12
+            _currentPitRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth;
 
             _isInitialized = true;
             Debug.Log($"[PitWidthManager] Initialization complete. Current pit right edge: {_currentPitRightEdge}");
+        }
+
+        public void ReinitRightEdge()
+        {
+            _currentPitRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth;
         }
 
         /// <summary>
@@ -164,7 +169,7 @@ namespace PitHero
             
             // Calculate new right edge
             int innerFloorTilesToExtend = ((int)(_currentPitLevel / 10)) * 2;
-            int newRightEdge = 12 + innerFloorTilesToExtend + (innerFloorTilesToExtend > 0 ? 2 : 0); // +2 for inner wall and outer floor
+            int newRightEdge = previousRightEdge + innerFloorTilesToExtend + (innerFloorTilesToExtend > 0 ? 2 : 0); // +2 for inner wall and outer floor
             
             // If sizing down, clear tiles first
             if (newRightEdge < previousRightEdge)
@@ -244,6 +249,7 @@ namespace PitHero
             if (innerFloorTilesToExtend <= 0)
             {
                 Debug.Log("[PitWidthManager] No extension needed for current level");
+                RegeneratePitContent();
                 return;
             }
 
