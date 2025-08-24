@@ -18,14 +18,18 @@ namespace PitHero.AI
         private Point _targetTile;
         private bool _hasSelectedTarget;
 
-        // Track last failed target to avoid reselect loop
-        private Point _lastFailedTarget;
-        private bool _hasLastFailedTarget;
+        // Track multiple failed targets to avoid reselect loops
+        private HashSet<Point> _failedTargets;
+        
+        // Track consecutive failures to current target
+        private int _consecutiveFailures;
+        private const int MAX_CONSECUTIVE_FAILURES = 3;
 
         public WanderAction() : base(GoapConstants.WanderAction, 1)
         {
             SetPrecondition(GoapConstants.EnteredPit, true);
             SetPostcondition(GoapConstants.MapExplored, true);
+            _failedTargets = new HashSet<Point>(8); // Pre-allocate small capacity
         }
 
         /// <summary>
@@ -55,6 +59,7 @@ namespace PitHero.AI
 
                 _targetTile = nearestUnknownTile.Value;
                 _hasSelectedTarget = true;
+                _consecutiveFailures = 0; // Reset failure count for new target
                 Debug.Log($"[Wander] Selected target tile {_targetTile.X},{_targetTile.Y}");
             }
 
@@ -73,6 +78,9 @@ namespace PitHero.AI
                     tiledMapService.ClearFogOfWarAroundTile(currentTile.X, currentTile.Y);
                 }
 
+                // Successfully reached target, remove it from failed targets if it was there
+                _failedTargets.Remove(_targetTile);
+
                 // Prepare to pick a new target next tick. Keep action running.
                 ResetInternal();
                 return false; // continue exploring
@@ -87,12 +95,21 @@ namespace PitHero.AI
                 if (_currentPath == null || _currentPath.Count == 0)
                 {
                     Debug.Warn($"[Wander] Could not find path from {currentTile.X},{currentTile.Y} to {_targetTile.X},{_targetTile.Y}");
-                    // Remember failed target to avoid immediate reselection
-                    _lastFailedTarget = _targetTile;
-                    _hasLastFailedTarget = true;
+                    
+                    _consecutiveFailures++;
+                    Debug.Log($"[Wander] Consecutive failures for target {_targetTile.X},{_targetTile.Y}: {_consecutiveFailures}");
+                    
+                    if (_consecutiveFailures >= MAX_CONSECUTIVE_FAILURES)
+                    {
+                        Debug.Log($"[Wander] Target {_targetTile.X},{_targetTile.Y} failed {MAX_CONSECUTIVE_FAILURES} times, marking as unreachable and selecting new target");
+                        // Add to failed targets set to avoid future reselection
+                        _failedTargets.Add(_targetTile);
+                        
+                        // Force selection of new target
+                        ResetInternal();
+                    }
 
-                    ResetInternal();
-                    return false; // try a different target next tick
+                    return false; // try again next tick (either with new target or retry current)
                 }
 
                 Debug.Log($"[Wander] Calculated path with {_currentPath.Count} steps");
@@ -111,19 +128,44 @@ namespace PitHero.AI
                     if (moveStarted)
                     {
                         _pathIndex++;
+                        // Reset failure count on successful movement
+                        _consecutiveFailures = 0;
                     }
                     else
                     {
                         Debug.Log("[Wander] Movement blocked, recalculating path");
-                        // Recalculate path next frame
-                        _currentPath = null;
+                        _consecutiveFailures++;
+                        Debug.Log($"[Wander] Consecutive failures for target {_targetTile.X},{_targetTile.Y}: {_consecutiveFailures}");
+                        
+                        if (_consecutiveFailures >= MAX_CONSECUTIVE_FAILURES)
+                        {
+                            Debug.Log($"[Wander] Movement to target {_targetTile.X},{_targetTile.Y} blocked {MAX_CONSECUTIVE_FAILURES} times, selecting new target");
+                            // Add to failed targets set to avoid future reselection
+                            _failedTargets.Add(_targetTile);
+                            
+                            // Force selection of new target
+                            ResetInternal();
+                        }
+                        else
+                        {
+                            // Recalculate path next frame for same target
+                            _currentPath = null;
+                        }
                     }
                 }
                 else
                 {
                     Debug.Warn($"[Wander] Invalid movement from {currentTile.X},{currentTile.Y} to {nextTile.X},{nextTile.Y}");
-                    ResetInternal();
-                    return false; // try a different target next tick
+                    _consecutiveFailures++;
+                    
+                    if (_consecutiveFailures >= MAX_CONSECUTIVE_FAILURES)
+                    {
+                        Debug.Log($"[Wander] Invalid movement to target {_targetTile.X},{_targetTile.Y} failed {MAX_CONSECUTIVE_FAILURES} times, selecting new target");
+                        _failedTargets.Add(_targetTile);
+                        ResetInternal();
+                    }
+                    
+                    return false; // try again next tick
                 }
             }
 
@@ -179,6 +221,7 @@ namespace PitHero.AI
 
             int fogTileCount = 0;
             int passableFogTileCount = 0;
+            int skippedFailedCount = 0;
 
             // Scan the pit area for tiles still covered by fog
             for (int x = pitMinX; x <= pitMaxX; x++)
@@ -193,10 +236,11 @@ namespace PitHero.AI
                         {
                             fogTileCount++;
                             
-                            // Skip the last failed target to avoid loops
-                            if (_hasLastFailedTarget && _lastFailedTarget.X == x && _lastFailedTarget.Y == y)
+                            // Skip failed targets to avoid loops
+                            var tilePoint = new Point(x, y);
+                            if (_failedTargets.Contains(tilePoint))
                             {
-                                Debug.Log($"[Wander] Skipping last failed target at ({x},{y})");
+                                skippedFailedCount++;
                                 continue;
                             }
 
@@ -231,7 +275,7 @@ namespace PitHero.AI
                 }
             }
 
-            Debug.Log($"[Wander] Found {fogTileCount} fog tiles total, {passableFogTileCount} passable fog tiles");
+            Debug.Log($"[Wander] Found {fogTileCount} fog tiles total, {passableFogTileCount} passable fog tiles, skipped {skippedFailedCount} failed targets");
 
             if (nearestUnknownTile.HasValue)
             {
@@ -240,6 +284,14 @@ namespace PitHero.AI
             else
             {
                 Debug.Log("[Wander] No unknown tiles found in pit area");
+                // If we have failed targets and no valid targets, clear failed targets and try again
+                if (_failedTargets.Count > 0)
+                {
+                    Debug.Log($"[Wander] Clearing {_failedTargets.Count} failed targets to retry exploration");
+                    _failedTargets.Clear();
+                    // Return null to trigger retry on next frame
+                    return null;
+                }
             }
 
             return nearestUnknownTile;
@@ -313,7 +365,8 @@ namespace PitHero.AI
             _currentPath = null;
             _pathIndex = 0;
             _hasSelectedTarget = false;
-            // Keep _lastFailedTarget so we don't reselect it immediately
+            _consecutiveFailures = 0;
+            // Keep _failedTargets to avoid reselecting known unreachable targets
         }
     }
 }

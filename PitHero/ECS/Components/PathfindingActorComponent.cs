@@ -73,16 +73,10 @@ namespace PitHero.ECS.Components
 
         /// <summary>
         /// Refresh the pathfinding graph from the current collision layer state
-        /// This removes dynamically added obstacles and rebuilds from the base tilemap
+        /// This completely recreates the graph to pick up new tilemap dimensions and obstacles
         /// </summary>
         public virtual void RefreshPathfinding()
         {
-            if (!_isPathfindingInitialized)
-            {
-                InitializePathfinding();
-                return;
-            }
-
             var tiledMapService = Core.Services.GetService<TiledMapService>();
             if (tiledMapService?.CurrentMap == null)
             {
@@ -97,23 +91,12 @@ namespace PitHero.ECS.Components
                 return;
             }
 
-            // Clear existing walls and rebuild from collision layer
-            _astarGraph.Walls.Clear();
-
-            // Add all collision layer tiles
-            for (int x = 0; x < collisionLayer.Width; x++)
-            {
-                for (int y = 0; y < collisionLayer.Height; y++)
-                {
-                    var tile = collisionLayer.GetTile(x, y);
-                    if (tile != null && tile.Gid != 0)
-                    {
-                        _astarGraph.Walls.Add(new Point(x, y));
-                    }
-                }
-            }
+            // Completely recreate the A* graph to pick up new dimensions
+            _astarGraph = new AstarGridGraph(collisionLayer);
+            _isPathfindingInitialized = true;
 
             Debug.Log($"[PathfindingActor] Refreshed pathfinding for {Entity.Name} with {_astarGraph.Walls.Count} walls from collision layer");
+            Debug.Log($"[PathfindingActor] Updated map dimensions: {collisionLayer.Width}x{collisionLayer.Height}");
         }
 
         /// <summary>
