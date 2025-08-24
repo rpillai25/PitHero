@@ -133,15 +133,26 @@ namespace PitHero
         /// </summary>
         private void ClearObstacleWallsFromAstar()
         {
-            // Find the hero in the scene to get the AstarGridGraph
-            var hero = _scene.FindEntity("hero")?.GetComponent<HeroComponent>();
-            if (hero?.AstarGraph == null)
-            {
-                Debug.Warn("[PitGenerator] Hero with AstarGridGraph not found when clearing obstacle walls");
-                return;
-            }
+            AstarGridGraph astarGraph = null;
             
-            var astarGraph = hero.AstarGraph;
+            // Try to get AstarGridGraph from hero first (preferred approach)
+            var hero = _scene.FindEntity("hero")?.GetComponent<HeroComponent>();
+            if (hero?.AstarGraph != null)
+            {
+                astarGraph = hero.AstarGraph;
+                Debug.Log("[PitGenerator] Using hero's AstarGridGraph for obstacle clearing");
+            }
+            else
+            {
+                // Fall back to global service if hero isn't available yet
+                astarGraph = Core.Services.GetService<AstarGridGraph>();
+                if (astarGraph == null)
+                {
+                    Debug.Warn("[PitGenerator] Neither hero's AstarGridGraph nor global service found when clearing obstacle walls");
+                    return;
+                }
+                Debug.Log("[PitGenerator] Using global AstarGridGraph service for obstacle clearing (hero not available)");
+            }
             
             // We need to rebuild the A* graph from the collision layer only
             // This removes dynamically added obstacle walls
@@ -583,16 +594,28 @@ namespace PitHero
                 if (tag == GameConfig.TAG_OBSTACLE)
                 {
                     // Obstacles block both physics and pathfinding
-                    // Find the hero in the scene to get the AstarGridGraph
+                    AstarGridGraph astarGraph = null;
+                    
+                    // Try to get AstarGridGraph from hero first (preferred approach)
                     var hero = _scene.FindEntity("hero")?.GetComponent<HeroComponent>();
                     if (hero?.AstarGraph != null)
                     {
-                        hero.AstarGraph.Walls.Add(tilePos);
+                        astarGraph = hero.AstarGraph;
+                    }
+                    else
+                    {
+                        // Fall back to global service if hero isn't available yet
+                        astarGraph = Core.Services.GetService<AstarGridGraph>();
+                    }
+                    
+                    if (astarGraph != null)
+                    {
+                        astarGraph.Walls.Add(tilePos);
                         Debug.Log($"[PitGenerator] Added obstacle tile to A* walls at ({tilePos.X},{tilePos.Y})");
                     }
                     else
                     {
-                        Debug.Warn("[PitGenerator] Hero with AstarGridGraph not found when adding obstacle walls");
+                        Debug.Warn("[PitGenerator] No AstarGridGraph available when adding obstacle walls");
                     }
                     // Leave collider defaults so hero collides with obstacle (physics layer 0)
                 }

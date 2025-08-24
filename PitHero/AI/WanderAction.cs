@@ -148,7 +148,23 @@ namespace PitHero.AI
                 return null;
             }
 
-            var astarGraph = hero.AstarGraph;
+            AstarGridGraph astarGraph = null;
+            
+            // Try to get AStarGridGraph from hero component first (preferred approach)
+            if (hero.AstarGraph != null)
+            {
+                astarGraph = hero.AstarGraph;
+            }
+            else
+            {
+                // Fall back to global service if hero's pathfinding isn't available
+                astarGraph = Core.Services.GetService<AstarGridGraph>();
+                if (astarGraph == null)
+                {
+                    Debug.Warn("[Wander] Neither hero's AstarGridGraph nor global service found");
+                    return null;
+                }
+            }
 
             var heroTile = hero.Entity.GetComponent<TileByTileMover>()?.GetCurrentTileCoordinates() 
                          ?? GetTileCoordinates(hero.Entity.Transform.Position, GameConfig.TileSize);
@@ -233,11 +249,22 @@ namespace PitHero.AI
         {
             try
             {
-                var astarGraph = hero.AstarGraph;
-                if (astarGraph == null)
+                AstarGridGraph astarGraph = null;
+                
+                // Try to get AStarGridGraph from hero component first (preferred approach)
+                if (hero.AstarGraph != null)
                 {
-                    Debug.Warn("[Wander] AStarGridGraph not found on hero component");
-                    return null;
+                    astarGraph = hero.AstarGraph;
+                }
+                else
+                {
+                    // Fall back to global service if hero's pathfinding isn't available
+                    astarGraph = Core.Services.GetService<AstarGridGraph>();
+                    if (astarGraph == null)
+                    {
+                        Debug.Warn("[Wander] Neither hero's AstarGridGraph nor global service found");
+                        return null;
+                    }
                 }
 
                 // Early out if target is not passable

@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using Nez.AI.Pathfinding;
 using Nez.Tiled;
 using PitHero.ECS.Components;
 using PitHero.Services;
@@ -72,6 +73,9 @@ namespace PitHero.ECS.Scenes
 
             _cameraController?.ConfigureZoomForMap(_mapPath);
             
+            // Set up pathfinding after map is loaded (for pit generation before hero exists)
+            SetupPathfinding();
+            
             // Initialize pit width manager after map and services are set up
             SetupPitWidthManager();
         }
@@ -82,6 +86,28 @@ namespace PitHero.ECS.Scenes
             pitWidthManager.Initialize();
             Core.Services.AddService(pitWidthManager);
             Debug.Log("[MainGameScene] PitWidthManager initialized and registered as service");
+        }
+
+        private void SetupPathfinding()
+        {
+            if (_tmxMap == null)
+            {
+                Debug.Warn("[MainGameScene] Cannot setup pathfinding without tilemap");
+                return;
+            }
+
+            // Get the collision layer for pathfinding
+            var collisionLayer = _tmxMap.GetLayer<TmxLayer>("Collision");
+            if (collisionLayer == null)
+            {
+                Debug.Warn("[MainGameScene] No 'Collision' layer found in tilemap for pathfinding");
+                return;
+            }
+
+            // Build graph from the entire Collision layer: any present tile is a wall
+            var astarGraph = new AstarGridGraph(collisionLayer);
+            Core.Services.AddService(astarGraph);
+            Debug.Log($"[MainGameScene] AStarGridGraph pathfinding service registered with {astarGraph.Walls.Count} walls from Collision layer");
         }
 
         private void SpawnPit()

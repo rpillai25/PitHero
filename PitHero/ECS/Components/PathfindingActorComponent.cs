@@ -45,7 +45,22 @@ namespace PitHero.ECS.Components
 
             // Build graph from the entire Collision layer: any present tile is a wall
             AstarGraph = new AstarGridGraph(collisionLayer);
-            Debug.Log($"[PathfindingActor] AstarGridGraph initialized for {Entity.Name} with {AstarGraph.Walls.Count} walls from Collision layer");
+            
+            // Sync with global service if it exists (e.g., if obstacles were already added during pit generation)
+            var globalGraph = Core.Services.GetService<AstarGridGraph>();
+            if (globalGraph != null && globalGraph.Walls.Count > AstarGraph.Walls.Count)
+            {
+                // Copy any additional walls from the global graph (like dynamically added obstacles)
+                foreach (var wall in globalGraph.Walls)
+                {
+                    AstarGraph.Walls.Add(wall);
+                }
+                Debug.Log($"[PathfindingActor] Synchronized with global pathfinding service - now has {AstarGraph.Walls.Count} walls");
+            }
+            else
+            {
+                Debug.Log($"[PathfindingActor] AstarGridGraph initialized for {Entity.Name} with {AstarGraph.Walls.Count} walls from Collision layer");
+            }
         }
 
         /// <summary>

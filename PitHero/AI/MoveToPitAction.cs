@@ -153,13 +153,23 @@ namespace PitHero.AI
         {
             try
             {
-                // Get the AStarGridGraph from the hero component
-                var astarGraph = hero.AstarGraph;
+                AstarGridGraph astarGraph = null;
                 
-                if (astarGraph == null)
+                // Try to get AStarGridGraph from hero component first (preferred approach)
+                if (hero.AstarGraph != null)
                 {
-                    Debug.Warn("[MoveToPit] AStarGridGraph not found on hero component");
-                    return null;
+                    astarGraph = hero.AstarGraph;
+                }
+                else
+                {
+                    // Fall back to global service if hero's pathfinding isn't available
+                    astarGraph = Core.Services.GetService<AstarGridGraph>();
+                    if (astarGraph == null)
+                    {
+                        Debug.Warn("[MoveToPit] Neither hero's AstarGridGraph nor global service found");
+                        return null;
+                    }
+                    Debug.Log("[MoveToPit] Using global AstarGridGraph service (hero's not available)");
                 }
 
                 Debug.Log($"[MoveToPit] Calculating path from {start.X},{start.Y} to {target.X},{target.Y}");
