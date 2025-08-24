@@ -165,7 +165,7 @@ namespace PitHero
                 // Use dynamic pit bounds
                 validMinX = GameConfig.PitRectX + 1; // 2
                 validMinY = GameConfig.PitRectY + 1; // 3
-                validMaxX = pitWidthManager.CurrentPitRightEdge - 2; // 2 tiles from right edge
+                validMaxX = pitWidthManager.CurrentPitRightEdge - 3; // 3 tiles from right edge (don't place on last walkable column on the right)
                 validMaxY = GameConfig.PitRectHeight - 2; // 9
             }
             else
@@ -173,7 +173,7 @@ namespace PitHero
                 // Use default pit bounds
                 validMinX = GameConfig.PitRectX + 1; // 2
                 validMinY = GameConfig.PitRectY + 1; // 3
-                validMaxX = GameConfig.PitRectX + GameConfig.PitRectWidth - 2; // 10
+                validMaxX = GameConfig.PitRectX + GameConfig.PitRectWidth - 3; // 10
                 validMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // 9
             }
             
