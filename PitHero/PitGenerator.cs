@@ -93,9 +93,6 @@ namespace PitHero
             
             // Generate new content
             GenerateForLevel(level);
-            
-            // Update hero pathfinding target if hero exists
-            UpdateHeroPathfindingTarget();
         }
 
         /// <summary>
@@ -155,32 +152,6 @@ namespace PitHero
         }
 
         /// <summary>
-        /// Update hero pathfinding target after regeneration
-        /// </summary>
-        private void UpdateHeroPathfindingTarget()
-        {
-            // Find hero entity
-            var hero = _scene.FindEntity("hero");
-            if (hero == null)
-            {
-                Debug.Log("[PitGenerator] No hero found to update pathfinding target");
-                return;
-            }
-
-            // Force refresh of A* graph to ensure hero has up-to-date pathfinding information
-            //RefreshAstarGraph();
-
-            // Get HeroGoapAgentComponent to potentially reset current action
-            var agentComponent = hero.GetComponent<HeroGoapAgentComponent>();
-            if (agentComponent != null)
-            {
-                Debug.Log("[PitGenerator] Hero agent component found - pathfinding will be updated on next action plan");
-            }
-            
-            Debug.Log("[PitGenerator] Hero pathfinding target update complete");
-        }
-
-        /// <summary>
         /// Generate pit content for any level using dynamic calculations
         /// </summary>
         private void GenerateForLevel(int level)
@@ -194,7 +165,7 @@ namespace PitHero
                 // Use dynamic pit bounds
                 validMinX = GameConfig.PitRectX + 1; // 2
                 validMinY = GameConfig.PitRectY + 1; // 3
-                validMaxX = pitWidthManager.CurrentPitRightEdge - 3; // 2 tiles from right edge
+                validMaxX = pitWidthManager.CurrentPitRightEdge - 2; // 2 tiles from right edge
                 validMaxY = GameConfig.PitRectHeight - 2; // 9
             }
             else
@@ -202,7 +173,7 @@ namespace PitHero
                 // Use default pit bounds
                 validMinX = GameConfig.PitRectX + 1; // 2
                 validMinY = GameConfig.PitRectY + 1; // 3
-                validMaxX = GameConfig.PitRectX + GameConfig.PitRectWidth - 3; // 10
+                validMaxX = GameConfig.PitRectX + GameConfig.PitRectWidth - 2; // 10
                 validMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // 9
             }
             
