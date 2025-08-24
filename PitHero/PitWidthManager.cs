@@ -218,6 +218,7 @@ namespace PitHero
 
             if (innerFloorTilesToExtend <= 0)
             {
+                RegeneratePitContent();
                 Debug.Log("[PitWidthManager] No extension needed for current level");
                 return;
             }

@@ -46,7 +46,7 @@ namespace PitHero.ECS.Scenes
             // Set starting pit level to 9 (after pit exists to avoid early collider warnings)
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
             if (pitWidthManager != null)
-                pitWidthManager.SetPitLevel(40);
+                pitWidthManager.SetPitLevel(1);
 
             SpawnHero();
             AddPitLevelTestComponent();
