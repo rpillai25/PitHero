@@ -166,7 +166,7 @@ namespace PitHero.AI
                 pitMinX = GameConfig.PitRectX;
                 pitMinY = GameConfig.PitRectY;
                 pitMaxX = pitWidthManager.CurrentPitRightEdge;
-                pitMaxY = GameConfig.PitRectY + pitWidthManager.CurrentPitRectHeightTiles - 1;
+                pitMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 1;
                 Debug.Log($"[Wander] Using dynamic pit bounds: ({pitMinX},{pitMinY}) to ({pitMaxX},{pitMaxY})");
             }
             else

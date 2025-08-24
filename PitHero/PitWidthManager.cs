@@ -39,11 +39,6 @@ namespace PitHero
             : GameConfig.PitRectWidth;
 
         /// <summary>
-        /// Gets the current pit height in tiles (pit height is static)
-        /// </summary>
-        public int CurrentPitRectHeightTiles => GameConfig.PitRectHeight;
-
-        /// <summary>
         /// Gets the current pit center X tile (dynamic), or GameConfig default if not initialized
         /// </summary>
         public int CurrentPitCenterTileX
@@ -60,22 +55,6 @@ namespace PitHero
             }
         }
 
-        /// <summary>
-        /// Gets the current pit center Y tile (dynamic calc based on static height), falls back to GameConfig
-        /// </summary>
-        public int CurrentPitCenterTileY
-        {
-            get
-            {
-                // Interior spans from (top = PitRectY + 1) to (bottom = PitRectY + PitRectHeight - 2)
-                // This matches the explorable interior used elsewhere (e.g., FogOfWar y=3..9)
-                int topInteriorY = GameConfig.PitRectY + 1;
-                int bottomInteriorY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2;
-                return _isInitialized
-                    ? topInteriorY + ((bottomInteriorY - topInteriorY) / 2)
-                    : GameConfig.PitCenterTileY;
-            }
-        }
 
         /// <summary>
         /// Initialize the tile pattern dictionaries from the map

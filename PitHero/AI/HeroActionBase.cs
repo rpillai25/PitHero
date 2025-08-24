@@ -38,7 +38,7 @@ namespace PitHero.AI
         {
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
             var centerX = pitWidthManager?.CurrentPitCenterTileX ?? GameConfig.PitCenterTileX;
-            var centerY = pitWidthManager?.CurrentPitCenterTileY ?? GameConfig.PitCenterTileY;
+            var centerY = GameConfig.PitCenterTileY;
             return TileToWorldPosition(new Point(centerX, centerY));
         }
 

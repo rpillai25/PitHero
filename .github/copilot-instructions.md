@@ -27,6 +27,8 @@
 - Avoid the use of Reflection.
 - Do not add multiple classes to a single file. Classes should be in their own file.  Structs are an exception to this rule.
 - Maintain integer scaling for pixel-perfect rendering
+- The width in tiles of the Pit is dynamic, as is the Pit Center X.  This changes for every 10 pit levels.
+- The heigh in tiles of the Pit is constant, as is the Pit Center Y
 - Ensure the game continues running in idle while the player interacts with other desktop apps
 - **Debug Logging Requirements**:
   - Use Nez.Debug for all logs

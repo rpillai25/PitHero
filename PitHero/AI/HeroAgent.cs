@@ -56,7 +56,7 @@ namespace PitHero.AI
                     var anyFog = false;
                     for (var x = GameConfig.PitRectX; x < GameConfig.PitRectX + pitWidthManager.CurrentPitRectWidthTiles && !anyFog; x++)
                     {
-                        for (var y = GameConfig.PitRectY; y < GameConfig.PitRectY + pitWidthManager.CurrentPitRectHeightTiles; y++)
+                        for (var y = GameConfig.PitRectY; y < GameConfig.PitRectY + GameConfig.PitRectHeight; y++)
                         {
                             if (x >= 0 && y >= 0 && x < fogLayer.Width && y < fogLayer.Height)
                             {

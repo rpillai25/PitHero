@@ -60,14 +60,6 @@ namespace PitHero
                 (int)Math.Round(10 + 40 * Math.Max(level - 10, 0) / 90.0), 10, 50);
         }
 
-        public void Generate(int level)
-        {
-            Debug.Log($"[PitGenerator] Generating pit content for level {level}");
-
-            // Always use dynamic generation, even for level 1
-            GenerateForLevel(level);
-        }
-
         /// <summary>
         /// Clear all existing pit entities and regenerate content for the current pit level
         /// </summary>
@@ -212,53 +204,6 @@ namespace PitHero
         }
 
         /// <summary>
-        /// Force refresh of the A* graph to ensure it reflects the current state after regeneration
-        /// </summary>
-        private void RefreshAstarGraph()
-        {
-            var astarGraph = Core.Services.GetService<AstarGridGraph>();
-            if (astarGraph == null)
-            {
-                Debug.Warn("[PitGenerator] A* graph not found when refreshing");
-                return;
-            }
-
-            var tiledMapService = Core.Services.GetService<TiledMapService>();
-            if (tiledMapService?.CurrentMap == null)
-            {
-                Debug.Warn("[PitGenerator] No tilemap service found for A* graph refresh");
-                return;
-            }
-
-            var collisionLayer = tiledMapService.CurrentMap.GetLayer<TmxLayer>("Collision");
-            if (collisionLayer == null)
-            {
-                Debug.Warn("[PitGenerator] No 'Collision' layer found for A* graph refresh");
-                return;
-            }
-
-            // Completely rebuild A* graph from scratch
-            astarGraph.Walls.Clear();
-            
-            // Add all collision layer tiles
-            for (int x = 0; x < collisionLayer.Width; x++)
-            {
-                for (int y = 0; y < collisionLayer.Height; y++)
-                {
-                    var tile = collisionLayer.GetTile(x, y);
-                    if (tile != null && tile.Gid != 0)
-                    {
-                        astarGraph.Walls.Add(new Point(x, y));
-                    }
-                }
-            }
-
-            // Note: Generated obstacles will be added to the A* graph when they are created in CreateEntitiesAtPositions()
-            
-            Debug.Log($"[PitGenerator] A* graph refreshed with {astarGraph.Walls.Count} walls from collision layer");
-        }
-
-        /// <summary>
         /// Generate pit content for any level using dynamic calculations
         /// </summary>
         private void GenerateForLevel(int level)
@@ -273,7 +218,7 @@ namespace PitHero
                 validMinX = GameConfig.PitRectX + 1; // 2
                 validMinY = GameConfig.PitRectY + 1; // 3
                 validMaxX = pitWidthManager.CurrentPitRightEdge - 3; // 2 tiles from right edge
-                validMaxY = GameConfig.PitRectY + pitWidthManager?.CurrentPitRectHeightTiles ?? GameConfig.PitRectHeight - 2; // 9
+                validMaxY = GameConfig.PitRectHeight - 2; // 9
             }
             else
             {

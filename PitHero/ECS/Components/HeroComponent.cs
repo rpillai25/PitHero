@@ -25,7 +25,7 @@ namespace PitHero.ECS.Components
             get
             {
                 var width = _pitWidthManager?.CurrentPitRectWidthTiles ?? GameConfig.PitRectWidth;
-                var height = _pitWidthManager?.CurrentPitRectHeightTiles ?? GameConfig.PitRectHeight;
+                var height = GameConfig.PitRectHeight;
                 return new Rectangle(GameConfig.PitRectX, GameConfig.PitRectY, width, height);
             }
         }
@@ -36,7 +36,7 @@ namespace PitHero.ECS.Components
             get
             {
                 var centerX = _pitWidthManager?.CurrentPitCenterTileX ?? GameConfig.PitCenterTileX;
-                var centerY = _pitWidthManager?.CurrentPitCenterTileY ?? GameConfig.PitCenterTileY;
+                var centerY = GameConfig.PitCenterTileY;
                 return new Point(centerX, centerY);
             }
         }
