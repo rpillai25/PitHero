@@ -27,7 +27,7 @@ namespace PitHero.AI
 
         public WanderAction() : base(GoapConstants.WanderAction, 1)
         {
-            SetPrecondition(GoapConstants.EnteredPit, true);
+            SetPrecondition(GoapConstants.InsidePit, true);
             SetPostcondition(GoapConstants.MapExplored, true);
             _failedTargets = new HashSet<Point>(8); // Pre-allocate small capacity
         }

@@ -1,3 +1,4 @@
+using Microsoft.Xna.Framework;
 using Nez;
 using Nez.AI.FSM;
 using Nez.AI.GOAP;
@@ -38,6 +39,22 @@ namespace PitHero.AI
 
             var wander = new WanderAction();
             _planner.AddAction(wander);
+            
+            // New actions for wizard orb and pit regeneration workflow
+            var moveToWizardOrb = new MoveToWizardOrbAction();
+            _planner.AddAction(moveToWizardOrb);
+            
+            var activateWizardOrb = new ActivateWizardOrbAction();
+            _planner.AddAction(activateWizardOrb);
+            
+            var movingToInsidePitEdge = new MovingToInsidePitEdgeAction();
+            _planner.AddAction(movingToInsidePitEdge);
+            
+            var jumpOutOfPit = new JumpOutOfPitAction();
+            _planner.AddAction(jumpOutOfPit);
+            
+            var moveToPitGenPoint = new MoveToPitGenPointAction();
+            _planner.AddAction(moveToPitGenPoint);
 
             // Don't set initial state here - wait for OnAddedToEntity
         }
@@ -98,8 +115,8 @@ namespace PitHero.AI
                 ws.Set(GoapConstants.AdjacentToPitBoundaryFromOutside, true);
             if (_hero.AdjacentToPitBoundaryFromInside)
                 ws.Set(GoapConstants.AdjacentToPitBoundaryFromInside, true);
-            if (_hero.EnteredPit)
-                ws.Set(GoapConstants.EnteredPit, true);
+            if (_hero.InsidePit)
+                ws.Set(GoapConstants.InsidePit, true);
 
             // Mark exploration complete when FogOfWar is fully cleared inside the pit rect
             var tms = Core.Services.GetService<TiledMapService>();
@@ -153,10 +170,13 @@ namespace PitHero.AI
                 }
             }
 
+            // Check if wizard orb has been found (fog cleared around it)
+            CheckWizardOrbFound(ws, tms);
+
             Debug.Log($"[HeroStateMachine] State: PitInitialized={_hero.PitInitialized}, " +
                       $"AdjOut={_hero.AdjacentToPitBoundaryFromOutside}, " +
                       $"AdjIn={_hero.AdjacentToPitBoundaryFromInside}, " +
-                      $"EnteredPit={_hero.EnteredPit}");
+                      $"InsidePit={_hero.InsidePit}");
             return ws;
         }
 
@@ -168,6 +188,43 @@ namespace PitHero.AI
             var goal = WorldState.Create(_planner);
             goal.Set(GoapConstants.MapExplored, true); // goal is exploration, not just entering pit
             return goal;
+        }
+
+        /// <summary>
+        /// Check if wizard orb has been found (fog cleared around its position)
+        /// </summary>
+        private void CheckWizardOrbFound(WorldState ws, TiledMapService tms)
+        {
+            if (tms?.CurrentMap == null)
+                return;
+
+            var scene = Core.Scene;
+            if (scene == null)
+                return;
+
+            // Find wizard orb entities
+            var wizardOrbEntities = scene.FindEntitiesWithTag(GameConfig.TAG_WIZARD_ORB);
+            if (wizardOrbEntities.Count == 0)
+                return;
+
+            var wizardOrbEntity = wizardOrbEntities[0]; // Should only be one
+            var worldPos = wizardOrbEntity.Transform.Position;
+            var tilePos = new Point((int)(worldPos.X / GameConfig.TileSize), (int)(worldPos.Y / GameConfig.TileSize));
+
+            var fogLayer = tms.CurrentMap.GetLayer<Nez.Tiled.TmxLayer>("FogOfWar");
+            if (fogLayer != null)
+            {
+                // Check if fog is cleared around the wizard orb position
+                if (tilePos.X >= 0 && tilePos.Y >= 0 && tilePos.X < fogLayer.Width && tilePos.Y < fogLayer.Height)
+                {
+                    var fogTile = fogLayer.GetTile(tilePos.X, tilePos.Y);
+                    if (fogTile == null) // No fog means it's been discovered
+                    {
+                        ws.Set(GoapConstants.FoundWizardOrb, true);
+                        Debug.Log($"[HeroStateMachine] Wizard orb found at tile {tilePos.X},{tilePos.Y}");
+                    }
+                }
+            }
         }
 
         #region State Methods

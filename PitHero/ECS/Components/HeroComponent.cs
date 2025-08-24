@@ -12,7 +12,7 @@ namespace PitHero.ECS.Components
         public bool PitInitialized { get; set; }
         public bool AdjacentToPitBoundaryFromOutside { get; set; }
         public bool AdjacentToPitBoundaryFromInside { get; set; }
-        public bool EnteredPit { get; set; }
+        public bool InsidePit { get; set; }
         public Direction? PitApproachDirection { get; set; }
 
         private PitWidthManager _pitWidthManager;
@@ -54,7 +54,7 @@ namespace PitHero.ECS.Components
             // Initialize other GOAP flags to clean state
             AdjacentToPitBoundaryFromOutside = false;
             AdjacentToPitBoundaryFromInside = false;
-            EnteredPit = false;
+            InsidePit = false;
             PitApproachDirection = null;
         }
 
@@ -152,7 +152,7 @@ namespace PitHero.ECS.Components
             // Reset all GOAP flags when leaving pit trigger
             AdjacentToPitBoundaryFromInside = false;
             AdjacentToPitBoundaryFromOutside = false;
-            EnteredPit = false;
+            InsidePit = false;
             PitApproachDirection = null;
             
             var historian = Entity.GetComponent<Historian>();

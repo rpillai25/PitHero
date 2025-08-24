@@ -19,7 +19,7 @@ namespace PitHero.AI
             SetPrecondition(GoapConstants.AdjacentToPitBoundaryFromOutside, true);
             
             // Postconditions: Hero enters pit and is now adjacent to boundary from inside
-            SetPostcondition(GoapConstants.EnteredPit, true);
+            SetPostcondition(GoapConstants.InsidePit, true);
             SetPostcondition(GoapConstants.AdjacentToPitBoundaryFromInside, true);
         }
 
@@ -36,7 +36,7 @@ namespace PitHero.AI
                 
                 // Movement complete, finalize the jump
                 _isJumping = false;
-                hero.EnteredPit = true;
+                hero.InsidePit = true;
                 hero.AdjacentToPitBoundaryFromInside = true;
                 hero.AdjacentToPitBoundaryFromOutside = false;
                 
