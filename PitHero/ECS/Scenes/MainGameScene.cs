@@ -185,7 +185,6 @@ namespace PitHero.ECS.Scenes
             {
                 Health = 100,
                 MaxHealth = 100,
-                MoveSpeed = 140f,
                 PitInitialized = true
             });
             hero.AddComponent(new Historian());

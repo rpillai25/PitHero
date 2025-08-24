@@ -8,8 +8,6 @@ namespace PitHero.ECS.Components
     /// </summary>
     public class HeroComponent : PathfindingActorComponent
     {
-        public float MoveSpeed { get; set; } = GameConfig.HeroMoveSpeed;
-
         // GOAP-specific pit boundary flags
         public bool PitInitialized { get; set; }
         public bool AdjacentToPitBoundaryFromOutside { get; set; }
