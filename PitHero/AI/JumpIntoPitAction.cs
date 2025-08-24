@@ -117,7 +117,7 @@ namespace PitHero.AI
             var entity = hero.Entity;
             
             // Start the movement coroutine
-            Core.StartCoroutine(JumpMovementCoroutine(entity, targetPosition, GameConfig.HeroMovementSpeed * 2));
+            Core.StartCoroutine(JumpMovementCoroutine(entity, targetPosition, GameConfig.HeroJumpSpeed));
         }
 
         /// <summary>
