@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.AI.Pathfinding;
 using Nez.Tiled;
+using PitHero.AI;
 using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.UI;
@@ -188,7 +189,7 @@ namespace PitHero.ECS.Scenes
                 PitInitialized = true
             });
             hero.AddComponent(new Historian());
-            hero.AddComponent(new HeroGoapAgentComponent());
+            hero.AddComponent(new HeroStateMachine());
             
             // Force pathfinding initialization to complete before adding obstacles
             // OnAddedToEntity() is called automatically by the framework after this method completes
