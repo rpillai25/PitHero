@@ -181,10 +181,10 @@ namespace PitHero.AI
             }
 
             // Check if wizard orb has been found (fog cleared around it)
-            CheckWizardOrbFound(ws, tms);
+            CheckWizardOrbFound(ref ws, tms);
 
             // Check additional positional states
-            CheckAdditionalStates(ws);
+            CheckAdditionalStates(ref ws);
 
             Debug.Log($"[HeroStateMachine] State: PitInitialized={_hero.PitInitialized}, " +
                       $"AdjOut={_hero.AdjacentToPitBoundaryFromOutside}, " +
@@ -352,7 +352,7 @@ namespace PitHero.AI
         /// <summary>
         /// Check if wizard orb has been found (fog cleared around its position)
         /// </summary>
-        private void CheckWizardOrbFound(WorldState ws, TiledMapService tms)
+        private void CheckWizardOrbFound(ref WorldState ws, TiledMapService tms)
         {
             if (tms?.CurrentMap == null)
             {
@@ -417,7 +417,7 @@ namespace PitHero.AI
         /// <summary>
         /// Check additional positional states like AtWizardOrb and AtPitGenPoint
         /// </summary>
-        private void CheckAdditionalStates(WorldState ws)
+        private void CheckAdditionalStates(ref WorldState ws)
         {
             if (_hero?.Entity == null)
                 return;
@@ -428,7 +428,7 @@ namespace PitHero.AI
                          (int)(_hero.Entity.Transform.Position.Y / GameConfig.TileSize));
 
             // Check if at wizard orb
-            CheckAtWizardOrb(ws, currentTile);
+            CheckAtWizardOrb(ref ws, currentTile);
 
             // Check if at pit generation point (34, 6)
             if (currentTile.X == 34 && currentTile.Y == 6)
@@ -448,7 +448,7 @@ namespace PitHero.AI
         /// <summary>
         /// Check if hero is at wizard orb position
         /// </summary>
-        private void CheckAtWizardOrb(WorldState ws, Point heroTile)
+        private void CheckAtWizardOrb(ref WorldState ws, Point heroTile)
         {
             var scene = Core.Scene;
             if (scene == null)
