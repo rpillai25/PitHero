@@ -15,9 +15,15 @@ namespace PitHero.VirtualGame
         public IHeroController HeroController { get; }
         public IPathfinder Pathfinder { get; }
         public IPitLevelManager PitLevelManager { get; }
+        public ITiledMapService TiledMapService { get; }
+        public IPitGenerator PitGenerator { get; }
+        public IPitWidthManager PitWidthManager { get; }
 
         private readonly VirtualWorldState _virtualWorld;
         private readonly VirtualHeroController _virtualHero;
+        private readonly VirtualTiledMapService _virtualTiledMapService;
+        private readonly VirtualPitGenerator _virtualPitGenerator;
+        private readonly VirtualPitWidthManager _virtualPitWidthManager;
 
         public VirtualGoapContext(VirtualWorldState worldState)
         {
@@ -29,6 +35,15 @@ namespace PitHero.VirtualGame
             
             Pathfinder = new VirtualPathfinder(worldState);
             PitLevelManager = new VirtualPitLevelManager(worldState);
+            
+            _virtualTiledMapService = new VirtualTiledMapService(worldState);
+            TiledMapService = _virtualTiledMapService;
+            
+            _virtualPitWidthManager = new VirtualPitWidthManager(_virtualTiledMapService);
+            PitWidthManager = _virtualPitWidthManager;
+            
+            _virtualPitGenerator = new VirtualPitGenerator(worldState, _virtualTiledMapService, _virtualPitWidthManager);
+            PitGenerator = _virtualPitGenerator;
         }
 
         public Dictionary<string, bool> GetGoapWorldState()

@@ -30,6 +30,21 @@ namespace PitHero.AI.Interfaces
         IPitLevelManager PitLevelManager { get; }
 
         /// <summary>
+        /// Tiled map service for tile operations
+        /// </summary>
+        ITiledMapService TiledMapService { get; }
+
+        /// <summary>
+        /// Pit generation operations
+        /// </summary>
+        IPitGenerator PitGenerator { get; }
+
+        /// <summary>
+        /// Pit width management operations
+        /// </summary>
+        IPitWidthManager PitWidthManager { get; }
+
+        /// <summary>
         /// Get current GOAP world state for planning
         /// </summary>
         Dictionary<string, bool> GetGoapWorldState();

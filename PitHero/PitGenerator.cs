@@ -4,6 +4,7 @@ using Nez.Tiled;
 using PitHero;
 using PitHero.Util;
 using PitHero.ECS.Components;
+using PitHero.AI.Interfaces;
 using System;
 using System.Collections.Generic;
 using Nez.AI.Pathfinding;
@@ -13,10 +14,30 @@ namespace PitHero
     /// <summary>
     /// Generates pit content including obstacles, treasures, monsters, and wizard orbs
     /// </summary>
-    public class PitGenerator
+    public class PitGenerator : IPitGenerator
     {
         private Scene _scene;
         private HashSet<Point> _collisionTiles;
+        private ITiledMapService _tiledMapService;
+        private IPitWidthManager _pitWidthManager;
+
+        public PitGenerator(Scene scene, ITiledMapService tiledMapService = null, IPitWidthManager pitWidthManager = null)
+        {
+            _scene = scene;
+            _collisionTiles = new HashSet<Point>(64);
+            
+            try
+            {
+                _tiledMapService = tiledMapService ?? Core.Services?.GetService<TiledMapService>();
+                _pitWidthManager = pitWidthManager ?? Core.Services?.GetService<PitWidthManager>();
+            }
+            catch
+            {
+                // Core.Services may not be available during unit testing
+                _tiledMapService = tiledMapService;
+                _pitWidthManager = pitWidthManager;
+            }
+        }
 
         public PitGenerator(Scene scene)
         {
@@ -66,15 +87,14 @@ namespace PitHero
         public void RegenerateForCurrentLevel()
         {
             // Get current pit level from PitWidthManager
-            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
-            if (pitWidthManager == null)
+            if (_pitWidthManager == null)
             {
                 Debug.Warn("[PitGenerator] PitWidthManager service not found, using level 1");
                 RegenerateForLevel(1);
                 return;
             }
 
-            int currentLevel = pitWidthManager.CurrentPitLevel;
+            int currentLevel = _pitWidthManager.CurrentPitLevel;
             RegenerateForLevel(currentLevel);
         }
 
@@ -157,15 +177,14 @@ namespace PitHero
         private void GenerateForLevel(int level)
         {
             // Calculate pit bounds using PitWidthManager if available
-            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
             int validMinX, validMinY, validMaxX, validMaxY;
             
-            if (pitWidthManager != null && pitWidthManager.CurrentPitRightEdge > 0)
+            if (_pitWidthManager != null && _pitWidthManager.CurrentPitRightEdge > 0)
             {
                 // Use dynamic pit bounds
                 validMinX = GameConfig.PitRectX + 1; // 2
                 validMinY = GameConfig.PitRectY + 1; // 3
-                validMaxX = pitWidthManager.CurrentPitRightEdge - 3; // 3 tiles from right edge (don't place on last walkable column on the right)
+                validMaxX = _pitWidthManager.CurrentPitRightEdge - 3; // 3 tiles from right edge (don't place on last walkable column on the right)
                 validMaxY = GameConfig.PitRectHeight - 2; // 9
             }
             else
@@ -454,14 +473,13 @@ namespace PitHero
         {
             _collisionTiles.Clear();
 
-            var tiledMapService = Core.Services.GetService<TiledMapService>();
-            if (tiledMapService?.CurrentMap == null)
+            if (_tiledMapService?.CurrentMap == null)
             {
                 Debug.Log("[PitGenerator] No tilemap service found - assuming no tilemap collisions");
                 return;
             }
 
-            var collisionLayer = tiledMapService.CurrentMap.GetLayer<TmxLayer>("Collision");
+            var collisionLayer = _tiledMapService.CurrentMap.GetLayer("Collision");
             if (collisionLayer == null)
             {
                 Debug.Log("[PitGenerator] No collision layer found in tilemap");

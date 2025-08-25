@@ -113,6 +113,69 @@ namespace PitHero.VirtualGame
             IsWizardOrbActivated = true;
             Console.WriteLine($"[VirtualWorld] Wizard orb activated at ({WizardOrbPosition?.X},{WizardOrbPosition?.Y})");
         }
+        
+        public void SetWizardOrbPosition(Point position)
+        {
+            WizardOrbPosition = position;
+            _entities["WizardOrb"] = new List<Point> { position };
+            Console.WriteLine($"[VirtualWorld] Wizard orb positioned at ({position.X},{position.Y})");
+        }
+        
+        public void AddObstacle(Point position)
+        {
+            if (!_entities.ContainsKey("Obstacles"))
+                _entities["Obstacles"] = new List<Point>();
+            
+            _entities["Obstacles"].Add(position);
+            _collisionMap[position.X, position.Y] = true;
+            Console.WriteLine($"[VirtualWorld] Added obstacle at ({position.X},{position.Y})");
+        }
+        
+        public void AddTreasure(Point position)
+        {
+            if (!_entities.ContainsKey("Treasures"))
+                _entities["Treasures"] = new List<Point>();
+            
+            _entities["Treasures"].Add(position);
+            Console.WriteLine($"[VirtualWorld] Added treasure at ({position.X},{position.Y})");
+        }
+        
+        public void AddMonster(Point position)
+        {
+            if (!_entities.ContainsKey("Monsters"))
+                _entities["Monsters"] = new List<Point>();
+            
+            _entities["Monsters"].Add(position);
+            Console.WriteLine($"[VirtualWorld] Added monster at ({position.X},{position.Y})");
+        }
+        
+        public void ClearAllEntities()
+        {
+            _entities.Clear();
+            WizardOrbPosition = null;
+            
+            // Clear collision map except for pit boundaries
+            for (int x = 0; x < WORLD_WIDTH_TILES; x++)
+            {
+                for (int y = 0; y < WORLD_HEIGHT_TILES; y++)
+                {
+                    // Keep pit boundary collisions, clear interior collisions
+                    if (PitBounds.Contains(new Point(x, y)) && 
+                        (x == PitBounds.X || x == PitBounds.Right - 1 || 
+                         y == PitBounds.Y || y == PitBounds.Bottom - 1))
+                    {
+                        // Keep boundary collision
+                    }
+                    else if (PitBounds.Contains(new Point(x, y)))
+                    {
+                        // Clear interior collision
+                        _collisionMap[x, y] = false;
+                    }
+                }
+            }
+            
+            Console.WriteLine("[VirtualWorld] Cleared all entities and interior collisions");
+        }
 
         public void RegeneratePit(int level)
         {
@@ -248,6 +311,10 @@ namespace PitHero.VirtualGame
                         ch = IsWizardOrbActivated ? 'W' : 'w';
                     else if (_entities.ContainsKey("Obstacles") && _entities["Obstacles"].Contains(pos))
                         ch = '#';
+                    else if (_entities.ContainsKey("Treasures") && _entities["Treasures"].Contains(pos))
+                        ch = '$';
+                    else if (_entities.ContainsKey("Monsters") && _entities["Monsters"].Contains(pos))
+                        ch = 'M';
                     else if (IsCollisionTile(pos))
                         ch = '█';
                     else if (HasFogOfWar(pos))
@@ -259,7 +326,7 @@ namespace PitHero.VirtualGame
             }
             
             sb.AppendLine();
-            sb.AppendLine("Legend: H=Hero, w=Wizard Orb, W=Activated Orb, #=Obstacle, █=Wall, ?=Fog, .=Empty");
+            sb.AppendLine("Legend: H=Hero, w=Wizard Orb, W=Activated Orb, #=Obstacle, $=Treasure, M=Monster, █=Wall, ?=Fog, .=Empty");
             
             // Count fog tiles
             int fogCount = 0;
