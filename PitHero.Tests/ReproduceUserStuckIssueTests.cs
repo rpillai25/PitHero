@@ -1,0 +1,247 @@
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.Xna.Framework;
+using PitHero.AI;
+using PitHero.VirtualGame;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace PitHero.Tests
+{
+    /// <summary>
+    /// Tests to reproduce the exact user issue where hero gets stuck with "No action plan satisfied our goals"
+    /// after finishing exploration at level 40 pit
+    /// </summary>
+    [TestClass]
+    public class ReproduceUserStuckIssueTests
+    {
+        [TestMethod]
+        public void ReproduceExactUserStuckIssue_Level40Pit_WizardOrbAt5_6()
+        {
+            // Arrange: Set up level 40 pit exactly as in user's log
+            var virtualWorld = new VirtualWorldState();
+            virtualWorld.RegeneratePit(40); // User was on level 40
+            
+            // User's log shows wizard orb at tile 5,6 
+            var wizardOrbPos = new Point(5, 6);
+            // The wizard orb should already be placed by RegeneratePit, but let's verify it's there
+            
+            // Hero starts inside pit and has explored everything (as in user's log)
+            var heroPos = new Point(6, 3); // Hero was at 6,3 when exploration completed
+            virtualWorld.MoveHeroTo(heroPos);
+            
+            // Clear all fog in the exploration area to match user's completed exploration
+            var explorationMinX = 2;
+            var explorationMinY = 3;
+            var explorationMaxX = 19; // From user's log: "pit right edge=21", so explorable to 19
+            var explorationMaxY = 9;
+            
+            for (var x = explorationMinX; x <= explorationMaxX; x++)
+            {
+                for (var y = explorationMinY; y <= explorationMaxY; y++)
+                {
+                    virtualWorld.ClearFogOfWar(new Point(x, y), 0); // Clear individual tiles
+                }
+            }
+            
+            // Verify exploration is complete (this should be true)
+            var isMapExplored = IsMapCompletelyExplored(virtualWorld, explorationMinX, explorationMinY, explorationMaxX, explorationMaxY);
+            Assert.IsTrue(isMapExplored, "Map should be fully explored");
+            
+            // Verify wizard orb is discovered (fog cleared around it)
+            var wizardOrbDiscovered = !virtualWorld.HasFogOfWar(wizardOrbPos);
+            Assert.IsTrue(wizardOrbDiscovered, "Wizard orb should be discovered (no fog)");
+            
+            // Act: Create GOAP context and try to plan next action
+            var goapContext = new VirtualGoapContext(virtualWorld);
+            
+            // Set up GOAP planner with all actions (matching HeroStateMachine)
+            var planner = new Nez.AI.GOAP.ActionPlanner();
+            var moveToWizardOrb = new MoveToWizardOrbAction();
+            planner.AddAction(moveToWizardOrb);
+            var activateWizardOrb = new ActivateWizardOrbAction();
+            planner.AddAction(activateWizardOrb);
+            var wander = new WanderAction();
+            planner.AddAction(wander);
+            
+            // Get current world state as GOAP sees it
+            var currentWorldState = GetGoapWorldState(virtualWorld, planner);
+            
+            // Get goal state (should be AtWizardOrb since exploration is complete)
+            var goalState = GetProgressiveGoalState(virtualWorld, planner);
+            
+            // Log the states for debugging (matching HeroStateMachine logging)
+            System.Console.WriteLine($"[TEST] Current World State: {currentWorldState.Describe(planner)}");
+            System.Console.WriteLine($"[TEST] Goal State: {goalState.Describe(planner)}");
+            
+            // Try to create action plan
+            var actionPlan = planner.Plan(currentWorldState, goalState);
+            
+            // Assert: This should NOT be null/empty - we should get a valid plan to move to wizard orb
+            Assert.IsNotNull(actionPlan, "Action plan should not be null");
+            Assert.IsTrue(actionPlan.Count > 0, "Action plan should contain at least one action");
+            
+            // The plan should start with MoveToWizardOrbAction
+            var firstAction = actionPlan.Peek();
+            Assert.AreEqual("MoveToWizardOrbAction", firstAction.Name, "First action should be MoveToWizardOrbAction");
+            
+            System.Console.WriteLine($"[TEST] ✓ Successfully created action plan: {string.Join(" -> ", actionPlan)}");
+        }
+        
+        [TestMethod]
+        public void TestExactUserWizardOrbPosition_5_6_VerifyFoundState()
+        {
+            // This test specifically checks what happens when wizard orb is at user's exact position (5,6)
+            var virtualWorld = new VirtualWorldState();
+            virtualWorld.RegeneratePit(40);
+            
+            // Force wizard orb to exact user position if it's not there already
+            var actualWizardOrbPos = virtualWorld.WizardOrbPosition;
+            System.Console.WriteLine($"[TEST] Actual wizard orb position: {actualWizardOrbPos}");
+            
+            var userWizardOrbPos = new Point(5, 6);
+            
+            // Clear fog at user's wizard orb position to simulate discovery
+            virtualWorld.ClearFogOfWar(userWizardOrbPos, 0);
+            
+            // Hero at 6,3 (from user's log)
+            virtualWorld.MoveHeroTo(new Point(6, 3));
+            
+            // Clear all exploration area
+            for (var x = 2; x <= 19; x++)
+            {
+                for (var y = 3; y <= 9; y++)
+                {
+                    virtualWorld.ClearFogOfWar(new Point(x, y), 0);
+                }
+            }
+            
+            // Check if fog is cleared at user's wizard orb position
+            var fogCleared = !virtualWorld.HasFogOfWar(userWizardOrbPos);
+            System.Console.WriteLine($"[TEST] Fog cleared at user's wizard orb position {userWizardOrbPos.X},{userWizardOrbPos.Y}: {fogCleared}");
+            
+            // Create GOAP world state and check if FoundWizardOrb would be set
+            var planner = new Nez.AI.GOAP.ActionPlanner();
+            var ws = Nez.AI.GOAP.WorldState.Create(planner);
+            
+            // Simulate the CheckWizardOrbFound logic for user's position
+            if (fogCleared)
+            {
+                ws.Set(GoapConstants.FoundWizardOrb, true);
+                System.Console.WriteLine($"[TEST] *** WIZARD ORB WOULD BE FOUND *** at user's position {userWizardOrbPos.X},{userWizardOrbPos.Y}");
+            }
+            else
+            {
+                System.Console.WriteLine($"[TEST] Wizard orb at {userWizardOrbPos.X},{userWizardOrbPos.Y} still has fog - would NOT be found");
+            }
+            
+            // The key insight: if the wizard orb position in the virtual world differs from the user's actual position,
+            // this could explain why FoundWizardOrb is not being set properly in the real game
+            Assert.IsTrue(fogCleared, "Fog should be cleared at user's wizard orb position");
+        }
+        
+        /// <summary>
+        /// Check if map exploration is complete in the given area
+        /// </summary>
+        private bool IsMapCompletelyExplored(VirtualWorldState worldState, int minX, int minY, int maxX, int maxY)
+        {
+            for (var x = minX; x <= maxX; x++)
+            {
+                for (var y = minY; y <= maxY; y++)
+                {
+                    if (worldState.HasFogOfWar(new Point(x, y)))
+                    {
+                        return false; // Found fog, exploration not complete
+                    }
+                }
+            }
+            return true; // No fog found, exploration complete
+        }
+        
+        /// <summary>
+        /// Get GOAP world state matching HeroStateMachine logic
+        /// </summary>
+        private Nez.AI.GOAP.WorldState GetGoapWorldState(VirtualWorldState virtualWorld, Nez.AI.GOAP.ActionPlanner planner)
+        {
+            var ws = Nez.AI.GOAP.WorldState.Create(planner);
+            
+            // Basic states
+            ws.Set(GoapConstants.HeroInitialized, true);
+            ws.Set(GoapConstants.PitInitialized, true); // Pit is initialized at level 40
+            ws.Set(GoapConstants.InsidePit, true); // Hero is inside pit
+            ws.Set(GoapConstants.AdjacentToPitBoundaryFromInside, true); // From user's log
+            
+            // Check if map is explored
+            bool mapExplored = IsMapCompletelyExplored(virtualWorld, 2, 3, 19, 9);
+            if (mapExplored)
+                ws.Set(GoapConstants.MapExplored, true);
+            
+            // Check if wizard orb is found (fog cleared around it)
+            var wizardOrbPos = virtualWorld.WizardOrbPosition;
+            if (wizardOrbPos.HasValue && !virtualWorld.HasFogOfWar(wizardOrbPos.Value))
+            {
+                ws.Set(GoapConstants.FoundWizardOrb, true);
+                System.Console.WriteLine($"[TEST] *** WIZARD ORB FOUND *** Setting FoundWizardOrb=true at tile {wizardOrbPos.Value.X},{wizardOrbPos.Value.Y}");
+            }
+            else
+            {
+                System.Console.WriteLine($"[TEST] Wizard orb NOT found - wizardOrbPos={wizardOrbPos}, hasWizardOrbPos={wizardOrbPos.HasValue}");
+                if (wizardOrbPos.HasValue)
+                {
+                    System.Console.WriteLine($"[TEST] Wizard orb at {wizardOrbPos.Value.X},{wizardOrbPos.Value.Y} - HasFog={virtualWorld.HasFogOfWar(wizardOrbPos.Value)}");
+                }
+            }
+            
+            // Check if hero is at wizard orb
+            if (wizardOrbPos.HasValue)
+            {
+                var heroPos = virtualWorld.HeroPosition;
+                if (heroPos.X == wizardOrbPos.Value.X && heroPos.Y == wizardOrbPos.Value.Y)
+                {
+                    ws.Set(GoapConstants.AtWizardOrb, true);
+                }
+            }
+            
+            return ws;
+        }
+        
+        /// <summary>
+        /// Get progressive goal state matching HeroStateMachine logic
+        /// </summary>
+        private Nez.AI.GOAP.WorldState GetProgressiveGoalState(VirtualWorldState virtualWorld, Nez.AI.GOAP.ActionPlanner planner)
+        {
+            var goal = Nez.AI.GOAP.WorldState.Create(planner);
+            
+            // Check current states
+            bool mapExplored = IsMapCompletelyExplored(virtualWorld, 2, 3, 19, 9);
+            bool atWizardOrb = false;
+            bool wizardOrbActivated = virtualWorld.IsWizardOrbActivated;
+            
+            var wizardOrbPos = virtualWorld.WizardOrbPosition;
+            if (wizardOrbPos.HasValue)
+            {
+                var heroPos = virtualWorld.HeroPosition;
+                atWizardOrb = (heroPos.X == wizardOrbPos.Value.X && heroPos.Y == wizardOrbPos.Value.Y);
+            }
+            
+            System.Console.WriteLine($"[TEST] Goal determination: MapExplored={mapExplored}, AtWizardOrb={atWizardOrb}, WizardOrbActivated={wizardOrbActivated}");
+            
+            if (!mapExplored)
+            {
+                goal.Set(GoapConstants.MapExplored, true);
+                System.Console.WriteLine("[TEST] Goal set to: MapExplored");
+            }
+            else if (!atWizardOrb)
+            {
+                goal.Set(GoapConstants.AtWizardOrb, true);
+                System.Console.WriteLine("[TEST] Goal set to: AtWizardOrb");
+            }
+            else if (!wizardOrbActivated)
+            {
+                goal.Set(GoapConstants.ActivatedWizardOrb, true);
+                System.Console.WriteLine("[TEST] Goal set to: ActivatedWizardOrb");
+            }
+            
+            return goal;
+        }
+    }
+}

@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.AI.Pathfinding;
 using PitHero.ECS.Components;
+using PitHero.AI.Interfaces;
 using System.Collections.Generic;
 
 namespace PitHero.AI
@@ -144,6 +145,143 @@ namespace PitHero.AI
             
             // Action continues as long as we're moving towards the pit
             return false;
+        }
+
+        /// <summary>
+        /// Execute action using interface-based context (new approach)
+        /// </summary>
+        public override bool Execute(IGoapContext context)
+        {
+            context.LogDebug("[MoveToPitAction] Starting execution with interface-based context");
+
+            // Select a target if we haven't yet for this execution
+            if (!_hasSelectedTarget)
+            {
+                var heroTile = context.HeroController.CurrentTilePosition;
+                _targetTile = SelectBestTargetTileVirtual(context, heroTile);
+                _hasSelectedTarget = true;
+                context.LogDebug($"[MoveToPitAction] Selected target tile {_targetTile.X},{_targetTile.Y}");
+            }
+
+            // Get current tile position
+            var currentTile = context.HeroController.CurrentTilePosition;
+
+            // Check if we've reached the target
+            if (currentTile.X == _targetTile.X && currentTile.Y == _targetTile.Y)
+            {
+                context.LogDebug($"[MoveToPitAction] Reached target tile {_targetTile.X},{_targetTile.Y} - action complete");
+                context.HeroController.AdjacentToPitBoundaryFromOutside = true;
+                context.HeroController.PitApproachDirection = Direction.Left; // Approaching from right side of pit
+                ResetInternal();
+                return true;
+            }
+
+            // If we don't have a path yet, calculate one
+            if (_currentPath == null || _currentPath.Count == 0)
+            {
+                _currentPath = context.Pathfinder.CalculatePath(currentTile, _targetTile);
+                _pathIndex = 0;
+
+                if (_currentPath == null || _currentPath.Count == 0)
+                {
+                    context.LogWarning($"[MoveToPitAction] Could not find path from {currentTile.X},{currentTile.Y} to {_targetTile.X},{_targetTile.Y}");
+                    ResetInternal();
+                    return true; // Complete the action as failed
+                }
+
+                context.LogDebug($"[MoveToPitAction] Calculated path with {_currentPath.Count} steps");
+            }
+
+            // If not currently moving, start moving to the next tile in the path
+            if (!context.HeroController.IsMoving && _pathIndex < _currentPath.Count)
+            {
+                var nextTile = _currentPath[_pathIndex];
+                var direction = GetDirectionToTile(currentTile, nextTile);
+
+                if (direction.HasValue)
+                {
+                    context.LogDebug($"[MoveToPitAction] Moving {direction.Value} to tile {nextTile.X},{nextTile.Y}");
+                    var moveStarted = context.HeroController.StartMoving(direction.Value);
+                    if (moveStarted)
+                    {
+                        _pathIndex++;
+                    }
+                    else
+                    {
+                        context.LogWarning("[MoveToPitAction] Movement blocked, recalculating path");
+                        _currentPath = null; // Force path recalculation
+                    }
+                }
+                else
+                {
+                    context.LogWarning($"[MoveToPitAction] Invalid movement from {currentTile.X},{currentTile.Y} to {nextTile.X},{nextTile.Y}");
+                    _currentPath = null; // Force path recalculation
+                    return false; // try again next tick
+                }
+            }
+
+            return false; // Action still in progress
+        }
+
+        /// <summary>
+        /// Select the best target tile for virtual context
+        /// </summary>
+        private Point SelectBestTargetTileVirtual(IGoapContext context, Point heroTile)
+        {
+            var pitBounds = context.WorldState.PitBounds;
+            
+            // Create candidate targets - positions adjacent to pit boundary from outside
+            var candidateTargets = new List<Point>();
+            
+            // Add targets to the right of the pit (assuming we approach from the right)
+            for (int y = pitBounds.Y; y < pitBounds.Bottom; y++)
+            {
+                candidateTargets.Add(new Point(pitBounds.Right, y));
+            }
+            
+            // Add targets below the pit
+            for (int x = pitBounds.X; x < pitBounds.Right; x++)
+            {
+                candidateTargets.Add(new Point(x, pitBounds.Bottom));
+            }
+            
+            // Add targets above the pit  
+            for (int x = pitBounds.X; x < pitBounds.Right; x++)
+            {
+                candidateTargets.Add(new Point(x, pitBounds.Y - 1));
+            }
+            
+            // Add targets to the left of the pit
+            for (int y = pitBounds.Y; y < pitBounds.Bottom; y++)
+            {
+                candidateTargets.Add(new Point(pitBounds.X - 1, y));
+            }
+
+            // Find the closest valid target
+            Point bestTarget = candidateTargets[0];
+            float shortestDistance = float.MaxValue;
+
+            foreach (var candidate in candidateTargets)
+            {
+                // Check if candidate is passable
+                if (!context.WorldState.IsPassable(candidate))
+                    continue;
+
+                // Calculate distance
+                var distance = Vector2.Distance(
+                    new Vector2(heroTile.X, heroTile.Y),
+                    new Vector2(candidate.X, candidate.Y)
+                );
+
+                if (distance < shortestDistance)
+                {
+                    shortestDistance = distance;
+                    bestTarget = candidate;
+                }
+            }
+
+            context.LogDebug($"[MoveToPitAction] Selected target {bestTarget.X},{bestTarget.Y} from {candidateTargets.Count} candidates, distance {shortestDistance}");
+            return bestTarget;
         }
 
         /// <summary>

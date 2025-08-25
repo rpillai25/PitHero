@@ -3,15 +3,19 @@ using Nez.Tiled;
 using Microsoft.Xna.Framework;
 using Nez.AI.Pathfinding;
 using PitHero.ECS.Components;
+using PitHero.AI.Interfaces;
 
 namespace PitHero.Util
 {
     /// <summary>
     /// Use Core.Services.GetService<TiledMapService>() to get the current TiledMapService from anywhere
     /// </summary>
-    public class TiledMapService
+    public class TiledMapService : ITiledMapService
     {
         public TmxMap CurrentMap;
+        
+        // Interface implementation
+        IMapData ITiledMapService.CurrentMap => CurrentMap != null ? new TmxMapWrapper(CurrentMap) : null;
 
         public TiledMapService(TmxMap tmxMap)
         {
