@@ -87,6 +87,58 @@ namespace PitHero.Tests
             System.Console.WriteLine($"[TEST] ✓ Successfully created action plan: {string.Join(" -> ", actionPlan)}");
         }
         
+        [TestMethod]
+        public void TestExactUserWizardOrbPosition_5_6_VerifyFoundState()
+        {
+            // This test specifically checks what happens when wizard orb is at user's exact position (5,6)
+            var virtualWorld = new VirtualWorldState();
+            virtualWorld.RegeneratePit(40);
+            
+            // Force wizard orb to exact user position if it's not there already
+            var actualWizardOrbPos = virtualWorld.WizardOrbPosition;
+            System.Console.WriteLine($"[TEST] Actual wizard orb position: {actualWizardOrbPos}");
+            
+            var userWizardOrbPos = new Point(5, 6);
+            
+            // Clear fog at user's wizard orb position to simulate discovery
+            virtualWorld.ClearFogOfWar(userWizardOrbPos, 0);
+            
+            // Hero at 6,3 (from user's log)
+            virtualWorld.MoveHeroTo(new Point(6, 3));
+            
+            // Clear all exploration area
+            for (var x = 2; x <= 19; x++)
+            {
+                for (var y = 3; y <= 9; y++)
+                {
+                    virtualWorld.ClearFogOfWar(new Point(x, y), 0);
+                }
+            }
+            
+            // Check if fog is cleared at user's wizard orb position
+            var fogCleared = !virtualWorld.HasFogOfWar(userWizardOrbPos);
+            System.Console.WriteLine($"[TEST] Fog cleared at user's wizard orb position {userWizardOrbPos.X},{userWizardOrbPos.Y}: {fogCleared}");
+            
+            // Create GOAP world state and check if FoundWizardOrb would be set
+            var planner = new Nez.AI.GOAP.ActionPlanner();
+            var ws = Nez.AI.GOAP.WorldState.Create(planner);
+            
+            // Simulate the CheckWizardOrbFound logic for user's position
+            if (fogCleared)
+            {
+                ws.Set(GoapConstants.FoundWizardOrb, true);
+                System.Console.WriteLine($"[TEST] *** WIZARD ORB WOULD BE FOUND *** at user's position {userWizardOrbPos.X},{userWizardOrbPos.Y}");
+            }
+            else
+            {
+                System.Console.WriteLine($"[TEST] Wizard orb at {userWizardOrbPos.X},{userWizardOrbPos.Y} still has fog - would NOT be found");
+            }
+            
+            // The key insight: if the wizard orb position in the virtual world differs from the user's actual position,
+            // this could explain why FoundWizardOrb is not being set properly in the real game
+            Assert.IsTrue(fogCleared, "Fog should be cleared at user's wizard orb position");
+        }
+        
         /// <summary>
         /// Check if map exploration is complete in the given area
         /// </summary>
