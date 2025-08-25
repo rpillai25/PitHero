@@ -3,13 +3,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using PitHero.AI.Interfaces;
 
 namespace PitHero.VirtualGame
 {
     /// <summary>
     /// Virtual world state that simulates the game world without graphics
     /// </summary>
-    public class VirtualWorldState : IVirtualWorld
+    public class VirtualWorldState : IVirtualWorld, IWorldState
     {
         private const int WORLD_WIDTH_TILES = 60; // Based on GameConfig.InternalWorldWidth / TileSize
         private const int WORLD_HEIGHT_TILES = 25; // Based on GameConfig.InternalWorldHeight / TileSize
@@ -273,6 +274,47 @@ namespace PitHero.VirtualGame
             sb.AppendLine($"Fog tiles remaining in pit: {fogCount}");
             
             return sb.ToString();
+        }
+
+        // IWorldState implementation - required methods
+        public bool IsPassable(Point tilePosition)
+        {
+            // Check bounds
+            if (tilePosition.X < 0 || tilePosition.Y < 0 || 
+                tilePosition.X >= WORLD_WIDTH_TILES || tilePosition.Y >= WORLD_HEIGHT_TILES)
+                return false;
+
+            // Check collision map
+            return !_collisionMap[tilePosition.X, tilePosition.Y];
+        }
+
+        public bool IsMapExplored
+        {
+            get
+            {
+                // Check if all tiles in the pit (explorable area) have no fog
+                for (int x = PitBounds.X + 1; x < PitBounds.Right - 1; x++)
+                {
+                    for (int y = PitBounds.Y + 1; y < PitBounds.Bottom - 1; y++)
+                    {
+                        if (HasFogOfWar(new Point(x, y)))
+                            return false; // Still has fog
+                    }
+                }
+                return true; // All fog cleared
+            }
+        }
+
+        public bool IsWizardOrbFound
+        {
+            get
+            {
+                var orbPos = WizardOrbPosition;
+                if (!orbPos.HasValue)
+                    return false;
+                
+                return !HasFogOfWar(orbPos.Value);
+            }
         }
     }
 }

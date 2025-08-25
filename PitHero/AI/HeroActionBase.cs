@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.AI.GOAP;
 using PitHero.ECS.Components;
+using PitHero.AI.Interfaces;
 
 namespace PitHero.AI
 {
@@ -14,7 +15,20 @@ namespace PitHero.AI
         {
         }
 
+        /// <summary>
+        /// Execute action using traditional HeroComponent (for backward compatibility)
+        /// </summary>
         public abstract bool Execute(HeroComponent hero);
+
+        /// <summary>
+        /// Execute action using interface-based context (new approach)
+        /// </summary>
+        public virtual bool Execute(IGoapContext context)
+        {
+            // Default implementation logs that this action hasn't been updated yet
+            context.LogWarning($"[{GetType().Name}] Execute(IGoapContext) not implemented, falling back to legacy mode");
+            return false;
+        }
 
         private static int TileSize => GameConfig.TileSize; // ensure single source of truth
 

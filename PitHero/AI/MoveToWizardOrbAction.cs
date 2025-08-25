@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.ECS.Components;
+using PitHero.AI.Interfaces;
 using System.Collections.Generic;
 
 namespace PitHero.AI
@@ -128,6 +129,85 @@ namespace PitHero.AI
             
             // Action continues as long as we're moving towards the wizard orb
             return false;
+        }
+
+        /// <summary>
+        /// Execute action using interface-based context (new approach)
+        /// </summary>
+        public override bool Execute(IGoapContext context)
+        {
+            context.LogDebug("[MoveToWizardOrbAction] Starting execution with interface-based context");
+
+            // Find wizard orb if we haven't yet
+            if (!_hasFoundWizardOrb)
+            {
+                var orbPos = context.WorldState.WizardOrbPosition;
+                if (!orbPos.HasValue)
+                {
+                    context.LogWarning("[MoveToWizardOrbAction] No wizard orb position available");
+                    ResetInternal();
+                    return true; // complete as failed
+                }
+                
+                _wizardOrbTile = orbPos.Value;
+                _hasFoundWizardOrb = true;
+                context.LogDebug($"[MoveToWizardOrbAction] Found wizard orb at tile {_wizardOrbTile.X},{_wizardOrbTile.Y}");
+            }
+
+            // Check if we're already at the wizard orb position
+            var currentTile = context.HeroController.CurrentTilePosition;
+            if (currentTile.X == _wizardOrbTile.X && currentTile.Y == _wizardOrbTile.Y)
+            {
+                context.LogDebug($"[MoveToWizardOrbAction] Reached wizard orb at tile {_wizardOrbTile.X},{_wizardOrbTile.Y} - action complete");
+                ResetInternal();
+                return true;
+            }
+
+            // If we don't have a path yet, calculate one
+            if (_currentPath == null || _currentPath.Count == 0)
+            {
+                _currentPath = context.Pathfinder.CalculatePath(currentTile, _wizardOrbTile);
+                _pathIndex = 0;
+                
+                if (_currentPath == null || _currentPath.Count == 0)
+                {
+                    context.LogWarning($"[MoveToWizardOrbAction] Could not find path from {currentTile.X},{currentTile.Y} to {_wizardOrbTile.X},{_wizardOrbTile.Y}");
+                    ResetInternal();
+                    return true; // Complete the action as failed
+                }
+                
+                context.LogDebug($"[MoveToWizardOrbAction] Calculated path with {_currentPath.Count} steps");
+            }
+
+            // If not currently moving, start moving to the next tile in the path
+            if (!context.HeroController.IsMoving && _pathIndex < _currentPath.Count)
+            {
+                var nextTile = _currentPath[_pathIndex];
+                var direction = GetDirectionToTile(currentTile, nextTile);
+
+                if (direction.HasValue)
+                {
+                    context.LogDebug($"[MoveToWizardOrbAction] Moving {direction.Value} to tile {nextTile.X},{nextTile.Y}");
+                    var moveStarted = context.HeroController.StartMoving(direction.Value);
+                    if (moveStarted)
+                    {
+                        _pathIndex++;
+                    }
+                    else
+                    {
+                        context.LogWarning("[MoveToWizardOrbAction] Movement blocked, recalculating path");
+                        _currentPath = null; // Force path recalculation
+                    }
+                }
+                else
+                {
+                    context.LogWarning($"[MoveToWizardOrbAction] Invalid movement from {currentTile.X},{currentTile.Y} to {nextTile.X},{nextTile.Y}");
+                    _currentPath = null; // Force path recalculation
+                    return false; // try again next tick
+                }
+            }
+
+            return false; // Action still in progress
         }
 
         /// <summary>

@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.ECS.Components;
+using PitHero.AI.Interfaces;
 
 namespace PitHero.AI
 {
@@ -56,6 +57,29 @@ namespace PitHero.AI
             hero.MovingToInsidePitEdge = true;
             
             Debug.Log("[ActivateWizardOrb] Wizard orb activation complete - pit level queued");
+            return true; // Action complete
+        }
+
+        /// <summary>
+        /// Execute action using interface-based context (new approach)
+        /// </summary>
+        public override bool Execute(IGoapContext context)
+        {
+            context.LogDebug("[ActivateWizardOrbAction] Starting execution with interface-based context");
+
+            // Activate wizard orb in virtual world
+            context.WorldState.ActivateWizardOrb();
+
+            // Queue the next pit level
+            var nextLevel = context.PitLevelManager.CurrentLevel + 1;
+            context.PitLevelManager.QueueLevel(nextLevel);
+
+            // Set hero state flags
+            context.HeroController.PitInitialized = false; // Pit will be regenerated later
+            context.HeroController.ActivatedWizardOrb = true;
+            context.HeroController.MovingToInsidePitEdge = true;
+            
+            context.LogDebug($"[ActivateWizardOrbAction] Wizard orb activation complete - pit level {nextLevel} queued");
             return true; // Action complete
         }
 
