@@ -189,7 +189,9 @@ namespace PitHero.AI
             Debug.Log($"[HeroStateMachine] State: PitInitialized={_hero.PitInitialized}, " +
                       $"AdjOut={_hero.AdjacentToPitBoundaryFromOutside}, " +
                       $"AdjIn={_hero.AdjacentToPitBoundaryFromInside}, " +
-                      $"InsidePit={_hero.InsidePit}");
+                      $"InsidePit={_hero.InsidePit}, " +
+                      $"MapExplored={IsMapCurrentlyExplored()}, " +
+                      $"ActivatedWizardOrb={_hero.ActivatedWizardOrb}");
             return ws;
         }
 
@@ -206,13 +208,16 @@ namespace PitHero.AI
             // Check if map is explored (using the same logic as GetWorldState)
             bool mapExplored = IsMapCurrentlyExplored();
             
+            // Check if hero is at wizard orb position
+            bool atWizardOrb = IsAtWizardOrbPosition();
+            
             // Check if wizard orb is activated
             bool wizardOrbActivated = _hero?.ActivatedWizardOrb == true;
             
             // Check if hero is at pit generation point
             bool atPitGenPoint = IsAtPitGenPoint();
             
-            Debug.Log($"[HeroStateMachine] Goal determination: MapExplored={mapExplored}, WizardOrbActivated={wizardOrbActivated}, AtPitGenPoint={atPitGenPoint}");
+            Debug.Log($"[HeroStateMachine] Goal determination: MapExplored={mapExplored}, AtWizardOrb={atWizardOrb}, WizardOrbActivated={wizardOrbActivated}, AtPitGenPoint={atPitGenPoint}");
             
             if (!mapExplored)
             {
@@ -220,15 +225,21 @@ namespace PitHero.AI
                 goal.Set(GoapConstants.MapExplored, true);
                 Debug.Log("[HeroStateMachine] Goal set to: MapExplored");
             }
+            else if (!atWizardOrb)
+            {
+                // Secondary goal: reach wizard orb (this triggers MoveToWizardOrbAction)
+                goal.Set(GoapConstants.AtWizardOrb, true);
+                Debug.Log("[HeroStateMachine] Goal set to: AtWizardOrb");
+            }
             else if (!wizardOrbActivated)
             {
-                // Secondary goal: activate wizard orb
+                // Tertiary goal: activate wizard orb (this triggers ActivateWizardOrbAction)
                 goal.Set(GoapConstants.ActivatedWizardOrb, true);
                 Debug.Log("[HeroStateMachine] Goal set to: ActivatedWizardOrb");
             }
             else if (!atPitGenPoint)
             {
-                // Tertiary goal: reach pit generation point for regeneration
+                // Quaternary goal: reach pit generation point for regeneration
                 goal.Set(GoapConstants.AtPitGenPoint, true);
                 Debug.Log("[HeroStateMachine] Goal set to: AtPitGenPoint");
             }
@@ -307,6 +318,35 @@ namespace PitHero.AI
                          (int)(_hero.Entity.Transform.Position.Y / GameConfig.TileSize));
 
             return currentTile.X == 34 && currentTile.Y == 6;
+        }
+        
+        /// <summary>
+        /// Check if hero is at wizard orb position
+        /// </summary>
+        private bool IsAtWizardOrbPosition()
+        {
+            if (_hero?.Entity == null)
+                return false;
+
+            var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
+            var heroTile = tileMover?.GetCurrentTileCoordinates() ?? 
+                new Point((int)(_hero.Entity.Transform.Position.X / GameConfig.TileSize),
+                         (int)(_hero.Entity.Transform.Position.Y / GameConfig.TileSize));
+            
+            var scene = Core.Scene;
+            if (scene == null)
+                return false;
+
+            var wizardOrbEntities = scene.FindEntitiesWithTag(GameConfig.TAG_WIZARD_ORB);
+            if (wizardOrbEntities.Count == 0)
+                return false;
+
+            var wizardOrbEntity = wizardOrbEntities[0];
+            var orbWorldPos = wizardOrbEntity.Transform.Position;
+            var orbTile = new Point((int)(orbWorldPos.X / GameConfig.TileSize), 
+                                  (int)(orbWorldPos.Y / GameConfig.TileSize));
+
+            return heroTile.X == orbTile.X && heroTile.Y == orbTile.Y;
         }
 
         /// <summary>
