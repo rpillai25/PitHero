@@ -213,6 +213,10 @@ namespace PitHero.AI
             
             // Check if wizard orb is activated
             bool wizardOrbActivated = _hero?.ActivatedWizardOrb == true;
+
+            // Check if hero is ready to jump out and moving state flags
+            bool readyToJumpOut = _hero?.ReadyToJumpOutOfPit == true;
+            bool movingToInsidePitEdge = _hero?.MovingToInsidePitEdge == true;
             
             // Check if hero is at pit generation point
             bool atPitGenPoint = IsAtPitGenPoint();
@@ -237,9 +241,21 @@ namespace PitHero.AI
                 goal.Set(GoapConstants.ActivatedWizardOrb, true);
                 Debug.Log("[HeroStateMachine] Goal set to: ActivatedWizardOrb");
             }
+            else if (wizardOrbActivated && !readyToJumpOut)
+            {
+                // After activation we must move to the inside pit edge before jumping out
+                goal.Set(GoapConstants.MovingToInsidePitEdge, true);
+                Debug.Log("[HeroStateMachine] Goal set to: MovingToInsidePitEdge");
+            }
+            else if (readyToJumpOut && !_hero.MovingToPitGenPoint)
+            {
+                // Ready to jump out, so we want to be outside pit next (this triggers JumpOutOfPitAction)
+                goal.Set(GoapConstants.OutsidePit, true);
+                Debug.Log("[HeroStateMachine] Goal set to: OutsidePit (jump out)");
+            }
             else if (!atPitGenPoint)
             {
-                // Quaternary goal: reach pit generation point for regeneration
+                // Next goal: reach pit generation point for regeneration
                 goal.Set(GoapConstants.AtPitGenPoint, true);
                 Debug.Log("[HeroStateMachine] Goal set to: AtPitGenPoint");
             }
@@ -659,7 +675,7 @@ namespace PitHero.AI
             Debug.Log("  WanderAction: Requires InsidePit=true");
             Debug.Log("  MoveToWizardOrbAction: Requires FoundWizardOrb=true, MapExplored=true");
             Debug.Log("  ActivateWizardOrbAction: Requires AtWizardOrb=true");
-            Debug.Log("  MovingToInsidePitEdgeAction: Requires ActivatedWizardOrb=true");
+            Debug.Log("  MovingToInsidePitEdgeAction: Requires MovingToInsidePitEdge=true");
             Debug.Log("  JumpOutOfPitAction: Requires ReadyToJumpOutOfPit=true");
             Debug.Log("  MoveToPitGenPointAction: Requires OutsidePit=true");
         }
