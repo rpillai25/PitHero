@@ -355,20 +355,31 @@ namespace PitHero.AI
         private void CheckWizardOrbFound(WorldState ws, TiledMapService tms)
         {
             if (tms?.CurrentMap == null)
+            {
+                Debug.Log("[HeroStateMachine] CheckWizardOrbFound: No current map available");
                 return;
+            }
 
             var scene = Core.Scene;
             if (scene == null)
+            {
+                Debug.Log("[HeroStateMachine] CheckWizardOrbFound: No active scene");
                 return;
+            }
 
             // Find wizard orb entities
             var wizardOrbEntities = scene.FindEntitiesWithTag(GameConfig.TAG_WIZARD_ORB);
             if (wizardOrbEntities.Count == 0)
+            {
+                Debug.Log("[HeroStateMachine] CheckWizardOrbFound: No wizard orb entities found");
                 return;
+            }
 
             var wizardOrbEntity = wizardOrbEntities[0]; // Should only be one
             var worldPos = wizardOrbEntity.Transform.Position;
             var tilePos = new Point((int)(worldPos.X / GameConfig.TileSize), (int)(worldPos.Y / GameConfig.TileSize));
+
+            Debug.Log($"[HeroStateMachine] CheckWizardOrbFound: Wizard orb entity found at world pos {worldPos.X},{worldPos.Y}, tile {tilePos.X},{tilePos.Y}");
 
             var fogLayer = tms.CurrentMap.GetLayer<Nez.Tiled.TmxLayer>("FogOfWar");
             if (fogLayer != null)
@@ -377,12 +388,27 @@ namespace PitHero.AI
                 if (tilePos.X >= 0 && tilePos.Y >= 0 && tilePos.X < fogLayer.Width && tilePos.Y < fogLayer.Height)
                 {
                     var fogTile = fogLayer.GetTile(tilePos.X, tilePos.Y);
+                    Debug.Log($"[HeroStateMachine] CheckWizardOrbFound: Fog tile at wizard orb position {tilePos.X},{tilePos.Y}: {(fogTile == null ? "NULL (cleared)" : "EXISTS (not cleared)")}");
+                    
                     if (fogTile == null) // No fog means it's been discovered
                     {
                         ws.Set(GoapConstants.FoundWizardOrb, true);
-                        Debug.Log($"[HeroStateMachine] Wizard orb found at tile {tilePos.X},{tilePos.Y}");
+                        Debug.Log($"[HeroStateMachine] *** WIZARD ORB FOUND *** Setting FoundWizardOrb=true at tile {tilePos.X},{tilePos.Y}");
+                    }
+                    else
+                    {
+                        Debug.Log($"[HeroStateMachine] Wizard orb at {tilePos.X},{tilePos.Y} still covered by fog - not yet discovered");
                     }
                 }
+                else
+                {
+                    Debug.Warn($"[HeroStateMachine] CheckWizardOrbFound: Wizard orb tile {tilePos.X},{tilePos.Y} is outside fog layer bounds ({fogLayer.Width}x{fogLayer.Height})");
+                }
+            }
+            else
+            {
+                Debug.Log("[HeroStateMachine] CheckWizardOrbFound: No FogOfWar layer found - assuming wizard orb is discovered");
+                ws.Set(GoapConstants.FoundWizardOrb, true);
             }
         }
 
@@ -464,7 +490,14 @@ namespace PitHero.AI
             Debug.Log("[HeroStateMachine] Entering Idle state - planning next actions");
             
             // Get a plan to run that will get us from our current state to our goal state
-            _actionPlan = _planner.Plan(GetWorldState(), GetGoalState());
+            var currentWorldState = GetWorldState();
+            var goalState = GetGoalState();
+            
+            // Add comprehensive debug logging for world state and goal state
+            LogWorldStateDetails(currentWorldState, "Current World State");
+            LogWorldStateDetails(goalState, "Goal State");
+            
+            _actionPlan = _planner.Plan(currentWorldState, goalState);
 
             if (_actionPlan != null && _actionPlan.Count > 0)
             {
@@ -474,6 +507,7 @@ namespace PitHero.AI
             else
             {
                 Debug.Log("[HeroStateMachine] No action plan satisfied our goals");
+                LogActionPreconditions(); // Log what each action needs
                 // Stay in Idle and try again in Idle_Tick
             }
         }
@@ -487,12 +521,24 @@ namespace PitHero.AI
                 if (elapsedTimeInState > 1.0f) // Wait 1 second before retry
                 {
                     Debug.Log("[HeroStateMachine] Retrying action planning...");
-                    _actionPlan = _planner.Plan(GetWorldState(), GetGoalState());
+                    
+                    var currentWorldState = GetWorldState();
+                    var goalState = GetGoalState();
+                    
+                    // Add comprehensive debug logging for world state and goal state
+                    LogWorldStateDetails(currentWorldState, "Retry Current World State");
+                    LogWorldStateDetails(goalState, "Retry Goal State");
+                    
+                    _actionPlan = _planner.Plan(currentWorldState, goalState);
 
                     if (_actionPlan != null && _actionPlan.Count > 0)
                     {
                         Debug.Log($"[HeroStateMachine] Got an action plan with {_actionPlan.Count} actions: {string.Join(" -> ", _actionPlan)}");
                         CurrentState = HeroState.GoTo;
+                    }
+                    else
+                    {
+                        LogActionPreconditions(); // Log what each action needs
                     }
                 }
             }
@@ -581,6 +627,34 @@ namespace PitHero.AI
             // _currentAction is kept for potential cleanup in next state
         }
 
+        #endregion
+        
+        #region Debug Logging Methods
+        
+        /// <summary>
+        /// Log detailed world state for debugging GOAP planning issues
+        /// </summary>
+        private void LogWorldStateDetails(WorldState ws, string prefix)
+        {
+            Debug.Log($"[HeroStateMachine] {prefix}: {ws.Describe(_planner)}");
+        }
+        
+        /// <summary>
+        /// Log action preconditions to debug why no action plan can be found
+        /// </summary>
+        private void LogActionPreconditions()
+        {
+            Debug.Log("[HeroStateMachine] Available actions and their preconditions:");
+            Debug.Log("  MoveToPitAction: Requires PitInitialized=true, HeroInitialized=true, OutsidePit=true");
+            Debug.Log("  JumpIntoPitAction: Requires AdjacentToPitBoundaryFromOutside=true");
+            Debug.Log("  WanderAction: Requires InsidePit=true");
+            Debug.Log("  MoveToWizardOrbAction: Requires FoundWizardOrb=true, MapExplored=true");
+            Debug.Log("  ActivateWizardOrbAction: Requires AtWizardOrb=true");
+            Debug.Log("  MovingToInsidePitEdgeAction: Requires ActivatedWizardOrb=true");
+            Debug.Log("  JumpOutOfPitAction: Requires ReadyToJumpOutOfPit=true");
+            Debug.Log("  MoveToPitGenPointAction: Requires OutsidePit=true");
+        }
+        
         #endregion
     }
 }
