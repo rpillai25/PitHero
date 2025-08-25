@@ -194,13 +194,119 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Get the goal state for GOAP planning
+        /// Get the goal state for GOAP planning - Progressive goals based on current state
         /// </summary>
         private WorldState GetGoalState()
         {
             var goal = WorldState.Create(_planner);
-            goal.Set(GoapConstants.MapExplored, true); // goal is exploration, not just entering pit
+            var currentState = GetWorldState();
+            
+            // Progressive goal logic - set next objective based on current state
+            
+            // Check if map is explored (using the same logic as GetWorldState)
+            bool mapExplored = IsMapCurrentlyExplored();
+            
+            // Check if wizard orb is activated
+            bool wizardOrbActivated = _hero?.ActivatedWizardOrb == true;
+            
+            // Check if hero is at pit generation point
+            bool atPitGenPoint = IsAtPitGenPoint();
+            
+            Debug.Log($"[HeroStateMachine] Goal determination: MapExplored={mapExplored}, WizardOrbActivated={wizardOrbActivated}, AtPitGenPoint={atPitGenPoint}");
+            
+            if (!mapExplored)
+            {
+                // Primary goal: explore the map
+                goal.Set(GoapConstants.MapExplored, true);
+                Debug.Log("[HeroStateMachine] Goal set to: MapExplored");
+            }
+            else if (!wizardOrbActivated)
+            {
+                // Secondary goal: activate wizard orb
+                goal.Set(GoapConstants.ActivatedWizardOrb, true);
+                Debug.Log("[HeroStateMachine] Goal set to: ActivatedWizardOrb");
+            }
+            else if (!atPitGenPoint)
+            {
+                // Tertiary goal: reach pit generation point for regeneration
+                goal.Set(GoapConstants.AtPitGenPoint, true);
+                Debug.Log("[HeroStateMachine] Goal set to: AtPitGenPoint");
+            }
+            else
+            {
+                // Final goal: get outside pit to trigger regeneration cycle
+                goal.Set(GoapConstants.OutsidePit, true);
+                Debug.Log("[HeroStateMachine] Goal set to: OutsidePit (regeneration cycle)");
+            }
+            
             return goal;
+        }
+        
+        /// <summary>
+        /// Check if map is currently explored (same logic as in GetWorldState)
+        /// </summary>
+        private bool IsMapCurrentlyExplored()
+        {
+            var tms = Core.Services.GetService<TiledMapService>();
+            if (tms?.CurrentMap == null)
+                return false;
+
+            var fogLayer = tms.CurrentMap.GetLayer<Nez.Tiled.TmxLayer>("FogOfWar");
+            if (fogLayer == null)
+                return true; // No fog layer means exploration is complete
+
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            
+            // Use the same explorable area bounds as WanderAction
+            int explorationMinX, explorationMinY, explorationMaxX, explorationMaxY;
+            
+            if (pitWidthManager != null)
+            {
+                explorationMinX = GameConfig.PitRectX + 1; // x=2
+                explorationMinY = GameConfig.PitRectY + 1; // y=3  
+                explorationMaxX = pitWidthManager.CurrentPitRightEdge - 2; // Last explorable column
+                explorationMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // y=9
+            }
+            else
+            {
+                explorationMinX = GameConfig.PitRectX + 1; // 2
+                explorationMinY = GameConfig.PitRectY + 1; // 3
+                explorationMaxX = GameConfig.PitRectX + GameConfig.PitRectWidth - 2; // 11
+                explorationMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // 9
+            }
+            
+            for (var x = explorationMinX; x <= explorationMaxX; x++)
+            {
+                for (var y = explorationMinY; y <= explorationMaxY; y++)
+                {
+                    if (x >= 0 && y >= 0 && x < fogLayer.Width && y < fogLayer.Height)
+                    {
+                        var fogTile = fogLayer.GetTile(x, y);
+                        if (fogTile != null)
+                        {
+                            return false; // Found fog, exploration not complete
+                        }
+                    }
+                }
+            }
+            
+            return true; // No fog found, exploration complete
+        }
+        
+        /// <summary>
+        /// Check if hero is at pit generation point (34, 6)
+        /// </summary>
+        private bool IsAtPitGenPoint()
+        {
+            if (_hero?.Entity == null)
+                return false;
+
+            var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
+            var currentTile = tileMover?.GetCurrentTileCoordinates() ?? 
+                new Point((int)(_hero.Entity.Transform.Position.X / GameConfig.TileSize),
+                         (int)(_hero.Entity.Transform.Position.Y / GameConfig.TileSize));
+
+            return currentTile.X == 34 && currentTile.Y == 6;
         }
 
         /// <summary>
