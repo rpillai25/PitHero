@@ -394,6 +394,7 @@ namespace PitHero.AI
                     {
                         ws.Set(GoapConstants.FoundWizardOrb, true);
                         Debug.Log($"[HeroStateMachine] *** WIZARD ORB FOUND *** Setting FoundWizardOrb=true at tile {tilePos.X},{tilePos.Y}");
+                        Debug.Log($"[HeroStateMachine] *** VERIFICATION *** WorldState.Set() called successfully for FoundWizardOrb");
                     }
                     else
                     {
@@ -409,6 +410,7 @@ namespace PitHero.AI
             {
                 Debug.Log("[HeroStateMachine] CheckWizardOrbFound: No FogOfWar layer found - assuming wizard orb is discovered");
                 ws.Set(GoapConstants.FoundWizardOrb, true);
+                Debug.Log($"[HeroStateMachine] *** VERIFICATION *** WorldState.Set() called successfully for FoundWizardOrb (no fog layer)");
             }
         }
 
@@ -497,6 +499,10 @@ namespace PitHero.AI
             LogWorldStateDetails(currentWorldState, "Current World State");
             LogWorldStateDetails(goalState, "Goal State");
             
+            // CRITICAL DEBUG: Log what states we expect to see
+            Debug.Log($"[HeroStateMachine] *** CRITICAL GOAP CHECK *** About to call GOAP planner");
+            Debug.Log($"[HeroStateMachine] *** Expected states *** MapExplored and FoundWizardOrb should be true for MoveToWizardOrbAction to be available");
+            
             _actionPlan = _planner.Plan(currentWorldState, goalState);
 
             if (_actionPlan != null && _actionPlan.Count > 0)
@@ -528,6 +534,9 @@ namespace PitHero.AI
                     // Add comprehensive debug logging for world state and goal state
                     LogWorldStateDetails(currentWorldState, "Retry Current World State");
                     LogWorldStateDetails(goalState, "Retry Goal State");
+                    
+                    // CRITICAL DEBUG: Log retry attempt
+                    Debug.Log($"[HeroStateMachine] *** CRITICAL RETRY CHECK *** About to retry GOAP planner");
                     
                     _actionPlan = _planner.Plan(currentWorldState, goalState);
 
