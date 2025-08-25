@@ -161,20 +161,37 @@ namespace PitHero.ECS.Components
 
         private void HandlePitTriggerExit()
         {
-            // Reset all GOAP flags when leaving pit trigger
-            AdjacentToPitBoundaryFromInside = false;
-            AdjacentToPitBoundaryFromOutside = false;
-            InsidePit = false;
-            PitApproachDirection = null;
+            var currentTile = GetCurrentTilePosition();
+            var pitBounds = PitCollisionRect;
             
-            // Reset wizard orb workflow flags when leaving pit
-            ActivatedWizardOrb = false;
-            MovingToInsidePitEdge = false;
-            ReadyToJumpOutOfPit = false;
-            MovingToPitGenPoint = false;
+            Debug.Log($"[HeroComponent] HandlePitTriggerExit: currentTile={currentTile.X},{currentTile.Y}, " +
+                      $"pitBounds=({pitBounds.X},{pitBounds.Y},{pitBounds.Width},{pitBounds.Height})");
             
-            var historian = Entity.GetComponent<Historian>();
-            historian?.RecordMilestone(MilestoneType.FirstJumpOutOfPit, Time.TotalTime);
+            // Only reset flags if hero is actually outside the pit area 
+            // This prevents spurious trigger exits from resetting state during normal pit exploration
+            if (!pitBounds.Contains(currentTile))
+            {
+                Debug.Log("[HeroComponent] Hero truly exited pit area - resetting GOAP flags");
+                
+                // Reset all GOAP flags when actually leaving pit area
+                AdjacentToPitBoundaryFromInside = false;
+                AdjacentToPitBoundaryFromOutside = false;
+                InsidePit = false;
+                PitApproachDirection = null;
+                
+                // Reset wizard orb workflow flags when leaving pit
+                ActivatedWizardOrb = false;
+                MovingToInsidePitEdge = false;
+                ReadyToJumpOutOfPit = false;
+                MovingToPitGenPoint = false;
+                
+                var historian = Entity.GetComponent<Historian>();
+                historian?.RecordMilestone(MilestoneType.FirstJumpOutOfPit, Time.TotalTime);
+            }
+            else
+            {
+                Debug.Log("[HeroComponent] Hero still inside pit area - ignoring spurious trigger exit");
+            }
         }
 
         /// <summary>

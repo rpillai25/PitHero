@@ -24,9 +24,19 @@ namespace PitHero.VirtualGame
         // Movement state
         public bool IsMoving { get; set; }
         public Queue<Point> MovementQueue { get; } = new Queue<Point>();
+        public Point? TargetTilePosition { get; set; }
 
         // Current position in tiles
         public Point Position => _world.HeroPosition;
+        
+        /// <summary>
+        /// Current tile position (for tests)
+        /// </summary>
+        public Point CurrentTilePosition 
+        { 
+            get => Position; 
+            set => _world.MoveHeroTo(value); 
+        }
 
         public VirtualHero(IVirtualWorld world)
         {

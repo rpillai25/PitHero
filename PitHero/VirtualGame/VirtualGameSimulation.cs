@@ -29,6 +29,11 @@ namespace PitHero.VirtualGame
         }
 
         /// <summary>
+        /// Public access to the hero for tests
+        /// </summary>
+        public VirtualHero Hero => _hero;
+
+        /// <summary>
         /// Run a complete simulation cycle as described in the comment
         /// </summary>
         public void RunCompleteSimulation()
@@ -390,6 +395,236 @@ namespace PitHero.VirtualGame
             Console.WriteLine("✓ Pit regeneration at higher level");
             Console.WriteLine();
             Console.WriteLine("The hero is now ready to start the cycle again with the new pit!");
+        }
+        
+        /// <summary>
+        /// Initialize level 40 pit for testing
+        /// </summary>
+        public void InitializeLevel40Pit()
+        {
+            _world.RegeneratePit(40);
+            LogWorldState();
+        }
+        
+        /// <summary>
+        /// Simulate hero jumping into pit
+        /// </summary>
+        public void HeroJumpIntoPit()
+        {
+            _hero.CurrentTilePosition = new Point(2, 3); // Inside pit area
+            _hero.InsidePit = true;
+            _hero.AdjacentToPitBoundaryFromInside = true;
+            _hero.AdjacentToPitBoundaryFromOutside = false;
+            Console.WriteLine($"Hero jumped into pit at tile {_hero.CurrentTilePosition.X},{_hero.CurrentTilePosition.Y}");
+        }
+        
+        /// <summary>
+        /// Complete exploration by clearing all fog tiles
+        /// </summary>
+        public void CompleteExploration()
+        {
+            _world.ClearAllFogInPit();
+            _world.DiscoverWizardOrb(new Point(9, 4));
+            Console.WriteLine("Exploration completed - all fog cleared, wizard orb discovered");
+        }
+        
+        /// <summary>
+        /// Check if map is fully explored
+        /// </summary>
+        public bool IsMapExplored()
+        {
+            return _world.FogTilesInPit.Count == 0;
+        }
+        
+        /// <summary>
+        /// Check if wizard orb is found
+        /// </summary>
+        public bool IsWizardOrbFound()
+        {
+            return _world.WizardOrbPosition.HasValue;
+        }
+        
+        /// <summary>
+        /// Create GOAP context for testing
+        /// </summary>
+        public VirtualGoapContext CreateGoapContext()
+        {
+            return new VirtualGoapContext(_world, _hero);
+        }
+        
+        /// <summary>
+        /// Get progressive goal state based on current state
+        /// </summary>
+        public Dictionary<string, bool> GetProgressiveGoalState(Dictionary<string, bool> currentState)
+        {
+            var goal = new Dictionary<string, bool>();
+            
+            bool mapExplored = currentState.GetValueOrDefault(GoapConstants.MapExplored, false);
+            bool wizardOrbActivated = currentState.GetValueOrDefault(GoapConstants.ActivatedWizardOrb, false);
+            bool atPitGenPoint = currentState.GetValueOrDefault(GoapConstants.AtPitGenPoint, false);
+            
+            if (!mapExplored)
+            {
+                goal[GoapConstants.MapExplored] = true;
+            }
+            else if (!wizardOrbActivated)
+            {
+                goal[GoapConstants.ActivatedWizardOrb] = true;
+            }
+            else if (!atPitGenPoint)
+            {
+                goal[GoapConstants.AtPitGenPoint] = true;
+            }
+            else
+            {
+                goal[GoapConstants.OutsidePit] = true;
+            }
+            
+            return goal;
+        }
+        
+        /// <summary>
+        /// Plan actions using GOAP
+        /// </summary>
+        public Stack<HeroActionBase> PlanActions(Dictionary<string, bool> currentState, Dictionary<string, bool> goalState)
+        {
+            var context = CreateGoapContext();
+            
+            // Create action planner directly
+            var planner = new Nez.AI.GOAP.ActionPlanner();
+            
+            // Add all hero actions
+            planner.AddAction(new MoveToPitAction());
+            planner.AddAction(new JumpIntoPitAction());
+            planner.AddAction(new WanderAction());
+            planner.AddAction(new MoveToWizardOrbAction());
+            planner.AddAction(new ActivateWizardOrbAction());
+            planner.AddAction(new MovingToInsidePitEdgeAction());
+            planner.AddAction(new JumpOutOfPitAction());
+            planner.AddAction(new MoveToPitGenPointAction());
+            
+            // Convert dictionaries to WorldState objects (simplified)
+            var wsCurrentState = Nez.AI.GOAP.WorldState.Create(planner);
+            foreach (var kvp in currentState)
+            {
+                wsCurrentState.Set(kvp.Key, kvp.Value);
+            }
+            
+            var wsGoalState = Nez.AI.GOAP.WorldState.Create(planner);
+            foreach (var kvp in goalState)
+            {
+                wsGoalState.Set(kvp.Key, kvp.Value);
+            }
+            
+            var actionPlan = planner.Plan(wsCurrentState, wsGoalState);
+            
+            var result = new Stack<HeroActionBase>();
+            if (actionPlan != null && actionPlan.Count > 0)
+            {
+                while (actionPlan.Count > 0)
+                {
+                    if (actionPlan.Pop() is HeroActionBase heroAction)
+                    {
+                        result.Push(heroAction);
+                    }
+                }
+                
+                // Reverse to get correct execution order
+                var temp = new Stack<HeroActionBase>();
+                while (result.Count > 0)
+                {
+                    temp.Push(result.Pop());
+                }
+                result = temp;
+            }
+            
+            return result;
+        }
+        
+        /// <summary>
+        /// Tick hero movement simulation
+        /// </summary>
+        public void TickHeroMovement()
+        {
+            // Simple movement simulation - just advance towards target if moving
+            if (_hero.IsMoving && _hero.TargetTilePosition.HasValue)
+            {
+                var current = _hero.CurrentTilePosition;
+                var target = _hero.TargetTilePosition.Value;
+                
+                // Simple step towards target
+                if (current.X < target.X) current.X++;
+                else if (current.X > target.X) current.X--;
+                else if (current.Y < target.Y) current.Y++;
+                else if (current.Y > target.Y) current.Y--;
+                
+                _hero.CurrentTilePosition = current;
+                
+                // Stop moving if reached target
+                if (current == target)
+                {
+                    _hero.IsMoving = false;
+                    _hero.TargetTilePosition = null;
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Execute an action in the simulation
+        /// </summary>
+        public void ExecuteAction(HeroActionBase action)
+        {
+            var context = CreateGoapContext();
+            bool completed = false;
+            int maxIterations = 100;
+            int iterations = 0;
+            
+            Console.WriteLine($"Executing action: {action.Name}");
+            
+            while (!completed && iterations < maxIterations)
+            {
+                completed = action.Execute(context);
+                if (!completed)
+                {
+                    TickHeroMovement();
+                }
+                iterations++;
+            }
+            
+            // Sync state back to hero after action execution
+            context.SyncBackToHero();
+            
+            if (completed)
+            {
+                Console.WriteLine($"Action {action.Name} completed successfully");
+            }
+            else
+            {
+                Console.WriteLine($"Action {action.Name} failed to complete within {maxIterations} iterations");
+            }
+        }
+        
+        /// <summary>
+        /// Simulate pit trigger exit for testing
+        /// </summary>
+        public void TriggerPitExit()
+        {
+            // This simulates the pit trigger exit logic
+            var currentTile = _hero.CurrentTilePosition;
+            var pitBounds = new Rectangle(1, 2, _world.PitWidthTiles, 8); // Level 40 pit bounds
+            
+            if (!pitBounds.Contains(currentTile))
+            {
+                // Hero is truly outside pit - reset flags
+                _hero.InsidePit = false;
+                _hero.AdjacentToPitBoundaryFromInside = false;
+                _hero.AdjacentToPitBoundaryFromOutside = false;
+                _hero.ActivatedWizardOrb = false;
+                _hero.MovingToInsidePitEdge = false;
+                _hero.ReadyToJumpOutOfPit = false;
+                _hero.MovingToPitGenPoint = false;
+            }
+            // Otherwise, hero is still in pit area - don't reset flags
         }
     }
 

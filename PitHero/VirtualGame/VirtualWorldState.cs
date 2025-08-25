@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using PitHero.AI.Interfaces;
+using PitHero.AI;
 
 namespace PitHero.VirtualGame
 {
@@ -382,6 +383,94 @@ namespace PitHero.VirtualGame
                 
                 return !HasFogOfWar(orbPos.Value);
             }
+        }
+        
+        /// <summary>
+        /// Clear all fog tiles in the pit area (for testing complete exploration)
+        /// </summary>
+        public void ClearAllFogInPit()
+        {
+            for (int x = PitBounds.X + 1; x < PitBounds.Right - 1; x++)
+            {
+                for (int y = PitBounds.Y + 1; y < PitBounds.Bottom - 1; y++)
+                {
+                    _fogOfWar[x, y] = false;
+                }
+            }
+            Console.WriteLine("[VirtualWorld] Cleared all fog in pit area");
+        }
+        
+        /// <summary>
+        /// Discover wizard orb at specific position (for testing)
+        /// </summary>
+        public void DiscoverWizardOrb(Point position)
+        {
+            WizardOrbPosition = position;
+            // Clear fog around wizard orb
+            _fogOfWar[position.X, position.Y] = false;
+            Console.WriteLine($"[VirtualWorld] Discovered wizard orb at {position.X},{position.Y}");
+        }
+        
+        /// <summary>
+        /// Get collection of fog tiles in pit for testing
+        /// </summary>
+        public List<Point> FogTilesInPit
+        {
+            get
+            {
+                var fogTiles = new List<Point>();
+                for (int x = PitBounds.X + 1; x < PitBounds.Right - 1; x++)
+                {
+                    for (int y = PitBounds.Y + 1; y < PitBounds.Bottom - 1; y++)
+                    {
+                        if (_fogOfWar[x, y])
+                        {
+                            fogTiles.Add(new Point(x, y));
+                        }
+                    }
+                }
+                return fogTiles;
+            }
+        }
+        
+        /// <summary>
+        /// Get current pit width in tiles
+        /// </summary>
+        public int PitWidthTiles => PitBounds.Width;
+        
+        /// <summary>
+        /// Get current world state as dictionary (for testing)
+        /// </summary>
+        public Dictionary<string, bool> GetCurrentState()
+        {
+            var state = new Dictionary<string, bool>();
+            
+            // Always true states
+            state[GoapConstants.HeroInitialized] = true;
+            state[GoapConstants.PitInitialized] = true;
+            
+            // Check exploration status
+            state[GoapConstants.MapExplored] = IsMapExplored;
+            
+            // Check wizard orb status
+            state[GoapConstants.FoundWizardOrb] = IsWizardOrbFound;
+            state[GoapConstants.ActivatedWizardOrb] = IsWizardOrbActivated;
+            
+            // Check hero position states (would come from hero object in real scenario)
+            // For testing, we'll use reasonable defaults
+            state[GoapConstants.InsidePit] = PitBounds.Contains(HeroPosition);
+            state[GoapConstants.OutsidePit] = !PitBounds.Contains(HeroPosition);
+            
+            // Check if at wizard orb position
+            if (WizardOrbPosition.HasValue)
+            {
+                state[GoapConstants.AtWizardOrb] = HeroPosition == WizardOrbPosition.Value;
+            }
+            
+            // Check if at pit generation point
+            state[GoapConstants.AtPitGenPoint] = HeroPosition.X == 34 && HeroPosition.Y == 6;
+            
+            return state;
         }
     }
 }

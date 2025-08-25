@@ -20,18 +20,27 @@ namespace PitHero.VirtualGame
         public IPitWidthManager PitWidthManager { get; }
 
         private readonly VirtualWorldState _virtualWorld;
-        private readonly VirtualHeroController _virtualHero;
+        private readonly VirtualHero _virtualHero;
+        private readonly VirtualHeroController _virtualHeroController;
         private readonly VirtualTiledMapService _virtualTiledMapService;
         private readonly VirtualPitGenerator _virtualPitGenerator;
         private readonly VirtualPitWidthManager _virtualPitWidthManager;
 
-        public VirtualGoapContext(VirtualWorldState worldState)
+        public VirtualGoapContext(VirtualWorldState worldState) : this(worldState, new VirtualHero(worldState))
+        {
+        }
+
+        public VirtualGoapContext(VirtualWorldState worldState, VirtualHero hero)
         {
             _virtualWorld = worldState;
+            _virtualHero = hero;
             WorldState = worldState;
             
-            _virtualHero = new VirtualHeroController(worldState);
-            HeroController = _virtualHero;
+            _virtualHeroController = new VirtualHeroController(worldState);
+            HeroController = _virtualHeroController;
+            
+            // Copy state from VirtualHero to VirtualHeroController
+            SyncHeroStates();
             
             Pathfinder = new VirtualPathfinder(worldState);
             PitLevelManager = new VirtualPitLevelManager(worldState);
@@ -96,10 +105,47 @@ namespace PitHero.VirtualGame
 
         public void UpdateHeroPositionStates()
         {
-            if (_virtualHero != null)
+            if (_virtualHeroController != null)
             {
                 // Update position states based on current location
                 // This is automatically handled in VirtualHeroController when position changes
+                SyncHeroStates();
+            }
+        }
+        
+        /// <summary>
+        /// Sync state from VirtualHero to VirtualHeroController
+        /// </summary>
+        private void SyncHeroStates()
+        {
+            if (_virtualHero != null && _virtualHeroController != null)
+            {
+                _virtualHeroController.PitInitialized = _virtualHero.PitInitialized;
+                _virtualHeroController.AdjacentToPitBoundaryFromOutside = _virtualHero.AdjacentToPitBoundaryFromOutside;
+                _virtualHeroController.AdjacentToPitBoundaryFromInside = _virtualHero.AdjacentToPitBoundaryFromInside;
+                _virtualHeroController.InsidePit = _virtualHero.InsidePit;
+                _virtualHeroController.ActivatedWizardOrb = _virtualHero.ActivatedWizardOrb;
+                _virtualHeroController.MovingToInsidePitEdge = _virtualHero.MovingToInsidePitEdge;
+                _virtualHeroController.ReadyToJumpOutOfPit = _virtualHero.ReadyToJumpOutOfPit;
+                _virtualHeroController.MovingToPitGenPoint = _virtualHero.MovingToPitGenPoint;
+            }
+        }
+        
+        /// <summary>
+        /// Sync state from VirtualHeroController back to VirtualHero (after action execution)
+        /// </summary>
+        public void SyncBackToHero()
+        {
+            if (_virtualHero != null && _virtualHeroController != null)
+            {
+                _virtualHero.PitInitialized = _virtualHeroController.PitInitialized;
+                _virtualHero.AdjacentToPitBoundaryFromOutside = _virtualHeroController.AdjacentToPitBoundaryFromOutside;
+                _virtualHero.AdjacentToPitBoundaryFromInside = _virtualHeroController.AdjacentToPitBoundaryFromInside;
+                _virtualHero.InsidePit = _virtualHeroController.InsidePit;
+                _virtualHero.ActivatedWizardOrb = _virtualHeroController.ActivatedWizardOrb;
+                _virtualHero.MovingToInsidePitEdge = _virtualHeroController.MovingToInsidePitEdge;
+                _virtualHero.ReadyToJumpOutOfPit = _virtualHeroController.ReadyToJumpOutOfPit;
+                _virtualHero.MovingToPitGenPoint = _virtualHeroController.MovingToPitGenPoint;
             }
         }
 
