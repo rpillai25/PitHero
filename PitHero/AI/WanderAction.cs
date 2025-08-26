@@ -29,7 +29,8 @@ namespace PitHero.AI
         public WanderAction() : base(GoapConstants.WanderAction, 1)
         {
             SetPrecondition(GoapConstants.InsidePit, true);
-            SetPostcondition(GoapConstants.MapExplored, true);
+            SetPrecondition(GoapConstants.ExploredPit, false);
+            SetPostcondition(GoapConstants.ExploredPit, true);
             _failedTargets = new HashSet<Point>(8); // Pre-allocate small capacity
         }
 
@@ -54,6 +55,8 @@ namespace PitHero.AI
                 if (!nearestUnknownTile.HasValue)
                 {
                     Debug.Log("[Wander] No unknown tiles found - exploration complete");
+                    // Set ExploredPit = True when all fog uncovered
+                    hero.ExploredPit = true;
                     ResetInternal();
                     return true; // All done
                 }
@@ -77,6 +80,9 @@ namespace PitHero.AI
                 if (tiledMapService != null)
                 {
                     tiledMapService.ClearFogOfWarAroundTile(currentTile.X, currentTile.Y);
+                    
+                    // Check if wizard orb was uncovered at this position
+                    CheckWizardOrbFound(hero, tiledMapService, currentTile);
                 }
 
                 // Successfully reached target, remove it from failed targets if it was there
@@ -573,6 +579,27 @@ namespace PitHero.AI
         private Point GetTileCoordinates(Vector2 worldPosition, int tileSize)
         {
             return new Point((int)(worldPosition.X / tileSize), (int)(worldPosition.Y / tileSize));
+        }
+
+        /// <summary>
+        /// Check if wizard orb was found at the given position
+        /// </summary>
+        private void CheckWizardOrbFound(HeroComponent hero, TiledMapService tiledMapService, Point position)
+        {
+            // Get wizard orb position from the tilemap service
+            var wizardOrbPosition = tiledMapService.GetWizardOrbPosition();
+            if (wizardOrbPosition.HasValue)
+            {
+                var orbTile = new Point((int)(wizardOrbPosition.Value.X / GameConfig.TileSize), 
+                                      (int)(wizardOrbPosition.Value.Y / GameConfig.TileSize));
+                
+                // Check if hero is at the wizard orb position
+                if (position.X == orbTile.X && position.Y == orbTile.Y)
+                {
+                    Debug.Log($"[Wander] Found wizard orb at position {position.X},{position.Y}");
+                    hero.FoundWizardOrb = true;
+                }
+            }
         }
 
         /// <summary>

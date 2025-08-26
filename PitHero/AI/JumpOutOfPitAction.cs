@@ -16,12 +16,12 @@ namespace PitHero.AI
         
         public JumpOutOfPitAction() : base(GoapConstants.JumpOutOfPitAction, 1)
         {
-            // Precondition: Hero must be ready to jump out of pit
-            SetPrecondition(GoapConstants.ReadyToJumpOutOfPit, true);
+            // Preconditions: Hero must be inside pit and wizard orb activated
+            SetPrecondition(GoapConstants.InsidePit, true);
+            SetPrecondition(GoapConstants.ActivatedWizardOrb, true);
             
-            // Postconditions: Hero is outside pit and moving to pit gen point
+            // Postcondition: Hero is outside pit
             SetPostcondition(GoapConstants.OutsidePit, true);
-            SetPostcondition(GoapConstants.MovingToPitGenPoint, true);
         }
 
         public override bool Execute(HeroComponent hero)
@@ -37,11 +37,7 @@ namespace PitHero.AI
                 
                 // Movement complete, finalize the jump
                 _isJumping = false;
-                hero.InsidePit = false;
-                hero.AdjacentToPitBoundaryFromInside = false;
-                hero.AdjacentToPitBoundaryFromOutside = false; // No longer adjacent after jumping out
-                hero.ReadyToJumpOutOfPit = false; // Clear the ready flag
-                hero.MovingToPitGenPoint = true; // Set flag for next action
+                hero.InsidePit = false;  // Set InsidePit = False according to specification
                 
                 Debug.Log("[JumpOutOfPit] Jump out completed successfully");
                 return true; // Action complete

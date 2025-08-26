@@ -14,13 +14,12 @@ namespace PitHero.AI
         
         public JumpIntoPitAction() : base(GoapConstants.JumpIntoPitAction, 1)
         {
-            // Precondition: Hero must be adjacent to pit boundary from outside
-            SetPrecondition(GoapConstants.AdjacentToPitBoundaryFromOutside, true);
+            // Precondition: Hero and pit must be initialized
+            SetPrecondition(GoapConstants.HeroInitialized, true);
+            SetPrecondition(GoapConstants.PitInitialized, true);
             
-            // Postconditions: Hero enters pit
+            // Postcondition: Hero enters pit
             SetPostcondition(GoapConstants.InsidePit, true);
-            // Note: AdjacentToPitBoundaryFromInside is now reserved for a specific inside-edge coordinate and
-            // is produced by MovingToInsidePitEdgeAction, not by this jump.
         }
 
         public override bool Execute(HeroComponent hero)
@@ -37,22 +36,17 @@ namespace PitHero.AI
                 // Movement complete, finalize the jump
                 _isJumping = false;
                 hero.InsidePit = true;
-                // Ensure flags are correct on entry: no longer outside-adjacent and not considered inside-edge-adjacent yet
-                hero.AdjacentToPitBoundaryFromInside = false;
-                hero.AdjacentToPitBoundaryFromOutside = false;
                 
                 Debug.Log("[JumpIntoPit] Jump completed successfully");
                 return true; // Action complete
             }
 
-            // Start the jump
-            if (!hero.AdjacentToPitBoundaryFromOutside || hero.PitApproachDirection == null)
-            {
-                Debug.Warn("[JumpIntoPit] Cannot jump - not adjacent to pit boundary from outside");
-                return true; // Action failed, but complete
-            }
+            // Start the jump - calculate target based on pit bounds
+            var currentTile = hero.Entity.GetComponent<TileByTileMover>()?.GetCurrentTileCoordinates() 
+                ?? new Point((int)(hero.Entity.Transform.Position.X / GameConfig.TileSize), 
+                           (int)(hero.Entity.Transform.Position.Y / GameConfig.TileSize));
 
-            var targetTile = CalculateJumpTargetTile(hero);
+            var targetTile = CalculateJumpTargetTile(currentTile);
             if (!targetTile.HasValue)
             {
                 Debug.Warn("[JumpIntoPit] Cannot calculate jump target tile");
@@ -63,50 +57,29 @@ namespace PitHero.AI
             StartJumpMovement(hero, targetTile.Value);
             _isJumping = true;
             
-            Debug.Log($"[JumpIntoPit] Started jump from direction {hero.PitApproachDirection} to tile {targetTile.Value.X},{targetTile.Value.Y}");
+            Debug.Log($"[JumpIntoPit] Started jump to tile {targetTile.Value.X},{targetTile.Value.Y}");
             return false; // Action in progress
         }
 
         /// <summary>
-        /// Calculate the target tile based on approach direction
+        /// Calculate the target tile based on current position and pit bounds
         /// </summary>
-        private Point? CalculateJumpTargetTile(HeroComponent hero)
+        private Point? CalculateJumpTargetTile(Point currentTile)
         {
-            var direction = hero.PitApproachDirection.Value;
-            var currentTile = hero.Entity.GetComponent<TileByTileMover>()?.GetCurrentTileCoordinates() 
-                ?? new Point((int)(hero.Entity.Transform.Position.X / GameConfig.TileSize), 
-                           (int)(hero.Entity.Transform.Position.Y / GameConfig.TileSize));
-
-            switch (direction)
-            {
-                case Direction.Right: // Approaching from left, move 2 tiles right
-                    return new Point(currentTile.X + 2, currentTile.Y);
-                    
-                case Direction.Left: // Approaching from right, move 2 tiles left
-                    return new Point(currentTile.X - 2, currentTile.Y);
-                    
-                case Direction.Down: // Approaching from above, move 2 tiles down
-                    return new Point(currentTile.X, currentTile.Y + 2);
-                    
-                case Direction.Up: // Approaching from below, move 2 tiles up
-                    return new Point(currentTile.X, currentTile.Y - 2);
-                    
-                // Corner cases
-                case Direction.DownRight: // Upper left corner (1,2) -> (2,3)
-                    return new Point(2, 3);
-                    
-                case Direction.DownLeft: // Upper right corner (12,2) -> (11,3)
-                    return new Point(11, 3);
-                    
-                case Direction.UpLeft: // Lower right corner (12,10) -> (11,9)
-                    return new Point(11, 9);
-                    
-                case Direction.UpRight: // Lower left corner (1,10) -> (2,9)
-                    return new Point(2, 9);
-                    
-                default:
-                    return null;
-            }
+            // Jump into the pit interior - target a safe tile inside the pit
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            
+            // Calculate pit bounds
+            int pitLeftX = GameConfig.PitRectX + 1;  // Inside left wall
+            int pitRightX = (pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth)) - 2;  // Inside right wall
+            int pitTopY = GameConfig.PitRectY + 1;   // Inside top wall
+            int pitBottomY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2;  // Inside bottom wall
+            
+            // Choose a safe landing spot in the middle of the pit
+            int targetX = (pitLeftX + pitRightX) / 2;
+            int targetY = (pitTopY + pitBottomY) / 2;
+            
+            return new Point(targetX, targetY);
         }
 
         /// <summary>

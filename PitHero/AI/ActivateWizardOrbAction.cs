@@ -13,14 +13,13 @@ namespace PitHero.AI
     {
         public ActivateWizardOrbAction() : base(GoapConstants.ActivateWizardOrbAction, 1)
         {
-            // Precondition: Hero must be at wizard orb
-            SetPrecondition(GoapConstants.AtWizardOrb, true);
+            // Preconditions: Hero must be inside pit, exploration complete, and wizard orb found
+            SetPrecondition(GoapConstants.InsidePit, true);
+            SetPrecondition(GoapConstants.ExploredPit, true);
+            SetPrecondition(GoapConstants.FoundWizardOrb, true);
             
-            // Postconditions: Wizard orb activated and hero should move to inside pit edge
+            // Postconditions: Wizard orb activated and pit no longer initialized
             SetPostcondition(GoapConstants.ActivatedWizardOrb, true);
-            SetPostcondition(GoapConstants.MovingToInsidePitEdge, true);
-            
-            // Make sure pit is not initialized (will be regenerated later)
             SetPostcondition(GoapConstants.PitInitialized, false);
         }
 
@@ -51,10 +50,10 @@ namespace PitHero.AI
             // Queue the next pit level
             QueueNextPitLevel();
 
-            // Set hero state flags
-            hero.PitInitialized = false; // Pit will be regenerated later
+            // Set hero state flags according to specification
             hero.ActivatedWizardOrb = true;
-            hero.MovingToInsidePitEdge = true;
+            hero.PitInitialized = false;
+            hero.FoundWizardOrb = false;  // Reset according to specification
             
             Debug.Log("[ActivateWizardOrb] Wizard orb activation complete - pit level queued");
             return true; // Action complete
@@ -74,10 +73,10 @@ namespace PitHero.AI
             var nextLevel = context.PitLevelManager.CurrentLevel + 1;
             context.PitLevelManager.QueueLevel(nextLevel);
 
-            // Set hero state flags
-            context.HeroController.PitInitialized = false; // Pit will be regenerated later
+            // Set hero state flags according to specification
             context.HeroController.ActivatedWizardOrb = true;
-            context.HeroController.MovingToInsidePitEdge = true;
+            context.HeroController.PitInitialized = false;
+            context.HeroController.FoundWizardOrb = false;  // Reset according to specification
             
             context.LogDebug($"[ActivateWizardOrbAction] Wizard orb activation complete - pit level {nextLevel} queued");
             return true; // Action complete
