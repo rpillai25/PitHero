@@ -2,7 +2,6 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.ECS.Components;
 using PitHero.Util;
-using System.Collections;
 
 namespace PitHero.AI
 {
@@ -18,9 +17,10 @@ namespace PitHero.AI
             // Precondition: Hero must be adjacent to pit boundary from outside
             SetPrecondition(GoapConstants.AdjacentToPitBoundaryFromOutside, true);
             
-            // Postconditions: Hero enters pit and is now adjacent to boundary from inside
-            SetPostcondition(GoapConstants.EnteredPit, true);
-            SetPostcondition(GoapConstants.AdjacentToPitBoundaryFromInside, true);
+            // Postconditions: Hero enters pit
+            SetPostcondition(GoapConstants.InsidePit, true);
+            // Note: AdjacentToPitBoundaryFromInside is now reserved for a specific inside-edge coordinate and
+            // is produced by MovingToInsidePitEdgeAction, not by this jump.
         }
 
         public override bool Execute(HeroComponent hero)
@@ -36,8 +36,9 @@ namespace PitHero.AI
                 
                 // Movement complete, finalize the jump
                 _isJumping = false;
-                hero.EnteredPit = true;
-                hero.AdjacentToPitBoundaryFromInside = true;
+                hero.InsidePit = true;
+                // Ensure flags are correct on entry: no longer outside-adjacent and not considered inside-edge-adjacent yet
+                hero.AdjacentToPitBoundaryFromInside = false;
                 hero.AdjacentToPitBoundaryFromOutside = false;
                 
                 Debug.Log("[JumpIntoPit] Jump completed successfully");
@@ -123,7 +124,7 @@ namespace PitHero.AI
         /// <summary>
         /// Coroutine that smoothly moves the entity to target position over time
         /// </summary>
-        private IEnumerator JumpMovementCoroutine(Entity entity, Vector2 targetPosition, float tilesPerSecond)
+        private System.Collections.IEnumerator JumpMovementCoroutine(Entity entity, Vector2 targetPosition, float tilesPerSecond)
         {
             var startPosition = entity.Transform.Position;
             var distance = Vector2.Distance(startPosition, targetPosition);

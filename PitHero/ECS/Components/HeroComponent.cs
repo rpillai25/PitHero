@@ -12,8 +12,17 @@ namespace PitHero.ECS.Components
         public bool PitInitialized { get; set; }
         public bool AdjacentToPitBoundaryFromOutside { get; set; }
         public bool AdjacentToPitBoundaryFromInside { get; set; }
-        public bool EnteredPit { get; set; }
+        public bool InsidePit { get; set; }
+        public bool OutsidePit => !InsidePit;
         public Direction? PitApproachDirection { get; set; }
+        
+        // GOAP-specific wizard orb workflow flags
+        public bool ActivatedWizardOrb { get; set; }
+        public bool MovingToInsidePitEdge { get; set; }
+        public bool ReadyToJumpOutOfPit { get; set; }
+        public bool MovingToPitGenPoint { get; set; }
+
+        public bool AtPitGenPoint { get; set; }
 
         private PitWidthManager _pitWidthManager;
 
@@ -54,8 +63,14 @@ namespace PitHero.ECS.Components
             // Initialize other GOAP flags to clean state
             AdjacentToPitBoundaryFromOutside = false;
             AdjacentToPitBoundaryFromInside = false;
-            EnteredPit = false;
+            InsidePit = false;
             PitApproachDirection = null;
+            
+            // Initialize wizard orb workflow flags
+            ActivatedWizardOrb = false;
+            MovingToInsidePitEdge = false;
+            ReadyToJumpOutOfPit = false;
+            MovingToPitGenPoint = false;
         }
 
         /// <summary>
@@ -149,14 +164,37 @@ namespace PitHero.ECS.Components
 
         private void HandlePitTriggerExit()
         {
-            // Reset all GOAP flags when leaving pit trigger
-            AdjacentToPitBoundaryFromInside = false;
-            AdjacentToPitBoundaryFromOutside = false;
-            EnteredPit = false;
-            PitApproachDirection = null;
+            var currentTile = GetCurrentTilePosition();
+            var pitBounds = PitCollisionRect;
             
-            var historian = Entity.GetComponent<Historian>();
-            historian?.RecordMilestone(MilestoneType.FirstJumpOutOfPit, Time.TotalTime);
+            Debug.Log($"[HeroComponent] HandlePitTriggerExit: currentTile={currentTile.X},{currentTile.Y}, " +
+                      $"pitBounds=({pitBounds.X},{pitBounds.Y},{pitBounds.Width},{pitBounds.Height})");
+            
+            // Only reset flags if hero is actually outside the pit area 
+            // This prevents spurious trigger exits from resetting state during normal pit exploration
+            if (!pitBounds.Contains(currentTile))
+            {
+                Debug.Log("[HeroComponent] Hero truly exited pit area - resetting GOAP flags");
+                
+                // Reset all GOAP flags when actually leaving pit area
+                AdjacentToPitBoundaryFromInside = false;
+                AdjacentToPitBoundaryFromOutside = false;
+                InsidePit = false;
+                PitApproachDirection = null;
+                
+                // Reset wizard orb workflow flags when leaving pit
+                ActivatedWizardOrb = false;
+                MovingToInsidePitEdge = false;
+                ReadyToJumpOutOfPit = false;
+                MovingToPitGenPoint = false;
+                
+                var historian = Entity.GetComponent<Historian>();
+                historian?.RecordMilestone(MilestoneType.FirstJumpOutOfPit, Time.TotalTime);
+            }
+            else
+            {
+                Debug.Log("[HeroComponent] Hero still inside pit area - ignoring spurious trigger exit");
+            }
         }
 
         /// <summary>

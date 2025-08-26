@@ -34,13 +34,13 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void GoapConstants_EnteredPit_ShouldExist()
+        public void GoapConstants_InsidePit_ShouldExist()
         {
             // Arrange & Act
-            var stateName = GoapConstants.EnteredPit;
+            var stateName = GoapConstants.InsidePit;
 
             // Assert
-            Assert.AreEqual("EnteredPit", stateName, "EnteredPit constant should have correct value");
+            Assert.AreEqual("InsidePit", stateName, "InsidePit constant should have correct value");
         }
     }
 }

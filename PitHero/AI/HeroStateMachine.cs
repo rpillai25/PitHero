@@ -1,3 +1,4 @@
+using Microsoft.Xna.Framework;
 using Nez;
 using Nez.AI.FSM;
 using Nez.AI.GOAP;
@@ -38,6 +39,22 @@ namespace PitHero.AI
 
             var wander = new WanderAction();
             _planner.AddAction(wander);
+            
+            // New actions for wizard orb and pit regeneration workflow
+            var moveToWizardOrb = new MoveToWizardOrbAction();
+            _planner.AddAction(moveToWizardOrb);
+            
+            var activateWizardOrb = new ActivateWizardOrbAction();
+            _planner.AddAction(activateWizardOrb);
+            
+            var movingToInsidePitEdge = new MovingToInsidePitEdgeAction();
+            _planner.AddAction(movingToInsidePitEdge);
+            
+            var jumpOutOfPit = new JumpOutOfPitAction();
+            _planner.AddAction(jumpOutOfPit);
+            
+            var moveToPitGenPoint = new MoveToPitGenPointAction();
+            _planner.AddAction(moveToPitGenPoint);
 
             // Don't set initial state here - wait for OnAddedToEntity
         }
@@ -89,17 +106,31 @@ namespace PitHero.AI
                 ws.Set(GoapConstants.PitInitialized, true);
 
             var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
-            if (tileMover != null && tileMover.IsMoving && !_hero.AdjacentToPitBoundaryFromOutside)
+            // MOVINGTOPIT should only be true while outside and heading toward pit
+            if (tileMover != null && tileMover.IsMoving && !_hero.AdjacentToPitBoundaryFromOutside && !_hero.InsidePit)
             {
                 ws.Set(GoapConstants.MovingToPit, true);
             }
 
             if (_hero.AdjacentToPitBoundaryFromOutside)
                 ws.Set(GoapConstants.AdjacentToPitBoundaryFromOutside, true);
+
+            // Only set AdjacentToPitBoundaryFromInside if hero is truly at the inside-edge target used for jumping out
             if (_hero.AdjacentToPitBoundaryFromInside)
                 ws.Set(GoapConstants.AdjacentToPitBoundaryFromInside, true);
-            if (_hero.EnteredPit)
-                ws.Set(GoapConstants.EnteredPit, true);
+
+            if (_hero.InsidePit)
+                ws.Set(GoapConstants.InsidePit, true);
+
+            // Wizard orb workflow states
+            if (_hero.ActivatedWizardOrb)
+                ws.Set(GoapConstants.ActivatedWizardOrb, true);
+            if (_hero.MovingToInsidePitEdge)
+                ws.Set(GoapConstants.MovingToInsidePitEdge, true);
+            if (_hero.ReadyToJumpOutOfPit)
+                ws.Set(GoapConstants.ReadyToJumpOutOfPit, true);
+            if (_hero.MovingToPitGenPoint)
+                ws.Set(GoapConstants.MovingToPitGenPoint, true);
 
             // Mark exploration complete when FogOfWar is fully cleared inside the pit rect
             var tms = Core.Services.GetService<TiledMapService>();
@@ -153,21 +184,342 @@ namespace PitHero.AI
                 }
             }
 
+            // Check if wizard orb has been found (fog cleared around it)
+            CheckWizardOrbFound(ref ws, tms);
+
+            // Check additional positional states (these methods will set/clear transient flags properly)
+            CheckAdditionalStates(ref ws);
+
             Debug.Log($"[HeroStateMachine] State: PitInitialized={_hero.PitInitialized}, " +
                       $"AdjOut={_hero.AdjacentToPitBoundaryFromOutside}, " +
                       $"AdjIn={_hero.AdjacentToPitBoundaryFromInside}, " +
-                      $"EnteredPit={_hero.EnteredPit}");
+                      $"InsidePit={_hero.InsidePit}, " +
+                      $"MapExplored={IsMapCurrentlyExplored()}, " +
+                      $"ActivatedWizardOrb={_hero.ActivatedWizardOrb}");
             return ws;
         }
 
         /// <summary>
-        /// Get the goal state for GOAP planning
+        /// Get the goal state for GOAP planning - Progressive goals based on current state
         /// </summary>
         private WorldState GetGoalState()
         {
             var goal = WorldState.Create(_planner);
-            goal.Set(GoapConstants.MapExplored, true); // goal is exploration, not just entering pit
+            var currentState = GetWorldState();
+            
+            // Progressive goal logic - set next objective based on current state
+            
+            // Check if map is explored (using the same logic as GetWorldState)
+            bool mapExplored = IsMapCurrentlyExplored();
+            
+            // Check if hero is at wizard orb position
+            bool atWizardOrb = IsAtWizardOrbPosition();
+            
+            // Check if wizard orb is activated
+            bool wizardOrbActivated = _hero?.ActivatedWizardOrb == true;
+            
+            // Check if hero is ready to jump out and moving state flags
+            bool readyToJumpOut = _hero?.ReadyToJumpOutOfPit == true;
+
+            bool movingToPitGenPoint = _hero?.MovingToPitGenPoint == true;
+
+            // Check if hero is at pit generation point
+            bool atPitGenPoint = _hero?.AtPitGenPoint == true;
+            
+            Debug.Log($"[HeroStateMachine] Goal determination: MapExplored={mapExplored}, AtWizardOrb={atWizardOrb}, WizardOrbActivated={wizardOrbActivated}, AtPitGenPoint={atPitGenPoint}");
+            
+            if (!mapExplored)
+            {
+                goal.Set(GoapConstants.MapExplored, true);
+                Debug.Log("[HeroStateMachine] Goal set to: MapExplored");
+            }
+            else if (!atWizardOrb && !wizardOrbActivated)
+            {
+                goal.Set(GoapConstants.AtWizardOrb, true);
+                Debug.Log("[HeroStateMachine] Goal set to: AtWizardOrb");
+            }
+            else if (!wizardOrbActivated)
+            {
+                goal.Set(GoapConstants.ActivatedWizardOrb, true);
+                Debug.Log("[HeroStateMachine] Goal set to: ActivatedWizardOrb");
+            }
+            else if (wizardOrbActivated && !readyToJumpOut && !movingToPitGenPoint)
+            {
+                // After activation we want to become ReadyToJumpOutOfPit, which will select MovingToInsidePitEdgeAction
+                goal.Set(GoapConstants.ReadyToJumpOutOfPit, true);
+                Debug.Log("[HeroStateMachine] Goal set to: ReadyToJumpOutOfPit (move to inside pit edge)");
+            }
+            else if (readyToJumpOut && !movingToPitGenPoint) {                 // After becoming ready, we want to jump out of the pit
+                goal.Set(GoapConstants.OutsidePit, true);
+                Debug.Log("[HeroStateMachine] Goal set to: OutsidePit (jump out of pit)");
+            } 
+            else if (movingToPitGenPoint)
+            {
+                // After jumping out, we want to move to pit generation point
+                goal.Set(GoapConstants.AtPitGenPoint, true);
+                Debug.Log("[HeroStateMachine] Goal set to: MovingToPitGenPoint");
+            }
+            else if(atPitGenPoint)
+            {
+                // Final goal: go back to pit and restart cycle
+                goal.Set(GoapConstants.AdjacentToPitBoundaryFromOutside, true);
+                Debug.Log("[HeroStateMachine] Goal set to: OutsidePit (regeneration cycle)");
+            }
+            
             return goal;
+        }
+        
+        /// <summary>
+        /// Check if map is currently explored (same logic as in GetWorldState)
+        /// </summary>
+        private bool IsMapCurrentlyExplored()
+        {
+            var tms = Core.Services.GetService<TiledMapService>();
+            if (tms?.CurrentMap == null)
+                return false;
+
+            var fogLayer = tms.CurrentMap.GetLayer<Nez.Tiled.TmxLayer>("FogOfWar");
+            if (fogLayer == null)
+                return true; // No fog layer means exploration is complete
+
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            
+            // Use the same explorable area bounds as WanderAction
+            int explorationMinX, explorationMinY, explorationMaxX, explorationMaxY;
+            
+            if (pitWidthManager != null)
+            {
+                explorationMinX = GameConfig.PitRectX + 1; // x=2
+                explorationMinY = GameConfig.PitRectY + 1; // y=3  
+                explorationMaxX = pitWidthManager.CurrentPitRightEdge - 2; // Last explorable column
+                explorationMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // y=9
+            }
+            else
+            {
+                explorationMinX = GameConfig.PitRectX + 1; // 2
+                explorationMinY = GameConfig.PitRectY + 1; // 3
+                explorationMaxX = GameConfig.PitRectX + GameConfig.PitRectWidth - 2; // 11
+                explorationMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // 9
+            }
+            
+            for (var x = explorationMinX; x <= explorationMaxX; x++)
+            {
+                for (var y = explorationMinY; y <= explorationMaxY; y++)
+                {
+                    if (x >= 0 && y >= 0 && x < fogLayer.Width && y < fogLayer.Height)
+                    {
+                        var fogTile = fogLayer.GetTile(x, y);
+                        if (fogTile != null)
+                        {
+                            return false; // Found fog, exploration not complete
+                        }
+                    }
+                }
+            }
+            
+            return true; // No fog found, exploration complete
+        }
+        
+        /// <summary>
+        /// Check if hero is at pit generation point (34, 6)
+        /// </summary>
+        private bool IsAtPitGenPoint()
+        {
+            if (_hero?.Entity == null)
+                return false;
+
+            var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
+            var currentTile = tileMover?.GetCurrentTileCoordinates() ?? 
+                new Point((int)(_hero.Entity.Transform.Position.X / GameConfig.TileSize),
+                         (int)(_hero.Entity.Transform.Position.Y / GameConfig.TileSize));
+
+            return currentTile.X == 34 && currentTile.Y == 6;
+        }
+        
+        /// <summary>
+        /// Check if hero is at wizard orb position
+        /// </summary>
+        private bool IsAtWizardOrbPosition()
+        {
+            if (_hero?.Entity == null)
+                return false;
+
+            var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
+            var heroTile = tileMover?.GetCurrentTileCoordinates() ?? 
+                new Point((int)(_hero.Entity.Transform.Position.X / GameConfig.TileSize),
+                         (int)(_hero.Entity.Transform.Position.Y / GameConfig.TileSize));
+            
+            var scene = Core.Scene;
+            if (scene == null)
+                return false;
+
+            var wizardOrbEntities = scene.FindEntitiesWithTag(GameConfig.TAG_WIZARD_ORB);
+            if (wizardOrbEntities.Count == 0)
+                return false;
+
+            var wizardOrbEntity = wizardOrbEntities[0];
+            var orbWorldPos = wizardOrbEntity.Transform.Position;
+            var orbTile = new Point((int)(orbWorldPos.X / GameConfig.TileSize), 
+                                  (int)(orbWorldPos.Y / GameConfig.TileSize));
+
+            return heroTile.X == orbTile.X && heroTile.Y == orbTile.Y;
+        }
+
+        /// <summary>
+        /// Check if wizard orb has been found (fog cleared around its position)
+        /// </summary>
+        private void CheckWizardOrbFound(ref WorldState ws, TiledMapService tms)
+        {
+            if (tms?.CurrentMap == null)
+            {
+                Debug.Log("[HeroStateMachine] CheckWizardOrbFound: No current map available");
+                return;
+            }
+
+            var scene = Core.Scene;
+            if (scene == null)
+            {
+                Debug.Log("[HeroStateMachine] CheckWizardOrbFound: No active scene");
+                return;
+            }
+
+            // Find wizard orb entities
+            var wizardOrbEntities = scene.FindEntitiesWithTag(GameConfig.TAG_WIZARD_ORB);
+            if (wizardOrbEntities.Count == 0)
+            {
+                Debug.Log("[HeroStateMachine] CheckWizardOrbFound: No wizard orb entities found");
+                return;
+            }
+
+            var wizardOrbEntity = wizardOrbEntities[0]; // Should only be one
+            var worldPos = wizardOrbEntity.Transform.Position;
+            var tilePos = new Point((int)(worldPos.X / GameConfig.TileSize), (int)(worldPos.Y / GameConfig.TileSize));
+
+            Debug.Log($"[HeroStateMachine] CheckWizardOrbFound: Wizard orb entity found at world pos {worldPos.X},{worldPos.Y}, tile {tilePos.X},{tilePos.Y}");
+
+            var fogLayer = tms.CurrentMap.GetLayer<Nez.Tiled.TmxLayer>("FogOfWar");
+            if (fogLayer != null)
+            {
+                // Check if fog is cleared around the wizard orb position
+                if (tilePos.X >= 0 && tilePos.Y >= 0 && tilePos.X < fogLayer.Width && tilePos.Y < fogLayer.Height)
+                {
+                    var fogTile = fogLayer.GetTile(tilePos.X, tilePos.Y);
+                    Debug.Log($"[HeroStateMachine] CheckWizardOrbFound: Fog tile at wizard orb position {tilePos.X},{tilePos.Y}: {(fogTile == null ? "NULL (cleared)" : "EXISTS (not cleared)")}");
+
+                    if (fogTile == null) // No fog means it's been discovered
+                    {
+                        ws.Set(GoapConstants.FoundWizardOrb, true);
+                        Debug.Log($"[HeroStateMachine] *** WIZARD ORB FOUND *** Setting FoundWizardOrb=true at tile {tilePos.X},{tilePos.Y}");
+                        Debug.Log($"[HeroStateMachine] *** VERIFICATION *** WorldState.Set() called successfully for FoundWizardOrb");
+                    }
+                    else
+                    {
+                        Debug.Log($"[HeroStateMachine] Wizard orb at {tilePos.X},{tilePos.Y} still covered by fog - not yet discovered");
+                    }
+                }
+                else
+                {
+                    Debug.Warn($"[HeroStateMachine] CheckWizardOrbFound: Wizard orb tile {tilePos.X},{tilePos.Y} is outside fog layer bounds ({fogLayer.Width}x{fogLayer.Height})");
+                }
+            }
+            else
+            {
+                Debug.Log("[HeroStateMachine] CheckWizardOrbFound: No FogOfWar layer found - assuming wizard orb is discovered");
+                ws.Set(GoapConstants.FoundWizardOrb, true);
+                Debug.Log($"[HeroStateMachine] *** VERIFICATION *** WorldState.Set() called successfully for FoundWizardOrb (no fog layer)");
+            }
+        }
+
+        /// <summary>
+        /// Check additional positional states like AtWizardOrb and AtPitGenPoint
+        /// </summary>
+        private void CheckAdditionalStates(ref WorldState ws)
+        {
+            if (_hero?.Entity == null)
+                return;
+
+            var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
+            var currentTile = tileMover?.GetCurrentTileCoordinates() ?? 
+                new Point((int)(_hero.Entity.Transform.Position.X / GameConfig.TileSize),
+                         (int)(_hero.Entity.Transform.Position.Y / GameConfig.TileSize));
+
+            // AtWizardOrb should only be true while literally on the orb tile
+            UpdateAtWizardOrb(ref ws, currentTile);
+
+            // Check if at pit generation point (34, 6)
+            if (currentTile.X == 34 && currentTile.Y == 6)
+            {
+                ws.Set(GoapConstants.AtPitGenPoint, true);
+            }
+
+            // If hero moved away from the inside-edge coordinate, clear the adjacency flag on the hero
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            var insideEdge = CalculateInsideEdgeTarget(pitWidthManager);
+            if (!(currentTile.X == insideEdge.X && currentTile.Y == insideEdge.Y))
+            {
+                _hero.AdjacentToPitBoundaryFromInside = false;
+            }
+
+            // Check if outside pit (not inside pit area)
+            var pitBounds = GetPitBounds(pitWidthManager);
+            if (!pitBounds.Contains(currentTile))
+            {
+                ws.Set(GoapConstants.OutsidePit, true);
+            }
+        }
+
+        /// <summary>
+        /// Ensure AtWizardOrb reflects current tile accurately
+        /// </summary>
+        private void UpdateAtWizardOrb(ref WorldState ws, Point heroTile)
+        {
+            var scene = Core.Scene;
+            if (scene == null)
+                return;
+
+            var wizardOrbEntities = scene.FindEntitiesWithTag(GameConfig.TAG_WIZARD_ORB);
+            if (wizardOrbEntities.Count == 0)
+                return;
+
+            var wizardOrbEntity = wizardOrbEntities[0];
+            var orbWorldPos = wizardOrbEntity.Transform.Position;
+            var orbTile = new Point((int)(orbWorldPos.X / GameConfig.TileSize), (int)(orbWorldPos.Y / GameConfig.TileSize));
+
+            if (heroTile.X == orbTile.X && heroTile.Y == orbTile.Y)
+                ws.Set(GoapConstants.AtWizardOrb, true);
+            // else: do not set the condition. It will be treated as "don't care" (i.e., false for our purposes).
+        }
+
+        /// <summary>
+        /// Calculate the inside-edge target used by MovingToInsidePitEdgeAction
+        /// </summary>
+        private Point CalculateInsideEdgeTarget(PitWidthManager pitWidthManager)
+        {
+            int pitRightEdge;
+            if (pitWidthManager != null)
+                pitRightEdge = pitWidthManager.CurrentPitRightEdge;
+            else
+                pitRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth - 1;
+
+            var targetX = pitRightEdge - 2;
+            var targetY = GameConfig.PitCenterTileY;
+            return new Point(targetX, targetY);
+        }
+
+        /// <summary>
+        /// Get pit bounds rectangle for checking inside/outside
+        /// </summary>
+        private Rectangle GetPitBounds(PitWidthManager pitWidthManager)
+        {
+            if (pitWidthManager != null)
+            {
+                var width = pitWidthManager.CurrentPitRectWidthTiles;
+                return new Rectangle(GameConfig.PitRectX, GameConfig.PitRectY, width, GameConfig.PitRectHeight);
+            }
+            else
+            {
+                return new Rectangle(GameConfig.PitRectX, GameConfig.PitRectY, GameConfig.PitRectWidth, GameConfig.PitRectHeight);
+            }
         }
 
         #region State Methods
@@ -177,7 +529,17 @@ namespace PitHero.AI
             Debug.Log("[HeroStateMachine] Entering Idle state - planning next actions");
             
             // Get a plan to run that will get us from our current state to our goal state
-            _actionPlan = _planner.Plan(GetWorldState(), GetGoalState());
+            var currentWorldState = GetWorldState();
+            var goalState = GetGoalState();
+            
+            // Add comprehensive debug logging for world state and goal state
+            LogWorldStateDetails(currentWorldState, "Current World State");
+            LogWorldStateDetails(goalState, "Goal State");
+            
+            // CRITICAL DEBUG: Log what states we expect to see
+            Debug.Log($"[HeroStateMachine] *** CRITICAL GOAP CHECK *** About to call GOAP planner");
+
+            _actionPlan = _planner.Plan(currentWorldState, goalState);
 
             if (_actionPlan != null && _actionPlan.Count > 0)
             {
@@ -187,6 +549,7 @@ namespace PitHero.AI
             else
             {
                 Debug.Log("[HeroStateMachine] No action plan satisfied our goals");
+                LogActionPreconditions(); // Log what each action needs
                 // Stay in Idle and try again in Idle_Tick
             }
         }
@@ -200,12 +563,27 @@ namespace PitHero.AI
                 if (elapsedTimeInState > 1.0f) // Wait 1 second before retry
                 {
                     Debug.Log("[HeroStateMachine] Retrying action planning...");
-                    _actionPlan = _planner.Plan(GetWorldState(), GetGoalState());
+                    
+                    var currentWorldState = GetWorldState();
+                    var goalState = GetGoalState();
+                    
+                    // Add comprehensive debug logging for world state and goal state
+                    LogWorldStateDetails(currentWorldState, "Retry Current World State");
+                    LogWorldStateDetails(goalState, "Retry Goal State");
+                    
+                    // CRITICAL DEBUG: Log retry attempt
+                    Debug.Log($"[HeroStateMachine] *** CRITICAL RETRY CHECK *** About to retry GOAP planner");
+                    
+                    _actionPlan = _planner.Plan(currentWorldState, goalState);
 
                     if (_actionPlan != null && _actionPlan.Count > 0)
                     {
                         Debug.Log($"[HeroStateMachine] Got an action plan with {_actionPlan.Count} actions: {string.Join(" -> ", _actionPlan)}");
                         CurrentState = HeroState.GoTo;
+                    }
+                    else
+                    {
+                        LogActionPreconditions(); // Log what each action needs
                     }
                 }
             }
@@ -294,6 +672,36 @@ namespace PitHero.AI
             // _currentAction is kept for potential cleanup in next state
         }
 
+        #endregion
+        
+        #region Debug Logging Methods
+        
+        /// <summary>
+        /// Log detailed world state for debugging GOAP planning issues
+        /// </summary>
+        private void LogWorldStateDetails(WorldState ws, string prefix)
+        {
+            Debug.Log($"[HeroStateMachine] {prefix}: {ws.Describe(_planner)}");
+        }
+        
+        /// <summary>
+        /// Log action preconditions to debug why no action plan can be found
+        /// </summary>
+        private void LogActionPreconditions()
+        {
+            Debug.Log($"[HeroStateMachine] Planner Describe:");
+            Debug.Log(_planner.Describe());
+            //Debug.Log("[HeroStateMachine] Available actions and their preconditions:");
+            //Debug.Log("  MoveToPitAction: Requires PitInitialized=true, HeroInitialized=true, OutsidePit=true");
+            //Debug.Log("  JumpIntoPitAction: Requires AdjacentToPitBoundaryFromOutside=true");
+            //Debug.Log("  WanderAction: Requires InsidePit=true");
+            //Debug.Log("  MoveToWizardOrbAction: Requires FoundWizardOrb=true, MapExplored=true");
+            //Debug.Log("  ActivateWizardOrbAction: Requires AtWizardOrb=true");
+            //Debug.Log("  MovingToInsidePitEdgeAction: Requires MovingToInsidePitEdge=true");
+            //Debug.Log("  JumpOutOfPitAction: Requires ReadyToJumpOutOfPit=true");
+            //Debug.Log("  MoveToPitGenPointAction: Requires MovingToPitGenPoint=true");
+        }
+        
         #endregion
     }
 }

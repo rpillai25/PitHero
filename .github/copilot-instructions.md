@@ -46,6 +46,8 @@
   - All components under ECS/Components/, Scenes under ECS/Scenes/
   - If a Service needs to be easily accessed in multiple places, register it with Core.Services.AddService() and then get it from anywhere with Core.Services.GetService<Service>()
   - Any Conditions for the GOAP framework should be added to GoapConstants for strong typing
+- There is a virtual logic layer in PitHero.VirtualGame that is intended to simulat the game in a virtual, non-graphical context.  This is important for testing to ensure logic is correct.
+- WorldState is a struct.  If we need to pass world state to any method to update the world state, it should be passed by reference.  Passing it by value will only modify a copy of it.  IMPORTANT!!!
 - ** AOT compilation compliance**:
   - Avoid garbage generation
   - Only use strings as const. Do not use strings dynamically (e.g. string concatenation, patterns...), this is the most common source of garbage.  The exception to this is in Debug.Log statements.
