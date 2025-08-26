@@ -586,19 +586,25 @@ namespace PitHero.AI
         /// </summary>
         private void CheckWizardOrbFound(HeroComponent hero, TiledMapService tiledMapService, Point position)
         {
-            // Get wizard orb position from the tilemap service
-            var wizardOrbPosition = tiledMapService.GetWizardOrbPosition();
-            if (wizardOrbPosition.HasValue)
+            // Find wizard orb entity in the scene
+            var scene = Core.Scene;
+            if (scene == null)
+                return;
+
+            var wizardOrbEntities = scene.FindEntitiesWithTag(GameConfig.TAG_WIZARD_ORB);
+            if (wizardOrbEntities.Count == 0)
+                return;
+
+            var wizardOrbEntity = wizardOrbEntities[0];
+            var wizardOrbPosition = wizardOrbEntity.Transform.Position;
+            var orbTile = new Point((int)(wizardOrbPosition.X / GameConfig.TileSize), 
+                                  (int)(wizardOrbPosition.Y / GameConfig.TileSize));
+            
+            // Check if hero is at the wizard orb position
+            if (position.X == orbTile.X && position.Y == orbTile.Y)
             {
-                var orbTile = new Point((int)(wizardOrbPosition.Value.X / GameConfig.TileSize), 
-                                      (int)(wizardOrbPosition.Value.Y / GameConfig.TileSize));
-                
-                // Check if hero is at the wizard orb position
-                if (position.X == orbTile.X && position.Y == orbTile.Y)
-                {
-                    Debug.Log($"[Wander] Found wizard orb at position {position.X},{position.Y}");
-                    hero.FoundWizardOrb = true;
-                }
+                Debug.Log($"[Wander] Found wizard orb at position {position.X},{position.Y}");
+                hero.FoundWizardOrb = true;
             }
         }
 

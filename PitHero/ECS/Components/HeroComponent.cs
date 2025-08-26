@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.AI.GOAP;
+using PitHero.AI;
 
 namespace PitHero.ECS.Components
 {
