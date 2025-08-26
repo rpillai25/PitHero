@@ -16,7 +16,7 @@ namespace PitHero.AI
         private List<Point> _currentPath;
         private int _pathIndex;
         
-        public MoveToPitGenPointAction() : base(GoapConstants.MoveToPitGenPointAction, 1)
+        public MoveToPitGenPointAction() : base(GoapConstants.MoveToPitGenPointAction, 2)
         {
             // Precondition: Hero should be moving to pit gen point
             SetPrecondition(GoapConstants.MovingToPitGenPoint, true);
@@ -114,6 +114,7 @@ namespace PitHero.AI
                         
                         // Clear movement flag after reaching destination
                         hero.MovingToPitGenPoint = false;
+                        hero.AtPitGenPoint = true;
                         
                         ResetInternal();
                         return true;

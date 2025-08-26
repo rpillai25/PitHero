@@ -130,6 +130,8 @@ namespace PitHero.AI
                 (int)(targetPosition.Y / GameConfig.TileSize)
             );
 
+
+
             Debug.Log($"[JumpOutOfPit] Jump out movement completed at {entity.Transform.Position.X},{entity.Transform.Position.Y}");
         }
     }

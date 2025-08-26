@@ -22,7 +22,7 @@ namespace PitHero.AI
             // Preconditions: Map must be explored and wizard orb must be found
             SetPrecondition(GoapConstants.FoundWizardOrb, true);
             SetPrecondition(GoapConstants.MapExplored, true);
-            
+
             // Postcondition: Hero will be at wizard orb
             SetPostcondition(GoapConstants.AtWizardOrb, true);
         }

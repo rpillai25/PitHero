@@ -18,11 +18,10 @@ namespace PitHero.AI
         
         public MovingToInsidePitEdgeAction() : base(GoapConstants.MovingToInsidePitEdgeAction, 1)
         {
-            // Precondition: Hero should be moving to inside pit edge
+            // Preconditions: the hero should be in the phase of moving to the inside pit edge
             SetPrecondition(GoapConstants.MovingToInsidePitEdge, true);
-            
-            // Postconditions: Hero will be adjacent to pit boundary from inside and ready to jump out
-            SetPostcondition(GoapConstants.AdjacentToPitBoundaryFromInside, true);
+
+            // Postconditions: the hero is now ready to jump out of the pit
             SetPostcondition(GoapConstants.ReadyToJumpOutOfPit, true);
         }
 
@@ -51,6 +50,7 @@ namespace PitHero.AI
             if (currentTile.X == _targetTile.X && currentTile.Y == _targetTile.Y)
             {
                 Debug.Log($"[MovingToInsidePitEdge] Reached target tile {_targetTile.X},{_targetTile.Y} - action complete");
+                // Only at this exact coordinate should the hero be considered adjacent to inside boundary and ready
                 hero.AdjacentToPitBoundaryFromInside = true;
                 hero.ReadyToJumpOutOfPit = true;
                 hero.MovingToInsidePitEdge = false; // Clear the moving flag
@@ -126,26 +126,24 @@ namespace PitHero.AI
                 }
             }
             
-            // Action continues as long as we're moving towards the target
+            // Action continues as long as we're moving towards the pit edge
             return false;
         }
 
         /// <summary>
-        /// Calculate the inside pit edge target tile (2 tiles to the left of pit center)
+        /// Calculate the inside pit edge target tile (2 tiles to the left of pit right edge at pit center Y)
         /// </summary>
         private Point CalculateInsidePitEdgeTarget()
         {
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
-            int pitCenterX, pitRightEdge;
+            int pitRightEdge;
             
             if (pitWidthManager != null)
             {
-                pitCenterX = pitWidthManager.CurrentPitCenterTileX;
                 pitRightEdge = pitWidthManager.CurrentPitRightEdge;
             }
             else
             {
-                pitCenterX = GameConfig.PitCenterTileX;
                 pitRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth - 1;
             }
             

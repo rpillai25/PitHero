@@ -106,15 +106,19 @@ namespace PitHero.AI
                 ws.Set(GoapConstants.PitInitialized, true);
 
             var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
-            if (tileMover != null && tileMover.IsMoving && !_hero.AdjacentToPitBoundaryFromOutside)
+            // MOVINGTOPIT should only be true while outside and heading toward pit
+            if (tileMover != null && tileMover.IsMoving && !_hero.AdjacentToPitBoundaryFromOutside && !_hero.InsidePit)
             {
                 ws.Set(GoapConstants.MovingToPit, true);
             }
 
             if (_hero.AdjacentToPitBoundaryFromOutside)
                 ws.Set(GoapConstants.AdjacentToPitBoundaryFromOutside, true);
+
+            // Only set AdjacentToPitBoundaryFromInside if hero is truly at the inside-edge target used for jumping out
             if (_hero.AdjacentToPitBoundaryFromInside)
                 ws.Set(GoapConstants.AdjacentToPitBoundaryFromInside, true);
+
             if (_hero.InsidePit)
                 ws.Set(GoapConstants.InsidePit, true);
 
@@ -183,7 +187,7 @@ namespace PitHero.AI
             // Check if wizard orb has been found (fog cleared around it)
             CheckWizardOrbFound(ref ws, tms);
 
-            // Check additional positional states
+            // Check additional positional states (these methods will set/clear transient flags properly)
             CheckAdditionalStates(ref ws);
 
             Debug.Log($"[HeroStateMachine] State: PitInitialized={_hero.PitInitialized}, " +
@@ -213,56 +217,52 @@ namespace PitHero.AI
             
             // Check if wizard orb is activated
             bool wizardOrbActivated = _hero?.ActivatedWizardOrb == true;
-
+            
             // Check if hero is ready to jump out and moving state flags
             bool readyToJumpOut = _hero?.ReadyToJumpOutOfPit == true;
-            bool movingToInsidePitEdge = _hero?.MovingToInsidePitEdge == true;
-            
+
+            bool movingToPitGenPoint = _hero?.MovingToPitGenPoint == true;
+
             // Check if hero is at pit generation point
-            bool atPitGenPoint = IsAtPitGenPoint();
+            bool atPitGenPoint = _hero?.AtPitGenPoint == true;
             
             Debug.Log($"[HeroStateMachine] Goal determination: MapExplored={mapExplored}, AtWizardOrb={atWizardOrb}, WizardOrbActivated={wizardOrbActivated}, AtPitGenPoint={atPitGenPoint}");
             
             if (!mapExplored)
             {
-                // Primary goal: explore the map
                 goal.Set(GoapConstants.MapExplored, true);
                 Debug.Log("[HeroStateMachine] Goal set to: MapExplored");
             }
-            else if (!atWizardOrb)
+            else if (!atWizardOrb && !wizardOrbActivated)
             {
-                // Secondary goal: reach wizard orb (this triggers MoveToWizardOrbAction)
                 goal.Set(GoapConstants.AtWizardOrb, true);
                 Debug.Log("[HeroStateMachine] Goal set to: AtWizardOrb");
             }
             else if (!wizardOrbActivated)
             {
-                // Tertiary goal: activate wizard orb (this triggers ActivateWizardOrbAction)
                 goal.Set(GoapConstants.ActivatedWizardOrb, true);
                 Debug.Log("[HeroStateMachine] Goal set to: ActivatedWizardOrb");
             }
-            else if (wizardOrbActivated && !readyToJumpOut)
+            else if (wizardOrbActivated && !readyToJumpOut && !movingToPitGenPoint)
             {
-                // After activation we must move to the inside pit edge before jumping out
-                goal.Set(GoapConstants.MovingToInsidePitEdge, true);
-                Debug.Log("[HeroStateMachine] Goal set to: MovingToInsidePitEdge");
+                // After activation we want to become ReadyToJumpOutOfPit, which will select MovingToInsidePitEdgeAction
+                goal.Set(GoapConstants.ReadyToJumpOutOfPit, true);
+                Debug.Log("[HeroStateMachine] Goal set to: ReadyToJumpOutOfPit (move to inside pit edge)");
             }
-            else if (readyToJumpOut && !_hero.MovingToPitGenPoint)
-            {
-                // Ready to jump out, so we want to be outside pit next (this triggers JumpOutOfPitAction)
+            else if (readyToJumpOut && !movingToPitGenPoint) {                 // After becoming ready, we want to jump out of the pit
                 goal.Set(GoapConstants.OutsidePit, true);
-                Debug.Log("[HeroStateMachine] Goal set to: OutsidePit (jump out)");
-            }
-            else if (!atPitGenPoint)
+                Debug.Log("[HeroStateMachine] Goal set to: OutsidePit (jump out of pit)");
+            } 
+            else if (movingToPitGenPoint)
             {
-                // Next goal: reach pit generation point for regeneration
+                // After jumping out, we want to move to pit generation point
                 goal.Set(GoapConstants.AtPitGenPoint, true);
-                Debug.Log("[HeroStateMachine] Goal set to: AtPitGenPoint");
+                Debug.Log("[HeroStateMachine] Goal set to: MovingToPitGenPoint");
             }
-            else
+            else if(atPitGenPoint)
             {
-                // Final goal: get outside pit to trigger regeneration cycle
-                goal.Set(GoapConstants.OutsidePit, true);
+                // Final goal: go back to pit and restart cycle
+                goal.Set(GoapConstants.AdjacentToPitBoundaryFromOutside, true);
                 Debug.Log("[HeroStateMachine] Goal set to: OutsidePit (regeneration cycle)");
             }
             
@@ -405,7 +405,7 @@ namespace PitHero.AI
                 {
                     var fogTile = fogLayer.GetTile(tilePos.X, tilePos.Y);
                     Debug.Log($"[HeroStateMachine] CheckWizardOrbFound: Fog tile at wizard orb position {tilePos.X},{tilePos.Y}: {(fogTile == null ? "NULL (cleared)" : "EXISTS (not cleared)")}");
-                    
+
                     if (fogTile == null) // No fog means it's been discovered
                     {
                         ws.Set(GoapConstants.FoundWizardOrb, true);
@@ -443,8 +443,8 @@ namespace PitHero.AI
                 new Point((int)(_hero.Entity.Transform.Position.X / GameConfig.TileSize),
                          (int)(_hero.Entity.Transform.Position.Y / GameConfig.TileSize));
 
-            // Check if at wizard orb
-            CheckAtWizardOrb(ref ws, currentTile);
+            // AtWizardOrb should only be true while literally on the orb tile
+            UpdateAtWizardOrb(ref ws, currentTile);
 
             // Check if at pit generation point (34, 6)
             if (currentTile.X == 34 && currentTile.Y == 6)
@@ -452,8 +452,15 @@ namespace PitHero.AI
                 ws.Set(GoapConstants.AtPitGenPoint, true);
             }
 
-            // Check if outside pit (not inside pit area)
+            // If hero moved away from the inside-edge coordinate, clear the adjacency flag on the hero
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            var insideEdge = CalculateInsideEdgeTarget(pitWidthManager);
+            if (!(currentTile.X == insideEdge.X && currentTile.Y == insideEdge.Y))
+            {
+                _hero.AdjacentToPitBoundaryFromInside = false;
+            }
+
+            // Check if outside pit (not inside pit area)
             var pitBounds = GetPitBounds(pitWidthManager);
             if (!pitBounds.Contains(currentTile))
             {
@@ -462,9 +469,9 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Check if hero is at wizard orb position
+        /// Ensure AtWizardOrb reflects current tile accurately
         /// </summary>
-        private void CheckAtWizardOrb(ref WorldState ws, Point heroTile)
+        private void UpdateAtWizardOrb(ref WorldState ws, Point heroTile)
         {
             var scene = Core.Scene;
             if (scene == null)
@@ -476,13 +483,27 @@ namespace PitHero.AI
 
             var wizardOrbEntity = wizardOrbEntities[0];
             var orbWorldPos = wizardOrbEntity.Transform.Position;
-            var orbTile = new Point((int)(orbWorldPos.X / GameConfig.TileSize), 
-                                  (int)(orbWorldPos.Y / GameConfig.TileSize));
+            var orbTile = new Point((int)(orbWorldPos.X / GameConfig.TileSize), (int)(orbWorldPos.Y / GameConfig.TileSize));
 
             if (heroTile.X == orbTile.X && heroTile.Y == orbTile.Y)
-            {
                 ws.Set(GoapConstants.AtWizardOrb, true);
-            }
+            // else: do not set the condition. It will be treated as "don't care" (i.e., false for our purposes).
+        }
+
+        /// <summary>
+        /// Calculate the inside-edge target used by MovingToInsidePitEdgeAction
+        /// </summary>
+        private Point CalculateInsideEdgeTarget(PitWidthManager pitWidthManager)
+        {
+            int pitRightEdge;
+            if (pitWidthManager != null)
+                pitRightEdge = pitWidthManager.CurrentPitRightEdge;
+            else
+                pitRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth - 1;
+
+            var targetX = pitRightEdge - 2;
+            var targetY = GameConfig.PitCenterTileY;
+            return new Point(targetX, targetY);
         }
 
         /// <summary>
@@ -517,8 +538,7 @@ namespace PitHero.AI
             
             // CRITICAL DEBUG: Log what states we expect to see
             Debug.Log($"[HeroStateMachine] *** CRITICAL GOAP CHECK *** About to call GOAP planner");
-            Debug.Log($"[HeroStateMachine] *** Expected states *** MapExplored and FoundWizardOrb should be true for MoveToWizardOrbAction to be available");
-            
+
             _actionPlan = _planner.Plan(currentWorldState, goalState);
 
             if (_actionPlan != null && _actionPlan.Count > 0)
@@ -669,15 +689,17 @@ namespace PitHero.AI
         /// </summary>
         private void LogActionPreconditions()
         {
-            Debug.Log("[HeroStateMachine] Available actions and their preconditions:");
-            Debug.Log("  MoveToPitAction: Requires PitInitialized=true, HeroInitialized=true, OutsidePit=true");
-            Debug.Log("  JumpIntoPitAction: Requires AdjacentToPitBoundaryFromOutside=true");
-            Debug.Log("  WanderAction: Requires InsidePit=true");
-            Debug.Log("  MoveToWizardOrbAction: Requires FoundWizardOrb=true, MapExplored=true");
-            Debug.Log("  ActivateWizardOrbAction: Requires AtWizardOrb=true");
-            Debug.Log("  MovingToInsidePitEdgeAction: Requires MovingToInsidePitEdge=true");
-            Debug.Log("  JumpOutOfPitAction: Requires ReadyToJumpOutOfPit=true");
-            Debug.Log("  MoveToPitGenPointAction: Requires OutsidePit=true");
+            Debug.Log($"[HeroStateMachine] Planner Describe:");
+            Debug.Log(_planner.Describe());
+            //Debug.Log("[HeroStateMachine] Available actions and their preconditions:");
+            //Debug.Log("  MoveToPitAction: Requires PitInitialized=true, HeroInitialized=true, OutsidePit=true");
+            //Debug.Log("  JumpIntoPitAction: Requires AdjacentToPitBoundaryFromOutside=true");
+            //Debug.Log("  WanderAction: Requires InsidePit=true");
+            //Debug.Log("  MoveToWizardOrbAction: Requires FoundWizardOrb=true, MapExplored=true");
+            //Debug.Log("  ActivateWizardOrbAction: Requires AtWizardOrb=true");
+            //Debug.Log("  MovingToInsidePitEdgeAction: Requires MovingToInsidePitEdge=true");
+            //Debug.Log("  JumpOutOfPitAction: Requires ReadyToJumpOutOfPit=true");
+            //Debug.Log("  MoveToPitGenPointAction: Requires MovingToPitGenPoint=true");
         }
         
         #endregion

@@ -13,6 +13,7 @@ namespace PitHero.ECS.Components
         public bool AdjacentToPitBoundaryFromOutside { get; set; }
         public bool AdjacentToPitBoundaryFromInside { get; set; }
         public bool InsidePit { get; set; }
+        public bool OutsidePit => !InsidePit;
         public Direction? PitApproachDirection { get; set; }
         
         // GOAP-specific wizard orb workflow flags
@@ -20,6 +21,8 @@ namespace PitHero.ECS.Components
         public bool MovingToInsidePitEdge { get; set; }
         public bool ReadyToJumpOutOfPit { get; set; }
         public bool MovingToPitGenPoint { get; set; }
+
+        public bool AtPitGenPoint { get; set; }
 
         private PitWidthManager _pitWidthManager;
 
