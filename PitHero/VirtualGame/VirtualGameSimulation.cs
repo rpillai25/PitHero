@@ -47,9 +47,9 @@ namespace PitHero.VirtualGame
             _world.RegeneratePit(40);
             LogWorldState();
 
-            // Step 2: Hero spawns and executes MoveToPitAction
-            Console.WriteLine("\nSTEP 2: Hero spawns and begins MoveToPitAction");
-            ExecuteMoveToPitAction();
+            // Step 2: Hero spawns and executes JumpIntoPitAction (replaces MoveToPitAction)
+            Console.WriteLine("\nSTEP 2: Hero spawns and begins JumpIntoPitAction");
+            ExecuteJumpIntoPitAction();
 
             // Step 3: Hero jumps into pit
             Console.WriteLine("\nSTEP 3: Hero jumps into pit");
@@ -68,11 +68,11 @@ namespace PitHero.VirtualGame
         }
 
         /// <summary>
-        /// Simulate MoveToPitAction - hero moves from spawn to pit edge
+        /// Simulate JumpIntoPitAction - hero jumps into pit (replaces MoveToPitAction)
         /// </summary>
-        private void ExecuteMoveToPitAction()
+        private void ExecuteJumpIntoPitAction()
         {
-            _currentAction = "MoveToPitAction";
+            _currentAction = "JumpIntoPitAction";
             var startPos = _hero.Position;
             var pitBounds = _world.PitBounds;
             
@@ -96,26 +96,6 @@ namespace PitHero.VirtualGame
             }
             
             Console.WriteLine($"[{_currentAction}] Completed. Hero adjacent to pit: {_hero.AdjacentToPitBoundaryFromOutside}");
-        }
-
-        /// <summary>
-        /// Simulate JumpIntoPitAction - hero moves into pit interior
-        /// </summary>
-        private void ExecuteJumpIntoPitAction()
-        {
-            _currentAction = "JumpIntoPitAction";
-            var startPos = _hero.Position;
-            var pitBounds = _world.PitBounds;
-            
-            // Target: Inside pit center-ish
-            var targetPos = new Point(pitBounds.X + 2, pitBounds.Y + 2);
-            
-            Console.WriteLine($"[{_currentAction}] Jumping from ({startPos.X},{startPos.Y}) to ({targetPos.X},{targetPos.Y})");
-            
-            _hero.MoveTo(targetPos);
-            _tickCount++;
-            
-            Console.WriteLine($"[{_currentAction}] Completed. Hero inside pit: {_hero.InsidePit}");
         }
 
         /// <summary>
@@ -161,58 +141,30 @@ namespace PitHero.VirtualGame
             }
             
             var finalFogCount = CountRemainingFog();
-            var isExplored = _hero.GetWorldState().ContainsKey(GoapConstants.MapExplored);
+            var isExplored = _hero.GetWorldState().ContainsKey(GoapConstants.ExploredPit);
             Console.WriteLine($"[{_currentAction}] Completed. Fog remaining: {finalFogCount}, MapExplored: {isExplored}");
         }
 
         /// <summary>
-        /// Execute the complete wizard orb workflow chain
+        /// Execute the complete wizard orb workflow chain - updated for simplified GOAP
         /// </summary>
         private void ExecuteWizardOrbWorkflow()
         {
-            // MoveToWizardOrbAction
-            ExecuteMoveToWizardOrbAction();
+            // WanderAction (combines exploration and wizard orb finding)
+            ExecuteWanderAction();
             
             // ActivateWizardOrbAction
             ExecuteActivateWizardOrbAction();
             
-            // MovingToInsidePitEdgeAction
-            ExecuteMovingToInsidePitEdgeAction();
-            
-            // JumpOutOfPitAction
+            // JumpOutOfPitAction (replaces MovingToInsidePitEdgeAction)
             ExecuteJumpOutOfPitAction();
             
-            // MoveToPitGenPointAction
-            ExecuteMoveToPitGenPointAction();
+            // ActivatePitRegenAction (replaces MoveToPitGenPointAction)
+            ExecuteActivatePitRegenAction();
             
-            // Cycle restarts with MoveToPitAction
-            Console.WriteLine("\nSTEP 6: Cycle restarts - MoveToPitAction would begin again");
+            // Cycle restarts with JumpIntoPitAction
+            Console.WriteLine("\nSTEP 6: Cycle restarts - JumpIntoPitAction would begin again");
             Console.WriteLine("Hero would now target the new regenerated pit to start the cycle over");
-        }
-
-        private void ExecuteMoveToWizardOrbAction()
-        {
-            _currentAction = "MoveToWizardOrbAction";
-            var orbPos = _world.WizardOrbPosition;
-            if (!orbPos.HasValue)
-            {
-                Console.WriteLine($"[{_currentAction}] ERROR: No wizard orb found!");
-                return;
-            }
-            
-            var startPos = _hero.Position;
-            Console.WriteLine($"[{_currentAction}] Moving from ({startPos.X},{startPos.Y}) to wizard orb at ({orbPos.Value.X},{orbPos.Value.Y})");
-            
-            var path = CalculateSimplePath(startPos, orbPos.Value);
-            _hero.SetMovementPath(path);
-            
-            while (!_hero.ExecuteMovementStep())
-            {
-                _tickCount++;
-            }
-            
-            var atOrb = _hero.GetWorldState().ContainsKey(GoapConstants.AtWizardOrb);
-            Console.WriteLine($"[{_currentAction}] Completed. AtWizardOrb: {atOrb}");
         }
 
         private void ExecuteActivateWizardOrbAction()
@@ -232,27 +184,7 @@ namespace PitHero.VirtualGame
             Console.WriteLine($"[{_currentAction}] Completed. Orb activated, queued level {nextLevel}");
         }
 
-        private void ExecuteMovingToInsidePitEdgeAction()
-        {
-            _currentAction = "MovingToInsidePitEdgeAction";
-            var pitBounds = _world.PitBounds;
-            
-            // Target: Inside edge of pit (boundary tile)
-            var targetPos = new Point(pitBounds.X, pitBounds.Y + pitBounds.Height / 2);
-            
-            Console.WriteLine($"[{_currentAction}] Moving to inside pit edge at ({targetPos.X},{targetPos.Y})");
-            
-            var path = CalculateSimplePath(_hero.Position, targetPos);
-            _hero.SetMovementPath(path);
-            
-            while (!_hero.ExecuteMovementStep())
-            {
-                _tickCount++;
-            }
-            
-            _hero.ReadyToJumpOutOfPit = true;
-            Console.WriteLine($"[{_currentAction}] Completed. ReadyToJumpOutOfPit: {_hero.ReadyToJumpOutOfPit}");
-        }
+        // Note: MovingToInsidePitEdgeAction is replaced by JumpOutOfPitAction which handles its own movement
 
         private void ExecuteJumpOutOfPitAction()
         {
@@ -273,9 +205,9 @@ namespace PitHero.VirtualGame
             Console.WriteLine($"[{_currentAction}] Completed. OutsidePit: {outsidePit}, MovingToPitGenPoint: {_hero.MovingToPitGenPoint}");
         }
 
-        private void ExecuteMoveToPitGenPointAction()
+        private void ExecuteActivatePitRegenAction()
         {
-            _currentAction = "MoveToPitGenPointAction";
+            _currentAction = "ActivatePitRegenAction";
             var targetPos = new Point(34, 6); // Pit generation point
             
             Console.WriteLine($"[{_currentAction}] Moving to pit generation point ({targetPos.X},{targetPos.Y})");
@@ -300,8 +232,9 @@ namespace PitHero.VirtualGame
                 }
             }
             
-            var atPitGenPoint = _hero.GetWorldState().ContainsKey(GoapConstants.AtPitGenPoint);
-            Console.WriteLine($"[{_currentAction}] Completed. AtPitGenPoint: {atPitGenPoint}");
+            // Note: AtPitGenPoint is no longer tracked as a state in simplified GOAP
+            // Position checking is now done within actions
+            Console.WriteLine($"[{_currentAction}] Completed. Position-based states handled in actions");
         }
 
         /// <summary>
@@ -384,14 +317,11 @@ namespace PitHero.VirtualGame
             
             Console.WriteLine("Simulation verified the complete GOAP workflow:");
             Console.WriteLine("✓ Pit generation at level 40");
-            Console.WriteLine("✓ Hero MoveToPitAction execution");
             Console.WriteLine("✓ Hero JumpIntoPitAction execution");
             Console.WriteLine("✓ Complete pit exploration via WanderAction");
-            Console.WriteLine("✓ MoveToWizardOrbAction execution");
             Console.WriteLine("✓ ActivateWizardOrbAction execution");
-            Console.WriteLine("✓ MovingToInsidePitEdgeAction execution");
             Console.WriteLine("✓ JumpOutOfPitAction execution");
-            Console.WriteLine("✓ MoveToPitGenPointAction execution");
+            Console.WriteLine("✓ ActivatePitRegenAction execution");
             Console.WriteLine("✓ Pit regeneration at higher level");
             Console.WriteLine();
             Console.WriteLine("The hero is now ready to start the cycle again with the new pit!");
@@ -459,22 +389,19 @@ namespace PitHero.VirtualGame
         {
             var goal = new Dictionary<string, bool>();
             
-            bool mapExplored = currentState.GetValueOrDefault(GoapConstants.MapExplored, false);
+            bool mapExplored = currentState.GetValueOrDefault(GoapConstants.ExploredPit, false);
             bool wizardOrbActivated = currentState.GetValueOrDefault(GoapConstants.ActivatedWizardOrb, false);
-            bool atPitGenPoint = currentState.GetValueOrDefault(GoapConstants.AtPitGenPoint, false);
+            // Note: AtPitGenPoint removed from simplified GOAP - logic simplified to 2 main goals
             
             if (!mapExplored)
             {
-                goal[GoapConstants.MapExplored] = true;
+                goal[GoapConstants.ExploredPit] = true;
             }
             else if (!wizardOrbActivated)
             {
                 goal[GoapConstants.ActivatedWizardOrb] = true;
             }
-            else if (!atPitGenPoint)
-            {
-                goal[GoapConstants.AtPitGenPoint] = true;
-            }
+            // Note: Pit regeneration is now handled by the 2-goal cycle in HeroComponent.SetGoalState()
             else
             {
                 goal[GoapConstants.OutsidePit] = true;
@@ -497,11 +424,9 @@ namespace PitHero.VirtualGame
             planner.AddAction(new MoveToPitAction());
             planner.AddAction(new JumpIntoPitAction());
             planner.AddAction(new WanderAction());
-            planner.AddAction(new MoveToWizardOrbAction());
             planner.AddAction(new ActivateWizardOrbAction());
-            planner.AddAction(new MovingToInsidePitEdgeAction());
             planner.AddAction(new JumpOutOfPitAction());
-            planner.AddAction(new MoveToPitGenPointAction());
+            planner.AddAction(new ActivatePitRegenAction());
             
             // Convert dictionaries to WorldState objects (simplified)
             var wsCurrentState = Nez.AI.GOAP.WorldState.Create(planner);

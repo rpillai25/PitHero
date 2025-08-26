@@ -62,24 +62,12 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Calculate the target tile based on current position and pit bounds
+        /// Calculate the target tile based on current position - always jump from right side
         /// </summary>
         private Point? CalculateJumpTargetTile(Point currentTile)
         {
-            // Jump into the pit interior - target a safe tile inside the pit
-            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
-            
-            // Calculate pit bounds
-            int pitLeftX = GameConfig.PitRectX + 1;  // Inside left wall
-            int pitRightX = (pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth)) - 2;  // Inside right wall
-            int pitTopY = GameConfig.PitRectY + 1;   // Inside top wall
-            int pitBottomY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2;  // Inside bottom wall
-            
-            // Choose a safe landing spot in the middle of the pit
-            int targetX = (pitLeftX + pitRightX) / 2;
-            int targetY = (pitTopY + pitBottomY) / 2;
-            
-            return new Point(targetX, targetY);
+            // We'll always jump into the pit from the right, so target is 2 tiles to the left
+            return new Point(currentTile.X - 2, currentTile.Y);
         }
 
         /// <summary>

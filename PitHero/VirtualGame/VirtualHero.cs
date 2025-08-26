@@ -166,7 +166,7 @@ namespace PitHero.VirtualGame
         }
 
         /// <summary>
-        /// Get current GOAP world state for planning
+        /// Get current GOAP world state for planning - updated for simplified 7-state model
         /// </summary>
         public Dictionary<string, bool> GetWorldState()
         {
@@ -175,43 +175,23 @@ namespace PitHero.VirtualGame
             ws[GoapConstants.HeroInitialized] = true;
             ws[GoapConstants.PitInitialized] = PitInitialized;
             
-            if (IsMoving && !AdjacentToPitBoundaryFromOutside)
-                ws[GoapConstants.MovingToPit] = true;
-
-            if (AdjacentToPitBoundaryFromOutside)
-                ws[GoapConstants.AdjacentToPitBoundaryFromOutside] = true;
-            if (AdjacentToPitBoundaryFromInside)
-                ws[GoapConstants.AdjacentToPitBoundaryFromInside] = true;
+            // Core position states
             if (InsidePit)
                 ws[GoapConstants.InsidePit] = true;
+            if (!_world.PitBounds.Contains(Position))
+                ws[GoapConstants.OutsidePit] = true;
 
             // Wizard orb workflow states
             if (ActivatedWizardOrb)
                 ws[GoapConstants.ActivatedWizardOrb] = true;
-            if (MovingToInsidePitEdge)
-                ws[GoapConstants.MovingToInsidePitEdge] = true;
-            if (ReadyToJumpOutOfPit)
-                ws[GoapConstants.ReadyToJumpOutOfPit] = true;
-            if (MovingToPitGenPoint)
-                ws[GoapConstants.MovingToPitGenPoint] = true;
 
-            // Check exploration status
+            // Check exploration status - MapExplored is now ExploredPit
             if (CheckMapExplored())
-                ws[GoapConstants.MapExplored] = true;
+                ws[GoapConstants.ExploredPit] = true;
 
             // Check wizard orb status
             if (CheckWizardOrbFound())
                 ws[GoapConstants.FoundWizardOrb] = true;
-
-            // Check positional states
-            if (CheckAtWizardOrb())
-                ws[GoapConstants.AtWizardOrb] = true;
-
-            if (Position.X == 34 && Position.Y == 6) // Pit gen point
-                ws[GoapConstants.AtPitGenPoint] = true;
-
-            if (!_world.PitBounds.Contains(Position))
-                ws[GoapConstants.OutsidePit] = true;
 
             return ws;
         }

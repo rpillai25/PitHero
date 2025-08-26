@@ -20,6 +20,12 @@ namespace PitHero.AI
         private Stack<Action> _actionPlan;
         private HeroActionBase _currentAction;
 
+        // GoTo state tracking
+        private List<Point> _currentPath;
+        private int _pathIndex;
+        private LocationType _targetLocationType;
+        private Point _targetTile;
+
         /// <summary>
         /// Gets whether this component should respect the global pause state
         /// </summary>
@@ -90,9 +96,6 @@ namespace PitHero.AI
 
             // Use the HeroComponent's SetWorldState method for consistency
             _hero.SetWorldState(ref ws);
-
-            // Check additional positional states like wizard orb found
-            CheckAdditionalStates(ref ws);
             
             return ws;
         }
@@ -117,88 +120,9 @@ namespace PitHero.AI
             return goal;
         }
 
-        /// <summary>
-        /// Check additional states like wizard orb found
-        /// </summary>
-        private void CheckAdditionalStates(ref WorldState ws)
-        {
-            if (_hero?.Entity == null)
-                return;
 
-            var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
-            var currentTile = tileMover?.GetCurrentTileCoordinates() ?? 
-                new Point((int)(_hero.Entity.Transform.Position.X / GameConfig.TileSize),
-                         (int)(_hero.Entity.Transform.Position.Y / GameConfig.TileSize));
 
-            // Check if wizard orb has been found (fog cleared around it)
-            var tms = Core.Services.GetService<TiledMapService>();
-            CheckWizardOrbFound(ref ws, tms);
-        }
 
-        /// <summary>
-        /// Check if wizard orb has been found (fog cleared around its position)
-        /// </summary>
-        private void CheckWizardOrbFound(ref WorldState ws, TiledMapService tms)
-        {
-            if (tms?.CurrentMap == null)
-            {
-                Debug.Log("[HeroStateMachine] CheckWizardOrbFound: No current map available");
-                return;
-            }
-
-            var scene = Core.Scene;
-            if (scene == null)
-            {
-                Debug.Log("[HeroStateMachine] CheckWizardOrbFound: No active scene");
-                return;
-            }
-
-            // Find wizard orb entities
-            var wizardOrbEntities = scene.FindEntitiesWithTag(GameConfig.TAG_WIZARD_ORB);
-            if (wizardOrbEntities.Count == 0)
-            {
-                Debug.Log("[HeroStateMachine] CheckWizardOrbFound: No wizard orb entities found");
-                return;
-            }
-
-            var wizardOrbEntity = wizardOrbEntities[0]; // Should only be one
-            var worldPos = wizardOrbEntity.Transform.Position;
-            var tilePos = new Point((int)(worldPos.X / GameConfig.TileSize), (int)(worldPos.Y / GameConfig.TileSize));
-
-            Debug.Log($"[HeroStateMachine] CheckWizardOrbFound: Wizard orb entity found at world pos {worldPos.X},{worldPos.Y}, tile {tilePos.X},{tilePos.Y}");
-
-            var fogLayer = tms.CurrentMap.GetLayer<Nez.Tiled.TmxLayer>("FogOfWar");
-            if (fogLayer != null)
-            {
-                // Check if fog is cleared around the wizard orb position
-                if (tilePos.X >= 0 && tilePos.Y >= 0 && tilePos.X < fogLayer.Width && tilePos.Y < fogLayer.Height)
-                {
-                    var fogTile = fogLayer.GetTile(tilePos.X, tilePos.Y);
-                    Debug.Log($"[HeroStateMachine] CheckWizardOrbFound: Fog tile at wizard orb position {tilePos.X},{tilePos.Y}: {(fogTile == null ? "NULL (cleared)" : "EXISTS (not cleared)")}");
-
-                    if (fogTile == null) // No fog means it's been discovered
-                    {
-                        // Set FoundWizardOrb on the HeroComponent directly
-                        _hero.FoundWizardOrb = true;
-                        Debug.Log($"[HeroStateMachine] *** WIZARD ORB FOUND *** Setting FoundWizardOrb=true at tile {tilePos.X},{tilePos.Y}");
-                    }
-                    else
-                    {
-                        Debug.Log($"[HeroStateMachine] Wizard orb at {tilePos.X},{tilePos.Y} still covered by fog - not yet discovered");
-                    }
-                }
-                else
-                {
-                    Debug.Warn($"[HeroStateMachine] CheckWizardOrbFound: Wizard orb tile {tilePos.X},{tilePos.Y} is outside fog layer bounds ({fogLayer.Width}x{fogLayer.Height})");
-                }
-            }
-            else
-            {
-                Debug.Log("[HeroStateMachine] CheckWizardOrbFound: No FogOfWar layer found - assuming wizard orb is discovered");
-                _hero.FoundWizardOrb = true;
-                Debug.Log($"[HeroStateMachine] *** VERIFICATION *** FoundWizardOrb set to true (no fog layer)");
-            }
-        }
 
         #region State Methods
 
@@ -278,9 +202,86 @@ namespace PitHero.AI
                 return;
             }
 
-            // For now, we immediately transition to PerformAction since our actions handle their own movement
-            // In a more complex implementation, we might have separate destination logic here
-            CurrentState = HeroState.PerformAction;
+            // Peek the next action from the action plan
+            var nextAction = _actionPlan.Peek();
+            Debug.Log($"[HeroStateMachine] GoTo_Enter: Planning movement for action {nextAction.Name}");
+
+            // Select location based on action name
+            Point? targetLocation = CalculateTargetLocation(nextAction.Name);
+            if (!targetLocation.HasValue)
+            {
+                Debug.Warn($"[HeroStateMachine] GoTo_Enter: Could not calculate target location for action {nextAction.Name}");
+                CurrentState = HeroState.PerformAction; // Skip to action execution
+                return;
+            }
+
+            _targetTile = targetLocation.Value;
+            Debug.Log($"[HeroStateMachine] GoTo_Enter: Target location calculated as ({_targetTile.X},{_targetTile.Y})");
+
+            // Get current tile position
+            var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
+            var currentTile = tileMover?.GetCurrentTileCoordinates() ?? 
+                new Point((int)(_hero.Entity.Transform.Position.X / GameConfig.TileSize),
+                         (int)(_hero.Entity.Transform.Position.Y / GameConfig.TileSize));
+
+            Debug.Log($"[HeroStateMachine] GoTo_Enter: Current position ({currentTile.X},{currentTile.Y})");
+
+            // Calculate AStar path
+            _currentPath = _hero.CalculatePath(currentTile, _targetTile);
+            _pathIndex = 0;
+
+            if (_currentPath == null || _currentPath.Count == 0)
+            {
+                Debug.Log($"[HeroStateMachine] GoTo_Enter: No path needed or found to target ({_targetTile.X},{_targetTile.Y}), proceeding to action");
+                CurrentState = HeroState.PerformAction;
+                return;
+            }
+
+            Debug.Log($"[HeroStateMachine] GoTo_Enter: Found path with {_currentPath.Count} steps to ({_targetTile.X},{_targetTile.Y})");
+        }
+
+        void GoTo_Tick()
+        {
+            if (_currentPath == null || _pathIndex >= _currentPath.Count)
+            {
+                Debug.Log("[HeroStateMachine] GoTo_Tick: Path completed, transitioning to PerformAction");
+                CurrentState = HeroState.PerformAction;
+                return;
+            }
+
+            var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
+            if (tileMover == null)
+            {
+                Debug.Warn("[HeroStateMachine] GoTo_Tick: No TileByTileMover component found");
+                CurrentState = HeroState.PerformAction;
+                return;
+            }
+
+            // If not currently moving, start moving to next tile in path
+            if (!tileMover.IsMoving)
+            {
+                var nextTile = _currentPath[_pathIndex];
+                Debug.Log($"[HeroStateMachine] GoTo_Tick: Moving to next tile ({nextTile.X},{nextTile.Y}) [step {_pathIndex + 1}/{_currentPath.Count}]");
+                
+                tileMover.MoveToTile(nextTile);
+                _pathIndex++;
+            }
+        }
+
+        void GoTo_Exit()
+        {
+            Debug.Log("[HeroStateMachine] Exiting GoTo state");
+            
+            // Snap to tile grid for precision
+            var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
+            if (tileMover != null)
+            {
+                tileMover.SnapToTileGrid();
+            }
+
+            // Clear path data
+            _currentPath = null;
+            _pathIndex = 0;
         }
 
         void PerformAction_Enter()
@@ -348,6 +349,107 @@ namespace PitHero.AI
         {
             Debug.Log("[HeroStateMachine] Exiting PerformAction state");
             // _currentAction is kept for potential cleanup in next state
+        }
+
+        #endregion
+
+        #region Location Calculation Methods
+
+        /// <summary>
+        /// Calculate target location based on action name
+        /// </summary>
+        private Point? CalculateTargetLocation(string actionName)
+        {
+            switch (actionName)
+            {
+                case GoapConstants.JumpIntoPitAction:
+                    _targetLocationType = LocationType.PitOutsideEdge;
+                    return CalculatePitOutsideEdgeLocation();
+
+                case GoapConstants.WanderAction:
+                    _targetLocationType = LocationType.PitWanderPoint;
+                    return CalculatePitWanderPointLocation();
+
+                case GoapConstants.ActivateWizardOrbAction:
+                    _targetLocationType = LocationType.WizardOrb;
+                    return CalculateWizardOrbLocation();
+
+                case GoapConstants.JumpOutOfPitAction:
+                    _targetLocationType = LocationType.PitInsideEdge;
+                    return CalculatePitInsideEdgeLocation();
+
+                case GoapConstants.ActivatePitRegenAction:
+                    _targetLocationType = LocationType.PitRegenPoint;
+                    return CalculatePitRegenPointLocation();
+
+                default:
+                    _targetLocationType = LocationType.None;
+                    Debug.Warn($"[HeroStateMachine] Unknown action name for location calculation: {actionName}");
+                    return null;
+            }
+        }
+
+        /// <summary>
+        /// Calculate PitOutsideEdge location - position outside pit boundary for jumping in
+        /// </summary>
+        private Point? CalculatePitOutsideEdgeLocation()
+        {
+            // For jumping into pit, we want to be at the right edge outside the pit
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            var pitRightEdge = pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth);
+            
+            return new Point(pitRightEdge + 1, GameConfig.PitCenterTileY); // Just outside right edge
+        }
+
+        /// <summary>
+        /// Calculate PitWanderPoint location - a good starting point inside the pit for exploration
+        /// </summary>
+        private Point? CalculatePitWanderPointLocation()
+        {
+            // For wandering, start near the center of the pit
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            var centerX = pitWidthManager?.CurrentPitCenterTileX ?? GameConfig.PitCenterTileX;
+            
+            return new Point(centerX, GameConfig.PitCenterTileY);
+        }
+
+        /// <summary>
+        /// Calculate WizardOrb location - position of the wizard orb entity
+        /// </summary>
+        private Point? CalculateWizardOrbLocation()
+        {
+            var scene = Core.Scene;
+            if (scene == null) return null;
+
+            var wizardOrbEntities = scene.FindEntitiesWithTag(GameConfig.TAG_WIZARD_ORB);
+            if (wizardOrbEntities.Count == 0) return null;
+
+            var wizardOrbEntity = wizardOrbEntities[0];
+            var worldPos = wizardOrbEntity.Transform.Position;
+            var tilePos = new Point((int)(worldPos.X / GameConfig.TileSize), (int)(worldPos.Y / GameConfig.TileSize));
+            
+            return tilePos;
+        }
+
+        /// <summary>
+        /// Calculate PitInsideEdge location - position inside pit near edge for jumping out
+        /// </summary>
+        private Point? CalculatePitInsideEdgeLocation()
+        {
+            // For jumping out, be near the right inside edge of the pit
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            var pitRightEdge = pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth);
+            
+            return new Point(pitRightEdge - 2, GameConfig.PitCenterTileY); // Just inside right edge
+        }
+
+        /// <summary>
+        /// Calculate PitRegenPoint location - predefined location for pit regeneration
+        /// </summary>
+        private Point? CalculatePitRegenPointLocation()
+        {
+            // Use map center as the pit regeneration point (outside pit area)
+            return new Point(GameConfig.MapCenterTileX, GameConfig.MapCenterTileY);
         }
 
         #endregion
