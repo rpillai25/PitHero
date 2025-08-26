@@ -23,7 +23,7 @@ namespace PitHero
         public const int HeroHeight = 32;
         
         // Hero movement speed
-        public const float HeroMovementSpeed = 400f;
+        public const float HeroMovementSpeed = 800f;
         public const float HeroJumpSpeed = 4f;
         
         // Pit Configuration
