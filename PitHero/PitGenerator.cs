@@ -4,6 +4,7 @@ using Nez.Tiled;
 using PitHero;
 using PitHero.Util;
 using PitHero.ECS.Components;
+using PitHero.AI.Interfaces;
 using System;
 using System.Collections.Generic;
 using Nez.AI.Pathfinding;
@@ -13,10 +14,30 @@ namespace PitHero
     /// <summary>
     /// Generates pit content including obstacles, treasures, monsters, and wizard orbs
     /// </summary>
-    public class PitGenerator
+    public class PitGenerator : IPitGenerator
     {
         private Scene _scene;
         private HashSet<Point> _collisionTiles;
+        private ITiledMapService _tiledMapService;
+        private IPitWidthManager _pitWidthManager;
+
+        public PitGenerator(Scene scene, ITiledMapService tiledMapService = null, IPitWidthManager pitWidthManager = null)
+        {
+            _scene = scene;
+            _collisionTiles = new HashSet<Point>(64);
+            
+            try
+            {
+                _tiledMapService = tiledMapService ?? Core.Services?.GetService<TiledMapService>();
+                _pitWidthManager = pitWidthManager ?? Core.Services?.GetService<PitWidthManager>();
+            }
+            catch
+            {
+                // Core.Services may not be available during unit testing
+                _tiledMapService = tiledMapService;
+                _pitWidthManager = pitWidthManager;
+            }
+        }
 
         public PitGenerator(Scene scene)
         {
@@ -60,29 +81,20 @@ namespace PitHero
                 (int)Math.Round(10 + 40 * Math.Max(level - 10, 0) / 90.0), 10, 50);
         }
 
-        public void Generate(int level)
-        {
-            Debug.Log($"[PitGenerator] Generating pit content for level {level}");
-
-            // Always use dynamic generation, even for level 1
-            GenerateForLevel(level);
-        }
-
         /// <summary>
         /// Clear all existing pit entities and regenerate content for the current pit level
         /// </summary>
         public void RegenerateForCurrentLevel()
         {
             // Get current pit level from PitWidthManager
-            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
-            if (pitWidthManager == null)
+            if (_pitWidthManager == null)
             {
                 Debug.Warn("[PitGenerator] PitWidthManager service not found, using level 1");
                 RegenerateForLevel(1);
                 return;
             }
 
-            int currentLevel = pitWidthManager.CurrentPitLevel;
+            int currentLevel = _pitWidthManager.CurrentPitLevel;
             RegenerateForLevel(currentLevel);
         }
 
@@ -101,9 +113,6 @@ namespace PitHero
             
             // Generate new content
             GenerateForLevel(level);
-            
-            // Update hero pathfinding target if hero exists
-            UpdateHeroPathfindingTarget();
         }
 
         /// <summary>
@@ -137,125 +146,29 @@ namespace PitHero
         }
 
         /// <summary>
-        /// Clear obstacle walls from A* graph
+        /// Clear obstacle walls from hero's A* graph
         /// </summary>
         private void ClearObstacleWallsFromAstar()
         {
-            var astarGraph = Core.Services.GetService<AstarGridGraph>();
-            if (astarGraph == null)
-            {
-                Debug.Warn("[PitGenerator] A* graph not found when clearing obstacle walls");
-                return;
-            }
-            
-            // We need to rebuild the A* graph from the collision layer only
-            // This removes dynamically added obstacle walls
-            var tiledMapService = Core.Services.GetService<TiledMapService>();
-            if (tiledMapService?.CurrentMap == null)
-            {
-                Debug.Warn("[PitGenerator] No tilemap service found for A* graph refresh");
-                return;
-            }
-
-            var collisionLayer = tiledMapService.CurrentMap.GetLayer<TmxLayer>("Collision");
-            if (collisionLayer == null)
-            {
-                Debug.Warn("[PitGenerator] No 'Collision' layer found for A* graph refresh");
-                return;
-            }
-
-            // Completely rebuild A* graph from scratch
-            astarGraph.Walls.Clear();
-            
-            // Add all collision layer tiles
-            for (int x = 0; x < collisionLayer.Width; x++)
-            {
-                for (int y = 0; y < collisionLayer.Height; y++)
-                {
-                    var tile = collisionLayer.GetTile(x, y);
-                    if (tile != null && tile.Gid != 0)
-                    {
-                        astarGraph.Walls.Add(new Point(x, y));
-                    }
-                }
-            }
-
-            // Note: Generated obstacles will be added to the A* graph when they are created in CreateEntitiesAtPositions()
-            
-            Debug.Log($"[PitGenerator] A* graph refreshed with {astarGraph.Walls.Count} walls from collision layer");
-        }
-
-        /// <summary>
-        /// Update hero pathfinding target after regeneration
-        /// </summary>
-        private void UpdateHeroPathfindingTarget()
-        {
-            // Find hero entity
+            // Find hero entity to access its pathfinding component
             var hero = _scene.FindEntity("hero");
             if (hero == null)
             {
-                Debug.Log("[PitGenerator] No hero found to update pathfinding target");
+                Debug.Warn("[PitGenerator] No hero found when clearing obstacle walls");
                 return;
             }
 
-            // Force refresh of A* graph to ensure hero has up-to-date pathfinding information
-            //RefreshAstarGraph();
-
-            // Get HeroGoapAgentComponent to potentially reset current action
-            var agentComponent = hero.GetComponent<HeroGoapAgentComponent>();
-            if (agentComponent != null)
+            var heroComponent = hero.GetComponent<HeroComponent>();
+            if (heroComponent == null || !heroComponent.IsPathfindingInitialized)
             {
-                Debug.Log("[PitGenerator] Hero agent component found - pathfinding will be updated on next action plan");
+                Debug.Warn("[PitGenerator] Hero pathfinding not initialized when clearing obstacle walls");
+                return;
             }
             
-            Debug.Log("[PitGenerator] Hero pathfinding target update complete");
-        }
-
-        /// <summary>
-        /// Force refresh of the A* graph to ensure it reflects the current state after regeneration
-        /// </summary>
-        private void RefreshAstarGraph()
-        {
-            var astarGraph = Core.Services.GetService<AstarGridGraph>();
-            if (astarGraph == null)
-            {
-                Debug.Warn("[PitGenerator] A* graph not found when refreshing");
-                return;
-            }
-
-            var tiledMapService = Core.Services.GetService<TiledMapService>();
-            if (tiledMapService?.CurrentMap == null)
-            {
-                Debug.Warn("[PitGenerator] No tilemap service found for A* graph refresh");
-                return;
-            }
-
-            var collisionLayer = tiledMapService.CurrentMap.GetLayer<TmxLayer>("Collision");
-            if (collisionLayer == null)
-            {
-                Debug.Warn("[PitGenerator] No 'Collision' layer found for A* graph refresh");
-                return;
-            }
-
-            // Completely rebuild A* graph from scratch
-            astarGraph.Walls.Clear();
+            // Refresh the hero's pathfinding to clear dynamically added obstacles
+            heroComponent.RefreshPathfinding();
             
-            // Add all collision layer tiles
-            for (int x = 0; x < collisionLayer.Width; x++)
-            {
-                for (int y = 0; y < collisionLayer.Height; y++)
-                {
-                    var tile = collisionLayer.GetTile(x, y);
-                    if (tile != null && tile.Gid != 0)
-                    {
-                        astarGraph.Walls.Add(new Point(x, y));
-                    }
-                }
-            }
-
-            // Note: Generated obstacles will be added to the A* graph when they are created in CreateEntitiesAtPositions()
-            
-            Debug.Log($"[PitGenerator] A* graph refreshed with {astarGraph.Walls.Count} walls from collision layer");
+            Debug.Log($"[PitGenerator] Hero pathfinding refreshed with {heroComponent.PathfindingGraph.Walls.Count} walls from collision layer");
         }
 
         /// <summary>
@@ -264,16 +177,15 @@ namespace PitHero
         private void GenerateForLevel(int level)
         {
             // Calculate pit bounds using PitWidthManager if available
-            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
             int validMinX, validMinY, validMaxX, validMaxY;
             
-            if (pitWidthManager != null && pitWidthManager.CurrentPitRightEdge > 0)
+            if (_pitWidthManager != null && _pitWidthManager.CurrentPitRightEdge > 0)
             {
                 // Use dynamic pit bounds
                 validMinX = GameConfig.PitRectX + 1; // 2
                 validMinY = GameConfig.PitRectY + 1; // 3
-                validMaxX = pitWidthManager.CurrentPitRightEdge - 3; // 2 tiles from right edge
-                validMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // 9
+                validMaxX = _pitWidthManager.CurrentPitRightEdge - 3; // 3 tiles from right edge (don't place on last walkable column on the right)
+                validMaxY = GameConfig.PitRectHeight - 2; // 9
             }
             else
             {
@@ -561,14 +473,13 @@ namespace PitHero
         {
             _collisionTiles.Clear();
 
-            var tiledMapService = Core.Services.GetService<TiledMapService>();
-            if (tiledMapService?.CurrentMap == null)
+            if (_tiledMapService?.CurrentMap == null)
             {
                 Debug.Log("[PitGenerator] No tilemap service found - assuming no tilemap collisions");
                 return;
             }
 
-            var collisionLayer = tiledMapService.CurrentMap.GetLayer<TmxLayer>("Collision");
+            var collisionLayer = _tiledMapService.CurrentMap.GetLayer("Collision");
             if (collisionLayer == null)
             {
                 Debug.Log("[PitGenerator] No collision layer found in tilemap");
@@ -635,15 +546,24 @@ namespace PitHero
                 if (tag == GameConfig.TAG_OBSTACLE)
                 {
                     // Obstacles block both physics and pathfinding
-                    var astarGraph = Core.Services.GetService<AstarGridGraph>();
-                    if (astarGraph != null)
+                    // Find hero entity to add wall to its pathfinding graph
+                    var hero = _scene.FindEntity("hero");
+                    if (hero != null)
                     {
-                        astarGraph.Walls.Add(tilePos);
-                        Debug.Log($"[PitGenerator] Added obstacle tile to A* walls at ({tilePos.X},{tilePos.Y})");
+                        var heroComponent = hero.GetComponent<HeroComponent>();
+                        if (heroComponent != null && heroComponent.IsPathfindingInitialized)
+                        {
+                            heroComponent.AddWall(tilePos);
+                            Debug.Log($"[PitGenerator] Added obstacle tile to hero pathfinding at ({tilePos.X},{tilePos.Y})");
+                        }
+                        else
+                        {
+                            Debug.Log($"[PitGenerator] Hero found but pathfinding not initialized for obstacle at ({tilePos.X},{tilePos.Y})");
+                        }
                     }
                     else
                     {
-                        Debug.Warn("[PitGenerator] A* graph not found when adding obstacle walls");
+                        Debug.Log($"[PitGenerator] No hero found when creating obstacle at ({tilePos.X},{tilePos.Y}) - will be added to pathfinding when hero spawns");
                     }
                     // Leave collider defaults so hero collides with obstacle (physics layer 0)
                 }
@@ -656,37 +576,6 @@ namespace PitHero
 
                 Debug.Log($"[PitGenerator] Created {entityTypeName} at tile ({tilePos.X},{tilePos.Y}), world ({worldPos.X},{worldPos.Y})");
             }
-        }
-
-        private bool ValidateAllTargetsReachable(HashSet<Point> obstaclePositions, List<Point> targetPositions, int minX, int minY, int maxX, int maxY)
-        {
-            if (targetPositions.Count == 0)
-            {
-                Debug.Log("[PitGenerator] No targets to validate");
-                return true;
-            }
-
-            var pitEntryPoint = FindPitEntryPoint(obstaclePositions, minX, minY, maxX, maxY);
-            if (!pitEntryPoint.HasValue)
-            {
-                Debug.Log("[PitGenerator] No accessible entry point to pit found");
-                return false;
-            }
-
-            Debug.Log($"[PitGenerator] Using pit entry point ({pitEntryPoint.Value.X},{pitEntryPoint.Value.Y}) for pathfinding validation");
-
-            for (int i = 0; i < targetPositions.Count; i++)
-            {
-                var target = targetPositions[i];
-                if (!IsPathExists(pitEntryPoint.Value, target, obstaclePositions, minX, minY, maxX, maxY))
-                {
-                    Debug.Log($"[PitGenerator] Target at ({target.X},{target.Y}) is not reachable");
-                    return false;
-                }
-            }
-
-            Debug.Log($"[PitGenerator] All {targetPositions.Count} targets are reachable");
-            return true;
         }
 
         private Point? FindPitEntryPoint(HashSet<Point> obstaclePositions, int minX, int minY, int maxX, int maxY)

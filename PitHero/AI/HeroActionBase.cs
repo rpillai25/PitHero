@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.AI.GOAP;
 using PitHero.ECS.Components;
+using PitHero.AI.Interfaces;
 
 namespace PitHero.AI
 {
@@ -14,7 +15,20 @@ namespace PitHero.AI
         {
         }
 
+        /// <summary>
+        /// Execute action using traditional HeroComponent (for backward compatibility)
+        /// </summary>
         public abstract bool Execute(HeroComponent hero);
+
+        /// <summary>
+        /// Execute action using interface-based context (new approach)
+        /// </summary>
+        public virtual bool Execute(IGoapContext context)
+        {
+            // Default implementation logs that this action hasn't been updated yet
+            context.LogWarning($"[{GetType().Name}] Execute(IGoapContext) not implemented, falling back to legacy mode");
+            return false;
+        }
 
         private static int TileSize => GameConfig.TileSize; // ensure single source of truth
 
@@ -31,10 +45,29 @@ namespace PitHero.AI
             return tileCorner + colliderCenterOffset;
         }
 
+        /// <summary>
+        /// Get pit center world position using dynamic PitWidthManager values, with GameConfig fallback
+        /// </summary>
         public static Vector2 GetPitCenterWorldPosition()
-            => TileToWorldPosition(new Point(GameConfig.PitCenterTileX, GameConfig.PitCenterTileY));
+        {
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            var centerX = pitWidthManager?.CurrentPitCenterTileX ?? GameConfig.PitCenterTileX;
+            var centerY = GameConfig.PitCenterTileY;
+            return TileToWorldPosition(new Point(centerX, centerY));
+        }
 
+        /// <summary>
+        /// Get map center world position (static since map center doesn't change)
+        /// </summary>
         public static Vector2 GetMapCenterWorldPosition()
             => TileToWorldPosition(new Point(GameConfig.MapCenterTileX, GameConfig.MapCenterTileY));
+
+        /// <summary>
+        /// Get pit center world position using dynamic PitWidthManager values (instance method)
+        /// </summary>
+        protected Vector2 GetDynamicPitCenterWorldPosition()
+        {
+            return GetPitCenterWorldPosition(); // Use the updated static method
+        }
     }
 }

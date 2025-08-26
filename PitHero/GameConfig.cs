@@ -21,10 +21,10 @@ namespace PitHero
         // Hero Configuration
         public const int HeroWidth = 32;
         public const int HeroHeight = 32;
-        public const float HeroMoveSpeed = 100f; // pixels per second
         
-        // Hero movement speed in tiles per second
-        public const float HeroMovementSpeed = 2.0f; // 2 tiles per second
+        // Hero movement speed
+        public const float HeroMovementSpeed = 800f;
+        public const float HeroJumpSpeed = 4f;
         
         // Pit Configuration
         public const int PitWidth = 64;
@@ -91,10 +91,11 @@ namespace PitHero
         public const int TAG_WIZARD_ORB = 7; // Tag for wizard orb entity
 
         // Render Layers (the lower the number, the higher the layer)
-        public const int RenderLayerBase = 100; // Background layer
-        public const int RenderLayerActors = 50; // Actors and entities layer
-        public const int RenderLayerFogOfWar = 10;   // Fog of war layer above most things
+
         public const int RenderLayerHero = 5; // Hero always on top of other actors
+        public const int RenderLayerFogOfWar = 40;   // Fog of war layer above most things
+        public const int RenderLayerActors = 50; // Actors and entities layer
+        public const int RenderLayerBase = 100; // Background layer
 
         public const int RenderLayerUI = 998; // UI layer (always on top)
         public const int TransparentPauseOverlay = 999; // Transparent overlay for paused action when UI is active

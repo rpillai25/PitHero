@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.AI.Pathfinding;
 using Nez.Tiled;
+using PitHero.AI;
 using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.UI;
@@ -73,33 +74,8 @@ namespace PitHero.ECS.Scenes
 
             _cameraController?.ConfigureZoomForMap(_mapPath);
             
-            // Set up pathfinding after map is loaded
-            SetupPathfinding();
-            
             // Initialize pit width manager after map and services are set up
             SetupPitWidthManager();
-        }
-
-        private void SetupPathfinding()
-        {
-            if (_tmxMap == null)
-            {
-                Debug.Warn("[MainGameScene] Cannot setup pathfinding without tilemap");
-                return;
-            }
-
-            // Get the collision layer for pathfinding
-            var collisionLayer = _tmxMap.GetLayer<TmxLayer>("Collision");
-            if (collisionLayer == null)
-            {
-                Debug.Warn("[MainGameScene] No 'Collision' layer found in tilemap for pathfinding");
-                return;
-            }
-
-            // Build graph from the entire Collision layer: any present tile is a wall
-            var astarGraph = new AstarGridGraph(collisionLayer);
-            Core.Services.AddService(astarGraph);
-            Debug.Log($"[MainGameScene] AStarGridGraph pathfinding service registered with {astarGraph.Walls.Count} walls from Collision layer");
         }
 
         private void SetupPitWidthManager()
@@ -172,7 +148,9 @@ namespace PitHero.ECS.Scenes
         {
             // Calculate random position at least 8 tiles to the right of rightmost pit edge
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
-            var rightmostPitTile = pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth - 1);
+            //var rightmostPitTile = pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth - 1);
+            var pitWidth = pitWidthManager?.CurrentPitRectWidthTiles ?? GameConfig.PitRectWidth;
+            var rightmostPitTile = GameConfig.PitRectX + pitWidth - 1;
 
             var minHeroTileX = rightmostPitTile + 8; // 20
             var maxHeroTileX = 50; // Leave some space from map edge
@@ -203,15 +181,71 @@ namespace PitHero.ECS.Scenes
             tileMover.MovementSpeed = GameConfig.HeroMovementSpeed;
             Debug.Log("[MainGameScene] Added TileByTileMover to hero for tile-based movement");
 
-            hero.AddComponent(new HeroComponent
+            var heroComponent = hero.AddComponent(new HeroComponent
             {
                 Health = 100,
                 MaxHealth = 100,
-                MoveSpeed = 140f,
                 PitInitialized = true
             });
             hero.AddComponent(new Historian());
-            hero.AddComponent(new HeroGoapAgentComponent());
+            hero.AddComponent(new HeroStateMachine());
+            
+            // Force pathfinding initialization to complete before adding obstacles
+            // OnAddedToEntity() is called automatically by the framework after this method completes
+            // But we need to explicitly wait for pathfinding to be ready
+            Core.StartCoroutine(AddObstaclesAfterPathfindingReady(hero));
+        }
+
+        /// <summary>
+        /// Coroutine to wait for hero pathfinding to be ready, then add existing obstacles
+        /// </summary>
+        private System.Collections.IEnumerator AddObstaclesAfterPathfindingReady(Entity hero)
+        {
+            var heroComponent = hero.GetComponent<HeroComponent>();
+            
+            // Wait until pathfinding is initialized
+            while (heroComponent != null && !heroComponent.IsPathfindingInitialized)
+            {
+                yield return null; // Wait one frame
+            }
+            
+            // Now add existing obstacles to the pathfinding graph
+            AddExistingObstaclesToHeroPathfinding(hero);
+        }
+
+        /// <summary>
+        /// Add all existing obstacle entities to the hero's pathfinding graph
+        /// This is needed when hero is spawned after obstacles are already created
+        /// </summary>
+        private void AddExistingObstaclesToHeroPathfinding(Entity hero)
+        {
+            var heroComponent = hero.GetComponent<HeroComponent>();
+            if (heroComponent == null || !heroComponent.IsPathfindingInitialized)
+            {
+                Debug.Warn("[MainGameScene] Hero pathfinding not initialized when adding existing obstacles");
+                return;
+            }
+
+            // Find all existing obstacle entities
+            var obstacles = FindEntitiesWithTag(GameConfig.TAG_OBSTACLE);
+            var addedWalls = 0;
+
+            for (int i = 0; i < obstacles.Count; i++)
+            {
+                var obstacle = obstacles[i];
+                // Calculate tile position from world position
+                var worldPos = obstacle.Transform.Position;
+                var tileX = (int)(worldPos.X / GameConfig.TileSize);
+                var tileY = (int)(worldPos.Y / GameConfig.TileSize);
+                var tilePos = new Point(tileX, tileY);
+
+                // Add wall to hero's pathfinding graph
+                heroComponent.AddWall(tilePos);
+                addedWalls++;
+                Debug.Log($"[MainGameScene] Added existing obstacle at ({tileX},{tileY}) to hero pathfinding");
+            }
+
+            Debug.Log($"[MainGameScene] Added {addedWalls} existing obstacle walls to hero pathfinding graph");
         }
 
         private void SetupUIOverlay()

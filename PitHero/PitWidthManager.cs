@@ -3,6 +3,7 @@ using Nez;
 using Nez.Tiled;
 using PitHero.Util;
 using PitHero.ECS.Scenes;
+using PitHero.AI.Interfaces;
 using System.Collections.Generic;
 
 namespace PitHero
@@ -11,7 +12,7 @@ namespace PitHero
     /// Manages dynamic pit width generation based on pit level
     /// Every 10 levels, the pit width extends by 2 tiles to the right
     /// </summary>
-    public class PitWidthManager
+    public class PitWidthManager : IPitWidthManager
     {
         // Dictionary to store tile patterns for pit expansion
         private Dictionary<int, int> _baseOuterFloor;
@@ -27,9 +28,50 @@ namespace PitHero
         private int _currentPitLevel = 1;
         private int _currentPitRightEdge; // The rightmost x coordinate of the current pit
         private bool _isInitialized = false;
+        
+        // Interface dependencies
+        private ITiledMapService _tiledMapService;
 
         public int CurrentPitLevel => _currentPitLevel;
         public int CurrentPitRightEdge => _currentPitRightEdge;
+
+        public PitWidthManager(ITiledMapService tiledMapService = null)
+        {
+            try
+            {
+                _tiledMapService = tiledMapService ?? Core.Services?.GetService<TiledMapService>();
+            }
+            catch
+            {
+                // Core.Services may not be available during unit testing
+                _tiledMapService = tiledMapService;
+            }
+        }
+
+        /// <summary>
+        /// Gets the current pit width in tiles (dynamic), or GameConfig default if not initialized
+        /// </summary>
+        public int CurrentPitRectWidthTiles => _isInitialized
+            ? (_currentPitRightEdge - GameConfig.PitRectX + 1)
+            : GameConfig.PitRectWidth;
+
+        /// <summary>
+        /// Gets the current pit center X tile (dynamic), or GameConfig default if not initialized
+        /// </summary>
+        public int CurrentPitCenterTileX
+        {
+            get
+            {
+                if (!_isInitialized)
+                    return GameConfig.PitCenterTileX;
+
+                // Interior spans from (left = PitRectX + 1) to (right = _currentPitRightEdge - 2)
+                int leftInteriorX = GameConfig.PitRectX + 1;
+                int rightInteriorX = _currentPitRightEdge - 2;
+                return leftInteriorX + ((rightInteriorX - leftInteriorX) / 2);
+            }
+        }
+
 
         /// <summary>
         /// Initialize the tile pattern dictionaries from the map
@@ -43,8 +85,7 @@ namespace PitHero
                 return;
             }
 
-            var tiledMapService = Core.Services.GetService<TiledMapService>();
-            if (tiledMapService?.CurrentMap == null)
+            if (_tiledMapService?.CurrentMap == null)
             {
                 Debug.Error("[PitWidthManager] Cannot initialize - TiledMapService or CurrentMap is null");
                 return;
@@ -58,9 +99,9 @@ namespace PitHero
             _collisionInnerFloor = new Dictionary<int, int>();
 
             // Get layer references
-            var baseLayer = tiledMapService.CurrentMap.GetLayer<TmxLayer>("Base");
-            var collisionLayer = tiledMapService.CurrentMap.GetLayer<TmxLayer>("Collision");
-            var fogOfWarLayer = tiledMapService.CurrentMap.GetLayer<TmxLayer>("FogOfWar");
+            var baseLayer = _tiledMapService.CurrentMap.GetLayer("Base");
+            var collisionLayer = _tiledMapService.CurrentMap.GetLayer("Collision");
+            var fogOfWarLayer = _tiledMapService.CurrentMap.GetLayer("FogOfWar");
 
             if (baseLayer == null || collisionLayer == null || fogOfWarLayer == null)
             {
@@ -91,16 +132,21 @@ namespace PitHero
             InitializeTilePattern(_collisionInnerFloor, collisionLayer, 11, 1, 11, "collisionInnerFloor");
 
             // Set initial pit right edge (default pit goes from x=1 to x=12, so rightmost is 12)
-            _currentPitRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth - 1; // 1 + 12 - 1 = 12
+            _currentPitRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth;
 
             _isInitialized = true;
             Debug.Log($"[PitWidthManager] Initialization complete. Current pit right edge: {_currentPitRightEdge}");
         }
 
+        public void ReinitRightEdge()
+        {
+            _currentPitRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth;
+        }
+
         /// <summary>
         /// Helper method to initialize a tile pattern dictionary from a specific x column
         /// </summary>
-        private void InitializeTilePattern(Dictionary<int, int> dictionary, TmxLayer layer, int x, int startY, int endY, string patternName)
+        private void InitializeTilePattern(Dictionary<int, int> dictionary, ILayerData layer, int x, int startY, int endY, string patternName)
         {
             int nonZeroCount = 0;
             for (int y = startY; y <= endY; y++)
@@ -139,7 +185,7 @@ namespace PitHero
             
             // Calculate new right edge
             int innerFloorTilesToExtend = ((int)(_currentPitLevel / 10)) * 2;
-            int newRightEdge = 12 + innerFloorTilesToExtend + (innerFloorTilesToExtend > 0 ? 2 : 0); // +2 for inner wall and outer floor
+            int newRightEdge = previousRightEdge + innerFloorTilesToExtend + (innerFloorTilesToExtend > 0 ? 2 : 0); // +2 for inner wall and outer floor
             
             // If sizing down, clear tiles first
             if (newRightEdge < previousRightEdge)
@@ -161,8 +207,7 @@ namespace PitHero
                 return;
             }
 
-            var tiledMapService = Core.Services.GetService<TiledMapService>();
-            if (tiledMapService == null)
+            if (_tiledMapService == null)
             {
                 Debug.Error("[PitWidthManager] TiledMapService not available for clearing tiles");
                 return;
@@ -177,14 +222,14 @@ namespace PitHero
                     // Set Base layer to ground tile
                     if (_groundTileIndex != 0)
                     {
-                        tiledMapService.SetTile("Base", x, y, _groundTileIndex);
+                        _tiledMapService.SetTile("Base", x, y, _groundTileIndex);
                     }
 
                     // Remove Collision layer tiles
-                    tiledMapService.RemoveTile("Collision", x, y);
+                    _tiledMapService.RemoveTile("Collision", x, y);
 
                     // Remove FogOfWar layer tiles
-                    tiledMapService.RemoveTile("FogOfWar", x, y);
+                    _tiledMapService.RemoveTile("FogOfWar", x, y);
                 }
             }
 
@@ -194,7 +239,7 @@ namespace PitHero
                 for (int y = 1; y <= 11; y++)
                 {
                     // Remove FogOfWar layer tiles
-                    tiledMapService.RemoveTile("FogOfWar", x, y);
+                    _tiledMapService.RemoveTile("FogOfWar", x, y);
                 }
             }
 
@@ -220,11 +265,11 @@ namespace PitHero
             {
                 RegeneratePitContent();
                 Debug.Log("[PitWidthManager] No extension needed for current level");
+                RegeneratePitContent();
                 return;
             }
 
-            var tiledMapService = Core.Services.GetService<TiledMapService>();
-            if (tiledMapService == null)
+            if (_tiledMapService == null)
             {
                 Debug.Error("[PitWidthManager] TiledMapService not available");
                 return;
@@ -237,7 +282,7 @@ namespace PitHero
             // Loop to extend inner floor tiles
             for (int i = 0; i < innerFloorTilesToExtend; i++)
             {
-                ExtendColumn(tiledMapService, currentX, _baseInnerFloor, _collisionInnerFloor, "inner floor");
+                ExtendColumn(_tiledMapService, currentX, _baseInnerFloor, _collisionInnerFloor, "inner floor");
                 lastXCoordinate = currentX;
                 currentX++;
             }
@@ -246,12 +291,12 @@ namespace PitHero
             if (innerFloorTilesToExtend > 0)
             {
                 currentX = lastXCoordinate + 1;
-                ExtendColumn(tiledMapService, currentX, _baseInnerWall, _collisionInnerWall, "inner wall");
+                ExtendColumn(_tiledMapService, currentX, _baseInnerWall, _collisionInnerWall, "inner wall");
                 lastXCoordinate = currentX;
 
                 // Add outer floor column after inner wall
                 currentX = lastXCoordinate + 1;
-                ExtendColumn(tiledMapService, currentX, _baseOuterFloor, _collisionOuterFloor, "outer floor");
+                ExtendColumn(_tiledMapService, currentX, _baseOuterFloor, _collisionOuterFloor, "outer floor");
                 lastXCoordinate = currentX;
             }
 
@@ -318,8 +363,7 @@ namespace PitHero
                 return;
             }
 
-            var tiledMapService = Core.Services.GetService<TiledMapService>();
-            if (tiledMapService == null)
+            if (_tiledMapService == null)
             {
                 Debug.Error("[PitWidthManager] TiledMapService not available for regenerating FogOfWar");
                 return;
@@ -338,7 +382,7 @@ namespace PitHero
             {
                 for (int y = 3; y <= 9; y++) // y=3 to y=9 is the explorable pit interior
                 {
-                    tiledMapService.SetTile("FogOfWar", x, y, _fogOfWarIndex);
+                    _tiledMapService.SetTile("FogOfWar", x, y, _fogOfWarIndex);
                 }
             }
 
@@ -348,7 +392,7 @@ namespace PitHero
         /// <summary>
         /// Extend a single column using the provided tile patterns
         /// </summary>
-        private void ExtendColumn(TiledMapService tiledMapService, int x, Dictionary<int, int> basePattern, Dictionary<int, int> collisionPattern, string columnType)
+        private void ExtendColumn(ITiledMapService tiledMapService, int x, Dictionary<int, int> basePattern, Dictionary<int, int> collisionPattern, string columnType)
         {
             Debug.Log($"[PitWidthManager] Extending {columnType} column at x={x}");
 
@@ -411,8 +455,8 @@ namespace PitHero
                 };
             }
 
-            // Calculate the rightmost accessible x coordinate (right edge + 1)
-            int targetX = _currentPitRightEdge + 1;
+            // Calculate the rightmost accessible x coordinate (right edge)
+            int targetX = _currentPitRightEdge;
 
             // Generate candidate targets along the right edge
             var candidates = new Point[]
@@ -441,7 +485,7 @@ namespace PitHero
                 return CalculateDefaultPitWorldBounds();
             }
 
-            // Calculate dynamic width based on current right edge
+            // Calculate dynamic width (inclusive of both edges)
             int dynamicPitWidth = _currentPitRightEdge - GameConfig.PitRectX;
 
             // Convert tile coordinates to world coordinates

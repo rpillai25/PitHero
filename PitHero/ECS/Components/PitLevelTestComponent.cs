@@ -36,18 +36,6 @@ namespace PitHero.ECS.Components
                 return; // Don't process inputs unless game is paused (settings menu active)
             }
 
-            // Check if hero is in pit - if so, don't allow testing
-            //var heroEntity = Entity.Scene.FindEntity("hero");
-            //if (heroEntity != null)
-            //{
-            //    var heroComponent = heroEntity.GetComponent<HeroComponent>();
-            //    if (heroComponent != null && heroComponent.CheckInsidePit(heroEntity.Transform.Position))
-            //    {
-            //        // Hero is in pit, don't allow pit level testing
-            //        return;
-            //    }
-            //}
-
             var currentKeyboardState = Keyboard.GetState();
             
             // Check for number key presses
@@ -66,13 +54,6 @@ namespace PitHero.ECS.Components
 
         private void HandleNumberKeyPress(int number)
         {
-            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
-            if (pitWidthManager == null)
-            {
-                Debug.Error("[PitLevelTest] PitWidthManager service not found");
-                return;
-            }
-
             int newLevel;
             if (number == 0)
             {
@@ -83,12 +64,29 @@ namespace PitHero.ECS.Components
                 newLevel = number * 10; // 1 = level 10, 2 = level 20, etc.
             }
 
-            Debug.Log($"[PitLevelTest] Setting pit level to {newLevel} (key {number} pressed)");
-            pitWidthManager.SetPitLevel(newLevel);
-
-            // Log the current state
-            var extensionTiles = ((int)(newLevel / 10)) * 2;
-            Debug.Log($"[PitLevelTest] Level {newLevel}: extending by {extensionTiles} tiles, right edge now at x={pitWidthManager.CurrentPitRightEdge}");
+            Debug.Log($"[PitLevelTest] Queuing pit level {newLevel} (key {number} pressed)");
+            
+            // Use the new queuing functionality from ActivateWizardOrbAction
+            PitHero.AI.ActivateWizardOrbAction.QueuePitLevel(newLevel);
+            
+            // Set GOAP states to trigger the wizard orb workflow
+            var heroEntities = Core.Scene?.FindEntitiesWithTag(GameConfig.TAG_HERO);
+            var heroEntity = heroEntities?.Count > 0 ? heroEntities[0] : null;
+            var heroComponent = heroEntity?.GetComponent<HeroComponent>();
+            if (heroComponent != null)
+            {
+                // Simulate wizard orb activation state for testing
+                Debug.Log("[PitLevelTest] Setting GOAP states for wizard orb workflow test");
+                
+                // This will trigger the MovingToInsidePitEdgeAction and subsequent actions
+                heroComponent.PitInitialized = false; // Mark pit as needing regeneration
+                
+                Debug.Log($"[PitLevelTest] Pit level {newLevel} queued and workflow triggered");
+            }
+            else
+            {
+                Debug.Error("[PitLevelTest] Hero component not found");
+            }
         }
     }
 }

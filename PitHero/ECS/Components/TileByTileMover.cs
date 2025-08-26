@@ -3,13 +3,12 @@ using Nez;
 using System.Collections.Generic;
 using PitHero.Services;
 using PitHero.Util;
+using Nez.Tweens;
 
 namespace PitHero.ECS.Components
 {
     /// <summary>
-    /// A mover that moves entities in tile-based increments over time, respecting movement speed.
-    /// Movement is constrained to cardinal directions and entities are snapped to tile boundaries.
-    /// Handles trigger detection and prevents movement through solid colliders.
+    /// A mover that moves entities in tile-sized steps with smooth pixel interpolation using pixels/second speed.
     /// </summary>
     public class TileByTileMover : Component, IUpdatable, IPausableComponent
     {
@@ -17,9 +16,9 @@ namespace PitHero.ECS.Components
         private readonly int _tileSize = GameConfig.TileSize;
         
         /// <summary>
-        /// Movement speed in tiles per second
+        /// Movement speed in pixels per second
         /// </summary>
-        public float MovementSpeed { get; set; } = 2.0f; // 2 tiles per second by default
+        public float MovementSpeed { get; set; } = GameConfig.HeroMovementSpeed;
         
         /// <summary>
         /// If true, movement is currently in progress
@@ -42,9 +41,14 @@ namespace PitHero.ECS.Components
         private Vector2 _moveTargetPosition;
         
         /// <summary>
-        /// Progress of current movement (0.0 to 1.0)
+        /// Duration of current move (seconds) computed from MovementSpeed (pixels/sec)
         /// </summary>
-        private float _moveProgress;
+        private float _moveDuration;
+        
+        /// <summary>
+        /// Elapsed time since movement started (seconds)
+        /// </summary>
+        private float _moveElapsed;
 
         /// <summary>
         /// Gets whether this component should respect the global pause state
@@ -75,8 +79,6 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Start moving the entity in the specified direction
         /// </summary>
-        /// <param name="direction">Cardinal direction to move</param>
-        /// <returns>True if movement started, false if blocked or already moving</returns>
         public bool StartMoving(Direction direction)
         {
             if (IsMoving)
@@ -91,11 +93,15 @@ namespace PitHero.ECS.Components
             // Start the movement
             _moveStartPosition = Entity.Transform.Position;
             _moveTargetPosition = _moveStartPosition + motion;
-            _moveProgress = 0f;
+            _moveElapsed = 0f;
             CurrentDirection = direction;
             IsMoving = true;
 
-            Debug.Log($"[TileByTileMover] Started moving {direction} from {_moveStartPosition.X},{_moveStartPosition.Y} to {_moveTargetPosition.X},{_moveTargetPosition.Y}");
+            // Calculate duration using pixels-per-second speed
+            var distancePixels = motion.Length();
+            _moveDuration = MovementSpeed > 0f ? distancePixels / MovementSpeed : 0f;
+
+            Debug.Log($"[TileByTileMover] Started moving {direction} from {_moveStartPosition.X},{_moveStartPosition.Y} to {_moveTargetPosition.X},{_moveTargetPosition.Y} with duration {_moveDuration}");
             return true;
         }
 
@@ -109,50 +115,64 @@ namespace PitHero.ECS.Components
                 IsMoving = false;
                 CurrentDirection = null;
                 SnapToTileGrid();
-                Debug.Log($"[TileByTileMover] Movement stopped at {Entity.Transform.Position}");
+                Debug.Log($"[TileByTileMover] Movement stopped at {Entity.Transform.Position.X},{Entity.Transform.Position.Y}");
             }
         }
 
         /// <summary>
-        /// Update the current movement progress
+        /// Update the current movement progress using elapsed/duration for smooth pixel interpolation
         /// </summary>
         private void UpdateMovement()
         {
             if (!IsMoving)
                 return;
 
-            // Calculate movement progress based on speed and delta time
-            var progressDelta = MovementSpeed * Time.DeltaTime;
-            _moveProgress += progressDelta;
-
-            if (_moveProgress >= 1.0f)
+            if (_moveDuration <= 0f)
             {
-                // Movement complete
-                _moveProgress = 1.0f;
+                // No duration means instant move
                 Entity.Transform.Position = _moveTargetPosition;
-                SnapToTileGrid();
-                
-                // Update triggers after reaching destination
-                _triggerHelper?.Update();
+                CompleteMove();
+                return;
+            }
 
-                // Clear fog around the tile we just arrived at
-                var tms = Core.Services.GetService<TiledMapService>();
-                if (tms != null)
-                {
-                    var tile = GetCurrentTileCoordinates();
-                    tms.ClearFogOfWarAroundTile(tile.X, tile.Y);
-                }
-                
-                IsMoving = false;
-                CurrentDirection = null;
-                
-                Debug.Log($"[TileByTileMover] Movement completed at {Entity.Transform.Position.X},{Entity.Transform.Position.Y}");
+            _moveElapsed += Time.DeltaTime;
+            var progress = _moveElapsed / _moveDuration;
+
+            if (progress >= 1f)
+            {
+                // Ensure we land exactly at target
+                Entity.Transform.Position = _moveTargetPosition;
+                CompleteMove();
             }
             else
             {
-                // Interpolate position
-                Entity.Transform.Position = Vector2.Lerp(_moveStartPosition, _moveTargetPosition, _moveProgress);
+                // Interpolate smoothly between start and target
+                Entity.Transform.Position = Vector2.Lerp(_moveStartPosition, _moveTargetPosition, progress);
             }
+        }
+
+        /// <summary>
+        /// Finalize a move: snap to grid, update triggers, clear fog, reset state
+        /// </summary>
+        private void CompleteMove()
+        {
+            SnapToTileGrid();
+            
+            // Update triggers after reaching destination
+            _triggerHelper?.Update();
+
+            // Clear fog around the tile we just arrived at
+            var tms = Core.Services.GetService<TiledMapService>();
+            if (tms != null)
+            {
+                var tile = GetCurrentTileCoordinates();
+                tms.ClearFogOfWarAroundTile(tile.X, tile.Y);
+            }
+            
+            IsMoving = false;
+            CurrentDirection = null;
+            
+            Debug.Log($"[TileByTileMover] Movement completed at {Entity.Transform.Position.X},{Entity.Transform.Position.Y}");
         }
 
         /// <summary>
@@ -166,7 +186,16 @@ namespace PitHero.ECS.Components
 
             // Check for collisions using Nez's collision system
             CollisionResult collisionResult;
-            return !CalculateMovement(motion, out collisionResult);
+            bool isBlocked = CalculateMovement(motion, out collisionResult);
+            
+            if (isBlocked)
+            {
+                var targetPos = Entity.Transform.Position + motion;
+                var targetTile = new Point((int)(targetPos.X / _tileSize), (int)(targetPos.Y / _tileSize));
+                Debug.Log($"[TileByTileMover] Movement to tile ({targetTile.X},{targetTile.Y}) blocked by collision with {collisionResult.Collider?.Entity.Name ?? "unknown"}");
+            }
+            
+            return !isBlocked;
         }
 
         /// <summary>

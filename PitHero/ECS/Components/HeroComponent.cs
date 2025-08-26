@@ -6,25 +6,47 @@ namespace PitHero.ECS.Components
     /// <summary>
     /// Component for heroes in the game
     /// </summary>
-    public class HeroComponent : ActorComponent
+    public class HeroComponent : PathfindingActorComponent
     {
-        public float MoveSpeed { get; set; } = GameConfig.HeroMoveSpeed;
-
         // GOAP-specific pit boundary flags
         public bool PitInitialized { get; set; }
         public bool AdjacentToPitBoundaryFromOutside { get; set; }
         public bool AdjacentToPitBoundaryFromInside { get; set; }
-        public bool EnteredPit { get; set; }
+        public bool InsidePit { get; set; }
+        public bool OutsidePit => !InsidePit;
         public Direction? PitApproachDirection { get; set; }
+        
+        // GOAP-specific wizard orb workflow flags
+        public bool ActivatedWizardOrb { get; set; }
+        public bool MovingToInsidePitEdge { get; set; }
+        public bool ReadyToJumpOutOfPit { get; set; }
+        public bool MovingToPitGenPoint { get; set; }
 
-        // Pit configuration - collision rectangle from (1,2) to (12,10), center at (6,6)
-        private readonly Rectangle _pitCollisionRect = new Rectangle(
-            GameConfig.PitRectX,
-            GameConfig.PitRectY,
-            GameConfig.PitRectWidth,
-            GameConfig.PitRectHeight
-        );
-        private readonly Point _pitCenter = new Point(GameConfig.PitCenterTileX, GameConfig.PitCenterTileY);
+        public bool AtPitGenPoint { get; set; }
+
+        private PitWidthManager _pitWidthManager;
+
+        // Dynamic pit collision rectangle computed from PitWidthManager (falls back to GameConfig)
+        private Rectangle PitCollisionRect
+        {
+            get
+            {
+                var width = _pitWidthManager?.CurrentPitRectWidthTiles ?? GameConfig.PitRectWidth;
+                var height = GameConfig.PitRectHeight;
+                return new Rectangle(GameConfig.PitRectX, GameConfig.PitRectY, width, height);
+            }
+        }
+
+        // Dynamic pit center point computed from PitWidthManager (falls back to GameConfig)
+        private Point PitCenter
+        {
+            get
+            {
+                var centerX = _pitWidthManager?.CurrentPitCenterTileX ?? GameConfig.PitCenterTileX;
+                var centerY = GameConfig.PitCenterTileY;
+                return new Point(centerX, centerY);
+            }
+        }
 
         // Helper: distance in tiles
         private float DistanceTiles(Point a, Point b) =>
@@ -34,12 +56,21 @@ namespace PitHero.ECS.Components
         {
             base.OnAddedToEntity();
 
+            // Cache PitWidthManager service for dynamic pit sizing
+            _pitWidthManager = Core.Services.GetService<PitWidthManager>();
+
             // Do not override PitInitialized here; it may be set by the spawner.
             // Initialize other GOAP flags to clean state
             AdjacentToPitBoundaryFromOutside = false;
             AdjacentToPitBoundaryFromInside = false;
-            EnteredPit = false;
+            InsidePit = false;
             PitApproachDirection = null;
+            
+            // Initialize wizard orb workflow flags
+            ActivatedWizardOrb = false;
+            MovingToInsidePitEdge = false;
+            ReadyToJumpOutOfPit = false;
+            MovingToPitGenPoint = false;
         }
 
         /// <summary>
@@ -68,7 +99,8 @@ namespace PitHero.ECS.Components
 
             Debug.Log("[HeroComponent] Detected tilemap trigger entry");
             var tileCoords = GetTileCoordinates(Entity.Transform.Position, GameConfig.TileSize);
-            var inside = _pitCollisionRect.Contains(tileCoords);
+            var pitBounds = PitCollisionRect;
+            var inside = pitBounds.Contains(tileCoords);
 
             if (inside)
             {
@@ -96,15 +128,16 @@ namespace PitHero.ECS.Components
         private void HandlePitTriggerEnter()
         {
             var currentTile = GetCurrentTilePosition();
+            var pitBounds = PitCollisionRect;
             
             Debug.Log($"[HeroComponent] HandlePitTriggerEnter: currentTile={currentTile.X},{currentTile.Y}, " +
-                      $"pitBounds=({_pitCollisionRect.X},{_pitCollisionRect.Y},{_pitCollisionRect.Width},{_pitCollisionRect.Height})");
+                      $"pitBounds=({pitBounds.X},{pitBounds.Y},{pitBounds.Width},{pitBounds.Height})");
             
             // Determine approach direction based on current position relative to pit boundaries
             PitApproachDirection = DetermineApproachDirection(currentTile);
             
             // Check if we're approaching from outside the pit boundary
-            var wasOutside = !_pitCollisionRect.Contains(currentTile);
+            var wasOutside = !pitBounds.Contains(currentTile);
             
             Debug.Log($"[HeroComponent] wasOutside={wasOutside}, approachDirection={PitApproachDirection}");
             
@@ -131,14 +164,37 @@ namespace PitHero.ECS.Components
 
         private void HandlePitTriggerExit()
         {
-            // Reset all GOAP flags when leaving pit trigger
-            AdjacentToPitBoundaryFromInside = false;
-            AdjacentToPitBoundaryFromOutside = false;
-            EnteredPit = false;
-            PitApproachDirection = null;
+            var currentTile = GetCurrentTilePosition();
+            var pitBounds = PitCollisionRect;
             
-            var historian = Entity.GetComponent<Historian>();
-            historian?.RecordMilestone(MilestoneType.FirstJumpOutOfPit, Time.TotalTime);
+            Debug.Log($"[HeroComponent] HandlePitTriggerExit: currentTile={currentTile.X},{currentTile.Y}, " +
+                      $"pitBounds=({pitBounds.X},{pitBounds.Y},{pitBounds.Width},{pitBounds.Height})");
+            
+            // Only reset flags if hero is actually outside the pit area 
+            // This prevents spurious trigger exits from resetting state during normal pit exploration
+            if (!pitBounds.Contains(currentTile))
+            {
+                Debug.Log("[HeroComponent] Hero truly exited pit area - resetting GOAP flags");
+                
+                // Reset all GOAP flags when actually leaving pit area
+                AdjacentToPitBoundaryFromInside = false;
+                AdjacentToPitBoundaryFromOutside = false;
+                InsidePit = false;
+                PitApproachDirection = null;
+                
+                // Reset wizard orb workflow flags when leaving pit
+                ActivatedWizardOrb = false;
+                MovingToInsidePitEdge = false;
+                ReadyToJumpOutOfPit = false;
+                MovingToPitGenPoint = false;
+                
+                var historian = Entity.GetComponent<Historian>();
+                historian?.RecordMilestone(MilestoneType.FirstJumpOutOfPit, Time.TotalTime);
+            }
+            else
+            {
+                Debug.Log("[HeroComponent] Hero still inside pit area - ignoring spurious trigger exit");
+            }
         }
 
         /// <summary>
@@ -146,7 +202,7 @@ namespace PitHero.ECS.Components
         /// </summary>
         private Direction? DetermineApproachDirection(Point currentTile)
         {
-            var pitBounds = _pitCollisionRect;
+            var pitBounds = PitCollisionRect;
             
             // Check if at specific corner positions
             if (currentTile.X == pitBounds.Left && currentTile.Y == pitBounds.Top)
@@ -192,9 +248,9 @@ namespace PitHero.ECS.Components
         public bool CheckAdjacentToPit(Vector2 position)
         {
             var tile = GetTileCoordinates(position, GameConfig.TileSize);
-            if (_pitCollisionRect.Contains(tile))
+            if (PitCollisionRect.Contains(tile))
                 return false; // inside is not "adjacent"
-            return DistanceTiles(tile, _pitCenter) <= GameConfig.PitAdjacencyRadiusTiles;
+            return DistanceTiles(tile, PitCenter) <= GameConfig.PitAdjacencyRadiusTiles;
         }
 
         /// <summary>
@@ -203,7 +259,7 @@ namespace PitHero.ECS.Components
         public bool CheckInsidePit(Vector2 position)
         {
             var tile = GetTileCoordinates(position, GameConfig.TileSize);
-            return _pitCollisionRect.Contains(tile);
+            return PitCollisionRect.Contains(tile);
         }
 
         /// <summary>
@@ -211,7 +267,7 @@ namespace PitHero.ECS.Components
         /// </summary>
         public Point GetPitCenter()
         {
-            return _pitCenter;
+            return PitCenter;
         }
     }
 }
