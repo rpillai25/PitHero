@@ -51,7 +51,7 @@ namespace PitHero.AI
             var nextLevel = context.PitLevelManager.DequeueLevel();
             if (nextLevel.HasValue)
             {
-                context.PitGenerator.GeneratePit(nextLevel.Value);
+                context.PitGenerator.RegenerateForLevel(nextLevel.Value);
                 context.LogDebug($"[ActivatePitRegenAction] Generated pit level {nextLevel.Value}");
             }
             else
@@ -90,15 +90,15 @@ namespace PitHero.AI
             }
 
             // Get the pit generator service
-            var pitGenerator = Core.Services.GetService<PitGeneratorService>();
+            var pitGenerator = Core.Services.GetService<PitGenerator>();
             if (pitGenerator == null)
             {
-                Debug.Error("[ActivatePitRegen] PitGeneratorService not found");
+                Debug.Error("[ActivatePitRegen] PitGenerator not found");
                 return false;
             }
 
             // Generate the new pit level
-            pitGenerator.GeneratePitLevel(nextLevel.Value);
+            pitGenerator.RegenerateForLevel(nextLevel.Value);
             Debug.Log($"[ActivatePitRegen] Successfully regenerated pit level {nextLevel.Value}");
             
             return true;

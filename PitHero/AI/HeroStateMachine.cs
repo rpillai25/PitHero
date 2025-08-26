@@ -5,6 +5,7 @@ using Nez.AI.GOAP;
 using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.Util;
+using System;
 using System.Collections.Generic;
 
 namespace PitHero.AI
@@ -17,7 +18,7 @@ namespace PitHero.AI
     {
         private HeroComponent _hero;
         private ActionPlanner _planner;
-        private Stack<Action> _actionPlan;
+        private Stack<Nez.AI.GOAP.Action> _actionPlan;
         private HeroActionBase _currentAction;
 
         // GoTo state tracking
@@ -261,10 +262,31 @@ namespace PitHero.AI
             if (!tileMover.IsMoving)
             {
                 var nextTile = _currentPath[_pathIndex];
-                Debug.Log($"[HeroStateMachine] GoTo_Tick: Moving to next tile ({nextTile.X},{nextTile.Y}) [step {_pathIndex + 1}/{_currentPath.Count}]");
-                
-                tileMover.MoveToTile(nextTile);
-                _pathIndex++;
+                var currentTile = _hero.Entity.GetComponent<TileByTileMover>()?.GetCurrentTileCoordinates() 
+                    ?? new Point((int)(_hero.Entity.Transform.Position.X / GameConfig.TileSize),
+                               (int)(_hero.Entity.Transform.Position.Y / GameConfig.TileSize));
+
+                // Calculate direction to next tile
+                var direction = CalculateDirection(currentTile, nextTile);
+                if (direction.HasValue)
+                {
+                    Debug.Log($"[HeroStateMachine] GoTo_Tick: Moving {direction.Value} to tile ({nextTile.X},{nextTile.Y}) [step {_pathIndex + 1}/{_currentPath.Count}]");
+                    
+                    if (tileMover.StartMoving(direction.Value))
+                    {
+                        _pathIndex++;
+                    }
+                    else
+                    {
+                        Debug.Warn($"[HeroStateMachine] GoTo_Tick: Failed to start moving {direction.Value}");
+                        CurrentState = HeroState.PerformAction; // Give up and try action
+                    }
+                }
+                else
+                {
+                    Debug.Warn($"[HeroStateMachine] GoTo_Tick: Cannot calculate direction from ({currentTile.X},{currentTile.Y}) to ({nextTile.X},{nextTile.Y})");
+                    _pathIndex++; // Skip this step
+                }
             }
         }
 
@@ -450,6 +472,38 @@ namespace PitHero.AI
         {
             // Use map center as the pit regeneration point (outside pit area)
             return new Point(GameConfig.MapCenterTileX, GameConfig.MapCenterTileY);
+        }
+
+        /// <summary>
+        /// Calculate direction from current tile to target tile
+        /// </summary>
+        private Direction? CalculateDirection(Point from, Point to)
+        {
+            var deltaX = to.X - from.X;
+            var deltaY = to.Y - from.Y;
+
+            // Only support cardinal directions (no diagonals for now)
+            if (deltaX == 0 && deltaY == -1) return Direction.Up;
+            if (deltaX == 0 && deltaY == 1) return Direction.Down;
+            if (deltaX == -1 && deltaY == 0) return Direction.Left;
+            if (deltaX == 1 && deltaY == 0) return Direction.Right;
+
+            // For diagonals, pick the stronger component or default to horizontal
+            if (deltaX != 0 && deltaY != 0)
+            {
+                return Math.Abs(deltaX) >= Math.Abs(deltaY) 
+                    ? (deltaX > 0 ? Direction.Right : Direction.Left)
+                    : (deltaY > 0 ? Direction.Down : Direction.Up);
+            }
+
+            // If tiles are the same, no movement needed
+            if (deltaX == 0 && deltaY == 0) return null;
+
+            // Handle multi-tile movements by picking primary direction
+            if (Math.Abs(deltaX) > Math.Abs(deltaY))
+                return deltaX > 0 ? Direction.Right : Direction.Left;
+            else
+                return deltaY > 0 ? Direction.Down : Direction.Up;
         }
 
         #endregion
