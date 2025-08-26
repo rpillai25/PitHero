@@ -59,46 +59,14 @@ namespace PitHero.VirtualGame
         {
             var ws = new Dictionary<string, bool>();
 
-            ws[GoapConstants.HeroInitialized] = true;
+            // Use the simplified 7-state GOAP model
+            ws[GoapConstants.HeroInitialized] = HeroController.HeroInitialized;
             ws[GoapConstants.PitInitialized] = HeroController.PitInitialized;
-            
-            if (HeroController.IsMoving && !HeroController.AdjacentToPitBoundaryFromOutside)
-                ws[GoapConstants.MovingToPit] = true;
-
-            if (HeroController.AdjacentToPitBoundaryFromOutside)
-                ws[GoapConstants.AdjacentToPitBoundaryFromOutside] = true;
-            if (HeroController.AdjacentToPitBoundaryFromInside)
-                ws[GoapConstants.AdjacentToPitBoundaryFromInside] = true;
-            if (HeroController.InsidePit)
-                ws[GoapConstants.InsidePit] = true;
-
-            // Wizard orb workflow states
-            if (HeroController.ActivatedWizardOrb)
-                ws[GoapConstants.ActivatedWizardOrb] = true;
-            if (HeroController.MovingToInsidePitEdge)
-                ws[GoapConstants.MovingToInsidePitEdge] = true;
-            if (HeroController.ReadyToJumpOutOfPit)
-                ws[GoapConstants.ReadyToJumpOutOfPit] = true;
-            if (HeroController.MovingToPitGenPoint)
-                ws[GoapConstants.MovingToPitGenPoint] = true;
-
-            // Check exploration status
-            if (WorldState.IsMapExplored)
-                ws[GoapConstants.MapExplored] = true;
-
-            // Check wizard orb status
-            if (WorldState.IsWizardOrbFound)
-                ws[GoapConstants.FoundWizardOrb] = true;
-
-            // Check positional states
-            if (CheckAtWizardOrb())
-                ws[GoapConstants.AtWizardOrb] = true;
-
-            if (HeroController.CurrentTilePosition.X == 34 && HeroController.CurrentTilePosition.Y == 6) // Pit gen point
-                ws[GoapConstants.AtPitGenPoint] = true;
-
-            if (!WorldState.PitBounds.Contains(HeroController.CurrentTilePosition))
-                ws[GoapConstants.OutsidePit] = true;
+            ws[GoapConstants.InsidePit] = HeroController.InsidePit;
+            ws[GoapConstants.OutsidePit] = !HeroController.InsidePit;
+            ws[GoapConstants.ExploredPit] = HeroController.ExploredPit;
+            ws[GoapConstants.FoundWizardOrb] = HeroController.FoundWizardOrb;
+            ws[GoapConstants.ActivatedWizardOrb] = HeroController.ActivatedWizardOrb;
 
             return ws;
         }
@@ -114,38 +82,34 @@ namespace PitHero.VirtualGame
         }
         
         /// <summary>
-        /// Sync state from VirtualHero to VirtualHeroController
+        /// Sync state from VirtualHero to VirtualHeroController - simplified GOAP model
         /// </summary>
         private void SyncHeroStates()
         {
             if (_virtualHero != null && _virtualHeroController != null)
             {
+                _virtualHeroController.HeroInitialized = _virtualHero.HeroInitialized;
                 _virtualHeroController.PitInitialized = _virtualHero.PitInitialized;
-                _virtualHeroController.AdjacentToPitBoundaryFromOutside = _virtualHero.AdjacentToPitBoundaryFromOutside;
-                _virtualHeroController.AdjacentToPitBoundaryFromInside = _virtualHero.AdjacentToPitBoundaryFromInside;
                 _virtualHeroController.InsidePit = _virtualHero.InsidePit;
+                _virtualHeroController.ExploredPit = _virtualHero.ExploredPit;
+                _virtualHeroController.FoundWizardOrb = _virtualHero.FoundWizardOrb;
                 _virtualHeroController.ActivatedWizardOrb = _virtualHero.ActivatedWizardOrb;
-                _virtualHeroController.MovingToInsidePitEdge = _virtualHero.MovingToInsidePitEdge;
-                _virtualHeroController.ReadyToJumpOutOfPit = _virtualHero.ReadyToJumpOutOfPit;
-                _virtualHeroController.MovingToPitGenPoint = _virtualHero.MovingToPitGenPoint;
             }
         }
         
         /// <summary>
-        /// Sync state from VirtualHeroController back to VirtualHero (after action execution)
+        /// Sync state from VirtualHeroController back to VirtualHero (after action execution) - simplified GOAP model
         /// </summary>
         public void SyncBackToHero()
         {
             if (_virtualHero != null && _virtualHeroController != null)
             {
+                _virtualHero.HeroInitialized = _virtualHeroController.HeroInitialized;
                 _virtualHero.PitInitialized = _virtualHeroController.PitInitialized;
-                _virtualHero.AdjacentToPitBoundaryFromOutside = _virtualHeroController.AdjacentToPitBoundaryFromOutside;
-                _virtualHero.AdjacentToPitBoundaryFromInside = _virtualHeroController.AdjacentToPitBoundaryFromInside;
                 _virtualHero.InsidePit = _virtualHeroController.InsidePit;
+                _virtualHero.ExploredPit = _virtualHeroController.ExploredPit;
+                _virtualHero.FoundWizardOrb = _virtualHeroController.FoundWizardOrb;
                 _virtualHero.ActivatedWizardOrb = _virtualHeroController.ActivatedWizardOrb;
-                _virtualHero.MovingToInsidePitEdge = _virtualHeroController.MovingToInsidePitEdge;
-                _virtualHero.ReadyToJumpOutOfPit = _virtualHeroController.ReadyToJumpOutOfPit;
-                _virtualHero.MovingToPitGenPoint = _virtualHeroController.MovingToPitGenPoint;
             }
         }
 

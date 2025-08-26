@@ -11,15 +11,13 @@ namespace PitHero.VirtualGame
     {
         private readonly IVirtualWorld _world;
 
-        // GOAP state flags (matching HeroComponent)
+        // GOAP state flags (simplified 7-state model)
+        public bool HeroInitialized { get; set; } = true;
         public bool PitInitialized { get; set; } = true;
-        public bool AdjacentToPitBoundaryFromOutside { get; set; }
-        public bool AdjacentToPitBoundaryFromInside { get; set; }
         public bool InsidePit { get; set; }
+        public bool ExploredPit { get; set; }
+        public bool FoundWizardOrb { get; set; }
         public bool ActivatedWizardOrb { get; set; }
-        public bool MovingToInsidePitEdge { get; set; }
-        public bool ReadyToJumpOutOfPit { get; set; }
-        public bool MovingToPitGenPoint { get; set; }
 
         // Movement state
         public bool IsMoving { get; set; }

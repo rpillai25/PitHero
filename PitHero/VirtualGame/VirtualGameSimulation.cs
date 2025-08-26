@@ -420,8 +420,7 @@ namespace PitHero.VirtualGame
             // Create action planner directly
             var planner = new Nez.AI.GOAP.ActionPlanner();
             
-            // Add all hero actions
-            planner.AddAction(new MoveToPitAction());
+            // Add all hero actions (simplified 5-action model)
             planner.AddAction(new JumpIntoPitAction());
             planner.AddAction(new WanderAction());
             planner.AddAction(new ActivateWizardOrbAction());
