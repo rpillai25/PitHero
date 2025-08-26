@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using Nez.AI.GOAP;
 using Nez.AI.Pathfinding;
 using Nez.Tiled;
 using PitHero.Util;
@@ -186,6 +187,22 @@ namespace PitHero.ECS.Components
             }
 
             return !_astarGraph.Walls.Contains(tilePosition);
+        }
+
+        /// <summary>
+        /// Set world state based on this actor's current state
+        /// </summary>
+        public virtual void SetWorldState(ref WorldState worldState)
+        {
+            // Default implementation does nothing. Override in derived classes to set specific world state values.
+        }
+
+        /// <summary>
+        /// Set goal state based on this actor's desired state
+        /// </summary>
+        public virtual void SetGoalState(ref WorldState goalState)
+        {
+            // Default implementation does nothing. Override in derived classes to set specific goal state values.
         }
     }
 }

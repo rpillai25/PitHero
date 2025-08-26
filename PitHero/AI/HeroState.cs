@@ -1,7 +1,35 @@
 namespace PitHero.AI
 {
     /// <summary>
-    /// States for the Hero State Machine
+    /// Actor state for the simplified state machine
+    /// </summary>
+    public enum ActorState
+    {
+        Idle,
+        GoTo,
+        PerformAction
+    }
+
+    /// <summary>
+    /// Location types for the state machine queue
+    /// </summary>
+    public enum LocationType
+    {
+        None,
+        PitOutsideEdge,
+        PitInsideEdge,
+        PitWanderPoint,
+        WizardOrb,
+        PitRegenPoint,
+        TownWanderPoint,
+        Inn,
+        ItemShop,
+        WeaponShop,
+        ArmorShop
+    }
+
+    /// <summary>
+    /// Legacy hero states (kept for backward compatibility during transition)
     /// </summary>
     public enum HeroState
     {

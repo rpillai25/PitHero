@@ -1,28 +1,22 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using Nez.AI.GOAP;
 
 namespace PitHero.ECS.Components
 {
     /// <summary>
-    /// Component for heroes in the game
+    /// Component for heroes in the game - simplified to only contain the 7 required state properties
     /// </summary>
     public class HeroComponent : PathfindingActorComponent
     {
-        // GOAP-specific pit boundary flags
-        public bool PitInitialized { get; set; }
-        public bool AdjacentToPitBoundaryFromOutside { get; set; }
-        public bool AdjacentToPitBoundaryFromInside { get; set; }
-        public bool InsidePit { get; set; }
-        public bool OutsidePit => !InsidePit;
-        public Direction? PitApproachDirection { get; set; }
-        
-        // GOAP-specific wizard orb workflow flags
-        public bool ActivatedWizardOrb { get; set; }
-        public bool MovingToInsidePitEdge { get; set; }
-        public bool ReadyToJumpOutOfPit { get; set; }
-        public bool MovingToPitGenPoint { get; set; }
-
-        public bool AtPitGenPoint { get; set; }
+        // The 7 required GOAP state properties
+        public bool HeroInitialized { get; set; }                    // True after hero entity initialized, remains true
+        public bool PitInitialized { get; set; }                     // True after pit generated, false after ActivateWizardOrbAction
+        public bool InsidePit { get; set; }                          // True after JumpIntoPitAction, false after JumpOutOfPitAction
+        public bool OutsidePit => !InsidePit;                        // Opposite of InsidePit (calculated)
+        public bool ExploredPit { get; set; }                        // True after all reachable FogOfWar uncovered, false upon ActivatePitRegenAction
+        public bool FoundWizardOrb { get; set; }                     // True after hero uncovered fog over wizard orb
+        public bool ActivatedWizardOrb { get; set; }                 // True after ActivateWizardOrbAction, false upon ActivatePitRegenAction
 
         private PitWidthManager _pitWidthManager;
 
@@ -59,18 +53,65 @@ namespace PitHero.ECS.Components
             // Cache PitWidthManager service for dynamic pit sizing
             _pitWidthManager = Core.Services.GetService<PitWidthManager>();
 
+            // Initialize state properties to clean state
+            HeroInitialized = true;  // Set to true after hero entity and components initialized
             // Do not override PitInitialized here; it may be set by the spawner.
-            // Initialize other GOAP flags to clean state
-            AdjacentToPitBoundaryFromOutside = false;
-            AdjacentToPitBoundaryFromInside = false;
             InsidePit = false;
-            PitApproachDirection = null;
-            
-            // Initialize wizard orb workflow flags
+            ExploredPit = false;
+            FoundWizardOrb = false;
             ActivatedWizardOrb = false;
-            MovingToInsidePitEdge = false;
-            ReadyToJumpOutOfPit = false;
-            MovingToPitGenPoint = false;
+        }
+
+        /// <summary>
+        /// Override to set world state based on hero's current state
+        /// </summary>
+        public override void SetWorldState(ref WorldState worldState)
+        {
+            if (HeroInitialized)
+            {
+                worldState.Set(GoapConstants.HeroInitialized, true);
+            }
+            if (PitInitialized)
+            {
+                worldState.Set(GoapConstants.PitInitialized, true);
+            }
+            if (InsidePit)
+            {
+                worldState.Set(GoapConstants.InsidePit, true);
+            }
+            if (OutsidePit)
+            {
+                worldState.Set(GoapConstants.OutsidePit, true);
+            }
+            if (ExploredPit)
+            {
+                worldState.Set(GoapConstants.ExploredPit, true);
+            }
+            if (FoundWizardOrb)
+            {
+                worldState.Set(GoapConstants.FoundWizardOrb, true);
+            }
+            if (ActivatedWizardOrb)
+            {
+                worldState.Set(GoapConstants.ActivatedWizardOrb, true);
+            }
+        }
+
+        /// <summary>
+        /// Override to set goal state based on hero's desired state
+        /// </summary>
+        public override void SetGoalState(ref WorldState goalState)
+        {
+            // 2 main goals for the hero so far. The planner should always plan the optimal path of actions to these goals.
+            
+            if (PitInitialized && !ActivatedWizardOrb)
+            {
+                goalState.Set(GoapConstants.ActivatedWizardOrb, true);
+            }
+            else if (!PitInitialized && ActivatedWizardOrb)
+            {
+                goalState.Set(GoapConstants.PitInitialized, true);
+            }
         }
 
         /// <summary>
@@ -133,29 +174,6 @@ namespace PitHero.ECS.Components
             Debug.Log($"[HeroComponent] HandlePitTriggerEnter: currentTile={currentTile.X},{currentTile.Y}, " +
                       $"pitBounds=({pitBounds.X},{pitBounds.Y},{pitBounds.Width},{pitBounds.Height})");
             
-            // Determine approach direction based on current position relative to pit boundaries
-            PitApproachDirection = DetermineApproachDirection(currentTile);
-            
-            // Check if we're approaching from outside the pit boundary
-            var wasOutside = !pitBounds.Contains(currentTile);
-            
-            Debug.Log($"[HeroComponent] wasOutside={wasOutside}, approachDirection={PitApproachDirection}");
-            
-            // Reset conflicting states first
-            AdjacentToPitBoundaryFromOutside = false;
-            AdjacentToPitBoundaryFromInside = false;
-            
-            if (wasOutside)
-            {
-                AdjacentToPitBoundaryFromOutside = true;
-                Debug.Log($"[HeroComponent] Set AdjacentToPitBoundaryFromOutside=true, direction: {PitApproachDirection}");
-            }
-            else
-            {
-                AdjacentToPitBoundaryFromInside = true;
-                Debug.Log($"[HeroComponent] Set AdjacentToPitBoundaryFromInside=true (already inside pit boundary)");
-            }
-            
             var historian = Entity.GetComponent<Historian>();
             historian?.RecordMilestone(MilestoneType.FirstJumpIntoPit, Time.TotalTime);
             
@@ -176,17 +194,11 @@ namespace PitHero.ECS.Components
             {
                 Debug.Log("[HeroComponent] Hero truly exited pit area - resetting GOAP flags");
                 
-                // Reset all GOAP flags when actually leaving pit area
-                AdjacentToPitBoundaryFromInside = false;
-                AdjacentToPitBoundaryFromOutside = false;
+                // Reset flags when actually leaving pit area
                 InsidePit = false;
-                PitApproachDirection = null;
                 
                 // Reset wizard orb workflow flags when leaving pit
                 ActivatedWizardOrb = false;
-                MovingToInsidePitEdge = false;
-                ReadyToJumpOutOfPit = false;
-                MovingToPitGenPoint = false;
                 
                 var historian = Entity.GetComponent<Historian>();
                 historian?.RecordMilestone(MilestoneType.FirstJumpOutOfPit, Time.TotalTime);
@@ -195,36 +207,6 @@ namespace PitHero.ECS.Components
             {
                 Debug.Log("[HeroComponent] Hero still inside pit area - ignoring spurious trigger exit");
             }
-        }
-
-        /// <summary>
-        /// Determine which direction the hero is approaching the pit from
-        /// </summary>
-        private Direction? DetermineApproachDirection(Point currentTile)
-        {
-            var pitBounds = PitCollisionRect;
-            
-            // Check if at specific corner positions
-            if (currentTile.X == pitBounds.Left && currentTile.Y == pitBounds.Top)
-                return Direction.DownRight; // Upper left corner
-            if (currentTile.X == pitBounds.Right - 1 && currentTile.Y == pitBounds.Top)
-                return Direction.DownLeft; // Upper right corner
-            if (currentTile.X == pitBounds.Right - 1 && currentTile.Y == pitBounds.Bottom - 1)
-                return Direction.UpLeft; // Lower right corner
-            if (currentTile.X == pitBounds.Left && currentTile.Y == pitBounds.Bottom - 1)
-                return Direction.UpRight; // Lower left corner
-            
-            // Check cardinal directions
-            if (currentTile.X < pitBounds.Left)
-                return Direction.Right; // Approaching from left
-            if (currentTile.X >= pitBounds.Right)
-                return Direction.Left; // Approaching from right
-            if (currentTile.Y < pitBounds.Top)
-                return Direction.Down; // Approaching from above
-            if (currentTile.Y >= pitBounds.Bottom)
-                return Direction.Up; // Approaching from below
-            
-            return null; // Already inside
         }
 
         /// <summary>
