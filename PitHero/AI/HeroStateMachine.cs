@@ -40,7 +40,7 @@ namespace PitHero.AI
             var jumpIntoPit = new JumpIntoPitAction();
             _planner.AddAction(jumpIntoPit);
 
-            var wander = new WanderAction();
+            var wander = new WanderPitAction();
             _planner.AddAction(wander);
             
             var activateWizardOrb = new ActivateWizardOrbAction();
@@ -387,7 +387,7 @@ namespace PitHero.AI
                     _targetLocationType = LocationType.PitOutsideEdge;
                     return CalculatePitOutsideEdgeLocation();
 
-                case GoapConstants.WanderAction:
+                case GoapConstants.WanderPitAction:
                     _targetLocationType = LocationType.PitWanderPoint;
                     return CalculatePitWanderPointLocation();
 
@@ -527,7 +527,7 @@ namespace PitHero.AI
             //Debug.Log("[HeroStateMachine] Available actions and their preconditions:");
             //Debug.Log("  MoveToPitAction: Requires PitInitialized=true, HeroInitialized=true, OutsidePit=true");
             //Debug.Log("  JumpIntoPitAction: Requires AdjacentToPitBoundaryFromOutside=true");
-            //Debug.Log("  WanderAction: Requires InsidePit=true");
+            //Debug.Log("  WanderPitAction: Requires InsidePit=true");
             //Debug.Log("  MoveToWizardOrbAction: Requires FoundWizardOrb=true, MapExplored=true");
             //Debug.Log("  ActivateWizardOrbAction: Requires AtWizardOrb=true");
             //Debug.Log("  MovingToInsidePitEdgeAction: Requires MovingToInsidePitEdge=true");

@@ -13,7 +13,7 @@
 
         // GOAP Actions (only these 5 actions should exist)
         public const string JumpIntoPitAction = "JumpIntoPitAction";
-        public const string WanderAction = "WanderAction";
+        public const string WanderPitAction = "WanderPitAction";
         public const string ActivateWizardOrbAction = "ActivateWizardOrbAction";
         public const string JumpOutOfPitAction = "JumpOutOfPitAction";
         public const string ActivatePitRegenAction = "ActivatePitRegenAction";

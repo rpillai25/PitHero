@@ -4,32 +4,32 @@ using PitHero.AI;
 namespace PitHero.Tests
 {
     /// <summary>
-    /// MSTest unit tests for WanderAction functionality
+    /// MSTest unit tests for WanderPitAction functionality
     /// </summary>
     [TestClass]
-    public class WanderActionTests
+    public class WanderPitActionTests
     {
         [TestMethod]
-        public void WanderAction_Constructor_ShouldSetCorrectPreconditionsAndPostconditions()
+        public void WanderPitAction_Constructor_ShouldSetCorrectPreconditionsAndPostconditions()
         {
             // Arrange & Act
-            var action = new WanderAction();
+            var action = new WanderPitAction();
 
             // Assert
-            Assert.IsNotNull(action, "WanderAction should be created successfully");
-            Assert.AreEqual(GoapConstants.WanderAction, action.Name, "Action name should match constant");
+            Assert.IsNotNull(action, "WanderPitAction should be created successfully");
+            Assert.AreEqual(GoapConstants.WanderPitAction, action.Name, "Action name should match constant");
             Assert.AreEqual(1, action.Cost, "Action cost should be 1");
         }
 
         [TestMethod]
-        public void GoapConstants_WanderAction_ShouldExist()
+        public void GoapConstants_WanderPitAction_ShouldExist()
         {
             // Arrange & Act
-            var actionName = GoapConstants.WanderAction;
+            var actionName = GoapConstants.WanderPitAction;
             var stateName = GoapConstants.ExploredPit;
 
             // Assert
-            Assert.AreEqual("WanderAction", actionName, "WanderAction constant should have correct value");
+            Assert.AreEqual("WanderPitAction", actionName, "WanderPitAction constant should have correct value");
             Assert.AreEqual("ExploredPit", stateName, "ExploredPit constant should have correct value");
         }
 

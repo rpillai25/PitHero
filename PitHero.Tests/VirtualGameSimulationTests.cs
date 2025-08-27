@@ -127,8 +127,8 @@ namespace PitHero.Tests
                 
                 // Verify key actions were executed (only the 5 simplified actions)
                 Assert.IsTrue(output.Contains("[JumpIntoPitAction]"));
-                Assert.IsTrue(output.Contains("[WanderAction]"));
-                Assert.IsTrue(output.Contains("[WanderAction]"));
+                Assert.IsTrue(output.Contains("[WanderPitAction]"));
+                Assert.IsTrue(output.Contains("[WanderPitAction]"));
                 Assert.IsTrue(output.Contains("[ActivateWizardOrbAction]"));
                 Assert.IsTrue(output.Contains("[JumpOutOfPitAction]"));
                 Assert.IsTrue(output.Contains("[ActivatePitRegenAction]"));

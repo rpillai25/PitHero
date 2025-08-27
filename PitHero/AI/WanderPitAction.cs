@@ -11,7 +11,7 @@ namespace PitHero.AI
     /// <summary>
     /// Action that causes the hero to explore the pit by moving to the nearest unknown tile
     /// </summary>
-    public class WanderAction : HeroActionBase
+    public class WanderPitAction : HeroActionBase
     {
         private List<Point> _currentPath;
         private int _pathIndex;
@@ -25,7 +25,7 @@ namespace PitHero.AI
         private int _consecutiveFailures;
         private const int MAX_CONSECUTIVE_FAILURES = 3;
 
-        public WanderAction() : base(GoapConstants.WanderAction, 1)
+        public WanderPitAction() : base(GoapConstants.WanderPitAction, 1)
         {
             SetPrecondition(GoapConstants.InsidePit, true);
             SetPrecondition(GoapConstants.ExploredPit, false);
@@ -42,7 +42,7 @@ namespace PitHero.AI
             var tileMover = hero.Entity.GetComponent<TileByTileMover>();
             if (tileMover == null)
             {
-                Debug.Warn("WanderAction: Hero entity missing TileByTileMover component");
+                Debug.Warn("WanderPitAction: Hero entity missing TileByTileMover component");
                 ResetInternal();
                 return true;
             }
@@ -184,7 +184,7 @@ namespace PitHero.AI
         /// </summary>
         public override bool Execute(IGoapContext context)
         {
-            context.LogDebug($"[WanderAction] Starting execution with interface-based context");
+            context.LogDebug($"[WanderPitAction] Starting execution with interface-based context");
 
             // Select a target if we haven't yet for this execution
             if (!_hasSelectedTarget)
@@ -193,7 +193,7 @@ namespace PitHero.AI
                 var nearestUnknownTile = FindNearestUnknownTileVirtual(context, heroTile);
                 if (!nearestUnknownTile.HasValue)
                 {
-                    context.LogDebug("[WanderAction] No unknown tiles found - exploration complete");
+                    context.LogDebug("[WanderPitAction] No unknown tiles found - exploration complete");
                     ResetInternal();
                     return true; // All done
                 }
@@ -201,7 +201,7 @@ namespace PitHero.AI
                 _targetTile = nearestUnknownTile.Value;
                 _hasSelectedTarget = true;
                 _consecutiveFailures = 0; // Reset failure count for new target
-                context.LogDebug($"[WanderAction] Selected target tile {_targetTile.X},{_targetTile.Y}");
+                context.LogDebug($"[WanderPitAction] Selected target tile {_targetTile.X},{_targetTile.Y}");
             }
 
             // Get current tile position
@@ -210,7 +210,7 @@ namespace PitHero.AI
             // Check if we've reached the target
             if (currentTile.X == _targetTile.X && currentTile.Y == _targetTile.Y)
             {
-                context.LogDebug($"[WanderAction] Reached target tile {_targetTile.X},{_targetTile.Y}");
+                context.LogDebug($"[WanderPitAction] Reached target tile {_targetTile.X},{_targetTile.Y}");
 
                 // Clear fog of war around this tile
                 context.WorldState.ClearFogOfWar(currentTile, 1);
@@ -231,14 +231,14 @@ namespace PitHero.AI
 
                 if (_currentPath == null || _currentPath.Count == 0)
                 {
-                    context.LogWarning($"[WanderAction] Could not find path from {currentTile.X},{currentTile.Y} to {_targetTile.X},{_targetTile.Y}");
+                    context.LogWarning($"[WanderPitAction] Could not find path from {currentTile.X},{currentTile.Y} to {_targetTile.X},{_targetTile.Y}");
                     
                     _consecutiveFailures++;
-                    context.LogDebug($"[WanderAction] Consecutive failures for target {_targetTile.X},{_targetTile.Y}: {_consecutiveFailures}");
+                    context.LogDebug($"[WanderPitAction] Consecutive failures for target {_targetTile.X},{_targetTile.Y}: {_consecutiveFailures}");
                     
                     if (_consecutiveFailures >= MAX_CONSECUTIVE_FAILURES)
                     {
-                        context.LogDebug($"[WanderAction] Target {_targetTile.X},{_targetTile.Y} failed {MAX_CONSECUTIVE_FAILURES} times, marking as unreachable and selecting new target");
+                        context.LogDebug($"[WanderPitAction] Target {_targetTile.X},{_targetTile.Y} failed {MAX_CONSECUTIVE_FAILURES} times, marking as unreachable and selecting new target");
                         // Add to failed targets set to avoid future reselection
                         _failedTargets.Add(_targetTile);
                         
@@ -249,7 +249,7 @@ namespace PitHero.AI
                     return false; // try again next tick (either with new target or retry current)
                 }
 
-                context.LogDebug($"[WanderAction] Calculated path with {_currentPath.Count} steps");
+                context.LogDebug($"[WanderPitAction] Calculated path with {_currentPath.Count} steps");
             }
 
             // If not currently moving, start moving to the next tile in the path
@@ -260,7 +260,7 @@ namespace PitHero.AI
 
                 if (direction.HasValue)
                 {
-                    context.LogDebug($"[WanderAction] Moving {direction.Value} to tile {nextTile.X},{nextTile.Y}");
+                    context.LogDebug($"[WanderPitAction] Moving {direction.Value} to tile {nextTile.X},{nextTile.Y}");
                     var moveStarted = context.HeroController.StartMoving(direction.Value);
                     if (moveStarted)
                     {
@@ -270,13 +270,13 @@ namespace PitHero.AI
                     }
                     else
                     {
-                        context.LogDebug("[WanderAction] Movement blocked, recalculating path");
+                        context.LogDebug("[WanderPitAction] Movement blocked, recalculating path");
                         _consecutiveFailures++;
-                        context.LogDebug($"[WanderAction] Consecutive failures for target {_targetTile.X},{_targetTile.Y}: {_consecutiveFailures}");
+                        context.LogDebug($"[WanderPitAction] Consecutive failures for target {_targetTile.X},{_targetTile.Y}: {_consecutiveFailures}");
                         
                         if (_consecutiveFailures >= MAX_CONSECUTIVE_FAILURES)
                         {
-                            context.LogDebug($"[WanderAction] Movement to target {_targetTile.X},{_targetTile.Y} blocked {MAX_CONSECUTIVE_FAILURES} times, selecting new target");
+                            context.LogDebug($"[WanderPitAction] Movement to target {_targetTile.X},{_targetTile.Y} blocked {MAX_CONSECUTIVE_FAILURES} times, selecting new target");
                             // Add to failed targets set to avoid future reselection
                             _failedTargets.Add(_targetTile);
                             
@@ -292,12 +292,12 @@ namespace PitHero.AI
                 }
                 else
                 {
-                    context.LogWarning($"[WanderAction] Invalid movement from {currentTile.X},{currentTile.Y} to {nextTile.X},{nextTile.Y}");
+                    context.LogWarning($"[WanderPitAction] Invalid movement from {currentTile.X},{currentTile.Y} to {nextTile.X},{nextTile.Y}");
                     _consecutiveFailures++;
                     
                     if (_consecutiveFailures >= MAX_CONSECUTIVE_FAILURES)
                     {
-                        context.LogDebug($"[WanderAction] Invalid movement to target {_targetTile.X},{_targetTile.Y} failed {MAX_CONSECUTIVE_FAILURES} times, selecting new target");
+                        context.LogDebug($"[WanderPitAction] Invalid movement to target {_targetTile.X},{_targetTile.Y} failed {MAX_CONSECUTIVE_FAILURES} times, selecting new target");
                         _failedTargets.Add(_targetTile);
                         ResetInternal();
                     }
@@ -322,7 +322,7 @@ namespace PitHero.AI
             int pitMaxX = pitBounds.Right - 2; // Last explorable column (before inner wall)
             int pitMaxY = pitBounds.Bottom - 2; // Last explorable row
 
-            context.LogDebug($"[WanderAction] Using pit bounds: explorable area ({pitMinX},{pitMinY}) to ({pitMaxX},{pitMaxY})");
+            context.LogDebug($"[WanderPitAction] Using pit bounds: explorable area ({pitMinX},{pitMinY}) to ({pitMaxX},{pitMaxY})");
 
             Point? nearestUnknownTile = null;
             float shortestDistance = float.MaxValue;
@@ -353,7 +353,7 @@ namespace PitHero.AI
                         // Check if tile is passable
                         if (!context.WorldState.IsPassable(tilePoint))
                         {
-                            context.LogDebug($"[WanderAction] Tile ({x},{y}) has fog but is not passable");
+                            context.LogDebug($"[WanderPitAction] Tile ({x},{y}) has fog but is not passable");
                             continue;
                         }
                         
@@ -374,19 +374,19 @@ namespace PitHero.AI
                 }
             }
 
-            context.LogDebug($"[WanderAction] Found {fogTileCount} fog tiles total, {passableFogTileCount} passable fog tiles, skipped {skippedFailedCount} failed targets");
+            context.LogDebug($"[WanderPitAction] Found {fogTileCount} fog tiles total, {passableFogTileCount} passable fog tiles, skipped {skippedFailedCount} failed targets");
 
             if (nearestUnknownTile.HasValue)
             {
-                context.LogDebug($"[WanderAction] Found nearest unknown tile at {nearestUnknownTile.Value.X},{nearestUnknownTile.Value.Y} distance {shortestDistance}");
+                context.LogDebug($"[WanderPitAction] Found nearest unknown tile at {nearestUnknownTile.Value.X},{nearestUnknownTile.Value.Y} distance {shortestDistance}");
             }
             else
             {
-                context.LogDebug("[WanderAction] No unknown tiles found in pit area");
+                context.LogDebug("[WanderPitAction] No unknown tiles found in pit area");
                 // If we have failed targets and no valid targets, clear failed targets and try again
                 if (_failedTargets.Count > 0)
                 {
-                    context.LogDebug($"[WanderAction] Clearing {_failedTargets.Count} failed targets to retry exploration");
+                    context.LogDebug($"[WanderPitAction] Clearing {_failedTargets.Count} failed targets to retry exploration");
                     _failedTargets.Clear();
                     // Return null to trigger retry on next frame
                     return null;

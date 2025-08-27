@@ -49,7 +49,7 @@ namespace PitHero.Tests
                 // Verify simplified GOAP actions were executed
                 Assert.IsTrue(output.Contains("[JumpIntoPitAction]"));
                 Assert.IsTrue(output.Contains("[JumpIntoPitAction]"));
-                Assert.IsTrue(output.Contains("[WanderAction]"));
+                Assert.IsTrue(output.Contains("[WanderPitAction]"));
                 Assert.IsTrue(output.Contains("[ActivateWizardOrbAction]"));
                 Assert.IsTrue(output.Contains("[JumpOutOfPitAction]"));
                 Assert.IsTrue(output.Contains("[ActivatePitRegenAction]"));
@@ -62,7 +62,7 @@ namespace PitHero.Tests
                 
                 // Verify the workflow completion
                 Assert.IsTrue(output.Contains("✓ Pit generation at level 40"));
-                Assert.IsTrue(output.Contains("✓ Complete pit exploration via WanderAction"));
+                Assert.IsTrue(output.Contains("✓ Complete pit exploration via WanderPitAction"));
                 Assert.IsTrue(output.Contains("✓ Pit regeneration at higher level"));
                 
                 Console.WriteLine();

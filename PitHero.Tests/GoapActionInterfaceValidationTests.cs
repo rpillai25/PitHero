@@ -43,12 +43,12 @@ namespace PitHero.Tests
                 context.HeroController.MoveTo(pitCenter);
                 context.HeroController.InsidePit = true;
                 
-                // Test WanderAction  
-                Console.WriteLine("Testing WanderAction interface support...");
-                var wanderAction = new WanderAction();
+                // Test WanderPitAction  
+                Console.WriteLine("Testing WanderPitAction interface support...");
+                var wanderAction = new WanderPitAction();
                 var result2 = wanderAction.Execute(context);
-                Assert.IsNotNull(result2, "WanderAction should return a result");
-                Console.WriteLine("✓ WanderAction supports interface-based execution");
+                Assert.IsNotNull(result2, "WanderPitAction should return a result");
+                Console.WriteLine("✓ WanderPitAction supports interface-based execution");
                 
                 // Test MoveToWizardOrbAction
                 Console.WriteLine("Testing ActivateWizardOrbAction interface support...");

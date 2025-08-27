@@ -14,7 +14,7 @@ namespace PitHero.Tests
     public class InterfaceBasedGoapTests
     {
         [TestMethod]
-        public void WanderAction_ExecuteWithVirtualContext_ShouldExploreSuccessfully()
+        public void WanderPitAction_ExecuteWithVirtualContext_ShouldExploreSuccessfully()
         {
             // Capture console output for validation
             var originalOut = Console.Out;
@@ -26,7 +26,7 @@ namespace PitHero.Tests
                 // Arrange
                 var virtualWorld = new VirtualWorldState();
                 var context = new VirtualGoapContext(virtualWorld);
-                var wanderAction = new WanderAction();
+                var wanderAction = new WanderPitAction();
                 
                 // Move hero inside pit
                 var pitCenter = new Point(virtualWorld.PitBounds.X + 2, virtualWorld.PitBounds.Y + 2);
@@ -63,7 +63,7 @@ namespace PitHero.Tests
                 Console.WriteLine($"Map explored: {context.WorldState.IsMapExplored}");
                 
                 // Verify the action executed and made progress
-                Assert.IsTrue(output.Contains("[WanderAction]"), "WanderAction should have executed");
+                Assert.IsTrue(output.Contains("[WanderPitAction]"), "WanderPitAction should have executed");
                 Assert.IsTrue(output.Contains("Starting execution with interface-based context"), "Should use interface-based execution");
                 
                 // Either the action completed or made significant progress
@@ -73,7 +73,7 @@ namespace PitHero.Tests
                 bool someLogCleared = !context.WorldState.HasFogOfWar(context.HeroController.CurrentTilePosition);
                 Assert.IsTrue(someLogCleared, "Some fog should have been cleared around hero position");
                 
-                Console.WriteLine("WanderAction interface-based execution test completed successfully");
+                Console.WriteLine("WanderPitAction interface-based execution test completed successfully");
             }
             finally
             {
