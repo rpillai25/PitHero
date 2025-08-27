@@ -99,32 +99,8 @@ namespace PitHero.VirtualGame
             var pos = Position;
             var pitBounds = _world.PitBounds;
 
-            // Reset all position states first
-            AdjacentToPitBoundaryFromOutside = false;
-            AdjacentToPitBoundaryFromInside = false;
-            InsidePit = false;
-
-            // Check if inside pit
-            if (pitBounds.Contains(pos))
-            {
-                InsidePit = true;
-                
-                // Check if adjacent to pit boundary from inside
-                if (pos.X == pitBounds.X || pos.X == pitBounds.Right - 1 ||
-                    pos.Y == pitBounds.Y || pos.Y == pitBounds.Bottom - 1)
-                {
-                    AdjacentToPitBoundaryFromInside = true;
-                }
-            }
-            else
-            {
-                // Check if adjacent to pit boundary from outside
-                var distance = CalculateDistanceToPitBoundary(pos);
-                if (distance <= GameConfig.PitAdjacencyRadiusTiles)
-                {
-                    AdjacentToPitBoundaryFromOutside = true;
-                }
-            }
+            // Update InsidePit based on current position
+            InsidePit = pitBounds.Contains(pos);
         }
 
         /// <summary>
@@ -156,11 +132,39 @@ namespace PitHero.VirtualGame
         public void ResetWizardOrbStates()
         {
             ActivatedWizardOrb = false;
-            MovingToInsidePitEdge = false;
-            ReadyToJumpOutOfPit = false;
-            MovingToPitGenPoint = false;
             
             System.Console.WriteLine("[VirtualHero] Reset wizard orb workflow states");
+        }
+
+        /// <summary>
+        /// Check if hero is adjacent to pit boundary from outside
+        /// </summary>
+        public bool AdjacentToPitBoundaryFromOutside()
+        {
+            var pos = Position;
+            var pitBounds = _world.PitBounds;
+            
+            if (pitBounds.Contains(pos))
+                return false; // Inside pit, not outside
+                
+            var distance = CalculateDistanceToPitBoundary(pos);
+            return distance <= GameConfig.PitAdjacencyRadiusTiles;
+        }
+
+        /// <summary>
+        /// Check if hero is adjacent to pit boundary from inside
+        /// </summary>
+        public bool AdjacentToPitBoundaryFromInside()
+        {
+            var pos = Position;
+            var pitBounds = _world.PitBounds;
+            
+            if (!pitBounds.Contains(pos))
+                return false; // Outside pit, not inside
+                
+            // Check if adjacent to pit boundary from inside
+            return pos.X == pitBounds.X || pos.X == pitBounds.Right - 1 ||
+                   pos.Y == pitBounds.Y || pos.Y == pitBounds.Bottom - 1;
         }
 
         /// <summary>

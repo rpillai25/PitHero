@@ -95,7 +95,7 @@ namespace PitHero.VirtualGame
                 }
             }
             
-            Console.WriteLine($"[{_currentAction}] Completed. Hero adjacent to pit: {_hero.AdjacentToPitBoundaryFromOutside}");
+            Console.WriteLine($"[{_currentAction}] Completed. Hero adjacent to pit: {_hero.AdjacentToPitBoundaryFromOutside()}");
         }
 
         /// <summary>
@@ -174,7 +174,6 @@ namespace PitHero.VirtualGame
             
             _world.ActivateWizardOrb();
             _hero.ActivatedWizardOrb = true;
-            _hero.MovingToInsidePitEdge = true;
             
             // Queue next pit level (current + 10)
             var nextLevel = _world.PitLevel + 10;
@@ -198,11 +197,10 @@ namespace PitHero.VirtualGame
             
             _hero.MoveTo(targetPos);
             _hero.ResetWizardOrbStates();
-            _hero.MovingToPitGenPoint = true;
             
             _tickCount++;
             var outsidePit = _hero.GetWorldState().ContainsKey(GoapConstants.OutsidePit);
-            Console.WriteLine($"[{_currentAction}] Completed. OutsidePit: {outsidePit}, MovingToPitGenPoint: {_hero.MovingToPitGenPoint}");
+            Console.WriteLine($"[{_currentAction}] Completed. OutsidePit: {outsidePit}");
         }
 
         private void ExecuteActivatePitRegenAction()
@@ -343,8 +341,6 @@ namespace PitHero.VirtualGame
         {
             _hero.CurrentTilePosition = new Point(2, 3); // Inside pit area
             _hero.InsidePit = true;
-            _hero.AdjacentToPitBoundaryFromInside = true;
-            _hero.AdjacentToPitBoundaryFromOutside = false;
             Console.WriteLine($"Hero jumped into pit at tile {_hero.CurrentTilePosition.X},{_hero.CurrentTilePosition.Y}");
         }
         
@@ -541,12 +537,7 @@ namespace PitHero.VirtualGame
             {
                 // Hero is truly outside pit - reset flags
                 _hero.InsidePit = false;
-                _hero.AdjacentToPitBoundaryFromInside = false;
-                _hero.AdjacentToPitBoundaryFromOutside = false;
                 _hero.ActivatedWizardOrb = false;
-                _hero.MovingToInsidePitEdge = false;
-                _hero.ReadyToJumpOutOfPit = false;
-                _hero.MovingToPitGenPoint = false;
             }
             // Otherwise, hero is still in pit area - don't reset flags
         }
