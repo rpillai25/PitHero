@@ -77,10 +77,22 @@ namespace PitHero.ECS.Components
             {
                 // Simulate wizard orb activation state for testing
                 Debug.Log("[PitLevelTest] Setting GOAP states for wizard orb workflow test");
-                
-                // This will trigger the MovingToInsidePitEdgeAction and subsequent actions
-                heroComponent.PitInitialized = false; // Mark pit as needing regeneration
-                
+                if (heroComponent.InsidePit)
+                {
+
+                    // This will trigger the MovingToInsidePitEdgeAction and subsequent actions
+                    heroComponent.PitInitialized = false; // Mark pit as needing regeneration
+                    heroComponent.ActivatedWizardOrb = true;
+                    heroComponent.FoundWizardOrb = false;  // Reset according to specification
+                    heroComponent.ExploredPit = true; // Pretend pit has been explored
+                } else
+                {
+                    //If outside pit, just mark as needing regeneration
+                    heroComponent.PitInitialized = false; // Mark pit as needing regeneration
+                    heroComponent.InsidePit = false;
+                    heroComponent.ActivatedWizardOrb = true;
+                }
+
                 Debug.Log($"[PitLevelTest] Pit level {newLevel} queued and workflow triggered");
             }
             else

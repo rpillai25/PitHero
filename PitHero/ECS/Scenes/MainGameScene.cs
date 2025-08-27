@@ -164,6 +164,7 @@ namespace PitHero.ECS.Scenes
             );
             
             var hero = CreateEntity("hero").SetPosition(heroStart);
+            hero.SetTag(GameConfig.TAG_HERO); // Make sure this is set!
 
             Debug.Log($"[MainGameScene] Hero spawned at random position {heroStart.X},{heroStart.Y} , tile coordinates: " +
                       $"({heroTileX}, {heroTileY}) - {minHeroTileX - rightmostPitTile} tiles from pit edge");
