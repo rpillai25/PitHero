@@ -37,14 +37,20 @@ namespace PitHero.AI
                 _isJumping = false;
                 hero.InsidePit = true;
                 
+                // Log hero tile position at end of execution
+                var endTile = hero.Entity.GetComponent<TileByTileMover>()?.GetCurrentTileCoordinates() 
+                    ?? new Point((int)(hero.Entity.Transform.Position.X / GameConfig.TileSize), 
+                               (int)(hero.Entity.Transform.Position.Y / GameConfig.TileSize));
+                Debug.Log($"[JumpIntoPit] Hero tile position at end of execution: X={endTile.X}, Y={endTile.Y}");
                 Debug.Log("[JumpIntoPit] Jump completed successfully");
                 return true; // Action complete
             }
 
-            // Start the jump - calculate target based on pit bounds
+            // Log hero tile position at start of execution
             var currentTile = hero.Entity.GetComponent<TileByTileMover>()?.GetCurrentTileCoordinates() 
                 ?? new Point((int)(hero.Entity.Transform.Position.X / GameConfig.TileSize), 
                            (int)(hero.Entity.Transform.Position.Y / GameConfig.TileSize));
+            Debug.Log($"[JumpIntoPit] Hero tile position at start of execution: X={currentTile.X}, Y={currentTile.Y}");
 
             var targetTile = CalculateJumpTargetTile(currentTile);
             if (!targetTile.HasValue)

@@ -68,7 +68,7 @@ namespace PitHero.VirtualGame
             Console.WriteLine("1. Generate pit at level 40");
             Console.WriteLine("2. Hero executes MoveToPitAction");
             Console.WriteLine("3. Hero executes JumpIntoPitAction");
-            Console.WriteLine("4. Hero explores entire pit via WanderAction");
+            Console.WriteLine("4. Hero explores entire pit via WanderPitAction");
             Console.WriteLine("5. Hero executes complete wizard orb workflow:");
             Console.WriteLine("   - MoveToWizardOrbAction");
             Console.WriteLine("   - ActivateWizardOrbAction");

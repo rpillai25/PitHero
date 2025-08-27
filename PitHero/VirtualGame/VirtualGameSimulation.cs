@@ -57,7 +57,7 @@ namespace PitHero.VirtualGame
 
             // Step 4: Hero wanders and explores the entire pit
             Console.WriteLine("\nSTEP 4: Hero wanders and explores pit completely");
-            ExecuteWanderAction();
+            ExecuteWanderPitAction();
 
             // Step 5: Execute wizard orb workflow
             Console.WriteLine("\nSTEP 5: Execute complete wizard orb workflow");
@@ -99,11 +99,11 @@ namespace PitHero.VirtualGame
         }
 
         /// <summary>
-        /// Simulate WanderAction - systematic exploration until all fog is cleared
+        /// Simulate WanderPitAction - systematic exploration until all fog is cleared
         /// </summary>
-        private void ExecuteWanderAction()
+        private void ExecuteWanderPitAction()
         {
-            _currentAction = "WanderAction";
+            _currentAction = "WanderPitAction";
             var pitBounds = _world.PitBounds;
             var visitedTiles = new HashSet<Point>();
             
@@ -150,8 +150,8 @@ namespace PitHero.VirtualGame
         /// </summary>
         private void ExecuteWizardOrbWorkflow()
         {
-            // WanderAction (combines exploration and wizard orb finding)
-            ExecuteWanderAction();
+            // WanderPitAction (combines exploration and wizard orb finding)
+            ExecuteWanderPitAction();
             
             // ActivateWizardOrbAction
             ExecuteActivateWizardOrbAction();
@@ -316,7 +316,7 @@ namespace PitHero.VirtualGame
             Console.WriteLine("Simulation verified the complete GOAP workflow:");
             Console.WriteLine("✓ Pit generation at level 40");
             Console.WriteLine("✓ Hero JumpIntoPitAction execution");
-            Console.WriteLine("✓ Complete pit exploration via WanderAction");
+            Console.WriteLine("✓ Complete pit exploration via WanderPitAction");
             Console.WriteLine("✓ ActivateWizardOrbAction execution");
             Console.WriteLine("✓ JumpOutOfPitAction execution");
             Console.WriteLine("✓ ActivatePitRegenAction execution");
@@ -418,7 +418,7 @@ namespace PitHero.VirtualGame
             
             // Add all hero actions (simplified 5-action model)
             planner.AddAction(new JumpIntoPitAction());
-            planner.AddAction(new WanderAction());
+            planner.AddAction(new WanderPitAction());
             planner.AddAction(new ActivateWizardOrbAction());
             planner.AddAction(new JumpOutOfPitAction());
             planner.AddAction(new ActivatePitRegenAction());

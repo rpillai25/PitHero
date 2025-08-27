@@ -27,7 +27,7 @@ namespace PitHero.Tests
         {
             // Test that the 5 core GOAP actions exist and have correct values
             Assert.AreEqual("JumpIntoPitAction", GoapConstants.JumpIntoPitAction);
-            Assert.AreEqual("WanderAction", GoapConstants.WanderAction);
+            Assert.AreEqual("WanderPitAction", GoapConstants.WanderPitAction);
             Assert.AreEqual("ActivateWizardOrbAction", GoapConstants.ActivateWizardOrbAction);
             Assert.AreEqual("JumpOutOfPitAction", GoapConstants.JumpOutOfPitAction);
             Assert.AreEqual("ActivatePitRegenAction", GoapConstants.ActivatePitRegenAction);
@@ -41,9 +41,9 @@ namespace PitHero.Tests
             Assert.IsNotNull(jumpIntoPit);
             Assert.AreEqual(GoapConstants.JumpIntoPitAction, jumpIntoPit.Name);
 
-            var wander = new WanderAction();
+            var wander = new WanderPitAction();
             Assert.IsNotNull(wander);
-            Assert.AreEqual(GoapConstants.WanderAction, wander.Name);
+            Assert.AreEqual(GoapConstants.WanderPitAction, wander.Name);
 
             var activateWizardOrb = new ActivateWizardOrbAction();
             Assert.IsNotNull(activateWizardOrb);
