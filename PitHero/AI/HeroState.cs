@@ -28,24 +28,5 @@ namespace PitHero.AI
         ArmorShop
     }
 
-    /// <summary>
-    /// Legacy hero states (kept for backward compatibility during transition)
-    /// </summary>
-    public enum HeroState
-    {
-        /// <summary>
-        /// Hero is idle and planning next actions using GOAP
-        /// </summary>
-        Idle,
-        
-        /// <summary>
-        /// Hero is moving to a destination (SpawningPoint, PitAdjacentSquare, etc.)
-        /// </summary>
-        GoTo,
-        
-        /// <summary>
-        /// Hero is performing a specific GOAP action (MoveToPit, JumpIntoPit, Wander)
-        /// </summary>
-        PerformAction
-    }
+
 }

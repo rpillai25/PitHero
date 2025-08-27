@@ -14,7 +14,7 @@ namespace PitHero.AI
     /// Hero state machine that uses GOAP for planning and SimpleStateMachine for execution.
     /// Based on the Nez GoapMiner sample pattern.
     /// </summary>
-    public class HeroStateMachine : SimpleStateMachine<HeroState>, IPausableComponent
+    public class HeroStateMachine : SimpleStateMachine<ActorState>, IPausableComponent
     {
         private HeroComponent _hero;
         private ActionPlanner _planner;
@@ -65,7 +65,7 @@ namespace PitHero.AI
             Entity.UpdateInterval = 10;
             
             // Set initial state to Idle - when it enters Idle it will ask the ActionPlanner for a new plan
-            InitialState = HeroState.Idle;
+            InitialState = ActorState.Idle;
         }
 
         public override void Update()
@@ -147,7 +147,7 @@ namespace PitHero.AI
             if (_actionPlan != null && _actionPlan.Count > 0)
             {
                 Debug.Log($"[HeroStateMachine] Got an action plan with {_actionPlan.Count} actions: {string.Join(" -> ", _actionPlan)}");
-                CurrentState = HeroState.GoTo;
+                CurrentState = ActorState.GoTo;
             }
             else
             {
@@ -182,7 +182,7 @@ namespace PitHero.AI
                     if (_actionPlan != null && _actionPlan.Count > 0)
                     {
                         Debug.Log($"[HeroStateMachine] Got an action plan with {_actionPlan.Count} actions: {string.Join(" -> ", _actionPlan)}");
-                        CurrentState = HeroState.GoTo;
+                        CurrentState = ActorState.GoTo;
                     }
                     else
                     {
@@ -199,7 +199,7 @@ namespace PitHero.AI
             if (_actionPlan == null || _actionPlan.Count == 0)
             {
                 Debug.Warn("[HeroStateMachine] GoTo_Enter: No action plan available");
-                CurrentState = HeroState.Idle;
+                CurrentState = ActorState.Idle;
                 return;
             }
 
@@ -212,7 +212,7 @@ namespace PitHero.AI
             if (!targetLocation.HasValue)
             {
                 Debug.Warn($"[HeroStateMachine] GoTo_Enter: Could not calculate target location for action {nextAction.Name}");
-                CurrentState = HeroState.PerformAction; // Skip to action execution
+                CurrentState = ActorState.PerformAction; // Skip to action execution
                 return;
             }
 
@@ -234,7 +234,7 @@ namespace PitHero.AI
             if (_currentPath == null || _currentPath.Count == 0)
             {
                 Debug.Log($"[HeroStateMachine] GoTo_Enter: No path needed or found to target ({_targetTile.X},{_targetTile.Y}), proceeding to action");
-                CurrentState = HeroState.PerformAction;
+                CurrentState = ActorState.PerformAction;
                 return;
             }
 
@@ -246,7 +246,7 @@ namespace PitHero.AI
             if (_currentPath == null || _pathIndex >= _currentPath.Count)
             {
                 Debug.Log("[HeroStateMachine] GoTo_Tick: Path completed, transitioning to PerformAction");
-                CurrentState = HeroState.PerformAction;
+                CurrentState = ActorState.PerformAction;
                 return;
             }
 
@@ -254,7 +254,7 @@ namespace PitHero.AI
             if (tileMover == null)
             {
                 Debug.Warn("[HeroStateMachine] GoTo_Tick: No TileByTileMover component found");
-                CurrentState = HeroState.PerformAction;
+                CurrentState = ActorState.PerformAction;
                 return;
             }
 
@@ -279,7 +279,7 @@ namespace PitHero.AI
                     else
                     {
                         Debug.Warn($"[HeroStateMachine] GoTo_Tick: Failed to start moving {direction.Value}");
-                        CurrentState = HeroState.PerformAction; // Give up and try action
+                        CurrentState = ActorState.PerformAction; // Give up and try action
                     }
                 }
                 else
@@ -313,7 +313,7 @@ namespace PitHero.AI
             if (_actionPlan == null || _actionPlan.Count == 0)
             {
                 Debug.Warn("[HeroStateMachine] PerformAction_Enter: No action plan available");
-                CurrentState = HeroState.Idle;
+                CurrentState = ActorState.Idle;
                 return;
             }
 
@@ -328,7 +328,7 @@ namespace PitHero.AI
             {
                 Debug.Warn($"[HeroStateMachine] Action {action.Name} is not a HeroActionBase");
                 _actionPlan.Pop(); // Remove invalid action
-                CurrentState = HeroState.Idle;
+                CurrentState = ActorState.Idle;
             }
         }
 
@@ -337,7 +337,7 @@ namespace PitHero.AI
             if (_currentAction == null)
             {
                 Debug.Warn("[HeroStateMachine] PerformAction_Tick: No current action");
-                CurrentState = HeroState.Idle;
+                CurrentState = ActorState.Idle;
                 return;
             }
 
@@ -357,12 +357,12 @@ namespace PitHero.AI
                 // Check if we have more actions to execute
                 if (_actionPlan != null && _actionPlan.Count > 0)
                 {
-                    CurrentState = HeroState.PerformAction; // This will trigger PerformAction_Enter for next action
+                    CurrentState = ActorState.PerformAction; // This will trigger PerformAction_Enter for next action
                 }
                 else
                 {
                     Debug.Log("[HeroStateMachine] Action plan completed, returning to Idle");
-                    CurrentState = HeroState.Idle;
+                    CurrentState = ActorState.Idle;
                 }
             }
         }
