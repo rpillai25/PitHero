@@ -438,7 +438,7 @@ namespace PitHero.AI
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
             var pitRightEdge = pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth);
             
-            return new Point(pitRightEdge + 1, GameConfig.PitCenterTileY); // Just outside right edge
+            return new Point(pitRightEdge, GameConfig.PitCenterTileY); // Just outside right edge
         }
 
         /// <summary>
