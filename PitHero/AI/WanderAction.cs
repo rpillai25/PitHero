@@ -1,10 +1,9 @@
 using Microsoft.Xna.Framework;
 using Nez;
-using Nez.AI.Pathfinding;
 using Nez.Tiled;
+using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
 using PitHero.Util;
-using PitHero.AI.Interfaces;
 using System.Collections.Generic;
 
 namespace PitHero.AI
@@ -29,7 +28,9 @@ namespace PitHero.AI
         public WanderAction() : base(GoapConstants.WanderAction, 1)
         {
             SetPrecondition(GoapConstants.InsidePit, true);
-            SetPostcondition(GoapConstants.MapExplored, true);
+            SetPrecondition(GoapConstants.ExploredPit, false);
+            SetPostcondition(GoapConstants.FoundWizardOrb, true);
+            SetPostcondition(GoapConstants.ExploredPit, true);
             _failedTargets = new HashSet<Point>(8); // Pre-allocate small capacity
         }
 
@@ -54,6 +55,8 @@ namespace PitHero.AI
                 if (!nearestUnknownTile.HasValue)
                 {
                     Debug.Log("[Wander] No unknown tiles found - exploration complete");
+                    // Set ExploredPit = True when all fog uncovered
+                    hero.ExploredPit = true;
                     ResetInternal();
                     return true; // All done
                 }
@@ -77,6 +80,9 @@ namespace PitHero.AI
                 if (tiledMapService != null)
                 {
                     tiledMapService.ClearFogOfWarAroundTile(currentTile.X, currentTile.Y);
+                    
+                    // Check if wizard orb was uncovered (fog cleared at orb tile)
+                    CheckWizardOrbFound(hero, tiledMapService, currentTile);
                 }
 
                 // Successfully reached target, remove it from failed targets if it was there
@@ -573,6 +579,63 @@ namespace PitHero.AI
         private Point GetTileCoordinates(Vector2 worldPosition, int tileSize)
         {
             return new Point((int)(worldPosition.X / tileSize), (int)(worldPosition.Y / tileSize));
+        }
+
+        /// <summary>
+        /// Check if wizard orb has been found (fog cleared at orb tile), independent of hero position
+        /// </summary>
+        private void CheckWizardOrbFound(HeroComponent hero, TiledMapService tiledMapService, Point position)
+        {
+            if (hero.FoundWizardOrb)
+            {
+                Debug.Log("[Wander] CheckWizardOrbFound: Already found");
+                return;
+            }
+
+            var scene = Core.Scene;
+            if (scene == null)
+            {
+                Debug.Log("[Wander] CheckWizardOrbFound: No active scene");
+                return;
+            }
+
+            // Locate the wizard orb entity
+            var wizardOrbEntities = scene.FindEntitiesWithTag(GameConfig.TAG_WIZARD_ORB);
+            if (wizardOrbEntities.Count == 0)
+            {
+                Debug.Log("[Wander] CheckWizardOrbFound: No wizard orb entities found");
+                return;
+            }
+
+            var wizardOrbEntity = wizardOrbEntities[0];
+            var worldPos = wizardOrbEntity.Transform.Position;
+            var orbTile = new Point((int)(worldPos.X / GameConfig.TileSize), (int)(worldPos.Y / GameConfig.TileSize));
+            Debug.Log($"[Wander] CheckWizardOrbFound: Orb at world {worldPos.X},{worldPos.Y} tile {orbTile.X},{orbTile.Y}");
+
+            // Inspect FogOfWar layer at the orb tile
+            var fogLayer = tiledMapService.CurrentMap.GetLayer<TmxLayer>("FogOfWar");
+            if (fogLayer == null)
+            {
+                Debug.Log("[Wander] CheckWizardOrbFound: No FogOfWar layer found - assuming orb discovered");
+                hero.FoundWizardOrb = true;
+                return;
+            }
+
+            if (orbTile.X >= 0 && orbTile.Y >= 0 && orbTile.X < fogLayer.Width && orbTile.Y < fogLayer.Height)
+            {
+                var fogTile = fogLayer.GetTile(orbTile.X, orbTile.Y);
+                Debug.Log($"[Wander] CheckWizardOrbFound: Fog tile at orb {orbTile.X},{orbTile.Y}: {(fogTile == null ? "NULL (cleared)" : "EXISTS (not cleared)")}");
+
+                if (fogTile == null)
+                {
+                    hero.FoundWizardOrb = true;
+                    Debug.Log($"[Wander] *** WIZARD ORB FOUND *** Setting FoundWizardOrb=true at tile {orbTile.X},{orbTile.Y}");
+                }
+            }
+            else
+            {
+                Debug.Warn($"[Wander] CheckWizardOrbFound: Orb tile {orbTile.X},{orbTile.Y} out of fog layer bounds {fogLayer.Width},{fogLayer.Height}");
+            }
         }
 
         /// <summary>

@@ -56,7 +56,7 @@ namespace PitHero.Tests
             // Test initial state
             Assert.IsTrue(hero.PitInitialized);
             Assert.IsFalse(hero.InsidePit);
-            Assert.IsFalse(hero.AdjacentToPitBoundaryFromOutside);
+            Assert.IsFalse(hero.AdjacentToPitBoundaryFromOutside());
             
             // Test moving to pit boundary
             var pitBounds = world.PitBounds;
@@ -64,7 +64,7 @@ namespace PitHero.Tests
             hero.MoveTo(adjacentPos);
             
             var worldState = hero.GetWorldState();
-            Assert.IsTrue(worldState.ContainsKey(GoapConstants.AdjacentToPitBoundaryFromOutside));
+            Assert.IsTrue(hero.AdjacentToPitBoundaryFromOutside());
             Assert.IsFalse(worldState.ContainsKey(GoapConstants.InsidePit));
             
             // Test moving inside pit
@@ -73,7 +73,7 @@ namespace PitHero.Tests
             
             worldState = hero.GetWorldState();
             Assert.IsTrue(worldState.ContainsKey(GoapConstants.InsidePit));
-            Assert.IsFalse(worldState.ContainsKey(GoapConstants.AdjacentToPitBoundaryFromOutside));
+            Assert.IsFalse(hero.AdjacentToPitBoundaryFromOutside());
         }
 
         [TestMethod]
@@ -118,22 +118,20 @@ namespace PitHero.Tests
                 
                 var output = stringWriter.ToString();
                 
-                // Verify key stages were executed
+                // Verify key stages were executed (updated for simplified GOAP model)
                 Assert.IsTrue(output.Contains("STEP 1: Generating pit at level 40"));
-                Assert.IsTrue(output.Contains("STEP 2: Hero spawns and begins MoveToPitAction"));
+                Assert.IsTrue(output.Contains("STEP 2: Hero spawns"));
                 Assert.IsTrue(output.Contains("STEP 3: Hero jumps into pit"));
                 Assert.IsTrue(output.Contains("STEP 4: Hero wanders and explores pit completely"));
                 Assert.IsTrue(output.Contains("STEP 5: Execute complete wizard orb workflow"));
                 
-                // Verify each action was executed
-                Assert.IsTrue(output.Contains("[MoveToPitAction]"));
+                // Verify key actions were executed (only the 5 simplified actions)
                 Assert.IsTrue(output.Contains("[JumpIntoPitAction]"));
                 Assert.IsTrue(output.Contains("[WanderAction]"));
-                Assert.IsTrue(output.Contains("[MoveToWizardOrbAction]"));
+                Assert.IsTrue(output.Contains("[WanderAction]"));
                 Assert.IsTrue(output.Contains("[ActivateWizardOrbAction]"));
-                Assert.IsTrue(output.Contains("[MovingToInsidePitEdgeAction]"));
                 Assert.IsTrue(output.Contains("[JumpOutOfPitAction]"));
-                Assert.IsTrue(output.Contains("[MoveToPitGenPointAction]"));
+                Assert.IsTrue(output.Contains("[ActivatePitRegenAction]"));
                 
                 // Verify completion
                 Assert.IsTrue(output.Contains("Simulation Complete"));
@@ -147,14 +145,14 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void VirtualHero_ExplorationStates_ShouldDetectMapExplored()
+        public void VirtualHero_ExplorationStates_ShouldDetectExploredPit()
         {
             var world = new VirtualWorldState();
             var hero = new VirtualHero(world);
             
             // Initially map should not be explored (has fog)
             var initialState = hero.GetWorldState();
-            Assert.IsFalse(initialState.ContainsKey(GoapConstants.MapExplored));
+            Assert.IsFalse(initialState.ContainsKey(GoapConstants.ExploredPit));
             
             // Clear all fog in pit manually
             var pitBounds = world.PitBounds;
@@ -168,7 +166,7 @@ namespace PitHero.Tests
             
             // Now map should be explored
             var clearedState = hero.GetWorldState();
-            Assert.IsTrue(clearedState.ContainsKey(GoapConstants.MapExplored));
+            Assert.IsTrue(clearedState.ContainsKey(GoapConstants.ExploredPit));
         }
 
         [TestMethod]
@@ -183,7 +181,7 @@ namespace PitHero.Tests
             // Initially wizard orb should not be found (has fog)
             var initialState = hero.GetWorldState();
             Assert.IsFalse(initialState.ContainsKey(GoapConstants.FoundWizardOrb));
-            Assert.IsFalse(initialState.ContainsKey(GoapConstants.AtWizardOrb));
+            Assert.AreNotEqual(orbPos.Value, hero.Position, "Hero should not be at wizard orb initially");
             
             // Clear fog around wizard orb
             world.ClearFogOfWar(orbPos.Value, 1);
@@ -195,9 +193,8 @@ namespace PitHero.Tests
             // Move hero to wizard orb
             hero.MoveTo(orbPos.Value);
             
-            // Now should be at wizard orb
-            var atOrbState = hero.GetWorldState();
-            Assert.IsTrue(atOrbState.ContainsKey(GoapConstants.AtWizardOrb));
+            // Now should be at wizard orb position
+            Assert.AreEqual(orbPos.Value, hero.Position, "Hero should be at wizard orb position");
         }
 
         [TestMethod]

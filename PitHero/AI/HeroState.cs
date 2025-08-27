@@ -1,23 +1,32 @@
 namespace PitHero.AI
 {
     /// <summary>
-    /// States for the Hero State Machine
+    /// Actor state for the simplified state machine
     /// </summary>
-    public enum HeroState
+    public enum ActorState
     {
-        /// <summary>
-        /// Hero is idle and planning next actions using GOAP
-        /// </summary>
         Idle,
-        
-        /// <summary>
-        /// Hero is moving to a destination (SpawningPoint, PitAdjacentSquare, etc.)
-        /// </summary>
         GoTo,
-        
-        /// <summary>
-        /// Hero is performing a specific GOAP action (MoveToPit, JumpIntoPit, Wander)
-        /// </summary>
         PerformAction
     }
+
+    /// <summary>
+    /// Location types for the state machine queue
+    /// </summary>
+    public enum LocationType
+    {
+        None,
+        PitOutsideEdge,
+        PitInsideEdge,
+        PitWanderPoint,
+        WizardOrb,
+        PitRegenPoint,
+        TownWanderPoint,
+        Inn,
+        ItemShop,
+        WeaponShop,
+        ArmorShop
+    }
+
+
 }

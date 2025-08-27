@@ -15,16 +15,13 @@ namespace PitHero.VirtualGame
         private readonly Queue<Point> _movementQueue = new Queue<Point>();
         private bool _isMoving = false;
 
-        // GOAP state flags (matching HeroComponent)
+        // GOAP state flags (simplified 7-state model)
+        public bool HeroInitialized { get; set; } = true;
         public bool PitInitialized { get; set; } = true;
-        public bool AdjacentToPitBoundaryFromOutside { get; set; }
-        public bool AdjacentToPitBoundaryFromInside { get; set; }
         public bool InsidePit { get; set; }
+        public bool ExploredPit { get; set; }
+        public bool FoundWizardOrb { get; set; }
         public bool ActivatedWizardOrb { get; set; }
-        public bool MovingToInsidePitEdge { get; set; }
-        public bool ReadyToJumpOutOfPit { get; set; }
-        public bool MovingToPitGenPoint { get; set; }
-        public Direction? PitApproachDirection { get; set; }
 
         public VirtualHeroController(IWorldState worldState)
         {
@@ -153,55 +150,8 @@ namespace PitHero.VirtualGame
             var pos = CurrentTilePosition;
             var pitBounds = _worldState.PitBounds;
 
-            // Reset all position states first
-            AdjacentToPitBoundaryFromOutside = false;
-            AdjacentToPitBoundaryFromInside = false;
-            InsidePit = false;
-
             // Check if inside pit
-            if (pitBounds.Contains(pos))
-            {
-                InsidePit = true;
-                
-                // Check if adjacent to pit boundary from inside
-                if (pos.X == pitBounds.X || pos.X == pitBounds.Right - 1 ||
-                    pos.Y == pitBounds.Y || pos.Y == pitBounds.Bottom - 1)
-                {
-                    AdjacentToPitBoundaryFromInside = true;
-                }
-            }
-            else
-            {
-                // Check if adjacent to pit boundary from outside
-                var distance = CalculateDistanceToPitBoundary(pos);
-                if (distance <= GameConfig.PitAdjacencyRadiusTiles)
-                {
-                    AdjacentToPitBoundaryFromOutside = true;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Calculate distance from position to pit boundary
-        /// </summary>
-        private float CalculateDistanceToPitBoundary(Point pos)
-        {
-            var pitBounds = _worldState.PitBounds;
-            
-            // Calculate distance to nearest edge of pit rectangle
-            int dx = 0;
-            if (pos.X < pitBounds.X)
-                dx = pitBounds.X - pos.X;
-            else if (pos.X >= pitBounds.Right)
-                dx = pos.X - (pitBounds.Right - 1);
-            
-            int dy = 0;
-            if (pos.Y < pitBounds.Y)
-                dy = pitBounds.Y - pos.Y;
-            else if (pos.Y >= pitBounds.Bottom)
-                dy = pos.Y - (pitBounds.Bottom - 1);
-            
-            return (float)System.Math.Sqrt(dx * dx + dy * dy);
+            InsidePit = pitBounds.Contains(pos);
         }
 
         /// <summary>
@@ -210,9 +160,8 @@ namespace PitHero.VirtualGame
         public void ResetWizardOrbStates()
         {
             ActivatedWizardOrb = false;
-            MovingToInsidePitEdge = false;
-            ReadyToJumpOutOfPit = false;
-            MovingToPitGenPoint = false;
+            ExploredPit = false;
+            FoundWizardOrb = false;
         }
     }
 }

@@ -449,8 +449,8 @@ namespace PitHero.VirtualGame
             state[GoapConstants.HeroInitialized] = true;
             state[GoapConstants.PitInitialized] = true;
             
-            // Check exploration status
-            state[GoapConstants.MapExplored] = IsMapExplored;
+            // Check exploration status - MapExplored is now ExploredPit
+            state[GoapConstants.ExploredPit] = IsMapExplored;
             
             // Check wizard orb status
             state[GoapConstants.FoundWizardOrb] = IsWizardOrbFound;
@@ -461,14 +461,14 @@ namespace PitHero.VirtualGame
             state[GoapConstants.InsidePit] = PitBounds.Contains(HeroPosition);
             state[GoapConstants.OutsidePit] = !PitBounds.Contains(HeroPosition);
             
-            // Check if at wizard orb position
-            if (WizardOrbPosition.HasValue)
-            {
-                state[GoapConstants.AtWizardOrb] = HeroPosition == WizardOrbPosition.Value;
-            }
+            // Note: AtWizardOrb is no longer a state in simplified GOAP - position checking is done in actions
+            // if (WizardOrbPosition.HasValue)
+            // {
+            //     state[GoapConstants.AtWizardOrb] = HeroPosition == WizardOrbPosition.Value;
+            // }
             
-            // Check if at pit generation point
-            state[GoapConstants.AtPitGenPoint] = HeroPosition.X == 34 && HeroPosition.Y == 6;
+            // Note: AtPitGenPoint is no longer a state in simplified GOAP - position checking is done in actions
+            // state[GoapConstants.AtPitGenPoint] = HeroPosition.X == 34 && HeroPosition.Y == 6;
             
             return state;
         }

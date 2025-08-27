@@ -31,12 +31,12 @@ namespace PitHero.Tests
                 Console.WriteLine("=== GOAP Action Interface Validation ===");
                 Console.WriteLine();
                 
-                // Test MoveToPitAction
-                Console.WriteLine("Testing MoveToPitAction interface support...");
-                var moveToPitAction = new MoveToPitAction();
-                var result1 = moveToPitAction.Execute(context);
-                Assert.IsNotNull(result1, "MoveToPitAction should return a result");
-                Console.WriteLine("✓ MoveToPitAction supports interface-based execution");
+                // Test JumpIntoPitAction (replaces MoveToPitAction)
+                Console.WriteLine("Testing JumpIntoPitAction interface support...");
+                var jumpIntoPitAction = new JumpIntoPitAction();
+                var result1 = jumpIntoPitAction.Execute(context);
+                Assert.IsNotNull(result1, "JumpIntoPitAction should return a result");
+                Console.WriteLine("✓ JumpIntoPitAction supports interface-based execution");
                 
                 // Setup hero inside pit for other actions
                 var pitCenter = new Point(virtualWorld.PitBounds.X + 2, virtualWorld.PitBounds.Y + 2);
@@ -51,16 +51,18 @@ namespace PitHero.Tests
                 Console.WriteLine("✓ WanderAction supports interface-based execution");
                 
                 // Test MoveToWizardOrbAction
-                Console.WriteLine("Testing MoveToWizardOrbAction interface support...");
+                Console.WriteLine("Testing ActivateWizardOrbAction interface support...");
                 // Clear fog around wizard orb first
                 if (virtualWorld.WizardOrbPosition.HasValue)
                 {
                     context.WorldState.ClearFogOfWar(virtualWorld.WizardOrbPosition.Value, 1);
                 }
-                var moveToOrbAction = new MoveToWizardOrbAction();
-                var result3 = moveToOrbAction.Execute(context);
-                Assert.IsNotNull(result3, "MoveToWizardOrbAction should return a result");
-                Console.WriteLine("✓ MoveToWizardOrbAction supports interface-based execution");
+                // Test ActivateWizardOrbAction (actual wizard orb activation)
+                Console.WriteLine("Testing ActivateWizardOrbAction interface support...");
+                var activateWizardOrbAction = new ActivateWizardOrbAction();
+                var result3 = activateWizardOrbAction.Execute(context);
+                Assert.IsNotNull(result3, "ActivateWizardOrbAction should return a result");
+                Console.WriteLine("✓ ActivateWizardOrbAction supports interface-based execution");
                 
                 // Test ActivateWizardOrbAction
                 Console.WriteLine("Testing ActivateWizardOrbAction interface support...");

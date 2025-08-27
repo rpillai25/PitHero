@@ -4,66 +4,58 @@ using PitHero.AI;
 namespace PitHero.Tests
 {
     /// <summary>
-    /// Tests for new GOAP wizard orb workflow functionality
+    /// Tests for simplified GOAP wizard orb workflow functionality
     /// </summary>
     [TestClass]
     public class WizardOrbWorkflowTests
     {
         [TestMethod]
-        public void GoapConstants_NewStates_ShouldExist()
+        public void GoapConstants_SimplifiedStates_ShouldExist()
         {
-            // Test new state constants exist and have correct values
-            Assert.AreEqual("OutsidePit", GoapConstants.OutsidePit);
-            Assert.AreEqual("FoundWizardOrb", GoapConstants.FoundWizardOrb);
-            Assert.AreEqual("AtWizardOrb", GoapConstants.AtWizardOrb);
-            Assert.AreEqual("ActivatedWizardOrb", GoapConstants.ActivatedWizardOrb);
-            Assert.AreEqual("MovingToInsidePitEdge", GoapConstants.MovingToInsidePitEdge);
-            Assert.AreEqual("ReadyToJumpOutOfPit", GoapConstants.ReadyToJumpOutOfPit);
-            Assert.AreEqual("AtPitGenPoint", GoapConstants.AtPitGenPoint);
-            Assert.AreEqual("MovingToPitGenPoint", GoapConstants.MovingToPitGenPoint);
-        }
-
-        [TestMethod]
-        public void GoapConstants_NewActions_ShouldExist()
-        {
-            // Test new action constants exist and have correct values
-            Assert.AreEqual("MoveToWizardOrbAction", GoapConstants.MoveToWizardOrbAction);
-            Assert.AreEqual("ActivateWizardOrbAction", GoapConstants.ActivateWizardOrbAction);
-            Assert.AreEqual("MovingToInsidePitEdgeAction", GoapConstants.MovingToInsidePitEdgeAction);
-            Assert.AreEqual("JumpOutOfPitAction", GoapConstants.JumpOutOfPitAction);
-            Assert.AreEqual("MoveToPitGenPointAction", GoapConstants.MoveToPitGenPointAction);
-        }
-
-        [TestMethod]
-        public void GoapConstants_InsidePit_ShouldReplaceEnteredPit()
-        {
-            // Verify the renamed constant
+            // Test that the 7 core GOAP states exist and have correct values
+            Assert.AreEqual("HeroInitialized", GoapConstants.HeroInitialized);
+            Assert.AreEqual("PitInitialized", GoapConstants.PitInitialized);
             Assert.AreEqual("InsidePit", GoapConstants.InsidePit);
+            Assert.AreEqual("OutsidePit", GoapConstants.OutsidePit);
+            Assert.AreEqual("ExploredPit", GoapConstants.ExploredPit);
+            Assert.AreEqual("FoundWizardOrb", GoapConstants.FoundWizardOrb);
+            Assert.AreEqual("ActivatedWizardOrb", GoapConstants.ActivatedWizardOrb);
         }
 
         [TestMethod]
-        public void NewGoapActions_ShouldInstantiate()
+        public void GoapConstants_SimplifiedActions_ShouldExist()
         {
-            // Test that all new action classes can be instantiated
-            var moveToWizardOrb = new MoveToWizardOrbAction();
-            Assert.IsNotNull(moveToWizardOrb);
-            Assert.AreEqual(GoapConstants.MoveToWizardOrbAction, moveToWizardOrb.Name);
+            // Test that the 5 core GOAP actions exist and have correct values
+            Assert.AreEqual("JumpIntoPitAction", GoapConstants.JumpIntoPitAction);
+            Assert.AreEqual("WanderAction", GoapConstants.WanderAction);
+            Assert.AreEqual("ActivateWizardOrbAction", GoapConstants.ActivateWizardOrbAction);
+            Assert.AreEqual("JumpOutOfPitAction", GoapConstants.JumpOutOfPitAction);
+            Assert.AreEqual("ActivatePitRegenAction", GoapConstants.ActivatePitRegenAction);
+        }
+
+        [TestMethod]
+        public void SimplifiedGoapActions_ShouldInstantiate()
+        {
+            // Test that all simplified action classes can be instantiated
+            var jumpIntoPit = new JumpIntoPitAction();
+            Assert.IsNotNull(jumpIntoPit);
+            Assert.AreEqual(GoapConstants.JumpIntoPitAction, jumpIntoPit.Name);
+
+            var wander = new WanderAction();
+            Assert.IsNotNull(wander);
+            Assert.AreEqual(GoapConstants.WanderAction, wander.Name);
 
             var activateWizardOrb = new ActivateWizardOrbAction();
             Assert.IsNotNull(activateWizardOrb);
             Assert.AreEqual(GoapConstants.ActivateWizardOrbAction, activateWizardOrb.Name);
 
-            var movingToInsidePitEdge = new MovingToInsidePitEdgeAction();
-            Assert.IsNotNull(movingToInsidePitEdge);
-            Assert.AreEqual(GoapConstants.MovingToInsidePitEdgeAction, movingToInsidePitEdge.Name);
-
             var jumpOutOfPit = new JumpOutOfPitAction();
             Assert.IsNotNull(jumpOutOfPit);
             Assert.AreEqual(GoapConstants.JumpOutOfPitAction, jumpOutOfPit.Name);
 
-            var moveToPitGenPoint = new MoveToPitGenPointAction();
-            Assert.IsNotNull(moveToPitGenPoint);
-            Assert.AreEqual(GoapConstants.MoveToPitGenPointAction, moveToPitGenPoint.Name);
+            var activatePitRegen = new ActivatePitRegenAction();
+            Assert.IsNotNull(activatePitRegen);
+            Assert.AreEqual(GoapConstants.ActivatePitRegenAction, activatePitRegen.Name);
         }
 
         [TestMethod]

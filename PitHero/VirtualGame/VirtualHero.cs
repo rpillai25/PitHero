@@ -11,15 +11,13 @@ namespace PitHero.VirtualGame
     {
         private readonly IVirtualWorld _world;
 
-        // GOAP state flags (matching HeroComponent)
+        // GOAP state flags (simplified 7-state model)
+        public bool HeroInitialized { get; set; } = true;
         public bool PitInitialized { get; set; } = true;
-        public bool AdjacentToPitBoundaryFromOutside { get; set; }
-        public bool AdjacentToPitBoundaryFromInside { get; set; }
         public bool InsidePit { get; set; }
+        public bool ExploredPit { get; set; }
+        public bool FoundWizardOrb { get; set; }
         public bool ActivatedWizardOrb { get; set; }
-        public bool MovingToInsidePitEdge { get; set; }
-        public bool ReadyToJumpOutOfPit { get; set; }
-        public bool MovingToPitGenPoint { get; set; }
 
         // Movement state
         public bool IsMoving { get; set; }
@@ -101,32 +99,8 @@ namespace PitHero.VirtualGame
             var pos = Position;
             var pitBounds = _world.PitBounds;
 
-            // Reset all position states first
-            AdjacentToPitBoundaryFromOutside = false;
-            AdjacentToPitBoundaryFromInside = false;
-            InsidePit = false;
-
-            // Check if inside pit
-            if (pitBounds.Contains(pos))
-            {
-                InsidePit = true;
-                
-                // Check if adjacent to pit boundary from inside
-                if (pos.X == pitBounds.X || pos.X == pitBounds.Right - 1 ||
-                    pos.Y == pitBounds.Y || pos.Y == pitBounds.Bottom - 1)
-                {
-                    AdjacentToPitBoundaryFromInside = true;
-                }
-            }
-            else
-            {
-                // Check if adjacent to pit boundary from outside
-                var distance = CalculateDistanceToPitBoundary(pos);
-                if (distance <= GameConfig.PitAdjacencyRadiusTiles)
-                {
-                    AdjacentToPitBoundaryFromOutside = true;
-                }
-            }
+            // Update InsidePit based on current position
+            InsidePit = pitBounds.Contains(pos);
         }
 
         /// <summary>
@@ -158,15 +132,43 @@ namespace PitHero.VirtualGame
         public void ResetWizardOrbStates()
         {
             ActivatedWizardOrb = false;
-            MovingToInsidePitEdge = false;
-            ReadyToJumpOutOfPit = false;
-            MovingToPitGenPoint = false;
             
             System.Console.WriteLine("[VirtualHero] Reset wizard orb workflow states");
         }
 
         /// <summary>
-        /// Get current GOAP world state for planning
+        /// Check if hero is adjacent to pit boundary from outside
+        /// </summary>
+        public bool AdjacentToPitBoundaryFromOutside()
+        {
+            var pos = Position;
+            var pitBounds = _world.PitBounds;
+            
+            if (pitBounds.Contains(pos))
+                return false; // Inside pit, not outside
+                
+            var distance = CalculateDistanceToPitBoundary(pos);
+            return distance <= GameConfig.PitAdjacencyRadiusTiles;
+        }
+
+        /// <summary>
+        /// Check if hero is adjacent to pit boundary from inside
+        /// </summary>
+        public bool AdjacentToPitBoundaryFromInside()
+        {
+            var pos = Position;
+            var pitBounds = _world.PitBounds;
+            
+            if (!pitBounds.Contains(pos))
+                return false; // Outside pit, not inside
+                
+            // Check if adjacent to pit boundary from inside
+            return pos.X == pitBounds.X || pos.X == pitBounds.Right - 1 ||
+                   pos.Y == pitBounds.Y || pos.Y == pitBounds.Bottom - 1;
+        }
+
+        /// <summary>
+        /// Get current GOAP world state for planning - updated for simplified 7-state model
         /// </summary>
         public Dictionary<string, bool> GetWorldState()
         {
@@ -175,43 +177,23 @@ namespace PitHero.VirtualGame
             ws[GoapConstants.HeroInitialized] = true;
             ws[GoapConstants.PitInitialized] = PitInitialized;
             
-            if (IsMoving && !AdjacentToPitBoundaryFromOutside)
-                ws[GoapConstants.MovingToPit] = true;
-
-            if (AdjacentToPitBoundaryFromOutside)
-                ws[GoapConstants.AdjacentToPitBoundaryFromOutside] = true;
-            if (AdjacentToPitBoundaryFromInside)
-                ws[GoapConstants.AdjacentToPitBoundaryFromInside] = true;
+            // Core position states
             if (InsidePit)
                 ws[GoapConstants.InsidePit] = true;
+            if (!_world.PitBounds.Contains(Position))
+                ws[GoapConstants.OutsidePit] = true;
 
             // Wizard orb workflow states
             if (ActivatedWizardOrb)
                 ws[GoapConstants.ActivatedWizardOrb] = true;
-            if (MovingToInsidePitEdge)
-                ws[GoapConstants.MovingToInsidePitEdge] = true;
-            if (ReadyToJumpOutOfPit)
-                ws[GoapConstants.ReadyToJumpOutOfPit] = true;
-            if (MovingToPitGenPoint)
-                ws[GoapConstants.MovingToPitGenPoint] = true;
 
-            // Check exploration status
+            // Check exploration status - MapExplored is now ExploredPit
             if (CheckMapExplored())
-                ws[GoapConstants.MapExplored] = true;
+                ws[GoapConstants.ExploredPit] = true;
 
             // Check wizard orb status
             if (CheckWizardOrbFound())
                 ws[GoapConstants.FoundWizardOrb] = true;
-
-            // Check positional states
-            if (CheckAtWizardOrb())
-                ws[GoapConstants.AtWizardOrb] = true;
-
-            if (Position.X == 34 && Position.Y == 6) // Pit gen point
-                ws[GoapConstants.AtPitGenPoint] = true;
-
-            if (!_world.PitBounds.Contains(Position))
-                ws[GoapConstants.OutsidePit] = true;
 
             return ws;
         }

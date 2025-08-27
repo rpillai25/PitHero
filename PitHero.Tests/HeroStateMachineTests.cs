@@ -31,17 +31,17 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void HeroState_Enum_ShouldHaveExpectedValues()
+        public void ActorState_Enum_ShouldHaveExpectedValues()
         {
             // Assert - Verify all expected states exist
-            Assert.IsTrue(System.Enum.IsDefined(typeof(HeroState), HeroState.Idle), "Idle state should be defined");
-            Assert.IsTrue(System.Enum.IsDefined(typeof(HeroState), HeroState.GoTo), "GoTo state should be defined");
-            Assert.IsTrue(System.Enum.IsDefined(typeof(HeroState), HeroState.PerformAction), "PerformAction state should be defined");
+            Assert.IsTrue(System.Enum.IsDefined(typeof(ActorState), ActorState.Idle), "Idle state should be defined");
+            Assert.IsTrue(System.Enum.IsDefined(typeof(ActorState), ActorState.GoTo), "GoTo state should be defined");
+            Assert.IsTrue(System.Enum.IsDefined(typeof(ActorState), ActorState.PerformAction), "PerformAction state should be defined");
             
             // Verify enum values
-            Assert.AreEqual(0, (int)HeroState.Idle, "Idle should be the first state (0)");
-            Assert.AreEqual(1, (int)HeroState.GoTo, "GoTo should be the second state (1)");
-            Assert.AreEqual(2, (int)HeroState.PerformAction, "PerformAction should be the third state (2)");
+            Assert.AreEqual(0, (int)ActorState.Idle, "Idle should be the first state (0)");
+            Assert.AreEqual(1, (int)ActorState.GoTo, "GoTo should be the second state (1)");
+            Assert.AreEqual(2, (int)ActorState.PerformAction, "PerformAction should be the third state (2)");
         }
     }
 }

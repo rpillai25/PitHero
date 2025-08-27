@@ -26,11 +26,11 @@ namespace PitHero.Tests
         {
             // Arrange & Act
             var actionName = GoapConstants.WanderAction;
-            var stateName = GoapConstants.MapExplored;
+            var stateName = GoapConstants.ExploredPit;
 
             // Assert
             Assert.AreEqual("WanderAction", actionName, "WanderAction constant should have correct value");
-            Assert.AreEqual("MapExplored", stateName, "MapExplored constant should have correct value");
+            Assert.AreEqual("ExploredPit", stateName, "ExploredPit constant should have correct value");
         }
 
         [TestMethod]

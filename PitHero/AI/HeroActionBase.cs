@@ -30,6 +30,14 @@ namespace PitHero.AI
             return false;
         }
 
+        /// <summary>
+        /// Update the cost of this action. Used later in development when multiple actions can be chosen for given state, and we need a heuristic
+        /// </summary>
+        public virtual void UpdateCost()
+        {
+            // Default implementation does nothing. Override in derived classes to implement dynamic cost calculation.
+        }
+
         private static int TileSize => GameConfig.TileSize; // ensure single source of truth
 
         /// <summary>

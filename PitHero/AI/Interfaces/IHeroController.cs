@@ -49,16 +49,13 @@ namespace PitHero.AI.Interfaces
         bool HasReachedTarget(Point targetTile);
 
         /// <summary>
-        /// Get GOAP state flags
+        /// Get GOAP state flags - updated for simplified 7-state model
         /// </summary>
+        bool HeroInitialized { get; set; }
         bool PitInitialized { get; set; }
-        bool AdjacentToPitBoundaryFromOutside { get; set; }
-        bool AdjacentToPitBoundaryFromInside { get; set; }
         bool InsidePit { get; set; }
+        bool ExploredPit { get; set; }
+        bool FoundWizardOrb { get; set; }
         bool ActivatedWizardOrb { get; set; }
-        bool MovingToInsidePitEdge { get; set; }
-        bool ReadyToJumpOutOfPit { get; set; }
-        bool MovingToPitGenPoint { get; set; }
-        Direction? PitApproachDirection { get; set; }
     }
 }

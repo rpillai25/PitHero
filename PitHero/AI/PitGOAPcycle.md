@@ -1,83 +1,77 @@
-# PitHero GOAP Cycle
+# PitHero GOAP Cycle (Updated)
 
-This document describes the full goal/action chain for the hero in the PitHero.AI namespace, including exact GOAP preconditions, postconditions, and the action that advances each step.
+This document reflects the current, simplified GOAP setup in PitHero.AI.
 
----
+Summary
+- World states (only these 7 exist):
+  - HeroInitialized
+  - PitInitialized
+  - InsidePit
+  - OutsidePit (derived from InsidePit in runtime state, but can also appear in planner state)
+  - ExploredPit
+  - FoundWizardOrb
+  - ActivatedWizardOrb
+- Actions (only these 5 exist):
+  - JumpIntoPitAction
+  - WanderAction
+  - ActivateWizardOrbAction
+  - JumpOutOfPitAction
+  - ActivatePitRegenAction
+- Goal selection (HeroComponent.SetGoalState):
+  - If PitInitialized == true and ActivatedWizardOrb == false -> goal ActivatedWizardOrb == true
+  - Else if PitInitialized == false and ActivatedWizardOrb == true -> goal PitInitialized == true
 
-## 1. Start at Spawn Point
-- Initial facts set by HeroStateMachine:
-  - HeroInitialized=true, and PitInitialized=true once PitWidthManager finishes.
-- No action needed yet.
+World states: intended meaning
+- HeroInitialized: hero entity/components are ready
+- PitInitialized: current pit is generated and active
+- InsidePit: hero is in the pit area
+- OutsidePit: hero is outside the pit area (computed as !InsidePit at runtime)
+- ExploredPit: all reachable FogOfWar in the pit interior was cleared (set by WanderAction)
+- FoundWizardOrb: hero has discovered the Wizard Orb’s tile (set during wander when standing on the orb tile)
+- ActivatedWizardOrb: the wizard orb has been activated (and the next pit level queued)
 
-## 2. Move to Outside Pit Edge
-- Goal: AdjacentToPitBoundaryFromOutside=true
-- Action: MoveToPitAction
-- Preconditions: HeroInitialized=true, PitInitialized=true
-- Postconditions: AdjacentToPitBoundaryFromOutside=true
-- Behavior: A* path to a candidate tile just outside the pit boundary.
+Actions (with exact preconditions/postconditions as implemented)
+- JumpIntoPitAction
+  - Preconditions: HeroInitialized == true, PitInitialized == true
+  - Postconditions: InsidePit == true
+  - Notes: Performs a 2-tile jump coroutine into the pit. Does not explicitly change OutsidePit in planner state; runtime flips Inside/Outside.
 
-## 3. Jump Into Pit
-- Goal: InsidePit=true
-- Action: JumpIntoPitAction
-- Preconditions: AdjacentToPitBoundaryFromOutside=true
-- Postconditions: InsidePit=true, AdjacentToPitBoundaryFromOutside=false (cleared on entry)
-- Behavior: Short “jump” into interior using a coroutine to avoid collider issues. Does NOT set AdjacentToPitBoundaryFromInside; that is reserved for the inside-edge target.
+- WanderAction
+  - Preconditions: InsidePit == true, ExploredPit == false
+  - Postconditions: ExploredPit == true (when no unknown tiles remain)
+  - Notes: Repeatedly picks nearest fog tile in pit bounds, A* moves, clears fog. If the hero lands exactly on the Wizard Orb tile during exploration, it sets FoundWizardOrb == true at runtime. This side-effect is not declared as a GOAP postcondition.
 
-## 4. Wander and Explore Pit
-- Goal: MapExplored=true
-- Action: WanderAction
-- Preconditions: InsidePit=true
-- Postconditions: MapExplored=true (achieved once fog cleared from explorable area)
-- Behavior: Picks nearest fog tile within pit inner bounds, A* moves, clears fog via TiledMapService around each tile.
+- ActivateWizardOrbAction
+  - Preconditions: InsidePit == true, ExploredPit == true, FoundWizardOrb == true
+  - Postconditions: ActivatedWizardOrb == true, PitInitialized == false (also queues next pit level)
+  - Notes: Changes the orb’s tint and enqueues next level via PitLevelQueueService.
 
-## 5. Activate Wizard Orb
-- Two-step target:
-  - 5a) Move to Wizard Orb
-    - Goal: AtWizardOrb=true
-    - Action: MoveToWizardOrbAction
-    - Preconditions: FoundWizardOrb=true, MapExplored=true
-    - Postconditions: AtWizardOrb=true (only while standing on the orb tile)
-  - 5b) Activate It
-    - Goal: ActivatedWizardOrb=true
-    - Action: ActivateWizardOrbAction
-    - Preconditions: AtWizardOrb=true
-    - Postconditions: ActivatedWizardOrb=true, MovingToInsidePitEdge=true, PitInitialized=false (queued regen)
+- JumpOutOfPitAction
+  - Preconditions: InsidePit == true, ActivatedWizardOrb == true
+  - Postconditions: OutsidePit == true
+  - Notes: Performs a 2-tile jump coroutine out of the pit and sets InsidePit=false at runtime.
 
-## 6. Move to Inside Pit Edge
-- Goal: ReadyToJumpOutOfPit=true
-- Action: MovingToInsidePitEdgeAction
-- Preconditions: MovingToInsidePitEdge=true
-- Postconditions: ReadyToJumpOutOfPit=true and AdjacentToPitBoundaryFromInside=true only when at the exact inside-edge target tile
-- Note: AdjacentToPitBoundaryFromInside is true only at this target and cleared as soon as the hero leaves it.
+- ActivatePitRegenAction
+  - Preconditions: ActivatedWizardOrb == true, OutsidePit == true
+  - Postconditions: PitInitialized == true
+  - Notes: Dequeues the queued level and regenerates the pit. Also resets ExploredPit=false and ActivatedWizardOrb=false at runtime.
 
-## 7. Jump Out of Pit
-- Goal: OutsidePit=true
-- Action: JumpOutOfPitAction
-- Preconditions: ReadyToJumpOutOfPit=true
-- Postconditions: OutsidePit=true, MovingToPitGenPoint=true
-- Behavior: Short jump to outside boundary and sets flag to proceed to regen spot.
+Planner goal flow
+- Cycle A (activate the orb)
+  - Goal: ActivatedWizardOrb == true (selected while PitInitialized==true and orb not yet activated)
+  - Typical plan from initial state HeroInitialized=true, PitInitialized=true, OutsidePit=true:
+    1) JumpIntoPitAction -> InsidePit=true
+    2) WanderAction -> ExploredPit=true (and runtime may set FoundWizardOrb=true when stepping on orb tile)
+    3) ActivateWizardOrbAction -> ActivatedWizardOrb=true, PitInitialized=false
+  - Important: ActivateWizardOrbAction requires FoundWizardOrb==true. WanderAction does not declare FoundWizardOrb as a postcondition, but sets it at runtime only if the hero reaches the orb tile.
 
-## 8. Move to Pit Regen Spot (Regenerates Pit)
-- Goal: AtPitGenPoint=true (tile 34,6)
-- Action: MoveToPitGenPointAction
-- Preconditions: OutsidePit=true
-- Postconditions: AtPitGenPoint=true (and triggers pit regen via queued level), PitInitialized=true after regeneration
+- Cycle B (regenerate the pit)
+  - Goal: PitInitialized == true (selected while PitInitialized==false and orb already activated)
+  - Typical plan:
+    1) JumpOutOfPitAction -> OutsidePit=true
+    2) ActivatePitRegenAction -> PitInitialized=true (also clears ExploredPit and ActivatedWizardOrb at runtime)
 
-## 9. Move to Outside Pit Edge (Starts Cycle Again at Step 2)
-- With pit regenerated and PitInitialized=true, planner sets goal OutsidePit/AdjacentToPitBoundaryFromOutside and repeats:
-  - MoveToPitAction ? JumpIntoPitAction ? WanderAction ? MoveToWizardOrbAction ? ActivateWizardOrbAction ? MovingToInsidePitEdgeAction ? JumpOutOfPitAction ? MoveToPitGenPointAction
-
----
-
-## Important Implementation Notes
-- World state consistency adjustments:
-  - MOVINGTOPIT is only set while the hero is outside the pit and moving toward it. It is not set when InsidePit=true.
-  - AdjacentToPitBoundaryFromInside is only true when the hero is at the exact inside-edge target tile. It is cleared when the hero moves away.
-  - AtWizardOrb is only true while standing exactly on the wizard orb tile; it is not persisted once the hero moves off the tile.
-- Progressive goal selection in GetGoalState:
-  - Not explored ? MapExplored
-  - Explored, not at orb ? AtWizardOrb
-  - At orb, not activated ? ActivatedWizardOrb
-  - Activated, not ready to jump ? ReadyToJumpOutOfPit (selects MovingToInsidePitEdgeAction)
-  - Not at regen after jump out ? AtPitGenPoint
-  - Else ? OutsidePit (to cycle)
+Notes and caveats
+- Only the 7 states and 5 actions listed above are used by GOAP. Older states such as adjacency flags or AtWizardOrb are not present.
+- Because FoundWizardOrb is not a declared postcondition of WanderAction, the planner cannot rely on it being achieved by WanderAction. In practice, exploration should eventually take the hero to the orb tile to satisfy the ActivateWizardOrbAction precondition.
+- OutsidePit in planner state is not explicitly flipped by JumpIntoPitAction; the runtime state (HeroComponent) derives OutsidePit from InsidePit.
