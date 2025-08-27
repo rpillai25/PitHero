@@ -1,10 +1,9 @@
 using Microsoft.Xna.Framework;
 using Nez;
-using Nez.AI.Pathfinding;
 using Nez.Tiled;
+using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
 using PitHero.Util;
-using PitHero.AI.Interfaces;
 using System.Collections.Generic;
 
 namespace PitHero.AI

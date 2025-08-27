@@ -1,7 +1,6 @@
-using Microsoft.Xna.Framework;
 using Nez;
-using PitHero.ECS.Components;
 using PitHero.AI.Interfaces;
+using PitHero.ECS.Components;
 
 namespace PitHero.AI
 {
@@ -70,7 +69,7 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Regenerate the queued pit level
+        /// Regenerate the queued pit level using PitWidthManager by reinitializing right edge and setting level
         /// </summary>
         private bool RegenerateQueuedPitLevel()
         {
@@ -89,17 +88,18 @@ namespace PitHero.AI
                 return false;
             }
 
-            // Get the pit generator service
-            var pitGenerator = Core.Services.GetService<PitGenerator>();
-            if (pitGenerator == null)
+            // Use PitWidthManager to apply level change instead of PitGenerator
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            if (pitWidthManager == null)
             {
-                Debug.Error("[ActivatePitRegen] PitGenerator not found");
+                Debug.Error("[ActivatePitRegen] PitWidthManager not found");
                 return false;
             }
 
-            // Generate the new pit level
-            pitGenerator.RegenerateForLevel(nextLevel.Value);
-            Debug.Log($"[ActivatePitRegen] Successfully regenerated pit level {nextLevel.Value}");
+            // Reinitialize right edge then set the new level (which will trigger regeneration)
+            pitWidthManager.ReinitRightEdge();
+            pitWidthManager.SetPitLevel(nextLevel.Value);
+            Debug.Log($"[ActivatePitRegen] Successfully set pit level {nextLevel.Value} via PitWidthManager");
             
             return true;
         }
