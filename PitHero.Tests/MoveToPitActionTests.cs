@@ -1,51 +1,48 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PitHero.AI;
+using System.Linq;
 
 namespace PitHero.Tests
 {
     /// <summary>
-    /// MSTest unit tests for MoveToPitAction functionality
+    /// MSTest unit tests for JumpIntoPitAction functionality in the simplified GOAP model
     /// </summary>
     [TestClass]
-    public class MoveToPitActionTests
+    public class JumpIntoPitActionTests
     {
         [TestMethod]
-        public void MoveToPitAction_Constructor_ShouldSetCorrectPreconditionsAndPostconditions()
+        public void JumpIntoPitAction_Constructor_ShouldSetCorrectPreconditionsAndPostconditions()
         {
             // Arrange & Act
-            var action = new MoveToPitAction();
+            var action = new JumpIntoPitAction();
 
             // Assert
-            Assert.IsNotNull(action, "MoveToPitAction should be created successfully");
-            Assert.AreEqual(GoapConstants.MoveToPitAction, action.Name, "Action name should match constant");
+            Assert.IsNotNull(action, "JumpIntoPitAction should be created successfully");
+            Assert.AreEqual(GoapConstants.JumpIntoPitAction, action.Name, "Action name should match constant");
             Assert.AreEqual(1, action.Cost, "Action cost should be 1");
         }
 
         [TestMethod]
-        public void GoapConstants_MoveToPitAction_ShouldExist()
+        public void GoapConstants_JumpIntoPitAction_ShouldExist()
         {
             // Arrange & Act
-            var actionName = GoapConstants.MoveToPitAction;
-            var stateName = GoapConstants.MovingToPit;
+            var actionName = GoapConstants.JumpIntoPitAction;
+            var insidePitState = GoapConstants.InsidePit;
 
             // Assert
-            Assert.AreEqual("MoveToPitAction", actionName, "MoveToPitAction constant should have correct value");
-            Assert.AreEqual("MovingToPit", stateName, "MovingToPit constant should have correct value");
+            Assert.AreEqual("JumpIntoPitAction", actionName, "JumpIntoPitAction constant should have correct value");
+            Assert.AreEqual("InsidePit", insidePitState, "InsidePit constant should have correct value");
         }
 
         [TestMethod]
-        public void GoapConstants_ShouldNotContainOldConstants()
+        public void GoapConstants_SimplifiedModel_ShouldOnlyContainCoreConstants()
         {
-            // This test ensures we've properly cleaned up old constants
-            // We'll use reflection to verify the old constants don't exist
+            // This test ensures we only have the 7 states and 5 actions in the simplified model
             var constantsType = typeof(GoapConstants);
-            var fields = constantsType.GetFields();
+            var fields = constantsType.GetFields().Where(f => f.FieldType == typeof(string) && f.IsLiteral);
             
-            foreach (var field in fields)
-            {
-                Assert.AreNotEqual("MovingLeft", field.GetValue(null), "MovingLeft constant should be removed");
-                Assert.AreNotEqual("MoveLeftAction", field.GetValue(null), "MoveLeftAction constant should be removed");
-            }
+            // Should have exactly 7 states + 5 actions = 12 constants
+            Assert.AreEqual(12, fields.Count(), "Should have exactly 12 GOAP constants in simplified model");
         }
 
         [TestMethod]

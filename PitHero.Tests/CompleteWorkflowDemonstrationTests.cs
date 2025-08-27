@@ -38,23 +38,21 @@ namespace PitHero.Tests
                 Console.SetOut(originalOut);
                 Console.WriteLine(output);
                 
-                // Verify the simulation executed successfully
+                // Verify the simulation executed successfully (updated for simplified GOAP model)
                 Assert.IsTrue(output.Contains("STEP 1: Generating pit at level 40"));
-                Assert.IsTrue(output.Contains("STEP 2: Hero spawns and begins MoveToPitAction"));
+                Assert.IsTrue(output.Contains("STEP 2: Hero spawns"));
                 Assert.IsTrue(output.Contains("STEP 3: Hero jumps into pit"));
                 Assert.IsTrue(output.Contains("STEP 4: Hero wanders and explores pit completely"));
                 Assert.IsTrue(output.Contains("STEP 5: Execute complete wizard orb workflow"));
                 Assert.IsTrue(output.Contains("STEP 6: Cycle restarts"));
                 
-                // Verify all GOAP actions were executed
-                Assert.IsTrue(output.Contains("[MoveToPitAction]"));
+                // Verify simplified GOAP actions were executed
+                Assert.IsTrue(output.Contains("[JumpIntoPitAction]"));
                 Assert.IsTrue(output.Contains("[JumpIntoPitAction]"));
                 Assert.IsTrue(output.Contains("[WanderAction]"));
-                Assert.IsTrue(output.Contains("[MoveToWizardOrbAction]"));
                 Assert.IsTrue(output.Contains("[ActivateWizardOrbAction]"));
-                Assert.IsTrue(output.Contains("[MovingToInsidePitEdgeAction]"));
                 Assert.IsTrue(output.Contains("[JumpOutOfPitAction]"));
-                Assert.IsTrue(output.Contains("[MoveToPitGenPointAction]"));
+                Assert.IsTrue(output.Contains("[ActivatePitRegenAction]"));
                 
                 // Verify world state changes
                 Assert.IsTrue(output.Contains("Hero: ("));
