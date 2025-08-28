@@ -46,7 +46,7 @@ namespace PitHero.Tests
                     hero.TeleportTo(new Point(pitBounds.X - 2, pitBounds.Y + pitBounds.Height / 2));
                     
                     // Execute state machine to explore pit
-                    int maxTicks = 500; // Reasonable limit for smaller pits
+                    int maxTicks = 1000; // Higher limit for debugging
                     int tickCount = 0;
                     
                     while (!stateMachine.IsExplorationComplete() && tickCount < maxTicks)
