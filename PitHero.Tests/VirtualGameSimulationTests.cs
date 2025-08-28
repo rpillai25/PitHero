@@ -61,7 +61,7 @@ namespace PitHero.Tests
             // Test moving to pit boundary
             var pitBounds = world.PitBounds;
             var adjacentPos = new Point(pitBounds.X - 1, pitBounds.Y + 1);
-            hero.MoveTo(adjacentPos);
+            hero.TeleportTo(adjacentPos);
             
             var worldState = hero.GetWorldState();
             Assert.IsTrue(hero.AdjacentToPitBoundaryFromOutside());
@@ -69,7 +69,7 @@ namespace PitHero.Tests
             
             // Test moving inside pit
             var insidePos = new Point(pitBounds.X + 1, pitBounds.Y + 1);
-            hero.MoveTo(insidePos);
+            hero.TeleportTo(insidePos);
             
             worldState = hero.GetWorldState();
             Assert.IsTrue(worldState.ContainsKey(GoapConstants.InsidePit));
@@ -191,7 +191,7 @@ namespace PitHero.Tests
             Assert.IsTrue(foundState.ContainsKey(GoapConstants.FoundWizardOrb));
             
             // Move hero to wizard orb
-            hero.MoveTo(orbPos.Value);
+            hero.TeleportTo(orbPos.Value);
             
             // Now should be at wizard orb position
             Assert.AreEqual(orbPos.Value, hero.Position, "Hero should be at wizard orb position");
