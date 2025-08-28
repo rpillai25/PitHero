@@ -99,50 +99,39 @@ namespace PitHero.VirtualGame
         }
 
         /// <summary>
-        /// Simulate WanderPitAction - systematic exploration until all fog is cleared
+        /// Simulate WanderPitAction using state machine approach instead of systematic exploration
         /// </summary>
         private void ExecuteWanderPitAction()
         {
             _currentAction = "WanderPitAction";
-            var pitBounds = _world.PitBounds;
-            var visitedTiles = new HashSet<Point>();
+            Console.WriteLine($"[{_currentAction}] Starting exploration using VirtualHeroStateMachine");
             
-            Console.WriteLine($"[{_currentAction}] Starting systematic exploration of pit interior");
+            // Create virtual state machine for proper pathfinding-based exploration
+            var stateMachine = new VirtualHeroStateMachine(_hero, _world);
             
-            // Generate exploration pattern - systematic coverage
-            var explorableTiles = new List<Point>();
-            for (int x = pitBounds.X + 1; x < pitBounds.Right - 1; x++)
+            int maxTicks = 1000; // Safety limit
+            int tickCount = 0;
+            
+            while (!stateMachine.IsExplorationComplete() && tickCount < maxTicks)
             {
-                for (int y = pitBounds.Y + 1; y < pitBounds.Bottom - 1; y++)
+                stateMachine.Update();
+                tickCount++;
+                
+                if (tickCount % 50 == 0) // Log every 50 ticks
                 {
-                    var tile = new Point(x, y);
-                    if (!_world.IsCollisionTile(tile))
-                    {
-                        explorableTiles.Add(tile);
-                    }
-                }
-            }
-            
-            // Visit each explorable tile to clear fog
-            foreach (var tile in explorableTiles)
-            {
-                if (!visitedTiles.Contains(tile))
-                {
-                    _hero.MoveTo(tile);
-                    visitedTiles.Add(tile);
-                    _tickCount++;
-                    
-                    if (_tickCount % 10 == 0)
-                    {
-                        var fogCount = CountRemainingFog();
-                        Console.WriteLine($"[{_currentAction}] Tick {_tickCount}: Explored ({tile.X},{tile.Y}), fog remaining: {fogCount}");
-                    }
+                    var fogCount = CountRemainingFog();
+                    Console.WriteLine($"[{_currentAction}] Tick {tickCount}: Hero at ({_hero.Position.X},{_hero.Position.Y}), fog remaining: {fogCount}");
                 }
             }
             
             var finalFogCount = CountRemainingFog();
-            var isExplored = _hero.GetWorldState().ContainsKey(GoapConstants.ExploredPit);
-            Console.WriteLine($"[{_currentAction}] Completed. Fog remaining: {finalFogCount}, MapExplored: {isExplored}");
+            var isExplored = stateMachine.IsExplorationComplete();
+            Console.WriteLine($"[{_currentAction}] Completed after {tickCount} ticks. Fog remaining: {finalFogCount}, ExploredPit: {isExplored}");
+            
+            if (isExplored)
+            {
+                _hero.ExploredPit = true;
+            }
         }
 
         /// <summary>
@@ -195,7 +184,16 @@ namespace PitHero.VirtualGame
             
             Console.WriteLine($"[{_currentAction}] Jumping out of pit to ({targetPos.X},{targetPos.Y})");
             
-            _hero.MoveTo(targetPos);
+            // Use pathfinding instead of teleportation
+            var path = CalculateSimplePath(_hero.Position, targetPos);
+            _hero.SetMovementPath(path);
+            
+            // Execute movement step by step
+            while (!_hero.ExecuteMovementStep())
+            {
+                _tickCount++;
+            }
+            
             _hero.ResetWizardOrbStates();
             
             _tickCount++;
@@ -339,9 +337,18 @@ namespace PitHero.VirtualGame
         /// </summary>
         public void HeroJumpIntoPit()
         {
-            _hero.CurrentTilePosition = new Point(2, 3); // Inside pit area
+            var targetPos = new Point(2, 3); // Inside pit area
+            var path = CalculateSimplePath(_hero.Position, targetPos);
+            _hero.SetMovementPath(path);
+            
+            // Execute movement
+            while (!_hero.ExecuteMovementStep())
+            {
+                // Move step by step
+            }
+            
             _hero.InsidePit = true;
-            Console.WriteLine($"Hero jumped into pit at tile {_hero.CurrentTilePosition.X},{_hero.CurrentTilePosition.Y}");
+            Console.WriteLine($"Hero jumped into pit at tile {_hero.Position.X},{_hero.Position.Y}");
         }
         
         /// <summary>
@@ -469,19 +476,34 @@ namespace PitHero.VirtualGame
             // Simple movement simulation - just advance towards target if moving
             if (_hero.IsMoving && _hero.TargetTilePosition.HasValue)
             {
-                var current = _hero.CurrentTilePosition;
+                var current = _hero.Position;
                 var target = _hero.TargetTilePosition.Value;
                 
-                // Simple step towards target
-                if (current.X < target.X) current.X++;
-                else if (current.X > target.X) current.X--;
-                else if (current.Y < target.Y) current.Y++;
-                else if (current.Y > target.Y) current.Y--;
+                // Simple step towards target (only adjacent moves allowed)
+                Point nextStep = current;
+                if (current.X < target.X) nextStep.X++;
+                else if (current.X > target.X) nextStep.X--;
+                else if (current.Y < target.Y) nextStep.Y++;
+                else if (current.Y > target.Y) nextStep.Y--;
                 
-                _hero.CurrentTilePosition = current;
+                // Use single-step MoveTo instead of teleportation
+                if (nextStep != current)
+                {
+                    try
+                    {
+                        _hero.MoveTo(nextStep);
+                    }
+                    catch (System.InvalidOperationException)
+                    {
+                        // Step was too large, stop movement
+                        _hero.IsMoving = false;
+                        _hero.TargetTilePosition = null;
+                        return;
+                    }
+                }
                 
                 // Stop moving if reached target
-                if (current == target)
+                if (_hero.Position == target)
                 {
                     _hero.IsMoving = false;
                     _hero.TargetTilePosition = null;

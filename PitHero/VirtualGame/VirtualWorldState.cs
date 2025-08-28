@@ -227,18 +227,9 @@ namespace PitHero.VirtualGame
 
         private (int width, int centerX) CalculatePitWidth(int level)
         {
-            // Simulate PitWidthManager logic
-            int tierLevel = (level / 10) * 10;
-            int width = GameConfig.PitRectWidth;
-            
-            if (tierLevel >= 20) width += 2;
-            if (tierLevel >= 30) width += 2;
-            if (tierLevel >= 40) width += 2;
-            if (tierLevel >= 50) width += 2;
-            if (tierLevel >= 60) width += 2;
-            if (tierLevel >= 70) width += 2;
-            if (tierLevel >= 80) width += 2;
-            if (tierLevel >= 90) width += 2;
+            // Use the actual PitWidthManager logic: ((int)(level / 10)) * 2
+            int extensionTiles = ((int)(level / 10)) * 2;
+            int width = GameConfig.PitRectWidth + extensionTiles;
             
             int centerX = GameConfig.PitRectX + (width / 2);
             return (width, centerX);

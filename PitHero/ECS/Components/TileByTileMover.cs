@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using PitHero.Services;
 using PitHero.Util;
 using Nez.Tweens;
+using Nez.Tiled;
 
 namespace PitHero.ECS.Components
 {
@@ -193,6 +194,23 @@ namespace PitHero.ECS.Components
                 var targetPos = Entity.Transform.Position + motion;
                 var targetTile = new Point((int)(targetPos.X / _tileSize), (int)(targetPos.Y / _tileSize));
                 Debug.Log($"[TileByTileMover] Movement to tile ({targetTile.X},{targetTile.Y}) blocked by collision with {collisionResult.Collider?.Entity.Name ?? "unknown"}");
+
+                // Safety net: if physics reports a collision with the tilemap but the Collision layer
+                // has no tile at the target location, allow the move (stale collider or edge-touch fallback)
+                if (collisionResult.Collider?.Entity != null && collisionResult.Collider.Entity.Name == "tilemap")
+                {
+                    var tms = Core.Services.GetService<TiledMapService>();
+                    var collisionLayer = tms?.CurrentMap?.GetLayer("Collision") as TmxLayer;
+                    if (collisionLayer != null)
+                    {
+                        var tile = collisionLayer.GetTile(targetTile.X, targetTile.Y);
+                        if (tile == null)
+                        {
+                            Debug.Log($"[TileByTileMover] Overriding tilemap collision at ({targetTile.X},{targetTile.Y}) due to empty Collision tile");
+                            return true;
+                        }
+                    }
+                }
             }
             
             return !isBlocked;

@@ -130,6 +130,15 @@ namespace PitHero
             // Initialize baseInnerFloor and collisionInnerFloor from coordinates (11,1) to (11,11)
             InitializeTilePattern(_baseInnerFloor, baseLayer, 11, 1, 11, "baseInnerFloor");
             InitializeTilePattern(_collisionInnerFloor, collisionLayer, 11, 1, 11, "collisionInnerFloor");
+            
+            // CRITICAL FIX: Ensure inner floor collision pattern has no collision in explorable area
+            // This prevents movement blocking when pit expands, as collision tiles in y=3-9 would
+            // be copied to extended columns and block hero movement
+            for (int y = 3; y <= 9; y++)
+            {
+                _collisionInnerFloor[y] = 0; // Force explorable area to be passable
+            }
+            Debug.Log("[PitWidthManager] Fixed collision pattern: cleared y=3-9 for inner floor extension");
 
             // Set initial pit right edge (default pit goes from x=1 to x=12, so rightmost is 12)
             _currentPitRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth;
@@ -328,6 +337,87 @@ namespace PitHero
         }
 
         /// <summary>
+        /// Rebuild tilemap physics colliders from the current Collision layer tiles
+        /// </summary>
+        private void RebuildTilemapColliders()
+        {
+            var scene = Core.Scene;
+            if (scene == null)
+            {
+                Debug.Warn("[PitWidthManager] No active scene found when rebuilding tilemap colliders");
+                return;
+            }
+
+            var tilemapEntity = scene.FindEntity("tilemap");
+            if (tilemapEntity == null)
+            {
+                Debug.Warn("[PitWidthManager] Tilemap entity not found when rebuilding colliders");
+                return;
+            }
+
+            var renderers = tilemapEntity.GetComponents<TiledMapRenderer>();
+            if (renderers == null || renderers.Count == 0)
+            {
+                Debug.Warn("[PitWidthManager] No TiledMapRenderer components found on tilemap entity");
+                return;
+            }
+
+            int rebuiltCount = 0;
+            for (int i = 0; i < renderers.Count; i++)
+            {
+                var r = renderers[i];
+                if (r == null || r.CollisionLayer == null)
+                    continue; // Only rebuild for the renderer that manages CollisionLayer colliders
+
+                Debug.Log("[PitWidthManager] Rebuilding tilemap colliders from Collision layer");
+
+                // Before rebuild: log current rectangle count
+                var beforeRects = r.CollisionLayer.GetCollisionRectangles();
+                Debug.Log($"[PitWidthManager] Collision rectangles BEFORE rebuild: {beforeRects.Count}");
+
+                r.RemoveColliders();
+                r.AddColliders();
+                rebuiltCount++;
+
+                // After rebuild, validate collision at expanded inner floor columns
+                var collisionLayer = r.CollisionLayer;
+                int tileSize = GameConfig.TileSize;
+
+                // We expect x=12 and x=13 (new inner floors at level 10) to be passable for y=3..9
+                for (int x = 12; x <= 13; x++)
+                {
+                    for (int y = 3; y <= 9; y++)
+                    {
+                        int gid = 0;
+                        var t = collisionLayer.GetTile(x, y);
+                        gid = t != null ? t.Gid : 0;
+
+                        // Count how many collision rectangles intersect this tile area
+                        var tileRect = new Rectangle(x * tileSize, y * tileSize, tileSize, tileSize);
+                        int intersectCount = 0;
+                        var rects = collisionLayer.GetCollisionRectangles();
+                        for (int ri = 0; ri < rects.Count; ri++)
+                        {
+                            if (rects[ri].Intersects(tileRect))
+                                intersectCount++;
+                        }
+
+                        Debug.Log($"[PitWidthManager] Post-rebuild check: Collision[{x},{y}] gid={gid}, intersectingRects={intersectCount}");
+                    }
+                }
+
+                // Also log rectangle count after rebuild
+                var afterRects = r.CollisionLayer.GetCollisionRectangles();
+                Debug.Log($"[PitWidthManager] Collision rectangles AFTER rebuild: {afterRects.Count}");
+            }
+
+            if (rebuiltCount == 0)
+            {
+                Debug.Warn("[PitWidthManager] No colliders rebuilt (no renderer with Collision layer)");
+            }
+        }
+
+        /// <summary>
         /// Regenerate pit content after pit width changes
         /// </summary>
         private void RegeneratePitContent()
@@ -336,6 +426,9 @@ namespace PitHero
             
             // Regenerate FogOfWar for the entire current pit area
             RegenerateFogOfWar();
+
+            // Rebuild physics colliders so movement matches updated Collision layer
+            RebuildTilemapColliders();
             
             // Find the MainGameScene and regenerate pit content
             var scene = Core.Scene as MainGameScene;

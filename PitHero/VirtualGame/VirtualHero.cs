@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using PitHero.AI;
+using System;
 using System.Collections.Generic;
 
 namespace PitHero.VirtualGame
@@ -43,14 +44,59 @@ namespace PitHero.VirtualGame
         }
 
         /// <summary>
-        /// Move to a specific tile position
+        /// Move to a specific tile position - now requires pathfinding, no teleportation
         /// </summary>
         public void MoveTo(Point targetTile)
         {
+            var currentPos = Position;
+            
+            // Only allow single-step movement (adjacent tiles) to enforce pathfinding
+            var distance = Math.Abs(targetTile.X - currentPos.X) + Math.Abs(targetTile.Y - currentPos.Y);
+            if (distance > 1)
+            {
+                System.Console.WriteLine($"[VirtualHero] ERROR: Attempted teleportation from ({currentPos.X},{currentPos.Y}) to ({targetTile.X},{targetTile.Y}), distance={distance}");
+                throw new InvalidOperationException($"MoveTo only allows adjacent tile movement. Use pathfinding for longer moves. Distance={distance}");
+            }
+            
+            // Check if target is passable
+            if (_world.IsCollisionTile(targetTile))
+            {
+                System.Console.WriteLine($"[VirtualHero] Cannot move to collision tile ({targetTile.X},{targetTile.Y})");
+                return;
+            }
+            
             _world.MoveHeroTo(targetTile);
             UpdatePositionStates();
             
             System.Console.WriteLine($"[VirtualHero] Moved to ({targetTile.X},{targetTile.Y}), states updated");
+        }
+
+        /// <summary>
+        /// Testing method - allows teleportation for test scenarios
+        /// </summary>
+        public void TeleportTo(Point targetTile)
+        {
+            _world.MoveHeroTo(targetTile);
+            UpdatePositionStates();
+            
+            System.Console.WriteLine($"[VirtualHero] Teleported to ({targetTile.X},{targetTile.Y}) for testing");
+        }
+
+        /// <summary>
+        /// Move via pathfinding to target (for longer distances)
+        /// </summary>
+        public bool MoveViaPath(Point targetTile, VirtualPathfinder pathfinder)
+        {
+            var path = pathfinder.CalculatePath(Position, targetTile);
+            if (path == null || path.Count == 0)
+            {
+                System.Console.WriteLine($"[VirtualHero] No path found to ({targetTile.X},{targetTile.Y})");
+                return false;
+            }
+            
+            SetMovementPath(path);
+            System.Console.WriteLine($"[VirtualHero] Set path to ({targetTile.X},{targetTile.Y}) with {path.Count} steps");
+            return true;
         }
 
         /// <summary>
@@ -80,7 +126,19 @@ namespace PitHero.VirtualGame
             }
 
             var nextTile = MovementQueue.Dequeue();
-            MoveTo(nextTile);
+            
+            // Validate movement step is adjacent (protect against bad path calculations)
+            var currentPos = Position;
+            var distance = Math.Abs(nextTile.X - currentPos.X) + Math.Abs(nextTile.Y - currentPos.Y);
+            if (distance > 1)
+            {
+                System.Console.WriteLine($"[VirtualHero] WARNING: Path contains non-adjacent step from ({currentPos.X},{currentPos.Y}) to ({nextTile.X},{nextTile.Y}), using TeleportTo");
+                TeleportTo(nextTile); // Fallback for bad paths
+            }
+            else
+            {
+                MoveTo(nextTile);
+            }
             
             if (MovementQueue.Count == 0)
             {
@@ -123,7 +181,7 @@ namespace PitHero.VirtualGame
             else if (pos.Y >= pitBounds.Bottom)
                 dy = pos.Y - (pitBounds.Bottom - 1);
             
-            return (float)System.Math.Sqrt(dx * dx + dy * dy);
+            return (float)Math.Sqrt(dx * dx + dy * dy);
         }
 
         /// <summary>
