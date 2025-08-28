@@ -25,9 +25,9 @@ namespace PitHero.Tests
             Assert.IsFalse(world.IsWizardOrbActivated);
             Assert.IsTrue(world.WizardOrbPosition.HasValue);
             
-            // Test pit bounds
+            // Test pit bounds - level 10 should be expanded by 2 tiles
             var expectedBounds = new Rectangle(GameConfig.PitRectX, GameConfig.PitRectY, 
-                                             GameConfig.PitRectWidth, GameConfig.PitRectHeight);
+                                             GameConfig.PitRectWidth + 2, GameConfig.PitRectHeight);
             Assert.AreEqual(expectedBounds, world.PitBounds);
             
             // Test fog of war is set up in pit
@@ -81,15 +81,15 @@ namespace PitHero.Tests
         {
             var world = new VirtualWorldState();
             
-            // Test level 10 (default width)
+            // Test level 10 (expanded width - first expansion at level 10)
             world.RegeneratePit(10);
             Assert.AreEqual(10, world.PitLevel);
-            Assert.AreEqual(GameConfig.PitRectWidth, world.PitBounds.Width);
+            Assert.AreEqual(GameConfig.PitRectWidth + 2, world.PitBounds.Width, "Level 10 should expand by 2 tiles");
             
             // Test level 40 (should be wider)
             world.RegeneratePit(40);
             Assert.AreEqual(40, world.PitLevel);
-            Assert.IsTrue(world.PitBounds.Width > GameConfig.PitRectWidth, "Level 40 pit should be wider than default");
+            Assert.IsTrue(world.PitBounds.Width > GameConfig.PitRectWidth + 2, "Level 40 pit should be wider than level 10");
             
             // Test level 90 (maximum width)
             world.RegeneratePit(90);
