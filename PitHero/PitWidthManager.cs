@@ -1,9 +1,8 @@
 using Microsoft.Xna.Framework;
 using Nez;
-using Nez.Tiled;
-using PitHero.Util;
-using PitHero.ECS.Scenes;
 using PitHero.AI.Interfaces;
+using PitHero.ECS.Scenes;
+using PitHero.Util;
 using System.Collections.Generic;
 
 namespace PitHero

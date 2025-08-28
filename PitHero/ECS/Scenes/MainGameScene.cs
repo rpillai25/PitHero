@@ -1,6 +1,5 @@
 using Microsoft.Xna.Framework;
 using Nez;
-using Nez.AI.Pathfinding;
 using Nez.Tiled;
 using PitHero.AI;
 using PitHero.ECS.Components;
@@ -47,7 +46,7 @@ namespace PitHero.ECS.Scenes
             // Set starting pit level to 9 (after pit exists to avoid early collider warnings)
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
             if (pitWidthManager != null)
-                pitWidthManager.SetPitLevel(9);
+                pitWidthManager.SetPitLevel(1);
 
             SpawnHero();
             AddPitLevelTestComponent();
@@ -81,8 +80,8 @@ namespace PitHero.ECS.Scenes
         private void SetupPitWidthManager()
         {
             var pitWidthManager = new PitWidthManager();
-            pitWidthManager.Initialize();
             Core.Services.AddService(pitWidthManager);
+            pitWidthManager.Initialize();
             Debug.Log("[MainGameScene] PitWidthManager initialized and registered as service");
         }
 

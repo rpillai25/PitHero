@@ -1,13 +1,10 @@
 using Microsoft.Xna.Framework;
 using Nez;
-using Nez.Tiled;
-using PitHero;
-using PitHero.Util;
-using PitHero.ECS.Components;
 using PitHero.AI.Interfaces;
+using PitHero.ECS.Components;
+using PitHero.Util;
 using System;
 using System.Collections.Generic;
-using Nez.AI.Pathfinding;
 
 namespace PitHero
 {
@@ -19,7 +16,6 @@ namespace PitHero
         private Scene _scene;
         private HashSet<Point> _collisionTiles;
         private ITiledMapService _tiledMapService;
-        private IPitWidthManager _pitWidthManager;
 
         public PitGenerator(Scene scene, ITiledMapService tiledMapService = null, IPitWidthManager pitWidthManager = null)
         {
@@ -29,13 +25,11 @@ namespace PitHero
             try
             {
                 _tiledMapService = tiledMapService ?? Core.Services?.GetService<TiledMapService>();
-                _pitWidthManager = pitWidthManager ?? Core.Services?.GetService<PitWidthManager>();
             }
             catch
             {
                 // Core.Services may not be available during unit testing
                 _tiledMapService = tiledMapService;
-                _pitWidthManager = pitWidthManager;
             }
         }
 
@@ -86,15 +80,16 @@ namespace PitHero
         /// </summary>
         public void RegenerateForCurrentLevel()
         {
-            // Get current pit level from PitWidthManager
-            if (_pitWidthManager == null)
+            var pitWidthManager = Core.Services?.GetService<PitWidthManager>();
+            // Get current pit level from PitWidthManager 
+            if (pitWidthManager == null)
             {
                 Debug.Warn("[PitGenerator] PitWidthManager service not found, using level 1");
                 RegenerateForLevel(1);
                 return;
             }
 
-            int currentLevel = _pitWidthManager.CurrentPitLevel;
+            int currentLevel = pitWidthManager.CurrentPitLevel;
             RegenerateForLevel(currentLevel);
         }
 
@@ -176,16 +171,18 @@ namespace PitHero
         /// </summary>
         private void GenerateForLevel(int level)
         {
+            var pitWidthManager = Core.Services?.GetService<PitWidthManager>();
+
             // Calculate pit bounds using PitWidthManager if available
             int validMinX, validMinY, validMaxX, validMaxY;
             
-            if (_pitWidthManager != null && _pitWidthManager.CurrentPitRightEdge > 0)
+            if (pitWidthManager != null && pitWidthManager.CurrentPitRightEdge > 0)
             {
                 // Use dynamic pit bounds
                 validMinX = GameConfig.PitRectX + 1; // 2
                 validMinY = GameConfig.PitRectY + 1; // 3
-                validMaxX = _pitWidthManager.CurrentPitRightEdge - 3; // 3 tiles from right edge (don't place on last walkable column on the right)
-                validMaxY = GameConfig.PitRectHeight - 2; // 9
+                validMaxX = pitWidthManager.CurrentPitRightEdge - 3; // 3 tiles from right edge (don't place on last walkable column on the right)
+                validMaxY = GameConfig.PitRectHeight; // 9
             }
             else
             {
