@@ -191,16 +191,6 @@ namespace PitHero
             Debug.Log($"[PitWidthManager] Setting pit level from {_currentPitLevel} to {newLevel}");
             _currentPitLevel = newLevel;
             
-            // Calculate new right edge
-            int innerFloorTilesToExtend = ((int)(_currentPitLevel / 10)) * 2;
-            int newRightEdge = previousRightEdge + innerFloorTilesToExtend + (innerFloorTilesToExtend > 0 ? 2 : 0); // +2 for inner wall and outer floor
-            
-            // If sizing down, clear tiles first
-            if (newRightEdge < previousRightEdge)
-            {
-                ClearTilesFromXToEnd(newRightEdge);
-            }
-            
             RegeneratePitWidth();
         }
 
@@ -265,16 +255,37 @@ namespace PitHero
                 return;
             }
 
-            // Calculate how many inner floor tiles to extend
+            // Calculate how many inner floor tiles to extend based on current level
             int innerFloorTilesToExtend = ((int)(_currentPitLevel / 10)) * 2;
             Debug.Log($"[PitWidthManager] Level {_currentPitLevel}: extending pit by {innerFloorTilesToExtend} inner floor tiles");
 
-            if (innerFloorTilesToExtend <= 0)
+            // Calculate the new right edge from the base pit size
+            int baseRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth; // Original pit right edge (e.g., 1 + 12 = 13)
+            int newRightEdge;
+            
+            if (innerFloorTilesToExtend > 0)
             {
-                Debug.Log("[PitWidthManager] No extension needed for current level");
-                RegeneratePitContent();
-                return;
+                // Extension needed: base + inner floor tiles + inner wall + outer floor
+                newRightEdge = baseRightEdge + innerFloorTilesToExtend + 2; // +2 for inner wall and outer floor
             }
+            else
+            {
+                // No extension needed, use base pit size
+                newRightEdge = baseRightEdge;
+            }
+
+            var previousRightEdge = _currentPitRightEdge;
+            Debug.Log($"[PitWidthManager] Calculating new pit width: previous right edge {previousRightEdge} -> new right edge {newRightEdge}");
+
+            // If the new pit is smaller (shrinkage), clear tiles from the new right edge onwards
+            if (newRightEdge < previousRightEdge)
+            {
+                Debug.Log($"[PitWidthManager] Pit shrinking: clearing tiles from x={newRightEdge + 1} onwards");
+                ClearTilesFromXToEnd(newRightEdge + 1);
+            }
+
+            // Update the current pit right edge
+            _currentPitRightEdge = newRightEdge;
 
             if (_tiledMapService == null)
             {
@@ -282,21 +293,22 @@ namespace PitHero
                 return;
             }
 
-            // Start extending from the original pit boundary 
-            int currentX = 12; // Start at x=12 for inner floor extension
-            int lastXCoordinate = currentX;
-
-            // Loop to extend inner floor tiles
-            for (int i = 0; i < innerFloorTilesToExtend; i++)
-            {
-                ExtendColumn(_tiledMapService, currentX, _baseInnerFloor, _collisionInnerFloor, "inner floor");
-                lastXCoordinate = currentX;
-                currentX++;
-            }
-
-            // Add inner wall column after all inner floor columns
+            // If extension is needed, build the extended columns
             if (innerFloorTilesToExtend > 0)
             {
+                // Start extending from the original pit boundary 
+                int currentX = baseRightEdge; // Start at the base right edge (e.g., x=13)
+                int lastXCoordinate = currentX - 1; // Track the last placed column
+
+                // Loop to extend inner floor tiles
+                for (int i = 0; i < innerFloorTilesToExtend; i++)
+                {
+                    ExtendColumn(_tiledMapService, currentX, _baseInnerFloor, _collisionInnerFloor, "inner floor");
+                    lastXCoordinate = currentX;
+                    currentX++;
+                }
+
+                // Add inner wall column after all inner floor columns
                 currentX = lastXCoordinate + 1;
                 ExtendColumn(_tiledMapService, currentX, _baseInnerWall, _collisionInnerWall, "inner wall");
                 lastXCoordinate = currentX;
@@ -305,11 +317,13 @@ namespace PitHero
                 currentX = lastXCoordinate + 1;
                 ExtendColumn(_tiledMapService, currentX, _baseOuterFloor, _collisionOuterFloor, "outer floor");
                 lastXCoordinate = currentX;
-            }
 
-            // Update the current pit right edge
-            _currentPitRightEdge = lastXCoordinate;
-            Debug.Log($"[PitWidthManager] Pit extension complete. New right edge: {_currentPitRightEdge}");
+                Debug.Log($"[PitWidthManager] Pit extension complete. New right edge: {_currentPitRightEdge}");
+            }
+            else
+            {
+                Debug.Log($"[PitWidthManager] No extension needed for level {_currentPitLevel}. Pit right edge: {_currentPitRightEdge}");
+            }
 
             // Notify the scene to update pit collider bounds
             UpdatePitColliderBounds();

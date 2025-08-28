@@ -155,31 +155,54 @@ namespace PitHero.VirtualGame
                 return;
             }
 
-            // Calculate how many inner floor tiles to extend (same logic as real PitWidthManager)
+            // Calculate how many inner floor tiles to extend based on current level
             int innerFloorTilesToExtend = ((int)(_currentPitLevel / 10)) * 2;
             Console.WriteLine($"[VirtualPitWidthManager] Level {_currentPitLevel}: extending pit by {innerFloorTilesToExtend} inner floor tiles");
 
-            if (innerFloorTilesToExtend <= 0)
-            {
-                Console.WriteLine("[VirtualPitWidthManager] No extension needed for current level");
-                return;
-            }
-
-            // Start extending from the original pit boundary 
-            int currentX = 12; // Start at x=12 for inner floor extension
-            int lastXCoordinate = currentX;
-
-            // Loop to extend inner floor tiles
-            for (int i = 0; i < innerFloorTilesToExtend; i++)
-            {
-                ExtendColumn(currentX, _baseInnerFloor, _collisionInnerFloor, "inner floor");
-                lastXCoordinate = currentX;
-                currentX++;
-            }
-
-            // Add inner wall column after all inner floor columns
+            // Calculate the new right edge from the base pit size (same logic as real PitWidthManager)
+            int baseRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth; // Original pit right edge (e.g., 1 + 12 = 13)
+            int newRightEdge;
+            
             if (innerFloorTilesToExtend > 0)
             {
+                // Extension needed: base + inner floor tiles + inner wall + outer floor
+                newRightEdge = baseRightEdge + innerFloorTilesToExtend + 2; // +2 for inner wall and outer floor
+            }
+            else
+            {
+                // No extension needed, use base pit size
+                newRightEdge = baseRightEdge;
+            }
+
+            var previousRightEdge = _currentPitRightEdge;
+            Console.WriteLine($"[VirtualPitWidthManager] Calculating new pit width: previous right edge {previousRightEdge} -> new right edge {newRightEdge}");
+
+            // If the new pit is smaller (shrinkage), clear tiles from the new right edge onwards
+            if (newRightEdge < previousRightEdge)
+            {
+                Console.WriteLine($"[VirtualPitWidthManager] Pit shrinking: clearing tiles from x={newRightEdge + 1} onwards");
+                ClearTilesFromXToEnd(newRightEdge + 1);
+            }
+
+            // Update the current pit right edge
+            _currentPitRightEdge = newRightEdge;
+
+            // If extension is needed, build the extended columns
+            if (innerFloorTilesToExtend > 0)
+            {
+                // Start extending from the original pit boundary 
+                int currentX = baseRightEdge; // Start at the base right edge (e.g., x=13)
+                int lastXCoordinate = currentX - 1; // Track the last placed column
+
+                // Loop to extend inner floor tiles
+                for (int i = 0; i < innerFloorTilesToExtend; i++)
+                {
+                    ExtendColumn(currentX, _baseInnerFloor, _collisionInnerFloor, "inner floor");
+                    lastXCoordinate = currentX;
+                    currentX++;
+                }
+
+                // Add inner wall column after all inner floor columns
                 currentX = lastXCoordinate + 1;
                 ExtendColumn(currentX, _baseInnerWall, _collisionInnerWall, "inner wall");
                 lastXCoordinate = currentX;
@@ -188,11 +211,13 @@ namespace PitHero.VirtualGame
                 currentX = lastXCoordinate + 1;
                 ExtendColumn(currentX, _baseOuterFloor, _collisionOuterFloor, "outer floor");
                 lastXCoordinate = currentX;
-            }
 
-            // Update the current pit right edge
-            _currentPitRightEdge = lastXCoordinate;
-            Console.WriteLine($"[VirtualPitWidthManager] Pit extension complete. New right edge: {_currentPitRightEdge}");
+                Console.WriteLine($"[VirtualPitWidthManager] Pit extension complete. New right edge: {_currentPitRightEdge}");
+            }
+            else
+            {
+                Console.WriteLine($"[VirtualPitWidthManager] No extension needed for level {_currentPitLevel}. Pit right edge: {_currentPitRightEdge}");
+            }
             
             // Regenerate FogOfWar for the entire current pit area
             RegenerateFogOfWar();
@@ -266,6 +291,50 @@ namespace PitHero.VirtualGame
             }
 
             Console.WriteLine($"[VirtualPitWidthManager] FogOfWar regeneration complete");
+        }
+
+        /// <summary>
+        /// Clear tiles from a given x coordinate to x=33 to clean up when sizing down (same as real PitWidthManager)
+        /// </summary>
+        private void ClearTilesFromXToEnd(int startX)
+        {
+            if (!_isInitialized)
+            {
+                Console.WriteLine("[VirtualPitWidthManager] Cannot clear tiles - manager not initialized");
+                return;
+            }
+
+            Console.WriteLine($"[VirtualPitWidthManager] Clearing tiles from x={startX} to x=33, y=1 to y=11");
+
+            for (int x = startX; x <= 33; x++)
+            {
+                for (int y = 1; y <= 11; y++)
+                {
+                    // Set Base layer to ground tile
+                    if (_groundTileIndex != 0)
+                    {
+                        _tiledMapService.SetTile("Base", x, y, _groundTileIndex);
+                    }
+
+                    // Remove Collision layer tiles
+                    _tiledMapService.RemoveTile("Collision", x, y);
+
+                    // Remove FogOfWar layer tiles
+                    _tiledMapService.RemoveTile("FogOfWar", x, y);
+                }
+            }
+
+            // Clear fog of war from inner wall and outer floor columns to the left of startX
+            for (int x = startX - 2; x <= startX; x++)
+            {
+                for (int y = 1; y <= 11; y++)
+                {
+                    // Remove FogOfWar layer tiles
+                    _tiledMapService.RemoveTile("FogOfWar", x, y);
+                }
+            }
+
+            Console.WriteLine($"[VirtualPitWidthManager] Cleared tiles from x={startX} to x=33");
         }
 
         public Point[] GetCurrentPitCandidateTargets()
