@@ -130,6 +130,15 @@ namespace PitHero
             // Initialize baseInnerFloor and collisionInnerFloor from coordinates (11,1) to (11,11)
             InitializeTilePattern(_baseInnerFloor, baseLayer, 11, 1, 11, "baseInnerFloor");
             InitializeTilePattern(_collisionInnerFloor, collisionLayer, 11, 1, 11, "collisionInnerFloor");
+            
+            // CRITICAL FIX: Ensure inner floor collision pattern has no collision in explorable area
+            // This prevents movement blocking when pit expands, as collision tiles in y=3-9 would
+            // be copied to extended columns and block hero movement
+            for (int y = 3; y <= 9; y++)
+            {
+                _collisionInnerFloor[y] = 0; // Force explorable area to be passable
+            }
+            Debug.Log("[PitWidthManager] Fixed collision pattern: cleared y=3-9 for inner floor extension");
 
             // Set initial pit right edge (default pit goes from x=1 to x=12, so rightmost is 12)
             _currentPitRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth;
