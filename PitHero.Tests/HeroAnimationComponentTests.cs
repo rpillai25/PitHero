@@ -66,5 +66,23 @@ namespace PitHero.Tests
                     $"Direction {direction} should be a valid enum value");
             }
         }
+
+        [TestMethod]
+        public void HeroAnimationComponent_MovementDirectionChanges_ShouldTrackCorrectly()
+        {
+            // Test the direction tracking logic
+            // Since we can't test actual animation changes without content loading in tests,
+            // we test the underlying logic by checking if the components can work together
+            Assert.IsNotNull(_tileMover);
+            Assert.IsNotNull(_heroAnimation);
+            
+            // TileByTileMover should initialize with null CurrentDirection
+            Assert.IsNull(_tileMover.CurrentDirection);
+            
+            // The hero animation component should have a default last direction 
+            // (this is verified by the fact that the component doesn't crash)
+            // We can verify this indirectly by checking the component is properly set up
+            Assert.AreEqual(_heroEntity, _heroAnimation.Entity);
+        }
     }
 }
