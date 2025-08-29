@@ -13,6 +13,8 @@ namespace PitHero.AI
     public class JumpOutOfPitAction : HeroActionBase
     {
         private bool _isJumping = false;
+        private bool _jumpFinished = false;
+        private Point _plannedTargetTile;
         
         public JumpOutOfPitAction() : base(GoapConstants.JumpOutOfPitAction, 1)
         {
@@ -29,14 +31,30 @@ namespace PitHero.AI
             // If already jumping, check if movement is complete
             if (_isJumping)
             {
-                var tileMover = hero.Entity.GetComponent<TileByTileMover>();
-                if (tileMover != null && tileMover.IsMoving)
+                if (!_jumpFinished)
                 {
                     return false; // Still moving, action not complete
+                }
+
+                // Verify we actually reached the intended tile before completing
+                var tileMover = hero.Entity.GetComponent<TileByTileMover>();
+                var currentTile = tileMover?.GetCurrentTileCoordinates() 
+                    ?? new Point((int)(hero.Entity.Transform.Position.X / GameConfig.TileSize), 
+                               (int)(hero.Entity.Transform.Position.Y / GameConfig.TileSize));
+
+                if (currentTile.X != _plannedTargetTile.X || currentTile.Y != _plannedTargetTile.Y)
+                {
+                    Debug.Warn($"[JumpOutOfPit] Jump finished flag set but hero at {currentTile.X},{currentTile.Y} not at planned target {_plannedTargetTile.X},{_plannedTargetTile.Y}. Waiting one more frame.");
+                    return false;
                 }
                 
                 // Movement complete, finalize the jump
                 _isJumping = false;
+                _jumpFinished = false;
+
+                // Ensure triggers update so pit exit is registered
+                tileMover?.UpdateTriggersAfterTeleport();
+
                 hero.InsidePit = false;  // Set InsidePit = False according to specification
                 
                 Debug.Log("[JumpOutOfPit] Jump out completed successfully");
@@ -51,11 +69,14 @@ namespace PitHero.AI
                 return true; // Action failed, but complete
             }
 
+            _plannedTargetTile = targetTile.Value;
+
             // Start the coroutine-based movement to avoid TileMap collider issues
-            StartJumpOutMovement(hero, targetTile.Value);
+            StartJumpOutMovement(hero, _plannedTargetTile);
             _isJumping = true;
+            _jumpFinished = false;
             
-            Debug.Log($"[JumpOutOfPit] Started jump out to tile {targetTile.Value.X},{targetTile.Value.Y}");
+            Debug.Log($"[JumpOutOfPit] Started jump out to tile {_plannedTargetTile.X},{_plannedTargetTile.Y}");
             return false; // Action in progress
         }
 
@@ -117,6 +138,8 @@ namespace PitHero.AI
             if (tileMover != null)
             {
                 tileMover.SnapToTileGrid();
+                // Force trigger update so the pit exit trigger updates immediately
+                tileMover.UpdateTriggersAfterTeleport();
             }
 
             // Clear fog of war around the landing position
@@ -126,7 +149,7 @@ namespace PitHero.AI
                 (int)(targetPosition.Y / GameConfig.TileSize)
             );
 
-
+            _jumpFinished = true;
 
             Debug.Log($"[JumpOutOfPit] Jump out movement completed at {entity.Transform.Position.X},{entity.Transform.Position.Y}");
         }

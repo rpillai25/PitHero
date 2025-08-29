@@ -11,6 +11,8 @@ namespace PitHero.AI
     public class JumpIntoPitAction : HeroActionBase
     {
         private bool _isJumping = false;
+        private bool _jumpFinished = false;
+        private Point _plannedTargetTile;
         
         public JumpIntoPitAction() : base(GoapConstants.JumpIntoPitAction, 1)
         {
@@ -24,46 +26,61 @@ namespace PitHero.AI
 
         public override bool Execute(HeroComponent hero)
         {
-            // If already jumping, check if movement is complete
+            // If already jumping, wait for the coroutine to finish
             if (_isJumping)
             {
+                if (!_jumpFinished)
+                    return false; // still moving
+
+                // Verify we actually reached the intended tile before completing
                 var tileMover = hero.Entity.GetComponent<TileByTileMover>();
-                if (tileMover != null && tileMover.IsMoving)
+                var currentTile = tileMover?.GetCurrentTileCoordinates()
+                    ?? new Point((int)(hero.Entity.Transform.Position.X / GameConfig.TileSize),
+                               (int)(hero.Entity.Transform.Position.Y / GameConfig.TileSize));
+
+                if (currentTile.X != _plannedTargetTile.X || currentTile.Y != _plannedTargetTile.Y)
                 {
-                    return false; // Still moving, action not complete
+                    Debug.Warn($"[JumpIntoPit] Jump finished flag set but hero at {currentTile.X},{currentTile.Y} not at planned target {_plannedTargetTile.X},{_plannedTargetTile.Y}. Waiting one more frame.");
+                    return false;
                 }
-                
+
                 // Movement complete, finalize the jump
                 _isJumping = false;
+                _jumpFinished = false;
+
+                // Ensure triggers update so pit enter is registered
+                tileMover?.UpdateTriggersAfterTeleport();
+
                 hero.InsidePit = true;
                 
                 // Log hero tile position at end of execution
-                var endTile = hero.Entity.GetComponent<TileByTileMover>()?.GetCurrentTileCoordinates() 
-                    ?? new Point((int)(hero.Entity.Transform.Position.X / GameConfig.TileSize), 
-                               (int)(hero.Entity.Transform.Position.Y / GameConfig.TileSize));
+                var endTile = currentTile;
                 Debug.Log($"[JumpIntoPit] Hero tile position at end of execution: X={endTile.X}, Y={endTile.Y}");
                 Debug.Log("[JumpIntoPit] Jump completed successfully");
                 return true; // Action complete
             }
 
             // Log hero tile position at start of execution
-            var currentTile = hero.Entity.GetComponent<TileByTileMover>()?.GetCurrentTileCoordinates() 
+            var currentStartTile = hero.Entity.GetComponent<TileByTileMover>()?.GetCurrentTileCoordinates() 
                 ?? new Point((int)(hero.Entity.Transform.Position.X / GameConfig.TileSize), 
                            (int)(hero.Entity.Transform.Position.Y / GameConfig.TileSize));
-            Debug.Log($"[JumpIntoPit] Hero tile position at start of execution: X={currentTile.X}, Y={currentTile.Y}");
+            Debug.Log($"[JumpIntoPit] Hero tile position at start of execution: X={currentStartTile.X}, Y={currentStartTile.Y}");
 
-            var targetTile = CalculateJumpTargetTile(currentTile);
+            var targetTile = CalculateJumpTargetTile(currentStartTile);
             if (!targetTile.HasValue)
             {
                 Debug.Warn("[JumpIntoPit] Cannot calculate jump target tile");
                 return true; // Action failed, but complete
             }
 
+            _plannedTargetTile = targetTile.Value;
+
             // Start the coroutine-based movement to avoid TileMap collider issues
-            StartJumpMovement(hero, targetTile.Value);
+            StartJumpMovement(hero, _plannedTargetTile);
             _isJumping = true;
+            _jumpFinished = false;
             
-            Debug.Log($"[JumpIntoPit] Started jump to tile {targetTile.Value.X},{targetTile.Value.Y}");
+            Debug.Log($"[JumpIntoPit] Started jump to tile {_plannedTargetTile.X},{_plannedTargetTile.Y}");
             return false; // Action in progress
         }
 
@@ -118,15 +135,17 @@ namespace PitHero.AI
             if (tileMover != null)
             {
                 tileMover.SnapToTileGrid();
+                // Force trigger update so the pit enter trigger updates immediately
+                tileMover.UpdateTriggersAfterTeleport();
             }
 
             var tiledMapService = Core.Services.GetService<TiledMapService>();
-            tiledMapService.ClearFogOfWarAroundTile(
+            tiledMapService?.ClearFogOfWarAroundTile(
                 (int)(targetPosition.X / GameConfig.TileSize),
                 (int)(targetPosition.Y / GameConfig.TileSize)
             );
 
-
+            _jumpFinished = true;
             Debug.Log($"[JumpIntoPit] Jump movement completed at {entity.Transform.Position.X},{entity.Transform.Position.Y}");
         }
     }
