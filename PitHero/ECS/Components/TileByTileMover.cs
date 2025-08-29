@@ -177,6 +177,14 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
+        /// Force trigger recalculation for cases where position changes without using the mover (e.g., jumps/teleports)
+        /// </summary>
+        public void UpdateTriggersAfterTeleport()
+        {
+            _triggerHelper?.Update();
+        }
+
+        /// <summary>
         /// Check if movement in the specified direction is possible
         /// </summary>
         private bool CanMove(Vector2 motion)
