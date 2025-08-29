@@ -97,7 +97,6 @@ namespace PitHero.AI
             }
 
             // Reinitialize right edge then set the new level (which will trigger regeneration)
-            pitWidthManager.ReinitRightEdge();
             pitWidthManager.SetPitLevel(nextLevel.Value);
             Debug.Log($"[ActivatePitRegen] Successfully set pit level {nextLevel.Value} via PitWidthManager");
             

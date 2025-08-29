@@ -22,7 +22,8 @@ namespace PitHero
         private Dictionary<int, int> _collisionInnerFloor;
         private int _fogOfWarIndex;
         private int _groundTileIndex; // Ground tile recorded from (19,1)
-        
+        private int _regenTileIndex; // Regen tile recorded from "map center" (33, 6)
+
         // Track current pit state
         private int _currentPitLevel = 1;
         private int _currentPitRightEdge; // The rightmost x coordinate of the current pit
@@ -118,6 +119,10 @@ namespace PitHero
             _groundTileIndex = groundTile?.Gid ?? 0;
             Debug.Log($"[PitWidthManager] Recorded ground tile index: {_groundTileIndex}");
 
+            var regenTile = baseLayer.GetTile(GameConfig.MapCenterTileX, GameConfig.MapCenterTileY);
+            _regenTileIndex = regenTile?.Gid ?? 16; // Default to 16 if not found
+            Debug.Log($"[PitWidthManager] Recorded regen tile index: {_regenTileIndex}");
+
             // Initialize baseOuterFloor and collisionOuterFloor from coordinates (13,1) to (13,11)
             InitializeTilePattern(_baseOuterFloor, baseLayer, 13, 1, 11, "baseOuterFloor");
             InitializeTilePattern(_collisionOuterFloor, collisionLayer, 13, 1, 11, "collisionOuterFloor");
@@ -192,8 +197,9 @@ namespace PitHero
             _currentPitLevel = newLevel;
             
             // Calculate new right edge
+            int initialRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth;
             int innerFloorTilesToExtend = ((int)(_currentPitLevel / 10)) * 2;
-            int newRightEdge = previousRightEdge + innerFloorTilesToExtend + (innerFloorTilesToExtend > 0 ? 2 : 0); // +2 for inner wall and outer floor
+            int newRightEdge = initialRightEdge + innerFloorTilesToExtend + (innerFloorTilesToExtend > 0 ? 2 : 0); // +2 for inner wall and outer floor
             
             // If sizing down, clear tiles first
             if (newRightEdge < previousRightEdge)
@@ -209,7 +215,7 @@ namespace PitHero
         /// </summary>
         private void ClearTilesFromXToEnd(int startX)
         {
-            if (!_isInitialized)
+        if (!_isInitialized)
             {
                 Debug.Error("[PitWidthManager] Cannot clear tiles - manager not initialized");
                 return;
@@ -223,7 +229,7 @@ namespace PitHero
 
             Debug.Log($"[PitWidthManager] Clearing tiles from x={startX} to x=33, y=1 to y=11");
 
-            for (int x = startX; x <= 33; x++)
+            for (int x = startX - 1; x <= 33; x++)
             {
                 for (int y = 1; y <= 11; y++)
                 {
@@ -242,7 +248,7 @@ namespace PitHero
             }
 
             //Clear fog of war from inner wall and outer floor columns to the left of startX
-            for (int x = startX-2; x <= startX; x++)
+            for (int x = startX - 3; x <= startX; x++)
             {
                 for (int y = 1; y <= 11; y++)
                 {
@@ -310,6 +316,9 @@ namespace PitHero
             // Update the current pit right edge
             _currentPitRightEdge = lastXCoordinate;
             Debug.Log($"[PitWidthManager] Pit extension complete. New right edge: {_currentPitRightEdge}");
+
+            //Set the regen tile again
+            _tiledMapService.SetTile("Base", GameConfig.MapCenterTileX, GameConfig.MapCenterTileY, _regenTileIndex);
 
             // Notify the scene to update pit collider bounds
             UpdatePitColliderBounds();
