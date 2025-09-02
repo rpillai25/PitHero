@@ -117,6 +117,14 @@ namespace PitHero.AI
             var distance = Vector2.Distance(startPosition, targetPosition);
             var duration = distance / (tilesPerSecond * GameConfig.TileSize); // Convert tiles per second to pixels per second
             
+            // Start jump animation - determine direction from start to target
+            var jumpDirection = GetJumpDirection(startPosition, targetPosition);
+            var jumpAnimComponent = entity.GetComponent<HeroJumpAnimationComponent>();
+            if (jumpAnimComponent != null)
+            {
+                jumpAnimComponent.StartJump(jumpDirection, duration);
+            }
+            
             var elapsed = 0f;
             
             while (elapsed < duration)
@@ -132,6 +140,12 @@ namespace PitHero.AI
             
             // Ensure we end exactly at target
             entity.Transform.Position = targetPosition;
+            
+            // End jump animation
+            if (jumpAnimComponent != null)
+            {
+                jumpAnimComponent.EndJump();
+            }
             
             // Snap to tile grid for precision
             var tileMover = entity.GetComponent<TileByTileMover>();
@@ -152,6 +166,24 @@ namespace PitHero.AI
             _jumpFinished = true;
 
             Debug.Log($"[JumpOutOfPit] Jump out movement completed at {entity.Transform.Position.X},{entity.Transform.Position.Y}");
+        }
+
+        /// <summary>
+        /// Determine jump direction based on start and target positions
+        /// </summary>
+        private Direction GetJumpDirection(Vector2 startPosition, Vector2 targetPosition)
+        {
+            var delta = targetPosition - startPosition;
+            
+            // Since we're jumping out of the pit to the right, this should be right
+            if (System.Math.Abs(delta.X) > System.Math.Abs(delta.Y))
+            {
+                return delta.X > 0 ? Direction.Right : Direction.Left;
+            }
+            else
+            {
+                return delta.Y > 0 ? Direction.Down : Direction.Up;
+            }
         }
     }
 }
