@@ -4,12 +4,4 @@
     <StartAction>Project</StartAction>
     <ExternalConsole>false</ExternalConsole>
   </PropertyGroup>
-  <ItemGroup>
-    <Compile Update="ECS\Components\HeroComponent.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Update="ECS\Components\PitComponent.cs">
-      <SubType>Component</SubType>
-    </Compile>
-  </ItemGroup>
 </Project>
