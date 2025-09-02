@@ -17,6 +17,7 @@ namespace PitHero.ECS.Components
         private const string JUMP_ANIM_RIGHT = "BlueHairHeroJumpRight";
         private const string JUMP_ANIM_UP = "BlueHairHeroJumpUp";
         private const string HERO_SHADOW_SPRITE = "HeroShadow";
+        private const float MAX_JUMP_HEIGHT_PX = 32f; // peak vertical offset during jump (matches previous discrete peak)
 
         private HeroAnimationComponent _heroAnimator;
         private SpriteRenderer _shadowRenderer;
@@ -158,43 +159,42 @@ namespace PitHero.ECS.Components
             Debug.Log("[HeroJumpAnimationComponent] Ended jump animation");
         }
 
+        /// <summary>
+        /// Updates the jump animation frame and smoothly interpolates the vertical offset using a parabolic arc
+        /// </summary>
         private void UpdateJumpAnimation(float progress)
         {
             if (_heroAnimator == null || string.IsNullOrEmpty(_currentJumpAnimationName)) return;
+
             _heroAnimator.Play(_currentJumpAnimationName, SpriteAnimator.LoopMode.Once);
             _heroAnimator.Pause();
 
-            // Determine which frame to show based on progress
-            int frameIndex;
-            float yOffset;
+            // Clamp progress to [0,1]
+            if (progress < 0f) progress = 0f;
+            if (progress > 1f) progress = 1f;
 
+            // Choose which frame to show based on progress (keep existing 2-frame look)
+            int frameIndex;
             if (progress <= 0.25f)
             {
-                // First quarter: frame 0, Y offset -16
                 frameIndex = 0;
-                yOffset = _initialYOffset - 16f;
-            }
-            else if (progress <= 0.5f)
-            {
-                // Second quarter: frame 1, Y offset -16
-                frameIndex = 1;
-                yOffset = _initialYOffset - 32f;
             }
             else if (progress <= 0.75f)
             {
-                // Third quarter: frame 1, Y offset +16
                 frameIndex = 1;
-                yOffset = _initialYOffset - 32f;
             }
             else
             {
-                // Fourth quarter: frame 0, Y offset +16
                 frameIndex = 0;
-                yOffset = _initialYOffset - 16f;
             }
 
-            // Get the specific sprite for this frame from the atlas
-            _heroAnimator.SetFrame(frameIndex); // Update current frame index for consistency
+            _heroAnimator.SetFrame(frameIndex);
+
+            // Smooth parabolic vertical offset: 0 at start/end, peak at mid
+            // heightFactor = 4t(1-t) in [0,1]; multiply by MAX_JUMP_HEIGHT_PX for pixels
+            var t = progress;
+            var heightFactor = 4f * t * (1f - t);
+            var yOffset = _initialYOffset - (MAX_JUMP_HEIGHT_PX * heightFactor);
 
             // Apply Y offset
             _heroAnimator.SetLocalOffset(new Vector2(_heroAnimator.LocalOffset.X, yOffset));
