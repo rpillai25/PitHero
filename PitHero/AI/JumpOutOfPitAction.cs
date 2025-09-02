@@ -105,7 +105,7 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Find the best pit exit direction by looking for nearest explored spot with clear path
+        /// Find the best pit exit direction by looking for nearest perimeter tile with clear path to explored exit
         /// </summary>
         private Point? FindBestPitExitDirection(HeroComponent hero, Point currentTile)
         {
@@ -123,61 +123,31 @@ namespace PitHero.AI
             var pitBounds = GetCurrentPitBounds(pitWidthManager);
             Debug.Log($"[JumpOutOfPit] Checking pit bounds: X={pitBounds.X}, Y={pitBounds.Y}, Width={pitBounds.Width}, Height={pitBounds.Height}");
             
-            // Define the four cardinal directions to check
-            var directions = new[]
-            {
-                new { Name = "East", Delta = new Point(2, 0) },   // Right (original behavior)
-                new { Name = "North", Delta = new Point(0, -2) }, // Up
-                new { Name = "West", Delta = new Point(-2, 0) },  // Left
-                new { Name = "South", Delta = new Point(0, 2) }   // Down
-            };
-
             Point? bestTarget = null;
             float bestDistance = float.MaxValue;
 
-            foreach (var direction in directions)
+            // Check each wall perimeter for the best exit point
+            var candidates = new[]
             {
-                var candidateTarget = new Point(currentTile.X + direction.Delta.X, currentTile.Y + direction.Delta.Y);
-                
-                // Check if this target is outside the pit
-                if (!IsPointOutsidePit(candidateTarget, pitBounds))
-                    continue;
+                CheckNorthWallPerimeter(hero, currentTile, pitBounds, tiledMapService),
+                CheckWestWallPerimeter(hero, currentTile, pitBounds, tiledMapService),
+                CheckSouthWallPerimeter(hero, currentTile, pitBounds, tiledMapService),
+                CheckEastWallPerimeter(hero, currentTile, pitBounds, tiledMapService)
+            };
 
-                // Check if the target area is explored (no fog of war)
-                if (tiledMapService.HasFogOfWar(candidateTarget.X, candidateTarget.Y))
-                {
-                    Debug.Log($"[JumpOutOfPit] {direction.Name} direction target ({candidateTarget.X},{candidateTarget.Y}) has fog of war - skipping");
-                    continue;
-                }
+            foreach (var candidate in candidates)
+            {
+                if (!candidate.HasValue) continue;
 
-                // Check if target is passable
-                if (!hero.IsPassable(candidateTarget))
-                {
-                    Debug.Log($"[JumpOutOfPit] {direction.Name} direction target ({candidateTarget.X},{candidateTarget.Y}) is not passable - skipping");
-                    continue;
-                }
-
-                // Check if there's a clear path to the target
-                var path = hero.CalculatePath(currentTile, candidateTarget);
-                if (path == null || path.Count == 0)
-                {
-                    Debug.Log($"[JumpOutOfPit] {direction.Name} direction target ({candidateTarget.X},{candidateTarget.Y}) has no path - skipping");
-                    continue;
-                }
-
-                // Calculate distance to this candidate
                 var distance = Vector2.Distance(
                     new Vector2(currentTile.X, currentTile.Y),
-                    new Vector2(candidateTarget.X, candidateTarget.Y)
+                    new Vector2(candidate.Value.X, candidate.Value.Y)
                 );
 
-                Debug.Log($"[JumpOutOfPit] {direction.Name} direction is valid - target ({candidateTarget.X},{candidateTarget.Y}), distance: {distance}");
-
-                // Keep the closest valid target
                 if (distance < bestDistance)
                 {
                     bestDistance = distance;
-                    bestTarget = candidateTarget;
+                    bestTarget = candidate.Value;
                 }
             }
 
@@ -191,6 +161,118 @@ namespace PitHero.AI
             }
 
             return bestTarget;
+        }
+
+        /// <summary>
+        /// Check north wall perimeter for the best exit point
+        /// </summary>
+        private Point? CheckNorthWallPerimeter(HeroComponent hero, Point currentTile, Rectangle pitBounds, TiledMapService tiledMapService)
+        {
+            var northWallRow = pitBounds.Y + 1; // Inner perimeter north wall row
+            var startCol = pitBounds.X + 1; // Inner perimeter start column
+            var endCol = pitBounds.Right - 2; // Inner perimeter end column
+
+            return CheckWallPerimeter(hero, currentTile, tiledMapService, "North", northWallRow, startCol, endCol, true, new Point(0, -2));
+        }
+
+        /// <summary>
+        /// Check west wall perimeter for the best exit point
+        /// </summary>
+        private Point? CheckWestWallPerimeter(HeroComponent hero, Point currentTile, Rectangle pitBounds, TiledMapService tiledMapService)
+        {
+            var westWallCol = pitBounds.X + 1; // Inner perimeter west wall column
+            var startRow = pitBounds.Y + 1; // Inner perimeter start row
+            var endRow = pitBounds.Bottom - 2; // Inner perimeter end row
+
+            return CheckWallPerimeter(hero, currentTile, tiledMapService, "West", westWallCol, startRow, endRow, false, new Point(-2, 0));
+        }
+
+        /// <summary>
+        /// Check south wall perimeter for the best exit point
+        /// </summary>
+        private Point? CheckSouthWallPerimeter(HeroComponent hero, Point currentTile, Rectangle pitBounds, TiledMapService tiledMapService)
+        {
+            var southWallRow = pitBounds.Bottom - 2; // Inner perimeter south wall row
+            var startCol = pitBounds.X + 1; // Inner perimeter start column
+            var endCol = pitBounds.Right - 2; // Inner perimeter end column
+
+            return CheckWallPerimeter(hero, currentTile, tiledMapService, "South", southWallRow, startCol, endCol, true, new Point(0, 2));
+        }
+
+        /// <summary>
+        /// Check east wall perimeter for the best exit point
+        /// </summary>
+        private Point? CheckEastWallPerimeter(HeroComponent hero, Point currentTile, Rectangle pitBounds, TiledMapService tiledMapService)
+        {
+            var eastWallCol = pitBounds.Right - 2; // Inner perimeter east wall column
+            var startRow = pitBounds.Y + 1; // Inner perimeter start row
+            var endRow = pitBounds.Bottom - 2; // Inner perimeter end row
+
+            return CheckWallPerimeter(hero, currentTile, tiledMapService, "East", eastWallCol, startRow, endRow, false, new Point(2, 0));
+        }
+
+        /// <summary>
+        /// Generic method to check a wall perimeter and find the closest valid exit point
+        /// </summary>
+        private Point? CheckWallPerimeter(HeroComponent hero, Point currentTile, TiledMapService tiledMapService, 
+            string wallName, int fixedCoord, int startVar, int endVar, bool isHorizontalWall, Point jumpDelta)
+        {
+            Point? bestPerimeterTile = null;
+            float bestDistance = float.MaxValue;
+
+            for (int varCoord = startVar; varCoord <= endVar; varCoord++)
+            {
+                // Determine perimeter tile position
+                var perimeterTile = isHorizontalWall 
+                    ? new Point(varCoord, fixedCoord)  // Horizontal wall: varying X, fixed Y
+                    : new Point(fixedCoord, varCoord); // Vertical wall: fixed X, varying Y
+
+                // Calculate jump target (2 tiles in the direction)
+                var jumpTarget = new Point(perimeterTile.X + jumpDelta.X, perimeterTile.Y + jumpDelta.Y);
+
+                // Check if jump target is explored (no fog of war)
+                if (tiledMapService.HasFogOfWar(jumpTarget.X, jumpTarget.Y))
+                {
+                    continue;
+                }
+
+                // Check if jump target is passable
+                if (!hero.IsPassable(jumpTarget))
+                {
+                    continue;
+                }
+
+                // Check if there's a clear path from current position to perimeter tile
+                var pathToPerimeter = hero.CalculatePath(currentTile, perimeterTile);
+                if (pathToPerimeter == null || pathToPerimeter.Count == 0)
+                {
+                    continue;
+                }
+
+                // Calculate distance to this perimeter tile
+                var distance = Vector2.Distance(
+                    new Vector2(currentTile.X, currentTile.Y),
+                    new Vector2(perimeterTile.X, perimeterTile.Y)
+                );
+
+                Debug.Log($"[JumpOutOfPit] {wallName} wall: perimeter tile ({perimeterTile.X},{perimeterTile.Y}) -> jump target ({jumpTarget.X},{jumpTarget.Y}), distance: {distance}");
+
+                // Keep the closest valid perimeter tile
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    bestPerimeterTile = perimeterTile;
+                }
+            }
+
+            if (bestPerimeterTile.HasValue)
+            {
+                var jumpTarget = new Point(bestPerimeterTile.Value.X + jumpDelta.X, bestPerimeterTile.Value.Y + jumpDelta.Y);
+                Debug.Log($"[JumpOutOfPit] {wallName} wall best perimeter tile: ({bestPerimeterTile.Value.X},{bestPerimeterTile.Value.Y}) -> target ({jumpTarget.X},{jumpTarget.Y})");
+                return jumpTarget; // Return the jump target, not the perimeter tile
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -208,14 +290,7 @@ namespace PitHero.AI
             return new Rectangle(GameConfig.PitRectX, GameConfig.PitRectY, GameConfig.PitRectWidth, GameConfig.PitRectHeight);
         }
 
-        /// <summary>
-        /// Check if a point is outside the pit boundaries
-        /// </summary>
-        private bool IsPointOutsidePit(Point point, Rectangle pitBounds)
-        {
-            return point.X < pitBounds.X || point.X >= pitBounds.Right ||
-                   point.Y < pitBounds.Y || point.Y >= pitBounds.Bottom;
-        }
+
 
         /// <summary>
         /// Start coroutine-based movement to target tile
