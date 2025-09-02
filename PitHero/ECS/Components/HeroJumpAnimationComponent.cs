@@ -156,6 +156,18 @@ namespace PitHero.ECS.Components
                 _shadowRenderer.SetEnabled(false);
             }
 
+            // Clear jump state
+            _currentJumpAnimationName = null;
+
+            // Restore walking animation in the same direction and ensure animator is running
+            if (_heroAnimator != null)
+            {
+                // Switch back to directional walk animation
+                _heroAnimator.UpdateAnimationForDirection(_jumpDirection);
+                // Ensure animator is not paused
+                _heroAnimator.UnPause();
+            }
+
             Debug.Log("[HeroJumpAnimationComponent] Ended jump animation");
         }
 

@@ -72,7 +72,10 @@ namespace PitHero.ECS.Components
             }
         }
 
-        private void UpdateAnimationForDirection(Direction direction)
+        /// <summary>
+        /// Plays the appropriate walking animation for the given direction
+        /// </summary>
+        public void UpdateAnimationForDirection(Direction direction)
         {
             string animationName = direction switch
             {
