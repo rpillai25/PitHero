@@ -107,12 +107,17 @@ namespace PitHero.ECS.Components
         /// </summary>
         public void StartJump(Direction direction, float duration)
         {
-            if (_heroAnimator == null || _actorsAtlas == null) return;
-
             _jumpDirection = direction;
             _jumpDuration = duration;
             _jumpStartTime = Time.TotalTime;
             _isJumping = true;
+
+            // Only proceed with graphics if components are available
+            if (_heroAnimator == null || _actorsAtlas == null)
+            {
+                Debug.Warn("[HeroJumpAnimationComponent] StartJump called but graphics components not available (this is normal in tests)");
+                return;
+            }
 
             // Store the initial Y offset
             _initialYOffset = _heroAnimator.LocalOffset.Y;
