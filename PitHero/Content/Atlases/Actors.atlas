@@ -1,133 +1,73 @@
-BlueHairHero_JumpDown_1
-	0,0,27,71
-	0.5,0.5
-BlueHairHero_JumpDown_2
-	28,0,27,71
-	0.5,0.5
-BlueHairHero_JumpDown_3
-	56,0,27,71
-	0.5,0.5
-BlueHairHero_JumpDown_4
-	84,0,27,71
-	0.5,0.5
-BlueHairHero_JumpDown_5
-	112,0,27,71
-	0.5,0.5
-BlueHairHero_JumpLeft_1
-	140,0,27,71
-	0.5,0.5
-BlueHairHero_JumpLeft_2
-	168,0,27,71
-	0.5,0.5
-BlueHairHero_JumpLeft_3
-	196,0,27,71
-	0.5,0.5
-BlueHairHero_JumpLeft_4
-	224,0,27,71
-	0.5,0.5
-BlueHairHero_JumpLeft_5
-	0,72,27,71
-	0.5,0.5
-BlueHairHero_JumpRight_1
-	28,72,27,71
-	0.5,0.5
-BlueHairHero_JumpRight_2
-	56,72,27,71
-	0.5,0.5
-BlueHairHero_JumpRight_3
-	84,72,27,71
-	0.5,0.5
-BlueHairHero_JumpRight_4
-	112,72,27,71
-	0.5,0.5
-BlueHairHero_JumpRight_5
-	140,72,27,71
-	0.5,0.5
-BlueHairHero_JumpUp_1
-	168,72,27,71
-	0.5,0.5
-BlueHairHero_JumpUp_2
-	196,72,27,71
-	0.5,0.5
-BlueHairHero_JumpUp_3
-	224,72,27,71
-	0.5,0.5
-BlueHairHero_JumpUp_4
-	252,0,27,71
-	0.5,0.5
-BlueHairHero_JumpUp_5
-	280,0,27,71
-	0.5,0.5
 BlueHairHero_Down_1
-	308,0,27,56
+	0,0,27,56
 	0.5,0.5
 BlueHairHero_Down_2
-	252,72,27,56
+	28,0,27,56
 	0.5,0.5
 BlueHairHero_Down_3
-	336,0,27,56
+	56,0,27,56
 	0.5,0.5
 BlueHairHero_Down_4
-	280,72,27,56
+	84,0,27,56
 	0.5,0.5
 BlueHairHero_Left_1
-	364,0,27,56
+	0,57,27,56
 	0.5,0.5
 BlueHairHero_Left_2
-	308,57,27,56
+	28,57,27,56
 	0.5,0.5
 BlueHairHero_Left_3
-	252,129,27,56
+	56,57,27,56
 	0.5,0.5
 BlueHairHero_Left_4
-	392,0,27,56
+	84,57,27,56
 	0.5,0.5
 BlueHairHero_Right_1
-	336,57,27,56
+	112,0,27,56
 	0.5,0.5
 BlueHairHero_Right_2
-	280,129,27,56
+	140,0,27,56
 	0.5,0.5
 BlueHairHero_Right_3
-	420,0,27,56
+	168,0,27,56
 	0.5,0.5
 BlueHairHero_Right_4
-	364,57,27,56
+	112,57,27,56
 	0.5,0.5
 BlueHairHero_Up_1
-	308,114,27,56
+	196,0,27,56
 	0.5,0.5
 BlueHairHero_Up_2
-	448,0,27,56
+	140,57,27,56
 	0.5,0.5
 BlueHairHero_Up_3
-	392,57,27,56
+	224,0,27,56
 	0.5,0.5
 BlueHairHero_Up_4
-	336,114,27,56
+	168,57,27,56
 	0.5,0.5
 
 BlueHairHeroDown
 	8
-	20,21,22,23
+	0,1,2,3
 BlueHairHeroJumpDown
-	8
-	0,1,2,3,4
-BlueHairHeroJumpLeft
-	8
-	5,6,7,8,9
-BlueHairHeroJumpRight
-	8
-	10,11,12,13,14
-BlueHairHeroJumpUp
-	8
-	15,16,17,18,19
+	2
+	0,1	
 BlueHairHeroLeft
 	8
-	24,25,26,27
+	4,5,6,7
+BlueHairHeroJumpLeft
+	2
+	4,5
 BlueHairHeroRight
 	8
-	28,29,30,31
+	8,9,10,11
+BlueHairHeroJumpRight
+	2
+	8,9
 BlueHairHeroUp
 	8
-	32,33,34,35
+	12,13,14,15
+BlueHairHeroJumpUp
+	2
+	12,13
