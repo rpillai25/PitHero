@@ -168,8 +168,9 @@ namespace PitHero.ECS.Scenes
             Debug.Log($"[MainGameScene] Hero spawned at random position {heroStart.X},{heroStart.Y} , tile coordinates: " +
                       $"({heroTileX}, {heroTileY}) - {minHeroTileX - rightmostPitTile} tiles from pit edge");
 
-            var heroRenderer = hero.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
-            heroRenderer.SetRenderLayer(GameConfig.RenderLayerHero);
+            var heroAnimator = hero.AddComponent(new HeroAnimationComponent());
+            heroAnimator.SetRenderLayer(GameConfig.RenderLayerHero);
+            heroAnimator.SetLocalOffset(new Vector2(0, -GameConfig.TileSize / 2)); // Offset so feet are at entity position
             var collider = hero.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));
             
             Flags.SetFlag(ref collider.CollidesWithLayers, GameConfig.PhysicsTileMapLayer);

@@ -23,9 +23,10 @@ namespace PitHero
         public const int HeroHeight = 32;
         
         // Hero movement speed
-        public const float HeroMovementSpeed = 800f;
-        public const float HeroJumpSpeed = 4f;
-        
+        public const float HeroMovementSpeed = 64f;  //Move speed in pixels per second (64 pixels = 2 tiles)
+        public const float HeroPitMovementSpeed = 32f; //Move speed in pixels per second when in pit (32 pixels = 1 tile)
+        public const float HeroJumpSpeed = 4f; //Jump speed in tiles per second
+
         // Pit Configuration
         public const int PitWidth = 64;
         public const int PitHeight = 64;

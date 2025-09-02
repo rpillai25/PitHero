@@ -13,7 +13,24 @@ namespace PitHero.ECS.Components
         // The 7 required GOAP state properties
         public bool HeroInitialized { get; set; }                    // True after hero entity initialized, remains true
         public bool PitInitialized { get; set; }                     // True after pit generated, false after ActivateWizardOrbAction
-        public bool InsidePit { get; set; }                          // True after JumpIntoPitAction, false after JumpOutOfPitAction
+
+        // Backing field so we can react to inside/outside transitions
+        private bool _insidePit;
+        /// <summary>
+        /// True when hero is inside the pit. Adjusts movement speed automatically on change.
+        /// </summary>
+        public bool InsidePit
+        {
+            get => _insidePit;
+            set
+            {
+                if (_insidePit == value)
+                    return;
+
+                _insidePit = value;
+                ApplyMovementSpeedForPitState();
+            }
+        }
         public bool OutsidePit => !InsidePit;                        // Opposite of InsidePit (calculated)
         public bool ExploredPit { get; set; }                        // True after all reachable FogOfWar uncovered, false upon ActivatePitRegenAction
         public bool FoundWizardOrb { get; set; }                     // True after hero uncovered fog over wizard orb
@@ -57,10 +74,28 @@ namespace PitHero.ECS.Components
             // Initialize state properties to clean state
             HeroInitialized = true;  // Set to true after hero entity and components initialized
             // Do not override PitInitialized here; it may be set by the spawner.
-            InsidePit = false;
+            _insidePit = false;
             ExploredPit = false;
             FoundWizardOrb = false;
             ActivatedWizardOrb = false;
+
+            // Ensure initial movement speed matches starting pit state (outside by default)
+            ApplyMovementSpeedForPitState();
+        }
+
+        /// <summary>
+        /// Apply movement speed to the TileByTileMover based on whether hero is inside or outside the pit
+        /// </summary>
+        private void ApplyMovementSpeedForPitState()
+        {
+            var mover = Entity?.GetComponent<TileByTileMover>();
+            if (mover == null)
+                return;
+
+            var newSpeed = _insidePit ? GameConfig.HeroPitMovementSpeed : GameConfig.HeroMovementSpeed;
+            mover.MovementSpeed = newSpeed;
+
+            Debug.Log($"[HeroComponent] Movement speed set based on pit state. InsidePit={_insidePit}, Speed={newSpeed}");
         }
 
         /// <summary>
@@ -175,6 +210,9 @@ namespace PitHero.ECS.Components
             Debug.Log($"[HeroComponent] HandlePitTriggerEnter: currentTile={currentTile.X},{currentTile.Y}, " +
                       $"pitBounds=({pitBounds.X},{pitBounds.Y},{pitBounds.Width},{pitBounds.Height})");
             
+            // Mark as inside pit when entering the pit trigger
+            InsidePit = true;
+
             var historian = Entity.GetComponent<Historian>();
             historian?.RecordMilestone(MilestoneType.FirstJumpIntoPit, Time.TotalTime);
             

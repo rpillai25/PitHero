@@ -1,61 +1,61 @@
 BlueHairHero_Down_1
-	0,0,20,42
+	0,0,27,56
 	0.5,0.5
 BlueHairHero_Down_2
-	21,0,20,42
+	28,0,27,56
 	0.5,0.5
 BlueHairHero_Down_3
-	42,0,20,42
+	56,0,27,56
 	0.5,0.5
 BlueHairHero_Down_4
-	63,0,20,42
+	84,0,27,56
 	0.5,0.5
 BlueHairHero_Left_1
-	84,0,20,42
+	0,57,27,56
 	0.5,0.5
 BlueHairHero_Left_2
-	105,0,20,42
+	28,57,27,56
 	0.5,0.5
 BlueHairHero_Left_3
-	0,43,20,42
+	56,57,27,56
 	0.5,0.5
 BlueHairHero_Left_4
-	21,43,20,42
+	84,57,27,56
 	0.5,0.5
 BlueHairHero_Right_1
-	42,43,20,42
+	112,0,27,56
 	0.5,0.5
 BlueHairHero_Right_2
-	63,43,20,42
+	140,0,27,56
 	0.5,0.5
 BlueHairHero_Right_3
-	84,43,20,42
+	168,0,27,56
 	0.5,0.5
 BlueHairHero_Right_4
-	105,43,20,42
+	112,57,27,56
 	0.5,0.5
 BlueHairHero_Up_1
-	126,0,20,42
+	196,0,27,56
 	0.5,0.5
 BlueHairHero_Up_2
-	147,0,20,42
+	140,57,27,56
 	0.5,0.5
 BlueHairHero_Up_3
-	168,0,20,42
+	224,0,27,56
 	0.5,0.5
 BlueHairHero_Up_4
-	126,43,20,42
+	168,57,27,56
 	0.5,0.5
 
 BlueHairHeroDown
-	15
+	8
 	0,1,2,3
 BlueHairHeroLeft
-	15
+	8
 	4,5,6,7
 BlueHairHeroRight
-	15
+	8
 	8,9,10,11
 BlueHairHeroUp
-	15
+	8
 	12,13,14,15

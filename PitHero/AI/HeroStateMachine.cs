@@ -68,9 +68,6 @@ namespace PitHero.AI
             base.OnAddedToEntity();
             _hero = Entity.GetComponent<HeroComponent>();
             
-            // Slow things down a bit. We don't need to tick every frame
-            Entity.UpdateInterval = 10;
-            
             // Set initial state to Idle - when it enters Idle it will ask the ActionPlanner for a new plan
             InitialState = ActorState.Idle;
         }
@@ -261,13 +258,6 @@ namespace PitHero.AI
 
         void GoTo_Tick()
         {
-            if (_currentPath == null || _pathIndex >= _currentPath.Count)
-            {
-                Debug.Log("[HeroStateMachine] GoTo_Tick: Path completed, transitioning to PerformAction");
-                CurrentState = ActorState.PerformAction;
-                return;
-            }
-
             var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
             if (tileMover == null)
             {
@@ -276,35 +266,56 @@ namespace PitHero.AI
                 return;
             }
 
-            // If not currently moving, start moving to next tile in path
-            if (!tileMover.IsMoving)
+            // If currently moving, wait until the step completes
+            if (tileMover.IsMoving)
             {
-                var nextTile = _currentPath[_pathIndex];
-                var currentTile = _hero.Entity.GetComponent<TileByTileMover>()?.GetCurrentTileCoordinates() 
-                    ?? new Point((int)(_hero.Entity.Transform.Position.X / GameConfig.TileSize),
-                               (int)(_hero.Entity.Transform.Position.Y / GameConfig.TileSize));
+                return;
+            }
 
-                // Calculate direction to next tile
-                var direction = CalculateDirection(currentTile, nextTile);
-                if (direction.HasValue)
+            // If we consumed the path, only proceed if we truly arrived at the target tile
+            if (_currentPath == null || _pathIndex >= _currentPath.Count)
+            {
+                var currentTile = tileMover.GetCurrentTileCoordinates();
+                if (currentTile.X == _targetTile.X && currentTile.Y == _targetTile.Y)
                 {
-                    Debug.Log($"[HeroStateMachine] GoTo_Tick: Moving {direction.Value} to tile ({nextTile.X},{nextTile.Y}) [step {_pathIndex + 1}/{_currentPath.Count}]");
-                    
-                    if (tileMover.StartMoving(direction.Value))
-                    {
-                        _pathIndex++;
-                    }
-                    else
-                    {
-                        Debug.Warn($"[HeroStateMachine] GoTo_Tick: Failed to start moving {direction.Value}");
-                        CurrentState = ActorState.PerformAction; // Give up and try action
-                    }
+                    Debug.Log("[HeroStateMachine] GoTo_Tick: Arrived at target, transitioning to PerformAction");
+                    CurrentState = ActorState.PerformAction;
                 }
                 else
                 {
-                    Debug.Warn($"[HeroStateMachine] GoTo_Tick: Cannot calculate direction from ({currentTile.X},{currentTile.Y}) to ({nextTile.X},{nextTile.Y})");
-                    _pathIndex++; // Skip this step
+                    // Recalculate a short corrective path to the target
+                    Debug.Log($"[HeroStateMachine] GoTo_Tick: Path consumed but not at target. Recalculating from ({currentTile.X},{currentTile.Y}) to ({_targetTile.X},{_targetTile.Y})");
+                    _currentPath = _hero.CalculatePath(currentTile, _targetTile);
+                    _pathIndex = 0;
                 }
+                return;
+            }
+
+            // Start the next step toward the next tile in the path
+            var nextTile = _currentPath[_pathIndex];
+            var curTile = tileMover.GetCurrentTileCoordinates();
+
+            var direction = CalculateDirection(curTile, nextTile);
+            if (direction.HasValue)
+            {
+                Debug.Log($"[HeroStateMachine] GoTo_Tick: Moving {direction.Value} to tile ({nextTile.X},{nextTile.Y}) [step {_pathIndex + 1}/{_currentPath.Count}]");
+                if (tileMover.StartMoving(direction.Value))
+                {
+                    // Advance to the next path index; we will wait for IsMoving to clear before starting another step
+                    _pathIndex++;
+                }
+                else
+                {
+                    Debug.Warn($"[HeroStateMachine] GoTo_Tick: Failed to start moving {direction.Value}");
+                    // Try to recover by recalculating path from current tile
+                    _currentPath = _hero.CalculatePath(curTile, _targetTile);
+                    _pathIndex = 0;
+                }
+            }
+            else
+            {
+                Debug.Warn($"[HeroStateMachine] GoTo_Tick: Cannot calculate direction from ({curTile.X},{curTile.Y}) to ({nextTile.X},{nextTile.Y})");
+                _pathIndex++; // Skip this step
             }
         }
 
