@@ -141,5 +141,24 @@ namespace PitHero.Util
                 ClearFogOfWarTile(x, y);
             }
         }
+
+        /// <summary>
+        /// Check if a tile has fog of war (returns true if fog exists, false if cleared)
+        /// </summary>
+        public bool HasFogOfWar(int tileX, int tileY)
+        {
+            if (CurrentMap == null)
+                return false;
+
+            var fogLayer = CurrentMap.GetLayer<TmxLayer>("FogOfWar");
+            if (fogLayer == null)
+                return false;
+
+            if (tileX < 0 || tileY < 0 || tileX >= fogLayer.Width || tileY >= fogLayer.Height)
+                return false;
+
+            var existingTile = fogLayer.GetTile(tileX, tileY);
+            return existingTile != null; // Fog exists if tile is not null
+        }
     }
 }

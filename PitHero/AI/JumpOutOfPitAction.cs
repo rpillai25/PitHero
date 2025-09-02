@@ -81,7 +81,7 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Calculate the target tile for jumping out (2 tiles to the right from current position)
+        /// Calculate the target tile for jumping out - looks for nearest explored spot with clear path, falls back to east
         /// </summary>
         private Point? CalculateJumpOutTargetTile(HeroComponent hero)
         {
@@ -89,11 +89,132 @@ namespace PitHero.AI
                 ?? new Point((int)(hero.Entity.Transform.Position.X / GameConfig.TileSize), 
                            (int)(hero.Entity.Transform.Position.Y / GameConfig.TileSize));
 
-            // Jump out 2 tiles to the right (reverse of jumping in from the right)
+            // First try to find the best exit direction based on explored areas
+            var bestExitTarget = FindBestPitExitDirection(hero, currentTile);
+            if (bestExitTarget.HasValue)
+            {
+                Debug.Log($"[JumpOutOfPit] Found intelligent exit route from {currentTile.X},{currentTile.Y} to {bestExitTarget.Value.X},{bestExitTarget.Value.Y}");
+                return bestExitTarget.Value;
+            }
+
+            // Fallback to default behavior: Jump out 2 tiles to the right (reverse of jumping in from the right)
             var targetTile = new Point(currentTile.X + 2, currentTile.Y);
             
-            Debug.Log($"[JumpOutOfPit] Calculated jump out target from {currentTile.X},{currentTile.Y} to {targetTile.X},{targetTile.Y}");
+            Debug.Log($"[JumpOutOfPit] Using fallback exit route from {currentTile.X},{currentTile.Y} to {targetTile.X},{targetTile.Y}");
             return targetTile;
+        }
+
+        /// <summary>
+        /// Find the best pit exit direction by looking for nearest explored spot with clear path
+        /// </summary>
+        private Point? FindBestPitExitDirection(HeroComponent hero, Point currentTile)
+        {
+            // Get services we need
+            var tiledMapService = Core.Services.GetService<TiledMapService>();
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            
+            if (tiledMapService == null || !hero.IsPathfindingInitialized)
+            {
+                Debug.Warn("[JumpOutOfPit] Cannot find intelligent exit - missing services or pathfinding not initialized");
+                return null;
+            }
+
+            // Get current pit bounds (dynamic)
+            var pitBounds = GetCurrentPitBounds(pitWidthManager);
+            Debug.Log($"[JumpOutOfPit] Checking pit bounds: X={pitBounds.X}, Y={pitBounds.Y}, Width={pitBounds.Width}, Height={pitBounds.Height}");
+            
+            // Define the four cardinal directions to check
+            var directions = new[]
+            {
+                new { Name = "East", Delta = new Point(2, 0) },   // Right (original behavior)
+                new { Name = "North", Delta = new Point(0, -2) }, // Up
+                new { Name = "West", Delta = new Point(-2, 0) },  // Left
+                new { Name = "South", Delta = new Point(0, 2) }   // Down
+            };
+
+            Point? bestTarget = null;
+            float bestDistance = float.MaxValue;
+
+            foreach (var direction in directions)
+            {
+                var candidateTarget = new Point(currentTile.X + direction.Delta.X, currentTile.Y + direction.Delta.Y);
+                
+                // Check if this target is outside the pit
+                if (!IsPointOutsidePit(candidateTarget, pitBounds))
+                    continue;
+
+                // Check if the target area is explored (no fog of war)
+                if (tiledMapService.HasFogOfWar(candidateTarget.X, candidateTarget.Y))
+                {
+                    Debug.Log($"[JumpOutOfPit] {direction.Name} direction target ({candidateTarget.X},{candidateTarget.Y}) has fog of war - skipping");
+                    continue;
+                }
+
+                // Check if target is passable
+                if (!hero.IsPassable(candidateTarget))
+                {
+                    Debug.Log($"[JumpOutOfPit] {direction.Name} direction target ({candidateTarget.X},{candidateTarget.Y}) is not passable - skipping");
+                    continue;
+                }
+
+                // Check if there's a clear path to the target
+                var path = hero.CalculatePath(currentTile, candidateTarget);
+                if (path == null || path.Count == 0)
+                {
+                    Debug.Log($"[JumpOutOfPit] {direction.Name} direction target ({candidateTarget.X},{candidateTarget.Y}) has no path - skipping");
+                    continue;
+                }
+
+                // Calculate distance to this candidate
+                var distance = Vector2.Distance(
+                    new Vector2(currentTile.X, currentTile.Y),
+                    new Vector2(candidateTarget.X, candidateTarget.Y)
+                );
+
+                Debug.Log($"[JumpOutOfPit] {direction.Name} direction is valid - target ({candidateTarget.X},{candidateTarget.Y}), distance: {distance}");
+
+                // Keep the closest valid target
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    bestTarget = candidateTarget;
+                }
+            }
+
+            if (bestTarget.HasValue)
+            {
+                Debug.Log($"[JumpOutOfPit] Best exit direction found: target ({bestTarget.Value.X},{bestTarget.Value.Y}) at distance {bestDistance}");
+            }
+            else
+            {
+                Debug.Log("[JumpOutOfPit] No valid intelligent exit direction found");
+            }
+
+            return bestTarget;
+        }
+
+        /// <summary>
+        /// Get current pit bounds, accounting for dynamic width
+        /// </summary>
+        private Rectangle GetCurrentPitBounds(PitWidthManager pitWidthManager)
+        {
+            if (pitWidthManager != null)
+            {
+                var width = pitWidthManager.CurrentPitRectWidthTiles;
+                return new Rectangle(GameConfig.PitRectX, GameConfig.PitRectY, width, GameConfig.PitRectHeight);
+            }
+            
+            // Fallback to static bounds
+            return new Rectangle(GameConfig.PitRectX, GameConfig.PitRectY, GameConfig.PitRectWidth, GameConfig.PitRectHeight);
+        }
+
+        /// <summary>
+        /// Check if a point is outside the pit boundaries
+        /// </summary>
+        private bool IsPointOutsidePit(Point point, Rectangle pitBounds)
+        {
+            return point.X < pitBounds.X || point.X >= pitBounds.Right ||
+                   point.Y < pitBounds.Y || point.Y >= pitBounds.Bottom;
         }
 
         /// <summary>
