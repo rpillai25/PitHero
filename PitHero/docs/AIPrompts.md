@@ -9,4 +9,4 @@ Width=48, Height=48, Seed=1608305870
 
 Update man in input image to have large wavy blue hair, a white shirt, and brown pants.  It should be the exact same man in the input image with the same proportions and colors, along with these modifications.
 
-Note: Resize image to 200 x 200 in Aseprite after downloading the image.
+Note: Resize image to 135% (RotSprite) in Aseprite after downloading the image.
