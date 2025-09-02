@@ -161,6 +161,8 @@ namespace PitHero.ECS.Components
         private void UpdateJumpAnimation(float progress)
         {
             if (_heroAnimator == null || string.IsNullOrEmpty(_currentJumpAnimationName)) return;
+            _heroAnimator.Play(_currentJumpAnimationName, SpriteAnimator.LoopMode.Once);
+            _heroAnimator.Pause();
 
             // Determine which frame to show based on progress
             int frameIndex;
@@ -176,70 +178,26 @@ namespace PitHero.ECS.Components
             {
                 // Second quarter: frame 1, Y offset -16
                 frameIndex = 1;
-                yOffset = _initialYOffset - 16f;
+                yOffset = _initialYOffset - 32f;
             }
             else if (progress <= 0.75f)
             {
                 // Third quarter: frame 1, Y offset +16
                 frameIndex = 1;
-                yOffset = _initialYOffset + 16f;
+                yOffset = _initialYOffset - 32f;
             }
             else
             {
                 // Fourth quarter: frame 0, Y offset +16
                 frameIndex = 0;
-                yOffset = _initialYOffset + 16f;
+                yOffset = _initialYOffset - 16f;
             }
 
             // Get the specific sprite for this frame from the atlas
-            var frameSpriteName = GetFrameSpriteName(_currentJumpAnimationName, frameIndex);
-            if (!string.IsNullOrEmpty(frameSpriteName))
-            {
-                var frameSprite = _actorsAtlas.GetSprite(frameSpriteName);
-                if (frameSprite != null)
-                {
-                    _heroAnimator.Sprite = frameSprite;
-                }
-            }
+            _heroAnimator.SetFrame(frameIndex); // Update current frame index for consistency
 
             // Apply Y offset
             _heroAnimator.SetLocalOffset(new Vector2(_heroAnimator.LocalOffset.X, yOffset));
-        }
-
-        private string GetFrameSpriteName(string animationName, int frameIndex)
-        {
-            // Based on the atlas format, jump animations use frame indices directly
-            // For example: "BlueHairHeroJumpDown" with frameIndex 0 maps to sprite at index 0 of that animation
-            // Since we can't easily map this without knowing the exact sprite names, 
-            // let's use a direct approach and try common naming patterns
-            
-            // Try the animation name with frame suffix
-            var frameSpriteName = $"{animationName}_{frameIndex}";
-            if (_actorsAtlas.GetSprite(frameSpriteName) != null)
-            {
-                return frameSpriteName;
-            }
-
-            // If that doesn't work, let's use the base sprites for now
-            // We'll map jump animations to regular movement sprites as fallback
-            if (animationName.Contains("Down"))
-            {
-                return frameIndex == 0 ? "BlueHairHero_Down_1" : "BlueHairHero_Down_2";
-            }
-            else if (animationName.Contains("Left"))
-            {
-                return frameIndex == 0 ? "BlueHairHero_Left_1" : "BlueHairHero_Left_2";
-            }
-            else if (animationName.Contains("Right"))
-            {
-                return frameIndex == 0 ? "BlueHairHero_Right_1" : "BlueHairHero_Right_2";
-            }
-            else if (animationName.Contains("Up"))
-            {
-                return frameIndex == 0 ? "BlueHairHero_Up_1" : "BlueHairHero_Up_2";
-            }
-
-            return null;
         }
 
         private string GetJumpAnimationNameForDirection(Direction direction)
