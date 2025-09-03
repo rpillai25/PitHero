@@ -23,11 +23,13 @@ namespace PitHero.AI.Interfaces
         /// <summary>
         /// Clear fog of war tile at specific coordinates
         /// </summary>
-        void ClearFogOfWarTile(int tileX, int tileY);
+        /// <returns>True if fog was actually cleared</returns>
+        bool ClearFogOfWarTile(int tileX, int tileY);
 
         /// <summary>
         /// Clear fog of war around a tile in cardinal directions
         /// </summary>
-        void ClearFogOfWarAroundTile(int centerTileX, int centerTileY);
+        /// <returns>True if any fog was actually cleared</returns>
+        bool ClearFogOfWarAroundTile(int centerTileX, int centerTileY);
     }
 }

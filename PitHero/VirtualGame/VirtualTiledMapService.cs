@@ -39,31 +39,43 @@ namespace PitHero.VirtualGame
             Console.WriteLine($"[VirtualTiledMapService] Set tile at {layerName}[{x},{y}] = {tileIndex}");
         }
 
-        public void ClearFogOfWarTile(int tileX, int tileY)
+        public bool ClearFogOfWarTile(int tileX, int tileY)
         {
             var fogLayer = _virtualMap.GetVirtualLayer("FogOfWar");
             if (fogLayer != null)
             {
-                fogLayer.RemoveTile(tileX, tileY);
-                _worldState.ClearFogOfWar(new Point(tileX, tileY), 0); // Single tile clear
-                Console.WriteLine($"[VirtualTiledMapService] Cleared FogOfWar tile at ({tileX},{tileY})");
+                bool hadTile = fogLayer.GetTile(tileX, tileY) != null;
+                if (hadTile)
+                {
+                    fogLayer.RemoveTile(tileX, tileY);
+                    _worldState.ClearFogOfWar(new Point(tileX, tileY), 0); // Single tile clear
+                    Console.WriteLine($"[VirtualTiledMapService] Cleared FogOfWar tile at ({tileX},{tileY})");
+                    return true;
+                }
             }
+            return false;
         }
 
-        public void ClearFogOfWarAroundTile(int centerTileX, int centerTileY)
+        public bool ClearFogOfWarAroundTile(int centerTileX, int centerTileY)
         {
             var fogLayer = _virtualMap.GetVirtualLayer("FogOfWar");
             if (fogLayer != null)
             {
+                bool anyCleared = false;
                 // Clear center and 4 cardinal directions
-                ClearFogOfWarTile(centerTileX, centerTileY);
-                ClearFogOfWarTile(centerTileX - 1, centerTileY);
-                ClearFogOfWarTile(centerTileX + 1, centerTileY);
-                ClearFogOfWarTile(centerTileX, centerTileY - 1);
-                ClearFogOfWarTile(centerTileX, centerTileY + 1);
+                anyCleared |= ClearFogOfWarTile(centerTileX, centerTileY);
+                anyCleared |= ClearFogOfWarTile(centerTileX - 1, centerTileY);
+                anyCleared |= ClearFogOfWarTile(centerTileX + 1, centerTileY);
+                anyCleared |= ClearFogOfWarTile(centerTileX, centerTileY - 1);
+                anyCleared |= ClearFogOfWarTile(centerTileX, centerTileY + 1);
                 
-                Console.WriteLine($"[VirtualTiledMapService] Cleared FogOfWar around ({centerTileX},{centerTileY})");
+                if (anyCleared)
+                {
+                    Console.WriteLine($"[VirtualTiledMapService] Cleared FogOfWar around ({centerTileX},{centerTileY})");
+                }
+                return anyCleared;
             }
+            return false;
         }
 
         /// <summary>

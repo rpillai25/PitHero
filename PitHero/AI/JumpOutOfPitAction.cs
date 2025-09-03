@@ -158,10 +158,17 @@ namespace PitHero.AI
 
             // Clear fog of war around the landing position
             var tiledMapService = Core.Services.GetService<TiledMapService>();
-            tiledMapService?.ClearFogOfWarAroundTile(
+            bool fogCleared = tiledMapService?.ClearFogOfWarAroundTile(
                 (int)(targetPosition.X / GameConfig.TileSize),
                 (int)(targetPosition.Y / GameConfig.TileSize)
-            );
+            ) ?? false;
+            
+            // Trigger fog cooldown if fog was cleared
+            if (fogCleared)
+            {
+                var heroComponent = entity.GetComponent<HeroComponent>();
+                heroComponent?.TriggerFogCooldown();
+            }
 
             _jumpFinished = true;
 

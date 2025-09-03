@@ -61,22 +61,22 @@ namespace PitHero.Util
             return (y * CurrentMap.Width + x < 0 || y * CurrentMap.Width + x >= CurrentMap.Width * CurrentMap.Height);
         }
 
-        public void ClearFogOfWarTile(int tileX, int tileY)
+        public bool ClearFogOfWarTile(int tileX, int tileY)
         {
             if (CurrentMap == null)
-                return;
+                return false;
 
             var fogLayer = CurrentMap.GetLayer<TmxLayer>("FogOfWar");
             if (fogLayer == null)
             {
                 Debug.Log("WARNING: FogOfWar layer not found for ClearFogOfWarTile");
-                return;
+                return false;
             }
 
             if (tileX < 0 || tileY < 0 || tileX >= fogLayer.Width || tileY >= fogLayer.Height)
             {
                 Debug.Log($"WARNING: ClearFogOfWarTile out of bounds tileX={tileX} tileY={tileY} width={fogLayer.Width} height={fogLayer.Height}");
-                return;
+                return false;
             }
 
             Debug.Log($"Checking to clear FogOfWar tile at ({tileX}, {tileY})");
@@ -85,11 +85,12 @@ namespace PitHero.Util
             if (existingTile == null)
             {
                 Debug.Log($"FogOfWar tile already clear at ({tileX}, {tileY})");
-                return;
+                return false;
             }
 
             RemoveTile("FogOfWar", tileX, tileY);
             Debug.Log($"FogOfWar tile removed at {tileX}, {tileY}");
+            return true;
         }
 
         /// <summary>
@@ -97,15 +98,18 @@ namespace PitHero.Util
         /// </summary>
         /// <param name="centerTileX">Center tile X coordinate</param>
         /// <param name="centerTileY">Center tile Y coordinate</param>
-        public void ClearFogOfWarAroundTile(int centerTileX, int centerTileY)
+        /// <returns>True if any fog was actually cleared</returns>
+        public bool ClearFogOfWarAroundTile(int centerTileX, int centerTileY)
         {
+            bool anyFogCleared = false;
+            
             // Clear tile at center position
-            ClearFogOfWarTile(centerTileX, centerTileY);
+            anyFogCleared |= ClearFogOfWarTile(centerTileX, centerTileY);
             // Clear tiles in 4 cardinal directions
-            ClearFogOfWarTile(centerTileX - 1, centerTileY); // Left
-            ClearFogOfWarTile(centerTileX + 1, centerTileY); // Right
-            ClearFogOfWarTile(centerTileX, centerTileY - 1); // Up
-            ClearFogOfWarTile(centerTileX, centerTileY + 1); // Down
+            anyFogCleared |= ClearFogOfWarTile(centerTileX - 1, centerTileY); // Left
+            anyFogCleared |= ClearFogOfWarTile(centerTileX + 1, centerTileY); // Right
+            anyFogCleared |= ClearFogOfWarTile(centerTileX, centerTileY - 1); // Up
+            anyFogCleared |= ClearFogOfWarTile(centerTileX, centerTileY + 1); // Down
 
             // Clear diagonal fog only if that diagonal tile is an obstacle
             // Find the hero to access its pathfinding graph
@@ -118,27 +122,29 @@ namespace PitHero.Util
                     var astarGraph = heroComponent.PathfindingGraph;
                     
                     // Upper-left
-                    TryClearDiagonalIfObstacle(astarGraph, centerTileX - 1, centerTileY - 1);
+                    TryClearDiagonalIfObstacle(astarGraph, centerTileX - 1, centerTileY - 1, ref anyFogCleared);
                     // Upper-right
-                    TryClearDiagonalIfObstacle(astarGraph, centerTileX + 1, centerTileY - 1);
+                    TryClearDiagonalIfObstacle(astarGraph, centerTileX + 1, centerTileY - 1, ref anyFogCleared);
                     // Lower-left
-                    TryClearDiagonalIfObstacle(astarGraph, centerTileX - 1, centerTileY + 1);
+                    TryClearDiagonalIfObstacle(astarGraph, centerTileX - 1, centerTileY + 1, ref anyFogCleared);
                     // Lower-right
-                    TryClearDiagonalIfObstacle(astarGraph, centerTileX + 1, centerTileY + 1);
+                    TryClearDiagonalIfObstacle(astarGraph, centerTileX + 1, centerTileY + 1, ref anyFogCleared);
                 }
             }
+            
+            return anyFogCleared;
         }
 
         /// <summary>
         /// Clears the fog at (x,y) if the A* graph marks that tile as a wall/obstacle
         /// </summary>
-        private void TryClearDiagonalIfObstacle(AstarGridGraph astarGraph, int x, int y)
+        private void TryClearDiagonalIfObstacle(AstarGridGraph astarGraph, int x, int y, ref bool anyFogCleared)
         {
             // AstarGridGraph.Walls contains both Collision tiles and spawned obstacles.
             // Treasures/monsters are NOT added to Walls, so they won’t trigger diagonal clearing.
             if (astarGraph.Walls.Contains(new Point(x, y)))
             {
-                ClearFogOfWarTile(x, y);
+                anyFogCleared |= ClearFogOfWarTile(x, y);
             }
         }
     }
