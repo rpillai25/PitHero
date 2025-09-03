@@ -22,6 +22,11 @@ namespace PitHero.ECS.Components
         public float MovementSpeed { get; set; } = GameConfig.HeroMovementSpeed;
         
         /// <summary>
+        /// Last tile position the entity was on (used for fog-based speed tracking)
+        /// </summary>
+        private Point? _lastTilePosition;
+        
+        /// <summary>
         /// If true, movement is currently in progress
         /// </summary>
         public bool IsMoving { get; private set; }
@@ -62,6 +67,9 @@ namespace PitHero.ECS.Components
             
             // Ensure the entity starts properly aligned to the tile grid
             SnapToTileGrid();
+            
+            // Initialize last tile position
+            _lastTilePosition = GetCurrentTileCoordinates();
         }
 
         public void Update()
@@ -99,11 +107,14 @@ namespace PitHero.ECS.Components
                 (int)System.Math.Floor((_moveTargetPosition.Y - GameConfig.HeroHeight / 2f) / _tileSize)
             );
 
-            // Apply movement speed based on fog of war status at target tile
-            var heroComponent = Entity.GetComponent<HeroComponent>();
-            if (heroComponent != null)
+            // Only apply fog-based speed adjustment when moving to a new tile
+            if (_lastTilePosition.HasValue && !_lastTilePosition.Value.Equals(targetTileCoords))
             {
-                heroComponent.ApplyMovementSpeedForFogStatus(targetTileCoords);
+                var heroComponent = Entity.GetComponent<HeroComponent>();
+                if (heroComponent != null)
+                {
+                    heroComponent.ApplyMovementSpeedForFogStatus(targetTileCoords);
+                }
             }
 
             // Start the movement
@@ -171,6 +182,9 @@ namespace PitHero.ECS.Components
         private void CompleteMove()
         {
             SnapToTileGrid();
+            
+            // Update last tile position after completing movement
+            _lastTilePosition = GetCurrentTileCoordinates();
             
             // Update triggers after reaching destination
             _triggerHelper?.Update();
@@ -289,6 +303,9 @@ namespace PitHero.ECS.Components
             // Position entity so collider aligns with tile boundaries
             var tileCorner = new Vector2(tileX * _tileSize, tileY * _tileSize);
             Entity.Transform.Position = tileCorner + colliderCenterOffset;
+            
+            // Update last tile position when snapping
+            _lastTilePosition = new Point(tileX, tileY);
             
             Debug.Log($"[TileByTileMover] Snapped to tile grid: ({tileX},{tileY}) at world position ({Entity.Transform.Position.X},{Entity.Transform.Position.Y})");
         }
