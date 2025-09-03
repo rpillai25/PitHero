@@ -43,7 +43,8 @@
   - Game1 should inherit from `Nez.Core`, not override Draw() or Update() methods
   - Scenes should inherit from `Nez.Scene` and override Initialize() for setup
   - Do not throttle entity update rate unless explicitly asked to.  They should update every frame.  If we want to slow down their speed, use Nez.Time appropriately
-  - Use Nez.Time class instead of custom GameTime management
+  - Use Nez.Time class instead of custom GameTime management.  Use Time.DeltaTime for all timing calculations (movement, animations, etc), so that this properly scales with timeScale.
+  - To record total game time played, use Time.TotalTime or Time.UnscaledDeltaTime
   - All components under ECS/Components/, Scenes under ECS/Scenes/
   - If a Service needs to be easily accessed in multiple places, register it with Core.Services.AddService() and then get it from anywhere with Core.Services.GetService<Service>()
   - Any Conditions for the GOAP framework should be added to GoapConstants for strong typing
