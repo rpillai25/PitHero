@@ -128,6 +128,32 @@ namespace PitHero.Util
                 }
             }
         }
+        /// <summary>
+        /// Check if a tile has fog of war (returns true if fog exists, false if tile is explored)
+        /// </summary>
+        public bool HasFogOfWar(int tileX, int tileY)
+        {
+            if (CurrentMap == null)
+                return false;
+
+            var fogLayer = CurrentMap.GetLayer<TmxLayer>("FogOfWar");
+            if (fogLayer == null)
+                return false;
+
+            if (tileX < 0 || tileY < 0 || tileX >= fogLayer.Width || tileY >= fogLayer.Height)
+                return false;
+
+            var existingTile = fogLayer.GetTile(tileX, tileY);
+            return existingTile != null; // If tile exists, there's fog. If null, fog is cleared.
+        }
+
+        /// <summary>
+        /// Check if a tile has fog of war (Point overload)
+        /// </summary>
+        public bool HasFogOfWar(Point tilePosition)
+        {
+            return HasFogOfWar(tilePosition.X, tilePosition.Y);
+        }
 
         /// <summary>
         /// Clears the fog at (x,y) if the A* graph marks that tile as a wall/obstacle

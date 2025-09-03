@@ -91,9 +91,22 @@ namespace PitHero.ECS.Components
             if (!CanMove(motion))
                 return false;
 
-            // Start the movement
+            // Calculate target position and tile coordinates
             _moveStartPosition = Entity.Transform.Position;
             _moveTargetPosition = _moveStartPosition + motion;
+            var targetTileCoords = new Point(
+                (int)System.Math.Floor((_moveTargetPosition.X - GameConfig.HeroWidth / 2f) / _tileSize), 
+                (int)System.Math.Floor((_moveTargetPosition.Y - GameConfig.HeroHeight / 2f) / _tileSize)
+            );
+
+            // Apply movement speed based on fog of war status at target tile
+            var heroComponent = Entity.GetComponent<HeroComponent>();
+            if (heroComponent != null)
+            {
+                heroComponent.ApplyMovementSpeedForFogStatus(targetTileCoords);
+            }
+
+            // Start the movement
             _moveElapsed = 0f;
             CurrentDirection = direction;
             IsMoving = true;
@@ -102,7 +115,7 @@ namespace PitHero.ECS.Components
             var distancePixels = motion.Length();
             _moveDuration = MovementSpeed > 0f ? distancePixels / MovementSpeed : 0f;
 
-            Debug.Log($"[TileByTileMover] Started moving {direction} from {_moveStartPosition.X},{_moveStartPosition.Y} to {_moveTargetPosition.X},{_moveTargetPosition.Y} with duration {_moveDuration}");
+            Debug.Log($"[TileByTileMover] Started moving {direction} from {_moveStartPosition.X},{_moveStartPosition.Y} to {_moveTargetPosition.X},{_moveTargetPosition.Y} (target tile: {targetTileCoords.X},{targetTileCoords.Y}) with duration {_moveDuration}");
             return true;
         }
 

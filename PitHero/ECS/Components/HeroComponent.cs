@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.AI.GOAP;
 using PitHero.AI;
+using PitHero.Util;
 
 namespace PitHero.ECS.Components
 {
@@ -96,6 +97,26 @@ namespace PitHero.ECS.Components
             mover.MovementSpeed = newSpeed;
 
             Debug.Log($"[HeroComponent] Movement speed set based on pit state. InsidePit={_insidePit}, Speed={newSpeed}");
+        }
+
+        /// <summary>
+        /// Apply movement speed to the TileByTileMover based on whether the target tile has fog of war
+        /// </summary>
+        public void ApplyMovementSpeedForFogStatus(Point targetTilePosition)
+        {
+            var mover = Entity?.GetComponent<TileByTileMover>();
+            if (mover == null)
+                return;
+
+            var tms = Core.Services.GetService<TiledMapService>();
+            if (tms == null)
+                return;
+
+            var hasFog = tms.HasFogOfWar(targetTilePosition);
+            var newSpeed = hasFog ? GameConfig.HeroPitMovementSpeed : GameConfig.HeroMovementSpeed;
+            mover.MovementSpeed = newSpeed;
+
+            Debug.Log($"[HeroComponent] Movement speed set based on fog status. TargetTile=({targetTilePosition.X},{targetTilePosition.Y}), HasFog={hasFog}, Speed={newSpeed}");
         }
 
         /// <summary>
