@@ -8,7 +8,7 @@ namespace PitHero.ECS.Components
     /// <summary>
     /// Component for heroes in the game - simplified to only contain the 7 required state properties
     /// </summary>
-    public class HeroComponent : PathfindingActorComponent
+    public class HeroComponent : PathfindingActorComponent, IUpdatable
     {
         // The 7 required GOAP state properties
         public bool HeroInitialized { get; set; }                    // True after hero entity initialized, remains true
@@ -37,6 +37,9 @@ namespace PitHero.ECS.Components
         public bool ActivatedWizardOrb { get; set; }                 // True after ActivateWizardOrbAction, false upon ActivatePitRegenAction
 
         private PitWidthManager _pitWidthManager;
+
+        // Fog of war movement speed tracking
+        private float _fogCooldown = 0f;
 
         // Dynamic pit collision rectangle computed from PitWidthManager (falls back to GameConfig)
         private Rectangle PitCollisionRect
@@ -84,6 +87,27 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
+        /// Update fog cooldown timer
+        /// </summary>
+        public void Update()
+        {
+            if (_fogCooldown > 0f)
+            {
+                _fogCooldown -= Time.DeltaTime;
+                if (_fogCooldown < 0f)
+                {
+                    _fogCooldown = 0f;
+                }
+
+                // Reapply movement speed when cooldown expires
+                if (_fogCooldown == 0f && _insidePit)
+                {
+                    ApplyMovementSpeedForPitState();
+                }
+            }
+        }
+
+        /// <summary>
         /// Apply movement speed to the TileByTileMover based on whether hero is inside or outside the pit
         /// </summary>
         private void ApplyMovementSpeedForPitState()
@@ -92,10 +116,34 @@ namespace PitHero.ECS.Components
             if (mover == null)
                 return;
 
-            var newSpeed = _insidePit ? GameConfig.HeroPitMovementSpeed : GameConfig.HeroMovementSpeed;
+            float newSpeed;
+            if (_insidePit)
+            {
+                // Inside pit: use slow speed if fog cooldown is active, otherwise use normal pit speed
+                newSpeed = _fogCooldown > 0f ? GameConfig.HeroPitMovementSpeed : GameConfig.HeroMovementSpeed;
+            }
+            else
+            {
+                // Outside pit: always use normal speed
+                newSpeed = GameConfig.HeroMovementSpeed;
+            }
+
             mover.MovementSpeed = newSpeed;
 
-            Debug.Log($"[HeroComponent] Movement speed set based on pit state. InsidePit={_insidePit}, Speed={newSpeed}");
+            Debug.Log($"[HeroComponent] Movement speed set based on pit state. InsidePit={_insidePit}, FogCooldown={_fogCooldown:F2}, Speed={newSpeed}");
+        }
+
+        /// <summary>
+        /// Trigger fog cooldown when fog of war is cleared
+        /// </summary>
+        public void TriggerFogCooldown()
+        {
+            if (_insidePit)
+            {
+                _fogCooldown = GameConfig.HeroFogCooldownDuration;
+                ApplyMovementSpeedForPitState();
+                Debug.Log($"[HeroComponent] Fog cooldown triggered. Duration={_fogCooldown:F2}s");
+            }
         }
 
         /// <summary>

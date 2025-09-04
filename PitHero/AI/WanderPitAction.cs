@@ -42,7 +42,13 @@ namespace PitHero.AI
             var tiledMapService = Core.Services.GetService<TiledMapService>();
             if (tiledMapService != null)
             {
-                tiledMapService.ClearFogOfWarAroundTile(currentTile.X, currentTile.Y);
+                bool fogCleared = tiledMapService.ClearFogOfWarAroundTile(currentTile.X, currentTile.Y);
+                
+                // Trigger fog cooldown if fog was cleared
+                if (fogCleared)
+                {
+                    hero.TriggerFogCooldown();
+                }
                 
                 // Check if wizard orb was uncovered (fog cleared at orb tile)
                 CheckWizardOrbFound(hero, tiledMapService, currentTile);

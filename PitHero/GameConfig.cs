@@ -26,6 +26,9 @@ namespace PitHero
         public const float HeroMovementSpeed = 64f;  //Move speed in pixels per second (64 pixels = 2 tiles)
         public const float HeroPitMovementSpeed = 32f; //Move speed in pixels per second when in pit (32 pixels = 1 tile)
         public const float HeroJumpSpeed = 4f; //Jump speed in tiles per second
+        
+        // Fog of war movement speed configuration
+        public const float HeroFogCooldownDuration = 1f; // Duration in seconds for fog cooldown after clearing fog
 
         // Pit Configuration
         public const int PitWidth = 64;

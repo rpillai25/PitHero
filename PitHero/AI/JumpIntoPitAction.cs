@@ -154,10 +154,17 @@ namespace PitHero.AI
             }
 
             var tiledMapService = Core.Services.GetService<TiledMapService>();
-            tiledMapService?.ClearFogOfWarAroundTile(
+            bool fogCleared = tiledMapService?.ClearFogOfWarAroundTile(
                 (int)(targetPosition.X / GameConfig.TileSize),
                 (int)(targetPosition.Y / GameConfig.TileSize)
-            );
+            ) ?? false;
+            
+            // Trigger fog cooldown if fog was cleared
+            if (fogCleared)
+            {
+                var heroComponent = entity.GetComponent<HeroComponent>();
+                heroComponent?.TriggerFogCooldown();
+            }
 
             _jumpFinished = true;
             Debug.Log($"[JumpIntoPit] Jump movement completed at {entity.Transform.Position.X},{entity.Transform.Position.Y}");
