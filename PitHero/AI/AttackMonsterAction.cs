@@ -11,9 +11,9 @@ namespace PitHero.AI
     /// Action that causes the hero to attack an adjacent monster
     /// Hero faces the monster, performs attack animation, and defeats the monster
     /// </summary>
-    public class AttackMonster : HeroActionBase
+    public class AttackMonsterAction : HeroActionBase
     {
-        public AttackMonster() : base(GoapConstants.AttackMonster, 3)
+        public AttackMonsterAction() : base(GoapConstants.AttackMonster, 50)
         {
             // Preconditions: Hero must be adjacent to a monster
             SetPrecondition(GoapConstants.AdjacentToMonster, true);
@@ -31,6 +31,8 @@ namespace PitHero.AI
             if (monsterEntity == null)
             {
                 Debug.Warn("[AttackMonster] Could not find adjacent monster");
+                // Recalculate if there are still monsters adjacent to hero
+                hero.AdjacentToMonster = hero.CheckAdjacentToMonster();
                 return true; // Complete as failed
             }
 

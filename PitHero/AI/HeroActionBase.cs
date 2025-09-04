@@ -11,7 +11,7 @@ namespace PitHero.AI
     /// </summary>
     public abstract class HeroActionBase : Action
     {
-        protected HeroActionBase(string name, int cost = 1) : base(name, cost)
+        protected HeroActionBase(string name, int cost = 99) : base(name, cost)
         {
         }
 

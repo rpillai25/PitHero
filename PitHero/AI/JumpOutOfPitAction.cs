@@ -16,7 +16,7 @@ namespace PitHero.AI
         private bool _jumpFinished = false;
         private Point _plannedTargetTile;
         
-        public JumpOutOfPitAction() : base(GoapConstants.JumpOutOfPitAction, 1)
+        public JumpOutOfPitAction() : base(GoapConstants.JumpOutOfPitAction)
         {
             // Preconditions: Hero must be inside pit and wizard orb activated
             SetPrecondition(GoapConstants.InsidePit, true);

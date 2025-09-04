@@ -13,14 +13,15 @@ namespace PitHero.AI
     /// </summary>
     public class WanderPitAction : HeroActionBase
     {
-        public WanderPitAction() : base(GoapConstants.WanderPitAction, 1)
+        public WanderPitAction() : base(GoapConstants.WanderPitAction)
         {
             SetPrecondition(GoapConstants.InsidePit, true);
             SetPrecondition(GoapConstants.ExploredPit, false);
+            SetPrecondition(GoapConstants.AdjacentToChest, false);
+            SetPrecondition(GoapConstants.AdjacentToMonster, false);
+
             SetPostcondition(GoapConstants.FoundWizardOrb, true);
             SetPostcondition(GoapConstants.ExploredPit, true);
-            
-            // New postconditions for interactive entities
             SetPostcondition(GoapConstants.AdjacentToChest, true);
             SetPostcondition(GoapConstants.AdjacentToMonster, true);
         }
@@ -53,13 +54,14 @@ namespace PitHero.AI
                 {
                     hero.TriggerFogCooldown();
                 }
-                
-                // Check if wizard orb was uncovered (fog cleared at orb tile)
-                CheckWizardOrbFound(hero, tiledMapService, currentTile);
-                
+
                 // Check for adjacent monsters and chests after clearing fog
                 hero.AdjacentToMonster = hero.CheckAdjacentToMonster();
                 hero.AdjacentToChest = hero.CheckAdjacentToChest();
+
+                // Check if wizard orb was uncovered (fog cleared at orb tile)
+                CheckWizardOrbFound(hero, tiledMapService, currentTile);
+               
                 
                 Debug.Log($"[WanderPitAction] Adjacent check: Monster={hero.AdjacentToMonster}, Chest={hero.AdjacentToChest}");
             }

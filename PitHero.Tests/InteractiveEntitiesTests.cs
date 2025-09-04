@@ -53,7 +53,7 @@ namespace PitHero.Tests
         public void AttackMonster_Constructor_ShouldSetCorrectPreconditionsAndPostconditions()
         {
             // Arrange & Act
-            var action = new AttackMonster();
+            var action = new AttackMonsterAction();
 
             // Assert
             Assert.IsNotNull(action, "AttackMonster should be created successfully");
@@ -65,7 +65,7 @@ namespace PitHero.Tests
         public void OpenChest_Constructor_ShouldSetCorrectPreconditionsAndPostconditions()
         {
             // Arrange & Act
-            var action = new OpenChest();
+            var action = new OpenChestAction();
 
             // Assert
             Assert.IsNotNull(action, "OpenChest should be created successfully");

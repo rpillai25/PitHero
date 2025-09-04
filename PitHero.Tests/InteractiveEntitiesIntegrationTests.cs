@@ -46,7 +46,7 @@ namespace PitHero.Tests
             while (actionPlan.Count > 0)
             {
                 var action = actionPlan.Pop();
-                if (action is AttackMonster)
+                if (action is AttackMonsterAction)
                 {
                     foundAttackAction = true;
                     break;
@@ -74,7 +74,7 @@ namespace PitHero.Tests
         public void AttackMonster_ShouldHaveCorrectCostAndConfiguration()
         {
             // Arrange & Act
-            var action = new AttackMonster();
+            var action = new AttackMonsterAction();
 
             // Assert
             Assert.AreEqual(3, action.Cost, "AttackMonster should have cost of 3 (higher priority)");
@@ -85,7 +85,7 @@ namespace PitHero.Tests
         public void OpenChest_ShouldHaveCorrectCostAndConfiguration()
         {
             // Arrange & Act
-            var action = new OpenChest();
+            var action = new OpenChestAction();
 
             // Assert
             Assert.AreEqual(2, action.Cost, "OpenChest should have cost of 2 (higher priority)");
@@ -96,8 +96,8 @@ namespace PitHero.Tests
         public void AttackMonster_CostShouldBeHigherThanOpenChest()
         {
             // Arrange
-            var attackAction = new AttackMonster();
-            var openAction = new OpenChest();
+            var attackAction = new AttackMonsterAction();
+            var openAction = new OpenChestAction();
 
             // Act & Assert
             Assert.IsTrue(attackAction.Cost > openAction.Cost, 
@@ -109,8 +109,8 @@ namespace PitHero.Tests
         {
             // Arrange
             var wanderAction = new WanderPitAction();
-            var attackAction = new AttackMonster();
-            var openAction = new OpenChest();
+            var attackAction = new AttackMonsterAction();
+            var openAction = new OpenChestAction();
 
             // Act & Assert
             Assert.IsTrue(attackAction.Cost > wanderAction.Cost, 

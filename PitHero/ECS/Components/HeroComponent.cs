@@ -198,7 +198,7 @@ namespace PitHero.ECS.Components
         public override void SetGoalState(ref WorldState goalState)
         {
             // Main goals for the hero - planner should always plan the optimal path to these goals.
-            
+
             if (PitInitialized && !ActivatedWizardOrb)
             {
                 goalState.Set(GoapConstants.ActivatedWizardOrb, true);
@@ -206,8 +206,7 @@ namespace PitHero.ECS.Components
             else if (!PitInitialized && ActivatedWizardOrb)
             {
                 goalState.Set(GoapConstants.PitInitialized, true);
-            }
-            
+            }            
             // Interactive entity goals - higher priority when inside pit
             if (InsidePit && AdjacentToMonster)
             {
@@ -403,13 +402,13 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Check if two tile positions are adjacent (8-directional adjacency)
+        /// Check if two tile positions are adjacent in cardinal directions (N/S/E/W only)
         /// </summary>
         private bool IsAdjacent(Point tile1, Point tile2)
         {
-            int deltaX = Math.Abs(tile1.X - tile2.X);
-            int deltaY = Math.Abs(tile1.Y - tile2.Y);
-            return deltaX <= 1 && deltaY <= 1 && (deltaX + deltaY > 0); // Adjacent but not the same tile
+            int dx = Math.Abs(tile1.X - tile2.X);
+            int dy = Math.Abs(tile1.Y - tile2.Y);
+            return (dx + dy) == 1; // cardinal adjacency only
         }
     }
 }

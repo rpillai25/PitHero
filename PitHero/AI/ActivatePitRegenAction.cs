@@ -9,7 +9,7 @@ namespace PitHero.AI
     /// </summary>
     public class ActivatePitRegenAction : HeroActionBase
     {
-        public ActivatePitRegenAction() : base(GoapConstants.ActivatePitRegenAction, 1)
+        public ActivatePitRegenAction() : base(GoapConstants.ActivatePitRegenAction)
         {
             // Preconditions: Wizard orb must be activated and hero must be outside pit
             SetPrecondition(GoapConstants.ActivatedWizardOrb, true);

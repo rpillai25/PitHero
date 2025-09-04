@@ -429,8 +429,8 @@ namespace PitHero.VirtualGame
             planner.AddAction(new ActivateWizardOrbAction());
             planner.AddAction(new JumpOutOfPitAction());
             planner.AddAction(new ActivatePitRegenAction());
-            planner.AddAction(new AttackMonster());
-            planner.AddAction(new OpenChest());
+            planner.AddAction(new AttackMonsterAction());
+            planner.AddAction(new OpenChestAction());
             
             // Convert dictionaries to WorldState objects (simplified)
             var wsCurrentState = Nez.AI.GOAP.WorldState.Create(planner);

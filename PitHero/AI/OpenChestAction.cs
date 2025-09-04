@@ -11,9 +11,9 @@ namespace PitHero.AI
     /// Action that causes the hero to open an adjacent chest
     /// Hero faces the chest, opens it, and the chest is removed from the scene
     /// </summary>
-    public class OpenChest : HeroActionBase
+    public class OpenChestAction : HeroActionBase
     {
-        public OpenChest() : base(GoapConstants.OpenChest, 2)
+        public OpenChestAction() : base(GoapConstants.OpenChest, 51)
         {
             // Preconditions: Hero must be adjacent to a chest
             SetPrecondition(GoapConstants.AdjacentToChest, true);
@@ -31,6 +31,8 @@ namespace PitHero.AI
             if (chestEntity == null)
             {
                 Debug.Warn("[OpenChest] Could not find adjacent chest");
+                // Recalculate if there are still chests adjacent to hero
+                hero.AdjacentToChest = hero.CheckAdjacentToChest();
                 return true; // Complete as failed
             }
 
