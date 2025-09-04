@@ -30,6 +30,8 @@ namespace PitHero.AI
 
         // WanderPitAction exploration tracking  
         private HashSet<Point> _failedWanderTargets;
+        // Persist a committed wander target to avoid oscillation
+        private Point? _currentWanderTarget;
 
         /// <summary>
         /// Gets whether this component should respect the global pause state
@@ -466,11 +468,7 @@ namespace PitHero.AI
 
         /// <summary>
         /// Calculate PitWanderPoint location - find the next fog tile to explore in the pit
-        /// Sets ExploredPit=true and transitions to PerformAction if no more tiles found.
-        /// After selecting nearestUnknownTile, if the hero is adjacent to any fog tile,
-        /// choose the adjacent fog tile that minimizes Manhattan distance to nearestUnknownTile.
-        /// If none, fall back to taking the first A* step toward nearestUnknownTile (enforces 1-tile moves).
-        /// If path cannot be found, fall back to nearestUnknownTile.
+        /// Uses a committed target to prevent oscillation; prefers adjacent fog, else first A* step toward target.
         /// </summary>
         private Point? CalculatePitWanderPointLocation()
         {
@@ -480,11 +478,11 @@ namespace PitHero.AI
                 return null;
             }
 
-            // Get current hero position
+            // Current hero tile
             var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
             var heroTile = tileMover?.GetCurrentTileCoordinates() ??
                 new Point((int)(_hero.Entity.Transform.Position.X / GameConfig.TileSize),
-                         (int)(_hero.Entity.Transform.Position.Y / GameConfig.TileSize));
+                          (int)(_hero.Entity.Transform.Position.Y / GameConfig.TileSize));
 
             var tms = Core.Services.GetService<TiledMapService>();
             if (tms?.CurrentMap == null)
@@ -500,184 +498,184 @@ namespace PitHero.AI
                 return null;
             }
 
-            Point? nearestUnknownTile = null;
-            float shortestDistance = float.MaxValue;
-
-            // Get pit bounds from PitWidthManager
+            // Compute explorable pit bounds
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
             int pitMinX, pitMinY, pitMaxX, pitMaxY;
-
             if (pitWidthManager != null)
             {
-                // The explorable area is the inner area, excluding walls
-                pitMinX = GameConfig.PitRectX + 1; // x=2 (first explorable column)
-                pitMinY = GameConfig.PitRectY + 1; // y=3 (first explorable row)
-                pitMaxX = pitWidthManager.CurrentPitRightEdge - 2; // Last explorable column (before inner wall)
-                pitMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // y=9 (last explorable row)
+                pitMinX = GameConfig.PitRectX + 1;
+                pitMinY = GameConfig.PitRectY + 1;
+                pitMaxX = pitWidthManager.CurrentPitRightEdge - 2;
+                pitMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2;
                 Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Using dynamic pit bounds: explorable area ({pitMinX},{pitMinY}) to ({pitMaxX},{pitMaxY}), pit right edge={pitWidthManager.CurrentPitRightEdge}");
             }
             else
             {
-                // Use default pit bounds
-                pitMinX = GameConfig.PitRectX + 1; // 2
-                pitMinY = GameConfig.PitRectY + 1; // 3
-                pitMaxX = GameConfig.PitRectX + GameConfig.PitRectWidth - 2; // 11
-                pitMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // 9
+                pitMinX = GameConfig.PitRectX + 1;
+                pitMinY = GameConfig.PitRectY + 1;
+                pitMaxX = GameConfig.PitRectX + GameConfig.PitRectWidth - 2;
+                pitMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2;
                 Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Using default pit bounds: explorable area ({pitMinX},{pitMinY}) to ({pitMaxX},{pitMaxY})");
             }
 
+            // Scan for nearest fog tile (passable and not failed)
+            Point? nearestUnknownTile = null;
+            float shortestDistance = float.MaxValue;
             int fogTileCount = 0;
             int passableFogTileCount = 0;
             int skippedFailedCount = 0;
 
-            // Scan the pit area for tiles still covered by fog
             for (int x = pitMinX; x <= pitMaxX; x++)
             {
                 for (int y = pitMinY; y <= pitMaxY; y++)
                 {
-                    // Check if this tile is within bounds and has fog
-                    if (x >= 0 && y >= 0 && x < fogLayer.Width && y < fogLayer.Height)
+                    if (x < 0 || y < 0 || x >= fogLayer.Width || y >= fogLayer.Height)
+                        continue;
+
+                    var tile = fogLayer.GetTile(x, y);
+                    if (tile == null)
+                        continue; // no fog here
+
+                    fogTileCount++;
+                    var tilePoint = new Point(x, y);
+
+                    if (_failedWanderTargets.Contains(tilePoint))
                     {
-                        var tile = fogLayer.GetTile(x, y);
-                        if (tile != null) // Tile has fog (unknown)
-                        {
-                            fogTileCount++;
+                        skippedFailedCount++;
+                        continue;
+                    }
 
-                            // Skip failed targets to avoid loops
-                            var tilePoint = new Point(x, y);
-                            if (_failedWanderTargets.Contains(tilePoint))
-                            {
-                                skippedFailedCount++;
-                                continue;
-                            }
+                    bool isPassable = true;
+                    if (_hero.IsPathfindingInitialized)
+                        isPassable = _hero.IsPassable(tilePoint);
+                    if (!isPassable)
+                    {
+                        Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Tile ({x},{y}) has fog but is not passable");
+                        continue;
+                    }
 
-                            // Check if tile is passable using hero's pathfinding component
-                            bool isPassable = true;
-                            if (_hero.IsPathfindingInitialized)
-                            {
-                                isPassable = _hero.IsPassable(new Point(x, y));
-                            }
+                    passableFogTileCount++;
 
-                            if (!isPassable)
-                            {
-                                Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Tile ({x},{y}) has fog but is not passable");
-                                continue;
-                            }
-
-                            passableFogTileCount++;
-
-                            // Calculate distance from hero to this tile
-                            var distance = Vector2.Distance(
-                                new Vector2(heroTile.X, heroTile.Y),
-                                new Vector2(x, y)
-                            );
-
-                            if (distance < shortestDistance)
-                            {
-                                shortestDistance = distance;
-                                nearestUnknownTile = new Point(x, y);
-                            }
-                        }
+                    float distance = Vector2.Distance(new Vector2(heroTile.X, heroTile.Y), new Vector2(x, y));
+                    if (distance < shortestDistance)
+                    {
+                        shortestDistance = distance;
+                        nearestUnknownTile = tilePoint;
                     }
                 }
             }
 
             Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Found {fogTileCount} fog tiles total, {passableFogTileCount} passable fog tiles, skipped {skippedFailedCount} failed targets");
 
-            if (nearestUnknownTile.HasValue)
+            // Validate or set the committed wander target to avoid oscillation
+            if (_currentWanderTarget.HasValue)
             {
-                Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Found nearest unknown tile at {nearestUnknownTile.Value.X},{nearestUnknownTile.Value.Y} distance {shortestDistance}");
+                var tgt = _currentWanderTarget.Value;
+                bool inBounds = tgt.X >= pitMinX && tgt.X <= pitMaxX && tgt.Y >= pitMinY && tgt.Y <= pitMaxY;
+                bool inMapBounds = tgt.X >= 0 && tgt.Y >= 0 && tgt.X < fogLayer.Width && tgt.Y < fogLayer.Height;
+                var fogAtTarget = inMapBounds ? fogLayer.GetTile(tgt.X, tgt.Y) : null;
+                bool stillFog = fogAtTarget != null;
+                bool passable = true;
+                if (_hero.IsPathfindingInitialized)
+                    passable = _hero.IsPassable(tgt);
 
-                // Step 1: prefer adjacent fog if present (N/S/E/W), pick the one closest to nearestUnknownTile
-                var targetFog = nearestUnknownTile.Value;
-                Point bestAdj = heroTile;
-                int bestAdjDist = int.MaxValue;
-                bool foundAdjFog = false;
-
-                void EvalAdjFog(Point candidate)
+                if (!inBounds || !inMapBounds || !stillFog || _failedWanderTargets.Contains(tgt) || !passable)
                 {
-                    if (candidate.X < 0 || candidate.Y < 0 || candidate.X >= fogLayer.Width || candidate.Y >= fogLayer.Height)
-                        return;
-
-                    // Must be fog at the adjacent tile
-                    var fogAtAdj = fogLayer.GetTile(candidate.X, candidate.Y);
-                    if (fogAtAdj == null)
-                        return;
-
-                    if (_failedWanderTargets.Contains(candidate))
-                        return;
-
-                    bool passable = true;
-                    if (_hero.IsPathfindingInitialized)
-                        passable = _hero.IsPassable(candidate);
-                    if (!passable)
-                        return;
-
-                    int md = Math.Abs(candidate.X - targetFog.X) + Math.Abs(candidate.Y - targetFog.Y);
-                    if (md < bestAdjDist)
-                    {
-                        bestAdjDist = md;
-                        bestAdj = candidate;
-                        foundAdjFog = true;
-                    }
+                    Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Clearing committed wander target ({tgt.X},{tgt.Y})");
+                    _currentWanderTarget = null;
                 }
-
-                // Up, Down, Left, Right
-                EvalAdjFog(new Point(heroTile.X, heroTile.Y - 1));
-                EvalAdjFog(new Point(heroTile.X, heroTile.Y + 1));
-                EvalAdjFog(new Point(heroTile.X - 1, heroTile.Y));
-                EvalAdjFog(new Point(heroTile.X + 1, heroTile.Y));
-
-                if (foundAdjFog)
-                {
-                    Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Adjacent fog chosen at ({bestAdj.X},{bestAdj.Y}), mdist to target={bestAdjDist}");
-                    return bestAdj;
-                }
-
-                // Step 2: enforce single-tile movement by taking the first step of the A* path toward the nearest fog tile
-                var pathToFog = _hero.CalculatePath(heroTile, targetFog);
-                if (pathToFog != null && pathToFog.Count > 0)
-                {
-                    var firstStep = pathToFog[0];
-                    Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: No adjacent fog; taking first A* step toward fog at ({firstStep.X},{firstStep.Y})");
-                    return firstStep;
-                }
-
-                // Step 3: last resort, fall back to the fog tile itself
-                Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: No path to fog; falling back to fog tile ({targetFog.X},{targetFog.Y})");
-                return targetFog;
             }
-            else
-            {
-                Debug.Log("[HeroStateMachine] CalculatePitWanderPointLocation: No unknown tiles found in pit area");
 
-                // If we have failed targets and no valid targets, clear failed targets and try once more
-                if (_failedWanderTargets.Count > 0)
+            if (!_currentWanderTarget.HasValue)
+            {
+                if (nearestUnknownTile.HasValue)
                 {
-                    Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Clearing {_failedWanderTargets.Count} failed targets to retry exploration");
-                    _failedWanderTargets.Clear();
-                    // Return null to trigger retry - this will cause the action to be re-planned
+                    _currentWanderTarget = nearestUnknownTile.Value;
+                    Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Committing new wander target at ({_currentWanderTarget.Value.X},{_currentWanderTarget.Value.Y})");
+                }
+                else
+                {
+                    Debug.Log("[HeroStateMachine] CalculatePitWanderPointLocation: No unknown tiles found in pit area");
+
+                    if (_failedWanderTargets.Count > 0)
+                    {
+                        Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Clearing {_failedWanderTargets.Count} failed targets to retry exploration");
+                        _failedWanderTargets.Clear();
+                        return null; // trigger re-plan
+                    }
+
+                    Debug.Log("[HeroStateMachine] CalculatePitWanderPointLocation: Pit exploration complete, setting ExploredPit=true");
+                    _hero.ExploredPit = true;
+
+                    Debug.Log("[HeroStateMachine] CalculatePitWanderPointLocation: Transitioning to PerformAction for final WanderPitAction execution");
+                    CurrentState = ActorState.PerformAction;
                     return null;
                 }
-
-                // No more tiles to explore - mark exploration as complete
-                Debug.Log("[HeroStateMachine] CalculatePitWanderPointLocation: Pit exploration complete, setting ExploredPit=true");
-                _hero.ExploredPit = true;
-
-                // Transition to PerformAction so the final WanderPitAction can run to clear fog and check wizard orb
-                Debug.Log("[HeroStateMachine] CalculatePitWanderPointLocation: Transitioning to PerformAction for final WanderPitAction execution");
-                CurrentState = ActorState.PerformAction;
-                return null;
             }
-        }
 
-        /// <summary>
-        /// Add a failed wander target to prevent future attempts to reach it
-        /// </summary>
-        public void AddFailedWanderTarget(Point target)
-        {
-            _failedWanderTargets.Add(target);
-            Debug.Log($"[HeroStateMachine] Added failed wander target ({target.X},{target.Y}), total failed targets: {_failedWanderTargets.Count}");
+            // At this point we have a committed wander target
+            var targetFog = _currentWanderTarget.Value;
+            Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Using committed wander target ({targetFog.X},{targetFog.Y})");
+
+            // If hero is adjacent to any fog tile, prefer the adjacent fog that minimizes Manhattan distance to the committed target
+            Point bestAdj = heroTile;
+            int bestAdjDist = int.MaxValue;
+            bool foundAdjFog = false;
+
+            void EvalAdjFog(Point candidate)
+            {
+                if (candidate.X < 0 || candidate.Y < 0 || candidate.X >= fogLayer.Width || candidate.Y >= fogLayer.Height)
+                    return;
+
+                // Must be fog at the adjacent tile
+                var fogAtAdj = fogLayer.GetTile(candidate.X, candidate.Y);
+                if (fogAtAdj == null)
+                    return;
+
+                if (_failedWanderTargets.Contains(candidate))
+                    return;
+
+                bool passable = true;
+                if (_hero.IsPathfindingInitialized)
+                    passable = _hero.IsPassable(candidate);
+                if (!passable)
+                    return;
+
+                int md = Math.Abs(candidate.X - targetFog.X) + Math.Abs(candidate.Y - targetFog.Y);
+                if (md < bestAdjDist)
+                {
+                    bestAdjDist = md;
+                    bestAdj = candidate;
+                    foundAdjFog = true;
+                }
+            }
+
+            // Up, Down, Left, Right
+            EvalAdjFog(new Point(heroTile.X, heroTile.Y - 1));
+            EvalAdjFog(new Point(heroTile.X, heroTile.Y + 1));
+            EvalAdjFog(new Point(heroTile.X - 1, heroTile.Y));
+            EvalAdjFog(new Point(heroTile.X + 1, heroTile.Y));
+
+            if (foundAdjFog)
+            {
+                Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Adjacent fog chosen at ({bestAdj.X},{bestAdj.Y}), mdist to target={bestAdjDist}");
+                return bestAdj;
+            }
+
+            // Otherwise, take the first step of the A* path toward the committed target
+            var pathToFog = _hero.CalculatePath(heroTile, targetFog);
+            if (pathToFog != null && pathToFog.Count > 0)
+            {
+                var firstStep = pathToFog[0];
+                Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: No adjacent fog; taking first A* step toward committed target at ({firstStep.X},{firstStep.Y})");
+                return firstStep;
+            }
+
+            // If we failed to path to the committed target, mark it failed and clear the commitment
+            Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: No path to committed target; marking failed and clearing commitment for ({targetFog.X},{targetFog.Y})");
+            AddFailedWanderTarget(targetFog);
+            _currentWanderTarget = null;
+            return null;
         }
 
         /// <summary>
@@ -717,6 +715,15 @@ namespace PitHero.AI
         {
             // Use map center as the pit regeneration point (outside pit area)
             return new Point(GameConfig.MapCenterTileX, GameConfig.MapCenterTileY);
+        }
+
+        /// <summary>
+        /// Add a failed wander target to prevent future attempts to reach it
+        /// </summary>
+        private void AddFailedWanderTarget(Point target)
+        {
+            _failedWanderTargets.Add(target);
+            Debug.Log($"[HeroStateMachine] Added failed wander target ({target.X},{target.Y}), total failed targets: {_failedWanderTargets.Count}");
         }
 
         /// <summary>
@@ -770,15 +777,6 @@ namespace PitHero.AI
         {
             Debug.Log($"[HeroStateMachine] Planner Describe:");
             Debug.Log(_planner.Describe());
-            //Debug.Log("[HeroStateMachine] Available actions and their preconditions:");
-            //Debug.Log("  MoveToPitAction: Requires PitInitialized=true, HeroInitialized=true, OutsidePit=true");
-            //Debug.Log("  JumpIntoPitAction: Requires AdjacentToPitBoundaryFromOutside=true");
-            //Debug.Log("  WanderPitAction: Requires InsidePit=true");
-            //Debug.Log("  MoveToWizardOrbAction: Requires FoundWizardOrb=true, MapExplored=true");
-            //Debug.Log("  ActivateWizardOrbAction: Requires AtWizardOrb=true");
-            //Debug.Log("  MovingToInsidePitEdgeAction: Requires MovingToInsidePitEdge=true");
-            //Debug.Log("  JumpOutOfPitAction: Requires ReadyToJumpOutOfPit=true");
-            //Debug.Log("  MoveToPitGenPointAction: Requires MovingToPitGenPoint=true");
         }
         
         #endregion
