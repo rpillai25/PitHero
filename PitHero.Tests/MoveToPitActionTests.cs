@@ -37,12 +37,12 @@ namespace PitHero.Tests
         [TestMethod]
         public void GoapConstants_SimplifiedModel_ShouldOnlyContainCoreConstants()
         {
-            // This test ensures we only have the 7 states and 5 actions in the simplified model
+            // This test ensures we have the expected constants in the extended interactive model
             var constantsType = typeof(GoapConstants);
             var fields = constantsType.GetFields().Where(f => f.FieldType == typeof(string) && f.IsLiteral);
             
-            // Should have exactly 7 states + 5 actions = 12 constants
-            Assert.AreEqual(12, fields.Count(), "Should have exactly 12 GOAP constants in simplified model");
+            // Should have exactly 9 states + 7 actions = 16 constants (extended for interactive entities)
+            Assert.AreEqual(16, fields.Count(), "Should have exactly 16 GOAP constants in extended interactive model");
         }
 
         [TestMethod]

@@ -14,7 +14,7 @@ namespace PitHero.AI
         private bool _jumpFinished = false;
         private Point _plannedTargetTile;
         
-        public JumpIntoPitAction() : base(GoapConstants.JumpIntoPitAction, 1)
+        public JumpIntoPitAction() : base(GoapConstants.JumpIntoPitAction)
         {
             // Precondition: Hero and pit must be initialized
             SetPrecondition(GoapConstants.HeroInitialized, true);
@@ -158,13 +158,17 @@ namespace PitHero.AI
                 (int)(targetPosition.X / GameConfig.TileSize),
                 (int)(targetPosition.Y / GameConfig.TileSize)
             ) ?? false;
-            
+
             // Trigger fog cooldown if fog was cleared
+            var heroComponent = entity.GetComponent<HeroComponent>();
             if (fogCleared)
             {
-                var heroComponent = entity.GetComponent<HeroComponent>();
+                //var heroComponent = entity.GetComponent<HeroComponent>();
                 heroComponent?.TriggerFogCooldown();
             }
+            // Check for adjacent monsters and chests after clearing fog
+            heroComponent.AdjacentToMonster = heroComponent.CheckAdjacentToMonster();
+            heroComponent.AdjacentToChest = heroComponent.CheckAdjacentToChest();
 
             _jumpFinished = true;
             Debug.Log($"[JumpIntoPit] Jump movement completed at {entity.Transform.Position.X},{entity.Transform.Position.Y}");

@@ -11,7 +11,7 @@ namespace PitHero.AI
     /// </summary>
     public class ActivateWizardOrbAction : HeroActionBase
     {
-        public ActivateWizardOrbAction() : base(GoapConstants.ActivateWizardOrbAction, 1)
+        public ActivateWizardOrbAction() : base(GoapConstants.ActivateWizardOrbAction)
         {
             // Preconditions: Hero must be inside pit, exploration complete, and wizard orb found
             SetPrecondition(GoapConstants.InsidePit, true);

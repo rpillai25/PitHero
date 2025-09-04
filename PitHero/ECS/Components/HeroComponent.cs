@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.AI.GOAP;
 using PitHero.AI;
+using System;
 
 namespace PitHero.ECS.Components
 {
@@ -35,6 +36,8 @@ namespace PitHero.ECS.Components
         public bool ExploredPit { get; set; }                        // True after all reachable FogOfWar uncovered, false upon ActivatePitRegenAction
         public bool FoundWizardOrb { get; set; }                     // True after hero uncovered fog over wizard orb
         public bool ActivatedWizardOrb { get; set; }                 // True after ActivateWizardOrbAction, false upon ActivatePitRegenAction
+        public bool AdjacentToMonster { get; set; }                  // True when monster exists in tile adjacent to hero
+        public bool AdjacentToChest { get; set; }                    // True when chest exists in tile adjacent to hero
 
         private PitWidthManager _pitWidthManager;
 
@@ -179,6 +182,14 @@ namespace PitHero.ECS.Components
             {
                 worldState.Set(GoapConstants.ActivatedWizardOrb, true);
             }
+            if (AdjacentToMonster)
+            {
+                worldState.Set(GoapConstants.AdjacentToMonster, true);
+            }
+            if (AdjacentToChest)
+            {
+                worldState.Set(GoapConstants.AdjacentToChest, true);
+            }
         }
 
         /// <summary>
@@ -186,8 +197,8 @@ namespace PitHero.ECS.Components
         /// </summary>
         public override void SetGoalState(ref WorldState goalState)
         {
-            // 2 main goals for the hero so far. The planner should always plan the optimal path of actions to these goals.
-            
+            // Main goals for the hero - planner should always plan the optimal path to these goals.
+
             if (PitInitialized && !ActivatedWizardOrb)
             {
                 goalState.Set(GoapConstants.ActivatedWizardOrb, true);
@@ -195,6 +206,15 @@ namespace PitHero.ECS.Components
             else if (!PitInitialized && ActivatedWizardOrb)
             {
                 goalState.Set(GoapConstants.PitInitialized, true);
+            }            
+            // Interactive entity goals - higher priority when inside pit
+            if (InsidePit && AdjacentToMonster)
+            {
+                goalState.Set(GoapConstants.AdjacentToMonster, false);
+            }
+            if (InsidePit && AdjacentToChest)
+            {
+                goalState.Set(GoapConstants.AdjacentToChest, false);
             }
         }
 
@@ -299,7 +319,7 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Get current tile position using TileByTileMover if available
         /// </summary>
-        private Point GetCurrentTilePosition()
+        public Point GetCurrentTilePosition()
         {
             var tileMover = Entity.GetComponent<TileByTileMover>();
             if (tileMover != null)
@@ -337,6 +357,58 @@ namespace PitHero.ECS.Components
         public Point GetPitCenter()
         {
             return PitCenter;
+        }
+
+        /// <summary>
+        /// Check if there are any undefeated monsters in adjacent tiles to the hero
+        /// </summary>
+        public bool CheckAdjacentToMonster()
+        {
+            var heroTile = GetCurrentTilePosition();
+            var scene = Core.Scene;
+            if (scene == null) return false;
+
+            var monsterEntities = scene.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
+            foreach (var monster in monsterEntities)
+            {
+                var monsterTile = GetTileCoordinates(monster.Transform.Position, GameConfig.TileSize);
+                if (IsAdjacent(heroTile, monsterTile))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Check if there are any unopened chests in adjacent tiles to the hero
+        /// </summary>
+        public bool CheckAdjacentToChest()
+        {
+            var heroTile = GetCurrentTilePosition();
+            var scene = Core.Scene;
+            if (scene == null) return false;
+
+            var chestEntities = scene.FindEntitiesWithTag(GameConfig.TAG_TREASURE);
+            foreach (var chest in chestEntities)
+            {
+                var chestTile = GetTileCoordinates(chest.Transform.Position, GameConfig.TileSize);
+                if (IsAdjacent(heroTile, chestTile))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Check if two tile positions are adjacent in cardinal directions (N/S/E/W only)
+        /// </summary>
+        private bool IsAdjacent(Point tile1, Point tile2)
+        {
+            int dx = Math.Abs(tile1.X - tile2.X);
+            int dy = Math.Abs(tile1.Y - tile2.Y);
+            return (dx + dy) == 1; // cardinal adjacency only
         }
     }
 }
