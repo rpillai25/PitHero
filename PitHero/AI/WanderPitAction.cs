@@ -19,6 +19,10 @@ namespace PitHero.AI
             SetPrecondition(GoapConstants.ExploredPit, false);
             SetPostcondition(GoapConstants.FoundWizardOrb, true);
             SetPostcondition(GoapConstants.ExploredPit, true);
+            
+            // New postconditions for interactive entities
+            SetPostcondition(GoapConstants.AdjacentToChest, true);
+            SetPostcondition(GoapConstants.AdjacentToMonster, true);
         }
 
         /// <summary>
@@ -52,6 +56,12 @@ namespace PitHero.AI
                 
                 // Check if wizard orb was uncovered (fog cleared at orb tile)
                 CheckWizardOrbFound(hero, tiledMapService, currentTile);
+                
+                // Check for adjacent monsters and chests after clearing fog
+                hero.AdjacentToMonster = hero.CheckAdjacentToMonster();
+                hero.AdjacentToChest = hero.CheckAdjacentToChest();
+                
+                Debug.Log($"[WanderPitAction] Adjacent check: Monster={hero.AdjacentToMonster}, Chest={hero.AdjacentToChest}");
             }
             else
             {

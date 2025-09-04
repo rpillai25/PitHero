@@ -423,12 +423,14 @@ namespace PitHero.VirtualGame
             // Create action planner directly
             var planner = new Nez.AI.GOAP.ActionPlanner();
             
-            // Add all hero actions (simplified 5-action model)
+            // Add all hero actions (extended interactive model)
             planner.AddAction(new JumpIntoPitAction());
             planner.AddAction(new WanderPitAction());
             planner.AddAction(new ActivateWizardOrbAction());
             planner.AddAction(new JumpOutOfPitAction());
             planner.AddAction(new ActivatePitRegenAction());
+            planner.AddAction(new AttackMonster());
+            planner.AddAction(new OpenChest());
             
             // Convert dictionaries to WorldState objects (simplified)
             var wsCurrentState = Nez.AI.GOAP.WorldState.Create(planner);
