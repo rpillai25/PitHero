@@ -156,7 +156,9 @@ namespace PitHero.VirtualGame
             }
 
             // Calculate how many inner floor tiles to extend (same logic as real PitWidthManager)
-            int innerFloorTilesToExtend = ((int)(_currentPitLevel / 10)) * 2;
+            // Cap expansion at level 100 - pit stops expanding beyond level 100
+            int expansionLevel = Math.Min(_currentPitLevel, 100);
+            int innerFloorTilesToExtend = ((int)(expansionLevel / 10)) * 2;
             Console.WriteLine($"[VirtualPitWidthManager] Level {_currentPitLevel}: extending pit by {innerFloorTilesToExtend} inner floor tiles");
 
             if (innerFloorTilesToExtend <= 0)

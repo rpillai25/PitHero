@@ -37,7 +37,8 @@ Falls back to static targets if service unavailable.
 
 ## Expansion Formula
 ```csharp
-int extensionTiles = ((int)(PitLevel / 10)) * 2;
+int expansionLevel = Math.Min(pitLevel, 100);  // Cap expansion at level 100
+int extensionTiles = ((int)(expansionLevel / 10)) * 2;
 ```
 
 **Examples:**
@@ -45,6 +46,8 @@ int extensionTiles = ((int)(PitLevel / 10)) * 2;
 - Level 10-19: 2 extension tiles (pit extends to x=14)
 - Level 20-29: 4 extension tiles (pit extends to x=16)
 - Level 30-39: 6 extension tiles (pit extends to x=18)
+- Level 100-109: 20 extension tiles (pit extends to x=34)
+- Level 200+: 20 extension tiles (expansion capped at level 100)
 
 ## Tile Patterns
 The system stores 6 tile pattern dictionaries initialized from specific map coordinates:
