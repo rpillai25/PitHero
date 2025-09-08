@@ -13,7 +13,7 @@ namespace PitHero.AI
     /// </summary>
     public class OpenChestAction : HeroActionBase
     {
-        public OpenChestAction() : base(GoapConstants.OpenChest, 51)
+        public OpenChestAction() : base(GoapConstants.OpenChest, 2)
         {
             // Preconditions: Hero must be adjacent to a chest
             SetPrecondition(GoapConstants.AdjacentToChest, true);

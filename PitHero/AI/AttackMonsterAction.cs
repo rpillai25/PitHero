@@ -13,7 +13,7 @@ namespace PitHero.AI
     /// </summary>
     public class AttackMonsterAction : HeroActionBase
     {
-        public AttackMonsterAction() : base(GoapConstants.AttackMonster, 50)
+        public AttackMonsterAction() : base(GoapConstants.AttackMonster, 3)
         {
             // Preconditions: Hero must be adjacent to a monster
             SetPrecondition(GoapConstants.AdjacentToMonster, true);
