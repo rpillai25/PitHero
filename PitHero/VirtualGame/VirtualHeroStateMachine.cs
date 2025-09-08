@@ -227,45 +227,66 @@ namespace PitHero.VirtualGame
 
         private bool ExecuteWanderPitAction()
         {
-            // Find next wander target using fog-of-war
+            // First phase: Clear fog using systematic exploration
             var wanderTarget = CalculatePitWanderPointLocation();
-            if (!wanderTarget.HasValue)
+            if (wanderTarget.HasValue)
             {
-                // No more targets - exploration complete (will be detected by IsExplorationComplete)
-                Console.WriteLine("[VirtualStateMachine] Wander exploration complete - no more fog targets");
-                return true;
+                var target = wanderTarget.Value;
+                
+                // Check if already at target
+                if (_hero.Position == target)
+                {
+                    // Clear fog and continue
+                    _world.ClearFogOfWar(_hero.Position, 2);
+                    Console.WriteLine($"[VirtualStateMachine] Explored position ({_hero.Position.X},{_hero.Position.Y})");
+                    return false; // Continue wandering for more targets
+                }
+
+                // For efficiency, teleport directly to the target instead of pathfinding step by step
+                // This simulates fast exploration without getting stuck
+                try
+                {
+                    _hero.TeleportTo(target);
+                    _world.ClearFogOfWar(target, 2);
+                    Console.WriteLine($"[VirtualStateMachine] Wandered to and explored ({target.X},{target.Y})");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[VirtualStateMachine] Failed to wander to ({target.X},{target.Y}): {ex.Message}, marking as failed");
+                    _failedWanderTargets.Add(target);
+                }
+
+                return false; // Continue wandering
             }
 
-            var target = wanderTarget.Value;
-            
-            // Check if already at target
-            if (_hero.Position == target)
+            // Second phase: Fog exploration complete, now verify connectivity by visiting all columns
+            var connectivityTarget = CalculateConnectivityCheckTarget();
+            if (connectivityTarget.HasValue)
             {
-                // Clear fog and continue
-                _world.ClearFogOfWar(_hero.Position, 2);
-                Console.WriteLine($"[VirtualStateMachine] Explored position ({_hero.Position.X},{_hero.Position.Y})");
-                return false; // Continue wandering for more targets
+                var target = connectivityTarget.Value;
+                Console.WriteLine($"[VirtualStateMachine] Connectivity check: moving to column {target.X} at ({target.X},{target.Y})");
+                
+                try
+                {
+                    _hero.TeleportTo(target);
+                    Console.WriteLine($"[VirtualStateMachine] Connectivity verified for column {target.X}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[VirtualStateMachine] Connectivity check failed for ({target.X},{target.Y}): {ex.Message}");
+                    _failedWanderTargets.Add(target);
+                }
+
+                return false; // Continue connectivity checks
             }
 
-            // For efficiency, teleport directly to the target instead of pathfinding step by step
-            // This simulates fast exploration without getting stuck
-            try
-            {
-                _hero.TeleportTo(target);
-                _world.ClearFogOfWar(target, 2);
-                Console.WriteLine($"[VirtualStateMachine] Wandered to and explored ({target.X},{target.Y})");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[VirtualStateMachine] Failed to wander to ({target.X},{target.Y}): {ex.Message}, marking as failed");
-                _failedWanderTargets.Add(target);
-            }
-
-            return false; // Continue wandering
+            // Both phases complete
+            Console.WriteLine("[VirtualStateMachine] Wander exploration and connectivity verification complete");
+            return true;
         }
 
         /// <summary>
-        /// Calculate next pit wander point - find unexplored fog tiles
+        /// Calculate next pit wander point - ensure systematic exploration of all columns
         /// </summary>
         private Point? CalculatePitWanderPointLocation()
         {
@@ -302,12 +323,80 @@ namespace PitHero.VirtualGame
                 return null;
             }
 
-            // Choose closest unexplored tile
             var heroPos = _hero.Position;
-            var closest = candidates.OrderBy(p => Math.Abs(p.X - heroPos.X) + Math.Abs(p.Y - heroPos.Y)).First();
             
-            Console.WriteLine($"[VirtualStateMachine] Selected wander target: ({closest.X},{closest.Y}) from {candidates.Count} candidates");
-            return closest;
+            // Systematic exploration: try to visit columns from left to right
+            // Find the leftmost column that has fog candidates
+            var leftmostColumn = candidates.Min(p => p.X);
+            var leftmostCandidates = candidates.Where(p => p.X == leftmostColumn).ToList();
+            
+            // Within the leftmost column, choose a central position for better coverage
+            var target = leftmostCandidates.OrderBy(p => Math.Abs(p.Y - (pitBounds.Y + pitBounds.Height / 2))).First();
+            
+            Console.WriteLine($"[VirtualStateMachine] Selected systematic wander target: ({target.X},{target.Y}) " +
+                            $"from leftmost column {leftmostColumn} ({leftmostCandidates.Count} candidates in column, {candidates.Count} total)");
+            return target;
+        }
+
+        // Track which columns have been visited for connectivity checking
+        private HashSet<int> _visitedColumnsForConnectivity = new HashSet<int>();
+
+        /// <summary>
+        /// Calculate next connectivity check target - visit all columns to verify reachability
+        /// </summary>
+        private Point? CalculateConnectivityCheckTarget()
+        {
+            var pitBounds = _world.PitBounds;
+            
+            // Update visited columns based on hero's current position
+            if (pitBounds.Contains(_hero.Position))
+            {
+                _visitedColumnsForConnectivity.Add(_hero.Position.X);
+            }
+
+            // Find unvisited columns
+            var unvisitedColumns = new List<int>();
+            for (int x = pitBounds.X + 1; x < pitBounds.Right - 1; x++)
+            {
+                if (!_visitedColumnsForConnectivity.Contains(x))
+                {
+                    unvisitedColumns.Add(x);
+                }
+            }
+
+            if (unvisitedColumns.Count == 0)
+            {
+                Console.WriteLine($"[VirtualStateMachine] All {_visitedColumnsForConnectivity.Count} columns visited for connectivity check");
+                return null; // All columns visited
+            }
+
+            // Pick the leftmost unvisited column
+            var targetColumn = unvisitedColumns.Min();
+            
+            // Find a passable tile in this column (prefer middle of pit)
+            for (int y = pitBounds.Y + pitBounds.Height / 2; y >= pitBounds.Y + 1 && y < pitBounds.Bottom - 1; y++)
+            {
+                var candidate = new Point(targetColumn, y);
+                if (!_world.IsCollisionTile(candidate))
+                {
+                    return candidate;
+                }
+            }
+            
+            // If middle didn't work, try other positions in the column
+            for (int y = pitBounds.Y + 1; y < pitBounds.Bottom - 1; y++)
+            {
+                var candidate = new Point(targetColumn, y);
+                if (!_world.IsCollisionTile(candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            // Column has no passable tiles - mark as visited to skip it
+            Console.WriteLine($"[VirtualStateMachine] Column {targetColumn} has no passable tiles, marking as visited");
+            _visitedColumnsForConnectivity.Add(targetColumn);
+            return CalculateConnectivityCheckTarget(); // Try next column
         }
 
         private bool ExecuteActivateWizardOrbAction()
@@ -368,19 +457,21 @@ namespace PitHero.VirtualGame
         /// </summary>
         public bool IsExplorationComplete()
         {
-            // Check if all fog in pit has been cleared
+            // Check if all fog in pit has been cleared (excluding collision tiles that hero can't reach)
             var pitBounds = _world.PitBounds;
             
             for (int x = pitBounds.X + 1; x < pitBounds.Right - 1; x++)
             {
                 for (int y = pitBounds.Y + 1; y < pitBounds.Bottom - 1; y++)
                 {
-                    if (_world.HasFogOfWar(new Point(x, y)))
-                        return false; // Still has fog
+                    var tile = new Point(x, y);
+                    // Only count fog on passable tiles - hero can't explore collision tiles
+                    if (_world.HasFogOfWar(tile) && !_world.IsCollisionTile(tile))
+                        return false; // Still has explorable fog
                 }
             }
             
-            // All fog cleared - mark hero state and return true
+            // All explorable fog cleared - mark hero state and return true
             _hero.ExploredPit = true;
             return true;
         }
@@ -391,6 +482,7 @@ namespace PitHero.VirtualGame
         public void ResetFailedTargets()
         {
             _failedWanderTargets.Clear();
+            _visitedColumnsForConnectivity.Clear();
         }
     }
 }
