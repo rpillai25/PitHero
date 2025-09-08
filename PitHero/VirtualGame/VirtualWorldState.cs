@@ -330,7 +330,7 @@ namespace PitHero.VirtualGame
                         fogCount++;
                 }
             }
-            sb.AppendLine($"Fog tiles remaining in pit: {fogCount}");
+            sb.AppendLine($"fog remaining: {fogCount}");
             
             return sb.ToString();
         }

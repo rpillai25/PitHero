@@ -63,6 +63,10 @@ namespace PitHero.VirtualGame
             Console.WriteLine("\nSTEP 5: Execute complete wizard orb workflow");
             ExecuteWizardOrbWorkflow();
 
+            // Step 6: Cycle restarts
+            Console.WriteLine("\nSTEP 6: Cycle restarts");
+            Console.WriteLine("Hero would now target the new regenerated pit to start the cycle over");
+
             Console.WriteLine("\n=== Simulation Complete ===");
             LogFinalState();
         }

@@ -13,7 +13,7 @@ namespace PitHero.AI
     /// </summary>
     public class WanderPitAction : HeroActionBase
     {
-        public WanderPitAction() : base(GoapConstants.WanderPitAction)
+        public WanderPitAction() : base(GoapConstants.WanderPitAction, 1)
         {
             SetPrecondition(GoapConstants.InsidePit, true);
             SetPrecondition(GoapConstants.ExploredPit, false);

@@ -14,7 +14,7 @@ namespace PitHero.AI
         private bool _jumpFinished = false;
         private Point _plannedTargetTile;
         
-        public JumpIntoPitAction() : base(GoapConstants.JumpIntoPitAction)
+        public JumpIntoPitAction() : base(GoapConstants.JumpIntoPitAction, 1)
         {
             // Precondition: Hero and pit must be initialized
             SetPrecondition(GoapConstants.HeroInitialized, true);

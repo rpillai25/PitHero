@@ -3,6 +3,7 @@ using Nez;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Scenes;
 using PitHero.Util;
+using System;
 using System.Collections.Generic;
 
 namespace PitHero
@@ -198,7 +199,9 @@ namespace PitHero
             
             // Calculate new right edge
             int initialRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth;
-            int innerFloorTilesToExtend = ((int)(_currentPitLevel / 10)) * 2;
+            // Cap expansion at level 100 - pit stops expanding beyond level 100
+            int expansionLevel = Math.Min(_currentPitLevel, 100);
+            int innerFloorTilesToExtend = ((int)(expansionLevel / 10)) * 2;
             int newRightEdge = initialRightEdge + innerFloorTilesToExtend + (innerFloorTilesToExtend > 0 ? 2 : 0); // +2 for inner wall and outer floor
             
             // If sizing down, clear tiles first
@@ -272,8 +275,15 @@ namespace PitHero
             }
 
             // Calculate how many inner floor tiles to extend
-            int innerFloorTilesToExtend = ((int)(_currentPitLevel / 10)) * 2;
+            // Cap expansion at level 100 - pit stops expanding beyond level 100
+            int expansionLevel = Math.Min(_currentPitLevel, 100);
+            int innerFloorTilesToExtend = ((int)(expansionLevel / 10)) * 2;
             Debug.Log($"[PitWidthManager] Level {_currentPitLevel}: extending pit by {innerFloorTilesToExtend} inner floor tiles");
+
+            if (_currentPitLevel > 100)
+            {
+                Debug.Log("[PitWidthManager] Expansion capped at level 100. No further width increases beyond level 100.");
+            }
 
             if (innerFloorTilesToExtend <= 0)
             {

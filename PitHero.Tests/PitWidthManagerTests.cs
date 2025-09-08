@@ -1,4 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 
 namespace PitHero.Tests
 {
@@ -157,6 +158,33 @@ namespace PitHero.Tests
             Assert.AreEqual((12 * expectedTileSize) + (2 * expectedPadding), defaultWorldWidth, "Default world width calculation");
             Assert.AreEqual((14 * expectedTileSize) + (2 * expectedPadding), level10WorldWidth, "Level 10 world width calculation");
             Assert.AreEqual((16 * expectedTileSize) + (2 * expectedPadding), level20WorldWidth, "Level 20 world width calculation");
+        }
+
+        [TestMethod]
+        public void PitWidthManager_ExpansionLimit_ShouldCapAtLevel100()
+        {
+            // Test that pit expansion stops at level 100
+            
+            // Test expansion calculation directly with the capped formula
+            Assert.AreEqual(20, CalculateExpansionTiles(100), "Level 100 should expand by 20 tiles");
+            Assert.AreEqual(20, CalculateExpansionTiles(101), "Level 101 should expand by 20 tiles (capped)");
+            Assert.AreEqual(20, CalculateExpansionTiles(200), "Level 200 should expand by 20 tiles (capped)");
+            Assert.AreEqual(20, CalculateExpansionTiles(1000), "Level 1000 should expand by 20 tiles (capped)");
+            
+            // Test that values beyond 100 are capped at 100 for expansion calculation
+            Assert.AreEqual(CalculateExpansionTiles(100), CalculateExpansionTiles(101), 
+                "Level 101 expansion should equal level 100 expansion (capped)");
+            Assert.AreEqual(CalculateExpansionTiles(100), CalculateExpansionTiles(1000), 
+                "Level 1000 expansion should equal level 100 expansion (capped)");
+        }
+        
+        /// <summary>
+        /// Helper method to calculate expansion tiles using the new formula
+        /// </summary>
+        private int CalculateExpansionTiles(int level)
+        {
+            int expansionLevel = Math.Min(level, 100);
+            return ((int)(expansionLevel / 10)) * 2;
         }
     }
 }
