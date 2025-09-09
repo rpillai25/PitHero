@@ -111,5 +111,7 @@ namespace PitHero
 
         // Entity names
         public const string EntityHero = "Hero";
+
+        public static readonly Color SKIN_SHADE_1 = new Color(251, 200, 178);
     }
 }

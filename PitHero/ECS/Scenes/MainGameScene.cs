@@ -171,11 +171,13 @@ namespace PitHero.ECS.Scenes
             var heroAnimator = hero.AddComponent(new HeroAnimationComponent());
             heroAnimator.SetRenderLayer(GameConfig.RenderLayerHero);
             heroAnimator.SetLocalOffset(new Vector2(0, -GameConfig.TileSize / 2)); // Offset so feet are at entity position
-            
+            heroAnimator.SetColor(GameConfig.SKIN_SHADE_1);
+
             // Add jump animation component for pit jumping animations
-            hero.AddComponent(new HeroJumpAnimationComponent());
+            var heroJumpAnimator = hero.AddComponent(new HeroJumpAnimationComponent());
             var collider = hero.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));
-            
+            heroJumpAnimator.SetColor(GameConfig.SKIN_SHADE_1);
+
             Flags.SetFlag(ref collider.CollidesWithLayers, GameConfig.PhysicsTileMapLayer);
             Flags.SetFlag(ref collider.CollidesWithLayers, GameConfig.PhysicsPitLayer);
             Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);

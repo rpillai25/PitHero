@@ -64,6 +64,11 @@ namespace PitHero.ECS.Components
             }
         }
 
+        public void SetColor(Color color)
+        {
+            _heroAnimator?.SetColor(color);
+        }
+
         private void CreateShadowRenderer()
         {
             if (_actorsAtlas == null) return;
