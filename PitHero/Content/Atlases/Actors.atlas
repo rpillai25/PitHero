@@ -204,13 +204,13 @@ BlueHairHeroJumpUp
 	2
 	12,13	
 HeroJumpDown
-	8
+	18
 	0,1,2,3,4,5
 HeroJumpRight
-	8
+	18
 	6,7,8,9,10,11
 HeroJumpUp
-	8
+	18
 	12,13,14,15,16,17
 HeroWalkDown
 	8

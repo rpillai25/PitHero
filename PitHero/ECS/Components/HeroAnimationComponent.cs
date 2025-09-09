@@ -61,7 +61,7 @@ namespace PitHero.ECS.Components
 
         public new void Update()
         {
-            // Call base SpriteAnimator update first
+            // Always let base update run so animation time advances
             base.Update();
             
             if (_tileMover == null) 
@@ -138,7 +138,7 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Starts playing a jump animation for the given direction
+        /// Starts playing a jump animation for the given direction (plays naturally)
         /// </summary>
         public void PlayJumpAnimation(Direction direction)
         {
@@ -153,7 +153,6 @@ namespace PitHero.ECS.Components
             if (Animations != null && Animations.ContainsKey(animationName))
             {
                 Play(animationName, LoopMode.Once);
-                Pause(); // Jump animations are manually controlled
                 Debug.Log($"[HeroAnimationComponent] Started jump animation: {animationName} for direction: {direction}");
             }
             else
@@ -173,7 +172,7 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Sets a specific frame for the current animation (used during jumps)
+        /// Sets a specific frame (kept for potential manual control usage)
         /// </summary>
         public void SetAnimationFrame(int frameIndex)
         {
