@@ -7,15 +7,10 @@ using PitHero.Util;
 namespace PitHero.ECS.Components
 {
     /// <summary>
-    /// Manages hero jump animations and shadow rendering during pit jumping actions
+    /// Manages hero jump logic and shadow rendering during pit jumping actions
     /// </summary>
-    public class HeroJumpAnimationComponent : Component, IUpdatable
+    public class HeroJumpComponent : Component, IUpdatable
     {
-        // Jump animation names that correspond to the atlas
-        private const string JUMP_ANIM_DOWN = "HeroJumpDown";
-        private const string JUMP_ANIM_LEFT = "HeroJumpRight";  // Flipped in code
-        private const string JUMP_ANIM_RIGHT = "HeroJumpRight";
-        private const string JUMP_ANIM_UP = "HeroJumpUp";
         private const string HERO_SHADOW_SPRITE = "HeroShadow";
         private const float MAX_JUMP_HEIGHT_PX = 32f; // peak vertical offset during jump (matches previous discrete peak)
 
@@ -39,7 +34,7 @@ namespace PitHero.ECS.Components
             _heroAnimator = Entity.GetComponent<HeroAnimationComponent>();
             if (_heroAnimator == null)
             {
-                Debug.Warn("[HeroJumpAnimationComponent] HeroAnimationComponent not found on entity");
+                Debug.Warn("[HeroJumpComponent] HeroAnimationComponent not found on entity");
                 return;
             }
 
@@ -49,18 +44,18 @@ namespace PitHero.ECS.Components
                 _actorsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas");
                 if (_actorsAtlas == null)
                 {
-                    Debug.Warn("[HeroJumpAnimationComponent] Failed to load Actors.atlas - atlas is null");
+                    Debug.Warn("[HeroJumpComponent] Failed to load Actors.atlas - atlas is null");
                     return;
                 }
 
                 // Create shadow renderer
                 CreateShadowRenderer();
 
-                Debug.Log("[HeroJumpAnimationComponent] Initialized successfully");
+                Debug.Log("[HeroJumpComponent] Initialized successfully");
             }
             catch (System.Exception ex)
             {
-                Debug.Warn($"[HeroJumpAnimationComponent] Failed to load Actors.atlas: {ex.Message}");
+                Debug.Warn($"[HeroJumpComponent] Failed to load Actors.atlas: {ex.Message}");
             }
         }
 
@@ -77,7 +72,7 @@ namespace PitHero.ECS.Components
             var shadowSprite = _actorsAtlas.GetSprite(HERO_SHADOW_SPRITE);
             if (shadowSprite == null)
             {
-                Debug.Warn($"[HeroJumpAnimationComponent] {HERO_SHADOW_SPRITE} sprite not found in atlas");
+                Debug.Warn($"[HeroJumpComponent] {HERO_SHADOW_SPRITE} sprite not found in atlas");
                 return;
             }
 
@@ -87,7 +82,7 @@ namespace PitHero.ECS.Components
             _shadowRenderer.SetLocalOffset(new Vector2(0, GameConfig.TileSize / 2)); // At bottom of hero
             _shadowRenderer.SetEnabled(false); // Hidden by default
 
-            Debug.Log($"[HeroJumpAnimationComponent] Created shadow renderer with sprite {HERO_SHADOW_SPRITE}");
+            Debug.Log($"[HeroJumpComponent] Created shadow renderer with sprite {HERO_SHADOW_SPRITE}");
         }
 
         public void Update()
@@ -121,20 +116,16 @@ namespace PitHero.ECS.Components
             // Only proceed with graphics if components are available
             if (_heroAnimator == null || _actorsAtlas == null)
             {
-                Debug.Warn("[HeroJumpAnimationComponent] StartJump called but graphics components not available (this is normal in tests)");
+                Debug.Warn("[HeroJumpComponent] StartJump called but graphics components not available (this is normal in tests)");
                 return;
             }
 
             // Store the initial Y offset
             _initialYOffset = _heroAnimator.LocalOffset.Y;
 
-            // Get the jump animation name for this direction
-            _currentJumpAnimationName = GetJumpAnimationNameForDirection(direction);
-
-            // Set flip immediately based on direction (handles left/right reuse of same animation name)
-            bool shouldFlip = direction == Direction.Left || direction == Direction.UpLeft || direction == Direction.DownLeft;
-            if (_heroAnimator.FlipX != shouldFlip)
-                _heroAnimator.SetFlipXAndAdjustLocalOffset(shouldFlip);
+            // Get the jump animation name for this direction and start playing it
+            _currentJumpAnimationName = _heroAnimator.GetJumpAnimationNameForDirection(direction);
+            _heroAnimator.PlayJumpAnimation(direction);
 
             // Show shadow
             if (_shadowRenderer != null)
@@ -142,7 +133,7 @@ namespace PitHero.ECS.Components
                 _shadowRenderer.SetEnabled(true);
             }
 
-            Debug.Log($"[HeroJumpAnimationComponent] Started jump animation for direction {direction} with duration {duration}s");
+            Debug.Log($"[HeroJumpComponent] Started jump animation for direction {direction} with duration {duration}s");
         }
 
         /// <summary>
@@ -173,10 +164,10 @@ namespace PitHero.ECS.Components
             if (_heroAnimator != null)
             {
                 _heroAnimator.UpdateAnimationForDirection(_jumpDirection);
-                _heroAnimator.UnPause();
+                _heroAnimator.UnpauseAnimation();
             }
 
-            Debug.Log("[HeroJumpAnimationComponent] Ended jump animation");
+            Debug.Log("[HeroJumpComponent] Ended jump animation");
         }
 
         /// <summary>
@@ -187,12 +178,7 @@ namespace PitHero.ECS.Components
             if (_heroAnimator == null || string.IsNullOrEmpty(_currentJumpAnimationName)) return;
 
             // Ensure correct flip each frame in case direction changed mid-air (defensive) or coming from prior flip state
-            bool shouldFlip = _jumpDirection == Direction.Left || _jumpDirection == Direction.UpLeft || _jumpDirection == Direction.DownLeft;
-            if (_heroAnimator.FlipX != shouldFlip)
-                _heroAnimator.SetFlipXAndAdjustLocalOffset(shouldFlip);
-
-            _heroAnimator.Play(_currentJumpAnimationName, SpriteAnimator.LoopMode.Once);
-            _heroAnimator.Pause();
+            _heroAnimator.UpdateJumpAnimationFlip(_jumpDirection);
 
             // Clamp progress to [0,1]
             if (progress < 0f) progress = 0f;
@@ -213,7 +199,7 @@ namespace PitHero.ECS.Components
                 frameIndex = 0;
             }
 
-            _heroAnimator.SetFrame(frameIndex);
+            _heroAnimator.SetAnimationFrame(frameIndex);
 
             // Smooth parabolic vertical offset: 0 at start/end, peak at mid
             var t = progress;
@@ -222,22 +208,6 @@ namespace PitHero.ECS.Components
 
             // Apply Y offset
             _heroAnimator.SetLocalOffset(new Vector2(_heroAnimator.LocalOffset.X, yOffset));
-        }
-
-        private string GetJumpAnimationNameForDirection(Direction direction)
-        {
-            return direction switch
-            {
-                Direction.Up => JUMP_ANIM_UP,
-                Direction.Down => JUMP_ANIM_DOWN,
-                Direction.Left => JUMP_ANIM_LEFT,
-                Direction.Right => JUMP_ANIM_RIGHT,
-                Direction.UpLeft => JUMP_ANIM_LEFT, // Use left for diagonal up-left
-                Direction.UpRight => JUMP_ANIM_RIGHT, // Use right for diagonal up-right
-                Direction.DownLeft => JUMP_ANIM_LEFT, // Use left for diagonal down-left
-                Direction.DownRight => JUMP_ANIM_RIGHT, // Use right for diagonal down-right
-                _ => JUMP_ANIM_DOWN // Default fallback
-            };
         }
 
         /// <summary>

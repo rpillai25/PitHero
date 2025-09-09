@@ -174,7 +174,7 @@ namespace PitHero.ECS.Scenes
             heroAnimator.SetColor(GameConfig.SKIN_SHADE_1);
 
             // Add jump animation component for pit jumping animations
-            var heroJumpAnimator = hero.AddComponent(new HeroJumpAnimationComponent());
+            var heroJumpAnimator = hero.AddComponent(new HeroJumpComponent());
             var collider = hero.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));
             heroJumpAnimator.SetColor(GameConfig.SKIN_SHADE_1);
 

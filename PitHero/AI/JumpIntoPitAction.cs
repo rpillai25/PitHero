@@ -116,7 +116,7 @@ namespace PitHero.AI
             
             // Start jump animation - determine direction from start to target
             var jumpDirection = GetJumpDirection(startPosition, targetPosition);
-            var jumpAnimComponent = entity.GetComponent<HeroJumpAnimationComponent>();
+            var jumpAnimComponent = entity.GetComponent<HeroJumpComponent>();
             if (jumpAnimComponent != null)
             {
                 jumpAnimComponent.StartJump(jumpDirection, duration);

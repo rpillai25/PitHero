@@ -7,11 +7,11 @@ using PitHero.Util;
 namespace PitHero.Tests
 {
     [TestClass]
-    public class HeroJumpAnimationComponentTests
+    public class HeroJumpComponentTests
     {
         private Entity _heroEntity;
         private HeroAnimationComponent _heroAnimation;
-        private HeroJumpAnimationComponent _jumpAnimation;
+        private HeroJumpComponent _jumpComponent;
 
         [TestInitialize]
         public void Setup()
@@ -19,7 +19,7 @@ namespace PitHero.Tests
             // Create a test entity with required components
             _heroEntity = new Entity("test-hero");
             _heroAnimation = _heroEntity.AddComponent(new HeroAnimationComponent());
-            _jumpAnimation = _heroEntity.AddComponent(new HeroJumpAnimationComponent());
+            _jumpComponent = _heroEntity.AddComponent(new HeroJumpComponent());
         }
 
         [TestCleanup]
@@ -29,38 +29,38 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void HeroJumpAnimationComponent_ShouldInitialize()
+        public void HeroJumpComponent_ShouldInitialize()
         {
             // Test that the component can be created and added to an entity
-            Assert.IsNotNull(_jumpAnimation);
-            Assert.IsNotNull(_jumpAnimation.Entity);
-            Assert.AreEqual(_heroEntity, _jumpAnimation.Entity);
+            Assert.IsNotNull(_jumpComponent);
+            Assert.IsNotNull(_jumpComponent.Entity);
+            Assert.AreEqual(_heroEntity, _jumpComponent.Entity);
         }
 
         [TestMethod]
         public void IsJumping_ShouldReturnFalseInitially()
         {
             // Test that the hero is not jumping initially
-            Assert.IsFalse(_jumpAnimation.IsJumping);
+            Assert.IsFalse(_jumpComponent.IsJumping);
         }
 
         [TestMethod]
         public void StartJump_ShouldSetJumpingState()
         {
             // Test that calling StartJump sets the jumping state
-            _jumpAnimation.StartJump(Direction.Left, 1.0f);
-            Assert.IsTrue(_jumpAnimation.IsJumping);
+            _jumpComponent.StartJump(Direction.Left, 1.0f);
+            Assert.IsTrue(_jumpComponent.IsJumping);
         }
 
         [TestMethod]
         public void EndJump_ShouldClearJumpingState()
         {
             // Test that calling EndJump clears the jumping state
-            _jumpAnimation.StartJump(Direction.Right, 1.0f);
-            Assert.IsTrue(_jumpAnimation.IsJumping);
+            _jumpComponent.StartJump(Direction.Right, 1.0f);
+            Assert.IsTrue(_jumpComponent.IsJumping);
             
-            _jumpAnimation.EndJump();
-            Assert.IsFalse(_jumpAnimation.IsJumping);
+            _jumpComponent.EndJump();
+            Assert.IsFalse(_jumpComponent.IsJumping);
         }
 
         [TestMethod]
@@ -76,8 +76,8 @@ namespace PitHero.Tests
             {
                 try
                 {
-                    _jumpAnimation.StartJump(direction, 0.5f);
-                    _jumpAnimation.EndJump();
+                    _jumpComponent.StartJump(direction, 0.5f);
+                    _jumpComponent.EndJump();
                 }
                 catch (System.Exception ex)
                 {
