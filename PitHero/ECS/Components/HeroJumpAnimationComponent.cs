@@ -12,10 +12,10 @@ namespace PitHero.ECS.Components
     public class HeroJumpAnimationComponent : Component, IUpdatable
     {
         // Jump animation names that correspond to the atlas
-        private const string JUMP_ANIM_DOWN = "BlueHairHeroJumpDown";
-        private const string JUMP_ANIM_LEFT = "BlueHairHeroJumpLeft";
-        private const string JUMP_ANIM_RIGHT = "BlueHairHeroJumpRight";
-        private const string JUMP_ANIM_UP = "BlueHairHeroJumpUp";
+        private const string JUMP_ANIM_DOWN = "HeroJumpDown";
+        private const string JUMP_ANIM_LEFT = "HeroJumpRight";  // Flipped in code
+        private const string JUMP_ANIM_RIGHT = "HeroJumpRight";
+        private const string JUMP_ANIM_UP = "HeroJumpUp";
         private const string HERO_SHADOW_SPRITE = "HeroShadow";
         private const float MAX_JUMP_HEIGHT_PX = 32f; // peak vertical offset during jump (matches previous discrete peak)
 
@@ -126,6 +126,11 @@ namespace PitHero.ECS.Components
             // Get the jump animation name for this direction
             _currentJumpAnimationName = GetJumpAnimationNameForDirection(direction);
 
+            // Set flip immediately based on direction (handles left/right reuse of same animation name)
+            bool shouldFlip = direction == Direction.Left || direction == Direction.UpLeft || direction == Direction.DownLeft;
+            if (_heroAnimator.FlipX != shouldFlip)
+                _heroAnimator.SetFlipXAndAdjustLocalOffset(shouldFlip);
+
             // Show shadow
             if (_shadowRenderer != null)
             {
@@ -162,9 +167,7 @@ namespace PitHero.ECS.Components
             // Restore walking animation in the same direction and ensure animator is running
             if (_heroAnimator != null)
             {
-                // Switch back to directional walk animation
                 _heroAnimator.UpdateAnimationForDirection(_jumpDirection);
-                // Ensure animator is not paused
                 _heroAnimator.UnPause();
             }
 
@@ -177,6 +180,11 @@ namespace PitHero.ECS.Components
         private void UpdateJumpAnimation(float progress)
         {
             if (_heroAnimator == null || string.IsNullOrEmpty(_currentJumpAnimationName)) return;
+
+            // Ensure correct flip each frame in case direction changed mid-air (defensive) or coming from prior flip state
+            bool shouldFlip = _jumpDirection == Direction.Left || _jumpDirection == Direction.UpLeft || _jumpDirection == Direction.DownLeft;
+            if (_heroAnimator.FlipX != shouldFlip)
+                _heroAnimator.SetFlipXAndAdjustLocalOffset(shouldFlip);
 
             _heroAnimator.Play(_currentJumpAnimationName, SpriteAnimator.LoopMode.Once);
             _heroAnimator.Pause();
@@ -203,7 +211,6 @@ namespace PitHero.ECS.Components
             _heroAnimator.SetFrame(frameIndex);
 
             // Smooth parabolic vertical offset: 0 at start/end, peak at mid
-            // heightFactor = 4t(1-t) in [0,1]; multiply by MAX_JUMP_HEIGHT_PX for pixels
             var t = progress;
             var heightFactor = 4f * t * (1f - t);
             var yOffset = _initialYOffset - (MAX_JUMP_HEIGHT_PX * heightFactor);

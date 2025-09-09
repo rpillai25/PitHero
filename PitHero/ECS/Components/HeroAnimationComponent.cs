@@ -13,13 +13,13 @@ namespace PitHero.ECS.Components
     {
         private TileByTileMover _tileMover;
         private Direction? _lastDirection = Direction.Down; // Default to down
-        private const string DEFAULT_ANIMATION = "BlueHairHeroDown";
+        private const string DEFAULT_ANIMATION = "HeroWalkDown";
         
         // Animation names that correspond to the atlas
-        private const string ANIM_DOWN = "BlueHairHeroDown";
-        private const string ANIM_LEFT = "BlueHairHeroLeft";
-        private const string ANIM_RIGHT = "BlueHairHeroRight";
-        private const string ANIM_UP = "BlueHairHeroUp";
+        private const string ANIM_DOWN = "HeroWalkDown";
+        private const string ANIM_LEFT = "HeroWalkRight";   //Flipped in code
+        private const string ANIM_RIGHT = "HeroWalkRight";
+        private const string ANIM_UP = "HeroWalkUp";
 
         public override void OnAddedToEntity()
         {
@@ -65,7 +65,7 @@ namespace PitHero.ECS.Components
             var currentDirection = _tileMover.CurrentDirection ?? _lastDirection;
             
             // Only change animation if direction has changed
-            if (currentDirection != _lastDirection)
+            if (currentDirection != _lastDirection && currentDirection.HasValue)
             {
                 _lastDirection = currentDirection;
                 UpdateAnimationForDirection(currentDirection.Value);
@@ -90,8 +90,15 @@ namespace PitHero.ECS.Components
                 _ => ANIM_DOWN // Default fallback
             };
 
+            // Determine desired flip based on direction (all left-ish directions flip)
+            bool shouldFlip = direction == Direction.Left || direction == Direction.UpLeft || direction == Direction.DownLeft;
+            if (FlipX != shouldFlip)
+                SetFlipXAndAdjustLocalOffset(shouldFlip);
+
+            // If the animation itself is already active we can skip re-playing it
+            // but only after ensuring flip state above has been corrected.
             if (IsAnimationActive(animationName))
-                return; // Already playing this animation
+                return;
 
             // Only try to play if we have animations loaded
             if (Animations != null && Animations.ContainsKey(animationName))
