@@ -187,7 +187,7 @@ namespace PitHero.ECS.Scenes
             var heroPantsAnimator = hero.AddComponent(new HeroPantsAnimationComponent());
             heroPantsAnimator.SetRenderLayer(GameConfig.RenderLayerHeroPants);
             heroPantsAnimator.SetLocalOffset(offset);
-            heroPantsAnimator.SetColor(GameConfig.SKIN_SHADE_1);
+            //heroPantsAnimator.SetColor(GameConfig.SKIN_SHADE_1);
             
             // Shirt layer
             var heroShirtAnimator = hero.AddComponent(new HeroShirtAnimationComponent());
