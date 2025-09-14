@@ -2,8 +2,6 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Sprites;
-using Nez.Textures;
-using PitHero.Util;
 
 namespace PitHero.ECS.Components
 {
