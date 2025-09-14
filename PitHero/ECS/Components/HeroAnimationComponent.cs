@@ -7,25 +7,23 @@ using PitHero.Util;
 namespace PitHero.ECS.Components
 {
     /// <summary>
-    /// Manages hero sprite animations based on movement direction using the Actors.atlas
+    /// Abstract base class for hero sprite animations based on movement direction using the Actors.atlas
     /// </summary>
-    public class HeroAnimationComponent : SpriteAnimator, IUpdatable
+    public abstract class HeroAnimationComponent : SpriteAnimator, IUpdatable
     {
         private TileByTileMover _tileMover;
         private Direction? _lastDirection = Direction.Down; // Default to down
-        private const string DEFAULT_ANIMATION = "HeroWalkDown";
         
-        // Walking animation names that correspond to the atlas
-        private const string ANIM_DOWN = "HeroWalkDown";
-        private const string ANIM_LEFT = "HeroWalkRight";   //Flipped in code
-        private const string ANIM_RIGHT = "HeroWalkRight";
-        private const string ANIM_UP = "HeroWalkUp";
-        
-        // Jump animation names that correspond to the atlas
-        private const string JUMP_ANIM_DOWN = "HeroJumpDown";
-        private const string JUMP_ANIM_LEFT = "HeroJumpRight";  // Flipped in code
-        private const string JUMP_ANIM_RIGHT = "HeroJumpRight";
-        private const string JUMP_ANIM_UP = "HeroJumpUp";
+        // Abstract properties for animation names - each layer defines its own
+        protected abstract string DefaultAnimation { get; }
+        protected abstract string AnimDown { get; }
+        protected abstract string AnimLeft { get; }
+        protected abstract string AnimRight { get; }
+        protected abstract string AnimUp { get; }
+        protected abstract string JumpAnimDown { get; }
+        protected abstract string JumpAnimLeft { get; }
+        protected abstract string JumpAnimRight { get; }
+        protected abstract string JumpAnimUp { get; }
 
         public override void OnAddedToEntity()
         {
@@ -40,9 +38,9 @@ namespace PitHero.ECS.Components
                     AddAnimationsFromAtlas(actorsAtlas);
                     
                     // Start with default animation
-                    Play(DEFAULT_ANIMATION, LoopMode.Loop);
+                    Play(DefaultAnimation, LoopMode.Loop);
                     
-                    Debug.Log($"[HeroAnimationComponent] Loaded animations from Actors.atlas and started {DEFAULT_ANIMATION}");
+                    Debug.Log($"[HeroAnimationComponent] Loaded animations from Actors.atlas and started {DefaultAnimation}");
                 }
                 else
                 {
@@ -85,15 +83,15 @@ namespace PitHero.ECS.Components
         {
             string animationName = direction switch
             {
-                Direction.Up => ANIM_UP,
-                Direction.Down => ANIM_DOWN,
-                Direction.Left => ANIM_LEFT,
-                Direction.Right => ANIM_RIGHT,
-                Direction.UpLeft => ANIM_LEFT, // Use left for diagonal up-left
-                Direction.UpRight => ANIM_RIGHT, // Use right for diagonal up-right
-                Direction.DownLeft => ANIM_LEFT, // Use left for diagonal down-left
-                Direction.DownRight => ANIM_RIGHT, // Use right for diagonal down-right
-                _ => ANIM_DOWN // Default fallback
+                Direction.Up => AnimUp,
+                Direction.Down => AnimDown,
+                Direction.Left => AnimLeft,
+                Direction.Right => AnimRight,
+                Direction.UpLeft => AnimLeft, // Use left for diagonal up-left
+                Direction.UpRight => AnimRight, // Use right for diagonal up-right
+                Direction.DownLeft => AnimLeft, // Use left for diagonal down-left
+                Direction.DownRight => AnimRight, // Use right for diagonal down-right
+                _ => AnimDown // Default fallback
             };
 
             // Determine desired flip based on direction (all left-ish directions flip)
@@ -125,15 +123,15 @@ namespace PitHero.ECS.Components
         {
             return direction switch
             {
-                Direction.Up => JUMP_ANIM_UP,
-                Direction.Down => JUMP_ANIM_DOWN,
-                Direction.Left => JUMP_ANIM_LEFT,
-                Direction.Right => JUMP_ANIM_RIGHT,
-                Direction.UpLeft => JUMP_ANIM_LEFT, // Use left for diagonal up-left
-                Direction.UpRight => JUMP_ANIM_RIGHT, // Use right for diagonal up-right
-                Direction.DownLeft => JUMP_ANIM_LEFT, // Use left for diagonal down-left
-                Direction.DownRight => JUMP_ANIM_RIGHT, // Use right for diagonal down-right
-                _ => JUMP_ANIM_DOWN // Default fallback
+                Direction.Up => JumpAnimUp,
+                Direction.Down => JumpAnimDown,
+                Direction.Left => JumpAnimLeft,
+                Direction.Right => JumpAnimRight,
+                Direction.UpLeft => JumpAnimLeft, // Use left for diagonal up-left
+                Direction.UpRight => JumpAnimRight, // Use right for diagonal up-right
+                Direction.DownLeft => JumpAnimLeft, // Use left for diagonal down-left
+                Direction.DownRight => JumpAnimRight, // Use right for diagonal down-right
+                _ => JumpAnimDown // Default fallback
             };
         }
 
