@@ -20,38 +20,39 @@ namespace PitHero.Tests
             Assert.IsNotNull(heroAnimationType);
             Assert.IsTrue(heroAnimationType.IsSubclassOf(typeof(Nez.Sprites.SpriteAnimator)));
             
-            // Verify requirement: Component can be constructed
-            var component = new HeroAnimationComponent();
-            Assert.IsNotNull(component);
+            // Verify requirement: HeroAnimationComponent is abstract (base class for paperdoll layers)
+            Assert.IsTrue(heroAnimationType.IsAbstract, "HeroAnimationComponent should be abstract");
             
-            // Verify requirement: All required animation names are defined
-            var requiredAnimations = new[] 
+            // Verify requirement: All paperdoll components exist and can be constructed
+            var paperdollComponents = new[]
             {
-                "BlueHairHeroDown",
-                "BlueHairHeroLeft", 
-                "BlueHairHeroRight",
-                "BlueHairHeroUp"
+                typeof(HeroHand2AnimationComponent),
+                typeof(HeroBodyAnimationComponent),
+                typeof(HeroPantsAnimationComponent),
+                typeof(HeroShirtAnimationComponent),
+                typeof(HeroHairAnimationComponent),
+                typeof(HeroHand1AnimationComponent)
             };
             
-            // Check that the component has constants for these animations
-            var componentType = typeof(HeroAnimationComponent);
-            var fields = componentType.GetFields(BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance);
-            
-            bool hasAnimationConstants = false;
-            foreach (var field in fields)
+            foreach (var componentType in paperdollComponents)
             {
-                if (field.IsLiteral && field.FieldType == typeof(string))
-                {
-                    var value = field.GetValue(null) as string;
-                    if (value != null && requiredAnimations.Contains(value))
-                    {
-                        hasAnimationConstants = true;
-                        break;
-                    }
-                }
+                Assert.IsNotNull(componentType);
+                Assert.IsTrue(componentType.IsSubclassOf(typeof(HeroAnimationComponent)), 
+                    $"{componentType.Name} should inherit from HeroAnimationComponent");
+                
+                // Should be able to construct each concrete component
+                var component = System.Activator.CreateInstance(componentType);
+                Assert.IsNotNull(component);
             }
             
-            Assert.IsTrue(hasAnimationConstants, "Component should have animation name constants");
+            // Verify that the abstract class has the required properties
+            var requiredProperties = new[] { "DefaultAnimation", "AnimDown", "AnimLeft", "AnimRight", "AnimUp", "JumpAnimDown", "JumpAnimLeft", "JumpAnimRight", "JumpAnimUp" };
+            foreach (var propertyName in requiredProperties)
+            {
+                var property = heroAnimationType.GetProperty(propertyName, BindingFlags.NonPublic | BindingFlags.Instance);
+                Assert.IsNotNull(property, $"HeroAnimationComponent should have {propertyName} property");
+                Assert.IsTrue(property.GetMethod.IsAbstract, $"{propertyName} getter should be abstract");
+            }
         }
 
         [TestMethod]
@@ -106,9 +107,9 @@ namespace PitHero.Tests
             
             try
             {
-                // Add components in the same order as the actual game
+                // Add components in the same order as the actual game - now using paperdoll layers
                 var tileMover = heroEntity.AddComponent(new TileByTileMover());
-                var heroAnimation = heroEntity.AddComponent(new HeroAnimationComponent());
+                var heroAnimation = heroEntity.AddComponent(new HeroBodyAnimationComponent()); // Use concrete implementation for testing
                 
                 // Verify both components are present and properly integrated
                 Assert.IsNotNull(tileMover);
@@ -128,31 +129,32 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void Implementation_Verification_DefaultAnimation_ShouldBeBlueHairHeroDown()
+        public void Implementation_Verification_DefaultAnimation_ShouldUsePaperdollAnimations()
         {
-            // Verify requirement: Starting animation is always "BlueHairHeroDown"
-            // This verifies the default animation constant exists and is correct
-            var heroAnimation = new HeroAnimationComponent();
-            
-            // Check that the default is down-facing through reflection or structure
-            var componentType = typeof(HeroAnimationComponent);
-            var fields = componentType.GetFields(BindingFlags.NonPublic | BindingFlags.Static);
-            
-            bool hasDefaultDownAnimation = false;
-            foreach (var field in fields)
+            // Verify requirement: Each paperdoll layer has correct default animations
+            var paperdollTests = new[]
             {
-                if (field.IsLiteral && field.FieldType == typeof(string))
-                {
-                    var value = field.GetValue(null) as string;
-                    if (value == "BlueHairHeroDown" && field.Name.Contains("DEFAULT"))
-                    {
-                        hasDefaultDownAnimation = true;
-                        break;
-                    }
-                }
-            }
+                (typeof(HeroBodyAnimationComponent), "HeroBodyWalkDown"),
+                (typeof(HeroHand1AnimationComponent), "HeroHand1WalkDown"),
+                (typeof(HeroHand2AnimationComponent), "HeroHand2WalkDown"),
+                (typeof(HeroHairAnimationComponent), "HeroHairWalkDown"),
+                (typeof(HeroPantsAnimationComponent), "HeroPantsWalkDown"),
+                (typeof(HeroShirtAnimationComponent), "HeroShirtWalkDown")
+            };
             
-            Assert.IsTrue(hasDefaultDownAnimation, "Should have BlueHairHeroDown as default animation");
+            foreach (var (componentType, expectedDefaultAnimation) in paperdollTests)
+            {
+                var component = System.Activator.CreateInstance(componentType) as HeroAnimationComponent;
+                Assert.IsNotNull(component);
+                
+                // Use reflection to check the DefaultAnimation property value
+                var defaultAnimationProperty = componentType.GetProperty("DefaultAnimation", BindingFlags.NonPublic | BindingFlags.Instance);
+                Assert.IsNotNull(defaultAnimationProperty);
+                
+                var defaultAnimation = defaultAnimationProperty.GetValue(component) as string;
+                Assert.AreEqual(expectedDefaultAnimation, defaultAnimation, 
+                    $"{componentType.Name} should have {expectedDefaultAnimation} as default animation");
+            }
         }
 
         [TestMethod]
