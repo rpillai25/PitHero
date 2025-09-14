@@ -13,7 +13,7 @@ namespace PitHero.ECS.Components
     {
         private TileByTileMover _tileMover;
         private Direction? _lastDirection = Direction.Down; // Default to down
-        
+
         // Abstract properties for animation names - each layer defines its own
         protected abstract string DefaultAnimation { get; }
         protected abstract string AnimDown { get; }
@@ -24,6 +24,20 @@ namespace PitHero.ECS.Components
         protected abstract string JumpAnimLeft { get; }
         protected abstract string JumpAnimRight { get; }
         protected abstract string JumpAnimUp { get; }
+
+
+        private Color _componentColor = Color.White;
+        /// <summary>Gets the tint color for this component (default: White)</summary>
+        public Color ComponentColor
+        {
+            get => _componentColor;
+            set { _componentColor = value; }
+        }
+
+        public HeroAnimationComponent(Color color)
+        {
+            _componentColor = color;
+        }
 
         public override void OnAddedToEntity()
         {
@@ -55,6 +69,8 @@ namespace PitHero.ECS.Components
             
             // Get reference to TileByTileMover
             _tileMover = Entity.GetComponent<TileByTileMover>();
+
+            this.SetColor(ComponentColor);
         }
 
         public new void Update()

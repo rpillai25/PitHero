@@ -11,6 +11,10 @@ namespace PitHero.ECS.Components
     /// </summary>
     public class HeroHand2AnimationComponent : HeroAnimationComponent
     {
+        public HeroHand2AnimationComponent(Color color) : base(color)
+        {
+        }
+
         protected override string DefaultAnimation => "HeroHand2WalkDown";
         protected override string AnimDown => "HeroHand2WalkDown";
         protected override string AnimLeft => "HeroHand2WalkRight";   // Flipped in code

@@ -171,46 +171,41 @@ namespace PitHero.ECS.Scenes
             // Add all paperdoll layer animators in the correct order (Hand2 to Hand1)
             var offset = new Vector2(0, -GameConfig.TileSize / 2); // Offset so feet are at entity position
             
-            // Hand2 layer (top-most paperdoll layer)
-            var heroHand2Animator = hero.AddComponent(new HeroHand2AnimationComponent());
-            heroHand2Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand2);
-            heroHand2Animator.SetLocalOffset(offset);
-            heroHand2Animator.SetColor(GameConfig.SKIN_SHADE_1);
-            
             // Body layer
-            var heroBodyAnimator = hero.AddComponent(new HeroBodyAnimationComponent());
+            var heroBodyAnimator = hero.AddComponent(new HeroBodyAnimationComponent(GameConfig.SkinColors.RandomItem()));
             heroBodyAnimator.SetRenderLayer(GameConfig.RenderLayerHeroBody);
             heroBodyAnimator.SetLocalOffset(offset);
-            heroBodyAnimator.SetColor(GameConfig.SKIN_SHADE_1);
-            
+
+            // Hand2 layer (top-most paperdoll layer)
+            var heroHand2Animator = hero.AddComponent(new HeroHand2AnimationComponent(heroBodyAnimator.ComponentColor));
+            heroHand2Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand2);
+            heroHand2Animator.SetLocalOffset(offset);
+            heroHand2Animator.ComponentColor = heroBodyAnimator.ComponentColor; // Sync color with body
+
             // Pants layer
-            var heroPantsAnimator = hero.AddComponent(new HeroPantsAnimationComponent());
+            var heroPantsAnimator = hero.AddComponent(new HeroPantsAnimationComponent(Color.White));
             heroPantsAnimator.SetRenderLayer(GameConfig.RenderLayerHeroPants);
             heroPantsAnimator.SetLocalOffset(offset);
-            //heroPantsAnimator.SetColor(GameConfig.SKIN_SHADE_1);
             
             // Shirt layer
-            var heroShirtAnimator = hero.AddComponent(new HeroShirtAnimationComponent());
+            var heroShirtAnimator = hero.AddComponent(new HeroShirtAnimationComponent(GameConfig.ShirtColors.RandomItem()));
             heroShirtAnimator.SetRenderLayer(GameConfig.RenderLayerHeroShirt);
             heroShirtAnimator.SetLocalOffset(offset);
-            heroShirtAnimator.SetColor(GameConfig.SKIN_SHADE_1);
             
             // Hair layer
-            var heroHairAnimator = hero.AddComponent(new HeroHairAnimationComponent());
+            var heroHairAnimator = hero.AddComponent(new HeroHairAnimationComponent(GameConfig.HairColors.RandomItem()));
             heroHairAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHair);
             heroHairAnimator.SetLocalOffset(offset);
-            heroHairAnimator.SetColor(GameConfig.SKIN_SHADE_1);
             
             // Hand1 layer (bottom-most paperdoll layer)
-            var heroHand1Animator = hero.AddComponent(new HeroHand1AnimationComponent());
+            var heroHand1Animator = hero.AddComponent(new HeroHand1AnimationComponent(heroBodyAnimator.ComponentColor));
             heroHand1Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand1);
             heroHand1Animator.SetLocalOffset(offset);
-            heroHand1Animator.SetColor(GameConfig.SKIN_SHADE_1);
+            heroHand1Animator.ComponentColor = heroBodyAnimator.ComponentColor; // Sync color with body
 
             // Add jump animation component for pit jumping animations
-            var heroJumpAnimator = hero.AddComponent(new HeroJumpComponent());
+            var heroJumpController = hero.AddComponent(new HeroJumpComponent());
             var collider = hero.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));
-            heroJumpAnimator.SetColor(GameConfig.SKIN_SHADE_1);
 
             Flags.SetFlag(ref collider.CollidesWithLayers, GameConfig.PhysicsTileMapLayer);
             Flags.SetFlag(ref collider.CollidesWithLayers, GameConfig.PhysicsPitLayer);

@@ -11,6 +11,10 @@ namespace PitHero.ECS.Components
     /// </summary>
     public class HeroShirtAnimationComponent : HeroAnimationComponent
     {
+        public HeroShirtAnimationComponent(Color color) : base(color)
+        {
+        }
+
         protected override string DefaultAnimation => "HeroShirtWalkDown";
         protected override string AnimDown => "HeroShirtWalkDown";
         protected override string AnimLeft => "HeroShirtWalkRight";   // Flipped in code
@@ -20,5 +24,6 @@ namespace PitHero.ECS.Components
         protected override string JumpAnimLeft => "HeroShirtJumpRight";  // Flipped in code
         protected override string JumpAnimRight => "HeroShirtJumpRight";
         protected override string JumpAnimUp => "HeroShirtJumpUp";
+
     }
 }
