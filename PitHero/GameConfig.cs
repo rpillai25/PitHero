@@ -98,7 +98,13 @@ namespace PitHero
 
         public const int RenderLayerHero = 5; // Hero always on top of other actors
         public const int RenderLayerFogOfWar = 40;   // Fog of war layer above most things
-        public const int RenderLayerActors = 50; // Actors and entities layer
+        public const int RenderLayerHeroHand2 = 59;
+        public const int RenderLayerHeroBody = 58;
+        public const int RenderLayerHeroPants = 57;
+        public const int RenderLayerHeroShirt = 56;
+        public const int RenderLayerHeroHair = 55;
+        public const int RenderLayerHeroHand1 = 54;
+        public const int RenderLayerActors = 60; // Actors and entities layer
         public const int RenderLayerBase = 100; // Background layer
 
         public const int RenderLayerUI = 998; // UI layer (always on top)
