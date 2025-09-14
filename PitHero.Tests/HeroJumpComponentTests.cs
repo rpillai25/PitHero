@@ -16,9 +16,14 @@ namespace PitHero.Tests
         [TestInitialize]
         public void Setup()
         {
-            // Create a test entity with required components
+            // Create a test entity with required components - add all paperdoll layers for jump component
             _heroEntity = new Entity("test-hero");
-            _heroAnimation = _heroEntity.AddComponent(new HeroAnimationComponent());
+            _heroAnimation = _heroEntity.AddComponent(new HeroBodyAnimationComponent()); // Keep reference to one for tests
+            _heroEntity.AddComponent(new HeroHand2AnimationComponent());
+            _heroEntity.AddComponent(new HeroPantsAnimationComponent());
+            _heroEntity.AddComponent(new HeroShirtAnimationComponent());
+            _heroEntity.AddComponent(new HeroHairAnimationComponent());
+            _heroEntity.AddComponent(new HeroHand1AnimationComponent());
             _jumpComponent = _heroEntity.AddComponent(new HeroJumpComponent());
         }
 
