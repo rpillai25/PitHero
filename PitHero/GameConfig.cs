@@ -118,6 +118,14 @@ namespace PitHero
         // Entity names
         public const string EntityHero = "Hero";
 
+        // Treasure Colors
+        public static readonly Color TREASURE_SHADE_1 = new Color(140, 91, 62); //Brown
+        public static readonly Color TREASURE_SHADE_2 = new Color(44, 94, 26);  //Green
+        public static readonly Color TREASURE_SHADE_3 = new Color(43, 78, 149); //Blue
+        public static readonly Color TREASURE_SHADE_4 = new Color(144, 82, 188); //Purple
+        public static readonly Color TREASURE_SHADE_5 = new Color(203, 129, 22); //Gold
+
+        //Hero Paperdoll Colors
         public static readonly Color SKIN_SHADE_1 = new Color(251, 200, 178); //Applies to body and hands
         public static readonly Color SKIN_SHADE_2 = new Color(140, 91, 62);
         public static readonly Color SKIN_SHADE_3 = new Color(89, 207, 147);

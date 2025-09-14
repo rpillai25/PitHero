@@ -880,8 +880,23 @@ hero_walk_up_7
 hero_walk_up_8
 	792,411,32,40
 	0.5,0.5
+treasure_base_closed
+	0,470,32,32
+	0.5,0.5
+treasure_base_open
+	33,470,32,32
+	0.5,0.5
+treasure_wood_closed
+	66,470,32,32
+	0.5,0.5
+treasure_wood_open
+	99,470,32,32
+	0.5,0.5
+wall
+	132,470,32,32
+	0.5,0.5
 HeroShadow
-	0,470,27,5
+	165,470,27,5
 	0.5,0.5
 
 HeroBodyJumpDown
@@ -1010,3 +1025,6 @@ HeroWalkRight
 HeroWalkUp
 	8
 	286,287,288,289,290,291,292,293
+Things
+	8
+	294,295,296,297,298
