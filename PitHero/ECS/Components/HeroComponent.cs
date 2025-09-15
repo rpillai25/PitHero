@@ -393,7 +393,8 @@ namespace PitHero.ECS.Components
             foreach (var chest in chestEntities)
             {
                 var chestTile = GetTileCoordinates(chest.Transform.Position, GameConfig.TileSize);
-                if (IsAdjacent(heroTile, chestTile))
+                var treasureComponent = chest.GetComponent<TreasureComponent>();
+                if (IsAdjacent(heroTile, chestTile) && treasureComponent.State == TreasureComponent.TreasureState.CLOSED)
                 {
                     return true;
                 }
