@@ -35,12 +35,12 @@ namespace PitHero.AI
                 return true; // Complete as failed
             }
 
-            // Change the wizard orb tint to purple to indicate activation
+            // Change the wizard orb tint to red to indicate activation
             var renderer = wizardOrbEntity.GetComponent<Nez.RenderableComponent>();
             if (renderer != null)
             {
-                renderer.Color = Color.Purple;
-                Debug.Log("[ActivateWizardOrb] Changed wizard orb tint to purple");
+                renderer.Color = Color.Red;
+                Debug.Log("[ActivateWizardOrb] Changed wizard orb tint to red");
             }
             else
             {
