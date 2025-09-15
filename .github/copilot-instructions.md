@@ -42,6 +42,7 @@
   - For random numbers user Nez.Random instead of System.Random
   - Game1 should inherit from `Nez.Core`, not override Draw() or Update() methods
   - Scenes should inherit from `Nez.Scene` and override Initialize() for setup
+  - Use PausableSpriteAnimator instead of SpriteAnimator
   - Do not throttle entity update rate unless explicitly asked to.  They should update every frame.  If we want to slow down their speed, use Nez.Time appropriately
   - Use Nez.Time class instead of custom GameTime management.  Use Time.DeltaTime for all timing calculations (movement, animations, etc), so that this properly scales with timeScale.
   - To record total game time played, use Time.TotalTime or Time.UnscaledDeltaTime

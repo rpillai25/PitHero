@@ -7,7 +7,7 @@ namespace PitHero.ECS.Components
     /// <summary>
     /// Abstract base class for hero sprite animations based on movement direction using the Actors.atlas
     /// </summary>
-    public abstract class HeroAnimationComponent : SpriteAnimator, IUpdatable
+    public abstract class HeroAnimationComponent : PausableSpriteAnimator, IUpdatable
     {
         private TileByTileMover _tileMover;
         private Direction? _lastDirection = Direction.Down; // Default to down
