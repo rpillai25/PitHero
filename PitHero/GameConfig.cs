@@ -104,6 +104,8 @@ namespace PitHero
         public const int RenderLayerHeroBody = 8;
         public const int RenderLayerHeroHand2 = 9;
         public const int RenderLayerFogOfWar = 40;   // Fog of war layer above most things, except hero
+        public const int RenderLayerTreasureWood = 59;
+        public const int RenderLayerTreasureBase = 60;
         public const int RenderLayerActors = 60; // Actors and entities layer
         public const int RenderLayerBase = 100; // Background layer
 
