@@ -134,10 +134,6 @@ namespace PitHero.AI
             return goal;
         }
 
-
-
-
-
         #region State Methods
 
         void Idle_Enter()
@@ -444,6 +440,11 @@ namespace PitHero.AI
 
                 case GoapConstants.AttackMonster:
                     // Attack happens in-place. No movement target required.
+                    _targetLocationType = LocationType.None;
+                    return null;
+
+                case GoapConstants.OpenChest:
+                    // Chest opening happens when already adjacent by precondition; no movement required.
                     _targetLocationType = LocationType.None;
                     return null;
 

@@ -1,9 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
-using PitHero.ECS.Components;
 using PitHero.AI.Interfaces;
-using System.Collections.Generic;
-using System.Linq;
+using PitHero.ECS.Components;
 
 namespace PitHero.AI
 {
@@ -26,14 +24,14 @@ namespace PitHero.AI
         {
             Debug.Log("[OpenChest] Starting chest opening");
 
-            // Find the nearest adjacent chest
-            var chestEntity = FindNearestAdjacentChest(hero);
+            // Find the nearest adjacent CLOSED chest
+            var chestEntity = FindNearestAdjacentClosedChest(hero);
             if (chestEntity == null)
             {
-                Debug.Warn("[OpenChest] Could not find adjacent chest");
+                Debug.Warn("[OpenChest] Could not find adjacent CLOSED chest");
                 // Recalculate if there are still chests adjacent to hero
                 hero.AdjacentToChest = hero.CheckAdjacentToChest();
-                return true; // Complete as failed
+                return true; // Complete as no-op
             }
 
             // Face the chest
@@ -73,9 +71,9 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Find the nearest adjacent chest to the hero
+        /// Find the nearest adjacent CLOSED chest to the hero (cardinal adjacency)
         /// </summary>
-        private Entity FindNearestAdjacentChest(HeroComponent hero)
+        private Entity FindNearestAdjacentClosedChest(HeroComponent hero)
         {
             var heroTile = GetCurrentTilePosition(hero);
             var scene = Core.Scene;
@@ -85,10 +83,15 @@ namespace PitHero.AI
             Entity nearestChest = null;
             float nearestDistance = float.MaxValue;
 
-            foreach (var chest in chestEntities)
+            for (int i = 0; i < chestEntities.Count; i++)
             {
+                var chest = chestEntities[i];
+                var treasureComponent = chest.GetComponent<TreasureComponent>();
+                if (treasureComponent == null || treasureComponent.State != TreasureComponent.TreasureState.CLOSED)
+                    continue;
+
                 var chestTile = GetTileCoordinates(chest.Transform.Position);
-                if (IsAdjacent(heroTile, chestTile))
+                if (IsCardinalAdjacent(heroTile, chestTile))
                 {
                     float distance = Vector2.Distance(hero.Entity.Transform.Position, chest.Transform.Position);
                     if (distance < nearestDistance)
@@ -107,19 +110,18 @@ namespace PitHero.AI
         /// </summary>
         private void FaceTarget(HeroComponent hero, Vector2 targetPosition)
         {
-            // For now, just log the direction. Could extend to update sprite direction later
             var direction = targetPosition - hero.Entity.Transform.Position;
             Debug.Log($"[OpenChest] Hero facing direction: ({direction.X},{direction.Y})");
         }
 
         /// <summary>
-        /// Check if two tile positions are adjacent (8-directional adjacency)
+        /// Check if two tile positions are adjacent in cardinal directions (N/S/E/W only)
         /// </summary>
-        private bool IsAdjacent(Point tile1, Point tile2)
+        private bool IsCardinalAdjacent(Point tile1, Point tile2)
         {
-            int deltaX = System.Math.Abs(tile1.X - tile2.X);
-            int deltaY = System.Math.Abs(tile1.Y - tile2.Y);
-            return deltaX <= 1 && deltaY <= 1 && (deltaX + deltaY > 0);
+            int dx = System.Math.Abs(tile1.X - tile2.X);
+            int dy = System.Math.Abs(tile1.Y - tile2.Y);
+            return (dx + dy) == 1;
         }
 
         /// <summary>
