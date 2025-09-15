@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using Nez.Sprites;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
 using PitHero.Util;
@@ -16,6 +17,7 @@ namespace PitHero
         private Scene _scene;
         private HashSet<Point> _collisionTiles;
         private ITiledMapService _tiledMapService;
+        private SpriteAtlas _actorsAtlas;
 
         public PitGenerator(Scene scene, ITiledMapService tiledMapService = null, IPitWidthManager pitWidthManager = null)
         {
@@ -31,12 +33,27 @@ namespace PitHero
                 // Core.Services may not be available during unit testing
                 _tiledMapService = tiledMapService;
             }
+
+            LoadAtlas();
         }
 
         public PitGenerator(Scene scene)
         {
             _scene = scene;
             _collisionTiles = new HashSet<Point>(64);
+            LoadAtlas();
+        }
+
+        private void LoadAtlas()
+        {
+            try
+            {
+                _actorsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.Warn($"[PitGenerator] Failed to load Actors.atlas: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -534,14 +551,35 @@ namespace PitHero
                 entity.SetTag(tag);
                 entity.SetPosition(worldPos);
 
-                var renderer = entity.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
-                renderer.Color = color;
-                renderer.SetRenderLayer(GameConfig.RenderLayerActors);
-
-                var collider = entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
-
                 if (tag == GameConfig.TAG_OBSTACLE)
                 {
+                    // Use actual wall sprite for obstacles
+                    if (_actorsAtlas != null)
+                    {
+                        var wallSprite = _actorsAtlas.GetSprite("wall");
+                        if (wallSprite != null)
+                        {
+                            var renderer = entity.AddComponent(new SpriteRenderer(wallSprite));
+                            renderer.SetRenderLayer(GameConfig.RenderLayerActors);
+                        }
+                        else
+                        {
+                            Debug.Warn("[PitGenerator] Wall sprite not found in atlas, using prototype renderer");
+                            var renderer = entity.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
+                            renderer.Color = color;
+                            renderer.SetRenderLayer(GameConfig.RenderLayerActors);
+                        }
+                    }
+                    else
+                    {
+                        Debug.Warn("[PitGenerator] Atlas not loaded, using prototype renderer for wall");
+                        var renderer = entity.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
+                        renderer.Color = color;
+                        renderer.SetRenderLayer(GameConfig.RenderLayerActors);
+                    }
+
+                    var collider = entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
+
                     // Obstacles block both physics and pathfinding
                     // Find hero entity to add wall to its pathfinding graph
                     var hero = _scene.FindEntity("hero");
@@ -564,9 +602,60 @@ namespace PitHero
                     }
                     // Leave collider defaults so hero collides with obstacle (physics layer 0)
                 }
+                else if (tag == GameConfig.TAG_TREASURE)
+                {
+                    // Use TreasureComponent for treasure chests
+                    var pitWidthManager = Core.Services?.GetService<PitWidthManager>();
+                    int currentPitLevel = pitWidthManager?.CurrentPitLevel ?? 1;
+                    
+                    var treasureComponent = entity.AddComponent(new TreasureComponent());
+                    treasureComponent.Level = TreasureComponent.DetermineTreasureLevel(currentPitLevel);
+
+                    var collider = entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
+                    collider.IsTrigger = true;
+                    Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
+
+                    Debug.Log($"[PitGenerator] Created treasure level {treasureComponent.Level} at tile ({tilePos.X},{tilePos.Y})");
+                }
+                else if (tag == GameConfig.TAG_WIZARD_ORB)
+                {
+                    // Use actual wizard orb sprite
+                    if (_actorsAtlas != null)
+                    {
+                        var wizardOrbSprite = _actorsAtlas.GetSprite("wizard_orb");
+                        if (wizardOrbSprite != null)
+                        {
+                            var renderer = entity.AddComponent(new SpriteRenderer(wizardOrbSprite));
+                            renderer.SetRenderLayer(GameConfig.RenderLayerActors);
+                        }
+                        else
+                        {
+                            Debug.Warn("[PitGenerator] Wizard orb sprite not found in atlas, using prototype renderer");
+                            var renderer = entity.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
+                            renderer.Color = color;
+                            renderer.SetRenderLayer(GameConfig.RenderLayerActors);
+                        }
+                    }
+                    else
+                    {
+                        Debug.Warn("[PitGenerator] Atlas not loaded, using prototype renderer for wizard orb");
+                        var renderer = entity.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
+                        renderer.Color = color;
+                        renderer.SetRenderLayer(GameConfig.RenderLayerActors);
+                    }
+
+                    var collider = entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
+                    collider.IsTrigger = true;
+                    Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
+                }
                 else
                 {
-                    // Non-obstacles should NOT block movement. Make them triggers and put them on a layer the hero doesn't collide with.
+                    // Use prototype renderer for other entities (monsters, etc.)
+                    var renderer = entity.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
+                    renderer.Color = color;
+                    renderer.SetRenderLayer(GameConfig.RenderLayerActors);
+
+                    var collider = entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
                     collider.IsTrigger = true;
                     Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
                 }

@@ -39,9 +39,18 @@ namespace PitHero.AI
             // Face the chest
             FaceTarget(hero, chestEntity.Transform.Position);
 
-            // Open the chest (simulate by removing from scene)
-            chestEntity.Destroy();
-            Debug.Log("[OpenChest] Chest opened and removed from scene");
+            // Open the chest by changing its state instead of removing it
+            var treasureComponent = chestEntity.GetComponent<TreasureComponent>();
+            if (treasureComponent != null)
+            {
+                treasureComponent.State = TreasureComponent.TreasureState.OPEN;
+                Debug.Log("[OpenChest] Chest state changed to OPEN");
+            }
+            else
+            {
+                Debug.Warn("[OpenChest] Chest entity does not have TreasureComponent, falling back to removal");
+                chestEntity.Destroy();
+            }
 
             // Recalculate if there are still chests adjacent to hero
             hero.AdjacentToChest = hero.CheckAdjacentToChest();
