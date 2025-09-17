@@ -19,7 +19,7 @@ namespace PitHero.Tests
             // Create a test entity with both components
             _heroEntity = new Entity("test-hero");
             _tileMover = _heroEntity.AddComponent(new TileByTileMover());
-            _heroAnimation = _heroEntity.AddComponent(new HeroBodyAnimationComponent()); // Use concrete implementation for testing
+            _heroAnimation = _heroEntity.AddComponent(new HeroBodyAnimationComponent(Color.White)); // Use concrete implementation for testing
         }
 
         [TestCleanup]
@@ -32,7 +32,7 @@ namespace PitHero.Tests
         public void HeroAnimationComponent_Construction_ShouldNotThrow()
         {
             // Test that the component can be constructed without throwing
-            var component = new HeroBodyAnimationComponent(); // Use concrete implementation
+            var component = new HeroBodyAnimationComponent(Color.White); // Use concrete implementation
             Assert.IsNotNull(component);
         }
 

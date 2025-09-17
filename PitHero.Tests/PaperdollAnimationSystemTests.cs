@@ -22,12 +22,12 @@ namespace PitHero.Tests
             
             _paperdollLayers = new List<HeroAnimationComponent>
             {
-                _heroEntity.AddComponent(new HeroHand2AnimationComponent()),
-                _heroEntity.AddComponent(new HeroBodyAnimationComponent()),
-                _heroEntity.AddComponent(new HeroPantsAnimationComponent()),
-                _heroEntity.AddComponent(new HeroShirtAnimationComponent()),
-                _heroEntity.AddComponent(new HeroHairAnimationComponent()),
-                _heroEntity.AddComponent(new HeroHand1AnimationComponent())
+                _heroEntity.AddComponent(new HeroHand2AnimationComponent(Color.White)),
+                _heroEntity.AddComponent(new HeroBodyAnimationComponent(Color.White)),
+                _heroEntity.AddComponent(new HeroPantsAnimationComponent(Color.White)),
+                _heroEntity.AddComponent(new HeroShirtAnimationComponent(Color.White)),
+                _heroEntity.AddComponent(new HeroHairAnimationComponent(Color.White)),
+                _heroEntity.AddComponent(new HeroHand1AnimationComponent(Color.White))
             };
             
             _heroEntity.AddComponent(new TileByTileMover());

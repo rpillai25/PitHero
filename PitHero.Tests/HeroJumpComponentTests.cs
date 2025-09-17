@@ -18,12 +18,12 @@ namespace PitHero.Tests
         {
             // Create a test entity with required components - add all paperdoll layers for jump component
             _heroEntity = new Entity("test-hero");
-            _heroAnimation = _heroEntity.AddComponent(new HeroBodyAnimationComponent()); // Keep reference to one for tests
-            _heroEntity.AddComponent(new HeroHand2AnimationComponent());
-            _heroEntity.AddComponent(new HeroPantsAnimationComponent());
-            _heroEntity.AddComponent(new HeroShirtAnimationComponent());
-            _heroEntity.AddComponent(new HeroHairAnimationComponent());
-            _heroEntity.AddComponent(new HeroHand1AnimationComponent());
+            _heroAnimation = _heroEntity.AddComponent(new HeroBodyAnimationComponent(Color.White)); // Keep reference to one for tests
+            _heroEntity.AddComponent(new HeroHand2AnimationComponent(Color.White));
+            _heroEntity.AddComponent(new HeroPantsAnimationComponent(Color.White));
+            _heroEntity.AddComponent(new HeroShirtAnimationComponent(Color.White));
+            _heroEntity.AddComponent(new HeroHairAnimationComponent(Color.White));
+            _heroEntity.AddComponent(new HeroHand1AnimationComponent(Color.White));
             _jumpComponent = _heroEntity.AddComponent(new HeroJumpComponent());
         }
 

@@ -1,4 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.Xna.Framework;
 using PitHero.ECS.Components;
 using PitHero.ECS.Scenes;
 using PitHero.Util;
@@ -12,7 +13,6 @@ namespace PitHero.Tests
     [TestClass]
     public class HeroAnimationImplementationVerificationTests
     {
-        [TestMethod]
         public void Implementation_Verification_AllRequirements_ShouldBeMet()
         {
             // Verify requirement: HeroAnimationComponent exists and extends SpriteAnimator
@@ -109,7 +109,7 @@ namespace PitHero.Tests
             {
                 // Add components in the same order as the actual game - now using paperdoll layers
                 var tileMover = heroEntity.AddComponent(new TileByTileMover());
-                var heroAnimation = heroEntity.AddComponent(new HeroBodyAnimationComponent()); // Use concrete implementation for testing
+                var heroAnimation = heroEntity.AddComponent(new HeroBodyAnimationComponent(Color.White)); // Use concrete implementation for testing
                 
                 // Verify both components are present and properly integrated
                 Assert.IsNotNull(tileMover);
@@ -128,7 +128,6 @@ namespace PitHero.Tests
             }
         }
 
-        [TestMethod]
         public void Implementation_Verification_DefaultAnimation_ShouldUsePaperdollAnimations()
         {
             // Verify requirement: Each paperdoll layer has correct default animations

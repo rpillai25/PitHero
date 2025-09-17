@@ -87,7 +87,7 @@ namespace PitHero.Tests
             {
                 // Add the required components in the same order as MainGameScene - now using paperdoll layers
                 var tileMover = heroEntity.AddComponent(new TileByTileMover());
-                var heroAnimation = heroEntity.AddComponent(new HeroBodyAnimationComponent()); // Use concrete implementation for testing
+                var heroAnimation = heroEntity.AddComponent(new HeroBodyAnimationComponent(Color.White)); // Use concrete implementation for testing
                 
                 // Verify components are properly attached
                 Assert.IsNotNull(tileMover);

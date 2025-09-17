@@ -1,0 +1,1422 @@
+Final Fantasy V: Job System FAQ
+Version 1.1--28 March 2003
+by Dave Connoy
+connoy@lycos.com
+
+
++---------+
+| Preface |
++---------+
+I recently played through Final Fantasy V for the first time, and while I was
+satisfied with a couple of FAQs on the game, I didn't find enough discussion
+to satiate my interest in the mechanics of the game's job system.  Nor have I
+seen any real insight into how to use it efficiently, besides notes like
+"turn all your guys into black mages against this boss".  So I decided to
+just figure out how everything works myself, come up with some conclusions,
+and put it all here in hopes that someone else might find it useful.
+
+My idea with this FAQ is to provide detailed information on each of the jobs,
+their statistics, what they are able to equip, and the usefulness of their
+skills.  I hope I can make it all come together to make a sort of "gestalt"
+view of the job system that will help those who are new to the game not waste
+money on equipment they don't need, or waste their time learning useless
+jobs or skills that won't work together in the long run.  And heck, maybe
+even FF5 old-timers will learn something too.
+
+
++-------------------+
+| Table of Contents |
++-------------------+
+I. Version History
+II. Overview of the Job System
+III. Job Classes
+     Warrior Classes
+     Skill Classes
+     Caster Classes
+     Hybrid Classes
+     Special Classes
+IV. Putting It All Together
+V. Credits & Copyright Info
+
+
++--------------------+
+| I. Version History |
++--------------------+
+Version 1.1--28 March 2003
+     Grizzled FF5 veteran Alex Jackson (awj_in_japan@hotmail.com) has clued
+     me in to a bunch of FF5 subtleties, resulting in some improvements to a
+     few of the ability commentaries and a new segment on glitching the game.
+Version 1.0--17 February 2003
+     This may be the fist and last version, since I have a pretty good idea
+     of what I want to have in this FAQ.  Still, corrections and additions
+     are possible.
+
+
++--------------------------------+
+| II. Overview of the Job System |
++--------------------------------+
+The game has a manual, and many FAQs cover the basics.  You should know
+already that each job has its own command that comes with it, and you have a
+second "free" slot to put one of your learned command or support abilities
+in.  I'll cover how the "Mime" and "Bare" jobs are exceptions to this rule
+when I get to them.
+
+Getting the most out of the job system requires changing jobs very often.  AP
+costs to level up jobs are very low early on, but rise quickly as you gain
+levels.  So to earn abilities at a steady pace, each character should
+"bounce" rapidly between five or more jobs instead of mastering them one at a
+time.
+
+However, it's important to know that if you don't pay attention to what each
+job can equip, you will find yourself running out of money repeatedly because
+you are buying too many different types of helmets and armor.  If you have a
+character bouncing between Knight, White Mage, and Ninja, you'll need to
+carry three different helmets and three different armors in your inventory,
+just so that character has something to equip at all times.  If you try
+something like this, you'll be pulling your hair out at how much gear you
+have to buy and keep track of.
+
+So instead, think carefully about what equipment the jobs can use before
+assigning characters to them.  There are three major types of helmets and
+armor, and if we look at the jobs in terms of which types they can equip,
+there are five major job types.  The following section, which describes each
+job in detail, should help with this.
+
+I'll call the major armor and helmet types Heavy, Medium, and Light.  Here
+are a couple of charts laying out the different helmets and armor.  I'll
+include the basic Def and M.Def stats for each piece, but consult a
+comprehensive FAQ (I recommend Matt Hobbs & Dragon Fogel's walkthrough) to
+learn about any special abilities of each one.
+
+Helmets
+=======
+The Leather Cap, Plumed Hat, and Coronet can be used by all classes.
+
+Light          Def  MDef|Medium         Def  MDef|Heavy          Def  MDef
+------------------------+------------------------+------------------------
+HairOrnament   0    2   |Green Beret    3    2   |BronzeHelmet   2    2
+Lamia'sTiara   3    7   |RopeHeadband   6    2   |Iron Helmet    4    2
+Wizard Hat     4    2   |Tiger Mask     9    2   |MythrilHelmt   6    2
+Poet Cap       6    2   |Black Hood     12   2   |Gold Helmet    8    2
+Circlet        10   2   |                        |DiamondHelmt   10   2
+                        |                        |CrystalHelmt   13   2
+                        |                        |Genji Helmet   15   2
+                        |                        |Thornlet       20   5
+
+Armor
+=====
+LeatherArmor can be equipped by any class.
+
+Light          Def  MDef|Medium         Def  MDef|Heavy          Def  MDef
+------------------------+------------------------+------------------------
+Cotton Robe    2    4   |Bronze Plate   3    2   |Bronze Armor   4    2
+Silk Robe      4    6   |Kung-fu Suit   5    2   |Iron Armor     6    2
+Poet Robe      6    8   |Silver Plate   7    2   |MythrilArmor   9    2
+Earth Robe     8    10  |Ninja Suit     9    2   |Gold Armor     12   2
+LuminousRobe   11   12  |Power Tasuki   11   0   |DiamondArmor   15   2
+Black Robe     14   14  |DiamondPlate   13   2   |Crystalmail    20   2
+White Robe     14   14  |Mirage Vest    14   4   |Genji Armor    22   2
+                        |BlackCostume   17   2   |
+                        |Bonemail       30   5   |
+
++------------------+
+| III. Job Classes |
++------------------+
+Now that you know what I'm talking about when I refer to the different types
+of armor, I'll start a run-down of all the job classes.  Each entry will
+include the following:
+
+--The job's default command.
+
+--The innate abilities of the job.  These support abilities come "for free"
+to a character using the job, and don't need to be equipped.
+
+--What types of weapons the job can equip.  The "special weapons" are the
+Double Lance, Moonring, and Razor Ring.  Everything else should be self-
+explanatory.
+
+--The job's effects on the attributes of the character using it.
+     Strength determines the damage done by the character when he/she attacks.
+     Agility determines how fast the character's action comes up in battle.
+     Vitality determines how much HP the character has.
+     Magic Power determines the character's MP and the potency of his/her magic.
+
+Following all this will be a list of the job's abilities, with some
+commentary on their uses.
+
+When discussing the stats given by many of the EqX and magic abilities, I'll
+be putting attribute bonuses in [brackets].  These increases do not "stack"
+with the character's other bonuses; instead, the character will get the
+bracketed attribute increase only if he doesn't get a better one from his/her
+job or another equipped ability.
+
+
+Warrior Jobs
+============
+Warrior jobs ("tanks" for short) are meant to deal and take physical damage.
+They can equip the most damaging weapons, and because they have the most HP
+and can equip shields, they are the only type of job that can consistenly
+withstand attacks in the front row.  I recommend dedicating two of your
+characters to warrior jobs; have them learn the 2-handed ability as soon as
+possible so they can be the backbone of your damage-dealing and defense.
+Other useful tank abilities include the Samurai's !$toss and Swrdgrab, and
+the Sorcerer's !Sword.
+
+Warrior jobs can equip medium or heavy armor, but only heavy helmets.
+
+Knight
+------
+The Knight is the first warrior job you'll acquire.  Have any characters that
+are going to be tanks use it exclusively until they learn the 2-handed
+ability, which works well with the other warrior jobs.  After that, it's not
+of much use until the heavy swords (Flame Saber, Blizzard, Blood Sword,
+Defender, Excalibur, Ragnarok, and Brave Blade) show up late in the game.
+This class also has great synergy with the Sorcerer's Sword Magic ability.
+
+Job Command: Guard
+Innate Abilities: Cover
+Can equip: Daggers, Light Swords, Heavy Swords, Shields
+Stats:
+     Strength:    +23
+     Agility:    +1
+     Vitality:  +20
+     Magic Power:  -14
+Total AP to master: 690
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    10   Cover     Protect KO'd ally
+Hooray for clear description.  The Cover ability will actually cause the user
+to jump in front of any single-target physical attacks directed at an ally
+that is *near* being KO'd (stooping over), and take the damage instead.
+Usually a good thing, as long as your character with Cover isn't also the one
+with the ability to resurrect allies.
+
+2    30   !Guard    Defends against physical attack
+Guard is like Defend, but reduces physical attack damage to zero.  With a
+Knight in the party, you can "lock out" enemies that only use physical
+attacks by reducing the other characters' HP to critical levels.  The Knight
+will then jump in front of all the enemy's attacks, but take 0 damage from
+each one.  If you want to play really dirty, you can use this against just
+about *any* enemy by putting Berserk on it.  It even works against Shinryu!
+
+3    50   2-handed  Can hold sword/katana/axe in 2 hands for 2x effect
+This is probably the most all-around useful ability for a tank character.  It
+doubles the damage from any weapon that works with it, and the only
+limitation is that you can't use also a shield.  No big deal, since the huge
+amount of damage the character will be doing will end battles twice as fast,
+subjecting you to half as much damage anyway.
+
+4    100  EqShield  Can equip shield
+Most of the EqX abilities are a waste of an ability slot.  If you really need
+to have a shield (and I can't really see why that would be), just switch to a
+class that can use one in the first place.
+
+5    150  EqArmor   Can equip armor
+Very lame.  This only allows you to wear heavy armor, not helmets.  If you're
+hellbent on making a caster that can tank, give a Knight a magic ability
+instead of giving this to a caster.
+
+6    350  EqSword   Can equip sword
+This ability allows you to equip all types of swords (heavy and light) and
+gives a [+23] Strength bonus.  Unfortunately, there is no corresponding Vitality
+bonus, so the user will probably have to fight from the back row, making the
+whole exercise rather pointless.
+
+Lancer
+------
+Lancers are probably the least useful of the warrior jobs, since they work
+poorly with the other warrior abilities.  Spears don't work with 2-handed,
+and obviously, you can't use Sword Magic with them either.  The Jump ability
+might seem fantastic, but remember that your tanks are *meant* to take
+damage.  If your Lancer spends too much time in the air, that will just cause
+your more fragile characters take all the damage instead.
+
+Job Command: Jump
+Innate Abilities: None
+Can equip: Daggers, Spears, Shields
+Stats:
+     Strength:    +18
+     Agility:    +5
+     Vitality:  +15
+     Magic Power:  -12
+Total AP to master: 600
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    50   !Jump     Jumping attack; 2x stronger with spear attack
+The Lancer jumps high into the air, removing himself from combat for one
+round.  He then comes down on the targeted enemy, doing twice normal damage
+if equipped with a spear.  I outlined the limitations of this technique
+above, but it still has its uses.  In the battle with Minitaurus at the top
+of Fork Tower, change both of your characters into Lancers (with the Swrdgrab
+ability if you have it).  Put them in the back row and Jump repeatedly, and
+it's all over for him.  Also, against enemies that use missiles, a Jumping
+character will cause the missile to fly off course and do no damage.  Weird,
+but true.
+
+2    150  !Lance    Suck HP/MP
+A great idea, but it doesn't absorb enough HP or MP to make it worthwhile.
+If you use this at all, don't use it against undead enemies.
+
+3    400  EqLance   Can equip spear
+The character can equip a spear and gets [+18] to Strength.  As a weapon, the
+spear is only useful for enhancing the Jump attack, so either just use a
+Lancer or give a Bare character !Jump if you absolutely have to jump.
+
+Samurai
+-------
+Samurai are a very strong warrior class.  Their katanas do a lot of damage
+and are one of the only weapons that seem to get critical hits regularly.
+The job's only real limitation is that katanas don't work with Sword Magic.
+I'd highly recommend mastering this class, to pass the Swrdgrab ability on to
+the Bare and Mime jobs.
+
+Job Command: $toss
+Innate Abilities: Swrdgrab
+Can equip: Daggers, Katanas, Shields
+Stats:
+     Strength:    +19
+     Agility:    +2
+     Vitality:  +19
+     Magic Power:  -12
+Total AP to master: 820
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    10   !Sslap    Petrify enemy
+Sslap does as much damage as a regular attack, with a (very, very) small
+chance of petrifying the target.  It's probably not worth wasting an ability
+slot on unless you're using a Mime, in which case you could use this instead
+of !Fight and not really be losing anything.
+
+2    30   !$toss    Throw GP, damage enemy
+The Samurai hurls your money at all the enemy targets, doing heavy damage.
+Use it, don't abuse it.  At the very end of the game, when you've bought
+everything you're possibly going to buy, !$toss becomes the ultimate damage-
+dealing ability.  Use it sparingly until you have no more use for money,
+though, because you will literally be throwing it away.  Most of the damage I
+did in the final battle came from two characters using !$toss every turn.
+
+3    60   Swrdgrab  Catches attack
+Swrdgrab simply gives you an added chance to dodge an enemy physical attack
+completely, and works often enough to be a real life-saver.  It's a good
+second ability choice if (for whatever reason) 2-handed isn't an option.
+
+4    180  EqKatana  Can equip katana
+Yay, another EqX ability.  It also gives [+19] Strength.  Katanas have some
+advantages, but not enough to justify taking up an ability slot.
+
+5    540  !Fdraw    Route enemy
+I think they mean "rout" the enemy.  After taking a turn or so to charge up,
+the Samurai kills all enemies on-screen.  Sounds great, but due to its high
+AP cost, you probably won't learn this ability until late in the game, when
+most enemies are immune to it.  I didn't get much of a chance to play around
+with this, so if someone knows more about how it works (or maybe some neat
+ways to use it for AP or Exp farming), then send me an email.
+
+Berserker
+---------
+In case you didn't know, you have no control over a character in the
+Berserker class during a battle--he or she will attack a random enemy every
+time his or her turn comes up.  It may seem unattractive to have a character
+that you can't control, but consider that your tanks will probably not be
+doing much besides attacking anyway.  Unless you have some great command
+ability that you'd really like your tank(s) to use, the Berserker's immense
+attack and defense can at least be entertaining during random battles.
+
+Job Command: None
+Innate Abilities: None
+Can equip: Daggers, Axes, Shields
+Stats:
+     Strength:    +21
+     Agility:    -9
+     Vitality:  +25
+     Magic Power:  -23
+Total AP to master: 500
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    100  Berserk   Attack until enemy dies
+The Berserker does not actually have this ability as an innate, per se--he's
+just uncontrollable.  The "Berserk" ability not only makes a character attack
+every turn, it boosts his damage by 25-50%.  It's a decent alternative to
+2-handed if you want to equip a shield but also want extra damage.  Or, put
+this *and* 2-handed on a Bare or Mime for some serious brutality.
+
+2    400  EqAxe     Can equip axe
+The character can equip axes and gets [+21] Strength.  For what it's worth,
+you'll find an axe late in the game (Thor'sHammer) that is thrown instead of
+swung and does full damage from the back row.
+
+Sorcerer
+--------
+With its amazing Agility increase and ability to do severe elemental damage to
+single targets for very little MP, you'll find yourself using the Sorcerer a
+lot.  Try to have !Sword at whatever level of magic is currently available to
+you, so you can give it to another class and not lose any effectiveness.
+
+Equipping the !Sword ability gives [+14] to Strength and [+1] to Magic Power.
+
+Job Command: Sword
+Innate Abilities: Magiwall
+Can equip: Daggers, Light Swords, Shields
+Stats:
+     Strength:    +14
+     Agility:    +14
+     Vitality:  +14
+     Magic Power:  +1
+Total AP to master: 680
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    10   Magiwall  Auto-Mbarrier when KO'd
+The Sorcerer will automatically cast "Shell" on himself, at no MP cost, when
+he is near KO (stooping over).  Okay, but not worth an ability slot.
+
+2    20   !Sword    Use Sword Magic up to level 1
+The Sorcerer "charges" his sword with the magic chosen, and it is cast at
+whatever enemy he attacks (in addition to the attack damage).  Note that you
+only need to cast the Sword Magic once, and it will always go off whenever
+you attack thereafter.  This keeps MP costs down a lot.
+
+3    30   !Sword    Use Sword Magic up to level 2
+Level 2 Sword Magic only includes status ailments: Poison, Mute, and Sleep.
+It's actually quite a bargain to be able to stick enemies with this kind of
+stuff *and* get attack damage in too.  Keep these in mind for long battles.
+
+4    50   !Sword    Use Sword Magic up to level 3
+The second-level elemental damage spells (Fire2, Ice2, Bolt2).  Great against
+early-game bosses like Shiva and Biblos that are weak to an element.
+
+5    70   !Sword    Use Sword Magic up to level 4
+Drain, Break, and Bio.  Not all that useful, but Bio Sword will waste enemies
+weak to poison (what few there are).
+
+6    100  !Sword    Use Sword Magic up to level 5
+The third-level elemental damage spells (Fire3, Ice3, Bolt3).  These will
+instantly kill some enemies that are weak to the element, such as those
+annoying robots in the Pyramid.
+
+7    400  !Sword    Use Sword Magic up to level 6
+Holy, Flare, and Asper.  Asper is not that useful because the Sorcerer
+doesn't use much MP, but Holy and Flare Sword will wreck some of the end-game
+bosses like Twin Tania.  As expensive as it is, don't pass this level up.
+
+
+Skill Classes
+=============
+"Skill" classes (as I've dubbed them) tend to have useful commands and decent
+attack power, but are typically too weak to fight from the front row.
+Thankfully, most skill classes can equip long-range weapons that do full
+damage from the back row.  There are a lot of useful abilities amongst the
+skill classes, so pick at least one character to work with all of them so
+that you're never caught off-guard.
+
+Skill classes can equip only medium helmets and armor.
+
+Monk
+----
+The Monk has the highest HP of any class, and as a result can fight well from
+the front row even with only medium armor equipped.  Be aware that while the
+Monk seems incredibly powerful early on, his attack power will level off as
+the game goes on and the other fighting classes continue to upgrade their
+weapons.  !Blue makes a great second ability for a Monk--White Wind works
+well with the Monk's high HP, and most of the best Blue Magic spells
+(BlackShock, Blow Fish, Guardian, and White Wind to name a few) don't depend
+on the user's Magic Power rating in any way.  With its immense Strength and Vitality
+increases and powerful Counter innate, this is a class well worth mastering.
+
+Job Command: Kick
+The Monk does a flying kick that damages all enemies equally.  It generally
+does too little damage to clear out anything but the smallest weenies, but in
+the fight against the Dragon Grass in the Valley of Dragons, a Monk's Kick
+can consistently wipe out the Dragon Bulbs and keep them from troubling you.
+
+Innate Abilities: Barefist, Counter
+Can equip: None
+Stats:
+     Strength:    +26
+     Agility:    +1
+     Vitality:  +26
+     Magic Power:  -23
+Total AP to master: 700
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    15   !Store    Save power, 2x attack
+The Monk spends a turn charging up his chi and attacks for twice the damage
+shortly after.  Useful only if you're looking to really pour on melee damage.
+
+2    30   Barefist  Same attack power as Monk
+This allows you to do Monk-like damage while unarmed.  It is basically like
+an EqX ability, though this will allow you to attack with two punches if you
+leave both hands empty.  The character also gets [+26] to Strength.
+
+3    45   !Chkra    Restore HP/Poison/Dark
+This is a good early-game healing ability to help keep a character's HP high.
+It gets less useful as the game goes on since it doesn't heal a lot of HP and
+can only be cast on the user.
+
+4    60   Counter   Counter when attacked
+The Monk launches a counter-attack whenever he is attacked physically by an
+enemy.  This works well with the Knight's Guard and Cover abilities, and it's
+definitely worth mastering Monk to pass it on to Bare and Mime as an innate.
+
+5    100  HP+10%    Max HP 10% up
+A whopping 10% HP increase.  Can you feel the awesomeness?  I can't.
+
+6    150  HP+20%    Max HP 20% up
+I swear, these three are just in there to pad out the AP cost to master the
+class.
+
+7    300  HP+30%    Max HP 30% up
+There's nothing keeping you from using multiple copies of the same skill, so
+you could give this to a Mime three times to nearly double his HP!  Whee!  He
+won't be able to actually *do* anything, but hey, it's there.
+
+Thief
+-----
+The Thief has the best Agility in the game, and several useful abilities.
+!Steal can get you items before you're "supposed" to have them, if you're
+patient, and !Flee is great to have in dungeons with irritating enemies.
+This is an excellent class to master for its innates and Agility attribute.
+
+Job Command: Steal
+Innate Abilities: Secret, Dash, Caution
+Can equip: Daggers, Special Weapons
+Stats:
+     Strength:    +1
+     Agility:    +16
+     Vitality:  +2
+     Magic Power:  -6
+Total AP to master: 635
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    10   Secret    Can find "hidden rooms"
+This ability will allow you to see secret passages while exploring.  Equip it
+as needed if you're in an area where you know there are hidden passages.
+
+2    20   !Flee     Escape quick; no good on some enemies
+Much faster and more consistent than holding the L/R buttons to run, so equip
+this as an ability in areas where there are enemies that are just too damned
+annoying to fight.
+
+3    30   Dash      Use Directional Key while holding the O button; 2x Agility
+This ability is actually more annoying than anything in the PSX version, as
+it turns the manageable and useful O-button dash into a hyper-fast sprint.
+
+4    50   !Steal    Steal monster treasure
+If there's something you really need to steal, change a character to a Thief
+rather than giving this ability to another class.  The Thief's higher Agility
+rating will increase your chances of successfully stealing.
+
+5    75   Caution   Protects against back attack
+Self-explanatory.  A good innate, but not worth using an ability slot on.
+
+6    150  !Mug      Attack and steal treasure
+An upgraded version of Steal that also does damage.
+
+7    300  Footwork  Same Agility as Thief
+A character equipped with Footwork gets [+16] Agility.  You're probably better
+off giving the Thief a good second ability than equipping this on another
+job.  Or, use a Bare or Mime, which will get the Agility bonus for free.
+
+Ninja
+-----
+The Ninja is almost as fast as the Thief, and can equip two weapons to boot.
+A good choice if you want damage output (from the back row if you use the
+Moonring and/or Razor Ring) and a few useful commands.  Also, unlike
+2-handed, 2-swords will get passed on to the Bare and Mime classes for free,
+since it's an innate.
+
+Job Command: Throw
+Innate Abilities: Firstatk, 2-swords
+Can equip: Daggers, Special Weapons
+Stats:
+     Strength:    +15
+     Agility:    +14
+     Vitality:  +3
+     Magic Power:  -10
+Total AP to master: 690
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    10   !Dustb    Escape quick; no good on some enemies
+Identical to the Thief's !Flee ability.
+
+2    30   !Twin     Def phys attack 2x
+The Ninja creates phantom images of himself that will absorb the next two
+physical attacks directed at him.  Having everyone use !Twin is an ideal way
+to withstand the attacks of Gilgame in the second world's "money cave".
+
+3    50   Firstatk  Raises % first attack
+You'll get pre-emptive attacks more often with this equipped.  Like Caution,
+it's not really worth an ability slot, but is welcome as an innate.
+
+4    150  !Throw    Throw/attack with weapon; use with Ninja/shuriken "throw"
+Man, that in-game description is a mess.  Anyway, throwing Shuriken and
+MagiShuriken does a lot of damage to single targets, and throwing "Skills"
+yields good elemental damage to one or all targets.  It's up to you whether
+this is worth the cost of buying the "ammo".
+
+5    450  2-swords  Hold weapon in each hand; Bow/Harp excluded
+Not as damage-effective as 2-handed, but almost all the weapons will work
+with this skill.  Give the Ninja two Double Lances for four attacks, or two
+Razor Rings (you'd have to steal one from a Belfagel) for back row damage.
+
+Hunter
+------
+This rather unassuming class has a few benefits.  As a weapon, bows are
+surprisingly powerful and can be used from the back row with no loss of
+damage.  !Critt can have interesting results, !Aim has its uses, and !Sshot
+is one of the uber abilities of the game.
+
+Job Command: Aim
+Innate Abilities: None
+Can equip: Daggers, Bows
+Stats:
+     Strength:    +16
+     Agility:    +12
+     Vitality:  +1
+     Magic Power:  -5
+Total AP to master: 600
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    15   !Critt    Call friends from the woods
+Pretty much all of the !Critt effects you will ever actually see will suck.
+Supposedly the effects get better as the user gains levels, but I'm sitting
+near the end at level 40 and the best I've ever seen is Nightingale, which
+restores a decent chunk of HP to all allies.
+
+2    45   !Aim      Raise accuracy
+An attack that (usually) never misses, !Aim actually has its uses against
+"evasive" enemies like the Ninjas in the Dimensional Castle.  Not something
+you'll want to equip all the time, but don't forget you have it.
+
+3    135  EqBow     Can equip bow
+This is probably the best EqX ability.  Bows are highly damaging, do full
+damage from the back row, and you'll get [+16] to Strength and [+12] to Agility
+when this ability is equipped.
+
+4    405  !Sshot    4x attack
+Four half-strength attacks, directed at random enemies, like the Offering in
+FF6.  As expected, a great ability and, along with !Sword, essential for
+beating Omega.
+
+Trainer
+-------
+Don't think you can get by without ever using a Trainer.  It's a vital class
+to take advantage of, as the !Cntrl command is the only way to get the best
+Blue Magics, and it can take even very powerful regular enemies out of a
+fight completely.  A Trainer can even hold his own in a fight, since whips
+can randomly paralyze enemies and do full damage from the back row.
+
+Job Command: Catch/Free
+Innate Abilities: None
+Can equip: Daggers, Whips
+Stats:
+     Strength:    +13
+     Agility:    +1
+     Vitality:  +8
+     Magic Power:  -3
+Total AP to master: 460
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    10   !Tame     Calm monster
+Basically has the effect of paralyzing the target for one or two turns.  Does
+not consistently work, so use !Cntrl instead if you want to take a monster
+out of a fight.
+
+2    50   !Cntrl    Control monster
+One of the most vital abilities in the game.  Try it out on everything--
+you'll be surprised at what you can control, and once you're controlling a
+monster, it'll stay under your control until it gets "woken up" by a hit with
+a physical attack.  The success rate is excellent--most enemies can be
+controlled after only one or two tries, even without the Coronet equipped--
+and it has a myriad of uses.  Obviously, you could use the monster's own
+attacks to wipe out all the enemies (just stick to magic, or you'll lose
+control).  Or, you could learn Blue Magic by having the monster cast it on a
+Blue Mage or someone with the Learning ability in your party.  Or, you can
+just keep the monster out of the fight by having it repeatedly use some
+rinky-dink ability, then gang up on it when all the other enemies are dead.
+This is a flexible second ability for just about any job.
+
+3    100  EqWhip    Can equip whip
+Along with EqBow, one of the more useful EqX abilities.  The user gets [+13]
+to Strength and [+1] to Agility, and whips' abilities to attack from the back row
+and paralyze enemies make this a decent option for a caster.
+
+4    300  !Catch    Catch drunk monster
+Catching an enemy removes it from the fight and changes the command to !Free.
+Upon being freed, the enemy will cast one ability and then leave (kind of
+like a summon spell).  An enemy has to be at less than 1/8 of its max HP to
+be caught, or less than 1/2 HP if user is equipping the KornagoGourd.
+Catching with the KornagoGourd equipped is a way of removing HP-intensive
+enemies with only half the work, but be aware that you gain no Exp, AP, or GP
+from catching a monster.
+
+
+Caster Classes
+==============
+Caster classes, as the name might imply, specialize in using magic.  They
+typically have incredibly high Magic Power, but are average or low in every other
+stat.  The abilities afforded by magic are considerable, but have a second
+option ready so that a caster can do constructive things in combat that don't
+use their MP.  Some suggestions are "free" healing with the HealingStaff, the
+!Earth command, or back row attacks with EqWhip or EqBow.
+
+Caster classes can equip only light helmets and armor.
+
+White Mage
+----------
+White magic spells are not very strong early on, but late in the game you
+will find yourself hurting without the ability to cast them.  Try to keep
+your !White level up so that you can use spells like Esna, Cure3, and Arise
+as soon as they're available.  Have the White Mage provide free healing with
+the HealingStaff while you're building up his/her job level.
+
+Equipping the !White ability on another job gives [+25] to Magic Power.
+
+Job Command: White
+Innate Abilities: None
+Can equip: Staffs
+Stats:
+     Strength:    -7
+     Agility:    +1
+     Vitality:  0
+     Magic Power:  +25
+Total AP to master: 580
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    10   !White    Use White Magic up to level 1
+The basic White Magic spells: Cure, Scan, and Antdot.  Cure doesn't heal
+enough HP to be useful even early in the game, so just swap this in when you
+need to heal poison.
+
+2    20   !White    Use White Magic up to level 2
+Mute, Protes, and Mini.  Protes is helpful against physical attacks, but the
+other two won't work on anything worth using them on.
+
+3    30   !White    Use White Magic up to level 3
+This level includes Cure2, Raise, and Muddle.  The HealingStaff is a better
+deal than Cure2 on a single target, but you may want to have Cure2 against
+enemies that damage everyone at once.  And obviously, Raise is a must since
+Phoenix Downs are astronomically expensive in this game.
+
+4    50   !White    Use White Magic up to level 4
+Blink, Shell, and Esna.  Blink is identical to the Ninja's !Twin ability but
+can be cast on anyone, and obviously Esna's ability to heal any status
+ailment (except Zombie) is irreplaceable.
+
+5    70   !White    Use White Magic up to level 5
+This is where the class really starts to shine.  Cure3 is an incredible
+value, completely healing the HP of one target or healing well over 1000 HP
+to everyone. Rflect can seriously mess up the plans of magic-using enemies,
+but remember that you can't cast healing magic on yourself while using it.
+Bersrk is a cheap way of squeezing some extra damage out of your tanks if you
+don't plan to have them do anything but attack.
+
+6    100  !White    Use White Magic up to level 6
+Arise, Holy, and Dispel are all absolutely essential for the end stages of
+the game.  Arise allows you to resurrect a character with full HP so they
+don't immediately get smacked down again, Holy allows your White Mage to
+actually do damage, and Dispel will get rid of bosses' annoying buffs.
+
+7    300  MP+10%    Max MP 10% up
+I hate these "filler" abilities that just seem to be in there to drive up the
+AP cost to master the job.  You can get away without actually mastering White
+Mage if you master Black Mage or Summoner, so just get it up to level 6.
+
+Black Mage
+----------
+It's not that Black Mage is a *bad* job, it's just that its abilities are
+completely obviated by the abilities of other jobs.  Sorcerers can cast all
+of the good Black Magic spells for a fraction of the MP and do melee damage
+at the same time.  Or, you could use Summon Magic and have a much wider
+variety of effects available to you.
+
+Equipping the !Black ability on another job gives [+31] to Magic Power.
+
+Job Command: Black
+Innate Abilities: None
+Can equip: Daggers, Rods
+Stats:
+     Strength:    -9
+     Agility:    0
+     Vitality:  -2
+     Magic Power:  +31
+Total AP to master: 680
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    10   !Black    Use Black Magic up to level 1
+Fire, Ice, and Bolt.  It's really hard to get psyched up for this stuff when
+you know a Sorcerer can do it easier and cheaper.
+
+2    20   !Black    Use Black Magic up to level 2
+De-buffs: Poison, Sleep, and Toad.
+
+3    30   !Black    Use Black Magic up to level 3
+More elemental damage: Fire2, Ice2, Bolt2.  Did I mention that the Sorcerer
+only has to cast his spell once to use it every turn?
+
+4    50   !Black    Use Black Magic up to level 4
+Drain, Break, and Bio.
+
+5    70   !Black    Use Black Magic up to level 5
+Fire3, Ice3, Bolt3.  It costs the Sorcerer 15 MP to cast these instead of the
+Black Mage's 25 MP.
+
+6    100  !Black    Use Black Magic up to level 6
+Flare, Doom, and Asper.  Yup, it sure looks cool when the Sorcerer uses his
+sword to stick an enemy with Flare.
+
+7    400  MP+30%    Max MP 30% up
+More filler.  If you're having MP problems, just equip a HairOrnament.
+
+Time Mage
+---------
+The Time Mage is the king of buffs and de-buffs, has excellent utility spells
+like Telepo and Return, and can cast some damage spells to boot.  He can even
+heal by equipping the HealingStaff!  You can get away with "swapping in" the
+!Time ability as needed instead of carrying it around all the time, but keep
+your job level high so that you can use it without limitation.
+
+Equipping the !Time ability on another job gives [+24] to Magic Power.
+
+Job Command: Time
+Innate Abilities: None
+Can equip: Daggers, Rods, Staffs
+Stats:
+     Strength:    -5
+     Agility:    +2
+     Vitality:  -3
+     Magic Power:  +24
+Total AP to master: 530
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    10   !Time     Use Time Magic up to level 1
+This includes Agility, Slow, and Regen.  Regen is a nice buff, but there are
+more efficient ways of putting it on your characters.  Surprisingly, Slow
+works on just about everything.  Casting it at the beginning of every boss
+battle is pretty much a no-brainer.
+
+2    20   !Time     Use Time Magic up to level 2
+Mute, Haste, and Float.  There's just no downside to Haste--slap it on all
+your characters at the beginning of any tough battle.  Don't forget you have
+Float when you go up against earthquaking bosses like Titan and X-Death.
+Also, be aware that unlike the White Magic version of the spell, the Time
+magic version of Mute doesn't miss and never wears off.  Unfortunately, it
+also targets everything on the battlefield, including your party.
+
+3    30   !Time     Use Time Magic up to level 3
+Demi, Stop, and Telepo.  The first two rarely work on any enemy worth using
+them on, but you'll use Telepo a ton in the second and third worlds.  That
+is, unless you *want* to walk all the way back to the entrance of a dungeon
+after you get what you came for.
+
+4    50   !Time     Use Time Magic up to level 4
+Comet is a cheap attack spell, but is unreliable due to inconsistent damage.
+Obviously, being able to slow all the enemies at once with Slow2 is nice.
+The real star of this level is Return, which lets you time-travel back to the
+beginning of the battle that you're in.  It's great for taking another, fresh
+shot at a boss once after learning what it can do, and is *required* if you
+want to steal the Protect Ring that Odin holds.
+
+5    70   !Time     Use Time Magic up to level 5
+Demi2, Haste2, Old.  Haste2 alone is worth the price of admission, letting
+your caster Haste everyone in one shot and then get on with healing, nuking,
+singing, or whatever.
+
+6    100  !Time     Use Time Magic up to level 6
+Meteo, Quick and X-Zone are included.  I didn't play around with X-Zone too
+much, but it could be a way of cheaply getting rid of annoying/powerful
+enemies if they're not immune to it.  Meteo tends to fizzle much like Comet
+does, but since it drops four meteors instead of one, it's still good against
+single targets.  Finally, Quick can only be used on the caster, but it
+immediately gives them two actions in a row!  Its MP cost keeps it from being
+usable in too degenerate a fashion, but the potential of combining it with
+!Sshot, !Redx2, and many other abilities, is frightening.
+
+7    250  EqRod     Can equip rod
+Apparently this is some sort of joke.
+
+Summoner
+--------
+Though it's expensive to do so, Summoner is the caster class most worth
+mastering.  The !Summn command provides a variety of effects, the class has
+the highest Magic Power in the game, and the !Call ability is at least of some
+use during random battles.  The drawback of the Summoner is that virtually
+all of his spells require some sort of sub-quest to acquire.  Give a Summoner
+!Earth as you build through the levels, to take advantage of his huge Magic Power
+and to give him something to do that doesn't cost MP.
+
+Equipping the !Summn ability on another job gives [+33] to Magic Power.
+
+Job Command: Summn
+Innate Abilities: None
+Can equip: Daggers, Rods
+Stats:
+     Strength:    -10
+     Agility:    -1
+     Vitality:  -1
+     Magic Power:  +33
+Total AP to master: 750
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    15   !Summn    Use Summon Magic up to level 1
+Like all the level 1 spells, there's nothing very good here.  Sylph is the
+best spell at this level since it heals your characters as well as damaging
+an enemy.
+
+2    30   !Summn    Use Summon Magic up to level 2
+This level includes the bread-and-butter elemental attack summons Shiva,
+Ramuh, and Ifrit.  Don't miss the sub-quests that get you these summons if
+you're looking to use this job to the exclusion of Black Mage.
+
+3    45   !Summn    Use Summon Magic up to level 3
+Titan does good damage (just not to anything that flies), but the real star
+of this level (and possibly of the entire Summoner spell list) is Golem.
+Summon Golem and it will absorb the next 10000 or so (yes, you're reading
+that right) physical damage that's dealt to your characters.  Don't miss the
+stupidly obscure side-quest that gets you Golem, unless you want to build
+your characters about 10 levels higher to compensate!
+
+4    60   !Summn    Use Summon Magic up to level 4
+You can't go wrong with either of the attack spells on this level.  Odin can
+kill all of your enemies instantly; if they're immune, he'll still pick one
+and do damage to it.  Hydra just does a solid chunk of damage to everything.
+
+5    100  !Summn    Use Summon Magic up to level 5
+Phoenix, Leviathan, and Bahamut are all simply amazing spells.  Phoenix does
+damage to all enemies *and* resurrects an ally of your choosing with full HP!
+Bahamut does a ton of non-elemental damage to all enemies, and depending on
+the type of enemy, Leviathan can do as much or more than Bahamut, for a lower
+MP cost.  Having these on tap for the final battle is a no-brainer.
+
+6    500  !Call     Use summon w/o MP; anything could happen
+Using !Call gets you a summon spell chosen at random (I don't know if it's
+from all the summons or only the ones you actually own).  The casting doesn't
+cost any MP, but figure you'll get useless crap like Chocobo twice as often
+as something like Bahamut.  Also, "utility" summons are not immune, so you
+will see Golem (good) and Carbuncle (usually bad) when using this.
+
+Geomancer
+---------
+Be sure to learn the !Earth ability immediately upon getting this class; it's
+an abolutely vital skill for a caster, allowing them to do damage and magical
+effects without using MP.  Beyond that, you can afford to use the Geomancer
+only when you need its innate abilities to find trap doors and avoid damage
+from lava and such.  Oh, and don't get excited by the bell's ability to
+attack from the back row--they do pathetic damage.
+
+Job Command: Earth
+Innate Abilities: Findhole, Antitrap
+Can equip: Daggers, Bells
+Stats:
+     Strength:    +4
+     Agility:    +2
+     Vitality:  +4
+     Magic Power:  +24
+Total AP to master: 175
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    25   !Earth    Attack enemy with natural power
+This is the perfect ability to have on a caster during random battles.  While
+the effects typically do small to moderate amounts of damage to one or all
+enemies, once in a while you'll get something cool like a Doom Claw effect or
+instant death effect.  !Earth doesn't use any MP and its potency is based on
+the user's Magic Power, making it even better in the hands of the other casters.
+
+2    50   Findhole  Can find trap doors
+You can get away with just equipping this in areas where there are trap
+doors.  Walk slowly, one tile at a time, as the traps won't be revealed until
+you try to walk on them.
+
+3    100  Antitrap  No damage on damage floors
+The utility of this is obvious--bring in a Geomancer or give someone this
+ability whenever there's a surface like lava that does damage as you walk
+across it.
+
+Bard
+----
+The Bard is pretty much a useless class, except for the Requiem song, which
+does a huge amount of damage to any undead-type enemies.  Bring along a Bard
+(or give someone the !Sing command) whenever you're in an undead-infested
+area like the Pyramid, to breeze through it (relatively speaking).  Like
+bells, harps do pathetic damage, even if it's long-ranged.
+
+Job Command: Sing
+Innate Abilities: None
+Can equip: Daggers, Harps
+Stats:
+     Strength:    -8
+     Agility:    +8
+     Vitality:  -9
+     Magic Power:  +11
+Total AP to master: 175
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    25   !Hide     Evade attack when hidden
+Shades of Edward from FF4, and just as useless, since you can't heal the Bard
+while he's hiding.
+
+2    50   EqHarp    Can equip harp
+[+8] to Agility and [+11] to Magic Power come with this.  Interestingly, harp
+damage is always a fixed fraction (1/16 to 3/16, depending on the harp) of
+the target's remaining HP.  This is almost always a pathetic amount.
+
+3    100  !Sing     Sing Magic song
+As I described above, Requiem is the best of the Bard's songs.  Str.Song puts
+Regen on all your characters and is of some use; Love Song and TemptSong
+confuse and paralyze enemies.  The remaining songs continuously buff your
+party but tie up the Bard, who sings the song chosen until the end of the
+fight (or he gets killed, I guess).  The inability to change or stop the song
+makes the "buff songs" a novelty at best, but LVL Song is worth using against
+the not-so-threatening first form of the final boss.  You'll then retain your
+pumped-up status when you go into the fight with his final form.
+
+
+Hybrid Classes
+==============
+Hybrid classes are sort of "catch-all" jobs that don't really fall clearly
+under any other heading.  As the name might suggest, they have elements of
+caster and skill classes, including magic or magic-like skills.  Hybrid
+classes have the weakest overall stats, but they have a lot of skills that
+are hard to pass up.
+
+Hybrid classes can wear light or medium helmets and light or medium armor.
+Because of this flexibility, it's easy for a character that's specializing in
+skill or caster classes to branch out into one or more hybrid classes as well.
+
+Blue Mage
+---------
+Blue Magic affords you a ton of flexbility by giving you access to buffs,
+de-buffs, healing, and attack spells all under one command.  Blue Magic is so
+versatile, in fact, that you may want to have two or more characters master
+this class (or at least earn enough AP to get the !Blue command).  The catch,
+of course, is that you have to learn the spells from enemies.  Even though
+Blue Mages can equip swords and shields, their poor Strength ensures that they
+do pathetic damage, even from the front row.  They do get a caster-like
+Magic Power boost, though, so !Earth is an option.
+
+Job Command: Blue
+Innate Abilities: Learning
+Can equip: Daggers, Light Swords, Rods, Shields
+Stats:
+     Strength:    -8
+     Agility:    +1
+     Vitality:  +3
+     Magic Power:  +23
+Total AP to master: 350
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    10   !Check    Get enemy HP/weakness
+The kind of command that's only useful if you don't have a FAQ around.  It's
+nice to know exactly what you're up against, but is it really worth passing
+up something that could actually help you *kill* it?
+
+2    20   Learning  Learn monster special attacks
+The character that gets hit by a learnable enemy skill must either have this
+equipped (or be a Blue Mage) to learn it.  If you have a FAQ that calls out
+the Blue Magics for you, then you can just take this on and off as needed.
+
+3    70   !Blue     Use Blue Magic
+Gives [+23] to Magic Power and the ability to cast any Blue Magic that's been
+learned by the party.  The best Blue Magics are very expensive, but have
+great effects.  Aqua Rake is one of the only water-elemental attack spells in
+the game and does good damage to all enemies; Black Shock is a brutal de-buff
+that cuts an enemy's level in half, reducing all of its stats; Guardian is an
+awesome buff that puts Protes, Shell, and Float on your entire party, and
+finally, White Wind heals all of the party members according to how much HP
+the caster has.  White Wind is especially strong in the hands of a Monk and
+his huge max HP.
+
+4    250  !View     See enemy's level/HP/weakness/condition
+A more powerful form of !Check that suffers from the same limitations.  I
+don't believe that this tells you anything more than the Scan spell does.
+
+Red Mage
+--------
+The Red Mage is at his most powerful and flexible very early in the game and
+very late in the game.  The !Red command allows you to use both Black and
+White Magic, but only up to level 3; after that, you will probably want to
+set this class aside until you're able to gain the huge amount of AP
+necessary for !Redx2.  As far as its capabilities in a fight are concerned,
+the Red Mage may seem attractive for its ability to equip swords, but the
+job's low Vitality keeps it from being any type of fighter.  You'd be better
+served giving the HealingStaff to the Red Mage.
+
+Equipping the !Red or !Redx2 ability on another job gives [+8] to Magic Power.
+
+Job Command: Red
+Innate Abilities: None
+Can equip: Daggers, Light Swords, Rods, Staffs
+Stats:
+     Strength:    +8
+     Agility:    +5
+     Vitality:  -6
+     Magic Power:  +8
+Total AP to master: 1159
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    20   !Red      Use White and Black Magic up to level 1
+Obviously, this is more attractive than being able to use only one or the
+other type of magic; just be aware that the Red Mage's low Magic Power means that
+his spells will not be as potent as a White or Black Mage's.
+
+2    40   !Red      Use White and Black Magic up to level 2
+Ah, the level of the lame de-buffs.  Blow right past this on your way to...
+
+3    100  !Red      Use White and Black Magic up to level 3
+The 100 AP cost is pretty steep for early in the game, but that's the time to
+gain this skill.  The ability to cast Cure2, Raise, and the second line of
+elemental damage spells with one command is a huge asset in the first world.
+However, this magic is no substitute for the more powerful spells that become
+available in the second world.
+
+4    999  !Redx2    Back to back spells
+The way this skill works needs a little explanation.  !Redx2 allows the user
+to cast two spells each turn, but the only spells that come "for free" are
+White and Black Magic up to level 3.  If you want to doublecast Sword, Time,
+or Summon Magic, or higher level White or Black Magic, you'll have to equip
+the appropriate magic ability at the appropriate level.  This eats up your
+ability slots very quickly, so only a Mimic can really get a lot from this
+command.  If you want to go for this ability, I would highly suggest waiting
+until the final dungeon, where you can earn 25-35 AP per battle.
+
+Chemist
+-------
+Probably the most unconventional of the FF5 jobs, the Chemist uses items to
+heal and boost the stats of himself and his allies, as well as attack.  While
+some of the job's commands are good, it's rarely useful to have an actual
+Chemist in the party, because the job's stats are very weak overall and the
+!Drink command can only target the caster.  This job is another good
+candidate to equip the HealingStaff.
+
+Job Command: Drink
+Innate Abilities: Medicine
+Can equip: Daggers, Staffs
+Stats:
+     Strength:    +2
+     Agility:    +3
+     Vitality:  +6
+     Magic Power:  -4
+Total AP to master: 630
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    15   Medicine  2x Potion/Ether
+Another ability that's good for an innate but not worth a slot, Medicine
+causes any HP or MP healing items used by the character to have twice the
+effect.
+
+2    30   !Mix      Make new elixir in battle from 2 old ones
+The results of your concoction are determined by a simple table that you can
+find in most FAQs.  Be aware that the command will choose an ally as the
+default target, even if the result will be a damage effect.  You can get many
+interesting effects from this command if you take the time to master the
+various combinations.  While very few of them are actually any good, one
+result can downright break the game--see "!Mix Weirdness" at the end.
+
+3    45   !Drink    Power Drink
+This command lets you use the Giant Drink, Hard Body, Hero Drink, Power
+Drink, and Agility Drink.  They're very helpful, but only work on the user, and
+since it's not really any help to have a super-buff Chemist running around,
+give !Drink to a class that's physically strong in the first place.  You'll
+get a lot more bang for your buck from the potions this way.
+
+4    135  !Recvr    Recover from various conditions
+This is a good way to counter enemies that use a lot of status attacks.  Just
+make sure that the person with the skill also has either an Angel Robe or a
+Ribbon, so that they don't get afflicted themselves.
+
+5    405  !Rvive    Restore KO'd ally
+Junk.  While it revives all KO'd allies and does so for no MP cost, they come
+back with almost no HP and will certainly just get smacked down immediately.
+
+Dancer
+------
+Another very quirky class, the Dancer has a lot of potential as a damage-
+dealer, but requires a certain set of equipment to live up to it.  The
+"dancer gear" doesn't appear until near the end of the game, so you can wait
+until then if you want to use this job seriously.
+
+Job Command: Dance
+Innate Abilities: None
+Can equip: Dagger
+Stats:
+     Strength:    +5
+     Agility:    +5
+     Vitality:  -10
+     Magic Power:  -5
+Total AP to master: 400
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    25   !Flirt    Thwart an attack by "arousing" your enemy
+Ooh la la.  I guess this is supposed to confuse the enemy; I'm not sure
+because I've never seen it actually work.
+
+2    50   !Dance    Dance the forbidden dance
+You'll get one of four effects at random after choosing !Dance and the
+target.  "Temptango" confuses the enemy and seems to work consistenly (or
+maybe it only goes off when it will work).  "Jitterbug" and "Wonderwaltz"
+drain HP or MP from the target respectively; the latter would be a neat way
+for a caster to regain MP, but you can't ever count on it because it's
+random.  The one you probably want to see is "Sword Dance", which causes the
+Dancer to do an attack for four times normal damage.  You can increase the
+chances of Sword Dance showing up by equipping the Prism Dress and Red Shoes.
+You'll get it about 3/4 of the time with both equipped, turning !Dance into a
+powerhouse attack.
+
+3    325  EqRibbon  Can equip ribbon
+This actually allows the character to equip *all* of the Dancer-exclusive
+equipment (Man-eater, Ribbon, Prism Dress, and Red Shoes).  Necessary if you
+want to successfully bring !Dance to the Mime class.
+
+
+Special Classes
+===============
+Finally, the two exceptions.  Bare and Mime are different from the other jobs
+in that they don't have job commands, innate abilities, or attribute
+increases of their own; instead, they have multiple skill slots and possess
+the innate abilities and stat increases of any other jobs the character has
+mastered.  So that means a character that has mastered all of the warrior
+classes will have the Cover, Swrdgrab, and Magiwall abilities as a Bare or
+Mime, without having to equip them.
+
+Similarly, the highest attribute bonus of any job the character has mastered
+will be transferred to Bare and Mime.  Negative modifiers won't be
+transferred.  So using the same example as above, our uber-tank would have
++23 to Strength (from Knight), +14 to Agility (from Sorcerer), +25 to Vitality
+(from Berserker), and +1 to Magic Power (also from Sorcerer) as a Bare or Mime.
+
+Taking this to its logical conclusion, the classes to master for ideal Bare
+and Mime stats are Monk (+26 to Strength and Vitality), Thief (+16 Agility), and
+Summoner (+33 Magic Power).  Other options, just for the sake of variety, are
+Knight (+23 Strength), Ninja and Sorcerer (+14 Agility), Berserker (+25 Vitality),
+and Black Mage (+31 Magic Power).
+
+Because they have few or no skills to learn, Bare and Mime are best suited
+for the end stages of the game, when you want to amass your party's full
+power against the last few bosses.
+
+Mime
+----
+The Mime is the only job without the default !Fight and !Item commands.
+Instead, the Mime only has !Mimic, and three empty slots.  !Fight and !Item
+are added to the ability list if you want to use one or more of them as well.
+At first, this might seem a better option than Bare because of its three
+ability slots, but be aware that the Mime cannot equip the Dancer-exclusive
+gear (including the all-important Ribbon!) without using EqRibbon.  It can
+equip all other armor, helmets, and accessories.
+
+Job Command: Mimic
+Innate Abilities: From other jobs (see above)
+Can equip: Daggers, Rods, Staffs, Shields, Special Weapons
+Stats: From other jobs (see above)
+Total AP to master: 999
+
+Lvl  AP   Ability   Description
+-----------------------------------------------------------------------------
+1    999  !Mimic    Mimic preceding command
+The Mime will copy the last ally's action.  This includes defending, so it
+can be really hard to set up a long chain of double Bahamut summons (or
+whatever) if your characters' actions don't order up just so.  Mimicing a
+spell costs no MP, but mimicing the use of an item will use up another item.
+Mimicing !Critt, !Dance, or !Earth will result in a random effect, not
+(necessarily) the same exact effect.  Mimicing !$toss will use up money.
+Also note that the power of mimiced actions such as attacks or magic depends
+on the mimicing character's attributes.
+
+Bare
+----
+The "default" class of Final Fantasy V, which all the characters start in.
+It has the !Fight and !Item commands like all the other jobs, but two empty
+ability slots.  It's most attractive for its ability to equip all of the
+game's weapons and armor.  Since it has no abilities to learn, the Bare class
+does not earn AP.  Against the final boss, I highly advise changing all your
+characters to Bare, with the best abilities you have available.
+
+Job Command: None
+Innate Abilities: From other jobs (see above)
+Can equip: All weapons and armor
+Stats: From other jobs (see above)
+
+
++-----------------------------+
+| IV. Putting It All Together |
++-----------------------------+
+I organized the jobs according to what they can equip for a reason: you can
+save yourself a lot of hassle, and bounce around between jobs easily and
+rapidly, if you have each character only use jobs of one type.  For example,
+you could have two characters only use the warrior classes, one character use
+the skill and hybrid classes, and one character use the caster and hybrid
+classes.  With this strategy, you would only have to carry two heavy armors
+and helmets, one medium armor and helmet, and one light armor and helmet.
+You'll still need to carry one or two of each type of weapon, but having a
+minimum of "contingency gear", at least on the armor/helmet side, saves tons
+of money and time.  Of course, this is just one suggestion.  You can mix the
+job types as you see fit, so long as you make sure you use them all.  This
+also has the benefit of giving you a well-rounded party that can use all the
+abilities at the end of the game.
+
+Base Character Attributes
+=========================
+The five player characters actually have slightly different base attributes.
+The differences are very small, but if you're the type that wants every edge
+you can get, you can tailor your job group choices to particular characters
+based on their attributes.
+
+Name           Strength     Agility     Vitality   Magic Power
+----------------------------------------------------
+Bartz          28        25        27        25
+Reina          25        26        25        28
+Galuf/Krile    27/25     24/28     28/24     24/27
+Faris          27        27        26        26
+
+As you can see, Bartz's high Strength and Vitality make him a good candidate for
+the warrior jobs.  Galuf also makes an excellent tank, but bear in mind that
+he's replaced by Krile about halfway through the game.  She has much
+different attributes, so if you choose this strategy, plan accordingly.
+Personally, I would train them in skill and hybrid classes to take advantage
+of Krile's high Agility.  Reina is ideal for caster jobs, as she has the
+highest Magic Power; Faris has well-rounded attributes and can handle anything.
+
+Special Bonus Secion: The 4th Protect Ring
+==========================================
+By far the best all-around accessory, the Protect Ring gives the wearer +10
+to Defense, +10 to Magic Defense, *and* puts them in Regen status.  There are
+exactly four to be found, though getting one of them will take some work.
+First the easy ones: chests in the Pyramid, Island Shrine, and Easterly Falls
+lithograph sites.  The last one is held by Odin in the basement of Val
+Castle.  It is *extremely difficult* to successfully steal from Odin, and
+this is compounded by the time limit on the battle.  For this reason, some
+careful choosing of job classes and commands is necessary.
+
+Make one character a Thief, and give her the Thief's Glove and any gear that
+will increase her Agility.  This character needs to have the highest Agility in
+the party.  The next fastest character needs to be able to use Blue Magic
+(for the Guardian spell) and Time Magic up to level 4 (for Return).  Ideally,
+you should do this by giving !Blue to a Time Mage, because Haste2, while not
+required, will help a lot.  The remaining two characters simply need to be
+able to do damage (Samurai with 2-handed work well) or cast the !Sword spell
+Break.
+
+When the battle begins, immediately have your Thief steal (since she will be
+acting first).  If she is unsuccessful, have the Time Mage (whose turn should
+come up next) cast Return.  Repeat this until the Thief successfully steals;
+it may take several dozen tries, so don't space out.  When the Thief finally
+does steal the Protect Ring, have the Time Mage cast Guardian instead so that
+you don't immediately get wasted by VengSwrd.  After that, just pour on the
+damage as fast as you can and heal the damage Odin does.  Or, you can just be
+cheap: the Break spell works on Odin, so you can kill him instantly by using
+the Break sword magic.  The Black Magic version can work too, but will
+usually miss; the Sword Magic version will always get him.  If you want to
+beat him without using Break, I'd advise a "trial run" before this process to
+make sure you have the power to deplete Odin's HP within the time limit.
+
+It's your call whether a complete set of Protect Rings is worth all this
+trouble.  But I thought I'd include this as an example of how to make the job
+system work for you and for those completists out there.
+
+Super Special Bonus Section: !Mix Weirdness
+===========================================
+I just thought this was too weird not to include, and I know there are some
+people out there who get a kick out of this kind of stuff.  Alex Jackson
+(awj_in_japan@hotmail.com) has clued me in on a lot of FF5 nuances, the most
+bizarre of which is a particular abuse of the !Mix command.  I'll reprint
+what he told me, since I've yet to try doing it firsthand.  There are
+spoilers below, so don't read this until after you've finished the game.
+
+"If you mix a Maiden's Kiss and a Holy Water, you'll get an effect which puts
+nearly every buffing spell in the game on the target simultaneously...
+including Berserk.  For some reason (possibly because all those multiple
+effects are being applied at one) the game doesn't bother to check that the
+target actually should be affectable by each of those buffs.  The upshot of
+this is that you can but the Berserk status on any enemy in the game.
+
+"You can combine this with the "Knight lockout" or !Twin abuse to defeat,
+say, Omega easily, but that's not much fun after the first time you do it.
+What is fun is that Berserking the enemy in a "story battle" (i.e. a battle
+which gets interrupted by dialogue or something of the sort partway through)
+really confuses the game.  Apparently, all special events in battles (even
+dialogue spoken by your party members) are treated by the program as actions
+performed by the enemy, so if you Berserk the enemy these events just won't
+happen any more (since the enemy can't do anything but attack).
+
+"If you Berserk Ramuh (or Shoat or Golem), the internal flag that the game
+sets to indicate that you've already gotten them doesn't get set, so you can
+fight them again and again.  If you Berserk Gilgamesh in X-Death's castle in
+World 2, he'll never get X-Zoned away by X-Death, so you can actually kill
+him yourself (he'll still appear in the final dungeon, though).  Weirdest of
+all, if you Berserk the final X-Death, he won't be able to transform into Neo
+X-Death.  When you deplete his HP, the game will apparently freeze for a
+while, and then abruptly jump straight into the ending movie (or possibly
+just freeze forever... the exact behavior may vary depending on the game
+version)."
+
+Weird, wild stuff.  Thanks Alex!
+
+
++-----------------------------+
+| V. Credits & Copyright Info |
++-----------------------------+
+That's all I've got.  Drop me a line at connoy@lycos.com and let me know if
+any of this has been of help to you, or if you have any suggestions!
+
+Thanks to the following for their help:
+
+CJayC, for maintaining www.gamefaqs.com.
+Alex Jackson (awj_in_japan@hotmail.com), for information on the "Knight
+     lockout", !Sword effects, using !Twin against Gilgame, the differences
+     between the two Mute spells, the utility of Slow, harp damage, !Singing
+     in the final battle, glitching the game with !Mix, and !Breaking Odin.
+Matt Hobbs and Dragon Fogel, for the best FFV walkthrough out there.  Ideally
+     organized, it tells you everything that you need to know.  And, just as
+     importantly, very little that you don't.
+Basil Brush, for his efficient list of FFV gear, monsters, and spells.
+David Cassady, whose Final Fantasy Anthology Strategy Guide made a great
+     scratch pad for my notes on how the game *really* works.
+
+Finally, the copyright warning, reprinted with the gracious permission of Kao
+Megura.  Take it seriously or suffer.
+
+Unpublished Work Copyright 2003 Dave Connoy
+
+This FAQ and everything included within this file cannot be reproduced in any
+way, shape or form (physical, electronical, or otherwise) aside from being 
+placed on a freely-accessible, non-commercial web page in it's original, 
+unedited and unaltered format.  This FAQ cannot be used for profitable 
+purposes (even if no money would be made from selling it) or promotional 
+purposes.  It cannot be used in any sort of commercial transaction.  It 
+cannot be given away as some sort of bonus, gift, etc., with a purchase as 
+this creates incentive to buy and is therefore prohibited.  Furthermore, this 
+FAQ cannot be used by the publishers, editors, employees or associates, etc. 
+of any company, group, business, or association, etc., nor can it be used by 
+game sites and the like.  It cannot be used in magazines, guides, books, etc. 
+or in any other form of printed or electronic media (including mediums not 
+specifically mentioned) in ANY way, shape, or form (including reprinting, 
+reference or inclusion), without the express written permission of the 
+author, myself.  This FAQ was created and is owned by me, Dave Connoy.  All
+copyrights and trademarks are acknowledged and respected that are not 
+specifically mentioned in this FAQ.
+
+To continue, this FAQ and everything included herein is protected by the 
+Berne Copyright Convention of 1976, not to mention International Copyright 
+Law.  Please remember that plagiarism is against the law.  I will take 
+appropriate action against transgressors, period (the same goes for people 
+who put this up on web pages claiming it's their FAQ).
+Restore Page
