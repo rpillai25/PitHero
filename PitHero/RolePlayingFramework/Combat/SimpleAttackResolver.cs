@@ -13,7 +13,7 @@ namespace RolePlayingFramework.Combat
             var levelDelta = attackerLevel - defenderLevel;
             var acc = 75 + levelDelta + (attackerStats.Agility - defenderStats.Agility) / 2;
             if (acc < 5) acc = 5; if (acc > 95) acc = 95;
-            var roll = Random.NextInt(100);
+            var roll = Nez.Random.Range(0, 100);
             if (roll >= acc) return new AttackResult(false, 0);
 
             // Damage: base from Strength or Magic, plus level factor, minus a portion of Vitality
@@ -35,7 +35,7 @@ namespace RolePlayingFramework.Combat
 
             // Small variance +/-10%
             var variance = (raw * 10) / 100;
-            var final = raw + Random.Range(-variance, variance + 1);
+            var final = raw + Nez.Random.Range(-variance, variance + 1);
             if (final < 1) final = 1;
             return new AttackResult(true, final);
         }
