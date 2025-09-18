@@ -22,6 +22,9 @@ namespace RolePlayingFramework.Enemies
         int MaxHP { get; }
         int CurrentHP { get; }
 
+        /// <summary>Experience awarded when defeated.</summary>
+        int ExperienceYield { get; }
+
         /// <summary>Inflicts damage, returns true if died.</summary>
         bool TakeDamage(int amount);
     }

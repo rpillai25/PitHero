@@ -14,6 +14,7 @@ namespace RolePlayingFramework.Enemies
         public DamageKind AttackKind => DamageKind.Physical;
         public int MaxHP { get; }
         public int CurrentHP => _hp;
+        public int ExperienceYield { get; }
 
         public Slime(int level = 1)
         {
@@ -22,6 +23,7 @@ namespace RolePlayingFramework.Enemies
             Stats = new StatBlock(strength: 2 + Level / 2, agility: 1 + Level / 4, vitality: 3 + Level / 2, magic: 0);
             MaxHP = 20 + Stats.Vitality * 6;
             _hp = MaxHP;
+            ExperienceYield = 10 + Level * 2;
         }
 
         /// <summary>Inflicts damage, returns true if died.</summary>

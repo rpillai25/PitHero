@@ -16,7 +16,7 @@ namespace RolePlayingFramework.Combat
             var roll = Nez.Random.Range(0, 100);
             if (roll >= acc) return new AttackResult(false, 0);
 
-            // Damage: base from Strength or Magic, plus level factor, minus a portion of Vitality
+            // Damage: base from Strength or Magic, plus level factor, minus a portion of Vitality, plus equipment modifiers
             int raw;
             if (kind == DamageKind.Physical)
             {
