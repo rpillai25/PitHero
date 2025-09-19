@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using RolePlayingFramework.Stats;
+using RolePlayingFramework.Skills;
 
 namespace RolePlayingFramework.Jobs
 {
@@ -8,8 +10,15 @@ namespace RolePlayingFramework.Jobs
         public Knight() : base(
             name: "Knight",
             baseBonus: new StatBlock(strength: 4, agility: 0, vitality: 3, magic: 0),
-            growthPerLevel: new StatBlock(strength: 2, agility: 0, vitality: 2, magic: 0),
-            abilities: new[] { JobAbility.SwordMastery, JobAbility.HeavyArmorTraining, JobAbility.Guard })
+            growthPerLevel: new StatBlock(strength: 2, agility: 0, vitality: 2, magic: 0))
         { }
+
+        protected override void DefineSkills(List<ISkill> list)
+        {
+            list.Add(new LightArmorPassive());
+            list.Add(new HeavyArmorPassive());
+            list.Add(new SpinSlashSkill());
+            list.Add(new HeavyStrikeSkill());
+        }
     }
 }

@@ -1,10 +1,14 @@
+using System.Collections.Generic;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Jobs;
+using RolePlayingFramework.Skills;
 using RolePlayingFramework.Stats;
+using RolePlayingFramework.Enemies;
+using RolePlayingFramework.Combat;
 
 namespace RolePlayingFramework.Heroes
 {
-    /// <summary>Runtime hero instance with equipment and derived stats.</summary>
+    /// <summary>Runtime hero instance with equipment, skills and derived stats.</summary>
     public sealed class Hero
     {
         public string Name { get; }
@@ -14,9 +18,18 @@ namespace RolePlayingFramework.Heroes
         public StatBlock BaseStats { get; private set; }
 
         public int MaxHP { get; private set; }
-        public int MaxMP { get; private set; }
+        public int MaxAP { get; private set; }
         public int CurrentHP { get; private set; }
-        public int CurrentMP { get; private set; }
+        public int CurrentAP { get; private set; }
+
+        // Passive modifiers from learned skills
+        public int PassiveDefenseBonus { get; set; }
+        public float DeflectChance { get; set; }
+        public bool EnableCounter { get; set; }
+        public int APTickRegen { get; set; }
+        public float HealPowerBonus { get; set; }
+        public float FireDamageBonus { get; set; }
+        public float APCostReduction { get; set; }
 
         // Equipment
         public IItem? Weapon { get; private set; }
@@ -25,15 +38,45 @@ namespace RolePlayingFramework.Heroes
         public IItem? Accessory1 { get; private set; }
         public IItem? Accessory2 { get; private set; }
 
-        public Hero(string name, IJob job, int level, in StatBlock baseStats)
+        // Learned skills (by Id)
+        private readonly Dictionary<string, ISkill> _learnedSkills;
+        public IReadOnlyDictionary<string, ISkill> LearnedSkills => _learnedSkills;
+
+        // Additional equip permissions from passives
+        private readonly HashSet<Equipment.ItemKind> _extraEquipPermissions = new HashSet<Equipment.ItemKind>();
+
+        private readonly HeroCrystal? _boundCrystal;
+
+        public Hero(string name, IJob job, int level, in StatBlock baseStats, HeroCrystal? fromCrystal = null)
         {
             Name = name;
             Job = job;
             Level = level < 1 ? 1 : level;
             BaseStats = baseStats;
+            _learnedSkills = new Dictionary<string, ISkill>(16);
+            _boundCrystal = fromCrystal;
+            if (fromCrystal != null)
+            {
+                // preload crystal skills that exist in this job (handles composite jobs)
+                var skills = job.Skills;
+                for (int i = 0; i < skills.Count; i++)
+                {
+                    var s = skills[i];
+                    if (fromCrystal.HasSkill(s.Id))
+                        _learnedSkills[s.Id] = s;
+                }
+            }
+            LearnInitialSkills();
+            ApplyPassiveSkills();
             RecalculateDerived();
             CurrentHP = MaxHP;
-            CurrentMP = MaxMP;
+            CurrentAP = MaxAP;
+        }
+
+        /// <summary>Adds extra equipment permission (from passives).</summary>
+        public void AddExtraEquipPermission(Equipment.ItemKind kind)
+        {
+            _extraEquipPermissions.Add(kind);
         }
 
         /// <summary>Adds experience and levels up linearly.</summary>
@@ -47,9 +90,10 @@ namespace RolePlayingFramework.Heroes
                 Experience -= RequiredExpForNextLevel();
                 Level++;
                 leveled = true;
-                // Base stats grow linearly with level independent of job
                 BaseStats = new StatBlock(BaseStats.Strength + 1, BaseStats.Agility + 1, BaseStats.Vitality + 1, BaseStats.Magic + 1);
                 RecalculateDerived();
+                AutoLearnNewSkills();
+                ApplyPassiveSkills();
             }
             return leveled;
         }
@@ -57,15 +101,15 @@ namespace RolePlayingFramework.Heroes
         /// <summary>Gets required XP for the next level.</summary>
         public int RequiredExpForNextLevel() => Level * 100;
 
-        /// <summary>Recomputes HP/MP and caps.</summary>
+        /// <summary>Recomputes HP/AP and caps.</summary>
         public void RecalculateDerived()
         {
             var jobStats = Job.GetJobContributionAtLevel(Level);
             var total = BaseStats.Add(jobStats).Add(GetEquipmentStatBonus());
             MaxHP = 50 + total.Vitality * 10; // simple linear formula
-            MaxMP = 10 + total.Magic * 5;     // simple linear formula
+            MaxAP = 10 + total.Magic * 3;     // AP derived from magic for now
             if (CurrentHP > MaxHP) CurrentHP = MaxHP;
-            if (CurrentMP > MaxMP) CurrentMP = MaxMP;
+            if (CurrentAP > MaxAP) CurrentAP = MaxAP;
         }
 
         /// <summary>Returns current total stats (base + job + equipment).</summary>
@@ -84,12 +128,14 @@ namespace RolePlayingFramework.Heroes
             return CurrentHP == 0;
         }
 
-        /// <summary>Consumes MP if available.</summary>
-        public bool SpendMP(int amount)
+        /// <summary>Spend AP if sufficient (includes passive cost reduction).</summary>
+        public bool SpendAP(int amount)
         {
             if (amount <= 0) return true;
-            if (CurrentMP < amount) return false;
-            CurrentMP -= amount;
+            var reduced = (int)(amount * (1f - APCostReduction));
+            if (reduced < 1) reduced = 1;
+            if (CurrentAP < reduced) return false;
+            CurrentAP -= reduced;
             return true;
         }
 
@@ -99,6 +145,16 @@ namespace RolePlayingFramework.Heroes
             if (amount <= 0) return;
             CurrentHP += amount;
             if (CurrentHP > MaxHP) CurrentHP = MaxHP;
+        }
+
+        /// <summary>Per-turn passive AP regen.</summary>
+        public void TickRegeneration()
+        {
+            if (APTickRegen > 0)
+            {
+                CurrentAP += APTickRegen;
+                if (CurrentAP > MaxAP) CurrentAP = MaxAP;
+            }
         }
 
         /// <summary>Equips an item into the appropriate slot if job allows.</summary>
@@ -120,13 +176,13 @@ namespace RolePlayingFramework.Heroes
                     if (Job is Jobs.Mage) { Weapon = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.ArmorMail:
-                    if (Job is Jobs.Knight) { Armor = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Knight || _extraEquipPermissions.Contains(ItemKind.ArmorMail)) { Armor = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.ArmorGi:
-                    if (Job is Jobs.Monk) { Armor = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Monk || _extraEquipPermissions.Contains(ItemKind.ArmorGi)) { Armor = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.ArmorRobe:
-                    if (Job is Jobs.Mage || Job is Jobs.Priest) { Armor = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Mage || Job is Jobs.Priest || _extraEquipPermissions.Contains(ItemKind.ArmorRobe)) { Armor = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.HatHelm:
                     if (Job is Jobs.Knight) { Hat = item; RecalculateDerived(); return true; }
@@ -185,15 +241,67 @@ namespace RolePlayingFramework.Heroes
             return atk;
         }
 
-        /// <summary>Total flat defense bonus from gear.</summary>
+        /// <summary>Total flat defense bonus from gear plus passives.</summary>
         public int GetEquipmentDefenseBonus()
         {
-            int def = 0;
+            int def = PassiveDefenseBonus;
             if (Armor != null) def += Armor.DefenseBonus;
             if (Hat != null) def += Hat.DefenseBonus;
             if (Accessory1 != null) def += Accessory1.DefenseBonus;
             if (Accessory2 != null) def += Accessory2.DefenseBonus;
             return def;
+        }
+
+        private void LearnInitialSkills() => AutoLearnNewSkills();
+
+        private void AutoLearnNewSkills()
+        {
+            var known = new HashSet<string>(_learnedSkills.Keys);
+            var buffer = new List<ISkill>(4);
+            Job.GetLearnableSkills(Level, known, buffer);
+            for (int i = 0; i < buffer.Count; i++)
+            {
+                var skill = buffer[i];
+                _learnedSkills[skill.Id] = skill;
+                _boundCrystal?.AddLearnedSkill(skill.Id);
+            }
+        }
+
+        private void ApplyPassiveSkills()
+        {
+            PassiveDefenseBonus = 0;
+            DeflectChance = 0;
+            EnableCounter = false;
+            APTickRegen = 0;
+            HealPowerBonus = 0f;
+            FireDamageBonus = 0f;
+            APCostReduction = 0f;
+            foreach (var kv in _learnedSkills)
+            {
+                if (kv.Value.Kind == SkillKind.Passive)
+                    kv.Value.ApplyPassive(this);
+            }
+        }
+
+        public ISkill? ChooseActiveSkillForBattle()
+        {
+            ISkill? best = null;
+            int bestCost = -1;
+            foreach (var kv in _learnedSkills)
+            {
+                var s = kv.Value;
+                if (s.Kind != SkillKind.Active) continue;
+                if (s.APCost > CurrentAP) continue;
+                if (s.APCost > bestCost) { best = s; bestCost = s.APCost; }
+            }
+            return best;
+        }
+
+        public string? TryUseSkill(ISkill skill, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
+        {
+            if (skill.Kind != SkillKind.Active) return null;
+            if (!SpendAP(skill.APCost)) return null;
+            return skill.Execute(this, primary, surrounding, resolver);
         }
     }
 }

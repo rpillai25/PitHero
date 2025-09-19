@@ -1,8 +1,10 @@
+using System.Collections.Generic;
 using RolePlayingFramework.Stats;
+using RolePlayingFramework.Skills;
 
 namespace RolePlayingFramework.Jobs
 {
-    /// <summary>Defines a job (vocation) that augments stats and grants abilities.</summary>
+    /// <summary>Defines a job (vocation) that augments stats and grants skills.</summary>
     public interface IJob
     {
         /// <summary>Display name of the job.</summary>
@@ -14,10 +16,13 @@ namespace RolePlayingFramework.Jobs
         /// <summary>Per-level stat growth added each time the hero levels up (from 2..N).</summary>
         StatBlock GrowthPerLevel { get; }
 
-        /// <summary>Abilities granted passively by the job.</summary>
-        JobAbility[] Abilities { get; }
+        /// <summary>All skill definitions (active + passive).</summary>
+        IReadOnlyList<ISkill> Skills { get; }
 
         /// <summary>Computes total job stat contribution at a given level.</summary>
         StatBlock GetJobContributionAtLevel(int level);
+
+        /// <summary>Returns any new skills learnable exactly at the provided level not yet known.</summary>
+        void GetLearnableSkills(int level, HashSet<string> alreadyKnown, List<ISkill> buffer);
     }
 }

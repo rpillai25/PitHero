@@ -30,20 +30,20 @@ namespace PitHero.Tests
             Assert.IsTrue(hero.Experience > 0, "Hero should gain experience on win.");
         }
 
-        /// <summary>Hero gains experience and levels up, increasing base stats and derived HP/MP.</summary>
+        /// <summary>Hero gains experience and levels up, increasing base stats and derived HP/AP.</summary>
         [TestMethod]
         public void Hero_LevelUp_IncreasesStats()
         {
             var hero = new Hero("Apprentice", new Mage(), level: 1, baseStats: new StatBlock(2, 2, 2, 4));
             var maxHPBefore = hero.MaxHP;
-            var maxMPBefore = hero.MaxMP;
+            var maxAPBefore = hero.MaxAP;
 
             // Add enough experience to level twice (100 for lvl1->2, 200 for lvl2->3 total 300)
             hero.AddExperience(300);
 
             Assert.AreEqual(3, hero.Level, "Hero should be level 3 after gaining 300 XP.");
             Assert.IsTrue(hero.MaxHP > maxHPBefore, "MaxHP should increase after leveling.");
-            Assert.IsTrue(hero.MaxMP > maxMPBefore, "MaxMP should increase after leveling.");
+            Assert.IsTrue(hero.MaxAP > maxAPBefore, "MaxAP should increase after leveling.");
         }
 
         /// <summary>Job-based equip restrictions: Mage cannot equip swords, Knight cannot equip rods.</summary>

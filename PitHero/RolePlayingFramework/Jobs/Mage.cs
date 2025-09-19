@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using RolePlayingFramework.Stats;
+using RolePlayingFramework.Skills;
 
 namespace RolePlayingFramework.Jobs
 {
@@ -8,8 +10,15 @@ namespace RolePlayingFramework.Jobs
         public Mage() : base(
             name: "Mage",
             baseBonus: new StatBlock(strength: 0, agility: 0, vitality: 0, magic: 5),
-            growthPerLevel: new StatBlock(strength: 0, agility: 1, vitality: 0, magic: 3),
-            abilities: new[] { JobAbility.ChannelMagic, JobAbility.StaffMastery })
+            growthPerLevel: new StatBlock(strength: 0, agility: 1, vitality: 0, magic: 3))
         { }
+
+        protected override void DefineSkills(List<ISkill> list)
+        {
+            list.Add(new HeartOfFirePassive());
+            list.Add(new EconomistPassive());
+            list.Add(new FireSkill());
+            list.Add(new FireStormSkill());
+        }
     }
 }
