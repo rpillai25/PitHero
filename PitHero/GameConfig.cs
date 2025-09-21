@@ -86,6 +86,11 @@ namespace PitHero
         public static readonly Color TownColor = Color.Green;
         public static readonly Color BackgroundColor = Color.Black;
 
+        // Top-level UI vertical offsets (applied when window shrinks so text/buttons are not clipped at top)
+        public const int TopUiYOffsetNormal = 0;
+        public const int TopUiYOffsetHalf = 6;      // adjust as needed for Hud2x font height
+        public const int TopUiYOffsetQuarter = 12;  // adjust as needed for Hud4x font height
+
         // Tags
         public const int TAG_TILEMAP = 1; // Tag for tilemap entities
         public const int TAG_HERO = 2; // Tag for hero entity

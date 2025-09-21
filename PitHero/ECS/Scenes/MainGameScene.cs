@@ -32,6 +32,9 @@ namespace PitHero.ECS.Scenes
         private enum HudMode { Normal, Half, Quarter }
         private HudMode _currentHudMode = HudMode.Normal;
 
+        // Cached base Y for top-left anchored UI (so offsets are relative and centralized)
+        private const float PitLabelBaseY = 16f; // original Y before offsets applied
+
         public BitmapFont HudFont; // legacy reference (normal)
 
         public MainGameScene() : this("Content/Tilemaps/PitHero.tmx") { }
@@ -339,10 +342,10 @@ namespace PitHero.ECS.Scenes
             _settingsUI = new SettingsUI(Core.Instance);
             _settingsUI.InitializeUI(uiCanvas.Stage);
 
-            // Pit level label (always visible top-left). Position small padding from top-left.
+            // Pit level label (always visible top-left). Base position then offset applied per shrink level.
             _pitLevelLabel = uiCanvas.Stage.AddElement(new Label("Pit Lv. 1", _hudFontNormal));
             _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
-            _pitLevelLabel.SetPosition(10, 16); // stage coordinates origin top-left for fullscreen canvas
+            _pitLevelLabel.SetPosition(10, PitLabelBaseY);
         }
 
         private void AddPitLevelTestComponent()
@@ -407,7 +410,7 @@ namespace PitHero.ECS.Scenes
         }
 
         /// <summary>
-        /// Update HUD font based on current shrink mode
+        /// Update HUD font and Y offset based on current shrink mode
         /// </summary>
         private void UpdateHudFontMode()
         {
@@ -419,23 +422,43 @@ namespace PitHero.ECS.Scenes
             else
                 desired = HudMode.Normal;
 
-            if (desired == _currentHudMode)
-                return; // no change
-
-            switch (desired)
+            if (desired != _currentHudMode)
             {
-                case HudMode.Normal:
-                    _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
-                    break;
+                switch (desired)
+                {
+                    case HudMode.Normal:
+                        _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
+                        break;
+                    case HudMode.Half:
+                        _pitLevelLabel.SetStyle(_pitLevelStyleHalf);
+                        break;
+                    case HudMode.Quarter:
+                        _pitLevelLabel.SetStyle(_pitLevelStyleQuarter);
+                        break;
+                }
+                _currentHudMode = desired;
+                _pitLevelLabel.Invalidate();
+            }
+
+            // Apply vertical offset based on mode
+            int yOffset = 0;
+            switch (_currentHudMode)
+            {
                 case HudMode.Half:
-                    _pitLevelLabel.SetStyle(_pitLevelStyleHalf);
+                    yOffset = GameConfig.TopUiYOffsetHalf;
                     break;
                 case HudMode.Quarter:
-                    _pitLevelLabel.SetStyle(_pitLevelStyleQuarter);
+                    yOffset = GameConfig.TopUiYOffsetQuarter;
+                    break;
+                case HudMode.Normal:
+                default:
+                    yOffset = GameConfig.TopUiYOffsetNormal;
                     break;
             }
-            _currentHudMode = desired;
-            _pitLevelLabel.Invalidate();
+            // Only update position if changed to avoid redundant property sets
+            float targetY = PitLabelBaseY + yOffset;
+            if (System.Math.Abs(_pitLevelLabel.GetY() - targetY) > 0.1f)
+                _pitLevelLabel.SetY(targetY);
         }
 
         public override void Update()
