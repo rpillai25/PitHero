@@ -50,6 +50,10 @@ namespace PitHero.UI
         private bool _isDockedCenter = false;
         private bool _alwaysOnTop = true; // Track current always-on-top state
 
+        // Track previous shrink mode so we can restore it after closing settings
+        private bool _prevWasHalfShrink = false;
+        private bool _prevWasQuarterShrink = false;
+
         // Add these fields
         private float _lastStageW = -1f;
         private float _lastStageH = -1f;
@@ -104,12 +108,7 @@ namespace PitHero.UI
             _gearButton.SetSize(32, 32);
 
             // Handle click to toggle settings visibility
-            _gearButton.OnClicked += (button) => {
-                // Restore original window size only for the top-level launcher button
-                if (WindowManager.IsHalfHeightMode() || WindowManager.IsQuarterHeightMode())
-                    WindowManager.RestoreOriginalSize(_game);
-                ToggleSettingsVisibility();
-            };
+            _gearButton.OnClicked += (button) => ToggleSettingsVisibility();
         }
 
         private void CreateSettingsWindow(Skin skin)
@@ -381,16 +380,41 @@ namespace PitHero.UI
             _lastStageH = stageH;
         }
 
-        /// <summary>Toggles the settings window visibility and repositions UI</summary>
+        /// <summary>
+        /// Toggles settings visibility. When opening, remembers shrink mode and restores full size. When closing, re-applies previous shrink.
+        /// </summary>
         private void ToggleSettingsVisibility()
         {
-            _isVisible = !_isVisible;
+            bool willShow = !_isVisible;
+            if (willShow)
+            {
+                // Capture current shrink state BEFORE restoring
+                _prevWasQuarterShrink = WindowManager.IsQuarterHeightMode();
+                _prevWasHalfShrink = !_prevWasQuarterShrink && WindowManager.IsHalfHeightMode();
+                if (_prevWasQuarterShrink || _prevWasHalfShrink)
+                    WindowManager.RestoreOriginalSize(_game);
+            }
+            else
+            {
+                // Reapply previous shrink state now that we are closing
+                if (_prevWasQuarterShrink)
+                {
+                    WindowManager.ShrinkToNextLevel(_game); // Half
+                    WindowManager.ShrinkToNextLevel(_game); // Quarter
+                }
+                else if (_prevWasHalfShrink)
+                {
+                    WindowManager.ShrinkToNextLevel(_game); // Half
+                }
+                _prevWasQuarterShrink = false;
+                _prevWasHalfShrink = false;
+            }
+
+            _isVisible = willShow;
             _settingsWindow.SetVisible(_isVisible);
             var pauseService = Core.Services.GetService<PauseService>();
             if (pauseService != null)
-            {
                 pauseService.IsPaused = _isVisible;
-            }
             if (_isVisible)
                 _settingsWindow.ToFront();
             LayoutUI();
