@@ -72,8 +72,9 @@ namespace PitHero.ECS.Components
             if (wheelDelta == 0)
                 return;
 
-            bool ctrlDown = Input.IsKeyDown(Keys.LeftControl) || Input.IsKeyDown(Keys.RightControl);
-            if (ctrlDown)
+            // SHIFT now controls window resize zoom behavior instead of CTRL
+            bool shiftDown = Input.IsKeyDown(Keys.LeftShift) || Input.IsKeyDown(Keys.RightShift);
+            if (shiftDown)
             {
                 HandleWindowResizeZoom(wheelDelta);
             }
@@ -84,7 +85,7 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Handles the previous window shrinking/restoring behavior when CTRL is held
+        /// Handles the window shrinking/restoring behavior when SHIFT is held
         /// </summary>
         private void HandleWindowResizeZoom(int wheelDelta)
         {
@@ -153,11 +154,11 @@ namespace PitHero.ECS.Components
 
             _camera.RawZoom = SnapZoomToStep(newZoom);
             RecenterAroundMouse(mouseWorldPos);
-            Debug.Log($"[CameraController] CTRL zoom newZoom={_camera.RawZoom}");
+            Debug.Log($"[CameraController] SHIFT zoom newZoom={_camera.RawZoom}");
         }
 
         /// <summary>
-        /// Handles camera zoom only (no window size changes) when CTRL not held using fixed step increments
+        /// Handles camera zoom only (no window size changes) when SHIFT not held using fixed step increments
         /// </summary>
         private void HandleCameraOnlyZoom(int wheelDelta)
         {
