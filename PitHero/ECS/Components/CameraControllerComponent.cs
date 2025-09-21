@@ -17,6 +17,8 @@ namespace PitHero.ECS.Components
         private Rectangle _tileMapBounds;
         private float _currentMinimumZoom = GameConfig.CameraMinimumZoom;
         private float _currentMaximumZoom = GameConfig.CameraMaximumZoom;
+        // pixel perfect zoom step to avoid subpixel sampling seams (vertical black lines)
+        private const float PixelPerfectZoomStep = 0.125f; // 1/8 increments keeps scaling clean (32 * 0.125 = 4)
 
         /// <summary>
         /// Gets whether this component should respect the global pause state.
@@ -34,6 +36,7 @@ namespace PitHero.ECS.Components
                 _camera.RawZoom = GameConfig.CameraDefaultZoom;
                 _defaultCameraPosition = new Vector2(GameConfig.VirtualWidth / 2f, GameConfig.VirtualHeight / 2f);
                 _camera.Position = _defaultCameraPosition;
+                QuantizeCameraPosition();
             }
             InitializeTileMapBounds();
         }
@@ -60,6 +63,8 @@ namespace PitHero.ECS.Components
                     WindowManager.RestoreOriginalSize(Core.Instance);
                 _camera.RawZoom = GameConfig.CameraDefaultZoom;
                 _camera.Position = ConstrainCameraPosition(_defaultCameraPosition);
+                QuantizeCameraPosition();
+                Debug.Log($"[CameraController] Reset zoom to {_camera.RawZoom} positionX={_camera.Position.X} positionY={_camera.Position.Y}");
                 return;
             }
 
@@ -96,12 +101,14 @@ namespace PitHero.ECS.Components
                     {
                         WindowManager.ShrinkToNextLevel(Core.Instance); // Half
                         CenterCameraOnMap();
+                        QuantizeCameraPosition();
                         return;
                     }
                     else if (!WindowManager.IsQuarterHeightMode())
                     {
                         WindowManager.ShrinkToNextLevel(Core.Instance); // Quarter
                         CenterCameraOnMap();
+                        QuantizeCameraPosition();
                         return;
                     }
                     else
@@ -123,12 +130,14 @@ namespace PitHero.ECS.Components
                 {
                     WindowManager.RestoreOriginalSize(Core.Instance);
                     _camera.Position = ConstrainCameraPosition(_camera.Position);
+                    QuantizeCameraPosition();
                     return;
                 }
                 else if (WindowManager.IsHalfHeightMode())
                 {
                     WindowManager.RestoreOriginalSize(Core.Instance);
                     _camera.Position = ConstrainCameraPosition(_camera.Position);
+                    QuantizeCameraPosition();
                     return;
                 }
 
@@ -142,41 +151,41 @@ namespace PitHero.ECS.Components
             if (System.Math.Abs(newZoom - currentZoom) <= 0.01f)
                 return;
 
-            _camera.RawZoom = newZoom;
+            _camera.RawZoom = SnapZoomToStep(newZoom);
             RecenterAroundMouse(mouseWorldPos);
+            Debug.Log($"[CameraController] CTRL zoom newZoom={_camera.RawZoom}");
         }
 
         /// <summary>
-        /// Handles camera zoom only (no window size changes) when CTRL not held
+        /// Handles camera zoom only (no window size changes) when CTRL not held using fixed step increments
         /// </summary>
         private void HandleCameraOnlyZoom(int wheelDelta)
         {
-            bool zoomingOut = wheelDelta < 0;
             var mouseWorldPos = _camera.ScreenToWorldPoint(Input.ScaledMousePosition);
             var currentZoom = _camera.RawZoom;
-            float newZoom = currentZoom;
 
-            // Allow fractional smooth zoom using configured speed. This restores pre-window-resize behavior.
-            // wheelDelta can be positive or negative. Clamp afterwards.
-            newZoom += wheelDelta * GameConfig.CameraZoomSpeed * currentZoom; // scale by current zoom for smoother feel
+            // Determine direction only (mouse wheel delta magnitudes vary by platform). Each notch -> one step.
+            int direction = wheelDelta > 0 ? 1 : -1;
+            float newZoom = currentZoom + direction * PixelPerfectZoomStep;
 
-            if (zoomingOut && newZoom < currentZoom)
-            {
-                if (newZoom < _currentMinimumZoom)
-                    newZoom = _currentMinimumZoom;
-            }
-            else if (!zoomingOut && newZoom > currentZoom)
-            {
-                if (newZoom > _currentMaximumZoom)
-                    newZoom = _currentMaximumZoom;
-            }
-
+            newZoom = SnapZoomToStep(newZoom);
             newZoom = MathHelper.Clamp(newZoom, _currentMinimumZoom, _currentMaximumZoom);
+
             if (System.Math.Abs(newZoom - currentZoom) <= 0.0001f)
                 return;
 
             _camera.RawZoom = newZoom;
             RecenterAroundMouse(mouseWorldPos);
+            Debug.Log($"[CameraController] Wheel zoom newZoom={_camera.RawZoom}");
+        }
+
+        /// <summary>
+        /// Snap zoom to fixed step increments to maintain pixel alignment and avoid texture sampling seams
+        /// </summary>
+        private float SnapZoomToStep(float value)
+        {
+            var snapped = (float)System.Math.Round(value / PixelPerfectZoomStep) * PixelPerfectZoomStep;
+            return MathHelper.Clamp(snapped, _currentMinimumZoom, _currentMaximumZoom);
         }
 
         /// <summary>
@@ -190,6 +199,22 @@ namespace PitHero.ECS.Components
                 (float)System.Math.Round(worldPosDelta.X),
                 (float)System.Math.Round(worldPosDelta.Y));
             _camera.Position = ConstrainCameraPosition(desiredPosition);
+            QuantizeCameraPosition();
+        }
+
+        /// <summary>
+        /// Quantize camera position so that (position * zoom) lands on whole screen pixels (avoids seams)
+        /// </summary>
+        private void QuantizeCameraPosition()
+        {
+            var pos = _camera.Position;
+            var z = _camera.RawZoom;
+            if (z <= 0f)
+                z = 1f;
+            float step = 1f / z; // world units that map to 1 screen pixel
+            pos.X = (float)System.Math.Round(pos.X / step) * step;
+            pos.Y = (float)System.Math.Round(pos.Y / step) * step;
+            _camera.Position = pos;
         }
 
         private void CenterCameraOnMap()
@@ -197,6 +222,7 @@ namespace PitHero.ECS.Components
             var mapCenterX = _tileMapBounds.X + _tileMapBounds.Width / 2f;
             var mapCenterY = _tileMapBounds.Y + _tileMapBounds.Height / 2f;
             _camera.Position = new Vector2(mapCenterX, mapCenterY);
+            QuantizeCameraPosition();
             Debug.Log($"CenterCameraOnMap -> CenterX={mapCenterX} CenterY={mapCenterY}");
         }
 
@@ -223,6 +249,7 @@ namespace PitHero.ECS.Components
                     (float)System.Math.Round(panDelta.Y));
                 newPosition = ConstrainCameraPosition(newPosition);
                 _camera.Position = newPosition;
+                QuantizeCameraPosition();
                 _lastMousePosition = currentMousePosition;
             }
         }
@@ -296,6 +323,9 @@ namespace PitHero.ECS.Components
             {
                 _camera.SetMinimumZoom(_currentMinimumZoom);
                 _camera.SetMaximumZoom(_currentMaximumZoom);
+                // ensure current zoom respects new limits
+                _camera.RawZoom = MathHelper.Clamp(SnapZoomToStep(_camera.RawZoom), _currentMinimumZoom, _currentMaximumZoom);
+                QuantizeCameraPosition();
             }
         }
     }
