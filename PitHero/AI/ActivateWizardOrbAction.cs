@@ -2,27 +2,25 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.ECS.Components;
 using PitHero.AI.Interfaces;
+using PitHero.Util;
 
 namespace PitHero.AI
 {
     /// <summary>
-    /// Action that activates the wizard orb and queues the next pit level
-    /// Changes wizard orb tint to purple and triggers pit regeneration queue
+    /// Action that activates the wizard orb and queues the next pit level. Also clears remaining FogOfWar tiles in pit.
     /// </summary>
     public class ActivateWizardOrbAction : HeroActionBase
     {
         public ActivateWizardOrbAction() : base(GoapConstants.ActivateWizardOrbAction)
         {
-            // Preconditions: Hero must be inside pit, exploration complete, and wizard orb found
             SetPrecondition(GoapConstants.InsidePit, true);
             SetPrecondition(GoapConstants.ExploredPit, true);
             SetPrecondition(GoapConstants.FoundWizardOrb, true);
-            
-            // Postconditions: Wizard orb activated and pit no longer initialized
             SetPostcondition(GoapConstants.ActivatedWizardOrb, true);
             SetPostcondition(GoapConstants.PitInitialized, false);
         }
 
+        /// <summary>Execute in live scene.</summary>
         public override bool Execute(HeroComponent hero)
         {
             Debug.Log("[ActivateWizardOrb] Starting wizard orb activation");
@@ -47,6 +45,9 @@ namespace PitHero.AI
                 Debug.Warn("[ActivateWizardOrb] Wizard orb entity has no renderable component");
             }
 
+            // Clear all remaining fog first so player sees fully cleared pit
+            ClearAllFogOfWarInPit();
+
             // Queue the next pit level
             QueueNextPitLevel();
 
@@ -55,13 +56,11 @@ namespace PitHero.AI
             hero.PitInitialized = false;
             hero.FoundWizardOrb = false;  // Reset according to specification
             
-            Debug.Log("[ActivateWizardOrb] Wizard orb activation complete - pit level queued");
+            Debug.Log("[ActivateWizardOrb] Wizard orb activation complete - pit level queued and fog cleared");
             return true; // Action complete
         }
 
-        /// <summary>
-        /// Execute action using interface-based context (new approach)
-        /// </summary>
+        /// <summary>Execute in virtual context.</summary>
         public override bool Execute(IGoapContext context)
         {
             context.LogDebug("[ActivateWizardOrbAction] Starting execution with interface-based context");
@@ -77,14 +76,20 @@ namespace PitHero.AI
             context.HeroController.ActivatedWizardOrb = true;
             context.HeroController.PitInitialized = false;
             context.HeroController.FoundWizardOrb = false;  // Reset according to specification
+
+            // Attempt to clear fog if underlying world state supports it (virtual only convenience)
+            var vw = context.WorldState as VirtualGame.VirtualWorldState;
+            if (vw != null)
+            {
+                vw.ClearAllFogInPit();
+                context.LogDebug("[ActivateWizardOrbAction] Cleared all fog in virtual pit");
+            }
             
             context.LogDebug($"[ActivateWizardOrbAction] Wizard orb activation complete - pit level {nextLevel} queued");
             return true; // Action complete
         }
 
-        /// <summary>
-        /// Find the wizard orb entity in the scene
-        /// </summary>
+        /// <summary>Find wizard orb entity.</summary>
         private Entity FindWizardOrbEntity()
         {
             var scene = Core.Scene;
@@ -104,10 +109,7 @@ namespace PitHero.AI
             return wizardOrbEntities[0]; // Should only be one wizard orb
         }
 
-        /// <summary>
-        /// Queue the next pit level for regeneration
-        /// This will be processed when the hero reaches the pit generation point
-        /// </summary>
+        /// <summary>Queue next pit level for regeneration.</summary>
         private void QueueNextPitLevel()
         {
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
@@ -124,17 +126,12 @@ namespace PitHero.AI
             Debug.Log($"[ActivateWizardOrb] Queued pit level {nextLevel} for regeneration");
         }
 
-        /// <summary>
-        /// Queue a specific pit level for regeneration
-        /// This functionality can be used by PitLevelTestComponent as well
-        /// </summary>
+        /// <summary>Queue specific pit level.</summary>
         public static void QueuePitLevel(int level)
         {
-            // Store the queued level in a service for later processing
             var queueService = Core.Services.GetService<PitLevelQueueService>();
             if (queueService == null)
             {
-                // Create the service if it doesn't exist
                 queueService = new PitLevelQueueService();
                 Core.Services.AddService(queueService);
             }
@@ -142,41 +139,68 @@ namespace PitHero.AI
             queueService.QueueLevel(level);
             Debug.Log($"[ActivateWizardOrb] Pit level {level} added to queue");
         }
+
+        /// <summary>Clear all fog tiles inside current pit bounds.</summary>
+        private void ClearAllFogOfWarInPit()
+        {
+            var tms = Core.Services.GetService<TiledMapService>();
+            if (tms == null || tms.CurrentMap == null)
+            {
+                Debug.Warn("[ActivateWizardOrb] TiledMapService or CurrentMap null - cannot clear fog");
+                return;
+            }
+
+            var fogLayer = tms.CurrentMap.GetLayer<Nez.Tiled.TmxLayer>("FogOfWar");
+            if (fogLayer == null)
+            {
+                Debug.Warn("[ActivateWizardOrb] FogOfWar layer not found");
+                return;
+            }
+
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            int pitWidthTiles = pitWidthManager?.CurrentPitRectWidthTiles ?? GameConfig.PitRectWidth;
+            int pitHeightTiles = GameConfig.PitRectHeight;
+            int startX = GameConfig.PitRectX + 1; // interior only
+            int endX = GameConfig.PitRectX + pitWidthTiles - 2;
+            int startY = GameConfig.PitRectY + 1;
+            int endY = GameConfig.PitRectY + pitHeightTiles - 2;
+            int clearedCount = 0;
+            for (int x = startX; x <= endX; x++)
+            {
+                for (int y = startY; y <= endY; y++)
+                {
+                    var tile = fogLayer.GetTile(x, y);
+                    if (tile != null)
+                    {
+                        tms.RemoveTile("FogOfWar", x, y);
+                        clearedCount++;
+                    }
+                }
+            }
+            Debug.Log($"[ActivateWizardOrb] Cleared remaining fog tiles count={clearedCount} boundsInterior=({startX},{startY})-({endX},{endY})");
+        }
     }
 
-    /// <summary>
-    /// Service to manage queued pit levels for regeneration
-    /// </summary>
+    /// <summary>Service to manage queued pit levels.</summary>
     public class PitLevelQueueService
     {
         private int? _queuedLevel;
-
-        /// <summary>
-        /// Queue a pit level for regeneration
-        /// </summary>
+        /// <summary>Queue a pit level.</summary>
         public void QueueLevel(int level)
         {
             _queuedLevel = level;
             Debug.Log($"[PitLevelQueue] Level {level} queued for regeneration");
         }
-
-        /// <summary>
-        /// Get the queued pit level and clear the queue
-        /// </summary>
+        /// <summary>Dequeue queued level (if any).</summary>
         public int? DequeueLevel()
         {
             var level = _queuedLevel;
             _queuedLevel = null;
             if (level.HasValue)
-            {
                 Debug.Log($"[PitLevelQueue] Dequeued level {level.Value} for regeneration");
-            }
             return level;
         }
-
-        /// <summary>
-        /// Check if there is a queued pit level
-        /// </summary>
+        /// <summary>Return true if a level is queued.</summary>
         public bool HasQueuedLevel => _queuedLevel.HasValue;
     }
 }
