@@ -22,7 +22,17 @@ namespace PitHero.ECS.Scenes
         private Label _pitLevelLabel; // UI label showing pit level
         private int _lastDisplayedPitLevel = -1; // Track last displayed level to avoid string churn
 
-        public BitmapFont HudFont;
+        // HUD fonts for different shrink levels
+        private BitmapFont _hudFontNormal;
+        private BitmapFont _hudFontHalf;
+        private BitmapFont _hudFontQuarter;
+        private LabelStyle _pitLevelStyleNormal;
+        private LabelStyle _pitLevelStyleHalf;
+        private LabelStyle _pitLevelStyleQuarter;
+        private enum HudMode { Normal, Half, Quarter }
+        private HudMode _currentHudMode = HudMode.Normal;
+
+        public BitmapFont HudFont; // legacy reference (normal)
 
         public MainGameScene() : this("Content/Tilemaps/PitHero.tmx") { }
         public MainGameScene(string mapPath) { _mapPath = mapPath; }
@@ -37,7 +47,17 @@ namespace PitHero.ECS.Scenes
             cameraEntity.AddComponent(Camera);
             _cameraController = cameraEntity.AddComponent(new CameraControllerComponent());
 
-            HudFont = Content.LoadBitmapFont("Content/Fonts/HUD.fnt");
+            // Load HUD fonts (normal, 2x, 4x for shrink levels)
+            _hudFontNormal = Content.LoadBitmapFont("Content/Fonts/HUD.fnt");
+            // New enlarged fonts for smaller window modes
+            _hudFontHalf = Content.LoadBitmapFont("Content/Fonts/Hud2x.fnt");
+            _hudFontQuarter = Content.LoadBitmapFont("Content/Fonts/Hud4x.fnt");
+            HudFont = _hudFontNormal; // maintain old field
+
+            // Pre-create label styles to avoid per-frame allocations
+            _pitLevelStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
+            _pitLevelStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
+            _pitLevelStyleQuarter = new LabelStyle(_hudFontQuarter, Color.White);
 
             SetupUIOverlay();
         }
@@ -320,7 +340,8 @@ namespace PitHero.ECS.Scenes
             _settingsUI.InitializeUI(uiCanvas.Stage);
 
             // Pit level label (always visible top-left). Position small padding from top-left.
-            _pitLevelLabel = uiCanvas.Stage.AddElement(new Label("Pit Lv. 1", HudFont));
+            _pitLevelLabel = uiCanvas.Stage.AddElement(new Label("Pit Lv. 1", _hudFontNormal));
+            _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
             _pitLevelLabel.SetPosition(10, 16); // stage coordinates origin top-left for fullscreen canvas
         }
 
@@ -385,6 +406,38 @@ namespace PitHero.ECS.Scenes
             }
         }
 
+        /// <summary>
+        /// Update HUD font based on current shrink mode
+        /// </summary>
+        private void UpdateHudFontMode()
+        {
+            HudMode desired;
+            if (WindowManager.IsQuarterHeightMode())
+                desired = HudMode.Quarter;
+            else if (WindowManager.IsHalfHeightMode())
+                desired = HudMode.Half;
+            else
+                desired = HudMode.Normal;
+
+            if (desired == _currentHudMode)
+                return; // no change
+
+            switch (desired)
+            {
+                case HudMode.Normal:
+                    _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
+                    break;
+                case HudMode.Half:
+                    _pitLevelLabel.SetStyle(_pitLevelStyleHalf);
+                    break;
+                case HudMode.Quarter:
+                    _pitLevelLabel.SetStyle(_pitLevelStyleQuarter);
+                    break;
+            }
+            _currentHudMode = desired;
+            _pitLevelLabel.Invalidate();
+        }
+
         public override void Update()
         {
             base.Update();
@@ -399,6 +452,7 @@ namespace PitHero.ECS.Scenes
 
             // Keep pit level label up to date
             UpdatePitLevelLabel();
+            UpdateHudFontMode();
         }
     }
 }
