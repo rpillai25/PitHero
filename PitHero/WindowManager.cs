@@ -20,6 +20,11 @@ namespace PitHero
         private enum ShrinkMode { Normal = 0, Half = 1, Quarter = 2 }
         private static ShrinkMode _currentShrinkMode = ShrinkMode.Normal;
 
+        // track docking mode so shrink/restore can honor it
+        private enum DockMode { None, Top, Bottom, Center }
+        private static DockMode _currentDockMode = DockMode.None;
+        private static int _currentDockYOffset = 0;
+
         private static void EnsureCurrentDisplay(IntPtr sdlWindow)
         {
             if (sdlWindow == IntPtr.Zero)
@@ -54,12 +59,14 @@ namespace PitHero
         /// <summary>Returns true if window is in quarter shrink mode</summary>
         public static bool IsQuarterHeightMode() => _currentShrinkMode == ShrinkMode.Quarter;
 
-        /// <summary>Shrinks window to half (if normal) or quarter (if already half). Does nothing past quarter. Keeps aspect ratio to avoid squish.</summary>
+        /// <summary>Shrinks window to half (if normal) or quarter (if already half). Does nothing past quarter. Keeps aspect ratio to avoid squish. Honors docking mode.</summary>
         public static void ShrinkToNextLevel(Game game)
         {
             var sdlWindow = game.Window.Handle;
             if (sdlWindow == IntPtr.Zero)
                 return;
+
+            EnsureCurrentDisplay(sdlWindow);
 
             if (!_storedOriginalSize)
             {
@@ -71,7 +78,7 @@ namespace PitHero
             if (_currentShrinkMode == ShrinkMode.Quarter)
                 return; // already at smallest
 
-            // capture current size + position for bottom anchoring and horizontal centering
+            // capture current size + position for horizontal adjustment
             SDL.SDL_GetWindowSize(sdlWindow, out int prevW, out int prevH);
             SDL.SDL_GetWindowPosition(sdlWindow, out int prevX, out int prevY);
 
@@ -87,20 +94,53 @@ namespace PitHero
             int newHeight = (int)System.Math.Max(1, _originalWindowHeight * factor);
             int newWidth = (int)System.Math.Max(1, _originalWindowWidth * factor); // proportional to keep aspect ratio
 
-            // anchor bottom edge, horizontally center relative to previous width to minimize jump
-            int bottomY = prevY + prevH; // bottom pixel
-            int newY = bottomY - newHeight;
+            // Default horizontal behavior: center relative to previous
             int newX = prevX + (prevW - newWidth) / 2;
             if (newX < 0) newX = 0;
+
+            // Determine Y based on docking mode (fix: keep top-docked windows at top when shrinking)
+            int newY;
+            switch (_currentDockMode)
+            {
+                case DockMode.Top:
+                    newY = _currentDisplayBounds.y + _currentDockYOffset;
+                    if (newY < _currentDisplayBounds.y) newY = _currentDisplayBounds.y;
+                    break;
+                case DockMode.Center:
+                    {
+                        int centerY = _currentDisplayBounds.y + (_currentDisplayBounds.h - newHeight) / 2 + _currentDockYOffset;
+                        newY = centerY;
+                        if (newY < _currentDisplayBounds.y) newY = _currentDisplayBounds.y;
+                        if (newY + newHeight > _currentDisplayBounds.y + _currentDisplayBounds.h)
+                            newY = _currentDisplayBounds.y + _currentDisplayBounds.h - newHeight;
+                        break;
+                    }
+                case DockMode.Bottom:
+                    {
+                        int baseBottomY = _currentDisplayBounds.y + _currentDisplayBounds.h - newHeight;
+                        newY = baseBottomY + _currentDockYOffset; // offset expected negative/zero for bottom
+                        if (newY < _currentDisplayBounds.y) newY = _currentDisplayBounds.y; // clamp top
+                        if (newY + newHeight > _currentDisplayBounds.y + _currentDisplayBounds.h)
+                            newY = _currentDisplayBounds.y + _currentDisplayBounds.h - newHeight;
+                        break;
+                    }
+                case DockMode.None:
+                default:
+                    // legacy behavior: anchor bottom edge as before
+                    int bottomY = prevY + prevH; // previous bottom pixel
+                    newY = bottomY - newHeight;
+                    if (newY < 0) newY = 0;
+                    break;
+            }
 
             SDL.SDL_SetWindowSize(sdlWindow, newWidth, newHeight);
             SDL.SDL_SetWindowPosition(sdlWindow, newX, newY);
 
             _currentShrinkMode = targetMode;
-            Debug.Log($"ShrinkToNextLevel -> Mode={_currentShrinkMode} NewSize={newWidth}x{newHeight} Pos=({newX},{newY})");
+            Debug.Log($"ShrinkToNextLevel -> Mode={_currentShrinkMode} Dock={_currentDockMode} NewSize={newWidth}x{newHeight} Pos=({newX},{newY})");
         }
 
-        /// <summary>Restores window to original size from any shrink level.</summary>
+        /// <summary>Restores window to original size from any shrink level honoring docking mode.</summary>
         public static void RestoreOriginalSize(Game game)
         {
             if (!_storedOriginalSize || _currentShrinkMode == ShrinkMode.Normal)
@@ -110,19 +150,43 @@ namespace PitHero
             if (sdlWindow == IntPtr.Zero)
                 return;
 
-            // maintain bottom anchoring relative to current bottom
+            EnsureCurrentDisplay(sdlWindow);
+
             SDL.SDL_GetWindowSize(sdlWindow, out int prevW, out int prevH);
             SDL.SDL_GetWindowPosition(sdlWindow, out int prevX, out int prevY);
-            int bottomY = prevY + prevH;
-            int newY = bottomY - _originalWindowHeight;
-            if (newY < 0) newY = 0;
+
             int newX = prevX - (_originalWindowWidth - prevW) / 2;
             if (newX < 0) newX = 0;
+
+            int newY;
+            switch (_currentDockMode)
+            {
+                case DockMode.Top:
+                    newY = _currentDisplayBounds.y + _currentDockYOffset;
+                    break;
+                case DockMode.Center:
+                    newY = _currentDisplayBounds.y + (_currentDisplayBounds.h - _originalWindowHeight) / 2 + _currentDockYOffset;
+                    break;
+                case DockMode.Bottom:
+                    newY = _currentDisplayBounds.y + _currentDisplayBounds.h - _originalWindowHeight + _currentDockYOffset;
+                    break;
+                case DockMode.None:
+                default:
+                    // legacy: maintain bottom anchoring relative to current bottom
+                    int bottomY = prevY + prevH;
+                    newY = bottomY - _originalWindowHeight;
+                    break;
+            }
+
+            // Clamp inside display bounds
+            if (newY < _currentDisplayBounds.y) newY = _currentDisplayBounds.y;
+            if (newY + _originalWindowHeight > _currentDisplayBounds.y + _currentDisplayBounds.h)
+                newY = _currentDisplayBounds.y + _currentDisplayBounds.h - _originalWindowHeight;
 
             SDL.SDL_SetWindowSize(sdlWindow, _originalWindowWidth, _originalWindowHeight);
             SDL.SDL_SetWindowPosition(sdlWindow, newX, newY);
 
-            Debug.Log($"RestoreOriginalSize -> Size={_originalWindowWidth}x{_originalWindowHeight} Pos=({newX},{newY})");
+            Debug.Log($"RestoreOriginalSize -> Dock={_currentDockMode} Size={_originalWindowWidth}x{_originalWindowHeight} Pos=({newX},{newY})");
             _currentShrinkMode = ShrinkMode.Normal;
         }
 
@@ -169,6 +233,9 @@ namespace PitHero
             SDL.SDL_SetWindowPosition(sdlWindow, x, y);
             SDL.SDL_SetWindowAlwaysOnTop(sdlWindow, alwaysOnTop ? true : false);
 
+            _currentDockMode = DockMode.Bottom; // treat initial configuration as bottom dock
+            _currentDockYOffset = 0;
+
             Debug.Log($"Window configured as horizontal strip at ({x},{y}) - Always on top: {alwaysOnTop}");
         }
 
@@ -202,6 +269,9 @@ namespace PitHero
             SDL.SDL_SetWindowPosition(sdlWindow, x, y);
             SDL.SDL_SetWindowSize(sdlWindow, windowWidth, windowHeight);
             SDL.SDL_SetWindowAlwaysOnTop(sdlWindow, alwaysOnTop);
+
+            _currentDockMode = DockMode.Bottom;
+            _currentDockYOffset = 0;
 
             Debug.Log($"Window configured as bottom docked strip {windowWidth}x{windowHeight} at ({x},{y}) - Always on top: {alwaysOnTop}");
         }
@@ -248,6 +318,9 @@ namespace PitHero
             SDL.SDL_SetWindowSize(sdlWindow, windowWidth, windowHeight);
             SDL.SDL_SetWindowPosition(sdlWindow, x, y);
 
+            _currentDockMode = DockMode.Top;
+            _currentDockYOffset = yOffset;
+
             Debug.Log($"DockTop -> displayID={_currentDisplayID} bounds=({_currentDisplayBounds.x},{_currentDisplayBounds.y},{_currentDisplayBounds.w},{_currentDisplayBounds.h}) pos=({x},{y}) size={windowWidth}x{windowHeight}");
         }
 
@@ -270,11 +343,14 @@ namespace PitHero
             SDL.SDL_SetWindowSize(sdlWindow, windowWidth, windowHeight);
             SDL.SDL_SetWindowPosition(sdlWindow, x, y);
 
+            _currentDockMode = DockMode.Bottom;
+            _currentDockYOffset = yOffset;
+
             Debug.Log($"DockBottom -> displayID={_currentDisplayID} bounds=({_currentDisplayBounds.x},{_currentDisplayBounds.y},{_currentDisplayBounds.w},{_currentDisplayBounds.h}) pos=({x},{y}) size={windowWidth}x{windowHeight}");
         }
 
         /// <summary>
-        /// Centers the window on the screen with optional Y offset for fine-tuning.
+        /// Docks the window to the center of the screen with optional Y offset for fine-tuning.
         /// </summary>
         public static void DockCenter(Game game, int yOffset = 0)
         {
@@ -291,6 +367,9 @@ namespace PitHero
 
             SDL.SDL_SetWindowSize(sdlWindow, windowWidth, windowHeight);
             SDL.SDL_SetWindowPosition(sdlWindow, x, y);
+
+            _currentDockMode = DockMode.Center;
+            _currentDockYOffset = yOffset;
 
             Debug.Log($"DockCenter -> displayID={_currentDisplayID} bounds=({_currentDisplayBounds.x},{_currentDisplayBounds.y},{_currentDisplayBounds.w},{_currentDisplayBounds.h}) pos=({x},{y}) size={windowWidth}x{windowHeight}");
         }
@@ -345,11 +424,25 @@ namespace PitHero
                 return;
             }
 
-            // Use bottom docking heuristic
+            // Use docking mode to decide target position/size
             int targetWidth = nextBounds.w;
             int targetHeight = nextBounds.h / 3;
             int targetX = nextBounds.x;
-            int targetY = nextBounds.y + nextBounds.h - targetHeight;
+            int targetY;
+            switch (_currentDockMode)
+            {
+                case DockMode.Top:
+                    targetY = nextBounds.y + _currentDockYOffset;
+                    break;
+                case DockMode.Center:
+                    targetY = nextBounds.y + (nextBounds.h - targetHeight) / 2 + _currentDockYOffset;
+                    break;
+                case DockMode.Bottom:
+                case DockMode.None:
+                default:
+                    targetY = nextBounds.y + nextBounds.h - targetHeight + _currentDockYOffset;
+                    break;
+            }
 
             SDL.SDL_SetWindowSize(sdlWindow, targetWidth, targetHeight);
             SDL.SDL_SetWindowPosition(sdlWindow, targetX, targetY);
@@ -359,7 +452,7 @@ namespace PitHero
             SDL.SDL_GetWindowPosition(sdlWindow, out int finalX, out int finalY);
             SDL.SDL_GetWindowSize(sdlWindow, out int finalW, out int finalH);
 
-            Debug.Log($"SwapToNextMonitor: moved to displayID={nextDisplayID} bounds=({nextBounds.x},{nextBounds.y},{nextBounds.w},{nextBounds.h}) final=({finalX},{finalY}) size={finalW}x{finalH}");
+            Debug.Log($"SwapToNextMonitor: moved to displayID={nextDisplayID} bounds=({nextBounds.x},{nextBounds.y},{nextBounds.w},{nextBounds.h}) final=({finalX},{finalY}) size={finalW}x{finalH} Dock={_currentDockMode}");
         }
     }
 }
