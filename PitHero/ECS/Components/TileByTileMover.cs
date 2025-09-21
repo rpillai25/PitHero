@@ -15,6 +15,7 @@ namespace PitHero.ECS.Components
     {
         private ColliderTriggerHelper _triggerHelper;
         private readonly int _tileSize = GameConfig.TileSize;
+        private ActorFacingComponent _facing; // facing component cache
         
         /// <summary>
         /// Movement speed in pixels per second
@@ -31,24 +32,9 @@ namespace PitHero.ECS.Components
         /// </summary>
         public Direction? CurrentDirection { get; private set; }
         
-        /// <summary>
-        /// Starting position of current movement
-        /// </summary>
         private Vector2 _moveStartPosition;
-        
-        /// <summary>
-        /// Target position of current movement
-        /// </summary>
         private Vector2 _moveTargetPosition;
-        
-        /// <summary>
-        /// Duration of current move (seconds) computed from MovementSpeed (pixels/sec)
-        /// </summary>
         private float _moveDuration;
-        
-        /// <summary>
-        /// Elapsed time since movement started (seconds)
-        /// </summary>
         private float _moveElapsed;
 
         /// <summary>
@@ -59,7 +45,7 @@ namespace PitHero.ECS.Components
         public override void OnAddedToEntity()
         {
             _triggerHelper = new ColliderTriggerHelper(Entity);
-            
+            _facing = Entity.GetComponent<ActorFacingComponent>();
             // Ensure the entity starts properly aligned to the tile grid
             SnapToTileGrid();
         }
@@ -97,6 +83,11 @@ namespace PitHero.ECS.Components
             _moveElapsed = 0f;
             CurrentDirection = direction;
             IsMoving = true;
+
+            // Update facing immediately
+            if (_facing == null)
+                _facing = Entity.GetComponent<ActorFacingComponent>();
+            _facing?.SetFacing(direction);
 
             // Calculate duration using pixels-per-second speed
             var distancePixels = motion.Length();
@@ -242,26 +233,22 @@ namespace PitHero.ECS.Components
             if (collider == null || _triggerHelper == null)
                 return false;
 
-            // Fetch anything that we might collide with at our new position
             var bounds = collider.Bounds;
             bounds.X += motion.X;
             bounds.Y += motion.Y;
             var neighbors = Physics.BoxcastBroadphaseExcludingSelf(collider, ref bounds, collider.CollidesWithLayers);
 
+            // Iterate neighbors (HashSet) safely
             foreach (var neighbor in neighbors)
             {
-                // Skip triggers - we want to move through them but still detect them
                 if (neighbor.IsTrigger)
                     continue;
-
                 if (collider.CollidesWith(neighbor, motion, out CollisionResult internalCollisionResult))
                 {
-                    // Hit a solid collider - movement is blocked
                     collisionResult = internalCollisionResult;
                     return true;
                 }
             }
-
             return false;
         }
 

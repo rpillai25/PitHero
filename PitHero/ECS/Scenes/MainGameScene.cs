@@ -147,7 +147,6 @@ namespace PitHero.ECS.Scenes
         {
             // Calculate random position at least 8 tiles to the right of rightmost pit edge
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
-            //var rightmostPitTile = pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth - 1);
             var pitWidth = pitWidthManager?.CurrentPitRectWidthTiles ?? GameConfig.PitRectWidth;
             var rightmostPitTile = GameConfig.PitRectX + pitWidth - 1;
 
@@ -167,6 +166,9 @@ namespace PitHero.ECS.Scenes
 
             Debug.Log($"[MainGameScene] Hero spawned at random position {heroStart.X},{heroStart.Y} , tile coordinates: " +
                       $"({heroTileX}, {heroTileY}) - {minHeroTileX - rightmostPitTile} tiles from pit edge");
+
+            // NEW: add facing component first so animators can query it immediately
+            hero.AddComponent(new ActorFacingComponent());
 
             // Add all paperdoll layer animators in the correct order (Hand2 to Hand1)
             var offset = new Vector2(0, -GameConfig.TileSize / 2); // Offset so feet are at entity position

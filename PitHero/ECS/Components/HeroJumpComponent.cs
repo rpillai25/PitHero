@@ -127,6 +127,10 @@ namespace PitHero.ECS.Components
             _jumpStartTime = Time.TotalTime;
             _isJumping = true;
 
+            // Update facing
+            var facing = Entity.GetComponent<ActorFacingComponent>();
+            facing?.SetFacing(direction);
+
             // Initialize _heroAnimators if null (may happen in tests)
             if (_heroAnimators == null)
             {

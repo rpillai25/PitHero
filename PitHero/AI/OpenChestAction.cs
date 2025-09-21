@@ -6,11 +6,17 @@ using PitHero.ECS.Components;
 namespace PitHero.AI
 {
     /// <summary>
-    /// Action that causes the hero to open an adjacent chest
-    /// Hero faces the chest, opens it, and the chest is removed from the scene
+    /// Action that causes the hero to open an adjacent chest with timed sequence
+    /// Face chest -> wait 1s -> open -> wait 1s -> done
     /// </summary>
     public class OpenChestAction : HeroActionBase
     {
+        private enum Phase { NotStarted, FacingWait, OpenedWait, Done }
+        private Phase _phase = Phase.NotStarted;
+        private float _timer;
+        private Entity _chestEntity; // cached chest entity for duration of action
+        private TreasureComponent _treasureComponent;
+
         public OpenChestAction() : base(GoapConstants.OpenChest, 2)
         {
             // Preconditions: Hero must be adjacent to a chest
@@ -22,52 +28,115 @@ namespace PitHero.AI
 
         public override bool Execute(HeroComponent hero)
         {
-            Debug.Log("[OpenChest] Starting chest opening");
-
-            // Find the nearest adjacent CLOSED chest
-            var chestEntity = FindNearestAdjacentClosedChest(hero);
-            if (chestEntity == null)
+            switch (_phase)
             {
-                Debug.Warn("[OpenChest] Could not find adjacent CLOSED chest");
-                // Recalculate if there are still chests adjacent to hero
-                hero.AdjacentToChest = hero.CheckAdjacentToChest();
-                return true; // Complete as no-op
+                case Phase.NotStarted:
+                    Debug.Log("[OpenChest] Starting chest opening sequence");
+                    _chestEntity = FindNearestAdjacentClosedChest(hero);
+                    if (_chestEntity == null)
+                    {
+                        Debug.Warn("[OpenChest] No adjacent CLOSED chest found - finishing");
+                        hero.AdjacentToChest = hero.CheckAdjacentToChest();
+                        Reset();
+                        return true; // nothing to do
+                    }
+
+                    // Face chest (just logs currently)
+                    FaceTarget(hero, _chestEntity.Transform.Position);
+                    _phase = Phase.FacingWait;
+                    _timer = 1f; // wait 1 second facing
+                    return false; // still running
+
+                case Phase.FacingWait:
+                    if (!StillValid(hero))
+                    {
+                        Debug.Warn("[OpenChest] Chest no longer valid during facing wait - aborting");
+                        hero.AdjacentToChest = hero.CheckAdjacentToChest();
+                        Reset();
+                        return true;
+                    }
+                    _timer -= Time.DeltaTime;
+                    if (_timer <= 0f)
+                    {
+                        // Open chest
+                        _treasureComponent = _chestEntity.GetComponent<TreasureComponent>();
+                        if (_treasureComponent != null && _treasureComponent.State == TreasureComponent.TreasureState.CLOSED)
+                        {
+                            _treasureComponent.State = TreasureComponent.TreasureState.OPEN;
+                            Debug.Log("[OpenChest] Chest state changed to OPEN");
+                        }
+                        else
+                        {
+                            Debug.Warn("[OpenChest] TreasureComponent missing or already open when attempting to open");
+                        }
+                        _phase = Phase.OpenedWait;
+                        _timer = 1f; // wait another second after opening
+                    }
+                    return false;
+
+                case Phase.OpenedWait:
+                    if (!StillValidPostOpen())
+                    {
+                        Debug.Warn("[OpenChest] Chest entity lost after opening - continuing to finish");
+                    }
+                    _timer -= Time.DeltaTime;
+                    if (_timer <= 0f)
+                    {
+                        hero.AdjacentToChest = hero.CheckAdjacentToChest();
+                        Debug.Log("[OpenChest] Chest opening sequence complete");
+                        _phase = Phase.Done;
+                        Reset();
+                        return true;
+                    }
+                    return false;
+
+                case Phase.Done:
+                    // Should not normally hit since we reset after completion
+                    return true;
             }
-
-            // Face the chest
-            FaceTarget(hero, chestEntity.Transform.Position);
-
-            // Open the chest by changing its state instead of removing it
-            var treasureComponent = chestEntity.GetComponent<TreasureComponent>();
-            if (treasureComponent != null)
-            {
-                treasureComponent.State = TreasureComponent.TreasureState.OPEN;
-                Debug.Log("[OpenChest] Chest state changed to OPEN");
-            }
-            else
-            {
-                Debug.Warn("[OpenChest] Chest entity does not have TreasureComponent, falling back to removal");
-                chestEntity.Destroy();
-            }
-
-            // Recalculate if there are still chests adjacent to hero
-            hero.AdjacentToChest = hero.CheckAdjacentToChest();
-
-            Debug.Log("[OpenChest] Chest opening completed successfully");
             return true;
         }
 
         public override bool Execute(IGoapContext context)
         {
-            context.LogDebug("[OpenChest] Starting chest opening with interface-based context");
-
-            // Get current tile position
-            var heroTile = context.HeroController.CurrentTilePosition;
-            context.LogDebug($"[OpenChest] Hero at tile ({heroTile.X},{heroTile.Y})");
-
-            // Note: Virtual implementation would handle chest removal from virtual world state
-            context.LogDebug("[OpenChest] Chest opening completed in virtual context");
+            // Virtual context: no timing for now, just immediate (can be expanded if virtual timing needed)
+            context.LogDebug("[OpenChest] Virtual context immediate execution");
             return true;
+        }
+
+        /// <summary>
+        /// Validate chest still exists and is adjacent & closed
+        /// </summary>
+        private bool StillValid(HeroComponent hero)
+        {
+            if (_chestEntity == null || _chestEntity.Transform == null)
+                return false;
+            var treasure = _chestEntity.GetComponent<TreasureComponent>();
+            if (treasure == null || treasure.State != TreasureComponent.TreasureState.CLOSED)
+                return false;
+            // re-check adjacency (hero could have moved unexpectedly)
+            var heroTile = GetCurrentTilePosition(hero);
+            var chestTile = GetTileCoordinates(_chestEntity.Transform.Position);
+            return IsCardinalAdjacent(heroTile, chestTile);
+        }
+
+        /// <summary>
+        /// Validate chest entity presence after open (state may now be OPEN)
+        /// </summary>
+        private bool StillValidPostOpen()
+        {
+            return _chestEntity != null; // nothing else required
+        }
+
+        /// <summary>
+        /// Reset internal state so action can be reused by planner
+        /// </summary>
+        private void Reset()
+        {
+            _phase = Phase.NotStarted;
+            _timer = 0f;
+            _chestEntity = null;
+            _treasureComponent = null;
         }
 
         /// <summary>
@@ -110,8 +179,15 @@ namespace PitHero.AI
         /// </summary>
         private void FaceTarget(HeroComponent hero, Vector2 targetPosition)
         {
-            var direction = targetPosition - hero.Entity.Transform.Position;
-            Debug.Log($"[OpenChest] Hero facing direction: ({direction.X},{direction.Y})");
+            var delta = targetPosition - hero.Entity.Transform.Position;
+            Direction faceDir;
+            if (System.Math.Abs(delta.X) >= System.Math.Abs(delta.Y))
+                faceDir = delta.X < 0 ? Direction.Left : Direction.Right;
+            else
+                faceDir = delta.Y < 0 ? Direction.Up : Direction.Down;
+            var facing = hero.Entity.GetComponent<ActorFacingComponent>();
+            facing?.SetFacing(faceDir);
+            Debug.Log($"[OpenChest] Hero facing direction set to {faceDir} using delta ({delta.X},{delta.Y})");
         }
 
         /// <summary>

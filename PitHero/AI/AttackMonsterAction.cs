@@ -101,9 +101,21 @@ namespace PitHero.AI
         /// </summary>
         private void FaceTarget(HeroComponent hero, Vector2 targetPosition)
         {
-            // For now, just log the direction. Could extend to update sprite direction later
-            var direction = targetPosition - hero.Entity.Transform.Position;
-            Debug.Log($"[AttackMonster] Hero facing direction: ({direction.X},{direction.Y})");
+            // Calculate the direction vector
+            var delta = targetPosition - hero.Entity.Transform.Position;
+
+            // Determine the facing direction based on the direction vector
+            Direction faceDir;
+            if (System.Math.Abs(delta.X) >= System.Math.Abs(delta.Y))
+                faceDir = delta.X < 0 ? Direction.Left : Direction.Right;
+            else
+                faceDir = delta.Y < 0 ? Direction.Up : Direction.Down;
+
+            // Set the hero's facing direction
+            var facing = hero.Entity.GetComponent<ActorFacingComponent>();
+            facing?.SetFacing(faceDir);
+
+            Debug.Log($"[AttackMonster] Hero facing direction set to {faceDir} using delta ({delta.X},{delta.Y})");
         }
 
         /// <summary>
