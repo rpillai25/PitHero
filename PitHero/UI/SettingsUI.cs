@@ -104,7 +104,12 @@ namespace PitHero.UI
             _gearButton.SetSize(32, 32);
 
             // Handle click to toggle settings visibility
-            _gearButton.OnClicked += (button) => ToggleSettingsVisibility();
+            _gearButton.OnClicked += (button) => {
+                // Restore original window size only for the top-level launcher button
+                if (WindowManager.IsHalfHeightMode() || WindowManager.IsQuarterHeightMode())
+                    WindowManager.RestoreOriginalSize(_game);
+                ToggleSettingsVisibility();
+            };
         }
 
         private void CreateSettingsWindow(Skin skin)
@@ -227,7 +232,6 @@ namespace PitHero.UI
             _saveButton = new TextButton("Save", skin);
             _saveButton.SetDisabled(true);
             _saveButton.OnClicked += (button) => {
-                // Placeholder - will eventually save game state
                 Debug.Log("Save functionality not yet implemented");
             };
             sessionTable.Add(_saveButton).Width(150).SetPadBottom(15);
@@ -250,11 +254,9 @@ namespace PitHero.UI
             var dialogTable = new Table();
             dialogTable.Pad(20);
             
-            // Message
             dialogTable.Add(new Label("Are you sure you want to quit?", skin)).SetPadBottom(20);
             dialogTable.Row();
             
-            // Button row
             var buttonTable = new Table();
             
             var yesButton = new TextButton("Yes", skin);
@@ -273,7 +275,6 @@ namespace PitHero.UI
             _confirmationDialog.Add(dialogTable).Expand().Fill();
             _confirmationDialog.SetVisible(false);
             
-            // Center the dialog when shown
             _confirmationDialog.SetPosition(
                 (_stage.GetWidth() - _confirmationDialog.GetWidth()) / 2,
                 (_stage.GetHeight() - _confirmationDialog.GetHeight()) / 2
@@ -282,22 +283,18 @@ namespace PitHero.UI
 
         private void ShowQuitConfirmation()
         {
-            // Ensure layout is up to date so sizes are valid
             _settingsWindow.Validate();
             _confirmationDialog.Validate();
 
-            // Settings window position and size
             float winX = _settingsWindow.GetX();
             float winY = _settingsWindow.GetY();
             float dialogW = _confirmationDialog.GetWidth();
             float dialogH = _confirmationDialog.GetHeight();
 
-            // Desired: directly left of the Settings window, same Y
             const float padding = 8f;
             float targetX = winX - dialogW - padding;
             float targetY = winY;
 
-            // Clamp inside stage bounds
             float stageW = _stage.GetWidth();
             float stageH = _stage.GetHeight();
             if (targetX < 0) targetX = 0;
@@ -321,22 +318,16 @@ namespace PitHero.UI
         private void SwitchToTab(bool showWindowTab)
         {
             _isWindowTabActive = showWindowTab;
-            
-            // Clear current content
             _tabContentTable.Clear();
-            
-            // Show appropriate content
             if (showWindowTab)
             {
                 _tabContentTable.Add(_windowTabContent).Expand().Fill();
-                // Update button states to show active tab
                 _windowTabButton.SetDisabled(true);
                 _sessionTabButton.SetDisabled(false);
             }
             else
             {
                 _tabContentTable.Add(_sessionTabContent).Expand().Fill();
-                // Update button states to show active tab
                 _windowTabButton.SetDisabled(false);
                 _sessionTabButton.SetDisabled(true);
             }
@@ -345,14 +336,12 @@ namespace PitHero.UI
         /// <summary>Applies visibility and positions gear/settings window</summary>
         private void LayoutUI()
         {
-            // Keep elements on the stage
             if (_gearButton.GetStage() == null)
                 _stage.AddElement(_gearButton);
 
             if (_settingsWindow.GetStage() == null)
                 _stage.AddElement(_settingsWindow);
 
-            // Apply visibility and position
             _settingsWindow.SetVisible(_isVisible);
             PositionUI();
         }
@@ -362,18 +351,15 @@ namespace PitHero.UI
             float stageW = _stage.GetWidth();
             float stageH = _stage.GetHeight();
 
-            // Gear size
             float gearW = _gearButton.GetWidth();
             float gearH = _gearButton.GetHeight();
 
-            // Top middle: (middleX, 4px down from top)
             float gearX = (stageW - gearW) * 0.5f;
             float gearY = 2f;
             _gearButton.SetPosition(gearX, gearY);
 
             if (_isVisible)
             {
-                // Settings window directly to the right of the gear
                 const float padding = 4f;
                 float winW = _settingsWindow.GetWidth();
                 float winH = _settingsWindow.GetHeight();
@@ -381,11 +367,9 @@ namespace PitHero.UI
                 float winX = gearX + gearW + padding;
                 float winY = gearY + padding;
 
-                // If it overflows to the right, show it to the left of the gear
                 if (winX + winW > stageW)
                     winX = gearX - padding - winW;
 
-                // Clamp inside stage vertically and horizontally
                 if (winX < 0) winX = 0;
                 if (winY < 0) winY = 0;
                 if (winY + winH > stageH) winY = stageH - winH;
@@ -402,17 +386,13 @@ namespace PitHero.UI
         {
             _isVisible = !_isVisible;
             _settingsWindow.SetVisible(_isVisible);
-            
-            // Control pause state based on settings visibility
             var pauseService = Core.Services.GetService<PauseService>();
             if (pauseService != null)
             {
                 pauseService.IsPaused = _isVisible;
             }
-            
             if (_isVisible)
                 _settingsWindow.ToFront();
-
             LayoutUI();
         }
 
@@ -421,13 +401,10 @@ namespace PitHero.UI
             _isDockedTop = true;
             _isDockedBottom = false;
             _isDockedCenter = false;
-            
-            // Reset Y offset and update slider range for top dock (0 to 200)
             _currentYOffset = 0;
             UpdateSliderRange(0, 200);
             _yOffsetSlider.SetValue(0);
             _yOffsetLabel.SetText("Y Offset: 0");
-            
             ApplyCurrentWindowPosition();
         }
 
@@ -436,13 +413,10 @@ namespace PitHero.UI
             _isDockedTop = false;
             _isDockedBottom = true;
             _isDockedCenter = false;
-            
-            // Reset Y offset and update slider range for bottom dock (-200 to 0)
             _currentYOffset = 0;
             UpdateSliderRange(-200, 0);
             _yOffsetSlider.SetValue(0);
             _yOffsetLabel.SetText("Y Offset: 0");
-            
             ApplyCurrentWindowPosition();
         }
 
@@ -451,19 +425,15 @@ namespace PitHero.UI
             _isDockedTop = false;
             _isDockedBottom = false;
             _isDockedCenter = true;
-            
-            // Reset Y offset and update slider range for center dock (-200 to 200)
             _currentYOffset = 0;
             UpdateSliderRange(-200, 200);
             _yOffsetSlider.SetValue(0);
             _yOffsetLabel.SetText("Y Offset: 0");
-            
             ApplyCurrentWindowPosition();
         }
 
         private void UpdateSliderRange(float min, float max)
         {
-            // Update slider range using SetMinMax method
             _yOffsetSlider.SetMinMax(min, max);
         }
 
@@ -484,16 +454,11 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Updates the UI (called from scene update if needed)
-        /// Leaving this here but doing nothing, because for now windows size never changes
+        /// Updates the UI (unused placeholder)
         /// </summary>
         public void Update()
         {
-            // Re-center on window resize
-            //float stageW = _stage.GetWidth();
-            //float stageH = _stage.GetHeight();
-            //if (stageW != _lastStageW || stageH != _lastStageH)
-            //    PositionUI();
+            // Intentionally left blank
         }
     }
 }
