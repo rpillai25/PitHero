@@ -25,27 +25,15 @@ namespace PitHero.ECS.Components
 
         public override void OnAddedToEntity()
         {
-            // Get the camera component from the same entity
-            _camera = Entity.GetComponent<Camera>();
-            if (_camera == null)
-            {
-                // If no camera on this entity, try to get the scene camera
-                _camera = Entity.Scene.Camera;
-            }
-
-            // Set up initial camera zoom limits using Nez's built-in methods
+            _camera = Entity.GetComponent<Camera>() ?? Entity.Scene.Camera;
             if (_camera != null)
             {
                 _camera.SetMinimumZoom(_currentMinimumZoom);
                 _camera.SetMaximumZoom(_currentMaximumZoom);
                 _camera.RawZoom = GameConfig.CameraDefaultZoom;
-                
-                // Store the default position for resetting and ensure camera starts centered
                 _defaultCameraPosition = new Vector2(GameConfig.VirtualWidth / 2f, GameConfig.VirtualHeight / 2f);
                 _camera.Position = _defaultCameraPosition;
             }
-
-            // Get TileMap bounds for panning constraints
             InitializeTileMapBounds();
         }
 
@@ -54,7 +42,6 @@ namespace PitHero.ECS.Components
             if (_camera == null)
                 return;
 
-            // Check if game is paused and this component should pause
             var pauseService = Core.Services.GetService<PauseService>();
             if (pauseService?.IsPaused == true && ShouldPause)
                 return;
@@ -65,127 +52,135 @@ namespace PitHero.ECS.Components
 
         private void HandleZoomInput()
         {
-            // Handle middle mouse button click to reset zoom
+            // Middle click reset
             if (Input.MiddleMouseButtonPressed)
             {
+                // restore window if in half-height mode
+                if (WindowManager.IsHalfHeightMode())
+                    WindowManager.RestoreOriginalSize(Core.Instance);
                 _camera.RawZoom = GameConfig.CameraDefaultZoom;
                 _camera.Position = ConstrainCameraPosition(_defaultCameraPosition);
                 return;
             }
 
-            // Get mouse wheel delta for zooming
             var wheelDelta = Input.MouseWheelDelta;
-            if (wheelDelta != 0)
+            if (wheelDelta == 0)
+                return;
+
+            bool zoomingOut = wheelDelta < 0;
+            var mouseWorldPos = _camera.ScreenToWorldPoint(Input.ScaledMousePosition);
+            var currentZoom = _camera.RawZoom;
+            float newZoom = currentZoom;
+
+            if (zoomingOut)
             {
-                // Store current mouse position in world coordinates
-                var mouseWorldPos = _camera.ScreenToWorldPoint(Input.ScaledMousePosition);
-                
-                // Calculate new zoom level using integer increments only to avoid tile artifacts
-                var currentZoom = _camera.RawZoom;
-                float newZoom;
-                
-                if (wheelDelta > 0)
+                // progressive shrink levels before actually reducing zoom
+                if (currentZoom <= 1f)
                 {
-                    // Zoom in: go to next integer level or 0.5x -> 1x
-                    if (currentZoom == 0.5f)
+                    if (!WindowManager.IsHalfHeightMode())
                     {
-                        newZoom = 1f;
+                        WindowManager.ShrinkToNextLevel(Core.Instance); // Half
+                        CenterCameraOnMap();
+                        return; // do not change zoom
+                    }
+                    else if (!WindowManager.IsQuarterHeightMode())
+                    {
+                        WindowManager.ShrinkToNextLevel(Core.Instance); // Quarter
+                        CenterCameraOnMap();
+                        return; // still do not change zoom
                     }
                     else
                     {
-                        newZoom = (float)System.Math.Floor(currentZoom) + 1f;
+                        // already at smallest window. Now allow real zoom decrement (e.g., to 0.5) if permitted
+                        if (currentZoom > _currentMinimumZoom)
+                            newZoom = _currentMinimumZoom;
                     }
                 }
                 else
                 {
-                    // Zoom out: go to previous integer level or 1x -> 0.5x (if allowed)
-                    if (currentZoom <= 1f)
-                    {
-                        newZoom = _currentMinimumZoom; // Will be 0.5f for large maps, 1f for normal maps
-                    }
-                    else
-                    {
-                        newZoom = (float)System.Math.Floor(currentZoom) - 1f;
-                        if (newZoom < 1f)
-                        {
-                            newZoom = 1f;
-                        }
-                    }
-                }
-                
-                // Clamp zoom to the configured limits
-                newZoom = MathHelper.Clamp(newZoom, _currentMinimumZoom, _currentMaximumZoom);
-                
-                // Only update if zoom actually changed
-                if (System.Math.Abs(newZoom - currentZoom) > 0.01f)
-                {
-                    // Set the new zoom
-                    _camera.RawZoom = newZoom;
-                    
-                    // Adjust camera position so it zooms towards the mouse cursor
-                    var newMouseWorldPos = _camera.ScreenToWorldPoint(Input.ScaledMousePosition);
-                    var worldPosDelta = mouseWorldPos - newMouseWorldPos;
-                    
-                    // Round to integer pixels to avoid artifacts
-                    var desiredPosition = _camera.Position + new Vector2(
-                        (float)System.Math.Round(worldPosDelta.X),
-                        (float)System.Math.Round(worldPosDelta.Y)
-                    );
-
-                    // Constrain camera position to TileMap bounds
-                    _camera.Position = ConstrainCameraPosition(desiredPosition);
+                    // higher than 1x: integer step down
+                    newZoom = (float)System.Math.Floor(currentZoom) - 1f;
+                    if (newZoom < 1f)
+                        newZoom = 1f; // let shrink sequence handle further perceived zooming out
                 }
             }
+            else
+            {
+                // zooming in
+                if (WindowManager.IsQuarterHeightMode())
+                {
+                    // first restore to half (one level visually) before actual zoom change
+                    WindowManager.RestoreOriginalSize(Core.Instance); // restore fully first then re-shrink to half if still below 1? Simpler: full restore
+                    // remain at same zoom but full size; user can zoom in again to adjust zoom levels
+                    _camera.Position = ConstrainCameraPosition(_camera.Position);
+                    return;
+                }
+                else if (WindowManager.IsHalfHeightMode())
+                {
+                    WindowManager.RestoreOriginalSize(Core.Instance);
+                    _camera.Position = ConstrainCameraPosition(_camera.Position);
+                    return;
+                }
+                // actual zoom in (integer steps)
+                if (currentZoom == 0.5f)
+                    newZoom = 1f;
+                else
+                    newZoom = (float)System.Math.Floor(currentZoom) + 1f;
+            }
+
+            newZoom = MathHelper.Clamp(newZoom, _currentMinimumZoom, _currentMaximumZoom);
+
+            if (System.Math.Abs(newZoom - currentZoom) <= 0.01f)
+                return;
+
+            _camera.RawZoom = newZoom;
+
+            var newMouseWorldPos = _camera.ScreenToWorldPoint(Input.ScaledMousePosition);
+            var worldPosDelta = mouseWorldPos - newMouseWorldPos;
+            var desiredPosition = _camera.Position + new Vector2(
+                (float)System.Math.Round(worldPosDelta.X),
+                (float)System.Math.Round(worldPosDelta.Y));
+            _camera.Position = ConstrainCameraPosition(desiredPosition);
+        }
+
+        private void CenterCameraOnMap()
+        {
+            var mapCenterX = _tileMapBounds.X + _tileMapBounds.Width / 2f;
+            var mapCenterY = _tileMapBounds.Y + _tileMapBounds.Height / 2f;
+            _camera.Position = new Vector2(mapCenterX, mapCenterY);
+            Debug.Log($"CenterCameraOnMap -> CenterX={mapCenterX} CenterY={mapCenterY}");
         }
 
         private void HandlePanInput()
         {
             var currentMousePosition = Input.ScaledMousePosition;
 
-            // Start panning when right mouse button is pressed
             if (Input.RightMouseButtonPressed)
             {
                 _isPanning = true;
                 _lastMousePosition = currentMousePosition;
             }
-            // Stop panning when right mouse button is released
             else if (Input.RightMouseButtonReleased)
             {
                 _isPanning = false;
             }
 
-            // Pan the camera while right mouse button is held down
             if (_isPanning && Input.RightMouseButtonDown)
             {
                 var mouseDelta = currentMousePosition - _lastMousePosition;
-                
-                // Move camera in opposite direction of mouse movement
-                // Scale by zoom level so panning feels consistent at different zoom levels
                 var panDelta = -mouseDelta * GameConfig.CameraPanSpeed / _camera.RawZoom;
-                
-                // Round to integer pixels to avoid artifacts
                 var newPosition = _camera.Position + new Vector2(
                     (float)System.Math.Round(panDelta.X),
-                    (float)System.Math.Round(panDelta.Y)
-                );
-
-                // Constrain camera position to TileMap bounds
+                    (float)System.Math.Round(panDelta.Y));
                 newPosition = ConstrainCameraPosition(newPosition);
                 _camera.Position = newPosition;
-                
                 _lastMousePosition = currentMousePosition;
             }
         }
 
-        /// <summary>
-        /// Initialize TileMap bounds by finding the TiledMapRenderer in the scene
-        /// </summary>
         private void InitializeTileMapBounds()
         {
-            // Default bounds based on TMX file: 60×12 tiles at 32×32 pixels each
             _tileMapBounds = new Rectangle(0, 0, 1920, 384);
-
-            // Try to get actual bounds from TiledMapRenderer if available
             var tiledEntity = Entity.Scene.FindEntity("tilemap");
             if (tiledEntity != null)
             {
@@ -193,8 +188,8 @@ namespace PitHero.ECS.Components
                 if (tiledMapRenderer != null && tiledMapRenderer.TiledMap != null)
                 {
                     var tiledMap = tiledMapRenderer.TiledMap;
-                    _tileMapBounds = new Rectangle(0, 0, 
-                        tiledMap.Width * tiledMap.TileWidth, 
+                    _tileMapBounds = new Rectangle(0, 0,
+                        tiledMap.Width * tiledMap.TileWidth,
                         tiledMap.Height * tiledMap.TileHeight);
                     Debug.Log($"TileMap bounds initialized: X={_tileMapBounds.X}, Y={_tileMapBounds.Y}, Width={_tileMapBounds.Width}, Height={_tileMapBounds.Height}");
                 }
@@ -209,39 +204,25 @@ namespace PitHero.ECS.Components
             }
         }
 
-        /// <summary>
-        /// Constrains camera position to ensure viewport doesn't go outside TileMap bounds
-        /// </summary>
         private Vector2 ConstrainCameraPosition(Vector2 desiredPosition)
         {
-            // Calculate viewport size based on current zoom
             var viewportWidth = GameConfig.VirtualWidth / _camera.RawZoom;
             var viewportHeight = GameConfig.VirtualHeight / _camera.RawZoom;
 
-            // Calculate camera bounds (camera position is center of viewport)
             var minX = _tileMapBounds.X + viewportWidth / 2f;
             var maxX = _tileMapBounds.Right - viewportWidth / 2f;
             var minY = _tileMapBounds.Y + viewportHeight / 2f;
             var maxY = _tileMapBounds.Bottom - viewportHeight / 2f;
 
-            // If viewport is larger than tilemap, center it
             if (viewportWidth >= _tileMapBounds.Width)
-            {
                 desiredPosition.X = _tileMapBounds.X + _tileMapBounds.Width / 2f;
-            }
             else
-            {
                 desiredPosition.X = MathHelper.Clamp(desiredPosition.X, minX, maxX);
-            }
 
             if (viewportHeight >= _tileMapBounds.Height)
-            {
                 desiredPosition.Y = _tileMapBounds.Y + _tileMapBounds.Height / 2f;
-            }
             else
-            {
                 desiredPosition.Y = MathHelper.Clamp(desiredPosition.Y, minY, maxY);
-            }
 
             return desiredPosition;
         }
@@ -249,24 +230,19 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Configure zoom limits based on the map being loaded
         /// </summary>
-        /// <param name="mapPath">Path to the map file</param>
         public void ConfigureZoomForMap(string mapPath)
         {
-            // Determine if this is a large map and set appropriate zoom limits
             if (!string.IsNullOrEmpty(mapPath) && mapPath.Contains("Large"))
             {
-                // Large map: allow zoom out to 0.5x (clean divisor to avoid artifacts)
                 _currentMinimumZoom = GameConfig.CameraMinimumZoomLargeMap;
                 Debug.Log($"Large map detected: Zoom out enabled (minimum zoom: {_currentMinimumZoom}x)");
             }
             else
             {
-                // Normal map: standard zoom limits (no zoom out below 1x)
                 _currentMinimumZoom = GameConfig.CameraMinimumZoom;
                 Debug.Log($"Normal map detected: Zoom out disabled (minimum zoom: {_currentMinimumZoom}x)");
             }
 
-            // Update camera zoom limits if camera is available
             if (_camera != null)
             {
                 _camera.SetMinimumZoom(_currentMinimumZoom);

@@ -12,6 +12,14 @@ namespace PitHero
         private static SDL.SDL_Rect _currentDisplayBounds;
         private static bool _haveBounds;
 
+        private static int _originalWindowWidth;
+        private static int _originalWindowHeight;
+        private static bool _storedOriginalSize;
+
+        // track shrink levels
+        private enum ShrinkMode { Normal = 0, Half = 1, Quarter = 2 }
+        private static ShrinkMode _currentShrinkMode = ShrinkMode.Normal;
+
         private static void EnsureCurrentDisplay(IntPtr sdlWindow)
         {
             if (sdlWindow == IntPtr.Zero)
@@ -39,6 +47,90 @@ namespace PitHero
             _currentDisplayID = displayID;
             _currentDisplayBounds = bounds;
             _haveBounds = true;
+        }
+
+        /// <summary>Returns true if window is at least half shrink</summary>
+        public static bool IsHalfHeightMode() => _currentShrinkMode == ShrinkMode.Half || _currentShrinkMode == ShrinkMode.Quarter;
+        /// <summary>Returns true if window is in quarter shrink mode</summary>
+        public static bool IsQuarterHeightMode() => _currentShrinkMode == ShrinkMode.Quarter;
+
+        /// <summary>Shrinks window to half (if normal) or quarter (if already half). Does nothing past quarter. Keeps aspect ratio to avoid squish.</summary>
+        public static void ShrinkToNextLevel(Game game)
+        {
+            var sdlWindow = game.Window.Handle;
+            if (sdlWindow == IntPtr.Zero)
+                return;
+
+            if (!_storedOriginalSize)
+            {
+                SDL.SDL_GetWindowSize(sdlWindow, out _originalWindowWidth, out _originalWindowHeight);
+                _storedOriginalSize = true;
+                Debug.Log($"Stored original window size Width={_originalWindowWidth} Height={_originalWindowHeight}");
+            }
+
+            if (_currentShrinkMode == ShrinkMode.Quarter)
+                return; // already at smallest
+
+            // capture current size + position for bottom anchoring and horizontal centering
+            SDL.SDL_GetWindowSize(sdlWindow, out int prevW, out int prevH);
+            SDL.SDL_GetWindowPosition(sdlWindow, out int prevX, out int prevY);
+
+            ShrinkMode targetMode = _currentShrinkMode + 1; // Normal->Half, Half->Quarter
+
+            float factor = targetMode switch
+            {
+                ShrinkMode.Half => 0.5f,
+                ShrinkMode.Quarter => 0.25f,
+                _ => 1f
+            };
+
+            int newHeight = (int)System.Math.Max(1, _originalWindowHeight * factor);
+            int newWidth = (int)System.Math.Max(1, _originalWindowWidth * factor); // proportional to keep aspect ratio
+
+            // anchor bottom edge, horizontally center relative to previous width to minimize jump
+            int bottomY = prevY + prevH; // bottom pixel
+            int newY = bottomY - newHeight;
+            int newX = prevX + (prevW - newWidth) / 2;
+            if (newX < 0) newX = 0;
+
+            SDL.SDL_SetWindowSize(sdlWindow, newWidth, newHeight);
+            SDL.SDL_SetWindowPosition(sdlWindow, newX, newY);
+
+            _currentShrinkMode = targetMode;
+            Debug.Log($"ShrinkToNextLevel -> Mode={_currentShrinkMode} NewSize={newWidth}x{newHeight} Pos=({newX},{newY})");
+        }
+
+        /// <summary>Restores window to original size from any shrink level.</summary>
+        public static void RestoreOriginalSize(Game game)
+        {
+            if (!_storedOriginalSize || _currentShrinkMode == ShrinkMode.Normal)
+                return;
+
+            var sdlWindow = game.Window.Handle;
+            if (sdlWindow == IntPtr.Zero)
+                return;
+
+            // maintain bottom anchoring relative to current bottom
+            SDL.SDL_GetWindowSize(sdlWindow, out int prevW, out int prevH);
+            SDL.SDL_GetWindowPosition(sdlWindow, out int prevX, out int prevY);
+            int bottomY = prevY + prevH;
+            int newY = bottomY - _originalWindowHeight;
+            if (newY < 0) newY = 0;
+            int newX = prevX - (_originalWindowWidth - prevW) / 2;
+            if (newX < 0) newX = 0;
+
+            SDL.SDL_SetWindowSize(sdlWindow, _originalWindowWidth, _originalWindowHeight);
+            SDL.SDL_SetWindowPosition(sdlWindow, newX, newY);
+
+            Debug.Log($"RestoreOriginalSize -> Size={_originalWindowWidth}x{_originalWindowHeight} Pos=({newX},{newY})");
+            _currentShrinkMode = ShrinkMode.Normal;
+        }
+
+        /// <summary>Legacy compatibility: shrink to half if not already shrunk.</summary>
+        public static void ShrinkHeightToHalf(Game game)
+        {
+            if (!IsHalfHeightMode())
+                ShrinkToNextLevel(game);
         }
 
         /// <summary>
