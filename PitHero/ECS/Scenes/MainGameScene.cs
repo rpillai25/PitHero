@@ -1,6 +1,8 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using Nez.BitmapFonts;
 using Nez.Tiled;
+using Nez.UI; // Added for Label
 using PitHero.AI;
 using PitHero.ECS.Components;
 using PitHero.Services;
@@ -17,6 +19,10 @@ namespace PitHero.ECS.Scenes
         private CameraControllerComponent _cameraController;
         private TmxMap _tmxMap; // Store reference to the map
         private Entity _pauseOverlayEntity; // Pause overlay entity
+        private Label _pitLevelLabel; // UI label showing pit level
+        private int _lastDisplayedPitLevel = -1; // Track last displayed level to avoid string churn
+
+        public BitmapFont HudFont;
 
         public MainGameScene() : this("Content/Tilemaps/PitHero.tmx") { }
         public MainGameScene(string mapPath) { _mapPath = mapPath; }
@@ -30,6 +36,8 @@ namespace PitHero.ECS.Scenes
             var cameraEntity = CreateEntity("camera-controller");
             cameraEntity.AddComponent(Camera);
             _cameraController = cameraEntity.AddComponent(new CameraControllerComponent());
+
+            HudFont = Content.LoadBitmapFont("Content/Fonts/HUD.fnt");
 
             SetupUIOverlay();
         }
@@ -310,6 +318,10 @@ namespace PitHero.ECS.Scenes
 
             _settingsUI = new SettingsUI(Core.Instance);
             _settingsUI.InitializeUI(uiCanvas.Stage);
+
+            // Pit level label (always visible top-left). Position small padding from top-left.
+            _pitLevelLabel = uiCanvas.Stage.AddElement(new Label("Pit Lv. 1", HudFont));
+            _pitLevelLabel.SetPosition(10, 16); // stage coordinates origin top-left for fullscreen canvas
         }
 
         private void AddPitLevelTestComponent()
@@ -353,6 +365,26 @@ namespace PitHero.ECS.Scenes
             Debug.Log($"[MainGameScene] Updated pit collider bounds: X={newPitBounds.X}, Y={newPitBounds.Y}, Width={newPitBounds.Width}, Height={newPitBounds.Height}");
         }
 
+        /// <summary>
+        /// Update pit level label text when the pit level changes
+        /// </summary>
+        private void UpdatePitLevelLabel()
+        {
+            if (_pitLevelLabel == null)
+                return;
+
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            if (pitWidthManager == null)
+                return;
+
+            var currentLevel = pitWidthManager.CurrentPitLevel;
+            if (currentLevel != _lastDisplayedPitLevel)
+            {
+                _pitLevelLabel.SetText($"Pit Lv. {currentLevel}");
+                _lastDisplayedPitLevel = currentLevel;
+            }
+        }
+
         public override void Update()
         {
             base.Update();
@@ -364,6 +396,9 @@ namespace PitHero.ECS.Scenes
             {
                 _pauseOverlayEntity.SetEnabled(pauseService.IsPaused);
             }
+
+            // Keep pit level label up to date
+            UpdatePitLevelLabel();
         }
     }
 }
