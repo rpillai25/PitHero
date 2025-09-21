@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 using Nez;
 using PitHero.Services;
 
@@ -55,8 +56,7 @@ namespace PitHero.ECS.Components
             // Middle click reset
             if (Input.MiddleMouseButtonPressed)
             {
-                // restore window if in half-height mode
-                if (WindowManager.IsHalfHeightMode())
+                if (WindowManager.IsHalfHeightMode() || WindowManager.IsQuarterHeightMode())
                     WindowManager.RestoreOriginalSize(Core.Instance);
                 _camera.RawZoom = GameConfig.CameraDefaultZoom;
                 _camera.Position = ConstrainCameraPosition(_defaultCameraPosition);
@@ -67,6 +67,22 @@ namespace PitHero.ECS.Components
             if (wheelDelta == 0)
                 return;
 
+            bool ctrlDown = Input.IsKeyDown(Keys.LeftControl) || Input.IsKeyDown(Keys.RightControl);
+            if (ctrlDown)
+            {
+                HandleWindowResizeZoom(wheelDelta);
+            }
+            else
+            {
+                HandleCameraOnlyZoom(wheelDelta);
+            }
+        }
+
+        /// <summary>
+        /// Handles the previous window shrinking/restoring behavior when CTRL is held
+        /// </summary>
+        private void HandleWindowResizeZoom(int wheelDelta)
+        {
             bool zoomingOut = wheelDelta < 0;
             var mouseWorldPos = _camera.ScreenToWorldPoint(Input.ScaledMousePosition);
             var currentZoom = _camera.RawZoom;
@@ -74,44 +90,38 @@ namespace PitHero.ECS.Components
 
             if (zoomingOut)
             {
-                // progressive shrink levels before actually reducing zoom
                 if (currentZoom <= 1f)
                 {
                     if (!WindowManager.IsHalfHeightMode())
                     {
                         WindowManager.ShrinkToNextLevel(Core.Instance); // Half
                         CenterCameraOnMap();
-                        return; // do not change zoom
+                        return;
                     }
                     else if (!WindowManager.IsQuarterHeightMode())
                     {
                         WindowManager.ShrinkToNextLevel(Core.Instance); // Quarter
                         CenterCameraOnMap();
-                        return; // still do not change zoom
+                        return;
                     }
                     else
                     {
-                        // already at smallest window. Now allow real zoom decrement (e.g., to 0.5) if permitted
                         if (currentZoom > _currentMinimumZoom)
                             newZoom = _currentMinimumZoom;
                     }
                 }
                 else
                 {
-                    // higher than 1x: integer step down
                     newZoom = (float)System.Math.Floor(currentZoom) - 1f;
                     if (newZoom < 1f)
-                        newZoom = 1f; // let shrink sequence handle further perceived zooming out
+                        newZoom = 1f;
                 }
             }
             else
             {
-                // zooming in
                 if (WindowManager.IsQuarterHeightMode())
                 {
-                    // first restore to half (one level visually) before actual zoom change
-                    WindowManager.RestoreOriginalSize(Core.Instance); // restore fully first then re-shrink to half if still below 1? Simpler: full restore
-                    // remain at same zoom but full size; user can zoom in again to adjust zoom levels
+                    WindowManager.RestoreOriginalSize(Core.Instance);
                     _camera.Position = ConstrainCameraPosition(_camera.Position);
                     return;
                 }
@@ -121,7 +131,7 @@ namespace PitHero.ECS.Components
                     _camera.Position = ConstrainCameraPosition(_camera.Position);
                     return;
                 }
-                // actual zoom in (integer steps)
+
                 if (currentZoom == 0.5f)
                     newZoom = 1f;
                 else
@@ -129,14 +139,53 @@ namespace PitHero.ECS.Components
             }
 
             newZoom = MathHelper.Clamp(newZoom, _currentMinimumZoom, _currentMaximumZoom);
-
             if (System.Math.Abs(newZoom - currentZoom) <= 0.01f)
                 return;
 
             _camera.RawZoom = newZoom;
+            RecenterAroundMouse(mouseWorldPos);
+        }
 
+        /// <summary>
+        /// Handles camera zoom only (no window size changes) when CTRL not held
+        /// </summary>
+        private void HandleCameraOnlyZoom(int wheelDelta)
+        {
+            bool zoomingOut = wheelDelta < 0;
+            var mouseWorldPos = _camera.ScreenToWorldPoint(Input.ScaledMousePosition);
+            var currentZoom = _camera.RawZoom;
+            float newZoom = currentZoom;
+
+            // Allow fractional smooth zoom using configured speed. This restores pre-window-resize behavior.
+            // wheelDelta can be positive or negative. Clamp afterwards.
+            newZoom += wheelDelta * GameConfig.CameraZoomSpeed * currentZoom; // scale by current zoom for smoother feel
+
+            if (zoomingOut && newZoom < currentZoom)
+            {
+                if (newZoom < _currentMinimumZoom)
+                    newZoom = _currentMinimumZoom;
+            }
+            else if (!zoomingOut && newZoom > currentZoom)
+            {
+                if (newZoom > _currentMaximumZoom)
+                    newZoom = _currentMaximumZoom;
+            }
+
+            newZoom = MathHelper.Clamp(newZoom, _currentMinimumZoom, _currentMaximumZoom);
+            if (System.Math.Abs(newZoom - currentZoom) <= 0.0001f)
+                return;
+
+            _camera.RawZoom = newZoom;
+            RecenterAroundMouse(mouseWorldPos);
+        }
+
+        /// <summary>
+        /// Keeps the point under the mouse stable while zooming
+        /// </summary>
+        private void RecenterAroundMouse(Vector2 originalMouseWorldPos)
+        {
             var newMouseWorldPos = _camera.ScreenToWorldPoint(Input.ScaledMousePosition);
-            var worldPosDelta = mouseWorldPos - newMouseWorldPos;
+            var worldPosDelta = originalMouseWorldPos - newMouseWorldPos;
             var desiredPosition = _camera.Position + new Vector2(
                 (float)System.Math.Round(worldPosDelta.X),
                 (float)System.Math.Round(worldPosDelta.Y));
