@@ -58,6 +58,13 @@ namespace PitHero.UI
         private float _lastStageW = -1f;
         private float _lastStageH = -1f;
 
+        // Gear button style variants
+        private ImageButtonStyle _gearNormalStyle;
+        private ImageButtonStyle _gearHalfStyle;
+        private ImageButtonStyle _gearQuarterStyle;
+        private enum GearMode { Normal, Half, Quarter }
+        private GearMode _currentGearMode = GearMode.Normal;
+
         public SettingsUI(Game game)
         {
             _game = game;
@@ -94,21 +101,75 @@ namespace PitHero.UI
 
         private void CreateGearButton(Skin skin)
         {
-            // Load the UI atlas and get the UIGear sprite
+            // Load the UI atlas and get the gear sprites
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
             var gearSprite = uiAtlas.GetSprite("UIGear");
+            var gearSprite2x = uiAtlas.GetSprite("UIGear2x");
+            var gearSprite4x = uiAtlas.GetSprite("UIGear4x");
 
-            // Create button with gear image
-            var buttonStyle = new ImageButtonStyle();
-            buttonStyle.ImageUp = new SpriteDrawable(gearSprite);
-            buttonStyle.ImageDown = new SpriteDrawable(gearSprite);
-            buttonStyle.ImageOver = new SpriteDrawable(gearSprite);
+            // Base styles for each sprite
+            _gearNormalStyle = new ImageButtonStyle
+            {
+                ImageUp = new SpriteDrawable(gearSprite),
+                ImageDown = new SpriteDrawable(gearSprite),
+                ImageOver = new SpriteDrawable(gearSprite)
+            };
 
-            _gearButton = new ImageButton(buttonStyle);
-            _gearButton.SetSize(32, 32);
+            _gearHalfStyle = new ImageButtonStyle
+            {
+                ImageUp = new SpriteDrawable(gearSprite2x),
+                ImageDown = new SpriteDrawable(gearSprite2x),
+                ImageOver = new SpriteDrawable(gearSprite2x)
+            };
+
+            _gearQuarterStyle = new ImageButtonStyle
+            {
+                ImageUp = new SpriteDrawable(gearSprite4x),
+                ImageDown = new SpriteDrawable(gearSprite4x),
+                ImageOver = new SpriteDrawable(gearSprite4x)
+            };
+
+            _gearButton = new ImageButton(_gearNormalStyle);
+            // Explicitly size to the image (avoids hard-coded magic numbers)
+            _gearButton.SetSize(gearSprite.SourceRect.Width, gearSprite.SourceRect.Height);
 
             // Handle click to toggle settings visibility
             _gearButton.OnClicked += (button) => ToggleSettingsVisibility();
+        }
+
+        private void UpdateGearButtonStyleIfNeeded()
+        {
+            // Determine desired gear mode based on current shrink mode
+            GearMode desired;
+            if (WindowManager.IsQuarterHeightMode())
+                desired = GearMode.Quarter;
+            else if (WindowManager.IsHalfHeightMode())
+                desired = GearMode.Half;
+            else
+                desired = GearMode.Normal;
+
+            if (desired == _currentGearMode)
+                return; // no change needed
+
+            switch (desired)
+            {
+                case GearMode.Normal:
+                    _gearButton.SetStyle(_gearNormalStyle);
+                    _gearButton.SetSize(((SpriteDrawable)_gearNormalStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_gearNormalStyle.ImageUp).Sprite.SourceRect.Height);
+                    break;
+                case GearMode.Half:
+                    _gearButton.SetStyle(_gearHalfStyle);
+                    _gearButton.SetSize(((SpriteDrawable)_gearHalfStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_gearHalfStyle.ImageUp).Sprite.SourceRect.Height);
+                    break;
+                case GearMode.Quarter:
+                    _gearButton.SetStyle(_gearQuarterStyle);
+                    _gearButton.SetSize(((SpriteDrawable)_gearQuarterStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_gearQuarterStyle.ImageUp).Sprite.SourceRect.Height);
+                    break;
+            }
+
+            _currentGearMode = desired;
+            // Reposition after size change
+            PositionUI();
         }
 
         private void CreateSettingsWindow(Skin skin)
@@ -482,7 +543,8 @@ namespace PitHero.UI
         /// </summary>
         public void Update()
         {
-            // Intentionally left blank
+            // Update gear button style dynamically when shrink mode changes
+            UpdateGearButtonStyleIfNeeded();
         }
     }
 }
