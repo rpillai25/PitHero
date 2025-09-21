@@ -17,7 +17,6 @@ namespace PitHero.ECS.Components
         private Rectangle _tileMapBounds;
         private float _currentMinimumZoom = GameConfig.CameraMinimumZoom;
         private float _currentMaximumZoom = GameConfig.CameraMaximumZoom;
-        // pixel perfect zoom step to avoid subpixel sampling seams (vertical black lines)
         private const float PixelPerfectZoomStep = 0.125f; // 1/8 increments keeps scaling clean (32 * 0.125 = 4)
 
         /// <summary>
@@ -56,15 +55,21 @@ namespace PitHero.ECS.Components
 
         private void HandleZoomInput()
         {
+            // Pre-calc shift state since it impacts both middle-click and wheel behavior
+            bool shiftDown = Input.IsKeyDown(Keys.LeftShift) || Input.IsKeyDown(Keys.RightShift);
+
             // Middle click reset
             if (Input.MiddleMouseButtonPressed)
             {
-                if (WindowManager.IsHalfHeightMode() || WindowManager.IsQuarterHeightMode())
+                // Enhancement: SHIFT + Middle resets zoom only (preserve current window size/shrink level)
+                // Middle alone resets both zoom and window size (original behavior)
+                if (!shiftDown && (WindowManager.IsHalfHeightMode() || WindowManager.IsQuarterHeightMode()))
                     WindowManager.RestoreOriginalSize(Core.Instance);
+
                 _camera.RawZoom = GameConfig.CameraDefaultZoom;
                 _camera.Position = ConstrainCameraPosition(_defaultCameraPosition);
                 QuantizeCameraPosition();
-                Debug.Log($"[CameraController] Reset zoom to {_camera.RawZoom} positionX={_camera.Position.X} positionY={_camera.Position.Y}");
+                Debug.Log($"[CameraController] Middle click reset mode={(shiftDown ? "ZoomOnly" : "Zoom+Window")} zoom={_camera.RawZoom} positionX={_camera.Position.X} positionY={_camera.Position.Y}");
                 return;
             }
 
@@ -72,8 +77,6 @@ namespace PitHero.ECS.Components
             if (wheelDelta == 0)
                 return;
 
-            // SHIFT now controls window resize zoom behavior instead of CTRL
-            bool shiftDown = Input.IsKeyDown(Keys.LeftShift) || Input.IsKeyDown(Keys.RightShift);
             if (shiftDown)
             {
                 HandleWindowResizeZoom(wheelDelta);
@@ -319,12 +322,10 @@ namespace PitHero.ECS.Components
                 _currentMinimumZoom = GameConfig.CameraMinimumZoom;
                 Debug.Log($"Normal map detected: Zoom out disabled (minimum zoom: {_currentMinimumZoom}x)");
             }
-
             if (_camera != null)
             {
                 _camera.SetMinimumZoom(_currentMinimumZoom);
                 _camera.SetMaximumZoom(_currentMaximumZoom);
-                // ensure current zoom respects new limits
                 _camera.RawZoom = MathHelper.Clamp(SnapZoomToStep(_camera.RawZoom), _currentMinimumZoom, _currentMaximumZoom);
                 QuantizeCameraPosition();
             }
