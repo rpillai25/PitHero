@@ -153,18 +153,18 @@ namespace PitHero.ECS.Components
             // Update triggers after reaching destination
             _triggerHelper?.Update();
 
-            // Clear fog around the tile we just arrived at and check if any fog was cleared
+            // Clear fog around the tile we just arrived at only for heroes
             var tms = Core.Services.GetService<TiledMapService>();
-            if (tms != null)
+            var heroComponent = Entity.GetComponent<HeroComponent>();
+            if (tms != null && heroComponent != null)
             {
                 var tile = GetCurrentTileCoordinates();
                 bool fogCleared = tms.ClearFogOfWarAroundTile(tile.X, tile.Y);
                 
-                // Trigger fog cooldown if fog was cleared and we have a HeroComponent
+                // Trigger fog cooldown if fog was cleared
                 if (fogCleared)
                 {
-                    var heroComponent = Entity.GetComponent<HeroComponent>();
-                    heroComponent?.TriggerFogCooldown();
+                    heroComponent.TriggerFogCooldown();
                 }
             }
             

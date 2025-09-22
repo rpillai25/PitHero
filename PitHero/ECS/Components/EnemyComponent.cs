@@ -24,11 +24,32 @@ namespace PitHero.ECS.Components
         /// </summary>
         public bool IsMoving { get; set; }
 
+        /// <summary>
+        /// Number of hero moves required before this enemy moves (random 4-8)
+        /// </summary>
+        public int MoveCooldown { get; set; }
+
+        /// <summary>
+        /// Current count of hero moves since last enemy move
+        /// </summary>
+        public int MoveCounter { get; set; }
+
         public EnemyComponent(IEnemy enemy, bool isStationary = false)
         {
             Enemy = enemy;
             IsStationary = isStationary;
             IsMoving = false;
+            MoveCooldown = Nez.Random.Range(4, 9); // Random 4-8
+            MoveCounter = 0;
+        }
+
+        /// <summary>
+        /// Reset the move cooldown to a new random value
+        /// </summary>
+        public void ResetMoveCooldown()
+        {
+            MoveCooldown = Nez.Random.Range(4, 9); // Random 4-8
+            MoveCounter = 0;
         }
     }
 }

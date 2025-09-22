@@ -27,8 +27,8 @@ namespace PitHero.ECS.Components
 		float _pauseTime;
 		bool _pausedLastFrame = false;
 
-		public static Color HeroDigitColor = Color.White;
-		public static Color EnemyDigitColor = Color.Red;
+		public static Color HeroDigitColor = Color.Red;
+		public static Color EnemyDigitColor = Color.White;
         private Color _critColor = new Color(255, 213, 16);
 		private Color _initColor = Color.White;
         private Color _currentColor = Color.White;

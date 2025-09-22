@@ -37,6 +37,9 @@ namespace PitHero.AI
         // Enemy movement tracking
         private bool _heroWasMovingLastFrame;
 
+        // Battle state tracking
+        public static bool IsBattleInProgress { get; set; } = false;
+
         /// <summary>
         /// Gets whether this component should respect the global pause state
         /// </summary>
@@ -267,6 +270,12 @@ namespace PitHero.AI
 
         void GoTo_Tick()
         {
+            // Don't move during battle
+            if (IsBattleInProgress)
+            {
+                return;
+            }
+
             var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
             if (tileMover == null)
             {
@@ -286,6 +295,19 @@ namespace PitHero.AI
             if (_heroWasMovingLastFrame && !tileMover.IsMoving)
             {
                 _heroWasMovingLastFrame = false;
+                
+                // Check for adjacent monsters after reaching a new tile
+                var currentTile = tileMover.GetCurrentTileCoordinates();
+                bool wasAdjacent = _hero.AdjacentToMonster;
+                _hero.AdjacentToMonster = _hero.CheckAdjacentToMonster();
+                
+                if (_hero.AdjacentToMonster && !wasAdjacent)
+                {
+                    Debug.Log($"[HeroStateMachine] Hero at ({currentTile.X},{currentTile.Y}) is now adjacent to monster(s), restarting planning");
+                    CurrentState = ActorState.Idle;
+                    return;
+                }
+                
                 // Hero just completed a tile movement, trigger enemy movement
                 TriggerEnemyMovement();
             }
@@ -798,7 +820,21 @@ namespace PitHero.AI
         /// </summary>
         private void TriggerEnemyMovement()
         {
-            Debug.Log("[HeroStateMachine] Hero completed tile movement, triggering enemy movement");
+            // Don't move enemies during battle
+            if (IsBattleInProgress)
+            {
+                Debug.Log("[HeroStateMachine] Battle in progress, skipping enemy movement");
+                return;
+            }
+
+            // Only move enemies when hero is inside the pit
+            if (!_hero.InsidePit)
+            {
+                Debug.Log("[HeroStateMachine] Hero not inside pit, skipping enemy movement");
+                return;
+            }
+
+            Debug.Log("[HeroStateMachine] Hero completed tile movement, checking enemy movement cooldowns");
 
             // Find all enemy entities
             var enemies = Entity.Scene.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
@@ -808,8 +844,20 @@ namespace PitHero.AI
                 if (enemyComponent == null || enemyComponent.IsStationary || enemyComponent.IsMoving)
                     continue; // Skip if no component, stationary, or already moving
 
-                // Start a coroutine to move this enemy
-                Core.StartCoroutine(MoveEnemyRandomly(enemy, enemyComponent));
+                // Increment move counter and check if it's time to move
+                enemyComponent.MoveCounter++;
+                if (enemyComponent.MoveCounter >= enemyComponent.MoveCooldown)
+                {
+                    Debug.Log($"[HeroStateMachine] Enemy move cooldown reached ({enemyComponent.MoveCounter}/{enemyComponent.MoveCooldown}), moving enemy");
+                    // Reset cooldown
+                    enemyComponent.ResetMoveCooldown();
+                    // Start a coroutine to move this enemy
+                    Core.StartCoroutine(MoveEnemyRandomly(enemy, enemyComponent));
+                }
+                else
+                {
+                    Debug.Log($"[HeroStateMachine] Enemy move counter: {enemyComponent.MoveCounter}/{enemyComponent.MoveCooldown}");
+                }
             }
         }
 
