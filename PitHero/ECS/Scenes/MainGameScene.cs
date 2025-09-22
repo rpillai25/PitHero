@@ -23,9 +23,9 @@ namespace PitHero.ECS.Scenes
         private int _lastDisplayedPitLevel = -1; // Track last displayed level to avoid string churn
 
         // HUD fonts for different shrink levels
-        private BitmapFont _hudFontNormal;
-        private BitmapFont _hudFontHalf;
-        private BitmapFont _hudFontQuarter;
+        public BitmapFont _hudFontNormal;
+        public BitmapFont _hudFontHalf;
+        public BitmapFont _hudFontQuarter;
         private LabelStyle _pitLevelStyleNormal;
         private LabelStyle _pitLevelStyleHalf;
         private LabelStyle _pitLevelStyleQuarter;
@@ -36,6 +36,17 @@ namespace PitHero.ECS.Scenes
         private const float PitLabelBaseY = 16f; // original Y before offsets applied
 
         public BitmapFont HudFont; // legacy reference (normal)
+
+        public BitmapFont GetHudFontForCurrentMode()
+        {
+            return _currentHudMode switch
+            {
+                HudMode.Normal => _hudFontNormal,
+                HudMode.Half => _hudFontHalf,
+                HudMode.Quarter => _hudFontQuarter,
+                _ => _hudFontNormal
+            };
+        }
 
         public MainGameScene() : this("Content/Tilemaps/PitHero.tmx") { }
         public MainGameScene(string mapPath) { _mapPath = mapPath; }
