@@ -2,6 +2,8 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.ECS.Components;
 using PitHero.AI.Interfaces;
+using RolePlayingFramework.Combat;
+using RolePlayingFramework.Heroes;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -42,14 +44,10 @@ namespace PitHero.AI
             // Perform attack animation (simulate by moving hero slightly)
             PerformAttackAnimation(hero);
 
-            // Defeat the monster (remove from scene)
-            monsterEntity.Destroy();
-            Debug.Log("[AttackMonster] Monster defeated and removed from scene");
-
-            // Recalculate if there are still monsters adjacent to hero
-            hero.AdjacentToMonster = hero.CheckAdjacentToMonster();
-
-            Debug.Log("[AttackMonster] Attack completed successfully");
+            // Start battle sequence using coroutine
+            Core.StartCoroutine(ExecuteBattleSequence(hero, monsterEntity));
+            
+            Debug.Log("[AttackMonster] Battle started successfully");
             return true;
         }
 
@@ -163,6 +161,117 @@ namespace PitHero.AI
         private Point GetTileCoordinates(Vector2 worldPosition)
         {
             return new Point((int)(worldPosition.X / GameConfig.TileSize), (int)(worldPosition.Y / GameConfig.TileSize));
+        }
+
+        /// <summary>
+        /// Execute the battle sequence with timing and bouncy digits
+        /// </summary>
+        private System.Collections.IEnumerator ExecuteBattleSequence(HeroComponent heroComponent, Entity monsterEntity)
+        {
+            Debug.Log("[AttackMonster] Starting battle sequence");
+
+            // Get the enemy component
+            var enemyComponent = monsterEntity.GetComponent<EnemyComponent>();
+            if (enemyComponent?.Enemy == null)
+            {
+                Debug.Warn("[AttackMonster] Monster entity has no EnemyComponent, destroying directly");
+                monsterEntity.Destroy();
+                yield break;
+            }
+
+            // Get the hero's linked RPG hero
+            if (heroComponent.LinkedHero == null)
+            {
+                Debug.Warn("[AttackMonster] Hero has no LinkedHero, cannot start battle");
+                yield break;
+            }
+
+            var hero = heroComponent.LinkedHero;
+            var enemy = enemyComponent.Enemy;
+
+            Debug.Log($"[AttackMonster] Battle: {hero.Name} (Lv.{hero.Level}, HP {hero.CurrentHP}/{hero.MaxHP}) vs {enemy.Name} (Lv.{enemy.Level}, HP {enemy.CurrentHP}/{enemy.MaxHP})");
+
+            // Create attack resolver for battle calculations
+            var attackResolver = new SimpleAttackResolver();
+
+            // Simulate a simple battle: Hero attacks first, then enemy (if alive)
+            
+            // Hero attacks enemy
+            yield return Coroutine.WaitForSeconds(0.25f); // 250ms wait
+
+            var heroAttackResult = attackResolver.Resolve(hero.GetTotalStats(), enemy.Stats, DamageKind.Physical, hero.Level, enemy.Level);
+            if (heroAttackResult.Hit)
+            {
+                bool enemyDied = enemy.TakeDamage(heroAttackResult.Damage);
+                Debug.Log($"[AttackMonster] Hero deals {heroAttackResult.Damage} damage to {enemy.Name}. Enemy HP: {enemy.CurrentHP}/{enemy.MaxHP}");
+
+                // Display damage on enemy
+                var enemyBouncyDigit = monsterEntity.GetComponent<BouncyDigitComponent>();
+                if (enemyBouncyDigit != null)
+                {
+                    enemyBouncyDigit.Init(heroAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor, false); // No critical hit support in SimpleAttackResolver
+                    enemyBouncyDigit.SetEnabled(true);
+                }
+
+                yield return Coroutine.WaitForSeconds(1.0f); // 1000ms wait
+
+                if (enemyDied)
+                {
+                    Debug.Log($"[AttackMonster] {enemy.Name} defeated!");
+                    hero.AddExperience(enemy.ExperienceYield);
+                    monsterEntity.Destroy();
+                    
+                    // Recalculate monster adjacency
+                    heroComponent.AdjacentToMonster = heroComponent.CheckAdjacentToMonster();
+                    yield break;
+                }
+            }
+            else
+            {
+                Debug.Log($"[AttackMonster] Hero missed {enemy.Name}!");
+                yield return Coroutine.WaitForSeconds(1.0f); // 1000ms wait for miss
+            }
+
+            // Enemy counter-attacks if still alive
+            yield return Coroutine.WaitForSeconds(0.25f); // 250ms wait
+
+            var enemyAttackResult = attackResolver.Resolve(enemy.Stats, hero.GetTotalStats(), enemy.AttackKind, enemy.Level, hero.Level);
+            if (enemyAttackResult.Hit)
+            {
+                // Apply defense gear as flat mitigation
+                var finalDamage = enemyAttackResult.Damage - hero.GetEquipmentDefenseBonus();
+                if (finalDamage < 1) finalDamage = 1;
+
+                bool heroDied = hero.TakeDamage(finalDamage);
+                Debug.Log($"[AttackMonster] {enemy.Name} deals {finalDamage} damage to {hero.Name}. Hero HP: {hero.CurrentHP}/{hero.MaxHP}");
+
+                // Display damage on hero
+                var heroBouncyDigit = heroComponent.Entity.GetComponent<BouncyDigitComponent>();
+                if (heroBouncyDigit != null)
+                {
+                    heroBouncyDigit.Init(finalDamage, BouncyDigitComponent.HeroDigitColor, false); // No critical hit support in SimpleAttackResolver
+                    heroBouncyDigit.SetEnabled(true);
+                }
+
+                yield return Coroutine.WaitForSeconds(1.0f); // 1000ms wait
+
+                if (heroDied)
+                {
+                    Debug.Log($"[AttackMonster] {hero.Name} died! Refilling HP to full for now.");
+                    // Refill hero HP to full for now (as requested)
+                    hero.Heal(hero.MaxHP);
+                }
+            }
+            else
+            {
+                Debug.Log($"[AttackMonster] {enemy.Name} missed {hero.Name}!");
+                yield return Coroutine.WaitForSeconds(1.0f); // 1000ms wait for miss
+            }
+
+            // Recalculate monster adjacency after battle
+            heroComponent.AdjacentToMonster = heroComponent.CheckAdjacentToMonster();
+            
+            Debug.Log("[AttackMonster] Battle sequence completed");
         }
     }
 }
