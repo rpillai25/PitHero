@@ -45,8 +45,10 @@ namespace PitHero.ECS.Scenes
         private enum HudMode { Normal, Half, Quarter }
         private HudMode _currentHudMode = HudMode.Normal;
 
-        // Cached base Y for top-left anchored UI (so offsets are relative and centralized)
+        // Cached base positions for top-left anchored UI (so offsets are relative and centralized)
         private const float PitLabelBaseY = 16f; // original Y before offsets applied
+        private const float HeroLevelLabelBaseX = 120f; // Base X position for hero level
+        private const float HeroHpLabelBaseX = 240f; // Base X position for hero HP
 
         public BitmapFont HudFont; // legacy reference (normal)
 
@@ -399,12 +401,12 @@ namespace PitHero.ECS.Scenes
             // Hero level label (to the right of pit level)
             _heroLevelLabel = uiCanvas.Stage.AddElement(new Label("Hero Lv. 1", _hudFontNormal));
             _heroLevelLabel.SetStyle(_heroLevelStyleNormal);
-            _heroLevelLabel.SetPosition(120, PitLabelBaseY); // Offset to the right
+            _heroLevelLabel.SetPosition(HeroLevelLabelBaseX, PitLabelBaseY);
 
             // Hero HP label (to the right of hero level)
             _heroHpLabel = uiCanvas.Stage.AddElement(new Label("HP: 100", _hudFontNormal));
             _heroHpLabel.SetStyle(_heroHpStyleNormal);
-            _heroHpLabel.SetPosition(240, PitLabelBaseY); // Offset further to the right
+            _heroHpLabel.SetPosition(HeroHpLabelBaseX, PitLabelBaseY);
         }
 
         private void AddPitLevelTestComponent()
@@ -502,7 +504,7 @@ namespace PitHero.ECS.Scenes
         }
 
         /// <summary>
-        /// Update HUD font and Y offset based on current shrink mode
+        /// Update HUD font and position offsets based on current shrink mode
         /// </summary>
         private void UpdateHudFontMode()
         {
@@ -542,26 +544,49 @@ namespace PitHero.ECS.Scenes
 
             // Apply vertical offset based on mode
             int yOffset = 0;
+            int heroLevelXOffset = 0;
+            int heroHpXOffset = 0;
+            
             switch (_currentHudMode)
             {
                 case HudMode.Half:
                     yOffset = GameConfig.TopUiYOffsetHalf;
+                    heroLevelXOffset = 120; // 2x font, proportional spacing increase
+                    heroHpXOffset = 240;
                     break;
                 case HudMode.Quarter:
                     yOffset = GameConfig.TopUiYOffsetQuarter;
+                    heroLevelXOffset = 280; // 4x font, needs much more spacing
+                    heroHpXOffset = 600;
                     break;
                 case HudMode.Normal:
                 default:
                     yOffset = GameConfig.TopUiYOffsetNormal;
+                    heroLevelXOffset = 0; // Use base positions
+                    heroHpXOffset = 0;
                     break;
             }
-            // Only update position if changed to avoid redundant property sets
+            
+            // Only update positions if changed to avoid redundant property sets
             float targetY = PitLabelBaseY + yOffset;
+            float targetHeroLevelX = HeroLevelLabelBaseX + heroLevelXOffset;
+            float targetHeroHpX = HeroHpLabelBaseX + heroHpXOffset;
+            
             if (System.Math.Abs(_pitLevelLabel.GetY() - targetY) > 0.1f)
             {
                 _pitLevelLabel.SetY(targetY);
                 _heroLevelLabel.SetY(targetY);
                 _heroHpLabel.SetY(targetY);
+            }
+            
+            if (System.Math.Abs(_heroLevelLabel.GetX() - targetHeroLevelX) > 0.1f)
+            {
+                _heroLevelLabel.SetX(targetHeroLevelX);
+            }
+            
+            if (System.Math.Abs(_heroHpLabel.GetX() - targetHeroHpX) > 0.1f)
+            {
+                _heroHpLabel.SetX(targetHeroHpX);
             }
         }
 
