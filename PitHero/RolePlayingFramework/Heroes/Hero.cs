@@ -106,7 +106,7 @@ namespace RolePlayingFramework.Heroes
         {
             var jobStats = Job.GetJobContributionAtLevel(Level);
             var total = BaseStats.Add(jobStats).Add(GetEquipmentStatBonus());
-            MaxHP = 50 + total.Vitality * 10; // simple linear formula
+            MaxHP = 25 + total.Vitality * 5; // simple linear formula
             MaxAP = 10 + total.Magic * 3;     // AP derived from magic for now
             if (CurrentHP > MaxHP) CurrentHP = MaxHP;
             if (CurrentAP > MaxAP) CurrentAP = MaxAP;
