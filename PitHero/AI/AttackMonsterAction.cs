@@ -240,14 +240,18 @@ namespace PitHero.AI
                 Debug.Log($"[AttackMonster] Battle: {hero.Name} (Lv.{hero.Level}, HP {hero.CurrentHP}/{hero.MaxHP}) vs {enemy.Name} (Lv.{enemy.Level}, HP {enemy.CurrentHP}/{enemy.MaxHP})");
 
                 // Create attack resolver for battle calculations
-                var attackResolver = new SimpleAttackResolver();
+                var attackResolver = new EnhancedAttackResolver();
+                
+                // Calculate battle stats at the start of battle
+                var heroBattleStats = BattleStats.CalculateForHero(hero);
+                var enemyBattleStats = BattleStats.CalculateForMonster(enemy);
 
                 // Battle loop - continue until one side dies
                 while (hero.CurrentHP > 0 && enemy.CurrentHP > 0)
                 {
                     // Hero attacks first
                     Debug.Log("[AttackMonster] Hero's turn");
-                    var heroAttackResult = attackResolver.Resolve(hero.GetTotalStats(), enemy.Stats, DamageKind.Physical, hero.Level, enemy.Level);
+                    var heroAttackResult = attackResolver.Resolve(heroBattleStats, enemyBattleStats, DamageKind.Physical);
                     if (heroAttackResult.Hit)
                     {
                         bool enemyDied = enemy.TakeDamage(heroAttackResult.Damage);
@@ -273,6 +277,14 @@ namespace PitHero.AI
                     else
                     {
                         Debug.Log($"[AttackMonster] Hero missed {enemy.Name}!");
+                        
+                        // Display "Miss" on enemy
+                        var enemyBouncyText = monsterEntity.GetComponent<BouncyTextComponent>();
+                        if (enemyBouncyText != null)
+                        {
+                            enemyBouncyText.Init("Miss", BouncyTextComponent.EnemyMissColor);
+                            enemyBouncyText.SetEnabled(true);
+                        }
                     }
 
                     // Wait 1 second after hero attack
@@ -282,21 +294,17 @@ namespace PitHero.AI
                     if (enemy.CurrentHP > 0)
                     {
                         Debug.Log("[AttackMonster] Enemy's turn");
-                        var enemyAttackResult = attackResolver.Resolve(enemy.Stats, hero.GetTotalStats(), enemy.AttackKind, enemy.Level, hero.Level);
+                        var enemyAttackResult = attackResolver.Resolve(enemyBattleStats, heroBattleStats, enemy.AttackKind);
                         if (enemyAttackResult.Hit)
                         {
-                            // Apply defense gear as flat mitigation
-                            var finalDamage = enemyAttackResult.Damage - hero.GetEquipmentDefenseBonus();
-                            if (finalDamage < 1) finalDamage = 1;
-
-                            bool heroDied = hero.TakeDamage(finalDamage);
-                            Debug.Log($"[AttackMonster] {enemy.Name} deals {finalDamage} damage to {hero.Name}. Hero HP: {hero.CurrentHP}/{hero.MaxHP}");
+                            bool heroDied = hero.TakeDamage(enemyAttackResult.Damage);
+                            Debug.Log($"[AttackMonster] {enemy.Name} deals {enemyAttackResult.Damage} damage to {hero.Name}. Hero HP: {hero.CurrentHP}/{hero.MaxHP}");
 
                             // Display damage on hero
                             var heroBouncyDigit = heroComponent.Entity.GetComponent<BouncyDigitComponent>();
                             if (heroBouncyDigit != null)
                             {
-                                heroBouncyDigit.Init(finalDamage, BouncyDigitComponent.HeroDigitColor, false);
+                                heroBouncyDigit.Init(enemyAttackResult.Damage, BouncyDigitComponent.HeroDigitColor, false);
                                 heroBouncyDigit.SetEnabled(true);
                             }
 
@@ -312,6 +320,14 @@ namespace PitHero.AI
                         else
                         {
                             Debug.Log($"[AttackMonster] {enemy.Name} missed {hero.Name}!");
+                            
+                            // Display "Miss" on hero
+                            var heroBouncyText = heroComponent.Entity.GetComponent<BouncyTextComponent>();
+                            if (heroBouncyText != null)
+                            {
+                                heroBouncyText.Init("Miss", BouncyTextComponent.HeroMissColor);
+                                heroBouncyText.SetEnabled(true);
+                            }
                         }
 
                         // Wait 1 second after enemy attack
@@ -351,7 +367,10 @@ namespace PitHero.AI
                 }
 
                 var hero = heroComponent.LinkedHero;
-                var attackResolver = new SimpleAttackResolver();
+                var attackResolver = new EnhancedAttackResolver();
+                
+                // Calculate hero's battle stats once for the entire battle
+                var heroBattleStats = BattleStats.CalculateForHero(hero);
 
                 // Create list of battle participants
                 var participants = new List<BattleParticipant>();
@@ -424,9 +443,10 @@ namespace PitHero.AI
 
                             var targetMonster = livingMonsters[Nez.Random.Range(0, livingMonsters.Count)];
                             var targetEnemy = targetMonster.GetComponent<EnemyComponent>().Enemy;
+                            var targetBattleStats = BattleStats.CalculateForMonster(targetEnemy);
 
                             Debug.Log($"[AttackMonster] Hero's turn - attacking {targetEnemy.Name}");
-                            var heroAttackResult = attackResolver.Resolve(hero.GetTotalStats(), targetEnemy.Stats, DamageKind.Physical, hero.Level, targetEnemy.Level);
+                            var heroAttackResult = attackResolver.Resolve(heroBattleStats, targetBattleStats, DamageKind.Physical);
                             
                             if (heroAttackResult.Hit)
                             {
@@ -453,6 +473,15 @@ namespace PitHero.AI
                             else
                             {
                                 Debug.Log($"[AttackMonster] Hero missed {targetEnemy.Name}!");
+                                
+                                // Display "Miss" on enemy
+                                var enemyBouncyText = targetMonster.GetComponent<BouncyTextComponent>();
+                                if (enemyBouncyText != null)
+                                {
+                                    enemyBouncyText.Init("Miss", BouncyTextComponent.EnemyMissColor);
+                                    enemyBouncyText.SetEnabled(true);
+                                    yield return Coroutine.WaitForSeconds(1f);
+                                }
                             }
                         }
                         else
@@ -462,23 +491,20 @@ namespace PitHero.AI
                             if (enemyComponent?.Enemy == null || enemyComponent.Enemy.CurrentHP <= 0) continue;
 
                             var enemy = enemyComponent.Enemy;
+                            var enemyBattleStats = BattleStats.CalculateForMonster(enemy);
                             Debug.Log($"[AttackMonster] {enemy.Name}'s turn - attacking hero");
                             
-                            var enemyAttackResult = attackResolver.Resolve(enemy.Stats, hero.GetTotalStats(), enemy.AttackKind, enemy.Level, hero.Level);
+                            var enemyAttackResult = attackResolver.Resolve(enemyBattleStats, heroBattleStats, enemy.AttackKind);
                             if (enemyAttackResult.Hit)
                             {
-                                // Apply defense gear as flat mitigation
-                                var finalDamage = enemyAttackResult.Damage - hero.GetEquipmentDefenseBonus();
-                                if (finalDamage < 1) finalDamage = 1;
-
-                                bool heroDied = hero.TakeDamage(finalDamage);
-                                Debug.Log($"[AttackMonster] {enemy.Name} deals {finalDamage} damage to {hero.Name}. Hero HP: {hero.CurrentHP}/{hero.MaxHP}");
+                                bool heroDied = hero.TakeDamage(enemyAttackResult.Damage);
+                                Debug.Log($"[AttackMonster] {enemy.Name} deals {enemyAttackResult.Damage} damage to {hero.Name}. Hero HP: {hero.CurrentHP}/{hero.MaxHP}");
 
                                 // Display damage on hero
                                 var heroBouncyDigit = heroComponent.Entity.GetComponent<BouncyDigitComponent>();
                                 if (heroBouncyDigit != null)
                                 {
-                                    heroBouncyDigit.Init(finalDamage, BouncyDigitComponent.HeroDigitColor, false);
+                                    heroBouncyDigit.Init(enemyAttackResult.Damage, BouncyDigitComponent.HeroDigitColor, false);
                                     heroBouncyDigit.SetEnabled(true);
                                     yield return Coroutine.WaitForSeconds(1f);
                                 }
@@ -494,6 +520,15 @@ namespace PitHero.AI
                             else
                             {
                                 Debug.Log($"[AttackMonster] {enemy.Name} missed {hero.Name}!");
+                                
+                                // Display "Miss" on hero
+                                var heroBouncyText = heroComponent.Entity.GetComponent<BouncyTextComponent>();
+                                if (heroBouncyText != null)
+                                {
+                                    heroBouncyText.Init("Miss", BouncyTextComponent.HeroMissColor);
+                                    heroBouncyText.SetEnabled(true);
+                                    yield return Coroutine.WaitForSeconds(1f);
+                                }
                             }
                         }
 

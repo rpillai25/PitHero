@@ -306,6 +306,11 @@ namespace PitHero.ECS.Scenes
             heroBouncyDigit.SetRenderLayer(GameConfig.RenderLayerLowest);
             heroBouncyDigit.SetEnabled(false);
             
+            // Add BouncyTextComponent for miss display (RenderLayerUI, disabled initially)
+            var heroBouncyText = hero.AddComponent(new BouncyTextComponent());
+            heroBouncyText.SetRenderLayer(GameConfig.RenderLayerLowest);
+            heroBouncyText.SetEnabled(false);
+            
             hero.AddComponent(new Historian());
             hero.AddComponent(new HeroStateMachine());
             

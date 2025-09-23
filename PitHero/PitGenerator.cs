@@ -676,6 +676,11 @@ namespace PitHero
                     var enemyBouncyDigit = entity.AddComponent(new BouncyDigitComponent());
                     enemyBouncyDigit.SetRenderLayer(GameConfig.RenderLayerLowest);
                     enemyBouncyDigit.SetEnabled(false);
+                    
+                    // Add BouncyTextComponent for miss display (RenderLayerUI, disabled initially)
+                    var enemyBouncyText = entity.AddComponent(new BouncyTextComponent());
+                    enemyBouncyText.SetRenderLayer(GameConfig.RenderLayerLowest);
+                    enemyBouncyText.SetEnabled(false);
                 }
                 else
                 {
