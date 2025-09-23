@@ -1,6 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Nez;
+using Nez.BitmapFonts; // Added for BitmapFont
 using PitHero.ECS.Scenes;
 using PitHero.Services;
 
@@ -40,8 +41,9 @@ namespace PitHero.ECS.Components
 
 		private PauseService _pauseService;
 
-		// Dynamic spacing cached per render to account for font changes (window shrink modes)
-		private float _digitSpacing = 6f; // world units corresponding to font glyph width
+		// Digit spacing cached per HUD font instance to avoid per-frame MeasureString allocations
+		private float _digitSpacing = 6f;
+		private BitmapFont _cachedFont; // last font used to compute spacing
 
 		// RenderableComponent requirements (very small logical bounds around entity)
 		public override float Width => 32;
@@ -94,7 +96,7 @@ namespace PitHero.ECS.Components
 		/// <summary>Service fetch</summary>
 		public override void OnAddedToEntity() => _pauseService = Core.Services.GetService<PauseService>();
 
-		/// <summary>World-space render with dynamic spacing and inverse zoom scaling.</summary>
+		/// <summary>World-space render with cached spacing and inverse zoom scaling.</summary>
 		public override void Render(Batcher batcher, Camera camera)
 		{
 			var camBounds = camera.Bounds;
@@ -109,12 +111,15 @@ namespace PitHero.ECS.Components
 			if (hudFont == null)
 				return;
 
-			// Measure width of single glyph ("0") for spacing; avoid zero/NaN
-			var measure = hudFont.MeasureString("0");
-			_digitSpacing = measure.X > 0 ? measure.X : 6f;
+			// Recalculate spacing only if font instance changed (window shrink mode swap)
+			if (!ReferenceEquals(hudFont, _cachedFont))
+			{
+				var measure = hudFont.MeasureString("0");
+				_digitSpacing = measure.X > 0 ? measure.X : 6f;
+				_cachedFont = hudFont;
+			}
 
-			// Inverse zoom so on-screen size remains constant
-			float scaleFactor = 1f / camera.RawZoom;
+			float scaleFactor = 1f / camera.RawZoom; // keep constant screen size
 
 			for (int i = 0; i < 4; i++)
 			{
@@ -177,7 +182,7 @@ namespace PitHero.ECS.Components
 		/// <summary>Render single digit in world space</summary>
 		private void PrintDigit(string digit, float x, float y, float scale, Batcher batcher)
 		{
-			var hudFont = ((MainGameScene)Entity.Scene).GetHudFontForCurrentMode();
+			var hudFont = _cachedFont; // already validated
 			if (hudFont == null)
 				return;
 			hudFont.DrawInto(batcher, digit, new Vector2(x, y), _currentColor, 0, Vector2.Zero, new Vector2(scale, scale), SpriteEffects.None, 0);
