@@ -40,6 +40,9 @@ namespace PitHero.ECS.Components
 
 		private PauseService _pauseService;
 
+		// Dynamic spacing cached per render to account for font changes (window shrink modes)
+		private float _digitSpacing = 6f; // world units corresponding to font glyph width
+
 		// RenderableComponent requirements (very small logical bounds around entity)
 		public override float Width => 32;
 		public override float Height => 32;
@@ -91,17 +94,26 @@ namespace PitHero.ECS.Components
 		/// <summary>Service fetch</summary>
 		public override void OnAddedToEntity() => _pauseService = Core.Services.GetService<PauseService>();
 
-		/// <summary>World-space render (camera handles scroll). Inverse zoom scale keeps constant pixel size.</summary>
+		/// <summary>World-space render with dynamic spacing and inverse zoom scaling.</summary>
 		public override void Render(Batcher batcher, Camera camera)
 		{
-			var camBounds = camera.Bounds; // world-space
-			var worldPos = Entity.Position; // center
-			const int margin = 48; // cull margin
+			var camBounds = camera.Bounds;
+			var worldPos = Entity.Position;
+			const int margin = 48;
 			if (worldPos.X < camBounds.X - margin || worldPos.X > camBounds.Right + margin ||
 				worldPos.Y < camBounds.Y - margin || worldPos.Y > camBounds.Bottom + margin)
 				return;
 
-			// Inverse zoom so font size stays readable regardless of zoom
+			var scene = (MainGameScene)Entity.Scene;
+			var hudFont = scene.GetHudFontForCurrentMode();
+			if (hudFont == null)
+				return;
+
+			// Measure width of single glyph ("0") for spacing; avoid zero/NaN
+			var measure = hudFont.MeasureString("0");
+			_digitSpacing = measure.X > 0 ? measure.X : 6f;
+
+			// Inverse zoom so on-screen size remains constant
 			float scaleFactor = 1f / camera.RawZoom;
 
 			for (int i = 0; i < 4; i++)
@@ -146,10 +158,10 @@ namespace PitHero.ECS.Components
 			}
 		}
 
-		/// <summary>FF4-style bounce animation</summary>
+		/// <summary>FF4-style bounce (unused)</summary>
 		private void BounceStyle1(int i, float x, float y, float scale, Batcher batcher, Camera cam)
 		{
-			PrintDigit(_digits[i], x + 18 - i * 6,
+			PrintDigit(_digits[i], x + _digitSpacing * 3f - i * _digitSpacing,
 				y - _digitTable[Mathf.Clamp((int)(5 + 3 * i + _elapsedFrames / 3), 0, _digitTable.Length - 1)],
 				scale, batcher);
 		}
@@ -157,7 +169,7 @@ namespace PitHero.ECS.Components
 		/// <summary>FF5-style bounce animation</summary>
 		private void BounceStyle2(int i, float x, float y, float scale, Batcher batcher, Camera cam)
 		{
-			PrintDigit(_digits[i], x + 18 - i * 6,
+			PrintDigit(_digits[i], x + _digitSpacing * 3f - i * _digitSpacing,
 				y - _digitTable[Mathf.Clamp((int)(3 + 3 * i + _elapsedFrames / 3), 0, _digitTable.Length - 1)],
 				scale, batcher);
 		}
