@@ -41,11 +41,10 @@ namespace PitHero.ECS.Components
 
 		private PauseService _pauseService;
 
-		// Digit spacing cached per HUD font instance to avoid per-frame MeasureString allocations
+		// Digit spacing cached per HUD font instance (screen-space pixel width of one glyph)
 		private float _digitSpacing = 6f;
 		private BitmapFont _cachedFont; // last font used to compute spacing
 
-		// RenderableComponent requirements (very small logical bounds around entity)
 		public override float Width => 32;
 		public override float Height => 32;
 
@@ -111,21 +110,24 @@ namespace PitHero.ECS.Components
 			if (hudFont == null)
 				return;
 
-			// Recalculate spacing only if font instance changed (window shrink mode swap)
+			// Recalculate spacing only if font instance changed
 			if (!ReferenceEquals(hudFont, _cachedFont))
 			{
 				var measure = hudFont.MeasureString("0");
-				_digitSpacing = measure.X > 0 ? measure.X : 6f;
+				_digitSpacing = measure.X > 0 ? measure.X : 6f; // screen-space pixels between digits at default scale
 				_cachedFont = hudFont;
 			}
 
-			float scaleFactor = 1f / camera.RawZoom; // keep constant screen size
+			// Inverse zoom for glyph scaling so on-screen size is constant
+			float inverseZoom = 1f / camera.RawZoom;
+			// Convert desired screen-space spacing into world-space so after camera zoom it stays constant
+			float spacingWorld = _digitSpacing * inverseZoom; // because position is scaled by camera.RawZoom
 
 			for (int i = 0; i < 4; i++)
 			{
 				if (string.IsNullOrEmpty(_digits[i]))
 					continue;
-				BounceStyle2(i, worldPos.X, worldPos.Y, scaleFactor, batcher, camera);
+				BounceStyle2(i, worldPos.X, worldPos.Y, inverseZoom, spacingWorld, batcher);
 			}
 		}
 
@@ -164,17 +166,17 @@ namespace PitHero.ECS.Components
 		}
 
 		/// <summary>FF4-style bounce (unused)</summary>
-		private void BounceStyle1(int i, float x, float y, float scale, Batcher batcher, Camera cam)
+		private void BounceStyle1(int i, float x, float y, float scale, float spacingWorld, Batcher batcher)
 		{
-			PrintDigit(_digits[i], x + _digitSpacing * 3f - i * _digitSpacing,
+			PrintDigit(_digits[i], x + spacingWorld * 3f - i * spacingWorld,
 				y - _digitTable[Mathf.Clamp((int)(5 + 3 * i + _elapsedFrames / 3), 0, _digitTable.Length - 1)],
 				scale, batcher);
 		}
 
 		/// <summary>FF5-style bounce animation</summary>
-		private void BounceStyle2(int i, float x, float y, float scale, Batcher batcher, Camera cam)
+		private void BounceStyle2(int i, float x, float y, float scale, float spacingWorld, Batcher batcher)
 		{
-			PrintDigit(_digits[i], x + _digitSpacing * 3f - i * _digitSpacing,
+			PrintDigit(_digits[i], x + spacingWorld * 3f - i * spacingWorld,
 				y - _digitTable[Mathf.Clamp((int)(3 + 3 * i + _elapsedFrames / 3), 0, _digitTable.Length - 1)],
 				scale, batcher);
 		}
