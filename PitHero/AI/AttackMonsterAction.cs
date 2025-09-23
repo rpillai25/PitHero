@@ -10,6 +10,33 @@ using System.Linq;
 namespace PitHero.AI
 {
     /// <summary>
+    /// Represents a participant in a multi-participant battle
+    /// </summary>
+    public struct BattleParticipant
+    {
+        public bool IsHero;
+        public HeroComponent HeroComponent;
+        public Entity MonsterEntity;
+        public float TurnValue;
+        
+        public BattleParticipant(HeroComponent hero)
+        {
+            IsHero = true;
+            HeroComponent = hero;
+            MonsterEntity = null;
+            TurnValue = 0f;
+        }
+        
+        public BattleParticipant(Entity monster)
+        {
+            IsHero = false;
+            HeroComponent = null;
+            MonsterEntity = monster;
+            TurnValue = 0f;
+        }
+    }
+
+    /// <summary>
     /// Action that causes the hero to attack an adjacent monster
     /// Hero faces the monster, performs attack animation, and defeats the monster
     /// </summary>
@@ -28,26 +55,28 @@ namespace PitHero.AI
         {
             Debug.Log("[AttackMonster] Starting monster attack");
 
-            // Find the nearest adjacent monster
-            var monsterEntity = FindNearestAdjacentMonster(hero);
-            if (monsterEntity == null)
+            // Find all adjacent monsters for multi-participant battle
+            var adjacentMonsters = FindAllAdjacentMonsters(hero);
+            if (adjacentMonsters.Count == 0)
             {
-                Debug.Warn("[AttackMonster] Could not find adjacent monster");
+                Debug.Warn("[AttackMonster] Could not find any adjacent monsters");
                 // Recalculate if there are still monsters adjacent to hero
                 hero.AdjacentToMonster = hero.CheckAdjacentToMonster();
                 return true; // Complete as failed
             }
 
-            // Face the monster
-            FaceTarget(hero, monsterEntity.Transform.Position);
+            Debug.Log($"[AttackMonster] Starting multi-participant battle with {adjacentMonsters.Count} monsters");
+
+            // Face the first monster for animation purposes
+            FaceTarget(hero, adjacentMonsters[0].Transform.Position);
 
             // Perform attack animation (simulate by moving hero slightly)
             PerformAttackAnimation(hero);
 
-            // Start battle sequence using coroutine
-            Core.StartCoroutine(ExecuteBattleSequence(hero, monsterEntity));
+            // Start multi-participant battle sequence using coroutine
+            Core.StartCoroutine(ExecuteMultiParticipantBattleSequence(hero, adjacentMonsters));
             
-            Debug.Log("[AttackMonster] Battle started successfully");
+            Debug.Log("[AttackMonster] Multi-participant battle started successfully");
             return true;
         }
 
@@ -65,33 +94,28 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Find the nearest adjacent monster to the hero
+        /// Find all adjacent monsters to the hero for multi-participant battle
         /// </summary>
-        private Entity FindNearestAdjacentMonster(HeroComponent hero)
+        private List<Entity> FindAllAdjacentMonsters(HeroComponent hero)
         {
             var heroTile = GetCurrentTilePosition(hero);
             var scene = Core.Scene;
-            if (scene == null) return null;
+            var adjacentMonsters = new List<Entity>();
+            
+            if (scene == null) return adjacentMonsters;
 
             var monsterEntities = scene.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
-            Entity nearestMonster = null;
-            float nearestDistance = float.MaxValue;
 
             foreach (var monster in monsterEntities)
             {
                 var monsterTile = GetTileCoordinates(monster.Transform.Position);
                 if (IsAdjacent(heroTile, monsterTile))
                 {
-                    float distance = Vector2.Distance(hero.Entity.Transform.Position, monster.Transform.Position);
-                    if (distance < nearestDistance)
-                    {
-                        nearestDistance = distance;
-                        nearestMonster = monster;
-                    }
+                    adjacentMonsters.Add(monster);
                 }
             }
 
-            return nearestMonster;
+            return adjacentMonsters;
         }
 
         /// <summary>
@@ -161,6 +185,17 @@ namespace PitHero.AI
         private Point GetTileCoordinates(Vector2 worldPosition)
         {
             return new Point((int)(worldPosition.X / GameConfig.TileSize), (int)(worldPosition.Y / GameConfig.TileSize));
+        }
+
+        /// <summary>
+        /// Calculate turn value using agility + randomness formula
+        /// Turn = (RAND(0,255) * (AGILITY - AGILITY / 4)) / 256
+        /// </summary>
+        private float CalculateTurnValue(int agility)
+        {
+            int randomValue = Nez.Random.Range(0, 256); // 0-255 inclusive
+            float turn = (randomValue * (agility - agility / 4f)) / 256f;
+            return turn;
         }
 
         /// <summary>
@@ -280,6 +315,194 @@ namespace PitHero.AI
                 heroComponent.AdjacentToMonster = heroComponent.CheckAdjacentToMonster();
                 
                 Debug.Log("[AttackMonster] Battle sequence completed");
+            }
+            finally
+            {
+                // Always clear battle state
+                HeroStateMachine.IsBattleInProgress = false;
+            }
+        }
+
+        /// <summary>
+        /// Execute the multi-participant battle sequence with all adjacent monsters
+        /// </summary>
+        private System.Collections.IEnumerator ExecuteMultiParticipantBattleSequence(HeroComponent heroComponent, List<Entity> monsterEntities)
+        {
+            Debug.Log("[AttackMonster] Starting multi-participant battle sequence");
+
+            // Set battle in progress to prevent movement
+            HeroStateMachine.IsBattleInProgress = true;
+
+            try
+            {
+                // Get the hero's linked RPG hero
+                if (heroComponent.LinkedHero == null)
+                {
+                    Debug.Warn("[AttackMonster] Hero has no LinkedHero, cannot start battle");
+                    yield break;
+                }
+
+                var hero = heroComponent.LinkedHero;
+                var attackResolver = new SimpleAttackResolver();
+
+                // Create list of battle participants
+                var participants = new List<BattleParticipant>();
+                participants.Add(new BattleParticipant(heroComponent));
+
+                // Add all monster participants and validate they have EnemyComponents
+                var validMonsters = new List<Entity>();
+                foreach (var monsterEntity in monsterEntities)
+                {
+                    var enemyComponent = monsterEntity.GetComponent<EnemyComponent>();
+                    if (enemyComponent?.Enemy != null)
+                    {
+                        participants.Add(new BattleParticipant(monsterEntity));
+                        validMonsters.Add(monsterEntity);
+                    }
+                    else
+                    {
+                        Debug.Warn($"[AttackMonster] Monster entity has no EnemyComponent, skipping");
+                        monsterEntity.Destroy();
+                    }
+                }
+
+                if (validMonsters.Count == 0)
+                {
+                    Debug.Log("[AttackMonster] No valid monsters to fight");
+                    yield break;
+                }
+
+                Debug.Log($"[AttackMonster] Multi-participant battle: {hero.Name} (Lv.{hero.Level}, HP {hero.CurrentHP}/{hero.MaxHP}) vs {validMonsters.Count} monsters");
+
+                // Battle loop - continue until hero dies or all monsters are defeated
+                while (hero.CurrentHP > 0 && validMonsters.Any(m => m.GetComponent<EnemyComponent>().Enemy.CurrentHP > 0))
+                {
+                    // Calculate turn values for all participants at start of each round
+                    for (int i = 0; i < participants.Count; i++)
+                    {
+                        var participant = participants[i];
+                        if (participant.IsHero)
+                        {
+                            participant.TurnValue = CalculateTurnValue(hero.GetTotalStats().Agility);
+                        }
+                        else
+                        {
+                            var enemyComponent = participant.MonsterEntity.GetComponent<EnemyComponent>();
+                            if (enemyComponent?.Enemy != null && enemyComponent.Enemy.CurrentHP > 0)
+                            {
+                                participant.TurnValue = CalculateTurnValue(enemyComponent.Enemy.Stats.Agility);
+                            }
+                            else
+                            {
+                                participant.TurnValue = -1; // Mark as dead/invalid
+                            }
+                        }
+                        participants[i] = participant;
+                    }
+
+                    // Sort participants by turn value (highest first)
+                    participants.Sort((a, b) => b.TurnValue.CompareTo(a.TurnValue));
+
+                    // Execute turns in order
+                    foreach (var participant in participants)
+                    {
+                        if (participant.TurnValue < 0) continue; // Skip dead/invalid participants
+
+                        if (participant.IsHero)
+                        {
+                            // Hero's turn - attack a random living monster
+                            var livingMonsters = validMonsters.Where(m => m.GetComponent<EnemyComponent>().Enemy.CurrentHP > 0).ToList();
+                            if (livingMonsters.Count == 0) break; // All monsters dead
+
+                            var targetMonster = livingMonsters[Nez.Random.Range(0, livingMonsters.Count)];
+                            var targetEnemy = targetMonster.GetComponent<EnemyComponent>().Enemy;
+
+                            Debug.Log($"[AttackMonster] Hero's turn - attacking {targetEnemy.Name}");
+                            var heroAttackResult = attackResolver.Resolve(hero.GetTotalStats(), targetEnemy.Stats, DamageKind.Physical, hero.Level, targetEnemy.Level);
+                            
+                            if (heroAttackResult.Hit)
+                            {
+                                bool enemyDied = targetEnemy.TakeDamage(heroAttackResult.Damage);
+                                Debug.Log($"[AttackMonster] Hero deals {heroAttackResult.Damage} damage to {targetEnemy.Name}. Enemy HP: {targetEnemy.CurrentHP}/{targetEnemy.MaxHP}");
+
+                                // Display damage on enemy
+                                var enemyBouncyDigit = targetMonster.GetComponent<BouncyDigitComponent>();
+                                if (enemyBouncyDigit != null)
+                                {
+                                    enemyBouncyDigit.Init(heroAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor, false);
+                                    enemyBouncyDigit.SetEnabled(true);
+                                }
+
+                                if (enemyDied)
+                                {
+                                    Debug.Log($"[AttackMonster] {targetEnemy.Name} defeated!");
+                                    hero.AddExperience(targetEnemy.ExperienceYield);
+                                    targetMonster.Destroy();
+                                    validMonsters.Remove(targetMonster);
+                                }
+                            }
+                            else
+                            {
+                                Debug.Log($"[AttackMonster] Hero missed {targetEnemy.Name}!");
+                            }
+                        }
+                        else
+                        {
+                            // Monster's turn - attack hero if still alive
+                            var enemyComponent = participant.MonsterEntity.GetComponent<EnemyComponent>();
+                            if (enemyComponent?.Enemy == null || enemyComponent.Enemy.CurrentHP <= 0) continue;
+
+                            var enemy = enemyComponent.Enemy;
+                            Debug.Log($"[AttackMonster] {enemy.Name}'s turn - attacking hero");
+                            
+                            var enemyAttackResult = attackResolver.Resolve(enemy.Stats, hero.GetTotalStats(), enemy.AttackKind, enemy.Level, hero.Level);
+                            if (enemyAttackResult.Hit)
+                            {
+                                // Apply defense gear as flat mitigation
+                                var finalDamage = enemyAttackResult.Damage - hero.GetEquipmentDefenseBonus();
+                                if (finalDamage < 1) finalDamage = 1;
+
+                                bool heroDied = hero.TakeDamage(finalDamage);
+                                Debug.Log($"[AttackMonster] {enemy.Name} deals {finalDamage} damage to {hero.Name}. Hero HP: {hero.CurrentHP}/{hero.MaxHP}");
+
+                                // Display damage on hero
+                                var heroBouncyDigit = heroComponent.Entity.GetComponent<BouncyDigitComponent>();
+                                if (heroBouncyDigit != null)
+                                {
+                                    heroBouncyDigit.Init(finalDamage, BouncyDigitComponent.HeroDigitColor, false);
+                                    heroBouncyDigit.SetEnabled(true);
+                                }
+
+                                if (heroDied)
+                                {
+                                    Debug.Log($"[AttackMonster] {hero.Name} died! Refilling HP to full for now.");
+                                    // Refill hero HP to full for now (as requested)
+                                    hero.Heal(hero.MaxHP);
+                                    break; // End battle
+                                }
+                            }
+                            else
+                            {
+                                Debug.Log($"[AttackMonster] {enemy.Name} missed {hero.Name}!");
+                            }
+                        }
+
+                        // Wait between each participant's turn
+                        yield return Coroutine.WaitForSeconds(1.0f);
+
+                        // Break if hero died or all monsters are dead
+                        if (hero.CurrentHP <= 0 || validMonsters.All(m => m.GetComponent<EnemyComponent>().Enemy.CurrentHP <= 0))
+                            break;
+                    }
+
+                    // Wait between rounds
+                    yield return Coroutine.WaitForSeconds(0.5f);
+                }
+
+                // Recalculate monster adjacency after battle
+                heroComponent.AdjacentToMonster = heroComponent.CheckAdjacentToMonster();
+                
+                Debug.Log("[AttackMonster] Multi-participant battle sequence completed");
             }
             finally
             {
