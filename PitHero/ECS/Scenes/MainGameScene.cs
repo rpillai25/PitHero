@@ -292,12 +292,12 @@ namespace PitHero.ECS.Scenes
             });
 
             // Initialize a test HeroCrystal for crystal-infused stats
-            var testJob = new RolePlayingFramework.Jobs.Knight(); // Using Knight job for testing
-            var baseStats = new StatBlock(strength: 10, agility: 8, vitality: 12, magic: 5);
-            var testCrystal = new HeroCrystal("Test Hero", testJob, 5, baseStats); // Level 5 hero for testing
+            var testJob = new Knight(); // Using Knight job for testing
+            var baseStats = new StatBlock(strength: 4, agility: 3, vitality: 5, magic: 1);
+            var testCrystal = new HeroCrystal("Test Hero", testJob, 1, baseStats); // Level 1 hero for testing
             
             // Create the linked Hero from the crystal
-            heroComponent.LinkedHero = new RolePlayingFramework.Heroes.Hero("Test Hero", testJob, 5, baseStats, testCrystal);
+            heroComponent.LinkedHero = new RolePlayingFramework.Heroes.Hero("Test Hero", testJob, 1, baseStats, testCrystal);
             
             Debug.Log($"[MainGameScene] Created test hero with Level {heroComponent.LinkedHero.Level}, HP {heroComponent.LinkedHero.CurrentHP}/{heroComponent.LinkedHero.MaxHP}");
             

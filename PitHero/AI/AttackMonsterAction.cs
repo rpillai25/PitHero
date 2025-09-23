@@ -375,7 +375,7 @@ namespace PitHero.AI
                 Debug.Log($"[AttackMonster] Multi-participant battle: {hero.Name} (Lv.{hero.Level}, HP {hero.CurrentHP}/{hero.MaxHP}) vs {validMonsters.Count} monsters");
 
                 // Battle loop - continue until hero dies or all monsters are defeated
-                while (hero.CurrentHP > 0 && validMonsters.Any(m => m.GetComponent<EnemyComponent>().Enemy.CurrentHP > 0))
+                while (hero.CurrentHP > 0 && validMonsters.Any(m => m.GetComponent<EnemyComponent>()?.Enemy.CurrentHP > 0))
                 {
                     // Calculate turn values for all participants at start of each round
                     for (int i = 0; i < participants.Count; i++)
@@ -411,7 +411,7 @@ namespace PitHero.AI
                         if (participant.IsHero)
                         {
                             // Hero's turn - attack a random living monster
-                            var livingMonsters = validMonsters.Where(m => m.GetComponent<EnemyComponent>().Enemy.CurrentHP > 0).ToList();
+                            var livingMonsters = validMonsters.Where(m => m.GetComponent<EnemyComponent>()?.Enemy.CurrentHP > 0).ToList();
                             if (livingMonsters.Count == 0) break; // All monsters dead
 
                             var targetMonster = livingMonsters[Nez.Random.Range(0, livingMonsters.Count)];
@@ -431,6 +431,7 @@ namespace PitHero.AI
                                 {
                                     enemyBouncyDigit.Init(heroAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor, false);
                                     enemyBouncyDigit.SetEnabled(true);
+                                    yield return Coroutine.WaitForSeconds(1f);
                                 }
 
                                 if (enemyDied)
@@ -471,6 +472,7 @@ namespace PitHero.AI
                                 {
                                     heroBouncyDigit.Init(finalDamage, BouncyDigitComponent.HeroDigitColor, false);
                                     heroBouncyDigit.SetEnabled(true);
+                                    yield return Coroutine.WaitForSeconds(1f);
                                 }
 
                                 if (heroDied)
@@ -491,7 +493,7 @@ namespace PitHero.AI
                         yield return Coroutine.WaitForSeconds(1.0f);
 
                         // Break if hero died or all monsters are dead
-                        if (hero.CurrentHP <= 0 || validMonsters.All(m => m.GetComponent<EnemyComponent>().Enemy.CurrentHP <= 0))
+                        if (hero.CurrentHP <= 0 || validMonsters.All(m => m.GetComponent<EnemyComponent>()?.Enemy.CurrentHP <= 0))
                             break;
                     }
 
