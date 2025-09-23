@@ -3,6 +3,7 @@
 - The project is written in C# using **FNA + Nez** (not MonoGame).
 - Run dotnet test PitHero.Tests/ for unit tests after code changes are complete and solution builds
 - /// <summary> Comment all methods with a very concise summary
+- If a method is unused, do not mark as unused in a comment, since this can change later
 - Game runs as a **horizontal strip** at bottom of screen (borderless, always-on-top, click-through optional)
 - Virtual resolution: 1920×360
 - ECS pattern using **Nez framework**:

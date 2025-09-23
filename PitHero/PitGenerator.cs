@@ -674,7 +674,7 @@ namespace PitHero
 
                     // Add BouncyDigitComponent for damage display (RenderLayerUI, disabled initially)
                     var enemyBouncyDigit = entity.AddComponent(new BouncyDigitComponent());
-                    enemyBouncyDigit.SetRenderLayer(GameConfig.RenderLayerUI);
+                    enemyBouncyDigit.SetRenderLayer(GameConfig.RenderLayerLowest);
                     enemyBouncyDigit.SetEnabled(false);
                 }
                 else

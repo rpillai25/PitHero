@@ -303,7 +303,7 @@ namespace PitHero.ECS.Scenes
             
             // Add BouncyDigitComponent for damage display (RenderLayerUI, disabled initially)
             var heroBouncyDigit = hero.AddComponent(new BouncyDigitComponent());
-            heroBouncyDigit.SetRenderLayer(GameConfig.RenderLayerUI);
+            heroBouncyDigit.SetRenderLayer(GameConfig.RenderLayerLowest);
             heroBouncyDigit.SetEnabled(false);
             
             hero.AddComponent(new Historian());
