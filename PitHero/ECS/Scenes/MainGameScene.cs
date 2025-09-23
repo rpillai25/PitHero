@@ -286,8 +286,8 @@ namespace PitHero.ECS.Scenes
 
             var heroComponent = hero.AddComponent(new HeroComponent
             {
-                Health = 100,
-                MaxHealth = 100,
+                Health = 25,
+                MaxHealth = 25,
                 PitInitialized = true
             });
 

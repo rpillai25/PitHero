@@ -42,6 +42,8 @@ namespace PitHero.AI
     /// </summary>
     public class AttackMonsterAction : HeroActionBase
     {
+        ICoroutine existingMultiParticipantBattleCoroutine;
+
         public AttackMonsterAction() : base(GoapConstants.AttackMonster, 3)
         {
             // Preconditions: Hero must be adjacent to a monster
@@ -53,7 +55,13 @@ namespace PitHero.AI
 
         public override bool Execute(HeroComponent hero)
         {
-            Debug.Log("[AttackMonster] Starting monster attack");
+            if(existingMultiParticipantBattleCoroutine != null)
+            {
+                Debug.Log("[AttackMonster] Multi-participant battle already in progress");
+                return !HeroStateMachine.IsBattleInProgress;
+            }
+
+            Debug.Log("[AttackMonster] Starting AttackMonster action!");
 
             // Find all adjacent monsters for multi-participant battle
             var adjacentMonsters = FindAllAdjacentMonsters(hero);
@@ -74,10 +82,10 @@ namespace PitHero.AI
             PerformAttackAnimation(hero);
 
             // Start multi-participant battle sequence using coroutine
-            Core.StartCoroutine(ExecuteMultiParticipantBattleSequence(hero, adjacentMonsters));
+            existingMultiParticipantBattleCoroutine = Core.StartCoroutine(ExecuteMultiParticipantBattleSequence(hero, adjacentMonsters));
             
             Debug.Log("[AttackMonster] Multi-participant battle started successfully");
-            return true;
+            return !HeroStateMachine.IsBattleInProgress;
         }
 
         public override bool Execute(IGoapContext context)
@@ -510,6 +518,7 @@ namespace PitHero.AI
             {
                 // Always clear battle state
                 HeroStateMachine.IsBattleInProgress = false;
+                existingMultiParticipantBattleCoroutine = null;
             }
         }
     }
