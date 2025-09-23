@@ -39,6 +39,11 @@ namespace PitHero.ECS.Components
         public bool AdjacentToMonster { get; set; }                  // True when monster exists in tile adjacent to hero
         public bool AdjacentToChest { get; set; }                    // True when chest exists in tile adjacent to hero
 
+        /// <summary>
+        /// Link to the Hero class from RolePlayingFramework
+        /// </summary>
+        public RolePlayingFramework.Heroes.Hero LinkedHero { get; set; }
+
         private PitWidthManager _pitWidthManager;
 
         // Fog of war movement speed tracking

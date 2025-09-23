@@ -8,6 +8,9 @@ using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.UI;
 using PitHero.Util;
+using RolePlayingFramework.Heroes;
+using RolePlayingFramework.Jobs;
+using RolePlayingFramework.Stats;
 
 namespace PitHero.ECS.Scenes
 {
@@ -20,7 +23,11 @@ namespace PitHero.ECS.Scenes
         private TmxMap _tmxMap; // Store reference to the map
         private Entity _pauseOverlayEntity; // Pause overlay entity
         private Label _pitLevelLabel; // UI label showing pit level
+        private Label _heroLevelLabel; // UI label showing hero level
+        private Label _heroHpLabel; // UI label showing hero HP
         private int _lastDisplayedPitLevel = -1; // Track last displayed level to avoid string churn
+        private int _lastDisplayedHeroLevel = -1; // Track last displayed hero level
+        private int _lastDisplayedHeroHp = -1; // Track last displayed hero HP
 
         // HUD fonts for different shrink levels
         public BitmapFont _hudFontNormal;
@@ -29,11 +36,19 @@ namespace PitHero.ECS.Scenes
         private LabelStyle _pitLevelStyleNormal;
         private LabelStyle _pitLevelStyleHalf;
         private LabelStyle _pitLevelStyleQuarter;
+        private LabelStyle _heroLevelStyleNormal;
+        private LabelStyle _heroLevelStyleHalf;
+        private LabelStyle _heroLevelStyleQuarter;
+        private LabelStyle _heroHpStyleNormal;
+        private LabelStyle _heroHpStyleHalf;
+        private LabelStyle _heroHpStyleQuarter;
         private enum HudMode { Normal, Half, Quarter }
         private HudMode _currentHudMode = HudMode.Normal;
 
-        // Cached base Y for top-left anchored UI (so offsets are relative and centralized)
+        // Cached base positions for top-left anchored UI (so offsets are relative and centralized)
         private const float PitLabelBaseY = 16f; // original Y before offsets applied
+        private const float HeroLevelLabelBaseX = 120f; // Base X position for hero level
+        private const float HeroHpLabelBaseX = 240f; // Base X position for hero HP
 
         public BitmapFont HudFont; // legacy reference (normal)
 
@@ -72,6 +87,15 @@ namespace PitHero.ECS.Scenes
             _pitLevelStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
             _pitLevelStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
             _pitLevelStyleQuarter = new LabelStyle(_hudFontQuarter, Color.White);
+
+            // We'll use the same styles for hero level and HP labels
+            _heroLevelStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
+            _heroLevelStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
+            _heroLevelStyleQuarter = new LabelStyle(_hudFontQuarter, Color.White);
+
+            _heroHpStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
+            _heroHpStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
+            _heroHpStyleQuarter = new LabelStyle(_hudFontQuarter, Color.White);
 
             SetupUIOverlay();
         }
@@ -266,6 +290,22 @@ namespace PitHero.ECS.Scenes
                 MaxHealth = 100,
                 PitInitialized = true
             });
+
+            // Initialize a test HeroCrystal for crystal-infused stats
+            var testJob = new RolePlayingFramework.Jobs.Knight(); // Using Knight job for testing
+            var baseStats = new StatBlock(strength: 10, agility: 8, vitality: 12, magic: 5);
+            var testCrystal = new HeroCrystal("Test Hero", testJob, 5, baseStats); // Level 5 hero for testing
+            
+            // Create the linked Hero from the crystal
+            heroComponent.LinkedHero = new RolePlayingFramework.Heroes.Hero("Test Hero", testJob, 5, baseStats, testCrystal);
+            
+            Debug.Log($"[MainGameScene] Created test hero with Level {heroComponent.LinkedHero.Level}, HP {heroComponent.LinkedHero.CurrentHP}/{heroComponent.LinkedHero.MaxHP}");
+            
+            // Add BouncyDigitComponent for damage display (RenderLayerUI, disabled initially)
+            var heroBouncyDigit = hero.AddComponent(new BouncyDigitComponent());
+            heroBouncyDigit.SetRenderLayer(GameConfig.RenderLayerLowest);
+            heroBouncyDigit.SetEnabled(false);
+            
             hero.AddComponent(new Historian());
             hero.AddComponent(new HeroStateMachine());
             
@@ -357,6 +397,16 @@ namespace PitHero.ECS.Scenes
             _pitLevelLabel = uiCanvas.Stage.AddElement(new Label("Pit Lv. 1", _hudFontNormal));
             _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
             _pitLevelLabel.SetPosition(10, PitLabelBaseY);
+
+            // Hero level label (to the right of pit level)
+            _heroLevelLabel = uiCanvas.Stage.AddElement(new Label("Hero Lv. 1", _hudFontNormal));
+            _heroLevelLabel.SetStyle(_heroLevelStyleNormal);
+            _heroLevelLabel.SetPosition(HeroLevelLabelBaseX, PitLabelBaseY);
+
+            // Hero HP label (to the right of hero level)
+            _heroHpLabel = uiCanvas.Stage.AddElement(new Label("HP: 100", _hudFontNormal));
+            _heroHpLabel.SetStyle(_heroHpStyleNormal);
+            _heroHpLabel.SetPosition(HeroHpLabelBaseX, PitLabelBaseY);
         }
 
         private void AddPitLevelTestComponent()
@@ -421,7 +471,40 @@ namespace PitHero.ECS.Scenes
         }
 
         /// <summary>
-        /// Update HUD font and Y offset based on current shrink mode
+        /// Update hero level and HP labels when they change
+        /// </summary>
+        private void UpdateHeroLabels()
+        {
+            if (_heroLevelLabel == null || _heroHpLabel == null)
+                return;
+
+            var hero = FindEntity("hero");
+            if (hero == null)
+                return;
+
+            var heroComponent = hero.GetComponent<HeroComponent>();
+            if (heroComponent?.LinkedHero == null)
+                return;
+
+            var linkedHero = heroComponent.LinkedHero;
+            
+            // Update hero level if changed
+            if (linkedHero.Level != _lastDisplayedHeroLevel)
+            {
+                _heroLevelLabel.SetText($"Hero Lv. {linkedHero.Level}");
+                _lastDisplayedHeroLevel = linkedHero.Level;
+            }
+
+            // Update hero HP if changed
+            if (linkedHero.CurrentHP != _lastDisplayedHeroHp)
+            {
+                _heroHpLabel.SetText($"HP: {linkedHero.CurrentHP}");
+                _lastDisplayedHeroHp = linkedHero.CurrentHP;
+            }
+        }
+
+        /// <summary>
+        /// Update HUD font and position offsets based on current shrink mode
         /// </summary>
         private void UpdateHudFontMode()
         {
@@ -439,37 +522,72 @@ namespace PitHero.ECS.Scenes
                 {
                     case HudMode.Normal:
                         _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
+                        _heroLevelLabel.SetStyle(_heroLevelStyleNormal);
+                        _heroHpLabel.SetStyle(_heroHpStyleNormal);
                         break;
                     case HudMode.Half:
                         _pitLevelLabel.SetStyle(_pitLevelStyleHalf);
+                        _heroLevelLabel.SetStyle(_heroLevelStyleHalf);
+                        _heroHpLabel.SetStyle(_heroHpStyleHalf);
                         break;
                     case HudMode.Quarter:
                         _pitLevelLabel.SetStyle(_pitLevelStyleQuarter);
+                        _heroLevelLabel.SetStyle(_heroLevelStyleQuarter);
+                        _heroHpLabel.SetStyle(_heroHpStyleQuarter);
                         break;
                 }
                 _currentHudMode = desired;
                 _pitLevelLabel.Invalidate();
+                _heroLevelLabel.Invalidate();
+                _heroHpLabel.Invalidate();
             }
 
             // Apply vertical offset based on mode
             int yOffset = 0;
+            int heroLevelXOffset = 0;
+            int heroHpXOffset = 0;
+            
             switch (_currentHudMode)
             {
                 case HudMode.Half:
                     yOffset = GameConfig.TopUiYOffsetHalf;
+                    heroLevelXOffset = 120; // 2x font, proportional spacing increase
+                    heroHpXOffset = 240;
                     break;
                 case HudMode.Quarter:
                     yOffset = GameConfig.TopUiYOffsetQuarter;
+                    heroLevelXOffset = 280; // 4x font, needs much more spacing
+                    heroHpXOffset = 600;
                     break;
                 case HudMode.Normal:
                 default:
                     yOffset = GameConfig.TopUiYOffsetNormal;
+                    heroLevelXOffset = 0; // Use base positions
+                    heroHpXOffset = 0;
                     break;
             }
-            // Only update position if changed to avoid redundant property sets
+            
+            // Only update positions if changed to avoid redundant property sets
             float targetY = PitLabelBaseY + yOffset;
+            float targetHeroLevelX = HeroLevelLabelBaseX + heroLevelXOffset;
+            float targetHeroHpX = HeroHpLabelBaseX + heroHpXOffset;
+            
             if (System.Math.Abs(_pitLevelLabel.GetY() - targetY) > 0.1f)
+            {
                 _pitLevelLabel.SetY(targetY);
+                _heroLevelLabel.SetY(targetY);
+                _heroHpLabel.SetY(targetY);
+            }
+            
+            if (System.Math.Abs(_heroLevelLabel.GetX() - targetHeroLevelX) > 0.1f)
+            {
+                _heroLevelLabel.SetX(targetHeroLevelX);
+            }
+            
+            if (System.Math.Abs(_heroHpLabel.GetX() - targetHeroHpX) > 0.1f)
+            {
+                _heroHpLabel.SetX(targetHeroHpX);
+            }
         }
 
         public override void Update()
@@ -486,6 +604,7 @@ namespace PitHero.ECS.Scenes
 
             // Keep pit level label up to date
             UpdatePitLevelLabel();
+            UpdateHeroLabels();
             UpdateHudFontMode();
         }
     }

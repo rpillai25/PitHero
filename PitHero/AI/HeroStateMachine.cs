@@ -6,6 +6,7 @@ using Nez.Tiled;
 using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.Util;
+using RolePlayingFramework.Enemies;
 using System;
 using System.Collections.Generic;
 
@@ -32,6 +33,12 @@ namespace PitHero.AI
         private HashSet<Point> _failedWanderTargets;
         // Persist a committed wander target to avoid oscillation
         private Point? _currentWanderTarget;
+
+        // Enemy movement tracking
+        private bool _heroWasMovingLastFrame;
+
+        // Battle state tracking
+        public static bool IsBattleInProgress { get; set; } = false;
 
         /// <summary>
         /// Gets whether this component should respect the global pause state
@@ -263,6 +270,12 @@ namespace PitHero.AI
 
         void GoTo_Tick()
         {
+            // Don't move during battle
+            if (IsBattleInProgress)
+            {
+                return;
+            }
+
             var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
             if (tileMover == null)
             {
@@ -274,7 +287,29 @@ namespace PitHero.AI
             // If currently moving, wait until the step completes
             if (tileMover.IsMoving)
             {
+                _heroWasMovingLastFrame = true;
                 return;
+            }
+
+            // Check if hero just finished moving (transition from moving to not moving)
+            if (_heroWasMovingLastFrame && !tileMover.IsMoving)
+            {
+                _heroWasMovingLastFrame = false;
+                
+                // Check for adjacent monsters after reaching a new tile
+                var currentTile = tileMover.GetCurrentTileCoordinates();
+                bool wasAdjacent = _hero.AdjacentToMonster;
+                _hero.AdjacentToMonster = _hero.CheckAdjacentToMonster();
+                
+                if (_hero.AdjacentToMonster && !wasAdjacent)
+                {
+                    Debug.Log($"[HeroStateMachine] Hero at ({currentTile.X},{currentTile.Y}) is now adjacent to monster(s), restarting planning");
+                    CurrentState = ActorState.Idle;
+                    return;
+                }
+                
+                // Hero just completed a tile movement, trigger enemy movement
+                TriggerEnemyMovement();
             }
 
             // If we consumed the path, only proceed if we truly arrived at the target tile
@@ -778,6 +813,161 @@ namespace PitHero.AI
         {
             Debug.Log($"[HeroStateMachine] Planner Describe:");
             Debug.Log(_planner.Describe());
+        }
+
+        /// <summary>
+        /// Trigger enemy movement when hero completes a tile movement
+        /// </summary>
+        private void TriggerEnemyMovement()
+        {
+            // Don't move enemies during battle
+            if (IsBattleInProgress)
+            {
+                Debug.Log("[HeroStateMachine] Battle in progress, skipping enemy movement");
+                return;
+            }
+
+            // Only move enemies when hero is inside the pit
+            if (!_hero.InsidePit)
+            {
+                Debug.Log("[HeroStateMachine] Hero not inside pit, skipping enemy movement");
+                return;
+            }
+
+            Debug.Log("[HeroStateMachine] Hero completed tile movement, checking enemy movement cooldowns");
+
+            // Find all enemy entities
+            var enemies = Entity.Scene.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
+            foreach (var enemy in enemies)
+            {
+                var enemyComponent = enemy.GetComponent<EnemyComponent>();
+                if (enemyComponent == null || enemyComponent.IsStationary || enemyComponent.IsMoving)
+                    continue; // Skip if no component, stationary, or already moving
+
+                // Increment move counter and check if it's time to move
+                enemyComponent.MoveCounter++;
+                if (enemyComponent.MoveCounter >= enemyComponent.MoveCooldown)
+                {
+                    Debug.Log($"[HeroStateMachine] Enemy move cooldown reached ({enemyComponent.MoveCounter}/{enemyComponent.MoveCooldown}), moving enemy");
+                    // Reset cooldown
+                    enemyComponent.ResetMoveCooldown();
+                    // Start a coroutine to move this enemy
+                    Core.StartCoroutine(MoveEnemyRandomly(enemy, enemyComponent));
+                }
+                else
+                {
+                    Debug.Log($"[HeroStateMachine] Enemy move counter: {enemyComponent.MoveCounter}/{enemyComponent.MoveCooldown}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Coroutine to move an enemy to a random adjacent passable tile
+        /// </summary>
+        private System.Collections.IEnumerator MoveEnemyRandomly(Entity enemy, EnemyComponent enemyComponent)
+        {
+            enemyComponent.IsMoving = true;
+            
+            try
+            {
+                var tileMover = enemy.GetComponent<TileByTileMover>();
+                if (tileMover == null)
+                {
+                    Debug.Warn("[HeroStateMachine] Enemy has no TileByTileMover component");
+                    yield break;
+                }
+
+                var currentTile = tileMover.GetCurrentTileCoordinates();
+                var directions = new[] { Direction.Up, Direction.Down, Direction.Left, Direction.Right };
+                
+                // Shuffle directions for randomness
+                var shuffledDirections = new List<Direction>(directions);
+                for (int i = shuffledDirections.Count - 1; i > 0; i--)
+                {
+                    int j = Nez.Random.Range(0, i + 1);
+                    (shuffledDirections[i], shuffledDirections[j]) = (shuffledDirections[j], shuffledDirections[i]);
+                }
+
+                bool moved = false;
+                foreach (var direction in shuffledDirections)
+                {
+                    var targetTile = GetTileInDirection(currentTile, direction);
+                    
+                    // Check if target tile is passable (no obstacles)
+                    if (IsEnemyTilePassable(targetTile))
+                    {
+                        Debug.Log($"[HeroStateMachine] Moving enemy from ({currentTile.X},{currentTile.Y}) to ({targetTile.X},{targetTile.Y}) direction {direction}");
+                        
+                        if (tileMover.StartMoving(direction))
+                        {
+                            moved = true;
+                            // Wait for the movement to complete
+                            while (tileMover.IsMoving)
+                            {
+                                yield return null;
+                            }
+                        }
+                        break;
+                    }
+                }
+
+                if (!moved)
+                {
+                    // Sometimes enemies skip movement if no valid moves
+                    Debug.Log($"[HeroStateMachine] Enemy at ({currentTile.X},{currentTile.Y}) has no valid moves, skipping turn");
+                }
+            }
+            finally
+            {
+                enemyComponent.IsMoving = false;
+            }
+        }
+
+        /// <summary>
+        /// Check if a tile is passable for enemy movement (no obstacles, within bounds)
+        /// </summary>
+        private bool IsEnemyTilePassable(Point tile)
+        {
+            // Basic bounds checking (should match hero pathfinding bounds)
+            if (tile.X < 0 || tile.Y < 0 || tile.X >= 60 || tile.Y >= 25)
+                return false;
+
+            // Check if hero's pathfinding system considers this tile passable
+            if (_hero != null && _hero.IsPathfindingInitialized)
+            {
+                return _hero.IsPassable(tile);
+            }
+
+            // Fallback: assume passable if no hero pathfinding
+            return true;
+        }
+
+        /// <summary>
+        /// Get the tile coordinates in the specified direction from the current tile
+        /// </summary>
+        private Point GetTileInDirection(Point currentTile, Direction direction)
+        {
+            switch (direction)
+            {
+                case Direction.Up:
+                    return new Point(currentTile.X, currentTile.Y - 1);
+                case Direction.Down:
+                    return new Point(currentTile.X, currentTile.Y + 1);
+                case Direction.Left:
+                    return new Point(currentTile.X - 1, currentTile.Y);
+                case Direction.Right:
+                    return new Point(currentTile.X + 1, currentTile.Y);
+                case Direction.UpLeft:
+                    return new Point(currentTile.X - 1, currentTile.Y - 1);
+                case Direction.UpRight:
+                    return new Point(currentTile.X + 1, currentTile.Y - 1);
+                case Direction.DownLeft:
+                    return new Point(currentTile.X - 1, currentTile.Y + 1);
+                case Direction.DownRight:
+                    return new Point(currentTile.X + 1, currentTile.Y + 1);
+                default:
+                    return currentTile;
+            }
         }
         
         #endregion

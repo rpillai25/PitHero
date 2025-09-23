@@ -102,6 +102,7 @@ namespace PitHero
 
         // Render Layers (the lower the number, the higher the layer)
 
+        public const int RenderLayerLowest = 0; // Lowest possible layer
         public const int RenderLayerHeroHand1 = 4;
         public const int RenderLayerHeroHair = 5;
         public const int RenderLayerHeroShirt = 6;

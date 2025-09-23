@@ -4,6 +4,7 @@ using Nez.Sprites;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
 using PitHero.Util;
+using RolePlayingFramework.Enemies;
 using System;
 using System.Collections.Generic;
 
@@ -648,9 +649,37 @@ namespace PitHero
                     collider.IsTrigger = true;
                     Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
                 }
+                else if (tag == GameConfig.TAG_MONSTER)
+                {
+                    // Use prototype renderer for monsters
+                    var renderer = entity.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
+                    renderer.Color = color;
+                    renderer.SetRenderLayer(GameConfig.RenderLayerActors);
+
+                    var collider = entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
+                    collider.IsTrigger = true;
+                    Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
+
+                    // Add EnemyComponent with a Slime (non-stationary)
+                    var pitWidthManager = Core.Services?.GetService<PitWidthManager>();
+                    int currentPitLevel = pitWidthManager?.CurrentPitLevel ?? 1;
+                    var slime = new Slime(currentPitLevel); // Create slime scaled to pit level
+                    
+                    var enemyComponent = entity.AddComponent(new EnemyComponent(slime, isStationary: false));
+                    Debug.Log($"[PitGenerator] Created slime enemy (Level {slime.Level}, HP {slime.CurrentHP}) at tile ({tilePos.X},{tilePos.Y})");
+
+                    // Add TileByTileMover for enemy movement
+                    var enemyMover = entity.AddComponent(new TileByTileMover());
+                    enemyMover.MovementSpeed = GameConfig.HeroMovementSpeed; // Same speed as hero
+
+                    // Add BouncyDigitComponent for damage display (RenderLayerUI, disabled initially)
+                    var enemyBouncyDigit = entity.AddComponent(new BouncyDigitComponent());
+                    enemyBouncyDigit.SetRenderLayer(GameConfig.RenderLayerLowest);
+                    enemyBouncyDigit.SetEnabled(false);
+                }
                 else
                 {
-                    // Use prototype renderer for other entities (monsters, etc.)
+                    // Use prototype renderer for other entities
                     var renderer = entity.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
                     renderer.Color = color;
                     renderer.SetRenderLayer(GameConfig.RenderLayerActors);
