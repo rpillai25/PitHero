@@ -177,7 +177,7 @@ namespace PitHero.ECS.Components
 		private void BounceStyle2(int i, float x, float y, float scale, float spacingWorld, Batcher batcher)
 		{
 			PrintDigit(_digits[i], x + spacingWorld * 3f - i * spacingWorld,
-				y - _digitTable[Mathf.Clamp((int)(3 + 3 * i + _elapsedFrames / 3), 0, _digitTable.Length - 1)],
+				y - _digitTable[Mathf.Clamp((int)(3 + 3 * i + _elapsedFrames / 3), 0, _digitTable.Length - 1)] * (2 * scale),
 				scale, batcher);
 		}
 

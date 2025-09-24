@@ -55,21 +55,29 @@ namespace PitHero.ECS.Components
 
         private void HandleZoomInput()
         {
-            // Pre-calc shift state since it impacts both middle-click and wheel behavior
+            // Pre-calc shift state since it impacts both right-click reset and wheel behavior
             bool shiftDown = Input.IsKeyDown(Keys.LeftShift) || Input.IsKeyDown(Keys.RightShift);
 
-            // Middle click reset
-            if (Input.MiddleMouseButtonPressed)
+            // SHIFT + Right-Click: Reset window size (if shrunk) and reset zoom + recenter
+            if (shiftDown && Input.RightMouseButtonPressed)
             {
-                // Enhancement: SHIFT + Middle resets zoom only (preserve current window size/shrink level)
-                // Middle alone resets both zoom and window size (original behavior)
-                if (!shiftDown && (WindowManager.IsHalfHeightMode() || WindowManager.IsQuarterHeightMode()))
+                if (WindowManager.IsHalfHeightMode() || WindowManager.IsQuarterHeightMode())
                     WindowManager.RestoreOriginalSize(Core.Instance);
 
                 _camera.RawZoom = GameConfig.CameraDefaultZoom;
                 _camera.Position = ConstrainCameraPosition(_defaultCameraPosition);
                 QuantizeCameraPosition();
-                Debug.Log($"[CameraController] Middle click reset mode={(shiftDown ? "ZoomOnly" : "Zoom+Window")} zoom={_camera.RawZoom} positionX={_camera.Position.X} positionY={_camera.Position.Y}");
+                Debug.Log($"[CameraController] SHIFT+RightClick reset zoom={_camera.RawZoom} positionX={_camera.Position.X} positionY={_camera.Position.Y}");
+                return;
+            }
+
+            // SHIFT + Middle-Click: Reset zoom (preserve current window size)
+            if (shiftDown && Input.MiddleMouseButtonPressed)
+            {
+                _camera.RawZoom = GameConfig.CameraDefaultZoom;
+                _camera.Position = ConstrainCameraPosition(_defaultCameraPosition);
+                QuantizeCameraPosition();
+                Debug.Log($"[CameraController] SHIFT+MiddleClick reset zoom={_camera.RawZoom} positionX={_camera.Position.X} positionY={_camera.Position.Y}");
                 return;
             }
 
@@ -233,9 +241,17 @@ namespace PitHero.ECS.Components
         private void HandlePanInput()
         {
             var currentMousePosition = Input.ScaledMousePosition;
+            bool shiftDown = Input.IsKeyDown(Keys.LeftShift) || Input.IsKeyDown(Keys.RightShift);
 
             if (Input.RightMouseButtonPressed)
             {
+                // Do not start panning if this press is used for SHIFT+Right-Click reset
+                if (shiftDown)
+                {
+                    _isPanning = false;
+                    return;
+                }
+
                 _isPanning = true;
                 _lastMousePosition = currentMousePosition;
             }

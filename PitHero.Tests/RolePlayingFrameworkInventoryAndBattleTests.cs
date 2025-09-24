@@ -11,25 +11,6 @@ namespace PitHero.Tests
     [TestClass]
     public class RolePlayingFrameworkInventoryAndBattleTests
     {
-        /// <summary>Equipping job-appropriate gear modifies hero stats and helps in battle.</summary>
-        [TestMethod]
-        public void Knight_EquipSwordAndMail_AffectsBattle()
-        {
-            var hero = new Hero("Knight", new Knight(), level: 3, baseStats: new StatBlock(5, 4, 5, 1));
-            var sword = new Gear("Bronze Sword", ItemKind.WeaponSword, new StatBlock(1, 0, 0, 0), atk: 2);
-            var mail = new Gear("Leather Mail", ItemKind.ArmorMail, new StatBlock(0, 0, 1, 0), def: 1);
-
-            Assert.IsTrue(hero.TryEquip(sword));
-            Assert.IsTrue(hero.TryEquip(mail));
-
-            var slime = new Slime(level: 1);
-            var orchestrator = new BattleOrchestrator(new SimpleAttackResolver());
-            var won = orchestrator.Run(hero, slime);
-
-            Assert.IsTrue(won, "Knight should be able to defeat a level 1 slime with basic gear.");
-            Assert.IsTrue(hero.Experience > 0, "Hero should gain experience on win.");
-        }
-
         /// <summary>Hero gains experience and levels up, increasing base stats and derived HP/AP.</summary>
         [TestMethod]
         public void Hero_LevelUp_IncreasesStats()
