@@ -651,11 +651,6 @@ namespace PitHero
                 }
                 else if (tag == GameConfig.TAG_MONSTER)
                 {
-                    // Use prototype renderer for monsters
-                    var renderer = entity.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
-                    renderer.Color = color;
-                    renderer.SetRenderLayer(GameConfig.RenderLayerActors);
-
                     var collider = entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
                     collider.IsTrigger = true;
                     Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
@@ -667,6 +662,13 @@ namespace PitHero
                     
                     var enemyComponent = entity.AddComponent(new EnemyComponent(slime, isStationary: false));
                     Debug.Log($"[PitGenerator] Created slime enemy (Level {slime.Level}, HP {slime.CurrentHP}) at tile ({tilePos.X},{tilePos.Y})");
+
+                    // Add animation system for slime enemies
+                    var slimeAnimation = entity.AddComponent(new SlimeAnimationComponent(color));
+                    slimeAnimation.SetRenderLayer(GameConfig.RenderLayerActors);
+
+                    // Add facing component for animation direction tracking
+                    var enemyFacing = entity.AddComponent(new EnemyFacingComponent());
 
                     // Add TileByTileMover for enemy movement
                     var enemyMover = entity.AddComponent(new TileByTileMover());
