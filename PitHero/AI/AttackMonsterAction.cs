@@ -131,8 +131,16 @@ namespace PitHero.AI
         /// </summary>
         private void FaceTarget(HeroComponent hero, Vector2 targetPosition)
         {
+            FaceTarget(hero.Entity, targetPosition);
+        }
+
+        /// <summary>
+        /// Make any entity face the target position
+        /// </summary>
+        private void FaceTarget(Entity entity, Vector2 targetPosition)
+        {
             // Calculate the direction vector
-            var delta = targetPosition - hero.Entity.Transform.Position;
+            var delta = targetPosition - entity.Transform.Position;
 
             // Determine the facing direction based on the direction vector
             Direction faceDir;
@@ -141,11 +149,11 @@ namespace PitHero.AI
             else
                 faceDir = delta.Y < 0 ? Direction.Up : Direction.Down;
 
-            // Set the hero's facing direction
-            var facing = hero.Entity.GetComponent<ActorFacingComponent>();
+            // Set the entity's facing direction
+            var facing = entity.GetComponent<ActorFacingComponent>();
             facing?.SetFacing(faceDir);
 
-            Debug.Log($"[AttackMonster] Hero facing direction set to {faceDir} using delta ({delta.X},{delta.Y})");
+            Debug.Log($"[AttackMonster] Entity facing direction set to {faceDir} using delta ({delta.X},{delta.Y})");
         }
 
         /// <summary>
@@ -352,6 +360,9 @@ namespace PitHero.AI
                             var enemy = enemyComponent.Enemy;
                             var enemyBattleStats = BattleStats.CalculateForMonster(enemy);
                             Debug.Log($"[AttackMonster] {enemy.Name}'s turn - attacking hero");
+                            
+                            // Make monster face the hero when attacking
+                            FaceTarget(participant.MonsterEntity, heroComponent.Entity.Transform.Position);
                             
                             var enemyAttackResult = attackResolver.Resolve(enemyBattleStats, heroBattleStats, enemy.AttackKind);
                             if (enemyAttackResult.Hit)

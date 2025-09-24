@@ -9,7 +9,7 @@ namespace PitHero.ECS.Components
     /// </summary>
     public abstract class EnemyAnimationComponent : PausableSpriteAnimator, IUpdatable
     {
-        private EnemyFacingComponent _facing;
+        private ActorFacingComponent _facing;
         private Direction _lastDirection = Direction.Down; // Default to down
 
         // Abstract properties for animation names - each enemy type defines its own
@@ -55,10 +55,10 @@ namespace PitHero.ECS.Components
                 Debug.Warn($"[EnemyAnimationComponent] Failed to load Actors.atlas: {ex.Message}");
             }
             
-            _facing = Entity.GetComponent<EnemyFacingComponent>();
+            _facing = Entity.GetComponent<ActorFacingComponent>();
             if (_facing == null)
             {
-                _facing = Entity.AddComponent(new EnemyFacingComponent());
+                _facing = Entity.AddComponent(new ActorFacingComponent());
             }
 
             this.SetColor(ComponentColor);

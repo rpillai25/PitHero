@@ -668,7 +668,7 @@ namespace PitHero
                     slimeAnimation.SetRenderLayer(GameConfig.RenderLayerActors);
 
                     // Add facing component for animation direction tracking
-                    var enemyFacing = entity.AddComponent(new EnemyFacingComponent());
+                    var enemyFacing = entity.AddComponent(new ActorFacingComponent());
 
                     // Add TileByTileMover for enemy movement
                     var enemyMover = entity.AddComponent(new TileByTileMover());

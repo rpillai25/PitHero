@@ -10,14 +10,14 @@ namespace PitHero.Tests
     {
         private Entity _enemyEntity;
         private SlimeAnimationComponent _slimeAnimation;
-        private EnemyFacingComponent _enemyFacing;
+        private ActorFacingComponent _actorFacing;
 
         [TestInitialize]
         public void Setup()
         {
             _enemyEntity = new Entity("test-enemy");
             _slimeAnimation = _enemyEntity.AddComponent(new SlimeAnimationComponent());
-            _enemyFacing = _enemyEntity.AddComponent(new EnemyFacingComponent());
+            _actorFacing = _enemyEntity.AddComponent(new ActorFacingComponent());
         }
 
         [TestCleanup]
@@ -27,35 +27,36 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void EnemyFacingComponent_DefaultsToDown()
+        public void ActorFacingComponent_DefaultsToDown()
         {
             // Arrange & Act
-            var facing = new EnemyFacingComponent();
+            var facing = new ActorFacingComponent();
 
             // Assert
             Assert.AreEqual(Direction.Down, facing.Facing);
         }
 
         [TestMethod]
-        public void EnemyFacingComponent_SetFacing_UpdatesDirection()
+        public void ActorFacingComponent_SetFacing_UpdatesDirection()
         {
             // Arrange
-            var facing = new EnemyFacingComponent();
+            var facing = new ActorFacingComponent();
 
             // Act
-            facing.Facing = Direction.Right;
+            facing.SetFacing(Direction.Right);
 
             // Assert
             Assert.AreEqual(Direction.Right, facing.Facing);
         }
 
         [TestMethod]
-        public void EnemyFacingComponent_ConsumeDirtyFlag_ReturnsTrueWhenDirty()
+        public void ActorFacingComponent_ConsumeDirtyFlag_ReturnsTrueWhenDirty()
         {
             // Arrange
-            var facing = new EnemyFacingComponent();
+            var facing = new ActorFacingComponent();
 
-            // Act - Initial state should be dirty
+            // Act - SetFacing should set dirty flag
+            facing.SetFacing(Direction.Right);
             bool wasDirty = facing.ConsumeDirtyFlag();
 
             // Assert
@@ -69,14 +70,15 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void EnemyFacingComponent_ChangingDirection_SetsDirtyFlag()
+        public void ActorFacingComponent_ChangingDirection_SetsDirtyFlag()
         {
             // Arrange
-            var facing = new EnemyFacingComponent();
+            var facing = new ActorFacingComponent();
+            facing.SetFacing(Direction.Down);
             facing.ConsumeDirtyFlag(); // Clear initial dirty flag
 
             // Act
-            facing.Facing = Direction.Left;
+            facing.SetFacing(Direction.Left);
 
             // Assert
             Assert.IsTrue(facing.ConsumeDirtyFlag());
@@ -112,20 +114,6 @@ namespace PitHero.Tests
 
             // Assert
             Assert.AreEqual(customColor, slimeAnim.ComponentColor);
-        }
-
-        [TestMethod]
-        public void EnemyFacingComponent_MarkDirty_SetsDirtyFlag()
-        {
-            // Arrange
-            var facing = new EnemyFacingComponent();
-            facing.ConsumeDirtyFlag(); // Clear initial dirty flag
-
-            // Act
-            facing.MarkDirty();
-
-            // Assert
-            Assert.IsTrue(facing.ConsumeDirtyFlag());
         }
     }
 }

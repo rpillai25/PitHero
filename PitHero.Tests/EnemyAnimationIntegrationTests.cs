@@ -19,7 +19,7 @@ namespace PitHero.Tests
             var slime = new Slime(1);
             var enemyComponent = enemyEntity.AddComponent(new EnemyComponent(slime, isStationary: false));
             var slimeAnimation = enemyEntity.AddComponent(new SlimeAnimationComponent(Color.White));
-            var enemyFacing = enemyEntity.AddComponent(new EnemyFacingComponent());
+            var enemyFacing = enemyEntity.AddComponent(new ActorFacingComponent());
             var tileMover = enemyEntity.AddComponent(new TileByTileMover());
 
             // Act & Assert - Test the complete system integration
@@ -27,7 +27,7 @@ namespace PitHero.Tests
             // 1. Verify all components are present
             Assert.IsNotNull(enemyEntity.GetComponent<EnemyComponent>());
             Assert.IsNotNull(enemyEntity.GetComponent<SlimeAnimationComponent>());
-            Assert.IsNotNull(enemyEntity.GetComponent<EnemyFacingComponent>());
+            Assert.IsNotNull(enemyEntity.GetComponent<ActorFacingComponent>());
             Assert.IsNotNull(enemyEntity.GetComponent<TileByTileMover>());
 
             // 2. Verify the enemy component has the correct slime
@@ -41,7 +41,7 @@ namespace PitHero.Tests
             Assert.AreEqual(Direction.Down, enemyFacing.Facing);
 
             // 5. Test facing direction changes
-            enemyFacing.Facing = Direction.Right;
+            enemyFacing.SetFacing(Direction.Right);
             Assert.AreEqual(Direction.Right, enemyFacing.Facing);
 
             // 6. Test that changing direction marks as dirty
@@ -61,14 +61,14 @@ namespace PitHero.Tests
         {
             // Arrange
             var enemyEntity = new Entity("MultiDirectionTest");
-            var enemyFacing = enemyEntity.AddComponent(new EnemyFacingComponent());
+            var enemyFacing = enemyEntity.AddComponent(new ActorFacingComponent());
 
             // Act & Assert - Test all cardinal directions
             var directions = new[] { Direction.Up, Direction.Down, Direction.Left, Direction.Right };
             
             foreach (var direction in directions)
             {
-                enemyFacing.Facing = direction;
+                enemyFacing.SetFacing(direction);
                 Assert.AreEqual(direction, enemyFacing.Facing);
                 Assert.IsTrue(enemyFacing.ConsumeDirtyFlag(), $"Direction {direction} should set dirty flag");
             }
