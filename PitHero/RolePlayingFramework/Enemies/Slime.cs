@@ -18,7 +18,10 @@ namespace RolePlayingFramework.Enemies
 
         public Slime(int level = 1)
         {
-            Level = level < 1 ? 1 : level;
+            // Always use the preset level for Slimes regardless of requested level
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Slime");
+            Level = presetLevel;
+            
             // Fixed stats that don't scale with level for weaker enemies
             Stats = new StatBlock(strength: 2, agility: 1, vitality: 3, magic: 0);
             MaxHP = 20 + Stats.Vitality * 6;

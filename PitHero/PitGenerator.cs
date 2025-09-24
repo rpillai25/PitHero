@@ -656,9 +656,9 @@ namespace PitHero
                     Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
 
                     // Add EnemyComponent with a Slime (non-stationary)
-                    var pitWidthManager = Core.Services?.GetService<PitWidthManager>();
-                    int currentPitLevel = pitWidthManager?.CurrentPitLevel ?? 1;
-                    var slime = new Slime(currentPitLevel); // Create slime scaled to pit level
+                    // Use preset level for enemies instead of scaling with pit level
+                    var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Slime");
+                    var slime = new Slime(presetLevel); // Create slime at preset level (always 1 for slimes)
                     
                     var enemyComponent = entity.AddComponent(new EnemyComponent(slime, isStationary: false));
                     Debug.Log($"[PitGenerator] Created slime enemy (Level {slime.Level}, HP {slime.CurrentHP}) at tile ({tilePos.X},{tilePos.Y})");
