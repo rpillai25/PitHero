@@ -263,7 +263,7 @@ namespace PitHero
                 {
                     CreateEntitiesAtPositions(validObstacles, GameConfig.TAG_OBSTACLE, Color.Gray, "obstacle");
                     CreateEntitiesAtPositions(treasures, GameConfig.TAG_TREASURE, Color.Yellow, "treasure");
-                    CreateEntitiesAtPositions(monsters, GameConfig.TAG_MONSTER, Color.Red, "monster");
+                    CreateEntitiesAtPositions(monsters, GameConfig.TAG_MONSTER, Color.White, "monster");
                     CreateEntitiesAtPositions(wizardOrbs, GameConfig.TAG_WIZARD_ORB, Color.Blue, "wizard_orb");
 
                     validLayoutGenerated = true;
