@@ -1066,8 +1066,9 @@ namespace PitHero.AI
                     var treasureComponent = treasure.GetComponent<TreasureComponent>();
                     if (treasureComponent != null && treasureComponent.State == TreasureComponent.TreasureState.CLOSED)
                     {
-                        // Return adjacent tile to the treasure
-                        return GetAdjacentTile(treasureTile);
+                        // Return the treasure tile itself for direct movement (not adjacent)
+                        Debug.Log($"[HeroStateMachine] Found treasure target at ({treasureTile.X},{treasureTile.Y}) - targeting directly");
+                        return treasureTile;
                     }
                 }
             }
@@ -1100,7 +1101,7 @@ namespace PitHero.AI
                     monsterTile.X < fogLayer.Width && monsterTile.Y < fogLayer.Height &&
                     fogLayer.GetTile(monsterTile.X, monsterTile.Y) == null)
                 {
-                    // Return adjacent tile to the monster
+                    // Return adjacent tile to the monster (monsters still need to be fought from adjacent position)
                     return GetAdjacentTile(monsterTile);
                 }
             }
@@ -1167,12 +1168,14 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Find the nearest fog tile using existing logic
+        /// Find a fog tile for exploration, preferring targets at least MinimumTargetDistance away to avoid tile-by-tile movement
         /// </summary>
         private Point? FindNearestFogTile(Point heroTile, TmxLayer fogLayer, int pitMinX, int pitMinY, int pitMaxX, int pitMaxY)
         {
-            Point? nearestUnknownTile = null;
-            float shortestDistance = float.MaxValue;
+            Point? preferredTarget = null;
+            Point? fallbackTarget = null;
+            float shortestPreferredDistance = float.MaxValue;
+            float shortestFallbackDistance = float.MaxValue;
 
             for (int x = pitMinX; x <= pitMaxX; x++)
             {
@@ -1193,15 +1196,41 @@ namespace PitHero.AI
                         continue;
 
                     float distance = Vector2.Distance(new Vector2(heroTile.X, heroTile.Y), new Vector2(x, y));
-                    if (distance < shortestDistance)
+                    
+                    // Prefer targets that are at least MinimumTargetDistance away for smoother movement
+                    if (distance >= GameConfig.MinimumTargetDistance)
                     {
-                        shortestDistance = distance;
-                        nearestUnknownTile = tilePoint;
+                        if (distance < shortestPreferredDistance)
+                        {
+                            shortestPreferredDistance = distance;
+                            preferredTarget = tilePoint;
+                        }
+                    }
+                    else
+                    {
+                        // Keep track of closer targets as fallback
+                        if (distance < shortestFallbackDistance)
+                        {
+                            shortestFallbackDistance = distance;
+                            fallbackTarget = tilePoint;
+                        }
                     }
                 }
             }
 
-            return nearestUnknownTile;
+            // Return preferred target (farther away) if found, otherwise fallback to closer targets
+            if (preferredTarget.HasValue)
+            {
+                Debug.Log($"[HeroStateMachine] Selected preferred fog target at distance {shortestPreferredDistance:F1} to avoid tile-by-tile movement");
+                return preferredTarget;
+            }
+            else if (fallbackTarget.HasValue)
+            {
+                Debug.Log($"[HeroStateMachine] Using fallback fog target at distance {shortestFallbackDistance:F1} (no preferred targets available)");
+                return fallbackTarget;
+            }
+
+            return null;
         }
 
         #endregion

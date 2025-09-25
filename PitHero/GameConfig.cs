@@ -36,6 +36,7 @@ namespace PitHero
 
         // Pathfinding configuration
         public const float MonsterAvoidanceCost = 5.0f; // Additional cost penalty for tiles adjacent to monsters during pathfinding
+        public const int MinimumTargetDistance = 3; // Minimum distance for target selection to avoid tile-by-tile movement
 
         // Pit Configuration
         public const int PitWidth = 64;

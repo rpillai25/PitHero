@@ -24,6 +24,18 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void TestMinimumTargetDistanceConfiguration()
+        {
+            // Arrange & Act: Check that minimum target distance is properly configured
+            int minDistance = GameConfig.MinimumTargetDistance;
+
+            // Assert: Configuration should exist and have reasonable value
+            Assert.IsTrue(minDistance > 0, "Minimum target distance should be positive");
+            Assert.IsTrue(minDistance >= 2, "Minimum target distance should be at least 2 for meaningful movement");
+            Assert.AreEqual(3, minDistance, "Minimum target distance should match expected default value");
+        }
+
+        [TestMethod]
         public void TestHeroComponentPathfindingOverride()
         {
             // Test that HeroComponent has the CalculatePath override method
