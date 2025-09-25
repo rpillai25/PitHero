@@ -898,6 +898,13 @@ namespace PitHero.AI
                     {
                         Debug.Log($"[HeroStateMachine] Moving enemy from ({currentTile.X},{currentTile.Y}) to ({targetTile.X},{targetTile.Y}) direction {direction}");
                         
+                        // Update enemy facing direction for animation
+                        var enemyFacing = enemy.GetComponent<ActorFacingComponent>();
+                        if (enemyFacing != null)
+                        {
+                            enemyFacing.SetFacing(direction);
+                        }
+                        
                         if (tileMover.StartMoving(direction))
                         {
                             moved = true;

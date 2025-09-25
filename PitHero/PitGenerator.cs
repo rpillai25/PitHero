@@ -263,7 +263,7 @@ namespace PitHero
                 {
                     CreateEntitiesAtPositions(validObstacles, GameConfig.TAG_OBSTACLE, Color.Gray, "obstacle");
                     CreateEntitiesAtPositions(treasures, GameConfig.TAG_TREASURE, Color.Yellow, "treasure");
-                    CreateEntitiesAtPositions(monsters, GameConfig.TAG_MONSTER, Color.Red, "monster");
+                    CreateEntitiesAtPositions(monsters, GameConfig.TAG_MONSTER, Color.White, "monster");
                     CreateEntitiesAtPositions(wizardOrbs, GameConfig.TAG_WIZARD_ORB, Color.Blue, "wizard_orb");
 
                     validLayoutGenerated = true;
@@ -651,22 +651,24 @@ namespace PitHero
                 }
                 else if (tag == GameConfig.TAG_MONSTER)
                 {
-                    // Use prototype renderer for monsters
-                    var renderer = entity.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
-                    renderer.Color = color;
-                    renderer.SetRenderLayer(GameConfig.RenderLayerActors);
-
                     var collider = entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
                     collider.IsTrigger = true;
                     Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
 
                     // Add EnemyComponent with a Slime (non-stationary)
-                    var pitWidthManager = Core.Services?.GetService<PitWidthManager>();
-                    int currentPitLevel = pitWidthManager?.CurrentPitLevel ?? 1;
-                    var slime = new Slime(currentPitLevel); // Create slime scaled to pit level
+                    // Use preset level for enemies instead of scaling with pit level
+                    var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Slime");
+                    var slime = new Slime(presetLevel); // Create slime at preset level (always 1 for slimes)
                     
                     var enemyComponent = entity.AddComponent(new EnemyComponent(slime, isStationary: false));
                     Debug.Log($"[PitGenerator] Created slime enemy (Level {slime.Level}, HP {slime.CurrentHP}) at tile ({tilePos.X},{tilePos.Y})");
+
+                    // Add animation system for slime enemies
+                    var slimeAnimation = entity.AddComponent(new SlimeAnimationComponent(color));
+                    slimeAnimation.SetRenderLayer(GameConfig.RenderLayerActors);
+
+                    // Add facing component for animation direction tracking
+                    var enemyFacing = entity.AddComponent(new ActorFacingComponent());
 
                     // Add TileByTileMover for enemy movement
                     var enemyMover = entity.AddComponent(new TileByTileMover());
