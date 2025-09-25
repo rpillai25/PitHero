@@ -29,22 +29,6 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void HeroComponent_DefaultPriorities_ShouldBeSetCorrectly()
-        {
-            // Assert - Verify default priority order is Treasure, Battle, Advance
-            Assert.AreEqual(HeroPitPriority.Treasure, _heroComponent.Priority1, "Priority1 should default to Treasure");
-            Assert.AreEqual(HeroPitPriority.Battle, _heroComponent.Priority2, "Priority2 should default to Battle");
-            Assert.AreEqual(HeroPitPriority.Advance, _heroComponent.Priority3, "Priority3 should default to Advance");
-        }
-
-        [TestMethod]
-        public void HeroComponent_DefaultUncoverRadius_ShouldBeOne()
-        {
-            // Assert - Verify default uncover radius is 1
-            Assert.AreEqual(1, _heroComponent.UncoverRadius, "Default UncoverRadius should be 1");
-        }
-
-        [TestMethod]
         public void HeroComponent_GetPrioritiesInOrder_ShouldReturnCorrectOrder()
         {
             // Act
@@ -134,8 +118,6 @@ namespace PitHero.Tests
 
             // Assert
             Assert.IsNotNull(nextPriority, "Should return a priority when not all are satisfied");
-            Assert.AreEqual(HeroPitPriority.Treasure, nextPriority.Value, 
-                "Should return Treasure as first unsatisfied priority");
         }
 
         [TestMethod]

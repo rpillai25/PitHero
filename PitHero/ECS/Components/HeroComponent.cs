@@ -34,7 +34,41 @@ namespace PitHero.ECS.Components
         }
         public bool OutsidePit => !InsidePit;                        // Opposite of InsidePit (calculated)
         public bool ExploredPit { get; set; }                        // True after all reachable FogOfWar uncovered, false upon ActivatePitRegenAction
-        public bool FoundWizardOrb { get; set; }                     // True after hero uncovered fog over wizard orb
+
+        // Track wizard orb discovery with a backing field so we can react when it becomes true
+        private bool _foundWizardOrb;
+        /// <summary>
+        /// True after hero uncovered fog over wizard orb
+        /// </summary>
+        public bool FoundWizardOrb
+        {
+            get => _foundWizardOrb;
+            set
+            {
+                if (_foundWizardOrb == value)
+                    return;
+
+                // If transitioning false -> true, capture the current priority BEFORE updating the flag
+                if (!_foundWizardOrb && value)
+                {
+                    var currentPriority = GetNextPriority();
+
+                    _foundWizardOrb = true;
+
+                    // Only mark ExploredPit=true immediately if Advance was the current, unsatisfied priority
+                    if (currentPriority.HasValue && currentPriority.Value == HeroPitPriority.Advance)
+                    {
+                        ExploredPit = true;
+                        Debug.Log("[HeroComponent] FoundWizardOrb=true and current priority is Advance. ExploredPit set to true");
+                    }
+
+                    return;
+                }
+
+                // All other transitions (e.g., true -> false)
+                _foundWizardOrb = value;
+            }
+        }
         public bool ActivatedWizardOrb { get; set; }                 // True after ActivateWizardOrbAction, false upon ActivatePitRegenAction
         public bool AdjacentToMonster { get; set; }                  // True when monster exists in tile adjacent to hero
         public bool AdjacentToChest { get; set; }                    // True when chest exists in tile adjacent to hero
@@ -107,7 +141,7 @@ namespace PitHero.ECS.Components
             // Do not override PitInitialized here; it may be set by the spawner.
             _insidePit = false;
             ExploredPit = false;
-            FoundWizardOrb = false;
+            _foundWizardOrb = false;
             ActivatedWizardOrb = false;
 
             // Ensure initial movement speed matches starting pit state (outside by default)
@@ -394,8 +428,9 @@ namespace PitHero.ECS.Components
             if (scene == null) return false;
 
             var monsterEntities = scene.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
-            foreach (var monster in monsterEntities)
+            for (int i = 0; i < monsterEntities.Count; i++)
             {
+                var monster = monsterEntities[i];
                 var monsterTile = GetTileCoordinates(monster.Transform.Position, GameConfig.TileSize);
                 if (IsAdjacent(heroTile, monsterTile))
                 {
@@ -415,8 +450,9 @@ namespace PitHero.ECS.Components
             if (scene == null) return false;
 
             var chestEntities = scene.FindEntitiesWithTag(GameConfig.TAG_TREASURE);
-            foreach (var chest in chestEntities)
+            for (int i = 0; i < chestEntities.Count; i++)
             {
+                var chest = chestEntities[i];
                 var chestTile = GetTileCoordinates(chest.Transform.Position, GameConfig.TileSize);
                 var treasureComponent = chest.GetComponent<TreasureComponent>();
                 if (IsAdjacent(heroTile, chestTile) && treasureComponent.State == TreasureComponent.TreasureState.CLOSED)
@@ -468,9 +504,10 @@ namespace PitHero.ECS.Components
         /// </summary>
         public HeroPitPriority? GetNextPriority()
         {
-            var priorities = GetPrioritiesInOrder();
-            foreach (var priority in priorities)
+            var ordered = GetPrioritiesInOrder();
+            for (int i = 0; i < ordered.Length; i++)
             {
+                var priority = ordered[i];
                 if (!IsPrioritySatisfied(priority))
                 {
                     return priority;
@@ -479,9 +516,6 @@ namespace PitHero.ECS.Components
             return null; // All priorities satisfied
         }
 
-        /// <summary>
-        /// Updates ExploredPit based on satisfied priorities
-        /// </summary>
         /// <summary>
         /// Updates ExploredPit based on satisfied priorities
         /// </summary>
@@ -534,8 +568,9 @@ namespace PitHero.ECS.Components
                 var treasureEntities = scene.FindEntitiesWithTag(GameConfig.TAG_TREASURE);
                 
                 // Check if all treasures are opened
-                foreach (var treasure in treasureEntities)
+                for (int i = 0; i < treasureEntities.Count; i++)
                 {
+                    var treasure = treasureEntities[i];
                     var treasureComponent = treasure.GetComponent<TreasureComponent>();
                     if (treasureComponent != null && treasureComponent.State == TreasureComponent.TreasureState.CLOSED)
                     {
