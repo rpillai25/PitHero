@@ -13,7 +13,7 @@ namespace PitHero.ECS.Components
 
         protected override string DefaultAnimation => "SlimeWalkDown";
         protected override string AnimDown => "SlimeWalkDown";
-        protected override string AnimLeft => "SlimeWalkLeft";
+        protected override string AnimLeft => "SlimeWalkRight";
         protected override string AnimRight => "SlimeWalkRight";
         protected override string AnimUp => "SlimeWalkUp";
     }

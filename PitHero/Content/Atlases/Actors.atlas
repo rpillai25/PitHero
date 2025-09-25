@@ -904,23 +904,17 @@ Slime_WalkDown_1
 Slime_WalkDown_2
 	231,470,32,28
 	0.5,0.5
-Slime_WalkLeft_1
+Slime_WalkRight_1
 	264,470,32,28
 	0.5,0.5
-Slime_WalkLeft_2
+Slime_WalkRight_2
 	297,470,32,28
 	0.5,0.5
-Slime_WalkRight_1
+Slime_WalkUp_1
 	330,470,32,28
 	0.5,0.5
-Slime_WalkRight_2
-	363,470,32,28
-	0.5,0.5
-Slime_WalkUp_1
-	396,470,32,28
-	0.5,0.5
 Slime_WalkUp_2
-	429,470,32,28
+	363,470,32,28
 	0.5,0.5
 HeroShadow
 	198,499,27,5
@@ -1055,15 +1049,12 @@ HeroWalkUp
 SlimeWalkDown
 	8
 	300,301
-SlimeWalkLeft
-	8
-	302,303
 SlimeWalkRight
 	8
-	304,305
+	302,303
 SlimeWalkUp
 	8
-	306,307
+	304,305
 Things
 	8
 	294,295,296,297,298,299
