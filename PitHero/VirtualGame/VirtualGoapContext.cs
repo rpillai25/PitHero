@@ -19,6 +19,11 @@ namespace PitHero.VirtualGame
         public IPitGenerator PitGenerator { get; }
         public IPitWidthManager PitWidthManager { get; }
 
+        /// <summary>
+        /// Access to the virtual hero for configuration properties like UncoverRadius
+        /// </summary>
+        public VirtualHero VirtualHero => _virtualHero;
+
         private readonly VirtualWorldState _virtualWorld;
         private readonly VirtualHero _virtualHero;
         private readonly VirtualHeroController _virtualHeroController;

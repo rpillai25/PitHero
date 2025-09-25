@@ -517,9 +517,36 @@ namespace PitHero.ECS.Components
         /// </summary>
         private bool AreAllReachableTilesUncoveredAndAllTreasuresOpened()
         {
-            // For now, return false to indicate this needs proper implementation
-            // TODO: Implement proper logic to check all reachable tiles and treasures
-            return false;
+            try
+            {
+                var scene = Core.Scene;
+                if (scene == null) 
+                {
+                    // In test environment or scene not initialized, assume not satisfied
+                    return false;
+                }
+
+                var treasureEntities = scene.FindEntitiesWithTag(GameConfig.TAG_TREASURE);
+                
+                // Check if all treasures are opened
+                foreach (var treasure in treasureEntities)
+                {
+                    var treasureComponent = treasure.GetComponent<TreasureComponent>();
+                    if (treasureComponent != null && treasureComponent.State == TreasureComponent.TreasureState.CLOSED)
+                    {
+                        return false; // Found a closed treasure
+                    }
+                }
+
+                // For simplicity, assume if all treasures are opened, then all reachable tiles are uncovered
+                // TODO: Implement proper reachable tile checking
+                return treasureEntities.Count > 0; // Return true only if there were treasures to open
+            }
+            catch
+            {
+                // In test environment or Core not initialized, assume not satisfied
+                return false;
+            }
         }
 
         /// <summary>
@@ -527,9 +554,26 @@ namespace PitHero.ECS.Components
         /// </summary>
         private bool AreAllReachableTilesUncoveredAndAllMonstersDefeated()
         {
-            // For now, return false to indicate this needs proper implementation
-            // TODO: Implement proper logic to check all reachable tiles and monsters
-            return false;
+            try
+            {
+                var scene = Core.Scene;
+                if (scene == null) 
+                {
+                    // In test environment or scene not initialized, assume not satisfied
+                    return false;
+                }
+
+                var monsterEntities = scene.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
+                
+                // For simplicity, assume if no monsters exist, they've all been defeated
+                // TODO: Implement proper monster defeat tracking and reachable tile checking
+                return monsterEntities.Count == 0;
+            }
+            catch
+            {
+                // In test environment or Core not initialized, assume not satisfied
+                return false;
+            }
         }
     }
 }

@@ -4,6 +4,7 @@ using Nez.Tiled;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
 using PitHero.Util;
+using PitHero.VirtualGame;
 using System.Collections.Generic;
 
 namespace PitHero.AI
@@ -85,8 +86,14 @@ namespace PitHero.AI
             var currentTile = context.HeroController.CurrentTilePosition;
             context.LogDebug($"[WanderPitAction] Executing at tile ({currentTile.X},{currentTile.Y})");
 
-            // Clear fog of war around this tile
-            context.WorldState.ClearFogOfWar(currentTile, 1);
+            // Clear fog of war around this tile using hero's UncoverRadius
+            int uncoverRadius = 1; // default
+            if (context is VirtualGoapContext virtualContext)
+            {
+                uncoverRadius = virtualContext.VirtualHero.UncoverRadius;
+            }
+            
+            context.WorldState.ClearFogOfWar(currentTile, uncoverRadius);
             
             context.LogDebug("[WanderPitAction] Action completed");
             return true; // Action completed
