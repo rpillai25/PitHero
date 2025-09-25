@@ -420,6 +420,162 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
+        /// Override the base CalculatePath method to include monster avoidance logic
+        /// Adds higher cost to tiles adjacent to living monsters when calculating path to orb
+        /// </summary>
+        public override List<Point> CalculatePath(Point start, Point target)
+        {
+            if (!IsPathfindingInitialized)
+            {
+                Debug.Warn($"[HeroComponent] Cannot calculate path - pathfinding not initialized");
+                return null;
+            }
+
+            try
+            {
+                // For paths to the wizard orb, we want to avoid tiles adjacent to monsters
+                bool avoidMonstersForOrb = IsTargetWizardOrb(target);
+                
+                if (avoidMonstersForOrb)
+                {
+                    return CalculatePathAvoidingMonsters(start, target);
+                }
+                else
+                {
+                    // Use normal pathfinding for other targets
+                    return base.CalculatePath(start, target);
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.Error($"[HeroComponent] Error calculating path: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Calculate path with higher cost for tiles adjacent to living monsters
+        /// Uses the existing weighted nodes system in AstarGridGraph
+        /// </summary>
+        private List<Point> CalculatePathAvoidingMonsters(Point start, Point target)
+        {
+            var scene = Core.Scene;
+            if (scene == null)
+            {
+                return base.CalculatePath(start, target);
+            }
+
+            // Get all monster positions
+            var monsterTiles = GetLivingMonsterTiles();
+            
+            if (monsterTiles.Count == 0)
+            {
+                // No monsters, use normal pathfinding
+                return base.CalculatePath(start, target);
+            }
+
+            Debug.Log($"[HeroComponent] Calculating path avoiding {monsterTiles.Count} monster locations");
+
+            // Temporarily add monster-adjacent tiles as weighted nodes
+            var pathfindingGraph = PathfindingGraph;
+            var originalWeightedNodes = new HashSet<Point>(pathfindingGraph.WeightedNodes);
+            var monsterAdjacentTiles = new HashSet<Point>();
+
+            // Add all tiles adjacent to monsters as weighted nodes
+            foreach (var monsterTile in monsterTiles)
+            {
+                var adjacentTiles = GetAdjacentTiles(monsterTile);
+                foreach (var adjacentTile in adjacentTiles)
+                {
+                    // Only add if tile is passable and not a wall
+                    if (IsPassable(adjacentTile) && !pathfindingGraph.Walls.Contains(adjacentTile))
+                    {
+                        monsterAdjacentTiles.Add(adjacentTile);
+                        pathfindingGraph.WeightedNodes.Add(adjacentTile);
+                    }
+                }
+            }
+
+            try
+            {
+                // Calculate path with monster-adjacent tiles having higher weight
+                var path = base.CalculatePath(start, target);
+                
+                if (path != null && path.Count > 0)
+                {
+                    Debug.Log($"[HeroComponent] Found monster-avoiding path with {path.Count} steps");
+                }
+                else
+                {
+                    Debug.Log($"[HeroComponent] No monster-avoiding path found");
+                }
+
+                return path;
+            }
+            finally
+            {
+                // Restore original weighted nodes
+                pathfindingGraph.WeightedNodes.Clear();
+                foreach (var node in originalWeightedNodes)
+                {
+                    pathfindingGraph.WeightedNodes.Add(node);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Check if the target tile is the wizard orb location
+        /// </summary>
+        private bool IsTargetWizardOrb(Point target)
+        {
+            var scene = Core.Scene;
+            if (scene == null) return false;
+
+            var wizardOrbEntities = scene.FindEntitiesWithTag(GameConfig.TAG_WIZARD_ORB);
+            if (wizardOrbEntities.Count == 0) return false;
+
+            var wizardOrbEntity = wizardOrbEntities[0];
+            var orbWorldPos = wizardOrbEntity.Transform.Position;
+            var orbTilePos = new Point((int)(orbWorldPos.X / GameConfig.TileSize), (int)(orbWorldPos.Y / GameConfig.TileSize));
+            
+            return target.X == orbTilePos.X && target.Y == orbTilePos.Y;
+        }
+
+        /// <summary>
+        /// Get tile positions of all living monsters
+        /// </summary>
+        private List<Point> GetLivingMonsterTiles()
+        {
+            var monsterTiles = new List<Point>();
+            var scene = Core.Scene;
+            if (scene == null) return monsterTiles;
+
+            var monsterEntities = scene.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
+            for (int i = 0; i < monsterEntities.Count; i++)
+            {
+                var monster = monsterEntities[i];
+                var monsterTile = GetTileCoordinates(monster.Transform.Position, GameConfig.TileSize);
+                monsterTiles.Add(monsterTile);
+            }
+            
+            return monsterTiles;
+        }
+
+        /// <summary>
+        /// Get all tiles adjacent to a given tile (cardinal directions only)
+        /// </summary>
+        private List<Point> GetAdjacentTiles(Point tile)
+        {
+            return new List<Point>
+            {
+                new Point(tile.X, tile.Y - 1), // Up
+                new Point(tile.X, tile.Y + 1), // Down
+                new Point(tile.X - 1, tile.Y), // Left
+                new Point(tile.X + 1, tile.Y)  // Right
+            };
+        }
+
+        /// <summary>
         /// Check if there are any unopened chests in adjacent tiles to the hero
         /// </summary>
         public bool CheckAdjacentToChest()

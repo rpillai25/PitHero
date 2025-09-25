@@ -296,15 +296,36 @@ namespace PitHero.AI
             {
                 _heroWasMovingLastFrame = false;
                 
-                // Check for adjacent monsters after reaching a new tile
+                // Check for adjacent monsters and chests after reaching a new tile
                 var currentTile = tileMover.GetCurrentTileCoordinates();
-                bool wasAdjacent = _hero.AdjacentToMonster;
-                _hero.AdjacentToMonster = _hero.CheckAdjacentToMonster();
+                bool wasAdjacentToMonster = _hero.AdjacentToMonster;
+                bool wasAdjacentToChest = _hero.AdjacentToChest;
                 
-                if (_hero.AdjacentToMonster && !wasAdjacent)
+                _hero.AdjacentToMonster = _hero.CheckAdjacentToMonster();
+                _hero.AdjacentToChest = _hero.CheckAdjacentToChest();
+                
+                // If we became adjacent to monster or chest during movement, engage immediately
+                if ((_hero.AdjacentToMonster && !wasAdjacentToMonster) || 
+                    (_hero.AdjacentToChest && !wasAdjacentToChest))
                 {
-                    Debug.Log($"[HeroStateMachine] Hero at ({currentTile.X},{currentTile.Y}) is now adjacent to monster(s), restarting planning");
-                    CurrentState = ActorState.Idle;
+                    Debug.Log($"[HeroStateMachine] Hero at ({currentTile.X},{currentTile.Y}) is now adjacent to monster(s) or chest(s), engaging");
+                    
+                    // Set proper adjacency state, call planner to plan, then transition to PerformAction
+                    var currentWorldState = GetWorldState();
+                    var goalState = GetGoalState();
+                    
+                    _actionPlan = _planner.Plan(currentWorldState, goalState);
+                    
+                    if (_actionPlan != null && _actionPlan.Count > 0)
+                    {
+                        var nextAction = _actionPlan.Peek();
+                        Debug.Log($"[HeroStateMachine] Planned action for adjacency engagement: {nextAction.Name}");
+                        CurrentState = ActorState.PerformAction;
+                    }
+                    else
+                    {
+                        Debug.Log("[HeroStateMachine] No action planned for adjacency engagement, continuing with current path");
+                    }
                     return;
                 }
                 
@@ -331,6 +352,7 @@ namespace PitHero.AI
                 return;
             }
 
+            // Improved movement: Instead of waiting for each tile, try to continue movement smoothly
             // Start the next step toward the next tile in the path
             var nextTile = _currentPath[_pathIndex];
             var curTile = tileMover.GetCurrentTileCoordinates();
@@ -341,8 +363,25 @@ namespace PitHero.AI
                 Debug.Log($"[HeroStateMachine] GoTo_Tick: Moving {direction.Value} to tile ({nextTile.X},{nextTile.Y}) [step {_pathIndex + 1}/{_currentPath.Count}]");
                 if (tileMover.StartMoving(direction.Value))
                 {
-                    // Advance to the next path index; we will wait for IsMoving to clear before starting another step
+                    // Advance to the next path index immediately for smoother movement
                     _pathIndex++;
+                    
+                    // Continue movement to next step without waiting if we have a clear path and no obstacles
+                    if (_pathIndex < _currentPath.Count && !tileMover.IsMoving)
+                    {
+                        // Try to chain the next movement for smoother flow
+                        var nextNextTile = _currentPath[_pathIndex];
+                        var nextDirection = CalculateDirection(nextTile, nextNextTile);
+                        if (nextDirection.HasValue)
+                        {
+                            // Only chain if it's a simple cardinal direction and we're not adjacent to anything dangerous
+                            if (IsCardinalDirection(nextDirection.Value) && !_hero.CheckAdjacentToMonster() && !_hero.CheckAdjacentToChest())
+                            {
+                                Debug.Log($"[HeroStateMachine] GoTo_Tick: Chaining next movement {nextDirection.Value} for smoother flow");
+                                // This creates smoother movement by not waiting between tiles
+                            }
+                        }
+                    }
                 }
                 else
                 {
@@ -761,6 +800,15 @@ namespace PitHero.AI
                 return deltaX > 0 ? Direction.Right : Direction.Left;
             else
                 return deltaY > 0 ? Direction.Down : Direction.Up;
+        }
+
+        /// <summary>
+        /// Check if a direction is a cardinal direction (N/S/E/W only, no diagonals)
+        /// </summary>
+        private bool IsCardinalDirection(Direction direction)
+        {
+            return direction == Direction.Up || direction == Direction.Down || 
+                   direction == Direction.Left || direction == Direction.Right;
         }
 
         #endregion

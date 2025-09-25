@@ -34,6 +34,9 @@ namespace PitHero
         // Hero uncover radius configuration
         public const int DefaultHeroUncoverRadius = 1; // Default radius for hero fog clearing
 
+        // Pathfinding configuration
+        public const float MonsterAvoidanceCost = 5.0f; // Additional cost penalty for tiles adjacent to monsters during pathfinding
+
         // Pit Configuration
         public const int PitWidth = 64;
         public const int PitHeight = 64;
