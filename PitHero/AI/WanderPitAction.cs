@@ -4,6 +4,7 @@ using Nez.Tiled;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
 using PitHero.Util;
+using PitHero.VirtualGame;
 using System.Collections.Generic;
 
 namespace PitHero.AI
@@ -43,11 +44,11 @@ namespace PitHero.AI
             var currentTile = tileMover.GetCurrentTileCoordinates();
             Debug.Log($"[WanderPitAction] Executing at tile ({currentTile.X},{currentTile.Y})");
 
-            // Clear fog of war around this tile
+            // Clear fog of war around this tile using hero's UncoverRadius
             var tiledMapService = Core.Services.GetService<TiledMapService>();
             if (tiledMapService != null)
             {
-                bool fogCleared = tiledMapService.ClearFogOfWarAroundTile(currentTile.X, currentTile.Y);
+                bool fogCleared = tiledMapService.ClearFogOfWarAroundTile(currentTile.X, currentTile.Y, hero);
                 
                 // Trigger fog cooldown if fog was cleared
                 if (fogCleared)
@@ -61,7 +62,9 @@ namespace PitHero.AI
 
                 // Check if wizard orb was uncovered (fog cleared at orb tile)
                 CheckWizardOrbFound(hero, tiledMapService, currentTile);
-               
+
+                // After any fog changes or discoveries, update ExploredPit based on the current priority order
+                hero.UpdateExploredPitBasedOnPriorities();
                 
                 Debug.Log($"[WanderPitAction] Adjacent check: Monster={hero.AdjacentToMonster}, Chest={hero.AdjacentToChest}");
             }
@@ -85,11 +88,38 @@ namespace PitHero.AI
             var currentTile = context.HeroController.CurrentTilePosition;
             context.LogDebug($"[WanderPitAction] Executing at tile ({currentTile.X},{currentTile.Y})");
 
-            // Clear fog of war around this tile
-            context.WorldState.ClearFogOfWar(currentTile, 1);
+            // Clear fog of war around this tile using hero's UncoverRadius
+            int uncoverRadius = 1; // default
+            if (context is VirtualGoapContext virtualContext)
+            {
+                uncoverRadius = virtualContext.VirtualHero.UncoverRadius;
+            }
+            
+            context.WorldState.ClearFogOfWar(currentTile, uncoverRadius);
+
+            // Update explored flag per priority rules in virtual context if possible
+            // (Virtual world manages this internally in tests)
             
             context.LogDebug("[WanderPitAction] Action completed");
             return true; // Action completed
+        }
+
+        /// <summary>
+        /// Handles logic for when the wizard orb is found (sets FoundWizardOrb and ExploredPit if needed)
+        /// </summary>
+        private void HandleWizardOrbFound(HeroComponent hero, string debugContext)
+        {
+            // Capture current priority before setting FoundWizardOrb
+            var currentPriority = hero.GetCurrentPriorityForPlanning();
+
+            hero.FoundWizardOrb = true;
+            Debug.Log($"[Wander] *** WIZARD ORB FOUND *** Setting FoundWizardOrb=true {debugContext}");
+
+            if (currentPriority.HasValue && currentPriority.Value == HeroPitPriority.Advance)
+            {
+                hero.ExploredPit = true;
+                Debug.Log("[Wander] Current priority is Advance. ExploredPit set to true");
+            }
         }
 
         /// <summary>
@@ -128,7 +158,7 @@ namespace PitHero.AI
             if (fogLayer == null)
             {
                 Debug.Log("[Wander] CheckWizardOrbFound: No FogOfWar layer found - assuming orb discovered");
-                hero.FoundWizardOrb = true;
+                HandleWizardOrbFound(hero, "(no FogOfWar layer)");
                 return;
             }
 
@@ -139,8 +169,7 @@ namespace PitHero.AI
 
                 if (fogTile == null)
                 {
-                    hero.FoundWizardOrb = true;
-                    Debug.Log($"[Wander] *** WIZARD ORB FOUND *** Setting FoundWizardOrb=true at tile {orbTile.X},{orbTile.Y}");
+                    HandleWizardOrbFound(hero, $"at tile {orbTile.X},{orbTile.Y}");
                 }
             }
             else

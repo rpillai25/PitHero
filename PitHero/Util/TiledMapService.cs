@@ -98,8 +98,56 @@ namespace PitHero.Util
         /// </summary>
         /// <param name="centerTileX">Center tile X coordinate</param>
         /// <param name="centerTileY">Center tile Y coordinate</param>
+        /// <param name="radius">Radius for clearing fog (default 1)</param>
         /// <returns>True if any fog was actually cleared</returns>
-        public bool ClearFogOfWarAroundTile(int centerTileX, int centerTileY)
+        public bool ClearFogOfWarAroundTile(int centerTileX, int centerTileY, HeroComponent heroComponent)
+        {
+            bool anyFogCleared = false;
+            int radius = heroComponent?.UncoverRadius ?? 1;
+            if (heroComponent.ExploredPit || heroComponent.OutsidePit)
+            {
+                return false;
+            }
+
+            // Clear tile at center position
+            anyFogCleared |= ClearFogOfWarTile(centerTileX, centerTileY);
+            
+            if (radius == 1)
+            {
+                // Radius 1 = uncover square of 8 tiles surrounding player (3x3 grid minus center)
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    for (int dy = -1; dy <= 1; dy++)
+                    {
+                        if (dx == 0 && dy == 0) continue; // Skip center tile (already cleared)
+                        anyFogCleared |= ClearFogOfWarTile(centerTileX + dx, centerTileY + dy);
+                    }
+                }
+            }
+            else
+            {
+                // For radius > 1, clear all tiles within the radius square
+                for (int dx = -radius; dx <= radius; dx++)
+                {
+                    for (int dy = -radius; dy <= radius; dy++)
+                    {
+                        if (dx == 0 && dy == 0) continue; // Skip center tile (already cleared)
+                        anyFogCleared |= ClearFogOfWarTile(centerTileX + dx, centerTileY + dy);
+                    }
+                }
+            }
+            
+            return anyFogCleared;
+        }
+
+        /// <summary>
+        /// Clear FogOfWar in the 4 cardinal directions around a center tile and diagonals if those diagonal tiles are obstacles
+        /// Legacy method for backward compatibility
+        /// </summary>
+        /// <param name="centerTileX">Center tile X coordinate</param>
+        /// <param name="centerTileY">Center tile Y coordinate</param>
+        /// <returns>True if any fog was actually cleared</returns>
+        public bool ClearFogOfWarAroundTileLegacy(int centerTileX, int centerTileY)
         {
             bool anyFogCleared = false;
             

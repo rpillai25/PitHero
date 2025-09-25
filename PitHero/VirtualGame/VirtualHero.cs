@@ -20,6 +20,12 @@ namespace PitHero.VirtualGame
         public bool FoundWizardOrb { get; set; }
         public bool ActivatedWizardOrb { get; set; }
 
+        // Hero configuration properties
+        public int UncoverRadius { get; set; } = 1;
+        public HeroPitPriority Priority1 { get; set; } = HeroPitPriority.Treasure;
+        public HeroPitPriority Priority2 { get; set; } = HeroPitPriority.Battle;
+        public HeroPitPriority Priority3 { get; set; } = HeroPitPriority.Advance;
+
         // Movement state
         public bool IsMoving { get; set; }
         public Queue<Point> MovementQueue { get; } = new Queue<Point>();
@@ -298,6 +304,68 @@ namespace PitHero.VirtualGame
                 return false;
             
             return Position == orbPos.Value;
+        }
+
+        /// <summary>
+        /// Gets the priorities in order (Priority1, Priority2, Priority3)
+        /// </summary>
+        public HeroPitPriority[] GetPrioritiesInOrder()
+        {
+            return new HeroPitPriority[] { Priority1, Priority2, Priority3 };
+        }
+
+        /// <summary>
+        /// Checks if a specific pit priority is satisfied
+        /// </summary>
+        public bool IsPrioritySatisfied(HeroPitPriority priority)
+        {
+            switch (priority)
+            {
+                case HeroPitPriority.Treasure:
+                    return AreAllReachableTilesUncoveredAndAllTreasuresOpened();
+                case HeroPitPriority.Battle:
+                    return AreAllReachableTilesUncoveredAndAllMonstersDefeated();
+                case HeroPitPriority.Advance:
+                    return FoundWizardOrb; // Satisfied when wizard orb is uncovered
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Gets the next unsatisfied priority in the ordered list
+        /// </summary>
+        public HeroPitPriority? GetNextPriority()
+        {
+            var priorities = GetPrioritiesInOrder();
+            foreach (var priority in priorities)
+            {
+                if (!IsPrioritySatisfied(priority))
+                {
+                    return priority;
+                }
+            }
+            return null; // All priorities satisfied
+        }
+
+        /// <summary>
+        /// Check if all reachable tiles are uncovered and all treasures are opened
+        /// </summary>
+        private bool AreAllReachableTilesUncoveredAndAllTreasuresOpened()
+        {
+            // For virtual world, assume satisfied if no treasures exist or all are in "opened" state
+            // TODO: Implement proper treasure tracking in virtual world
+            return true; // Placeholder
+        }
+
+        /// <summary>
+        /// Check if all reachable tiles are uncovered and all monsters are defeated
+        /// </summary>
+        private bool AreAllReachableTilesUncoveredAndAllMonstersDefeated()
+        {
+            // For virtual world, assume satisfied if no monsters exist
+            // TODO: Implement proper monster tracking in virtual world
+            return true; // Placeholder
         }
     }
 }

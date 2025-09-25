@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using PitHero.AI.Interfaces;
+using PitHero.ECS.Components;
 using System;
 
 namespace PitHero.VirtualGame
@@ -56,22 +57,45 @@ namespace PitHero.VirtualGame
             return false;
         }
 
-        public bool ClearFogOfWarAroundTile(int centerTileX, int centerTileY)
+        public bool ClearFogOfWarAroundTile(int centerTileX, int centerTileY, HeroComponent heroComponent)
         {
             var fogLayer = _virtualMap.GetVirtualLayer("FogOfWar");
+            int radius = heroComponent?.UncoverRadius ?? 1;
             if (fogLayer != null)
             {
                 bool anyCleared = false;
-                // Clear center and 4 cardinal directions
+                
+                // Clear center tile
                 anyCleared |= ClearFogOfWarTile(centerTileX, centerTileY);
-                anyCleared |= ClearFogOfWarTile(centerTileX - 1, centerTileY);
-                anyCleared |= ClearFogOfWarTile(centerTileX + 1, centerTileY);
-                anyCleared |= ClearFogOfWarTile(centerTileX, centerTileY - 1);
-                anyCleared |= ClearFogOfWarTile(centerTileX, centerTileY + 1);
+                
+                if (radius == 1)
+                {
+                    // Radius 1 = uncover square of 8 tiles surrounding player (3x3 grid minus center)
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        for (int dy = -1; dy <= 1; dy++)
+                        {
+                            if (dx == 0 && dy == 0) continue; // Skip center tile (already cleared)
+                            anyCleared |= ClearFogOfWarTile(centerTileX + dx, centerTileY + dy);
+                        }
+                    }
+                }
+                else
+                {
+                    // For radius > 1, clear all tiles within the radius square
+                    for (int dx = -radius; dx <= radius; dx++)
+                    {
+                        for (int dy = -radius; dy <= radius; dy++)
+                        {
+                            if (dx == 0 && dy == 0) continue; // Skip center tile (already cleared)
+                            anyCleared |= ClearFogOfWarTile(centerTileX + dx, centerTileY + dy);
+                        }
+                    }
+                }
                 
                 if (anyCleared)
                 {
-                    Console.WriteLine($"[VirtualTiledMapService] Cleared FogOfWar around ({centerTileX},{centerTileY})");
+                    Console.WriteLine($"[VirtualTiledMapService] Cleared FogOfWar around ({centerTileX},{centerTileY}) with radius {radius}");
                 }
                 return anyCleared;
             }

@@ -159,7 +159,7 @@ namespace PitHero.ECS.Components
             if (tms != null && heroComponent != null)
             {
                 var tile = GetCurrentTileCoordinates();
-                bool fogCleared = tms.ClearFogOfWarAroundTile(tile.X, tile.Y);
+                bool fogCleared = tms.ClearFogOfWarAroundTile(tile.X, tile.Y, heroComponent);
                 
                 // Trigger fog cooldown if fog was cleared
                 if (fogCleared)

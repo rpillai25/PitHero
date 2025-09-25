@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.ECS.Components;
 using PitHero.Util;
+using RolePlayingFramework.Heroes;
 
 namespace PitHero.AI
 {
@@ -153,10 +154,11 @@ namespace PitHero.AI
                 tileMover.UpdateTriggersAfterTeleport();
             }
 
+            var hero = entity.GetComponent<HeroComponent>();
             var tiledMapService = Core.Services.GetService<TiledMapService>();
             bool fogCleared = tiledMapService?.ClearFogOfWarAroundTile(
                 (int)(targetPosition.X / GameConfig.TileSize),
-                (int)(targetPosition.Y / GameConfig.TileSize)
+                (int)(targetPosition.Y / GameConfig.TileSize), hero
             ) ?? false;
 
             // Trigger fog cooldown if fog was cleared

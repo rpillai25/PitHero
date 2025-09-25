@@ -3,6 +3,9 @@ using Nez;
 using Nez.AI.GOAP;
 using PitHero.AI;
 using System;
+using Nez.Tiled;
+using System.Collections.Generic;
+using PitHero.Util;
 
 namespace PitHero.ECS.Components
 {
@@ -34,10 +37,40 @@ namespace PitHero.ECS.Components
         }
         public bool OutsidePit => !InsidePit;                        // Opposite of InsidePit (calculated)
         public bool ExploredPit { get; set; }                        // True after all reachable FogOfWar uncovered, false upon ActivatePitRegenAction
-        public bool FoundWizardOrb { get; set; }                     // True after hero uncovered fog over wizard orb
+
+        // Track wizard orb discovery with a backing field (no side-effect logic here)
+        private bool _foundWizardOrb;
+        /// <summary>
+        /// True after hero uncovered fog over wizard orb
+        /// </summary>
+        public bool FoundWizardOrb
+        {
+            get => _foundWizardOrb;
+            set => _foundWizardOrb = value;
+        }
         public bool ActivatedWizardOrb { get; set; }                 // True after ActivateWizardOrbAction, false upon ActivatePitRegenAction
         public bool AdjacentToMonster { get; set; }                  // True when monster exists in tile adjacent to hero
         public bool AdjacentToChest { get; set; }                    // True when chest exists in tile adjacent to hero
+
+        /// <summary>
+        /// Hero uncover radius for fog of war clearing (default 1 = 8 surrounding tiles)
+        /// </summary>
+        public int UncoverRadius { get; set; } = GameConfig.DefaultHeroUncoverRadius;
+
+        /// <summary>
+        /// Hero pit priority 1 (highest priority action)
+        /// </summary>
+        public HeroPitPriority Priority1 { get; set; } = HeroPitPriority.Treasure;
+
+        /// <summary>
+        /// Hero pit priority 2 (medium priority action)
+        /// </summary>
+        public HeroPitPriority Priority2 { get; set; } = HeroPitPriority.Battle;
+
+        /// <summary>
+        /// Hero pit priority 3 (lowest priority action)
+        /// </summary>
+        public HeroPitPriority Priority3 { get; set; } = HeroPitPriority.Advance;
 
         /// <summary>
         /// Link to the Hero class from RolePlayingFramework
@@ -87,7 +120,7 @@ namespace PitHero.ECS.Components
             // Do not override PitInitialized here; it may be set by the spawner.
             _insidePit = false;
             ExploredPit = false;
-            FoundWizardOrb = false;
+            _foundWizardOrb = false;
             ActivatedWizardOrb = false;
 
             // Ensure initial movement speed matches starting pit state (outside by default)
@@ -374,8 +407,9 @@ namespace PitHero.ECS.Components
             if (scene == null) return false;
 
             var monsterEntities = scene.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
-            foreach (var monster in monsterEntities)
+            for (int i = 0; i < monsterEntities.Count; i++)
             {
+                var monster = monsterEntities[i];
                 var monsterTile = GetTileCoordinates(monster.Transform.Position, GameConfig.TileSize);
                 if (IsAdjacent(heroTile, monsterTile))
                 {
@@ -395,8 +429,9 @@ namespace PitHero.ECS.Components
             if (scene == null) return false;
 
             var chestEntities = scene.FindEntitiesWithTag(GameConfig.TAG_TREASURE);
-            foreach (var chest in chestEntities)
+            for (int i = 0; i < chestEntities.Count; i++)
             {
+                var chest = chestEntities[i];
                 var chestTile = GetTileCoordinates(chest.Transform.Position, GameConfig.TileSize);
                 var treasureComponent = chest.GetComponent<TreasureComponent>();
                 if (IsAdjacent(heroTile, chestTile) && treasureComponent.State == TreasureComponent.TreasureState.CLOSED)
@@ -415,6 +450,276 @@ namespace PitHero.ECS.Components
             int dx = Math.Abs(tile1.X - tile2.X);
             int dy = Math.Abs(tile1.Y - tile2.Y);
             return (dx + dy) == 1; // cardinal adjacency only
+        }
+
+        /// <summary>
+        /// Gets the priorities in order (Priority1, Priority2, Priority3)
+        /// </summary>
+        public HeroPitPriority[] GetPrioritiesInOrder()
+        {
+            return new HeroPitPriority[] { Priority1, Priority2, Priority3 };
+        }
+
+        /// <summary>
+        /// Checks if a specific pit priority is satisfied
+        /// </summary>
+        public bool IsPrioritySatisfied(HeroPitPriority priority)
+        {
+            switch (priority)
+            {
+                case HeroPitPriority.Treasure:
+                    return AreAllReachableTilesUncoveredAndAllTreasuresOpened();
+                case HeroPitPriority.Battle:
+                    return AreAllReachableTilesUncoveredAndAllMonstersDefeated();
+                case HeroPitPriority.Advance:
+                    return FoundWizardOrb; // Satisfied when wizard orb is uncovered
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Gets the next unsatisfied priority in the ordered list
+        /// </summary>
+        public HeroPitPriority? GetNextPriority()
+        {
+            var ordered = GetPrioritiesInOrder();
+            for (int i = 0; i < ordered.Length; i++)
+            {
+                var priority = ordered[i];
+                if (!IsPrioritySatisfied(priority))
+                {
+                    return priority;
+                }
+            }
+            return null; // All priorities satisfied
+        }
+
+        /// <summary>
+        /// Gets the current priority for planning purposes, treating Advance as special once prior priorities are satisfied
+        /// </summary>
+        public HeroPitPriority? GetCurrentPriorityForPlanning()
+        {
+            var ordered = GetPrioritiesInOrder();
+            for (int i = 0; i < ordered.Length; i++)
+            {
+                var priority = ordered[i];
+                if (priority == HeroPitPriority.Advance)
+                {
+                    // As soon as Advance is reached in the order (i.e., all previous priorities are satisfied),
+                    // we consider Advance the current priority regardless of its satisfied state.
+                    return HeroPitPriority.Advance;
+                }
+
+                if (!IsPrioritySatisfied(priority))
+                {
+                    return priority;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Updates ExploredPit based on satisfied priorities
+        /// </summary>
+        public void UpdateExploredPitBasedOnPriorities()
+        {
+            var priorities = GetPrioritiesInOrder();
+            
+            // Check priorities in order to find the current priority we should be working on
+            for (int i = 0; i < priorities.Length; i++)
+            {
+                var currentPriority = priorities[i];
+                
+                if (!IsPrioritySatisfied(currentPriority))
+                {
+                    // This is the current priority we should be working on
+                    // ExploredPit stays false since current priority is not satisfied
+                    return;
+                }
+                else if (currentPriority == HeroPitPriority.Advance)
+                {
+                    // Special case: If current priority is Advance and it's satisfied,
+                    // set ExploredPit = true immediately (skip remaining priorities)
+                    ExploredPit = true;
+                    return;
+                }
+                else if (i == priorities.Length - 1)
+                {
+                    // This is the last priority and it's satisfied
+                    ExploredPit = true;
+                    return;
+                }
+                // Otherwise, continue to the next priority
+            }
+        }
+
+        /// <summary>
+        /// Check if all reachable tiles are uncovered and all treasures are opened
+        /// </summary>
+        private bool AreAllReachableTilesUncoveredAndAllTreasuresOpened()
+        {
+            try
+            {
+                var scene = Core.Scene;
+                if (scene == null) 
+                {
+                    // In test environment or scene not initialized, assume not satisfied
+                    return false;
+                }
+
+                // First, ensure all reachable tiles are uncovered
+                if (!AreAllReachablePitTilesUncovered())
+                    return false;
+
+                // Then ensure all treasures are opened (if any exist)
+                var treasureEntities = scene.FindEntitiesWithTag(GameConfig.TAG_TREASURE);
+                for (int i = 0; i < treasureEntities.Count; i++)
+                {
+                    var treasure = treasureEntities[i];
+                    var treasureComponent = treasure.GetComponent<TreasureComponent>();
+                    if (treasureComponent != null && treasureComponent.State == TreasureComponent.TreasureState.CLOSED)
+                    {
+                        return false; // Found a closed treasure
+                    }
+                }
+
+                // All reachable tiles uncovered and no closed treasures remain (or none exist)
+                return true;
+            }
+            catch
+            {
+                // In test environment or Core not initialized, assume not satisfied
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Check if all reachable tiles are uncovered and all monsters are defeated
+        /// </summary>
+        private bool AreAllReachableTilesUncoveredAndAllMonstersDefeated()
+        {
+            try
+            {
+                var scene = Core.Scene;
+                if (scene == null) 
+                {
+                    // In test environment or scene not initialized, assume not satisfied
+                    return false;
+                }
+
+                // First, ensure all reachable tiles are uncovered
+                if (!AreAllReachablePitTilesUncovered())
+                    return false;
+
+                // Then ensure all monsters are defeated
+                var monsterEntities = scene.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
+                return monsterEntities.Count == 0;
+            }
+            catch
+            {
+                // In test environment or Core not initialized, assume not satisfied
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Check if all passable, reachable tiles inside the pit are uncovered (no FogOfWar)
+        /// </summary>
+        private bool AreAllReachablePitTilesUncovered()
+        {
+            try
+            {
+                var tms = Core.Services.GetService<TiledMapService>();
+                if (tms?.CurrentMap == null)
+                    return false;
+
+                var fogLayer = tms.CurrentMap.GetLayer<TmxLayer>("FogOfWar");
+                if (fogLayer == null)
+                    return false;
+
+                // Determine explorable area inside pit bounds (one tile inset from walls)
+                var pitBounds = PitCollisionRect;
+                int minX = pitBounds.X + 1;
+                int minY = pitBounds.Y + 1;
+                int maxX = pitBounds.X + pitBounds.Width - 2;
+                int maxY = pitBounds.Y + pitBounds.Height - 2;
+
+                // Choose a starting tile: hero tile if inside bounds and passable, else scan for first passable tile
+                var start = GetCurrentTilePosition();
+                if (start.X < minX || start.X > maxX || start.Y < minY || start.Y > maxY || (IsPathfindingInitialized && !IsPassable(start)))
+                {
+                    bool found = false;
+                    for (int x = minX; x <= maxX && !found; x++)
+                    {
+                        for (int y = minY; y <= maxY; y++)
+                        {
+                            var p = new Point(x, y);
+                            if (!IsPathfindingInitialized || IsPassable(p))
+                            {
+                                start = p;
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!found)
+                        return false; // no passable tiles found inside pit
+                }
+
+                // BFS over passable tiles to enumerate reachable set
+                var visited = new HashSet<Point>();
+                var queue = new Queue<Point>();
+                visited.Add(start);
+                queue.Enqueue(start);
+
+                // Directions: up, down, left, right
+                int[] dx = new int[] { 0, 0, -1, 1 };
+                int[] dy = new int[] { -1, 1, 0, 0 };
+
+                while (queue.Count > 0)
+                {
+                    var cur = queue.Dequeue();
+
+                    // Ensure fog is cleared at this reachable tile
+                    if (cur.X >= 0 && cur.Y >= 0 && cur.X < fogLayer.Width && cur.Y < fogLayer.Height)
+                    {
+                        var fog = fogLayer.GetTile(cur.X, cur.Y);
+                        if (fog != null)
+                        {
+                            return false; // Found reachable tile still covered by fog
+                        }
+                    }
+
+                    // Explore neighbors
+                    for (int i = 0; i < 4; i++)
+                    {
+                        int nx = cur.X + dx[i];
+                        int ny = cur.Y + dy[i];
+                        if (nx < minX || nx > maxX || ny < minY || ny > maxY)
+                            continue;
+
+                        var np = new Point(nx, ny);
+                        if (visited.Contains(np))
+                            continue;
+
+                        // Check passability
+                        if (IsPathfindingInitialized && !IsPassable(np))
+                            continue;
+
+                        visited.Add(np);
+                        queue.Enqueue(np);
+                    }
+                }
+
+                // All reachable tiles we walked were uncovered
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }

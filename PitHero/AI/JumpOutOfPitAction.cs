@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.ECS.Components;
 using PitHero.Util;
+using RolePlayingFramework.Heroes;
 using System.Collections;
 
 namespace PitHero.AI
@@ -157,10 +158,11 @@ namespace PitHero.AI
             }
 
             // Clear fog of war around the landing position
+            var hero = entity.GetComponent<HeroComponent>();
             var tiledMapService = Core.Services.GetService<TiledMapService>();
             bool fogCleared = tiledMapService?.ClearFogOfWarAroundTile(
                 (int)(targetPosition.X / GameConfig.TileSize),
-                (int)(targetPosition.Y / GameConfig.TileSize)
+                (int)(targetPosition.Y / GameConfig.TileSize), hero
             ) ?? false;
             
             // Trigger fog cooldown if fog was cleared

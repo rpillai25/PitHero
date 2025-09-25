@@ -554,54 +554,21 @@ namespace PitHero.AI
                 Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Using default pit bounds: explorable area ({pitMinX},{pitMinY}) to ({pitMaxX},{pitMaxY})");
             }
 
-            // Scan for nearest fog tile (passable and not failed)
-            Point? nearestUnknownTile = null;
-            float shortestDistance = float.MaxValue;
+            // Count fog tiles for debugging (minimal version)
             int fogTileCount = 0;
-            int passableFogTileCount = 0;
-            int skippedFailedCount = 0;
-
             for (int x = pitMinX; x <= pitMaxX; x++)
             {
                 for (int y = pitMinY; y <= pitMaxY; y++)
                 {
                     if (x < 0 || y < 0 || x >= fogLayer.Width || y >= fogLayer.Height)
                         continue;
-
                     var tile = fogLayer.GetTile(x, y);
-                    if (tile == null)
-                        continue; // no fog here
-
-                    fogTileCount++;
-                    var tilePoint = new Point(x, y);
-
-                    if (_failedWanderTargets.Contains(tilePoint))
-                    {
-                        skippedFailedCount++;
-                        continue;
-                    }
-
-                    bool isPassable = true;
-                    if (_hero.IsPathfindingInitialized)
-                        isPassable = _hero.IsPassable(tilePoint);
-                    if (!isPassable)
-                    {
-                        Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Tile ({x},{y}) has fog but is not passable");
-                        continue;
-                    }
-
-                    passableFogTileCount++;
-
-                    float distance = Vector2.Distance(new Vector2(heroTile.X, heroTile.Y), new Vector2(x, y));
-                    if (distance < shortestDistance)
-                    {
-                        shortestDistance = distance;
-                        nearestUnknownTile = tilePoint;
-                    }
+                    if (tile != null)
+                        fogTileCount++;
                 }
             }
 
-            Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Found {fogTileCount} fog tiles total, {passableFogTileCount} passable fog tiles, skipped {skippedFailedCount} failed targets");
+            Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Found {fogTileCount} fog tiles in pit area");
 
             // Validate or set the committed wander target to avoid oscillation
             if (_currentWanderTarget.HasValue)
@@ -624,14 +591,16 @@ namespace PitHero.AI
 
             if (!_currentWanderTarget.HasValue)
             {
-                if (nearestUnknownTile.HasValue)
+                // Use priority-based target selection (Advance takes precedence once reached in the order)
+                var priorityTarget = FindPriorityBasedTarget(heroTile, fogLayer, pitMinX, pitMinY, pitMaxX, pitMaxY);
+                if (priorityTarget.HasValue)
                 {
-                    _currentWanderTarget = nearestUnknownTile.Value;
-                    Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Committing new wander target at ({_currentWanderTarget.Value.X},{_currentWanderTarget.Value.Y})");
+                    _currentWanderTarget = priorityTarget.Value;
+                    Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Committing new priority-based wander target at ({_currentWanderTarget.Value.X},{_currentWanderTarget.Value.Y})");
                 }
                 else
                 {
-                    Debug.Log("[HeroStateMachine] CalculatePitWanderPointLocation: No unknown tiles found in pit area");
+                    Debug.Log("[HeroStateMachine] CalculatePitWanderPointLocation: No priority targets or unknown tiles found in pit area");
 
                     if (_failedWanderTargets.Count > 0)
                     {
@@ -640,8 +609,8 @@ namespace PitHero.AI
                         return null; // trigger re-plan
                     }
 
-                    Debug.Log("[HeroStateMachine] CalculatePitWanderPointLocation: Pit exploration complete, setting ExploredPit=true");
-                    _hero.ExploredPit = true;
+                    Debug.Log("[HeroStateMachine] CalculatePitWanderPointLocation: Pit exploration complete, updating ExploredPit based on priorities");
+                    _hero.UpdateExploredPitBasedOnPriorities();
 
                     Debug.Log("[HeroStateMachine] CalculatePitWanderPointLocation: Transitioning to PerformAction for final WanderPitAction execution");
                     CurrentState = ActorState.PerformAction;
@@ -977,6 +946,216 @@ namespace PitHero.AI
             }
         }
         
+        #endregion
+
+        #region Priority-Based Target Selection
+
+        /// <summary>
+        /// Find the next target based on the hero's current priority
+        /// </summary>
+        private Point? FindPriorityBasedTarget(Point heroTile, TmxLayer fogLayer, int pitMinX, int pitMinY, int pitMaxX, int pitMaxY)
+        {
+            // Use planning-aware priority: once Advance is reached in the order, it takes precedence
+            var nextPriority = _hero.GetCurrentPriorityForPlanning();
+            
+            if (nextPriority == null)
+            {
+                // All priorities satisfied, use existing fog tile logic as fallback
+                return FindNearestFogTile(heroTile, fogLayer, pitMinX, pitMinY, pitMaxX, pitMaxY);
+            }
+            
+            Point? priorityTarget = null;
+            
+            switch (nextPriority.Value)
+            {
+                case HeroPitPriority.Treasure:
+                    priorityTarget = FindUncoveredUnopendTreasureTarget();
+                    break;
+                case HeroPitPriority.Battle:
+                    priorityTarget = FindUncoveredMonsterTarget();
+                    break;
+                case HeroPitPriority.Advance:
+                    priorityTarget = FindUncoveredWizardOrbTarget();
+                    break;
+            }
+            
+            // If we found a priority target, return it
+            if (priorityTarget.HasValue)
+            {
+                Debug.Log($"[HeroStateMachine] Priority-based target found: {nextPriority.Value} at ({priorityTarget.Value.X},{priorityTarget.Value.Y})");
+                return priorityTarget.Value;
+            }
+            
+            // If no priority target found, explore fog to potentially find targets
+            return FindNearestFogTile(heroTile, fogLayer, pitMinX, pitMinY, pitMaxX, pitMaxY);
+        }
+
+        /// <summary>
+        /// Find an uncovered, unopened treasure chest
+        /// </summary>
+        private Point? FindUncoveredUnopendTreasureTarget()
+        {
+            var scene = Core.Scene;
+            if (scene == null) return null;
+
+            var treasureEntities = scene.FindEntitiesWithTag(GameConfig.TAG_TREASURE);
+            var tms = Core.Services.GetService<TiledMapService>();
+            if (tms?.CurrentMap == null) return null;
+
+            var fogLayer = tms.CurrentMap.GetLayer<TmxLayer>("FogOfWar");
+            if (fogLayer == null) return null;
+
+            foreach (var treasure in treasureEntities)
+            {
+                var treasurePos = treasure.Transform.Position;
+                var treasureTile = new Point((int)(treasurePos.X / GameConfig.TileSize), (int)(treasurePos.Y / GameConfig.TileSize));
+                
+                // Check if treasure is uncovered (no fog)
+                if (treasureTile.X >= 0 && treasureTile.Y >= 0 && 
+                    treasureTile.X < fogLayer.Width && treasureTile.Y < fogLayer.Height &&
+                    fogLayer.GetTile(treasureTile.X, treasureTile.Y) == null)
+                {
+                    var treasureComponent = treasure.GetComponent<TreasureComponent>();
+                    if (treasureComponent != null && treasureComponent.State == TreasureComponent.TreasureState.CLOSED)
+                    {
+                        // Return adjacent tile to the treasure
+                        return GetAdjacentTile(treasureTile);
+                    }
+                }
+            }
+            
+            return null;
+        }
+
+        /// <summary>
+        /// Find an uncovered monster
+        /// </summary>
+        private Point? FindUncoveredMonsterTarget()
+        {
+            var scene = Core.Scene;
+            if (scene == null) return null;
+
+            var monsterEntities = scene.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
+            var tms = Core.Services.GetService<TiledMapService>();
+            if (tms?.CurrentMap == null) return null;
+
+            var fogLayer = tms.CurrentMap.GetLayer<TmxLayer>("FogOfWar");
+            if (fogLayer == null) return null;
+
+            foreach (var monster in monsterEntities)
+            {
+                var monsterPos = monster.Transform.Position;
+                var monsterTile = new Point((int)(monsterPos.X / GameConfig.TileSize), (int)(monsterPos.Y / GameConfig.TileSize));
+                
+                // Check if monster is uncovered (no fog)
+                if (monsterTile.X >= 0 && monsterTile.Y >= 0 && 
+                    monsterTile.X < fogLayer.Width && monsterTile.Y < fogLayer.Height &&
+                    fogLayer.GetTile(monsterTile.X, monsterTile.Y) == null)
+                {
+                    // Return adjacent tile to the monster
+                    return GetAdjacentTile(monsterTile);
+                }
+            }
+            
+            return null;
+        }
+
+        /// <summary>
+        /// Find the uncovered wizard orb
+        /// </summary>
+        private Point? FindUncoveredWizardOrbTarget()
+        {
+            var scene = Core.Scene;
+            if (scene == null) return null;
+
+            var wizardOrbEntities = scene.FindEntitiesWithTag(GameConfig.TAG_WIZARD_ORB);
+            var tms = Core.Services.GetService<TiledMapService>();
+            if (tms?.CurrentMap == null) return null;
+
+            var fogLayer = tms.CurrentMap.GetLayer<TmxLayer>("FogOfWar");
+            if (fogLayer == null) return null;
+
+            foreach (var wizardOrb in wizardOrbEntities)
+            {
+                var orbPos = wizardOrb.Transform.Position;
+                var orbTile = new Point((int)(orbPos.X / GameConfig.TileSize), (int)(orbPos.Y / GameConfig.TileSize));
+                
+                // Check if wizard orb is uncovered (no fog)
+                if (orbTile.X >= 0 && orbTile.Y >= 0 && 
+                    orbTile.X < fogLayer.Width && orbTile.Y < fogLayer.Height &&
+                    fogLayer.GetTile(orbTile.X, orbTile.Y) == null)
+                {
+                    // Return the orb tile itself since hero needs to be on it to activate
+                    return orbTile;
+                }
+            }
+            
+            return null;
+        }
+
+        /// <summary>
+        /// Get an adjacent passable tile to the target tile
+        /// </summary>
+        private Point? GetAdjacentTile(Point targetTile)
+        {
+            // Try cardinal directions first
+            Point[] adjacent = new Point[]
+            {
+                new Point(targetTile.X, targetTile.Y - 1), // Up
+                new Point(targetTile.X, targetTile.Y + 1), // Down
+                new Point(targetTile.X - 1, targetTile.Y), // Left
+                new Point(targetTile.X + 1, targetTile.Y)  // Right
+            };
+            
+            foreach (var adj in adjacent)
+            {
+                if (_hero.IsPathfindingInitialized && _hero.IsPassable(adj))
+                {
+                    return adj;
+                }
+            }
+            
+            return targetTile; // Fallback to target tile itself
+        }
+
+        /// <summary>
+        /// Find the nearest fog tile using existing logic
+        /// </summary>
+        private Point? FindNearestFogTile(Point heroTile, TmxLayer fogLayer, int pitMinX, int pitMinY, int pitMaxX, int pitMaxY)
+        {
+            Point? nearestUnknownTile = null;
+            float shortestDistance = float.MaxValue;
+
+            for (int x = pitMinX; x <= pitMaxX; x++)
+            {
+                for (int y = pitMinY; y <= pitMaxY; y++)
+                {
+                    if (x < 0 || y < 0 || x >= fogLayer.Width || y >= fogLayer.Height)
+                        continue;
+
+                    var tile = fogLayer.GetTile(x, y);
+                    if (tile == null)
+                        continue; // no fog here
+
+                    var tilePoint = new Point(x, y);
+                    if (_failedWanderTargets.Contains(tilePoint))
+                        continue;
+
+                    if (!_hero.IsPathfindingInitialized || !_hero.IsPassable(tilePoint))
+                        continue;
+
+                    float distance = Vector2.Distance(new Vector2(heroTile.X, heroTile.Y), new Vector2(x, y));
+                    if (distance < shortestDistance)
+                    {
+                        shortestDistance = distance;
+                        nearestUnknownTile = tilePoint;
+                    }
+                }
+            }
+
+            return nearestUnknownTile;
+        }
+
         #endregion
     }
 }

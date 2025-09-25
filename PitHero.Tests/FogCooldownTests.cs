@@ -118,7 +118,7 @@ namespace PitHero.Tests
             // Similar test for ClearFogOfWarAroundTile
             var service = new VirtualGame.VirtualTiledMapService(new VirtualGame.VirtualWorldState());
             
-            bool result = service.ClearFogOfWarAroundTile(5, 5);
+            bool result = service.ClearFogOfWarAroundTile(5, 5, new HeroComponent());
             
             Assert.IsTrue(result is true || result is false, 
                 "ClearFogOfWarAroundTile should return a boolean value");
