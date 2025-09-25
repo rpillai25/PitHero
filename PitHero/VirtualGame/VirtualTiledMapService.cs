@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using PitHero.AI.Interfaces;
+using PitHero.ECS.Components;
 using System;
 
 namespace PitHero.VirtualGame
@@ -56,9 +57,10 @@ namespace PitHero.VirtualGame
             return false;
         }
 
-        public bool ClearFogOfWarAroundTile(int centerTileX, int centerTileY, int radius = 1)
+        public bool ClearFogOfWarAroundTile(int centerTileX, int centerTileY, HeroComponent heroComponent)
         {
             var fogLayer = _virtualMap.GetVirtualLayer("FogOfWar");
+            int radius = heroComponent?.UncoverRadius ?? 1;
             if (fogLayer != null)
             {
                 bool anyCleared = false;

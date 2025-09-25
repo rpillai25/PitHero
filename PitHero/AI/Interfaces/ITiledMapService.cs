@@ -1,3 +1,5 @@
+using PitHero.ECS.Components;
+
 namespace PitHero.AI.Interfaces
 {
     /// <summary>
@@ -33,6 +35,6 @@ namespace PitHero.AI.Interfaces
         /// <param name="centerTileY">Center tile Y coordinate</param>
         /// <param name="radius">Radius for clearing fog (default 1)</param>
         /// <returns>True if any fog was actually cleared</returns>
-        bool ClearFogOfWarAroundTile(int centerTileX, int centerTileY, int radius = 1);
+        bool ClearFogOfWarAroundTile(int centerTileX, int centerTileY, HeroComponent heroComponent);
     }
 }

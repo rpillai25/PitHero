@@ -100,10 +100,15 @@ namespace PitHero.Util
         /// <param name="centerTileY">Center tile Y coordinate</param>
         /// <param name="radius">Radius for clearing fog (default 1)</param>
         /// <returns>True if any fog was actually cleared</returns>
-        public bool ClearFogOfWarAroundTile(int centerTileX, int centerTileY, int radius = 1)
+        public bool ClearFogOfWarAroundTile(int centerTileX, int centerTileY, HeroComponent heroComponent)
         {
             bool anyFogCleared = false;
-            
+            int radius = heroComponent?.UncoverRadius ?? 1;
+            if (heroComponent.ExploredPit || heroComponent.OutsidePit)
+            {
+                return false;
+            }
+
             // Clear tile at center position
             anyFogCleared |= ClearFogOfWarTile(centerTileX, centerTileY);
             

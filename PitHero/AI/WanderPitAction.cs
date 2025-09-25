@@ -48,7 +48,7 @@ namespace PitHero.AI
             var tiledMapService = Core.Services.GetService<TiledMapService>();
             if (tiledMapService != null)
             {
-                bool fogCleared = tiledMapService.ClearFogOfWarAroundTile(currentTile.X, currentTile.Y, hero.UncoverRadius);
+                bool fogCleared = tiledMapService.ClearFogOfWarAroundTile(currentTile.X, currentTile.Y, hero);
                 
                 // Trigger fog cooldown if fog was cleared
                 if (fogCleared)
