@@ -482,33 +482,38 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Updates ExploredPit based on satisfied priorities
         /// </summary>
+        /// <summary>
+        /// Updates ExploredPit based on satisfied priorities
+        /// </summary>
         public void UpdateExploredPitBasedOnPriorities()
         {
-            var nextPriority = GetNextPriority();
-            
-            if (nextPriority == null)
-            {
-                // All priorities satisfied
-                ExploredPit = true;
-                return;
-            }
-
-            // Check if next priority is satisfied and there are no more priorities after it
             var priorities = GetPrioritiesInOrder();
+            
+            // Check priorities in order to find the current priority we should be working on
             for (int i = 0; i < priorities.Length; i++)
             {
-                if (priorities[i] == nextPriority.Value)
+                var currentPriority = priorities[i];
+                
+                if (!IsPrioritySatisfied(currentPriority))
                 {
-                    if (IsPrioritySatisfied(nextPriority.Value))
-                    {
-                        // Check if this is the last priority or if it's Advance (special case)
-                        if (nextPriority.Value == HeroPitPriority.Advance || i == priorities.Length - 1)
-                        {
-                            ExploredPit = true;
-                        }
-                    }
-                    break;
+                    // This is the current priority we should be working on
+                    // ExploredPit stays false since current priority is not satisfied
+                    return;
                 }
+                else if (currentPriority == HeroPitPriority.Advance)
+                {
+                    // Special case: If current priority is Advance and it's satisfied,
+                    // set ExploredPit = true immediately (skip remaining priorities)
+                    ExploredPit = true;
+                    return;
+                }
+                else if (i == priorities.Length - 1)
+                {
+                    // This is the last priority and it's satisfied
+                    ExploredPit = true;
+                    return;
+                }
+                // Otherwise, continue to the next priority
             }
         }
 
