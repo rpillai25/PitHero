@@ -35,7 +35,7 @@ namespace PitHero.ECS.Components
         public bool OutsidePit => !InsidePit;                        // Opposite of InsidePit (calculated)
         public bool ExploredPit { get; set; }                        // True after all reachable FogOfWar uncovered, false upon ActivatePitRegenAction
 
-        // Track wizard orb discovery with a backing field so we can react when it becomes true
+        // Track wizard orb discovery with a backing field (no side-effect logic here)
         private bool _foundWizardOrb;
         /// <summary>
         /// True after hero uncovered fog over wizard orb
@@ -43,31 +43,7 @@ namespace PitHero.ECS.Components
         public bool FoundWizardOrb
         {
             get => _foundWizardOrb;
-            set
-            {
-                if (_foundWizardOrb == value)
-                    return;
-
-                // If transitioning false -> true, capture the current priority BEFORE updating the flag
-                if (!_foundWizardOrb && value)
-                {
-                    var currentPriority = GetNextPriority();
-
-                    _foundWizardOrb = true;
-
-                    // Only mark ExploredPit=true immediately if Advance was the current, unsatisfied priority
-                    if (currentPriority.HasValue && currentPriority.Value == HeroPitPriority.Advance)
-                    {
-                        ExploredPit = true;
-                        Debug.Log("[HeroComponent] FoundWizardOrb=true and current priority is Advance. ExploredPit set to true");
-                    }
-
-                    return;
-                }
-
-                // All other transitions (e.g., true -> false)
-                _foundWizardOrb = value;
-            }
+            set => _foundWizardOrb = value;
         }
         public bool ActivatedWizardOrb { get; set; }                 // True after ActivateWizardOrbAction, false upon ActivatePitRegenAction
         public bool AdjacentToMonster { get; set; }                  // True when monster exists in tile adjacent to hero

@@ -100,6 +100,24 @@ namespace PitHero.AI
         }
 
         /// <summary>
+        /// Handles logic for when the wizard orb is found (sets FoundWizardOrb and ExploredPit if needed)
+        /// </summary>
+        private void HandleWizardOrbFound(HeroComponent hero, string debugContext)
+        {
+            // Capture current priority before setting FoundWizardOrb
+            var currentPriority = hero.GetNextPriority();
+
+            hero.FoundWizardOrb = true;
+            Debug.Log($"[Wander] *** WIZARD ORB FOUND *** Setting FoundWizardOrb=true {debugContext}");
+
+            if (currentPriority.HasValue && currentPriority.Value == HeroPitPriority.Advance)
+            {
+                hero.ExploredPit = true;
+                Debug.Log("[Wander] Current priority is Advance. ExploredPit set to true");
+            }
+        }
+
+        /// <summary>
         /// Check if wizard orb has been found (fog cleared at orb tile), independent of hero position
         /// </summary>
         private void CheckWizardOrbFound(HeroComponent hero, TiledMapService tiledMapService, Point position)
@@ -135,7 +153,7 @@ namespace PitHero.AI
             if (fogLayer == null)
             {
                 Debug.Log("[Wander] CheckWizardOrbFound: No FogOfWar layer found - assuming orb discovered");
-                hero.FoundWizardOrb = true;
+                HandleWizardOrbFound(hero, "(no FogOfWar layer)");
                 return;
             }
 
@@ -146,8 +164,7 @@ namespace PitHero.AI
 
                 if (fogTile == null)
                 {
-                    hero.FoundWizardOrb = true;
-                    Debug.Log($"[Wander] *** WIZARD ORB FOUND *** Setting FoundWizardOrb=true at tile {orbTile.X},{orbTile.Y}");
+                    HandleWizardOrbFound(hero, $"at tile {orbTile.X},{orbTile.Y}");
                 }
             }
             else
