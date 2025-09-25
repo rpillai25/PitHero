@@ -591,7 +591,7 @@ namespace PitHero.AI
 
             if (!_currentWanderTarget.HasValue)
             {
-                // Use priority-based target selection instead of just nearest fog tile
+                // Use priority-based target selection (Advance takes precedence once reached in the order)
                 var priorityTarget = FindPriorityBasedTarget(heroTile, fogLayer, pitMinX, pitMinY, pitMaxX, pitMaxY);
                 if (priorityTarget.HasValue)
                 {
@@ -955,7 +955,8 @@ namespace PitHero.AI
         /// </summary>
         private Point? FindPriorityBasedTarget(Point heroTile, TmxLayer fogLayer, int pitMinX, int pitMinY, int pitMaxX, int pitMaxY)
         {
-            var nextPriority = _hero.GetNextPriority();
+            // Use planning-aware priority: once Advance is reached in the order, it takes precedence
+            var nextPriority = _hero.GetCurrentPriorityForPlanning();
             
             if (nextPriority == null)
             {

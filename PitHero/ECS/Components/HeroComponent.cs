@@ -3,6 +3,9 @@ using Nez;
 using Nez.AI.GOAP;
 using PitHero.AI;
 using System;
+using Nez.Tiled;
+using System.Collections.Generic;
+using PitHero.Util;
 
 namespace PitHero.ECS.Components
 {
@@ -493,6 +496,30 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
+        /// Gets the current priority for planning purposes, treating Advance as special once prior priorities are satisfied
+        /// </summary>
+        public HeroPitPriority? GetCurrentPriorityForPlanning()
+        {
+            var ordered = GetPrioritiesInOrder();
+            for (int i = 0; i < ordered.Length; i++)
+            {
+                var priority = ordered[i];
+                if (priority == HeroPitPriority.Advance)
+                {
+                    // As soon as Advance is reached in the order (i.e., all previous priorities are satisfied),
+                    // we consider Advance the current priority regardless of its satisfied state.
+                    return HeroPitPriority.Advance;
+                }
+
+                if (!IsPrioritySatisfied(priority))
+                {
+                    return priority;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
         /// Updates ExploredPit based on satisfied priorities
         /// </summary>
         public void UpdateExploredPitBasedOnPriorities()
@@ -541,9 +568,12 @@ namespace PitHero.ECS.Components
                     return false;
                 }
 
+                // First, ensure all reachable tiles are uncovered
+                if (!AreAllReachablePitTilesUncovered())
+                    return false;
+
+                // Then ensure all treasures are opened (if any exist)
                 var treasureEntities = scene.FindEntitiesWithTag(GameConfig.TAG_TREASURE);
-                
-                // Check if all treasures are opened
                 for (int i = 0; i < treasureEntities.Count; i++)
                 {
                     var treasure = treasureEntities[i];
@@ -554,9 +584,8 @@ namespace PitHero.ECS.Components
                     }
                 }
 
-                // For simplicity, assume if all treasures are opened, then all reachable tiles are uncovered
-                // TODO: Implement proper reachable tile checking
-                return treasureEntities.Count > 0; // Return true only if there were treasures to open
+                // All reachable tiles uncovered and no closed treasures remain (or none exist)
+                return true;
             }
             catch
             {
@@ -579,15 +608,116 @@ namespace PitHero.ECS.Components
                     return false;
                 }
 
+                // First, ensure all reachable tiles are uncovered
+                if (!AreAllReachablePitTilesUncovered())
+                    return false;
+
+                // Then ensure all monsters are defeated
                 var monsterEntities = scene.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
-                
-                // For simplicity, assume if no monsters exist, they've all been defeated
-                // TODO: Implement proper monster defeat tracking and reachable tile checking
                 return monsterEntities.Count == 0;
             }
             catch
             {
                 // In test environment or Core not initialized, assume not satisfied
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Check if all passable, reachable tiles inside the pit are uncovered (no FogOfWar)
+        /// </summary>
+        private bool AreAllReachablePitTilesUncovered()
+        {
+            try
+            {
+                var tms = Core.Services.GetService<TiledMapService>();
+                if (tms?.CurrentMap == null)
+                    return false;
+
+                var fogLayer = tms.CurrentMap.GetLayer<TmxLayer>("FogOfWar");
+                if (fogLayer == null)
+                    return false;
+
+                // Determine explorable area inside pit bounds (one tile inset from walls)
+                var pitBounds = PitCollisionRect;
+                int minX = pitBounds.X + 1;
+                int minY = pitBounds.Y + 1;
+                int maxX = pitBounds.X + pitBounds.Width - 2;
+                int maxY = pitBounds.Y + pitBounds.Height - 2;
+
+                // Choose a starting tile: hero tile if inside bounds and passable, else scan for first passable tile
+                var start = GetCurrentTilePosition();
+                if (start.X < minX || start.X > maxX || start.Y < minY || start.Y > maxY || (IsPathfindingInitialized && !IsPassable(start)))
+                {
+                    bool found = false;
+                    for (int x = minX; x <= maxX && !found; x++)
+                    {
+                        for (int y = minY; y <= maxY; y++)
+                        {
+                            var p = new Point(x, y);
+                            if (!IsPathfindingInitialized || IsPassable(p))
+                            {
+                                start = p;
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!found)
+                        return false; // no passable tiles found inside pit
+                }
+
+                // BFS over passable tiles to enumerate reachable set
+                var visited = new HashSet<Point>();
+                var queue = new Queue<Point>();
+                visited.Add(start);
+                queue.Enqueue(start);
+
+                // Directions: up, down, left, right
+                int[] dx = new int[] { 0, 0, -1, 1 };
+                int[] dy = new int[] { -1, 1, 0, 0 };
+
+                while (queue.Count > 0)
+                {
+                    var cur = queue.Dequeue();
+
+                    // Ensure fog is cleared at this reachable tile
+                    if (cur.X >= 0 && cur.Y >= 0 && cur.X < fogLayer.Width && cur.Y < fogLayer.Height)
+                    {
+                        var fog = fogLayer.GetTile(cur.X, cur.Y);
+                        if (fog != null)
+                        {
+                            return false; // Found reachable tile still covered by fog
+                        }
+                    }
+
+                    // Explore neighbors
+                    for (int i = 0; i < 4; i++)
+                    {
+                        int nx = cur.X + dx[i];
+                        int ny = cur.Y + dy[i];
+                        if (nx < minX || nx > maxX || ny < minY || ny > maxY)
+                            continue;
+
+                        var np = new Point(nx, ny);
+                        if (visited.Contains(np))
+                            continue;
+
+                        // Check passability
+                        if (IsPathfindingInitialized && !IsPassable(np))
+                            continue;
+
+                        visited.Add(np);
+                        queue.Enqueue(np);
+                    }
+                }
+
+                // All reachable tiles we walked were uncovered
+                return true;
+            }
+            catch
+            {
                 return false;
             }
         }

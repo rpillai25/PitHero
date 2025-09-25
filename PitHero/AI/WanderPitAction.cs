@@ -62,7 +62,9 @@ namespace PitHero.AI
 
                 // Check if wizard orb was uncovered (fog cleared at orb tile)
                 CheckWizardOrbFound(hero, tiledMapService, currentTile);
-               
+
+                // After any fog changes or discoveries, update ExploredPit based on the current priority order
+                hero.UpdateExploredPitBasedOnPriorities();
                 
                 Debug.Log($"[WanderPitAction] Adjacent check: Monster={hero.AdjacentToMonster}, Chest={hero.AdjacentToChest}");
             }
@@ -94,6 +96,9 @@ namespace PitHero.AI
             }
             
             context.WorldState.ClearFogOfWar(currentTile, uncoverRadius);
+
+            // Update explored flag per priority rules in virtual context if possible
+            // (Virtual world manages this internally in tests)
             
             context.LogDebug("[WanderPitAction] Action completed");
             return true; // Action completed
@@ -105,7 +110,7 @@ namespace PitHero.AI
         private void HandleWizardOrbFound(HeroComponent hero, string debugContext)
         {
             // Capture current priority before setting FoundWizardOrb
-            var currentPriority = hero.GetNextPriority();
+            var currentPriority = hero.GetCurrentPriorityForPlanning();
 
             hero.FoundWizardOrb = true;
             Debug.Log($"[Wander] *** WIZARD ORB FOUND *** Setting FoundWizardOrb=true {debugContext}");
