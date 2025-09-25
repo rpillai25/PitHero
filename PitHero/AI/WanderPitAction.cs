@@ -43,11 +43,11 @@ namespace PitHero.AI
             var currentTile = tileMover.GetCurrentTileCoordinates();
             Debug.Log($"[WanderPitAction] Executing at tile ({currentTile.X},{currentTile.Y})");
 
-            // Clear fog of war around this tile
+            // Clear fog of war around this tile using hero's UncoverRadius
             var tiledMapService = Core.Services.GetService<TiledMapService>();
             if (tiledMapService != null)
             {
-                bool fogCleared = tiledMapService.ClearFogOfWarAroundTile(currentTile.X, currentTile.Y);
+                bool fogCleared = tiledMapService.ClearFogOfWarAroundTile(currentTile.X, currentTile.Y, hero.UncoverRadius);
                 
                 // Trigger fog cooldown if fog was cleared
                 if (fogCleared)

@@ -31,6 +31,9 @@ namespace PitHero
         // Fog of war movement speed configuration
         public const float HeroFogCooldownDuration = 1f; // Duration in seconds for fog cooldown after clearing fog
 
+        // Hero uncover radius configuration
+        public const int DefaultHeroUncoverRadius = 1; // Default radius for hero fog clearing
+
         // Pit Configuration
         public const int PitWidth = 64;
         public const int PitHeight = 64;

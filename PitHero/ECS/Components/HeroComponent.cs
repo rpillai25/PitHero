@@ -40,6 +40,26 @@ namespace PitHero.ECS.Components
         public bool AdjacentToChest { get; set; }                    // True when chest exists in tile adjacent to hero
 
         /// <summary>
+        /// Hero uncover radius for fog of war clearing (default 1 = 8 surrounding tiles)
+        /// </summary>
+        public int UncoverRadius { get; set; } = GameConfig.DefaultHeroUncoverRadius;
+
+        /// <summary>
+        /// Hero pit priority 1 (highest priority action)
+        /// </summary>
+        public HeroPitPriority Priority1 { get; set; } = HeroPitPriority.Treasure;
+
+        /// <summary>
+        /// Hero pit priority 2 (medium priority action)
+        /// </summary>
+        public HeroPitPriority Priority2 { get; set; } = HeroPitPriority.Battle;
+
+        /// <summary>
+        /// Hero pit priority 3 (lowest priority action)
+        /// </summary>
+        public HeroPitPriority Priority3 { get; set; } = HeroPitPriority.Advance;
+
+        /// <summary>
         /// Link to the Hero class from RolePlayingFramework
         /// </summary>
         public RolePlayingFramework.Heroes.Hero LinkedHero { get; set; }
@@ -415,6 +435,101 @@ namespace PitHero.ECS.Components
             int dx = Math.Abs(tile1.X - tile2.X);
             int dy = Math.Abs(tile1.Y - tile2.Y);
             return (dx + dy) == 1; // cardinal adjacency only
+        }
+
+        /// <summary>
+        /// Gets the priorities in order (Priority1, Priority2, Priority3)
+        /// </summary>
+        public HeroPitPriority[] GetPrioritiesInOrder()
+        {
+            return new HeroPitPriority[] { Priority1, Priority2, Priority3 };
+        }
+
+        /// <summary>
+        /// Checks if a specific pit priority is satisfied
+        /// </summary>
+        public bool IsPrioritySatisfied(HeroPitPriority priority)
+        {
+            switch (priority)
+            {
+                case HeroPitPriority.Treasure:
+                    return AreAllReachableTilesUncoveredAndAllTreasuresOpened();
+                case HeroPitPriority.Battle:
+                    return AreAllReachableTilesUncoveredAndAllMonstersDefeated();
+                case HeroPitPriority.Advance:
+                    return FoundWizardOrb; // Satisfied when wizard orb is uncovered
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Gets the next unsatisfied priority in the ordered list
+        /// </summary>
+        public HeroPitPriority? GetNextPriority()
+        {
+            var priorities = GetPrioritiesInOrder();
+            foreach (var priority in priorities)
+            {
+                if (!IsPrioritySatisfied(priority))
+                {
+                    return priority;
+                }
+            }
+            return null; // All priorities satisfied
+        }
+
+        /// <summary>
+        /// Updates ExploredPit based on satisfied priorities
+        /// </summary>
+        public void UpdateExploredPitBasedOnPriorities()
+        {
+            var nextPriority = GetNextPriority();
+            
+            if (nextPriority == null)
+            {
+                // All priorities satisfied
+                ExploredPit = true;
+                return;
+            }
+
+            // Check if next priority is satisfied and there are no more priorities after it
+            var priorities = GetPrioritiesInOrder();
+            for (int i = 0; i < priorities.Length; i++)
+            {
+                if (priorities[i] == nextPriority.Value)
+                {
+                    if (IsPrioritySatisfied(nextPriority.Value))
+                    {
+                        // Check if this is the last priority or if it's Advance (special case)
+                        if (nextPriority.Value == HeroPitPriority.Advance || i == priorities.Length - 1)
+                        {
+                            ExploredPit = true;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Check if all reachable tiles are uncovered and all treasures are opened
+        /// </summary>
+        private bool AreAllReachableTilesUncoveredAndAllTreasuresOpened()
+        {
+            // For now, return false to indicate this needs proper implementation
+            // TODO: Implement proper logic to check all reachable tiles and treasures
+            return false;
+        }
+
+        /// <summary>
+        /// Check if all reachable tiles are uncovered and all monsters are defeated
+        /// </summary>
+        private bool AreAllReachableTilesUncoveredAndAllMonstersDefeated()
+        {
+            // For now, return false to indicate this needs proper implementation
+            // TODO: Implement proper logic to check all reachable tiles and monsters
+            return false;
         }
     }
 }
