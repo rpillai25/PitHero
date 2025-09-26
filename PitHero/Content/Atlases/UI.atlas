@@ -1,12 +1,84 @@
 PitHeroTitle
 	0,0,156,157
 	0.5,0.5
-UIGear4x
+UIFastF4x
 	157,0,128,128
 	0.5,0.5
+UIFastFHighlight4x
+	286,0,128,128
+	0.5,0.5
+UIFastFInverse4x
+	0,158,128,128
+	0.5,0.5
+UIGear4x
+	157,129,128,128
+	0.5,0.5
+UIGearHighlight4x
+	0,287,128,128
+	0.5,0.5
+UIGearInverse4x
+	129,258,128,128
+	0.5,0.5
+UIHero4x
+	286,129,128,128
+	0.5,0.5
+UIHeroHighlight4x
+	258,258,128,128
+	0.5,0.5
+UIHeroInverse4x
+	415,0,128,128
+	0.5,0.5
+UIFastF2x
+	0,416,64,64
+	0.5,0.5
+UIFastFHighlight2x
+	65,416,64,64
+	0.5,0.5
+UIFastFInverse2x
+	544,0,64,64
+	0.5,0.5
 UIGear2x
-	0,158,64,64
+	415,129,64,64
+	0.5,0.5
+UIGearHighlight2x
+	130,387,64,64
+	0.5,0.5
+UIGearInverse2x
+	195,387,64,64
+	0.5,0.5
+UIHero2x
+	480,129,64,64
+	0.5,0.5
+UIHeroHighlight2x
+	415,194,64,64
+	0.5,0.5
+UIHeroInverse2x
+	609,0,64,64
+	0.5,0.5
+UIFastF
+	544,65,32,32
+	0.5,0.5
+UIFastFHighlight
+	577,65,32,32
+	0.5,0.5
+UIFastFInverse
+	260,387,32,32
+	0.5,0.5
+UIGearHighlight
+	387,259,32,32
+	0.5,0.5
+UIGearInverse
+	674,0,32,32
+	0.5,0.5
+UIHero
+	480,194,32,32
+	0.5,0.5
+UIHeroHighlight
+	545,98,32,32
+	0.5,0.5
+UIHeroInverse
+	610,65,32,32
 	0.5,0.5
 UIGear
-	65,158,31,30
+	545,131,31,30
 	0.5,0.5
