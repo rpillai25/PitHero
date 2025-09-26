@@ -17,6 +17,7 @@ namespace PitHero.ECS.Scenes
     public class MainGameScene : Scene
     {
         private SettingsUI _settingsUI;
+        private HeroUI _heroUI;
         private string _mapPath;
         private bool _isInitializationComplete;
         private CameraControllerComponent _cameraController;
@@ -398,6 +399,12 @@ namespace PitHero.ECS.Scenes
             _settingsUI = new SettingsUI(Core.Instance);
             _settingsUI.InitializeUI(uiCanvas.Stage);
 
+            // Initialize HeroUI for pit priority management
+            _heroUI = new HeroUI();
+            _heroUI.InitializeUI(uiCanvas.Stage);
+            // Position the Hero button in the bottom-left corner  
+            _heroUI.SetPosition(10f, Screen.Height - _heroUI.GetHeight() - 10f);
+
             // Pit level label (always visible top-left). Base position then offset applied per shrink level.
             _pitLevelLabel = uiCanvas.Stage.AddElement(new Label("Pit Lv. 1", _hudFontNormal));
             _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
@@ -599,6 +606,7 @@ namespace PitHero.ECS.Scenes
         {
             base.Update();
             _settingsUI?.Update();
+            _heroUI?.Update();
 
             // Update pause overlay visibility based on pause state
             var pauseService = Core.Services.GetService<PauseService>();
