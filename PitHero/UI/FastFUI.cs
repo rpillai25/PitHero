@@ -26,6 +26,7 @@ namespace PitHero.UI
         private FastFMode _currentFastFMode = FastFMode.Normal;
         
         private bool _isSpeedUp = false; // Track current speed state
+        private bool _styleChanged = false; // tracks when style (and thus size) changed
 
         public FastFUI()
         {
@@ -181,6 +182,7 @@ namespace PitHero.UI
             }
 
             _currentFastFMode = desired;
+            _styleChanged = true; // mark for layout reposition
         }
 
         /// <summary>
@@ -205,6 +207,19 @@ namespace PitHero.UI
         public float GetHeight()
         {
             return _fastFButton?.GetHeight() ?? 0f;
+        }
+
+        /// <summary>
+        /// Consume style changed flag (returns true if a style change occurred this frame)
+        /// </summary>
+        public bool ConsumeStyleChangedFlag()
+        {
+            if (_styleChanged)
+            {
+                _styleChanged = false;
+                return true;
+            }
+            return false;
         }
 
         /// <summary>

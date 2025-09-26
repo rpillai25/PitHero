@@ -18,6 +18,7 @@ namespace PitHero.UI
         private ImageButtonStyle _heroQuarterStyle;
         private enum HeroMode { Normal, Half, Quarter }
         private HeroMode _currentHeroMode = HeroMode.Normal;
+        private bool _styleChanged = false;
 
         public HeroUI()
         {
@@ -124,6 +125,7 @@ namespace PitHero.UI
             }
 
             _currentHeroMode = desired;
+            _styleChanged = true;
         }
 
         /// <summary>
@@ -148,6 +150,19 @@ namespace PitHero.UI
         public float GetHeight()
         {
             return _heroButton?.GetHeight() ?? 0f;
+        }
+
+        /// <summary>
+        /// Consume style changed flag
+        /// </summary>
+        public bool ConsumeStyleChangedFlag()
+        {
+            if (_styleChanged)
+            {
+                _styleChanged = false;
+                return true;
+            }
+            return false;
         }
 
         /// <summary>

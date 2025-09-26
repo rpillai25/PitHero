@@ -64,6 +64,7 @@ namespace PitHero.UI
         private ImageButtonStyle _gearQuarterStyle;
         private enum GearMode { Normal, Half, Quarter }
         private GearMode _currentGearMode = GearMode.Normal;
+        private bool _gearStyleChanged = false; // track size changes for gear button
 
         // New UI components
         private FastFUI _fastFUI;
@@ -185,8 +186,7 @@ namespace PitHero.UI
             }
 
             _currentGearMode = desired;
-            // Reposition after size change
-            PositionUI();
+            _gearStyleChanged = true; // trigger layout update
         }
 
         private void CreateSettingsWindow(Skin skin)
@@ -583,6 +583,20 @@ namespace PitHero.UI
             // Update FastF and Hero button styles
             _fastFUI?.Update();
             _heroUI?.Update();
+
+            // Reposition only if any button size changed or stage dimensions changed
+            bool needsReposition = _gearStyleChanged;
+            if (_fastFUI != null && _fastFUI.ConsumeStyleChangedFlag()) needsReposition = true;
+            if (_heroUI != null && _heroUI.ConsumeStyleChangedFlag()) needsReposition = true;
+
+            if (_stage.GetWidth() != _lastStageW || _stage.GetHeight() != _lastStageH)
+                needsReposition = true;
+
+            if (needsReposition)
+            {
+                PositionUI();
+                _gearStyleChanged = false;
+            }
         }
     }
 }
