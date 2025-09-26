@@ -79,12 +79,12 @@ namespace PitHero.Util
                 return false;
             }
 
-            Debug.Log($"Checking to clear FogOfWar tile at ({tileX}, {tileY})");
+            //Debug.Log($"Checking to clear FogOfWar tile at ({tileX}, {tileY})");
 
             var existingTile = fogLayer.GetTile(tileX, tileY);
             if (existingTile == null)
             {
-                Debug.Log($"FogOfWar tile already clear at ({tileX}, {tileY})");
+                //Debug.Log($"FogOfWar tile already clear at ({tileX}, {tileY})");
                 return false;
             }
 
