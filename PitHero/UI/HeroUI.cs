@@ -127,35 +127,32 @@ namespace PitHero.UI
 
         private void InitializePriorityItems()
         {
-            // Get current hero component and its priorities
+            // Ensure we reuse the existing list instance so ReorderableTableList keeps referencing the same list
+            if (_priorityItems == null)
+                _priorityItems = new List<string>(3);
+            else
+                _priorityItems.Clear();
+
             var hero = GetHeroComponent();
             if (hero != null)
             {
                 var priorities = hero.GetPrioritiesInOrder();
-                _priorityItems = new List<string>
-                {
-                    priorities[0].ToString(),
-                    priorities[1].ToString(),
-                    priorities[2].ToString()
-                };
+                _priorityItems.Add(priorities[0].ToString());
+                _priorityItems.Add(priorities[1].ToString());
+                _priorityItems.Add(priorities[2].ToString());
             }
             else
             {
-                // Default priorities if no hero found
-                _priorityItems = new List<string>
-                {
-                    HeroPitPriority.Treasure.ToString(),
-                    HeroPitPriority.Battle.ToString(),
-                    HeroPitPriority.Advance.ToString()
-                };
+                _priorityItems.Add(HeroPitPriority.Treasure.ToString());
+                _priorityItems.Add(HeroPitPriority.Battle.ToString());
+                _priorityItems.Add(HeroPitPriority.Advance.ToString());
             }
         }
 
         private void OnPriorityReordered(int from, int to, string item)
         {
             Debug.Log($"Priority reordered: {item} moved from position {from + 1} to {to + 1}");
-            
-            // Update hero component priorities in real-time
+            // Update hero component priorities in real-time using the mutated shared list
             UpdateHeroPriorities();
         }
 
@@ -167,7 +164,7 @@ namespace PitHero.UI
             
             if (_windowVisible)
             {
-                // Refresh priority items from current hero state
+                // Refresh priority items from current hero state (mutates existing list)
                 InitializePriorityItems();
                 _priorityList.Rebuild();
                 

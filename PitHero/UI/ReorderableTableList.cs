@@ -53,12 +53,12 @@ namespace PitHero.UI
             var txt = new Label(item?.ToString() ?? string.Empty, _skin.Get<LabelStyle>());
             
             // Up button
-            var upButton = new TextButton("↑", _skin);
+            var upButton = new TextButton("Up", _skin);
             upButton.SetDisabled(index == 0); // Disable if first item
             upButton.OnClicked += (btn) => MoveItemUp(index);
             
             // Down button  
-            var downButton = new TextButton("↓", _skin);
+            var downButton = new TextButton("Down", _skin);
             downButton.SetDisabled(index == _items.Count - 1); // Disable if last item
             downButton.OnClicked += (btn) => MoveItemDown(index);
             
