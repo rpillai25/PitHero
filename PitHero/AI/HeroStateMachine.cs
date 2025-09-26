@@ -991,7 +991,7 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Find an uncovered, unopened treasure chest
+        /// Find an uncovered, unopened treasure chest (optimized for performance)
         /// </summary>
         private Point? FindUncoveredUnopendTreasureTarget()
         {
@@ -999,20 +999,26 @@ namespace PitHero.AI
             if (scene == null) return null;
 
             var treasureEntities = scene.FindEntitiesWithTag(GameConfig.TAG_TREASURE);
+            int treasureCount = treasureEntities.Count;
+            if (treasureCount == 0) return null;
+
             var tms = Core.Services.GetService<TiledMapService>();
             if (tms?.CurrentMap == null) return null;
 
             var fogLayer = tms.CurrentMap.GetLayer<TmxLayer>("FogOfWar");
             if (fogLayer == null) return null;
+            int fogWidth = fogLayer.Width;
+            int fogHeight = fogLayer.Height;
 
-            foreach (var treasure in treasureEntities)
+            for (int i = 0; i < treasureCount; i++)
             {
+                var treasure = treasureEntities[i];
                 var treasurePos = treasure.Transform.Position;
                 var treasureTile = new Point((int)(treasurePos.X / GameConfig.TileSize), (int)(treasurePos.Y / GameConfig.TileSize));
-                
+
                 // Check if treasure is uncovered (no fog)
-                if (treasureTile.X >= 0 && treasureTile.Y >= 0 && 
-                    treasureTile.X < fogLayer.Width && treasureTile.Y < fogLayer.Height &&
+                if (treasureTile.X >= 0 && treasureTile.Y >= 0 &&
+                    treasureTile.X < fogWidth && treasureTile.Y < fogHeight &&
                     fogLayer.GetTile(treasureTile.X, treasureTile.Y) == null)
                 {
                     var treasureComponent = treasure.GetComponent<TreasureComponent>();
@@ -1023,12 +1029,12 @@ namespace PitHero.AI
                     }
                 }
             }
-            
+
             return null;
         }
 
         /// <summary>
-        /// Find an uncovered monster
+        /// Find an uncovered monster (optimized for performance)
         /// </summary>
         private Point? FindUncoveredMonsterTarget()
         {
@@ -1036,20 +1042,26 @@ namespace PitHero.AI
             if (scene == null) return null;
 
             var monsterEntities = scene.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
+            int monsterCount = monsterEntities.Count;
+            if (monsterCount == 0) return null;
+
             var tms = Core.Services.GetService<TiledMapService>();
             if (tms?.CurrentMap == null) return null;
 
             var fogLayer = tms.CurrentMap.GetLayer<TmxLayer>("FogOfWar");
             if (fogLayer == null) return null;
+            int fogWidth = fogLayer.Width;
+            int fogHeight = fogLayer.Height;
 
-            foreach (var monster in monsterEntities)
+            for (int i = 0; i < monsterCount; i++)
             {
+                var monster = monsterEntities[i];
                 var monsterPos = monster.Transform.Position;
                 var monsterTile = new Point((int)(monsterPos.X / GameConfig.TileSize), (int)(monsterPos.Y / GameConfig.TileSize));
-                
+
                 // Check if monster is uncovered (no fog)
-                if (monsterTile.X >= 0 && monsterTile.Y >= 0 && 
-                    monsterTile.X < fogLayer.Width && monsterTile.Y < fogLayer.Height &&
+                if (monsterTile.X >= 0 && monsterTile.Y >= 0 &&
+                    monsterTile.X < fogWidth && monsterTile.Y < fogHeight &&
                     fogLayer.GetTile(monsterTile.X, monsterTile.Y) == null)
                 {
                     // Return adjacent tile to the monster
@@ -1061,7 +1073,7 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Find the uncovered wizard orb
+        /// Find the uncovered wizard orb (optimized for performance)
         /// </summary>
         private Point? FindUncoveredWizardOrbTarget()
         {
@@ -1069,20 +1081,26 @@ namespace PitHero.AI
             if (scene == null) return null;
 
             var wizardOrbEntities = scene.FindEntitiesWithTag(GameConfig.TAG_WIZARD_ORB);
+            int orbCount = wizardOrbEntities.Count;
+            if (orbCount == 0) return null;
+
             var tms = Core.Services.GetService<TiledMapService>();
             if (tms?.CurrentMap == null) return null;
 
             var fogLayer = tms.CurrentMap.GetLayer<TmxLayer>("FogOfWar");
             if (fogLayer == null) return null;
+            int fogWidth = fogLayer.Width;
+            int fogHeight = fogLayer.Height;
 
-            foreach (var wizardOrb in wizardOrbEntities)
+            for (int i = 0; i < orbCount; i++)
             {
+                var wizardOrb = wizardOrbEntities[i];
                 var orbPos = wizardOrb.Transform.Position;
                 var orbTile = new Point((int)(orbPos.X / GameConfig.TileSize), (int)(orbPos.Y / GameConfig.TileSize));
-                
+
                 // Check if wizard orb is uncovered (no fog)
-                if (orbTile.X >= 0 && orbTile.Y >= 0 && 
-                    orbTile.X < fogLayer.Width && orbTile.Y < fogLayer.Height &&
+                if (orbTile.X >= 0 && orbTile.Y >= 0 &&
+                    orbTile.X < fogWidth && orbTile.Y < fogHeight &&
                     fogLayer.GetTile(orbTile.X, orbTile.Y) == null)
                 {
                     // Return the orb tile itself since hero needs to be on it to activate
