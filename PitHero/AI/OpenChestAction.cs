@@ -44,7 +44,7 @@ namespace PitHero.AI
                     // Face chest (just logs currently)
                     FaceTarget(hero, _chestEntity.Transform.Position);
                     _phase = Phase.FacingWait;
-                    _timer = 1f; // wait 1 second facing
+                    _timer = GameConfig.TreasureOpenWait; // wait 1 second facing
                     return false; // still running
 
                 case Phase.FacingWait:
@@ -70,7 +70,7 @@ namespace PitHero.AI
                             Debug.Warn("[OpenChest] TreasureComponent missing or already open when attempting to open");
                         }
                         _phase = Phase.OpenedWait;
-                        _timer = 1f; // wait another second after opening
+                        _timer = GameConfig.TreasureOpenWait; // wait another second after opening
                     }
                     return false;
 

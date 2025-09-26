@@ -64,6 +64,11 @@ namespace PitHero.UI
         private ImageButtonStyle _gearQuarterStyle;
         private enum GearMode { Normal, Half, Quarter }
         private GearMode _currentGearMode = GearMode.Normal;
+        private bool _gearStyleChanged = false; // track size changes for gear button
+
+        // New UI components
+        private FastFUI _fastFUI;
+        private HeroUI _heroUI;
 
         public SettingsUI(Game game)
         {
@@ -88,6 +93,13 @@ namespace PitHero.UI
             // Create gear button with UIGear sprite
             CreateGearButton(skin);
 
+            // Create FastF and Hero UI components
+            _fastFUI = new FastFUI();
+            _fastFUI.InitializeUI(_stage);
+            
+            _heroUI = new HeroUI();
+            _heroUI.InitializeUI(_stage);
+
             // Create settings TabPane (initially hidden)
             CreateSettingsWindow(skin);
 
@@ -106,27 +118,33 @@ namespace PitHero.UI
             var gearSprite = uiAtlas.GetSprite("UIGear");
             var gearSprite2x = uiAtlas.GetSprite("UIGear2x");
             var gearSprite4x = uiAtlas.GetSprite("UIGear4x");
+            var gearHighlight = uiAtlas.GetSprite("UIGearHighlight");
+            var gearHighlight2x = uiAtlas.GetSprite("UIGearHighlight2x");
+            var gearHighlight4x = uiAtlas.GetSprite("UIGearHighlight4x");
+            var gearInverse = uiAtlas.GetSprite("UIGearInverse");
+            var gearInverse2x = uiAtlas.GetSprite("UIGearInverse2x");
+            var gearInverse4x = uiAtlas.GetSprite("UIGearInverse4x");
 
-            // Base styles for each sprite
+            // Base styles for each sprite with proper ImageDown and ImageOver
             _gearNormalStyle = new ImageButtonStyle
             {
                 ImageUp = new SpriteDrawable(gearSprite),
-                ImageDown = new SpriteDrawable(gearSprite),
-                ImageOver = new SpriteDrawable(gearSprite)
+                ImageDown = new SpriteDrawable(gearInverse),
+                ImageOver = new SpriteDrawable(gearHighlight)
             };
 
             _gearHalfStyle = new ImageButtonStyle
             {
                 ImageUp = new SpriteDrawable(gearSprite2x),
-                ImageDown = new SpriteDrawable(gearSprite2x),
-                ImageOver = new SpriteDrawable(gearSprite2x)
+                ImageDown = new SpriteDrawable(gearInverse2x),
+                ImageOver = new SpriteDrawable(gearHighlight2x)
             };
 
             _gearQuarterStyle = new ImageButtonStyle
             {
                 ImageUp = new SpriteDrawable(gearSprite4x),
-                ImageDown = new SpriteDrawable(gearSprite4x),
-                ImageOver = new SpriteDrawable(gearSprite4x)
+                ImageDown = new SpriteDrawable(gearInverse4x),
+                ImageOver = new SpriteDrawable(gearHighlight4x)
             };
 
             _gearButton = new ImageButton(_gearNormalStyle);
@@ -168,8 +186,7 @@ namespace PitHero.UI
             }
 
             _currentGearMode = desired;
-            // Reposition after size change
-            PositionUI();
+            _gearStyleChanged = true; // trigger layout update
         }
 
         private void CreateSettingsWindow(Skin skin)
@@ -413,10 +430,27 @@ namespace PitHero.UI
 
             float gearW = _gearButton.GetWidth();
             float gearH = _gearButton.GetHeight();
+            float fastFW = _fastFUI.GetWidth();
+            float heroW = _heroUI.GetWidth();
+            
+            // Calculate total width needed for all three buttons with padding
+            float totalWidth = fastFW + gearW + heroW + (2 * GameConfig.UIButtonPadding);
+            
+            // Center all buttons as a group
+            float startX = (stageW - totalWidth) * 0.5f;
+            float buttonY = 2f;
 
-            float gearX = (stageW - gearW) * 0.5f;
-            float gearY = 2f;
-            _gearButton.SetPosition(gearX, gearY);
+            // Position FastF button to the left
+            float fastFX = startX;
+            _fastFUI.SetPosition(fastFX, buttonY);
+
+            // Position gear button in the center
+            float gearX = fastFX + fastFW + GameConfig.UIButtonPadding;
+            _gearButton.SetPosition(gearX, buttonY);
+
+            // Position hero button to the right
+            float heroX = gearX + gearW + GameConfig.UIButtonPadding;
+            _heroUI.SetPosition(heroX, buttonY);
 
             if (_isVisible)
             {
@@ -425,7 +459,7 @@ namespace PitHero.UI
                 float winH = _settingsWindow.GetHeight();
 
                 float winX = gearX + gearW + padding;
-                float winY = gearY + padding;
+                float winY = buttonY + padding;
 
                 if (winX + winW > stageW)
                     winX = gearX - padding - winW;
@@ -539,12 +573,30 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Updates the UI (unused placeholder)
+        /// Updates the UI, including button styles based on shrink mode
         /// </summary>
         public void Update()
         {
             // Update gear button style dynamically when shrink mode changes
             UpdateGearButtonStyleIfNeeded();
+            
+            // Update FastF and Hero button styles
+            _fastFUI?.Update();
+            _heroUI?.Update();
+
+            // Reposition only if any button size changed or stage dimensions changed
+            bool needsReposition = _gearStyleChanged;
+            if (_fastFUI != null && _fastFUI.ConsumeStyleChangedFlag()) needsReposition = true;
+            if (_heroUI != null && _heroUI.ConsumeStyleChangedFlag()) needsReposition = true;
+
+            if (_stage.GetWidth() != _lastStageW || _stage.GetHeight() != _lastStageH)
+                needsReposition = true;
+
+            if (needsReposition)
+            {
+                PositionUI();
+                _gearStyleChanged = false;
+            }
         }
     }
 }
