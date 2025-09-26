@@ -130,5 +130,45 @@ namespace PitHero.Tests
             var nextPriority = _heroComponent.GetNextPriority();
             Assert.IsNotNull(nextPriority, "Should return a priority when not all are satisfied");
         }
+
+        [TestMethod]
+        public void HeroComponent_SetPrioritiesInOrder_ShouldUpdatePriorities()
+        {
+            // Arrange
+            var newPriorities = new HeroPitPriority[]
+            {
+                HeroPitPriority.Battle,
+                HeroPitPriority.Advance,
+                HeroPitPriority.Treasure
+            };
+
+            // Act
+            _heroComponent.SetPrioritiesInOrder(newPriorities);
+
+            // Assert
+            var updatedPriorities = _heroComponent.GetPrioritiesInOrder();
+            Assert.AreEqual(HeroPitPriority.Battle, updatedPriorities[0], "First priority should be Battle");
+            Assert.AreEqual(HeroPitPriority.Advance, updatedPriorities[1], "Second priority should be Advance");
+            Assert.AreEqual(HeroPitPriority.Treasure, updatedPriorities[2], "Third priority should be Treasure");
+        }
+
+        [TestMethod]
+        public void HeroComponent_SetPrioritiesInOrder_ShouldThrowWithNullArray()
+        {
+            // Act & Assert
+            Assert.ThrowsException<ArgumentException>(() => _heroComponent.SetPrioritiesInOrder(null),
+                "Setting null priorities array should throw ArgumentException");
+        }
+
+        [TestMethod]
+        public void HeroComponent_SetPrioritiesInOrder_ShouldThrowWithIncorrectArraySize()
+        {
+            // Arrange
+            var incorrectSizePriorities = new HeroPitPriority[] { HeroPitPriority.Treasure, HeroPitPriority.Battle };
+
+            // Act & Assert
+            Assert.ThrowsException<ArgumentException>(() => _heroComponent.SetPrioritiesInOrder(incorrectSizePriorities),
+                "Setting priorities array with incorrect size should throw ArgumentException");
+        }
     }
 }

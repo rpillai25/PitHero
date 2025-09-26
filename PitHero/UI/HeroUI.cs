@@ -2,11 +2,13 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
 using PitHero.Services;
+using System.Collections.Generic;
+using PitHero.ECS.Components;
 
 namespace PitHero.UI
 {
     /// <summary>
-    /// UI for Hero button (placeholder functionality for now)
+    /// UI for Hero button with pit priority reorder functionality
     /// </summary>
     public class HeroUI
     {
@@ -19,6 +21,12 @@ namespace PitHero.UI
         private enum HeroMode { Normal, Half, Quarter }
         private HeroMode _currentHeroMode = HeroMode.Normal;
         private bool _styleChanged = false;
+
+        // Priority reorder window components
+        private Window _priorityWindow;
+        private ReorderableTableList<string> _priorityList;
+        private List<string> _priorityItems;
+        private bool _windowVisible = false;
 
         public HeroUI()
         {
@@ -36,6 +44,9 @@ namespace PitHero.UI
 
             // Create Hero button
             CreateHeroButton(skin);
+
+            // Create priority window
+            CreatePriorityWindow(skin);
 
             // Add button to stage
             _stage.AddElement(_heroButton);
@@ -87,8 +98,127 @@ namespace PitHero.UI
 
         private void HandleHeroButtonClick()
         {
-            // Placeholder - button does nothing yet as specified
-            Debug.Log("Hero button clicked - no functionality implemented yet");
+            // Toggle priority window visibility
+            TogglePriorityWindow();
+        }
+
+        private void CreatePriorityWindow(Skin skin)
+        {
+            // Initialize priority items from current hero priorities
+            InitializePriorityItems();
+
+            // Create reorderable list
+            _priorityList = new ReorderableTableList<string>(skin, _priorityItems, OnPriorityReordered);
+
+            // Create window
+            _priorityWindow = new Window("Pit Priorities", skin);
+            _priorityWindow.SetSize(300f, 200f);
+            _priorityWindow.SetPosition(100f, 100f);
+            _priorityWindow.Add(_priorityList).Expand().Fill();
+
+            // Add close button
+            var closeButton = new TextButton("Close", skin);
+            closeButton.OnClicked += (btn) => TogglePriorityWindow();
+            _priorityWindow.Row();
+            _priorityWindow.Add(closeButton).SetPadTop(10f);
+
+            _priorityWindow.SetVisible(false);
+        }
+
+        private void InitializePriorityItems()
+        {
+            // Get current hero component and its priorities
+            var hero = GetHeroComponent();
+            if (hero != null)
+            {
+                var priorities = hero.GetPrioritiesInOrder();
+                _priorityItems = new List<string>
+                {
+                    priorities[0].ToString(),
+                    priorities[1].ToString(),
+                    priorities[2].ToString()
+                };
+            }
+            else
+            {
+                // Default priorities if no hero found
+                _priorityItems = new List<string>
+                {
+                    HeroPitPriority.Treasure.ToString(),
+                    HeroPitPriority.Battle.ToString(),
+                    HeroPitPriority.Advance.ToString()
+                };
+            }
+        }
+
+        private void OnPriorityReordered(int from, int to, string item)
+        {
+            Debug.Log($"Priority reordered: {item} moved from position {from + 1} to {to + 1}");
+            
+            // Update hero component priorities in real-time
+            UpdateHeroPriorities();
+        }
+
+        private void TogglePriorityWindow()
+        {
+            if (_priorityWindow == null) return;
+
+            _windowVisible = !_windowVisible;
+            
+            if (_windowVisible)
+            {
+                // Refresh priority items from current hero state
+                InitializePriorityItems();
+                _priorityList.Rebuild();
+                
+                // Add to stage and show
+                _stage.AddElement(_priorityWindow);
+                _priorityWindow.SetVisible(true);
+                Debug.Log("Priority window opened");
+            }
+            else
+            {
+                // Hide and remove from stage
+                _priorityWindow.SetVisible(false);
+                _priorityWindow.Remove();
+                Debug.Log("Priority window closed");
+            }
+        }
+
+        private HeroComponent GetHeroComponent()
+        {
+            // Find the hero entity in the current scene
+            var heroEntity = Core.Scene?.FindEntity("hero");
+            return heroEntity?.GetComponent<HeroComponent>();
+        }
+
+        private void UpdateHeroPriorities()
+        {
+            var hero = GetHeroComponent();
+            if (hero == null)
+            {
+                Debug.Log("Could not find hero component to update priorities");
+                return;
+            }
+
+            // Convert string list back to HeroPitPriority array
+            var newPriorities = new HeroPitPriority[3];
+            for (int i = 0; i < _priorityItems.Count && i < 3; i++)
+            {
+                if (System.Enum.TryParse(_priorityItems[i], out HeroPitPriority priority))
+                {
+                    newPriorities[i] = priority;
+                }
+                else
+                {
+                    Debug.Log($"Failed to parse priority: {_priorityItems[i]}");
+                    return;
+                }
+            }
+
+            // Update hero component
+            hero.SetPrioritiesInOrder(newPriorities);
+            Debug.Log($"Updated hero priorities: {newPriorities[0]}, {newPriorities[1]}, {newPriorities[2]}");
         }
 
         /// <summary>
