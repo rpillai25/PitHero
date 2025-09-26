@@ -16,7 +16,13 @@ namespace PitHero.UI
         private ImageButtonStyle _fastFNormalStyle;
         private ImageButtonStyle _fastFHalfStyle;
         private ImageButtonStyle _fastFQuarterStyle;
-        private enum FastFMode { Normal, Half, Quarter }
+
+        //Button stays in pressed state
+        private ImageButtonStyle _fastFNormalPressedStyle;
+        private ImageButtonStyle _fastFHalfPressedStyle;
+        private ImageButtonStyle _fastFQuarterPressedStyle;
+
+        private enum FastFMode { Normal, NormalPressed, Half, HalfPressed, Quarter, QuarterPressed }
         private FastFMode _currentFastFMode = FastFMode.Normal;
         
         private bool _isSpeedUp = false; // Track current speed state
@@ -64,6 +70,13 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(fastFHighlight)
             };
 
+            _fastFNormalPressedStyle = new ImageButtonStyle
+            {
+                ImageUp = new SpriteDrawable(fastFInverse),
+                ImageDown = new SpriteDrawable(fastFSprite),
+                ImageOver = new SpriteDrawable(fastFHighlight)
+            };
+
             _fastFHalfStyle = new ImageButtonStyle
             {
                 ImageUp = new SpriteDrawable(fastFSprite2x),
@@ -71,10 +84,24 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(fastFHighlight2x)
             };
 
+            _fastFHalfPressedStyle = new ImageButtonStyle
+            {
+                ImageUp = new SpriteDrawable(fastFInverse2x),
+                ImageDown = new SpriteDrawable(fastFSprite2x),
+                ImageOver = new SpriteDrawable(fastFHighlight2x)
+            };
+
             _fastFQuarterStyle = new ImageButtonStyle
             {
                 ImageUp = new SpriteDrawable(fastFSprite4x),
                 ImageDown = new SpriteDrawable(fastFInverse4x),
+                ImageOver = new SpriteDrawable(fastFHighlight4x)
+            };
+
+            _fastFQuarterPressedStyle = new ImageButtonStyle
+            {
+                ImageUp = new SpriteDrawable(fastFInverse4x),
+                ImageDown = new SpriteDrawable(fastFSprite4x),
                 ImageOver = new SpriteDrawable(fastFHighlight4x)
             };
 
@@ -97,7 +124,7 @@ namespace PitHero.UI
             else
             {
                 // Speed up to 2x
-                Time.TimeScale = 2f;
+                Time.TimeScale = 2.5f;
                 _isSpeedUp = true;
             }
         }
@@ -109,12 +136,18 @@ namespace PitHero.UI
         {
             // Determine desired mode based on current shrink mode
             FastFMode desired;
-            if (WindowManager.IsQuarterHeightMode())
+            if (WindowManager.IsQuarterHeightMode() && !_isSpeedUp)
                 desired = FastFMode.Quarter;
-            else if (WindowManager.IsHalfHeightMode())
+            else if(WindowManager.IsQuarterHeightMode() && _isSpeedUp)
+                desired = FastFMode.QuarterPressed;
+            else if (WindowManager.IsHalfHeightMode() && !_isSpeedUp)
                 desired = FastFMode.Half;
-            else
+            else if (WindowManager.IsHalfHeightMode() && _isSpeedUp)
+                desired = FastFMode.HalfPressed;
+            else if (!_isSpeedUp)
                 desired = FastFMode.Normal;
+            else
+                desired = FastFMode.NormalPressed;
 
             if (desired == _currentFastFMode)
                 return; // no change needed
@@ -122,16 +155,28 @@ namespace PitHero.UI
             switch (desired)
             {
                 case FastFMode.Normal:
-                    _fastFButton.SetStyle(_fastFNormalStyle);
-                    _fastFButton.SetSize(((SpriteDrawable)_fastFNormalStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_fastFNormalStyle.ImageUp).Sprite.SourceRect.Height);
+                        _fastFButton.SetStyle(_fastFNormalStyle);
+                        _fastFButton.SetSize(((SpriteDrawable)_fastFNormalStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_fastFNormalStyle.ImageUp).Sprite.SourceRect.Height);
+                    break;
+                case FastFMode.NormalPressed:
+                        _fastFButton.SetStyle(_fastFNormalPressedStyle);
+                        _fastFButton.SetSize(((SpriteDrawable)_fastFNormalPressedStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_fastFNormalPressedStyle.ImageUp).Sprite.SourceRect.Height);
                     break;
                 case FastFMode.Half:
-                    _fastFButton.SetStyle(_fastFHalfStyle);
-                    _fastFButton.SetSize(((SpriteDrawable)_fastFHalfStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_fastFHalfStyle.ImageUp).Sprite.SourceRect.Height);
+                        _fastFButton.SetStyle(_fastFHalfStyle);
+                        _fastFButton.SetSize(((SpriteDrawable)_fastFHalfStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_fastFHalfStyle.ImageUp).Sprite.SourceRect.Height);
+                    break;
+                case FastFMode.HalfPressed:
+                        _fastFButton.SetStyle(_fastFHalfPressedStyle);
+                        _fastFButton.SetSize(((SpriteDrawable)_fastFHalfPressedStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_fastFHalfPressedStyle.ImageUp).Sprite.SourceRect.Height);
                     break;
                 case FastFMode.Quarter:
-                    _fastFButton.SetStyle(_fastFQuarterStyle);
-                    _fastFButton.SetSize(((SpriteDrawable)_fastFQuarterStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_fastFQuarterStyle.ImageUp).Sprite.SourceRect.Height);
+                        _fastFButton.SetStyle(_fastFQuarterStyle);
+                        _fastFButton.SetSize(((SpriteDrawable)_fastFQuarterStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_fastFQuarterStyle.ImageUp).Sprite.SourceRect.Height);
+                    break;
+                case FastFMode.QuarterPressed:
+                        _fastFButton.SetStyle(_fastFQuarterPressedStyle);
+                        _fastFButton.SetSize(((SpriteDrawable)_fastFQuarterPressedStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_fastFQuarterPressedStyle.ImageUp).Sprite.SourceRect.Height);
                     break;
             }
 

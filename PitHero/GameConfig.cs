@@ -22,7 +22,12 @@ namespace PitHero
         // Hero Configuration
         public const int HeroWidth = 32;
         public const int HeroHeight = 32;
-        
+
+        // Action Configuration
+        public const float BattleDigitBounceWait = 0.5f;
+        public const float BattleTurnWait = 0.7f;
+        public const float TreasureOpenWait = 0.5f;
+
         // Hero movement speed
         public const float HeroMovementSpeed = 64f;  //Move speed in pixels per second (64 pixels = 2 tiles)
         public const float HeroPitMovementSpeed = 32f; //Move speed in pixels per second when in pit (32 pixels = 1 tile)
@@ -32,12 +37,7 @@ namespace PitHero
         public const float HeroFogCooldownDuration = 1f; // Duration in seconds for fog cooldown after clearing fog
 
         // Hero uncover radius configuration
-        public const int DefaultHeroUncoverRadius = 1; // Default radius for hero fog clearing
-
-        // Pit Configuration
-        public const int PitWidth = 64;
-        public const int PitHeight = 64;
-        public const float PitSpawnInterval = 10f; // seconds
+        public const int DefaultHeroUncoverRadius = 1; // Default radius for hero fog clearing        
         
         // Building Configuration
         public const int TownBuildingWidth = 48;
@@ -49,11 +49,7 @@ namespace PitHero
         public const float CameraMaximumZoom = 10f; // can zoom in really close
         public const float CameraMinimumZoomLargeMap = 0.25f; // can zoom out to 0.5x for large maps (clean divisor)
         public const float CameraZoomSpeed = 0.001f; // zoom sensitivity per mouse wheel notch
-        public const float CameraPanSpeed = 1f; // pan speed multiplier
-        
-        // Game Timing
-        public const float GameTickInterval = 1f / 60f; // 60 FPS
-        public const float EventProcessingInterval = 1f / 120f; // 120 Hz event processing
+        public const float CameraPanSpeed = 1f; // pan speed multiplier       
         
         // World Bounds
         public static readonly Rectangle WorldBounds = new Rectangle(0, 0, InternalWorldWidth, InternalWorldHeight);

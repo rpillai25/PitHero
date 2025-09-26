@@ -326,7 +326,7 @@ namespace PitHero.AI
                                 {
                                     enemyBouncyDigit.Init(heroAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor, false);
                                     enemyBouncyDigit.SetEnabled(true);
-                                    yield return Coroutine.WaitForSeconds(1f);
+                                    yield return Coroutine.WaitForSeconds(GameConfig.BattleDigitBounceWait);
                                 }
 
                                 if (enemyDied)
@@ -347,7 +347,7 @@ namespace PitHero.AI
                                 {
                                     enemyBouncyText.Init("Miss", BouncyTextComponent.EnemyMissColor);
                                     enemyBouncyText.SetEnabled(true);
-                                    yield return Coroutine.WaitForSeconds(1f);
+                                    yield return Coroutine.WaitForSeconds(GameConfig.BattleDigitBounceWait);
                                 }
                             }
                         }
@@ -376,7 +376,7 @@ namespace PitHero.AI
                                 {
                                     heroBouncyDigit.Init(enemyAttackResult.Damage, BouncyDigitComponent.HeroDigitColor, false);
                                     heroBouncyDigit.SetEnabled(true);
-                                    yield return Coroutine.WaitForSeconds(1f);
+                                    yield return Coroutine.WaitForSeconds(GameConfig.BattleDigitBounceWait);
                                 }
 
                                 if (heroDied)
@@ -397,13 +397,13 @@ namespace PitHero.AI
                                 {
                                     heroBouncyText.Init("Miss", BouncyTextComponent.HeroMissColor);
                                     heroBouncyText.SetEnabled(true);
-                                    yield return Coroutine.WaitForSeconds(1f);
+                                    yield return Coroutine.WaitForSeconds(GameConfig.BattleDigitBounceWait);
                                 }
                             }
                         }
 
                         // Wait between each participant's turn
-                        yield return Coroutine.WaitForSeconds(1.0f);
+                        yield return Coroutine.WaitForSeconds(GameConfig.BattleTurnWait);
 
                         // Break if hero died or all monsters are dead
                         if (hero.CurrentHP <= 0 || validMonsters.All(m => m.GetComponent<EnemyComponent>()?.Enemy.CurrentHP <= 0))
@@ -411,7 +411,7 @@ namespace PitHero.AI
                     }
 
                     // Wait between rounds
-                    yield return Coroutine.WaitForSeconds(0.5f);
+                    yield return Coroutine.WaitForSeconds(GameConfig.BattleTurnWait);
                 }
 
                 // Recalculate monster adjacency after battle
