@@ -120,6 +120,9 @@ namespace PitHero
 
         public const int RenderLayerUI = 998; // UI layer (always on top)
         public const int TransparentPauseOverlay = 999; // Transparent overlay for paused action when UI is active
+        
+        // UI Button Spacing
+        public const float UIButtonPadding = 4f; // Padding between UI buttons
 
         // Physics Layers (determines which layer an entity is on for collision)
         public const int PhysicsTileMapLayer = 0;   // Tilemap "Collision" layer
