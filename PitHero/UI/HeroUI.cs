@@ -113,7 +113,9 @@ namespace PitHero.UI
             // Create window
             _priorityWindow = new Window("Pit Priorities", skin);
             _priorityWindow.SetSize(300f, 200f);
-            _priorityWindow.Add(_priorityList).Expand().Fill();
+            
+            // Add padding at the top before the priority list
+            _priorityWindow.Add(_priorityList).Expand().Fill().SetPadTop(15f);
 
             // Add close button
             var closeButton = new TextButton("Close", skin);
