@@ -71,15 +71,8 @@ namespace PitHero.UI
 
         void IInputListener.OnMouseExit()
         {
-            _mouseOver = _mouseDown = false;
-            
-            // If we were dragging when mouse exits, commit the value
-            if (_isDragging)
-            {
-                _isDragging = false;
-                _committedValue = Value;
-                OnValueCommitted?.Invoke(_committedValue);
-            }
+            _mouseOver = false;
+            // Don't commit here - only commit on actual mouse up
         }
 
         bool IInputListener.OnLeftMousePressed(Vector2 mousePos)
@@ -97,20 +90,9 @@ namespace PitHero.UI
 
         void IInputListener.OnMouseMoved(Vector2 mousePos)
         {
-            if (DistanceOutsideBoundsToPoint(mousePos) > SliderBoundaryThreshold)
-            {
-                _mouseDown = _mouseOver = false;
-                GetStage().RemoveInputFocusListener(this);
-                
-                // If we were dragging, commit the value
-                if (_isDragging)
-                {
-                    _isDragging = false;
-                    _committedValue = Value;
-                    OnValueCommitted?.Invoke(_committedValue);
-                }
-            }
-            else if (_isDragging)
+            // As long as we're dragging (mouse button down), continue tracking mouse movement
+            // regardless of whether mouse is within slider bounds
+            if (_isDragging)
             {
                 CalculatePositionAndValue(mousePos);
             }
@@ -120,7 +102,7 @@ namespace PitHero.UI
         {
             _mouseDown = false;
             
-            // Commit the value when mouse is released
+            // This is the ONLY place where we commit the value for mouse interaction
             if (_isDragging)
             {
                 _isDragging = false;
