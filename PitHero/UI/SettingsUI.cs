@@ -110,7 +110,7 @@ namespace PitHero.UI
         {
             _stage = stage;
 
-            // Initialize centralized UI window manager
+            // Initialize centralized UI window manager early so all UI components can use it
             UIWindowManager.Initialize(_game);
 
             // Use default skin

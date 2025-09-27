@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using System;
 
 namespace PitHero.UI
 {
@@ -20,6 +21,9 @@ namespace PitHero.UI
         private static WindowSizeMode _persistentWindowSize = WindowSizeMode.Normal;
         private static bool _isInitialized = false;
         private static Game _game;
+        
+        // Track how many UI windows are currently open to prevent external change detection interference
+        private static int _openUIWindowCount = 0;
 
         /// <summary>
         /// Initialize the UI window manager with the game instance
@@ -37,46 +41,49 @@ namespace PitHero.UI
         public static WindowSizeMode PersistentWindowSize => _persistentWindowSize;
 
         /// <summary>
-        /// Updates the persistent window size based on current window manager state
+        /// Gets debug information about the current state
         /// </summary>
+        public static string GetDebugInfo()
+        {
+            return $"Initialized: {_isInitialized}, Persistent: {_persistentWindowSize}, Current: {GetCurrentWindowSize()}";
+        }
+
+        /// <summary>
+        /// Updates the persistent window size based on current window manager state
+        /// /// </summary>
         public static void UpdatePersistentWindowSize()
         {
-            if (WindowManager.IsQuarterHeightMode())
-            {
-                _persistentWindowSize = WindowSizeMode.Quarter;
-            }
-            else if (WindowManager.IsHalfHeightMode())
-            {
-                _persistentWindowSize = WindowSizeMode.Half;
-            }
-            else
-            {
-                _persistentWindowSize = WindowSizeMode.Normal;
-            }
-            
+            _persistentWindowSize = GetCurrentWindowSize();
             Debug.Log($"[UIWindowManager] Updated persistent window size: {_persistentWindowSize}");
         }
 
         /// <summary>
         /// Updates persistent window size if it changed externally (e.g., via Shift+Mouse Wheel)
+        /// Only updates when no UI windows are open to prevent interference with temporary sizing
         /// </summary>
         public static void UpdatePersistentWindowSizeIfChanged()
         {
-            if (!_isInitialized) return;
+            if (!_isInitialized) 
+            {
+                // Attempt fallback initialization
+                if (Core.Instance != null)
+                {
+                    Initialize(Core.Instance);
+                }
+                else
+                {
+                    return; // Can't initialize, skip update
+                }
+            }
 
-            WindowSizeMode currentActualSize;
-            if (WindowManager.IsQuarterHeightMode())
+            // Don't update persistent size while any UI windows are open
+            // This prevents temporary window restores from overwriting the persistent preference
+            if (_openUIWindowCount > 0)
             {
-                currentActualSize = WindowSizeMode.Quarter;
+                return;
             }
-            else if (WindowManager.IsHalfHeightMode())
-            {
-                currentActualSize = WindowSizeMode.Half;
-            }
-            else
-            {
-                currentActualSize = WindowSizeMode.Normal;
-            }
+
+            WindowSizeMode currentActualSize = GetCurrentWindowSize();
 
             if (currentActualSize != _persistentWindowSize)
             {
@@ -101,18 +108,55 @@ namespace PitHero.UI
         {
             if (!_isInitialized)
             {
-                Debug.Warn("[UIWindowManager] Not initialized, cannot handle window opening");
-                return;
+                Debug.Warn("[UIWindowManager] Not initialized, attempting to initialize with Core.Game");
+                if (Core.Instance != null)
+                {
+                    Initialize(Core.Instance);
+                }
+                else
+                {
+                    Debug.Error("[UIWindowManager] Cannot initialize - Core.Instance is null");
+                    return;
+                }
             }
 
-            // Store the current window state as persistent before temporarily changing it
-            UpdatePersistentWindowSize();
+            // Increment open window counter
+            _openUIWindowCount++;
+            Debug.Log($"[UIWindowManager] UI window opening (count: {_openUIWindowCount})");
+
+            // Always store the current window state as persistent BEFORE any changes
+            var currentActualSize = GetCurrentWindowSize();
+            _persistentWindowSize = currentActualSize;
+            Debug.Log($"[UIWindowManager] Stored persistent size: {_persistentWindowSize}");
             
             // Temporarily restore to normal size for UI viewing
             if (WindowManager.IsHalfHeightMode() || WindowManager.IsQuarterHeightMode())
             {
                 WindowManager.RestoreOriginalSize(_game);
                 Debug.Log("[UIWindowManager] Temporarily restored to normal size for UI viewing");
+            }
+            else
+            {
+                Debug.Log("[UIWindowManager] Window already at normal size, no temporary restore needed");
+            }
+        }
+
+        /// <summary>
+        /// Gets the current window size mode
+        /// </summary>
+        private static WindowSizeMode GetCurrentWindowSize()
+        {
+            if (WindowManager.IsQuarterHeightMode())
+            {
+                return WindowSizeMode.Quarter;
+            }
+            else if (WindowManager.IsHalfHeightMode())
+            {
+                return WindowSizeMode.Half;
+            }
+            else
+            {
+                return WindowSizeMode.Normal;
             }
         }
 
@@ -123,10 +167,23 @@ namespace PitHero.UI
         {
             if (!_isInitialized)
             {
-                Debug.Warn("[UIWindowManager] Not initialized, cannot handle window closing");
-                return;
+                Debug.Warn("[UIWindowManager] Not initialized, attempting to initialize with Core.Game");
+                if (Core.Instance != null)
+                {
+                    Initialize(Core.Instance);
+                }
+                else
+                {
+                    Debug.Error("[UIWindowManager] Cannot initialize - Core.Instance is null");
+                    return;
+                }
             }
 
+            // Decrement open window counter
+            _openUIWindowCount = Math.Max(0, _openUIWindowCount - 1);
+            Debug.Log($"[UIWindowManager] UI window closing (count: {_openUIWindowCount})");
+            Debug.Log($"[UIWindowManager] Applying persistent size: {_persistentWindowSize}");
+            
             // Apply persistent window size when closing UI
             ApplyPersistentWindowSize();
         }
@@ -142,42 +199,66 @@ namespace PitHero.UI
                 return;
             }
 
+            Debug.Log($"[UIWindowManager] Applying persistent window size: {_persistentWindowSize}");
+            Debug.Log($"[UIWindowManager] Current window state - Quarter: {WindowManager.IsQuarterHeightMode()}, Half: {WindowManager.IsHalfHeightMode()}");
+
             switch (_persistentWindowSize)
             {
                 case WindowSizeMode.Normal:
+                    Debug.Log("[UIWindowManager] Applying Normal size");
                     // Restore to original size if currently shrunk
                     if (WindowManager.IsHalfHeightMode() || WindowManager.IsQuarterHeightMode())
                     {
                         WindowManager.RestoreOriginalSize(_game);
+                        Debug.Log("[UIWindowManager] Restored to original size");
+                    }
+                    else
+                    {
+                        Debug.Log("[UIWindowManager] Already at normal size");
                     }
                     break;
                     
                 case WindowSizeMode.Half:
+                    Debug.Log("[UIWindowManager] Applying Half size");
                     // First restore to normal if at quarter, then shrink to half
                     if (WindowManager.IsQuarterHeightMode())
                     {
                         WindowManager.RestoreOriginalSize(_game);
+                        Debug.Log("[UIWindowManager] Restored from Quarter to Normal");
                     }
                     if (!WindowManager.IsHalfHeightMode())
                     {
                         WindowManager.ShrinkToNextLevel(_game); // Normal -> Half
+                        Debug.Log("[UIWindowManager] Shrunk from Normal to Half");
+                    }
+                    else
+                    {
+                        Debug.Log("[UIWindowManager] Already at Half size");
                     }
                     break;
                     
                 case WindowSizeMode.Quarter:
+                    Debug.Log("[UIWindowManager] Applying Quarter size");
                     // Shrink to quarter (this handles all transitions)
                     if (!WindowManager.IsQuarterHeightMode())
                     {
                         if (!WindowManager.IsHalfHeightMode())
                         {
                             WindowManager.ShrinkToNextLevel(_game); // Normal -> Half
+                            Debug.Log("[UIWindowManager] Shrunk from Normal to Half");
                         }
                         WindowManager.ShrinkToNextLevel(_game); // Half -> Quarter
+                        Debug.Log("[UIWindowManager] Shrunk from Half to Quarter");
+                    }
+                    else
+                    {
+                        Debug.Log("[UIWindowManager] Already at Quarter size");
                     }
                     break;
             }
             
             Debug.Log($"[UIWindowManager] Applied persistent window size: {_persistentWindowSize}");
+            Debug.Log($"[UIWindowManager] Final window state - Quarter: {WindowManager.IsQuarterHeightMode()}, Half: {WindowManager.IsHalfHeightMode()}");
         }
     }
 }
