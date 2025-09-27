@@ -98,6 +98,25 @@ namespace PitHero.UI
 
         private void HandleHeroButtonClick()
         {
+            // Close SettingsUI window if it's open before opening Hero window (single window policy)
+            // Use a simple approach - look for any visible Window that's not our priority window
+            var allElements = _stage.GetElements();
+            for (int i = 0; i < allElements.Count; i++)
+            {
+                var element = allElements[i];
+                if (element is Window window && window.IsVisible() && window != _priorityWindow)
+                {
+                    // This is likely the Settings window - force close it
+                    window.SetVisible(false);
+                    // Also need to unpause the game since Settings window manages pause state
+                    var pauseService = Core.Services.GetService<PauseService>();
+                    if (pauseService != null)
+                        pauseService.IsPaused = false;
+                    Debug.Log("[HeroUI] Closed other UI window to enforce single window policy");
+                    break;
+                }
+            }
+
             // Toggle priority window visibility
             TogglePriorityWindow();
         }
@@ -369,6 +388,36 @@ namespace PitHero.UI
         public void Update()
         {
             UpdateButtonStyleIfNeeded();
+        }
+
+        /// <summary>
+        /// Gets whether the priority window is currently visible
+        /// </summary>
+        public bool IsWindowVisible => _windowVisible;
+
+        /// <summary>
+        /// Forces the priority window to close without triggering normal events
+        /// </summary>
+        public void ForceCloseWindow()
+        {
+            if (_windowVisible)
+            {
+                _windowVisible = false;
+                
+                // Use centralized UI window manager for closing behavior
+                UIWindowManager.OnUIWindowClosing();
+                
+                // Hide and remove from stage
+                _priorityWindow?.SetVisible(false);
+                _priorityWindow?.Remove();
+                
+                // Unpause the game when window closes
+                var pauseService = Core.Services.GetService<PauseService>();
+                if (pauseService != null)
+                    pauseService.IsPaused = false;
+                
+                Debug.Log("[HeroUI] Priority window force closed by single window policy");
+            }
         }
     }
 }

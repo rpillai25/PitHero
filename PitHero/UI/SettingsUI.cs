@@ -617,6 +617,13 @@ namespace PitHero.UI
             bool willShow = !_isVisible;
             if (willShow)
             {
+                // Close HeroUI window if it's open before opening settings (single window policy)
+                if (_heroUI != null && _heroUI.IsWindowVisible)
+                {
+                    _heroUI.ForceCloseWindow();
+                    Debug.Log("[SettingsUI] Closed HeroUI window to enforce single window policy");
+                }
+
                 // Use centralized UI window manager for opening behavior
                 UIWindowManager.OnUIWindowOpening();
 
