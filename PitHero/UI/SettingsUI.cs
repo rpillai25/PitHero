@@ -36,6 +36,12 @@ namespace PitHero.UI
         private Label _zoomLabel;
         private TextButton _resetZoomButton;
         
+        // Window size radio buttons
+        private ButtonGroup _windowSizeButtonGroup;
+        private CheckBox _normalSizeButton;
+        private CheckBox _halfSizeButton;
+        private CheckBox _quarterSizeButton;
+        
         // New Window tab controls
         private TextButton _swapMonitorButton;
         private CheckBox _alwaysOnTopCheckBox;
@@ -80,6 +86,17 @@ namespace PitHero.UI
         // New UI components
         private FastFUI _fastFUI;
         private HeroUI _heroUI;
+        
+        // Window size modes
+        private enum WindowSizeMode
+        {
+            Normal,
+            Half,
+            Quarter
+        }
+        
+        // Add field to track desired window size (separate from current)
+        private WindowSizeMode _desiredWindowSize = WindowSizeMode.Normal;
 
         public SettingsUI(Game game)
         {
@@ -270,13 +287,9 @@ namespace PitHero.UI
             scrollContent.Add(_swapMonitorButton).Width(200).SetPadBottom(15);
             scrollContent.Row();
 
-            // Separator
-            scrollContent.Add(new Label("Window Position:", skin)).Left().SetPadBottom(10);
-            scrollContent.Row();
-
-            // Y Offset slider
+            // Y Offset slider (left-aligned label)
             _yOffsetLabel = new Label("Y Offset: 0", skin);
-            scrollContent.Add(_yOffsetLabel).SetPadBottom(10);
+            scrollContent.Add(_yOffsetLabel).Left().SetPadBottom(10);
             scrollContent.Row();
 
             // Create enhanced slider with initial range for bottom dock
@@ -297,13 +310,9 @@ namespace PitHero.UI
             scrollContent.Add(_yOffsetSlider).Width(300).SetPadBottom(20);
             scrollContent.Row();
 
-            // Camera Controls separator
-            scrollContent.Add(new Label("Camera Controls:", skin)).Left().SetPadBottom(10);
-            scrollContent.Row();
-
-            // Zoom level slider with reset button
+            // Zoom level slider with reset button (left-aligned label)
             _zoomLabel = new Label("Zoom: 1.00x", skin);
-            scrollContent.Add(_zoomLabel).SetPadBottom(10);
+            scrollContent.Add(_zoomLabel).Left().SetPadBottom(10);
             scrollContent.Row();
 
             // Create table for zoom slider and reset button side by side
@@ -334,6 +343,58 @@ namespace PitHero.UI
             
             zoomTable.Add(_resetZoomButton).Width(50);
             scrollContent.Add(zoomTable).SetPadBottom(20);
+            scrollContent.Row();
+
+            // Window Size radio buttons
+            var windowSizeLabel = new Label("Window Size:", skin);
+            scrollContent.Add(windowSizeLabel).Left().SetPadBottom(10);
+            scrollContent.Row();
+
+            // Create ButtonGroup for window size radio buttons
+            _windowSizeButtonGroup = new ButtonGroup();
+            
+            // Create radio buttons using CheckBox
+            _normalSizeButton = new CheckBox("Normal", skin);
+            _halfSizeButton = new CheckBox("Half", skin);
+            _quarterSizeButton = new CheckBox("Quarter", skin);
+            
+            // Add buttons to ButtonGroup
+            _windowSizeButtonGroup.Add(_normalSizeButton);
+            _windowSizeButtonGroup.Add(_halfSizeButton);
+            _windowSizeButtonGroup.Add(_quarterSizeButton);
+            
+            // Set up event handlers for window size changes - only set desired size, don't apply immediately
+            _normalSizeButton.OnChanged += (isChecked) => {
+                if (isChecked) 
+                {
+                    _desiredWindowSize = WindowSizeMode.Normal;
+                    Debug.Log("[SettingsUI] Selected Normal window size");
+                }
+            };
+            
+            _halfSizeButton.OnChanged += (isChecked) => {
+                if (isChecked) 
+                {
+                    _desiredWindowSize = WindowSizeMode.Half;
+                    Debug.Log("[SettingsUI] Selected Half window size");
+                }
+            };
+            
+            _quarterSizeButton.OnChanged += (isChecked) => {
+                if (isChecked) 
+                {
+                    _desiredWindowSize = WindowSizeMode.Quarter;
+                    Debug.Log("[SettingsUI] Selected Quarter window size");
+                }
+            };
+            
+            // Create table for radio buttons layout
+            var windowSizeTable = new Table();
+            windowSizeTable.Add(_normalSizeButton).SetPadRight(15);
+            windowSizeTable.Add(_halfSizeButton).SetPadRight(15);
+            windowSizeTable.Add(_quarterSizeButton);
+            
+            scrollContent.Add(windowSizeTable).Left().SetPadBottom(20);
             scrollContent.Row();
 
             // Dock buttons
@@ -558,21 +619,14 @@ namespace PitHero.UI
 
                 // Update zoom slider to reflect current camera zoom
                 UpdateZoomSliderFromCamera();
+                
+                // Update window size buttons and desired size to reflect current window state
+                UpdateWindowSizeButtonsAndDesiredSize();
             }
             else
             {
-                // Reapply previous shrink state now that we are closing
-                if (_prevWasQuarterShrink)
-                {
-                    WindowManager.ShrinkToNextLevel(_game); // Half
-                    WindowManager.ShrinkToNextLevel(_game); // Quarter
-                }
-                else if (_prevWasHalfShrink)
-                {
-                    WindowManager.ShrinkToNextLevel(_game); // Half
-                }
-                _prevWasQuarterShrink = false;
-                _prevWasHalfShrink = false;
+                // Apply desired window size when closing settings (instead of restoring previous state)
+                ApplyDesiredWindowSize();
             }
 
             _isVisible = willShow;
@@ -583,6 +637,129 @@ namespace PitHero.UI
             if (_isVisible)
                 _settingsWindow.ToFront();
             LayoutUI();
+        }
+
+        /// <summary>
+        /// Apply the desired window size when settings UI is closed
+        /// </summary>
+        private void ApplyDesiredWindowSize()
+        {
+            switch (_desiredWindowSize)
+            {
+                case WindowSizeMode.Normal:
+                    // Restore to original size if currently shrunk
+                    if (WindowManager.IsHalfHeightMode() || WindowManager.IsQuarterHeightMode())
+                    {
+                        WindowManager.RestoreOriginalSize(_game);
+                    }
+                    break;
+                    
+                case WindowSizeMode.Half:
+                    // First restore to normal if at quarter, then shrink to half
+                    if (WindowManager.IsQuarterHeightMode())
+                    {
+                        WindowManager.RestoreOriginalSize(_game);
+                    }
+                    if (!WindowManager.IsHalfHeightMode())
+                    {
+                        WindowManager.ShrinkToNextLevel(_game); // Normal -> Half
+                    }
+                    break;
+                    
+                case WindowSizeMode.Quarter:
+                    // Shrink to quarter (this handles all transitions)
+                    if (!WindowManager.IsQuarterHeightMode())
+                    {
+                        if (!WindowManager.IsHalfHeightMode())
+                        {
+                            WindowManager.ShrinkToNextLevel(_game); // Normal -> Half
+                        }
+                        WindowManager.ShrinkToNextLevel(_game); // Half -> Quarter
+                    }
+                    break;
+            }
+            
+            Debug.Log($"[SettingsUI] Applied desired window size: {_desiredWindowSize}");
+        }
+
+        /// <summary>
+        /// Update window size radio buttons and desired size to reflect current window state
+        /// </summary>
+        private void UpdateWindowSizeButtonsAndDesiredSize()
+        {
+            if (_windowSizeButtonGroup == null) return;
+            
+            // Determine current window mode and update both UI and desired size
+            if (WindowManager.IsQuarterHeightMode())
+            {
+                _quarterSizeButton.IsChecked = true;
+                _desiredWindowSize = WindowSizeMode.Quarter;
+            }
+            else if (WindowManager.IsHalfHeightMode())
+            {
+                _halfSizeButton.IsChecked = true;
+                _desiredWindowSize = WindowSizeMode.Half;
+            }
+            else
+            {
+                _normalSizeButton.IsChecked = true;
+                _desiredWindowSize = WindowSizeMode.Normal;
+            }
+            
+            Debug.Log($"[SettingsUI] Updated window size buttons to reflect current state: {_desiredWindowSize}");
+        }
+
+        /// <summary>
+        /// Update window size radio buttons to reflect current window state
+        /// </summary>
+        private void UpdateWindowSizeButtons()
+        {
+            UpdateWindowSizeButtonsAndDesiredSize();
+        }
+
+        /// <summary>
+        /// Updates the UI, including button styles based on shrink mode
+        /// </summary>
+        public void Update()
+        {
+            // Update smooth scrolling animation
+            UpdateSmoothScrolling();
+            
+            // Update gear button style dynamically when shrink mode changes
+            UpdateGearButtonStyleIfNeeded();
+            
+            // Update FastF and Hero button styles
+            _fastFUI?.Update();
+            _heroUI?.Update();
+
+            // Reposition only if any button size changed or stage dimensions changed
+            bool needsReposition = _gearStyleChanged;
+            if (_fastFUI != null && _fastFUI.ConsumeStyleChangedFlag()) needsReposition = true;
+            if (_heroUI != null && _heroUI.ConsumeStyleChangedFlag()) needsReposition = true;
+
+            if (_stage.GetWidth() != _lastStageW || _stage.GetHeight() != _lastStageH)
+                needsReposition = true;
+
+            if (needsReposition)
+            {
+                PositionUI();
+                _gearStyleChanged = false;
+            }
+        }
+
+        /// <summary>
+        /// Update zoom slider to reflect current camera zoom level
+        /// </summary>
+        private void UpdateZoomSliderFromCamera()
+        {
+            var currentScene = Core.Scene;
+            if (currentScene?.Camera != null && _zoomSlider != null)
+            {
+                var currentZoom = currentScene.Camera.RawZoom;
+                _zoomSlider.SetValueAndCommit(currentZoom);
+                _zoomLabel.SetText($"Zoom: {currentZoom:F2}x");
+                Debug.Log($"[SettingsUI] Updated zoom slider to current camera zoom: {currentZoom:F2}x");
+            }
         }
 
         private void DockTop()
@@ -718,51 +895,6 @@ namespace PitHero.UI
             else
             {
                 Debug.Warn("[SettingsUI] Could not find camera to apply zoom");
-            }
-        }
-
-        /// <summary>
-        /// Updates the UI, including button styles based on shrink mode
-        /// </summary>
-        public void Update()
-        {
-            // Update smooth scrolling animation
-            UpdateSmoothScrolling();
-            
-            // Update gear button style dynamically when shrink mode changes
-            UpdateGearButtonStyleIfNeeded();
-            
-            // Update FastF and Hero button styles
-            _fastFUI?.Update();
-            _heroUI?.Update();
-
-            // Reposition only if any button size changed or stage dimensions changed
-            bool needsReposition = _gearStyleChanged;
-            if (_fastFUI != null && _fastFUI.ConsumeStyleChangedFlag()) needsReposition = true;
-            if (_heroUI != null && _heroUI.ConsumeStyleChangedFlag()) needsReposition = true;
-
-            if (_stage.GetWidth() != _lastStageW || _stage.GetHeight() != _lastStageH)
-                needsReposition = true;
-
-            if (needsReposition)
-            {
-                PositionUI();
-                _gearStyleChanged = false;
-            }
-        }
-
-        /// <summary>
-        /// Update zoom slider to reflect current camera zoom level
-        /// </summary>
-        private void UpdateZoomSliderFromCamera()
-        {
-            var currentScene = Core.Scene;
-            if (currentScene?.Camera != null && _zoomSlider != null)
-            {
-                var currentZoom = currentScene.Camera.RawZoom;
-                _zoomSlider.SetValueAndCommit(currentZoom);
-                _zoomLabel.SetText($"Zoom: {currentZoom:F2}x");
-                Debug.Log($"[SettingsUI] Updated zoom slider to current camera zoom: {currentZoom:F2}x");
             }
         }
     }
