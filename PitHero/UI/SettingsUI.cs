@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
 using PitHero.Services;
+using System;
 
 namespace PitHero.UI
 {
@@ -26,7 +27,7 @@ namespace PitHero.UI
         private bool _isWindowTabActive = true;
 
         // Window positioning controls
-        private Slider _yOffsetSlider;
+        private DeferredSlider _yOffsetSlider;
         private TextButton _dockTopButton;
         private TextButton _dockBottomButton;
         private TextButton _dockCenterButton;
@@ -49,6 +50,13 @@ namespace PitHero.UI
         private bool _isDockedBottom = true; // Default to bottom dock
         private bool _isDockedCenter = false;
         private bool _alwaysOnTop = true; // Track current always-on-top state
+
+        // Smooth scrolling animation
+        private bool _isAnimatingToOffset = false;
+        private float _animationStartOffset;
+        private float _animationTargetOffset;
+        private float _animationDuration = 0.3f; // 300ms
+        private float _animationTimer = 0f;
 
         // Track previous shrink mode so we can restore it after closing settings
         private bool _prevWasHalfShrink = false;
@@ -267,14 +275,21 @@ namespace PitHero.UI
             windowTable.Add(_yOffsetLabel).SetPadBottom(10);
             windowTable.Row();
 
-            // Create slider with initial range for bottom dock
-            _yOffsetSlider = new Slider(-200, 0, 1, false, skin);
-            _yOffsetSlider.SetValue(0);
+            // Create deferred slider with initial range for bottom dock
+            _yOffsetSlider = new DeferredSlider(-200, 0, 1, false, skin);
+            _yOffsetSlider.SetValueAndCommit(0);
+            
+            // Update label during dragging (immediate feedback)
             _yOffsetSlider.OnChanged += (value) => {
-                _currentYOffset = (int)value;
-                _yOffsetLabel.SetText($"Y Offset: {_currentYOffset}");
-                ApplyCurrentWindowPosition();
+                _yOffsetLabel.SetText($"Y Offset: {(int)value}");
             };
+            
+            // Apply window position when value is committed (mouse released)
+            _yOffsetSlider.OnValueCommitted += (value) => {
+                _currentYOffset = (int)value;
+                StartSmoothScrollToOffset(_currentYOffset);
+            };
+            
             windowTable.Add(_yOffsetSlider).Width(300).SetPadBottom(20);
             windowTable.Row();
 
@@ -522,7 +537,7 @@ namespace PitHero.UI
             _isDockedCenter = false;
             _currentYOffset = 0;
             UpdateSliderRange(0, 200);
-            _yOffsetSlider.SetValue(0);
+            _yOffsetSlider.SetValueAndCommit(0);
             _yOffsetLabel.SetText("Y Offset: 0");
             ApplyCurrentWindowPosition();
         }
@@ -534,7 +549,7 @@ namespace PitHero.UI
             _isDockedCenter = false;
             _currentYOffset = 0;
             UpdateSliderRange(-200, 0);
-            _yOffsetSlider.SetValue(0);
+            _yOffsetSlider.SetValueAndCommit(0);
             _yOffsetLabel.SetText("Y Offset: 0");
             ApplyCurrentWindowPosition();
         }
@@ -546,7 +561,7 @@ namespace PitHero.UI
             _isDockedCenter = true;
             _currentYOffset = 0;
             UpdateSliderRange(-200, 200);
-            _yOffsetSlider.SetValue(0);
+            _yOffsetSlider.SetValueAndCommit(0);
             _yOffsetLabel.SetText("Y Offset: 0");
             ApplyCurrentWindowPosition();
         }
@@ -556,8 +571,69 @@ namespace PitHero.UI
             _yOffsetSlider.SetMinMax(min, max);
         }
 
+        /// <summary>
+        /// Starts smooth scrolling animation to the target offset
+        /// </summary>
+        private void StartSmoothScrollToOffset(int targetOffset)
+        {
+            if (_isAnimatingToOffset)
+            {
+                // If already animating, update the target
+                _animationTargetOffset = targetOffset;
+            }
+            else
+            {
+                _animationStartOffset = _currentYOffset;
+                _animationTargetOffset = targetOffset;
+                _animationTimer = 0f;
+                _isAnimatingToOffset = true;
+            }
+        }
+
+        /// <summary>
+        /// Updates smooth scrolling animation
+        /// </summary>
+        private void UpdateSmoothScrolling()
+        {
+            if (!_isAnimatingToOffset)
+                return;
+
+            _animationTimer += Time.DeltaTime;
+            float progress = Math.Min(1f, _animationTimer / _animationDuration);
+            
+            // Use easing for smooth animation (ease out)
+            float easedProgress = 1f - (1f - progress) * (1f - progress);
+            
+            float currentOffset = _animationStartOffset + (_animationTargetOffset - _animationStartOffset) * easedProgress;
+            
+            // Apply the interpolated position
+            int roundedOffset = (int)Math.Round(currentOffset);
+            if (_isDockedTop)
+            {
+                WindowManager.DockTop(_game, roundedOffset);
+            }
+            else if (_isDockedBottom)
+            {
+                WindowManager.DockBottom(_game, roundedOffset);
+            }
+            else if (_isDockedCenter)
+            {
+                WindowManager.DockCenter(_game, roundedOffset);
+            }
+
+            // Check if animation is complete
+            if (progress >= 1f)
+            {
+                _isAnimatingToOffset = false;
+                _currentYOffset = (int)_animationTargetOffset;
+            }
+        }
+
         private void ApplyCurrentWindowPosition()
         {
+            // Stop any ongoing animation and apply immediately
+            _isAnimatingToOffset = false;
+            
             if (_isDockedTop)
             {
                 WindowManager.DockTop(_game, _currentYOffset);
@@ -577,6 +653,9 @@ namespace PitHero.UI
         /// </summary>
         public void Update()
         {
+            // Update smooth scrolling animation
+            UpdateSmoothScrolling();
+            
             // Update gear button style dynamically when shrink mode changes
             UpdateGearButtonStyleIfNeeded();
             
