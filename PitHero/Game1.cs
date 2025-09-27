@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.ECS.Scenes;
 using PitHero.Services;
+using PitHero.Util;
 
 namespace PitHero
 {
@@ -19,6 +20,7 @@ namespace PitHero
 
             // Register global services
             Services.AddService(new PauseService());
+            Services.AddService(new GlobalStateService());
 
             // Disable pausing when focus is lost - essential for idle game behavior
             PauseOnFocusLost = false;
