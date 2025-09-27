@@ -6,9 +6,9 @@ using System;
 namespace PitHero.UI
 {
     /// <summary>
-    /// A slider that defers value application until mouse release, enabling smooth transitions
+    /// An enhanced slider with optional deferred value application until mouse release
     /// </summary>
-    public class DeferredSlider : ProgressBar, IInputListener
+    public class EnhancedSlider : ProgressBar, IInputListener
     {
         /// <summary>
         /// the maximum distance outside the slider the mouse can move when pressing it to cause it to be unfocused
@@ -19,28 +19,34 @@ namespace PitHero.UI
         bool _mouseOver, _mouseDown;
         bool _isDragging = false;
         float _committedValue;
+        
+        /// <summary>
+        /// If true, value commitment is deferred until mouse release. If false, behaves like normal slider.
+        /// </summary>
+        public bool UseDeferredCommit { get; private set; }
 
         /// <summary>
-        /// Event fired when the value is committed (mouse released)
+        /// Event fired when the value is committed (mouse released when deferred, or immediately when not deferred)
         /// </summary>
         public event Action<float> OnValueCommitted;
 
         /// <summary>
-        /// Creates a new deferred slider
+        /// Creates a new enhanced slider
         /// </summary>
-        public DeferredSlider(float min, float max, float stepSize, bool vertical, SliderStyle style) : base(min, max, stepSize, vertical, style)
+        public EnhancedSlider(float min, float max, float stepSize, bool vertical, SliderStyle style, bool useDeferredCommit = false) : base(min, max, stepSize, vertical, style)
         {
             ShiftIgnoresSnap = true;
             this.style = style;
+            UseDeferredCommit = useDeferredCommit;
             _committedValue = Value;
         }
 
-        public DeferredSlider(float min, float max, float stepSize, bool vertical, Skin skin, string styleName = null) : this(
-            min, max, stepSize, vertical, skin.Get<SliderStyle>(styleName))
+        public EnhancedSlider(float min, float max, float stepSize, bool vertical, Skin skin, string styleName = null, bool useDeferredCommit = false) : this(
+            min, max, stepSize, vertical, skin.Get<SliderStyle>(styleName), useDeferredCommit)
         {
         }
 
-        public DeferredSlider(Skin skin, string styleName = null) : this(0, 1, 0.1f, false, skin.Get<SliderStyle>(styleName))
+        public EnhancedSlider(Skin skin, string styleName = null, bool useDeferredCommit = false) : this(0, 1, 0.1f, false, skin.Get<SliderStyle>(styleName), useDeferredCommit)
         {
         }
 
@@ -72,7 +78,7 @@ namespace PitHero.UI
         void IInputListener.OnMouseExit()
         {
             _mouseOver = false;
-            // Don't commit here - only commit on actual mouse up
+            // Don't commit here if using deferred mode - only commit on actual mouse up
         }
 
         bool IInputListener.OnLeftMousePressed(Vector2 mousePos)
@@ -80,6 +86,14 @@ namespace PitHero.UI
             CalculatePositionAndValue(mousePos);
             _mouseDown = true;
             _isDragging = true;
+            
+            // If not using deferred commit, commit immediately (normal slider behavior)
+            if (!UseDeferredCommit)
+            {
+                _committedValue = Value;
+                OnValueCommitted?.Invoke(_committedValue);
+            }
+            
             return true;
         }
 
@@ -90,11 +104,16 @@ namespace PitHero.UI
 
         void IInputListener.OnMouseMoved(Vector2 mousePos)
         {
-            // As long as we're dragging (mouse button down), continue tracking mouse movement
-            // regardless of whether mouse is within slider bounds
             if (_isDragging)
             {
                 CalculatePositionAndValue(mousePos);
+                
+                // If not using deferred commit, commit immediately (normal slider behavior)
+                if (!UseDeferredCommit)
+                {
+                    _committedValue = Value;
+                    OnValueCommitted?.Invoke(_committedValue);
+                }
             }
         }
 
@@ -102,10 +121,11 @@ namespace PitHero.UI
         {
             _mouseDown = false;
             
-            // This is the ONLY place where we commit the value for mouse interaction
             if (_isDragging)
             {
                 _isDragging = false;
+                
+                // Always commit on mouse up (for both modes)
                 _committedValue = Value;
                 OnValueCommitted?.Invoke(_committedValue);
             }
@@ -123,7 +143,7 @@ namespace PitHero.UI
 
         #endregion
 
-        public DeferredSlider SetStyle(SliderStyle style)
+        public EnhancedSlider SetStyle(SliderStyle style)
         {
             if (!(style is SliderStyle))
                 throw new ArgumentException("style must be a SliderStyle");

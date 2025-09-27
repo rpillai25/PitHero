@@ -27,7 +27,7 @@ namespace PitHero.UI
         private bool _isWindowTabActive = true;
 
         // Window positioning controls
-        private DeferredSlider _yOffsetSlider;
+        private EnhancedSlider _yOffsetSlider;
         private TextButton _dockTopButton;
         private TextButton _dockBottomButton;
         private TextButton _dockCenterButton;
@@ -275,8 +275,8 @@ namespace PitHero.UI
             windowTable.Add(_yOffsetLabel).SetPadBottom(10);
             windowTable.Row();
 
-            // Create deferred slider with initial range for bottom dock
-            _yOffsetSlider = new DeferredSlider(-200, 0, 1, false, skin);
+            // Create enhanced slider with deferred commit disabled and initial range for bottom dock
+            _yOffsetSlider = new EnhancedSlider(-200, 0, 1, false, skin, null, false);
             _yOffsetSlider.SetValueAndCommit(0);
             
             // Update label during dragging (immediate feedback)
