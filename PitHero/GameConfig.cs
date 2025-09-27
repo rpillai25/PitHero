@@ -46,7 +46,7 @@ namespace PitHero
         // Camera Configuration
         public const float CameraDefaultZoom = 1f; // default zoom level
         public const float CameraMinimumZoom = 0.5f; // can't zoom out past default for normal maps
-        public const float CameraMaximumZoom = 10f; // can zoom in really close
+        public const float CameraMaximumZoom = 3f; // can zoom in really close
         public const float CameraMinimumZoomLargeMap = 0.25f; // can zoom out to 0.5x for large maps (clean divisor)
         public const float CameraZoomSpeed = 0.001f; // zoom sensitivity per mouse wheel notch
         public const float CameraPanSpeed = 1f; // pan speed multiplier       

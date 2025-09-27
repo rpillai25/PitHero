@@ -28,10 +28,13 @@ namespace PitHero.UI
 
         // Window positioning controls
         private EnhancedSlider _yOffsetSlider;
+        private EnhancedSlider _zoomSlider;
         private TextButton _dockTopButton;
         private TextButton _dockBottomButton;
         private TextButton _dockCenterButton;
         private Label _yOffsetLabel;
+        private Label _zoomLabel;
+        private TextButton _resetZoomButton;
         
         // New Window tab controls
         private TextButton _swapMonitorButton;
@@ -243,8 +246,9 @@ namespace PitHero.UI
 
         private Table CreateWindowTab(Skin skin)
         {
-            var windowTable = new Table();
-            windowTable.Pad(20);
+            // Create scroll pane container
+            var scrollContent = new Table();
+            scrollContent.Pad(20);
 
             // Always On Top checkbox
             _alwaysOnTopCheckBox = new CheckBox("Always On Top", skin);
@@ -253,8 +257,8 @@ namespace PitHero.UI
                 _alwaysOnTop = isChecked;
                 WindowManager.SetAlwaysOnTop(_game, _alwaysOnTop);
             };
-            windowTable.Add(_alwaysOnTopCheckBox).Left().SetPadBottom(15);
-            windowTable.Row();
+            scrollContent.Add(_alwaysOnTopCheckBox).Left().SetPadBottom(15);
+            scrollContent.Row();
 
             // Swap Monitor button
             _swapMonitorButton = new TextButton("Swap Monitor", skin);
@@ -263,19 +267,19 @@ namespace PitHero.UI
                 // Reapply current docking after monitor swap
                 ApplyCurrentWindowPosition();
             };
-            windowTable.Add(_swapMonitorButton).Width(200).SetPadBottom(15);
-            windowTable.Row();
+            scrollContent.Add(_swapMonitorButton).Width(200).SetPadBottom(15);
+            scrollContent.Row();
 
             // Separator
-            windowTable.Add(new Label("Window Position:", skin)).Left().SetPadBottom(10);
-            windowTable.Row();
+            scrollContent.Add(new Label("Window Position:", skin)).Left().SetPadBottom(10);
+            scrollContent.Row();
 
             // Y Offset slider
             _yOffsetLabel = new Label("Y Offset: 0", skin);
-            windowTable.Add(_yOffsetLabel).SetPadBottom(10);
-            windowTable.Row();
+            scrollContent.Add(_yOffsetLabel).SetPadBottom(10);
+            scrollContent.Row();
 
-            // Create enhanced slider with deferred commit disabled and initial range for bottom dock
+            // Create enhanced slider with initial range for bottom dock
             _yOffsetSlider = new EnhancedSlider(-200, 0, 1, false, skin, null, false);
             _yOffsetSlider.SetValueAndCommit(0);
             
@@ -290,23 +294,71 @@ namespace PitHero.UI
                 StartSmoothScrollToOffset(_currentYOffset);
             };
             
-            windowTable.Add(_yOffsetSlider).Width(300).SetPadBottom(20);
-            windowTable.Row();
+            scrollContent.Add(_yOffsetSlider).Width(300).SetPadBottom(20);
+            scrollContent.Row();
+
+            // Camera Controls separator
+            scrollContent.Add(new Label("Camera Controls:", skin)).Left().SetPadBottom(10);
+            scrollContent.Row();
+
+            // Zoom level slider with reset button
+            _zoomLabel = new Label("Zoom: 1.00x", skin);
+            scrollContent.Add(_zoomLabel).SetPadBottom(10);
+            scrollContent.Row();
+
+            // Create table for zoom slider and reset button side by side
+            var zoomTable = new Table();
+            
+            // Create zoom slider (immediate mode since camera should update in real-time)
+            _zoomSlider = new EnhancedSlider(GameConfig.CameraMinimumZoom, GameConfig.CameraMaximumZoom, 0.125f, false, skin, null, false);
+            _zoomSlider.SetValueAndCommit(GameConfig.CameraDefaultZoom);
+            
+            // Update label and camera zoom immediately
+            _zoomSlider.OnChanged += (value) => {
+                _zoomLabel.SetText($"Zoom: {value:F2}x");
+            };
+            
+            _zoomSlider.OnValueCommitted += (value) => {
+                ApplyCameraZoom(value);
+            };
+            
+            zoomTable.Add(_zoomSlider).Width(240).SetPadRight(10);
+            
+            // Reset zoom button
+            _resetZoomButton = new TextButton("Reset", skin);
+            _resetZoomButton.OnClicked += (button) => {
+                _zoomSlider.SetValueAndCommit(GameConfig.CameraDefaultZoom);
+                _zoomLabel.SetText($"Zoom: {GameConfig.CameraDefaultZoom:F2}x");
+                ApplyCameraZoom(GameConfig.CameraDefaultZoom);
+            };
+            
+            zoomTable.Add(_resetZoomButton).Width(50);
+            scrollContent.Add(zoomTable).SetPadBottom(20);
+            scrollContent.Row();
 
             // Dock buttons
             _dockTopButton = new TextButton("Dock Top", skin);
             _dockTopButton.OnClicked += (button) => DockTop();
-            windowTable.Add(_dockTopButton).Width(150).SetPadBottom(10);
-            windowTable.Row();
+            scrollContent.Add(_dockTopButton).Width(150).SetPadBottom(10);
+            scrollContent.Row();
 
             _dockBottomButton = new TextButton("Dock Bottom", skin);
             _dockBottomButton.OnClicked += (button) => DockBottom();
-            windowTable.Add(_dockBottomButton).Width(150).SetPadBottom(10);
-            windowTable.Row();
+            scrollContent.Add(_dockBottomButton).Width(150).SetPadBottom(10);
+            scrollContent.Row();
 
             _dockCenterButton = new TextButton("Dock Center", skin);
             _dockCenterButton.OnClicked += (button) => DockCenter();
-            windowTable.Add(_dockCenterButton).Width(150);
+            scrollContent.Add(_dockCenterButton).Width(150);
+
+            // Create scroll pane with the content
+            var scrollPane = new ScrollPane(scrollContent, skin);
+            scrollPane.SetScrollingDisabled(true, false); // Only allow vertical scrolling
+            scrollPane.SetFadeScrollBars(false); // Always show scroll bars when needed
+            
+            // Create wrapper table for the scroll pane
+            var windowTable = new Table();
+            windowTable.Add(scrollPane).Expand().Fill();
 
             return windowTable;
         }
@@ -503,6 +555,9 @@ namespace PitHero.UI
                 _prevWasHalfShrink = !_prevWasQuarterShrink && WindowManager.IsHalfHeightMode();
                 if (_prevWasQuarterShrink || _prevWasHalfShrink)
                     WindowManager.RestoreOriginalSize(_game);
+
+                // Update zoom slider to reflect current camera zoom
+                UpdateZoomSliderFromCamera();
             }
             else
             {
@@ -649,6 +704,24 @@ namespace PitHero.UI
         }
 
         /// <summary>
+        /// Apply camera zoom to the current scene's camera
+        /// </summary>
+        private void ApplyCameraZoom(float zoomLevel)
+        {
+            // Find the camera in the current scene
+            var currentScene = Core.Scene;
+            if (currentScene?.Camera != null)
+            {
+                currentScene.Camera.RawZoom = zoomLevel;
+                Debug.Log($"[SettingsUI] Applied camera zoom: {zoomLevel:F2}x");
+            }
+            else
+            {
+                Debug.Warn("[SettingsUI] Could not find camera to apply zoom");
+            }
+        }
+
+        /// <summary>
         /// Updates the UI, including button styles based on shrink mode
         /// </summary>
         public void Update()
@@ -675,6 +748,21 @@ namespace PitHero.UI
             {
                 PositionUI();
                 _gearStyleChanged = false;
+            }
+        }
+
+        /// <summary>
+        /// Update zoom slider to reflect current camera zoom level
+        /// </summary>
+        private void UpdateZoomSliderFromCamera()
+        {
+            var currentScene = Core.Scene;
+            if (currentScene?.Camera != null && _zoomSlider != null)
+            {
+                var currentZoom = currentScene.Camera.RawZoom;
+                _zoomSlider.SetValueAndCommit(currentZoom);
+                _zoomLabel.SetText($"Zoom: {currentZoom:F2}x");
+                Debug.Log($"[SettingsUI] Updated zoom slider to current camera zoom: {currentZoom:F2}x");
             }
         }
     }
