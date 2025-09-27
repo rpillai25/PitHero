@@ -165,6 +165,9 @@ namespace PitHero.UI
             
             if (_windowVisible)
             {
+                // Use centralized UI window manager for opening behavior
+                UIWindowManager.OnUIWindowOpening();
+                
                 // Refresh priority items from current hero state (mutates existing list)
                 InitializePriorityItems();
                 _priorityList.Rebuild();
@@ -186,6 +189,9 @@ namespace PitHero.UI
             }
             else
             {
+                // Use centralized UI window manager for closing behavior
+                UIWindowManager.OnUIWindowClosing();
+                
                 // Hide and remove from stage
                 _priorityWindow.SetVisible(false);
                 _priorityWindow.Remove();

@@ -95,38 +95,12 @@ namespace PitHero.UI
             Quarter
         }
         
-        // Track the persistent window size preference (separate from temporary UI state)
-        private WindowSizeMode _persistentWindowSize = WindowSizeMode.Normal;
         // Track desired size only during settings session (gets reset when settings open)
         private WindowSizeMode _desiredWindowSize = WindowSizeMode.Normal;
 
         public SettingsUI(Game game)
         {
             _game = game;
-            
-            // Initialize persistent window size based on current window state
-            UpdatePersistentWindowSize();
-        }
-
-        /// <summary>
-        /// Updates the persistent window size based on current window manager state
-        /// </summary>
-        private void UpdatePersistentWindowSize()
-        {
-            if (WindowManager.IsQuarterHeightMode())
-            {
-                _persistentWindowSize = WindowSizeMode.Quarter;
-            }
-            else if (WindowManager.IsHalfHeightMode())
-            {
-                _persistentWindowSize = WindowSizeMode.Half;
-            }
-            else
-            {
-                _persistentWindowSize = WindowSizeMode.Normal;
-            }
-            
-            Debug.Log($"[SettingsUI] Initialized persistent window size: {_persistentWindowSize}");
         }
 
         /// <summary>
@@ -135,6 +109,9 @@ namespace PitHero.UI
         public void InitializeUI(Stage stage)
         {
             _stage = stage;
+
+            // Initialize centralized UI window manager
+            UIWindowManager.Initialize(_game);
 
             // Use default skin
             var skin = Skin.CreateDefaultSkin();
@@ -393,7 +370,7 @@ namespace PitHero.UI
             _normalSizeButton.OnChanged += (isChecked) => {
                 if (isChecked) 
                 {
-                    _persistentWindowSize = WindowSizeMode.Normal;
+                    UIWindowManager.SetPersistentWindowSize(UIWindowManager.WindowSizeMode.Normal);
                     _desiredWindowSize = WindowSizeMode.Normal;
                     Debug.Log("[SettingsUI] Selected Normal window size");
                 }
@@ -402,7 +379,7 @@ namespace PitHero.UI
             _halfSizeButton.OnChanged += (isChecked) => {
                 if (isChecked) 
                 {
-                    _persistentWindowSize = WindowSizeMode.Half;
+                    UIWindowManager.SetPersistentWindowSize(UIWindowManager.WindowSizeMode.Half);
                     _desiredWindowSize = WindowSizeMode.Half;
                     Debug.Log("[SettingsUI] Selected Half window size");
                 }
@@ -411,7 +388,7 @@ namespace PitHero.UI
             _quarterSizeButton.OnChanged += (isChecked) => {
                 if (isChecked) 
                 {
-                    _persistentWindowSize = WindowSizeMode.Quarter;
+                    UIWindowManager.SetPersistentWindowSize(UIWindowManager.WindowSizeMode.Quarter);
                     _desiredWindowSize = WindowSizeMode.Quarter;
                     Debug.Log("[SettingsUI] Selected Quarter window size");
                 }
@@ -640,14 +617,8 @@ namespace PitHero.UI
             bool willShow = !_isVisible;
             if (willShow)
             {
-                // Store the current window state as persistent before temporarily changing it
-                UpdatePersistentWindowSize();
-                
-                // Temporarily restore to normal size for settings viewing
-                if (WindowManager.IsHalfHeightMode() || WindowManager.IsQuarterHeightMode())
-                {
-                    WindowManager.RestoreOriginalSize(_game);
-                }
+                // Use centralized UI window manager for opening behavior
+                UIWindowManager.OnUIWindowOpening();
 
                 // Update zoom slider to reflect current camera zoom
                 UpdateZoomSliderFromCamera();
@@ -657,8 +628,8 @@ namespace PitHero.UI
             }
             else
             {
-                // Apply persistent window size when closing settings
-                ApplyPersistentWindowSize();
+                // Use centralized UI window manager for closing behavior
+                UIWindowManager.OnUIWindowClosing();
             }
 
             _isVisible = willShow;
@@ -676,42 +647,17 @@ namespace PitHero.UI
         /// </summary>
         private void ApplyPersistentWindowSize()
         {
-            switch (_persistentWindowSize)
-            {
-                case WindowSizeMode.Normal:
-                    // Restore to original size if currently shrunk
-                    if (WindowManager.IsHalfHeightMode() || WindowManager.IsQuarterHeightMode())
-                    {
-                        WindowManager.RestoreOriginalSize(_game);
-                    }
-                    break;
-                    
-                case WindowSizeMode.Half:
-                    // First restore to normal if at quarter, then shrink to half
-                    if (WindowManager.IsQuarterHeightMode())
-                    {
-                        WindowManager.RestoreOriginalSize(_game);
-                    }
-                    if (!WindowManager.IsHalfHeightMode())
-                    {
-                        WindowManager.ShrinkToNextLevel(_game); // Normal -> Half
-                    }
-                    break;
-                    
-                case WindowSizeMode.Quarter:
-                    // Shrink to quarter (this handles all transitions)
-                    if (!WindowManager.IsQuarterHeightMode())
-                    {
-                        if (!WindowManager.IsHalfHeightMode())
-                        {
-                            WindowManager.ShrinkToNextLevel(_game); // Normal -> Half
-                        }
-                        WindowManager.ShrinkToNextLevel(_game); // Half -> Quarter
-                    }
-                    break;
-            }
-            
-            Debug.Log($"[SettingsUI] Applied persistent window size: {_persistentWindowSize}");
+            // Delegate to centralized UI window manager
+            UIWindowManager.ApplyPersistentWindowSize();
+        }
+
+        /// <summary>
+        /// Apply the desired window size when settings UI is closed
+        /// </summary>
+        private void ApplyDesiredWindowSize()
+        {
+            // This method is now replaced by centralized UIWindowManager
+            UIWindowManager.OnUIWindowClosing();
         }
 
         /// <summary>
@@ -738,24 +684,25 @@ namespace PitHero.UI
             if (_windowSizeButtonGroup == null) return;
             
             // Set radio buttons based on persistent size, not current window state
-            switch (_persistentWindowSize)
+            var persistentSize = UIWindowManager.PersistentWindowSize;
+            switch (persistentSize)
             {
-                case WindowSizeMode.Quarter:
+                case UIWindowManager.WindowSizeMode.Quarter:
                     _quarterSizeButton.IsChecked = true;
                     _desiredWindowSize = WindowSizeMode.Quarter;
                     break;
-                case WindowSizeMode.Half:
+                case UIWindowManager.WindowSizeMode.Half:
                     _halfSizeButton.IsChecked = true;
                     _desiredWindowSize = WindowSizeMode.Half;
                     break;
-                case WindowSizeMode.Normal:
+                case UIWindowManager.WindowSizeMode.Normal:
                 default:
                     _normalSizeButton.IsChecked = true;
                     _desiredWindowSize = WindowSizeMode.Normal;
                     break;
             }
             
-            Debug.Log($"[SettingsUI] Updated radio buttons to reflect persistent size: {_persistentWindowSize}");
+            Debug.Log($"[SettingsUI] Updated radio buttons to reflect persistent size: {persistentSize}");
         }
 
         /// <summary>
@@ -776,7 +723,7 @@ namespace PitHero.UI
             // Update persistent size if window size changed externally (e.g., Shift+Mouse Wheel)
             if (!_isVisible) // Only update when settings are closed
             {
-                UpdatePersistentWindowSizeIfChanged();
+                UIWindowManager.UpdatePersistentWindowSizeIfChanged();
             }
 
             // Reposition only if any button size changed or stage dimensions changed
@@ -799,25 +746,8 @@ namespace PitHero.UI
         /// </summary>
         private void UpdatePersistentWindowSizeIfChanged()
         {
-            WindowSizeMode currentActualSize;
-            if (WindowManager.IsQuarterHeightMode())
-            {
-                currentActualSize = WindowSizeMode.Quarter;
-            }
-            else if (WindowManager.IsHalfHeightMode())
-            {
-                currentActualSize = WindowSizeMode.Half;
-            }
-            else
-            {
-                currentActualSize = WindowSizeMode.Normal;
-            }
-
-            if (currentActualSize != _persistentWindowSize)
-            {
-                _persistentWindowSize = currentActualSize;
-                Debug.Log($"[SettingsUI] Updated persistent window size due to external change: {_persistentWindowSize}");
-            }
+            // Delegate to centralized UI window manager
+            UIWindowManager.UpdatePersistentWindowSizeIfChanged();
         }
 
         private void DockTop()
