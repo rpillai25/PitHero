@@ -461,6 +461,19 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
+        /// Sets the priorities in order (Priority1, Priority2, Priority3)
+        /// </summary>
+        public void SetPrioritiesInOrder(HeroPitPriority[] priorities)
+        {
+            if (priorities == null || priorities.Length != 3)
+                throw new ArgumentException("Priorities array must contain exactly 3 elements");
+
+            Priority1 = priorities[0];
+            Priority2 = priorities[1];
+            Priority3 = priorities[2];
+        }
+
+        /// <summary>
         /// Checks if a specific pit priority is satisfied
         /// </summary>
         public bool IsPrioritySatisfied(HeroPitPriority priority)

@@ -398,6 +398,13 @@ namespace PitHero.ECS.Scenes
             _settingsUI = new SettingsUI(Core.Instance);
             _settingsUI.InitializeUI(uiCanvas.Stage);
 
+            // Remove duplicate HeroUI creation - it's already handled by SettingsUI
+            // Initialize HeroUI for pit priority management
+            // _heroUI = new HeroUI();
+            // _heroUI.InitializeUI(uiCanvas.Stage);
+            // Position the Hero button in the bottom-left corner  
+            // _heroUI.SetPosition(10f, Screen.Height - _heroUI.GetHeight() - 10f);
+
             // Pit level label (always visible top-left). Base position then offset applied per shrink level.
             _pitLevelLabel = uiCanvas.Stage.AddElement(new Label("Pit Lv. 1", _hudFontNormal));
             _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
@@ -599,6 +606,7 @@ namespace PitHero.ECS.Scenes
         {
             base.Update();
             _settingsUI?.Update();
+            // Remove duplicate HeroUI update since SettingsUI handles it
 
             // Update pause overlay visibility based on pause state
             var pauseService = Core.Services.GetService<PauseService>();

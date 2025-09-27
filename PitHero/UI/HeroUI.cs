@@ -2,11 +2,13 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
 using PitHero.Services;
+using System.Collections.Generic;
+using PitHero.ECS.Components;
 
 namespace PitHero.UI
 {
     /// <summary>
-    /// UI for Hero button (placeholder functionality for now)
+    /// UI for Hero button with pit priority reorder functionality
     /// </summary>
     public class HeroUI
     {
@@ -19,6 +21,12 @@ namespace PitHero.UI
         private enum HeroMode { Normal, Half, Quarter }
         private HeroMode _currentHeroMode = HeroMode.Normal;
         private bool _styleChanged = false;
+
+        // Priority reorder window components
+        private Window _priorityWindow;
+        private ReorderableTableList<string> _priorityList;
+        private List<string> _priorityItems;
+        private bool _windowVisible = false;
 
         public HeroUI()
         {
@@ -36,6 +44,9 @@ namespace PitHero.UI
 
             // Create Hero button
             CreateHeroButton(skin);
+
+            // Create priority window
+            CreatePriorityWindow(skin);
 
             // Add button to stage
             _stage.AddElement(_heroButton);
@@ -81,14 +92,179 @@ namespace PitHero.UI
             // Explicitly size to the image
             _heroButton.SetSize(heroSprite.SourceRect.Width, heroSprite.SourceRect.Height);
 
-            // Handle click (placeholder - does nothing for now)
+            // Handle click to toggle priority window
             _heroButton.OnClicked += (button) => HandleHeroButtonClick();
         }
 
         private void HandleHeroButtonClick()
         {
-            // Placeholder - button does nothing yet as specified
-            Debug.Log("Hero button clicked - no functionality implemented yet");
+            // Toggle priority window visibility
+            TogglePriorityWindow();
+        }
+
+        private void CreatePriorityWindow(Skin skin)
+        {
+            // Initialize priority items from current hero priorities
+            InitializePriorityItems();
+
+            // Create reorderable list
+            _priorityList = new ReorderableTableList<string>(skin, _priorityItems, OnPriorityReordered);
+
+            // Create window
+            _priorityWindow = new Window("Pit Priorities", skin);
+            _priorityWindow.SetSize(300f, 200f);
+            
+            // Add padding at the top before the priority list
+            _priorityWindow.Add(_priorityList).Expand().Fill().SetPadTop(15f);
+
+            // Add close button
+            var closeButton = new TextButton("Close", skin);
+            closeButton.OnClicked += (btn) => TogglePriorityWindow();
+            _priorityWindow.Row();
+            _priorityWindow.Add(closeButton).SetPadTop(10f);
+
+            _priorityWindow.SetVisible(false);
+        }
+
+        private void InitializePriorityItems()
+        {
+            // Ensure we reuse the existing list instance so ReorderableTableList keeps referencing the same list
+            if (_priorityItems == null)
+                _priorityItems = new List<string>(3);
+            else
+                _priorityItems.Clear();
+
+            var hero = GetHeroComponent();
+            if (hero != null)
+            {
+                var priorities = hero.GetPrioritiesInOrder();
+                _priorityItems.Add(priorities[0].ToString());
+                _priorityItems.Add(priorities[1].ToString());
+                _priorityItems.Add(priorities[2].ToString());
+            }
+            else
+            {
+                _priorityItems.Add(HeroPitPriority.Treasure.ToString());
+                _priorityItems.Add(HeroPitPriority.Battle.ToString());
+                _priorityItems.Add(HeroPitPriority.Advance.ToString());
+            }
+        }
+
+        private void OnPriorityReordered(int from, int to, string item)
+        {
+            Debug.Log($"Priority reordered: {item} moved from position {from + 1} to {to + 1}");
+            // Update hero component priorities in real-time using the mutated shared list
+            UpdateHeroPriorities();
+        }
+
+        private void TogglePriorityWindow()
+        {
+            if (_priorityWindow == null) return;
+
+            _windowVisible = !_windowVisible;
+            
+            if (_windowVisible)
+            {
+                // Refresh priority items from current hero state (mutates existing list)
+                InitializePriorityItems();
+                _priorityList.Rebuild();
+                
+                // Position window next to Hero button
+                PositionPriorityWindow();
+                
+                // Add to stage and show
+                _stage.AddElement(_priorityWindow);
+                _priorityWindow.SetVisible(true);
+                _priorityWindow.ToFront();
+                
+                // Pause the game when window opens
+                var pauseService = Core.Services.GetService<PauseService>();
+                if (pauseService != null)
+                    pauseService.IsPaused = true;
+                
+                Debug.Log("Priority window opened and game paused");
+            }
+            else
+            {
+                // Hide and remove from stage
+                _priorityWindow.SetVisible(false);
+                _priorityWindow.Remove();
+                
+                // Unpause the game when window closes
+                var pauseService = Core.Services.GetService<PauseService>();
+                if (pauseService != null)
+                    pauseService.IsPaused = false;
+                
+                Debug.Log("Priority window closed and game unpaused");
+            }
+        }
+
+        private void PositionPriorityWindow()
+        {
+            if (_priorityWindow == null || _heroButton == null) return;
+
+            // Ensure window dimensions are calculated
+            _priorityWindow.Validate();
+
+            float heroX = _heroButton.GetX();
+            float heroY = _heroButton.GetY();
+            float heroW = _heroButton.GetWidth();
+            float winW = _priorityWindow.GetWidth();
+            float winH = _priorityWindow.GetHeight();
+
+            const float padding = 4f;
+            float targetX = heroX + heroW + padding;
+            float targetY = heroY + padding;
+
+            float stageW = _stage.GetWidth();
+            float stageH = _stage.GetHeight();
+
+            // If window would go off right edge, position to the left of button
+            if (targetX + winW > stageW)
+                targetX = heroX - padding - winW;
+
+            // Clamp to stage bounds
+            if (targetX < 0) targetX = 0;
+            if (targetY < 0) targetY = 0;
+            if (targetY + winH > stageH) targetY = stageH - winH;
+
+            _priorityWindow.SetPosition(targetX, targetY);
+        }
+
+        private HeroComponent GetHeroComponent()
+        {
+            // Find the hero entity in the current scene
+            var heroEntity = Core.Scene?.FindEntity("hero");
+            return heroEntity?.GetComponent<HeroComponent>();
+        }
+
+        private void UpdateHeroPriorities()
+        {
+            var hero = GetHeroComponent();
+            if (hero == null)
+            {
+                Debug.Log("Could not find hero component to update priorities");
+                return;
+            }
+
+            // Convert string list back to HeroPitPriority array
+            var newPriorities = new HeroPitPriority[3];
+            for (int i = 0; i < _priorityItems.Count && i < 3; i++)
+            {
+                if (System.Enum.TryParse(_priorityItems[i], out HeroPitPriority priority))
+                {
+                    newPriorities[i] = priority;
+                }
+                else
+                {
+                    Debug.Log($"Failed to parse priority: {_priorityItems[i]}");
+                    return;
+                }
+            }
+
+            // Update hero component
+            hero.SetPrioritiesInOrder(newPriorities);
+            Debug.Log($"Updated hero priorities: {newPriorities[0]}, {newPriorities[1]}, {newPriorities[2]}");
         }
 
         /// <summary>
@@ -134,6 +310,22 @@ namespace PitHero.UI
         public void SetPosition(float x, float y)
         {
             _heroButton?.SetPosition(x, y);
+        }
+
+        /// <summary>
+        /// Get the button X position
+        /// </summary>
+        public float GetX()
+        {
+            return _heroButton?.GetX() ?? 0f;
+        }
+
+        /// <summary>
+        /// Get the button Y position
+        /// </summary>
+        public float GetY()
+        {
+            return _heroButton?.GetY() ?? 0f;
         }
 
         /// <summary>
