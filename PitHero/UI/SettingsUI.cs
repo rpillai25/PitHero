@@ -95,12 +95,38 @@ namespace PitHero.UI
             Quarter
         }
         
-        // Add field to track desired window size (separate from current)
+        // Track the persistent window size preference (separate from temporary UI state)
+        private WindowSizeMode _persistentWindowSize = WindowSizeMode.Normal;
+        // Track desired size only during settings session (gets reset when settings open)
         private WindowSizeMode _desiredWindowSize = WindowSizeMode.Normal;
 
         public SettingsUI(Game game)
         {
             _game = game;
+            
+            // Initialize persistent window size based on current window state
+            UpdatePersistentWindowSize();
+        }
+
+        /// <summary>
+        /// Updates the persistent window size based on current window manager state
+        /// </summary>
+        private void UpdatePersistentWindowSize()
+        {
+            if (WindowManager.IsQuarterHeightMode())
+            {
+                _persistentWindowSize = WindowSizeMode.Quarter;
+            }
+            else if (WindowManager.IsHalfHeightMode())
+            {
+                _persistentWindowSize = WindowSizeMode.Half;
+            }
+            else
+            {
+                _persistentWindowSize = WindowSizeMode.Normal;
+            }
+            
+            Debug.Log($"[SettingsUI] Initialized persistent window size: {_persistentWindowSize}");
         }
 
         /// <summary>
@@ -363,10 +389,11 @@ namespace PitHero.UI
             _windowSizeButtonGroup.Add(_halfSizeButton);
             _windowSizeButtonGroup.Add(_quarterSizeButton);
             
-            // Set up event handlers for window size changes - only set desired size, don't apply immediately
+            // Set up event handlers for window size changes - update persistent size
             _normalSizeButton.OnChanged += (isChecked) => {
                 if (isChecked) 
                 {
+                    _persistentWindowSize = WindowSizeMode.Normal;
                     _desiredWindowSize = WindowSizeMode.Normal;
                     Debug.Log("[SettingsUI] Selected Normal window size");
                 }
@@ -375,6 +402,7 @@ namespace PitHero.UI
             _halfSizeButton.OnChanged += (isChecked) => {
                 if (isChecked) 
                 {
+                    _persistentWindowSize = WindowSizeMode.Half;
                     _desiredWindowSize = WindowSizeMode.Half;
                     Debug.Log("[SettingsUI] Selected Half window size");
                 }
@@ -383,6 +411,7 @@ namespace PitHero.UI
             _quarterSizeButton.OnChanged += (isChecked) => {
                 if (isChecked) 
                 {
+                    _persistentWindowSize = WindowSizeMode.Quarter;
                     _desiredWindowSize = WindowSizeMode.Quarter;
                     Debug.Log("[SettingsUI] Selected Quarter window size");
                 }
@@ -604,29 +633,32 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Toggles settings visibility. When opening, remembers shrink mode and restores full size. When closing, re-applies previous shrink.
+        /// Toggles settings visibility. When opening, remembers shrink mode and restores full size. When closing, applies persistent size.
         /// </summary>
         private void ToggleSettingsVisibility()
         {
             bool willShow = !_isVisible;
             if (willShow)
             {
-                // Capture current shrink state BEFORE restoring
-                _prevWasQuarterShrink = WindowManager.IsQuarterHeightMode();
-                _prevWasHalfShrink = !_prevWasQuarterShrink && WindowManager.IsHalfHeightMode();
-                if (_prevWasQuarterShrink || _prevWasHalfShrink)
+                // Store the current window state as persistent before temporarily changing it
+                UpdatePersistentWindowSize();
+                
+                // Temporarily restore to normal size for settings viewing
+                if (WindowManager.IsHalfHeightMode() || WindowManager.IsQuarterHeightMode())
+                {
                     WindowManager.RestoreOriginalSize(_game);
+                }
 
                 // Update zoom slider to reflect current camera zoom
                 UpdateZoomSliderFromCamera();
                 
-                // Update window size buttons and desired size to reflect current window state
-                UpdateWindowSizeButtonsAndDesiredSize();
+                // Set radio buttons to reflect persistent size (not current temporary size)
+                UpdateRadioButtonsFromPersistentSize();
             }
             else
             {
-                // Apply desired window size when closing settings (instead of restoring previous state)
-                ApplyDesiredWindowSize();
+                // Apply persistent window size when closing settings
+                ApplyPersistentWindowSize();
             }
 
             _isVisible = willShow;
@@ -640,11 +672,11 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Apply the desired window size when settings UI is closed
+        /// Apply the persistent window size when settings UI is closed
         /// </summary>
-        private void ApplyDesiredWindowSize()
+        private void ApplyPersistentWindowSize()
         {
-            switch (_desiredWindowSize)
+            switch (_persistentWindowSize)
             {
                 case WindowSizeMode.Normal:
                     // Restore to original size if currently shrunk
@@ -679,42 +711,51 @@ namespace PitHero.UI
                     break;
             }
             
-            Debug.Log($"[SettingsUI] Applied desired window size: {_desiredWindowSize}");
+            Debug.Log($"[SettingsUI] Applied persistent window size: {_persistentWindowSize}");
         }
 
         /// <summary>
-        /// Update window size radio buttons and desired size to reflect current window state
-        /// </summary>
-        private void UpdateWindowSizeButtonsAndDesiredSize()
-        {
-            if (_windowSizeButtonGroup == null) return;
-            
-            // Determine current window mode and update both UI and desired size
-            if (WindowManager.IsQuarterHeightMode())
-            {
-                _quarterSizeButton.IsChecked = true;
-                _desiredWindowSize = WindowSizeMode.Quarter;
-            }
-            else if (WindowManager.IsHalfHeightMode())
-            {
-                _halfSizeButton.IsChecked = true;
-                _desiredWindowSize = WindowSizeMode.Half;
-            }
-            else
-            {
-                _normalSizeButton.IsChecked = true;
-                _desiredWindowSize = WindowSizeMode.Normal;
-            }
-            
-            Debug.Log($"[SettingsUI] Updated window size buttons to reflect current state: {_desiredWindowSize}");
-        }
-
-        /// <summary>
-        /// Update window size radio buttons to reflect current window state
+        /// Update window size radio buttons to reflect persistent window size (legacy method)
         /// </summary>
         private void UpdateWindowSizeButtons()
         {
-            UpdateWindowSizeButtonsAndDesiredSize();
+            UpdateRadioButtonsFromPersistentSize();
+        }
+
+        /// <summary>
+        /// Update window size radio buttons and desired size to reflect persistent window state (legacy method)
+        /// </summary>
+        private void UpdateWindowSizeButtonsAndDesiredSize()
+        {
+            UpdateRadioButtonsFromPersistentSize();
+        }
+
+        /// <summary>
+        /// Update window size radio buttons based on persistent window size (not current window state)
+        /// </summary>
+        private void UpdateRadioButtonsFromPersistentSize()
+        {
+            if (_windowSizeButtonGroup == null) return;
+            
+            // Set radio buttons based on persistent size, not current window state
+            switch (_persistentWindowSize)
+            {
+                case WindowSizeMode.Quarter:
+                    _quarterSizeButton.IsChecked = true;
+                    _desiredWindowSize = WindowSizeMode.Quarter;
+                    break;
+                case WindowSizeMode.Half:
+                    _halfSizeButton.IsChecked = true;
+                    _desiredWindowSize = WindowSizeMode.Half;
+                    break;
+                case WindowSizeMode.Normal:
+                default:
+                    _normalSizeButton.IsChecked = true;
+                    _desiredWindowSize = WindowSizeMode.Normal;
+                    break;
+            }
+            
+            Debug.Log($"[SettingsUI] Updated radio buttons to reflect persistent size: {_persistentWindowSize}");
         }
 
         /// <summary>
@@ -732,6 +773,12 @@ namespace PitHero.UI
             _fastFUI?.Update();
             _heroUI?.Update();
 
+            // Update persistent size if window size changed externally (e.g., Shift+Mouse Wheel)
+            if (!_isVisible) // Only update when settings are closed
+            {
+                UpdatePersistentWindowSizeIfChanged();
+            }
+
             // Reposition only if any button size changed or stage dimensions changed
             bool needsReposition = _gearStyleChanged;
             if (_fastFUI != null && _fastFUI.ConsumeStyleChangedFlag()) needsReposition = true;
@@ -748,17 +795,28 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Update zoom slider to reflect current camera zoom level
+        /// Updates persistent window size if it changed externally (e.g., via Shift+Mouse Wheel)
         /// </summary>
-        private void UpdateZoomSliderFromCamera()
+        private void UpdatePersistentWindowSizeIfChanged()
         {
-            var currentScene = Core.Scene;
-            if (currentScene?.Camera != null && _zoomSlider != null)
+            WindowSizeMode currentActualSize;
+            if (WindowManager.IsQuarterHeightMode())
             {
-                var currentZoom = currentScene.Camera.RawZoom;
-                _zoomSlider.SetValueAndCommit(currentZoom);
-                _zoomLabel.SetText($"Zoom: {currentZoom:F2}x");
-                Debug.Log($"[SettingsUI] Updated zoom slider to current camera zoom: {currentZoom:F2}x");
+                currentActualSize = WindowSizeMode.Quarter;
+            }
+            else if (WindowManager.IsHalfHeightMode())
+            {
+                currentActualSize = WindowSizeMode.Half;
+            }
+            else
+            {
+                currentActualSize = WindowSizeMode.Normal;
+            }
+
+            if (currentActualSize != _persistentWindowSize)
+            {
+                _persistentWindowSize = currentActualSize;
+                Debug.Log($"[SettingsUI] Updated persistent window size due to external change: {_persistentWindowSize}");
             }
         }
 
@@ -895,6 +953,21 @@ namespace PitHero.UI
             else
             {
                 Debug.Warn("[SettingsUI] Could not find camera to apply zoom");
+            }
+        }
+
+        /// <summary>
+        /// Update zoom slider to reflect current camera zoom level
+        /// </summary>
+        private void UpdateZoomSliderFromCamera()
+        {
+            var currentScene = Core.Scene;
+            if (currentScene?.Camera != null && _zoomSlider != null)
+            {
+                var currentZoom = currentScene.Camera.RawZoom;
+                _zoomSlider.SetValueAndCommit(currentZoom);
+                _zoomLabel.SetText($"Zoom: {currentZoom:F2}x");
+                Debug.Log($"[SettingsUI] Updated zoom slider to current camera zoom: {currentZoom:F2}x");
             }
         }
     }
