@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.ECS.Components;
 using PitHero.AI.Interfaces;
+using PitHero.Services;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Heroes;
 using System.Collections.Generic;
@@ -99,6 +100,30 @@ namespace PitHero.AI
             // Note: Virtual implementation would handle monster removal from virtual world state
             context.LogDebug("[AttackMonster] Attack completed in virtual context");
             return true;
+        }
+
+        /// <summary>
+        /// Yield until the game is no longer paused
+        /// </summary>
+        private System.Collections.IEnumerator WaitWhilePaused()
+        {
+            var pauseService = Core.Services.GetService<PauseService>();
+            while (pauseService?.IsPaused == true)
+            {
+                yield return null; // Wait one frame
+            }
+        }
+
+        /// <summary>
+        /// Wait for specified seconds while respecting pause state
+        /// </summary>
+        private System.Collections.IEnumerator WaitForSecondsRespectingPause(float seconds)
+        {
+            // First wait while paused
+            yield return WaitWhilePaused();
+            
+            // Then wait for the specified time
+            yield return Coroutine.WaitForSeconds(seconds);
         }
 
         /// <summary>
@@ -271,6 +296,9 @@ namespace PitHero.AI
                 // Battle loop - continue until hero dies or all monsters are defeated
                 while (hero.CurrentHP > 0 && validMonsters.Any(m => m.GetComponent<EnemyComponent>()?.Enemy.CurrentHP > 0))
                 {
+                    // Wait while paused before starting each round
+                    yield return WaitWhilePaused();
+
                     // Calculate turn values for all participants at start of each round
                     for (int i = 0; i < participants.Count; i++)
                     {
@@ -302,6 +330,9 @@ namespace PitHero.AI
                     {
                         if (participant.TurnValue < 0) continue; // Skip dead/invalid participants
 
+                        // Wait while paused before each participant's turn
+                        yield return WaitWhilePaused();
+
                         if (participant.IsHero)
                         {
                             // Hero's turn - attack a random living monster
@@ -326,7 +357,7 @@ namespace PitHero.AI
                                 {
                                     enemyBouncyDigit.Init(heroAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor, false);
                                     enemyBouncyDigit.SetEnabled(true);
-                                    yield return Coroutine.WaitForSeconds(GameConfig.BattleDigitBounceWait);
+                                    yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
                                 }
 
                                 if (enemyDied)
@@ -347,7 +378,7 @@ namespace PitHero.AI
                                 {
                                     enemyBouncyText.Init("Miss", BouncyTextComponent.EnemyMissColor);
                                     enemyBouncyText.SetEnabled(true);
-                                    yield return Coroutine.WaitForSeconds(GameConfig.BattleDigitBounceWait);
+                                    yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
                                 }
                             }
                         }
@@ -376,7 +407,7 @@ namespace PitHero.AI
                                 {
                                     heroBouncyDigit.Init(enemyAttackResult.Damage, BouncyDigitComponent.HeroDigitColor, false);
                                     heroBouncyDigit.SetEnabled(true);
-                                    yield return Coroutine.WaitForSeconds(GameConfig.BattleDigitBounceWait);
+                                    yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
                                 }
 
                                 if (heroDied)
@@ -397,21 +428,21 @@ namespace PitHero.AI
                                 {
                                     heroBouncyText.Init("Miss", BouncyTextComponent.HeroMissColor);
                                     heroBouncyText.SetEnabled(true);
-                                    yield return Coroutine.WaitForSeconds(GameConfig.BattleDigitBounceWait);
+                                    yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
                                 }
                             }
                         }
 
-                        // Wait between each participant's turn
-                        yield return Coroutine.WaitForSeconds(GameConfig.BattleTurnWait);
+                        // Wait between each participant's turn (respecting pause)
+                        yield return WaitForSecondsRespectingPause(GameConfig.BattleTurnWait);
 
                         // Break if hero died or all monsters are dead
                         if (hero.CurrentHP <= 0 || validMonsters.All(m => m.GetComponent<EnemyComponent>()?.Enemy.CurrentHP <= 0))
                             break;
                     }
 
-                    // Wait between rounds
-                    yield return Coroutine.WaitForSeconds(GameConfig.BattleTurnWait);
+                    // Wait between rounds (respecting pause)
+                    yield return WaitForSecondsRespectingPause(GameConfig.BattleTurnWait);
                 }
 
                 // Recalculate monster adjacency after battle
