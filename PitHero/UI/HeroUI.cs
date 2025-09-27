@@ -92,7 +92,7 @@ namespace PitHero.UI
             // Explicitly size to the image
             _heroButton.SetSize(heroSprite.SourceRect.Width, heroSprite.SourceRect.Height);
 
-            // Handle click (placeholder - does nothing for now)
+            // Handle click to toggle priority window
             _heroButton.OnClicked += (button) => HandleHeroButtonClick();
         }
 
@@ -113,7 +113,6 @@ namespace PitHero.UI
             // Create window
             _priorityWindow = new Window("Pit Priorities", skin);
             _priorityWindow.SetSize(300f, 200f);
-            _priorityWindow.SetPosition(100f, 100f);
             _priorityWindow.Add(_priorityList).Expand().Fill();
 
             // Add close button
@@ -168,18 +167,66 @@ namespace PitHero.UI
                 InitializePriorityItems();
                 _priorityList.Rebuild();
                 
+                // Position window next to Hero button
+                PositionPriorityWindow();
+                
                 // Add to stage and show
                 _stage.AddElement(_priorityWindow);
                 _priorityWindow.SetVisible(true);
-                Debug.Log("Priority window opened");
+                _priorityWindow.ToFront();
+                
+                // Pause the game when window opens
+                var pauseService = Core.Services.GetService<PauseService>();
+                if (pauseService != null)
+                    pauseService.IsPaused = true;
+                
+                Debug.Log("Priority window opened and game paused");
             }
             else
             {
                 // Hide and remove from stage
                 _priorityWindow.SetVisible(false);
                 _priorityWindow.Remove();
-                Debug.Log("Priority window closed");
+                
+                // Unpause the game when window closes
+                var pauseService = Core.Services.GetService<PauseService>();
+                if (pauseService != null)
+                    pauseService.IsPaused = false;
+                
+                Debug.Log("Priority window closed and game unpaused");
             }
+        }
+
+        private void PositionPriorityWindow()
+        {
+            if (_priorityWindow == null || _heroButton == null) return;
+
+            // Ensure window dimensions are calculated
+            _priorityWindow.Validate();
+
+            float heroX = _heroButton.GetX();
+            float heroY = _heroButton.GetY();
+            float heroW = _heroButton.GetWidth();
+            float winW = _priorityWindow.GetWidth();
+            float winH = _priorityWindow.GetHeight();
+
+            const float padding = 4f;
+            float targetX = heroX + heroW + padding;
+            float targetY = heroY + padding;
+
+            float stageW = _stage.GetWidth();
+            float stageH = _stage.GetHeight();
+
+            // If window would go off right edge, position to the left of button
+            if (targetX + winW > stageW)
+                targetX = heroX - padding - winW;
+
+            // Clamp to stage bounds
+            if (targetX < 0) targetX = 0;
+            if (targetY < 0) targetY = 0;
+            if (targetY + winH > stageH) targetY = stageH - winH;
+
+            _priorityWindow.SetPosition(targetX, targetY);
         }
 
         private HeroComponent GetHeroComponent()
@@ -261,6 +308,22 @@ namespace PitHero.UI
         public void SetPosition(float x, float y)
         {
             _heroButton?.SetPosition(x, y);
+        }
+
+        /// <summary>
+        /// Get the button X position
+        /// </summary>
+        public float GetX()
+        {
+            return _heroButton?.GetX() ?? 0f;
+        }
+
+        /// <summary>
+        /// Get the button Y position
+        /// </summary>
+        public float GetY()
+        {
+            return _heroButton?.GetY() ?? 0f;
         }
 
         /// <summary>
