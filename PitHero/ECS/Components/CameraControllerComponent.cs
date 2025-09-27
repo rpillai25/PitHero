@@ -21,9 +21,10 @@ namespace PitHero.ECS.Components
 
         /// <summary>
         /// Gets whether this component should respect the global pause state.
-        /// Camera controls are allowed during pause for UI navigation.
+        /// We shouldn't modify camera size or zoom while paused from menu.
+        /// We'll have separate menu controls that handle this.
         /// </summary>
-        public bool ShouldPause => false;
+        public bool ShouldPause => true;
 
         public override void OnAddedToEntity()
         {

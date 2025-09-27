@@ -24,7 +24,6 @@
     - `Collision`: The collision layer	
 	- `FogOfWar`: The FogOfWar layer (4 surrounding FogOfWar tiles cleared whenever Hero lands on tile underneath)
 - Keep all constants (sizes, positions, movement speeds) in `GameConfig.cs`
-- For global state information, use GlobalStateService.  Add fields to this as needed to easily query global game state information from anywhere.
 - If a private method needs to be called from another class, change that method to be public.
 - Avoid the use of Reflection.
 - Do not add multiple classes to a single file. Classes should be in their own file.  Structs are an exception to this rule.

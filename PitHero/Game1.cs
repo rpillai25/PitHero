@@ -20,7 +20,6 @@ namespace PitHero
 
             // Register global services
             Services.AddService(new PauseService());
-            Services.AddService(new GlobalStateService());
 
             // Disable pausing when focus is lost - essential for idle game behavior
             PauseOnFocusLost = false;
