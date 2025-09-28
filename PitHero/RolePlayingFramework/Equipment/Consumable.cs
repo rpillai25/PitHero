@@ -6,11 +6,10 @@ namespace RolePlayingFramework.Equipment
     public sealed class Consumable : IItem
     {
         public string Name { get; }
-        public ItemKind Kind => ItemKind.Accessory; // non-gear bucket
+        public ItemKind Kind => ItemKind.Consumable; //one-time use items that go away upon consuming
         public StatBlock StatBonus { get; }
         public int AttackBonus { get; }
         public int DefenseBonus { get; }
-        public bool IsConsumable => true;
 
         public Consumable(string name, in StatBlock stats, int atk = 0, int def = 0)
         {

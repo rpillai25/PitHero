@@ -34,7 +34,7 @@ namespace RolePlayingFramework.Heroes
         // Equipment
         public IItem? Weapon { get; private set; }
         public IItem? Armor { get; private set; }
-        public IItem? Hat { get; private set; }
+        public IItem? Helm { get; private set; }
         public IItem? Accessory1 { get; private set; }
         public IItem? Accessory2 { get; private set; }
 
@@ -185,16 +185,16 @@ namespace RolePlayingFramework.Heroes
                     if (Job is Jobs.Mage || Job is Jobs.Priest || _extraEquipPermissions.Contains(ItemKind.ArmorRobe)) { Armor = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.HatHelm:
-                    if (Job is Jobs.Knight) { Hat = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Knight) { Helm = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.HatHeadband:
-                    if (Job is Jobs.Monk) { Hat = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Monk) { Helm = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.HatWizard:
-                    if (Job is Jobs.Mage) { Hat = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Mage) { Helm = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.HatPriest:
-                    if (Job is Jobs.Priest) { Hat = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Priest) { Helm = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.Accessory:
                     if (Accessory1 == null) { Accessory1 = item; RecalculateDerived(); return true; }
@@ -212,7 +212,7 @@ namespace RolePlayingFramework.Heroes
             {
                 case EquipmentSlot.Weapon: if (Weapon != null) { Weapon = null; RecalculateDerived(); return true; } break;
                 case EquipmentSlot.Armor: if (Armor != null) { Armor = null; RecalculateDerived(); return true; } break;
-                case EquipmentSlot.Hat: if (Hat != null) { Hat = null; RecalculateDerived(); return true; } break;
+                case EquipmentSlot.Hat: if (Helm != null) { Helm = null; RecalculateDerived(); return true; } break;
                 case EquipmentSlot.Accessory1: if (Accessory1 != null) { Accessory1 = null; RecalculateDerived(); return true; } break;
                 case EquipmentSlot.Accessory2: if (Accessory2 != null) { Accessory2 = null; RecalculateDerived(); return true; } break;
             }
@@ -225,7 +225,7 @@ namespace RolePlayingFramework.Heroes
             var sum = new StatBlock(0, 0, 0, 0);
             if (Weapon != null) sum = sum.Add(Weapon.StatBonus);
             if (Armor != null) sum = sum.Add(Armor.StatBonus);
-            if (Hat != null) sum = sum.Add(Hat.StatBonus);
+            if (Helm != null) sum = sum.Add(Helm.StatBonus);
             if (Accessory1 != null) sum = sum.Add(Accessory1.StatBonus);
             if (Accessory2 != null) sum = sum.Add(Accessory2.StatBonus);
             return sum;
@@ -246,7 +246,7 @@ namespace RolePlayingFramework.Heroes
         {
             int def = PassiveDefenseBonus;
             if (Armor != null) def += Armor.DefenseBonus;
-            if (Hat != null) def += Hat.DefenseBonus;
+            if (Helm != null) def += Helm.DefenseBonus;
             if (Accessory1 != null) def += Accessory1.DefenseBonus;
             if (Accessory2 != null) def += Accessory2.DefenseBonus;
             return def;

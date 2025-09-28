@@ -10,8 +10,6 @@ namespace RolePlayingFramework.Equipment
         public StatBlock StatBonus { get; }
         public int AttackBonus { get; }
         public int DefenseBonus { get; }
-        public bool IsConsumable => false;
-
         public Gear(string name, ItemKind kind, in StatBlock stats, int atk = 0, int def = 0)
         {
             Name = name;

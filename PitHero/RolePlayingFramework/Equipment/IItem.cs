@@ -17,8 +17,5 @@ namespace RolePlayingFramework.Equipment
         /// <summary>Optional flat attack/defense modifiers (positive or negative).</summary>
         int AttackBonus { get; }
         int DefenseBonus { get; }
-
-        /// <summary>If true, item is consumable and removed on use.</summary>
-        bool IsConsumable { get; }
     }
 }
