@@ -11,7 +11,7 @@ namespace PitHero.UI
     public class FastFUI
     {
         private Stage _stage;
-        private ImageButton _fastFButton;
+        private HoverableImageButton _fastFButton;
         
         private ImageButtonStyle _fastFNormalStyle;
         private ImageButtonStyle _fastFHalfStyle;
@@ -106,7 +106,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(fastFHighlight4x)
             };
 
-            _fastFButton = new ImageButton(_fastFNormalStyle);
+            _fastFButton = new HoverableImageButton(_fastFNormalStyle, "Fast Forward");
             // Explicitly size to the image
             _fastFButton.SetSize(fastFSprite.SourceRect.Width, fastFSprite.SourceRect.Height);
 

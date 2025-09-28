@@ -13,7 +13,7 @@ namespace PitHero.UI
     public class HeroUI
     {
         private Stage _stage;
-        private ImageButton _heroButton;
+        private HoverableImageButton _heroButton;
         
         private ImageButtonStyle _heroNormalStyle;
         private ImageButtonStyle _heroHalfStyle;
@@ -88,7 +88,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(heroHighlight4x)
             };
 
-            _heroButton = new ImageButton(_heroNormalStyle);
+            _heroButton = new HoverableImageButton(_heroNormalStyle, "Hero");
             // Explicitly size to the image
             _heroButton.SetSize(heroSprite.SourceRect.Width, heroSprite.SourceRect.Height);
 

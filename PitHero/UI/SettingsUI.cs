@@ -13,7 +13,7 @@ namespace PitHero.UI
     {
         private Stage _stage;
         private Table _mainTable;
-        private Button _gearButton;
+        private HoverableImageButton _gearButton;
         private Window _settingsWindow;
         private bool _isVisible = false;
 
@@ -109,6 +109,9 @@ namespace PitHero.UI
             // Initialize centralized UI window manager early so all UI components can use it
             UIWindowManager.Initialize(_game);
 
+            // Initialize hover text manager
+            HoverTextManager.Initialize(_stage);
+
             // Use default skin
             var skin = Skin.CreateDefaultSkin();
 
@@ -174,7 +177,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(gearHighlight4x)
             };
 
-            _gearButton = new ImageButton(_gearNormalStyle);
+            _gearButton = new HoverableImageButton(_gearNormalStyle, "Settings");
             // Explicitly size to the image (avoids hard-coded magic numbers)
             _gearButton.SetSize(gearSprite.SourceRect.Width, gearSprite.SourceRect.Height);
 
