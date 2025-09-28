@@ -13,12 +13,16 @@
   - Hero collider currently collides with TileMap (GameConfig.PhysicsTileMapLayer)
 - Architecture constraints:
   - **Single Hero**: There is only ever 1 active hero at a time (no multiple heroes)
-  - **Single Pit**: There is only ever 1 active pit with configured size (not random size)
+  - **Single Pit**: There is only ever 1 active pit that grows in width as the player progresses
   - **Individual Components**: Each component class should be in its own file
   - **MSTest**: Use standard MSTest framework for testing, not custom test runners
   - **Nez Boilerplate**: Keep Program.cs as standard Nez boilerplate (FNA setup).  This should not be modified unless absolutely required when there is no other workaround.
 - Rendering/UI:
   - Live strip renders current `WorldState`
+  - Use HoverableImageButton instead of Nez ImageButton for any image button functionality
+  - Use Nez TabPane for any tab functionality
+  - Use EnhancedSlider instead of Nez Slider for any slider functionality
+  - If we need any new UI element functionality that doesn't exist yet in a Nez class, and it can't be solved by inheriting and overriding from the Nez class, try creating a replacement UI element that starts by duplicating the Nez element and enhance as needed.
   - TileMap Layers
     - `Base`: The lowest layer
     - `Collision`: The collision layer	
@@ -35,6 +39,7 @@
   - Use Nez.Debug for all logs
   - When logging Vectors and Points, log the X & Y components individually.  You can't just write the Vector/Point itself.
   - When logging Rectangles, log the X, Y, Width, and Height individually.  You can't just write the Rectangle itself.
+  - Avoid unnecessarily excess logging unless it's specifically for debugging an issue.  Then once the issue has been solved remove the excess logging.
 - **Build Requirements**: 
   - Run `getFNA.sh` with automatic "yes" response before building to initialize FNA submodule and dependencies
     - cd /home/runner/work/PitHero/PitHero && echo "y" | ./getFNA.sh
@@ -50,7 +55,7 @@
   - All components under ECS/Components/, Scenes under ECS/Scenes/
   - If a Service needs to be easily accessed in multiple places, register it with Core.Services.AddService() and then get it from anywhere with Core.Services.GetService<Service>()
   - Any Conditions for the GOAP framework should be added to GoapConstants for strong typing
-- There is a virtual logic layer in PitHero.VirtualGame that is intended to simulate the game in a virtual, non-graphical context.  This is important for testing to ensure logic is correct.
+- There is a virtual logic layer in PitHero.VirtualGame that is intended to simulate the game in a virtual, non-graphical context.  This is important for testing to ensure logic is correct.  Make sure this stays up to date with any new changes.
 - WorldState is a struct.  If we need to pass world state to any method to update the world state, it should be passed by reference.  Passing it by value will only modify a copy of it.  IMPORTANT!!!
 - ** AOT compilation compliance**:
   - Avoid garbage generation
@@ -58,4 +63,4 @@
   - Avoid allocating anything with the new keyword during your game loop, e.g. pre-allocate everything ahead of using them during gameplay.
   - Avoid using LINQ
   - If you are using collections, initialize them with a large enough capacity to avoid their internal data structure being silently recreated.
-  - Use for loops instead of foreach loops
+  - Use for loops instead of foreach loops. VERY IMPORTANT
