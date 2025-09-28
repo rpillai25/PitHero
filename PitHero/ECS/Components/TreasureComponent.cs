@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Sprites;
+using RolePlayingFramework.Equipment;
 
 namespace PitHero.ECS.Components
 {
@@ -20,6 +21,7 @@ namespace PitHero.ECS.Components
         private SpriteRenderer _baseRenderer;
         private SpriteRenderer _woodRenderer;
         private SpriteAtlas _actorsAtlas;
+        private IItem? _containedItem;
 
         /// <summary>
         /// Current state of the treasure chest
@@ -51,6 +53,15 @@ namespace PitHero.ECS.Components
                     UpdateWoodColor();
                 }
             }
+        }
+
+        /// <summary>
+        /// Item contained within this treasure chest
+        /// </summary>
+        public IItem? ContainedItem 
+        { 
+            get => _containedItem;
+            set => _containedItem = value;
         }
 
         public override void OnAddedToEntity()
@@ -128,6 +139,26 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
+        /// Generate an appropriate item for the given treasure level
+        /// </summary>
+        public static IItem GenerateItemForTreasureLevel(int treasureLevel)
+        {
+            var rarity = RarityUtils.GetRarityForTreasureLevel(treasureLevel);
+            
+            // For now, create a simple bag item based on rarity
+            // This can be expanded to generate different types of items
+            return rarity switch
+            {
+                ItemRarity.Normal => BagItems.StandardBag(),
+                ItemRarity.Uncommon => BagItems.ForagersBag(), 
+                ItemRarity.Rare => BagItems.TravellersBag(),
+                ItemRarity.Epic => BagItems.AdventurersBag(),
+                ItemRarity.Legendary => BagItems.MerchantsBag(),
+                _ => BagItems.StandardBag()
+            };
+        }
+
+        /// <summary>
         /// Determine treasure level based on pit level using probability distribution
         /// </summary>
         public static int DetermineTreasureLevel(int pitLevel)
@@ -169,6 +200,15 @@ namespace PitHero.ECS.Components
                     _ => 5
                 }
             };
+        }
+
+        /// <summary>
+        /// Initialize this treasure chest for a specific pit level
+        /// </summary>
+        public void InitializeForPitLevel(int pitLevel)
+        {
+            Level = DetermineTreasureLevel(pitLevel);
+            ContainedItem = GenerateItemForTreasureLevel(Level);
         }
     }
 }
