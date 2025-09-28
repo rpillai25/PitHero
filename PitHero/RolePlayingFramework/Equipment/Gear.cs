@@ -3,7 +3,7 @@ using RolePlayingFramework.Stats;
 namespace RolePlayingFramework.Equipment
 {
     /// <summary>Simple gear item with stat and flat bonuses.</summary>
-    public sealed class Gear : IItem
+    public sealed class Gear : IGear
     {
         public string Name { get; }
         public ItemKind Kind { get; }

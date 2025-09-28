@@ -210,14 +210,39 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void Consumable_DoesNotHaveBonuses()
+        public void Gear_ImplementsIGearInterface()
         {
-            var consumable = new Consumable("Health Potion", ItemRarity.Normal, new StatBlock(0, 0, 0, 0));
+            var gear = new Gear("Vitality Ring", ItemKind.Accessory, ItemRarity.Rare, 
+                new StatBlock(0, 0, 2, 0), hp: 50, ap: 20);
 
-            Assert.AreEqual(0, consumable.AttackBonus);
-            Assert.AreEqual(0, consumable.DefenseBonus);
-            Assert.AreEqual(0, consumable.HPBonus);
-            Assert.AreEqual(0, consumable.APBonus);
+            // Test that Gear implements IGear
+            IGear gearInterface = gear;
+            Assert.IsNotNull(gearInterface);
+
+            // Test IGear properties through interface
+            Assert.AreEqual(50, gearInterface.HPBonus);
+            Assert.AreEqual(20, gearInterface.APBonus);
+            Assert.AreEqual(new StatBlock(0, 0, 2, 0), gearInterface.StatBonus);
+
+            // Test IItem properties through interface
+            IItem itemInterface = gear;
+            Assert.AreEqual("Vitality Ring", itemInterface.Name);
+            Assert.AreEqual(ItemKind.Accessory, itemInterface.Kind);
+            Assert.AreEqual(ItemRarity.Rare, itemInterface.Rarity);
+        }
+
+        [TestMethod]
+        public void Consumable_HasConsumeMethod()
+        {
+            var consumable = new Consumable("Health Potion", ItemRarity.Normal);
+
+            // Verify basic properties
+            Assert.AreEqual("Health Potion", consumable.Name);
+            Assert.AreEqual(ItemRarity.Normal, consumable.Rarity);
+            Assert.AreEqual(ItemKind.Consumable, consumable.Kind);
+
+            // Verify consume method exists and works
+            Assert.IsTrue(consumable.Consume(new object()));
         }
     }
 }
