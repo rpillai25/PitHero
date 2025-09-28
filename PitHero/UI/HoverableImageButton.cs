@@ -33,12 +33,11 @@ namespace PitHero.UI
                 // Mouse entered
                 if (!string.IsNullOrEmpty(_hoverText))
                 {
-                    // Calculate position with better centering that accounts for text scaling
-                    float textScale = GetCurrentTextScale();
-                    float estimatedTextWidth = _hoverText.Length * 6f * textScale; // Rough character width estimation with scaling
+                    // Calculate position with better centering using estimated text width
+                    float estimatedTextWidth = EstimateTextWidth(_hoverText);
                     
                     float hoverX = GetX() + (GetWidth() * 0.5f) - (estimatedTextWidth * 0.5f); // Center text properly
-                    float hoverY = GetY() + GetHeight() + 5f; // Below button with padding
+                    float hoverY = GetY() + GetHeight() + GetYPadding(); // Below button with proper padding
                     
                     HoverTextManager.ShowHoverText(_hoverText, hoverX, hoverY);
                 }
@@ -53,21 +52,65 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Get the current text scale factor based on window mode
+        /// Get appropriate Y padding based on current window mode
         /// </summary>
-        private float GetCurrentTextScale()
+        private float GetYPadding()
         {
-            if (WindowManager.IsQuarterHeightMode())
+            try
             {
-                return 4f; // Text scaled up 4x for quarter window
+                // Use different padding amounts based on window mode to maintain consistent visual spacing
+                if (WindowManager.IsQuarterHeightMode())
+                {
+                    return 34f; // Larger padding for quarter mode with bigger fonts
+                }
+                else if (WindowManager.IsHalfHeightMode())
+                {
+                    return 18f; // Medium padding for half mode
+                }
+                else
+                {
+                    return 10f; // Standard padding for normal mode
+                }
             }
-            else if (WindowManager.IsHalfHeightMode())
+            catch
             {
-                return 2f; // Text scaled up 2x for half window
+                // Fallback to standard padding
+                return 10f;
             }
-            else
+        }
+
+        /// <summary>
+        /// Estimate text width based on current window mode and font sizes
+        /// </summary>
+        private float EstimateTextWidth(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return 0f;
+
+            try
             {
-                return 1f; // Normal size
+                // Use different character width estimates based on window mode
+                // These are rough estimates based on the actual font sizes
+                float charWidth;
+                if (WindowManager.IsQuarterHeightMode())
+                {
+                    charWidth = 16f; // Hud4x.fnt has larger characters
+                }
+                else if (WindowManager.IsHalfHeightMode())
+                {
+                    charWidth = 8f; // Hud2x.fnt has medium characters
+                }
+                else
+                {
+                    charWidth = 4f; // HUD.fnt has normal size characters
+                }
+
+                return text.Length * charWidth;
+            }
+            catch
+            {
+                // Fallback to normal size estimation
+                return text.Length * 4f;
             }
         }
 

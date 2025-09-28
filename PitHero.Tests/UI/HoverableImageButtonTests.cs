@@ -46,17 +46,17 @@ namespace PitHero.Tests.UI
         }
 
         [TestMethod]
-        public void HoverableImageButton_GetCurrentTextScale_ShouldReturnCorrectValues()
+        public void HoverableImageButton_EstimateTextWidth_ShouldHandleEmptyText()
         {
-            // This test validates that our text scaling logic would work
+            // This test validates that our text width estimation handles edge cases
             // We can't directly test the private method, but we can test the concept
             
             // Arrange
             var style = new ImageButtonStyle();
-            var hoverButton = new HoverableImageButton(style, "Test");
+            var hoverButton = new HoverableImageButton(style, "");
             
-            // Act & Assert - just verify button creation succeeds with scaling logic
-            Assert.IsNotNull(hoverButton, "Button should be created with scaling logic intact");
+            // Act & Assert - just verify button creation succeeds with empty text
+            Assert.IsNotNull(hoverButton, "Button should be created with empty hover text");
         }
     }
 }
