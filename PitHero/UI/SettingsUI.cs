@@ -17,14 +17,10 @@ namespace PitHero.UI
         private Window _settingsWindow;
         private bool _isVisible = false;
 
-        // Tab management
-        private Table _tabButtonsTable;
-        private Table _tabContentTable;
-        private TextButton _windowTabButton;
-        private TextButton _sessionTabButton;
-        private Table _windowTabContent;
-        private Table _sessionTabContent;
-        private bool _isWindowTabActive = true;
+        // Tab management using actual TabPane
+        private TabPane _tabPane;
+        private Tab _windowTab;
+        private Tab _sessionTab;
 
         // Window positioning controls
         private EnhancedSlider _yOffsetSlider;
@@ -131,7 +127,7 @@ namespace PitHero.UI
             _heroUI = new HeroUI();
             _heroUI.InitializeUI(_stage);
 
-            // Create settings TabPane (initially hidden)
+            // Create settings window with TabPane (initially hidden)
             CreateSettingsWindow(skin);
 
             // Ensure both elements are added directly to the stage for absolute positioning
@@ -222,40 +218,30 @@ namespace PitHero.UI
 
         private void CreateSettingsWindow(Skin skin)
         {
-            // Create settings window with TabPane-style interface
+            // Create settings window with TabPane
             var windowStyle = skin.Get<WindowStyle>();
             _settingsWindow = new Window("Settings", windowStyle);
             _settingsWindow.SetSize(450, 350);
             
-            var mainContainer = new Table();
+            // Create TabPane with proper styling
+            var tabWindowStyle = CreateTabWindowStyle(skin);
+            _tabPane = new TabPane(tabWindowStyle);
             
-            // Create tab buttons
-            _tabButtonsTable = new Table();
-            _windowTabButton = new TextButton("Window", skin);
-            _sessionTabButton = new TextButton("Session", skin);
+            // Create tabs with content
+            var tabStyle = CreateTabStyle(skin);
+            _windowTab = new Tab("Window", tabStyle);
+            _sessionTab = new Tab("Session", tabStyle);
             
-            _windowTabButton.OnClicked += (button) => SwitchToTab(true);
-            _sessionTabButton.OnClicked += (button) => SwitchToTab(false);
+            // Add content to tabs
+            PopulateWindowTab(_windowTab, skin);
+            PopulateSessionTab(_sessionTab, skin);
             
-            _tabButtonsTable.Add(_windowTabButton).Width(100).SetPadRight(5);
-            _tabButtonsTable.Add(_sessionTabButton).Width(100);
+            // Add tabs to TabPane
+            _tabPane.AddTab(_windowTab);
+            _tabPane.AddTab(_sessionTab);
             
-            mainContainer.Add(_tabButtonsTable).SetExpandX().SetFillX().SetPadBottom(10);
-            mainContainer.Row();
-            
-            // Create content area
-            _tabContentTable = new Table();
-            
-            // Create tab contents
-            _windowTabContent = CreateWindowTab(skin);
-            _sessionTabContent = CreateSessionTab(skin);
-            
-            mainContainer.Add(_tabContentTable).Expand().Fill();
-            
-            _settingsWindow.Add(mainContainer).Expand().Fill();
-
-            // Initially show window tab
-            SwitchToTab(true);
+            // Add TabPane to settings window
+            _settingsWindow.Add(_tabPane).Expand().Fill();
 
             // Initially hidden
             _settingsWindow.SetVisible(false);
@@ -264,7 +250,44 @@ namespace PitHero.UI
             CreateConfirmationDialog(skin);
         }
 
-        private Table CreateWindowTab(Skin skin)
+        /// <summary>
+        /// Creates TabWindowStyle for the TabPane
+        /// </summary>
+        private TabWindowStyle CreateTabWindowStyle(Skin skin)
+        {
+            var tabButtonStyle = new TabButtonStyle();
+            tabButtonStyle.LabelStyle = skin.Get<LabelStyle>();
+            
+            // Use button styles for tab button states
+            var buttonStyle = skin.Get<TextButtonStyle>();
+            tabButtonStyle.Inactive = buttonStyle.Up;
+            tabButtonStyle.Active = buttonStyle.Down;
+            tabButtonStyle.Hover = buttonStyle.Over;
+            tabButtonStyle.Locked = buttonStyle.Disabled;
+            tabButtonStyle.PaddingTop = 2f;
+            
+            return new TabWindowStyle
+            {
+                Background = null, // Use window background instead
+                TabButtonStyle = tabButtonStyle
+            };
+        }
+
+        /// <summary>
+        /// Creates TabStyle for individual tabs
+        /// </summary>
+        private TabStyle CreateTabStyle(Skin skin)
+        {
+            return new TabStyle
+            {
+                Background = null // Use transparent background
+            };
+        }
+
+        /// <summary>
+        /// Populates the Window tab with its content
+        /// </summary>
+        private void PopulateWindowTab(Tab windowTab, Skin skin)
         {
             // Create scroll pane container
             var scrollContent = new Table();
@@ -423,14 +446,14 @@ namespace PitHero.UI
             scrollPane.SetScrollingDisabled(true, false); // Only allow vertical scrolling
             scrollPane.SetFadeScrollBars(false); // Always show scroll bars when needed
             
-            // Create wrapper table for the scroll pane
-            var windowTable = new Table();
-            windowTable.Add(scrollPane).Expand().Fill();
-
-            return windowTable;
+            // Add scroll pane to the tab
+            windowTab.Add(scrollPane).Expand().Fill();
         }
 
-        private Table CreateSessionTab(Skin skin)
+        /// <summary>
+        /// Populates the Session tab with its content
+        /// </summary>
+        private void PopulateSessionTab(Tab sessionTab, Skin skin)
         {
             var sessionTable = new Table();
             sessionTable.Pad(20);
@@ -453,7 +476,8 @@ namespace PitHero.UI
             _quitButton.OnClicked += (button) => ShowQuitConfirmation();
             sessionTable.Add(_quitButton).Width(150);
 
-            return sessionTable;
+            // Add content table to the tab
+            sessionTab.Add(sessionTable).Expand().Fill().Top().Left();
         }
 
         private void CreateConfirmationDialog(Skin skin)
@@ -524,24 +548,6 @@ namespace PitHero.UI
         private void HideQuitConfirmation()
         {
             _confirmationDialog.SetVisible(false);
-        }
-
-        private void SwitchToTab(bool showWindowTab)
-        {
-            _isWindowTabActive = showWindowTab;
-            _tabContentTable.Clear();
-            if (showWindowTab)
-            {
-                _tabContentTable.Add(_windowTabContent).Expand().Fill();
-                _windowTabButton.SetDisabled(true);
-                _sessionTabButton.SetDisabled(false);
-            }
-            else
-            {
-                _tabContentTable.Add(_sessionTabContent).Expand().Fill();
-                _windowTabButton.SetDisabled(false);
-                _sessionTabButton.SetDisabled(true);
-            }
         }
 
         /// <summary>Applies visibility and positions gear/settings window</summary>
