@@ -35,6 +35,7 @@ namespace RolePlayingFramework.Heroes
         public IItem? Weapon { get; private set; }
         public IItem? Armor { get; private set; }
         public IItem? Helm { get; private set; }
+        public IItem? Shield { get; private set; }
         public IItem? Accessory1 { get; private set; }
         public IItem? Accessory2 { get; private set; }
 
@@ -106,8 +107,8 @@ namespace RolePlayingFramework.Heroes
         {
             var jobStats = Job.GetJobContributionAtLevel(Level);
             var total = BaseStats.Add(jobStats).Add(GetEquipmentStatBonus());
-            MaxHP = 25 + total.Vitality * 5; // simple linear formula
-            MaxAP = 10 + total.Magic * 3;     // AP derived from magic for now
+            MaxHP = 25 + total.Vitality * 5 + GetEquipmentHPBonus(); // Add equipment HP bonus
+            MaxAP = 10 + total.Magic * 3 + GetEquipmentAPBonus();     // Add equipment AP bonus
             if (CurrentHP > MaxHP) CurrentHP = MaxHP;
             if (CurrentAP > MaxAP) CurrentAP = MaxAP;
         }
@@ -196,6 +197,9 @@ namespace RolePlayingFramework.Heroes
                 case ItemKind.HatPriest:
                     if (Job is Jobs.Priest) { Helm = item; RecalculateDerived(); return true; }
                     return false;
+                case ItemKind.Shield:
+                    // All classes can equip shields for now
+                    Shield = item; RecalculateDerived(); return true;
                 case ItemKind.Accessory:
                     if (Accessory1 == null) { Accessory1 = item; RecalculateDerived(); return true; }
                     if (Accessory2 == null) { Accessory2 = item; RecalculateDerived(); return true; }
@@ -213,6 +217,7 @@ namespace RolePlayingFramework.Heroes
                 case EquipmentSlot.Weapon: if (Weapon != null) { Weapon = null; RecalculateDerived(); return true; } break;
                 case EquipmentSlot.Armor: if (Armor != null) { Armor = null; RecalculateDerived(); return true; } break;
                 case EquipmentSlot.Hat: if (Helm != null) { Helm = null; RecalculateDerived(); return true; } break;
+                case EquipmentSlot.Shield: if (Shield != null) { Shield = null; RecalculateDerived(); return true; } break;
                 case EquipmentSlot.Accessory1: if (Accessory1 != null) { Accessory1 = null; RecalculateDerived(); return true; } break;
                 case EquipmentSlot.Accessory2: if (Accessory2 != null) { Accessory2 = null; RecalculateDerived(); return true; } break;
             }
@@ -226,6 +231,7 @@ namespace RolePlayingFramework.Heroes
             if (Weapon != null) sum = sum.Add(Weapon.StatBonus);
             if (Armor != null) sum = sum.Add(Armor.StatBonus);
             if (Helm != null) sum = sum.Add(Helm.StatBonus);
+            if (Shield != null) sum = sum.Add(Shield.StatBonus);
             if (Accessory1 != null) sum = sum.Add(Accessory1.StatBonus);
             if (Accessory2 != null) sum = sum.Add(Accessory2.StatBonus);
             return sum;
@@ -236,6 +242,7 @@ namespace RolePlayingFramework.Heroes
         {
             int atk = 0;
             if (Weapon != null) atk += Weapon.AttackBonus;
+            if (Shield != null) atk += Shield.AttackBonus;
             if (Accessory1 != null) atk += Accessory1.AttackBonus;
             if (Accessory2 != null) atk += Accessory2.AttackBonus;
             return atk;
@@ -247,9 +254,36 @@ namespace RolePlayingFramework.Heroes
             int def = PassiveDefenseBonus;
             if (Armor != null) def += Armor.DefenseBonus;
             if (Helm != null) def += Helm.DefenseBonus;
+            if (Shield != null) def += Shield.DefenseBonus;
             if (Accessory1 != null) def += Accessory1.DefenseBonus;
             if (Accessory2 != null) def += Accessory2.DefenseBonus;
             return def;
+        }
+
+        /// <summary>Total flat HP bonus from gear.</summary>
+        public int GetEquipmentHPBonus()
+        {
+            int hp = 0;
+            if (Weapon != null) hp += Weapon.HPBonus;
+            if (Armor != null) hp += Armor.HPBonus;
+            if (Helm != null) hp += Helm.HPBonus;
+            if (Shield != null) hp += Shield.HPBonus;
+            if (Accessory1 != null) hp += Accessory1.HPBonus;
+            if (Accessory2 != null) hp += Accessory2.HPBonus;
+            return hp;
+        }
+
+        /// <summary>Total flat AP bonus from gear.</summary>
+        public int GetEquipmentAPBonus()
+        {
+            int ap = 0;
+            if (Weapon != null) ap += Weapon.APBonus;
+            if (Armor != null) ap += Armor.APBonus;
+            if (Helm != null) ap += Helm.APBonus;
+            if (Shield != null) ap += Shield.APBonus;
+            if (Accessory1 != null) ap += Accessory1.APBonus;
+            if (Accessory2 != null) ap += Accessory2.APBonus;
+            return ap;
         }
 
         private void LearnInitialSkills() => AutoLearnNewSkills();

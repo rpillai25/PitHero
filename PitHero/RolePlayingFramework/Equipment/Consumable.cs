@@ -7,16 +7,18 @@ namespace RolePlayingFramework.Equipment
     {
         public string Name { get; }
         public ItemKind Kind => ItemKind.Consumable; //one-time use items that go away upon consuming
+        public ItemRarity Rarity { get; }
         public StatBlock StatBonus { get; }
-        public int AttackBonus { get; }
-        public int DefenseBonus { get; }
+        public int AttackBonus => 0; // Consumables don't have these bonuses
+        public int DefenseBonus => 0; // Consumables don't have these bonuses
+        public int HPBonus => 0; // Consumables don't have these bonuses
+        public int APBonus => 0; // Consumables don't have these bonuses
 
-        public Consumable(string name, in StatBlock stats, int atk = 0, int def = 0)
+        public Consumable(string name, ItemRarity rarity, in StatBlock stats)
         {
             Name = name;
+            Rarity = rarity;
             StatBonus = stats;
-            AttackBonus = atk;
-            DefenseBonus = def;
         }
     }
 }

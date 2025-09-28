@@ -34,8 +34,8 @@ namespace PitHero.Tests
             var mage = new Hero("Mage", new Mage(), level: 2, baseStats: new StatBlock(1, 2, 2, 6));
             var knight = new Hero("Knight", new Knight(), level: 2, baseStats: new StatBlock(6, 2, 4, 1));
 
-            var sword = new Gear("Bronze Sword", ItemKind.WeaponSword, new StatBlock(1, 0, 0, 0));
-            var rod = new Gear("Oak Rod", ItemKind.WeaponRod, new StatBlock(0, 0, 0, 1));
+            var sword = new Gear("Bronze Sword", ItemKind.WeaponSword, ItemRarity.Normal, new StatBlock(1, 0, 0, 0));
+            var rod = new Gear("Oak Rod", ItemKind.WeaponRod, ItemRarity.Normal, new StatBlock(0, 0, 0, 1));
 
             Assert.IsFalse(mage.TryEquip(sword), "Mage should not be able to equip swords.");
             Assert.IsTrue(mage.TryEquip(rod), "Mage should be able to equip rods.");

@@ -135,6 +135,13 @@ namespace PitHero
         public static readonly Color TREASURE_SHADE_4 = new Color(144, 82, 188); //Purple
         public static readonly Color TREASURE_SHADE_5 = new Color(203, 129, 22); //Gold
 
+        // Item Rarity Colors (matching treasure colors)
+        public static readonly Color RARITY_NORMAL = Color.White;               // White
+        public static readonly Color RARITY_UNCOMMON = new Color(44, 94, 26);   // Green (matches TREASURE_SHADE_2)
+        public static readonly Color RARITY_RARE = new Color(43, 78, 149);      // Blue (matches TREASURE_SHADE_3)
+        public static readonly Color RARITY_EPIC = new Color(144, 82, 188);     // Purple (matches TREASURE_SHADE_4)
+        public static readonly Color RARITY_LEGENDARY = new Color(203, 129, 22); // Gold (matches TREASURE_SHADE_5)
+
         //Hero Paperdoll Colors
         public static readonly Color SKIN_SHADE_1 = new Color(251, 200, 178); //Applies to body and hands
         public static readonly Color SKIN_SHADE_2 = new Color(140, 91, 62);
