@@ -77,6 +77,11 @@ namespace PitHero.ECS.Components
         /// </summary>
         public RolePlayingFramework.Heroes.Hero LinkedHero { get; set; }
 
+        /// <summary>
+        /// Hero's item bag for inventory management
+        /// </summary>
+        public RolePlayingFramework.Inventory.ItemBag Bag { get; private set; }
+
         private PitWidthManager _pitWidthManager;
 
         // Fog of war movement speed tracking
@@ -114,6 +119,9 @@ namespace PitHero.ECS.Components
 
             // Cache PitWidthManager service for dynamic pit sizing
             _pitWidthManager = Core.Services.GetService<PitWidthManager>();
+
+            // Initialize hero's item bag
+            Bag = new RolePlayingFramework.Inventory.ItemBag();
 
             // Initialize state properties to clean state
             HeroInitialized = true;  // Set to true after hero entity and components initialized

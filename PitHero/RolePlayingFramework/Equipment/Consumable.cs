@@ -8,11 +8,15 @@ namespace RolePlayingFramework.Equipment
         public string Name { get; }
         public ItemKind Kind => ItemKind.Consumable; //one-time use items that go away upon consuming
         public ItemRarity Rarity { get; }
+        public int HPRestoreAmount { get; }
+        public int APRestoreAmount { get; }
 
-        public Consumable(string name, ItemRarity rarity)
+        public Consumable(string name, ItemRarity rarity, int hpRestoreAmount = 0, int apRestoreAmount = 0)
         {
             Name = name;
             Rarity = rarity;
+            HPRestoreAmount = hpRestoreAmount;
+            APRestoreAmount = apRestoreAmount;
         }
 
         /// <summary>Consume this item and apply its effect.</summary>

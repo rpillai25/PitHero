@@ -145,16 +145,60 @@ namespace PitHero.ECS.Components
         {
             var rarity = RarityUtils.GetRarityForTreasureLevel(treasureLevel);
             
-            // For now, create a simple bag item based on rarity
-            // This can be expanded to generate different types of items
+            // Generate potions based on rarity
             return rarity switch
             {
-                ItemRarity.Normal => BagItems.StandardBag(),
-                ItemRarity.Uncommon => BagItems.ForagersBag(), 
-                ItemRarity.Rare => BagItems.TravellersBag(),
-                ItemRarity.Epic => BagItems.AdventurersBag(),
-                ItemRarity.Legendary => BagItems.MerchantsBag(),
-                _ => BagItems.StandardBag()
+                ItemRarity.Normal => GenerateNormalPotion(),
+                ItemRarity.Uncommon => BagItems.ForagersBag(), // Keep bags for Uncommon since we only have Normal, Rare, Epic potions
+                ItemRarity.Rare => GenerateMidPotion(),
+                ItemRarity.Epic => GenerateFullPotion(),
+                ItemRarity.Legendary => BagItems.MerchantsBag(), // Keep bags for Legendary since we only have Normal, Rare, Epic potions
+                _ => PotionItems.HPPotion() // Default to basic HP potion
+            };
+        }
+
+        /// <summary>
+        /// Generate a random Normal (Common) potion
+        /// </summary>
+        private static IItem GenerateNormalPotion()
+        {
+            var random = Nez.Random.NextInt(3);
+            return random switch
+            {
+                0 => PotionItems.HPPotion(),
+                1 => PotionItems.APPotion(),
+                2 => PotionItems.MixPotion(),
+                _ => PotionItems.HPPotion()
+            };
+        }
+
+        /// <summary>
+        /// Generate a random Mid (Rare) potion
+        /// </summary>
+        private static IItem GenerateMidPotion()
+        {
+            var random = Nez.Random.NextInt(3);
+            return random switch
+            {
+                0 => PotionItems.MidHPPotion(),
+                1 => PotionItems.MidAPPotion(),
+                2 => PotionItems.MidMixPotion(),
+                _ => PotionItems.MidHPPotion()
+            };
+        }
+
+        /// <summary>
+        /// Generate a random Full (Epic) potion
+        /// </summary>
+        private static IItem GenerateFullPotion()
+        {
+            var random = Nez.Random.NextInt(3);
+            return random switch
+            {
+                0 => PotionItems.FullHPPotion(),
+                1 => PotionItems.FullAPPotion(),
+                2 => PotionItems.FullMixPotion(),
+                _ => PotionItems.FullHPPotion()
             };
         }
 
