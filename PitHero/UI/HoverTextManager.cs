@@ -20,9 +20,36 @@ namespace PitHero.UI
         {
             _stage = stage;
             
-            // Create hover label with default skin
-            var skin = Skin.CreateDefaultSkin();
-            _hoverLabel = new Label("", skin);
+            // Create hover label with a custom style that accounts for window scaling
+            CreateHoverLabel();
+        }
+
+        /// <summary>
+        /// Create the hover label with proper scaling
+        /// </summary>
+        private static void CreateHoverLabel()
+        {
+            if (_stage == null) return;
+
+            // Remove existing label if it exists
+            if (_hoverLabel != null)
+            {
+                _hoverLabel.Remove();
+                _hoverLabel = null;
+            }
+
+            // Create a new LabelStyle with proper font scaling
+            float fontScale = GetFontScaleForCurrentWindowMode();
+            var labelStyle = new LabelStyle
+            {
+                Font = Graphics.Instance.BitmapFont,
+                FontColor = Color.White,
+                FontScaleX = fontScale,
+                FontScaleY = fontScale,
+                Background = null // Transparent background
+            };
+            
+            _hoverLabel = new Label("", labelStyle);
             _hoverLabel.SetVisible(false);
             
             // Add to stage
@@ -30,12 +57,15 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Show hover text at the specified position
+        /// Show hover text at the specified position with appropriate scaling
         /// </summary>
         public static void ShowHoverText(string text, float x, float y)
         {
             if (_hoverLabel == null || string.IsNullOrEmpty(text))
                 return;
+
+            // Update font scale in case window mode changed since initialization
+            UpdateFontScale();
 
             _hoverLabel.SetText(text);
             _hoverLabel.SetPosition(x, y);
@@ -54,6 +84,53 @@ namespace PitHero.UI
 
             _hoverLabel.SetVisible(false);
             _isVisible = false;
+        }
+
+        /// <summary>
+        /// Update font scale based on current window mode
+        /// </summary>
+        private static void UpdateFontScale()
+        {
+            if (_hoverLabel == null)
+                return;
+
+            float newFontScale = GetFontScaleForCurrentWindowMode();
+            var style = _hoverLabel.GetStyle();
+            
+            // Only update if scale actually changed to avoid unnecessary work
+            if (System.Math.Abs(style.FontScaleX - newFontScale) > 0.001f)
+            {
+                style.FontScaleX = newFontScale;
+                style.FontScaleY = newFontScale;
+                _hoverLabel.InvalidateHierarchy(); // Force layout update
+            }
+        }
+
+        /// <summary>
+        /// Get the appropriate font scale for the current window mode to maintain readability
+        /// </summary>
+        private static float GetFontScaleForCurrentWindowMode()
+        {
+            try
+            {
+                if (WindowManager.IsQuarterHeightMode())
+                {
+                    return 4f; // Scale up by 4x to counteract quarter (0.25x) scaling
+                }
+                else if (WindowManager.IsHalfHeightMode())
+                {
+                    return 2f; // Scale up by 2x to counteract half (0.5x) scaling
+                }
+                else
+                {
+                    return 1f; // Normal size
+                }
+            }
+            catch
+            {
+                // Fallback to normal scale if WindowManager calls fail
+                return 1f;
+            }
         }
 
         /// <summary>

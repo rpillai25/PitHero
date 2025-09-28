@@ -33,8 +33,13 @@ namespace PitHero.UI
                 // Mouse entered
                 if (!string.IsNullOrEmpty(_hoverText))
                 {
-                    float hoverX = GetX() + (GetWidth() * 0.5f) - (_hoverText.Length * 3f); // Rough text centering
+                    // Calculate position with better centering that accounts for text scaling
+                    float textScale = GetCurrentTextScale();
+                    float estimatedTextWidth = _hoverText.Length * 6f * textScale; // Rough character width estimation with scaling
+                    
+                    float hoverX = GetX() + (GetWidth() * 0.5f) - (estimatedTextWidth * 0.5f); // Center text properly
                     float hoverY = GetY() + GetHeight() + 5f; // Below button with padding
+                    
                     HoverTextManager.ShowHoverText(_hoverText, hoverX, hoverY);
                 }
             }
@@ -45,6 +50,25 @@ namespace PitHero.UI
             }
 
             _wasMouseOver = isMouseOver;
+        }
+
+        /// <summary>
+        /// Get the current text scale factor based on window mode
+        /// </summary>
+        private float GetCurrentTextScale()
+        {
+            if (WindowManager.IsQuarterHeightMode())
+            {
+                return 4f; // Text scaled up 4x for quarter window
+            }
+            else if (WindowManager.IsHalfHeightMode())
+            {
+                return 2f; // Text scaled up 2x for half window
+            }
+            else
+            {
+                return 1f; // Normal size
+            }
         }
 
         /// <summary>
