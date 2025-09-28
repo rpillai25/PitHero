@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Xna.Framework;
 using PitHero.ECS.Components;
+using RolePlayingFramework.Equipment;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -186,6 +187,66 @@ namespace PitHero.Tests
             // Close it again (if needed)
             component.State = TreasureComponent.TreasureState.CLOSED;
             Assert.AreEqual(TreasureComponent.TreasureState.CLOSED, component.State);
+        }
+
+        [TestMethod]
+        public void TreasureComponent_GenerateItemForTreasureLevel_CreatesCorrectRarityItems()
+        {
+            // Test each treasure level creates the correct rarity item
+            var level1Item = TreasureComponent.GenerateItemForTreasureLevel(1);
+            Assert.AreEqual(ItemRarity.Normal, level1Item.Rarity);
+            Assert.AreEqual("Standard Bag", level1Item.Name);
+
+            var level2Item = TreasureComponent.GenerateItemForTreasureLevel(2);
+            Assert.AreEqual(ItemRarity.Uncommon, level2Item.Rarity);
+            Assert.AreEqual("Forager's Bag", level2Item.Name);
+
+            var level3Item = TreasureComponent.GenerateItemForTreasureLevel(3);
+            Assert.AreEqual(ItemRarity.Rare, level3Item.Rarity);
+            Assert.AreEqual("Traveller's Bag", level3Item.Name);
+
+            var level4Item = TreasureComponent.GenerateItemForTreasureLevel(4);
+            Assert.AreEqual(ItemRarity.Epic, level4Item.Rarity);
+            Assert.AreEqual("Adventurer's Bag", level4Item.Name);
+
+            var level5Item = TreasureComponent.GenerateItemForTreasureLevel(5);
+            Assert.AreEqual(ItemRarity.Legendary, level5Item.Rarity);
+            Assert.AreEqual("Merchant's Bag", level5Item.Name);
+        }
+
+        [TestMethod]
+        public void TreasureComponent_ContainedItem_CanBeSetAndRetrieved()
+        {
+            var component = new TreasureComponent();
+            var testItem = BagItems.ForagersBag();
+
+            Assert.IsNull(component.ContainedItem);
+            
+            component.ContainedItem = testItem;
+            Assert.IsNotNull(component.ContainedItem);
+            Assert.AreEqual("Forager's Bag", component.ContainedItem.Name);
+            Assert.AreEqual(ItemRarity.Uncommon, component.ContainedItem.Rarity);
+        }
+
+        [TestMethod]
+        public void TreasureComponent_InitializeForPitLevel_SetsLevelAndItem()
+        {
+            var component = new TreasureComponent();
+            
+            // Test early pit level (should always be level 1)
+            component.InitializeForPitLevel(5);
+            Assert.AreEqual(1, component.Level);
+            Assert.IsNotNull(component.ContainedItem);
+            Assert.AreEqual(ItemRarity.Normal, component.ContainedItem.Rarity);
+
+            // Test higher pit level (should potentially have higher levels)
+            component.InitializeForPitLevel(100);
+            Assert.IsTrue(component.Level >= 1 && component.Level <= 5);
+            Assert.IsNotNull(component.ContainedItem);
+            
+            // Verify that the item rarity matches the treasure level
+            var expectedRarity = RarityUtils.GetRarityForTreasureLevel(component.Level);
+            Assert.AreEqual(expectedRarity, component.ContainedItem.Rarity);
         }
     }
 }

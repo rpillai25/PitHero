@@ -15,6 +15,7 @@ namespace RolePlayingFramework.Equipment
         HatHeadband,
         HatWizard,
         HatPriest,
+        Shield,
         Accessory
     }
 }

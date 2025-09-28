@@ -6,6 +6,7 @@ namespace RolePlayingFramework.Equipment
         Weapon,
         Armor,
         Hat,
+        Shield,
         Accessory1,
         Accessory2
     }
