@@ -1,21 +1,21 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Sprites;
-using Nez.Tweens;
 using RolePlayingFramework.Equipment;
-using System.Collections;
 
 namespace PitHero.ECS.Components
 {
     /// <summary>
     /// Component that animates an item pickup by making the sprite rise up one tile and then disappear
     /// </summary>
-    public class ItemPickupAnimationComponent : Component
+    public class ItemPickupAnimationComponent : Component, IUpdatable
     {
         private SpriteRenderer _renderer;
         private IItem _item;
         private Vector2 _startPosition;
         private float _animationDuration = 1.0f; // 1 second animation
+        private float _elapsedTime;
+        private bool _animationComplete = false;
         
         public ItemPickupAnimationComponent(IItem item)
         {
@@ -26,8 +26,9 @@ namespace PitHero.ECS.Components
         {
             base.OnAddedToEntity();
             _startPosition = Entity.Transform.Position;
+            _elapsedTime = 0f;
             LoadItemSprite();
-            StartAnimation();
+            Debug.Log($"[ItemPickupAnimation] Started pickup animation for {_item.Name} at position X: {_startPosition.X}, Y: {_startPosition.Y}");
         }
 
         private void LoadItemSprite()
@@ -40,7 +41,8 @@ namespace PitHero.ECS.Components
                 if (itemSprite != null)
                 {
                     _renderer = Entity.AddComponent(new SpriteRenderer(itemSprite));
-                    _renderer.SetRenderLayer(GameConfig.RenderLayerItem);
+                    _renderer.SetRenderLayer(GameConfig.RenderLayerPickupItem);
+                    Debug.Log($"[ItemPickupAnimation] Loaded sprite '{_item.Name}' from Items.atlas");
                 }
                 else
                 {
@@ -48,7 +50,8 @@ namespace PitHero.ECS.Components
                     // Fallback to prototype renderer
                     var prototypeRenderer = Entity.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
                     prototypeRenderer.Color = Color.Yellow; // Fallback color for missing sprites
-                    prototypeRenderer.SetRenderLayer(GameConfig.RenderLayerItem);
+                    prototypeRenderer.SetRenderLayer(GameConfig.RenderLayerPickupItem);
+                    _renderer = prototypeRenderer; // Keep reference for alpha fading
                 }
             }
             catch (System.Exception ex)
@@ -57,29 +60,50 @@ namespace PitHero.ECS.Components
                 // Fallback to prototype renderer
                 var prototypeRenderer = Entity.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
                 prototypeRenderer.Color = Color.Yellow;
-                prototypeRenderer.SetRenderLayer(GameConfig.RenderLayerItem);
+                prototypeRenderer.SetRenderLayer(GameConfig.RenderLayerPickupItem);
+                _renderer = prototypeRenderer; // Keep reference for alpha fading
             }
         }
 
-        private void StartAnimation()
+        public void Update()
         {
-            // Move up one tile (32 pixels) over the animation duration
-            var targetPosition = _startPosition + new Vector2(0, -GameConfig.TileSize);
-            
-            // Create a coroutine to handle the animation
-            Core.StartCoroutine(AnimatePickup(targetPosition));
+            if (_animationComplete) return;
+
+            _elapsedTime += Time.DeltaTime;
+            var progress = _elapsedTime / _animationDuration;
+
+            if (progress >= 1.0f)
+            {
+                // Animation complete
+                _animationComplete = true;
+                Debug.Log($"[ItemPickupAnimation] Animation complete for {_item.Name}, removing entity");
+                Entity.Destroy();
+                return;
+            }
+
+            // Update position using easing
+            var easedProgress = EaseBackOut(progress);
+            var yOffset = -GameConfig.TileSize * easedProgress;
+            Entity.Transform.Position = _startPosition + new Vector2(0, yOffset);
+
+            // Fade out in the last 20% of the animation
+            if (progress > 0.8f && _renderer != null)
+            {
+                var fadeProgress = (progress - 0.8f) / 0.2f;
+                var alpha = (byte)(255 * (1f - fadeProgress));
+                _renderer.Color = new Color(_renderer.Color.R, _renderer.Color.G, _renderer.Color.B, alpha);
+            }
         }
 
-        private IEnumerator AnimatePickup(Vector2 targetPosition)
+        /// <summary>
+        /// Back-out easing function for smooth animation
+        /// </summary>
+        private float EaseBackOut(float t)
         {
-            var tween = Entity.Transform.TweenPositionTo(targetPosition, _animationDuration)
-                                        .SetEaseType(EaseType.BackOut);
-            
-            yield return tween.WaitForCompletion();
-            
-            // Animation complete, remove this entity
-            Debug.Log($"[ItemPickupAnimation] Animation complete for {_item.Name}, removing entity");
-            Entity.Destroy();
+            const float c1 = 1.70158f;
+            const float c3 = c1 + 1f;
+
+            return 1f + c3 * (t - 1f) * (t - 1f) * (t - 1f) + c1 * (t - 1f) * (t - 1f);
         }
     }
 }
