@@ -195,23 +195,23 @@ namespace PitHero.Tests
             // Test each treasure level creates the correct rarity item
             var level1Item = TreasureComponent.GenerateItemForTreasureLevel(1);
             Assert.AreEqual(ItemRarity.Normal, level1Item.Rarity);
-            Assert.AreEqual("Standard Bag", level1Item.Name);
+            Assert.IsTrue(level1Item.Name.EndsWith("Potion"), $"Level 1 item should be a potion, but got {level1Item.Name}");
 
             var level2Item = TreasureComponent.GenerateItemForTreasureLevel(2);
             Assert.AreEqual(ItemRarity.Uncommon, level2Item.Rarity);
-            Assert.AreEqual("Forager's Bag", level2Item.Name);
+            Assert.AreEqual("Forager's Bag", level2Item.Name); // Level 2 still creates bags
 
             var level3Item = TreasureComponent.GenerateItemForTreasureLevel(3);
             Assert.AreEqual(ItemRarity.Rare, level3Item.Rarity);
-            Assert.AreEqual("Traveller's Bag", level3Item.Name);
+            Assert.IsTrue(level3Item.Name.StartsWith("Mid") && level3Item.Name.EndsWith("Potion"), $"Level 3 item should be a Mid potion, but got {level3Item.Name}");
 
             var level4Item = TreasureComponent.GenerateItemForTreasureLevel(4);
             Assert.AreEqual(ItemRarity.Epic, level4Item.Rarity);
-            Assert.AreEqual("Adventurer's Bag", level4Item.Name);
+            Assert.IsTrue(level4Item.Name.StartsWith("Full") && level4Item.Name.EndsWith("Potion"), $"Level 4 item should be a Full potion, but got {level4Item.Name}");
 
             var level5Item = TreasureComponent.GenerateItemForTreasureLevel(5);
             Assert.AreEqual(ItemRarity.Legendary, level5Item.Rarity);
-            Assert.AreEqual("Merchant's Bag", level5Item.Name);
+            Assert.AreEqual("Merchant's Bag", level5Item.Name); // Level 5 still creates bags
         }
 
         [TestMethod]

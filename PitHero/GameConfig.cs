@@ -102,6 +102,7 @@ namespace PitHero
         // Render Layers (the lower the number, the higher the layer)
 
         public const int RenderLayerLowest = 0; // Lowest possible layer
+        public const int RenderLayerPickupItem = 1; // Pickup items layer
         public const int RenderLayerHeroHand1 = 4;
         public const int RenderLayerHeroHair = 5;
         public const int RenderLayerHeroShirt = 6;
@@ -110,7 +111,7 @@ namespace PitHero
         public const int RenderLayerHeroHand2 = 9;
         public const int RenderLayerFogOfWar = 40;   // Fog of war layer above most things, except hero
         public const int RenderLayerActors = 60; // Actors and entities layer
-        public const int RenderLayerItem = 68; // Pickups and dropped items layer
+        public const int RenderLayerDroppedItems = 65; // Dropped items layer
         public const int RenderLayerTreasureWood = 69;
         public const int RenderLayerTreasureBase = 70;
         public const int RenderLayerBase = 100; // Background layer

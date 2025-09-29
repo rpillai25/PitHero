@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
+using RolePlayingFramework.Equipment;
 
 namespace PitHero.AI
 {
@@ -64,6 +65,9 @@ namespace PitHero.AI
                         {
                             _treasureComponent.State = TreasureComponent.TreasureState.OPEN;
                             Debug.Log("[OpenChest] Chest state changed to OPEN");
+                            
+                            // Handle item pickup if there's a contained item
+                            HandleItemPickup(hero, _treasureComponent);
                         }
                         else
                         {
@@ -221,6 +225,68 @@ namespace PitHero.AI
         private Point GetTileCoordinates(Vector2 worldPosition)
         {
             return new Point((int)(worldPosition.X / GameConfig.TileSize), (int)(worldPosition.Y / GameConfig.TileSize));
+        }
+
+        /// <summary>
+        /// Handle item pickup from opened treasure chest
+        /// </summary>
+        private void HandleItemPickup(HeroComponent hero, TreasureComponent treasureComponent)
+        {
+            var containedItem = treasureComponent.ContainedItem;
+            if (containedItem == null)
+            {
+                Debug.Log("[OpenChest] No item in treasure chest to pick up");
+                return;
+            }
+
+            // Check if item is a consumable potion (has sprite in Items.atlas)
+            if (containedItem is Consumable && IsItemVisualizable(containedItem))
+            {
+                // Create visual pickup animation entity at chest position
+                var scene = Core.Scene;
+                var animationEntity = scene.CreateEntity("itemPickupAnimation");
+                animationEntity.Transform.Position = _chestEntity.Transform.Position;
+                animationEntity.AddComponent(new ItemPickupAnimationComponent(containedItem));
+                
+                Debug.Log($"[OpenChest] Created pickup animation for {containedItem.Name} at position X: {_chestEntity.Transform.Position.X}, Y: {_chestEntity.Transform.Position.Y}");
+            }
+
+            // Add item to hero's bag
+            if (hero.Bag.TryAdd(containedItem))
+            {
+                Debug.Log($"[OpenChest] Added {containedItem.Name} to hero's bag. Bag contents:");
+                LogBagContents(hero.Bag);
+                
+                // Clear the item from the treasure chest
+                treasureComponent.ContainedItem = null;
+            }
+            else
+            {
+                Debug.Warn($"[OpenChest] Hero's bag is full! Could not add {containedItem.Name}");
+            }
+        }
+
+        /// <summary>
+        /// Check if an item has a corresponding sprite in Items.atlas
+        /// </summary>
+        private bool IsItemVisualizable(IItem item)
+        {
+            // For now, assume all items with names matching Items.atlas sprites are visualizable
+            // This includes all the potion names: HPPotion, APPotion, MixPotion, etc.
+            return item.Name.EndsWith("Potion");
+        }
+
+        /// <summary>
+        /// Debug log the contents of the hero's bag
+        /// </summary>
+        private void LogBagContents(RolePlayingFramework.Inventory.ItemBag bag)
+        {
+            Debug.Log($"[OpenChest] Hero bag contains {bag.Count}/{bag.Capacity} items:");
+            for (int i = 0; i < bag.Items.Count; i++)
+            {
+                var item = bag.Items[i];
+                Debug.Log($"[OpenChest]   {i + 1}. {item.Name} ({item.Rarity})");
+            }
         }
     }
 }
