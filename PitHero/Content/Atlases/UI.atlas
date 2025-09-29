@@ -55,33 +55,36 @@ UIHeroHighlight2x
 UIHeroInverse2x
 	609,0,64,64
 	0.5,0.5
-SelectBox
+HighlightBox
 	544,65,32,32
 	0.5,0.5
-UIFastF
+SelectBox
 	577,65,32,32
 	0.5,0.5
-UIFastFHighlight
+UIFastF
 	260,387,32,32
 	0.5,0.5
-UIFastFInverse
+UIFastFHighlight
 	387,259,32,32
 	0.5,0.5
-UIGearHighlight
+UIFastFInverse
 	674,0,32,32
 	0.5,0.5
-UIGearInverse
+UIGearHighlight
 	480,194,32,32
 	0.5,0.5
-UIHero
+UIGearInverse
 	545,98,32,32
 	0.5,0.5
-UIHeroHighlight
+UIHero
 	610,65,32,32
 	0.5,0.5
-UIHeroInverse
+UIHeroHighlight
 	545,131,32,32
 	0.5,0.5
+UIHeroInverse
+	578,98,32,32
+	0.5,0.5
 UIGear
-	578,98,31,30
+	387,292,31,30
 	0.5,0.5
