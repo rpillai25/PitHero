@@ -611,6 +611,7 @@ namespace PitHero
                     
                     var treasureComponent = entity.AddComponent(new TreasureComponent());
                     treasureComponent.Level = TreasureComponent.DetermineTreasureLevel(currentPitLevel);
+                    treasureComponent.InitializeForPitLevel(treasureComponent.Level);
 
                     var collider = entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
                     collider.IsTrigger = true;
