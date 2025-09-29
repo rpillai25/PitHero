@@ -3,10 +3,10 @@ namespace RolePlayingFramework.Equipment
     /// <summary>Hero gear slots.</summary>
     public enum EquipmentSlot
     {
-        Weapon,
+        WeaponShield1,
         Armor,
         Hat,
-        Shield,
+        WeaponShield2,
         Accessory1,
         Accessory2
     }

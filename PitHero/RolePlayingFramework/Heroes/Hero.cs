@@ -214,10 +214,10 @@ namespace RolePlayingFramework.Heroes
         {
             switch (slot)
             {
-                case EquipmentSlot.Weapon: if (Weapon != null) { Weapon = null; RecalculateDerived(); return true; } break;
+                case EquipmentSlot.WeaponShield1: if (Weapon != null) { Weapon = null; RecalculateDerived(); return true; } break;
                 case EquipmentSlot.Armor: if (Armor != null) { Armor = null; RecalculateDerived(); return true; } break;
                 case EquipmentSlot.Hat: if (Helm != null) { Helm = null; RecalculateDerived(); return true; } break;
-                case EquipmentSlot.Shield: if (Shield != null) { Shield = null; RecalculateDerived(); return true; } break;
+                case EquipmentSlot.WeaponShield2: if (Shield != null) { Shield = null; RecalculateDerived(); return true; } break;
                 case EquipmentSlot.Accessory1: if (Accessory1 != null) { Accessory1 = null; RecalculateDerived(); return true; } break;
                 case EquipmentSlot.Accessory2: if (Accessory2 != null) { Accessory2 = null; RecalculateDerived(); return true; } break;
             }
