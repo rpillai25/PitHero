@@ -14,16 +14,25 @@ HPPotion
 	33,33,32,32
 	0.5,0.5
 MidAPPotion
-	0,66,32,32
-	0.5,0.5
-MidHPPotion
-	33,66,32,32
-	0.5,0.5
-MidMixPotion
 	66,33,32,32
 	0.5,0.5
+MidHPPotion
+	99,0,32,32
+	0.5,0.5
+MidMixPotion
+	132,0,32,32
+	0.5,0.5
 MixPotion
-	66,66,32,32
+	99,33,32,32
+	0.5,0.5
+Equipment
+	132,33,32,32
+	0.5,0.5
+Inventory
+	165,0,32,32
+	0.5,0.5
+Shortcut
+	165,33,32,32
 	0.5,0.5
 
 Consumables
