@@ -456,6 +456,12 @@ namespace PitHero.UI
         public void Update()
         {
             UpdateButtonStyleIfNeeded();
+            
+            // Handle keyboard shortcuts when hero window is visible
+            if (_windowVisible && _inventoryGrid != null)
+            {
+                _inventoryGrid.HandleKeyboardShortcuts();
+            }
         }
 
         /// <summary>

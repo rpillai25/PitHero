@@ -28,31 +28,35 @@ namespace PitHero.UI
         {
             _slotData = slotData;
             
-            // Load atlases
-            var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
-            var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
-            
-            // Set up background sprite based on slot type
-            var spriteKey = _slotData.SlotType switch
+            // Only load content if Core.Content is available (not in test environment)
+            if (Core.Content != null)
             {
-                InventorySlotType.Inventory => "Inventory",
-                InventorySlotType.Shortcut => "Shortcut",
-                InventorySlotType.Equipment => "Equipment",
-                _ => null
-            };
+                // Load atlases
+                var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
+                var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+                
+                // Set up background sprite based on slot type
+                var spriteKey = _slotData.SlotType switch
+                {
+                    InventorySlotType.Inventory => "Inventory",
+                    InventorySlotType.Shortcut => "Shortcut",
+                    InventorySlotType.Equipment => "Equipment",
+                    _ => null
+                };
 
-            if (spriteKey != null)
-            {
-                _backgroundSprite = itemsAtlas.GetSprite(spriteKey);
-                _backgroundDrawable = new SpriteDrawable(_backgroundSprite);
+                if (spriteKey != null)
+                {
+                    _backgroundSprite = itemsAtlas.GetSprite(spriteKey);
+                    _backgroundDrawable = new SpriteDrawable(_backgroundSprite);
+                }
+                
+                // Pre-load select and highlight sprites
+                _selectBoxSprite = uiAtlas.GetSprite("SelectBox");
+                _selectBoxDrawable = new SpriteDrawable(_selectBoxSprite);
+                
+                _highlightBoxSprite = uiAtlas.GetSprite("HighlightBox");
+                _highlightBoxDrawable = new SpriteDrawable(_highlightBoxSprite);
             }
-            
-            // Pre-load select and highlight sprites
-            _selectBoxSprite = uiAtlas.GetSprite("SelectBox");
-            _selectBoxDrawable = new SpriteDrawable(_selectBoxSprite);
-            
-            _highlightBoxSprite = uiAtlas.GetSprite("HighlightBox");
-            _highlightBoxDrawable = new SpriteDrawable(_highlightBoxSprite);
             
             // Set size to 32x32 pixels
             SetSize(32f, 32f);
@@ -64,19 +68,19 @@ namespace PitHero.UI
             if (_slotData.SlotType == InventorySlotType.Null)
                 return;
 
-            // Draw background
+            // Draw background (only if sprite is loaded)
             if (_backgroundDrawable != null)
             {
                 _backgroundDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
             }
 
-            // Draw select box if hovered
+            // Draw select box if hovered (only if sprite is loaded)
             if (_slotData.IsHovered && _selectBoxDrawable != null)
             {
                 _selectBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
             }
 
-            // Draw highlight box if highlighted
+            // Draw highlight box if highlighted (only if sprite is loaded)
             if (_slotData.IsHighlighted && _highlightBoxDrawable != null)
             {
                 _highlightBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);

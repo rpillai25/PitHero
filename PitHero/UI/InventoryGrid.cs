@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 using Nez;
 using Nez.UI;
 using RolePlayingFramework.Equipment;
@@ -27,6 +28,44 @@ namespace PitHero.UI
             InitializeSlotGrid();
             CreateSlotComponents();
             LayoutSlots();
+        }
+
+        /// <summary>
+        /// Handles keyboard shortcuts for shortcut slots (1-8). Called from parent UI.
+        /// </summary>
+        public void HandleKeyboardShortcuts()
+        {
+            // Check if keys 1-8 are pressed to activate shortcut slots
+            for (int i = 0; i < 8; i++)
+            {
+                var key = (Keys)((int)Keys.D1 + i); // D1 = key "1", D2 = key "2", etc.
+                
+                if (Input.IsKeyPressed(key))
+                {
+                    // Find the shortcut slot for this key
+                    var shortcutSlot = _slotComponents.FirstOrDefault(s => 
+                        s.SlotData.SlotType == InventorySlotType.Shortcut && 
+                        s.SlotData.ShortcutKey == i + 1);
+                    
+                    if (shortcutSlot?.SlotData.Item != null)
+                    {
+                        // Activate the item in this shortcut slot
+                        ActivateShortcutSlot(shortcutSlot, i + 1);
+                    }
+                }
+            }
+        }
+
+        private void ActivateShortcutSlot(InventorySlot slot, int keyNumber)
+        {
+            Debug.Log($"Activated shortcut slot {keyNumber} with item: {slot.SlotData.Item?.Name ?? "None"}");
+            
+            // TODO: Implement actual item activation logic
+            // This would typically:
+            // 1. Check if the item is consumable
+            // 2. Apply the item effect to the hero
+            // 3. Remove the item from the slot if it's consumed
+            // 4. Update the hero's stats/status
         }
 
         private void InitializeSlotGrid()
@@ -142,12 +181,13 @@ namespace PitHero.UI
             else
             {
                 // Different slot clicked - swap items
+                var prevHighlighted = _highlightedSlot;
                 SwapSlotItems(_highlightedSlot, clickedSlot);
                 
                 // Clear highlight
                 _highlightedSlot.SlotData.IsHighlighted = false;
                 _highlightedSlot = null;
-                Debug.Log($"Swapped items between slots ({_highlightedSlot?.SlotData.X}, {_highlightedSlot?.SlotData.Y}) and ({clickedSlot.SlotData.X}, {clickedSlot.SlotData.Y})");
+                Debug.Log($"Swapped items between slots ({prevHighlighted.SlotData.X}, {prevHighlighted.SlotData.Y}) and ({clickedSlot.SlotData.X}, {clickedSlot.SlotData.Y})");
             }
         }
 
