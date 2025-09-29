@@ -16,7 +16,7 @@ namespace PitHero.Tests
             var bag = new ItemBag();
 
             Assert.AreEqual("Standard Bag", bag.BagName);
-            Assert.AreEqual(8, bag.Capacity);
+            Assert.AreEqual(12, bag.Capacity);
             Assert.AreEqual(0, bag.Count);
             Assert.IsFalse(bag.IsFull);
         }

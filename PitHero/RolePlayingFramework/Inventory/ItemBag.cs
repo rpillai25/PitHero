@@ -23,7 +23,7 @@ namespace RolePlayingFramework.Inventory
         /// <summary>Whether the bag is full.</summary>
         public bool IsFull => _items.Count >= Capacity;
 
-        public ItemBag(string bagName = "Standard Bag", int capacity = 8)
+        public ItemBag(string bagName = "Standard Bag", int capacity = 12)
         {
             BagName = bagName;
             Capacity = capacity;

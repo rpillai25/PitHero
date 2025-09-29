@@ -5,6 +5,7 @@ using Nez.UI;
 using RolePlayingFramework.Equipment;
 using System.Collections.Generic;
 using System.Linq;
+using PitHero.ECS.Components;
 
 namespace PitHero.UI
 {
@@ -19,6 +20,7 @@ namespace PitHero.UI
         private readonly InventorySlotData[,] _slotGrid;
         private readonly List<InventorySlot> _slotComponents;
         private InventorySlot _highlightedSlot;
+        private HeroComponent _heroComponent;
         
         public InventoryGrid()
         {
@@ -28,6 +30,47 @@ namespace PitHero.UI
             InitializeSlotGrid();
             CreateSlotComponents();
             LayoutSlots();
+        }
+
+        /// <summary>
+        /// Connects this inventory grid to a hero component and updates based on their bag capacity.
+        /// </summary>
+        public void ConnectToHero(HeroComponent heroComponent)
+        {
+            _heroComponent = heroComponent;
+            if (_heroComponent?.Bag != null)
+            {
+                UpdateBagCapacity(_heroComponent.Bag.Capacity);
+                UpdateItemsFromBag();
+            }
+        }
+
+        /// <summary>
+        /// Updates the displayed items based on the hero's current bag contents.
+        /// </summary>
+        public void UpdateItemsFromBag()
+        {
+            if (_heroComponent?.Bag == null) return;
+
+            // Clear all current items
+            foreach (var slot in _slotComponents)
+            {
+                slot.SlotData.Item = null;
+            }
+
+            // Populate items from bag into available slots
+            var bagItems = _heroComponent.Bag.Items;
+            var availableSlots = _slotComponents
+                .Where(s => s.SlotData.SlotType == InventorySlotType.Shortcut || 
+                           s.SlotData.SlotType == InventorySlotType.Inventory)
+                .OrderBy(s => s.SlotData.Y)
+                .ThenBy(s => s.SlotData.X)
+                .ToList();
+
+            for (int i = 0; i < bagItems.Count && i < availableSlots.Count; i++)
+            {
+                availableSlots[i].SlotData.Item = bagItems[i];
+            }
         }
 
         /// <summary>

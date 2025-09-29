@@ -4,6 +4,7 @@ using Nez.UI;
 using PitHero.Services;
 using System.Collections.Generic;
 using PitHero.ECS.Components;
+using RolePlayingFramework.Equipment;
 
 namespace PitHero.UI
 {
@@ -194,6 +195,13 @@ namespace PitHero.UI
             // Create inventory grid
             _inventoryGrid = new InventoryGrid();
             
+            // Connect to hero if available
+            var heroComponent = GetHeroComponent();
+            if (heroComponent != null)
+            {
+                _inventoryGrid.ConnectToHero(heroComponent);
+            }
+            
             // Create a scroll pane for the inventory
             var scrollPane = new ScrollPane(_inventoryGrid, skin);
             scrollPane.SetScrollingDisabled(true, false); // Only allow vertical scrolling
@@ -258,6 +266,16 @@ namespace PitHero.UI
                 // Refresh priority items from current hero state (mutates existing list)
                 InitializePriorityItems();
                 _priorityList?.Rebuild();
+                
+                // Refresh inventory from current hero bag
+                var heroComponent = GetHeroComponent();
+                if (heroComponent != null && _inventoryGrid != null)
+                {
+                    // Add some test items to demonstrate inventory functionality
+                    AddTestItemsToHero(heroComponent);
+                    
+                    _inventoryGrid.ConnectToHero(heroComponent);
+                }
                 
                 // Position window next to Hero button
                 PositionHeroWindow();
@@ -491,6 +509,26 @@ namespace PitHero.UI
                     pauseService.IsPaused = false;
                 
                 Debug.Log("[HeroUI] Hero window force closed by single window policy");
+            }
+        }
+
+        /// <summary>
+        /// Adds test items to the hero's bag for demonstration purposes.
+        /// This should be removed or made conditional in production.
+        /// </summary>
+        private void AddTestItemsToHero(HeroComponent heroComponent)
+        {
+            // Only add test items if the bag is empty to avoid duplicates
+            if (heroComponent.Bag.Count == 0)
+            {
+                // Add a few test potions to show inventory functionality
+                heroComponent.Bag.TryAdd(PotionItems.HPPotion());
+                heroComponent.Bag.TryAdd(PotionItems.APPotion());
+                heroComponent.Bag.TryAdd(PotionItems.MixPotion());
+                heroComponent.Bag.TryAdd(PotionItems.MidHPPotion());
+                heroComponent.Bag.TryAdd(PotionItems.FullAPPotion());
+                
+                Debug.Log($"Added test items to hero bag. Current count: {heroComponent.Bag.Count}");
             }
         }
     }

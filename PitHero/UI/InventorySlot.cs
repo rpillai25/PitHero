@@ -74,6 +74,25 @@ namespace PitHero.UI
                 _backgroundDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
             }
 
+            // Draw item sprite if slot has an item
+            if (_slotData.Item != null && Core.Content != null)
+            {
+                try
+                {
+                    var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
+                    var itemSprite = itemsAtlas.GetSprite(_slotData.Item.Name);
+                    if (itemSprite != null)
+                    {
+                        var itemDrawable = new SpriteDrawable(itemSprite);
+                        itemDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+                    }
+                }
+                catch
+                {
+                    // If item sprite doesn't exist, silently continue
+                }
+            }
+
             // Draw select box if hovered (only if sprite is loaded)
             if (_slotData.IsHovered && _selectBoxDrawable != null)
             {
@@ -85,8 +104,6 @@ namespace PitHero.UI
             {
                 _highlightBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
             }
-
-            // TODO: Draw item icon if slot has an item
             
             base.Draw(batcher, parentAlpha);
         }
