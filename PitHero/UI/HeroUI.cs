@@ -271,9 +271,6 @@ namespace PitHero.UI
                 var heroComponent = GetHeroComponent();
                 if (heroComponent != null && _inventoryGrid != null)
                 {
-                    // Add some test items to demonstrate inventory functionality
-                    AddTestItemsToHero(heroComponent);
-                    
                     _inventoryGrid.ConnectToHero(heroComponent);
                 }
                 
@@ -512,24 +509,5 @@ namespace PitHero.UI
             }
         }
 
-        /// <summary>
-        /// Adds test items to the hero's bag for demonstration purposes.
-        /// This should be removed or made conditional in production.
-        /// </summary>
-        private void AddTestItemsToHero(HeroComponent heroComponent)
-        {
-            // Only add test items if the bag is empty to avoid duplicates
-            if (heroComponent.Bag.Count == 0)
-            {
-                // Add a few test potions to show inventory functionality
-                heroComponent.Bag.TryAdd(PotionItems.HPPotion());
-                heroComponent.Bag.TryAdd(PotionItems.APPotion());
-                heroComponent.Bag.TryAdd(PotionItems.MixPotion());
-                heroComponent.Bag.TryAdd(PotionItems.MidHPPotion());
-                heroComponent.Bag.TryAdd(PotionItems.FullAPPotion());
-                
-                Debug.Log($"Added test items to hero bag. Current count: {heroComponent.Bag.Count}");
-            }
-        }
     }
 }

@@ -23,6 +23,9 @@ namespace PitHero.UI
         /// <summary>Item currently in this slot.</summary>
         public IItem Item { get; set; }
         
+        /// <summary>Bag index for shortcut/inventory slots (for 1:1 mapping).</summary>
+        public int? BagIndex { get; set; }
+        
         /// <summary>Whether this slot is currently highlighted.</summary>
         public bool IsHighlighted { get; set; }
         

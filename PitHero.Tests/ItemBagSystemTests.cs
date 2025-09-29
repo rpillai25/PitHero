@@ -187,14 +187,14 @@ namespace PitHero.Tests
             var shield = new Gear("Iron Shield", ItemKind.Shield, ItemRarity.Normal,
                 new StatBlock(0, 0, 1, 0), def: 5);
 
-            Assert.IsNull(hero.Shield);
+            Assert.IsNull(hero.WeaponShield2);
             Assert.IsTrue(hero.TryEquip(shield));
-            Assert.IsNotNull(hero.Shield);
-            Assert.AreEqual("Iron Shield", hero.Shield.Name);
+            Assert.IsNotNull(hero.WeaponShield2);
+            Assert.AreEqual("Iron Shield", hero.WeaponShield2.Name);
 
             // Test unequip
             Assert.IsTrue(hero.TryUnequip(EquipmentSlot.WeaponShield2));
-            Assert.IsNull(hero.Shield);
+            Assert.IsNull(hero.WeaponShield2);
         }
 
         [TestMethod]
