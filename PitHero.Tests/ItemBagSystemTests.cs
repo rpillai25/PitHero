@@ -97,7 +97,7 @@ namespace PitHero.Tests
 
             Assert.IsTrue(bag.TryUpgrade(foragersBag));
             Assert.AreEqual("Forager's Bag", bag.BagName);
-            Assert.AreEqual(12, bag.Capacity);
+            Assert.AreEqual(16, bag.Capacity);
 
             var merchantsBag = BagItems.MerchantsBag();
             Assert.IsTrue(bag.TryUpgrade(merchantsBag));
@@ -130,15 +130,15 @@ namespace PitHero.Tests
         public void ItemBag_GetBagStats_ReturnsCorrectValues()
         {
             var (capacity1, name1) = ItemBag.GetBagStats(BagItems.StandardBag());
-            Assert.AreEqual(8, capacity1);
+            Assert.AreEqual(12, capacity1);
             Assert.AreEqual("Standard Bag", name1);
 
             var (capacity2, name2) = ItemBag.GetBagStats(BagItems.ForagersBag());
-            Assert.AreEqual(12, capacity2);
+            Assert.AreEqual(16, capacity2);
             Assert.AreEqual("Forager's Bag", name2);
 
             var (capacity3, name3) = ItemBag.GetBagStats(BagItems.TravellersBag());
-            Assert.AreEqual(16, capacity3);
+            Assert.AreEqual(20, capacity3);
             Assert.AreEqual("Traveller's Bag", name3);
 
             var (capacity4, name4) = ItemBag.GetBagStats(BagItems.AdventurersBag());

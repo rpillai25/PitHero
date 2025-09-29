@@ -68,12 +68,12 @@ namespace RolePlayingFramework.Inventory
         {
             return bagItem.Name.ToLower() switch
             {
-                "standard bag" => (8, "Standard Bag"),
-                "forager's bag" => (12, "Forager's Bag"), 
-                "traveller's bag" => (16, "Traveller's Bag"),
+                "standard bag" => (12, "Standard Bag"),
+                "forager's bag" => (16, "Forager's Bag"), 
+                "traveller's bag" => (20, "Traveller's Bag"),
                 "adventurer's bag" => (24, "Adventurer's Bag"),
                 "merchant's bag" => (32, "Merchant's Bag"),
-                _ => (8, "Standard Bag")
+                _ => (12, "Standard Bag")
             };
         }
     }
