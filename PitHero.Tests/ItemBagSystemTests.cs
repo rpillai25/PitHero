@@ -193,7 +193,7 @@ namespace PitHero.Tests
             Assert.AreEqual("Iron Shield", hero.Shield.Name);
 
             // Test unequip
-            Assert.IsTrue(hero.TryUnequip(EquipmentSlot.Shield));
+            Assert.IsTrue(hero.TryUnequip(EquipmentSlot.WeaponShield2));
             Assert.IsNull(hero.Shield);
         }
 
