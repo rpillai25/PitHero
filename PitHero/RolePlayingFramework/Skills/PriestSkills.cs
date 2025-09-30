@@ -11,7 +11,7 @@ namespace RolePlayingFramework.Skills
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var mult = 1f + hero.HealPowerBonus;
-            hero.Heal((int)((20 + hero.GetTotalStats().Magic * 2) * mult));
+            hero.RestoreHP((int)((20 + hero.GetTotalStats().Magic * 2) * mult));
             return "Heal";
         }
     }

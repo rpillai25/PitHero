@@ -140,8 +140,8 @@ namespace RolePlayingFramework.Heroes
             return true;
         }
 
-        /// <summary>Heals HP up to max.</summary>
-        public void Heal(int amount)
+        /// <summary>Restores HP up to max.</summary>
+        public void RestoreHP(int amount)
         {
             if (amount <= 0) return;
             CurrentHP += amount;
@@ -336,6 +336,19 @@ namespace RolePlayingFramework.Heroes
             if (skill.Kind != SkillKind.Active) return null;
             if (!SpendAP(skill.APCost)) return null;
             return skill.Execute(this, primary, surrounding, resolver);
+        }
+
+        /// <summary>Restores AP up to max (amount < 0 indicates full restore).</summary>
+        public void RestoreAP(int amount)
+        {
+            if (amount < 0)
+            {
+                CurrentAP = MaxAP;
+                return;
+            }
+            if (amount <= 0) return;
+            CurrentAP += amount;
+            if (CurrentAP > MaxAP) CurrentAP = MaxAP;
         }
     }
 }

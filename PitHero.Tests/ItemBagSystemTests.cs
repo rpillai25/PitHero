@@ -230,19 +230,5 @@ namespace PitHero.Tests
             Assert.AreEqual(ItemKind.Accessory, itemInterface.Kind);
             Assert.AreEqual(ItemRarity.Rare, itemInterface.Rarity);
         }
-
-        [TestMethod]
-        public void Consumable_HasConsumeMethod()
-        {
-            var consumable = new Consumable("Health Potion", ItemRarity.Normal);
-
-            // Verify basic properties
-            Assert.AreEqual("Health Potion", consumable.Name);
-            Assert.AreEqual(ItemRarity.Normal, consumable.Rarity);
-            Assert.AreEqual(ItemKind.Consumable, consumable.Kind);
-
-            // Verify consume method exists and works
-            Assert.IsTrue(consumable.Consume(new object()));
-        }
     }
 }

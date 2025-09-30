@@ -1,11 +1,9 @@
-using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Nez;
 using Nez.UI;
+using PitHero.ECS.Components;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Heroes;
-using PitHero.ECS.Components;
-using RolePlayingFramework.Inventory;
 
 namespace PitHero.UI
 {
