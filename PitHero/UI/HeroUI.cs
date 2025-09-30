@@ -33,6 +33,10 @@ namespace PitHero.UI
         // Inventory tab content
         private InventoryGrid _inventoryGrid;
         
+        // Item cards for hover and selection
+        private ItemCard _hoverItemCard;
+        private ItemCard _selectedItemCard;
+        
         // Priority reorder components (moved to priorities tab)
         private ReorderableTableList<string> _priorityList;
         private List<string> _priorityItems;
@@ -56,6 +60,9 @@ namespace PitHero.UI
 
             // Create tabbed hero window
             CreateHeroWindow(skin);
+
+            // Create item cards
+            CreateItemCards(skin);
 
             // Add button to stage
             _stage.AddElement(_heroButton);
@@ -159,6 +166,16 @@ namespace PitHero.UI
             _heroWindow.SetVisible(false);
         }
 
+        private void CreateItemCards(Skin skin)
+        {
+            _hoverItemCard = new ItemCard(skin);
+            _selectedItemCard = new ItemCard(skin);
+            
+            // Both start hidden
+            _hoverItemCard.SetVisible(false);
+            _selectedItemCard.SetVisible(false);
+        }
+
         /// <summary>
         /// Creates TabWindowStyle for the TabPane
         /// </summary>
@@ -194,6 +211,12 @@ namespace PitHero.UI
         {
             // Create inventory grid
             _inventoryGrid = new InventoryGrid();
+            
+            // Subscribe to inventory grid events
+            _inventoryGrid.OnItemHovered += HandleItemHovered;
+            _inventoryGrid.OnItemUnhovered += HandleItemUnhovered;
+            _inventoryGrid.OnItemSelected += HandleItemSelected;
+            _inventoryGrid.OnItemDeselected += HandleItemDeselected;
             
             // Connect to hero if available
             var heroComponent = GetHeroComponent();
@@ -293,6 +316,10 @@ namespace PitHero.UI
             {
                 // Use centralized UI window manager for closing behavior
                 UIWindowManager.OnUIWindowClosing();
+                
+                // Hide item cards when window closes
+                _hoverItemCard?.Hide();
+                _selectedItemCard?.Hide();
                 
                 // Hide and remove from stage
                 _heroWindow.SetVisible(false);
@@ -496,6 +523,10 @@ namespace PitHero.UI
                 // Use centralized UI window manager for closing behavior
                 UIWindowManager.OnUIWindowClosing();
                 
+                // Hide item cards when window closes
+                _hoverItemCard?.Hide();
+                _selectedItemCard?.Hide();
+                
                 // Hide and remove from stage
                 _heroWindow?.SetVisible(false);
                 _heroWindow?.Remove();
@@ -506,6 +537,89 @@ namespace PitHero.UI
                     pauseService.IsPaused = false;
                 
                 Debug.Log("[HeroUI] Hero window force closed by single window policy");
+            }
+        }
+
+        private void HandleItemHovered(IItem item)
+        {
+            if (item == null) return;
+
+            // Show hover card
+            _hoverItemCard.ShowItem(item);
+            
+            // Add to stage if not already there
+            if (_hoverItemCard.GetParent() == null)
+            {
+                _stage.AddElement(_hoverItemCard);
+            }
+            
+            // Position the hover card
+            PositionItemCards();
+        }
+
+        private void HandleItemUnhovered()
+        {
+            // Hide hover card (unless an item is selected)
+            if (_selectedItemCard.CurrentItem == null)
+            {
+                _hoverItemCard.Hide();
+            }
+        }
+
+        private void HandleItemSelected(IItem item)
+        {
+            if (item == null) return;
+
+            // Show selected item in selected card
+            _selectedItemCard.ShowItem(item);
+            
+            // Add to stage if not already there
+            if (_selectedItemCard.GetParent() == null)
+            {
+                _stage.AddElement(_selectedItemCard);
+            }
+            
+            // Position the cards
+            PositionItemCards();
+        }
+
+        private void HandleItemDeselected()
+        {
+            // Hide selected card
+            _selectedItemCard.Hide();
+            
+            // If mouse is not hovering over an item, also hide hover card
+            // (In practice, the hover card will be shown again if mouse is over an item)
+            PositionItemCards();
+        }
+
+        private void PositionItemCards()
+        {
+            if (_heroWindow == null) return;
+
+            float heroWindowRight = _heroWindow.GetX() + _heroWindow.GetWidth();
+            float heroWindowY = _heroWindow.GetY();
+            float cardSpacing = 10f;
+
+            // Position selected card first (if visible)
+            if (_selectedItemCard.IsVisible())
+            {
+                _selectedItemCard.SetPosition(heroWindowRight + cardSpacing, heroWindowY);
+                _selectedItemCard.ToFront();
+                
+                // Position hover card to the right of selected card (if visible)
+                if (_hoverItemCard.IsVisible())
+                {
+                    float selectedCardRight = _selectedItemCard.GetX() + _selectedItemCard.GetWidth();
+                    _hoverItemCard.SetPosition(selectedCardRight + cardSpacing, heroWindowY);
+                    _hoverItemCard.ToFront();
+                }
+            }
+            else if (_hoverItemCard.IsVisible())
+            {
+                // Only hover card visible, position it to the right of hero window
+                _hoverItemCard.SetPosition(heroWindowRight + cardSpacing, heroWindowY);
+                _hoverItemCard.ToFront();
             }
         }
 
