@@ -16,7 +16,7 @@ namespace PitHero.Tests
             var bag = new ItemBag();
 
             Assert.AreEqual("Standard Bag", bag.BagName);
-            Assert.AreEqual(8, bag.Capacity);
+            Assert.AreEqual(12, bag.Capacity);
             Assert.AreEqual(0, bag.Count);
             Assert.IsFalse(bag.IsFull);
         }
@@ -187,14 +187,14 @@ namespace PitHero.Tests
             var shield = new Gear("Iron Shield", ItemKind.Shield, ItemRarity.Normal,
                 new StatBlock(0, 0, 1, 0), def: 5);
 
-            Assert.IsNull(hero.Shield);
+            Assert.IsNull(hero.WeaponShield2);
             Assert.IsTrue(hero.TryEquip(shield));
-            Assert.IsNotNull(hero.Shield);
-            Assert.AreEqual("Iron Shield", hero.Shield.Name);
+            Assert.IsNotNull(hero.WeaponShield2);
+            Assert.AreEqual("Iron Shield", hero.WeaponShield2.Name);
 
             // Test unequip
-            Assert.IsTrue(hero.TryUnequip(EquipmentSlot.Shield));
-            Assert.IsNull(hero.Shield);
+            Assert.IsTrue(hero.TryUnequip(EquipmentSlot.WeaponShield2));
+            Assert.IsNull(hero.WeaponShield2);
         }
 
         [TestMethod]
@@ -229,20 +229,6 @@ namespace PitHero.Tests
             Assert.AreEqual("Vitality Ring", itemInterface.Name);
             Assert.AreEqual(ItemKind.Accessory, itemInterface.Kind);
             Assert.AreEqual(ItemRarity.Rare, itemInterface.Rarity);
-        }
-
-        [TestMethod]
-        public void Consumable_HasConsumeMethod()
-        {
-            var consumable = new Consumable("Health Potion", ItemRarity.Normal);
-
-            // Verify basic properties
-            Assert.AreEqual("Health Potion", consumable.Name);
-            Assert.AreEqual(ItemRarity.Normal, consumable.Rarity);
-            Assert.AreEqual(ItemKind.Consumable, consumable.Kind);
-
-            // Verify consume method exists and works
-            Assert.IsTrue(consumable.Consume(new object()));
         }
     }
 }

@@ -6,6 +6,7 @@ using System;
 using Nez.Tiled;
 using System.Collections.Generic;
 using PitHero.Util;
+using RolePlayingFramework.Equipment;
 
 namespace PitHero.ECS.Components
 {
@@ -131,9 +132,25 @@ namespace PitHero.ECS.Components
             _foundWizardOrb = false;
             ActivatedWizardOrb = false;
 
+#if DEBUG
+            DebugSetup();
+#endif
+
             // Ensure initial movement speed matches starting pit state (outside by default)
             ApplyMovementSpeedForPitState();
         }
+
+#if DEBUG
+        /// <summary>
+        /// Setup for debugging
+        /// </summary>
+        public void DebugSetup()
+        {
+            Bag.TryAdd(PotionItems.HPPotion());
+            Bag.TryAdd(PotionItems.APPotion());
+            Bag.TryAdd(PotionItems.FullHPPotion());
+        }
+#endif
 
         /// <summary>
         /// Update fog cooldown timer

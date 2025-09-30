@@ -32,10 +32,10 @@ namespace RolePlayingFramework.Heroes
         public float APCostReduction { get; set; }
 
         // Equipment
-        public IItem? Weapon { get; private set; }
+        public IItem? WeaponShield1 { get; private set; }
         public IItem? Armor { get; private set; }
-        public IItem? Helm { get; private set; }
-        public IItem? Shield { get; private set; }
+        public IItem? Hat { get; private set; }
+        public IItem? WeaponShield2 { get; private set; }
         public IItem? Accessory1 { get; private set; }
         public IItem? Accessory2 { get; private set; }
 
@@ -140,8 +140,8 @@ namespace RolePlayingFramework.Heroes
             return true;
         }
 
-        /// <summary>Heals HP up to max.</summary>
-        public void Heal(int amount)
+        /// <summary>Restores HP up to max.</summary>
+        public void RestoreHP(int amount)
         {
             if (amount <= 0) return;
             CurrentHP += amount;
@@ -165,16 +165,16 @@ namespace RolePlayingFramework.Heroes
             switch (item.Kind)
             {
                 case ItemKind.WeaponSword:
-                    if (Job is Jobs.Knight) { Weapon = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Knight) { WeaponShield1 = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.WeaponKnuckle:
-                    if (Job is Jobs.Monk) { Weapon = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Monk) { WeaponShield1 = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.WeaponStaff:
-                    if (Job is Jobs.Priest) { Weapon = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Priest) { WeaponShield1 = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.WeaponRod:
-                    if (Job is Jobs.Mage) { Weapon = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Mage) { WeaponShield1 = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.ArmorMail:
                     if (Job is Jobs.Knight || _extraEquipPermissions.Contains(ItemKind.ArmorMail)) { Armor = item; RecalculateDerived(); return true; }
@@ -186,20 +186,20 @@ namespace RolePlayingFramework.Heroes
                     if (Job is Jobs.Mage || Job is Jobs.Priest || _extraEquipPermissions.Contains(ItemKind.ArmorRobe)) { Armor = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.HatHelm:
-                    if (Job is Jobs.Knight) { Helm = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Knight) { Hat = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.HatHeadband:
-                    if (Job is Jobs.Monk) { Helm = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Monk) { Hat = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.HatWizard:
-                    if (Job is Jobs.Mage) { Helm = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Mage) { Hat = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.HatPriest:
-                    if (Job is Jobs.Priest) { Helm = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Priest) { Hat = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.Shield:
                     // All classes can equip shields for now
-                    Shield = item; RecalculateDerived(); return true;
+                    WeaponShield2 = item; RecalculateDerived(); return true;
                 case ItemKind.Accessory:
                     if (Accessory1 == null) { Accessory1 = item; RecalculateDerived(); return true; }
                     if (Accessory2 == null) { Accessory2 = item; RecalculateDerived(); return true; }
@@ -214,10 +214,10 @@ namespace RolePlayingFramework.Heroes
         {
             switch (slot)
             {
-                case EquipmentSlot.Weapon: if (Weapon != null) { Weapon = null; RecalculateDerived(); return true; } break;
+                case EquipmentSlot.WeaponShield1: if (WeaponShield1 != null) { WeaponShield1 = null; RecalculateDerived(); return true; } break;
                 case EquipmentSlot.Armor: if (Armor != null) { Armor = null; RecalculateDerived(); return true; } break;
-                case EquipmentSlot.Hat: if (Helm != null) { Helm = null; RecalculateDerived(); return true; } break;
-                case EquipmentSlot.Shield: if (Shield != null) { Shield = null; RecalculateDerived(); return true; } break;
+                case EquipmentSlot.Hat: if (Hat != null) { Hat = null; RecalculateDerived(); return true; } break;
+                case EquipmentSlot.WeaponShield2: if (WeaponShield2 != null) { WeaponShield2 = null; RecalculateDerived(); return true; } break;
                 case EquipmentSlot.Accessory1: if (Accessory1 != null) { Accessory1 = null; RecalculateDerived(); return true; } break;
                 case EquipmentSlot.Accessory2: if (Accessory2 != null) { Accessory2 = null; RecalculateDerived(); return true; } break;
             }
@@ -228,10 +228,10 @@ namespace RolePlayingFramework.Heroes
         private StatBlock GetEquipmentStatBonus()
         {
             var sum = new StatBlock(0, 0, 0, 0);
-            if (Weapon is IGear weaponGear) sum = sum.Add(weaponGear.StatBonus);
+            if (WeaponShield1 is IGear weaponGear) sum = sum.Add(weaponGear.StatBonus);
             if (Armor is IGear armorGear) sum = sum.Add(armorGear.StatBonus);
-            if (Helm is IGear helmGear) sum = sum.Add(helmGear.StatBonus);
-            if (Shield is IGear shieldGear) sum = sum.Add(shieldGear.StatBonus);
+            if (Hat is IGear helmGear) sum = sum.Add(helmGear.StatBonus);
+            if (WeaponShield2 is IGear shieldGear) sum = sum.Add(shieldGear.StatBonus);
             if (Accessory1 is IGear acc1Gear) sum = sum.Add(acc1Gear.StatBonus);
             if (Accessory2 is IGear acc2Gear) sum = sum.Add(acc2Gear.StatBonus);
             return sum;
@@ -241,8 +241,8 @@ namespace RolePlayingFramework.Heroes
         public int GetEquipmentAttackBonus()
         {
             int atk = 0;
-            if (Weapon is IGear weaponGear) atk += weaponGear.AttackBonus;
-            if (Shield is IGear shieldGear) atk += shieldGear.AttackBonus;
+            if (WeaponShield1 is IGear weaponGear) atk += weaponGear.AttackBonus;
+            if (WeaponShield2 is IGear shieldGear) atk += shieldGear.AttackBonus;
             if (Accessory1 is IGear acc1Gear) atk += acc1Gear.AttackBonus;
             if (Accessory2 is IGear acc2Gear) atk += acc2Gear.AttackBonus;
             return atk;
@@ -253,8 +253,8 @@ namespace RolePlayingFramework.Heroes
         {
             int def = PassiveDefenseBonus;
             if (Armor is IGear armorGear) def += armorGear.DefenseBonus;
-            if (Helm is IGear helmGear) def += helmGear.DefenseBonus;
-            if (Shield is IGear shieldGear) def += shieldGear.DefenseBonus;
+            if (Hat is IGear helmGear) def += helmGear.DefenseBonus;
+            if (WeaponShield2 is IGear shieldGear) def += shieldGear.DefenseBonus;
             if (Accessory1 is IGear acc1Gear) def += acc1Gear.DefenseBonus;
             if (Accessory2 is IGear acc2Gear) def += acc2Gear.DefenseBonus;
             return def;
@@ -264,10 +264,10 @@ namespace RolePlayingFramework.Heroes
         public int GetEquipmentHPBonus()
         {
             int hp = 0;
-            if (Weapon is IGear weaponGear) hp += weaponGear.HPBonus;
+            if (WeaponShield1 is IGear weaponGear) hp += weaponGear.HPBonus;
             if (Armor is IGear armorGear) hp += armorGear.HPBonus;
-            if (Helm is IGear helmGear) hp += helmGear.HPBonus;
-            if (Shield is IGear shieldGear) hp += shieldGear.HPBonus;
+            if (Hat is IGear helmGear) hp += helmGear.HPBonus;
+            if (WeaponShield2 is IGear shieldGear) hp += shieldGear.HPBonus;
             if (Accessory1 is IGear acc1Gear) hp += acc1Gear.HPBonus;
             if (Accessory2 is IGear acc2Gear) hp += acc2Gear.HPBonus;
             return hp;
@@ -277,10 +277,10 @@ namespace RolePlayingFramework.Heroes
         public int GetEquipmentAPBonus()
         {
             int ap = 0;
-            if (Weapon is IGear weaponGear) ap += weaponGear.APBonus;
+            if (WeaponShield1 is IGear weaponGear) ap += weaponGear.APBonus;
             if (Armor is IGear armorGear) ap += armorGear.APBonus;
-            if (Helm is IGear helmGear) ap += helmGear.APBonus;
-            if (Shield is IGear shieldGear) ap += shieldGear.APBonus;
+            if (Hat is IGear helmGear) ap += helmGear.APBonus;
+            if (WeaponShield2 is IGear shieldGear) ap += shieldGear.APBonus;
             if (Accessory1 is IGear acc1Gear) ap += acc1Gear.APBonus;
             if (Accessory2 is IGear acc2Gear) ap += acc2Gear.APBonus;
             return ap;
@@ -336,6 +336,19 @@ namespace RolePlayingFramework.Heroes
             if (skill.Kind != SkillKind.Active) return null;
             if (!SpendAP(skill.APCost)) return null;
             return skill.Execute(this, primary, surrounding, resolver);
+        }
+
+        /// <summary>Restores AP up to max (amount < 0 indicates full restore).</summary>
+        public void RestoreAP(int amount)
+        {
+            if (amount < 0)
+            {
+                CurrentAP = MaxAP;
+                return;
+            }
+            if (amount <= 0) return;
+            CurrentAP += amount;
+            if (CurrentAP > MaxAP) CurrentAP = MaxAP;
         }
     }
 }

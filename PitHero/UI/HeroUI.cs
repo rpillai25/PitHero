@@ -4,11 +4,12 @@ using Nez.UI;
 using PitHero.Services;
 using System.Collections.Generic;
 using PitHero.ECS.Components;
+using RolePlayingFramework.Equipment;
 
 namespace PitHero.UI
 {
     /// <summary>
-    /// UI for Hero button with pit priority reorder functionality
+    /// UI for Hero button with tabbed interface for Inventory and Pit Priorities
     /// </summary>
     public class HeroUI
     {
@@ -22,11 +23,19 @@ namespace PitHero.UI
         private HeroMode _currentHeroMode = HeroMode.Normal;
         private bool _styleChanged = false;
 
-        // Priority reorder window components
-        private Window _priorityWindow;
+        // Tabbed window components
+        private Window _heroWindow;
+        private TabPane _tabPane;
+        private Tab _inventoryTab;
+        private Tab _prioritiesTab;
+        private bool _windowVisible = false;
+        
+        // Inventory tab content
+        private InventoryGrid _inventoryGrid;
+        
+        // Priority reorder components (moved to priorities tab)
         private ReorderableTableList<string> _priorityList;
         private List<string> _priorityItems;
-        private bool _windowVisible = false;
 
         public HeroUI()
         {
@@ -45,8 +54,8 @@ namespace PitHero.UI
             // Create Hero button
             CreateHeroButton(skin);
 
-            // Create priority window
-            CreatePriorityWindow(skin);
+            // Create tabbed hero window
+            CreateHeroWindow(skin);
 
             // Add button to stage
             _stage.AddElement(_heroButton);
@@ -99,12 +108,12 @@ namespace PitHero.UI
         private void HandleHeroButtonClick()
         {
             // Close SettingsUI window if it's open before opening Hero window (single window policy)
-            // Use a simple approach - look for any visible Window that's not our priority window
+            // Use a simple approach - look for any visible Window that's not our hero window
             var allElements = _stage.GetElements();
             for (int i = 0; i < allElements.Count; i++)
             {
                 var element = allElements[i];
-                if (element is Window window && window.IsVisible() && window != _priorityWindow)
+                if (element is Window window && window.IsVisible() && window != _heroWindow)
                 {
                     // This is likely the Settings window - force close it
                     window.SetVisible(false);
@@ -117,32 +126,99 @@ namespace PitHero.UI
                 }
             }
 
-            // Toggle priority window visibility
-            TogglePriorityWindow();
+            // Toggle hero window visibility
+            ToggleHeroWindow();
         }
 
-        private void CreatePriorityWindow(Skin skin)
+        private void CreateHeroWindow(Skin skin)
+        {
+            // Create tabbed hero window
+            _heroWindow = new Window("Hero", skin);
+            _heroWindow.SetSize(400f, 350f);
+            
+            // Create TabPane with proper styling
+            var tabWindowStyle = CreateTabWindowStyle(skin);
+            _tabPane = new TabPane(tabWindowStyle);
+            
+            // Create tabs with content
+            var tabStyle = CreateTabStyle(skin);
+            _inventoryTab = new Tab("Inventory", tabStyle);
+            _prioritiesTab = new Tab("Pit Priorities", tabStyle);
+            
+            // Add content to tabs
+            PopulateInventoryTab(_inventoryTab, skin);
+            PopulatePrioritiesTab(_prioritiesTab, skin);
+            
+            // Add tabs to TabPane
+            _tabPane.AddTab(_inventoryTab);
+            _tabPane.AddTab(_prioritiesTab);
+            
+            // Add TabPane to hero window
+            _heroWindow.Add(_tabPane).Expand().Fill();
+
+            _heroWindow.SetVisible(false);
+        }
+
+        /// <summary>
+        /// Creates TabWindowStyle for the TabPane
+        /// </summary>
+        private TabWindowStyle CreateTabWindowStyle(Skin skin)
+        {
+            var tabButtonStyle = new TabButtonStyle();
+            tabButtonStyle.LabelStyle = skin.Get<LabelStyle>();
+            
+            // Use button styles for tab button states
+            var buttonStyle = skin.Get<TextButtonStyle>();
+            tabButtonStyle.Inactive = buttonStyle.Up;
+            tabButtonStyle.Active = buttonStyle.Down;
+            
+            return new TabWindowStyle
+            {
+                TabButtonStyle = tabButtonStyle,
+                Background = skin.Get<WindowStyle>().Background
+            };
+        }
+
+        /// <summary>
+        /// Creates TabStyle for individual tabs
+        /// </summary>
+        private TabStyle CreateTabStyle(Skin skin)
+        {
+            return new TabStyle
+            {
+                Background = null // Use transparent background
+            };
+        }
+
+        private void PopulateInventoryTab(Tab inventoryTab, Skin skin)
+        {
+            // Create inventory grid
+            _inventoryGrid = new InventoryGrid();
+            
+            // Connect to hero if available
+            var heroComponent = GetHeroComponent();
+            if (heroComponent != null)
+            {
+                _inventoryGrid.ConnectToHero(heroComponent);
+            }
+            
+            // Create a scroll pane for the inventory
+            var scrollPane = new ScrollPane(_inventoryGrid, skin);
+            scrollPane.SetScrollingDisabled(true, false); // Only allow vertical scrolling
+            
+            inventoryTab.Add(scrollPane).Expand().Fill().Pad(10f);
+        }
+
+        private void PopulatePrioritiesTab(Tab prioritiesTab, Skin skin)
         {
             // Initialize priority items from current hero priorities
             InitializePriorityItems();
 
             // Create reorderable list
             _priorityList = new ReorderableTableList<string>(skin, _priorityItems, OnPriorityReordered);
-
-            // Create window
-            _priorityWindow = new Window("Pit Priorities", skin);
-            _priorityWindow.SetSize(300f, 200f);
             
-            // Add padding at the top before the priority list
-            _priorityWindow.Add(_priorityList).Expand().Fill().SetPadTop(15f);
-
-            // Add close button
-            var closeButton = new TextButton("Close", skin);
-            closeButton.OnClicked += (btn) => TogglePriorityWindow();
-            _priorityWindow.Row();
-            _priorityWindow.Add(closeButton).SetPadTop(10f);
-
-            _priorityWindow.SetVisible(false);
+            // Add content to the priorities tab
+            prioritiesTab.Add(_priorityList).Expand().Fill().Pad(15f);
         }
 
         private void InitializePriorityItems()
@@ -176,9 +252,9 @@ namespace PitHero.UI
             UpdateHeroPriorities();
         }
 
-        private void TogglePriorityWindow()
+        private void ToggleHeroWindow()
         {
-            if (_priorityWindow == null) return;
+            if (_heroWindow == null) return;
 
             _windowVisible = !_windowVisible;
             
@@ -189,22 +265,29 @@ namespace PitHero.UI
                 
                 // Refresh priority items from current hero state (mutates existing list)
                 InitializePriorityItems();
-                _priorityList.Rebuild();
+                _priorityList?.Rebuild();
+                
+                // Refresh inventory from current hero bag
+                var heroComponent = GetHeroComponent();
+                if (heroComponent != null && _inventoryGrid != null)
+                {
+                    _inventoryGrid.ConnectToHero(heroComponent);
+                }
                 
                 // Position window next to Hero button
-                PositionPriorityWindow();
+                PositionHeroWindow();
                 
                 // Add to stage and show
-                _stage.AddElement(_priorityWindow);
-                _priorityWindow.SetVisible(true);
-                _priorityWindow.ToFront();
+                _stage.AddElement(_heroWindow);
+                _heroWindow.SetVisible(true);
+                _heroWindow.ToFront();
                 
                 // Pause the game when window opens
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null)
                     pauseService.IsPaused = true;
                 
-                Debug.Log("Priority window opened and game paused");
+                Debug.Log("Hero window opened and game paused");
             }
             else
             {
@@ -212,30 +295,30 @@ namespace PitHero.UI
                 UIWindowManager.OnUIWindowClosing();
                 
                 // Hide and remove from stage
-                _priorityWindow.SetVisible(false);
-                _priorityWindow.Remove();
+                _heroWindow.SetVisible(false);
+                _heroWindow.Remove();
                 
                 // Unpause the game when window closes
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null)
                     pauseService.IsPaused = false;
                 
-                Debug.Log("Priority window closed and game unpaused");
+                Debug.Log("Hero window closed and game unpaused");
             }
         }
 
-        private void PositionPriorityWindow()
+        private void PositionHeroWindow()
         {
-            if (_priorityWindow == null || _heroButton == null) return;
+            if (_heroWindow == null || _heroButton == null) return;
 
             // Ensure window dimensions are calculated
-            _priorityWindow.Validate();
+            _heroWindow.Validate();
 
             float heroX = _heroButton.GetX();
             float heroY = _heroButton.GetY();
             float heroW = _heroButton.GetWidth();
-            float winW = _priorityWindow.GetWidth();
-            float winH = _priorityWindow.GetHeight();
+            float winW = _heroWindow.GetWidth();
+            float winH = _heroWindow.GetHeight();
 
             const float padding = 4f;
             float targetX = heroX + heroW + padding;
@@ -253,7 +336,7 @@ namespace PitHero.UI
             if (targetY < 0) targetY = 0;
             if (targetY + winH > stageH) targetY = stageH - winH;
 
-            _priorityWindow.SetPosition(targetX, targetY);
+            _heroWindow.SetPosition(targetX, targetY);
         }
 
         private HeroComponent GetHeroComponent()
@@ -388,15 +471,21 @@ namespace PitHero.UI
         public void Update()
         {
             UpdateButtonStyleIfNeeded();
+            
+            // Handle keyboard shortcuts when hero window is visible
+            if (_windowVisible && _inventoryGrid != null)
+            {
+                _inventoryGrid.HandleKeyboardShortcuts();
+            }
         }
 
         /// <summary>
-        /// Gets whether the priority window is currently visible
+        /// Gets whether the hero window is currently visible
         /// </summary>
         public bool IsWindowVisible => _windowVisible;
 
         /// <summary>
-        /// Forces the priority window to close without triggering normal events
+        /// Forces the hero window to close without triggering normal events
         /// </summary>
         public void ForceCloseWindow()
         {
@@ -408,16 +497,17 @@ namespace PitHero.UI
                 UIWindowManager.OnUIWindowClosing();
                 
                 // Hide and remove from stage
-                _priorityWindow?.SetVisible(false);
-                _priorityWindow?.Remove();
+                _heroWindow?.SetVisible(false);
+                _heroWindow?.Remove();
                 
                 // Unpause the game when window closes
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null)
                     pauseService.IsPaused = false;
                 
-                Debug.Log("[HeroUI] Priority window force closed by single window policy");
+                Debug.Log("[HeroUI] Hero window force closed by single window policy");
             }
         }
+
     }
 }

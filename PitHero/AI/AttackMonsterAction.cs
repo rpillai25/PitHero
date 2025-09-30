@@ -414,7 +414,7 @@ namespace PitHero.AI
                                 {
                                     Debug.Log($"[AttackMonster] {hero.Name} died! Refilling HP to full for now.");
                                     // Refill hero HP to full for now (as requested)
-                                    hero.Heal(hero.MaxHP);
+                                    hero.RestoreHP(hero.MaxHP);
                                     break; // End battle
                                 }
                             }
