@@ -134,7 +134,7 @@ namespace PitHero.UI
         {
             // Create tabbed hero window
             _heroWindow = new Window("Hero", skin);
-            _heroWindow.SetSize(400f, 350f);
+            _heroWindow.SetSize(285f, 350f);
             
             // Create TabPane with proper styling
             var tabWindowStyle = CreateTabWindowStyle(skin);
