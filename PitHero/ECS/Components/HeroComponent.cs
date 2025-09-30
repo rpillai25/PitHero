@@ -132,7 +132,9 @@ namespace PitHero.ECS.Components
             _foundWizardOrb = false;
             ActivatedWizardOrb = false;
 
-            //Bag.TryAdd(PotionItems.HPPotion());
+            Bag.TryAdd(PotionItems.HPPotion());
+            Bag.TryAdd(PotionItems.APPotion());
+            Bag.TryAdd(PotionItems.FullHPPotion());
 
             // Ensure initial movement speed matches starting pit state (outside by default)
             ApplyMovementSpeedForPitState();

@@ -164,6 +164,19 @@ namespace RolePlayingFramework.Inventory
             _compactDirty = true;
         }
 
+        /// <summary>Replaces slot ordering with provided raw buffer (no allocation path).</summary>
+        public void SetItemsInOrder(IItem[] orderedBuffer, int count)
+        {
+            if (orderedBuffer == null) return;
+            if (count > orderedBuffer.Length) count = orderedBuffer.Length;
+            if (count > _slots.Length) count = _slots.Length;
+            for (int i = 0; i < count; i++) _slots[i] = orderedBuffer[i];
+            for (int i = count; i < _slots.Length; i++) _slots[i] = null;
+            _count = 0;
+            for (int i = 0; i < _slots.Length; i++) if (_slots[i] != null) _count++;
+            _compactDirty = true;
+        }
+
         /// <summary>Ensures compact non-null list is synchronized.</summary>
         private void EnsureCompact()
         {
