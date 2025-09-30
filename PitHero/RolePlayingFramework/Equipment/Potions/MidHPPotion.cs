@@ -5,7 +5,7 @@ namespace RolePlayingFramework.Equipment
     /// <summary>Restores a large amount of HP.</summary>
     public sealed class MidHPPotion : Consumable
     {
-        public MidHPPotion() : base("MidHPPotion", ItemRarity.Rare, 500, 0) { }
+        public MidHPPotion() : base("MidHPPotion", ItemRarity.Rare, "Restores 500 HP", 100, 500, 0) { }
         /// <summary>Consume: restore HP.</summary>
         public override bool Consume(object context)
         {

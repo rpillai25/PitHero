@@ -8,17 +8,21 @@ namespace RolePlayingFramework.Equipment
         public string Name { get; }
         public ItemKind Kind { get; }
         public ItemRarity Rarity { get; }
+        public string Description { get; }
+        public int Price { get; }
         public StatBlock StatBonus { get; }
         public int AttackBonus { get; }
         public int DefenseBonus { get; }
         public int HPBonus { get; }
         public int APBonus { get; }
 
-        public Gear(string name, ItemKind kind, ItemRarity rarity, in StatBlock stats, int atk = 0, int def = 0, int hp = 0, int ap = 0)
+        public Gear(string name, ItemKind kind, ItemRarity rarity, string description, int price, in StatBlock stats, int atk = 0, int def = 0, int hp = 0, int ap = 0)
         {
             Name = name;
             Kind = kind;
             Rarity = rarity;
+            Description = description;
+            Price = price;
             StatBonus = stats;
             AttackBonus = atk;
             DefenseBonus = def;
