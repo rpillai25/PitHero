@@ -6,39 +6,73 @@ using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Heroes;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Inventory;
-// FastList is in Nez namespace
 
 namespace PitHero.UI
 {
-    /// <summary>Grid layout container for inventory slots with interaction logic.</summary>
+    /// <summary>Grid layout container for inventory slots with interaction logic (single linear buffer version).</summary>
     public class InventoryGrid : Group
     {
         private const int GRID_WIDTH = 8;
         private const int GRID_HEIGHT = 7;
+        private const int CELL_COUNT = GRID_WIDTH * GRID_HEIGHT;
         private const float SLOT_SIZE = 32f;
         private const float SLOT_PADDING = 1f;
-        
-        private readonly InventorySlotData[,] _slotGrid;        // Data definitions
-        private readonly InventorySlot[,] _slotComponentGrid;    // Direct lookup for components
-        private readonly FastList<InventorySlot> _slotComponents; // All created slot components
-        private readonly FastList<InventorySlot> _orderedBagSlots; // Ordered bag slots (shortcut + inventory)
-        private InventorySlot _highlightedSlot;
+
+        private readonly FastList<InventorySlot> _slots;   // Row-major, may contain nulls for Null slots or capacity-disabled slots
+        private readonly IItem[] _persistBuffer;           // Reusable buffer for bag ordering persistence (32 max bag capacity)
         private HeroComponent _heroComponent;
-        private readonly FastList<IItem> _bagRebuildBuffer;      // Buffer for persisting bag ordering
-        
+        private InventorySlot _highlightedSlot;
+
         public InventoryGrid()
         {
-            _slotGrid = new InventorySlotData[GRID_WIDTH, GRID_HEIGHT];
-            _slotComponentGrid = new InventorySlot[GRID_WIDTH, GRID_HEIGHT];
-            _slotComponents = new FastList<InventorySlot>(GRID_WIDTH * GRID_HEIGHT);
-            _orderedBagSlots = new FastList<InventorySlot>(GRID_WIDTH * GRID_HEIGHT);
-            _bagRebuildBuffer = new FastList<IItem>(GRID_WIDTH * GRID_HEIGHT);
-            InitializeSlotGrid();
-            CreateSlotComponents();
+            _slots = new FastList<InventorySlot>(CELL_COUNT);
+            _persistBuffer = new IItem[CELL_COUNT];
+            BuildSlots();
             LayoutSlots();
         }
 
-        /// <summary>Connects grid to hero.</summary>
+        /// <summary>Builds all slot components in row-major order (adds null placeholders for Null slots).</summary>
+        private void BuildSlots()
+        {
+            for (int y = 0; y < GRID_HEIGHT; y++)
+            {
+                for (int x = 0; x < GRID_WIDTH; x++)
+                {
+                    var data = CreateSlotData(x, y);
+                    if (data.SlotType == InventorySlotType.Null)
+                    {
+                        _slots.Add(null); // placeholder to keep index mapping intact
+                        continue;
+                    }
+                    var slot = new InventorySlot(data);
+                    slot.OnSlotClicked += HandleSlotClicked;
+                    slot.OnSlotHovered += HandleSlotHovered;
+                    slot.OnSlotUnhovered += HandleSlotUnhovered;
+                    _slots.Add(slot);
+                    AddElement(slot);
+                }
+            }
+        }
+
+        /// <summary>Creates slot data for a given grid coordinate.</summary>
+        private InventorySlotData CreateSlotData(int x, int y)
+        {
+            // Equipment layout
+            if (x == 3 && y == 0) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Hat };
+            if (y == 1 && x == 1) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield1 };
+            if (y == 1 && x == 3) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Armor };
+            if (y == 1 && x == 5) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield2 };
+            if (y == 2 && x == 2) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory1 };
+            if (y == 2 && x == 4) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory2 };
+            // Shortcuts row
+            if (y == 3) return new InventorySlotData(x, y, InventorySlotType.Shortcut) { ShortcutKey = x + 1 };
+            // Inventory rows (4-6)
+            if (y >= 4) return new InventorySlotData(x, y, InventorySlotType.Inventory);
+            // Everything else is Null spacer
+            return new InventorySlotData(x, y, InventorySlotType.Null);
+        }
+
+        /// <summary>Connects grid to hero and loads items.</summary>
         public void ConnectToHero(HeroComponent heroComponent)
         {
             _heroComponent = heroComponent;
@@ -49,180 +83,156 @@ namespace PitHero.UI
             }
         }
 
-        /// <summary>Refresh items from hero bag.</summary>
+        /// <summary>Refreshes items from hero state.</summary>
         public void UpdateItemsFromBag()
         {
             if (_heroComponent?.Bag == null) return;
-            for (int i = 0; i < _slotComponents.Length; i++)
-                _slotComponents.Buffer[i].SlotData.Item = null;
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot != null)
+                    slot.SlotData.Item = null;
+            }
             UpdateEquipmentSlots();
             UpdateBagSlots();
         }
 
-        /// <summary>Populate equipment slots.</summary>
+        /// <summary>Updates equipment slot items from hero equipment.</summary>
         private void UpdateEquipmentSlots()
         {
-            var heroEquipment = _heroComponent.Entity.GetComponent<Hero>();
+            var heroEquipment = _heroComponent?.Entity.GetComponent<Hero>();
             if (heroEquipment == null) return;
-            for (int i = 0; i < _slotComponents.Length; i++)
+            for (int i = 0; i < _slots.Length; i++)
             {
-                var slot = _slotComponents.Buffer[i];
-                if (slot.SlotData.SlotType == InventorySlotType.Equipment)
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                if (slot.SlotData.SlotType != InventorySlotType.Equipment) continue;
+                switch (slot.SlotData.EquipmentSlot)
                 {
-                    switch (slot.SlotData.EquipmentSlot)
-                    {
-                        case EquipmentSlot.WeaponShield1: slot.SlotData.Item = heroEquipment.WeaponShield1; break;
-                        case EquipmentSlot.Armor: slot.SlotData.Item = heroEquipment.Armor; break;
-                        case EquipmentSlot.Hat: slot.SlotData.Item = heroEquipment.Hat; break;
-                        case EquipmentSlot.WeaponShield2: slot.SlotData.Item = heroEquipment.WeaponShield2; break;
-                        case EquipmentSlot.Accessory1: slot.SlotData.Item = heroEquipment.Accessory1; break;
-                        case EquipmentSlot.Accessory2: slot.SlotData.Item = heroEquipment.Accessory2; break;
-                    }
+                    case EquipmentSlot.WeaponShield1: slot.SlotData.Item = heroEquipment.WeaponShield1; break;
+                    case EquipmentSlot.Armor: slot.SlotData.Item = heroEquipment.Armor; break;
+                    case EquipmentSlot.Hat: slot.SlotData.Item = heroEquipment.Hat; break;
+                    case EquipmentSlot.WeaponShield2: slot.SlotData.Item = heroEquipment.WeaponShield2; break;
+                    case EquipmentSlot.Accessory1: slot.SlotData.Item = heroEquipment.Accessory1; break;
+                    case EquipmentSlot.Accessory2: slot.SlotData.Item = heroEquipment.Accessory2; break;
                 }
             }
         }
 
-        /// <summary>Populate bag slots (shortcut + inventory) row-major.</summary>
+        /// <summary>Populates bag slots with items using 1:1 index -> bag index mapping.</summary>
         private void UpdateBagSlots()
         {
             var bag = _heroComponent.Bag;
-            _orderedBagSlots.Reset();
-            for (int y = 0; y < GRID_HEIGHT; y++)
+            int bagIndex = 0;
+            for (int i = 0; i < _slots.Length; i++)
             {
-                for (int x = 0; x < GRID_WIDTH; x++)
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                var type = slot.SlotData.SlotType;
+                if (type == InventorySlotType.Shortcut || type == InventorySlotType.Inventory)
                 {
-                    var comp = _slotComponentGrid[x, y];
-                    if (comp == null) continue;
-                    var type = comp.SlotData.SlotType;
-                    if (type == InventorySlotType.Shortcut || type == InventorySlotType.Inventory)
-                        _orderedBagSlots.Add(comp);
+                    slot.SlotData.BagIndex = bagIndex;
+                    slot.SlotData.Item = bag.GetSlotItem(bagIndex);
+                    bagIndex++;
                 }
-            }
-            for (int i = 0; i < _orderedBagSlots.Length; i++)
-            {
-                var slot = _orderedBagSlots.Buffer[i];
-                slot.SlotData.BagIndex = i;
-                slot.SlotData.Item = bag.GetSlotItem(i);
             }
         }
 
-        /// <summary>Keyboard shortcuts.</summary>
+        /// <summary>Handles shortcut key presses (1-8).</summary>
         public void HandleKeyboardShortcuts()
         {
-            for (int i = 0; i < 8; i++)
+            for (int keyOffset = 0; keyOffset < 8; keyOffset++)
             {
-                var key = (Keys)((int)Keys.D1 + i);
-                if (Input.IsKeyPressed(key))
+                var key = (Keys)((int)Keys.D1 + keyOffset);
+                if (!Input.IsKeyPressed(key)) continue;
+                for (int i = 0; i < _slots.Length; i++)
                 {
-                    InventorySlot shortcutSlot = null;
-                    for (int s = 0; s < _slotComponents.Length; s++)
+                    var slot = _slots.Buffer[i];
+                    if (slot == null) continue;
+                    var data = slot.SlotData;
+                    if (data.SlotType == InventorySlotType.Shortcut && data.ShortcutKey == keyOffset + 1 && data.Item != null)
                     {
-                        var sc = _slotComponents.Buffer[s];
-                        if (sc.SlotData.SlotType == InventorySlotType.Shortcut && sc.SlotData.ShortcutKey == i + 1)
-                        { shortcutSlot = sc; break; }
+                        Debug.Log($"Activated shortcut slot {data.ShortcutKey} with item: {data.Item.Name}");
+                        break;
                     }
-                    if (shortcutSlot != null && shortcutSlot.SlotData.Item != null)
-                        ActivateShortcutSlot(shortcutSlot, i + 1);
                 }
             }
         }
 
-        /// <summary>Activate shortcut (placeholder).</summary>
-        private void ActivateShortcutSlot(InventorySlot slot, int keyNumber)
-        { Debug.Log($"Activated shortcut slot {keyNumber} with item: {slot.SlotData.Item?.Name ?? "None"}"); }
-
-        /// <summary>Initialize logical slot grid.</summary>
-        private void InitializeSlotGrid()
-        {
-            for (int x = 0; x < GRID_WIDTH; x++)
-                for (int y = 0; y < GRID_HEIGHT; y++)
-                    _slotGrid[x, y] = new InventorySlotData(x, y, InventorySlotType.Null);
-
-            _slotGrid[3, 0] = new InventorySlotData(3, 0, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Hat };
-            _slotGrid[1, 1] = new InventorySlotData(1, 1, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield1 };
-            _slotGrid[3, 1] = new InventorySlotData(3, 1, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Armor };
-            _slotGrid[5, 1] = new InventorySlotData(5, 1, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield2 };
-            _slotGrid[2, 2] = new InventorySlotData(2, 2, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory1 };
-            _slotGrid[4, 2] = new InventorySlotData(4, 2, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory2 };
-            for (int x = 0; x < GRID_WIDTH; x++)
-                _slotGrid[x, 3] = new InventorySlotData(x, 3, InventorySlotType.Shortcut) { ShortcutKey = x + 1 };
-            for (int y = 4; y < GRID_HEIGHT; y++)
-                for (int x = 0; x < GRID_WIDTH; x++)
-                    _slotGrid[x, y] = new InventorySlotData(x, y, InventorySlotType.Inventory);
-        }
-
-        /// <summary>Create slot components.</summary>
-        private void CreateSlotComponents()
-        {
-            for (int x = 0; x < GRID_WIDTH; x++)
-            {
-                for (int y = 0; y < GRID_HEIGHT; y++)
-                {
-                    var slotData = _slotGrid[x, y];
-                    if (slotData.SlotType == InventorySlotType.Null) continue;
-                    var slotComponent = new InventorySlot(slotData);
-                    slotComponent.OnSlotClicked += HandleSlotClicked;
-                    slotComponent.OnSlotHovered += HandleSlotHovered;
-                    slotComponent.OnSlotUnhovered += HandleSlotUnhovered;
-                    _slotComponents.Add(slotComponent);
-                    _slotComponentGrid[x, y] = slotComponent;
-                    AddElement(slotComponent);
-                }
-            }
-        }
-
-        /// <summary>Layout slot components.</summary>
+        /// <summary>Positions slot components based on grid coordinates.</summary>
         private void LayoutSlots()
         {
-            for (int i = 0; i < _slotComponents.Length; i++)
+            for (int i = 0; i < _slots.Length; i++)
             {
-                var slot = _slotComponents.Buffer[i];
-                slot.SetPosition(slot.SlotData.X * (SLOT_SIZE + SLOT_PADDING), slot.SlotData.Y * (SLOT_SIZE + SLOT_PADDING));
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                var data = slot.SlotData;
+                slot.SetPosition(data.X * (SLOT_SIZE + SLOT_PADDING), data.Y * (SLOT_SIZE + SLOT_PADDING));
             }
         }
 
-        /// <summary>Handle slot click highlight/swap.</summary>
+        /// <summary>Handles slot click highlighting and swapping.</summary>
         private void HandleSlotClicked(InventorySlot clickedSlot)
         {
             if (_highlightedSlot == null)
-            { _highlightedSlot = clickedSlot; clickedSlot.SlotData.IsHighlighted = true; Debug.Log($"Highlighted slot at ({clickedSlot.SlotData.X}, {clickedSlot.SlotData.Y})"); }
+            {
+                _highlightedSlot = clickedSlot;
+                clickedSlot.SlotData.IsHighlighted = true;
+                Debug.Log($"Highlighted slot at ({clickedSlot.SlotData.X},{clickedSlot.SlotData.Y})");
+            }
             else if (_highlightedSlot == clickedSlot)
-            { _highlightedSlot.SlotData.IsHighlighted = false; _highlightedSlot = null; }
+            {
+                _highlightedSlot.SlotData.IsHighlighted = false;
+                _highlightedSlot = null;
+            }
             else
-            { var prev = _highlightedSlot; SwapSlotItems(_highlightedSlot, clickedSlot); _highlightedSlot.SlotData.IsHighlighted = false; _highlightedSlot = null; Debug.Log($"Swapped items between ({prev.SlotData.X},{prev.SlotData.Y}) and ({clickedSlot.SlotData.X},{clickedSlot.SlotData.Y})"); }
+            {
+                var prev = _highlightedSlot;
+                SwapSlotItems(_highlightedSlot, clickedSlot);
+                _highlightedSlot.SlotData.IsHighlighted = false;
+                _highlightedSlot = null;
+                Debug.Log($"Swapped items between ({prev.SlotData.X},{prev.SlotData.Y}) and ({clickedSlot.SlotData.X},{clickedSlot.SlotData.Y})");
+            }
         }
 
         private void HandleSlotHovered(InventorySlot slot) { }
         private void HandleSlotUnhovered(InventorySlot slot) { }
 
-        /// <summary>Swap two items and persist.</summary>
-        private void SwapSlotItems(InventorySlot slot1, InventorySlot slot2)
+        /// <summary>Swaps two slot items (if legal) and persists bag ordering.</summary>
+        private void SwapSlotItems(InventorySlot a, InventorySlot b)
         {
-            if (!CanPlaceItemInSlot(slot1.SlotData.Item, slot2.SlotData) || !CanPlaceItemInSlot(slot2.SlotData.Item, slot1.SlotData)) return;
-            var item1 = slot1.SlotData.Item; var item2 = slot2.SlotData.Item; slot1.SlotData.Item = item2; slot2.SlotData.Item = item1; UpdateHeroDataFromSlot(slot1); UpdateHeroDataFromSlot(slot2); PersistBagOrdering();
+            if (!CanPlaceItemInSlot(a.SlotData.Item, b.SlotData) || !CanPlaceItemInSlot(b.SlotData.Item, a.SlotData))
+                return;
+            var tmp = a.SlotData.Item;
+            a.SlotData.Item = b.SlotData.Item;
+            b.SlotData.Item = tmp;
+            UpdateHeroDataFromSlot(a);
+            UpdateHeroDataFromSlot(b);
+            PersistBagOrdering();
         }
 
-        /// <summary>Persist bag ordering to ItemBag.</summary>
+        /// <summary>Persists current bag ordering to ItemBag via raw buffer (no allocations).</summary>
         private void PersistBagOrdering()
         {
             if (_heroComponent?.Bag == null) return;
-            _bagRebuildBuffer.Reset();
-            for (int y = 0; y < GRID_HEIGHT; y++)
+            int count = 0;
+            for (int i = 0; i < _slots.Length; i++)
             {
-                for (int x = 0; x < GRID_WIDTH; x++)
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                var type = slot.SlotData.SlotType;
+                if (type == InventorySlotType.Shortcut || type == InventorySlotType.Inventory)
                 {
-                    var comp = _slotComponentGrid[x, y];
-                    if (comp == null) continue;
-                    var type = comp.SlotData.SlotType;
-                    if (type == InventorySlotType.Shortcut || type == InventorySlotType.Inventory)
-                        _bagRebuildBuffer.Add(comp.SlotData.Item);
+                    _persistBuffer[count++] = slot.SlotData.Item;
                 }
             }
-            // zero-allocation bag update
-            _heroComponent.Bag.SetItemsInOrder(_bagRebuildBuffer.Buffer, _bagRebuildBuffer.Length);
+            // Clear remainder of buffer to avoid stale references (optional safety)
+            for (int i = count; i < _persistBuffer.Length; i++)
+                _persistBuffer[i] = null;
+            _heroComponent.Bag.SetItemsInOrder(_persistBuffer, count);
         }
 
-        /// <summary>Validate placing an item in a slot.</summary>
+        /// <summary>Validates whether an item can be placed in target slot data.</summary>
         private bool CanPlaceItemInSlot(IItem item, InventorySlotData slotData)
         {
             if (item == null) return true;
@@ -239,42 +249,65 @@ namespace PitHero.UI
             }
         }
 
-        /// <summary>Check weapon/shield type.</summary>
+        /// <summary>Checks if item is a weapon or shield.</summary>
         private bool IsWeaponOrShield(IItem item)
-        { return item.Kind == ItemKind.WeaponSword || item.Kind == ItemKind.WeaponKnuckle || item.Kind == ItemKind.WeaponStaff || item.Kind == ItemKind.WeaponRod || item.Kind == ItemKind.Shield; }
-
-        /// <summary>Update hero data for equipment slots.</summary>
-        private void UpdateHeroDataFromSlot(InventorySlot slot)
         {
-            var heroEquipment = _heroComponent?.Entity.GetComponent<Hero>(); if (heroEquipment == null) return;
-            var sd = slot.SlotData; if (sd.SlotType == InventorySlotType.Equipment) UpdateHeroEquipment(heroEquipment, sd);
+            return item.Kind == ItemKind.WeaponSword || item.Kind == ItemKind.WeaponKnuckle || item.Kind == ItemKind.WeaponStaff || item.Kind == ItemKind.WeaponRod || item.Kind == ItemKind.Shield;
         }
 
-        /// <summary>Equip or unequip item.</summary>
-        private void UpdateHeroEquipment(Hero heroEquipment, InventorySlotData slotData)
-        { var item = slotData.Item; if (item != null) heroEquipment.TryEquip(item); else if (slotData.EquipmentSlot.HasValue) heroEquipment.TryUnequip(slotData.EquipmentSlot.Value); }
+        /// <summary>Updates hero equipment when equipment slot changed.</summary>
+        private void UpdateHeroDataFromSlot(InventorySlot slot)
+        {
+            var heroEquipment = _heroComponent?.Entity.GetComponent<Hero>();
+            if (heroEquipment == null) return;
+            var d = slot.SlotData;
+            if (d.SlotType != InventorySlotType.Equipment) return;
+            if (d.Item != null) heroEquipment.TryEquip(d.Item); else if (d.EquipmentSlot.HasValue) heroEquipment.TryUnequip(d.EquipmentSlot.Value);
+        }
 
-        /// <summary>Adjust slot visibility based on capacity.</summary>
+        /// <summary>Updates active inventory slot availability based on capacity.</summary>
         public void UpdateBagCapacity(int capacity)
         {
-            int inventorySlotCount = capacity - 8; int currentInventorySlot = 0;
-            for (int y = 4; y < GRID_HEIGHT; y++)
+            // Bag capacity includes first 8 shortcut slots + inventory slots.
+            int allowedInventorySlots = capacity - 8;
+            if (allowedInventorySlots < 0) allowedInventorySlots = 0;
+            int inventorySeen = 0;
+            for (int i = 0; i < _slots.Length; i++)
             {
-                for (int x = 0; x < GRID_WIDTH; x++)
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                var data = slot.SlotData;
+                if (data.SlotType == InventorySlotType.Inventory)
                 {
-                    var slotData = _slotGrid[x, y]; if (slotData.SlotType != InventorySlotType.Inventory) continue;
-                    currentInventorySlot++; if (currentInventorySlot > inventorySlotCount)
-                    { slotData.SlotType = InventorySlotType.Null; var comp = _slotComponentGrid[x, y]; if (comp != null)
-                        { for (int i = 0; i < _slotComponents.Length; i++) { if (_slotComponents.Buffer[i] == comp) { _slotComponents.RemoveAt(i); break; } } RemoveElement(comp); _slotComponentGrid[x, y] = null; } }
+                    inventorySeen++;
+                    if (inventorySeen > allowedInventorySlots)
+                    {
+                        // Disable this slot visually and logically
+                        data.SlotType = InventorySlotType.Null;
+                        data.Item = null;
+                        slot.Remove(); // remove from stage so user cannot interact
+                    }
                 }
             }
         }
 
-        /// <summary>Find next empty slot.</summary>
+        /// <summary>Finds next empty usable bag slot (shortcut first then inventory).</summary>
         public InventorySlotData FindNextAvailableSlot()
         {
-            for (int x = 0; x < GRID_WIDTH; x++) { var slot = _slotGrid[x, 3]; if (slot.SlotType == InventorySlotType.Shortcut && slot.Item == null) return slot; }
-            for (int y = 4; y < GRID_HEIGHT; y++) for (int x = 0; x < GRID_WIDTH; x++) { var slot = _slotGrid[x, y]; if (slot.SlotType == InventorySlotType.Inventory && slot.Item == null) return slot; }
+            // Shortcuts
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i]; if (slot == null) continue;
+                var d = slot.SlotData;
+                if (d.SlotType == InventorySlotType.Shortcut && d.Item == null) return d;
+            }
+            // Inventory
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i]; if (slot == null) continue;
+                var d = slot.SlotData;
+                if (d.SlotType == InventorySlotType.Inventory && d.Item == null) return d;
+            }
             return null;
         }
     }
