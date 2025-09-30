@@ -6,6 +6,7 @@ using System;
 using Nez.Tiled;
 using System.Collections.Generic;
 using PitHero.Util;
+using RolePlayingFramework.Equipment;
 
 namespace PitHero.ECS.Components
 {
@@ -130,6 +131,8 @@ namespace PitHero.ECS.Components
             ExploredPit = false;
             _foundWizardOrb = false;
             ActivatedWizardOrb = false;
+
+            //Bag.TryAdd(PotionItems.HPPotion());
 
             // Ensure initial movement speed matches starting pit state (outside by default)
             ApplyMovementSpeedForPitState();
