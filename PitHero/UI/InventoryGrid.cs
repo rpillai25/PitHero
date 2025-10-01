@@ -1,5 +1,7 @@
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Nez;
+using Nez.Sprites;
 using Nez.Tweens;
 using Nez.UI;
 using PitHero.ECS.Components;
@@ -23,6 +25,12 @@ namespace PitHero.UI
         private readonly IItem[] _persistBuffer;           // Reusable buffer for bag ordering persistence (32 max bag capacity)
         private HeroComponent _heroComponent;
         private InventorySlot _highlightedSlot;
+        
+        // Swap animation entities (reused for each swap)
+        private Entity _swapEntity1;
+        private Entity _swapEntity2;
+        private SpriteRenderer _swapRenderer1;
+        private SpriteRenderer _swapRenderer2;
 
         // Public events for item card display
         public event System.Action<IItem> OnItemHovered;
@@ -100,6 +108,32 @@ namespace PitHero.UI
                 UpdateBagCapacity(_heroComponent.Bag.Capacity);
                 UpdateItemsFromBag();
             }
+            
+            // Initialize swap animation entities if not already done
+            InitializeSwapEntities();
+        }
+        
+        /// <summary>Initializes the entities used for swap animations.</summary>
+        private void InitializeSwapEntities()
+        {
+            if (_swapEntity1 != null) return; // Already initialized
+            
+            var scene = GetStage()?.Entity?.Scene;
+            if (scene == null) return;
+            
+            // Create entity 1 for swap animations
+            _swapEntity1 = scene.CreateEntity("SwapAnimEntity1");
+            _swapEntity1.Position = new Vector2(-1000, -1000); // Off-screen initially
+            _swapRenderer1 = _swapEntity1.AddComponent(new SpriteRenderer());
+            _swapRenderer1.RenderLayer = GameConfig.RenderLayerUI - 1; // Just below UI layer
+            _swapRenderer1.Enabled = false;
+            
+            // Create entity 2 for swap animations
+            _swapEntity2 = scene.CreateEntity("SwapAnimEntity2");
+            _swapEntity2.Position = new Vector2(-1000, -1000); // Off-screen initially
+            _swapRenderer2 = _swapEntity2.AddComponent(new SpriteRenderer());
+            _swapRenderer2.RenderLayer = GameConfig.RenderLayerUI - 1; // Just below UI layer
+            _swapRenderer2.Enabled = false;
         }
 
         /// <summary>Refreshes items from hero state.</summary>
@@ -242,7 +276,7 @@ namespace PitHero.UI
             // Apply hover offset if another slot is highlighted (selected)
             if (_highlightedSlot != null && _highlightedSlot != slot && slot.SlotData.Item != null)
             {
-                slot.SetHoverOffset(HOVER_OFFSET_Y);
+                slot.SetItemSpriteOffsetY(HOVER_OFFSET_Y);
             }
             
             if (slot.SlotData.Item != null)
@@ -254,7 +288,7 @@ namespace PitHero.UI
         private void HandleSlotUnhovered(InventorySlot slot)
         {
             // Remove hover offset when no longer hovering
-            slot.SetHoverOffset(0f);
+            slot.SetItemSpriteOffsetY(0f);
             
             OnItemUnhovered?.Invoke();
         }
@@ -265,57 +299,108 @@ namespace PitHero.UI
             if (!CanPlaceItemInSlot(a.SlotData.Item, b.SlotData) || !CanPlaceItemInSlot(b.SlotData.Item, a.SlotData))
                 return;
             
-            // Swap the item data immediately
+            // Animate the swap before actually swapping the data
+            AnimateSwap(a, b);
+            
+            // Swap the item data immediately (logical swap)
             var tmp = a.SlotData.Item;
             a.SlotData.Item = b.SlotData.Item;
             b.SlotData.Item = tmp;
             UpdateHeroDataFromSlot(a);
             UpdateHeroDataFromSlot(b);
             PersistBagOrdering();
-            
-            // Animate the visual swap with tweens
-            AnimateSwap(a, b);
         }
         
-        /// <summary>Animates the visual swap of two slots using tweens.</summary>
+        /// <summary>Animates the visual swap of two slots using temporary sprite entities.</summary>
         private void AnimateSwap(InventorySlot a, InventorySlot b)
         {
-            // Get the original positions before any offsets
-            var aOriginalX = a.OriginalX;
-            var aOriginalY = a.OriginalY;
-            var bOriginalX = b.OriginalX;
-            var bOriginalY = b.OriginalY;
+            // Make sure swap entities are initialized
+            if (_swapEntity1 == null || _swapEntity2 == null)
+            {
+                InitializeSwapEntities();
+                if (_swapEntity1 == null || _swapEntity2 == null) return; // Still null, can't animate
+            }
+            
+            // Get the items being swapped (before the actual swap)
+            var itemA = a.SlotData.Item;
+            var itemB = b.SlotData.Item;
+            
+            // If both items are null, no need to animate
+            if (itemA == null && itemB == null) return;
+            
+            // Get the stage for coordinate conversion
+            var stage = GetStage();
+            if (stage == null) return;
             
             // Remove any hover offset before animating
-            a.SetHoverOffset(0f);
-            b.SetHoverOffset(0f);
+            a.SetItemSpriteOffsetY(0f);
+            b.SetItemSpriteOffsetY(0f);
             
-            // Tween slot A to B's position using property tweens
-            var tweenAX = PropertyTweens.FloatPropertyTo(a, "x", bOriginalX, SWAP_TWEEN_DURATION)
-                .SetEaseType(Nez.Tweens.EaseType.QuadOut);
-            var tweenAY = PropertyTweens.FloatPropertyTo(a, "y", bOriginalY, SWAP_TWEEN_DURATION)
-                .SetEaseType(Nez.Tweens.EaseType.QuadOut);
+            // Get slot positions in screen coordinates (stage coordinates)
+            var aScreenPos = a.LocalToStageCoordinates(Vector2.Zero);
+            var bScreenPos = b.LocalToStageCoordinates(Vector2.Zero);
             
-            // Tween slot B to A's position using property tweens
-            var tweenBX = PropertyTweens.FloatPropertyTo(b, "x", aOriginalX, SWAP_TWEEN_DURATION)
-                .SetEaseType(Nez.Tweens.EaseType.QuadOut);
-            var tweenBY = PropertyTweens.FloatPropertyTo(b, "y", aOriginalY, SWAP_TWEEN_DURATION)
-                .SetEaseType(Nez.Tweens.EaseType.QuadOut);
-            
-            // When the X tweens complete, update the stored original positions
-            tweenAX.SetCompletionHandler(t => {
-                a.SetPosition(bOriginalX, bOriginalY);
-            });
-            
-            tweenBX.SetCompletionHandler(t => {
-                b.SetPosition(aOriginalX, aOriginalY);
-            });
-            
-            // Start all tweens
-            tweenAX.Start();
-            tweenAY.Start();
-            tweenBX.Start();
-            tweenBY.Start();
+            // Load the item sprites and set up the swap entities
+            if (Core.Content != null)
+            {
+                var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
+                
+                // Set up entity 1 for item A (if it exists)
+                if (itemA != null)
+                {
+                    try
+                    {
+                        var spriteA = itemsAtlas.GetSprite(itemA.Name);
+                        if (spriteA != null)
+                        {
+                            _swapRenderer1.Sprite = spriteA;
+                            _swapEntity1.Position = aScreenPos;
+                            _swapRenderer1.Enabled = true;
+                            
+                            // Hide the original item sprite in slot A
+                            a.SetItemSpriteHidden(true);
+                            
+                            // Tween to slot B's position
+                            _swapEntity1.TweenPositionTo(bScreenPos, SWAP_TWEEN_DURATION)
+                                .SetEaseType(Nez.Tweens.EaseType.QuadOut)
+                                .SetCompletionHandler(t => {
+                                    _swapRenderer1.Enabled = false;
+                                    a.SetItemSpriteHidden(false);
+                                })
+                                .Start();
+                        }
+                    }
+                    catch { /* Sprite doesn't exist, skip animation */ }
+                }
+                
+                // Set up entity 2 for item B (if it exists)
+                if (itemB != null)
+                {
+                    try
+                    {
+                        var spriteB = itemsAtlas.GetSprite(itemB.Name);
+                        if (spriteB != null)
+                        {
+                            _swapRenderer2.Sprite = spriteB;
+                            _swapEntity2.Position = bScreenPos;
+                            _swapRenderer2.Enabled = true;
+                            
+                            // Hide the original item sprite in slot B
+                            b.SetItemSpriteHidden(true);
+                            
+                            // Tween to slot A's position
+                            _swapEntity2.TweenPositionTo(aScreenPos, SWAP_TWEEN_DURATION)
+                                .SetEaseType(Nez.Tweens.EaseType.QuadOut)
+                                .SetCompletionHandler(t => {
+                                    _swapRenderer2.Enabled = false;
+                                    b.SetItemSpriteHidden(false);
+                                })
+                                .Start();
+                        }
+                    }
+                    catch { /* Sprite doesn't exist, skip animation */ }
+                }
+            }
         }
 
         /// <summary>Persists current bag ordering to ItemBag via raw buffer (no allocations).</summary>

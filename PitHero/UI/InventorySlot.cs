@@ -20,21 +20,14 @@ namespace PitHero.UI
         private SpriteDrawable _highlightBoxDrawable;
         private BitmapFont _font;
         
-        private float _originalX;
-        private float _originalY;
-        private float _hoverOffsetY = 0f;
+        private float _itemSpriteOffsetY = 0f;
+        private bool _hideItemSprite = false;
         
         public event System.Action<InventorySlot> OnSlotClicked;
         public event System.Action<InventorySlot> OnSlotHovered;
         public event System.Action<InventorySlot> OnSlotUnhovered;
 
         public InventorySlotData SlotData => _slotData;
-        
-        /// <summary>Gets the original X position before any visual effects.</summary>
-        public float OriginalX => _originalX;
-        
-        /// <summary>Gets the original Y position before any visual effects.</summary>
-        public float OriginalY => _originalY;
 
         public InventorySlot(InventorySlotData slotData)
         {
@@ -86,19 +79,16 @@ namespace PitHero.UI
             SetTouchable(Touchable.Enabled); // ensure we always receive hover events
         }
         
-        /// <summary>Sets the position and stores the original position for visual effects.</summary>
-        public new Element SetPosition(float x, float y)
+        /// <summary>Sets the item sprite Y offset for visual effects (like hover).</summary>
+        public void SetItemSpriteOffsetY(float offsetY)
         {
-            _originalX = x;
-            _originalY = y;
-            return base.SetPosition(x, y + _hoverOffsetY);
+            _itemSpriteOffsetY = offsetY;
         }
         
-        /// <summary>Applies a hover offset to the Y position.</summary>
-        public void SetHoverOffset(float offsetY)
+        /// <summary>Sets whether the item sprite should be hidden (for swap animation).</summary>
+        public void SetItemSpriteHidden(bool hidden)
         {
-            _hoverOffsetY = offsetY;
-            base.SetPosition(_originalX, _originalY + _hoverOffsetY);
+            _hideItemSprite = hidden;
         }
 
         public override void Draw(Batcher batcher, float parentAlpha)
@@ -114,7 +104,7 @@ namespace PitHero.UI
             }
 
             // Draw item sprite if slot has an item
-            if (_slotData.Item != null && Core.Content != null)
+            if (_slotData.Item != null && Core.Content != null && !_hideItemSprite)
             {
                 try
                 {
@@ -123,7 +113,8 @@ namespace PitHero.UI
                     if (itemSprite != null)
                     {
                         var itemDrawable = new SpriteDrawable(itemSprite);
-                        itemDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+                        // Apply the item sprite offset to the Y position only
+                        itemDrawable.Draw(batcher, GetX(), GetY() + _itemSpriteOffsetY, GetWidth(), GetHeight(), Color.White);
                     }
                 }
                 catch
@@ -137,7 +128,8 @@ namespace PitHero.UI
                     if (_font != null)
                     {
                         var stackText = consumable.StackCount.ToString();
-                        var textPosition = new Vector2(GetX() + 2f, GetY() + GetHeight() - _font.LineHeight + 2f);
+                        // Apply offset to stack count as well
+                        var textPosition = new Vector2(GetX() + 2f, GetY() + _itemSpriteOffsetY + GetHeight() - _font.LineHeight + 2f);
                         batcher.DrawString(_font, stackText, textPosition, Color.White);
                     }
                 }
