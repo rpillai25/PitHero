@@ -166,5 +166,55 @@ namespace PitHero.Tests
             potion.StackCount = 16;
             Assert.AreEqual(16, potion.StackCount);
         }
+
+        [TestMethod]
+        public void ItemBag_ConsumeFromStack_DecrementsCount()
+        {
+            var bag = new ItemBag("Test Bag", 12);
+            var potion = PotionItems.HPPotion();
+
+            // Add 5 potions to create a stack
+            Assert.IsTrue(bag.TryAdd(potion));
+            for (int i = 0; i < 4; i++)
+            {
+                Assert.IsTrue(bag.TryAdd(PotionItems.HPPotion()));
+            }
+            Assert.AreEqual(5, potion.StackCount);
+            Assert.AreEqual(1, bag.Count);
+
+            // Consume one from the stack
+            Assert.IsTrue(bag.ConsumeFromStack(0));
+            Assert.AreEqual(4, potion.StackCount);
+            Assert.AreEqual(1, bag.Count); // Still 1 slot used
+
+            // Consume 3 more
+            for (int i = 0; i < 3; i++)
+            {
+                Assert.IsTrue(bag.ConsumeFromStack(0));
+            }
+            Assert.AreEqual(1, potion.StackCount);
+            Assert.AreEqual(1, bag.Count);
+
+            // Consume the last one - should remove the item
+            Assert.IsTrue(bag.ConsumeFromStack(0));
+            Assert.AreEqual(0, potion.StackCount);
+            Assert.AreEqual(0, bag.Count); // Now empty
+        }
+
+        [TestMethod]
+        public void ItemBag_ConsumeFromStack_HandlesNonStackableConsumable()
+        {
+            var bag = new ItemBag("Test Bag", 12);
+            var bagItem = BagItems.StandardBag();
+
+            Assert.IsTrue(bag.TryAdd(bagItem));
+            Assert.AreEqual(1, bag.Count);
+            Assert.AreEqual(1, bagItem.StackCount);
+
+            // Consume - should remove the bag item since StackSize is 1
+            Assert.IsTrue(bag.ConsumeFromStack(0));
+            Assert.AreEqual(0, bagItem.StackCount);
+            Assert.AreEqual(0, bag.Count); // Item removed
+        }
     }
 }

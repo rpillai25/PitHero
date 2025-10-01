@@ -85,6 +85,25 @@ namespace RolePlayingFramework.Inventory
             return false;
         }
 
+        /// <summary>Consumes one item from a consumable stack at the given slot index. Returns true if consumed, false if slot is empty or item is gone.</summary>
+        public bool ConsumeFromStack(int slotIndex)
+        {
+            if (slotIndex < 0 || slotIndex >= _slots.Length) return false;
+            var item = _slots[slotIndex];
+            if (item is Consumable consumable)
+            {
+                consumable.StackCount--;
+                if (consumable.StackCount <= 0)
+                {
+                    _slots[slotIndex] = null;
+                    _count--;
+                    _compactDirty = true;
+                }
+                return true;
+            }
+            return false;
+        }
+
         /// <summary>Removes the item at the logical compact index (Nth non-null slot).</summary>
         public bool RemoveAt(int index)
         {
