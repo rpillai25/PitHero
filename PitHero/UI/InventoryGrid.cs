@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework.Input;
 using Nez;
+using Nez.Tweens;
 using Nez.UI;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Equipment;
@@ -15,6 +16,8 @@ namespace PitHero.UI
         private const int CELL_COUNT = GRID_WIDTH * GRID_HEIGHT;
         private const float SLOT_SIZE = 32f;
         private const float SLOT_PADDING = 1f;
+        private const float HOVER_OFFSET_Y = -16f; // Offset in pixels when hovering over a slot while another is selected
+        private const float SWAP_TWEEN_DURATION = 0.1f; // Duration in seconds for swap animation
 
         private readonly FastList<InventorySlot> _slots;   // Row-major, may contain nulls for Null slots or capacity-disabled slots
         private readonly IItem[] _persistBuffer;           // Reusable buffer for bag ordering persistence (32 max bag capacity)
@@ -236,6 +239,12 @@ namespace PitHero.UI
 
         private void HandleSlotHovered(InventorySlot slot)
         {
+            // Apply hover offset if another slot is highlighted (selected)
+            if (_highlightedSlot != null && _highlightedSlot != slot && slot.SlotData.Item != null)
+            {
+                slot.SetHoverOffset(HOVER_OFFSET_Y);
+            }
+            
             if (slot.SlotData.Item != null)
             {
                 OnItemHovered?.Invoke(slot.SlotData.Item);
@@ -244,6 +253,9 @@ namespace PitHero.UI
 
         private void HandleSlotUnhovered(InventorySlot slot)
         {
+            // Remove hover offset when no longer hovering
+            slot.SetHoverOffset(0f);
+            
             OnItemUnhovered?.Invoke();
         }
 
@@ -252,12 +264,58 @@ namespace PitHero.UI
         {
             if (!CanPlaceItemInSlot(a.SlotData.Item, b.SlotData) || !CanPlaceItemInSlot(b.SlotData.Item, a.SlotData))
                 return;
+            
+            // Swap the item data immediately
             var tmp = a.SlotData.Item;
             a.SlotData.Item = b.SlotData.Item;
             b.SlotData.Item = tmp;
             UpdateHeroDataFromSlot(a);
             UpdateHeroDataFromSlot(b);
             PersistBagOrdering();
+            
+            // Animate the visual swap with tweens
+            AnimateSwap(a, b);
+        }
+        
+        /// <summary>Animates the visual swap of two slots using tweens.</summary>
+        private void AnimateSwap(InventorySlot a, InventorySlot b)
+        {
+            // Get the original positions before any offsets
+            var aOriginalX = a.OriginalX;
+            var aOriginalY = a.OriginalY;
+            var bOriginalX = b.OriginalX;
+            var bOriginalY = b.OriginalY;
+            
+            // Remove any hover offset before animating
+            a.SetHoverOffset(0f);
+            b.SetHoverOffset(0f);
+            
+            // Tween slot A to B's position using property tweens
+            var tweenAX = PropertyTweens.FloatPropertyTo(a, "x", bOriginalX, SWAP_TWEEN_DURATION)
+                .SetEaseType(Nez.Tweens.EaseType.QuadOut);
+            var tweenAY = PropertyTweens.FloatPropertyTo(a, "y", bOriginalY, SWAP_TWEEN_DURATION)
+                .SetEaseType(Nez.Tweens.EaseType.QuadOut);
+            
+            // Tween slot B to A's position using property tweens
+            var tweenBX = PropertyTweens.FloatPropertyTo(b, "x", aOriginalX, SWAP_TWEEN_DURATION)
+                .SetEaseType(Nez.Tweens.EaseType.QuadOut);
+            var tweenBY = PropertyTweens.FloatPropertyTo(b, "y", aOriginalY, SWAP_TWEEN_DURATION)
+                .SetEaseType(Nez.Tweens.EaseType.QuadOut);
+            
+            // When the X tweens complete, update the stored original positions
+            tweenAX.SetCompletionHandler(t => {
+                a.SetPosition(bOriginalX, bOriginalY);
+            });
+            
+            tweenBX.SetCompletionHandler(t => {
+                b.SetPosition(aOriginalX, aOriginalY);
+            });
+            
+            // Start all tweens
+            tweenAX.Start();
+            tweenAY.Start();
+            tweenBX.Start();
+            tweenBY.Start();
         }
 
         /// <summary>Persists current bag ordering to ItemBag via raw buffer (no allocations).</summary>

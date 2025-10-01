@@ -20,11 +20,21 @@ namespace PitHero.UI
         private SpriteDrawable _highlightBoxDrawable;
         private BitmapFont _font;
         
+        private float _originalX;
+        private float _originalY;
+        private float _hoverOffsetY = 0f;
+        
         public event System.Action<InventorySlot> OnSlotClicked;
         public event System.Action<InventorySlot> OnSlotHovered;
         public event System.Action<InventorySlot> OnSlotUnhovered;
 
         public InventorySlotData SlotData => _slotData;
+        
+        /// <summary>Gets the original X position before any visual effects.</summary>
+        public float OriginalX => _originalX;
+        
+        /// <summary>Gets the original Y position before any visual effects.</summary>
+        public float OriginalY => _originalY;
 
         public InventorySlot(InventorySlotData slotData)
         {
@@ -74,6 +84,21 @@ namespace PitHero.UI
             // Set size to 32x32 pixels
             SetSize(32f, 32f);
             SetTouchable(Touchable.Enabled); // ensure we always receive hover events
+        }
+        
+        /// <summary>Sets the position and stores the original position for visual effects.</summary>
+        public new Element SetPosition(float x, float y)
+        {
+            _originalX = x;
+            _originalY = y;
+            return base.SetPosition(x, y + _hoverOffsetY);
+        }
+        
+        /// <summary>Applies a hover offset to the Y position.</summary>
+        public void SetHoverOffset(float offsetY)
+        {
+            _hoverOffsetY = offsetY;
+            base.SetPosition(_originalX, _originalY + _hoverOffsetY);
         }
 
         public override void Draw(Batcher batcher, float parentAlpha)
