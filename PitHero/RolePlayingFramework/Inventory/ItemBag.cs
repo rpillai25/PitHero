@@ -36,6 +36,25 @@ namespace RolePlayingFramework.Inventory
         public bool TryAdd(IItem item)
         {
             if (item == null || IsFull) return false;
+            
+            // If it's a consumable, try to stack it first
+            if (item is Consumable consumable)
+            {
+                // Look for an existing stack of the same item that isn't maxed out
+                for (int i = 0; i < _slots.Length; i++)
+                {
+                    if (_slots[i] is Consumable existingConsumable &&
+                        existingConsumable.Name == consumable.Name &&
+                        existingConsumable.StackCount < existingConsumable.StackSize)
+                    {
+                        existingConsumable.StackCount++;
+                        _compactDirty = true;
+                        return true;
+                    }
+                }
+            }
+            
+            // If not stackable or no existing stack found, add to first empty slot
             for (int i = 0; i < _slots.Length; i++)
             {
                 if (_slots[i] == null)
