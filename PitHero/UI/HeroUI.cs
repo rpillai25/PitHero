@@ -41,36 +41,21 @@ namespace PitHero.UI
         private ReorderableTableList<string> _priorityList;
         private List<string> _priorityItems;
 
-        public HeroUI()
-        {
-        }
+        public HeroUI() { }
 
-        /// <summary>
-        /// Initializes the Hero button and adds it to the stage
-        /// </summary>
+        /// <summary>Initializes the Hero button and adds it to the stage</summary>
         public void InitializeUI(Stage stage)
         {
             _stage = stage;
-
-            // Use default skin
             var skin = Skin.CreateDefaultSkin();
-
-            // Create Hero button
             CreateHeroButton(skin);
-
-            // Create tabbed hero window
             CreateHeroWindow(skin);
-
-            // Create item cards
             CreateItemCards(skin);
-
-            // Add button to stage
             _stage.AddElement(_heroButton);
         }
 
         private void CreateHeroButton(Skin skin)
         {
-            // Load the UI atlas and get the Hero sprites
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
             var heroSprite = uiAtlas.GetSprite("UIHero");
             var heroSprite2x = uiAtlas.GetSprite("UIHero2x");
@@ -82,49 +67,24 @@ namespace PitHero.UI
             var heroInverse2x = uiAtlas.GetSprite("UIHeroInverse2x");
             var heroInverse4x = uiAtlas.GetSprite("UIHeroInverse4x");
 
-            // Base styles for each sprite with proper ImageDown and ImageOver
-            _heroNormalStyle = new ImageButtonStyle
-            {
-                ImageUp = new SpriteDrawable(heroSprite),
-                ImageDown = new SpriteDrawable(heroInverse),
-                ImageOver = new SpriteDrawable(heroHighlight)
-            };
-
-            _heroHalfStyle = new ImageButtonStyle
-            {
-                ImageUp = new SpriteDrawable(heroSprite2x),
-                ImageDown = new SpriteDrawable(heroInverse2x),
-                ImageOver = new SpriteDrawable(heroHighlight2x)
-            };
-
-            _heroQuarterStyle = new ImageButtonStyle
-            {
-                ImageUp = new SpriteDrawable(heroSprite4x),
-                ImageDown = new SpriteDrawable(heroInverse4x),
-                ImageOver = new SpriteDrawable(heroHighlight4x)
-            };
+            _heroNormalStyle = new ImageButtonStyle { ImageUp = new SpriteDrawable(heroSprite), ImageDown = new SpriteDrawable(heroInverse), ImageOver = new SpriteDrawable(heroHighlight) };
+            _heroHalfStyle = new ImageButtonStyle { ImageUp = new SpriteDrawable(heroSprite2x), ImageDown = new SpriteDrawable(heroInverse2x), ImageOver = new SpriteDrawable(heroHighlight2x) };
+            _heroQuarterStyle = new ImageButtonStyle { ImageUp = new SpriteDrawable(heroSprite4x), ImageDown = new SpriteDrawable(heroInverse4x), ImageOver = new SpriteDrawable(heroHighlight4x) };
 
             _heroButton = new HoverableImageButton(_heroNormalStyle, "Hero");
-            // Explicitly size to the image
             _heroButton.SetSize(heroSprite.SourceRect.Width, heroSprite.SourceRect.Height);
-
-            // Handle click to toggle priority window
             _heroButton.OnClicked += (button) => HandleHeroButtonClick();
         }
 
         private void HandleHeroButtonClick()
         {
-            // Close SettingsUI window if it's open before opening Hero window (single window policy)
-            // Use a simple approach - look for any visible Window that's not our hero window
             var allElements = _stage.GetElements();
             for (int i = 0; i < allElements.Count; i++)
             {
                 var element = allElements[i];
                 if (element is Window window && window.IsVisible() && window != _heroWindow)
                 {
-                    // This is likely the Settings window - force close it
                     window.SetVisible(false);
-                    // Also need to unpause the game since Settings window manages pause state
                     var pauseService = Core.Services.GetService<PauseService>();
                     if (pauseService != null)
                         pauseService.IsPaused = false;
@@ -132,37 +92,23 @@ namespace PitHero.UI
                     break;
                 }
             }
-
-            // Toggle hero window visibility
             ToggleHeroWindow();
         }
 
         private void CreateHeroWindow(Skin skin)
         {
-            // Create tabbed hero window
             _heroWindow = new Window("Hero", skin);
             _heroWindow.SetSize(285f, 350f);
-            
-            // Create TabPane with proper styling
             var tabWindowStyle = CreateTabWindowStyle(skin);
             _tabPane = new TabPane(tabWindowStyle);
-            
-            // Create tabs with content
             var tabStyle = CreateTabStyle(skin);
             _inventoryTab = new Tab("Inventory", tabStyle);
             _prioritiesTab = new Tab("Pit Priorities", tabStyle);
-            
-            // Add content to tabs
             PopulateInventoryTab(_inventoryTab, skin);
             PopulatePrioritiesTab(_prioritiesTab, skin);
-            
-            // Add tabs to TabPane
             _tabPane.AddTab(_inventoryTab);
             _tabPane.AddTab(_prioritiesTab);
-            
-            // Add TabPane to hero window
             _heroWindow.Add(_tabPane).Expand().Fill();
-
             _heroWindow.SetVisible(false);
         }
 
@@ -170,88 +116,46 @@ namespace PitHero.UI
         {
             _hoverItemCard = new ItemCard(skin);
             _selectedItemCard = new ItemCard(skin);
-            
-            // Both start hidden
             _hoverItemCard.SetVisible(false);
             _selectedItemCard.SetVisible(false);
         }
 
-        /// <summary>
-        /// Creates TabWindowStyle for the TabPane
-        /// </summary>
         private TabWindowStyle CreateTabWindowStyle(Skin skin)
         {
-            var tabButtonStyle = new TabButtonStyle();
-            tabButtonStyle.LabelStyle = skin.Get<LabelStyle>();
-            
-            // Use button styles for tab button states
+            var tabButtonStyle = new TabButtonStyle { LabelStyle = skin.Get<LabelStyle>() };
             var buttonStyle = skin.Get<TextButtonStyle>();
             tabButtonStyle.Inactive = buttonStyle.Up;
             tabButtonStyle.Active = buttonStyle.Down;
-            
-            return new TabWindowStyle
-            {
-                TabButtonStyle = tabButtonStyle,
-                Background = skin.Get<WindowStyle>().Background
-            };
+            return new TabWindowStyle { TabButtonStyle = tabButtonStyle, Background = skin.Get<WindowStyle>().Background };
         }
 
-        /// <summary>
-        /// Creates TabStyle for individual tabs
-        /// </summary>
-        private TabStyle CreateTabStyle(Skin skin)
-        {
-            return new TabStyle
-            {
-                Background = null // Use transparent background
-            };
-        }
+        private TabStyle CreateTabStyle(Skin skin) => new TabStyle { Background = null };
 
         private void PopulateInventoryTab(Tab inventoryTab, Skin skin)
         {
-            // Create inventory grid
             _inventoryGrid = new InventoryGrid();
-            
-            // Subscribe to inventory grid events
             _inventoryGrid.OnItemHovered += HandleItemHovered;
             _inventoryGrid.OnItemUnhovered += HandleItemUnhovered;
             _inventoryGrid.OnItemSelected += HandleItemSelected;
             _inventoryGrid.OnItemDeselected += HandleItemDeselected;
-            
-            // Connect to hero if available
             var heroComponent = GetHeroComponent();
             if (heroComponent != null)
-            {
                 _inventoryGrid.ConnectToHero(heroComponent);
-            }
-            
-            // Create a scroll pane for the inventory
             var scrollPane = new ScrollPane(_inventoryGrid, skin);
-            scrollPane.SetScrollingDisabled(true, false); // Only allow vertical scrolling
-            
+            scrollPane.SetScrollingDisabled(true, false);
             inventoryTab.Add(scrollPane).Expand().Fill().Pad(10f);
         }
 
         private void PopulatePrioritiesTab(Tab prioritiesTab, Skin skin)
         {
-            // Initialize priority items from current hero priorities
             InitializePriorityItems();
-
-            // Create reorderable list
             _priorityList = new ReorderableTableList<string>(skin, _priorityItems, OnPriorityReordered);
-            
-            // Add content to the priorities tab
             prioritiesTab.Add(_priorityList).Expand().Fill().Pad(15f);
         }
 
         private void InitializePriorityItems()
         {
-            // Ensure we reuse the existing list instance so ReorderableTableList keeps referencing the same list
-            if (_priorityItems == null)
-                _priorityItems = new List<string>(3);
-            else
-                _priorityItems.Clear();
-
+            if (_priorityItems == null) _priorityItems = new List<string>(3); else _priorityItems.Clear();
             var hero = GetHeroComponent();
             if (hero != null)
             {
@@ -271,65 +175,38 @@ namespace PitHero.UI
         private void OnPriorityReordered(int from, int to, string item)
         {
             Debug.Log($"Priority reordered: {item} moved from position {from + 1} to {to + 1}");
-            // Update hero component priorities in real-time using the mutated shared list
             UpdateHeroPriorities();
         }
 
         private void ToggleHeroWindow()
         {
             if (_heroWindow == null) return;
-
             _windowVisible = !_windowVisible;
-            
             if (_windowVisible)
             {
-                // Use centralized UI window manager for opening behavior
                 UIWindowManager.OnUIWindowOpening();
-                
-                // Refresh priority items from current hero state (mutates existing list)
                 InitializePriorityItems();
                 _priorityList?.Rebuild();
-                
-                // Refresh inventory from current hero bag
                 var heroComponent = GetHeroComponent();
                 if (heroComponent != null && _inventoryGrid != null)
-                {
                     _inventoryGrid.ConnectToHero(heroComponent);
-                }
-                
-                // Position window next to Hero button
                 PositionHeroWindow();
-                
-                // Add to stage and show
                 _stage.AddElement(_heroWindow);
                 _heroWindow.SetVisible(true);
                 _heroWindow.ToFront();
-                
-                // Pause the game when window opens
                 var pauseService = Core.Services.GetService<PauseService>();
-                if (pauseService != null)
-                    pauseService.IsPaused = true;
-                
+                if (pauseService != null) pauseService.IsPaused = true;
                 Debug.Log("Hero window opened and game paused");
             }
             else
             {
-                // Use centralized UI window manager for closing behavior
                 UIWindowManager.OnUIWindowClosing();
-                
-                // Hide item cards when window closes
                 _hoverItemCard?.Hide();
                 _selectedItemCard?.Hide();
-                
-                // Hide and remove from stage
                 _heroWindow.SetVisible(false);
                 _heroWindow.Remove();
-                
-                // Unpause the game when window closes
                 var pauseService = Core.Services.GetService<PauseService>();
-                if (pauseService != null)
-                    pauseService.IsPaused = false;
-                
+                if (pauseService != null) pauseService.IsPaused = false;
                 Debug.Log("Hero window closed and game unpaused");
             }
         }
@@ -337,38 +214,21 @@ namespace PitHero.UI
         private void PositionHeroWindow()
         {
             if (_heroWindow == null || _heroButton == null) return;
-
-            // Ensure window dimensions are calculated
             _heroWindow.Validate();
-
             float heroX = _heroButton.GetX();
             float heroY = _heroButton.GetY();
             float heroW = _heroButton.GetWidth();
             float winW = _heroWindow.GetWidth();
             float winH = _heroWindow.GetHeight();
-
-            const float padding = 4f;
-            float targetX = heroX + heroW + padding;
-            float targetY = heroY + padding;
-
-            float stageW = _stage.GetWidth();
-            float stageH = _stage.GetHeight();
-
-            // If window would go off right edge, position to the left of button
-            if (targetX + winW > stageW)
-                targetX = heroX - padding - winW;
-
-            // Clamp to stage bounds
-            if (targetX < 0) targetX = 0;
-            if (targetY < 0) targetY = 0;
-            if (targetY + winH > stageH) targetY = stageH - winH;
-
+            const float padding = 4f; float targetX = heroX + heroW + padding; float targetY = heroY + padding;
+            float stageW = _stage.GetWidth(); float stageH = _stage.GetHeight();
+            if (targetX + winW > stageW) targetX = heroX - padding - winW;
+            if (targetX < 0) targetX = 0; if (targetY < 0) targetY = 0; if (targetY + winH > stageH) targetY = stageH - winH;
             _heroWindow.SetPosition(targetX, targetY);
         }
 
         private HeroComponent GetHeroComponent()
         {
-            // Find the hero entity in the current scene
             var heroEntity = Core.Scene?.FindEntity("hero");
             return heroEntity?.GetComponent<HeroComponent>();
         }
@@ -376,238 +236,99 @@ namespace PitHero.UI
         private void UpdateHeroPriorities()
         {
             var hero = GetHeroComponent();
-            if (hero == null)
-            {
-                Debug.Log("Could not find hero component to update priorities");
-                return;
-            }
-
-            // Convert string list back to HeroPitPriority array
+            if (hero == null) { Debug.Log("Could not find hero component to update priorities"); return; }
             var newPriorities = new HeroPitPriority[3];
             for (int i = 0; i < _priorityItems.Count && i < 3; i++)
             {
-                if (System.Enum.TryParse(_priorityItems[i], out HeroPitPriority priority))
-                {
-                    newPriorities[i] = priority;
-                }
-                else
-                {
-                    Debug.Log($"Failed to parse priority: {_priorityItems[i]}");
-                    return;
-                }
+                if (System.Enum.TryParse(_priorityItems[i], out HeroPitPriority priority)) newPriorities[i] = priority; else { Debug.Log($"Failed to parse priority: {_priorityItems[i]}"); return; }
             }
-
-            // Update hero component
             hero.SetPrioritiesInOrder(newPriorities);
             Debug.Log($"Updated hero priorities: {newPriorities[0]}, {newPriorities[1]}, {newPriorities[2]}");
         }
 
-        /// <summary>
-        /// Update button style based on current window shrink mode
-        /// </summary>
+        /// <summary>Update button style based on shrink mode</summary>
         public void UpdateButtonStyleIfNeeded()
         {
-            // Determine desired mode based on current shrink mode
             HeroMode desired;
-            if (WindowManager.IsQuarterHeightMode())
-                desired = HeroMode.Quarter;
-            else if (WindowManager.IsHalfHeightMode())
-                desired = HeroMode.Half;
-            else
-                desired = HeroMode.Normal;
-
-            if (desired == _currentHeroMode)
-                return; // no change needed
-
+            if (WindowManager.IsQuarterHeightMode()) desired = HeroMode.Quarter; else if (WindowManager.IsHalfHeightMode()) desired = HeroMode.Half; else desired = HeroMode.Normal;
+            if (desired == _currentHeroMode) return;
             switch (desired)
             {
-                case HeroMode.Normal:
-                    _heroButton.SetStyle(_heroNormalStyle);
-                    _heroButton.SetSize(((SpriteDrawable)_heroNormalStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_heroNormalStyle.ImageUp).Sprite.SourceRect.Height);
-                    break;
-                case HeroMode.Half:
-                    _heroButton.SetStyle(_heroHalfStyle);
-                    _heroButton.SetSize(((SpriteDrawable)_heroHalfStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_heroHalfStyle.ImageUp).Sprite.SourceRect.Height);
-                    break;
-                case HeroMode.Quarter:
-                    _heroButton.SetStyle(_heroQuarterStyle);
-                    _heroButton.SetSize(((SpriteDrawable)_heroQuarterStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_heroQuarterStyle.ImageUp).Sprite.SourceRect.Height);
-                    break;
+                case HeroMode.Normal: _heroButton.SetStyle(_heroNormalStyle); _heroButton.SetSize(((SpriteDrawable)_heroNormalStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_heroNormalStyle.ImageUp).Sprite.SourceRect.Height); break;
+                case HeroMode.Half: _heroButton.SetStyle(_heroHalfStyle); _heroButton.SetSize(((SpriteDrawable)_heroHalfStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_heroHalfStyle.ImageUp).Sprite.SourceRect.Height); break;
+                case HeroMode.Quarter: _heroButton.SetStyle(_heroQuarterStyle); _heroButton.SetSize(((SpriteDrawable)_heroQuarterStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_heroQuarterStyle.ImageUp).Sprite.SourceRect.Height); break;
             }
-
-            _currentHeroMode = desired;
-            _styleChanged = true;
+            _currentHeroMode = desired; _styleChanged = true;
         }
 
-        /// <summary>
-        /// Position the button at the specified coordinates
-        /// </summary>
-        public void SetPosition(float x, float y)
-        {
-            _heroButton?.SetPosition(x, y);
-        }
+        public void SetPosition(float x, float y) => _heroButton?.SetPosition(x, y);
+        public float GetX() => _heroButton?.GetX() ?? 0f;
+        public float GetY() => _heroButton?.GetY() ?? 0f;
+        public float GetWidth() => _heroButton?.GetWidth() ?? 0f;
+        public float GetHeight() => _heroButton?.GetHeight() ?? 0f;
+        public bool ConsumeStyleChangedFlag() { if (_styleChanged) { _styleChanged = false; return true; } return false; }
 
-        /// <summary>
-        /// Get the button X position
-        /// </summary>
-        public float GetX()
-        {
-            return _heroButton?.GetX() ?? 0f;
-        }
-
-        /// <summary>
-        /// Get the button Y position
-        /// </summary>
-        public float GetY()
-        {
-            return _heroButton?.GetY() ?? 0f;
-        }
-
-        /// <summary>
-        /// Get the button width
-        /// </summary>
-        public float GetWidth()
-        {
-            return _heroButton?.GetWidth() ?? 0f;
-        }
-
-        /// <summary>
-        /// Get the button height
-        /// </summary>
-        public float GetHeight()
-        {
-            return _heroButton?.GetHeight() ?? 0f;
-        }
-
-        /// <summary>
-        /// Consume style changed flag
-        /// </summary>
-        public bool ConsumeStyleChangedFlag()
-        {
-            if (_styleChanged)
-            {
-                _styleChanged = false;
-                return true;
-            }
-            return false;
-        }
-
-        /// <summary>
-        /// Update method (can be called from main update loop if needed)
-        /// </summary>
+        /// <summary>Main update</summary>
         public void Update()
         {
             UpdateButtonStyleIfNeeded();
-            
-            // Handle keyboard shortcuts when hero window is visible
-            if (_windowVisible && _inventoryGrid != null)
-            {
-                _inventoryGrid.HandleKeyboardShortcuts();
-            }
+            if (_windowVisible && _inventoryGrid != null) _inventoryGrid.HandleKeyboardShortcuts();
         }
 
-        /// <summary>
-        /// Gets whether the hero window is currently visible
-        /// </summary>
         public bool IsWindowVisible => _windowVisible;
 
-        /// <summary>
-        /// Forces the hero window to close without triggering normal events
-        /// </summary>
+        /// <summary>Force close window</summary>
         public void ForceCloseWindow()
         {
             if (_windowVisible)
             {
-                _windowVisible = false;
-                
-                // Use centralized UI window manager for closing behavior
-                UIWindowManager.OnUIWindowClosing();
-                
-                // Hide item cards when window closes
-                _hoverItemCard?.Hide();
-                _selectedItemCard?.Hide();
-                
-                // Hide and remove from stage
-                _heroWindow?.SetVisible(false);
-                _heroWindow?.Remove();
-                
-                // Unpause the game when window closes
-                var pauseService = Core.Services.GetService<PauseService>();
-                if (pauseService != null)
-                    pauseService.IsPaused = false;
-                
-                Debug.Log("[HeroUI] Hero window force closed by single window policy");
+                _windowVisible = false; UIWindowManager.OnUIWindowClosing(); _hoverItemCard?.Hide(); _selectedItemCard?.Hide(); _heroWindow?.SetVisible(false); _heroWindow?.Remove(); var pauseService = Core.Services.GetService<PauseService>(); if (pauseService != null) pauseService.IsPaused = false; Debug.Log("[HeroUI] Hero window force closed by single window policy");
             }
         }
 
         private void HandleItemHovered(IItem item)
         {
             if (item == null) return;
-
-            // Show hover card
+            if (_selectedItemCard.IsVisible() && _selectedItemCard.CurrentItem == item) { _hoverItemCard.Hide(); return; }
             _hoverItemCard.ShowItem(item);
-            
-            // Add to stage if not already there
-            if (_hoverItemCard.GetParent() == null)
-            {
-                _stage.AddElement(_hoverItemCard);
-            }
-            
-            // Position the hover card
+            if (_hoverItemCard.GetParent() == null) _stage.AddElement(_hoverItemCard);
+            _hoverItemCard.Validate(); // ensure layout
             PositionItemCards();
         }
 
         private void HandleItemUnhovered()
         {
-            // Hide hover card (unless an item is selected)
-            if (_selectedItemCard.CurrentItem == null)
-            {
-                _hoverItemCard.Hide();
-            }
+            // Only hide if no other slot is hovered
+            if (_inventoryGrid != null && _inventoryGrid.HasAnyHoveredSlot()) return;
+            _hoverItemCard.Hide();
+            PositionItemCards();
         }
 
         private void HandleItemSelected(IItem item)
         {
             if (item == null) return;
-
-            // Show selected item in selected card
             _selectedItemCard.ShowItem(item);
-            
-            // Add to stage if not already there
-            if (_selectedItemCard.GetParent() == null)
-            {
-                _stage.AddElement(_selectedItemCard);
-            }
-            
-            // Position the cards
+            if (_selectedItemCard.GetParent() == null) _stage.AddElement(_selectedItemCard);
+            if (_hoverItemCard.IsVisible() && _hoverItemCard.CurrentItem == item) _hoverItemCard.Hide();
             PositionItemCards();
         }
 
         private void HandleItemDeselected()
         {
-            // Hide selected card
             _selectedItemCard.Hide();
-            
-            // If mouse is not hovering over an item, also hide hover card
-            // (In practice, the hover card will be shown again if mouse is over an item)
             PositionItemCards();
         }
 
         private void PositionItemCards()
         {
             if (_heroWindow == null) return;
-
             float heroWindowRight = _heroWindow.GetX() + _heroWindow.GetWidth();
             float heroWindowY = _heroWindow.GetY();
             float cardSpacing = 10f;
-
-            // Position selected card first (if visible)
             if (_selectedItemCard.IsVisible())
             {
                 _selectedItemCard.SetPosition(heroWindowRight + cardSpacing, heroWindowY);
                 _selectedItemCard.ToFront();
-                
-                // Position hover card to the right of selected card (if visible)
                 if (_hoverItemCard.IsVisible())
                 {
                     float selectedCardRight = _selectedItemCard.GetX() + _selectedItemCard.GetWidth();
@@ -617,11 +338,9 @@ namespace PitHero.UI
             }
             else if (_hoverItemCard.IsVisible())
             {
-                // Only hover card visible, position it to the right of hero window
                 _hoverItemCard.SetPosition(heroWindowRight + cardSpacing, heroWindowY);
                 _hoverItemCard.ToFront();
             }
         }
-
     }
 }

@@ -73,11 +73,21 @@ namespace PitHero.UI
             _contentTable.Add(rarityTypeLabel).Left().Pad(0, 0, LINE_SPACING, 0);
             _contentTable.Row();
 
-            // Description (wrapped, white text)
-            var descLabel = new Label(_item.Description, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
-            descLabel.SetWrap(true);
-            _contentTable.Add(descLabel).Width(CARD_WIDTH - CARD_PADDING * 2).Left().Pad(0, 0, LINE_SPACING, 0);
-            _contentTable.Row();
+            // Only add description if it won't be duplicated by generated effect lines
+            bool skipDescription = false;
+            if (_item is Consumable c)
+            {
+                // If it actually restores something we will show generated lines so skip textual duplication
+                if (c.HPRestoreAmount != 0 || c.APRestoreAmount != 0)
+                    skipDescription = true;
+            }
+            if (!skipDescription)
+            {
+                var descLabel = new Label(_item.Description, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
+                descLabel.SetWrap(true);
+                _contentTable.Add(descLabel).Width(CARD_WIDTH - CARD_PADDING * 2).Left().Pad(0, 0, LINE_SPACING, 0);
+                _contentTable.Row();
+            }
 
             // Add conditional properties
             AddConditionalProperties();

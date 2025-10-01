@@ -35,6 +35,18 @@ namespace PitHero.UI
             LayoutSlots();
         }
 
+        /// <summary>Returns true if any slot is currently hovered.</summary>
+        public bool HasAnyHoveredSlot()
+        {
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                if (slot.SlotData.IsHovered) return true;
+            }
+            return false;
+        }
+
         /// <summary>Builds all slot components in row-major order (adds null placeholders for Null slots).</summary>
         private void BuildSlots()
         {
