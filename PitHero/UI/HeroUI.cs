@@ -303,11 +303,7 @@ namespace PitHero.UI
         private void HandleItemHovered(IItem item)
         {
             if (item == null) return;
-            
-            // Don't show tooltip for selected item
-            if (_selectedItemCard.IsVisible() && _selectedItemCard.CurrentItem == item) 
-                return;
-            
+          
             // Show tooltip at cursor position
             _itemTooltip.ShowItem(item);
             if (_itemTooltip.GetContainer().GetParent() == null)
