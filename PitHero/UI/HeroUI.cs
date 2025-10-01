@@ -33,9 +33,11 @@ namespace PitHero.UI
         // Inventory tab content
         private InventoryGrid _inventoryGrid;
         
-        // Item cards for hover and selection
-        private ItemCard _hoverItemCard;
+        // Item card for selection only (hover uses tooltip)
         private ItemCard _selectedItemCard;
+        
+        // Tooltip for hovering over items
+        private ItemCardTooltip _itemTooltip;
         
         // Priority reorder components (moved to priorities tab)
         private ReorderableTableList<string> _priorityList;
@@ -114,10 +116,13 @@ namespace PitHero.UI
 
         private void CreateItemCards(Skin skin)
         {
-            _hoverItemCard = new ItemCard(skin);
             _selectedItemCard = new ItemCard(skin);
-            _hoverItemCard.SetVisible(false);
             _selectedItemCard.SetVisible(false);
+            
+            // Create a dummy element for the tooltip target (the tooltip will follow the cursor)
+            var dummyTarget = new Element();
+            dummyTarget.SetSize(0, 0);
+            _itemTooltip = new ItemCardTooltip(dummyTarget, skin);
         }
 
         private TabWindowStyle CreateTabWindowStyle(Skin skin)
@@ -201,7 +206,6 @@ namespace PitHero.UI
             else
             {
                 UIWindowManager.OnUIWindowClosing();
-                _hoverItemCard?.Hide();
                 _selectedItemCard?.Hide();
                 _heroWindow.SetVisible(false);
                 _heroWindow.Remove();
@@ -272,7 +276,17 @@ namespace PitHero.UI
         public void Update()
         {
             UpdateButtonStyleIfNeeded();
-            if (_windowVisible && _inventoryGrid != null) _inventoryGrid.HandleKeyboardShortcuts();
+            if (_windowVisible && _inventoryGrid != null) 
+            {
+                _inventoryGrid.HandleKeyboardShortcuts();
+                
+                // Update tooltip position if visible
+                if (_itemTooltip != null && _itemTooltip.GetContainer().HasParent())
+                {
+                    var mousePos = _stage.GetMousePosition();
+                    _itemTooltip.GetContainer().SetPosition(mousePos.X + 10, mousePos.Y + 10);
+                }
+            }
         }
 
         public bool IsWindowVisible => _windowVisible;
@@ -282,26 +296,34 @@ namespace PitHero.UI
         {
             if (_windowVisible)
             {
-                _windowVisible = false; UIWindowManager.OnUIWindowClosing(); _hoverItemCard?.Hide(); _selectedItemCard?.Hide(); _heroWindow?.SetVisible(false); _heroWindow?.Remove(); var pauseService = Core.Services.GetService<PauseService>(); if (pauseService != null) pauseService.IsPaused = false; Debug.Log("[HeroUI] Hero window force closed by single window policy");
+                _windowVisible = false; UIWindowManager.OnUIWindowClosing(); _selectedItemCard?.Hide(); _heroWindow?.SetVisible(false); _heroWindow?.Remove(); var pauseService = Core.Services.GetService<PauseService>(); if (pauseService != null) pauseService.IsPaused = false; Debug.Log("[HeroUI] Hero window force closed by single window policy");
             }
         }
 
         private void HandleItemHovered(IItem item)
         {
             if (item == null) return;
-            if (_selectedItemCard.IsVisible() && _selectedItemCard.CurrentItem == item) { _hoverItemCard.Hide(); return; }
-            _hoverItemCard.ShowItem(item);
-            if (_hoverItemCard.GetParent() == null) _stage.AddElement(_hoverItemCard);
-            _hoverItemCard.Validate(); // ensure layout
-            PositionItemCards();
+          
+            // Show tooltip at cursor position
+            _itemTooltip.ShowItem(item);
+            if (_itemTooltip.GetContainer().GetParent() == null)
+            {
+                _stage.AddElement(_itemTooltip.GetContainer());
+            }
+            
+            // Position tooltip at mouse cursor
+            var mousePos = _stage.GetMousePosition();
+            _itemTooltip.GetContainer().SetPosition(mousePos.X + 10, mousePos.Y + 10);
+            _itemTooltip.GetContainer().ToFront();
         }
 
         private void HandleItemUnhovered()
         {
-            // Only hide if no other slot is hovered
-            if (_inventoryGrid != null && _inventoryGrid.HasAnyHoveredSlot()) return;
-            _hoverItemCard.Hide();
-            PositionItemCards();
+            // Hide tooltip when no item is hovered
+            if (!(_inventoryGrid != null && _inventoryGrid.HasAnyHoveredSlot()))
+            {
+                _itemTooltip.GetContainer().Remove();
+            }
         }
 
         private void HandleItemSelected(IItem item)
@@ -309,7 +331,6 @@ namespace PitHero.UI
             if (item == null) return;
             _selectedItemCard.ShowItem(item);
             if (_selectedItemCard.GetParent() == null) _stage.AddElement(_selectedItemCard);
-            if (_hoverItemCard.IsVisible() && _hoverItemCard.CurrentItem == item) _hoverItemCard.Hide();
             PositionItemCards();
         }
 
@@ -329,17 +350,6 @@ namespace PitHero.UI
             {
                 _selectedItemCard.SetPosition(heroWindowRight + cardSpacing, heroWindowY);
                 _selectedItemCard.ToFront();
-                if (_hoverItemCard.IsVisible())
-                {
-                    float selectedCardRight = _selectedItemCard.GetX() + _selectedItemCard.GetWidth();
-                    _hoverItemCard.SetPosition(selectedCardRight + cardSpacing, heroWindowY);
-                    _hoverItemCard.ToFront();
-                }
-            }
-            else if (_hoverItemCard.IsVisible())
-            {
-                _hoverItemCard.SetPosition(heroWindowRight + cardSpacing, heroWindowY);
-                _hoverItemCard.ToFront();
             }
         }
     }
