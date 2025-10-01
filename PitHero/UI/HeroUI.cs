@@ -36,6 +36,9 @@ namespace PitHero.UI
         // Item card for selection only (hover uses tooltip)
         private ItemCard _selectedItemCard;
         
+        // Tooltip for hovering over items
+        private ItemCardTooltip _itemTooltip;
+        
         // Priority reorder components (moved to priorities tab)
         private ReorderableTableList<string> _priorityList;
         private List<string> _priorityItems;
@@ -115,6 +118,11 @@ namespace PitHero.UI
         {
             _selectedItemCard = new ItemCard(skin);
             _selectedItemCard.SetVisible(false);
+            
+            // Create a dummy element for the tooltip target (the tooltip will follow the cursor)
+            var dummyTarget = new Element();
+            dummyTarget.SetSize(0, 0);
+            _itemTooltip = new ItemCardTooltip(dummyTarget, skin);
         }
 
         private TabWindowStyle CreateTabWindowStyle(Skin skin)
@@ -268,7 +276,17 @@ namespace PitHero.UI
         public void Update()
         {
             UpdateButtonStyleIfNeeded();
-            if (_windowVisible && _inventoryGrid != null) _inventoryGrid.HandleKeyboardShortcuts();
+            if (_windowVisible && _inventoryGrid != null) 
+            {
+                _inventoryGrid.HandleKeyboardShortcuts();
+                
+                // Update tooltip position if visible
+                if (_itemTooltip != null && _itemTooltip.GetContainer().HasParent())
+                {
+                    var mousePos = _stage.GetMousePosition();
+                    _itemTooltip.GetContainer().SetPosition(mousePos.X + 10, mousePos.Y + 10);
+                }
+            }
         }
 
         public bool IsWindowVisible => _windowVisible;
@@ -284,14 +302,32 @@ namespace PitHero.UI
 
         private void HandleItemHovered(IItem item)
         {
-            // Tooltip now handles item hover display
-            // This method is kept for potential future use
+            if (item == null) return;
+            
+            // Don't show tooltip for selected item
+            if (_selectedItemCard.IsVisible() && _selectedItemCard.CurrentItem == item) 
+                return;
+            
+            // Show tooltip at cursor position
+            _itemTooltip.ShowItem(item);
+            if (_itemTooltip.GetContainer().GetParent() == null)
+            {
+                _stage.AddElement(_itemTooltip.GetContainer());
+            }
+            
+            // Position tooltip at mouse cursor
+            var mousePos = _stage.GetMousePosition();
+            _itemTooltip.GetContainer().SetPosition(mousePos.X + 10, mousePos.Y + 10);
+            _itemTooltip.GetContainer().ToFront();
         }
 
         private void HandleItemUnhovered()
         {
-            // Tooltip now handles item unhover
-            // This method is kept for potential future use
+            // Hide tooltip when no item is hovered
+            if (!(_inventoryGrid != null && _inventoryGrid.HasAnyHoveredSlot()))
+            {
+                _itemTooltip.GetContainer().Remove();
+            }
         }
 
         private void HandleItemSelected(IItem item)
