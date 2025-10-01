@@ -36,9 +36,9 @@ namespace PitHero.Tests
         public void ItemBag_TryAdd_WorksUntilCapacityReached()
         {
             var bag = new ItemBag("Test Bag", 2);
-            var item1 = new Gear("Sword", ItemKind.WeaponSword, ItemRarity.Normal, new StatBlock(1, 0, 0, 0));
-            var item2 = new Gear("Shield", ItemKind.Shield, ItemRarity.Normal, new StatBlock(0, 0, 1, 0));
-            var item3 = new Gear("Armor", ItemKind.ArmorMail, ItemRarity.Normal, new StatBlock(0, 0, 1, 0));
+            var item1 = new Gear("Sword", ItemKind.WeaponSword, ItemRarity.Normal, "A test sword", 10, new StatBlock(1, 0, 0, 0));
+            var item2 = new Gear("Shield", ItemKind.Shield, ItemRarity.Normal, "A test shield", 10, new StatBlock(0, 0, 1, 0));
+            var item3 = new Gear("Armor", ItemKind.ArmorMail, ItemRarity.Normal, "A test armor", 10, new StatBlock(0, 0, 1, 0));
 
             // First two items should add successfully
             Assert.IsTrue(bag.TryAdd(item1));
@@ -58,8 +58,8 @@ namespace PitHero.Tests
         public void ItemBag_Remove_WorksCorrectly()
         {
             var bag = new ItemBag();
-            var item1 = new Gear("Sword", ItemKind.WeaponSword, ItemRarity.Normal, new StatBlock(1, 0, 0, 0));
-            var item2 = new Gear("Shield", ItemKind.Shield, ItemRarity.Normal, new StatBlock(0, 0, 1, 0));
+            var item1 = new Gear("Sword", ItemKind.WeaponSword, ItemRarity.Normal, "A test sword", 10, new StatBlock(1, 0, 0, 0));
+            var item2 = new Gear("Shield", ItemKind.Shield, ItemRarity.Normal, "A test shield", 10, new StatBlock(0, 0, 1, 0));
 
             bag.TryAdd(item1);
             bag.TryAdd(item2);
@@ -76,8 +76,8 @@ namespace PitHero.Tests
         public void ItemBag_RemoveAt_WorksCorrectly()
         {
             var bag = new ItemBag();
-            var item1 = new Gear("Sword", ItemKind.WeaponSword, ItemRarity.Normal, new StatBlock(1, 0, 0, 0));
-            var item2 = new Gear("Shield", ItemKind.Shield, ItemRarity.Normal, new StatBlock(0, 0, 1, 0));
+            var item1 = new Gear("Sword", ItemKind.WeaponSword, ItemRarity.Normal, "A test sword", 10, new StatBlock(1, 0, 0, 0));
+            var item2 = new Gear("Shield", ItemKind.Shield, ItemRarity.Normal, "A test shield", 10, new StatBlock(0, 0, 1, 0));
 
             bag.TryAdd(item1);
             bag.TryAdd(item2);
@@ -157,7 +157,7 @@ namespace PitHero.Tests
         [TestMethod]
         public void Gear_SupportsHPAndAPBonuses()
         {
-            var gear = new Gear("Vitality Ring", ItemKind.Accessory, ItemRarity.Rare, 
+            var gear = new Gear("Vitality Ring", ItemKind.Accessory, ItemRarity.Rare, "A test ring", 100,
                 new StatBlock(0, 0, 2, 0), hp: 50, ap: 20);
 
             Assert.AreEqual(50, gear.HPBonus);
@@ -168,7 +168,7 @@ namespace PitHero.Tests
         public void Hero_CalculatesEquipmentHPAPBonuses()
         {
             var hero = new Hero("Test", new Knight(), 1, new StatBlock(5, 5, 5, 5));
-            var vitalityRing = new Gear("Vitality Ring", ItemKind.Accessory, ItemRarity.Rare,
+            var vitalityRing = new Gear("Vitality Ring", ItemKind.Accessory, ItemRarity.Rare, "A test ring", 100,
                 new StatBlock(0, 0, 0, 0), hp: 50, ap: 20);
 
             var baseHP = hero.MaxHP;
@@ -184,7 +184,7 @@ namespace PitHero.Tests
         public void Hero_SupportsShieldEquipment()
         {
             var hero = new Hero("Test", new Knight(), 1, new StatBlock(5, 5, 5, 5));
-            var shield = new Gear("Iron Shield", ItemKind.Shield, ItemRarity.Normal,
+            var shield = new Gear("Iron Shield", ItemKind.Shield, ItemRarity.Normal, "A test shield", 10,
                 new StatBlock(0, 0, 1, 0), def: 5);
 
             Assert.IsNull(hero.WeaponShield2);
@@ -201,7 +201,7 @@ namespace PitHero.Tests
         public void Hero_ShieldContributesToDefense()
         {
             var hero = new Hero("Test", new Knight(), 1, new StatBlock(5, 5, 5, 5));
-            var shield = new Gear("Iron Shield", ItemKind.Shield, ItemRarity.Normal,
+            var shield = new Gear("Iron Shield", ItemKind.Shield, ItemRarity.Normal, "A test shield", 10,
                 new StatBlock(0, 0, 0, 0), def: 10);
 
             var baseDefense = hero.GetEquipmentDefenseBonus();
@@ -212,7 +212,7 @@ namespace PitHero.Tests
         [TestMethod]
         public void Gear_ImplementsIGearInterface()
         {
-            var gear = new Gear("Vitality Ring", ItemKind.Accessory, ItemRarity.Rare, 
+            var gear = new Gear("Vitality Ring", ItemKind.Accessory, ItemRarity.Rare, "A test ring", 100,
                 new StatBlock(0, 0, 2, 0), hp: 50, ap: 20);
 
             // Test that Gear implements IGear

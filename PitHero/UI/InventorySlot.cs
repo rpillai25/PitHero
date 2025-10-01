@@ -60,6 +60,7 @@ namespace PitHero.UI
             
             // Set size to 32x32 pixels
             SetSize(32f, 32f);
+            SetTouchable(Touchable.Enabled); // ensure we always receive hover events
         }
 
         public override void Draw(Batcher batcher, float parentAlpha)

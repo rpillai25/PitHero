@@ -8,13 +8,17 @@ namespace RolePlayingFramework.Equipment
         public string Name { get; }
         public ItemKind Kind => ItemKind.Consumable;
         public ItemRarity Rarity { get; }
+        public string Description { get; protected set; }
+        public int Price { get; protected set; }
         public int HPRestoreAmount { get; protected set; }
         public int APRestoreAmount { get; protected set; }
 
-        protected Consumable(string name, ItemRarity rarity, int hpRestoreAmount = 0, int apRestoreAmount = 0)
+        protected Consumable(string name, ItemRarity rarity, string description, int price, int hpRestoreAmount = 0, int apRestoreAmount = 0)
         {
             Name = name;
             Rarity = rarity;
+            Description = description;
+            Price = price;
             HPRestoreAmount = hpRestoreAmount;
             APRestoreAmount = apRestoreAmount;
         }

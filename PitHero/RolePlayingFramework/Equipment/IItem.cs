@@ -11,5 +11,11 @@ namespace RolePlayingFramework.Equipment
 
         /// <summary>Item rarity level.</summary>
         ItemRarity Rarity { get; }
+
+        /// <summary>Item description.</summary>
+        string Description { get; }
+
+        /// <summary>Buy price in gold.</summary>
+        int Price { get; }
     }
 }

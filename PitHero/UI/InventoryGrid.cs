@@ -21,12 +21,30 @@ namespace PitHero.UI
         private HeroComponent _heroComponent;
         private InventorySlot _highlightedSlot;
 
+        // Public events for item card display
+        public event System.Action<IItem> OnItemHovered;
+        public event System.Action OnItemUnhovered;
+        public event System.Action<IItem> OnItemSelected;
+        public event System.Action OnItemDeselected;
+
         public InventoryGrid()
         {
             _slots = new FastList<InventorySlot>(CELL_COUNT);
             _persistBuffer = new IItem[CELL_COUNT];
             BuildSlots();
             LayoutSlots();
+        }
+
+        /// <summary>Returns true if any slot is currently hovered.</summary>
+        public bool HasAnyHoveredSlot()
+        {
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                if (slot.SlotData.IsHovered) return true;
+            }
+            return false;
         }
 
         /// <summary>Builds all slot components in row-major order (adds null placeholders for Null slots).</summary>
@@ -177,11 +195,20 @@ namespace PitHero.UI
                 _highlightedSlot = clickedSlot;
                 clickedSlot.SlotData.IsHighlighted = true;
                 Debug.Log($"Highlighted slot at ({clickedSlot.SlotData.X},{clickedSlot.SlotData.Y})");
+                
+                // Notify that an item was selected
+                if (clickedSlot.SlotData.Item != null)
+                {
+                    OnItemSelected?.Invoke(clickedSlot.SlotData.Item);
+                }
             }
             else if (_highlightedSlot == clickedSlot)
             {
                 _highlightedSlot.SlotData.IsHighlighted = false;
                 _highlightedSlot = null;
+                
+                // Notify that the item was deselected
+                OnItemDeselected?.Invoke();
             }
             else
             {
@@ -190,11 +217,24 @@ namespace PitHero.UI
                 _highlightedSlot.SlotData.IsHighlighted = false;
                 _highlightedSlot = null;
                 Debug.Log($"Swapped items between ({prev.SlotData.X},{prev.SlotData.Y}) and ({clickedSlot.SlotData.X},{clickedSlot.SlotData.Y})");
+                
+                // Notify that the selection was cleared
+                OnItemDeselected?.Invoke();
             }
         }
 
-        private void HandleSlotHovered(InventorySlot slot) { }
-        private void HandleSlotUnhovered(InventorySlot slot) { }
+        private void HandleSlotHovered(InventorySlot slot)
+        {
+            if (slot.SlotData.Item != null)
+            {
+                OnItemHovered?.Invoke(slot.SlotData.Item);
+            }
+        }
+
+        private void HandleSlotUnhovered(InventorySlot slot)
+        {
+            OnItemUnhovered?.Invoke();
+        }
 
         /// <summary>Swaps two slot items (if legal) and persists bag ordering.</summary>
         private void SwapSlotItems(InventorySlot a, InventorySlot b)
