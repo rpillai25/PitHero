@@ -149,6 +149,17 @@ namespace PitHero.UI
                 {
                     slot.SlotData.BagIndex = bagIndex;
                     slot.SlotData.Item = bag.GetSlotItem(bagIndex);
+                    
+                    // Update stack count from consumable
+                    if (slot.SlotData.Item is Consumable consumable)
+                    {
+                        slot.SlotData.StackCount = consumable.StackCount;
+                    }
+                    else
+                    {
+                        slot.SlotData.StackCount = 0;
+                    }
+                    
                     bagIndex++;
                 }
             }

@@ -147,6 +147,9 @@ namespace PitHero.ECS.Components
         public void DebugSetup()
         {
             Bag.TryAdd(PotionItems.HPPotion());
+            Bag.TryAdd(PotionItems.HPPotion());
+            Bag.TryAdd(PotionItems.APPotion());
+            Bag.TryAdd(PotionItems.APPotion());
             Bag.TryAdd(PotionItems.APPotion());
             Bag.TryAdd(PotionItems.FullHPPotion());
         }

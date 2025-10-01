@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using Nez.BitmapFonts;
 using Nez.UI;
 using Nez.Textures;
 using RolePlayingFramework.Equipment;
@@ -17,6 +18,7 @@ namespace PitHero.UI
         private SpriteDrawable _backgroundDrawable;
         private SpriteDrawable _selectBoxDrawable;
         private SpriteDrawable _highlightBoxDrawable;
+        private BitmapFont _font;
         
         public event System.Action<InventorySlot> OnSlotClicked;
         public event System.Action<InventorySlot> OnSlotHovered;
@@ -56,6 +58,17 @@ namespace PitHero.UI
                 
                 _highlightBoxSprite = uiAtlas.GetSprite("HighlightBox");
                 _highlightBoxDrawable = new SpriteDrawable(_highlightBoxSprite);
+                
+                // Load font for stack count display
+                try
+                {
+                    _font = Core.Content.LoadBitmapFont("Content/Fonts/HudSmall.fnt");
+                }
+                catch
+                {
+                    // If font doesn't load, use default
+                    _font = Graphics.Instance.BitmapFont;
+                }
             }
             
             // Set size to 32x32 pixels
@@ -91,6 +104,17 @@ namespace PitHero.UI
                 catch
                 {
                     // If item sprite doesn't exist, silently continue
+                }
+                
+                // Draw stack count if it's a stackable consumable with more than 1 item
+                if (_slotData.Item is Consumable consumable && consumable.StackCount > 1)
+                {
+                    if (_font != null)
+                    {
+                        var stackText = consumable.StackCount.ToString();
+                        var textPosition = new Vector2(GetX() + 2f, GetY() + GetHeight() - _font.LineHeight + 2f);
+                        batcher.DrawString(_font, stackText, textPosition, Color.White);
+                    }
                 }
             }
 

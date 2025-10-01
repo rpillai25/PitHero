@@ -36,6 +36,25 @@ namespace RolePlayingFramework.Inventory
         public bool TryAdd(IItem item)
         {
             if (item == null || IsFull) return false;
+            
+            // If it's a consumable, try to stack it first
+            if (item is Consumable consumable)
+            {
+                // Look for an existing stack of the same item that isn't maxed out
+                for (int i = 0; i < _slots.Length; i++)
+                {
+                    if (_slots[i] is Consumable existingConsumable &&
+                        existingConsumable.Name == consumable.Name &&
+                        existingConsumable.StackCount < existingConsumable.StackSize)
+                    {
+                        existingConsumable.StackCount++;
+                        _compactDirty = true;
+                        return true;
+                    }
+                }
+            }
+            
+            // If not stackable or no existing stack found, add to first empty slot
             for (int i = 0; i < _slots.Length; i++)
             {
                 if (_slots[i] == null)
@@ -62,6 +81,25 @@ namespace RolePlayingFramework.Inventory
                     _compactDirty = true;
                     return true;
                 }
+            }
+            return false;
+        }
+
+        /// <summary>Consumes one item from a consumable stack at the given slot index. Returns true if consumed, false if slot is empty or item is gone.</summary>
+        public bool ConsumeFromStack(int slotIndex)
+        {
+            if (slotIndex < 0 || slotIndex >= _slots.Length) return false;
+            var item = _slots[slotIndex];
+            if (item is Consumable consumable)
+            {
+                consumable.StackCount--;
+                if (consumable.StackCount <= 0)
+                {
+                    _slots[slotIndex] = null;
+                    _count--;
+                    _compactDirty = true;
+                }
+                return true;
             }
             return false;
         }
