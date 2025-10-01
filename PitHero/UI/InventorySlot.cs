@@ -18,6 +18,8 @@ namespace PitHero.UI
         private SpriteDrawable _selectBoxDrawable;
         private SpriteDrawable _highlightBoxDrawable;
         
+        private ItemCardTooltip _tooltip;
+        
         public event System.Action<InventorySlot> OnSlotClicked;
         public event System.Action<InventorySlot> OnSlotHovered;
         public event System.Action<InventorySlot> OnSlotUnhovered;
@@ -56,6 +58,11 @@ namespace PitHero.UI
                 
                 _highlightBoxSprite = uiAtlas.GetSprite("HighlightBox");
                 _highlightBoxDrawable = new SpriteDrawable(_highlightBoxSprite);
+                
+                // Create tooltip with default skin
+                var skin = Skin.CreateDefaultSkin();
+                _tooltip = new ItemCardTooltip(this, skin);
+                _tooltip.SetInstant(true); // Show immediately without delay
             }
             
             // Set size to 32x32 pixels
@@ -115,6 +122,12 @@ namespace PitHero.UI
         {
             _slotData.IsHovered = true;
             OnSlotHovered?.Invoke(this);
+            
+            // Show tooltip if item exists
+            if (_slotData.Item != null && _tooltip != null)
+            {
+                _tooltip.ShowItem(_slotData.Item);
+            }
         }
 
         void IInputListener.OnMouseExit()

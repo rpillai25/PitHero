@@ -33,8 +33,7 @@ namespace PitHero.UI
         // Inventory tab content
         private InventoryGrid _inventoryGrid;
         
-        // Item cards for hover and selection
-        private ItemCard _hoverItemCard;
+        // Item card for selection only (hover uses tooltip)
         private ItemCard _selectedItemCard;
         
         // Priority reorder components (moved to priorities tab)
@@ -114,9 +113,7 @@ namespace PitHero.UI
 
         private void CreateItemCards(Skin skin)
         {
-            _hoverItemCard = new ItemCard(skin);
             _selectedItemCard = new ItemCard(skin);
-            _hoverItemCard.SetVisible(false);
             _selectedItemCard.SetVisible(false);
         }
 
@@ -201,7 +198,6 @@ namespace PitHero.UI
             else
             {
                 UIWindowManager.OnUIWindowClosing();
-                _hoverItemCard?.Hide();
                 _selectedItemCard?.Hide();
                 _heroWindow.SetVisible(false);
                 _heroWindow.Remove();
@@ -282,26 +278,20 @@ namespace PitHero.UI
         {
             if (_windowVisible)
             {
-                _windowVisible = false; UIWindowManager.OnUIWindowClosing(); _hoverItemCard?.Hide(); _selectedItemCard?.Hide(); _heroWindow?.SetVisible(false); _heroWindow?.Remove(); var pauseService = Core.Services.GetService<PauseService>(); if (pauseService != null) pauseService.IsPaused = false; Debug.Log("[HeroUI] Hero window force closed by single window policy");
+                _windowVisible = false; UIWindowManager.OnUIWindowClosing(); _selectedItemCard?.Hide(); _heroWindow?.SetVisible(false); _heroWindow?.Remove(); var pauseService = Core.Services.GetService<PauseService>(); if (pauseService != null) pauseService.IsPaused = false; Debug.Log("[HeroUI] Hero window force closed by single window policy");
             }
         }
 
         private void HandleItemHovered(IItem item)
         {
-            if (item == null) return;
-            if (_selectedItemCard.IsVisible() && _selectedItemCard.CurrentItem == item) { _hoverItemCard.Hide(); return; }
-            _hoverItemCard.ShowItem(item);
-            if (_hoverItemCard.GetParent() == null) _stage.AddElement(_hoverItemCard);
-            _hoverItemCard.Validate(); // ensure layout
-            PositionItemCards();
+            // Tooltip now handles item hover display
+            // This method is kept for potential future use
         }
 
         private void HandleItemUnhovered()
         {
-            // Only hide if no other slot is hovered
-            if (_inventoryGrid != null && _inventoryGrid.HasAnyHoveredSlot()) return;
-            _hoverItemCard.Hide();
-            PositionItemCards();
+            // Tooltip now handles item unhover
+            // This method is kept for potential future use
         }
 
         private void HandleItemSelected(IItem item)
@@ -309,7 +299,6 @@ namespace PitHero.UI
             if (item == null) return;
             _selectedItemCard.ShowItem(item);
             if (_selectedItemCard.GetParent() == null) _stage.AddElement(_selectedItemCard);
-            if (_hoverItemCard.IsVisible() && _hoverItemCard.CurrentItem == item) _hoverItemCard.Hide();
             PositionItemCards();
         }
 
@@ -329,17 +318,6 @@ namespace PitHero.UI
             {
                 _selectedItemCard.SetPosition(heroWindowRight + cardSpacing, heroWindowY);
                 _selectedItemCard.ToFront();
-                if (_hoverItemCard.IsVisible())
-                {
-                    float selectedCardRight = _selectedItemCard.GetX() + _selectedItemCard.GetWidth();
-                    _hoverItemCard.SetPosition(selectedCardRight + cardSpacing, heroWindowY);
-                    _hoverItemCard.ToFront();
-                }
-            }
-            else if (_hoverItemCard.IsVisible())
-            {
-                _hoverItemCard.SetPosition(heroWindowRight + cardSpacing, heroWindowY);
-                _hoverItemCard.ToFront();
             }
         }
     }
