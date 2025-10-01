@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using Nez.Sprites;
 using PitHero.ECS.Components;
 using PitHero.AI.Interfaces;
 using PitHero.Services;
@@ -362,10 +363,11 @@ namespace PitHero.AI
 
                                 if (enemyDied)
                                 {
-                                    Debug.Log($"[AttackMonster] {targetEnemy.Name} defeated!");
+                                    Debug.Log($"[AttackMonster] {targetEnemy.Name} defeated! Starting fade out");
                                     hero.AddExperience(targetEnemy.ExperienceYield);
-                                    targetMonster.Destroy();
                                     validMonsters.Remove(targetMonster);
+                                    // Start fade coroutine (wait for completion so removal timing stays consistent)
+                                    yield return FadeOutAndDestroyMonster(targetMonster);
                                 }
                             }
                             else
@@ -457,5 +459,68 @@ namespace PitHero.AI
                 existingMultiParticipantBattleCoroutine = null;
             }
         }
+
+        /// <summary>Fades out a defeated monster entity then destroys it</summary>
+        private System.Collections.IEnumerator FadeOutAndDestroyMonster(Entity monsterEntity)
+        {
+            if (monsterEntity == null)
+                yield break;
+            // Try to get any renderers that support color/alpha adjustments
+            // We specifically look for EnemyAnimationComponent (PausableSpriteAnimator) and SpriteRenderer/PrototypeSpriteRenderer
+            var enemyAnim = monsterEntity.GetComponent<EnemyAnimationComponent>();
+            SpriteRenderer spriteRenderer = monsterEntity.GetComponent<SpriteRenderer>();
+#if DEBUG
+            PrototypeSpriteRenderer protoRenderer = null;
+            if (spriteRenderer == null)
+                protoRenderer = monsterEntity.GetComponent<PrototypeSpriteRenderer>();
+#endif
+
+            Color origColorAnim = Color.White;
+            Color origColorSprite = Color.White;
+            Color origColorProto = Color.White;
+            if (enemyAnim != null)
+                origColorAnim = enemyAnim.Color;
+            if (spriteRenderer != null)
+                origColorSprite = spriteRenderer.Color;
+#if DEBUG
+            if (protoRenderer != null)
+                origColorProto = protoRenderer.Color;
+#endif
+            const float fadeDuration = 0.5f;
+            float elapsed = 0f;
+            while (elapsed < fadeDuration)
+            {
+                // Respect pause
+                var pauseService = Core.Services.GetService<PauseService>();
+                if (pauseService?.IsPaused == true)
+                {
+                    yield return null;
+                    continue;
+                }
+                elapsed += Time.DeltaTime;
+                float progress = elapsed / fadeDuration;
+                if (progress < 0f) progress = 0f; else if (progress > 1f) progress = 1f;
+                byte alpha = (byte)(255 * (1f - progress));
+                if (enemyAnim != null)
+                {
+                    enemyAnim.Color = new Color(origColorAnim.R, origColorAnim.G, origColorAnim.B, alpha);
+                }
+                if (spriteRenderer != null)
+                {
+                    spriteRenderer.Color = new Color(origColorSprite.R, origColorSprite.G, origColorSprite.B, alpha);
+                }
+#if DEBUG
+                if (protoRenderer != null)
+                {
+                    protoRenderer.Color = new Color(origColorProto.R, origColorProto.G, origColorProto.B, alpha);
+                }
+#endif
+                yield return null;
+            }
+            monsterEntity.Destroy();
+        }
+
+        // Temp list to avoid allocations each turn when picking random living monster
+        private static readonly List<Entity> _tempLivingMonsters = new List<Entity>(16);
     }
 }
