@@ -34,6 +34,9 @@ namespace PitHero.UI
         
         /// <summary>Whether this slot is currently being hovered.</summary>
         public bool IsHovered { get; set; }
+        
+        /// <summary>Acquisition order index (higher means more recently acquired/stacked).</summary>
+        public int AcquireIndex { get; set; }
 
         public InventorySlotData(int x, int y, InventorySlotType slotType)
         {

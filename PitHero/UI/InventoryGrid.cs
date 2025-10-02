@@ -51,6 +51,8 @@ namespace PitHero.UI
         public event System.Action<IItem> OnItemSelected;
         public event System.Action OnItemDeselected;
 
+        private int _nextAcquireIndex = 1; // monotonic acquisition counter
+
         public InventoryGrid()
         {
             _slots = new FastList<InventorySlot>(CELL_COUNT);
@@ -200,7 +202,31 @@ namespace PitHero.UI
                 if (type == InventorySlotType.Shortcut || type == InventorySlotType.Inventory)
                 {
                     slot.SlotData.BagIndex = bagIndex;
-                    slot.SlotData.Item = bag.GetSlotItem(bagIndex);
+                    var prevItem = slot.SlotData.Item;
+                    var newItem = bag.GetSlotItem(bagIndex);
+                    if (newItem != prevItem)
+                    {
+                        // new item appeared in this slot. Assign acquisition index
+                        slot.SlotData.Item = newItem;
+                        if (newItem != null)
+                            slot.SlotData.AcquireIndex = _nextAcquireIndex++;
+                    }
+                    else
+                    {
+                        // same reference. If consumable and stack increased, bump acquire index
+                        if (newItem is Consumable c)
+                        {
+                            int oldStack = slot.SlotData.StackCount;
+                            int newStack = c.StackCount;
+                            if (newStack > oldStack)
+                                slot.SlotData.AcquireIndex = _nextAcquireIndex++;
+                            slot.SlotData.Item = newItem; // keep
+                        }
+                        else
+                        {
+                            slot.SlotData.Item = newItem;
+                        }
+                    }
                     if (slot.SlotData.Item is Consumable consumable)
                         slot.SlotData.StackCount = consumable.StackCount;
                     else
