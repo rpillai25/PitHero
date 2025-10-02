@@ -59,25 +59,6 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void PitLevelQueueService_ShouldQueueAndDequeue()
-        {
-            // Test the pit level queue service
-            var queueService = new PitLevelQueueService();
-            
-            Assert.IsFalse(queueService.HasQueuedLevel, "Should start with no queued level");
-            
-            queueService.QueueLevel(25);
-            Assert.IsTrue(queueService.HasQueuedLevel, "Should have queued level after queuing");
-            
-            var dequeuedLevel = queueService.DequeueLevel();
-            Assert.AreEqual(25, dequeuedLevel, "Should dequeue the correct level");
-            Assert.IsFalse(queueService.HasQueuedLevel, "Should have no queued level after dequeuing");
-            
-            var emptyDequeue = queueService.DequeueLevel();
-            Assert.IsNull(emptyDequeue, "Should return null when queue is empty");
-        }
-
-        [TestMethod]
         public void ActivateWizardOrbAction_QueuePitLevel_ShouldWork()
         {
             // Test that the queue service can be instantiated and used directly

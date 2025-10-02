@@ -140,12 +140,14 @@ namespace RolePlayingFramework.Heroes
             return true;
         }
 
-        /// <summary>Restores HP up to max.</summary>
-        public void RestoreHP(int amount)
+        /// <summary>Restores HP (clamps to MaxHP). Returns true if HP was actually restored.</summary>
+        public bool RestoreHP(int amount)
         {
-            if (amount <= 0) return;
+            if (amount <= 0) return false;
+            if (CurrentHP >= MaxHP) return false; // Already at max HP
             CurrentHP += amount;
             if (CurrentHP > MaxHP) CurrentHP = MaxHP;
+            return true;
         }
 
         /// <summary>Per-turn passive AP regen.</summary>
@@ -338,17 +340,20 @@ namespace RolePlayingFramework.Heroes
             return skill.Execute(this, primary, surrounding, resolver);
         }
 
-        /// <summary>Restores AP up to max (amount < 0 indicates full restore).</summary>
-        public void RestoreAP(int amount)
+        /// <summary>Restores AP up to max (amount < 0 indicates full restore). Returns true if AP was actually restored.</summary>
+        public bool RestoreAP(int amount)
         {
             if (amount < 0)
             {
+                if (CurrentAP >= MaxAP) return false; // Already at max AP
                 CurrentAP = MaxAP;
-                return;
+                return true;
             }
-            if (amount <= 0) return;
+            if (amount <= 0) return false;
+            if (CurrentAP >= MaxAP) return false; // Already at max AP
             CurrentAP += amount;
             if (CurrentAP > MaxAP) CurrentAP = MaxAP;
+            return true;
         }
     }
 }

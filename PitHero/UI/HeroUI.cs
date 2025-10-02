@@ -143,6 +143,10 @@ namespace PitHero.UI
             _inventoryGrid.OnItemUnhovered += HandleItemUnhovered;
             _inventoryGrid.OnItemSelected += HandleItemSelected;
             _inventoryGrid.OnItemDeselected += HandleItemDeselected;
+            
+            // Initialize context menu
+            _inventoryGrid.InitializeContextMenu(_stage, skin);
+            
             var heroComponent = GetHeroComponent();
             if (heroComponent != null)
                 _inventoryGrid.ConnectToHero(heroComponent);
@@ -276,10 +280,15 @@ namespace PitHero.UI
         public void Update()
         {
             UpdateButtonStyleIfNeeded();
-            if (_windowVisible && _inventoryGrid != null) 
+            
+            // Handle keyboard shortcuts even when window is closed (they're shortcuts after all!)
+            if (_inventoryGrid != null)
             {
                 _inventoryGrid.HandleKeyboardShortcuts();
-                
+            }
+            
+            if (_windowVisible && _inventoryGrid != null) 
+            {
                 // Update tooltip position if visible
                 if (_itemTooltip != null && _itemTooltip.GetContainer().HasParent())
                 {

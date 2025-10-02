@@ -23,9 +23,14 @@ namespace PitHero.UI
         private float _itemSpriteOffsetY = 0f;
         private bool _hideItemSprite = false;
         
+        // Double-click detection
+        private float _lastClickTime = -1f;
+        
         public event System.Action<InventorySlot> OnSlotClicked;
+        public event System.Action<InventorySlot> OnSlotDoubleClicked;
         public event System.Action<InventorySlot> OnSlotHovered;
         public event System.Action<InventorySlot> OnSlotUnhovered;
+        public event System.Action<InventorySlot, Vector2> OnSlotRightClicked;
 
         public InventorySlotData SlotData => _slotData;
 
@@ -171,13 +176,27 @@ namespace PitHero.UI
 
         bool IInputListener.OnLeftMousePressed(Vector2 mousePos)
         {
-            OnSlotClicked?.Invoke(this);
+            // Check for double-click
+            float currentTime = Time.TotalTime;
+            if (_lastClickTime >= 0 && (currentTime - _lastClickTime) <= GameConfig.DoubleClickThresholdSeconds)
+            {
+                // Double-click detected
+                OnSlotDoubleClicked?.Invoke(this);
+                _lastClickTime = -1f; // Reset to prevent triple-click
+            }
+            else
+            {
+                // Single click
+                OnSlotClicked?.Invoke(this);
+                _lastClickTime = currentTime;
+            }
             return true;
         }
 
         bool IInputListener.OnRightMousePressed(Vector2 mousePos)
         {
-            return false;
+            OnSlotRightClicked?.Invoke(this, mousePos);
+            return true;
         }
 
         void IInputListener.OnLeftMouseUp(Vector2 mousePos)
