@@ -232,6 +232,93 @@ namespace PitHero.Tests
             Assert.IsTrue(hero.CurrentAP <= maxAP, $"AP should not exceed maxAP of {maxAP}");
         }
 
+        [TestMethod]
+        public void ConsumableUsage_PotionAtMaxHP_ShouldNotConsume()
+        {
+            // Arrange
+            var baseStats = new StatBlock(10, 10, 10, 10);
+            var hero = new Hero("TestHero", new Knight(), 1, baseStats);
+            var maxHP = hero.MaxHP;
+            
+            // Hero is already at max HP
+            Assert.AreEqual(maxHP, hero.CurrentHP, "Hero should start at max HP");
+            
+            var hpPotion = PotionItems.HPPotion();
+
+            // Act
+            var success = hpPotion.Consume(hero);
+
+            // Assert
+            Assert.IsFalse(success, "HPPotion should not be consumed when hero is at max HP");
+            Assert.AreEqual(maxHP, hero.CurrentHP, "HP should remain at max");
+        }
+
+        [TestMethod]
+        public void ConsumableUsage_PotionAtMaxAP_ShouldNotConsume()
+        {
+            // Arrange
+            var baseStats = new StatBlock(10, 10, 10, 10);
+            var hero = new Hero("TestHero", new Knight(), 1, baseStats);
+            var maxAP = hero.MaxAP;
+            
+            // Hero is already at max AP
+            Assert.AreEqual(maxAP, hero.CurrentAP, "Hero should start at max AP");
+            
+            var apPotion = PotionItems.APPotion();
+
+            // Act
+            var success = apPotion.Consume(hero);
+
+            // Assert
+            Assert.IsFalse(success, "APPotion should not be consumed when hero is at max AP");
+            Assert.AreEqual(maxAP, hero.CurrentAP, "AP should remain at max");
+        }
+
+        [TestMethod]
+        public void ConsumableUsage_MixPotionAtMaxBoth_ShouldNotConsume()
+        {
+            // Arrange
+            var baseStats = new StatBlock(10, 10, 10, 10);
+            var hero = new Hero("TestHero", new Knight(), 1, baseStats);
+            var maxHP = hero.MaxHP;
+            var maxAP = hero.MaxAP;
+            
+            // Hero is already at max HP and AP
+            Assert.AreEqual(maxHP, hero.CurrentHP);
+            Assert.AreEqual(maxAP, hero.CurrentAP);
+            
+            var mixPotion = PotionItems.MixPotion();
+
+            // Act
+            var success = mixPotion.Consume(hero);
+
+            // Assert
+            Assert.IsFalse(success, "MixPotion should not be consumed when hero is at max HP and AP");
+        }
+
+        [TestMethod]
+        public void ConsumableUsage_MixPotionPartialRestore_ShouldConsume()
+        {
+            // Arrange
+            var baseStats = new StatBlock(10, 10, 10, 10);
+            var hero = new Hero("TestHero", new Knight(), 1, baseStats);
+            
+            // Reduce only HP, keep AP at max
+            hero.TakeDamage(50);
+            var maxAP = hero.MaxAP;
+            
+            Assert.AreEqual(maxAP, hero.CurrentAP, "AP should be at max");
+            Assert.IsTrue(hero.CurrentHP < hero.MaxHP, "HP should be below max");
+            
+            var mixPotion = PotionItems.MixPotion();
+
+            // Act
+            var success = mixPotion.Consume(hero);
+
+            // Assert
+            Assert.IsTrue(success, "MixPotion should be consumed when at least one stat can be restored");
+        }
+
         // Helper class for testing non-consumable items
         private class TestWeapon : IItem
         {

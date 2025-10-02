@@ -11,8 +11,7 @@ namespace RolePlayingFramework.Equipment
         {
             if (context is Hero hero)
             {
-                hero.RestoreAP(APRestoreAmount);
-                return true;
+                return hero.RestoreAP(APRestoreAmount);
             }
             return false;
         }

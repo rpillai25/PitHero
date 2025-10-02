@@ -12,9 +12,20 @@ namespace RolePlayingFramework.Equipment
         {
             if (context is Hero hero)
             {
-                if (HPRestoreAmount < 0) hero.RestoreHP(hero.MaxHP); else hero.RestoreHP(HPRestoreAmount);
-                if (APRestoreAmount < 0) hero.RestoreAP(APRestoreAmount); else hero.RestoreAP(Math.Min(hero.MaxAP, hero.CurrentAP + APRestoreAmount));
-                return true;
+                bool hpRestored = false;
+                bool apRestored = false;
+                
+                if (HPRestoreAmount < 0)
+                    hpRestored = hero.RestoreHP(hero.MaxHP);
+                else
+                    hpRestored = hero.RestoreHP(HPRestoreAmount);
+                
+                if (APRestoreAmount < 0)
+                    apRestored = hero.RestoreAP(APRestoreAmount);
+                else
+                    apRestored = hero.RestoreAP(Math.Min(hero.MaxAP, hero.CurrentAP + APRestoreAmount));
+                
+                return hpRestored || apRestored;
             }
             return false;
         }

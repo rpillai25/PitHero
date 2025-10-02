@@ -313,7 +313,13 @@ namespace PitHero.UI
             
             if (slot.SlotData.Item != null && _contextMenu != null && slot.SlotData.BagIndex.HasValue)
             {
-                _contextMenu.Show(slot.SlotData.Item, slot.SlotData.BagIndex.Value, mousePos);
+                // Convert slot position to stage coordinates
+                // The slot position is relative to the InventoryGrid, we need to add offsets
+                var slotX = GetX() + slot.GetX();
+                var slotY = GetY() + slot.GetY();
+                var stagePos = new Vector2(slotX, slotY);
+                
+                _contextMenu.Show(slot.SlotData.Item, slot.SlotData.BagIndex.Value, stagePos);
             }
         }
 
