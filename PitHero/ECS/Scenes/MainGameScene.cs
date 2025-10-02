@@ -115,7 +115,7 @@ namespace PitHero.ECS.Scenes
                 pitWidthManager.SetPitLevel(1);
 
             SpawnHero();
-            AddPitLevelTestComponent();
+            //AddPitLevelTestComponent();
 
             _isInitializationComplete = true;
         }
