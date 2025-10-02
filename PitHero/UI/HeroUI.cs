@@ -143,6 +143,10 @@ namespace PitHero.UI
             _inventoryGrid.OnItemUnhovered += HandleItemUnhovered;
             _inventoryGrid.OnItemSelected += HandleItemSelected;
             _inventoryGrid.OnItemDeselected += HandleItemDeselected;
+            
+            // Initialize context menu
+            _inventoryGrid.InitializeContextMenu(_stage, skin);
+            
             var heroComponent = GetHeroComponent();
             if (heroComponent != null)
                 _inventoryGrid.ConnectToHero(heroComponent);

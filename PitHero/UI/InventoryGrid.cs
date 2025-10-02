@@ -25,6 +25,7 @@ namespace PitHero.UI
         private readonly IItem[] _persistBuffer;           // Reusable buffer for bag ordering persistence (32 max bag capacity)
         private HeroComponent _heroComponent;
         private InventorySlot _highlightedSlot;
+        private InventoryContextMenu _contextMenu;
         
         // Swap animation entities (scene-space approach retained but unused currently)
         private Entity _swapEntity1;
@@ -85,8 +86,10 @@ namespace PitHero.UI
                     }
                     var slot = new InventorySlot(data);
                     slot.OnSlotClicked += HandleSlotClicked;
+                    slot.OnSlotDoubleClicked += HandleSlotDoubleClicked;
                     slot.OnSlotHovered += HandleSlotHovered;
                     slot.OnSlotUnhovered += HandleSlotUnhovered;
+                    slot.OnSlotRightClicked += HandleSlotRightClicked;
                     _slots.Add(slot);
                     AddElement(slot);
                 }
@@ -117,6 +120,17 @@ namespace PitHero.UI
                 UpdateItemsFromBag();
             }
             InitializeSwapEntities();
+        }
+        
+        /// <summary>Initializes the context menu for inventory interactions.</summary>
+        public void InitializeContextMenu(Stage stage, Skin skin)
+        {
+            if (_contextMenu != null) return;
+            
+            _contextMenu = new InventoryContextMenu();
+            _contextMenu.Initialize(stage, skin);
+            _contextMenu.OnUseItem += (item, bagIndex) => UseConsumable(item, bagIndex);
+            _contextMenu.OnDiscardItem += (item, bagIndex) => DiscardItem(bagIndex);
         }
         
         /// <summary>Initializes scene entities for swap animation (unused currently).</summary>
@@ -211,6 +225,12 @@ namespace PitHero.UI
                     if (data.SlotType == InventorySlotType.Shortcut && data.ShortcutKey == keyOffset + 1 && data.Item != null)
                     {
                         Debug.Log($"Activated shortcut slot {data.ShortcutKey} with item: {data.Item.Name}");
+                        
+                        // Use the consumable if it's a consumable
+                        if (data.Item is Consumable && data.BagIndex.HasValue)
+                        {
+                            UseConsumable(data.Item, data.BagIndex.Value);
+                        }
                         break;
                     }
                 }
@@ -269,6 +289,78 @@ namespace PitHero.UI
         {
             slot.SetItemSpriteOffsetY(0f);
             OnItemUnhovered?.Invoke();
+        }
+
+        /// <summary>Handles double-click to use consumables.</summary>
+        private void HandleSlotDoubleClicked(InventorySlot slot)
+        {
+            // Only allow double-click to use consumables in non-equipment slots
+            if (slot.SlotData.SlotType == InventorySlotType.Equipment)
+                return;
+            
+            if (slot.SlotData.Item is Consumable && slot.SlotData.BagIndex.HasValue)
+            {
+                UseConsumable(slot.SlotData.Item, slot.SlotData.BagIndex.Value);
+            }
+        }
+
+        /// <summary>Handles right-click to show context menu.</summary>
+        private void HandleSlotRightClicked(InventorySlot slot, Vector2 mousePos)
+        {
+            // Only show context menu for non-equipment slots with items
+            if (slot.SlotData.SlotType == InventorySlotType.Equipment)
+                return;
+            
+            if (slot.SlotData.Item != null && _contextMenu != null && slot.SlotData.BagIndex.HasValue)
+            {
+                _contextMenu.Show(slot.SlotData.Item, slot.SlotData.BagIndex.Value, mousePos);
+            }
+        }
+
+        /// <summary>Uses a consumable item.</summary>
+        private void UseConsumable(IItem item, int bagIndex)
+        {
+            if (item is not Consumable consumable)
+                return;
+            
+            var hero = _heroComponent?.LinkedHero;
+            if (hero == null)
+            {
+                Debug.Log($"Cannot use {item.Name}: No hero linked");
+                return;
+            }
+
+            // Try to consume the item
+            if (consumable.Consume(hero))
+            {
+                Debug.Log($"Used {item.Name}");
+                
+                // Decrement stack or remove item
+                if (_heroComponent.Bag.ConsumeFromStack(bagIndex))
+                {
+                    // Refresh the UI to show updated stack counts
+                    UpdateItemsFromBag();
+                }
+            }
+            else
+            {
+                Debug.Log($"Failed to use {item.Name}");
+            }
+        }
+
+        /// <summary>Discards an item from the bag.</summary>
+        private void DiscardItem(int bagIndex)
+        {
+            if (_heroComponent?.Bag == null)
+                return;
+            
+            var item = _heroComponent.Bag.GetSlotItem(bagIndex);
+            if (item != null)
+            {
+                _heroComponent.Bag.SetSlotItem(bagIndex, null);
+                Debug.Log($"Discarded {item.Name}");
+                UpdateItemsFromBag();
+            }
         }
 
         /// <summary>Swaps two slot items (if legal) and persists bag ordering.</summary>

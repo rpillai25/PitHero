@@ -121,6 +121,9 @@ namespace PitHero
         
         // UI Button Spacing
         public const float UIButtonPadding = 4f; // Padding between UI buttons
+        
+        // Inventory interaction
+        public const float DoubleClickThresholdSeconds = 0.3f; // Time window for detecting double-click
 
         // Physics Layers (determines which layer an entity is on for collision)
         public const int PhysicsTileMapLayer = 0;   // Tilemap "Collision" layer
