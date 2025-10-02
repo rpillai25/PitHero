@@ -280,10 +280,15 @@ namespace PitHero.UI
         public void Update()
         {
             UpdateButtonStyleIfNeeded();
-            if (_windowVisible && _inventoryGrid != null) 
+            
+            // Handle keyboard shortcuts even when window is closed (they're shortcuts after all!)
+            if (_inventoryGrid != null)
             {
                 _inventoryGrid.HandleKeyboardShortcuts();
-                
+            }
+            
+            if (_windowVisible && _inventoryGrid != null) 
+            {
                 // Update tooltip position if visible
                 if (_itemTooltip != null && _itemTooltip.GetContainer().HasParent())
                 {
