@@ -1,40 +1,85 @@
-APPotion
+NecklaceOfHealth
 	0,0,32,32
 	0.5,0.5
-FullAPPotion
+RingOfPower
 	33,0,32,32
 	0.5,0.5
-FullHPPotion
+Accessory
 	66,0,32,32
 	0.5,0.5
-FullMixPotion
+Armor
 	0,33,32,32
 	0.5,0.5
-HPPotion
+LeatherArmor
 	33,33,32,32
 	0.5,0.5
-MidAPPotion
+APPotion
+	0,66,32,32
+	0.5,0.5
+FullAPPotion
+	33,66,32,32
+	0.5,0.5
+FullHPPotion
 	66,33,32,32
 	0.5,0.5
-MidHPPotion
+FullMixPotion
+	66,66,32,32
+	0.5,0.5
+HPPotion
 	99,0,32,32
 	0.5,0.5
-MidMixPotion
-	132,0,32,32
-	0.5,0.5
-MixPotion
+MidAPPotion
 	99,33,32,32
 	0.5,0.5
-Equipment
+MidHPPotion
+	132,0,32,32
+	0.5,0.5
+MidMixPotion
+	99,66,32,32
+	0.5,0.5
+MixPotion
 	132,33,32,32
 	0.5,0.5
-Inventory
+Equipment
 	165,0,32,32
 	0.5,0.5
-Shortcut
+Helm
+	198,0,32,32
+	0.5,0.5
+SquireHelm
 	165,33,32,32
 	0.5,0.5
+Inventory
+	132,66,32,32
+	0.5,0.5
+WoodenShield
+	165,66,32,32
+	0.5,0.5
+Shortcut
+	198,33,32,32
+	0.5,0.5
+ShortSword
+	198,66,32,32
+	0.5,0.5
+WeaponShield
+	0,99,32,32
+	0.5,0.5
 
+Accessories
+	8
+	0,1
+Armor
+	8
+	4
 Consumables
 	8
-	0,1,2,3,4,5,6,7,8
+	5,6,7,8,9,10,11,12,13
+Helms
+	8
+	16
+Shields
+	8
+	18
+Swords
+	8
+	20
