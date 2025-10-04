@@ -152,6 +152,12 @@ namespace PitHero.ECS.Components
             Bag.TryAdd(PotionItems.APPotion());
             Bag.TryAdd(PotionItems.APPotion());
             Bag.TryAdd(PotionItems.FullHPPotion());
+            Bag.TryAdd(GearItems.ShortSword());
+            Bag.TryAdd(GearItems.WoodenShield());
+            Bag.TryAdd(GearItems.SquireHelm());
+            Bag.TryAdd(GearItems.LeatherArmor());
+            Bag.TryAdd(GearItems.RingOfPower());
+            Bag.TryAdd(GearItems.NecklaceOfHealth());
         }
 #endif
 

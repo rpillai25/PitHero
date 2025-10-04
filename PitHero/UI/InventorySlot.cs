@@ -23,6 +23,10 @@ namespace PitHero.UI
         private float _itemSpriteOffsetY = 0f;
         private bool _hideItemSprite = false;
         
+        // Placeholder sprites for empty equipment slots
+        private SpriteDrawable _placeholderDrawable;
+        private TextTooltip _placeholderTooltip;
+        
         // Double-click detection
         private float _lastClickTime = -1f;
         
@@ -67,6 +71,36 @@ namespace PitHero.UI
                 _highlightBoxSprite = uiAtlas.GetSprite("HighlightBox");
                 _highlightBoxDrawable = new SpriteDrawable(_highlightBoxSprite);
                 
+                // Load placeholder sprites for equipment slots
+                if (_slotData.SlotType == InventorySlotType.Equipment && _slotData.EquipmentSlot.HasValue)
+                {
+                    string placeholderSpriteName = GetPlaceholderSpriteName(_slotData.EquipmentSlot.Value);
+                    string placeholderTooltipText = GetPlaceholderTooltipText(_slotData.EquipmentSlot.Value);
+                    
+                    if (placeholderSpriteName != null)
+                    {
+                        var placeholderSprite = itemsAtlas.GetSprite(placeholderSpriteName);
+                        if (placeholderSprite != null)
+                        {
+                            _placeholderDrawable = new SpriteDrawable(placeholderSprite);
+                        }
+                    }
+                    
+                    // Create tooltip for placeholder if we have tooltip text
+                    if (placeholderTooltipText != null && Graphics.Instance != null)
+                    {
+                        var skin = new Skin();
+                        skin.Add("default", Graphics.Instance.BitmapFont);
+                        var tooltipStyle = new TextTooltipStyle
+                        {
+                            LabelStyle = new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White }
+                        };
+                        _placeholderTooltip = new TextTooltip(placeholderTooltipText, this, tooltipStyle);
+                        _placeholderTooltip.SetInstant(true);
+                        _placeholderTooltip.SetAlways(true);
+                    }
+                }
+                
                 // Load font for stack count display
                 try
                 {
@@ -84,6 +118,36 @@ namespace PitHero.UI
             SetTouchable(Touchable.Enabled); // ensure we always receive hover events
         }
         
+        /// <summary>Gets the placeholder sprite name for an equipment slot.</summary>
+        private string GetPlaceholderSpriteName(EquipmentSlot equipmentSlot)
+        {
+            return equipmentSlot switch
+            {
+                EquipmentSlot.WeaponShield1 => "WeaponShield",
+                EquipmentSlot.WeaponShield2 => "WeaponShield",
+                EquipmentSlot.Armor => "Armor",
+                EquipmentSlot.Hat => "Helm",
+                EquipmentSlot.Accessory1 => "Accessory",
+                EquipmentSlot.Accessory2 => "Accessory",
+                _ => null
+            };
+        }
+        
+        /// <summary>Gets the placeholder tooltip text for an equipment slot.</summary>
+        private string GetPlaceholderTooltipText(EquipmentSlot equipmentSlot)
+        {
+            return equipmentSlot switch
+            {
+                EquipmentSlot.WeaponShield1 => "Weapon/Shield",
+                EquipmentSlot.WeaponShield2 => "Weapon/Shield",
+                EquipmentSlot.Armor => "Armor",
+                EquipmentSlot.Hat => "Helm",
+                EquipmentSlot.Accessory1 => "Accessory",
+                EquipmentSlot.Accessory2 => "Accessory",
+                _ => null
+            };
+        }
+        
         /// <summary>Sets the item sprite Y offset for visual effects (like hover).</summary>
         public void SetItemSpriteOffsetY(float offsetY)
         {
@@ -94,6 +158,12 @@ namespace PitHero.UI
         public void SetItemSpriteHidden(bool hidden)
         {
             _hideItemSprite = hidden;
+        }
+        
+        /// <summary>Gets the placeholder tooltip for this slot if it has one.</summary>
+        public TextTooltip GetPlaceholderTooltip()
+        {
+            return _placeholderTooltip;
         }
 
         public override void Draw(Batcher batcher, float parentAlpha)
@@ -108,7 +178,7 @@ namespace PitHero.UI
                 _backgroundDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
             }
 
-            // Draw item sprite if slot has an item
+            // Draw item sprite if slot has an item, or placeholder if equipment slot is empty
             if (_slotData.Item != null && Core.Content != null && !_hideItemSprite)
             {
                 try
@@ -138,6 +208,11 @@ namespace PitHero.UI
                         batcher.DrawString(_font, stackText, textPosition, Color.White);
                     }
                 }
+            }
+            else if (_slotData.Item == null && _slotData.SlotType == InventorySlotType.Equipment && _placeholderDrawable != null)
+            {
+                // Draw placeholder sprite for empty equipment slot
+                _placeholderDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
             }
 
             // Draw select box if hovered (only if sprite is loaded)
