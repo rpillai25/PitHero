@@ -1,85 +1,103 @@
-NecklaceOfHealth
+MagicChain
 	0,0,32,32
 	0.5,0.5
-RingOfPower
+NecklaceOfHealth
 	33,0,32,32
 	0.5,0.5
-Accessory
+ProtectRing
 	66,0,32,32
 	0.5,0.5
-Armor
+RingOfPower
 	0,33,32,32
 	0.5,0.5
-LeatherArmor
+Accessory
 	33,33,32,32
 	0.5,0.5
-APPotion
+Armor
 	0,66,32,32
 	0.5,0.5
-FullAPPotion
+IronArmor
 	33,66,32,32
 	0.5,0.5
-FullHPPotion
+LeatherArmor
 	66,33,32,32
 	0.5,0.5
-FullMixPotion
+APPotion
 	66,66,32,32
 	0.5,0.5
-HPPotion
+FullAPPotion
 	99,0,32,32
 	0.5,0.5
-MidAPPotion
+FullHPPotion
 	99,33,32,32
 	0.5,0.5
-MidHPPotion
+FullMixPotion
 	132,0,32,32
 	0.5,0.5
-MidMixPotion
+HPPotion
 	99,66,32,32
 	0.5,0.5
-MixPotion
+MidAPPotion
 	132,33,32,32
 	0.5,0.5
-Equipment
+MidHPPotion
 	165,0,32,32
 	0.5,0.5
-Helm
+MidMixPotion
 	198,0,32,32
 	0.5,0.5
-SquireHelm
+MixPotion
 	165,33,32,32
 	0.5,0.5
-Inventory
+Equipment
 	132,66,32,32
 	0.5,0.5
-WoodenShield
+Helm
 	165,66,32,32
 	0.5,0.5
-Shortcut
+IronHelm
 	198,33,32,32
 	0.5,0.5
-ShortSword
+SquireHelm
 	198,66,32,32
 	0.5,0.5
-WeaponShield
+Inventory
 	0,99,32,32
+	0.5,0.5
+IronShield
+	0,132,32,32
+	0.5,0.5
+WoodenShield
+	33,99,32,32
+	0.5,0.5
+Shortcut
+	33,132,32,32
+	0.5,0.5
+LongSword
+	0,165,32,32
+	0.5,0.5
+ShortSword
+	66,99,32,32
+	0.5,0.5
+WeaponShield
+	33,165,32,32
 	0.5,0.5
 
 Accessories
 	8
-	0,1
+	0,1,2,3
 Armor
 	8
-	4
+	6,7
 Consumables
 	8
-	5,6,7,8,9,10,11,12,13
+	8,9,10,11,12,13,14,15,16
 Helms
 	8
-	16
+	19,20
 Shields
 	8
-	18
+	22,23
 Swords
 	8
-	20
+	25,26
