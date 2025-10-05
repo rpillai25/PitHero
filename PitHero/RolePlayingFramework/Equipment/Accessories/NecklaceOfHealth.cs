@@ -8,7 +8,7 @@ namespace RolePlayingFramework.Equipment.Accessories
         public static Gear Create() => new Gear(
             "NecklaceOfHealth",
             ItemKind.Accessory,
-            ItemRarity.Normal,
+            ItemRarity.Rare,
             "+10 HP",
             150,
             new StatBlock(0, 0, 0, 0),

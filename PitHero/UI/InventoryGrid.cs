@@ -194,7 +194,7 @@ namespace PitHero.UI
         /// <summary>Updates equipment slot items from hero equipment.</summary>
         private void UpdateEquipmentSlots()
         {
-            var heroEquipment = _heroComponent?.Entity.GetComponent<Hero>();
+            var heroEquipment = _heroComponent?.LinkedHero;
             if (heroEquipment == null) return;
             for (int i = 0; i < _slots.Length; i++)
             {
@@ -548,7 +548,7 @@ namespace PitHero.UI
         /// <summary>Updates hero equipment when equipment slot changed.</summary>
         private void UpdateHeroDataFromSlot(InventorySlot slot)
         {
-            var heroEquipment = _heroComponent?.Entity.GetComponent<Hero>();
+            var heroEquipment = _heroComponent?.LinkedHero;
             if (heroEquipment == null) return;
             var d = slot.SlotData;
             if (d.SlotType != InventorySlotType.Equipment) return;

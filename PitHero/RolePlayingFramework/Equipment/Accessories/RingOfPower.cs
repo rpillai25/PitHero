@@ -8,7 +8,7 @@ namespace RolePlayingFramework.Equipment.Accessories
         public static Gear Create() => new Gear(
             "RingOfPower",
             ItemKind.Accessory,
-            ItemRarity.Normal,
+            ItemRarity.Uncommon,
             "+1 Strength",
             150,
             new StatBlock(1, 0, 0, 0));
