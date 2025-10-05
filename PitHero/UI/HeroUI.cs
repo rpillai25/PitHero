@@ -342,9 +342,17 @@ namespace PitHero.UI
             _itemTooltip.GetContainer().SetPosition(mousePos.X + 10, mousePos.Y + 10);
             _itemTooltip.GetContainer().ToFront();
             
-            // Show equip preview tooltip if item is gear
+            // Show equip preview tooltip if item is qualifying gear
             if (item is IGear hoveredGear)
             {
+                // Do not show preview for accessories
+                if (hoveredGear.Kind == ItemKind.Accessory)
+                {
+                    // ensure any previous preview is removed
+                    if (_equipPreviewTooltip != null)
+                        _equipPreviewTooltip.GetContainer().Remove();
+                    return;
+                }
                 var heroComponent = GetHeroComponent();
                 if (heroComponent != null && heroComponent.LinkedHero != null)
                 {
@@ -404,16 +412,8 @@ namespace PitHero.UI
             }
             else if (kind == ItemKind.Accessory)
             {
-                // For accessories, we need to check which slot has something equipped
-                // We'll compare against the first non-null accessory
-                var acc1 = hero.Accessory1 as IGear;
-                var acc2 = hero.Accessory2 as IGear;
-                
-                // If both slots are empty, no comparison needed
-                if (acc1 == null && acc2 == null) return null;
-                
-                // Return the first non-null accessory for comparison
-                return acc1 ?? acc2;
+                // For accessories do not show preview
+                return null;
             }
             
             return null;

@@ -350,35 +350,48 @@ namespace PitHero.UI
         /// <summary>Handles double-click to use consumables or equip/unequip gear.</summary>
         private void HandleSlotDoubleClicked(InventorySlot slot)
         {
-            // Handle double-click on equipment slots (unequip)
+            // Equipment slot: attempt to unequip to first empty bag slot
             if (slot.SlotData.SlotType == InventorySlotType.Equipment)
             {
                 if (slot.SlotData.Item != null)
                 {
-                    // Find first empty bag slot to unequip to
                     var emptySlot = FindFirstEmptyBagSlot();
                     if (emptySlot != null)
                     {
                         SwapSlotItems(slot, emptySlot);
                     }
                 }
+                // always clear selection/highlight after a double-click
+                ClearSelectionHighlight();
                 return;
             }
             
-            // Handle double-click on bag slots
+            // Bag slots: use consumables or equip gear
             if (slot.SlotData.Item is Consumable && slot.SlotData.BagIndex.HasValue)
             {
-                // Use consumable
                 UseConsumable(slot.SlotData.Item, slot.SlotData.BagIndex.Value);
             }
             else if (slot.SlotData.Item is IGear gear)
             {
-                // Quick equip gear to appropriate slot
                 var targetEquipmentSlot = FindTargetEquipmentSlot(gear);
                 if (targetEquipmentSlot != null)
                 {
                     SwapSlotItems(slot, targetEquipmentSlot);
                 }
+            }
+            
+            // always clear selection/highlight after a double-click
+            ClearSelectionHighlight();
+        }
+
+        /// <summary>Clears current highlighted slot and notifies deselection.</summary>
+        private void ClearSelectionHighlight()
+        {
+            if (_highlightedSlot != null)
+            {
+                _highlightedSlot.SlotData.IsHighlighted = false;
+                _highlightedSlot = null;
+                OnItemDeselected?.Invoke();
             }
         }
 
