@@ -211,6 +211,96 @@ namespace RolePlayingFramework.Heroes
             }
         }
 
+        /// <summary>Sets the specified equipment slot to the provided item (or null), enforcing job/type rules.</summary>
+        public bool SetEquipmentSlot(EquipmentSlot slot, IItem? item)
+        {
+            // Clear case
+            if (item == null)
+            {
+                switch (slot)
+                {
+                    case EquipmentSlot.WeaponShield1: if (WeaponShield1 != null) { WeaponShield1 = null; } break;
+                    case EquipmentSlot.Armor: if (Armor != null) { Armor = null; } break;
+                    case EquipmentSlot.Hat: if (Hat != null) { Hat = null; } break;
+                    case EquipmentSlot.WeaponShield2: if (WeaponShield2 != null) { WeaponShield2 = null; } break;
+                    case EquipmentSlot.Accessory1: if (Accessory1 != null) { Accessory1 = null; } break;
+                    case EquipmentSlot.Accessory2: if (Accessory2 != null) { Accessory2 = null; } break;
+                }
+                RecalculateDerived();
+                return true;
+            }
+
+            // Assign with validation
+            switch (slot)
+            {
+                case EquipmentSlot.WeaponShield1:
+                    if (item.Kind == ItemKind.WeaponSword && Job is Jobs.Knight
+                        || item.Kind == ItemKind.WeaponKnuckle && Job is Jobs.Monk
+                        || item.Kind == ItemKind.WeaponStaff && Job is Jobs.Priest
+                        || item.Kind == ItemKind.WeaponRod && Job is Jobs.Mage)
+                    {
+                        WeaponShield1 = item; RecalculateDerived(); return true;
+                    }
+                    return false;
+                case EquipmentSlot.Armor:
+                    if (item.Kind == ItemKind.ArmorMail && (Job is Jobs.Knight || _extraEquipPermissions.Contains(ItemKind.ArmorMail))
+                        || item.Kind == ItemKind.ArmorGi && (Job is Jobs.Monk || _extraEquipPermissions.Contains(ItemKind.ArmorGi))
+                        || item.Kind == ItemKind.ArmorRobe && (Job is Jobs.Mage || Job is Jobs.Priest || _extraEquipPermissions.Contains(ItemKind.ArmorRobe)))
+                    {
+                        Armor = item; RecalculateDerived(); return true;
+                    }
+                    return false;
+                case EquipmentSlot.Hat:
+                    if (item.Kind == ItemKind.HatHelm && Job is Jobs.Knight
+                        || item.Kind == ItemKind.HatHeadband && Job is Jobs.Monk
+                        || item.Kind == ItemKind.HatWizard && Job is Jobs.Mage
+                        || item.Kind == ItemKind.HatPriest && Job is Jobs.Priest)
+                    {
+                        Hat = item; RecalculateDerived(); return true;
+                    }
+                    return false;
+                case EquipmentSlot.WeaponShield2:
+                    if (item.Kind == ItemKind.Shield)
+                    {
+                        WeaponShield2 = item; RecalculateDerived(); return true;
+                    }
+                    return false;
+                case EquipmentSlot.Accessory1:
+                    if (item.Kind == ItemKind.Accessory) { Accessory1 = item; RecalculateDerived(); return true; }
+                    return false;
+                case EquipmentSlot.Accessory2:
+                    if (item.Kind == ItemKind.Accessory) { Accessory2 = item; RecalculateDerived(); return true; }
+                    return false;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>Applies a swap between two equipment slots and recalculates once to avoid transient HP/AP clamps.</summary>
+        public void ApplyEquipmentSwap(EquipmentSlot slotA, IItem? itemForA, EquipmentSlot slotB, IItem? itemForB)
+        {
+            // Assign directly without recalculating per-slot. Validation assumed handled by caller.
+            switch (slotA)
+            {
+                case EquipmentSlot.WeaponShield1: WeaponShield1 = itemForA; break;
+                case EquipmentSlot.Armor: Armor = itemForA; break;
+                case EquipmentSlot.Hat: Hat = itemForA; break;
+                case EquipmentSlot.WeaponShield2: WeaponShield2 = itemForA; break;
+                case EquipmentSlot.Accessory1: Accessory1 = itemForA; break;
+                case EquipmentSlot.Accessory2: Accessory2 = itemForA; break;
+            }
+            switch (slotB)
+            {
+                case EquipmentSlot.WeaponShield1: WeaponShield1 = itemForB; break;
+                case EquipmentSlot.Armor: Armor = itemForB; break;
+                case EquipmentSlot.Hat: Hat = itemForB; break;
+                case EquipmentSlot.WeaponShield2: WeaponShield2 = itemForB; break;
+                case EquipmentSlot.Accessory1: Accessory1 = itemForB; break;
+                case EquipmentSlot.Accessory2: Accessory2 = itemForB; break;
+            }
+            RecalculateDerived();
+        }
+
         /// <summary>Unequips an item from its slot.</summary>
         public bool TryUnequip(EquipmentSlot slot)
         {
