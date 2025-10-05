@@ -467,8 +467,24 @@ namespace PitHero.UI
             var tmp = a.SlotData.Item;
             a.SlotData.Item = b.SlotData.Item;
             b.SlotData.Item = tmp;
-            UpdateHeroDataFromSlot(a);
-            UpdateHeroDataFromSlot(b);
+
+            // Update hero equipment accurately depending on swap types
+            var heroEquipment = _heroComponent?.LinkedHero;
+            if (heroEquipment != null)
+            {
+                var aEquip = a.SlotData.SlotType == InventorySlotType.Equipment && a.SlotData.EquipmentSlot.HasValue;
+                var bEquip = b.SlotData.SlotType == InventorySlotType.Equipment && b.SlotData.EquipmentSlot.HasValue;
+                if (aEquip && bEquip)
+                {
+                    heroEquipment.ApplyEquipmentSwap(a.SlotData.EquipmentSlot.Value, a.SlotData.Item, b.SlotData.EquipmentSlot.Value, b.SlotData.Item);
+                }
+                else
+                {
+                    UpdateHeroDataFromSlot(a);
+                    UpdateHeroDataFromSlot(b);
+                }
+            }
+
             PersistBagOrdering();
         }
         
@@ -592,8 +608,8 @@ namespace PitHero.UI
             var heroEquipment = _heroComponent?.LinkedHero;
             if (heroEquipment == null) return;
             var d = slot.SlotData;
-            if (d.SlotType != InventorySlotType.Equipment) return;
-            if (d.Item != null) heroEquipment.TryEquip(d.Item); else if (d.EquipmentSlot.HasValue) heroEquipment.TryUnequip(d.EquipmentSlot.Value);
+            if (d.SlotType != InventorySlotType.Equipment || !d.EquipmentSlot.HasValue) return;
+            heroEquipment.SetEquipmentSlot(d.EquipmentSlot.Value, d.Item);
         }
 
         /// <summary>Finds the first empty bag slot (shortcut or inventory).</summary>
