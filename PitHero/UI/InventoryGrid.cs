@@ -26,6 +26,7 @@ namespace PitHero.UI
         private HeroComponent _heroComponent;
         private InventorySlot _highlightedSlot;
         private InventoryContextMenu _contextMenu;
+        private Stage _stage; // Reference to stage for tooltip management
         
         // Swap animation entities (scene-space approach retained but unused currently)
         private Entity _swapEntity1;
@@ -129,10 +130,39 @@ namespace PitHero.UI
         {
             if (_contextMenu != null) return;
             
+            _stage = stage;
             _contextMenu = new InventoryContextMenu();
             _contextMenu.Initialize(stage, skin);
             _contextMenu.OnUseItem += (item, bagIndex) => UseConsumable(item, bagIndex);
             _contextMenu.OnDiscardItem += (item, bagIndex) => DiscardItem(bagIndex);
+            
+            // Add placeholder tooltips to stage
+            AddPlaceholderTooltipsToStage();
+        }
+        
+        /// <summary>Adds placeholder tooltips for empty equipment slots to the stage.</summary>
+        private void AddPlaceholderTooltipsToStage()
+        {
+            if (_stage == null) return;
+            
+            // Configure TooltipManager globally to avoid animations and delays
+            var tm = TooltipManager.GetInstance();
+            tm.Animations = false;
+            tm.InitialTime = 0f;
+            tm.SubsequentTime = 0f;
+            
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                
+                // Get the placeholder tooltip from the slot if it's an equipment slot
+                var tooltip = slot.GetPlaceholderTooltip();
+                if (tooltip != null)
+                {
+                    _stage.AddElement(tooltip);
+                }
+            }
         }
         
         /// <summary>Initializes scene entities for swap animation (unused currently).</summary>
@@ -170,7 +200,7 @@ namespace PitHero.UI
         /// <summary>Updates equipment slot items from hero equipment.</summary>
         private void UpdateEquipmentSlots()
         {
-            var heroEquipment = _heroComponent?.Entity.GetComponent<Hero>();
+            var heroEquipment = _heroComponent?.LinkedHero;
             if (heroEquipment == null) return;
             for (int i = 0; i < _slots.Length; i++)
             {
@@ -524,7 +554,7 @@ namespace PitHero.UI
         /// <summary>Updates hero equipment when equipment slot changed.</summary>
         private void UpdateHeroDataFromSlot(InventorySlot slot)
         {
-            var heroEquipment = _heroComponent?.Entity.GetComponent<Hero>();
+            var heroEquipment = _heroComponent?.LinkedHero;
             if (heroEquipment == null) return;
             var d = slot.SlotData;
             if (d.SlotType != InventorySlotType.Equipment) return;
