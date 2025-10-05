@@ -25,7 +25,7 @@ namespace PitHero.UI
         
         // Placeholder sprites for empty equipment slots
         private SpriteDrawable _placeholderDrawable;
-        private TextTooltip _placeholderTooltip;
+        private Tooltip _placeholderTooltip;
         
         // Double-click detection
         private float _lastClickTime = -1f;
@@ -161,7 +161,7 @@ namespace PitHero.UI
         }
         
         /// <summary>Gets the placeholder tooltip for this slot if it has one.</summary>
-        public TextTooltip GetPlaceholderTooltip()
+        public Tooltip GetPlaceholderTooltip()
         {
             return _placeholderTooltip;
         }
@@ -235,18 +235,32 @@ namespace PitHero.UI
         void IInputListener.OnMouseEnter()
         {
             _slotData.IsHovered = true;
+            // Manually drive tooltip enter when hovering an empty equipment slot
+            if (_slotData.SlotType == InventorySlotType.Equipment && _slotData.Item == null && _placeholderTooltip != null)
+            {
+                _placeholderTooltip.Hit(Input.MousePosition);
+            }
             OnSlotHovered?.Invoke(this);
         }
 
         void IInputListener.OnMouseExit()
         {
             _slotData.IsHovered = false;
+            // Force tooltip to register exit so internal state resets properly
+            if (_placeholderTooltip != null)
+            {
+                _placeholderTooltip.Hit(new Vector2(-10000f, -10000f));
+            }
             OnSlotUnhovered?.Invoke(this);
         }
 
         void IInputListener.OnMouseMoved(Vector2 mousePos)
         {
-            // No specific behavior needed for mouse movement
+            // Keep placeholder tooltip following the cursor while hovering
+            if (_slotData.SlotType == InventorySlotType.Equipment && _slotData.Item == null && _placeholderTooltip != null)
+            {
+                _placeholderTooltip.Hit(Input.MousePosition);
+            }
         }
 
         bool IInputListener.OnLeftMousePressed(Vector2 mousePos)

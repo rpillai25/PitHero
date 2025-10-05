@@ -145,6 +145,12 @@ namespace PitHero.UI
         {
             if (_stage == null) return;
             
+            // Configure TooltipManager globally to avoid animations and delays
+            var tm = TooltipManager.GetInstance();
+            tm.Animations = false;
+            tm.InitialTime = 0f;
+            tm.SubsequentTime = 0f;
+            
             for (int i = 0; i < _slots.Length; i++)
             {
                 var slot = _slots.Buffer[i];
