@@ -39,6 +39,9 @@ namespace PitHero.UI
         // Tooltip for hovering over items
         private ItemCardTooltip _itemTooltip;
         
+        // Tooltip for showing equip preview comparison
+        private EquipPreviewTooltip _equipPreviewTooltip;
+        
         // Priority reorder components (moved to priorities tab)
         private ReorderableTableList<string> _priorityList;
         private List<string> _priorityItems;
@@ -123,6 +126,11 @@ namespace PitHero.UI
             var dummyTarget = new Element();
             dummyTarget.SetSize(0, 0);
             _itemTooltip = new ItemCardTooltip(dummyTarget, skin);
+            
+            // Create equip preview tooltip
+            var dummyTarget2 = new Element();
+            dummyTarget2.SetSize(0, 0);
+            _equipPreviewTooltip = new EquipPreviewTooltip(dummyTarget2, skin);
         }
 
         private TabWindowStyle CreateTabWindowStyle(Skin skin)
@@ -294,6 +302,15 @@ namespace PitHero.UI
                 {
                     var mousePos = _stage.GetMousePosition();
                     _itemTooltip.GetContainer().SetPosition(mousePos.X + 10, mousePos.Y + 10);
+                    
+                    // Update equip preview tooltip position if visible
+                    if (_equipPreviewTooltip != null && _equipPreviewTooltip.GetContainer().HasParent())
+                    {
+                        var itemTooltipContainer = _itemTooltip.GetContainer();
+                        float previewX = itemTooltipContainer.GetX() + itemTooltipContainer.GetWidth() + 5;
+                        float previewY = itemTooltipContainer.GetY();
+                        _equipPreviewTooltip.GetContainer().SetPosition(previewX, previewY);
+                    }
                 }
             }
         }
@@ -324,6 +341,31 @@ namespace PitHero.UI
             var mousePos = _stage.GetMousePosition();
             _itemTooltip.GetContainer().SetPosition(mousePos.X + 10, mousePos.Y + 10);
             _itemTooltip.GetContainer().ToFront();
+            
+            // Show equip preview tooltip if item is gear
+            if (item is IGear hoveredGear)
+            {
+                var heroComponent = GetHeroComponent();
+                if (heroComponent != null && heroComponent.LinkedHero != null)
+                {
+                    var equippedGear = GetCurrentlyEquippedGear(hoveredGear, heroComponent.LinkedHero);
+                    if (equippedGear != null)
+                    {
+                        _equipPreviewTooltip.ShowComparison(hoveredGear, equippedGear);
+                        if (_equipPreviewTooltip.GetContainer().GetParent() == null)
+                        {
+                            _stage.AddElement(_equipPreviewTooltip.GetContainer());
+                        }
+                        
+                        // Position equip preview tooltip to the right of item tooltip
+                        var itemTooltipContainer = _itemTooltip.GetContainer();
+                        float previewX = itemTooltipContainer.GetX() + itemTooltipContainer.GetWidth() + 5;
+                        float previewY = itemTooltipContainer.GetY();
+                        _equipPreviewTooltip.GetContainer().SetPosition(previewX, previewY);
+                        _equipPreviewTooltip.GetContainer().ToFront();
+                    }
+                }
+            }
         }
 
         private void HandleItemUnhovered()
@@ -332,7 +374,49 @@ namespace PitHero.UI
             if (!(_inventoryGrid != null && _inventoryGrid.HasAnyHoveredSlot()))
             {
                 _itemTooltip.GetContainer().Remove();
+                _equipPreviewTooltip.GetContainer().Remove();
             }
+        }
+
+        /// <summary>Gets the currently equipped gear for the same slot as the hovered gear.</summary>
+        private IGear GetCurrentlyEquippedGear(IGear hoveredGear, RolePlayingFramework.Heroes.Hero hero)
+        {
+            if (hoveredGear == null || hero == null) return null;
+            
+            // Determine which slot this gear would equip to
+            var kind = hoveredGear.Kind;
+            
+            if (kind == ItemKind.HatHelm || kind == ItemKind.HatHeadband || kind == ItemKind.HatWizard || kind == ItemKind.HatPriest)
+            {
+                return hero.Hat as IGear;
+            }
+            else if (kind == ItemKind.ArmorMail || kind == ItemKind.ArmorRobe || kind == ItemKind.ArmorGi)
+            {
+                return hero.Armor as IGear;
+            }
+            else if (kind == ItemKind.WeaponSword || kind == ItemKind.WeaponKnuckle || kind == ItemKind.WeaponStaff || kind == ItemKind.WeaponRod)
+            {
+                return hero.WeaponShield1 as IGear;
+            }
+            else if (kind == ItemKind.Shield)
+            {
+                return hero.WeaponShield2 as IGear;
+            }
+            else if (kind == ItemKind.Accessory)
+            {
+                // For accessories, we need to check which slot has something equipped
+                // We'll compare against the first non-null accessory
+                var acc1 = hero.Accessory1 as IGear;
+                var acc2 = hero.Accessory2 as IGear;
+                
+                // If both slots are empty, no comparison needed
+                if (acc1 == null && acc2 == null) return null;
+                
+                // Return the first non-null accessory for comparison
+                return acc1 ?? acc2;
+            }
+            
+            return null;
         }
 
         private void HandleItemSelected(IItem item)
