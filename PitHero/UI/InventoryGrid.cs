@@ -347,16 +347,38 @@ namespace PitHero.UI
             OnItemUnhovered?.Invoke();
         }
 
-        /// <summary>Handles double-click to use consumables.</summary>
+        /// <summary>Handles double-click to use consumables or equip/unequip gear.</summary>
         private void HandleSlotDoubleClicked(InventorySlot slot)
         {
-            // Only allow double-click to use consumables in non-equipment slots
+            // Handle double-click on equipment slots (unequip)
             if (slot.SlotData.SlotType == InventorySlotType.Equipment)
+            {
+                if (slot.SlotData.Item != null)
+                {
+                    // Find first empty bag slot to unequip to
+                    var emptySlot = FindFirstEmptyBagSlot();
+                    if (emptySlot != null)
+                    {
+                        SwapSlotItems(slot, emptySlot);
+                    }
+                }
                 return;
+            }
             
+            // Handle double-click on bag slots
             if (slot.SlotData.Item is Consumable && slot.SlotData.BagIndex.HasValue)
             {
+                // Use consumable
                 UseConsumable(slot.SlotData.Item, slot.SlotData.BagIndex.Value);
+            }
+            else if (slot.SlotData.Item is IGear gear)
+            {
+                // Quick equip gear to appropriate slot
+                var targetEquipmentSlot = FindTargetEquipmentSlot(gear);
+                if (targetEquipmentSlot != null)
+                {
+                    SwapSlotItems(slot, targetEquipmentSlot);
+                }
             }
         }
 
@@ -559,6 +581,88 @@ namespace PitHero.UI
             var d = slot.SlotData;
             if (d.SlotType != InventorySlotType.Equipment) return;
             if (d.Item != null) heroEquipment.TryEquip(d.Item); else if (d.EquipmentSlot.HasValue) heroEquipment.TryUnequip(d.EquipmentSlot.Value);
+        }
+
+        /// <summary>Finds the first empty bag slot (shortcut or inventory).</summary>
+        private InventorySlot FindFirstEmptyBagSlot()
+        {
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                var data = slot.SlotData;
+                if ((data.SlotType == InventorySlotType.Shortcut || data.SlotType == InventorySlotType.Inventory) && data.Item == null)
+                {
+                    return slot;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>Finds the target equipment slot for a given gear item.</summary>
+        private InventorySlot FindTargetEquipmentSlot(IGear gear)
+        {
+            // Determine the target equipment slot based on item kind
+            EquipmentSlot? targetSlot = null;
+            
+            if (gear.Kind == ItemKind.HatHelm || gear.Kind == ItemKind.HatHeadband || gear.Kind == ItemKind.HatWizard || gear.Kind == ItemKind.HatPriest)
+            {
+                targetSlot = EquipmentSlot.Hat;
+            }
+            else if (gear.Kind == ItemKind.ArmorMail || gear.Kind == ItemKind.ArmorRobe || gear.Kind == ItemKind.ArmorGi)
+            {
+                targetSlot = EquipmentSlot.Armor;
+            }
+            else if (gear.Kind == ItemKind.WeaponSword || gear.Kind == ItemKind.WeaponKnuckle || gear.Kind == ItemKind.WeaponStaff || gear.Kind == ItemKind.WeaponRod)
+            {
+                targetSlot = EquipmentSlot.WeaponShield1;
+            }
+            else if (gear.Kind == ItemKind.Shield)
+            {
+                targetSlot = EquipmentSlot.WeaponShield2;
+            }
+            else if (gear.Kind == ItemKind.Accessory)
+            {
+                // Find first empty accessory slot, or return null if both are occupied
+                var accessory1Slot = FindEquipmentSlot(EquipmentSlot.Accessory1);
+                var accessory2Slot = FindEquipmentSlot(EquipmentSlot.Accessory2);
+                
+                if (accessory1Slot != null && accessory1Slot.SlotData.Item == null)
+                {
+                    return accessory1Slot;
+                }
+                else if (accessory2Slot != null && accessory2Slot.SlotData.Item == null)
+                {
+                    return accessory2Slot;
+                }
+                else
+                {
+                    // Both accessory slots are occupied, cannot auto-select
+                    return null;
+                }
+            }
+            
+            if (targetSlot.HasValue)
+            {
+                return FindEquipmentSlot(targetSlot.Value);
+            }
+            
+            return null;
+        }
+
+        /// <summary>Finds the inventory slot for a specific equipment slot.</summary>
+        private InventorySlot FindEquipmentSlot(EquipmentSlot equipmentSlot)
+        {
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                if (slot.SlotData.SlotType == InventorySlotType.Equipment && slot.SlotData.EquipmentSlot == equipmentSlot)
+                {
+                    return slot;
+                }
+            }
+            return null;
         }
 
         /// <summary>Updates active inventory slot availability based on capacity.</summary>
