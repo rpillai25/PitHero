@@ -122,7 +122,7 @@ namespace PitHero.ECS.Components
             _pitWidthManager = Core.Services.GetService<PitWidthManager>();
 
             // Initialize hero's item bag
-            Bag = new RolePlayingFramework.Inventory.ItemBag();
+            Bag = new RolePlayingFramework.Inventory.ItemBag("Forager's Bag", 16);
 
             // Initialize state properties to clean state
             HeroInitialized = true;  // Set to true after hero entity and components initialized

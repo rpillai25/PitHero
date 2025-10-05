@@ -11,7 +11,7 @@ namespace RolePlayingFramework.Equipment.Accessories
             ItemRarity.Normal,
             "+2 Defense",
             120,
-            new StatBlock(0, 0, 0, 0),
+            new StatBlock(0, 0, 1, 0),
             def: 2);
     }
 }

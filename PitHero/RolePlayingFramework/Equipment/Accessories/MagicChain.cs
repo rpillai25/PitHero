@@ -9,9 +9,9 @@ namespace RolePlayingFramework.Equipment.Accessories
             "MagicChain",
             ItemKind.Accessory,
             ItemRarity.Uncommon,
-            "+2 Magic, +5 MP",
+            "+2 Magic",
             200,
-            new StatBlock(0, 0, 2, 0),
+            new StatBlock(0, 0, 0, 2),
             ap: 5);
     }
 }

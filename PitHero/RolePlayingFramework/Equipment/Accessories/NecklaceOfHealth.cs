@@ -11,7 +11,7 @@ namespace RolePlayingFramework.Equipment.Accessories
             ItemRarity.Rare,
             "+10 HP",
             150,
-            new StatBlock(0, 0, 0, 0),
+            new StatBlock(0, 0, 2, 0),
             hp: 10);
     }
 }
