@@ -119,7 +119,7 @@ namespace PitHero.UI
         private void CreateHeroWindow(Skin skin)
         {
             _heroWindow = new Window("Hero", skin);
-            _heroWindow.SetSize(285f, 350f);
+            _heroWindow.SetSize(360f, 350f);
             var tabWindowStyle = CreateTabWindowStyle(skin);
             _tabPane = new TabPane(tabWindowStyle);
             var tabStyle = CreateTabStyle(skin);
@@ -384,7 +384,20 @@ namespace PitHero.UI
             
             // Right side: sort buttons
             var sortButtonContainer = CreateSortButtons(skin);
-            mainContainer.Add(sortButtonContainer).Top().Right().SetPadRight(10f);
+
+            // Compute top padding so buttons begin next to grid row 3 (skip equip rows 0-2)
+            // InventoryGrid slot metrics are 32px size with 1px padding between rows
+            const float slotSize = 32f;
+            const float slotPad = 1f;
+            float topPad = 3f * (slotSize + slotPad); // shift down past rows 0,1,2
+            const float leftGap = 12f; // spacing between rightmost grid column and buttons
+
+            mainContainer.Add(sortButtonContainer)
+                .Top()
+                .Right()
+                .SetPadTop(topPad)
+                .SetPadLeft(leftGap)
+                .SetPadRight(10f);
             
             inventoryTab.Add(mainContainer).Expand().Fill();
         }
