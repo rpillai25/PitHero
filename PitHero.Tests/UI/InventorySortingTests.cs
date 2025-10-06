@@ -1,5 +1,9 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PitHero.UI;
+using PitHero.ECS.Components;
+using RolePlayingFramework.Heroes;
+using RolePlayingFramework.Equipment;
+using System.Linq;
 
 namespace PitHero.Tests.UI
 {
@@ -47,6 +51,27 @@ namespace PitHero.Tests.UI
             // Assert
             Assert.AreEqual(InventorySortOrder.Name, inventoryGrid.GetCurrentSortOrder());
             Assert.AreEqual(SortDirection.Ascending, inventoryGrid.GetCurrentSortDirection());
+        }
+        
+        [TestMethod]
+        public void InventoryGrid_SortInventory_FiresOnSortOrderChangedEvent()
+        {
+            // Arrange
+            var inventoryGrid = new InventoryGrid();
+            InventorySortOrder? firedSortOrder = null;
+            SortDirection? firedSortDirection = null;
+            inventoryGrid.OnSortOrderChanged += (order, direction) =>
+            {
+                firedSortOrder = order;
+                firedSortDirection = direction;
+            };
+            
+            // Act
+            inventoryGrid.SortInventory(InventorySortOrder.Type, SortDirection.Ascending);
+            
+            // Assert
+            Assert.AreEqual(InventorySortOrder.Type, firedSortOrder);
+            Assert.AreEqual(SortDirection.Ascending, firedSortDirection);
         }
     }
 }
