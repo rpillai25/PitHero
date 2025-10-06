@@ -53,6 +53,10 @@ namespace PitHero.UI
         private Image _sortTimeArrow;
         private Image _sortTypeArrow;
         private Image _sortNameArrow;
+        // Keep drawables to flip vertically on direction change
+        private SpriteDrawable _sortTimeArrowDrawable;
+        private SpriteDrawable _sortTypeArrowDrawable;
+        private SpriteDrawable _sortNameArrowDrawable;
         
         // Sort button styles (normal and pressed)
         private ImageButtonStyle _sortTimeNormalStyle;
@@ -119,6 +123,7 @@ namespace PitHero.UI
         private void CreateHeroWindow(Skin skin)
         {
             _heroWindow = new Window("Hero", skin);
+            // Widen window to fit 8 inventory columns and sort controls
             _heroWindow.SetSize(360f, 350f);
             var tabWindowStyle = CreateTabWindowStyle(skin);
             _tabPane = new TabPane(tabWindowStyle);
@@ -232,10 +237,17 @@ namespace PitHero.UI
             _sortNameButton.SetSize(sortNameNormal.SourceRect.Width, sortNameNormal.SourceRect.Height);
             _sortNameButton.OnClicked += (btn) => OnSortButtonClicked(InventorySortOrder.Name);
             
-            // Create arrow images
-            _sortTimeArrow = new Image(new SpriteDrawable(sortArrowSprite));
-            _sortTypeArrow = new Image(new SpriteDrawable(sortArrowSprite));
-            _sortNameArrow = new Image(new SpriteDrawable(sortArrowSprite));
+            // Create arrow images and keep drawables to control FlipY
+            _sortTimeArrowDrawable = new SpriteDrawable(sortArrowSprite);
+            _sortTypeArrowDrawable = new SpriteDrawable(sortArrowSprite);
+            _sortNameArrowDrawable = new SpriteDrawable(sortArrowSprite);
+            _sortTimeArrow = new Image(_sortTimeArrowDrawable);
+            _sortTypeArrow = new Image(_sortTypeArrowDrawable);
+            _sortNameArrow = new Image(_sortNameArrowDrawable);
+            // Ensure arrows do not intercept input
+            _sortTimeArrow.SetTouchable(Touchable.Disabled);
+            _sortTypeArrow.SetTouchable(Touchable.Disabled);
+            _sortNameArrow.SetTouchable(Touchable.Disabled);
             
             // Container for sort buttons
             var container = new Table();
@@ -245,25 +257,25 @@ namespace PitHero.UI
             container.Add(label).Center().SetPadBottom(4f);
             container.Row();
             
-            // Time button with arrow
-            var timeButtonStack = new Stack();
-            timeButtonStack.Add(_sortTimeButton);
-            timeButtonStack.Add(_sortTimeArrow);
-            container.Add(timeButtonStack).SetPadBottom(8f);
+            // Time row: button + arrow to the right
+            var timeRow = new Table();
+            timeRow.Add(_sortTimeButton).Left();
+            timeRow.Add(_sortTimeArrow).Right().SetPadLeft(4f);
+            container.Add(timeRow).SetPadBottom(8f);
             container.Row();
             
-            // Type button with arrow
-            var typeButtonStack = new Stack();
-            typeButtonStack.Add(_sortTypeButton);
-            typeButtonStack.Add(_sortTypeArrow);
-            container.Add(typeButtonStack).SetPadBottom(8f);
+            // Type row: button + arrow to the right
+            var typeRow = new Table();
+            typeRow.Add(_sortTypeButton).Left();
+            typeRow.Add(_sortTypeArrow).Right().SetPadLeft(4f);
+            container.Add(typeRow).SetPadBottom(8f);
             container.Row();
             
-            // Name button with arrow
-            var nameButtonStack = new Stack();
-            nameButtonStack.Add(_sortNameButton);
-            nameButtonStack.Add(_sortNameArrow);
-            container.Add(nameButtonStack);
+            // Name row: button + arrow to the right
+            var nameRow = new Table();
+            nameRow.Add(_sortNameButton).Left();
+            nameRow.Add(_sortNameArrow).Right().SetPadLeft(4f);
+            container.Add(nameRow);
             
             // Initialize button states (Time descending is default)
             UpdateSortButtonStates();
@@ -330,31 +342,31 @@ namespace PitHero.UI
             _sortTypeArrow.SetVisible(false);
             _sortNameArrow.SetVisible(false);
             
-            // Show arrow on active button and rotate based on direction
+            // Show arrow on active button and flip vertically based on direction
             Image activeArrow = null;
+            SpriteDrawable activeDrawable = null;
             switch (currentSort)
             {
                 case InventorySortOrder.Time:
                     activeArrow = _sortTimeArrow;
+                    activeDrawable = _sortTimeArrowDrawable;
                     break;
                 case InventorySortOrder.Type:
                     activeArrow = _sortTypeArrow;
+                    activeDrawable = _sortTypeArrowDrawable;
                     break;
                 case InventorySortOrder.Name:
                     activeArrow = _sortNameArrow;
+                    activeDrawable = _sortNameArrowDrawable;
                     break;
             }
             
             if (activeArrow != null)
             {
+                // Flip Y for ascending, default (down) for descending
+                if (activeDrawable != null)
+                    activeDrawable.FlipY = (currentDirection == SortDirection.Ascending);
                 activeArrow.SetVisible(true);
-                // Rotate arrow based on direction (default sprite points down for descending)
-                // Ascending means flip it upside down (180 degrees)
-                float rotation = currentDirection == SortDirection.Ascending ? 180f : 0f;
-                activeArrow.SetRotation(rotation);
-                
-                // Position arrow at right edge of button
-                activeArrow.SetAlignment(Align.Right);
             }
         }
 
