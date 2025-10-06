@@ -56,35 +56,65 @@ UIHeroInverse2x
 	609,0,64,64
 	0.5,0.5
 HighlightBox
-	544,65,32,32
+	130,452,32,32
 	0.5,0.5
 SelectBox
-	577,65,32,32
+	544,65,32,32
 	0.5,0.5
 UIFastF
-	260,387,32,32
+	163,452,32,32
 	0.5,0.5
 UIFastFHighlight
-	387,259,32,32
+	577,65,32,32
 	0.5,0.5
 UIFastFInverse
-	674,0,32,32
+	260,387,32,32
 	0.5,0.5
 UIGearHighlight
-	480,194,32,32
+	196,452,32,32
 	0.5,0.5
 UIGearInverse
-	545,98,32,32
+	387,259,32,32
 	0.5,0.5
 UIHero
-	610,65,32,32
+	674,0,32,32
 	0.5,0.5
 UIHeroHighlight
-	545,131,32,32
+	480,194,32,32
 	0.5,0.5
 UIHeroInverse
-	578,98,32,32
+	545,98,32,32
 	0.5,0.5
 UIGear
-	387,292,31,30
+	610,65,31,30
+	0.5,0.5
+UISortAlpha
+	129,158,24,24
+	0.5,0.5
+UISortAlphaHighlight
+	129,183,24,24
+	0.5,0.5
+UISortAlphaInverse
+	129,208,24,24
+	0.5,0.5
+UISortTime
+	129,233,24,24
+	0.5,0.5
+UISortTimeHighlight
+	545,131,24,24
+	0.5,0.5
+UISortTimeInverse
+	578,98,24,24
+	0.5,0.5
+UISortType
+	387,292,24,24
+	0.5,0.5
+UISortTypeHighlight
+	420,259,24,24
+	0.5,0.5
+UISortTypeInverse
+	260,420,24,24
+	0.5,0.5
+UISortOrderArrow
+	0,481,10,13
 	0.5,0.5
