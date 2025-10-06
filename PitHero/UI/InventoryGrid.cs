@@ -752,11 +752,14 @@ namespace PitHero.UI
         /// <summary>Sorts inventory items by the specified order and direction.</summary>
         public void SortInventory(InventorySortOrder sortOrder, SortDirection sortDirection)
         {
-            if (_heroComponent?.Bag == null) return;
-
-            // Update current sort state
+            // Update current sort state first
             _currentSortOrder = sortOrder;
             _currentSortDirection = sortDirection;
+
+            // Notify listeners
+            OnSortOrderChanged?.Invoke(sortOrder, sortDirection);
+
+            if (_heroComponent?.Bag == null) return;
 
             // Collect all bag slot items (shortcut + inventory)
             var bagSlots = new System.Collections.Generic.List<InventorySlot>();
@@ -815,9 +818,6 @@ namespace PitHero.UI
 
             // Refresh UI
             UpdateItemsFromBag();
-
-            // Notify listeners
-            OnSortOrderChanged?.Invoke(sortOrder, sortDirection);
         }
     }
 }
