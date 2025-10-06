@@ -54,6 +54,13 @@ namespace PitHero.UI
 
         private int _nextAcquireIndex = 1; // monotonic acquisition counter
 
+        // Sorting state
+        private InventorySortOrder _currentSortOrder = InventorySortOrder.Time;
+        private SortDirection _currentSortDirection = SortDirection.Descending;
+
+        // Event for sort order changed
+        public event System.Action<InventorySortOrder, SortDirection> OnSortOrderChanged;
+
         public InventoryGrid()
         {
             _slots = new FastList<InventorySlot>(CELL_COUNT);
@@ -734,6 +741,83 @@ namespace PitHero.UI
                 if (d.SlotType == InventorySlotType.Inventory && d.Item == null) return d;
             }
             return null;
+        }
+
+        /// <summary>Gets the current sort order.</summary>
+        public InventorySortOrder GetCurrentSortOrder() => _currentSortOrder;
+
+        /// <summary>Gets the current sort direction.</summary>
+        public SortDirection GetCurrentSortDirection() => _currentSortDirection;
+
+        /// <summary>Sorts inventory items by the specified order and direction.</summary>
+        public void SortInventory(InventorySortOrder sortOrder, SortDirection sortDirection)
+        {
+            if (_heroComponent?.Bag == null) return;
+
+            // Update current sort state
+            _currentSortOrder = sortOrder;
+            _currentSortDirection = sortDirection;
+
+            // Collect all bag slot items (shortcut + inventory)
+            var bagSlots = new System.Collections.Generic.List<InventorySlot>();
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                var type = slot.SlotData.SlotType;
+                if (type == InventorySlotType.Shortcut || type == InventorySlotType.Inventory)
+                {
+                    bagSlots.Add(slot);
+                }
+            }
+
+            // Sort the slots based on criteria
+            bagSlots.Sort((a, b) =>
+            {
+                // Empty slots always go to the end
+                if (a.SlotData.Item == null && b.SlotData.Item == null) return 0;
+                if (a.SlotData.Item == null) return 1;
+                if (b.SlotData.Item == null) return -1;
+
+                int comparison = 0;
+                switch (sortOrder)
+                {
+                    case InventorySortOrder.Time:
+                        comparison = a.SlotData.AcquireIndex.CompareTo(b.SlotData.AcquireIndex);
+                        break;
+                    case InventorySortOrder.Type:
+                        comparison = a.SlotData.Item.Kind.CompareTo(b.SlotData.Item.Kind);
+                        break;
+                    case InventorySortOrder.Name:
+                        comparison = string.Compare(a.SlotData.Item.Name, b.SlotData.Item.Name, System.StringComparison.Ordinal);
+                        break;
+                }
+
+                // Apply direction
+                if (sortDirection == SortDirection.Descending)
+                    comparison = -comparison;
+
+                return comparison;
+            });
+
+            // Rebuild item array in sorted order
+            for (int i = 0; i < bagSlots.Count; i++)
+            {
+                _persistBuffer[i] = bagSlots[i].SlotData.Item;
+            }
+            for (int i = bagSlots.Count; i < _persistBuffer.Length; i++)
+            {
+                _persistBuffer[i] = null;
+            }
+
+            // Persist to bag
+            _heroComponent.Bag.SetItemsInOrder(_persistBuffer, bagSlots.Count);
+
+            // Refresh UI
+            UpdateItemsFromBag();
+
+            // Notify listeners
+            OnSortOrderChanged?.Invoke(sortOrder, sortDirection);
         }
     }
 }

@@ -46,6 +46,22 @@ namespace PitHero.UI
         private ReorderableTableList<string> _priorityList;
         private List<string> _priorityItems;
 
+        // Sort buttons
+        private HoverableImageButton _sortTimeButton;
+        private HoverableImageButton _sortTypeButton;
+        private HoverableImageButton _sortNameButton;
+        private Image _sortTimeArrow;
+        private Image _sortTypeArrow;
+        private Image _sortNameArrow;
+        
+        // Sort button styles (normal and pressed)
+        private ImageButtonStyle _sortTimeNormalStyle;
+        private ImageButtonStyle _sortTimePressedStyle;
+        private ImageButtonStyle _sortTypeNormalStyle;
+        private ImageButtonStyle _sortTypePressedStyle;
+        private ImageButtonStyle _sortNameNormalStyle;
+        private ImageButtonStyle _sortNamePressedStyle;
+
         public HeroUI() { }
 
         /// <summary>Initializes the Hero button and adds it to the stage</summary>
@@ -144,6 +160,204 @@ namespace PitHero.UI
 
         private TabStyle CreateTabStyle(Skin skin) => new TabStyle { Background = null };
 
+        private Table CreateSortButtons(Skin skin)
+        {
+            var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+            
+            // Load sort sprites
+            var sortTimeNormal = uiAtlas.GetSprite("UISortTime");
+            var sortTimeHighlight = uiAtlas.GetSprite("UISortTimeHighlight");
+            var sortTimeInverse = uiAtlas.GetSprite("UISortTimeInverse");
+            var sortTypeNormal = uiAtlas.GetSprite("UISortType");
+            var sortTypeHighlight = uiAtlas.GetSprite("UISortTypeHighlight");
+            var sortTypeInverse = uiAtlas.GetSprite("UISortTypeInverse");
+            var sortNameNormal = uiAtlas.GetSprite("UISortAlpha");
+            var sortNameHighlight = uiAtlas.GetSprite("UISortAlphaHighlight");
+            var sortNameInverse = uiAtlas.GetSprite("UISortAlphaInverse");
+            var sortArrowSprite = uiAtlas.GetSprite("UISortOrderArrow");
+            
+            // Create button styles (normal and pressed)
+            _sortTimeNormalStyle = new ImageButtonStyle
+            {
+                ImageUp = new SpriteDrawable(sortTimeNormal),
+                ImageDown = new SpriteDrawable(sortTimeInverse),
+                ImageOver = new SpriteDrawable(sortTimeHighlight)
+            };
+            
+            _sortTimePressedStyle = new ImageButtonStyle
+            {
+                ImageUp = new SpriteDrawable(sortTimeInverse),
+                ImageDown = new SpriteDrawable(sortTimeNormal),
+                ImageOver = new SpriteDrawable(sortTimeHighlight)
+            };
+            
+            _sortTypeNormalStyle = new ImageButtonStyle
+            {
+                ImageUp = new SpriteDrawable(sortTypeNormal),
+                ImageDown = new SpriteDrawable(sortTypeInverse),
+                ImageOver = new SpriteDrawable(sortTypeHighlight)
+            };
+            
+            _sortTypePressedStyle = new ImageButtonStyle
+            {
+                ImageUp = new SpriteDrawable(sortTypeInverse),
+                ImageDown = new SpriteDrawable(sortTypeNormal),
+                ImageOver = new SpriteDrawable(sortTypeHighlight)
+            };
+            
+            _sortNameNormalStyle = new ImageButtonStyle
+            {
+                ImageUp = new SpriteDrawable(sortNameNormal),
+                ImageDown = new SpriteDrawable(sortNameInverse),
+                ImageOver = new SpriteDrawable(sortNameHighlight)
+            };
+            
+            _sortNamePressedStyle = new ImageButtonStyle
+            {
+                ImageUp = new SpriteDrawable(sortNameInverse),
+                ImageDown = new SpriteDrawable(sortNameNormal),
+                ImageOver = new SpriteDrawable(sortNameHighlight)
+            };
+            
+            // Create buttons with default pressed style for Time (since it's the default sort)
+            _sortTimeButton = new HoverableImageButton(_sortTimePressedStyle, "By Time Obtained");
+            _sortTimeButton.SetSize(sortTimeNormal.SourceRect.Width, sortTimeNormal.SourceRect.Height);
+            _sortTimeButton.OnClicked += (btn) => OnSortButtonClicked(InventorySortOrder.Time);
+            
+            _sortTypeButton = new HoverableImageButton(_sortTypeNormalStyle, "By Type");
+            _sortTypeButton.SetSize(sortTypeNormal.SourceRect.Width, sortTypeNormal.SourceRect.Height);
+            _sortTypeButton.OnClicked += (btn) => OnSortButtonClicked(InventorySortOrder.Type);
+            
+            _sortNameButton = new HoverableImageButton(_sortNameNormalStyle, "By Name");
+            _sortNameButton.SetSize(sortNameNormal.SourceRect.Width, sortNameNormal.SourceRect.Height);
+            _sortNameButton.OnClicked += (btn) => OnSortButtonClicked(InventorySortOrder.Name);
+            
+            // Create arrow images
+            _sortTimeArrow = new Image(new SpriteDrawable(sortArrowSprite));
+            _sortTypeArrow = new Image(new SpriteDrawable(sortArrowSprite));
+            _sortNameArrow = new Image(new SpriteDrawable(sortArrowSprite));
+            
+            // Container for sort buttons
+            var container = new Table();
+            
+            // Add "Sort Order" label
+            var label = new Label("Sort Order", skin);
+            container.Add(label).Center().SetPadBottom(4f);
+            container.Row();
+            
+            // Time button with arrow
+            var timeButtonStack = new Stack();
+            timeButtonStack.Add(_sortTimeButton);
+            timeButtonStack.Add(_sortTimeArrow);
+            container.Add(timeButtonStack).SetPadBottom(8f);
+            container.Row();
+            
+            // Type button with arrow
+            var typeButtonStack = new Stack();
+            typeButtonStack.Add(_sortTypeButton);
+            typeButtonStack.Add(_sortTypeArrow);
+            container.Add(typeButtonStack).SetPadBottom(8f);
+            container.Row();
+            
+            // Name button with arrow
+            var nameButtonStack = new Stack();
+            nameButtonStack.Add(_sortNameButton);
+            nameButtonStack.Add(_sortNameArrow);
+            container.Add(nameButtonStack);
+            
+            // Initialize button states (Time descending is default)
+            UpdateSortButtonStates();
+            
+            return container;
+        }
+
+        private void OnSortButtonClicked(InventorySortOrder sortOrder)
+        {
+            if (_inventoryGrid == null) return;
+            
+            var currentSort = _inventoryGrid.GetCurrentSortOrder();
+            var currentDirection = _inventoryGrid.GetCurrentSortDirection();
+            
+            // If clicking the same button, toggle direction
+            if (currentSort == sortOrder)
+            {
+                var newDirection = currentDirection == SortDirection.Descending 
+                    ? SortDirection.Ascending 
+                    : SortDirection.Descending;
+                _inventoryGrid.SortInventory(sortOrder, newDirection);
+            }
+            else
+            {
+                // Different button clicked, use descending as default
+                _inventoryGrid.SortInventory(sortOrder, SortDirection.Descending);
+            }
+        }
+
+        private void HandleSortOrderChanged(InventorySortOrder sortOrder, SortDirection sortDirection)
+        {
+            UpdateSortButtonStates();
+        }
+
+        private void UpdateSortButtonStates()
+        {
+            if (_inventoryGrid == null) return;
+            
+            var currentSort = _inventoryGrid.GetCurrentSortOrder();
+            var currentDirection = _inventoryGrid.GetCurrentSortDirection();
+            
+            // Update button styles based on active sort
+            switch (currentSort)
+            {
+                case InventorySortOrder.Time:
+                    _sortTimeButton.SetStyle(_sortTimePressedStyle);
+                    _sortTypeButton.SetStyle(_sortTypeNormalStyle);
+                    _sortNameButton.SetStyle(_sortNameNormalStyle);
+                    break;
+                case InventorySortOrder.Type:
+                    _sortTimeButton.SetStyle(_sortTimeNormalStyle);
+                    _sortTypeButton.SetStyle(_sortTypePressedStyle);
+                    _sortNameButton.SetStyle(_sortNameNormalStyle);
+                    break;
+                case InventorySortOrder.Name:
+                    _sortTimeButton.SetStyle(_sortTimeNormalStyle);
+                    _sortTypeButton.SetStyle(_sortTypeNormalStyle);
+                    _sortNameButton.SetStyle(_sortNamePressedStyle);
+                    break;
+            }
+            
+            // Hide all arrows initially
+            _sortTimeArrow.SetVisible(false);
+            _sortTypeArrow.SetVisible(false);
+            _sortNameArrow.SetVisible(false);
+            
+            // Show arrow on active button and rotate based on direction
+            Image activeArrow = null;
+            switch (currentSort)
+            {
+                case InventorySortOrder.Time:
+                    activeArrow = _sortTimeArrow;
+                    break;
+                case InventorySortOrder.Type:
+                    activeArrow = _sortTypeArrow;
+                    break;
+                case InventorySortOrder.Name:
+                    activeArrow = _sortNameArrow;
+                    break;
+            }
+            
+            if (activeArrow != null)
+            {
+                activeArrow.SetVisible(true);
+                // Rotate arrow based on direction (default sprite points down for descending)
+                // Ascending means flip it upside down (180 degrees)
+                float rotation = currentDirection == SortDirection.Ascending ? 180f : 0f;
+                activeArrow.SetRotation(rotation);
+                
+                // Position arrow at right edge of button
+                activeArrow.SetAlignment(Align.Right);
+            }
+        }
+
         private void PopulateInventoryTab(Tab inventoryTab, Skin skin)
         {
             _inventoryGrid = new InventoryGrid();
@@ -151,6 +365,7 @@ namespace PitHero.UI
             _inventoryGrid.OnItemUnhovered += HandleItemUnhovered;
             _inventoryGrid.OnItemSelected += HandleItemSelected;
             _inventoryGrid.OnItemDeselected += HandleItemDeselected;
+            _inventoryGrid.OnSortOrderChanged += HandleSortOrderChanged;
             
             // Initialize context menu
             _inventoryGrid.InitializeContextMenu(_stage, skin);
@@ -158,9 +373,20 @@ namespace PitHero.UI
             var heroComponent = GetHeroComponent();
             if (heroComponent != null)
                 _inventoryGrid.ConnectToHero(heroComponent);
+            
+            // Create main container with horizontal layout
+            var mainContainer = new Table();
+            
+            // Left side: inventory grid in scroll pane
             var scrollPane = new ScrollPane(_inventoryGrid, skin);
             scrollPane.SetScrollingDisabled(true, false);
-            inventoryTab.Add(scrollPane).Expand().Fill().Pad(10f);
+            mainContainer.Add(scrollPane).Expand().Fill().Pad(10f);
+            
+            // Right side: sort buttons
+            var sortButtonContainer = CreateSortButtons(skin);
+            mainContainer.Add(sortButtonContainer).Top().Right().SetPadRight(10f);
+            
+            inventoryTab.Add(mainContainer).Expand().Fill();
         }
 
         private void PopulatePrioritiesTab(Tab prioritiesTab, Skin skin)
@@ -207,6 +433,7 @@ namespace PitHero.UI
                 var heroComponent = GetHeroComponent();
                 if (heroComponent != null && _inventoryGrid != null)
                     _inventoryGrid.ConnectToHero(heroComponent);
+                UpdateSortButtonStates(); // Update sort button states when opening
                 PositionHeroWindow();
                 _stage.AddElement(_heroWindow);
                 _heroWindow.SetVisible(true);
