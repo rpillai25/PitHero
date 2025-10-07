@@ -66,6 +66,9 @@ namespace PitHero.UI
         private ImageButtonStyle _sortNameNormalStyle;
         private ImageButtonStyle _sortNamePressedStyle;
 
+        // Tracks whether we have applied the initial default sort once
+        private bool _appliedInitialSort = false;
+
         public HeroUI() { }
 
         /// <summary>Initializes the Hero button and adds it to the stage</summary>
@@ -464,10 +467,11 @@ namespace PitHero.UI
                 if (heroComponent != null && _inventoryGrid != null)
                     _inventoryGrid.ConnectToHero(heroComponent);
 
-                // Enforce default sort: By Time Descending
-                if (_inventoryGrid != null)
+                // Apply default sort only on the first open; thereafter, preserve last selection
+                if (_inventoryGrid != null && !_appliedInitialSort)
                 {
                     _inventoryGrid.SortInventory(InventorySortOrder.Time, SortDirection.Descending);
+                    _appliedInitialSort = true;
                 }
 
                 UpdateSortButtonStates(); // Update sort button states when opening
