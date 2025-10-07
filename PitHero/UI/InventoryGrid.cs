@@ -7,6 +7,7 @@ using Nez.UI;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Heroes;
+using System.Collections.Generic;
 
 namespace PitHero.UI
 {
@@ -53,11 +54,22 @@ namespace PitHero.UI
         public event System.Action OnItemDeselected;
 
         private int _nextAcquireIndex = 1; // monotonic acquisition counter
+        private readonly Dictionary<IItem, int> _acquireIndexMap; // persistent mapping of items to acquire indices
+        private readonly Dictionary<IItem, int> _itemStackMap;    // last known stack count per item instance
+
+        // Sorting state
+        private InventorySortOrder _currentSortOrder = InventorySortOrder.Time;
+        private SortDirection _currentSortDirection = SortDirection.Descending;
+
+        // Event for sort order changed
+        public event System.Action<InventorySortOrder, SortDirection> OnSortOrderChanged;
 
         public InventoryGrid()
         {
             _slots = new FastList<InventorySlot>(CELL_COUNT);
             _persistBuffer = new IItem[CELL_COUNT];
+            _acquireIndexMap = new Dictionary<IItem, int>(64);
+            _itemStackMap = new Dictionary<IItem, int>(64);
             BuildSlots();
             LayoutSlots();
         }
@@ -116,6 +128,14 @@ namespace PitHero.UI
         /// <summary>Connects grid to hero and loads items.</summary>
         public void ConnectToHero(HeroComponent heroComponent)
         {
+            // Only reset mappings if connecting to a different hero instance
+            if (!object.ReferenceEquals(_heroComponent, heroComponent))
+            {
+                _acquireIndexMap.Clear();
+                _itemStackMap.Clear();
+                _nextAcquireIndex = 1;
+            }
+
             _heroComponent = heroComponent;
             if (_heroComponent?.Bag != null)
             {
@@ -232,35 +252,59 @@ namespace PitHero.UI
                 if (type == InventorySlotType.Shortcut || type == InventorySlotType.Inventory)
                 {
                     slot.SlotData.BagIndex = bagIndex;
-                    var prevItem = slot.SlotData.Item;
                     var newItem = bag.GetSlotItem(bagIndex);
-                    if (newItem != prevItem)
+
+                    // Assign item to slot
+                    slot.SlotData.Item = newItem;
+
+                    if (newItem != null)
                     {
-                        // new item appeared in this slot. Assign acquisition index
-                        slot.SlotData.Item = newItem;
-                        if (newItem != null)
-                            slot.SlotData.AcquireIndex = _nextAcquireIndex++;
-                    }
-                    else
-                    {
-                        // same reference. If consumable and stack increased, bump acquire index
-                        if (newItem is Consumable c)
+                        // Ensure unique, monotonically increasing acquire index per item instance
+                        int idx;
+                        if (!_acquireIndexMap.TryGetValue(newItem, out idx))
                         {
-                            int oldStack = slot.SlotData.StackCount;
-                            int newStack = c.StackCount;
-                            if (newStack > oldStack)
-                                slot.SlotData.AcquireIndex = _nextAcquireIndex++;
-                            slot.SlotData.Item = newItem; // keep
+                            idx = _nextAcquireIndex++;
+                            _acquireIndexMap[newItem] = idx;
+                        }
+
+                        // If consumable, detect stack increase per item (not per slot)
+                        if (newItem is Consumable consumable)
+                        {
+                            int lastKnown;
+                            if (!_itemStackMap.TryGetValue(newItem, out lastKnown))
+                            {
+                                lastKnown = consumable.StackCount;
+                                _itemStackMap[newItem] = lastKnown;
+                            }
+                            if (consumable.StackCount > lastKnown)
+                            {
+                                idx = _nextAcquireIndex++;
+                                _acquireIndexMap[newItem] = idx;
+                                _itemStackMap[newItem] = consumable.StackCount;
+                            }
+                            // Update slot-visible stack count always
+                            slot.SlotData.StackCount = consumable.StackCount;
                         }
                         else
                         {
-                            slot.SlotData.Item = newItem;
+                            slot.SlotData.StackCount = 0;
                         }
+
+                        // Non-null items must never have AcquireIndex 0
+                        if (idx <= 0)
+                        {
+                            idx = _nextAcquireIndex++;
+                            _acquireIndexMap[newItem] = idx;
+                        }
+                        slot.SlotData.AcquireIndex = idx;
                     }
-                    if (slot.SlotData.Item is Consumable consumable)
-                        slot.SlotData.StackCount = consumable.StackCount;
                     else
+                    {
+                        // Empty slots get AcquireIndex 0
+                        slot.SlotData.AcquireIndex = 0;
                         slot.SlotData.StackCount = 0;
+                    }
+
                     bagIndex++;
                 }
             }
@@ -734,6 +778,102 @@ namespace PitHero.UI
                 if (d.SlotType == InventorySlotType.Inventory && d.Item == null) return d;
             }
             return null;
+        }
+
+        /// <summary>Gets the current sort order.</summary>
+        public InventorySortOrder GetCurrentSortOrder() => _currentSortOrder;
+
+        /// <summary>Gets the current sort direction.</summary>
+        public SortDirection GetCurrentSortDirection() => _currentSortDirection;
+
+        /// <summary>Sorts inventory items by the specified order and direction.</summary>
+        public void SortInventory(InventorySortOrder sortOrder, SortDirection sortDirection)
+        {
+            // Update current sort state first
+            _currentSortOrder = sortOrder;
+            _currentSortDirection = sortDirection;
+
+            // Notify listeners
+            OnSortOrderChanged?.Invoke(sortOrder, sortDirection);
+
+            if (_heroComponent?.Bag == null) return;
+
+            // Collect all bag slot items (shortcut + inventory)
+            var bagSlots = new System.Collections.Generic.List<InventorySlot>();
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                var type = slot.SlotData.SlotType;
+                if (type == InventorySlotType.Shortcut || type == InventorySlotType.Inventory)
+                {
+                    bagSlots.Add(slot);
+                }
+            }
+
+            // Sort the slots based on criteria
+            bagSlots.Sort((a, b) =>
+            {
+                // Empty slots always go to the end
+                if (a.SlotData.Item == null && b.SlotData.Item == null) return 0;
+                if (a.SlotData.Item == null) return 1;
+                if (b.SlotData.Item == null) return -1;
+
+                int comparison = 0;
+                switch (sortOrder)
+                {
+                    case InventorySortOrder.Time:
+                        comparison = a.SlotData.AcquireIndex.CompareTo(b.SlotData.AcquireIndex);
+                        break;
+                    case InventorySortOrder.Type:
+                        comparison = a.SlotData.Item.Kind.CompareTo(b.SlotData.Item.Kind);
+                        break;
+                    case InventorySortOrder.Name:
+                        comparison = string.Compare(a.SlotData.Item.Name, b.SlotData.Item.Name, System.StringComparison.Ordinal);
+                        break;
+                }
+
+                if (comparison == 0)
+                {
+                    // Deterministic tie-breakers to avoid non-deterministic order
+                    int nameCmp = string.Compare(a.SlotData.Item.Name, b.SlotData.Item.Name, System.StringComparison.Ordinal);
+                    if (nameCmp != 0) comparison = nameCmp;
+                    else
+                    {
+                        int kindCmp = a.SlotData.Item.Kind.CompareTo(b.SlotData.Item.Kind);
+                        if (kindCmp != 0) comparison = kindCmp;
+                        else
+                        {
+                            // Final fallback: bag index (should exist for these slots)
+                            var ai = a.SlotData.BagIndex.GetValueOrDefault(-1);
+                            var bi = b.SlotData.BagIndex.GetValueOrDefault(-1);
+                            comparison = ai.CompareTo(bi);
+                        }
+                    }
+                }
+
+                // Apply direction
+                if (sortDirection == SortDirection.Descending)
+                    comparison = -comparison;
+
+                return comparison;
+            });
+
+            // Rebuild item array in sorted order
+            for (int i = 0; i < bagSlots.Count; i++)
+            {
+                _persistBuffer[i] = bagSlots[i].SlotData.Item;
+            }
+            for (int i = bagSlots.Count; i < _persistBuffer.Length; i++)
+            {
+                _persistBuffer[i] = null;
+            }
+
+            // Persist to bag
+            _heroComponent.Bag.SetItemsInOrder(_persistBuffer, bagSlots.Count);
+
+            // Refresh UI
+            UpdateItemsFromBag();
         }
     }
 }
