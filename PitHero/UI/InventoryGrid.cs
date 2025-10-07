@@ -240,6 +240,12 @@ namespace PitHero.UI
         {
             var bag = _heroComponent.Bag;
             int bagIndex = 0;
+            // Detect initial assignment pass (map is empty on reconnect) and compute seeding for AcquireIndex
+            bool initialAssignment = _acquireIndexMap.Count == 0;
+            int totalItems = initialAssignment ? bag.Count : 0;
+            bool seedForDescendingTime = initialAssignment && _currentSortOrder == InventorySortOrder.Time && _currentSortDirection == SortDirection.Descending;
+            int nextSeedIndex = initialAssignment ? (seedForDescendingTime ? totalItems : 1) : 0;
+
             for (int i = 0; i < _slots.Length; i++)
             {
                 var slot = _slots.Buffer[i];
@@ -259,8 +265,18 @@ namespace PitHero.UI
                         int idx;
                         if (!_acquireIndexMap.TryGetValue(newItem, out idx))
                         {
-                            idx = _nextAcquireIndex++;
-                            _acquireIndexMap[newItem] = idx;
+                            if (initialAssignment)
+                            {
+                                // Seed indices so that current bag order aligns with current sort/time direction
+                                idx = nextSeedIndex;
+                                _acquireIndexMap[newItem] = idx;
+                                nextSeedIndex += seedForDescendingTime ? -1 : 1;
+                            }
+                            else
+                            {
+                                idx = _nextAcquireIndex++;
+                                _acquireIndexMap[newItem] = idx;
+                            }
                         }
 
                         // If consumable, detect stack increase per item (not per slot)
@@ -303,6 +319,13 @@ namespace PitHero.UI
 
                     bagIndex++;
                 }
+            }
+
+            // After initial assignment, ensure nextAcquireIndex continues monotonically increasing
+            if (initialAssignment)
+            {
+                if (_nextAcquireIndex <= totalItems)
+                    _nextAcquireIndex = totalItems + 1;
             }
         }
 
