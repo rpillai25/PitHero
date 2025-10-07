@@ -53,10 +53,6 @@ namespace PitHero.UI
         private Image _sortTimeArrow;
         private Image _sortTypeArrow;
         private Image _sortNameArrow;
-        // Keep drawables to flip vertically on direction change
-        private SpriteDrawable _sortTimeArrowDrawable;
-        private SpriteDrawable _sortTypeArrowDrawable;
-        private SpriteDrawable _sortNameArrowDrawable;
         
         // Sort button styles (normal and pressed)
         private ImageButtonStyle _sortTimeNormalStyle;
@@ -238,12 +234,12 @@ namespace PitHero.UI
             _sortNameButton.OnClicked += (btn) => OnSortButtonClicked(InventorySortOrder.Name);
             
             // Create arrow images and keep drawables to control FlipY
-            _sortTimeArrowDrawable = new SpriteDrawable(sortArrowSprite);
-            _sortTypeArrowDrawable = new SpriteDrawable(sortArrowSprite);
-            _sortNameArrowDrawable = new SpriteDrawable(sortArrowSprite);
-            _sortTimeArrow = new Image(_sortTimeArrowDrawable);
-            _sortTypeArrow = new Image(_sortTypeArrowDrawable);
-            _sortNameArrow = new Image(_sortNameArrowDrawable);
+            var sortArrowDrawableTime = new SpriteDrawable(sortArrowSprite);
+            var sortArrowDrawableType = new SpriteDrawable(sortArrowSprite);
+            var sortArrowDrawableName = new SpriteDrawable(sortArrowSprite);
+            _sortTimeArrow = new Image(sortArrowDrawableTime);
+            _sortTypeArrow = new Image(sortArrowDrawableType);
+            _sortNameArrow = new Image(sortArrowDrawableName);
             // Ensure arrows do not intercept input
             _sortTimeArrow.SetTouchable(Touchable.Disabled);
             _sortTypeArrow.SetTouchable(Touchable.Disabled);
@@ -344,28 +340,24 @@ namespace PitHero.UI
             
             // Show arrow on active button and flip vertically based on direction
             Image activeArrow = null;
-            SpriteDrawable activeDrawable = null;
             switch (currentSort)
             {
                 case InventorySortOrder.Time:
                     activeArrow = _sortTimeArrow;
-                    activeDrawable = _sortTimeArrowDrawable;
                     break;
                 case InventorySortOrder.Type:
                     activeArrow = _sortTypeArrow;
-                    activeDrawable = _sortTypeArrowDrawable;
                     break;
                 case InventorySortOrder.Name:
                     activeArrow = _sortNameArrow;
-                    activeDrawable = _sortNameArrowDrawable;
                     break;
             }
             
             if (activeArrow != null)
             {
-                // Flip Y for ascending, default (down) for descending
-                if (activeDrawable != null)
-                    activeDrawable.FlipY = (currentDirection == SortDirection.Ascending);
+                bool ascending = currentDirection == SortDirection.Ascending;
+                // Flip by scaling Y to -1 for ascending (if API supports), fallback rotate if not
+                activeArrow.SetScaleY(ascending ? -1f : 1f);
                 activeArrow.SetVisible(true);
             }
         }
@@ -458,6 +450,13 @@ namespace PitHero.UI
                 var heroComponent = GetHeroComponent();
                 if (heroComponent != null && _inventoryGrid != null)
                     _inventoryGrid.ConnectToHero(heroComponent);
+
+                // Enforce default sort: By Time Descending
+                if (_inventoryGrid != null)
+                {
+                    _inventoryGrid.SortInventory(InventorySortOrder.Time, SortDirection.Descending);
+                }
+
                 UpdateSortButtonStates(); // Update sort button states when opening
                 PositionHeroWindow();
                 _stage.AddElement(_heroWindow);
