@@ -15,6 +15,9 @@ namespace PitHero.UI
         /// <summary>Callback to refresh inventory grid after cross-component swap</summary>
         public static System.Action OnInventoryChanged;
         
+        /// <summary>Callback to clear local selection state in all components</summary>
+        public static System.Action OnSelectionCleared;
+        
         /// <summary>Sets the selected slot from inventory grid</summary>
         public static void SetSelectedFromInventory(InventorySlot slot, HeroComponent hero)
         {
@@ -47,6 +50,9 @@ namespace PitHero.UI
             }
             _isFromShortcutBar = false;
             _heroComponent = null;
+            
+            // Notify all components to clear their local state
+            OnSelectionCleared?.Invoke();
         }
         
         /// <summary>Gets the currently selected slot</summary>

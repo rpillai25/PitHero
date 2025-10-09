@@ -146,6 +146,19 @@ namespace PitHero.UI
             
             // Subscribe to cross-component inventory changes
             InventorySelectionManager.OnInventoryChanged += UpdateItemsFromBag;
+            
+            // Subscribe to selection cleared event
+            InventorySelectionManager.OnSelectionCleared += ClearLocalSelectionState;
+        }
+        
+        /// <summary>Clears only the local highlighted slot without invoking events.</summary>
+        private void ClearLocalSelectionState()
+        {
+            if (_highlightedSlot != null)
+            {
+                _highlightedSlot.SlotData.IsHighlighted = false;
+                _highlightedSlot = null;
+            }
         }
         
         /// <summary>Initializes the context menu for inventory interactions.</summary>
@@ -362,8 +375,8 @@ namespace PitHero.UI
                 // Attempt cross-component swap
                 if (InventorySelectionManager.TrySwapCrossComponent(clickedSlot, false, _heroComponent))
                 {
-                    // Refresh is handled by callback
-                    OnItemDeselected?.Invoke();
+                    // Clear local highlighted slot after cross-component swap
+                    ClearSelectionHighlight();
                     return;
                 }
             }
@@ -456,6 +469,13 @@ namespace PitHero.UI
                 _highlightedSlot = null;
                 OnItemDeselected?.Invoke();
             }
+        }
+
+        /// <summary>Public method to clear selection state (called when closing inventory UI).</summary>
+        public void ClearSelection()
+        {
+            // Just call the manager's clear - it will notify this component via callback
+            InventorySelectionManager.ClearSelection();
         }
 
         /// <summary>Handles right-click to show context menu.</summary>
@@ -761,7 +781,7 @@ namespace PitHero.UI
         /// <summary>Updates active inventory slot availability based on capacity.</summary>
         public void UpdateBagCapacity(int capacity)
         {
-            int allowedInventorySlots = capacity - 8;
+            int allowedInventorySlots = capacity;
             if (allowedInventorySlots < 0) allowedInventorySlots = 0;
             int inventorySeen = 0;
             for (int i = 0; i < _slots.Length; i++)
