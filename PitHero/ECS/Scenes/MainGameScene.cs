@@ -696,6 +696,9 @@ namespace PitHero.ECS.Scenes
             UpdatePitLevelLabel();
             UpdateHeroLabels();
             UpdateHudFontMode();
+            
+            // Refresh shortcut bar to keep it in sync with inventory
+            _shortcutBar?.RefreshItems();
         }
     }
 }
