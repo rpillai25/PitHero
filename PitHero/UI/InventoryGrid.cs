@@ -143,6 +143,9 @@ namespace PitHero.UI
                 UpdateItemsFromBag();
             }
             InitializeSwapEntities();
+            
+            // Subscribe to cross-component inventory changes
+            InventorySelectionManager.OnInventoryChanged += UpdateItemsFromBag;
         }
         
         /// <summary>Initializes the context menu for inventory interactions.</summary>
@@ -353,10 +356,23 @@ namespace PitHero.UI
         /// <summary>Handles slot click highlighting and swapping.</summary>
         private void HandleSlotClicked(InventorySlot clickedSlot)
         {
+            // Check if there's a cross-component selection (from ShortcutBar)
+            if (InventorySelectionManager.HasSelection() && InventorySelectionManager.IsSelectionFromShortcutBar())
+            {
+                // Attempt cross-component swap
+                if (InventorySelectionManager.TrySwapCrossComponent(clickedSlot, false, _heroComponent))
+                {
+                    // Refresh is handled by callback
+                    OnItemDeselected?.Invoke();
+                    return;
+                }
+            }
+            
             if (_highlightedSlot == null)
             {
                 _highlightedSlot = clickedSlot;
                 clickedSlot.SlotData.IsHighlighted = true;
+                InventorySelectionManager.SetSelectedFromInventory(clickedSlot, _heroComponent);
                 Debug.Log($"Highlighted slot at ({clickedSlot.SlotData.X},{clickedSlot.SlotData.Y})");
                 if (clickedSlot.SlotData.Item != null)
                     OnItemSelected?.Invoke(clickedSlot.SlotData.Item);
@@ -365,6 +381,7 @@ namespace PitHero.UI
             {
                 _highlightedSlot.SlotData.IsHighlighted = false;
                 _highlightedSlot = null;
+                InventorySelectionManager.ClearSelection();
                 OnItemDeselected?.Invoke();
             }
             else
@@ -373,6 +390,7 @@ namespace PitHero.UI
                 SwapSlotItems(_highlightedSlot, clickedSlot);
                 _highlightedSlot.SlotData.IsHighlighted = false;
                 _highlightedSlot = null;
+                InventorySelectionManager.ClearSelection();
                 Debug.Log($"Swapped items between ({prev.SlotData.X},{prev.SlotData.Y}) and ({clickedSlot.SlotData.X},{clickedSlot.SlotData.Y})");
                 OnItemDeselected?.Invoke();
             }
