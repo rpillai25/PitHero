@@ -15,10 +15,13 @@ namespace PitHero.UI
         /// <summary>Callback to refresh inventory grid after cross-component swap</summary>
         public static System.Action OnInventoryChanged;
         
+        /// <summary>Callback to clear local selection state in all components</summary>
+        public static System.Action OnSelectionCleared;
+        
         /// <summary>Sets the selected slot from inventory grid</summary>
         public static void SetSelectedFromInventory(InventorySlot slot, HeroComponent hero)
         {
-            ClearSelection();
+            ClearSelectionInternal();
             _selectedSlot = slot;
             _isFromShortcutBar = false;
             _heroComponent = hero;
@@ -29,7 +32,7 @@ namespace PitHero.UI
         /// <summary>Sets the selected slot from shortcut bar</summary>
         public static void SetSelectedFromShortcut(InventorySlot slot, HeroComponent hero)
         {
-            ClearSelection();
+            ClearSelectionInternal();
             _selectedSlot = slot;
             _isFromShortcutBar = true;
             _heroComponent = hero;
@@ -37,8 +40,8 @@ namespace PitHero.UI
                 slot.SlotData.IsHighlighted = true;
         }
         
-        /// <summary>Clears the current selection</summary>
-        public static void ClearSelection()
+        /// <summary>Internal method to clear selection without triggering callbacks (used when switching selections)</summary>
+        private static void ClearSelectionInternal()
         {
             if (_selectedSlot != null)
             {
@@ -47,6 +50,15 @@ namespace PitHero.UI
             }
             _isFromShortcutBar = false;
             _heroComponent = null;
+        }
+        
+        /// <summary>Clears the current selection</summary>
+        public static void ClearSelection()
+        {
+            ClearSelectionInternal();
+            
+            // Notify all components to clear their local state
+            OnSelectionCleared?.Invoke();
         }
         
         /// <summary>Gets the currently selected slot</summary>

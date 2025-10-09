@@ -116,6 +116,19 @@ namespace PitHero.UI
             
             // Subscribe to cross-component inventory changes
             InventorySelectionManager.OnInventoryChanged += UpdateItemsFromBag;
+            
+            // Subscribe to selection cleared event
+            InventorySelectionManager.OnSelectionCleared += ClearLocalSelectionState;
+        }
+        
+        /// <summary>Clears only the local highlighted slot without invoking events.</summary>
+        private void ClearLocalSelectionState()
+        {
+            if (_highlightedSlot != null)
+            {
+                _highlightedSlot.SlotData.IsHighlighted = false;
+                _highlightedSlot = null;
+            }
         }
         
         /// <summary>Updates slot items from hero's shortcut bag.</summary>
@@ -147,7 +160,12 @@ namespace PitHero.UI
                 // Attempt cross-component swap
                 if (InventorySelectionManager.TrySwapCrossComponent(clickedSlot, true, _heroComponent))
                 {
-                    // Refresh is handled by callback
+                    // Clear local highlighted slot after cross-component swap
+                    if (_highlightedSlot != null)
+                    {
+                        _highlightedSlot.SlotData.IsHighlighted = false;
+                        _highlightedSlot = null;
+                    }
                     OnItemDeselected?.Invoke();
                     return;
                 }
@@ -264,6 +282,13 @@ namespace PitHero.UI
         public void RefreshItems()
         {
             UpdateItemsFromBag();
+        }
+        
+        /// <summary>Public method to clear selection state (called when closing inventory UI).</summary>
+        public void ClearSelection()
+        {
+            // Just call the manager's clear - it will notify this component via callback
+            InventorySelectionManager.ClearSelection();
         }
         
         /// <summary>Handles shortcut key presses (1-8).</summary>

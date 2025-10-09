@@ -487,6 +487,7 @@ namespace PitHero.UI
             {
                 UIWindowManager.OnUIWindowClosing();
                 _selectedItemCard?.Hide();
+                _inventoryGrid?.ClearSelection();
                 _heroWindow.SetVisible(false);
                 _heroWindow.Remove();
                 var pauseService = Core.Services.GetService<PauseService>();
@@ -586,7 +587,7 @@ namespace PitHero.UI
         {
             if (_windowVisible)
             {
-                _windowVisible = false; UIWindowManager.OnUIWindowClosing(); _selectedItemCard?.Hide(); _heroWindow?.SetVisible(false); _heroWindow?.Remove(); var pauseService = Core.Services.GetService<PauseService>(); if (pauseService != null) pauseService.IsPaused = false; Debug.Log("[HeroUI] Hero window force closed by single window policy");
+                _windowVisible = false; UIWindowManager.OnUIWindowClosing(); _selectedItemCard?.Hide(); _inventoryGrid?.ClearSelection(); _heroWindow?.SetVisible(false); _heroWindow?.Remove(); var pauseService = Core.Services.GetService<PauseService>(); if (pauseService != null) pauseService.IsPaused = false; Debug.Log("[HeroUI] Hero window force closed by single window policy");
             }
         }
 
