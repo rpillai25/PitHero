@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 using Nez;
 using Nez.UI;
 using PitHero.ECS.Components;
@@ -21,6 +22,11 @@ namespace PitHero.UI
         
         // Track scaling for different window modes
         private float _currentScale = 1f;
+        
+        // Track base position and offset for inventory window
+        private float _baseX = 0f;
+        private float _baseY = 0f;
+        private float _offsetX = 0f;
         
         // Public events for item card display (compatible with InventoryGrid)
         public event System.Action<IItem> OnItemHovered;
@@ -81,6 +87,27 @@ namespace PitHero.UI
             LayoutSlots();
         }
         
+        /// <summary>Sets the base position of the shortcut bar.</summary>
+        public void SetBasePosition(float x, float y)
+        {
+            _baseX = x;
+            _baseY = y;
+            UpdatePosition();
+        }
+        
+        /// <summary>Sets the horizontal offset (used when inventory is open).</summary>
+        public void SetOffsetX(float offsetX)
+        {
+            _offsetX = offsetX;
+            UpdatePosition();
+        }
+        
+        /// <summary>Updates the actual position based on base + offset.</summary>
+        private void UpdatePosition()
+        {
+            SetPosition(_baseX + _offsetX, _baseY);
+        }
+        
         /// <summary>Connects shortcut bar to hero and loads items.</summary>
         public void ConnectToHero(HeroComponent heroComponent)
         {
@@ -88,15 +115,15 @@ namespace PitHero.UI
             UpdateItemsFromBag();
         }
         
-        /// <summary>Updates slot items from hero's bag.</summary>
+        /// <summary>Updates slot items from hero's shortcut bag.</summary>
         private void UpdateItemsFromBag()
         {
-            if (_heroComponent?.Bag == null)
+            if (_heroComponent?.ShortcutBag == null)
                 return;
                 
-            var bag = _heroComponent.Bag;
+            var bag = _heroComponent.ShortcutBag;
             
-            // The first 8 items in the bag correspond to the 8 shortcut slots
+            // The 8 items in the shortcut bag correspond to the 8 shortcut slots
             for (int i = 0; i < _slots.Length; i++)
             {
                 var slot = _slots.Buffer[i];
@@ -163,10 +190,10 @@ namespace PitHero.UI
         /// <summary>Swaps items between two shortcut slots.</summary>
         private void SwapSlotItems(InventorySlot slotA, InventorySlot slotB)
         {
-            if (_heroComponent?.Bag == null)
+            if (_heroComponent?.ShortcutBag == null)
                 return;
                 
-            var bag = _heroComponent.Bag;
+            var bag = _heroComponent.ShortcutBag;
             var dataA = slotA.SlotData;
             var dataB = slotB.SlotData;
             
@@ -202,8 +229,8 @@ namespace PitHero.UI
             {
                 Debug.Log($"[ShortcutBar] Used {item.Name}");
                 
-                // Decrement stack or remove item
-                if (_heroComponent.Bag.ConsumeFromStack(bagIndex))
+                // Decrement stack or remove item from shortcut bag
+                if (_heroComponent.ShortcutBag.ConsumeFromStack(bagIndex))
                 {
                     // Refresh the UI to show updated stack counts
                     UpdateItemsFromBag();
@@ -219,6 +246,32 @@ namespace PitHero.UI
         public void RefreshItems()
         {
             UpdateItemsFromBag();
+        }
+        
+        /// <summary>Handles shortcut key presses (1-8).</summary>
+        public void HandleKeyboardShortcuts()
+        {
+            for (int keyOffset = 0; keyOffset < SHORTCUT_COUNT; keyOffset++)
+            {
+                var key = (Keys)((int)Keys.D1 + keyOffset);
+                if (!Input.IsKeyPressed(key)) continue;
+                
+                var slot = _slots.Buffer[keyOffset];
+                if (slot == null) continue;
+                
+                var data = slot.SlotData;
+                if (data.Item != null && data.BagIndex.HasValue)
+                {
+                    Debug.Log($"[ShortcutBar] Activated shortcut slot {data.ShortcutKey} with item: {data.Item.Name}");
+                    
+                    // Use the consumable if it's a consumable
+                    if (data.Item is Consumable)
+                    {
+                        UseConsumable(data.Item, data.BagIndex.Value);
+                    }
+                    break;
+                }
+            }
         }
     }
 }

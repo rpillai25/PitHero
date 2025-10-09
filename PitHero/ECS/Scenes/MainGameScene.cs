@@ -649,7 +649,12 @@ namespace PitHero.ECS.Scenes
                 float centerX = Screen.Width / 2f - barWidth / 2f;
                 float bottomY = Screen.Height - barHeight - 10f; // 10px padding from bottom
                 
-                _shortcutBar.SetPosition(centerX, bottomY);
+                _shortcutBar.SetBasePosition(centerX, bottomY);
+                
+                // Offset left when inventory is open
+                bool inventoryOpen = _settingsUI?.HeroUI?.IsWindowVisible ?? false;
+                float offsetX = inventoryOpen ? -150f : 0f; // Offset left by 150px when inventory open
+                _shortcutBar.SetOffsetX(offsetX);
             }
         }
         
@@ -697,8 +702,14 @@ namespace PitHero.ECS.Scenes
             UpdateHeroLabels();
             UpdateHudFontMode();
             
+            // Update shortcut bar position (handles offset when inventory open)
+            PositionShortcutBar();
+            
             // Refresh shortcut bar to keep it in sync with inventory
             _shortcutBar?.RefreshItems();
+            
+            // Handle keyboard shortcuts via shortcut bar
+            _shortcutBar?.HandleKeyboardShortcuts();
         }
     }
 }

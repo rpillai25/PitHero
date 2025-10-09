@@ -557,11 +557,7 @@ namespace PitHero.UI
         {
             UpdateButtonStyleIfNeeded();
             
-            // Handle keyboard shortcuts even when window is closed (they're shortcuts after all!)
-            if (_inventoryGrid != null)
-            {
-                _inventoryGrid.HandleKeyboardShortcuts();
-            }
+            // Note: Keyboard shortcuts are now handled by ShortcutBar in MainGameScene
             
             if (_windowVisible && _inventoryGrid != null) 
             {

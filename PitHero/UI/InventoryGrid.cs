@@ -120,8 +120,8 @@ namespace PitHero.UI
             if (y == 1 && x == 5) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield2 };
             if (y == 2 && x == 2) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory1 };
             if (y == 2 && x == 4) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory2 };
-            if (y == 3) return new InventorySlotData(x, y, InventorySlotType.Shortcut) { ShortcutKey = x + 1 };
-            if (y >= 4) return new InventorySlotData(x, y, InventorySlotType.Inventory);
+            // Row y=3 is now regular inventory (no longer shortcuts)
+            if (y >= 3) return new InventorySlotData(x, y, InventorySlotType.Inventory);
             return new InventorySlotData(x, y, InventorySlotType.Null);
         }
 
@@ -249,7 +249,8 @@ namespace PitHero.UI
                 var slot = _slots.Buffer[i];
                 if (slot == null) continue;
                 var type = slot.SlotData.SlotType;
-                if (type == InventorySlotType.Shortcut || type == InventorySlotType.Inventory)
+                // Only process Inventory type slots now (shortcuts are separate)
+                if (type == InventorySlotType.Inventory)
                 {
                     slot.SlotData.BagIndex = bagIndex;
                     var newItem = bag.GetSlotItem(bagIndex);
@@ -613,7 +614,8 @@ namespace PitHero.UI
                 var slot = _slots.Buffer[i];
                 if (slot == null) continue;
                 var type = slot.SlotData.SlotType;
-                if (type == InventorySlotType.Shortcut || type == InventorySlotType.Inventory)
+                // Only persist Inventory type slots (shortcuts are separate)
+                if (type == InventorySlotType.Inventory)
                 {
                     _persistBuffer[count++] = slot.SlotData.Item;
                 }
