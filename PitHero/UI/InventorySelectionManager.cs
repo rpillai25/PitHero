@@ -18,6 +18,9 @@ namespace PitHero.UI
         /// <summary>Callback to clear local selection state in all components</summary>
         public static System.Action OnSelectionCleared;
         
+        /// <summary>Callback to animate cross-component swap (slotA, slotB)</summary>
+        public static System.Action<InventorySlot, InventorySlot> OnCrossComponentSwapAnimate;
+        
         /// <summary>Sets the selected slot from inventory grid</summary>
         public static void SetSelectedFromInventory(InventorySlot slot, HeroComponent hero)
         {
@@ -93,6 +96,13 @@ namespace PitHero.UI
             
             int inventoryBagIndex = inventorySlot.SlotData.BagIndex.Value;
             int shortcutBagIndex = shortcutSlot.SlotData.BagIndex.Value;
+            
+            // Reset hover offsets before swap
+            _selectedSlot.SetItemSpriteOffsetY(0f);
+            targetSlot.SetItemSpriteOffsetY(0f);
+            
+            // Trigger animation callback BEFORE swapping data (so sprites can be captured)
+            OnCrossComponentSwapAnimate?.Invoke(_selectedSlot, targetSlot);
             
             // Swap in the bags
             _heroComponent.Bag.SetSlotItem(inventoryBagIndex, shortcutItem);
