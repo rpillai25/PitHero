@@ -96,37 +96,14 @@ namespace PitHero.UI
                 
             var bag = _heroComponent.Bag;
             
-            // Clear all slots first
+            // The first 8 items in the bag correspond to the 8 shortcut slots
             for (int i = 0; i < _slots.Length; i++)
             {
                 var slot = _slots.Buffer[i];
                 if (slot != null)
                 {
-                    slot.SlotData.Item = null;
-                    slot.SlotData.BagIndex = null;
-                }
-            }
-            
-            // Fill shortcut slots from bag
-            for (int bagIndex = 0; bagIndex < bag.Capacity; bagIndex++)
-            {
-                var item = bag.GetItemAt(bagIndex);
-                if (item == null)
-                    continue;
-                    
-                var placement = bag.GetItemPlacementInfo(item);
-                if (placement == null || placement.Y != SHORTCUT_ROW)
-                    continue;
-                    
-                int slotIndex = placement.X;
-                if (slotIndex >= 0 && slotIndex < _slots.Length)
-                {
-                    var slot = _slots.Buffer[slotIndex];
-                    if (slot != null)
-                    {
-                        slot.SlotData.Item = item;
-                        slot.SlotData.BagIndex = bagIndex;
-                    }
+                    slot.SlotData.BagIndex = i;
+                    slot.SlotData.Item = bag.GetSlotItem(i);
                 }
             }
         }
@@ -197,20 +174,10 @@ namespace PitHero.UI
             int? bagIndexA = dataA.BagIndex;
             int? bagIndexB = dataB.BagIndex;
             
-            // Swap in bag
+            // Swap in bag using bag's API
             if (bagIndexA.HasValue && bagIndexB.HasValue)
             {
-                bag.SwapItems(bagIndexA.Value, bagIndexB.Value);
-            }
-            else if (bagIndexA.HasValue)
-            {
-                // Move A to B's location
-                bag.MoveItem(bagIndexA.Value, dataB.X, dataB.Y);
-            }
-            else if (bagIndexB.HasValue)
-            {
-                // Move B to A's location
-                bag.MoveItem(bagIndexB.Value, dataA.X, dataA.Y);
+                bag.SwapSlots(bagIndexA.Value, bagIndexB.Value);
             }
             
             // Update display
