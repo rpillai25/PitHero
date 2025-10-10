@@ -149,6 +149,9 @@ namespace PitHero.UI
             
             // Subscribe to selection cleared event
             InventorySelectionManager.OnSelectionCleared += ClearLocalSelectionState;
+            
+            // Subscribe to cross-component swap animation
+            InventorySelectionManager.OnCrossComponentSwapAnimate += HandleCrossComponentSwapAnimate;
         }
         
         /// <summary>Clears only the local highlighted slot without invoking events.</summary>
@@ -158,6 +161,40 @@ namespace PitHero.UI
             {
                 _highlightedSlot.SlotData.IsHighlighted = false;
                 _highlightedSlot = null;
+            }
+        }
+        
+        /// <summary>Handles cross-component swap animation by triggering local animation for this component's slot.</summary>
+        private void HandleCrossComponentSwapAnimate(InventorySlot slotA, InventorySlot slotB)
+        {
+            // Find which slot belongs to this component
+            InventorySlot mySlot = null;
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == slotA || slot == slotB)
+                {
+                    mySlot = slot;
+                    break;
+                }
+            }
+            
+            if (mySlot != null)
+            {
+                // Trigger a brief "pop" animation by hiding and showing the sprite
+                AnimateCrossComponentSwap(mySlot);
+            }
+        }
+        
+        /// <summary>Animates a single slot for cross-component swap (simple hide/show effect).</summary>
+        private void AnimateCrossComponentSwap(InventorySlot slot)
+        {
+            // For cross-component swaps, we can't tween between different coordinate spaces,
+            // so we just hide the sprite briefly and let the refresh show the new item
+            if (slot.SlotData.Item != null)
+            {
+                slot.SetItemSpriteHidden(true);
+                // The sprite will be shown again when UpdateItemsFromBag is called after the swap
             }
         }
         
@@ -227,7 +264,10 @@ namespace PitHero.UI
             {
                 var slot = _slots.Buffer[i];
                 if (slot != null)
+                {
                     slot.SlotData.Item = null;
+                    slot.SetItemSpriteHidden(false); // Ensure sprites are visible after refresh
+                }
             }
             UpdateEquipmentSlots();
             UpdateBagSlots();
@@ -411,7 +451,9 @@ namespace PitHero.UI
 
         private void HandleSlotHovered(InventorySlot slot)
         {
-            if (_highlightedSlot != null && _highlightedSlot != slot && slot.SlotData.Item != null)
+            // Check for cross-component hover (from ShortcutBar) or local hover
+            if ((InventorySelectionManager.HasSelection() && slot.SlotData.Item != null) || 
+                (_highlightedSlot != null && _highlightedSlot != slot && slot.SlotData.Item != null))
                 slot.SetItemSpriteOffsetY(HOVER_OFFSET_Y);
             if (slot.SlotData.Item != null)
                 OnItemHovered?.Invoke(slot.SlotData.Item);

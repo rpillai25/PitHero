@@ -1,6 +1,8 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Nez;
+using Nez.Sprites;
+using Nez.Textures;
 using Nez.UI;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Equipment;
@@ -15,10 +17,24 @@ namespace PitHero.UI
         private const int SHORTCUT_ROW = 3;
         private const float SLOT_SIZE = 32f;
         private const float SLOT_PADDING = 1f;
+        private const float HOVER_OFFSET_Y = -16f; // Offset in pixels when hovering over a slot while another is selected
+        private const float SWAP_TWEEN_DURATION = 0.2f; // Duration in seconds for swap animation
         
         private readonly FastList<InventorySlot> _slots;
         private HeroComponent _heroComponent;
         private InventorySlot _highlightedSlot;
+        
+        // UI-based swap animation state
+        private bool _uiSwapActive;
+        private float _uiSwapElapsed;
+        private InventorySlot _uiSwapSlotA;
+        private InventorySlot _uiSwapSlotB;
+        private SpriteDrawable _uiSwapDrawableA;
+        private SpriteDrawable _uiSwapDrawableB;
+        private Vector2 _uiSwapStartA;
+        private Vector2 _uiSwapEndA;
+        private Vector2 _uiSwapStartB;
+        private Vector2 _uiSwapEndB;
         
         // Track scaling for different window modes
         private float _currentScale = 1f;
@@ -119,6 +135,9 @@ namespace PitHero.UI
             
             // Subscribe to selection cleared event
             InventorySelectionManager.OnSelectionCleared += ClearLocalSelectionState;
+            
+            // Subscribe to cross-component swap animation
+            InventorySelectionManager.OnCrossComponentSwapAnimate += HandleCrossComponentSwapAnimate;
         }
         
         /// <summary>Clears only the local highlighted slot without invoking events.</summary>
@@ -128,6 +147,40 @@ namespace PitHero.UI
             {
                 _highlightedSlot.SlotData.IsHighlighted = false;
                 _highlightedSlot = null;
+            }
+        }
+        
+        /// <summary>Handles cross-component swap animation by triggering local animation for this component's slot.</summary>
+        private void HandleCrossComponentSwapAnimate(InventorySlot slotA, InventorySlot slotB)
+        {
+            // Find which slot belongs to this component
+            InventorySlot mySlot = null;
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == slotA || slot == slotB)
+                {
+                    mySlot = slot;
+                    break;
+                }
+            }
+            
+            if (mySlot != null)
+            {
+                // Trigger a brief "pop" animation by hiding and showing the sprite
+                AnimateCrossComponentSwap(mySlot);
+            }
+        }
+        
+        /// <summary>Animates a single slot for cross-component swap (simple hide/show effect).</summary>
+        private void AnimateCrossComponentSwap(InventorySlot slot)
+        {
+            // For cross-component swaps, we can't tween between different coordinate spaces,
+            // so we just hide the sprite briefly and let the refresh show the new item
+            if (slot.SlotData.Item != null)
+            {
+                slot.SetItemSpriteHidden(true);
+                // The sprite will be shown again when UpdateItemsFromBag is called after the swap
             }
         }
         
@@ -147,6 +200,7 @@ namespace PitHero.UI
                 {
                     slot.SlotData.BagIndex = i;
                     slot.SlotData.Item = bag.GetSlotItem(i);
+                    slot.SetItemSpriteHidden(false); // Ensure sprites are visible after refresh
                 }
             }
         }
@@ -214,12 +268,17 @@ namespace PitHero.UI
         
         private void HandleSlotHovered(InventorySlot slot)
         {
+            // Check for cross-component hover (from InventoryGrid) or local hover
+            if ((InventorySelectionManager.HasSelection() && slot.SlotData.Item != null) || 
+                (_highlightedSlot != null && _highlightedSlot != slot && slot.SlotData.Item != null))
+                slot.SetItemSpriteOffsetY(HOVER_OFFSET_Y);
             if (slot.SlotData.Item != null)
                 OnItemHovered?.Invoke(slot.SlotData.Item);
         }
         
         private void HandleSlotUnhovered(InventorySlot slot)
         {
+            slot.SetItemSpriteOffsetY(0f);
             OnItemUnhovered?.Invoke();
         }
         
@@ -237,6 +296,9 @@ namespace PitHero.UI
             int? bagIndexA = dataA.BagIndex;
             int? bagIndexB = dataB.BagIndex;
             
+            // Animate swap before changing data
+            AnimateSwap(slotA, slotB);
+            
             // Swap in bag using bag's API
             if (bagIndexA.HasValue && bagIndexB.HasValue)
             {
@@ -245,6 +307,79 @@ namespace PitHero.UI
             
             // Update display
             UpdateItemsFromBag();
+        }
+        
+        /// <summary>Animates swap by hiding originals and rendering tweened sprites in Draw.</summary>
+        private void AnimateSwap(InventorySlot a, InventorySlot b)
+        {
+            if (_uiSwapActive)
+            {
+                if (_uiSwapSlotA != null) _uiSwapSlotA.SetItemSpriteHidden(false);
+                if (_uiSwapSlotB != null) _uiSwapSlotB.SetItemSpriteHidden(false);
+                _uiSwapActive = false;
+            }
+            var itemA = a.SlotData.Item;
+            var itemB = b.SlotData.Item;
+            if (itemA == null && itemB == null) return;
+            if (Core.Content == null) return;
+            Sprite spriteA = null;
+            Sprite spriteB = null;
+            try
+            {
+                var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
+                if (itemA != null) spriteA = itemsAtlas.GetSprite(itemA.Name);
+                if (itemB != null) spriteB = itemsAtlas.GetSprite(itemB.Name);
+            }
+            catch { return; }
+            if (spriteA == null && spriteB == null) return;
+            a.SetItemSpriteOffsetY(0f);
+            b.SetItemSpriteOffsetY(0f);
+            if (itemA != null) a.SetItemSpriteHidden(true);
+            if (itemB != null) b.SetItemSpriteHidden(true);
+            // Use local coordinates relative to ShortcutBar (matches how InventorySlot draws its item)
+            var aPos = new Vector2(a.GetX(), a.GetY());
+            var bPos = new Vector2(b.GetX(), b.GetY());
+            _uiSwapSlotA = a;
+            _uiSwapSlotB = b;
+            _uiSwapDrawableA = spriteA != null ? new SpriteDrawable(spriteA) : null;
+            _uiSwapDrawableB = spriteB != null ? new SpriteDrawable(spriteB) : null;
+            _uiSwapStartA = aPos;
+            _uiSwapEndA = bPos;
+            _uiSwapStartB = bPos;
+            _uiSwapEndB = aPos;
+            _uiSwapElapsed = 0f;
+            _uiSwapActive = true;
+        }
+        
+        /// <summary>Draw override also advances swap animation so we do not rely on a non-existent Act override.</summary>
+        public override void Draw(Batcher batcher, float parentAlpha)
+        {
+            // Draw children (slots) first so animated sprites render on top
+            base.Draw(batcher, parentAlpha);
+            if (!_uiSwapActive) return;
+            _uiSwapElapsed += Time.DeltaTime;
+            if (_uiSwapElapsed >= SWAP_TWEEN_DURATION)
+            {
+                if (_uiSwapSlotA != null) _uiSwapSlotA.SetItemSpriteHidden(false);
+                if (_uiSwapSlotB != null) _uiSwapSlotB.SetItemSpriteHidden(false);
+                _uiSwapActive = false;
+                return;
+            }
+            float t = _uiSwapElapsed / SWAP_TWEEN_DURATION;
+            if (t < 0f) t = 0f; else if (t > 1f) t = 1f;
+            float ease = 1f - (1f - t) * (1f - t); // QuadOut
+            if (_uiSwapDrawableA != null && _uiSwapSlotA != null)
+            {
+                var pos = Vector2.Lerp(_uiSwapStartA, _uiSwapEndA, ease);
+                // Apply current scale for proper rendering
+                _uiSwapDrawableA.Draw(batcher, pos.X * _currentScale, pos.Y * _currentScale, SLOT_SIZE * _currentScale, SLOT_SIZE * _currentScale, Color.White);
+            }
+            if (_uiSwapDrawableB != null && _uiSwapSlotB != null)
+            {
+                var pos = Vector2.Lerp(_uiSwapStartB, _uiSwapEndB, ease);
+                // Apply current scale for proper rendering
+                _uiSwapDrawableB.Draw(batcher, pos.X * _currentScale, pos.Y * _currentScale, SLOT_SIZE * _currentScale, SLOT_SIZE * _currentScale, Color.White);
+            }
         }
         
         /// <summary>Uses a consumable item.</summary>
