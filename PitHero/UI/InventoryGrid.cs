@@ -2,11 +2,9 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Nez;
 using Nez.Sprites;
-using Nez.Textures;
 using Nez.UI;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Equipment;
-using RolePlayingFramework.Heroes;
 using System.Collections.Generic;
 
 namespace PitHero.UI
@@ -35,7 +33,7 @@ namespace PitHero.UI
         private SpriteRenderer _swapRenderer1;
         private SpriteRenderer _swapRenderer2;
 
-        // UI-based swap animation state
+        // UI-based swap animation state (legacy, kept disabled when using overlay)
         private bool _uiSwapActive;
         private float _uiSwapElapsed;
         private InventorySlot _uiSwapSlotA;
@@ -46,6 +44,9 @@ namespace PitHero.UI
         private Vector2 _uiSwapEndA;
         private Vector2 _uiSwapStartB;
         private Vector2 _uiSwapEndB;
+
+        // Shared overlay for stage-space swap animations inside the grid
+        private SwapAnimationOverlay _swapOverlay;
 
         // Public events for item card display
         public event System.Action<IItem> OnItemHovered;
@@ -444,7 +445,7 @@ namespace PitHero.UI
                 _highlightedSlot.SlotData.IsHighlighted = false;
                 _highlightedSlot = null;
                 InventorySelectionManager.ClearSelection();
-                Debug.Log($"Swapped items between ({prev.SlotData.X},{prev.SlotData.Y}) and ({clickedSlot.SlotData.X},{clickedSlot.SlotData.Y})");
+                Debug.Log($"Swapped items between ({prev.SlotData.X},{clickedSlot.SlotData.Y}) and ({clickedSlot.SlotData.X},{clickedSlot.SlotData.Y})");
                 OnItemDeselected?.Invoke();
             }
         }
@@ -613,46 +614,83 @@ namespace PitHero.UI
             PersistBagOrdering();
         }
         
-        /// <summary>Animates swap by hiding originals and rendering tweened sprites in Draw.</summary>
+        /// <summary>Animates swap using SwapAnimationOverlay in stage space.</summary>
         private void AnimateSwap(InventorySlot a, InventorySlot b)
         {
+            // Cancel any legacy UI tween
             if (_uiSwapActive)
             {
                 if (_uiSwapSlotA != null) _uiSwapSlotA.SetItemSpriteHidden(false);
                 if (_uiSwapSlotB != null) _uiSwapSlotB.SetItemSpriteHidden(false);
                 _uiSwapActive = false;
             }
+
             var itemA = a.SlotData.Item;
             var itemB = b.SlotData.Item;
             if (itemA == null && itemB == null) return;
             if (Core.Content == null) return;
-            Sprite spriteA = null;
-            Sprite spriteB = null;
+
+            SpriteDrawable drawableA = null;
+            SpriteDrawable drawableB = null;
             try
             {
                 var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
-                if (itemA != null) spriteA = itemsAtlas.GetSprite(itemA.Name);
-                if (itemB != null) spriteB = itemsAtlas.GetSprite(itemB.Name);
+                if (itemA != null)
+                {
+                    var sA = itemsAtlas.GetSprite(itemA.Name);
+                    if (sA != null) drawableA = new SpriteDrawable(sA);
+                }
+                if (itemB != null)
+                {
+                    var sB = itemsAtlas.GetSprite(itemB.Name);
+                    if (sB != null) drawableB = new SpriteDrawable(sB);
+                }
             }
             catch { return; }
-            if (spriteA == null && spriteB == null) return;
+            if (drawableA == null && drawableB == null) return;
+
+            // Reset hover offsets and hide originals during tween
             a.SetItemSpriteOffsetY(0f);
             b.SetItemSpriteOffsetY(0f);
             if (itemA != null) a.SetItemSpriteHidden(true);
             if (itemB != null) b.SetItemSpriteHidden(true);
-            // Use local coordinates relative to InventoryGrid (matches how InventorySlot draws its item)
-            var aPos = new Vector2(a.GetX(), a.GetY());
-            var bPos = new Vector2(b.GetX(), b.GetY());
-            _uiSwapSlotA = a;
-            _uiSwapSlotB = b;
-            _uiSwapDrawableA = spriteA != null ? new SpriteDrawable(spriteA) : null;
-            _uiSwapDrawableB = spriteB != null ? new SpriteDrawable(spriteB) : null;
-            _uiSwapStartA = aPos;
-            _uiSwapEndA = bPos;
-            _uiSwapStartB = bPos;
-            _uiSwapEndB = aPos;
-            _uiSwapElapsed = 0f;
-            _uiSwapActive = true;
+
+            // Convert local to stage coordinates (top-left of slots)
+            var startA = a.LocalToStageCoordinates(Vector2.Zero);
+            var endA = b.LocalToStageCoordinates(Vector2.Zero);
+            var startB = endA;
+            var endB = startA;
+
+            // Ensure overlay exists on our stage
+            var stage = GetStage();
+            if (stage == null)
+                return;
+            if (_swapOverlay == null)
+            {
+                _swapOverlay = new SwapAnimationOverlay();
+                stage.AddElement(_swapOverlay);
+                _swapOverlay.SetVisible(false);
+            }
+            _swapOverlay.ToFront();
+
+            // Start the overlay tween. On completion, unhide new sprites in their slots
+            _swapOverlay.Begin(
+                drawableA,
+                startA,
+                endA,
+                drawableB,
+                startB,
+                endB,
+                SWAP_TWEEN_DURATION,
+                () =>
+                {
+                    if (_uiSwapSlotA != null) _uiSwapSlotA.SetItemSpriteHidden(false);
+                    if (_uiSwapSlotB != null) _uiSwapSlotB.SetItemSpriteHidden(false);
+                    // Also unhide the provided slots in case above references are null
+                    a.SetItemSpriteHidden(false);
+                    b.SetItemSpriteHidden(false);
+                }
+            );
         }
 
         /// <summary>Draw override also advances swap animation so we do not rely on a non-existent Act override.</summary>
@@ -660,7 +698,10 @@ namespace PitHero.UI
         {
             // Draw children (slots) first so animated sprites render on top
             base.Draw(batcher, parentAlpha);
+
+            // Legacy UI tween is disabled when using overlay
             if (!_uiSwapActive) return;
+
             _uiSwapElapsed += Time.DeltaTime;
             if (_uiSwapElapsed >= SWAP_TWEEN_DURATION)
             {
