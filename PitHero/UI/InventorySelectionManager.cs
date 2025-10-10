@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using Nez.Textures;
 using Nez.UI;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Equipment;
@@ -15,7 +16,7 @@ namespace PitHero.UI
         private static bool _isFromShortcutBar;
         private static HeroComponent _heroComponent;
 
-        // Overlay for cross-component swap animations (stage-space tween)
+        // Overlay for cross-component and in-grid swap animations (stage-space tween)
         private static SwapAnimationOverlay _swapOverlay;
         private const float CrossComponentSwapDuration = 0.2f; // match in-grid tween duration
         
@@ -79,6 +80,118 @@ namespace PitHero.UI
         
         /// <summary>Returns true if there is a selected slot</summary>
         public static bool HasSelection() => _selectedSlot != null;
+
+        /// <summary>Animates a swap between two UI slots in stage space using a shared overlay.</summary>
+        public static bool TryAnimateSwap(InventorySlot slotA, InventorySlot slotB, float durationSeconds, System.Action onCompleted = null)
+        {
+            if (slotA == null || slotB == null)
+            {
+                onCompleted?.Invoke();
+                return false;
+            }
+
+            var itemA = slotA.SlotData.Item;
+            var itemB = slotB.SlotData.Item;
+            if (itemA == null && itemB == null)
+            {
+                onCompleted?.Invoke();
+                return false;
+            }
+
+            if (Core.Content == null)
+            {
+                onCompleted?.Invoke();
+                return false;
+            }
+
+            // Load sprites
+            SpriteDrawable drawableA = null;
+            SpriteDrawable drawableB = null;
+            try
+            {
+                var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
+                if (itemA != null)
+                {
+                    var sA = itemsAtlas.GetSprite(itemA.Name);
+                    if (sA != null) drawableA = new SpriteDrawable(sA);
+                }
+                if (itemB != null)
+                {
+                    var sB = itemsAtlas.GetSprite(itemB.Name);
+                    if (sB != null) drawableB = new SpriteDrawable(sB);
+                }
+            }
+            catch
+            {
+                onCompleted?.Invoke();
+                return false;
+            }
+
+            if (drawableA == null && drawableB == null)
+            {
+                onCompleted?.Invoke();
+                return false;
+            }
+
+            // Ensure same stage and get stage-space coords
+            var stageA = slotA.GetStage();
+            var stageB = slotB.GetStage();
+            if (stageA == null || stageB == null || stageA != stageB)
+            {
+                onCompleted?.Invoke();
+                return false;
+            }
+
+            var startA = slotA.LocalToStageCoordinates(Vector2.Zero);
+            var endA = slotB.LocalToStageCoordinates(Vector2.Zero);
+            var startB = endA;
+            var endB = startA;
+
+            // Reset hover offsets and hide originals during tween
+            slotA.SetItemSpriteOffsetY(0f);
+            slotB.SetItemSpriteOffsetY(0f);
+            if (itemA != null) slotA.SetItemSpriteHidden(true);
+            if (itemB != null) slotB.SetItemSpriteHidden(true);
+
+            // Ensure overlay is attached to the proper stage
+            if (_swapOverlay == null)
+            {
+                _swapOverlay = new SwapAnimationOverlay();
+                stageA.AddElement(_swapOverlay);
+                _swapOverlay.SetVisible(false);
+            }
+            else
+            {
+                // If overlay is not on this stage, move it
+                if (_swapOverlay.GetStage() != stageA)
+                {
+                    _swapOverlay.Remove();
+                    stageA.AddElement(_swapOverlay);
+                    _swapOverlay.SetVisible(false);
+                }
+            }
+
+            _swapOverlay.ToFront();
+
+            _swapOverlay.Begin(
+                drawableA,
+                startA,
+                endA,
+                drawableB,
+                startB,
+                endB,
+                durationSeconds <= 0f ? CrossComponentSwapDuration : durationSeconds,
+                () =>
+                {
+                    // Unhide originals now in their new positions
+                    slotA.SetItemSpriteHidden(false);
+                    slotB.SetItemSpriteHidden(false);
+                    onCompleted?.Invoke();
+                }
+            );
+
+            return true;
+        }
         
         /// <summary>Attempts to swap between inventory and shortcut slot with animation</summary>
         public static bool TrySwapCrossComponent(InventorySlot targetSlot, bool targetIsShortcut, HeroComponent targetHero)
@@ -107,90 +220,25 @@ namespace PitHero.UI
             if (inventoryItem == null && shortcutItem == null)
                 return true;
 
-            // Attempt to load sprites for visible animation
-            SpriteDrawable drawableA = null;
-            SpriteDrawable drawableB = null;
-            try
+            // Try to animate via overlay. If we can't, fall back to instant swap
+            bool animated = TryAnimateSwap(inventorySlot, shortcutSlot, CrossComponentSwapDuration, () =>
             {
-                if (Core.Content != null)
-                {
-                    var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
-                    if (inventoryItem != null)
-                    {
-                        var sA = itemsAtlas.GetSprite(inventoryItem.Name);
-                        if (sA != null)
-                            drawableA = new SpriteDrawable(sA);
-                    }
-                    if (shortcutItem != null)
-                    {
-                        var sB = itemsAtlas.GetSprite(shortcutItem.Name);
-                        if (sB != null)
-                            drawableB = new SpriteDrawable(sB);
-                    }
-                }
-            }
-            catch
-            {
-                // ignore atlas errors and fall back to instant swap
-            }
+                // perform logical swap after animation
+                _heroComponent.Bag.SetSlotItem(inventoryBagIndex, shortcutItem);
+                _heroComponent.ShortcutBag.SetSlotItem(shortcutBagIndex, inventoryItem);
 
-            // Compute stage-space positions for tween
-            var stageA = inventorySlot.GetStage();
-            var stageB = shortcutSlot.GetStage();
-            if (stageA == null || stageB == null || stageA != stageB || (drawableA == null && drawableB == null))
+                ClearSelection();
+                OnInventoryChanged?.Invoke();
+            });
+
+            if (!animated)
             {
                 // Fallback: no stage or sprites. Do instant swap
                 _heroComponent.Bag.SetSlotItem(inventoryBagIndex, shortcutItem);
                 _heroComponent.ShortcutBag.SetSlotItem(shortcutBagIndex, inventoryItem);
                 ClearSelection();
                 OnInventoryChanged?.Invoke();
-                return true;
             }
-
-            // Reset hover offsets and hide originals during tween
-            _selectedSlot.SetItemSpriteOffsetY(0f);
-            targetSlot.SetItemSpriteOffsetY(0f);
-            if (inventoryItem != null) inventorySlot.SetItemSpriteHidden(true);
-            if (shortcutItem != null) shortcutSlot.SetItemSpriteHidden(true);
-
-            // Convert local to stage coordinates (top-left of slots)
-            var startA = inventorySlot.LocalToStageCoordinates(Vector2.Zero);
-            var endA = shortcutSlot.LocalToStageCoordinates(Vector2.Zero);
-            var startB = endA;
-            var endB = startA;
-
-            // Ensure overlay exists on stage and is on top
-            if (_swapOverlay == null)
-            {
-                _swapOverlay = new SwapAnimationOverlay();
-                stageA.AddElement(_swapOverlay);
-                _swapOverlay.SetVisible(false);
-            }
-            _swapOverlay.ToFront();
-
-            // Begin tween in overlay. On completion do the actual data swap and refresh
-            _swapOverlay.Begin(
-                drawableA,
-                startA,
-                endA,
-                drawableB,
-                startB,
-                endB,
-                CrossComponentSwapDuration,
-                () =>
-                {
-                    // Perform logical swap after animation
-                    _heroComponent.Bag.SetSlotItem(inventoryBagIndex, shortcutItem);
-                    _heroComponent.ShortcutBag.SetSlotItem(shortcutBagIndex, inventoryItem);
-
-                    // Unhide sprites (UI refresh will also reset hidden state)
-                    inventorySlot.SetItemSpriteHidden(false);
-                    shortcutSlot.SetItemSpriteHidden(false);
-
-                    ClearSelection();
-                    OnInventoryChanged?.Invoke();
-                }
-            );
 
             return true;
         }

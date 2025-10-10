@@ -38,16 +38,7 @@ namespace PitHero.UI
         private float _uiSwapElapsed;
         private InventorySlot _uiSwapSlotA;
         private InventorySlot _uiSwapSlotB;
-        private SpriteDrawable _uiSwapDrawableA;
-        private SpriteDrawable _uiSwapDrawableB;
-        private Vector2 _uiSwapStartA;
-        private Vector2 _uiSwapEndA;
-        private Vector2 _uiSwapStartB;
-        private Vector2 _uiSwapEndB;
-
-        // Shared overlay for stage-space swap animations inside the grid
-        private SwapAnimationOverlay _swapOverlay;
-
+        
         // Public events for item card display
         public event System.Action<IItem> OnItemHovered;
         public event System.Action OnItemUnhovered;
@@ -589,7 +580,11 @@ namespace PitHero.UI
         {
             if (!CanPlaceItemInSlot(a.SlotData.Item, b.SlotData) || !CanPlaceItemInSlot(b.SlotData.Item, a.SlotData))
                 return;
-            AnimateSwap(a, b); // visual first (captures pre-swap sprites)
+
+            // Visual animation first (captures pre-swap sprites) via unified manager
+            AnimateSwap(a, b);
+
+            // Perform logical swap immediately; hidden sprites prevent flicker until overlay completes
             var tmp = a.SlotData.Item;
             a.SlotData.Item = b.SlotData.Item;
             b.SlotData.Item = tmp;
@@ -614,7 +609,7 @@ namespace PitHero.UI
             PersistBagOrdering();
         }
         
-        /// <summary>Animates swap using SwapAnimationOverlay in stage space.</summary>
+        /// <summary>Animates swap using unified InventorySelectionManager overlay in stage space.</summary>
         private void AnimateSwap(InventorySlot a, InventorySlot b)
         {
             // Cancel any legacy UI tween
@@ -625,72 +620,8 @@ namespace PitHero.UI
                 _uiSwapActive = false;
             }
 
-            var itemA = a.SlotData.Item;
-            var itemB = b.SlotData.Item;
-            if (itemA == null && itemB == null) return;
-            if (Core.Content == null) return;
-
-            SpriteDrawable drawableA = null;
-            SpriteDrawable drawableB = null;
-            try
-            {
-                var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
-                if (itemA != null)
-                {
-                    var sA = itemsAtlas.GetSprite(itemA.Name);
-                    if (sA != null) drawableA = new SpriteDrawable(sA);
-                }
-                if (itemB != null)
-                {
-                    var sB = itemsAtlas.GetSprite(itemB.Name);
-                    if (sB != null) drawableB = new SpriteDrawable(sB);
-                }
-            }
-            catch { return; }
-            if (drawableA == null && drawableB == null) return;
-
-            // Reset hover offsets and hide originals during tween
-            a.SetItemSpriteOffsetY(0f);
-            b.SetItemSpriteOffsetY(0f);
-            if (itemA != null) a.SetItemSpriteHidden(true);
-            if (itemB != null) b.SetItemSpriteHidden(true);
-
-            // Convert local to stage coordinates (top-left of slots)
-            var startA = a.LocalToStageCoordinates(Vector2.Zero);
-            var endA = b.LocalToStageCoordinates(Vector2.Zero);
-            var startB = endA;
-            var endB = startA;
-
-            // Ensure overlay exists on our stage
-            var stage = GetStage();
-            if (stage == null)
-                return;
-            if (_swapOverlay == null)
-            {
-                _swapOverlay = new SwapAnimationOverlay();
-                stage.AddElement(_swapOverlay);
-                _swapOverlay.SetVisible(false);
-            }
-            _swapOverlay.ToFront();
-
-            // Start the overlay tween. On completion, unhide new sprites in their slots
-            _swapOverlay.Begin(
-                drawableA,
-                startA,
-                endA,
-                drawableB,
-                startB,
-                endB,
-                SWAP_TWEEN_DURATION,
-                () =>
-                {
-                    if (_uiSwapSlotA != null) _uiSwapSlotA.SetItemSpriteHidden(false);
-                    if (_uiSwapSlotB != null) _uiSwapSlotB.SetItemSpriteHidden(false);
-                    // Also unhide the provided slots in case above references are null
-                    a.SetItemSpriteHidden(false);
-                    b.SetItemSpriteHidden(false);
-                }
-            );
+            // Delegate to manager. It will hide sprites, animate, then unhide on completion.
+            InventorySelectionManager.TryAnimateSwap(a, b, SWAP_TWEEN_DURATION);
         }
 
         /// <summary>Draw override also advances swap animation so we do not rely on a non-existent Act override.</summary>
@@ -699,7 +630,7 @@ namespace PitHero.UI
             // Draw children (slots) first so animated sprites render on top
             base.Draw(batcher, parentAlpha);
 
-            // Legacy UI tween is disabled when using overlay
+            // Legacy UI tween disabled when using manager overlay
             if (!_uiSwapActive) return;
 
             _uiSwapElapsed += Time.DeltaTime;
@@ -713,16 +644,6 @@ namespace PitHero.UI
             float t = _uiSwapElapsed / SWAP_TWEEN_DURATION;
             if (t < 0f) t = 0f; else if (t > 1f) t = 1f;
             float ease = 1f - (1f - t) * (1f - t); // QuadOut
-            if (_uiSwapDrawableA != null && _uiSwapSlotA != null)
-            {
-                var pos = Vector2.Lerp(_uiSwapStartA, _uiSwapEndA, ease);
-                _uiSwapDrawableA.Draw(batcher, pos.X, pos.Y, SLOT_SIZE, SLOT_SIZE, Color.White);
-            }
-            if (_uiSwapDrawableB != null && _uiSwapSlotB != null)
-            {
-                var pos = Vector2.Lerp(_uiSwapStartB, _uiSwapEndB, ease);
-                _uiSwapDrawableB.Draw(batcher, pos.X, pos.Y, SLOT_SIZE, SLOT_SIZE, Color.White);
-            }
         }
 
         /// <summary>Persists current bag ordering to ItemBag via raw buffer (no allocations).</summary>
