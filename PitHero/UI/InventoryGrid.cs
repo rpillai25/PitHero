@@ -581,6 +581,16 @@ namespace PitHero.UI
             if (!CanPlaceItemInSlot(a.SlotData.Item, b.SlotData) || !CanPlaceItemInSlot(b.SlotData.Item, a.SlotData))
                 return;
 
+            // Try unified stack absorption first (source=a -> target=b)
+            if (InventorySelectionManager.CanAbsorbStacks(a, b, out var toAbsorb))
+            {
+                // Animate transfer then absorb and persist
+                AnimateSwap(a, b);
+                InventorySelectionManager.PerformAbsorbStacks(a, b, toAbsorb);
+                PersistBagOrdering();
+                return;
+            }
+
             // Visual animation first (captures pre-swap sprites) via unified manager
             AnimateSwap(a, b);
 
