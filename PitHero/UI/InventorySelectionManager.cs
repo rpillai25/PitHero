@@ -1,3 +1,7 @@
+using Microsoft.Xna.Framework;
+using Nez;
+using Nez.Textures;
+using Nez.UI;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Equipment;
 
@@ -11,6 +15,10 @@ namespace PitHero.UI
         private static InventorySlot _selectedSlot;
         private static bool _isFromShortcutBar;
         private static HeroComponent _heroComponent;
+
+        // Overlay for cross-component swap animations (stage-space tween)
+        private static SwapAnimationOverlay _swapOverlay;
+        private const float CrossComponentSwapDuration = 0.2f; // match in-grid tween duration
         
         /// <summary>Callback to refresh inventory grid after cross-component swap</summary>
         public static System.Action OnInventoryChanged;
@@ -73,7 +81,7 @@ namespace PitHero.UI
         /// <summary>Returns true if there is a selected slot</summary>
         public static bool HasSelection() => _selectedSlot != null;
         
-        /// <summary>Attempts to swap between inventory and shortcut slot</summary>
+        /// <summary>Attempts to swap between inventory and shortcut slot with animation</summary>
         public static bool TrySwapCrossComponent(InventorySlot targetSlot, bool targetIsShortcut, HeroComponent targetHero)
         {
             if (_selectedSlot == null || _heroComponent == null)
@@ -90,29 +98,101 @@ namespace PitHero.UI
             if (!inventorySlot.SlotData.BagIndex.HasValue || !shortcutSlot.SlotData.BagIndex.HasValue)
                 return false;
                 
-            // Get the items
+            // Capture items and indices before animating
             IItem inventoryItem = inventorySlot.SlotData.Item;
             IItem shortcutItem = shortcutSlot.SlotData.Item;
-            
             int inventoryBagIndex = inventorySlot.SlotData.BagIndex.Value;
             int shortcutBagIndex = shortcutSlot.SlotData.BagIndex.Value;
-            
-            // Reset hover offsets before swap
+
+            // If no item movement is visible (both empty), no-op
+            if (inventoryItem == null && shortcutItem == null)
+                return true;
+
+            // Attempt to load sprites for visible animation
+            SpriteDrawable drawableA = null;
+            SpriteDrawable drawableB = null;
+            try
+            {
+                if (Core.Content != null)
+                {
+                    var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
+                    if (inventoryItem != null)
+                    {
+                        var sA = itemsAtlas.GetSprite(inventoryItem.Name);
+                        if (sA != null)
+                            drawableA = new SpriteDrawable(sA);
+                    }
+                    if (shortcutItem != null)
+                    {
+                        var sB = itemsAtlas.GetSprite(shortcutItem.Name);
+                        if (sB != null)
+                            drawableB = new SpriteDrawable(sB);
+                    }
+                }
+            }
+            catch
+            {
+                // ignore atlas errors and fall back to instant swap
+            }
+
+            // Compute stage-space positions for tween
+            var stageA = inventorySlot.GetStage();
+            var stageB = shortcutSlot.GetStage();
+            if (stageA == null || stageB == null || stageA != stageB || (drawableA == null && drawableB == null))
+            {
+                // Fallback: no stage or sprites. Do instant swap
+                _heroComponent.Bag.SetSlotItem(inventoryBagIndex, shortcutItem);
+                _heroComponent.ShortcutBag.SetSlotItem(shortcutBagIndex, inventoryItem);
+                ClearSelection();
+                OnInventoryChanged?.Invoke();
+                return true;
+            }
+
+            // Reset hover offsets and hide originals during tween
             _selectedSlot.SetItemSpriteOffsetY(0f);
             targetSlot.SetItemSpriteOffsetY(0f);
-            
-            // Trigger animation callback BEFORE swapping data (so sprites can be captured)
-            OnCrossComponentSwapAnimate?.Invoke(_selectedSlot, targetSlot);
-            
-            // Swap in the bags
-            _heroComponent.Bag.SetSlotItem(inventoryBagIndex, shortcutItem);
-            _heroComponent.ShortcutBag.SetSlotItem(shortcutBagIndex, inventoryItem);
-            
-            ClearSelection();
-            
-            // Trigger refresh callback
-            OnInventoryChanged?.Invoke();
-            
+            if (inventoryItem != null) inventorySlot.SetItemSpriteHidden(true);
+            if (shortcutItem != null) shortcutSlot.SetItemSpriteHidden(true);
+
+            // Convert local to stage coordinates (top-left of slots)
+            var startA = inventorySlot.LocalToStageCoordinates(Vector2.Zero);
+            var endA = shortcutSlot.LocalToStageCoordinates(Vector2.Zero);
+            var startB = endA;
+            var endB = startA;
+
+            // Ensure overlay exists on stage and is on top
+            if (_swapOverlay == null)
+            {
+                _swapOverlay = new SwapAnimationOverlay();
+                stageA.AddElement(_swapOverlay);
+                _swapOverlay.SetVisible(false);
+            }
+            _swapOverlay.ToFront();
+
+            // Begin tween in overlay. On completion do the actual data swap and refresh
+            _swapOverlay.Begin(
+                drawableA,
+                startA,
+                endA,
+                drawableB,
+                startB,
+                endB,
+                CrossComponentSwapDuration,
+                () =>
+                {
+                    // Perform logical swap after animation
+                    _heroComponent.Bag.SetSlotItem(inventoryBagIndex, shortcutItem);
+                    _heroComponent.ShortcutBag.SetSlotItem(shortcutBagIndex, inventoryItem);
+
+                    // Unhide sprites (UI refresh will also reset hidden state)
+                    inventorySlot.SetItemSpriteHidden(false);
+                    shortcutSlot.SetItemSpriteHidden(false);
+
+                    ClearSelection();
+                    OnInventoryChanged?.Invoke();
+                }
+            );
+
             return true;
         }
     }
