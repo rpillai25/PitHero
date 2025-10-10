@@ -255,7 +255,7 @@ namespace PitHero.AI
             if (hero.TryAddItem(containedItem))
             {
                 // Log which bag it went to
-                if (containedItem is Consumable && hero.ShortcutBag.Items.Contains(containedItem))
+                if (containedItem is Consumable && BagContains(hero.ShortcutBag, containedItem))
                 {
                     Debug.Log($"[OpenChest] Added {containedItem.Name} to hero's shortcut bar. ShortcutBag contents:");
                     LogBagContents(hero.ShortcutBag);
@@ -296,6 +296,20 @@ namespace PitHero.AI
                 var item = bag.Items[i];
                 Debug.Log($"[OpenChest]   {i + 1}. {item.Name} ({item.Rarity})");
             }
+        }
+
+        /// <summary>
+        /// Returns true if the bag currently contains the provided item instance
+        /// </summary>
+        private bool BagContains(RolePlayingFramework.Inventory.ItemBag bag, IItem item)
+        {
+            var items = bag.Items;
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (items[i] == item)
+                    return true;
+            }
+            return false;
         }
     }
 }

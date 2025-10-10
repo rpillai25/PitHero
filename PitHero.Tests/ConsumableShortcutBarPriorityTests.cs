@@ -46,8 +46,6 @@ namespace PitHero.Tests
             Assert.IsTrue(shortcutBag.TryAdd(PotionItems.FullAPPotion()));
             Assert.IsTrue(shortcutBag.TryAdd(PotionItems.MixPotion()));
             Assert.IsTrue(shortcutBag.TryAdd(PotionItems.FullMixPotion()));
-            Assert.IsTrue(shortcutBag.TryAdd(PotionItems.Panacea()));
-            Assert.IsTrue(shortcutBag.TryAdd(PotionItems.Elixir()));
 
             Assert.AreEqual(8, shortcutBag.Count);
             Assert.IsTrue(shortcutBag.IsFull);
@@ -112,8 +110,6 @@ namespace PitHero.Tests
             shortcutBag.TryAdd(PotionItems.FullAPPotion());
             shortcutBag.TryAdd(PotionItems.MixPotion());
             shortcutBag.TryAdd(PotionItems.FullMixPotion());
-            shortcutBag.TryAdd(PotionItems.Panacea());
-            shortcutBag.TryAdd(PotionItems.Elixir());
 
             Assert.AreEqual(8, shortcutBag.Count);
             Assert.IsTrue(shortcutBag.IsFull);
