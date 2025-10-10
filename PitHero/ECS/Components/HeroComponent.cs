@@ -82,6 +82,11 @@ namespace PitHero.ECS.Components
         /// Hero's item bag for inventory management
         /// </summary>
         public RolePlayingFramework.Inventory.ItemBag Bag { get; private set; }
+        
+        /// <summary>
+        /// Hero's shortcut bag for quick-access items (independent from main inventory)
+        /// </summary>
+        public RolePlayingFramework.Inventory.ItemBag ShortcutBag { get; private set; }
 
         private PitWidthManager _pitWidthManager;
 
@@ -123,6 +128,9 @@ namespace PitHero.ECS.Components
 
             // Initialize hero's item bag
             Bag = new RolePlayingFramework.Inventory.ItemBag("Traveller's Bag", 20);
+            
+            // Initialize hero's shortcut bag (8 slots for shortcuts)
+            ShortcutBag = new RolePlayingFramework.Inventory.ItemBag("Shortcuts", 8);
 
             // Initialize state properties to clean state
             HeroInitialized = true;  // Set to true after hero entity and components initialized

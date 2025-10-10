@@ -83,6 +83,9 @@ namespace PitHero.UI
         private FastFUI _fastFUI;
         private HeroUI _heroUI;
         
+        /// <summary>Gets the HeroUI instance.</summary>
+        public HeroUI HeroUI => _heroUI;
+        
         // Window size modes
         private enum WindowSizeMode
         {

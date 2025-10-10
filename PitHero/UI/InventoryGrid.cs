@@ -2,11 +2,9 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
 using Nez;
 using Nez.Sprites;
-using Nez.Textures;
 using Nez.UI;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Equipment;
-using RolePlayingFramework.Heroes;
 using System.Collections.Generic;
 
 namespace PitHero.UI
@@ -35,18 +33,12 @@ namespace PitHero.UI
         private SpriteRenderer _swapRenderer1;
         private SpriteRenderer _swapRenderer2;
 
-        // UI-based swap animation state
+        // UI-based swap animation state (legacy, kept disabled when using overlay)
         private bool _uiSwapActive;
         private float _uiSwapElapsed;
         private InventorySlot _uiSwapSlotA;
         private InventorySlot _uiSwapSlotB;
-        private SpriteDrawable _uiSwapDrawableA;
-        private SpriteDrawable _uiSwapDrawableB;
-        private Vector2 _uiSwapStartA;
-        private Vector2 _uiSwapEndA;
-        private Vector2 _uiSwapStartB;
-        private Vector2 _uiSwapEndB;
-
+        
         // Public events for item card display
         public event System.Action<IItem> OnItemHovered;
         public event System.Action OnItemUnhovered;
@@ -120,8 +112,8 @@ namespace PitHero.UI
             if (y == 1 && x == 5) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield2 };
             if (y == 2 && x == 2) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory1 };
             if (y == 2 && x == 4) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory2 };
-            if (y == 3) return new InventorySlotData(x, y, InventorySlotType.Shortcut) { ShortcutKey = x + 1 };
-            if (y >= 4) return new InventorySlotData(x, y, InventorySlotType.Inventory);
+            // Row y=3 is now regular inventory (no longer shortcuts)
+            if (y >= 3) return new InventorySlotData(x, y, InventorySlotType.Inventory);
             return new InventorySlotData(x, y, InventorySlotType.Null);
         }
 
@@ -143,6 +135,59 @@ namespace PitHero.UI
                 UpdateItemsFromBag();
             }
             InitializeSwapEntities();
+            
+            // Subscribe to cross-component inventory changes
+            InventorySelectionManager.OnInventoryChanged += UpdateItemsFromBag;
+            
+            // Subscribe to selection cleared event
+            InventorySelectionManager.OnSelectionCleared += ClearLocalSelectionState;
+            
+            // Subscribe to cross-component swap animation
+            InventorySelectionManager.OnCrossComponentSwapAnimate += HandleCrossComponentSwapAnimate;
+        }
+        
+        /// <summary>Clears only the local highlighted slot without invoking events.</summary>
+        private void ClearLocalSelectionState()
+        {
+            if (_highlightedSlot != null)
+            {
+                _highlightedSlot.SlotData.IsHighlighted = false;
+                _highlightedSlot = null;
+            }
+        }
+        
+        /// <summary>Handles cross-component swap animation by triggering local animation for this component's slot.</summary>
+        private void HandleCrossComponentSwapAnimate(InventorySlot slotA, InventorySlot slotB)
+        {
+            // Find which slot belongs to this component
+            InventorySlot mySlot = null;
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == slotA || slot == slotB)
+                {
+                    mySlot = slot;
+                    break;
+                }
+            }
+            
+            if (mySlot != null)
+            {
+                // Trigger a brief "pop" animation by hiding and showing the sprite
+                AnimateCrossComponentSwap(mySlot);
+            }
+        }
+        
+        /// <summary>Animates a single slot for cross-component swap (simple hide/show effect).</summary>
+        private void AnimateCrossComponentSwap(InventorySlot slot)
+        {
+            // For cross-component swaps, we can't tween between different coordinate spaces,
+            // so we just hide the sprite briefly and let the refresh show the new item
+            if (slot.SlotData.Item != null)
+            {
+                slot.SetItemSpriteHidden(true);
+                // The sprite will be shown again when UpdateItemsFromBag is called after the swap
+            }
         }
         
         /// <summary>Initializes the context menu for inventory interactions.</summary>
@@ -211,7 +256,10 @@ namespace PitHero.UI
             {
                 var slot = _slots.Buffer[i];
                 if (slot != null)
+                {
                     slot.SlotData.Item = null;
+                    slot.SetItemSpriteHidden(false); // Ensure sprites are visible after refresh
+                }
             }
             UpdateEquipmentSlots();
             UpdateBagSlots();
@@ -249,7 +297,8 @@ namespace PitHero.UI
                 var slot = _slots.Buffer[i];
                 if (slot == null) continue;
                 var type = slot.SlotData.SlotType;
-                if (type == InventorySlotType.Shortcut || type == InventorySlotType.Inventory)
+                // Only process Inventory type slots now (shortcuts are separate)
+                if (type == InventorySlotType.Inventory)
                 {
                     slot.SlotData.BagIndex = bagIndex;
                     var newItem = bag.GetSlotItem(bagIndex);
@@ -352,10 +401,23 @@ namespace PitHero.UI
         /// <summary>Handles slot click highlighting and swapping.</summary>
         private void HandleSlotClicked(InventorySlot clickedSlot)
         {
+            // Check if there's a cross-component selection (from ShortcutBar)
+            if (InventorySelectionManager.HasSelection() && InventorySelectionManager.IsSelectionFromShortcutBar())
+            {
+                // Attempt cross-component swap
+                if (InventorySelectionManager.TrySwapCrossComponent(clickedSlot, false, _heroComponent))
+                {
+                    // Clear local highlighted slot after cross-component swap
+                    ClearSelectionHighlight();
+                    return;
+                }
+            }
+            
             if (_highlightedSlot == null)
             {
                 _highlightedSlot = clickedSlot;
                 clickedSlot.SlotData.IsHighlighted = true;
+                InventorySelectionManager.SetSelectedFromInventory(clickedSlot, _heroComponent);
                 Debug.Log($"Highlighted slot at ({clickedSlot.SlotData.X},{clickedSlot.SlotData.Y})");
                 if (clickedSlot.SlotData.Item != null)
                     OnItemSelected?.Invoke(clickedSlot.SlotData.Item);
@@ -364,6 +426,7 @@ namespace PitHero.UI
             {
                 _highlightedSlot.SlotData.IsHighlighted = false;
                 _highlightedSlot = null;
+                InventorySelectionManager.ClearSelection();
                 OnItemDeselected?.Invoke();
             }
             else
@@ -372,14 +435,17 @@ namespace PitHero.UI
                 SwapSlotItems(_highlightedSlot, clickedSlot);
                 _highlightedSlot.SlotData.IsHighlighted = false;
                 _highlightedSlot = null;
-                Debug.Log($"Swapped items between ({prev.SlotData.X},{prev.SlotData.Y}) and ({clickedSlot.SlotData.X},{clickedSlot.SlotData.Y})");
+                InventorySelectionManager.ClearSelection();
+                Debug.Log($"Swapped items between ({prev.SlotData.X},{clickedSlot.SlotData.Y}) and ({clickedSlot.SlotData.X},{clickedSlot.SlotData.Y})");
                 OnItemDeselected?.Invoke();
             }
         }
 
         private void HandleSlotHovered(InventorySlot slot)
         {
-            if (_highlightedSlot != null && _highlightedSlot != slot && slot.SlotData.Item != null)
+            // Check for cross-component hover (from ShortcutBar) or local hover
+            if ((InventorySelectionManager.HasSelection() && slot.SlotData.Item != null) || 
+                (_highlightedSlot != null && _highlightedSlot != slot && slot.SlotData.Item != null))
                 slot.SetItemSpriteOffsetY(HOVER_OFFSET_Y);
             if (slot.SlotData.Item != null)
                 OnItemHovered?.Invoke(slot.SlotData.Item);
@@ -437,6 +503,13 @@ namespace PitHero.UI
                 _highlightedSlot = null;
                 OnItemDeselected?.Invoke();
             }
+        }
+
+        /// <summary>Public method to clear selection state (called when closing inventory UI).</summary>
+        public void ClearSelection()
+        {
+            // Just call the manager's clear - it will notify this component via callback
+            InventorySelectionManager.ClearSelection();
         }
 
         /// <summary>Handles right-click to show context menu.</summary>
@@ -507,7 +580,21 @@ namespace PitHero.UI
         {
             if (!CanPlaceItemInSlot(a.SlotData.Item, b.SlotData) || !CanPlaceItemInSlot(b.SlotData.Item, a.SlotData))
                 return;
-            AnimateSwap(a, b); // visual first (captures pre-swap sprites)
+
+            // Try unified stack absorption first (source=a -> target=b)
+            if (InventorySelectionManager.CanAbsorbStacks(a, b, out var toAbsorb))
+            {
+                // Animate transfer then absorb and persist
+                AnimateSwap(a, b);
+                InventorySelectionManager.PerformAbsorbStacks(a, b, toAbsorb);
+                PersistBagOrdering();
+                return;
+            }
+
+            // Visual animation first (captures pre-swap sprites) via unified manager
+            AnimateSwap(a, b);
+
+            // Perform logical swap immediately; hidden sprites prevent flicker until overlay completes
             var tmp = a.SlotData.Item;
             a.SlotData.Item = b.SlotData.Item;
             b.SlotData.Item = tmp;
@@ -532,46 +619,19 @@ namespace PitHero.UI
             PersistBagOrdering();
         }
         
-        /// <summary>Animates swap by hiding originals and rendering tweened sprites in Draw.</summary>
+        /// <summary>Animates swap using unified InventorySelectionManager overlay in stage space.</summary>
         private void AnimateSwap(InventorySlot a, InventorySlot b)
         {
+            // Cancel any legacy UI tween
             if (_uiSwapActive)
             {
                 if (_uiSwapSlotA != null) _uiSwapSlotA.SetItemSpriteHidden(false);
                 if (_uiSwapSlotB != null) _uiSwapSlotB.SetItemSpriteHidden(false);
                 _uiSwapActive = false;
             }
-            var itemA = a.SlotData.Item;
-            var itemB = b.SlotData.Item;
-            if (itemA == null && itemB == null) return;
-            if (Core.Content == null) return;
-            Sprite spriteA = null;
-            Sprite spriteB = null;
-            try
-            {
-                var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
-                if (itemA != null) spriteA = itemsAtlas.GetSprite(itemA.Name);
-                if (itemB != null) spriteB = itemsAtlas.GetSprite(itemB.Name);
-            }
-            catch { return; }
-            if (spriteA == null && spriteB == null) return;
-            a.SetItemSpriteOffsetY(0f);
-            b.SetItemSpriteOffsetY(0f);
-            if (itemA != null) a.SetItemSpriteHidden(true);
-            if (itemB != null) b.SetItemSpriteHidden(true);
-            // Use local coordinates relative to InventoryGrid (matches how InventorySlot draws its item)
-            var aPos = new Vector2(a.GetX(), a.GetY());
-            var bPos = new Vector2(b.GetX(), b.GetY());
-            _uiSwapSlotA = a;
-            _uiSwapSlotB = b;
-            _uiSwapDrawableA = spriteA != null ? new SpriteDrawable(spriteA) : null;
-            _uiSwapDrawableB = spriteB != null ? new SpriteDrawable(spriteB) : null;
-            _uiSwapStartA = aPos;
-            _uiSwapEndA = bPos;
-            _uiSwapStartB = bPos;
-            _uiSwapEndB = aPos;
-            _uiSwapElapsed = 0f;
-            _uiSwapActive = true;
+
+            // Delegate to manager. It will hide sprites, animate, then unhide on completion.
+            InventorySelectionManager.TryAnimateSwap(a, b, SWAP_TWEEN_DURATION);
         }
 
         /// <summary>Draw override also advances swap animation so we do not rely on a non-existent Act override.</summary>
@@ -579,7 +639,10 @@ namespace PitHero.UI
         {
             // Draw children (slots) first so animated sprites render on top
             base.Draw(batcher, parentAlpha);
+
+            // Legacy UI tween disabled when using manager overlay
             if (!_uiSwapActive) return;
+
             _uiSwapElapsed += Time.DeltaTime;
             if (_uiSwapElapsed >= SWAP_TWEEN_DURATION)
             {
@@ -591,16 +654,6 @@ namespace PitHero.UI
             float t = _uiSwapElapsed / SWAP_TWEEN_DURATION;
             if (t < 0f) t = 0f; else if (t > 1f) t = 1f;
             float ease = 1f - (1f - t) * (1f - t); // QuadOut
-            if (_uiSwapDrawableA != null && _uiSwapSlotA != null)
-            {
-                var pos = Vector2.Lerp(_uiSwapStartA, _uiSwapEndA, ease);
-                _uiSwapDrawableA.Draw(batcher, pos.X, pos.Y, SLOT_SIZE, SLOT_SIZE, Color.White);
-            }
-            if (_uiSwapDrawableB != null && _uiSwapSlotB != null)
-            {
-                var pos = Vector2.Lerp(_uiSwapStartB, _uiSwapEndB, ease);
-                _uiSwapDrawableB.Draw(batcher, pos.X, pos.Y, SLOT_SIZE, SLOT_SIZE, Color.White);
-            }
         }
 
         /// <summary>Persists current bag ordering to ItemBag via raw buffer (no allocations).</summary>
@@ -613,7 +666,8 @@ namespace PitHero.UI
                 var slot = _slots.Buffer[i];
                 if (slot == null) continue;
                 var type = slot.SlotData.SlotType;
-                if (type == InventorySlotType.Shortcut || type == InventorySlotType.Inventory)
+                // Only persist Inventory type slots (shortcuts are separate)
+                if (type == InventorySlotType.Inventory)
                 {
                     _persistBuffer[count++] = slot.SlotData.Item;
                 }
@@ -741,7 +795,7 @@ namespace PitHero.UI
         /// <summary>Updates active inventory slot availability based on capacity.</summary>
         public void UpdateBagCapacity(int capacity)
         {
-            int allowedInventorySlots = capacity - 8;
+            int allowedInventorySlots = capacity;
             if (allowedInventorySlots < 0) allowedInventorySlots = 0;
             int inventorySeen = 0;
             for (int i = 0; i < _slots.Length; i++)

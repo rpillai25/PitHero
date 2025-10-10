@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using RolePlayingFramework.Equipment;
 
@@ -162,12 +163,32 @@ namespace RolePlayingFramework.Inventory
             return _slots[slotIndex];
         }
 
-        /// <summary>Swaps two slot indices.</summary>
+        /// <summary>Swaps two slot indices. If same consumable types, absorb via shared logic.</summary>
         public bool SwapSlots(int indexA, int indexB)
         {
             if (indexA == indexB) return true;
             if (indexA < 0 || indexB < 0) return false;
             if (indexA >= _slots.Length || indexB >= _slots.Length) return false;
+            
+            var itemA = _slots[indexA];
+            var itemB = _slots[indexB];
+
+            // Prefer absorption using shared logic
+            if (ConsumableStacking.TryCalculateAbsorb(itemA, itemB, out var toAbsorb))
+            {
+                var src = (Consumable)itemA;
+                var dst = (Consumable)itemB;
+                ConsumableStacking.ApplyAbsorb(src, dst, toAbsorb);
+                if (src.StackCount <= 0)
+                {
+                    _slots[indexA] = null;
+                    _count--;
+                }
+                _compactDirty = true;
+                return true;
+            }
+            
+            // Regular swap if not absorbing
             var tmp = _slots[indexA];
             _slots[indexA] = _slots[indexB];
             _slots[indexB] = tmp;
