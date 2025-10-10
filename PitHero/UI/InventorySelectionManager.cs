@@ -81,6 +81,37 @@ namespace PitHero.UI
         /// <summary>Returns true if there is a selected slot</summary>
         public static bool HasSelection() => _selectedSlot != null;
 
+        /// <summary>Returns true if two slots can perform stack absorption and outputs amount to absorb.</summary>
+        public static bool CanAbsorbStacks(InventorySlot source, InventorySlot target, out int toAbsorb)
+        {
+            toAbsorb = 0;
+            if (source?.SlotData?.Item is not Consumable src || target?.SlotData?.Item is not Consumable dst)
+                return false;
+            if (!string.Equals(src.Name, dst.Name, System.StringComparison.Ordinal))
+                return false;
+            if (dst.StackCount >= dst.StackSize)
+                return false;
+            int space = dst.StackSize - dst.StackCount;
+            if (space <= 0 || src.StackCount <= 0)
+                return false;
+            toAbsorb = System.Math.Min(space, src.StackCount);
+            return toAbsorb > 0;
+        }
+
+        /// <summary>Applies absorption from source to target using the specified amount. Clears source if empty.</summary>
+        public static void PerformAbsorbStacks(InventorySlot source, InventorySlot target, int toAbsorb)
+        {
+            if (toAbsorb <= 0) return;
+            var src = (Consumable)source.SlotData.Item;
+            var dst = (Consumable)target.SlotData.Item;
+            dst.StackCount += toAbsorb;
+            src.StackCount -= toAbsorb;
+            if (src.StackCount <= 0)
+            {
+                source.SlotData.Item = null;
+            }
+        }
+
         /// <summary>Animates a swap between two UI slots in stage space using a shared overlay.</summary>
         public static bool TryAnimateSwap(InventorySlot slotA, InventorySlot slotB, float durationSeconds, System.Action onCompleted = null)
         {
@@ -193,7 +224,7 @@ namespace PitHero.UI
             return true;
         }
         
-        /// <summary>Attempts to swap between inventory and shortcut slot with animation</summary>
+        /// <summary>Attempts to swap between inventory and shortcut slot with animation and stack absorption.</summary>
         public static bool TrySwapCrossComponent(InventorySlot targetSlot, bool targetIsShortcut, HeroComponent targetHero)
         {
             if (_selectedSlot == null || _heroComponent == null)
@@ -203,51 +234,37 @@ namespace PitHero.UI
             if (_isFromShortcutBar == targetIsShortcut)
                 return false;
                 
-            // Determine which is inventory and which is shortcut
-            InventorySlot inventorySlot = _isFromShortcutBar ? targetSlot : _selectedSlot;
-            InventorySlot shortcutSlot = _isFromShortcutBar ? _selectedSlot : targetSlot;
-            
-            if (!inventorySlot.SlotData.BagIndex.HasValue || !shortcutSlot.SlotData.BagIndex.HasValue)
+            // Setup source (selected) and destination (clicked target)
+            var sourceSlot = _selectedSlot;
+            var destSlot = targetSlot;
+
+            // Validate bag indices
+            if (!sourceSlot.SlotData.BagIndex.HasValue || !destSlot.SlotData.BagIndex.HasValue)
                 return false;
-                
-            // Capture items and indices before animating
-            IItem inventoryItem = inventorySlot.SlotData.Item;
-            IItem shortcutItem = shortcutSlot.SlotData.Item;
-            int inventoryBagIndex = inventorySlot.SlotData.BagIndex.Value;
-            int shortcutBagIndex = shortcutSlot.SlotData.BagIndex.Value;
 
-            // If no item movement is visible (both empty), no-op
-            if (inventoryItem == null && shortcutItem == null)
-                return true;
+            // Are we shortcut->inventory or inventory->shortcut?
+            bool sourceIsShortcut = _isFromShortcutBar;
+            int sourceIndex = sourceSlot.SlotData.BagIndex.Value;
+            int destIndex = destSlot.SlotData.BagIndex.Value;
 
-            // Check if both items are consumables of the same type and can stack (absorption logic)
-            // Source is from inventory, target is shortcut (or vice versa)
-            // For cross-component, we want to absorb the source into the target
-            IItem sourceItem = _isFromShortcutBar ? shortcutItem : inventoryItem;
-            IItem targetItem = _isFromShortcutBar ? inventoryItem : shortcutItem;
-            int sourceBagIndex = _isFromShortcutBar ? shortcutBagIndex : inventoryBagIndex;
-            int targetBagIndex = _isFromShortcutBar ? inventoryBagIndex : shortcutBagIndex;
-            var sourceBag = _isFromShortcutBar ? _heroComponent.ShortcutBag : _heroComponent.Bag;
-            var targetBag = _isFromShortcutBar ? _heroComponent.Bag : _heroComponent.ShortcutBag;
+            var sourceItem = sourceSlot.SlotData.Item;
+            var destItem = destSlot.SlotData.Item;
 
-            if (sourceItem is Consumable sourceConsumable && targetItem is Consumable targetConsumable &&
-                sourceConsumable.Name == targetConsumable.Name && targetConsumable.StackCount < targetConsumable.StackSize)
+            // Try absorption first
+            if (CanAbsorbStacks(sourceSlot, destSlot, out var toAbsorb))
             {
-                // Calculate how much can be absorbed into target
-                int availableSpace = targetConsumable.StackSize - targetConsumable.StackCount;
-                int toAbsorb = System.Math.Min(availableSpace, sourceConsumable.StackCount);
-                
-                // Try to animate via overlay
-                bool animated = TryAnimateSwap(inventorySlot, shortcutSlot, CrossComponentSwapDuration, () =>
+                // Animate then apply absorption
+                bool animated = TryAnimateSwap(sourceSlot, destSlot, CrossComponentSwapDuration, () =>
                 {
-                    // Transfer items from source to target
-                    targetConsumable.StackCount += toAbsorb;
-                    sourceConsumable.StackCount -= toAbsorb;
-                    
-                    // If source is depleted, clear it
-                    if (sourceConsumable.StackCount <= 0)
+                    PerformAbsorbStacks(sourceSlot, destSlot, toAbsorb);
+
+                    // If source depleted clear from its bag
+                    if (sourceSlot.SlotData.Item == null)
                     {
-                        sourceBag.SetSlotItem(sourceBagIndex, null);
+                        if (sourceIsShortcut)
+                            _heroComponent.ShortcutBag.SetSlotItem(sourceIndex, null);
+                        else
+                            _heroComponent.Bag.SetSlotItem(sourceIndex, null);
                     }
 
                     ClearSelection();
@@ -256,15 +273,14 @@ namespace PitHero.UI
 
                 if (!animated)
                 {
-                    // Fallback: instant absorption
-                    targetConsumable.StackCount += toAbsorb;
-                    sourceConsumable.StackCount -= toAbsorb;
-                    
-                    if (sourceConsumable.StackCount <= 0)
+                    PerformAbsorbStacks(sourceSlot, destSlot, toAbsorb);
+                    if (sourceSlot.SlotData.Item == null)
                     {
-                        sourceBag.SetSlotItem(sourceBagIndex, null);
+                        if (sourceIsShortcut)
+                            _heroComponent.ShortcutBag.SetSlotItem(sourceIndex, null);
+                        else
+                            _heroComponent.Bag.SetSlotItem(sourceIndex, null);
                     }
-                    
                     ClearSelection();
                     OnInventoryChanged?.Invoke();
                 }
@@ -272,23 +288,27 @@ namespace PitHero.UI
                 return true;
             }
 
-            // Regular swap if not absorbing
-            // Try to animate via overlay. If we can't, fall back to instant swap
-            bool animatedSwap = TryAnimateSwap(inventorySlot, shortcutSlot, CrossComponentSwapDuration, () =>
+            // Otherwise do a normal swap between bags
+            // Determine which is inventory and which is shortcut for bag operations
+            InventorySlot inventorySlot = _isFromShortcutBar ? targetSlot : _selectedSlot;
+            InventorySlot shortcutSlot = _isFromShortcutBar ? _selectedSlot : targetSlot;
+            int inventoryBagIndex = inventorySlot.SlotData.BagIndex.Value;
+            int shortcutBagIndex = shortcutSlot.SlotData.BagIndex.Value;
+
+            // Try animate then swap
+            bool didAnimate = TryAnimateSwap(_selectedSlot, targetSlot, CrossComponentSwapDuration, () =>
             {
-                // perform logical swap after animation
-                _heroComponent.Bag.SetSlotItem(inventoryBagIndex, shortcutItem);
-                _heroComponent.ShortcutBag.SetSlotItem(shortcutBagIndex, inventoryItem);
+                _heroComponent.Bag.SetSlotItem(inventoryBagIndex, shortcutSlot.SlotData.Item);
+                _heroComponent.ShortcutBag.SetSlotItem(shortcutBagIndex, inventorySlot.SlotData.Item);
 
                 ClearSelection();
                 OnInventoryChanged?.Invoke();
             });
 
-            if (!animatedSwap)
+            if (!didAnimate)
             {
-                // Fallback: no stage or sprites. Do instant swap
-                _heroComponent.Bag.SetSlotItem(inventoryBagIndex, shortcutItem);
-                _heroComponent.ShortcutBag.SetSlotItem(shortcutBagIndex, inventoryItem);
+                _heroComponent.Bag.SetSlotItem(inventoryBagIndex, shortcutSlot.SlotData.Item);
+                _heroComponent.ShortcutBag.SetSlotItem(shortcutBagIndex, inventorySlot.SlotData.Item);
                 ClearSelection();
                 OnInventoryChanged?.Invoke();
             }

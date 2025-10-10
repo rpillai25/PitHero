@@ -581,29 +581,12 @@ namespace PitHero.UI
             if (!CanPlaceItemInSlot(a.SlotData.Item, b.SlotData) || !CanPlaceItemInSlot(b.SlotData.Item, a.SlotData))
                 return;
 
-            // Check if both items are consumables of the same type and can stack (absorption logic)
-            var itemA = a.SlotData.Item;
-            var itemB = b.SlotData.Item;
-            if (itemA is Consumable consumableA && itemB is Consumable consumableB &&
-                consumableA.Name == consumableB.Name && consumableB.StackCount < consumableB.StackSize)
+            // Try unified stack absorption first (source=a -> target=b)
+            if (InventorySelectionManager.CanAbsorbStacks(a, b, out var toAbsorb))
             {
-                // Calculate how much can be absorbed into target (itemB)
-                int availableSpace = consumableB.StackSize - consumableB.StackCount;
-                int toAbsorb = System.Math.Min(availableSpace, consumableA.StackCount);
-                
-                // Visual animation first (captures pre-swap sprites) via unified manager
+                // Animate transfer then absorb and persist
                 AnimateSwap(a, b);
-                
-                // Transfer items from source (itemA) to target (itemB)
-                consumableB.StackCount += toAbsorb;
-                consumableA.StackCount -= toAbsorb;
-                
-                // If source is depleted, clear it
-                if (consumableA.StackCount <= 0)
-                {
-                    a.SlotData.Item = null;
-                }
-                
+                InventorySelectionManager.PerformAbsorbStacks(a, b, toAbsorb);
                 PersistBagOrdering();
                 return;
             }

@@ -163,7 +163,7 @@ namespace RolePlayingFramework.Inventory
             return _slots[slotIndex];
         }
 
-        /// <summary>Swaps two slot indices. If both are same consumable type, attempts to absorb source into target stack.</summary>
+        /// <summary>Swaps two slot indices. If same consumable types, absorb via shared logic.</summary>
         public bool SwapSlots(int indexA, int indexB)
         {
             if (indexA == indexB) return true;
@@ -172,26 +172,18 @@ namespace RolePlayingFramework.Inventory
             
             var itemA = _slots[indexA];
             var itemB = _slots[indexB];
-            
-            // Check if both items are consumables of the same type and can stack
-            if (itemA is Consumable consumableA && itemB is Consumable consumableB &&
-                consumableA.Name == consumableB.Name && consumableB.StackCount < consumableB.StackSize)
+
+            // Prefer absorption using shared logic
+            if (ConsumableStacking.TryCalculateAbsorb(itemA, itemB, out var toAbsorb))
             {
-                // Calculate how much can be absorbed into target (itemB)
-                int availableSpace = consumableB.StackSize - consumableB.StackCount;
-                int toAbsorb = Math.Min(availableSpace, consumableA.StackCount);
-                
-                // Transfer items from source (itemA) to target (itemB)
-                consumableB.StackCount += toAbsorb;
-                consumableA.StackCount -= toAbsorb;
-                
-                // If source is depleted, clear it
-                if (consumableA.StackCount <= 0)
+                var src = (Consumable)itemA;
+                var dst = (Consumable)itemB;
+                ConsumableStacking.ApplyAbsorb(src, dst, toAbsorb);
+                if (src.StackCount <= 0)
                 {
                     _slots[indexA] = null;
                     _count--;
                 }
-                
                 _compactDirty = true;
                 return true;
             }
