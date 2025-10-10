@@ -368,17 +368,26 @@ namespace PitHero.UI
             float t = _uiSwapElapsed / SWAP_TWEEN_DURATION;
             if (t < 0f) t = 0f; else if (t > 1f) t = 1f;
             float ease = 1f - (1f - t) * (1f - t); // QuadOut
+
+            // Base (stage) position of this ShortcutBar element
+            float baseX = GetX();
+            float baseY = GetY();
+
             if (_uiSwapDrawableA != null && _uiSwapSlotA != null)
             {
                 var pos = Vector2.Lerp(_uiSwapStartA, _uiSwapEndA, ease);
-                // Apply current scale for proper rendering
-                _uiSwapDrawableA.Draw(batcher, pos.X * _currentScale, pos.Y * _currentScale, SLOT_SIZE * _currentScale, SLOT_SIZE * _currentScale, Color.White);
+                // Account for this group's stage position and current scale
+                float drawX = baseX + pos.X * _currentScale;
+                float drawY = baseY + pos.Y * _currentScale;
+                _uiSwapDrawableA.Draw(batcher, drawX, drawY, SLOT_SIZE * _currentScale, SLOT_SIZE * _currentScale, Color.White);
             }
             if (_uiSwapDrawableB != null && _uiSwapSlotB != null)
             {
                 var pos = Vector2.Lerp(_uiSwapStartB, _uiSwapEndB, ease);
-                // Apply current scale for proper rendering
-                _uiSwapDrawableB.Draw(batcher, pos.X * _currentScale, pos.Y * _currentScale, SLOT_SIZE * _currentScale, SLOT_SIZE * _currentScale, Color.White);
+                // Account for this group's stage position and current scale
+                float drawX = baseX + pos.X * _currentScale;
+                float drawY = baseY + pos.Y * _currentScale;
+                _uiSwapDrawableB.Draw(batcher, drawX, drawY, SLOT_SIZE * _currentScale, SLOT_SIZE * _currentScale, Color.White);
             }
         }
         
