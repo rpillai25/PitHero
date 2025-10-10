@@ -251,18 +251,27 @@ namespace PitHero.AI
                 Debug.Log($"[OpenChest] Created pickup animation for {containedItem.Name} at position X: {_chestEntity.Transform.Position.X}, Y: {_chestEntity.Transform.Position.Y}");
             }
 
-            // Add item to hero's bag
-            if (hero.Bag.TryAdd(containedItem))
+            // Try to add item using hero's TryAddItem method (handles consumable priority logic)
+            if (hero.TryAddItem(containedItem))
             {
-                Debug.Log($"[OpenChest] Added {containedItem.Name} to hero's bag. Bag contents:");
-                LogBagContents(hero.Bag);
+                // Log which bag it went to
+                if (containedItem is Consumable && hero.ShortcutBag.Items.Contains(containedItem))
+                {
+                    Debug.Log($"[OpenChest] Added {containedItem.Name} to hero's shortcut bar. ShortcutBag contents:");
+                    LogBagContents(hero.ShortcutBag);
+                }
+                else
+                {
+                    Debug.Log($"[OpenChest] Added {containedItem.Name} to hero's main bag. Bag contents:");
+                    LogBagContents(hero.Bag);
+                }
                 
                 // Clear the item from the treasure chest
                 treasureComponent.ContainedItem = null;
             }
             else
             {
-                Debug.Warn($"[OpenChest] Hero's bag is full! Could not add {containedItem.Name}");
+                Debug.Warn($"[OpenChest] Hero's bags are full! Could not add {containedItem.Name}");
             }
         }
 
