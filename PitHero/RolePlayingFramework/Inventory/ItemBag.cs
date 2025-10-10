@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using RolePlayingFramework.Equipment;
 
@@ -162,12 +163,40 @@ namespace RolePlayingFramework.Inventory
             return _slots[slotIndex];
         }
 
-        /// <summary>Swaps two slot indices.</summary>
+        /// <summary>Swaps two slot indices. If both are same consumable type, attempts to absorb source into target stack.</summary>
         public bool SwapSlots(int indexA, int indexB)
         {
             if (indexA == indexB) return true;
             if (indexA < 0 || indexB < 0) return false;
             if (indexA >= _slots.Length || indexB >= _slots.Length) return false;
+            
+            var itemA = _slots[indexA];
+            var itemB = _slots[indexB];
+            
+            // Check if both items are consumables of the same type and can stack
+            if (itemA is Consumable consumableA && itemB is Consumable consumableB &&
+                consumableA.Name == consumableB.Name && consumableB.StackCount < consumableB.StackSize)
+            {
+                // Calculate how much can be absorbed into target (itemB)
+                int availableSpace = consumableB.StackSize - consumableB.StackCount;
+                int toAbsorb = Math.Min(availableSpace, consumableA.StackCount);
+                
+                // Transfer items from source (itemA) to target (itemB)
+                consumableB.StackCount += toAbsorb;
+                consumableA.StackCount -= toAbsorb;
+                
+                // If source is depleted, clear it
+                if (consumableA.StackCount <= 0)
+                {
+                    _slots[indexA] = null;
+                    _count--;
+                }
+                
+                _compactDirty = true;
+                return true;
+            }
+            
+            // Regular swap if not absorbing
             var tmp = _slots[indexA];
             _slots[indexA] = _slots[indexB];
             _slots[indexB] = tmp;
