@@ -250,6 +250,16 @@ namespace PitHero.UI
             var sourceItem = sourceSlot.SlotData.Item;
             var destItem = destSlot.SlotData.Item;
 
+            // If both slots are empty, ignore and clear selection to avoid null refs
+            if (sourceItem == null && destItem == null)
+            {
+                // Ensure both slots are not highlighted
+                if (sourceSlot != null) sourceSlot.SlotData.IsHighlighted = false;
+                if (destSlot != null) destSlot.SlotData.IsHighlighted = false;
+                ClearSelection();
+                return true; // consume the click so caller does not re-select target
+            }
+
             // Try absorption first
             if (CanAbsorbStacks(sourceSlot, destSlot, out var toAbsorb))
             {

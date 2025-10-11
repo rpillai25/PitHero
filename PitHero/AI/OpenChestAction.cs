@@ -251,18 +251,27 @@ namespace PitHero.AI
                 Debug.Log($"[OpenChest] Created pickup animation for {containedItem.Name} at position X: {_chestEntity.Transform.Position.X}, Y: {_chestEntity.Transform.Position.Y}");
             }
 
-            // Add item to hero's bag
-            if (hero.Bag.TryAdd(containedItem))
+            // Try to add item using hero's TryAddItem method (handles consumable priority logic)
+            if (hero.TryAddItem(containedItem))
             {
-                Debug.Log($"[OpenChest] Added {containedItem.Name} to hero's bag. Bag contents:");
-                LogBagContents(hero.Bag);
+                // Log which bag it went to
+                if (containedItem is Consumable && BagContains(hero.ShortcutBag, containedItem))
+                {
+                    Debug.Log($"[OpenChest] Added {containedItem.Name} to hero's shortcut bar. ShortcutBag contents:");
+                    LogBagContents(hero.ShortcutBag);
+                }
+                else
+                {
+                    Debug.Log($"[OpenChest] Added {containedItem.Name} to hero's main bag. Bag contents:");
+                    LogBagContents(hero.Bag);
+                }
                 
                 // Clear the item from the treasure chest
                 treasureComponent.ContainedItem = null;
             }
             else
             {
-                Debug.Warn($"[OpenChest] Hero's bag is full! Could not add {containedItem.Name}");
+                Debug.Warn($"[OpenChest] Hero's bags are full! Could not add {containedItem.Name}");
             }
         }
 
@@ -287,6 +296,20 @@ namespace PitHero.AI
                 var item = bag.Items[i];
                 Debug.Log($"[OpenChest]   {i + 1}. {item.Name} ({item.Rarity})");
             }
+        }
+
+        /// <summary>
+        /// Returns true if the bag currently contains the provided item instance
+        /// </summary>
+        private bool BagContains(RolePlayingFramework.Inventory.ItemBag bag, IItem item)
+        {
+            var items = bag.Items;
+            for (int i = 0; i < items.Count; i++)
+            {
+                if (items[i] == item)
+                    return true;
+            }
+            return false;
         }
     }
 }

@@ -175,7 +175,7 @@ namespace PitHero.UI
             // Draw background (only if sprite is loaded)
             if (_backgroundDrawable != null)
             {
-                _backgroundDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+                _backgroundDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), new Color(255, 255, 255, 100));
             }
 
             // Draw item sprite if slot has an item, or placeholder if equipment slot is empty
