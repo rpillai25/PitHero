@@ -17,7 +17,7 @@ namespace PitHero
         private static bool _storedOriginalSize;
 
         // track shrink levels
-        private enum ShrinkMode { Normal = 0, Half = 1, Quarter = 2 }
+        private enum ShrinkMode { Normal = 0, Half = 1 }
         private static ShrinkMode _currentShrinkMode = ShrinkMode.Normal;
 
         // track docking mode so shrink/restore can honor it
@@ -55,9 +55,7 @@ namespace PitHero
         }
 
         /// <summary>Returns true if window is at least half shrink</summary>
-        public static bool IsHalfHeightMode() => _currentShrinkMode == ShrinkMode.Half || _currentShrinkMode == ShrinkMode.Quarter;
-        /// <summary>Returns true if window is in quarter shrink mode</summary>
-        public static bool IsQuarterHeightMode() => _currentShrinkMode == ShrinkMode.Quarter;
+        public static bool IsHalfHeightMode() => _currentShrinkMode == ShrinkMode.Half;
 
         /// <summary>Shrinks window to half (if normal) or quarter (if already half). Does nothing past quarter. Keeps aspect ratio to avoid squish. Honors docking mode.</summary>
         public static void ShrinkToNextLevel(Game game)
@@ -75,21 +73,13 @@ namespace PitHero
                 Debug.Log($"Stored original window size Width={_originalWindowWidth} Height={_originalWindowHeight}");
             }
 
-            if (_currentShrinkMode == ShrinkMode.Quarter)
-                return; // already at smallest
-
             // capture current size + position for horizontal adjustment
             SDL.SDL_GetWindowSize(sdlWindow, out int prevW, out int prevH);
             SDL.SDL_GetWindowPosition(sdlWindow, out int prevX, out int prevY);
 
-            ShrinkMode targetMode = _currentShrinkMode + 1; // Normal->Half, Half->Quarter
+            ShrinkMode targetMode = _currentShrinkMode == ShrinkMode.Normal ? ShrinkMode.Half : ShrinkMode.Normal;
 
-            float factor = targetMode switch
-            {
-                ShrinkMode.Half => 0.5f,
-                ShrinkMode.Quarter => 0.25f,
-                _ => 1f
-            };
+            float factor = targetMode == ShrinkMode.Half ? 0.5f : 1f;
 
             int newHeight = (int)System.Math.Max(1, _originalWindowHeight * factor);
             int newWidth = (int)System.Math.Max(1, _originalWindowWidth * factor); // proportional to keep aspect ratio

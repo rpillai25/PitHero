@@ -13,8 +13,7 @@ namespace PitHero.UI
         public enum WindowSizeMode
         {
             Normal,
-            Half,
-            Quarter
+            Half
         }
         
         // Track the persistent window size preference (separate from temporary UI state)
@@ -130,7 +129,7 @@ namespace PitHero.UI
             Debug.Log($"[UIWindowManager] Stored persistent size: {_persistentWindowSize}");
             
             // Temporarily restore to normal size for UI viewing
-            if (WindowManager.IsHalfHeightMode() || WindowManager.IsQuarterHeightMode())
+            if (WindowManager.IsHalfHeightMode())
             {
                 WindowManager.RestoreOriginalSize(_game);
                 Debug.Log("[UIWindowManager] Temporarily restored to normal size for UI viewing");
@@ -146,11 +145,7 @@ namespace PitHero.UI
         /// </summary>
         private static WindowSizeMode GetCurrentWindowSize()
         {
-            if (WindowManager.IsQuarterHeightMode())
-            {
-                return WindowSizeMode.Quarter;
-            }
-            else if (WindowManager.IsHalfHeightMode())
+            if (WindowManager.IsHalfHeightMode())
             {
                 return WindowSizeMode.Half;
             }
@@ -200,14 +195,14 @@ namespace PitHero.UI
             }
 
             Debug.Log($"[UIWindowManager] Applying persistent window size: {_persistentWindowSize}");
-            Debug.Log($"[UIWindowManager] Current window state - Quarter: {WindowManager.IsQuarterHeightMode()}, Half: {WindowManager.IsHalfHeightMode()}");
+            Debug.Log($"[UIWindowManager] Current window state - Half: {WindowManager.IsHalfHeightMode()}");
 
             switch (_persistentWindowSize)
             {
                 case WindowSizeMode.Normal:
                     Debug.Log("[UIWindowManager] Applying Normal size");
                     // Restore to original size if currently shrunk
-                    if (WindowManager.IsHalfHeightMode() || WindowManager.IsQuarterHeightMode())
+                    if (WindowManager.IsHalfHeightMode())
                     {
                         WindowManager.RestoreOriginalSize(_game);
                         Debug.Log("[UIWindowManager] Restored to original size");
@@ -220,12 +215,6 @@ namespace PitHero.UI
                     
                 case WindowSizeMode.Half:
                     Debug.Log("[UIWindowManager] Applying Half size");
-                    // First restore to normal if at quarter, then shrink to half
-                    if (WindowManager.IsQuarterHeightMode())
-                    {
-                        WindowManager.RestoreOriginalSize(_game);
-                        Debug.Log("[UIWindowManager] Restored from Quarter to Normal");
-                    }
                     if (!WindowManager.IsHalfHeightMode())
                     {
                         WindowManager.ShrinkToNextLevel(_game); // Normal -> Half
@@ -236,29 +225,10 @@ namespace PitHero.UI
                         Debug.Log("[UIWindowManager] Already at Half size");
                     }
                     break;
-                    
-                case WindowSizeMode.Quarter:
-                    Debug.Log("[UIWindowManager] Applying Quarter size");
-                    // Shrink to quarter (this handles all transitions)
-                    if (!WindowManager.IsQuarterHeightMode())
-                    {
-                        if (!WindowManager.IsHalfHeightMode())
-                        {
-                            WindowManager.ShrinkToNextLevel(_game); // Normal -> Half
-                            Debug.Log("[UIWindowManager] Shrunk from Normal to Half");
-                        }
-                        WindowManager.ShrinkToNextLevel(_game); // Half -> Quarter
-                        Debug.Log("[UIWindowManager] Shrunk from Half to Quarter");
-                    }
-                    else
-                    {
-                        Debug.Log("[UIWindowManager] Already at Quarter size");
-                    }
-                    break;
             }
             
             Debug.Log($"[UIWindowManager] Applied persistent window size: {_persistentWindowSize}");
-            Debug.Log($"[UIWindowManager] Final window state - Quarter: {WindowManager.IsQuarterHeightMode()}, Half: {WindowManager.IsHalfHeightMode()}");
+            Debug.Log($"[UIWindowManager] Final window state - Half: {WindowManager.IsHalfHeightMode()}");
         }
     }
 }

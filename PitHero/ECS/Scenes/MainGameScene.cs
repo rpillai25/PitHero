@@ -33,17 +33,13 @@ namespace PitHero.ECS.Scenes
         // HUD fonts for different shrink levels
         public BitmapFont _hudFontNormal;
         public BitmapFont _hudFontHalf;
-        public BitmapFont _hudFontQuarter;
         private LabelStyle _pitLevelStyleNormal;
         private LabelStyle _pitLevelStyleHalf;
-        private LabelStyle _pitLevelStyleQuarter;
         private LabelStyle _heroLevelStyleNormal;
         private LabelStyle _heroLevelStyleHalf;
-        private LabelStyle _heroLevelStyleQuarter;
         private LabelStyle _heroHpStyleNormal;
         private LabelStyle _heroHpStyleHalf;
-        private LabelStyle _heroHpStyleQuarter;
-        private enum HudMode { Normal, Half, Quarter }
+        private enum HudMode { Normal, Half }
         private HudMode _currentHudMode = HudMode.Normal;
 
         // Cached base positions for top-left anchored UI (so offsets are relative and centralized)
@@ -59,7 +55,6 @@ namespace PitHero.ECS.Scenes
             {
                 HudMode.Normal => _hudFontNormal,
                 HudMode.Half => _hudFontHalf,
-                HudMode.Quarter => _hudFontQuarter,
                 _ => _hudFontNormal
             };
         }
@@ -81,22 +76,18 @@ namespace PitHero.ECS.Scenes
             _hudFontNormal = Content.LoadBitmapFont("Content/Fonts/HUD.fnt");
             // New enlarged fonts for smaller window modes
             _hudFontHalf = Content.LoadBitmapFont("Content/Fonts/Hud2x.fnt");
-            _hudFontQuarter = Content.LoadBitmapFont("Content/Fonts/Hud4x.fnt");
             HudFont = _hudFontNormal; // maintain old field
 
             // Pre-create label styles to avoid per-frame allocations
             _pitLevelStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
             _pitLevelStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
-            _pitLevelStyleQuarter = new LabelStyle(_hudFontQuarter, Color.White);
 
             // We'll use the same styles for hero level and HP labels
             _heroLevelStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
             _heroLevelStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
-            _heroLevelStyleQuarter = new LabelStyle(_hudFontQuarter, Color.White);
 
             _heroHpStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
             _heroHpStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
-            _heroHpStyleQuarter = new LabelStyle(_hudFontQuarter, Color.White);
 
             SetupUIOverlay();
         }
@@ -529,9 +520,7 @@ namespace PitHero.ECS.Scenes
         private void UpdateHudFontMode()
         {
             HudMode desired;
-            if (WindowManager.IsQuarterHeightMode())
-                desired = HudMode.Quarter;
-            else if (WindowManager.IsHalfHeightMode())
+            if (WindowManager.IsHalfHeightMode())
                 desired = HudMode.Half;
             else
                 desired = HudMode.Normal;
@@ -549,11 +538,6 @@ namespace PitHero.ECS.Scenes
                         _pitLevelLabel.SetStyle(_pitLevelStyleHalf);
                         _heroLevelLabel.SetStyle(_heroLevelStyleHalf);
                         _heroHpLabel.SetStyle(_heroHpStyleHalf);
-                        break;
-                    case HudMode.Quarter:
-                        _pitLevelLabel.SetStyle(_pitLevelStyleQuarter);
-                        _heroLevelLabel.SetStyle(_heroLevelStyleQuarter);
-                        _heroHpLabel.SetStyle(_heroHpStyleQuarter);
                         break;
                 }
                 _currentHudMode = desired;
@@ -576,11 +560,6 @@ namespace PitHero.ECS.Scenes
                     yOffset = GameConfig.TopUiYOffsetHalf;
                     heroLevelXOffset = 120; // 2x font, proportional spacing increase
                     heroHpXOffset = 240;
-                    break;
-                case HudMode.Quarter:
-                    yOffset = GameConfig.TopUiYOffsetQuarter;
-                    heroLevelXOffset = 280; // 4x font, needs much more spacing
-                    heroHpXOffset = 600;
                     break;
                 case HudMode.Normal:
                 default:
@@ -625,12 +604,7 @@ namespace PitHero.ECS.Scenes
             float scale = 1f;
             bool visible = true;
             
-            if (WindowManager.IsQuarterHeightMode())
-            {
-                // Hide shortcut bar in Quarter mode
-                visible = false;
-            }
-            else if (WindowManager.IsHalfHeightMode())
+            if (WindowManager.IsHalfHeightMode())
             {
                 // Scale 2x for Half mode
                 scale = 2f;

@@ -18,8 +18,7 @@ namespace PitHero.UI
         
         private ImageButtonStyle _heroNormalStyle;
         private ImageButtonStyle _heroHalfStyle;
-        private ImageButtonStyle _heroQuarterStyle;
-        private enum HeroMode { Normal, Half, Quarter }
+        private enum HeroMode { Normal, Half }
         private HeroMode _currentHeroMode = HeroMode.Normal;
         private bool _styleChanged = false;
 
@@ -87,17 +86,13 @@ namespace PitHero.UI
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
             var heroSprite = uiAtlas.GetSprite("UIHero");
             var heroSprite2x = uiAtlas.GetSprite("UIHero2x");
-            var heroSprite4x = uiAtlas.GetSprite("UIHero4x");
             var heroHighlight = uiAtlas.GetSprite("UIHeroHighlight");
             var heroHighlight2x = uiAtlas.GetSprite("UIHeroHighlight2x");
-            var heroHighlight4x = uiAtlas.GetSprite("UIHeroHighlight4x");
             var heroInverse = uiAtlas.GetSprite("UIHeroInverse");
             var heroInverse2x = uiAtlas.GetSprite("UIHeroInverse2x");
-            var heroInverse4x = uiAtlas.GetSprite("UIHeroInverse4x");
 
             _heroNormalStyle = new ImageButtonStyle { ImageUp = new SpriteDrawable(heroSprite), ImageDown = new SpriteDrawable(heroInverse), ImageOver = new SpriteDrawable(heroHighlight) };
             _heroHalfStyle = new ImageButtonStyle { ImageUp = new SpriteDrawable(heroSprite2x), ImageDown = new SpriteDrawable(heroInverse2x), ImageOver = new SpriteDrawable(heroHighlight2x) };
-            _heroQuarterStyle = new ImageButtonStyle { ImageUp = new SpriteDrawable(heroSprite4x), ImageDown = new SpriteDrawable(heroInverse4x), ImageOver = new SpriteDrawable(heroHighlight4x) };
 
             _heroButton = new HoverableImageButton(_heroNormalStyle, "Hero");
             _heroButton.SetSize(heroSprite.SourceRect.Width, heroSprite.SourceRect.Height);
@@ -535,15 +530,28 @@ namespace PitHero.UI
         public void UpdateButtonStyleIfNeeded()
         {
             HeroMode desired;
-            if (WindowManager.IsQuarterHeightMode()) desired = HeroMode.Quarter; else if (WindowManager.IsHalfHeightMode()) desired = HeroMode.Half; else desired = HeroMode.Normal;
-            if (desired == _currentHeroMode) return;
+            if (WindowManager.IsHalfHeightMode())
+                desired = HeroMode.Half;
+            else
+                desired = HeroMode.Normal;
+
+            if (desired == _currentHeroMode)
+                return;
+
             switch (desired)
             {
-                case HeroMode.Normal: _heroButton.SetStyle(_heroNormalStyle); _heroButton.SetSize(((SpriteDrawable)_heroNormalStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_heroNormalStyle.ImageUp).Sprite.SourceRect.Height); break;
-                case HeroMode.Half: _heroButton.SetStyle(_heroHalfStyle); _heroButton.SetSize(((SpriteDrawable)_heroHalfStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_heroHalfStyle.ImageUp).Sprite.SourceRect.Height); break;
-                case HeroMode.Quarter: _heroButton.SetStyle(_heroQuarterStyle); _heroButton.SetSize(((SpriteDrawable)_heroQuarterStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_heroQuarterStyle.ImageUp).Sprite.SourceRect.Height); break;
+                case HeroMode.Normal:
+                    _heroButton.SetStyle(_heroNormalStyle);
+                    _heroButton.SetSize(((SpriteDrawable)_heroNormalStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_heroNormalStyle.ImageUp).Sprite.SourceRect.Height);
+                    break;
+                case HeroMode.Half:
+                    _heroButton.SetStyle(_heroHalfStyle);
+                    _heroButton.SetSize(((SpriteDrawable)_heroHalfStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_heroHalfStyle.ImageUp).Sprite.SourceRect.Height);
+                    break;
             }
-            _currentHeroMode = desired; _styleChanged = true;
+
+            _currentHeroMode = desired;
+            _styleChanged = true;
         }
 
         public void SetPosition(float x, float y) => _heroButton?.SetPosition(x, y);

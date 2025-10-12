@@ -17,14 +17,12 @@ namespace PitHero.UI
         // HUD fonts for different window sizes
         private static BitmapFont _hudFontNormal;
         private static BitmapFont _hudFontHalf;
-        private static BitmapFont _hudFontQuarter;
 
         // Label styles for different window sizes
         private static LabelStyle _styleNormal;
         private static LabelStyle _styleHalf;
-        private static LabelStyle _styleQuarter;
 
-        private enum HoverMode { Normal, Half, Quarter }
+        private enum HoverMode { Normal, Half }
         private static HoverMode _currentHoverMode = HoverMode.Normal;
 
         /// <summary>
@@ -46,7 +44,6 @@ namespace PitHero.UI
         {
             _hudFontNormal = Core.Content.LoadBitmapFont("Content/Fonts/HUD.fnt");
             _hudFontHalf = Core.Content.LoadBitmapFont("Content/Fonts/Hud2x.fnt");
-            _hudFontQuarter = Core.Content.LoadBitmapFont("Content/Fonts/Hud4x.fnt");
         }
 
         /// <summary>
@@ -56,7 +53,6 @@ namespace PitHero.UI
         {
             _styleNormal = new LabelStyle(_hudFontNormal, Color.White);
             _styleHalf = new LabelStyle(_hudFontHalf, Color.White);
-            _styleQuarter = new LabelStyle(_hudFontQuarter, Color.White);
         }
 
         /// <summary>
@@ -89,11 +85,7 @@ namespace PitHero.UI
         {
             try
             {
-                if (WindowManager.IsQuarterHeightMode())
-                {
-                    return _styleQuarter;
-                }
-                else if (WindowManager.IsHalfHeightMode())
+                if (WindowManager.IsHalfHeightMode())
                 {
                     return _styleHalf;
                 }
@@ -116,11 +108,7 @@ namespace PitHero.UI
         {
             try
             {
-                if (WindowManager.IsQuarterHeightMode())
-                {
-                    return HoverMode.Quarter;
-                }
-                else if (WindowManager.IsHalfHeightMode())
+                if (WindowManager.IsHalfHeightMode())
                 {
                     return HoverMode.Half;
                 }

@@ -59,11 +59,7 @@ namespace PitHero.UI
             try
             {
                 // Use different padding amounts based on window mode to maintain consistent visual spacing
-                if (WindowManager.IsQuarterHeightMode())
-                {
-                    return 34f; // Larger padding for quarter mode with bigger fonts
-                }
-                else if (WindowManager.IsHalfHeightMode())
+                if (WindowManager.IsHalfHeightMode())
                 {
                     return 18f; // Medium padding for half mode
                 }
@@ -92,11 +88,7 @@ namespace PitHero.UI
                 // Use different character width estimates based on window mode
                 // These are rough estimates based on the actual font sizes
                 float charWidth;
-                if (WindowManager.IsQuarterHeightMode())
-                {
-                    charWidth = 16f; // Hud4x.fnt has larger characters
-                }
-                else if (WindowManager.IsHalfHeightMode())
+                if (WindowManager.IsHalfHeightMode())
                 {
                     charWidth = 8f; // Hud2x.fnt has medium characters
                 }

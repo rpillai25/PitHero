@@ -36,7 +36,6 @@ namespace PitHero.UI
         private ButtonGroup _windowSizeButtonGroup;
         private CheckBox _normalSizeButton;
         private CheckBox _halfSizeButton;
-        private CheckBox _quarterSizeButton;
         
         // New Window tab controls
         private TextButton _swapMonitorButton;
@@ -74,8 +73,7 @@ namespace PitHero.UI
         // Gear button style variants
         private ImageButtonStyle _gearNormalStyle;
         private ImageButtonStyle _gearHalfStyle;
-        private ImageButtonStyle _gearQuarterStyle;
-        private enum GearMode { Normal, Half, Quarter }
+        private enum GearMode { Normal, Half }
         private GearMode _currentGearMode = GearMode.Normal;
         private bool _gearStyleChanged = false; // track size changes for gear button
 
@@ -87,11 +85,10 @@ namespace PitHero.UI
         public HeroUI HeroUI => _heroUI;
         
         // Window size modes
-        private enum WindowSizeMode
+        public enum WindowSizeMode
         {
             Normal,
-            Half,
-            Quarter
+            Half
         }
         
         // Track desired size only during settings session (gets reset when settings open)
@@ -150,13 +147,10 @@ namespace PitHero.UI
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
             var gearSprite = uiAtlas.GetSprite("UIGear");
             var gearSprite2x = uiAtlas.GetSprite("UIGear2x");
-            var gearSprite4x = uiAtlas.GetSprite("UIGear4x");
             var gearHighlight = uiAtlas.GetSprite("UIGearHighlight");
             var gearHighlight2x = uiAtlas.GetSprite("UIGearHighlight2x");
-            var gearHighlight4x = uiAtlas.GetSprite("UIGearHighlight4x");
             var gearInverse = uiAtlas.GetSprite("UIGearInverse");
             var gearInverse2x = uiAtlas.GetSprite("UIGearInverse2x");
-            var gearInverse4x = uiAtlas.GetSprite("UIGearInverse4x");
 
             // Base styles for each sprite with proper ImageDown and ImageOver
             _gearNormalStyle = new ImageButtonStyle
@@ -173,13 +167,6 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(gearHighlight2x)
             };
 
-            _gearQuarterStyle = new ImageButtonStyle
-            {
-                ImageUp = new SpriteDrawable(gearSprite4x),
-                ImageDown = new SpriteDrawable(gearInverse4x),
-                ImageOver = new SpriteDrawable(gearHighlight4x)
-            };
-
             _gearButton = new HoverableImageButton(_gearNormalStyle, "Settings");
             // Explicitly size to the image (avoids hard-coded magic numbers)
             _gearButton.SetSize(gearSprite.SourceRect.Width, gearSprite.SourceRect.Height);
@@ -192,9 +179,7 @@ namespace PitHero.UI
         {
             // Determine desired gear mode based on current shrink mode
             GearMode desired;
-            if (WindowManager.IsQuarterHeightMode())
-                desired = GearMode.Quarter;
-            else if (WindowManager.IsHalfHeightMode())
+            if (WindowManager.IsHalfHeightMode())
                 desired = GearMode.Half;
             else
                 desired = GearMode.Normal;
@@ -211,10 +196,6 @@ namespace PitHero.UI
                 case GearMode.Half:
                     _gearButton.SetStyle(_gearHalfStyle);
                     _gearButton.SetSize(((SpriteDrawable)_gearHalfStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_gearHalfStyle.ImageUp).Sprite.SourceRect.Height);
-                    break;
-                case GearMode.Quarter:
-                    _gearButton.SetStyle(_gearQuarterStyle);
-                    _gearButton.SetSize(((SpriteDrawable)_gearQuarterStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_gearQuarterStyle.ImageUp).Sprite.SourceRect.Height);
                     break;
             }
 
@@ -388,12 +369,10 @@ namespace PitHero.UI
             // Create radio buttons using CheckBox
             _normalSizeButton = new CheckBox("Normal", skin);
             _halfSizeButton = new CheckBox("Half", skin);
-            _quarterSizeButton = new CheckBox("Quarter", skin);
             
             // Add buttons to ButtonGroup
             _windowSizeButtonGroup.Add(_normalSizeButton);
             _windowSizeButtonGroup.Add(_halfSizeButton);
-            _windowSizeButtonGroup.Add(_quarterSizeButton);
             
             // Set up event handlers for window size changes - update persistent size
             _normalSizeButton.OnChanged += (isChecked) => {
@@ -414,20 +393,10 @@ namespace PitHero.UI
                 }
             };
             
-            _quarterSizeButton.OnChanged += (isChecked) => {
-                if (isChecked) 
-                {
-                    UIWindowManager.SetPersistentWindowSize(UIWindowManager.WindowSizeMode.Quarter);
-                    _desiredWindowSize = WindowSizeMode.Quarter;
-                    Debug.Log("[SettingsUI] Selected Quarter window size");
-                }
-            };
-            
             // Create table for radio buttons layout
             var windowSizeTable = new Table();
             windowSizeTable.Add(_normalSizeButton).SetPadRight(15);
-            windowSizeTable.Add(_halfSizeButton).SetPadRight(15);
-            windowSizeTable.Add(_quarterSizeButton);
+            windowSizeTable.Add(_halfSizeButton);
             
             scrollContent.Add(windowSizeTable).Left().SetPadBottom(20);
             scrollContent.Row();
@@ -706,10 +675,6 @@ namespace PitHero.UI
             var persistentSize = UIWindowManager.PersistentWindowSize;
             switch (persistentSize)
             {
-                case UIWindowManager.WindowSizeMode.Quarter:
-                    _quarterSizeButton.IsChecked = true;
-                    _desiredWindowSize = WindowSizeMode.Quarter;
-                    break;
                 case UIWindowManager.WindowSizeMode.Half:
                     _halfSizeButton.IsChecked = true;
                     _desiredWindowSize = WindowSizeMode.Half;

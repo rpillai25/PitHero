@@ -62,7 +62,7 @@ namespace PitHero.ECS.Components
             // SHIFT + Right-Click: Reset window size (if shrunk) and reset zoom + recenter
             if (shiftDown && Input.RightMouseButtonPressed)
             {
-                if (WindowManager.IsHalfHeightMode() || WindowManager.IsQuarterHeightMode())
+                if (WindowManager.IsHalfHeightMode())
                     WindowManager.RestoreOriginalSize(Core.Instance);
 
                 _camera.RawZoom = GameConfig.CameraDefaultZoom;
@@ -117,13 +117,6 @@ namespace PitHero.ECS.Components
                         QuantizeCameraPosition();
                         return;
                     }
-                    else if (!WindowManager.IsQuarterHeightMode())
-                    {
-                        WindowManager.ShrinkToNextLevel(Core.Instance); // Quarter
-                        CenterCameraOnMap();
-                        QuantizeCameraPosition();
-                        return;
-                    }
                     else
                     {
                         if (currentZoom > _currentMinimumZoom)
@@ -139,14 +132,7 @@ namespace PitHero.ECS.Components
             }
             else
             {
-                if (WindowManager.IsQuarterHeightMode())
-                {
-                    WindowManager.RestoreOriginalSize(Core.Instance);
-                    _camera.Position = ConstrainCameraPosition(_camera.Position);
-                    QuantizeCameraPosition();
-                    return;
-                }
-                else if (WindowManager.IsHalfHeightMode())
+                if (WindowManager.IsHalfHeightMode())
                 {
                     WindowManager.RestoreOriginalSize(Core.Instance);
                     _camera.Position = ConstrainCameraPosition(_camera.Position);
