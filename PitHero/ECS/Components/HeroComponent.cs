@@ -82,6 +82,11 @@ namespace PitHero.ECS.Components
         /// Hero's item bag for inventory management
         /// </summary>
         public RolePlayingFramework.Inventory.ItemBag Bag { get; private set; }
+        
+        /// <summary>
+        /// Hero's shortcut bag for quick-access items (independent from main inventory)
+        /// </summary>
+        public RolePlayingFramework.Inventory.ItemBag ShortcutBag { get; private set; }
 
         private PitWidthManager _pitWidthManager;
 
@@ -123,6 +128,9 @@ namespace PitHero.ECS.Components
 
             // Initialize hero's item bag
             Bag = new RolePlayingFramework.Inventory.ItemBag("Traveller's Bag", 20);
+            
+            // Initialize hero's shortcut bag (8 slots for shortcuts)
+            ShortcutBag = new RolePlayingFramework.Inventory.ItemBag("Shortcuts", 8);
 
             // Initialize state properties to clean state
             HeroInitialized = true;  // Set to true after hero entity and components initialized
@@ -140,18 +148,48 @@ namespace PitHero.ECS.Components
             ApplyMovementSpeedForPitState();
         }
 
+        /// <summary>
+        /// Tries to add an item to the appropriate bag. Consumables go to shortcut bar first, then main bag if full.
+        /// Non-consumables go directly to main bag.
+        /// </summary>
+        public bool TryAddItem(IItem item)
+        {
+            if (item == null) return false;
+            
+            if (item is Consumable)
+            {
+                // Try shortcut bag first for consumables
+                if (ShortcutBag.TryAdd(item))
+                    return true;
+                // If shortcut bag is full, try main bag
+                if (Bag.TryAdd(item))
+                    return true;
+            }
+            else
+            {
+                // Non-consumables go directly to main bag
+                if (Bag.TryAdd(item))
+                    return true;
+            }
+            
+            return false;
+        }
+
 #if DEBUG
         /// <summary>
         /// Setup for debugging
         /// </summary>
         public void DebugSetup()
         {
-            Bag.TryAdd(PotionItems.HPPotion());
-            Bag.TryAdd(PotionItems.HPPotion());
-            Bag.TryAdd(PotionItems.APPotion());
-            Bag.TryAdd(PotionItems.APPotion());
-            Bag.TryAdd(PotionItems.APPotion());
-            Bag.TryAdd(PotionItems.FullHPPotion());
+            // Consumables should go to shortcut bar first
+            TryAddItem(PotionItems.HPPotion());
+            TryAddItem(PotionItems.HPPotion());
+            TryAddItem(PotionItems.APPotion());
+            TryAddItem(PotionItems.APPotion());
+            TryAddItem(PotionItems.APPotion());
+            TryAddItem(PotionItems.FullHPPotion());
+            
+            // Non-consumables go to main bag
             Bag.TryAdd(GearItems.ShortSword());
             Bag.TryAdd(GearItems.WoodenShield());
             Bag.TryAdd(GearItems.SquireHelm());

@@ -28,6 +28,7 @@ namespace PitHero.ECS.Scenes
         private int _lastDisplayedPitLevel = -1; // Track last displayed level to avoid string churn
         private int _lastDisplayedHeroLevel = -1; // Track last displayed hero level
         private int _lastDisplayedHeroHp = -1; // Track last displayed hero HP
+        private ShortcutBar _shortcutBar; // Shortcut bar displayed at bottom center
 
         // HUD fonts for different shrink levels
         public BitmapFont _hudFontNormal;
@@ -115,6 +116,9 @@ namespace PitHero.ECS.Scenes
                 pitWidthManager.SetPitLevel(1);
 
             SpawnHero();
+            
+            // Connect shortcut bar to hero
+            ConnectShortcutBarToHero();
 
             _isInitializationComplete = true;
         }
@@ -418,6 +422,11 @@ namespace PitHero.ECS.Scenes
             _heroHpLabel = uiCanvas.Stage.AddElement(new Label("HP: 100", _hudFontNormal));
             _heroHpLabel.SetStyle(_heroHpStyleNormal);
             _heroHpLabel.SetPosition(HeroHpLabelBaseX, PitLabelBaseY);
+            
+            // Shortcut bar at bottom center
+            _shortcutBar = new ShortcutBar();
+            uiCanvas.Stage.AddElement(_shortcutBar);
+            PositionShortcutBar();
         }
 
         private void AddPitLevelTestComponent()
@@ -551,6 +560,9 @@ namespace PitHero.ECS.Scenes
                 _pitLevelLabel.Invalidate();
                 _heroLevelLabel.Invalidate();
                 _heroHpLabel.Invalidate();
+                
+                // Update shortcut bar position and scale when mode changes
+                PositionShortcutBar();
             }
 
             // Apply vertical offset based on mode
@@ -600,6 +612,78 @@ namespace PitHero.ECS.Scenes
                 _heroHpLabel.SetX(targetHeroHpX);
             }
         }
+        
+        /// <summary>
+        /// Positions the shortcut bar at bottom center of screen based on current window mode
+        /// </summary>
+        private void PositionShortcutBar()
+        {
+            if (_shortcutBar == null)
+                return;
+                
+            // Determine scale and visibility based on window mode
+            float scale = 1f;
+            bool visible = true;
+            
+            if (WindowManager.IsQuarterHeightMode())
+            {
+                // Hide shortcut bar in Quarter mode
+                visible = false;
+            }
+            else if (WindowManager.IsHalfHeightMode())
+            {
+                // Scale 2x for Half mode
+                scale = 2f;
+            }
+            
+            _shortcutBar.SetVisible(visible);
+            _shortcutBar.SetScale(scale);
+            
+            if (visible)
+            {
+                // Calculate bottom center position
+                // 8 slots * (32px slot size + 1px padding) * scale
+                float barWidth = 8 * (32f + 1f) * scale;
+                float barHeight = 32f * scale;
+                
+                float centerX = Screen.Width / 2f - barWidth / 2f;
+                // Add extra padding for shortcut number text below slots (14px for text + 2px offset = 16px total)
+                float bottomY = Screen.Height - barHeight - 16f; // Increased from 10px to 26px to accommodate text
+                
+                _shortcutBar.SetBasePosition(centerX, bottomY);
+                
+                // Offset left when inventory is open
+                bool inventoryOpen = _settingsUI?.HeroUI?.IsWindowVisible ?? false;
+                float offsetX = inventoryOpen ? -150f : 0f; // Offset left by 150px when inventory open
+                _shortcutBar.SetOffsetX(offsetX);
+            }
+        }
+        
+        /// <summary>
+        /// Connects the shortcut bar to the hero component
+        /// </summary>
+        private void ConnectShortcutBarToHero()
+        {
+            if (_shortcutBar == null)
+                return;
+                
+            var heroEntity = FindEntity("hero");
+            if (heroEntity == null)
+            {
+                Debug.Warn("[MainGameScene] Could not find hero entity to connect shortcut bar");
+                return;
+            }
+            
+            var heroComponent = heroEntity.GetComponent<HeroComponent>();
+            if (heroComponent == null)
+            {
+                Debug.Warn("[MainGameScene] Hero entity missing HeroComponent");
+                return;
+            }
+            
+            _shortcutBar.ConnectToHero(heroComponent);
+            Debug.Log("[MainGameScene] Connected shortcut bar to hero");
+        }
 
         public override void Update()
         {
@@ -618,6 +702,15 @@ namespace PitHero.ECS.Scenes
             UpdatePitLevelLabel();
             UpdateHeroLabels();
             UpdateHudFontMode();
+            
+            // Update shortcut bar position (handles offset when inventory open)
+            PositionShortcutBar();
+            
+            // Refresh shortcut bar to keep it in sync with inventory
+            _shortcutBar?.RefreshItems();
+            
+            // Handle keyboard shortcuts via shortcut bar
+            _shortcutBar?.HandleKeyboardShortcuts();
         }
     }
 }

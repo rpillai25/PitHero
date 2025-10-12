@@ -175,7 +175,7 @@ namespace PitHero.UI
             // Draw background (only if sprite is loaded)
             if (_backgroundDrawable != null)
             {
-                _backgroundDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+                _backgroundDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), new Color(255, 255, 255, 100));
             }
 
             // Draw item sprite if slot has an item, or placeholder if equipment slot is empty
@@ -225,6 +225,17 @@ namespace PitHero.UI
             if (_slotData.IsHighlighted && _highlightBoxDrawable != null)
             {
                 _highlightBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+            }
+            
+            // Draw shortcut key number below slot for Shortcut type slots
+            if (_slotData.SlotType == InventorySlotType.Shortcut && _slotData.ShortcutKey.HasValue && _font != null)
+            {
+                var keyText = _slotData.ShortcutKey.Value.ToString();
+                var textSize = _font.MeasureString(keyText);
+                // Center the number horizontally below the slot
+                var textX = GetX() + (GetWidth() - textSize.X) / 2f;
+                var textY = GetY() + GetHeight() + 2f; // 2 pixels below the slot
+                batcher.DrawString(_font, keyText, new Vector2(textX, textY), Color.Goldenrod);
             }
             
             base.Draw(batcher, parentAlpha);
