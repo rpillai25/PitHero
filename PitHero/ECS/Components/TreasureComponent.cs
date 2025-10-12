@@ -1,4 +1,3 @@
-using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Sprites;
 using RolePlayingFramework.Equipment;

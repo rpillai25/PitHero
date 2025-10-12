@@ -637,8 +637,8 @@ namespace PitHero.ECS.Scenes
             }
             
             _shortcutBar.SetVisible(visible);
-            _shortcutBar.SetScale(scale);
-            
+            _shortcutBar.SetShortcutScale(scale);
+
             if (visible)
             {
                 // Calculate bottom center position

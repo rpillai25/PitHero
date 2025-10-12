@@ -1,8 +1,10 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
+using Microsoft.Xna.Framework.Graphics;
 using Nez;
-using Nez.BitmapFonts;
-using Nez.UI;
 using Nez.Textures;
+using Nez.UI;
+using Nez.BitmapFonts;
 using RolePlayingFramework.Equipment;
 
 namespace PitHero.UI
@@ -37,6 +39,8 @@ namespace PitHero.UI
         public event System.Action<InventorySlot, Vector2> OnSlotRightClicked;
 
         public InventorySlotData SlotData => _slotData;
+
+        public float Scale { get; set; } = 1f;
 
         public InventorySlot(InventorySlotData slotData)
         {
@@ -204,8 +208,8 @@ namespace PitHero.UI
                     {
                         var stackText = consumable.StackCount.ToString();
                         // Apply offset to stack count as well
-                        var textPosition = new Vector2(GetX() + 2f, GetY() + _itemSpriteOffsetY + GetHeight() - _font.LineHeight + 2f);
-                        batcher.DrawString(_font, stackText, textPosition, Color.White);
+                        var textPosition = new Vector2(GetX() + 2f * Scale, GetY() + _itemSpriteOffsetY + GetHeight() - _font.LineHeight * Scale + 2f * Scale);
+                        batcher.DrawString(_font, stackText, textPosition, Color.White, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
                     }
                 }
             }
@@ -231,11 +235,11 @@ namespace PitHero.UI
             if (_slotData.SlotType == InventorySlotType.Shortcut && _slotData.ShortcutKey.HasValue && _font != null)
             {
                 var keyText = _slotData.ShortcutKey.Value.ToString();
-                var textSize = _font.MeasureString(keyText);
+                var textSize = _font.MeasureString(keyText) * Scale;
                 // Center the number horizontally below the slot
                 var textX = GetX() + (GetWidth() - textSize.X) / 2f;
-                var textY = GetY() + GetHeight() + 2f; // 2 pixels below the slot
-                batcher.DrawString(_font, keyText, new Vector2(textX, textY), Color.Goldenrod);
+                var textY = GetY() + GetHeight() + 2f * Scale; // 2 pixels below the slot
+                batcher.DrawString(_font, keyText, new Vector2(textX, textY), Color.Goldenrod, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
             }
             
             base.Draw(batcher, parentAlpha);

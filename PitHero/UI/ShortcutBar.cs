@@ -86,13 +86,14 @@ namespace PitHero.UI
                 
                 float scaledSlotSize = SLOT_SIZE * _currentScale;
                 float scaledPadding = SLOT_PADDING * _currentScale;
+                slot.SetSize(scaledSlotSize, scaledSlotSize);
+                slot.Scale = _currentScale;
                 slot.SetPosition(i * (scaledSlotSize + scaledPadding), 0);
-                slot.SetScale(_currentScale);
             }
         }
         
         /// <summary>Sets the scale of the shortcut bar (1x for Normal, 2x for Half).</summary>
-        public void SetScale(float scale)
+        public void SetShortcutScale(float scale)
         {
             if (System.Math.Abs(_currentScale - scale) < 0.01f)
                 return;
@@ -375,16 +376,16 @@ namespace PitHero.UI
             {
                 var pos = Vector2.Lerp(_uiSwapStartA, _uiSwapEndA, ease);
                 // Account for this group's stage position and current scale
-                float drawX = baseX + pos.X * _currentScale;
-                float drawY = baseY + pos.Y * _currentScale;
+                float drawX = baseX + pos.X;
+                float drawY = baseY + pos.Y;
                 _uiSwapDrawableA.Draw(batcher, drawX, drawY, SLOT_SIZE * _currentScale, SLOT_SIZE * _currentScale, Color.White);
             }
             if (_uiSwapDrawableB != null && _uiSwapSlotB != null)
             {
                 var pos = Vector2.Lerp(_uiSwapStartB, _uiSwapEndB, ease);
                 // Account for this group's stage position and current scale
-                float drawX = baseX + pos.X * _currentScale;
-                float drawY = baseY + pos.Y * _currentScale;
+                float drawX = baseX + pos.X;
+                float drawY = baseY + pos.Y;
                 _uiSwapDrawableB.Draw(batcher, drawX, drawY, SLOT_SIZE * _currentScale, SLOT_SIZE * _currentScale, Color.White);
             }
         }
