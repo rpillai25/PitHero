@@ -647,7 +647,8 @@ namespace PitHero.ECS.Scenes
                 float barHeight = 32f * scale;
                 
                 float centerX = Screen.Width / 2f - barWidth / 2f;
-                float bottomY = Screen.Height - barHeight - 10f; // 10px padding from bottom
+                // Add extra padding for shortcut number text below slots (14px for text + 2px offset = 16px total)
+                float bottomY = Screen.Height - barHeight - 16f; // Increased from 10px to 26px to accommodate text
                 
                 _shortcutBar.SetBasePosition(centerX, bottomY);
                 

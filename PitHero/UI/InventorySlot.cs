@@ -227,6 +227,17 @@ namespace PitHero.UI
                 _highlightBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
             }
             
+            // Draw shortcut key number below slot for Shortcut type slots
+            if (_slotData.SlotType == InventorySlotType.Shortcut && _slotData.ShortcutKey.HasValue && _font != null)
+            {
+                var keyText = _slotData.ShortcutKey.Value.ToString();
+                var textSize = _font.MeasureString(keyText);
+                // Center the number horizontally below the slot
+                var textX = GetX() + (GetWidth() - textSize.X) / 2f;
+                var textY = GetY() + GetHeight() + 2f; // 2 pixels below the slot
+                batcher.DrawString(_font, keyText, new Vector2(textX, textY), Color.Goldenrod);
+            }
+            
             base.Draw(batcher, parentAlpha);
         }
 
