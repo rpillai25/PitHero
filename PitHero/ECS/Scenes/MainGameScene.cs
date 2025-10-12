@@ -612,7 +612,7 @@ namespace PitHero.ECS.Scenes
             
             _shortcutBar.SetVisible(visible);
             _shortcutBar.SetShortcutScale(scale);
-
+            
             if (visible)
             {
                 // Calculate bottom center position
@@ -622,7 +622,9 @@ namespace PitHero.ECS.Scenes
                 
                 float centerX = Screen.Width / 2f - barWidth / 2f;
                 // Add extra padding for shortcut number text below slots (14px for text + 2px offset = 16px total)
-                float bottomY = Screen.Height - barHeight - 16f; // Increased from 10px to 26px to accommodate text
+                // Shift up by 16 pixels when in Half mode
+                float yOffset = WindowManager.IsHalfHeightMode() ? -16f : 0f;
+                float bottomY = Screen.Height - barHeight - 16f + yOffset;
                 
                 _shortcutBar.SetBasePosition(centerX, bottomY);
                 
