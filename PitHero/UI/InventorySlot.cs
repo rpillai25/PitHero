@@ -235,7 +235,7 @@ namespace PitHero.UI
                 // Center the number horizontally below the slot
                 var textX = GetX() + (GetWidth() - textSize.X) / 2f;
                 var textY = GetY() + GetHeight() + 2f; // 2 pixels below the slot
-                batcher.DrawString(_font, keyText, new Vector2(textX, textY), Color.LightBlue);
+                batcher.DrawString(_font, keyText, new Vector2(textX, textY), Color.Goldenrod);
             }
             
             base.Draw(batcher, parentAlpha);
