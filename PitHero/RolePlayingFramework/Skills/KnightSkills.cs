@@ -8,7 +8,7 @@ namespace RolePlayingFramework.Skills
     // Active
     public sealed class SpinSlashSkill : BaseSkill
     {
-        public SpinSlashSkill() : base("knight.spin_slash", "Spin Slash", SkillKind.Active, SkillTargetType.SurroundingEnemies, 2, 4) { }
+        public SpinSlashSkill() : base("knight.spin_slash", "Spin Slash", SkillKind.Active, SkillTargetType.SurroundingEnemies, 2, 4, 120) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -24,7 +24,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class HeavyStrikeSkill : BaseSkill
     {
-        public HeavyStrikeSkill() : base("knight.heavy_strike", "Heavy Strike", SkillKind.Active, SkillTargetType.SingleEnemy, 3, 5) { }
+        public HeavyStrikeSkill() : base("knight.heavy_strike", "Heavy Strike", SkillKind.Active, SkillTargetType.SingleEnemy, 3, 5, 180) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -37,7 +37,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class LightArmorPassive : BaseSkill
     {
-        public LightArmorPassive() : base("knight.light_armor", "Light Armor", SkillKind.Passive, SkillTargetType.Self, 1, 0) { }
+        public LightArmorPassive() : base("knight.light_armor", "Light Armor", SkillKind.Passive, SkillTargetType.Self, 1, 0, 50) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.AddExtraEquipPermission(Equipment.ItemKind.ArmorRobe); // allow robes
@@ -46,7 +46,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class HeavyArmorPassive : BaseSkill
     {
-        public HeavyArmorPassive() : base("knight.heavy_armor", "Heavy Armor", SkillKind.Passive, SkillTargetType.Self, 2, 0) { }
+        public HeavyArmorPassive() : base("knight.heavy_armor", "Heavy Armor", SkillKind.Passive, SkillTargetType.Self, 2, 0, 100) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.PassiveDefenseBonus += 2; // flat defense bonus applied in orchestrator damage step

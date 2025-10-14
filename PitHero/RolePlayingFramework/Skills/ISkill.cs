@@ -14,6 +14,7 @@ namespace RolePlayingFramework.Skills
         SkillTargetType TargetType { get; }
         int LearnLevel { get; }
         int APCost { get; }
+        int JPCost { get; }
 
         /// <summary>Applies passive modifiers at aggregation time (no side effects).</summary>
         void ApplyPassive(Hero hero);

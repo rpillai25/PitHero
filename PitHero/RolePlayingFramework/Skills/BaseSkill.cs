@@ -14,8 +14,9 @@ namespace RolePlayingFramework.Skills
         public SkillTargetType TargetType { get; }
         public int LearnLevel { get; }
         public int APCost { get; }
+        public int JPCost { get; }
 
-        protected BaseSkill(string id, string name, SkillKind kind, SkillTargetType targetType, int learnLevel, int apCost)
+        protected BaseSkill(string id, string name, SkillKind kind, SkillTargetType targetType, int learnLevel, int apCost, int jpCost)
         {
             Id = id;
             Name = name;
@@ -23,6 +24,7 @@ namespace RolePlayingFramework.Skills
             TargetType = targetType;
             LearnLevel = learnLevel;
             APCost = apCost;
+            JPCost = jpCost;
         }
 
         public virtual void ApplyPassive(Hero hero) { }
