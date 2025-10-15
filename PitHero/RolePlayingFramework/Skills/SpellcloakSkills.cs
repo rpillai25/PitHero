@@ -46,7 +46,7 @@ namespace RolePlayingFramework.Skills
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             // Untargetable for 1 turn, AP regen (placeholder)
-            hero.RegenerateAP(3);
+            hero.RestoreAP(3);
             return "Fade";
         }
     }
