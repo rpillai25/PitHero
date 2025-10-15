@@ -280,7 +280,7 @@ namespace PitHero.Tests
             var hero = new Hero("TestPaladin", crystal.Job, crystal.Level, crystal.BaseStats, crystal);
 
             Assert.IsNotNull(hero);
-            Assert.AreEqual("Paladin", hero.CurrentJob.Name);
+            Assert.AreEqual("Paladin", hero.Job.Name);
         }
 
         [TestMethod]
@@ -291,48 +291,50 @@ namespace PitHero.Tests
 
             hero.EarnJP(100);
 
-            Assert.AreEqual(100, hero.TotalJP);
-            Assert.AreEqual(100, hero.CurrentJP);
+            Assert.AreEqual(100, hero.GetTotalJP());
+            Assert.AreEqual(100, hero.GetCurrentJP());
         }
 
         [TestMethod]
         public void Hero_Can_Purchase_Secondary_Job_Skills()
         {
-            var crystal = new HeroCrystal("PaladinCore", new Paladin(), 1, new StatBlock(4, 1, 3, 2));
-            var hero = new Hero("TestPaladin", crystal.Job, crystal.Level, crystal.BaseStats, crystal);
-
-            hero.EarnJP(200);
+            // Test skill purchase via crystal (not hero) to avoid auto-learning
+            var crystal = new HeroCrystal("PaladinCore", new Paladin(), 3, new StatBlock(4, 1, 3, 2));
+            crystal.EarnJP(250);
             
             var job = new Paladin();
-            var skill = job.Skills[0]; // Knight's Honor - 120 JP
+            var skill = job.Skills[3]; // Aura Heal - 220 JP, Level 3
 
-            var result = hero.TryPurchaseSkill(skill);
+            var result = crystal.TryPurchaseSkill(skill);
 
-            Assert.IsTrue(result, "Should be able to purchase first skill");
-            Assert.AreEqual(80, hero.CurrentJP, "Current JP should be reduced by skill cost");
+            Assert.IsTrue(result, "Should be able to purchase Aura Heal");
+            Assert.AreEqual(30, crystal.CurrentJP, "Current JP should be reduced by skill cost (250-220=30)");
         }
 
         [TestMethod]
         public void Secondary_Job_Progression_Complete_Workflow()
         {
-            // Create a Paladin crystal
-            var crystal = new HeroCrystal("PaladinCore", new Paladin(), 1, new StatBlock(4, 1, 3, 2));
-            var hero = new Hero("TestPaladin", crystal.Job, crystal.Level, crystal.BaseStats, crystal);
-
-            // Earn enough JP to master the job
-            hero.EarnJP(700); // 120+160+200+220 = 700
+            // Test complete workflow: create crystal, earn JP, purchase all skills, verify mastery
+            var crystal = new HeroCrystal("PaladinCore", new Paladin(), 3, new StatBlock(4, 1, 3, 2));
+            
+            // Earn enough JP to purchase all skills: 120+160+200+220 = 700
+            crystal.EarnJP(700);
 
             var job = new Paladin();
             
-            // Purchase all skills
+            // Purchase all skills via crystal
             foreach (var skill in job.Skills)
             {
-                var result = hero.TryPurchaseSkill(skill);
+                var result = crystal.TryPurchaseSkill(skill);
                 Assert.IsTrue(result, $"Should be able to purchase {skill.Name}");
             }
 
             // Verify job is mastered
-            Assert.IsTrue(hero.IsJobMastered(), "Paladin job should be mastered after learning all skills");
+            Assert.IsTrue(crystal.IsJobMastered(), "Paladin job should be mastered after learning all skills");
+            
+            // Verify we can create a hero with all skills
+            var hero = new Hero("TestPaladin", crystal.Job, crystal.Level, crystal.BaseStats, crystal);
+            Assert.AreEqual(4, hero.LearnedSkills.Count, "Hero should have all 4 Paladin skills");
         }
 
         #endregion
