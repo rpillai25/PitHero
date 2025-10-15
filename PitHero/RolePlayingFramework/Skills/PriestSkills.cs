@@ -7,7 +7,7 @@ namespace RolePlayingFramework.Skills
 {
     public sealed class HealSkill : BaseSkill
     {
-        public HealSkill() : base("priest.heal", "Heal", SkillKind.Active, SkillTargetType.Self, 2, 3) { }
+        public HealSkill() : base("priest.heal", "Heal", SkillKind.Active, SkillTargetType.Self, 2, 3, 100) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var mult = 1f + hero.HealPowerBonus;
@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class DefenseUpSkill : BaseSkill
     {
-        public DefenseUpSkill() : base("priest.defup", "Defense Up", SkillKind.Active, SkillTargetType.Self, 3, 4) { }
+        public DefenseUpSkill() : base("priest.defup", "Defense Up", SkillKind.Active, SkillTargetType.Self, 3, 4, 160) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             hero.PassiveDefenseBonus += 1; // temporary simple stackable buff
@@ -28,7 +28,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class CalmSpiritPassive : BaseSkill
     {
-        public CalmSpiritPassive() : base("priest.calm_spirit", "Calm Spirit", SkillKind.Passive, SkillTargetType.Self, 1, 0) { }
+        public CalmSpiritPassive() : base("priest.calm_spirit", "Calm Spirit", SkillKind.Passive, SkillTargetType.Self, 1, 0, 50) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.APTickRegen += 1; // +1 AP per turn cycle
@@ -37,7 +37,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class MenderPassive : BaseSkill
     {
-        public MenderPassive() : base("priest.mender", "Mender", SkillKind.Passive, SkillTargetType.Self, 2, 0) { }
+        public MenderPassive() : base("priest.mender", "Mender", SkillKind.Passive, SkillTargetType.Self, 2, 0, 80) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.HealPowerBonus += 0.25f; // +25% healing

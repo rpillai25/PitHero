@@ -430,6 +430,41 @@ namespace RolePlayingFramework.Heroes
             return skill.Execute(this, primary, surrounding, resolver);
         }
 
+        /// <summary>Earns JP for the bound crystal (if any).</summary>
+        public void EarnJP(int amount)
+        {
+            _boundCrystal?.EarnJP(amount);
+        }
+
+        /// <summary>Attempts to purchase a skill using JP from the bound crystal. Returns true if successful.</summary>
+        public bool TryPurchaseSkill(ISkill skill)
+        {
+            if (_boundCrystal == null) return false;
+            if (_boundCrystal.TryPurchaseSkill(skill))
+            {
+                // Add the skill to the hero's learned skills
+                if (!_learnedSkills.ContainsKey(skill.Id))
+                {
+                    _learnedSkills[skill.Id] = skill;
+                    ApplyPassiveSkills();
+                }
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>Gets available JP from the bound crystal.</summary>
+        public int GetCurrentJP() => _boundCrystal?.CurrentJP ?? 0;
+
+        /// <summary>Gets total JP earned from the bound crystal.</summary>
+        public int GetTotalJP() => _boundCrystal?.TotalJP ?? 0;
+
+        /// <summary>Gets the job level from the bound crystal.</summary>
+        public int GetJobLevel() => _boundCrystal?.JobLevel ?? 1;
+
+        /// <summary>Checks if the job is mastered (all skills learned).</summary>
+        public bool IsJobMastered() => _boundCrystal?.IsJobMastered() ?? false;
+
         /// <summary>Restores AP up to max (amount < 0 indicates full restore). Returns true if AP was actually restored.</summary>
         public bool RestoreAP(int amount)
         {
