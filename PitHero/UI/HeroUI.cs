@@ -27,6 +27,7 @@ namespace PitHero.UI
         private TabPane _tabPane;
         private Tab _inventoryTab;
         private Tab _prioritiesTab;
+        private Tab _crystalTab;
         private bool _windowVisible = false;
         
         // Inventory tab content
@@ -44,6 +45,9 @@ namespace PitHero.UI
         // Priority reorder components (moved to priorities tab)
         private ReorderableTableList<string> _priorityList;
         private List<string> _priorityItems;
+        
+        // Hero Crystal tab component
+        private HeroCrystalTab _heroCrystalTab;
 
         // Sort buttons
         private HoverableImageButton _sortTimeButton;
@@ -128,10 +132,13 @@ namespace PitHero.UI
             var tabStyle = CreateTabStyle(skin);
             _inventoryTab = new Tab("Inventory", tabStyle);
             _prioritiesTab = new Tab("Pit Priorities", tabStyle);
+            _crystalTab = new Tab("Hero Crystal", tabStyle);
             PopulateInventoryTab(_inventoryTab, skin);
             PopulatePrioritiesTab(_prioritiesTab, skin);
+            PopulateCrystalTab(_crystalTab, skin);
             _tabPane.AddTab(_inventoryTab);
             _tabPane.AddTab(_prioritiesTab);
+            _tabPane.AddTab(_crystalTab);
             _heroWindow.Add(_tabPane).Expand().Fill();
             _heroWindow.SetVisible(false);
         }
@@ -423,6 +430,13 @@ namespace PitHero.UI
             _priorityList = new ReorderableTableList<string>(skin, _priorityItems, OnPriorityReordered);
             prioritiesTab.Add(_priorityList).Expand().Fill().Pad(15f);
         }
+        
+        private void PopulateCrystalTab(Tab crystalTab, Skin skin)
+        {
+            _heroCrystalTab = new HeroCrystalTab();
+            var content = _heroCrystalTab.CreateContent(skin, _stage);
+            crystalTab.Add(content).Expand().Fill();
+        }
 
         private void InitializePriorityItems()
         {
@@ -461,6 +475,10 @@ namespace PitHero.UI
                 var heroComponent = GetHeroComponent();
                 if (heroComponent != null && _inventoryGrid != null)
                     _inventoryGrid.ConnectToHero(heroComponent);
+                
+                // Update Hero Crystal tab with current hero
+                if (heroComponent != null && _heroCrystalTab != null)
+                    _heroCrystalTab.UpdateWithHero(heroComponent);
 
                 // Apply default sort only on the first open; thereafter, preserve last selection
                 if (_inventoryGrid != null && !_appliedInitialSort)
@@ -585,6 +603,10 @@ namespace PitHero.UI
                         _equipPreviewTooltip.GetContainer().SetPosition(previewX, previewY);
                     }
                 }
+                
+                // Update hero crystal tab tooltip
+                if (_heroCrystalTab != null)
+                    _heroCrystalTab.Update();
             }
         }
 

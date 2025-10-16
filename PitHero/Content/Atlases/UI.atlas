@@ -118,3 +118,34 @@ UISortTypeInverse
 UISortOrderArrow
 	0,481,10,13
 	0.5,0.5
+
+SkillIcon1
+	700,0,24,24
+	0.5,0.5
+SkillIcon2
+	726,0,24,24
+	0.5,0.5
+SkillIcon3
+	752,0,24,24
+	0.5,0.5
+SkillIcon4
+	778,0,24,24
+	0.5,0.5
+SkillIcon5
+	804,0,24,24
+	0.5,0.5
+SkillIcon6
+	700,26,24,24
+	0.5,0.5
+SkillIcon7
+	726,26,24,24
+	0.5,0.5
+SkillIcon8
+	752,26,24,24
+	0.5,0.5
+SkillIcon9
+	778,26,24,24
+	0.5,0.5
+SkillIcon10
+	804,26,24,24
+	0.5,0.5
