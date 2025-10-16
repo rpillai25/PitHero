@@ -10,6 +10,7 @@ namespace RolePlayingFramework.Skills
     {
         public string Id { get; }
         public string Name { get; }
+        public string Description { get; }
         public SkillKind Kind { get; }
         public SkillTargetType TargetType { get; }
         public int LearnLevel { get; }
@@ -17,9 +18,15 @@ namespace RolePlayingFramework.Skills
         public int JPCost { get; }
 
         protected BaseSkill(string id, string name, SkillKind kind, SkillTargetType targetType, int learnLevel, int apCost, int jpCost)
+            : this(id, name, "", kind, targetType, learnLevel, apCost, jpCost)
+        {
+        }
+
+        protected BaseSkill(string id, string name, string description, SkillKind kind, SkillTargetType targetType, int learnLevel, int apCost, int jpCost)
         {
             Id = id;
             Name = name;
+            Description = description;
             Kind = kind;
             TargetType = targetType;
             LearnLevel = learnLevel;
