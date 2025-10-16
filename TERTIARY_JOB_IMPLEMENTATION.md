@@ -5,7 +5,7 @@ This document describes the implementation of the Tertiary Job System for PitHer
 
 ## Implementation Status
 
-**Completed**: 11 out of 22 tertiary jobs (50%)
+**Completed**: 22 out of 22 tertiary jobs (100%)
 **Tested**: All implemented jobs have comprehensive test coverage
 **Integration**: Fully compatible with existing crystal combination and JP systems
 
@@ -116,21 +116,108 @@ All implemented tertiary jobs have been tested and validated with the following 
   - Dragon Arrow (Active, JP: 250, Level: 2, AP: 7) – AoE physical + magic
   - Energy Shot (Active, JP: 220, Level: 3, AP: 8) – Multi-hit AoE
 
-## Remaining Jobs (11)
+### 12. Divine Cloak (Divine Fist + Spellcloak)
+- **Base Stats**: STR 2, AGI 4, VIT 2, MAG 4
+- **Growth/Level**: STR+1, AGI+3, VIT+1, MAG+2
+- **Skills**:
+  - Spirit Veil (Passive, JP: 180, Level: 1) – Counterattack with magic while stealthed
+  - Enlightened Fade (Passive, JP: 220, Level: 2) – +15% AP gain, untargetable on AP surge
+  - Sacred Bolt (Active, JP: 250, Level: 2, AP: 6) – Magic + silence
+  - Aura Cloak (Active, JP: 220, Level: 3, AP: 9) – AP regen + shield
 
-The following tertiary jobs are defined in the specification but not yet implemented:
+### 13. Stalker Monk (Stalker + Monk)
+- **Base Stats**: STR 2, AGI 4, VIT 2, MAG 2
+- **Growth/Level**: STR+1, AGI+3, VIT+1, MAG+1
+- **Skills**:
+  - Fast Stalker (Passive, JP: 180, Level: 1) – +10% evasion, see hidden traps
+  - Swift Escape (Passive, JP: 220, Level: 2) – Escape battles easier, AP boost
+  - Poison Ki (Active, JP: 250, Level: 2, AP: 6) – Poison + AGI damage
+  - Silent Flurry (Active, JP: 220, Level: 3, AP: 7) – Multi-hit AoE, silence
 
-12. Divine Cloak (Divine Fist + Spellcloak)
-13. Stalker Monk (Stalker + Monk)
-14. Holy Shadow (Holy Archer + Shadowmender)
-15. Ki Ninja (Ki Shot + Ninja)
-16. Arcane Stalker (Arcane Archer + Stalker)
-17. Shadow Avenger (Shadow Fist + Spellcloak)
-18. Divine Archer (Divine Fist + Holy Archer)
-19. Mystic Marksman (Marksman + Spellcloak)
-20. Silent Hunter (Stalker + Ninja)
-21. Divine Samurai (Samurai + Divine Fist)
-22. Mystic Stalker (Stalker + Spellcloak)
+### 14. Holy Shadow (Holy Archer + Shadowmender)
+- **Base Stats**: STR 1, AGI 3, VIT 2, MAG 4
+- **Growth/Level**: STR+1, AGI+3, VIT+1, MAG+2
+- **Skills**:
+  - Divine Veil (Passive, JP: 180, Level: 1) – +2 sight, resist debuffs while stealthed
+  - Light and Dark (Passive, JP: 220, Level: 2) – Heal allies while undetected
+  - Shadow Shot (Active, JP: 250, Level: 2, AP: 5) – Holy + silence damage
+  - Sacred Silence (Active, JP: 220, Level: 3, AP: 8) – Silence all enemies in area
+
+### 15. Ki Ninja (Ki Shot + Ninja)
+- **Base Stats**: STR 2, AGI 4, VIT 2, MAG 2
+- **Growth/Level**: STR+1, AGI+3, VIT+1, MAG+1
+- **Skills**:
+  - Ki Evasion (Passive, JP: 180, Level: 1) – +10% evasion, see traps
+  - Arrow Dash (Passive, JP: 220, Level: 2) – Multi-attack after movement
+  - Ki Slash (Active, JP: 250, Level: 2, AP: 6) – Magic + physical damage
+  - Ninja Flurry (Active, JP: 220, Level: 3, AP: 7) – Multi-hit AoE
+
+### 16. Arcane Stalker (Arcane Archer + Stalker)
+- **Base Stats**: STR 2, AGI 3, VIT 2, MAG 4
+- **Growth/Level**: STR+1, AGI+2, VIT+1, MAG+2
+- **Skills**:
+  - Tracker's Arcana (Passive, JP: 180, Level: 1) – See hidden magic traps, +10% magic damage
+  - Quick Arcane Escape (Passive, JP: 220, Level: 2) – Escape battles easier, AP boost
+  - Piercing Venom (Active, JP: 250, Level: 2, AP: 7) – Poison + magic AoE
+  - Arcane Volley (Active, JP: 220, Level: 3, AP: 8) – Elemental AoE, silence
+
+### 17. Shadow Avenger (Shadow Fist + Spellcloak)
+- **Base Stats**: STR 2, AGI 4, VIT 2, MAG 3
+- **Growth/Level**: STR+1, AGI+3, VIT+1, MAG+2
+- **Skills**:
+  - Stealth Counter (Passive, JP: 180, Level: 1) – Counterattack with stealth
+  - Arcane Evasion (Passive, JP: 220, Level: 2) – +15% evasion, magic attacks don't break stealth
+  - Sneak Bolt (Active, JP: 250, Level: 2, AP: 5) – Magic + sneak damage
+  - Ki Fade (Active, JP: 220, Level: 3, AP: 6) – Gain stealth after attack
+
+### 18. Divine Archer (Divine Fist + Holy Archer)
+- **Base Stats**: STR 2, AGI 2, VIT 2, MAG 5
+- **Growth/Level**: STR+1, AGI+2, VIT+1, MAG+2
+- **Skills**:
+  - Sacred Sight (Passive, JP: 180, Level: 1) – +2 sight, holy arrows heal allies
+  - Aura Blessing (Passive, JP: 220, Level: 2) – AP regen for allies in line
+  - Light Strike (Active, JP: 250, Level: 2, AP: 6) – Physical + holy damage
+  - Holy Volley (Active, JP: 220, Level: 3, AP: 8) – Holy AoE
+
+### 19. Mystic Marksman (Marksman + Spellcloak)
+- **Base Stats**: STR 2, AGI 3, VIT 2, MAG 4
+- **Growth/Level**: STR+1, AGI+2, VIT+1, MAG+2
+- **Skills**:
+  - Mystic Aim (Passive, JP: 180, Level: 1) – +2 sight, +10% magic damage
+  - Arcane Reflex (Passive, JP: 220, Level: 2) – First attack has stealth bonus
+  - Spell Shot (Active, JP: 250, Level: 2, AP: 7) – Magic AoE
+  - Fade Volley (Active, JP: 220, Level: 3, AP: 8) – Silence and AP regen
+
+### 20. Silent Hunter (Stalker + Ninja)
+- **Base Stats**: STR 3, AGI 4, VIT 2, MAG 1
+- **Growth/Level**: STR+2, AGI+3, VIT+1, MAG+1
+- **Skills**:
+  - Stealth Tracker (Passive, JP: 180, Level: 1) – +15% evasion when undetected
+  - Escape Master (Passive, JP: 220, Level: 2) – Immune to traps, bonus JP from escapes
+  - Silent Slash (Active, JP: 250, Level: 2, AP: 5) – Crit and stealth bonus
+  - Venom Escape (Active, JP: 220, Level: 3, AP: 8) – Untargetable for 2 turns, AP boost
+
+### 21. Divine Samurai (Samurai + Divine Fist)
+- **Base Stats**: STR 4, AGI 2, VIT 3, MAG 3
+- **Growth/Level**: STR+2, AGI+2, VIT+2, MAG+2
+- **Skills**:
+  - Bushido Spirit (Passive, JP: 180, Level: 1) – Counterattack when undetected
+  - Enlightened Will (Passive, JP: 220, Level: 2) – Resist crowd control, AP boost
+  - Sacred Slash (Active, JP: 250, Level: 2, AP: 6) – Crit + magic
+  - Dragon Aura (Active, JP: 220, Level: 3, AP: 8) – AP gain and debuff removal
+
+### 22. Mystic Stalker (Stalker + Spellcloak)
+- **Base Stats**: STR 2, AGI 4, VIT 2, MAG 3
+- **Growth/Level**: STR+1, AGI+3, VIT+1, MAG+2
+- **Skills**:
+  - Arcane Tracker (Passive, JP: 180, Level: 1) – See hidden magic traps, bonus JP from escapes
+  - Quick Fade (Passive, JP: 220, Level: 2) – Escape battles easier, AP regen
+  - Poison Bolt (Active, JP: 250, Level: 2, AP: 6) – Poison + magic damage
+  - Silent Arcana (Active, JP: 220, Level: 3, AP: 7) – Multi-hit AoE, silence
+
+## Remaining Jobs (0)
+
+All tertiary jobs from the specification have now been implemented!
 
 ## Crystal Combination System
 
@@ -144,18 +231,18 @@ Tertiary jobs leverage the existing `HeroCrystal.Combine()` system:
 ## Testing
 
 Comprehensive test suite in `TertiaryJobSystemTests.cs` includes:
-- **Instantiation Tests**: Verify all 11 implemented jobs can be created
+- **Instantiation Tests**: Verify all 22 implemented jobs can be created
 - **JP Cost Tests**: Verify all skills have correct JP costs (180-250)
 - **Learn Level Tests**: Verify skills follow the 1, 2, 2, 3 pattern
 - **Crystal Integration Tests**: Verify crystal creation and combination
 - **Hero Integration Tests**: Verify heroes can use tertiary jobs
 - **Skill Purchase Tests**: Verify JP and skill purchase system works
 
-All 7 tertiary job tests passing.
+All 7 tertiary job tests passing with all 22 jobs validated.
 
 ## Files Created
 
-### Job Classes (11 files)
+### Job Classes (22 files)
 - `PitHero/RolePlayingFramework/Jobs/Templar.cs`
 - `PitHero/RolePlayingFramework/Jobs/ShinobiMaster.cs`
 - `PitHero/RolePlayingFramework/Jobs/SpellSniper.cs`
@@ -167,8 +254,19 @@ All 7 tertiary job tests passing.
 - `PitHero/RolePlayingFramework/Jobs/ArcaneSamurai.cs`
 - `PitHero/RolePlayingFramework/Jobs/MarksmanWizard.cs`
 - `PitHero/RolePlayingFramework/Jobs/DragonMarksman.cs`
+- `PitHero/RolePlayingFramework/Jobs/DivineCloak.cs`
+- `PitHero/RolePlayingFramework/Jobs/StalkerMonk.cs`
+- `PitHero/RolePlayingFramework/Jobs/HolyShadow.cs`
+- `PitHero/RolePlayingFramework/Jobs/KiNinja.cs`
+- `PitHero/RolePlayingFramework/Jobs/ArcaneStalker.cs`
+- `PitHero/RolePlayingFramework/Jobs/ShadowAvenger.cs`
+- `PitHero/RolePlayingFramework/Jobs/DivineArcher.cs`
+- `PitHero/RolePlayingFramework/Jobs/MysticMarksman.cs`
+- `PitHero/RolePlayingFramework/Jobs/SilentHunter.cs`
+- `PitHero/RolePlayingFramework/Jobs/DivineSamurai.cs`
+- `PitHero/RolePlayingFramework/Jobs/MysticStalker.cs`
 
-### Skill Implementation Files (11 files)
+### Skill Implementation Files (22 files)
 - `PitHero/RolePlayingFramework/Skills/TemplarSkills.cs`
 - `PitHero/RolePlayingFramework/Skills/ShinobiMasterSkills.cs`
 - `PitHero/RolePlayingFramework/Skills/SpellSniperSkills.cs`
@@ -180,19 +278,30 @@ All 7 tertiary job tests passing.
 - `PitHero/RolePlayingFramework/Skills/ArcaneSamuraiSkills.cs`
 - `PitHero/RolePlayingFramework/Skills/MarksmanWizardSkills.cs`
 - `PitHero/RolePlayingFramework/Skills/DragonMarksmanSkills.cs`
+- `PitHero/RolePlayingFramework/Skills/DivineCloakSkills.cs`
+- `PitHero/RolePlayingFramework/Skills/StalkerMonkSkills.cs`
+- `PitHero/RolePlayingFramework/Skills/HolyShadowSkills.cs`
+- `PitHero/RolePlayingFramework/Skills/KiNinjaSkills.cs`
+- `PitHero/RolePlayingFramework/Skills/ArcaneStalkerSkills.cs`
+- `PitHero/RolePlayingFramework/Skills/ShadowAvengerSkills.cs`
+- `PitHero/RolePlayingFramework/Skills/DivineArcherSkills.cs`
+- `PitHero/RolePlayingFramework/Skills/MysticMarksmanSkills.cs`
+- `PitHero/RolePlayingFramework/Skills/SilentHunterSkills.cs`
+- `PitHero/RolePlayingFramework/Skills/DivineSamuraiSkills.cs`
+- `PitHero/RolePlayingFramework/Skills/MysticStalkerSkills.cs`
 
 ### Test Files
 - `PitHero.Tests/TertiaryJobSystemTests.cs` - Comprehensive test suite with 7 tests
 
 ## Summary
 
-The tertiary job system is 50% implemented with:
-- ✅ 11 of 22 tertiary job classes
-- ✅ 44 total skills (4 per job)
+The tertiary job system is fully implemented with:
+- ✅ All 22 tertiary job classes
+- ✅ 88 total skills (4 per job)
 - ✅ Proper stat distributions matching specifications
 - ✅ JP costs and learn levels as specified (180-250 JP, levels 1-2-2-3)
 - ✅ Integration with existing crystal combination system
 - ✅ Comprehensive test coverage (7/7 tests passing)
-- ✅ Documentation
+- ✅ Complete documentation
 
-The system follows the established patterns from primary and secondary jobs, requiring no changes to core infrastructure. The remaining 11 jobs can be implemented following the same pattern demonstrated in the completed jobs.
+The system follows the established patterns from primary and secondary jobs, requiring no changes to core infrastructure. All tertiary jobs are production-ready and fully tested.

@@ -30,7 +30,11 @@ namespace PitHero.Tests
                 new Templar(), new ShinobiMaster(), new SpellSniper(),
                 new SoulGuardian(), new Trickshot(), new SeraphHunter(),
                 new MysticAvenger(), new ShadowPaladin(), new ArcaneSamurai(),
-                new MarksmanWizard(), new DragonMarksman()
+                new MarksmanWizard(), new DragonMarksman(),
+                new DivineCloak(), new StalkerMonk(), new HolyShadow(),
+                new KiNinja(), new ArcaneStalker(), new ShadowAvenger(),
+                new DivineArcher(), new MysticMarksman(), new SilentHunter(),
+                new DivineSamurai(), new MysticStalker()
             };
 
             foreach (var job in jobs)
@@ -65,7 +69,11 @@ namespace PitHero.Tests
                 new Templar(), new ShinobiMaster(), new SpellSniper(),
                 new SoulGuardian(), new Trickshot(), new SeraphHunter(),
                 new MysticAvenger(), new ShadowPaladin(), new ArcaneSamurai(),
-                new MarksmanWizard(), new DragonMarksman()
+                new MarksmanWizard(), new DragonMarksman(),
+                new DivineCloak(), new StalkerMonk(), new HolyShadow(),
+                new KiNinja(), new ArcaneStalker(), new ShadowAvenger(),
+                new DivineArcher(), new MysticMarksman(), new SilentHunter(),
+                new DivineSamurai(), new MysticStalker()
             };
 
             foreach (var job in jobs)
