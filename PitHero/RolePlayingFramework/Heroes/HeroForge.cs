@@ -20,7 +20,7 @@ namespace RolePlayingFramework.Heroes
             {
                 // default fallback hero if nothing queued
                 var baseStats = new StatBlock(2, 2, 2, 2);
-                var job = new Jobs.Knight();
+                var job = new Jobs.Primary.Knight();
                 return new Hero(runtimeName, job, 1, baseStats, null);
             }
 

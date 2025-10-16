@@ -41,9 +41,11 @@
   - When logging Rectangles, log the X, Y, Width, and Height individually.  You can't just write the Rectangle itself.
   - Avoid unnecessarily excess logging unless it's specifically for debugging an issue.  Then once the issue has been solved remove the excess logging.
 - **Build Requirements**: 
-  - Run `getFNA.sh` with automatic "yes" response before building to initialize FNA submodule and dependencies
-    - cd /home/runner/work/PitHero/PitHero && echo "y" | ./getFNA.sh
-  - Both FNA and Nez must be properly initialized before building.  Check that both subfolders are there.
+  - **Always build the project after making code changes to ensure it compiles successfully**
+  - Run `dotnet build` to verify the project builds without errors
+  - Initialize submodules before first build: `git submodule update --init --recursive`
+  - Clone FNA if missing: `git clone --recursive https://github.com/FNA-XNA/FNA.git FNA`
+  - Both FNA and Nez must be properly initialized before building. Check that both subfolders are there.
 - **Nez Architecture Compliance**:
   - For random numbers user Nez.Random instead of System.Random
   - Game1 should inherit from `Nez.Core`, not override Draw() or Update() methods

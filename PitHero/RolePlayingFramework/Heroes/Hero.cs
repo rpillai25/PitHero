@@ -170,37 +170,37 @@ namespace RolePlayingFramework.Heroes
             switch (item.Kind)
             {
                 case ItemKind.WeaponSword:
-                    if (Job is Jobs.Knight) { WeaponShield1 = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Primary.Knight) { WeaponShield1 = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.WeaponKnuckle:
-                    if (Job is Jobs.Monk) { WeaponShield1 = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Primary.Monk) { WeaponShield1 = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.WeaponStaff:
-                    if (Job is Jobs.Priest) { WeaponShield1 = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Primary.Priest) { WeaponShield1 = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.WeaponRod:
-                    if (Job is Jobs.Mage) { WeaponShield1 = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Primary.Mage) { WeaponShield1 = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.ArmorMail:
-                    if (Job is Jobs.Knight || _extraEquipPermissions.Contains(ItemKind.ArmorMail)) { Armor = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Primary.Knight || _extraEquipPermissions.Contains(ItemKind.ArmorMail)) { Armor = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.ArmorGi:
-                    if (Job is Jobs.Monk || _extraEquipPermissions.Contains(ItemKind.ArmorGi)) { Armor = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Primary.Monk || _extraEquipPermissions.Contains(ItemKind.ArmorGi)) { Armor = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.ArmorRobe:
-                    if (Job is Jobs.Mage || Job is Jobs.Priest || _extraEquipPermissions.Contains(ItemKind.ArmorRobe)) { Armor = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Primary.Mage || Job is Jobs.Primary.Priest || _extraEquipPermissions.Contains(ItemKind.ArmorRobe)) { Armor = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.HatHelm:
-                    if (Job is Jobs.Knight) { Hat = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Primary.Knight) { Hat = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.HatHeadband:
-                    if (Job is Jobs.Monk) { Hat = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Primary.Monk) { Hat = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.HatWizard:
-                    if (Job is Jobs.Mage) { Hat = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Primary.Mage) { Hat = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.HatPriest:
-                    if (Job is Jobs.Priest) { Hat = item; RecalculateDerived(); return true; }
+                    if (Job is Jobs.Primary.Priest) { Hat = item; RecalculateDerived(); return true; }
                     return false;
                 case ItemKind.Shield:
                     // All classes can equip shields for now
@@ -237,27 +237,27 @@ namespace RolePlayingFramework.Heroes
             switch (slot)
             {
                 case EquipmentSlot.WeaponShield1:
-                    if (item.Kind == ItemKind.WeaponSword && Job is Jobs.Knight
-                        || item.Kind == ItemKind.WeaponKnuckle && Job is Jobs.Monk
-                        || item.Kind == ItemKind.WeaponStaff && Job is Jobs.Priest
-                        || item.Kind == ItemKind.WeaponRod && Job is Jobs.Mage)
+                    if (item.Kind == ItemKind.WeaponSword && Job is Jobs.Primary.Knight
+                        || item.Kind == ItemKind.WeaponKnuckle && Job is Jobs.Primary.Monk
+                        || item.Kind == ItemKind.WeaponStaff && Job is Jobs.Primary.Priest
+                        || item.Kind == ItemKind.WeaponRod && Job is Jobs.Primary.Mage)
                     {
                         WeaponShield1 = item; RecalculateDerived(); return true;
                     }
                     return false;
                 case EquipmentSlot.Armor:
-                    if (item.Kind == ItemKind.ArmorMail && (Job is Jobs.Knight || _extraEquipPermissions.Contains(ItemKind.ArmorMail))
-                        || item.Kind == ItemKind.ArmorGi && (Job is Jobs.Monk || _extraEquipPermissions.Contains(ItemKind.ArmorGi))
-                        || item.Kind == ItemKind.ArmorRobe && (Job is Jobs.Mage || Job is Jobs.Priest || _extraEquipPermissions.Contains(ItemKind.ArmorRobe)))
+                    if (item.Kind == ItemKind.ArmorMail && (Job is Jobs.Primary.Knight || _extraEquipPermissions.Contains(ItemKind.ArmorMail))
+                        || item.Kind == ItemKind.ArmorGi && (Job is Jobs.Primary.Monk || _extraEquipPermissions.Contains(ItemKind.ArmorGi))
+                        || item.Kind == ItemKind.ArmorRobe && (Job is Jobs.Primary.Mage || Job is Jobs.Primary.Priest || _extraEquipPermissions.Contains(ItemKind.ArmorRobe)))
                     {
                         Armor = item; RecalculateDerived(); return true;
                     }
                     return false;
                 case EquipmentSlot.Hat:
-                    if (item.Kind == ItemKind.HatHelm && Job is Jobs.Knight
-                        || item.Kind == ItemKind.HatHeadband && Job is Jobs.Monk
-                        || item.Kind == ItemKind.HatWizard && Job is Jobs.Mage
-                        || item.Kind == ItemKind.HatPriest && Job is Jobs.Priest)
+                    if (item.Kind == ItemKind.HatHelm && Job is Jobs.Primary.Knight
+                        || item.Kind == ItemKind.HatHeadband && Job is Jobs.Primary.Monk
+                        || item.Kind == ItemKind.HatWizard && Job is Jobs.Primary.Mage
+                        || item.Kind == ItemKind.HatPriest && Job is Jobs.Primary.Priest)
                     {
                         Hat = item; RecalculateDerived(); return true;
                     }
