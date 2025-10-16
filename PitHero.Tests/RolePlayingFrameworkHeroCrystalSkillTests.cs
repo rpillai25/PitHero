@@ -1,6 +1,9 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Jobs;
+using RolePlayingFramework.Jobs.Primary;
+using RolePlayingFramework.Jobs.Secondary;
+using RolePlayingFramework.Jobs.Tertiary;
 using RolePlayingFramework.Stats;
 
 namespace PitHero.Tests
