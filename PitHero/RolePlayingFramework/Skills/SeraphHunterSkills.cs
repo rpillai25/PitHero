@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class DivineArrowPassive : BaseSkill
     {
-        public DivineArrowPassive() : base("seraphhunter.divine_arrow", "Divine Arrow", SkillKind.Passive, SkillTargetType.Self, 1, 0, 180) { }
+        public DivineArrowPassive() : base("seraphhunter.divine_arrow", "Divine Arrow", SkillKind.Passive, SkillTargetType.Self, 0, 180) { }
         public override void ApplyPassive(Hero hero)
         {
             // +3 sight, bonus damage vs evil (placeholders)
@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class SeraphMeditationPassive : BaseSkill
     {
-        public SeraphMeditationPassive() : base("seraphhunter.seraph_meditation", "Seraph Meditation", SkillKind.Passive, SkillTargetType.Self, 2, 0, 220) { }
+        public SeraphMeditationPassive() : base("seraphhunter.seraph_meditation", "Seraph Meditation", SkillKind.Passive, SkillTargetType.Self, 0, 220) { }
         public override void ApplyPassive(Hero hero)
         {
             // +10% crit after meditation (placeholder)
@@ -29,7 +29,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class SacredFlurrySkill : BaseSkill
     {
-        public SacredFlurrySkill() : base("seraphhunter.sacred_flurry", "Sacred Flurry", SkillKind.Active, SkillTargetType.SurroundingEnemies, 2, 12, 250) { }
+        public SacredFlurrySkill() : base("seraphhunter.sacred_flurry", "Sacred Flurry", SkillKind.Active, SkillTargetType.SurroundingEnemies, 12, 250) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -46,7 +46,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class LightBarrierSkill : BaseSkill
     {
-        public LightBarrierSkill() : base("seraphhunter.light_barrier", "Light Barrier", SkillKind.Active, SkillTargetType.Self, 3, 10, 220) { }
+        public LightBarrierSkill() : base("seraphhunter.light_barrier", "Light Barrier", SkillKind.Active, SkillTargetType.Self, 10, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             // Shield all allies (placeholder - self only for now)

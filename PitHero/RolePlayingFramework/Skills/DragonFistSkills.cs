@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class ArcaneFuryPassive : BaseSkill
     {
-        public ArcaneFuryPassive() : base("dragonfist.arcane_fury", "Arcane Fury", SkillKind.Passive, SkillTargetType.Self, 1, 0, 110) { }
+        public ArcaneFuryPassive() : base("dragonfist.arcane_fury", "Arcane Fury", SkillKind.Passive, SkillTargetType.Self, 0, 110) { }
         public override void ApplyPassive(Hero hero)
         {
             // +20% magic damage (placeholder - using fire damage bonus as proxy)
@@ -20,7 +20,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class KiBarrierPassive : BaseSkill
     {
-        public KiBarrierPassive() : base("dragonfist.ki_barrier", "Ki Barrier", SkillKind.Passive, SkillTargetType.Self, 2, 0, 140) { }
+        public KiBarrierPassive() : base("dragonfist.ki_barrier", "Ki Barrier", SkillKind.Passive, SkillTargetType.Self, 0, 140) { }
         public override void ApplyPassive(Hero hero)
         {
             // +10% physical resist (placeholder)
@@ -30,7 +30,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class DragonClawSkill : BaseSkill
     {
-        public DragonClawSkill() : base("dragonfist.dragon_claw", "Dragon Claw", SkillKind.Active, SkillTargetType.SingleEnemy, 2, 5, 190) { }
+        public DragonClawSkill() : base("dragonfist.dragon_claw", "Dragon Claw", SkillKind.Active, SkillTargetType.SingleEnemy, 5, 190) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -44,7 +44,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class EnergyBurstSkill : BaseSkill
     {
-        public EnergyBurstSkill() : base("dragonfist.energy_burst", "Energy Burst", SkillKind.Active, SkillTargetType.SurroundingEnemies, 3, 7, 210) { }
+        public EnergyBurstSkill() : base("dragonfist.energy_burst", "Energy Burst", SkillKind.Active, SkillTargetType.SurroundingEnemies, 7, 210) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();

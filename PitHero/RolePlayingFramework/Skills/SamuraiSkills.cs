@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class BushidoPassive : BaseSkill
     {
-        public BushidoPassive() : base("samurai.bushido", "Bushido", SkillKind.Passive, SkillTargetType.Self, 1, 0, 120) { }
+        public BushidoPassive() : base("samurai.bushido", "Bushido", SkillKind.Passive, SkillTargetType.Self, 0, 120) { }
         public override void ApplyPassive(Hero hero)
         {
             // Counterattack when surrounded (placeholder)
@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class IronWillPassive : BaseSkill
     {
-        public IronWillPassive() : base("samurai.iron_will", "Iron Will", SkillKind.Passive, SkillTargetType.Self, 2, 0, 160) { }
+        public IronWillPassive() : base("samurai.iron_will", "Iron Will", SkillKind.Passive, SkillTargetType.Self, 0, 160) { }
         public override void ApplyPassive(Hero hero)
         {
             // Resist crowd control effects (placeholder)
@@ -29,7 +29,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class IaidoSlashSkill : BaseSkill
     {
-        public IaidoSlashSkill() : base("samurai.iaido_slash", "Iaido Slash", SkillKind.Active, SkillTargetType.SingleEnemy, 2, 5, 200) { }
+        public IaidoSlashSkill() : base("samurai.iaido_slash", "Iaido Slash", SkillKind.Active, SkillTargetType.SingleEnemy, 5, 200) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -42,7 +42,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class DragonKickSkill : BaseSkill
     {
-        public DragonKickSkill() : base("samurai.dragon_kick", "Dragon Kick", SkillKind.Active, SkillTargetType.SurroundingEnemies, 3, 7, 220) { }
+        public DragonKickSkill() : base("samurai.dragon_kick", "Dragon Kick", SkillKind.Active, SkillTargetType.SurroundingEnemies, 7, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();

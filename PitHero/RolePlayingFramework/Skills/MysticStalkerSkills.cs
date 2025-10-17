@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Skills
     
     public sealed class ArcaneTrackerPassive : BaseSkill
     {
-        public ArcaneTrackerPassive() : base("mysticstalker.arcane_tracker", "Arcane Tracker", SkillKind.Passive, SkillTargetType.Self, 1, 0, 180) { }
+        public ArcaneTrackerPassive() : base("mysticstalker.arcane_tracker", "Arcane Tracker", SkillKind.Passive, SkillTargetType.Self, 0, 180) { }
         public override void ApplyPassive(Hero hero)
         {
             // See hidden magic traps, bonus JP from escapes (placeholder)
@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class QuickFadePassive : BaseSkill
     {
-        public QuickFadePassive() : base("mysticstalker.quick_fade", "Quick Fade", SkillKind.Passive, SkillTargetType.Self, 2, 0, 220) { }
+        public QuickFadePassive() : base("mysticstalker.quick_fade", "Quick Fade", SkillKind.Passive, SkillTargetType.Self, 0, 220) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.APTickRegen += 1; // Escape battles easier, AP regen
@@ -27,7 +27,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class PoisonBoltSkill : BaseSkill
     {
-        public PoisonBoltSkill() : base("mysticstalker.poison_bolt", "Poison Bolt", SkillKind.Active, SkillTargetType.SingleEnemy, 2, 6, 250) { }
+        public PoisonBoltSkill() : base("mysticstalker.poison_bolt", "Poison Bolt", SkillKind.Active, SkillTargetType.SingleEnemy, 6, 250) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -40,7 +40,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class SilentArcanaSkill : BaseSkill
     {
-        public SilentArcanaSkill() : base("mysticstalker.silent_arcana", "Silent Arcana", SkillKind.Active, SkillTargetType.SurroundingEnemies, 3, 7, 220) { }
+        public SilentArcanaSkill() : base("mysticstalker.silent_arcana", "Silent Arcana", SkillKind.Active, SkillTargetType.SurroundingEnemies, 7, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();

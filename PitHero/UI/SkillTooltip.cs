@@ -54,10 +54,10 @@ namespace PitHero.UI
                 _contentTable.Row();
             }
             
-            // Learn level and JP cost
-            var learnText = $"Learn Lv: {skill.LearnLevel} | Cost: {skill.JPCost} JP";
-            var learnLabel = new Label(learnText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Yellow });
-            _contentTable.Add(learnLabel).Left();
+            // JP cost
+            var costText = $"Cost: {skill.JPCost} JP";
+            var costLabel = new Label(costText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Yellow });
+            _contentTable.Add(costLabel).Left();
             _contentTable.Row();
             
             // Status
@@ -73,12 +73,6 @@ namespace PitHero.UI
                 {
                     var insufficientJPLabel = new Label("(Insufficient JP)", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Red });
                     _contentTable.Add(insufficientJPLabel).Left();
-                    _contentTable.Row();
-                }
-                else if (hero.Level < skill.LearnLevel)
-                {
-                    var levelTooLowLabel = new Label("(Level too low)", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Red });
-                    _contentTable.Add(levelTooLowLabel).Left();
                     _contentTable.Row();
                 }
             }

@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Skills
     
     public sealed class KiEvasionPassive : BaseSkill
     {
-        public KiEvasionPassive() : base("kininja.ki_evasion", "Ki Evasion", SkillKind.Passive, SkillTargetType.Self, 1, 0, 180) { }
+        public KiEvasionPassive() : base("kininja.ki_evasion", "Ki Evasion", SkillKind.Passive, SkillTargetType.Self, 0, 180) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.DeflectChance += 0.10f; // +10% evasion
@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class ArrowDashPassive : BaseSkill
     {
-        public ArrowDashPassive() : base("kininja.arrow_dash", "Arrow Dash", SkillKind.Passive, SkillTargetType.Self, 2, 0, 220) { }
+        public ArrowDashPassive() : base("kininja.arrow_dash", "Arrow Dash", SkillKind.Passive, SkillTargetType.Self, 0, 220) { }
         public override void ApplyPassive(Hero hero)
         {
             // Multi-attack after movement (placeholder)
@@ -28,7 +28,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class KiSlashSkill : BaseSkill
     {
-        public KiSlashSkill() : base("kininja.ki_slash", "Ki Slash", SkillKind.Active, SkillTargetType.SingleEnemy, 2, 6, 250) { }
+        public KiSlashSkill() : base("kininja.ki_slash", "Ki Slash", SkillKind.Active, SkillTargetType.SingleEnemy, 6, 250) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -43,7 +43,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class NinjaFlurrySkill : BaseSkill
     {
-        public NinjaFlurrySkill() : base("kininja.ninja_flurry", "Ninja Flurry", SkillKind.Active, SkillTargetType.SurroundingEnemies, 3, 7, 220) { }
+        public NinjaFlurrySkill() : base("kininja.ninja_flurry", "Ninja Flurry", SkillKind.Active, SkillTargetType.SurroundingEnemies, 7, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();

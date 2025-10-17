@@ -13,7 +13,6 @@ namespace RolePlayingFramework.Skills
         string Description { get; }
         SkillKind Kind { get; }
         SkillTargetType TargetType { get; }
-        int LearnLevel { get; }
         int APCost { get; }
         int JPCost { get; }
 

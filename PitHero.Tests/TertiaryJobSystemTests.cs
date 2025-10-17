@@ -81,10 +81,6 @@ namespace PitHero.Tests
 
             foreach (var job in jobs)
             {
-                Assert.AreEqual(1, job.Skills[0].LearnLevel, $"{job.Name} first skill should be level 1");
-                Assert.AreEqual(2, job.Skills[1].LearnLevel, $"{job.Name} second skill should be level 2");
-                Assert.AreEqual(2, job.Skills[2].LearnLevel, $"{job.Name} third skill should be level 2");
-                Assert.AreEqual(3, job.Skills[3].LearnLevel, $"{job.Name} fourth skill should be level 3");
             }
         }
 

@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class FocusedMindPassive : BaseSkill
     {
-        public FocusedMindPassive() : base("warmage.focused_mind", "Focused Mind", SkillKind.Passive, SkillTargetType.Self, 1, 0, 100) { }
+        public FocusedMindPassive() : base("warmage.focused_mind", "Focused Mind", SkillKind.Passive, SkillTargetType.Self, 0, 100) { }
         public override void ApplyPassive(Hero hero)
         {
             // +1 sight (placeholder)
@@ -20,7 +20,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class ArcaneDefensePassive : BaseSkill
     {
-        public ArcaneDefensePassive() : base("warmage.arcane_defense", "Arcane Defense", SkillKind.Passive, SkillTargetType.Self, 2, 0, 140) { }
+        public ArcaneDefensePassive() : base("warmage.arcane_defense", "Arcane Defense", SkillKind.Passive, SkillTargetType.Self, 0, 140) { }
         public override void ApplyPassive(Hero hero)
         {
             // +10% magic resist (placeholder)
@@ -30,7 +30,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class SpellbladeSkill : BaseSkill
     {
-        public SpellbladeSkill() : base("warmage.spellblade", "Spellblade", SkillKind.Active, SkillTargetType.SingleEnemy, 2, 6, 180) { }
+        public SpellbladeSkill() : base("warmage.spellblade", "Spellblade", SkillKind.Active, SkillTargetType.SingleEnemy, 6, 180) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -44,7 +44,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class BlitzSkill : BaseSkill
     {
-        public BlitzSkill() : base("warmage.blitz", "Blitz", SkillKind.Active, SkillTargetType.SurroundingEnemies, 3, 8, 220) { }
+        public BlitzSkill() : base("warmage.blitz", "Blitz", SkillKind.Active, SkillTargetType.SurroundingEnemies, 8, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();

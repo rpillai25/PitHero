@@ -225,13 +225,6 @@ namespace PitHero.UI
                 return;
             }
             
-            // Check level requirement
-            if (hero.Level < skill.LearnLevel)
-            {
-                Debug.Log($"[HeroCrystalTab] Level too low for skill {skill.Name} (Required: {skill.LearnLevel}, Current: {hero.Level})");
-                return;
-            }
-            
             // Show confirmation dialog
             _pendingSkillPurchase = skill;
             ShowConfirmationDialog(skill);
@@ -266,7 +259,7 @@ namespace PitHero.UI
             var messageLabel = contentTable.GetChildren().First() as Label;
             if (messageLabel != null)
             {
-                messageLabel.SetText($"Learn {skill.Name} for {skill.JPCost} JP?\n\n{skill.Kind} Skill\nLearn Level: {skill.LearnLevel}\nAP Cost: {skill.APCost}");
+                messageLabel.SetText($"Learn {skill.Name} for {skill.JPCost} JP?\n\n{skill.Kind} Skill\nAP Cost: {skill.APCost}");
             }
             
             _confirmDialog.Show(_stage);

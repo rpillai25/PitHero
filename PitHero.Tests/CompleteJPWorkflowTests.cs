@@ -134,19 +134,15 @@ namespace PitHero.Tests
             // Verify skill order and costs
             Assert.AreEqual("thief.shadowstep", thief.Skills[0].Id);
             Assert.AreEqual(70, thief.Skills[0].JPCost);
-            Assert.AreEqual(1, thief.Skills[0].LearnLevel);
             
             Assert.AreEqual("thief.trap_sense", thief.Skills[1].Id);
             Assert.AreEqual(90, thief.Skills[1].JPCost);
-            Assert.AreEqual(2, thief.Skills[1].LearnLevel);
             
             Assert.AreEqual("thief.sneak_attack", thief.Skills[2].Id);
             Assert.AreEqual(130, thief.Skills[2].JPCost);
-            Assert.AreEqual(2, thief.Skills[2].LearnLevel);
             
             Assert.AreEqual("thief.vanish", thief.Skills[3].Id);
             Assert.AreEqual(180, thief.Skills[3].JPCost);
-            Assert.AreEqual(3, thief.Skills[3].LearnLevel);
             
             // Purchase all skills
             foreach (var skill in thief.Skills)
@@ -174,19 +170,15 @@ namespace PitHero.Tests
             // Verify skill order and costs
             Assert.AreEqual("bowman.eagle_eye", bowman.Skills[0].Id);
             Assert.AreEqual(70, bowman.Skills[0].JPCost);
-            Assert.AreEqual(1, bowman.Skills[0].LearnLevel);
             
             Assert.AreEqual("bowman.quickdraw", bowman.Skills[1].Id);
             Assert.AreEqual(100, bowman.Skills[1].JPCost);
-            Assert.AreEqual(2, bowman.Skills[1].LearnLevel);
             
             Assert.AreEqual("bowman.power_shot", bowman.Skills[2].Id);
             Assert.AreEqual(130, bowman.Skills[2].JPCost);
-            Assert.AreEqual(2, bowman.Skills[2].LearnLevel);
             
             Assert.AreEqual("bowman.volley", bowman.Skills[3].Id);
             Assert.AreEqual(200, bowman.Skills[3].JPCost);
-            Assert.AreEqual(3, bowman.Skills[3].LearnLevel);
             
             // Purchase all skills
             foreach (var skill in bowman.Skills)

@@ -7,7 +7,7 @@ namespace RolePlayingFramework.Skills
 {
     public sealed class PowerShotSkill : BaseSkill
     {
-        public PowerShotSkill() : base("bowman.power_shot", "Power Shot", SkillKind.Active, SkillTargetType.SingleEnemy, 2, 4, 130) { }
+        public PowerShotSkill() : base("bowman.power_shot", "Power Shot", SkillKind.Active, SkillTargetType.SingleEnemy, 4, 130) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -20,7 +20,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class VolleySkill : BaseSkill
     {
-        public VolleySkill() : base("bowman.volley", "Volley", SkillKind.Active, SkillTargetType.SurroundingEnemies, 3, 7, 200) { }
+        public VolleySkill() : base("bowman.volley", "Volley", SkillKind.Active, SkillTargetType.SurroundingEnemies, 7, 200) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -36,7 +36,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class EagleEyePassive : BaseSkill
     {
-        public EagleEyePassive() : base("bowman.eagle_eye", "Eagle Eye", SkillKind.Passive, SkillTargetType.Self, 1, 0, 70) { }
+        public EagleEyePassive() : base("bowman.eagle_eye", "Eagle Eye", SkillKind.Passive, SkillTargetType.Self, 0, 70) { }
         public override void ApplyPassive(Hero hero)
         {
             // TODO: Implement sight distance increase mechanic
@@ -46,7 +46,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class QuickdrawPassive : BaseSkill
     {
-        public QuickdrawPassive() : base("bowman.quickdraw", "Quickdraw", SkillKind.Passive, SkillTargetType.Self, 2, 0, 100) { }
+        public QuickdrawPassive() : base("bowman.quickdraw", "Quickdraw", SkillKind.Passive, SkillTargetType.Self, 0, 100) { }
         public override void ApplyPassive(Hero hero)
         {
             // TODO: Implement first attack crit mechanic

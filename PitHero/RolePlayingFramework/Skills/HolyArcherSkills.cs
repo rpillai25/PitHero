@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class DivineVisionPassive : BaseSkill
     {
-        public DivineVisionPassive() : base("holyarcher.divine_vision", "Divine Vision", SkillKind.Passive, SkillTargetType.Self, 1, 0, 120) { }
+        public DivineVisionPassive() : base("holyarcher.divine_vision", "Divine Vision", SkillKind.Passive, SkillTargetType.Self, 0, 120) { }
         public override void ApplyPassive(Hero hero)
         {
             // +2 sight, can see hidden enemies (placeholder)
@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class BlessingArrowPassive : BaseSkill
     {
-        public BlessingArrowPassive() : base("holyarcher.blessing_arrow", "Blessing Arrow", SkillKind.Passive, SkillTargetType.Self, 2, 0, 160) { }
+        public BlessingArrowPassive() : base("holyarcher.blessing_arrow", "Blessing Arrow", SkillKind.Passive, SkillTargetType.Self, 0, 160) { }
         public override void ApplyPassive(Hero hero)
         {
             // Arrows heal allies in line (placeholder)
@@ -29,7 +29,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class LightshotSkill : BaseSkill
     {
-        public LightshotSkill() : base("holyarcher.lightshot", "Lightshot", SkillKind.Active, SkillTargetType.SingleEnemy, 2, 5, 200) { }
+        public LightshotSkill() : base("holyarcher.lightshot", "Lightshot", SkillKind.Active, SkillTargetType.SingleEnemy, 5, 200) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -41,7 +41,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class SacredVolleySkill : BaseSkill
     {
-        public SacredVolleySkill() : base("holyarcher.sacred_volley", "Sacred Volley", SkillKind.Active, SkillTargetType.SurroundingEnemies, 3, 8, 220) { }
+        public SacredVolleySkill() : base("holyarcher.sacred_volley", "Sacred Volley", SkillKind.Active, SkillTargetType.SurroundingEnemies, 8, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();

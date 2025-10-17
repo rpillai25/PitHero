@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class KnightsHonorPassive : BaseSkill
     {
-        public KnightsHonorPassive() : base("paladin.knights_honor", "Knight's Honor", SkillKind.Passive, SkillTargetType.Self, 1, 0, 120) { }
+        public KnightsHonorPassive() : base("paladin.knights_honor", "Knight's Honor", SkillKind.Passive, SkillTargetType.Self, 0, 120) { }
         public override void ApplyPassive(Hero hero)
         {
             // Reduces damage taken when surrounded (placeholder)
@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class DivineShieldPassive : BaseSkill
     {
-        public DivineShieldPassive() : base("paladin.divine_shield", "Divine Shield", SkillKind.Passive, SkillTargetType.Self, 2, 0, 160) { }
+        public DivineShieldPassive() : base("paladin.divine_shield", "Divine Shield", SkillKind.Passive, SkillTargetType.Self, 0, 160) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.PassiveDefenseBonus += 2; // +2 defense
@@ -30,7 +30,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class HolyStrikeSkill : BaseSkill
     {
-        public HolyStrikeSkill() : base("paladin.holy_strike", "Holy Strike", SkillKind.Active, SkillTargetType.SingleEnemy, 2, 5, 200) { }
+        public HolyStrikeSkill() : base("paladin.holy_strike", "Holy Strike", SkillKind.Active, SkillTargetType.SingleEnemy, 5, 200) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -46,7 +46,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class AuraHealSkill : BaseSkill
     {
-        public AuraHealSkill() : base("paladin.aura_heal", "Aura Heal", SkillKind.Active, SkillTargetType.Self, 3, 6, 220) { }
+        public AuraHealSkill() : base("paladin.aura_heal", "Aura Heal", SkillKind.Active, SkillTargetType.Self, 6, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();

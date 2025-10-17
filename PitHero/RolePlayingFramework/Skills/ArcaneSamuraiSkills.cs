@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class MagicBladePassive : BaseSkill
     {
-        public MagicBladePassive() : base("arcanesamurai.magic_blade", "Magic Blade", SkillKind.Passive, SkillTargetType.Self, 1, 0, 180) { }
+        public MagicBladePassive() : base("arcanesamurai.magic_blade", "Magic Blade", SkillKind.Passive, SkillTargetType.Self, 0, 180) { }
         public override void ApplyPassive(Hero hero)
         {
             // +10% crit chance with spells (placeholder)
@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class IronMiragePassive : BaseSkill
     {
-        public IronMiragePassive() : base("arcanesamurai.iron_mirage", "Iron Mirage", SkillKind.Passive, SkillTargetType.Self, 2, 0, 220) { }
+        public IronMiragePassive() : base("arcanesamurai.iron_mirage", "Iron Mirage", SkillKind.Passive, SkillTargetType.Self, 0, 220) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.DeflectChance += 0.10f; // +10% evasion
@@ -30,7 +30,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class IaidoBoltSkill : BaseSkill
     {
-        public IaidoBoltSkill() : base("arcanesamurai.iaido_bolt", "Iaido Bolt", SkillKind.Active, SkillTargetType.SingleEnemy, 2, 6, 250) { }
+        public IaidoBoltSkill() : base("arcanesamurai.iaido_bolt", "Iaido Bolt", SkillKind.Active, SkillTargetType.SingleEnemy, 6, 250) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -45,7 +45,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class FadeSlashSkill : BaseSkill
     {
-        public FadeSlashSkill() : base("arcanesamurai.fade_slash", "Fade Slash", SkillKind.Active, SkillTargetType.Self, 3, 8, 220) { }
+        public FadeSlashSkill() : base("arcanesamurai.fade_slash", "Fade Slash", SkillKind.Active, SkillTargetType.Self, 8, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             // Untargetable, AP regen (placeholder)

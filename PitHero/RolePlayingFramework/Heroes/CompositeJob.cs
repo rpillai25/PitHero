@@ -41,12 +41,5 @@ namespace RolePlayingFramework.Heroes
         /// <summary>Computes combined job contribution at a level.</summary>
         public StatBlock GetJobContributionAtLevel(int level)
             => _a.GetJobContributionAtLevel(level).Add(_b.GetJobContributionAtLevel(level));
-
-        /// <summary>Gather new skills from both jobs at level.</summary>
-        public void GetLearnableSkills(int level, HashSet<string> alreadyKnown, List<ISkill> buffer)
-        {
-            _a.GetLearnableSkills(level, alreadyKnown, buffer);
-            _b.GetLearnableSkills(level, alreadyKnown, buffer);
-        }
     }
 }

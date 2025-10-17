@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Skills
     
     public sealed class MysticAimPassive : BaseSkill
     {
-        public MysticAimPassive() : base("mysticmarksman.mystic_aim", "Mystic Aim", SkillKind.Passive, SkillTargetType.Self, 1, 0, 180) { }
+        public MysticAimPassive() : base("mysticmarksman.mystic_aim", "Mystic Aim", SkillKind.Passive, SkillTargetType.Self, 0, 180) { }
         public override void ApplyPassive(Hero hero)
         {
             // +2 sight, +10% magic damage (placeholders)
@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class ArcaneReflexPassive : BaseSkill
     {
-        public ArcaneReflexPassive() : base("mysticmarksman.arcane_reflex", "Arcane Reflex", SkillKind.Passive, SkillTargetType.Self, 2, 0, 220) { }
+        public ArcaneReflexPassive() : base("mysticmarksman.arcane_reflex", "Arcane Reflex", SkillKind.Passive, SkillTargetType.Self, 0, 220) { }
         public override void ApplyPassive(Hero hero)
         {
             // First attack has stealth bonus (placeholder)
@@ -27,7 +27,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class SpellShotSkill : BaseSkill
     {
-        public SpellShotSkill() : base("mysticmarksman.spell_shot", "Spell Shot", SkillKind.Active, SkillTargetType.SingleEnemy, 2, 7, 250) { }
+        public SpellShotSkill() : base("mysticmarksman.spell_shot", "Spell Shot", SkillKind.Active, SkillTargetType.SingleEnemy, 7, 250) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -47,7 +47,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class FadeVolleySkill : BaseSkill
     {
-        public FadeVolleySkill() : base("mysticmarksman.fade_volley", "Fade Volley", SkillKind.Active, SkillTargetType.SurroundingEnemies, 3, 8, 220) { }
+        public FadeVolleySkill() : base("mysticmarksman.fade_volley", "Fade Volley", SkillKind.Active, SkillTargetType.SurroundingEnemies, 8, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
