@@ -88,32 +88,62 @@ UIHeroInverse
 UIGear
 	610,65,31,30
 	0.5,0.5
-UISortAlpha
+SkillIcon1
 	129,158,24,24
 	0.5,0.5
-UISortAlphaHighlight
+SkillIcon10
 	129,183,24,24
 	0.5,0.5
-UISortAlphaInverse
+SkillIcon2
 	129,208,24,24
 	0.5,0.5
-UISortTime
+SkillIcon3
 	129,233,24,24
 	0.5,0.5
-UISortTimeHighlight
+SkillIcon4
 	545,131,24,24
 	0.5,0.5
-UISortTimeInverse
+SkillIcon5
 	578,98,24,24
 	0.5,0.5
-UISortType
+SkillIcon6
 	387,292,24,24
 	0.5,0.5
-UISortTypeHighlight
+SkillIcon7
 	420,259,24,24
 	0.5,0.5
-UISortTypeInverse
+SkillIcon8
 	260,420,24,24
+	0.5,0.5
+SkillIcon9
+	293,387,24,24
+	0.5,0.5
+UISortAlpha
+	229,452,24,24
+	0.5,0.5
+UISortAlphaHighlight
+	545,156,24,24
+	0.5,0.5
+UISortAlphaInverse
+	578,123,24,24
+	0.5,0.5
+UISortTime
+	603,98,24,24
+	0.5,0.5
+UISortTimeHighlight
+	445,259,24,24
+	0.5,0.5
+UISortTimeInverse
+	420,284,24,24
+	0.5,0.5
+UISortType
+	387,317,24,24
+	0.5,0.5
+UISortTypeHighlight
+	293,412,24,24
+	0.5,0.5
+UISortTypeInverse
+	318,387,24,24
 	0.5,0.5
 UISortOrderArrow
 	0,481,10,13
