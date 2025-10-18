@@ -78,7 +78,7 @@ namespace PitHero.UI
             if (_item is Consumable c)
             {
                 // If it actually restores something we will show generated lines so skip textual duplication
-                if (c.HPRestoreAmount != 0 || c.APRestoreAmount != 0)
+                if (c.HPRestoreAmount != 0 || c.MPRestoreAmount != 0)
                     skipDescription = true;
             }
             if (!skipDescription)
@@ -118,15 +118,15 @@ namespace PitHero.UI
                     _contentTable.Row();
                 }
 
-                if (consumable.APRestoreAmount > 0)
+                if (consumable.MPRestoreAmount > 0)
                 {
-                    var apLabel = new Label($"Restores {consumable.APRestoreAmount} AP", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
+                    var apLabel = new Label($"Restores {consumable.MPRestoreAmount} MP", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
                     _contentTable.Add(apLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                 }
-                else if (consumable.APRestoreAmount < 0)
+                else if (consumable.MPRestoreAmount < 0)
                 {
-                    var apLabel = new Label("Fully restores AP", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
+                    var apLabel = new Label("Fully restores MP", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
                     _contentTable.Add(apLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                 }

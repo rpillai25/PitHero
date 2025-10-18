@@ -80,7 +80,7 @@ namespace PitHero.UI
             bool skipDescription = false;
             if (_item is Consumable c)
             {
-                if (c.HPRestoreAmount != 0 || c.APRestoreAmount != 0)
+                if (c.HPRestoreAmount != 0 || c.MPRestoreAmount != 0)
                     skipDescription = true;
             }
             if (!skipDescription)
@@ -134,17 +134,17 @@ namespace PitHero.UI
                     max = Max(max, Measure(font, text));
                 }
 
-                if (consumable.APRestoreAmount > 0)
+                if (consumable.MPRestoreAmount > 0)
                 {
-                    var text = $"Restores {consumable.APRestoreAmount} AP";
+                    var text = $"Restores {consumable.MPRestoreAmount} MP";
                     var apLabel = new Label(text, new LabelStyle { Font = font, FontColor = Color.White });
                     _contentTable.Add(apLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                     max = Max(max, Measure(font, text));
                 }
-                else if (consumable.APRestoreAmount < 0)
+                else if (consumable.MPRestoreAmount < 0)
                 {
-                    var text = "Fully restores AP";
+                    var text = "Fully restores MP";
                     var apLabel = new Label(text, new LabelStyle { Font = font, FontColor = Color.White });
                     _contentTable.Add(apLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();

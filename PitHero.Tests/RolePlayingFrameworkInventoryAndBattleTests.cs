@@ -27,7 +27,7 @@ namespace PitHero.Tests
 
             Assert.AreEqual(3, hero.Level, "Hero should be level 3 after gaining 300 XP.");
             Assert.IsTrue(hero.MaxHP > maxHPBefore, "MaxHP should increase after leveling.");
-            Assert.IsTrue(hero.MaxMP > maxAPBefore, "MaxMP should increase after leveling.");
+            Assert.IsTrue(hero.MaxMP > maxMPBefore, "MaxMP should increase after leveling.");
         }
 
         /// <summary>Job-based equip restrictions: Mage cannot equip swords, Knight cannot equip rods.</summary>

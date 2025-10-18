@@ -161,7 +161,7 @@ namespace PitHero.Tests
         public void Gear_SupportsHPAndAPBonuses()
         {
             var gear = new Gear("Vitality Ring", ItemKind.Accessory, ItemRarity.Rare, "A test ring", 100,
-                new StatBlock(0, 0, 2, 0), hp: 50, ap: 20);
+                new StatBlock(0, 0, 2, 0), hp: 50, mp: 20);
 
             Assert.AreEqual(50, gear.HPBonus);
             Assert.AreEqual(20, gear.MPBonus);
@@ -172,7 +172,7 @@ namespace PitHero.Tests
         {
             var hero = new Hero("Test", new Knight(), 1, new StatBlock(5, 5, 5, 5));
             var vitalityRing = new Gear("Vitality Ring", ItemKind.Accessory, ItemRarity.Rare, "A test ring", 100,
-                new StatBlock(0, 0, 0, 0), hp: 50, ap: 20);
+                new StatBlock(0, 0, 0, 0), hp: 50, mp: 20);
 
             var baseHP = hero.MaxHP;
             var baseMP = hero.MaxMP;
@@ -180,7 +180,7 @@ namespace PitHero.Tests
             Assert.IsTrue(hero.TryEquip(vitalityRing));
 
             Assert.AreEqual(baseHP + 50, hero.MaxHP);
-            Assert.AreEqual(baseAP + 20, hero.MaxMP);
+            Assert.AreEqual(baseMP + 20, hero.MaxMP);
         }
 
         [TestMethod]
@@ -216,7 +216,7 @@ namespace PitHero.Tests
         public void Gear_ImplementsIGearInterface()
         {
             var gear = new Gear("Vitality Ring", ItemKind.Accessory, ItemRarity.Rare, "A test ring", 100,
-                new StatBlock(0, 0, 2, 0), hp: 50, ap: 20);
+                new StatBlock(0, 0, 2, 0), hp: 50, mp: 20);
 
             // Test that Gear implements IGear
             IGear gearInterface = gear;

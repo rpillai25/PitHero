@@ -49,10 +49,10 @@ namespace PitHero.Tests
             var maxMP = hero.MaxMP;
             
             // Reduce AP to half
-            var targetMP = maxAP / 2;
-            while (hero.CurrentMP > targetAP)
+            var targetMP = maxMP / 2;
+            while (hero.CurrentMP > targetMP)
             {
-                hero.SpendAP(1);
+                hero.SpendMP(1);
             }
             
             var mpAfterSpend = hero.CurrentMP;
@@ -63,8 +63,8 @@ namespace PitHero.Tests
 
             // Assert
             Assert.IsTrue(success, "Potion consumption should succeed");
-            Assert.IsTrue(hero.CurrentMP > apAfterSpend, $"MP should increase from {apAfterSpend}, but is {hero.CurrentMP}");
-            Assert.IsTrue(hero.CurrentMP <= maxAP, $"MP should not exceed maxMP of {maxAP}");
+            Assert.IsTrue(hero.CurrentMP > mpAfterSpend, $"MP should increase from {mpAfterSpend}, but is {hero.CurrentMP}");
+            Assert.IsTrue(hero.CurrentMP <= maxMP, $"MP should not exceed maxMP of {maxMP}");
         }
 
         [TestMethod]
@@ -79,10 +79,10 @@ namespace PitHero.Tests
             hero.TakeDamage(50);
             
             // Reduce AP to half
-            var targetMP = maxAP / 2;
-            while (hero.CurrentMP > targetAP)
+            var targetMP = maxMP / 2;
+            while (hero.CurrentMP > targetMP)
             {
-                hero.SpendAP(1);
+                hero.SpendMP(1);
             }
             
             var hpAfterDamage = hero.CurrentHP;
@@ -95,9 +95,9 @@ namespace PitHero.Tests
             // Assert
             Assert.IsTrue(success, "Potion consumption should succeed");
             Assert.IsTrue(hero.CurrentHP > hpAfterDamage, $"HP should increase from {hpAfterDamage}");
-            Assert.IsTrue(hero.CurrentMP > apAfterSpend, $"MP should increase from {apAfterSpend}");
+            Assert.IsTrue(hero.CurrentMP > mpAfterSpend, $"MP should increase from {mpAfterSpend}");
             Assert.IsTrue(hero.CurrentHP <= maxHP, $"HP should not exceed maxHP of {maxHP}");
-            Assert.IsTrue(hero.CurrentMP <= maxAP, $"MP should not exceed maxMP of {maxAP}");
+            Assert.IsTrue(hero.CurrentMP <= maxMP, $"MP should not exceed maxMP of {maxMP}");
         }
 
         [TestMethod]
@@ -210,10 +210,10 @@ namespace PitHero.Tests
             hero.TakeDamage(100);
             
             // Reduce AP to half
-            var targetMP = maxAP / 2;
-            while (hero.CurrentMP > targetAP)
+            var targetMP = maxMP / 2;
+            while (hero.CurrentMP > targetMP)
             {
-                hero.SpendAP(1);
+                hero.SpendMP(1);
             }
             
             var hpAfterDamage = hero.CurrentHP;
@@ -230,9 +230,9 @@ namespace PitHero.Tests
             Assert.IsTrue(success1, "MidHPPotion consumption should succeed");
             Assert.IsTrue(success2, "MidAPPotion consumption should succeed");
             Assert.IsTrue(hero.CurrentHP > hpAfterDamage, $"HP should increase from {hpAfterDamage}");
-            Assert.IsTrue(hero.CurrentMP > apAfterSpend, $"MP should increase from {apAfterSpend}");
+            Assert.IsTrue(hero.CurrentMP > mpAfterSpend, $"MP should increase from {mpAfterSpend}");
             Assert.IsTrue(hero.CurrentHP <= maxHP, $"HP should not exceed maxHP of {maxHP}");
-            Assert.IsTrue(hero.CurrentMP <= maxAP, $"MP should not exceed maxMP of {maxAP}");
+            Assert.IsTrue(hero.CurrentMP <= maxMP, $"MP should not exceed maxMP of {maxMP}");
         }
 
         [TestMethod]
@@ -265,7 +265,7 @@ namespace PitHero.Tests
             var maxMP = hero.MaxMP;
             
             // Hero is already at max AP
-            Assert.AreEqual(maxAP, hero.CurrentMP, "Hero should start at max AP");
+            Assert.AreEqual(maxMP, hero.CurrentMP, "Hero should start at max AP");
             
             var apPotion = PotionItems.MPPotion();
 
@@ -274,7 +274,7 @@ namespace PitHero.Tests
 
             // Assert
             Assert.IsFalse(success, "APPotion should not be consumed when hero is at max AP");
-            Assert.AreEqual(maxAP, hero.CurrentMP, "MP should remain at max");
+            Assert.AreEqual(maxMP, hero.CurrentMP, "MP should remain at max");
         }
 
         [TestMethod]
@@ -288,7 +288,7 @@ namespace PitHero.Tests
             
             // Hero is already at max HP and AP
             Assert.AreEqual(maxHP, hero.CurrentHP);
-            Assert.AreEqual(maxAP, hero.CurrentMP);
+            Assert.AreEqual(maxMP, hero.CurrentMP);
             
             var mixPotion = PotionItems.MixPotion();
 
@@ -310,7 +310,7 @@ namespace PitHero.Tests
             hero.TakeDamage(50);
             var maxMP = hero.MaxMP;
             
-            Assert.AreEqual(maxAP, hero.CurrentMP, "MP should be at max");
+            Assert.AreEqual(maxMP, hero.CurrentMP, "MP should be at max");
             Assert.IsTrue(hero.CurrentHP < hero.MaxHP, "HP should be below max");
             
             var mixPotion = PotionItems.MixPotion();
