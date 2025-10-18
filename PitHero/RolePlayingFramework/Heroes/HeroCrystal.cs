@@ -76,32 +76,24 @@ namespace RolePlayingFramework.Heroes
             if (skill == null) return false;
             if (_learnedSkillIds.Contains(skill.Id)) return false; // Already learned
             if (CurrentJP < skill.JPCost) return false; // Not enough JP
-            if (Level < skill.LearnLevel) return false; // Level requirement not met
 
             CurrentJP -= skill.JPCost;
             _learnedSkillIds.Add(skill.Id);
             return true;
         }
 
-        /// <summary>Calculates the job level based on learned skills.</summary>
+        /// <summary>Calculates the job level based on number of skills purchased.</summary>
         private int CalculateJobLevel()
         {
+            // Job level is simply the count of purchased skills for this job
+            int count = 0;
             var jobSkills = Job.Skills;
-            if (jobSkills.Count == 0) return 1;
-
-            // Find the highest learn level among purchased skills
-            int maxLearnLevel = 0;
             foreach (var skill in jobSkills)
             {
                 if (_learnedSkillIds.Contains(skill.Id))
-                {
-                    if (skill.LearnLevel > maxLearnLevel)
-                        maxLearnLevel = skill.LearnLevel;
-                }
+                    count++;
             }
-
-            // Job level is the highest learn level of any purchased skill
-            return maxLearnLevel > 0 ? maxLearnLevel : 1;
+            return count;
         }
 
         /// <summary>Checks if all skills have been mastered (max job level achieved).</summary>

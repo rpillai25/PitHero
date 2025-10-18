@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class MiragePassive : BaseSkill
     {
-        public MiragePassive() : base("spellcloak.mirage", "Mirage", SkillKind.Passive, SkillTargetType.Self, 1, 0, 120) { }
+        public MiragePassive() : base("spellcloak.mirage", "Mirage", SkillKind.Passive, SkillTargetType.Self, 0, 120) { }
         public override void ApplyPassive(Hero hero)
         {
             // +15% evasion (placeholder)
@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class ArcaneStealthPassive : BaseSkill
     {
-        public ArcaneStealthPassive() : base("spellcloak.arcane_stealth", "Arcane Stealth", SkillKind.Passive, SkillTargetType.Self, 2, 0, 160) { }
+        public ArcaneStealthPassive() : base("spellcloak.arcane_stealth", "Arcane Stealth", SkillKind.Passive, SkillTargetType.Self, 0, 160) { }
         public override void ApplyPassive(Hero hero)
         {
             // Magic attacks don't break stealth (placeholder)
@@ -29,7 +29,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class ShadowBoltSkill : BaseSkill
     {
-        public ShadowBoltSkill() : base("spellcloak.shadow_bolt", "Shadow Bolt", SkillKind.Active, SkillTargetType.SingleEnemy, 2, 5, 200) { }
+        public ShadowBoltSkill() : base("spellcloak.shadow_bolt", "Shadow Bolt", SkillKind.Active, SkillTargetType.SingleEnemy, 5, 200) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -42,7 +42,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class FadeSkill : BaseSkill
     {
-        public FadeSkill() : base("spellcloak.fade", "Fade", SkillKind.Active, SkillTargetType.Self, 3, 6, 220) { }
+        public FadeSkill() : base("spellcloak.fade", "Fade", SkillKind.Active, SkillTargetType.Self, 6, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             // Untargetable for 1 turn, AP regen (placeholder)

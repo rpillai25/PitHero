@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class BattleMeditationPassive : BaseSkill
     {
-        public BattleMeditationPassive() : base("templar.battle_meditation", "Battle Meditation", SkillKind.Passive, SkillTargetType.Self, 1, 0, 180) { }
+        public BattleMeditationPassive() : base("templar.battle_meditation", "Battle Meditation", SkillKind.Passive, SkillTargetType.Self, 0, 180) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.APTickRegen += 2; // +2 AP/tick regen
@@ -20,7 +20,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class DivineWardPassive : BaseSkill
     {
-        public DivineWardPassive() : base("templar.divine_ward", "Divine Ward", SkillKind.Passive, SkillTargetType.Self, 2, 0, 220) { }
+        public DivineWardPassive() : base("templar.divine_ward", "Divine Ward", SkillKind.Passive, SkillTargetType.Self, 0, 220) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.PassiveDefenseBonus += 3; // +3 defense
@@ -31,7 +31,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class SacredBladeSkill : BaseSkill
     {
-        public SacredBladeSkill() : base("templar.sacred_blade", "Sacred Blade", SkillKind.Active, SkillTargetType.SingleEnemy, 2, 8, 250) { }
+        public SacredBladeSkill() : base("templar.sacred_blade", "Sacred Blade", SkillKind.Active, SkillTargetType.SingleEnemy, 8, 250) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -47,7 +47,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class JudgementSkill : BaseSkill
     {
-        public JudgementSkill() : base("templar.judgement", "Judgement", SkillKind.Active, SkillTargetType.SurroundingEnemies, 3, 12, 220) { }
+        public JudgementSkill() : base("templar.judgement", "Judgement", SkillKind.Active, SkillTargetType.SurroundingEnemies, 12, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();

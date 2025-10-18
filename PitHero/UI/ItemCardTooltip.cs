@@ -21,7 +21,8 @@ namespace PitHero.UI
         {
             // Create content table
             _contentTable = new Table();
-            
+            _container.SetColor(GameConfig.TransparentMenu);
+
             // Create wrapper with background and padding
             _wrapper = new Container(_contentTable);
             _wrapper.SetBackground(skin.Get<WindowStyle>().Background);

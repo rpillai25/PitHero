@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class ShadowMendPassive : BaseSkill
     {
-        public ShadowMendPassive() : base("shadowmender.shadow_mend", "Shadow Mend", SkillKind.Passive, SkillTargetType.Self, 1, 0, 120) { }
+        public ShadowMendPassive() : base("shadowmender.shadow_mend", "Shadow Mend", SkillKind.Passive, SkillTargetType.Self, 0, 120) { }
         public override void ApplyPassive(Hero hero)
         {
             // Heals while stealthed (placeholder)
@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class PurgeTrapPassive : BaseSkill
     {
-        public PurgeTrapPassive() : base("shadowmender.purge_trap", "Purge Trap", SkillKind.Passive, SkillTargetType.Self, 2, 0, 160) { }
+        public PurgeTrapPassive() : base("shadowmender.purge_trap", "Purge Trap", SkillKind.Passive, SkillTargetType.Self, 0, 160) { }
         public override void ApplyPassive(Hero hero)
         {
             // Remove traps on move (placeholder)
@@ -29,7 +29,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class LifeLeechSkill : BaseSkill
     {
-        public LifeLeechSkill() : base("shadowmender.life_leech", "Life Leech", SkillKind.Active, SkillTargetType.SingleEnemy, 2, 5, 200) { }
+        public LifeLeechSkill() : base("shadowmender.life_leech", "Life Leech", SkillKind.Active, SkillTargetType.SingleEnemy, 5, 200) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -45,7 +45,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class VeilOfSilenceSkill : BaseSkill
     {
-        public VeilOfSilenceSkill() : base("shadowmender.veil_of_silence", "Veil of Silence", SkillKind.Active, SkillTargetType.Self, 3, 6, 220) { }
+        public VeilOfSilenceSkill() : base("shadowmender.veil_of_silence", "Veil of Silence", SkillKind.Active, SkillTargetType.Self, 6, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             // Silence enemies in area (placeholder)

@@ -70,7 +70,6 @@ namespace RolePlayingFramework.Heroes
                         _learnedSkills[s.Id] = s;
                 }
             }
-            LearnInitialSkills();
             ApplyPassiveSkills();
             RecalculateDerived();
             CurrentHP = MaxHP;
@@ -96,7 +95,6 @@ namespace RolePlayingFramework.Heroes
                 leveled = true;
                 BaseStats = new StatBlock(BaseStats.Strength + 1, BaseStats.Agility + 1, BaseStats.Vitality + 1, BaseStats.Magic + 1);
                 RecalculateDerived();
-                AutoLearnNewSkills();
                 ApplyPassiveSkills();
             }
             return leveled;
@@ -379,21 +377,6 @@ namespace RolePlayingFramework.Heroes
             if (Accessory1 is IGear acc1Gear) ap += acc1Gear.APBonus;
             if (Accessory2 is IGear acc2Gear) ap += acc2Gear.APBonus;
             return ap;
-        }
-
-        private void LearnInitialSkills() => AutoLearnNewSkills();
-
-        private void AutoLearnNewSkills()
-        {
-            var known = new HashSet<string>(_learnedSkills.Keys);
-            var buffer = new List<ISkill>(4);
-            Job.GetLearnableSkills(Level, known, buffer);
-            for (int i = 0; i < buffer.Count; i++)
-            {
-                var skill = buffer[i];
-                _learnedSkills[skill.Id] = skill;
-                _boundCrystal?.AddLearnedSkill(skill.Id);
-            }
         }
 
         private void ApplyPassiveSkills()

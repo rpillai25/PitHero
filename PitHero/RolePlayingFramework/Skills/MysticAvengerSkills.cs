@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class MysticCounterPassive : BaseSkill
     {
-        public MysticCounterPassive() : base("mysticavenger.mystic_counter", "Mystic Counter", SkillKind.Passive, SkillTargetType.Self, 1, 0, 180) { }
+        public MysticCounterPassive() : base("mysticavenger.mystic_counter", "Mystic Counter", SkillKind.Passive, SkillTargetType.Self, 0, 180) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.EnableCounter = true; // Counterattack with magic on stealth (simplified)
@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class ArcaneCloakPassive : BaseSkill
     {
-        public ArcaneCloakPassive() : base("mysticavenger.arcane_cloak", "Arcane Cloak", SkillKind.Passive, SkillTargetType.Self, 2, 0, 220) { }
+        public ArcaneCloakPassive() : base("mysticavenger.arcane_cloak", "Arcane Cloak", SkillKind.Passive, SkillTargetType.Self, 0, 220) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.DeflectChance += 0.10f; // +10% evasion
@@ -30,7 +30,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class DragonBoltSkill : BaseSkill
     {
-        public DragonBoltSkill() : base("mysticavenger.dragon_bolt", "Dragon Bolt", SkillKind.Active, SkillTargetType.SingleEnemy, 2, 7, 250) { }
+        public DragonBoltSkill() : base("mysticavenger.dragon_bolt", "Dragon Bolt", SkillKind.Active, SkillTargetType.SingleEnemy, 7, 250) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -52,7 +52,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class MysticFadeSkill : BaseSkill
     {
-        public MysticFadeSkill() : base("mysticavenger.mystic_fade", "Mystic Fade", SkillKind.Active, SkillTargetType.Self, 3, 9, 220) { }
+        public MysticFadeSkill() : base("mysticavenger.mystic_fade", "Mystic Fade", SkillKind.Active, SkillTargetType.Self, 9, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             // Untargetable for 2 turns, AP regen (placeholder)

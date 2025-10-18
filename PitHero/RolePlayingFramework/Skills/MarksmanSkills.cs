@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class EagleReflexesPassive : BaseSkill
     {
-        public EagleReflexesPassive() : base("marksman.eagle_reflexes", "Eagle Reflexes", SkillKind.Passive, SkillTargetType.Self, 1, 0, 110) { }
+        public EagleReflexesPassive() : base("marksman.eagle_reflexes", "Eagle Reflexes", SkillKind.Passive, SkillTargetType.Self, 0, 110) { }
         public override void ApplyPassive(Hero hero)
         {
             // +1 sight, +5% crit chance (placeholder)
@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class SteadyAimPassive : BaseSkill
     {
-        public SteadyAimPassive() : base("marksman.steady_aim", "Steady Aim", SkillKind.Passive, SkillTargetType.Self, 2, 0, 150) { }
+        public SteadyAimPassive() : base("marksman.steady_aim", "Steady Aim", SkillKind.Passive, SkillTargetType.Self, 0, 150) { }
         public override void ApplyPassive(Hero hero)
         {
             // Bonus damage at long range (placeholder)
@@ -29,7 +29,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class PowerVolleySkill : BaseSkill
     {
-        public PowerVolleySkill() : base("marksman.power_volley", "Power Volley", SkillKind.Active, SkillTargetType.SurroundingEnemies, 2, 8, 190) { }
+        public PowerVolleySkill() : base("marksman.power_volley", "Power Volley", SkillKind.Active, SkillTargetType.SurroundingEnemies, 8, 190) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -45,7 +45,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class ArmorPiercerSkill : BaseSkill
     {
-        public ArmorPiercerSkill() : base("marksman.armor_piercer", "Armor Piercer", SkillKind.Active, SkillTargetType.SingleEnemy, 3, 5, 210) { }
+        public ArmorPiercerSkill() : base("marksman.armor_piercer", "Armor Piercer", SkillKind.Active, SkillTargetType.SingleEnemy, 5, 210) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();

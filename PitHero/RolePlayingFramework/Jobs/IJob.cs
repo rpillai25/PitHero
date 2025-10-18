@@ -21,8 +21,5 @@ namespace RolePlayingFramework.Jobs
 
         /// <summary>Computes total job stat contribution at a given level.</summary>
         StatBlock GetJobContributionAtLevel(int level);
-
-        /// <summary>Returns any new skills learnable exactly at the provided level not yet known.</summary>
-        void GetLearnableSkills(int level, HashSet<string> alreadyKnown, List<ISkill> buffer);
     }
 }

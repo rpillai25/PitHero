@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Skills
     
     public sealed class StealthCounterPassive : BaseSkill
     {
-        public StealthCounterPassive() : base("shadowavenger.stealth_counter", "Stealth Counter", SkillKind.Passive, SkillTargetType.Self, 1, 0, 180) { }
+        public StealthCounterPassive() : base("shadowavenger.stealth_counter", "Stealth Counter", SkillKind.Passive, SkillTargetType.Self, 0, 180) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.EnableCounter = true; // Counterattack with stealth
@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class ArcaneEvasionPassive : BaseSkill
     {
-        public ArcaneEvasionPassive() : base("shadowavenger.arcane_evasion", "Arcane Evasion", SkillKind.Passive, SkillTargetType.Self, 2, 0, 220) { }
+        public ArcaneEvasionPassive() : base("shadowavenger.arcane_evasion", "Arcane Evasion", SkillKind.Passive, SkillTargetType.Self, 0, 220) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.DeflectChance += 0.15f; // +15% evasion
@@ -28,7 +28,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class SneakBoltSkill : BaseSkill
     {
-        public SneakBoltSkill() : base("shadowavenger.sneak_bolt", "Sneak Bolt", SkillKind.Active, SkillTargetType.SingleEnemy, 2, 5, 250) { }
+        public SneakBoltSkill() : base("shadowavenger.sneak_bolt", "Sneak Bolt", SkillKind.Active, SkillTargetType.SingleEnemy, 5, 250) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -41,7 +41,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class KiFadeSkill : BaseSkill
     {
-        public KiFadeSkill() : base("shadowavenger.ki_fade", "Ki Fade", SkillKind.Active, SkillTargetType.Self, 3, 6, 220) { }
+        public KiFadeSkill() : base("shadowavenger.ki_fade", "Ki Fade", SkillKind.Active, SkillTargetType.Self, 6, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             // Gain stealth after attack (placeholder)

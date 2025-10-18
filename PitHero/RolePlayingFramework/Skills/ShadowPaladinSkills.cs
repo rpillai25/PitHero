@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class DarkAegisPassive : BaseSkill
     {
-        public DarkAegisPassive() : base("shadowpaladin.dark_aegis", "Dark Aegis", SkillKind.Passive, SkillTargetType.Self, 1, 0, 180) { }
+        public DarkAegisPassive() : base("shadowpaladin.dark_aegis", "Dark Aegis", SkillKind.Passive, SkillTargetType.Self, 0, 180) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.PassiveDefenseBonus += 2; // +2 defense when undetected (simplified)
@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class ShadowBlessingPassive : BaseSkill
     {
-        public ShadowBlessingPassive() : base("shadowpaladin.shadow_blessing", "Shadow Blessing", SkillKind.Passive, SkillTargetType.Self, 2, 0, 220) { }
+        public ShadowBlessingPassive() : base("shadowpaladin.shadow_blessing", "Shadow Blessing", SkillKind.Passive, SkillTargetType.Self, 0, 220) { }
         public override void ApplyPassive(Hero hero)
         {
             // Immunity to traps/debuffs (placeholder)
@@ -29,7 +29,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class SilenceStrikeSkill : BaseSkill
     {
-        public SilenceStrikeSkill() : base("shadowpaladin.silence_strike", "Silence Strike", SkillKind.Active, SkillTargetType.SingleEnemy, 2, 7, 250) { }
+        public SilenceStrikeSkill() : base("shadowpaladin.silence_strike", "Silence Strike", SkillKind.Active, SkillTargetType.SingleEnemy, 7, 250) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -43,7 +43,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class SoulWardSkill : BaseSkill
     {
-        public SoulWardSkill() : base("shadowpaladin.soul_ward", "Soul Ward", SkillKind.Active, SkillTargetType.SurroundingEnemies, 3, 8, 220) { }
+        public SoulWardSkill() : base("shadowpaladin.soul_ward", "Soul Ward", SkillKind.Active, SkillTargetType.SurroundingEnemies, 8, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             // Shield and stealth surrounding allies (placeholder - self only)

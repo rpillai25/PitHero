@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class KiSightPassive : BaseSkill
     {
-        public KiSightPassive() : base("kishot.ki_sight", "Ki Sight", SkillKind.Passive, SkillTargetType.Self, 1, 0, 120) { }
+        public KiSightPassive() : base("kishot.ki_sight", "Ki Sight", SkillKind.Passive, SkillTargetType.Self, 0, 120) { }
         public override void ApplyPassive(Hero hero)
         {
             // +1 sight, see traps (placeholder)
@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class ArrowMeditationPassive : BaseSkill
     {
-        public ArrowMeditationPassive() : base("kishot.arrow_meditation", "Arrow Meditation", SkillKind.Passive, SkillTargetType.Self, 2, 0, 160) { }
+        public ArrowMeditationPassive() : base("kishot.arrow_meditation", "Arrow Meditation", SkillKind.Passive, SkillTargetType.Self, 0, 160) { }
         public override void ApplyPassive(Hero hero)
         {
             // +5% crit after meditation (placeholder)
@@ -29,7 +29,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class KiArrowSkill : BaseSkill
     {
-        public KiArrowSkill() : base("kishot.ki_arrow", "Ki Arrow", SkillKind.Active, SkillTargetType.SingleEnemy, 2, 5, 200) { }
+        public KiArrowSkill() : base("kishot.ki_arrow", "Ki Arrow", SkillKind.Active, SkillTargetType.SingleEnemy, 5, 200) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -43,7 +43,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class ArrowFlurrySkill : BaseSkill
     {
-        public ArrowFlurrySkill() : base("kishot.arrow_flurry", "Arrow Flurry", SkillKind.Active, SkillTargetType.SurroundingEnemies, 3, 7, 220) { }
+        public ArrowFlurrySkill() : base("kishot.arrow_flurry", "Arrow Flurry", SkillKind.Active, SkillTargetType.SurroundingEnemies, 7, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();

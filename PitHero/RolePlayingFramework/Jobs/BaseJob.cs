@@ -33,18 +33,5 @@ namespace RolePlayingFramework.Jobs
             var extra = GrowthPerLevel.Scale(level - 1);
             return BaseBonus.Add(extra);
         }
-
-        /// <summary>Adds any skills learnable at this level not already known.</summary>
-        public void GetLearnableSkills(int level, HashSet<string> alreadyKnown, List<ISkill> buffer)
-        {
-            for (int i = 0; i < _skills.Count; i++)
-            {
-                var s = _skills[i];
-                if (s.LearnLevel == level && !alreadyKnown.Contains(s.Id))
-                {
-                    buffer.Add(s);
-                }
-            }
-        }
     }
 }
