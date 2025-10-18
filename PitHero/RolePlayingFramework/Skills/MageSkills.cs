@@ -47,7 +47,7 @@ namespace RolePlayingFramework.Skills
         public EconomistPassive() : base("mage.economist", "Economist", SkillKind.Passive, SkillTargetType.Self, 0, 80) { }
         public override void ApplyPassive(Hero hero)
         {
-            hero.APCostReduction += 0.15f; // -15% AP costs
+            hero.MPCostReduction += 0.15f; // -15% MP costs
         }
     }
 }

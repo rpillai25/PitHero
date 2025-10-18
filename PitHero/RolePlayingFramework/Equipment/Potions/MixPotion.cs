@@ -3,29 +3,29 @@ using System;
 
 namespace RolePlayingFramework.Equipment
 {
-    /// <summary>Restores moderate HP and AP.</summary>
+    /// <summary>Restores moderate HP and MP.</summary>
     public sealed class MixPotion : Consumable
     {
-        public MixPotion() : base("MixPotion", ItemRarity.Normal, "Restores 100 HP and 100 AP", 30, 100, 100) { }
-        /// <summary>Consume: restore HP and AP.</summary>
+        public MixPotion() : base("MixPotion", ItemRarity.Normal, "Restores 100 HP and 100 MP", 30, 100, 100) { }
+        /// <summary>Consume: restore HP and MP.</summary>
         public override bool Consume(object context)
         {
             if (context is Hero hero)
             {
                 bool hpRestored = false;
-                bool apRestored = false;
+                bool mpRestored = false;
                 
                 if (HPRestoreAmount < 0)
                     hpRestored = hero.RestoreHP(hero.MaxHP);
                 else
                     hpRestored = hero.RestoreHP(HPRestoreAmount);
                 
-                if (APRestoreAmount < 0)
-                    apRestored = hero.RestoreAP(APRestoreAmount);
+                if (MPRestoreAmount < 0)
+                    mpRestored = hero.RestoreMP(MPRestoreAmount);
                 else
-                    apRestored = hero.RestoreAP(Math.Min(hero.MaxAP, hero.CurrentAP + APRestoreAmount));
+                    mpRestored = hero.RestoreMP(Math.Min(hero.MaxMP, hero.CurrentMP + MPRestoreAmount));
                 
-                return hpRestored || apRestored;
+                return hpRestored || mpRestored;
             }
             return false;
         }

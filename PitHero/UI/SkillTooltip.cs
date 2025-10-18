@@ -40,7 +40,7 @@ namespace PitHero.UI
             var typeText = $"{skill.Kind}";
             if (skill.Kind == SkillKind.Active)
             {
-                typeText += $" (AP: {skill.APCost})";
+                typeText += $" (MP: {skill.MPCost})";
             }
             var typeLabel = new Label(typeText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.LightGray });
             _contentTable.Add(typeLabel).Left();

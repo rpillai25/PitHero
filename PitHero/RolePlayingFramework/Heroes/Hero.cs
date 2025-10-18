@@ -21,18 +21,18 @@ namespace RolePlayingFramework.Heroes
         public StatBlock BaseStats { get; private set; }
 
         public int MaxHP { get; private set; }
-        public int MaxAP { get; private set; }
+        public int MaxMP { get; private set; }
         public int CurrentHP { get; private set; }
-        public int CurrentAP { get; private set; }
+        public int CurrentMP { get; private set; }
 
         // Passive modifiers from learned skills
         public int PassiveDefenseBonus { get; set; }
         public float DeflectChance { get; set; }
         public bool EnableCounter { get; set; }
-        public int APTickRegen { get; set; }
+        public int MPTickRegen { get; set; }
         public float HealPowerBonus { get; set; }
         public float FireDamageBonus { get; set; }
-        public float APCostReduction { get; set; }
+        public float MPCostReduction { get; set; }
 
         // Equipment
         public IItem? WeaponShield1 { get; private set; }
@@ -73,7 +73,7 @@ namespace RolePlayingFramework.Heroes
             ApplyPassiveSkills();
             RecalculateDerived();
             CurrentHP = MaxHP;
-            CurrentAP = MaxAP;
+            CurrentMP = MaxMP;
         }
 
         /// <summary>Adds extra equipment permission (from passives).</summary>
@@ -103,15 +103,15 @@ namespace RolePlayingFramework.Heroes
         /// <summary>Gets required XP for the next level.</summary>
         public int RequiredExpForNextLevel() => Level * 100;
 
-        /// <summary>Recomputes HP/AP and caps.</summary>
+        /// <summary>Recomputes HP/MP and caps.</summary>
         public void RecalculateDerived()
         {
             var jobStats = Job.GetJobContributionAtLevel(Level);
             var total = BaseStats.Add(jobStats).Add(GetEquipmentStatBonus());
             MaxHP = 25 + total.Vitality * 5 + GetEquipmentHPBonus(); // Add equipment HP bonus
-            MaxAP = 10 + total.Magic * 3 + GetEquipmentAPBonus();     // Add equipment AP bonus
+            MaxMP = 10 + total.Magic * 3 + GetEquipmentMPBonus();     // Add equipment MP bonus
             if (CurrentHP > MaxHP) CurrentHP = MaxHP;
-            if (CurrentAP > MaxAP) CurrentAP = MaxAP;
+            if (CurrentMP > MaxMP) CurrentMP = MaxMP;
         }
 
         /// <summary>Returns current total stats (base + job + equipment).</summary>
@@ -130,14 +130,14 @@ namespace RolePlayingFramework.Heroes
             return CurrentHP == 0;
         }
 
-        /// <summary>Spend AP if sufficient (includes passive cost reduction).</summary>
-        public bool SpendAP(int amount)
+        /// <summary>Spend MP if sufficient (includes passive cost reduction).</summary>
+        public bool SpendMP(int amount)
         {
             if (amount <= 0) return true;
-            var reduced = (int)(amount * (1f - APCostReduction));
+            var reduced = (int)(amount * (1f - MPCostReduction));
             if (reduced < 1) reduced = 1;
-            if (CurrentAP < reduced) return false;
-            CurrentAP -= reduced;
+            if (CurrentMP < reduced) return false;
+            CurrentMP -= reduced;
             return true;
         }
 
@@ -151,13 +151,13 @@ namespace RolePlayingFramework.Heroes
             return true;
         }
 
-        /// <summary>Per-turn passive AP regen.</summary>
+        /// <summary>Per-turn passive MP regen.</summary>
         public void TickRegeneration()
         {
-            if (APTickRegen > 0)
+            if (MPTickRegen > 0)
             {
-                CurrentAP += APTickRegen;
-                if (CurrentAP > MaxAP) CurrentAP = MaxAP;
+                CurrentMP += MPTickRegen;
+                if (CurrentMP > MaxMP) CurrentMP = MaxMP;
             }
         }
 
@@ -277,7 +277,7 @@ namespace RolePlayingFramework.Heroes
             }
         }
 
-        /// <summary>Applies a swap between two equipment slots and recalculates once to avoid transient HP/AP clamps.</summary>
+        /// <summary>Applies a swap between two equipment slots and recalculates once to avoid transient HP/MP clamps.</summary>
         public void ApplyEquipmentSwap(EquipmentSlot slotA, IItem? itemForA, EquipmentSlot slotB, IItem? itemForB)
         {
             // Assign directly without recalculating per-slot. Validation assumed handled by caller.
@@ -366,17 +366,17 @@ namespace RolePlayingFramework.Heroes
             return hp;
         }
 
-        /// <summary>Total flat AP bonus from gear.</summary>
-        public int GetEquipmentAPBonus()
+        /// <summary>Total flat MP bonus from gear.</summary>
+        public int GetEquipmentMPBonus()
         {
-            int ap = 0;
-            if (WeaponShield1 is IGear weaponGear) ap += weaponGear.APBonus;
-            if (Armor is IGear armorGear) ap += armorGear.APBonus;
-            if (Hat is IGear helmGear) ap += helmGear.APBonus;
-            if (WeaponShield2 is IGear shieldGear) ap += shieldGear.APBonus;
-            if (Accessory1 is IGear acc1Gear) ap += acc1Gear.APBonus;
-            if (Accessory2 is IGear acc2Gear) ap += acc2Gear.APBonus;
-            return ap;
+            int mp = 0;
+            if (WeaponShield1 is IGear weaponGear) mp += weaponGear.MPBonus;
+            if (Armor is IGear armorGear) mp += armorGear.MPBonus;
+            if (Hat is IGear helmGear) mp += helmGear.MPBonus;
+            if (WeaponShield2 is IGear shieldGear) mp += shieldGear.MPBonus;
+            if (Accessory1 is IGear acc1Gear) mp += acc1Gear.MPBonus;
+            if (Accessory2 is IGear acc2Gear) mp += acc2Gear.MPBonus;
+            return mp;
         }
 
         private void ApplyPassiveSkills()
@@ -384,10 +384,10 @@ namespace RolePlayingFramework.Heroes
             PassiveDefenseBonus = 0;
             DeflectChance = 0;
             EnableCounter = false;
-            APTickRegen = 0;
+            MPTickRegen = 0;
             HealPowerBonus = 0f;
             FireDamageBonus = 0f;
-            APCostReduction = 0f;
+            MPCostReduction = 0f;
             foreach (var kv in _learnedSkills)
             {
                 if (kv.Value.Kind == SkillKind.Passive)
@@ -403,8 +403,8 @@ namespace RolePlayingFramework.Heroes
             {
                 var s = kv.Value;
                 if (s.Kind != SkillKind.Active) continue;
-                if (s.APCost > CurrentAP) continue;
-                if (s.APCost > bestCost) { best = s; bestCost = s.APCost; }
+                if (s.MPCost > CurrentMP) continue;
+                if (s.MPCost > bestCost) { best = s; bestCost = s.MPCost; }
             }
             return best;
         }
@@ -412,7 +412,7 @@ namespace RolePlayingFramework.Heroes
         public string? TryUseSkill(ISkill skill, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             if (skill.Kind != SkillKind.Active) return null;
-            if (!SpendAP(skill.APCost)) return null;
+            if (!SpendMP(skill.MPCost)) return null;
             return skill.Execute(this, primary, surrounding, resolver);
         }
 
@@ -451,19 +451,19 @@ namespace RolePlayingFramework.Heroes
         /// <summary>Checks if the job is mastered (all skills learned).</summary>
         public bool IsJobMastered() => _boundCrystal?.IsJobMastered() ?? false;
 
-        /// <summary>Restores AP up to max (amount < 0 indicates full restore). Returns true if AP was actually restored.</summary>
-        public bool RestoreAP(int amount)
+        /// <summary>Restores MP up to max (amount < 0 indicates full restore). Returns true if MP was actually restored.</summary>
+        public bool RestoreMP(int amount)
         {
             if (amount < 0)
             {
-                if (CurrentAP >= MaxAP) return false; // Already at max AP
-                CurrentAP = MaxAP;
+                if (CurrentMP >= MaxMP) return false; // Already at max MP
+                CurrentMP = MaxMP;
                 return true;
             }
             if (amount <= 0) return false;
-            if (CurrentAP >= MaxAP) return false; // Already at max AP
-            CurrentAP += amount;
-            if (CurrentAP > MaxAP) CurrentAP = MaxAP;
+            if (CurrentMP >= MaxMP) return false; // Already at max MP
+            CurrentMP += amount;
+            if (CurrentMP > MaxMP) CurrentMP = MaxMP;
             return true;
         }
     }

@@ -13,7 +13,7 @@ namespace RolePlayingFramework.Skills
         string Description { get; }
         SkillKind Kind { get; }
         SkillTargetType TargetType { get; }
-        int APCost { get; }
+        int MPCost { get; }
         int JPCost { get; }
 
         /// <summary>Applies passive modifiers at aggregation time (no side effects).</summary>

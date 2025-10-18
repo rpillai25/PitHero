@@ -66,7 +66,7 @@ namespace PitHero.Tests
             }
             for (int i = 0; i < 3; i++)
             {
-                Assert.IsTrue(bag.TryAdd(PotionItems.APPotion()));
+                Assert.IsTrue(bag.TryAdd(PotionItems.MPPotion()));
             }
             for (int i = 0; i < 2; i++)
             {

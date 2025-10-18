@@ -21,7 +21,7 @@ namespace RolePlayingFramework.Skills
         public AuraBlessingPassive() : base("divinearcher.aura_blessing", "Aura Blessing", SkillKind.Passive, SkillTargetType.Self, 0, 220) { }
         public override void ApplyPassive(Hero hero)
         {
-            hero.APTickRegen += 1; // AP regen for allies in line
+            hero.MPTickRegen += 1; // MP regen for allies in line
         }
     }
 

@@ -14,19 +14,19 @@ namespace PitHero.Tests
             Assert.AreEqual("HPPotion", hpPotion.Name);
             Assert.AreEqual(ItemRarity.Normal, hpPotion.Rarity);
             Assert.AreEqual(100, hpPotion.HPRestoreAmount);
-            Assert.AreEqual(0, hpPotion.APRestoreAmount);
+            Assert.AreEqual(0, hpPotion.MPRestoreAmount);
 
-            var apPotion = PotionItems.APPotion();
-            Assert.AreEqual("APPotion", apPotion.Name);
+            var apPotion = PotionItems.MPPotion();
+            Assert.AreEqual("MPPotion", apPotion.Name);
             Assert.AreEqual(ItemRarity.Normal, apPotion.Rarity);
             Assert.AreEqual(0, apPotion.HPRestoreAmount);
-            Assert.AreEqual(100, apPotion.APRestoreAmount);
+            Assert.AreEqual(100, apPotion.MPRestoreAmount);
 
             var mixPotion = PotionItems.MixPotion();
             Assert.AreEqual("MixPotion", mixPotion.Name);
             Assert.AreEqual(ItemRarity.Normal, mixPotion.Rarity);
             Assert.AreEqual(100, mixPotion.HPRestoreAmount);
-            Assert.AreEqual(100, mixPotion.APRestoreAmount);
+            Assert.AreEqual(100, mixPotion.MPRestoreAmount);
         }
 
         [TestMethod]
@@ -36,19 +36,19 @@ namespace PitHero.Tests
             Assert.AreEqual("MidHPPotion", midHpPotion.Name);
             Assert.AreEqual(ItemRarity.Rare, midHpPotion.Rarity);
             Assert.AreEqual(500, midHpPotion.HPRestoreAmount);
-            Assert.AreEqual(0, midHpPotion.APRestoreAmount);
+            Assert.AreEqual(0, midHpPotion.MPRestoreAmount);
 
-            var midApPotion = PotionItems.MidAPPotion();
-            Assert.AreEqual("MidAPPotion", midApPotion.Name);
+            var midApPotion = PotionItems.MidMPPotion();
+            Assert.AreEqual("MidMPPotion", midApPotion.Name);
             Assert.AreEqual(ItemRarity.Rare, midApPotion.Rarity);
             Assert.AreEqual(0, midApPotion.HPRestoreAmount);
-            Assert.AreEqual(500, midApPotion.APRestoreAmount);
+            Assert.AreEqual(500, midApPotion.MPRestoreAmount);
 
             var midMixPotion = PotionItems.MidMixPotion();
             Assert.AreEqual("MidMixPotion", midMixPotion.Name);
             Assert.AreEqual(ItemRarity.Rare, midMixPotion.Rarity);
             Assert.AreEqual(500, midMixPotion.HPRestoreAmount);
-            Assert.AreEqual(500, midMixPotion.APRestoreAmount);
+            Assert.AreEqual(500, midMixPotion.MPRestoreAmount);
         }
 
         [TestMethod]
@@ -58,19 +58,19 @@ namespace PitHero.Tests
             Assert.AreEqual("FullHPPotion", fullHpPotion.Name);
             Assert.AreEqual(ItemRarity.Epic, fullHpPotion.Rarity);
             Assert.AreEqual(-1, fullHpPotion.HPRestoreAmount); // -1 indicates full restore
-            Assert.AreEqual(0, fullHpPotion.APRestoreAmount);
+            Assert.AreEqual(0, fullHpPotion.MPRestoreAmount);
 
-            var fullApPotion = PotionItems.FullAPPotion();
-            Assert.AreEqual("FullAPPotion", fullApPotion.Name);
+            var fullApPotion = PotionItems.FullMPPotion();
+            Assert.AreEqual("FullMPPotion", fullApPotion.Name);
             Assert.AreEqual(ItemRarity.Epic, fullApPotion.Rarity);
             Assert.AreEqual(0, fullApPotion.HPRestoreAmount);
-            Assert.AreEqual(-1, fullApPotion.APRestoreAmount); // -1 indicates full restore
+            Assert.AreEqual(-1, fullApPotion.MPRestoreAmount); // -1 indicates full restore
 
             var fullMixPotion = PotionItems.FullMixPotion();
             Assert.AreEqual("FullMixPotion", fullMixPotion.Name);
             Assert.AreEqual(ItemRarity.Epic, fullMixPotion.Rarity);
             Assert.AreEqual(-1, fullMixPotion.HPRestoreAmount); // -1 indicates full restore
-            Assert.AreEqual(-1, fullMixPotion.APRestoreAmount); // -1 indicates full restore
+            Assert.AreEqual(-1, fullMixPotion.MPRestoreAmount); // -1 indicates full restore
         }
 
         [TestMethod]
@@ -78,7 +78,7 @@ namespace PitHero.Tests
         {
             var bag = BagItems.StandardBag();
             Assert.AreEqual(0, bag.HPRestoreAmount);
-            Assert.AreEqual(0, bag.APRestoreAmount);
+            Assert.AreEqual(0, bag.MPRestoreAmount);
         }
     }
 }

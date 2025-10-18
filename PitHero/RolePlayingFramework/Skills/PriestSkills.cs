@@ -31,7 +31,7 @@ namespace RolePlayingFramework.Skills
         public CalmSpiritPassive() : base("priest.calm_spirit", "Calm Spirit", SkillKind.Passive, SkillTargetType.Self, 0, 50) { }
         public override void ApplyPassive(Hero hero)
         {
-            hero.APTickRegen += 1; // +1 AP per turn cycle
+            hero.MPTickRegen += 1; // +1 AP per turn cycle
         }
     }
 

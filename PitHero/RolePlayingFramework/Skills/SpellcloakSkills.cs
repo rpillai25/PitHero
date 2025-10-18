@@ -45,8 +45,8 @@ namespace RolePlayingFramework.Skills
         public FadeSkill() : base("spellcloak.fade", "Fade", SkillKind.Active, SkillTargetType.Self, 6, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
-            // Untargetable for 1 turn, AP regen (placeholder)
-            hero.RestoreAP(3);
+            // Untargetable for 1 turn, MP regen (placeholder)
+            hero.RestoreMP(3);
             return "Fade";
         }
     }

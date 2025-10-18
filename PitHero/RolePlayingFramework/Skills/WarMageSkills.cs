@@ -14,7 +14,7 @@ namespace RolePlayingFramework.Skills
         public override void ApplyPassive(Hero hero)
         {
             // +1 sight (placeholder)
-            hero.APCostReduction += 0.1f; // Lower AP cost
+            hero.MPCostReduction += 0.1f; // Lower MP cost
         }
     }
 

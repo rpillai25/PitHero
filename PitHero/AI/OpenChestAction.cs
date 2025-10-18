@@ -281,7 +281,7 @@ namespace PitHero.AI
         private bool IsItemVisualizable(IItem item)
         {
             // For now, assume all items with names matching Items.atlas sprites are visualizable
-            // This includes all the potion names: HPPotion, APPotion, MixPotion, etc.
+            // This includes all the potion names: HPPotion, MPPotion, MixPotion, etc.
             return item.Name.EndsWith("Potion");
         }
 

@@ -98,7 +98,7 @@ namespace PitHero.Tests
             var bag = new ItemBag("Test Bag", 12);
             var hpPotion = PotionItems.HPPotion();
             hpPotion.StackCount = 5;
-            var apPotion = PotionItems.APPotion();
+            var apPotion = PotionItems.MPPotion();
             apPotion.StackCount = 3;
 
             bag.SetSlotItem(0, hpPotion);

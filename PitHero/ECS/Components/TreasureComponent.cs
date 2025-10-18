@@ -165,7 +165,7 @@ namespace PitHero.ECS.Components
             return random switch
             {
                 0 => PotionItems.HPPotion(),
-                1 => PotionItems.APPotion(),
+                1 => PotionItems.MPPotion(),
                 2 => PotionItems.MixPotion(),
                 _ => PotionItems.HPPotion()
             };
@@ -180,7 +180,7 @@ namespace PitHero.ECS.Components
             return random switch
             {
                 0 => PotionItems.MidHPPotion(),
-                1 => PotionItems.MidAPPotion(),
+                1 => PotionItems.MidMPPotion(),
                 2 => PotionItems.MidMixPotion(),
                 _ => PotionItems.MidHPPotion()
             };
@@ -195,7 +195,7 @@ namespace PitHero.ECS.Components
             return random switch
             {
                 0 => PotionItems.FullHPPotion(),
-                1 => PotionItems.FullAPPotion(),
+                1 => PotionItems.FullMPPotion(),
                 2 => PotionItems.FullMixPotion(),
                 _ => PotionItems.FullHPPotion()
             };

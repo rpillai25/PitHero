@@ -21,8 +21,8 @@ namespace RolePlayingFramework.Skills
         public EnlightenedFadePassive() : base("divinecloak.enlightened_fade", "Enlightened Fade", SkillKind.Passive, SkillTargetType.Self, 0, 220) { }
         public override void ApplyPassive(Hero hero)
         {
-            hero.APTickRegen += 1; // +15% AP gain simplified to +1 AP/tick
-            // Untargetable on AP surge (placeholder)
+            hero.MPTickRegen += 1; // +15% MP gain simplified to +1 MP/tick
+            // Untargetable on MP surge (placeholder)
         }
     }
 
@@ -44,7 +44,7 @@ namespace RolePlayingFramework.Skills
         public AuraCloakSkill() : base("divinecloak.aura_cloak", "Aura Cloak", SkillKind.Active, SkillTargetType.Self, 9, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
-            hero.RestoreAP(10); // AP regen + shield (placeholder)
+            hero.RestoreMP(10); // MP regen + shield (placeholder)
             return "AuraCloak";
         }
     }

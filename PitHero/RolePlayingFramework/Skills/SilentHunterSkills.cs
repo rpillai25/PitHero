@@ -43,8 +43,8 @@ namespace RolePlayingFramework.Skills
         public VenomEscapeSkill() : base("silenthunter.venom_escape", "Venom Escape", SkillKind.Active, SkillTargetType.Self, 8, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
-            // Untargetable for 2 turns, AP boost (placeholder)
-            hero.RestoreAP(8);
+            // Untargetable for 2 turns, MP boost (placeholder)
+            hero.RestoreMP(8);
             return "VenomEscape";
         }
     }

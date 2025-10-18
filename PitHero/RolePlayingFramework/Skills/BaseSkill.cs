@@ -13,22 +13,22 @@ namespace RolePlayingFramework.Skills
         public string Description { get; }
         public SkillKind Kind { get; }
         public SkillTargetType TargetType { get; }
-        public int APCost { get; }
+        public int MPCost { get; }
         public int JPCost { get; }
 
-        protected BaseSkill(string id, string name, SkillKind kind, SkillTargetType targetType, int apCost, int jpCost)
-            : this(id, name, "", kind, targetType, apCost, jpCost)
+        protected BaseSkill(string id, string name, SkillKind kind, SkillTargetType targetType, int mpCost, int jpCost)
+            : this(id, name, "", kind, targetType, mpCost, jpCost)
         {
         }
 
-        protected BaseSkill(string id, string name, string description, SkillKind kind, SkillTargetType targetType, int apCost, int jpCost)
+        protected BaseSkill(string id, string name, string description, SkillKind kind, SkillTargetType targetType, int mpCost, int jpCost)
         {
             Id = id;
             Name = name;
             Description = description;
             Kind = kind;
             TargetType = targetType;
-            APCost = apCost;
+            MPCost = mpCost;
             JPCost = jpCost;
         }
 

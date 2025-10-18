@@ -11,18 +11,18 @@ namespace RolePlayingFramework.Equipment
         public string Description { get; protected set; }
         public int Price { get; protected set; }
         public int HPRestoreAmount { get; protected set; }
-        public int APRestoreAmount { get; protected set; }
+        public int MPRestoreAmount { get; protected set; }
         public int StackSize { get; protected set; }
         public int StackCount { get; set; }
 
-        protected Consumable(string name, ItemRarity rarity, string description, int price, int hpRestoreAmount = 0, int apRestoreAmount = 0)
+        protected Consumable(string name, ItemRarity rarity, string description, int price, int hpRestoreAmount = 0, int mpRestoreAmount = 0)
         {
             Name = name;
             Rarity = rarity;
             Description = description;
             Price = price;
             HPRestoreAmount = hpRestoreAmount;
-            APRestoreAmount = apRestoreAmount;
+            MPRestoreAmount = mpRestoreAmount;
             StackSize = 16;
             StackCount = 1;
         }

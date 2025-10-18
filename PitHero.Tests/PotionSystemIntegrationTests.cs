@@ -59,29 +59,29 @@ namespace PitHero.Tests
             // Test Normal potions
             var normalHPPotion = PotionItems.HPPotion();
             Assert.AreEqual(100, normalHPPotion.HPRestoreAmount);
-            Assert.AreEqual(0, normalHPPotion.APRestoreAmount);
+            Assert.AreEqual(0, normalHPPotion.MPRestoreAmount);
 
             var normalMixPotion = PotionItems.MixPotion();
             Assert.AreEqual(100, normalMixPotion.HPRestoreAmount);
-            Assert.AreEqual(100, normalMixPotion.APRestoreAmount);
+            Assert.AreEqual(100, normalMixPotion.MPRestoreAmount);
 
             // Test Mid potions
             var midHPPotion = PotionItems.MidHPPotion();
             Assert.AreEqual(500, midHPPotion.HPRestoreAmount);
-            Assert.AreEqual(0, midHPPotion.APRestoreAmount);
+            Assert.AreEqual(0, midHPPotion.MPRestoreAmount);
 
             var midMixPotion = PotionItems.MidMixPotion();
             Assert.AreEqual(500, midMixPotion.HPRestoreAmount);
-            Assert.AreEqual(500, midMixPotion.APRestoreAmount);
+            Assert.AreEqual(500, midMixPotion.MPRestoreAmount);
 
             // Test Full potions (use -1 to indicate full restore)
             var fullHPPotion = PotionItems.FullHPPotion();
             Assert.AreEqual(-1, fullHPPotion.HPRestoreAmount);
-            Assert.AreEqual(0, fullHPPotion.APRestoreAmount);
+            Assert.AreEqual(0, fullHPPotion.MPRestoreAmount);
 
             var fullMixPotion = PotionItems.FullMixPotion();
             Assert.AreEqual(-1, fullMixPotion.HPRestoreAmount);
-            Assert.AreEqual(-1, fullMixPotion.APRestoreAmount);
+            Assert.AreEqual(-1, fullMixPotion.MPRestoreAmount);
         }
 
         [TestMethod]
@@ -91,7 +91,7 @@ namespace PitHero.Tests
             
             // Add various potions to the bag
             var hpPotion = PotionItems.HPPotion();
-            var midAPPotion = PotionItems.MidAPPotion();
+            var midAPPotion = PotionItems.MidMPPotion();
             var fullMixPotion = PotionItems.FullMixPotion();
 
             Assert.IsTrue(bag.TryAdd(hpPotion));
@@ -111,13 +111,13 @@ namespace PitHero.Tests
 
             var retrievedMidAPPotion = (Consumable)bag.Items[1];
             Assert.AreEqual("MidAPPotion", retrievedMidAPPotion.Name);
-            Assert.AreEqual(500, retrievedMidAPPotion.APRestoreAmount);
+            Assert.AreEqual(500, retrievedMidAPPotion.MPRestoreAmount);
             Assert.AreEqual(ItemRarity.Rare, retrievedMidAPPotion.Rarity);
 
             var retrievedFullMixPotion = (Consumable)bag.Items[2];
             Assert.AreEqual("FullMixPotion", retrievedFullMixPotion.Name);
             Assert.AreEqual(-1, retrievedFullMixPotion.HPRestoreAmount);
-            Assert.AreEqual(-1, retrievedFullMixPotion.APRestoreAmount);
+            Assert.AreEqual(-1, retrievedFullMixPotion.MPRestoreAmount);
             Assert.AreEqual(ItemRarity.Epic, retrievedFullMixPotion.Rarity);
         }
 
@@ -128,13 +128,13 @@ namespace PitHero.Tests
             var potionNames = new[]
             {
                 PotionItems.HPPotion().Name,
-                PotionItems.APPotion().Name,
+                PotionItems.MPPotion().Name,
                 PotionItems.MixPotion().Name,
                 PotionItems.MidHPPotion().Name,
-                PotionItems.MidAPPotion().Name,
+                PotionItems.MidMPPotion().Name,
                 PotionItems.MidMixPotion().Name,
                 PotionItems.FullHPPotion().Name,
-                PotionItems.FullAPPotion().Name,
+                PotionItems.FullMPPotion().Name,
                 PotionItems.FullMixPotion().Name
             };
 

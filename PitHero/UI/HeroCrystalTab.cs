@@ -259,7 +259,7 @@ namespace PitHero.UI
             var messageLabel = contentTable.GetChildren().First() as Label;
             if (messageLabel != null)
             {
-                messageLabel.SetText($"Learn {skill.Name} for {skill.JPCost} JP?\n\n{skill.Kind} Skill\nAP Cost: {skill.APCost}");
+                messageLabel.SetText($"Learn {skill.Name} for {skill.JPCost} JP?\n\n{skill.Kind} Skill\nMP Cost: {skill.MPCost}");
             }
             
             _confirmDialog.Show(_stage);

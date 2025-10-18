@@ -13,8 +13,8 @@ namespace RolePlayingFramework.Skills
         public BattleMeditationPassive() : base("templar.battle_meditation", "Battle Meditation", SkillKind.Passive, SkillTargetType.Self, 0, 180) { }
         public override void ApplyPassive(Hero hero)
         {
-            hero.APTickRegen += 2; // +2 AP/tick regen
-            hero.APCostReduction += 0.1f; // 10% AP cost reduction (placeholder)
+            hero.MPTickRegen += 2; // +2 MP/tick regen
+            hero.MPCostReduction += 0.1f; // 10% MP cost reduction (placeholder)
         }
     }
 
