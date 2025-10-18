@@ -18,6 +18,7 @@ namespace PitHero.UI
             _container.SetMovable(false);
             _container.SetResizable(false);
             _container.SetKeepWithinStage(false);
+            _container.SetColor(GameConfig.TransparentMenu);
             
             _contentTable = new Table();
             _container.Add(_contentTable).Expand().Fill().Pad(5f);

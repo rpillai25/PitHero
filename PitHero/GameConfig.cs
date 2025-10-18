@@ -84,6 +84,7 @@ namespace PitHero
         public static readonly Color PitColor = Color.Red;
         public static readonly Color TownColor = Color.Green;
         public static readonly Color BackgroundColor = Color.Black;
+        public static readonly Color TransparentMenu = new Color(255, 255, 255, 230);
 
         // Top-level UI vertical offsets (applied when window shrinks so text/buttons are not clipped at top)
         public const int TopUiYOffsetNormal = 0;

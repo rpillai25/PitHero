@@ -306,7 +306,7 @@ namespace PitHero.UI
             if (_skillTooltip != null && _skillTooltip.GetContainer().HasParent() && _stage != null)
             {
                 var mousePos = _stage.GetMousePosition();
-                _skillTooltip.GetContainer().SetPosition(mousePos.X + 10, mousePos.Y + 10);
+                _skillTooltip.GetContainer().SetPosition(mousePos.X + 10, mousePos.Y - 16);
             }
         }
         
