@@ -155,10 +155,10 @@ namespace PitHero.Tests
     }
 
     [TestClass]
-    public class RarityAndHPAPBonusTests
+    public class RarityAndHPMPBonusTests
     {
         [TestMethod]
-        public void Gear_SupportsHPAndAPBonuses()
+        public void Gear_SupportsHPAndMPBonuses()
         {
             var gear = new Gear("Vitality Ring", ItemKind.Accessory, ItemRarity.Rare, "A test ring", 100,
                 new StatBlock(0, 0, 2, 0), hp: 50, mp: 20);
@@ -168,7 +168,7 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void Hero_CalculatesEquipmentHPAPBonuses()
+        public void Hero_CalculatesEquipmentHPMPBonuses()
         {
             var hero = new Hero("Test", new Knight(), 1, new StatBlock(5, 5, 5, 5));
             var vitalityRing = new Gear("Vitality Ring", ItemKind.Accessory, ItemRarity.Rare, "A test ring", 100,

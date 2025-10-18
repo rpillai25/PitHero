@@ -17,7 +17,7 @@ namespace PitHero.Tests
             Assert.AreEqual(0, hpPotion.MPRestoreAmount);
 
             var apPotion = PotionItems.MPPotion();
-            Assert.AreEqual("APPotion", apPotion.Name);
+            Assert.AreEqual("MPPotion", apPotion.Name);
             Assert.AreEqual(ItemRarity.Normal, apPotion.Rarity);
             Assert.AreEqual(0, apPotion.HPRestoreAmount);
             Assert.AreEqual(100, apPotion.MPRestoreAmount);
@@ -39,7 +39,7 @@ namespace PitHero.Tests
             Assert.AreEqual(0, midHpPotion.MPRestoreAmount);
 
             var midApPotion = PotionItems.MidMPPotion();
-            Assert.AreEqual("MidAPPotion", midApPotion.Name);
+            Assert.AreEqual("MidMPPotion", midApPotion.Name);
             Assert.AreEqual(ItemRarity.Rare, midApPotion.Rarity);
             Assert.AreEqual(0, midApPotion.HPRestoreAmount);
             Assert.AreEqual(500, midApPotion.MPRestoreAmount);
@@ -61,7 +61,7 @@ namespace PitHero.Tests
             Assert.AreEqual(0, fullHpPotion.MPRestoreAmount);
 
             var fullApPotion = PotionItems.FullMPPotion();
-            Assert.AreEqual("FullAPPotion", fullApPotion.Name);
+            Assert.AreEqual("FullMPPotion", fullApPotion.Name);
             Assert.AreEqual(ItemRarity.Epic, fullApPotion.Rarity);
             Assert.AreEqual(0, fullApPotion.HPRestoreAmount);
             Assert.AreEqual(-1, fullApPotion.MPRestoreAmount); // -1 indicates full restore
