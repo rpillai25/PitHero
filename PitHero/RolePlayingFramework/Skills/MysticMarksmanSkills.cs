@@ -51,14 +51,14 @@ namespace RolePlayingFramework.Skills
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
-            // Silence and AP regen
+            // Silence and MP regen
             for (int i = 0; i < surrounding.Count; i++)
             {
                 var enemy = surrounding[i];
                 var res = resolver.Resolve(stats, enemy.Stats, DamageKind.Magical, hero.Level, enemy.Level);
                 if (res.Hit) enemy.TakeDamage(res.Damage);
             }
-            hero.RestoreAP(5);
+            hero.RestoreMP(5);
             return "FadeVolley";
         }
     }

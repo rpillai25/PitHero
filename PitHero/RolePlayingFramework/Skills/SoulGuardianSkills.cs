@@ -50,8 +50,8 @@ namespace RolePlayingFramework.Skills
         public GuardianVeilSkill() : base("soulguardian.guardian_veil", "Guardian Veil", SkillKind.Active, SkillTargetType.Self, 8, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
-            // Shield + AP regen (placeholder)
-            hero.RestoreAP(10);
+            // Shield + MP regen (placeholder)
+            hero.RestoreMP(10);
             return "GuardianVeil";
         }
     }

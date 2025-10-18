@@ -181,9 +181,9 @@ namespace PitHero.UI
                     _contentTable.Add(hpLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                 }
-                if (gear.APBonus != 0)
+                if (gear.MPBonus != 0)
                 {
-                    var apLabel = new Label($"+{gear.APBonus} AP", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
+                    var apLabel = new Label($"+{gear.MPBonus} MP", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
                     _contentTable.Add(apLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                 }

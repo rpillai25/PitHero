@@ -21,7 +21,7 @@ namespace RolePlayingFramework.Skills
         public EnlightenedWillPassive() : base("divinesamurai.enlightened_will", "Enlightened Will", SkillKind.Passive, SkillTargetType.Self, 0, 220) { }
         public override void ApplyPassive(Hero hero)
         {
-            hero.APTickRegen += 1; // Resist crowd control, AP boost
+            hero.MPTickRegen += 1; // Resist crowd control, MP boost
         }
     }
 
@@ -45,8 +45,8 @@ namespace RolePlayingFramework.Skills
         public DragonAuraSkill() : base("divinesamurai.dragon_aura", "Dragon Aura", SkillKind.Active, SkillTargetType.SurroundingEnemies, 8, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
-            // AP gain and debuff removal for surrounding allies (placeholder)
-            hero.RestoreAP(10);
+            // MP gain and debuff removal for surrounding allies (placeholder)
+            hero.RestoreMP(10);
             return "DragonAura";
         }
     }

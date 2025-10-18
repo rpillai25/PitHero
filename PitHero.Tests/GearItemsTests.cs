@@ -20,7 +20,7 @@ namespace PitHero.Tests
             Assert.AreEqual(3, sword.AttackBonus);
             Assert.AreEqual(0, sword.DefenseBonus);
             Assert.AreEqual(0, sword.HPBonus);
-            Assert.AreEqual(0, sword.APBonus);
+            Assert.AreEqual(0, sword.MPBonus);
         }
 
         [TestMethod]
@@ -36,7 +36,7 @@ namespace PitHero.Tests
             Assert.AreEqual(0, shield.AttackBonus);
             Assert.AreEqual(2, shield.DefenseBonus);
             Assert.AreEqual(0, shield.HPBonus);
-            Assert.AreEqual(0, shield.APBonus);
+            Assert.AreEqual(0, shield.MPBonus);
         }
 
         [TestMethod]
@@ -52,7 +52,7 @@ namespace PitHero.Tests
             Assert.AreEqual(0, helm.AttackBonus);
             Assert.AreEqual(2, helm.DefenseBonus);
             Assert.AreEqual(0, helm.HPBonus);
-            Assert.AreEqual(0, helm.APBonus);
+            Assert.AreEqual(0, helm.MPBonus);
         }
 
         [TestMethod]
@@ -68,7 +68,7 @@ namespace PitHero.Tests
             Assert.AreEqual(0, armor.AttackBonus);
             Assert.AreEqual(3, armor.DefenseBonus);
             Assert.AreEqual(0, armor.HPBonus);
-            Assert.AreEqual(0, armor.APBonus);
+            Assert.AreEqual(0, armor.MPBonus);
         }
 
         [TestMethod]
@@ -88,7 +88,7 @@ namespace PitHero.Tests
             Assert.AreEqual(0, ring.AttackBonus);
             Assert.AreEqual(0, ring.DefenseBonus);
             Assert.AreEqual(0, ring.HPBonus);
-            Assert.AreEqual(0, ring.APBonus);
+            Assert.AreEqual(0, ring.MPBonus);
         }
 
         [TestMethod]
@@ -108,7 +108,7 @@ namespace PitHero.Tests
             Assert.AreEqual(0, necklace.AttackBonus);
             Assert.AreEqual(0, necklace.DefenseBonus);
             Assert.AreEqual(10, necklace.HPBonus);
-            Assert.AreEqual(0, necklace.APBonus);
+            Assert.AreEqual(0, necklace.MPBonus);
         }
     }
 }

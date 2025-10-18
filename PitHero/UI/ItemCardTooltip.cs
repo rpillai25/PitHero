@@ -215,9 +215,9 @@ namespace PitHero.UI
                     _contentTable.Row();
                     max = Max(max, Measure(font, text));
                 }
-                if (gear.APBonus != 0)
+                if (gear.MPBonus != 0)
                 {
-                    var text = $"+{gear.APBonus} AP";
+                    var text = $"+{gear.MPBonus} MP";
                     var apLabel = new Label(text, new LabelStyle { Font = font, FontColor = Color.White });
                     _contentTable.Add(apLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();

@@ -21,7 +21,7 @@ namespace RolePlayingFramework.Skills
         public QuickArcaneEscapePassive() : base("arcanestalker.quick_arcane_escape", "Quick Arcane Escape", SkillKind.Passive, SkillTargetType.Self, 0, 220) { }
         public override void ApplyPassive(Hero hero)
         {
-            hero.APTickRegen += 1; // Escape battles easier, AP boost
+            hero.MPTickRegen += 1; // Escape battles easier, MP boost
         }
     }
 

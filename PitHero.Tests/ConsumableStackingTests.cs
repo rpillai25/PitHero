@@ -44,7 +44,7 @@ namespace PitHero.Tests
         {
             var bag = new ItemBag("Test Bag", 12);
             var hpPotion = PotionItems.HPPotion();
-            var apPotion = PotionItems.APPotion();
+            var apPotion = PotionItems.MPPotion();
 
             // Add HP potion
             Assert.IsTrue(bag.TryAdd(hpPotion));
@@ -100,7 +100,7 @@ namespace PitHero.Tests
             Assert.AreEqual(1, bag.Count); // 1 slot: HP(5)
 
             // Add different item
-            var apPotion = PotionItems.APPotion();
+            var apPotion = PotionItems.MPPotion();
             Assert.IsTrue(bag.TryAdd(apPotion));
             Assert.AreEqual(2, bag.Count); // 2 slots: HP(5), AP(1)
 

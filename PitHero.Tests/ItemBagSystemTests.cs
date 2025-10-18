@@ -164,7 +164,7 @@ namespace PitHero.Tests
                 new StatBlock(0, 0, 2, 0), hp: 50, ap: 20);
 
             Assert.AreEqual(50, gear.HPBonus);
-            Assert.AreEqual(20, gear.APBonus);
+            Assert.AreEqual(20, gear.MPBonus);
         }
 
         [TestMethod]
@@ -175,12 +175,12 @@ namespace PitHero.Tests
                 new StatBlock(0, 0, 0, 0), hp: 50, ap: 20);
 
             var baseHP = hero.MaxHP;
-            var baseAP = hero.MaxAP;
+            var baseMP = hero.MaxMP;
 
             Assert.IsTrue(hero.TryEquip(vitalityRing));
 
             Assert.AreEqual(baseHP + 50, hero.MaxHP);
-            Assert.AreEqual(baseAP + 20, hero.MaxAP);
+            Assert.AreEqual(baseAP + 20, hero.MaxMP);
         }
 
         [TestMethod]
@@ -224,7 +224,7 @@ namespace PitHero.Tests
 
             // Test IGear properties through interface
             Assert.AreEqual(50, gearInterface.HPBonus);
-            Assert.AreEqual(20, gearInterface.APBonus);
+            Assert.AreEqual(20, gearInterface.MPBonus);
             Assert.AreEqual(new StatBlock(0, 0, 2, 0), gearInterface.StatBonus);
 
             // Test IItem properties through interface

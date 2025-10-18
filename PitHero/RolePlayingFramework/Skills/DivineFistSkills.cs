@@ -22,7 +22,7 @@ namespace RolePlayingFramework.Skills
         public EnlightenedPassive() : base("divinefist.enlightened", "Enlightened", SkillKind.Passive, SkillTargetType.Self, 0, 160) { }
         public override void ApplyPassive(Hero hero)
         {
-            hero.APTickRegen += 1; // +15% AP gain approximated as +1 AP/tick
+            hero.MPTickRegen += 1; // +15% MP gain approximated as +1 MP/tick
         }
     }
 

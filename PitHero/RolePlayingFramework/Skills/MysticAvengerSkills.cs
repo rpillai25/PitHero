@@ -55,8 +55,8 @@ namespace RolePlayingFramework.Skills
         public MysticFadeSkill() : base("mysticavenger.mystic_fade", "Mystic Fade", SkillKind.Active, SkillTargetType.Self, 9, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
-            // Untargetable for 2 turns, AP regen (placeholder)
-            hero.RestoreAP(10);
+            // Untargetable for 2 turns, MP regen (placeholder)
+            hero.RestoreMP(10);
             return "MysticFade";
         }
     }

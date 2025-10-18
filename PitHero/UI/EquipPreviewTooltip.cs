@@ -167,7 +167,7 @@ namespace PitHero.UI
             }
 
             // AP (MP)
-            int apDiff = _newGear.APBonus - _equippedGear.APBonus;
+            int apDiff = _newGear.MPBonus - _equippedGear.MPBonus;
             if (apDiff != 0)
             {
                 hasAnyChanges = true;
@@ -215,7 +215,7 @@ namespace PitHero.UI
                    _newGear.AttackBonus != _equippedGear.AttackBonus ||
                    _newGear.DefenseBonus != _equippedGear.DefenseBonus ||
                    _newGear.HPBonus != _equippedGear.HPBonus ||
-                   _newGear.APBonus != _equippedGear.APBonus;
+                   _newGear.MPBonus != _equippedGear.MPBonus;
         }
     }
 }
