@@ -104,6 +104,7 @@ namespace PitHero
 
         public const int RenderLayerLowest = 0; // Lowest possible layer
         public const int RenderLayerPickupItem = 1; // Pickup items layer
+        public const int RenderLayerTop = 2;
         public const int RenderLayerHeroHand1 = 4;
         public const int RenderLayerHeroHair = 5;
         public const int RenderLayerHeroShirt = 6;

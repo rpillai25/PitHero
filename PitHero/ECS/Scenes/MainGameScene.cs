@@ -130,6 +130,10 @@ namespace PitHero.ECS.Scenes
             baseLayerRenderer.SetLayerToRender("Base");
             baseLayerRenderer.RenderLayer = GameConfig.RenderLayerBase;
 
+            var topLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(_tmxMap));
+            topLayerRenderer.SetLayerToRender("Top");
+            topLayerRenderer.SetRenderLayer(GameConfig.RenderLayerTop);
+
             var fogLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(_tmxMap));
             fogLayerRenderer.SetLayerToRender("FogOfWar");
             fogLayerRenderer.SetRenderLayer(GameConfig.RenderLayerFogOfWar);
