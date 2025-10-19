@@ -22,8 +22,8 @@ namespace RolePlayingFramework.Skills
         public SwiftEscapePassive() : base("stalkermonk.swift_escape", "Swift Escape", SkillKind.Passive, SkillTargetType.Self, 0, 220) { }
         public override void ApplyPassive(Hero hero)
         {
-            // Escape battles easier, AP boost (placeholder)
-            hero.APTickRegen += 1;
+            // Escape battles easier, MP boost (placeholder)
+            hero.MPTickRegen += 1;
         }
     }
 

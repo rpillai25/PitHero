@@ -21,7 +21,7 @@ namespace RolePlayingFramework.Skills
         public QuickFadePassive() : base("mysticstalker.quick_fade", "Quick Fade", SkillKind.Passive, SkillTargetType.Self, 0, 220) { }
         public override void ApplyPassive(Hero hero)
         {
-            hero.APTickRegen += 1; // Escape battles easier, AP regen
+            hero.MPTickRegen += 1; // Escape battles easier, MP regen
         }
     }
 

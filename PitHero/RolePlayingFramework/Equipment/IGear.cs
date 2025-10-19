@@ -12,8 +12,8 @@ namespace RolePlayingFramework.Equipment
         int AttackBonus { get; }
         int DefenseBonus { get; }
 
-        /// <summary>Optional flat HP/AP modifiers.</summary>
+        /// <summary>Optional flat HP/MP modifiers.</summary>
         int HPBonus { get; }
-        int APBonus { get; }
+        int MPBonus { get; }
     }
 }

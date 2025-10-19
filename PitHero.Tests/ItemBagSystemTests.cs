@@ -155,32 +155,32 @@ namespace PitHero.Tests
     }
 
     [TestClass]
-    public class RarityAndHPAPBonusTests
+    public class RarityAndHPMPBonusTests
     {
         [TestMethod]
-        public void Gear_SupportsHPAndAPBonuses()
+        public void Gear_SupportsHPAndMPBonuses()
         {
             var gear = new Gear("Vitality Ring", ItemKind.Accessory, ItemRarity.Rare, "A test ring", 100,
-                new StatBlock(0, 0, 2, 0), hp: 50, ap: 20);
+                new StatBlock(0, 0, 2, 0), hp: 50, mp: 20);
 
             Assert.AreEqual(50, gear.HPBonus);
-            Assert.AreEqual(20, gear.APBonus);
+            Assert.AreEqual(20, gear.MPBonus);
         }
 
         [TestMethod]
-        public void Hero_CalculatesEquipmentHPAPBonuses()
+        public void Hero_CalculatesEquipmentHPMPBonuses()
         {
             var hero = new Hero("Test", new Knight(), 1, new StatBlock(5, 5, 5, 5));
             var vitalityRing = new Gear("Vitality Ring", ItemKind.Accessory, ItemRarity.Rare, "A test ring", 100,
-                new StatBlock(0, 0, 0, 0), hp: 50, ap: 20);
+                new StatBlock(0, 0, 0, 0), hp: 50, mp: 20);
 
             var baseHP = hero.MaxHP;
-            var baseAP = hero.MaxAP;
+            var baseMP = hero.MaxMP;
 
             Assert.IsTrue(hero.TryEquip(vitalityRing));
 
             Assert.AreEqual(baseHP + 50, hero.MaxHP);
-            Assert.AreEqual(baseAP + 20, hero.MaxAP);
+            Assert.AreEqual(baseMP + 20, hero.MaxMP);
         }
 
         [TestMethod]
@@ -216,7 +216,7 @@ namespace PitHero.Tests
         public void Gear_ImplementsIGearInterface()
         {
             var gear = new Gear("Vitality Ring", ItemKind.Accessory, ItemRarity.Rare, "A test ring", 100,
-                new StatBlock(0, 0, 2, 0), hp: 50, ap: 20);
+                new StatBlock(0, 0, 2, 0), hp: 50, mp: 20);
 
             // Test that Gear implements IGear
             IGear gearInterface = gear;
@@ -224,7 +224,7 @@ namespace PitHero.Tests
 
             // Test IGear properties through interface
             Assert.AreEqual(50, gearInterface.HPBonus);
-            Assert.AreEqual(20, gearInterface.APBonus);
+            Assert.AreEqual(20, gearInterface.MPBonus);
             Assert.AreEqual(new StatBlock(0, 0, 2, 0), gearInterface.StatBonus);
 
             // Test IItem properties through interface

@@ -48,8 +48,8 @@ namespace RolePlayingFramework.Skills
         public FadeSlashSkill() : base("arcanesamurai.fade_slash", "Fade Slash", SkillKind.Active, SkillTargetType.Self, 8, 220) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
-            // Untargetable, AP regen (placeholder)
-            hero.RestoreAP(8);
+            // Untargetable, MP regen (placeholder)
+            hero.RestoreMP(8);
             return "FadeSlash";
         }
     }

@@ -184,9 +184,9 @@ namespace PitHero.ECS.Components
             // Consumables should go to shortcut bar first
             TryAddItem(PotionItems.HPPotion());
             TryAddItem(PotionItems.HPPotion());
-            TryAddItem(PotionItems.APPotion());
-            TryAddItem(PotionItems.APPotion());
-            TryAddItem(PotionItems.APPotion());
+            TryAddItem(PotionItems.MPPotion());
+            TryAddItem(PotionItems.MPPotion());
+            TryAddItem(PotionItems.MPPotion());
             TryAddItem(PotionItems.FullHPPotion());
             
             // Non-consumables go to main bag

@@ -13,7 +13,7 @@ namespace RolePlayingFramework.Skills
         public ManaSpringPassive() : base("wizard.mana_spring", "Mana Spring", SkillKind.Passive, SkillTargetType.Self, 0, 120) { }
         public override void ApplyPassive(Hero hero)
         {
-            hero.APTickRegen += 2; // +2 AP/tick regen
+            hero.MPTickRegen += 2; // +2 MP/tick regen
         }
     }
 
