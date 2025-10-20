@@ -125,13 +125,11 @@ namespace PitHero.Tests
                 Assert.IsTrue(output.Contains("STEP 4: Hero wanders and explores pit completely"));
                 Assert.IsTrue(output.Contains("STEP 5: Execute complete wizard orb workflow"));
                 
-                // Verify key actions were executed (only the 5 simplified actions)
+                // Verify key actions were executed (4 simplified actions - ActivatePitRegenAction now merged into ActivateWizardOrbAction)
                 Assert.IsTrue(output.Contains("[JumpIntoPitAction]"));
                 Assert.IsTrue(output.Contains("[WanderPitAction]"));
                 Assert.IsTrue(output.Contains("[WanderPitAction]"));
                 Assert.IsTrue(output.Contains("[ActivateWizardOrbAction]"));
-                Assert.IsTrue(output.Contains("[JumpOutOfPitAction]"));
-                Assert.IsTrue(output.Contains("[ActivatePitRegenAction]"));
                 
                 // Verify completion
                 Assert.IsTrue(output.Contains("Simulation Complete"));

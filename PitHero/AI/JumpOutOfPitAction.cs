@@ -19,9 +19,7 @@ namespace PitHero.AI
         
         public JumpOutOfPitAction() : base(GoapConstants.JumpOutOfPitAction)
         {
-            // Preconditions: Hero must be inside pit and wizard orb activated
-            SetPrecondition(GoapConstants.InsidePit, true);
-            SetPrecondition(GoapConstants.ActivatedWizardOrb, true);
+            // No preconditions - this action is preserved for future use but not used by GOAP planner currently
             
             // Postcondition: Hero is outside pit
             SetPostcondition(GoapConstants.OutsidePit, true);

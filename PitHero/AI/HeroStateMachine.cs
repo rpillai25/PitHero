@@ -65,9 +65,6 @@ namespace PitHero.AI
             
             var jumpOutOfPit = new JumpOutOfPitAction();
             _planner.AddAction(jumpOutOfPit);
-            
-            var activatePitRegen = new ActivatePitRegenAction();
-            _planner.AddAction(activatePitRegen);
 
             // Add combat/interaction actions so the planner can satisfy interaction goals
             var attackMonster = new AttackMonsterAction();
@@ -469,10 +466,6 @@ namespace PitHero.AI
                     _targetLocationType = LocationType.PitInsideEdge;
                     return CalculatePitInsideEdgeLocation();
 
-                case GoapConstants.ActivatePitRegenAction:
-                    _targetLocationType = LocationType.PitRegenPoint;
-                    return CalculatePitRegenPointLocation();
-
                 case GoapConstants.AttackMonster:
                     // Attack happens in-place. No movement target required.
                     _targetLocationType = LocationType.None;
@@ -711,15 +704,6 @@ namespace PitHero.AI
             var pitRightEdge = pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth);
             
             return new Point(pitRightEdge - 2, GameConfig.PitCenterTileY); // Just inside right edge
-        }
-
-        /// <summary>
-        /// Calculate PitRegenPoint location - predefined location for pit regeneration
-        /// </summary>
-        private Point? CalculatePitRegenPointLocation()
-        {
-            // Use map center as the pit regeneration point (outside pit area)
-            return new Point(GameConfig.MapCenterTileX, GameConfig.MapCenterTileY);
         }
 
         /// <summary>

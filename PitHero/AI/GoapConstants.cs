@@ -18,7 +18,6 @@
         public const string WanderPitAction = "WanderPitAction";
         public const string ActivateWizardOrbAction = "ActivateWizardOrbAction";
         public const string JumpOutOfPitAction = "JumpOutOfPitAction";
-        public const string ActivatePitRegenAction = "ActivatePitRegenAction";
         public const string AttackMonster = "AttackMonster";
         public const string OpenChest = "OpenChest";
     }
