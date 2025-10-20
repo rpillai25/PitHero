@@ -13,7 +13,6 @@ namespace PitHero.UI
         private Stage _stage;
         private Image _titleLogo;
         private Table _mainMenuTable;
-        private Table _mapSelectionTable;
         private Window _quitConfirmationDialog;
 
         public void InitializeUI(Stage stage)
@@ -24,7 +23,6 @@ namespace PitHero.UI
 
             CreateTitleLogo();
             CreateMainMenu(skin);
-            CreateMapSelectionMenu(skin);
             CreateQuitConfirmationDialog(skin);
         }
 
@@ -58,7 +56,7 @@ namespace PitHero.UI
             const float buttonHeight = 50f;
 
             // Wire up button events
-            newButton.OnClicked += (button) => ShowMapSelection();
+            newButton.OnClicked += (button) => StartGame("Content/Tilemaps/PitHero.tmx");
             loadButton.OnClicked += (button) => { /* TODO: Implement load functionality */ };
             quitButton.OnClicked += (button) => ShowQuitConfirmation();
 
@@ -74,40 +72,7 @@ namespace PitHero.UI
             _stage.AddElement(_mainMenuTable);
         }
 
-        private void CreateMapSelectionMenu(Skin skin)
-        {
-            _mapSelectionTable = new Table();
-            _mapSelectionTable.SetFillParent(true);
 
-            // Create map selection buttons
-            var normalMapButton = new TextButton("Normal Map", skin);
-            var largeMapButton = new TextButton("Large Map", skin);
-            var backButton = new TextButton("Back", skin);
-
-            // Set button sizes
-            const float buttonWidth = 200f;
-            const float buttonHeight = 50f;
-
-            // Wire up button events
-            normalMapButton.OnClicked += (button) => StartGame("Content/Tilemaps/PitHero.tmx");
-            largeMapButton.OnClicked += (button) => StartGame("Content/Tilemaps/PitHeroLarge.tmx");
-            backButton.OnClicked += (button) => ShowMainMenu();
-
-            // Add map selection buttons horizontally
-            _mapSelectionTable.Add(normalMapButton).Size(buttonWidth, buttonHeight).SetPadRight(20);
-            _mapSelectionTable.Add(largeMapButton).Size(buttonWidth, buttonHeight);
-            _mapSelectionTable.Row();
-            // Add back button on next row, centered
-            _mapSelectionTable.Add(backButton).Size(buttonWidth, buttonHeight).SetColspan(2).SetPadTop(20);
-
-            // Center the table
-            _mapSelectionTable.Center();
-            _mapSelectionTable.SetY(_stage.GetHeight() * 0.25f);
-
-            // Initially hidden
-            _mapSelectionTable.SetVisible(false);
-            _stage.AddElement(_mapSelectionTable);
-        }
 
         private void CreateQuitConfirmationDialog(Skin skin)
         {
@@ -148,18 +113,6 @@ namespace PitHero.UI
             );
 
             _stage.AddElement(_quitConfirmationDialog);
-        }
-
-        private void ShowMapSelection()
-        {
-            _mainMenuTable.SetVisible(false);
-            _mapSelectionTable.SetVisible(true);
-        }
-
-        private void ShowMainMenu()
-        {
-            _mapSelectionTable.SetVisible(false);
-            _mainMenuTable.SetVisible(true);
         }
 
         private void StartGame(string mapPath)
