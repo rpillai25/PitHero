@@ -48,6 +48,8 @@ namespace PitHero.AI
             // Clear all remaining fog first so player sees fully cleared pit
             ClearAllFogOfWarInPit();
 
+            QueueNextPitLevel();
+
             // Regenerate the queued pit level immediately
             if (!RegenerateQueuedPitLevel())
             {
@@ -59,8 +61,6 @@ namespace PitHero.AI
             RepositionHeroToStartPosition(hero);
 
             // Set hero state flags - values from ActivateWizardOrbAction
-            hero.ActivatedWizardOrb = true;
-            hero.PitInitialized = false;
             hero.FoundWizardOrb = false;  // Reset according to specification
             
             // Set hero state flags - values from ActivatePitRegenAction (these take priority)
