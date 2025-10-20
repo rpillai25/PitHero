@@ -56,7 +56,7 @@ namespace PitHero.UI
             const float buttonHeight = 50f;
 
             // Wire up button events
-            newButton.OnClicked += (button) => StartGame("Content/Tilemaps/PitHeroLarge.tmx");
+            newButton.OnClicked += (button) => StartGame("Content/Tilemaps/PitHero.tmx");
             loadButton.OnClicked += (button) => { /* TODO: Implement load functionality */ };
             quitButton.OnClicked += (button) => ShowQuitConfirmation();
 
