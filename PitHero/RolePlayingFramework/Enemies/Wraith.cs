@@ -3,12 +3,12 @@ using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Enemies
 {
-    /// <summary>Simple beginner enemy with low physical offense.</summary>
-    public sealed class Slime : IEnemy
+    /// <summary>High speed and evasion.</summary>
+    public sealed class Wraith : IEnemy
     {
         private int _hp;
 
-        public string Name => "Slime";
+        public string Name => "Wraith";
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
@@ -16,17 +16,17 @@ namespace RolePlayingFramework.Enemies
         public int CurrentHP => _hp;
         public int ExperienceYield { get; }
 
-        public Slime(int level = 1)
+        public Wraith(int level = 6)
         {
-            // Always use the preset level for Slimes regardless of requested level
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Slime");
+            // Always use the preset level for Wraiths regardless of requested level
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Wraith");
             Level = presetLevel;
             
-            // Fixed stats: HP: 15, Attack: 3, Defense: 1, Speed: 2
-            Stats = new StatBlock(strength: 3, agility: 2, vitality: 2, magic: 0);
-            MaxHP = 15;
+            // Fixed stats: HP: 18, Attack: 9, Defense: 2, Speed: 6
+            Stats = new StatBlock(strength: 9, agility: 6, vitality: 3, magic: 0);
+            MaxHP = 18;
             _hp = MaxHP;
-            ExperienceYield = 10;
+            ExperienceYield = 50;
         }
 
         /// <summary>Inflicts damage, returns true if died.</summary>

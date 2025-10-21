@@ -94,6 +94,55 @@ namespace PitHero
         }
 
         /// <summary>
+        /// Create a random enemy appropriate for the given pit level.
+        /// Level 1-3: Slime, Bat, Rat
+        /// Level 4-6: Goblin, Spider, Snake
+        /// Level 7-8: Skeleton, Orc, Wraith
+        /// Level 9: Pit Lord (Boss)
+        /// </summary>
+        private (IEnemy enemy, Color color) CreateEnemyForPitLevel(int pitLevel)
+        {
+            // Boss on level 9
+            if (pitLevel == 9)
+            {
+                return (new PitLord(), Color.Red);
+            }
+            
+            // Level 7-8: Skeleton, Orc, Wraith
+            if (pitLevel >= 7)
+            {
+                int choice = Nez.Random.Range(0, 3);
+                return choice switch
+                {
+                    0 => (new Skeleton(), Color.White),
+                    1 => (new Orc(), Color.DarkGreen),
+                    _ => (new Wraith(), Color.Blue)
+                };
+            }
+            
+            // Level 4-6: Goblin, Spider, Snake
+            if (pitLevel >= 4)
+            {
+                int choice = Nez.Random.Range(0, 3);
+                return choice switch
+                {
+                    0 => (new Goblin(), Color.Green),
+                    1 => (new Spider(), Color.DarkGray),
+                    _ => (new Snake(), Color.Yellow)
+                };
+            }
+            
+            // Level 1-3: Slime, Bat, Rat
+            int lowLevelChoice = Nez.Random.Range(0, 3);
+            return lowLevelChoice switch
+            {
+                0 => (new Slime(), Color.LightGreen),
+                1 => (new Bat(), Color.Purple),
+                _ => (new Rat(), Color.Brown)
+            };
+        }
+
+        /// <summary>
         /// Clear all existing pit entities and regenerate content for the current pit level
         /// </summary>
         public void RegenerateForCurrentLevel()
@@ -261,10 +310,10 @@ namespace PitHero
 
                 if (validObstacles.Count > 0 || targetPositions.Count == 0)
                 {
-                    CreateEntitiesAtPositions(validObstacles, GameConfig.TAG_OBSTACLE, Color.Gray, "obstacle");
-                    CreateEntitiesAtPositions(treasures, GameConfig.TAG_TREASURE, Color.Yellow, "treasure");
-                    CreateEntitiesAtPositions(monsters, GameConfig.TAG_MONSTER, Color.White, "monster");
-                    CreateEntitiesAtPositions(wizardOrbs, GameConfig.TAG_WIZARD_ORB, Color.Blue, "wizard_orb");
+                    CreateEntitiesAtPositions(validObstacles, GameConfig.TAG_OBSTACLE, Color.Gray, "obstacle", level);
+                    CreateEntitiesAtPositions(treasures, GameConfig.TAG_TREASURE, Color.Yellow, "treasure", level);
+                    CreateEntitiesAtPositions(monsters, GameConfig.TAG_MONSTER, Color.White, "monster", level);
+                    CreateEntitiesAtPositions(wizardOrbs, GameConfig.TAG_WIZARD_ORB, Color.Blue, "wizard_orb", level);
 
                     validLayoutGenerated = true;
                     Debug.Log($"[PitGenerator] Valid layout generated on attempt {attempt}");
@@ -537,7 +586,7 @@ namespace PitHero
             return positions;
         }
 
-        private void CreateEntitiesAtPositions(List<Point> positions, int tag, Color color, string entityTypeName)
+        private void CreateEntitiesAtPositions(List<Point> positions, int tag, Color color, string entityTypeName, int pitLevel = 1)
         {
             for (int i = 0; i < positions.Count; i++)
             {
@@ -656,17 +705,17 @@ namespace PitHero
                     collider.IsTrigger = true;
                     Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
 
-                    // Add EnemyComponent with a Slime (non-stationary)
-                    // Use preset level for enemies instead of scaling with pit level
-                    var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Slime");
-                    var slime = new Slime(presetLevel); // Create slime at preset level (always 1 for slimes)
+                    // Create appropriate enemy for pit level
+                    var (enemy, enemyColor) = CreateEnemyForPitLevel(pitLevel);
                     
-                    var enemyComponent = entity.AddComponent(new EnemyComponent(slime, isStationary: false));
-                    Debug.Log($"[PitGenerator] Created slime enemy (Level {slime.Level}, HP {slime.CurrentHP}) at tile ({tilePos.X},{tilePos.Y})");
+                    var enemyComponent = entity.AddComponent(new EnemyComponent(enemy, isStationary: false));
+                    Debug.Log($"[PitGenerator] Created {enemy.Name} enemy (Level {enemy.Level}, HP {enemy.CurrentHP}) at tile ({tilePos.X},{tilePos.Y})");
 
-                    // Add animation system for slime enemies
-                    var slimeAnimation = entity.AddComponent(new SlimeAnimationComponent(color));
-                    slimeAnimation.SetRenderLayer(GameConfig.RenderLayerActors);
+                    // Add animation component based on enemy type
+                    // Use PlaceholderMonster sprite with color tint for all enemies for now
+                    // TODO: Replace with specific sprites when available
+                    var enemyAnimation = entity.AddComponent(new PlaceholderMonsterAnimationComponent(enemyColor));
+                    enemyAnimation.SetRenderLayer(GameConfig.RenderLayerActors);
 
                     // Add facing component for animation direction tracking
                     var enemyFacing = entity.AddComponent(new ActorFacingComponent());

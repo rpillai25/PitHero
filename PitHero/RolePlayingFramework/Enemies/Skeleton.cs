@@ -3,12 +3,12 @@ using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Enemies
 {
-    /// <summary>Simple beginner enemy with low physical offense.</summary>
-    public sealed class Slime : IEnemy
+    /// <summary>Resistant to status effects.</summary>
+    public sealed class Skeleton : IEnemy
     {
         private int _hp;
 
-        public string Name => "Slime";
+        public string Name => "Skeleton";
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
@@ -16,17 +16,17 @@ namespace RolePlayingFramework.Enemies
         public int CurrentHP => _hp;
         public int ExperienceYield { get; }
 
-        public Slime(int level = 1)
+        public Skeleton(int level = 6)
         {
-            // Always use the preset level for Slimes regardless of requested level
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Slime");
+            // Always use the preset level for Skeletons regardless of requested level
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Skeleton");
             Level = presetLevel;
             
-            // Fixed stats: HP: 15, Attack: 3, Defense: 1, Speed: 2
-            Stats = new StatBlock(strength: 3, agility: 2, vitality: 2, magic: 0);
-            MaxHP = 15;
+            // Fixed stats: HP: 24, Attack: 10, Defense: 3, Speed: 3
+            Stats = new StatBlock(strength: 10, agility: 3, vitality: 4, magic: 0);
+            MaxHP = 24;
             _hp = MaxHP;
-            ExperienceYield = 10;
+            ExperienceYield = 50;
         }
 
         /// <summary>Inflicts damage, returns true if died.</summary>

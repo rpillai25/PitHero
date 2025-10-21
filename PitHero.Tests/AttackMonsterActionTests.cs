@@ -53,10 +53,10 @@ namespace PitHero.Tests
             Assert.IsTrue(slimeLevel10.Stats.Agility < oldScaledAgility, $"Fixed agility {slimeLevel10.Stats.Agility} should be less than old scaled {oldScaledAgility}");
             Assert.IsTrue(slimeLevel10.Stats.Vitality < oldScaledVitality, $"Fixed vitality {slimeLevel10.Stats.Vitality} should be less than old scaled {oldScaledVitality}");
 
-            // Fixed stats should match the expected values
-            Assert.AreEqual(2, slimeLevel10.Stats.Strength, "Slime should have fixed strength of 2");
-            Assert.AreEqual(1, slimeLevel10.Stats.Agility, "Slime should have fixed agility of 1");
-            Assert.AreEqual(3, slimeLevel10.Stats.Vitality, "Slime should have fixed vitality of 3");
+            // Fixed stats should match the expected values (updated to match new stats: HP: 15, Attack: 3, Defense: 1, Speed: 2)
+            Assert.AreEqual(3, slimeLevel10.Stats.Strength, "Slime should have fixed strength of 3");
+            Assert.AreEqual(2, slimeLevel10.Stats.Agility, "Slime should have fixed agility of 2");
+            Assert.AreEqual(2, slimeLevel10.Stats.Vitality, "Slime should have fixed vitality of 2");
             Assert.AreEqual(0, slimeLevel10.Stats.Magic, "Slime should have fixed magic of 0");
         }
 

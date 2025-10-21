@@ -3,12 +3,12 @@ using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Enemies
 {
-    /// <summary>Simple beginner enemy with low physical offense.</summary>
-    public sealed class Slime : IEnemy
+    /// <summary>Slightly evasive enemy.</summary>
+    public sealed class Rat : IEnemy
     {
         private int _hp;
 
-        public string Name => "Slime";
+        public string Name => "Rat";
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
@@ -16,15 +16,15 @@ namespace RolePlayingFramework.Enemies
         public int CurrentHP => _hp;
         public int ExperienceYield { get; }
 
-        public Slime(int level = 1)
+        public Rat(int level = 1)
         {
-            // Always use the preset level for Slimes regardless of requested level
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Slime");
+            // Always use the preset level for Rats regardless of requested level
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Rat");
             Level = presetLevel;
             
-            // Fixed stats: HP: 15, Attack: 3, Defense: 1, Speed: 2
-            Stats = new StatBlock(strength: 3, agility: 2, vitality: 2, magic: 0);
-            MaxHP = 15;
+            // Fixed stats: HP: 13, Attack: 3, Defense: 1, Speed: 3
+            Stats = new StatBlock(strength: 3, agility: 3, vitality: 2, magic: 0);
+            MaxHP = 13;
             _hp = MaxHP;
             ExperienceYield = 10;
         }
