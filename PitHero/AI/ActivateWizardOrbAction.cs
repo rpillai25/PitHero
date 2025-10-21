@@ -3,6 +3,7 @@ using Nez;
 using PitHero.ECS.Components;
 using PitHero.AI.Interfaces;
 using PitHero.Util;
+using System.Collections;
 
 namespace PitHero.AI
 {
@@ -48,15 +49,27 @@ namespace PitHero.AI
             // Clear all remaining fog first so player sees fully cleared pit
             ClearAllFogOfWarInPit();
 
-            // Queue the next pit level
             QueueNextPitLevel();
 
-            // Set hero state flags according to specification
-            hero.ActivatedWizardOrb = true;
-            hero.PitInitialized = false;
+            // Regenerate the queued pit level immediately
+            if (!RegenerateQueuedPitLevel())
+            {
+                Debug.Warn("[ActivateWizardOrb] Failed to regenerate pit level");
+                return true; // Complete as failed
+            }
+
+            // Reposition hero to starting position inside pit (where they normally land when jumping in)
+            RepositionHeroToStartPosition(hero);
+
+            // Set hero state flags - values from ActivateWizardOrbAction
             hero.FoundWizardOrb = false;  // Reset according to specification
             
-            Debug.Log("[ActivateWizardOrb] Wizard orb activation complete - pit level queued and fog cleared");
+            // Set hero state flags - values from ActivatePitRegenAction (these take priority)
+            hero.PitInitialized = true;
+            hero.ExploredPit = false;  // Reset upon regeneration
+            hero.ActivatedWizardOrb = false;  // Reset upon regeneration
+            
+            Debug.Log("[ActivateWizardOrb] Wizard orb activation complete - pit regenerated and hero repositioned");
             return true; // Action complete
         }
 
@@ -68,14 +81,18 @@ namespace PitHero.AI
             // Activate wizard orb in virtual world
             context.WorldState.ActivateWizardOrb();
 
-            // Queue the next pit level
-            var nextLevel = context.PitLevelManager.CurrentLevel + 1;
-            context.PitLevelManager.QueueLevel(nextLevel);
-
-            // Set hero state flags according to specification
-            context.HeroController.ActivatedWizardOrb = true;
-            context.HeroController.PitInitialized = false;
-            context.HeroController.FoundWizardOrb = false;  // Reset according to specification
+            // Regenerate pit immediately instead of just queueing
+            var nextLevel = context.PitLevelManager.DequeueLevel();
+            if (nextLevel.HasValue)
+            {
+                context.PitGenerator.RegenerateForLevel(nextLevel.Value);
+                context.LogDebug($"[ActivateWizardOrbAction] Generated pit level {nextLevel.Value}");
+            }
+            else
+            {
+                context.LogWarning("[ActivateWizardOrbAction] No queued pit level found");
+                return true; // Complete as failed
+            }
 
             // Attempt to clear fog if underlying world state supports it (virtual only convenience)
             var vw = context.WorldState as VirtualGame.VirtualWorldState;
@@ -84,8 +101,26 @@ namespace PitHero.AI
                 vw.ClearAllFogInPit();
                 context.LogDebug("[ActivateWizardOrbAction] Cleared all fog in virtual pit");
             }
+
+            // Reposition hero to starting position inside pit
+            var pitRightEdge = context.PitWidthManager.CurrentPitRightEdge;
+            var startTileX = pitRightEdge - 2;
+            var startTileY = 6; // GameConfig.PitCenterTileY
+            var startTile = new Point(startTileX, startTileY);
+            context.HeroController.MoveTo(startTile);
+            context.LogDebug($"[ActivateWizardOrbAction] Repositioned hero to starting position ({startTileX},{startTileY})");
+
+            // Set hero state flags - values from ActivateWizardOrbAction
+            context.HeroController.ActivatedWizardOrb = true;
+            context.HeroController.PitInitialized = false;
+            context.HeroController.FoundWizardOrb = false;  // Reset according to specification
+
+            // Set hero state flags - values from ActivatePitRegenAction (these take priority)
+            context.HeroController.PitInitialized = true;
+            context.HeroController.ExploredPit = false;  // Reset upon regeneration
+            context.HeroController.ActivatedWizardOrb = false;  // Reset upon regeneration
             
-            context.LogDebug($"[ActivateWizardOrbAction] Wizard orb activation complete - pit level {nextLevel} queued");
+            context.LogDebug($"[ActivateWizardOrbAction] Wizard orb activation complete - pit regenerated and hero repositioned");
             return true; // Action complete
         }
 
@@ -138,6 +173,97 @@ namespace PitHero.AI
             
             queueService.QueueLevel(level);
             Debug.Log($"[ActivateWizardOrb] Pit level {level} added to queue");
+        }
+
+        /// <summary>
+        /// Regenerate the queued pit level using PitWidthManager by reinitializing right edge and setting level
+        /// </summary>
+        private bool RegenerateQueuedPitLevel()
+        {
+            // Get the queued level from the service
+            var queueService = Core.Services.GetService<PitLevelQueueService>();
+            if (queueService == null)
+            {
+                Debug.Error("[ActivateWizardOrb] PitLevelQueueService not found");
+                return false;
+            }
+
+            var nextLevel = queueService.DequeueLevel();
+            if (!nextLevel.HasValue)
+            {
+                Debug.Warn("[ActivateWizardOrb] No queued pit level found");
+                return false;
+            }
+
+            // Use PitWidthManager to apply level change
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            if (pitWidthManager == null)
+            {
+                Debug.Error("[ActivateWizardOrb] PitWidthManager not found");
+                return false;
+            }
+
+            // Set the new level (which will trigger regeneration)
+            pitWidthManager.SetPitLevel(nextLevel.Value);
+            Debug.Log($"[ActivateWizardOrb] Successfully set pit level {nextLevel.Value} via PitWidthManager");
+            
+            return true;
+        }
+
+        /// <summary>
+        /// Reposition hero to the starting position inside the pit (where they normally land when jumping in)
+        /// </summary>
+        private void RepositionHeroToStartPosition(HeroComponent hero)
+        {
+            // Calculate the starting position inside the pit (2 tiles from the right edge)
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            var pitRightEdge = pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth);
+            
+            // Hero starts at the right edge minus 2 tiles (inside the pit), at center Y
+            var targetTile = new Point(pitRightEdge - 2, GameConfig.PitCenterTileY);
+            var targetPosition = TileToWorldPosition(targetTile);
+            
+            Debug.Log($"[ActivateWizardOrb] Repositioning hero to starting position at tile ({targetTile.X},{targetTile.Y})");
+            
+            // Set hero position
+            hero.Entity.Transform.Position = targetPosition;
+            
+            // Snap to tile grid for precision
+            var tileMover = hero.Entity.GetComponent<TileByTileMover>();
+            if (tileMover != null)
+            {
+                tileMover.SnapToTileGrid();
+                // Force trigger update so the pit enter trigger updates immediately
+                tileMover.UpdateTriggersAfterTeleport();
+                
+                // Disable movement for 1 second after repositioning
+                tileMover.Enabled = false;
+                Core.StartCoroutine(EnableMoverAfterDelay(tileMover));
+            }
+            
+            // Clear fog of war around the landing position
+            var tiledMapService = Core.Services.GetService<TiledMapService>();
+            bool fogCleared = tiledMapService?.ClearFogOfWarAroundTile(targetTile.X, targetTile.Y, hero) ?? false;
+            
+            // Trigger fog cooldown if fog was cleared
+            if (fogCleared)
+            {
+                hero.TriggerFogCooldown();
+            }
+            
+            // Check for adjacent monsters and chests after repositioning
+            hero.AdjacentToMonster = hero.CheckAdjacentToMonster();
+            hero.AdjacentToChest = hero.CheckAdjacentToChest();
+            
+            Debug.Log($"[ActivateWizardOrb] Hero repositioned to ({targetPosition.X},{targetPosition.Y})");
+        }
+
+        /// <summary>Coroutine to re-enable TileByTileMover after 1 second delay</summary>
+        private IEnumerator EnableMoverAfterDelay(TileByTileMover tileMover)
+        {
+            yield return Coroutine.WaitForSeconds(1.0f);
+            tileMover.Enabled = true;
+            Debug.Log("[ActivateWizardOrb] Hero movement re-enabled after repositioning delay");
         }
 
         /// <summary>Clear all fog tiles inside current pit bounds.</summary>

@@ -149,13 +149,7 @@ namespace PitHero.VirtualGame
             // ActivateWizardOrbAction
             ExecuteActivateWizardOrbAction();
             
-            // JumpOutOfPitAction (replaces MovingToInsidePitEdgeAction)
-            ExecuteJumpOutOfPitAction();
-            
-            // ActivatePitRegenAction (replaces MoveToPitGenPointAction)
-            ExecuteActivatePitRegenAction();
-            
-            // Cycle restarts with JumpIntoPitAction
+            // Cycle restarts with JumpIntoPitAction (pit regeneration now happens in ActivateWizardOrbAction)
             Console.WriteLine("\nSTEP 6: Cycle restarts - JumpIntoPitAction would begin again");
             Console.WriteLine("Hero would now target the new regenerated pit to start the cycle over");
         }
@@ -205,37 +199,7 @@ namespace PitHero.VirtualGame
             Console.WriteLine($"[{_currentAction}] Completed. OutsidePit: {outsidePit}");
         }
 
-        private void ExecuteActivatePitRegenAction()
-        {
-            _currentAction = "ActivatePitRegenAction";
-            var targetPos = new Point(34, 6); // Pit generation point
-            
-            Console.WriteLine($"[{_currentAction}] Moving to pit generation point ({targetPos.X},{targetPos.Y})");
-            
-            var path = CalculateSimplePath(_hero.Position, targetPos);
-            _hero.SetMovementPath(path);
-            
-            while (!_hero.ExecuteMovementStep())
-            {
-                _tickCount++;
-            }
-            
-            // Regenerate pit at queued level
-            if (_pitQueue.HasQueuedLevel)
-            {
-                var newLevel = _pitQueue.DequeueLevel();
-                if (newLevel.HasValue)
-                {
-                    _world.RegeneratePit(newLevel.Value);
-                    _hero.PitInitialized = true;
-                    Console.WriteLine($"[{_currentAction}] Regenerated pit at level {newLevel.Value}");
-                }
-            }
-            
-            // Note: AtPitGenPoint is no longer tracked as a state in simplified GOAP
-            // Position checking is now done within actions
-            Console.WriteLine($"[{_currentAction}] Completed. Position-based states handled in actions");
-        }
+
 
         /// <summary>
         /// Simple pathfinding - straight line or L-shaped path
@@ -319,9 +283,7 @@ namespace PitHero.VirtualGame
             Console.WriteLine("✓ Pit generation at level 40");
             Console.WriteLine("✓ Hero JumpIntoPitAction execution");
             Console.WriteLine("✓ Complete pit exploration via WanderPitAction");
-            Console.WriteLine("✓ ActivateWizardOrbAction execution");
-            Console.WriteLine("✓ JumpOutOfPitAction execution");
-            Console.WriteLine("✓ ActivatePitRegenAction execution");
+            Console.WriteLine("✓ ActivateWizardOrbAction execution (includes immediate pit regeneration)");
             Console.WriteLine("✓ Pit regeneration at higher level");
             Console.WriteLine();
             Console.WriteLine("The hero is now ready to start the cycle again with the new pit!");
@@ -432,7 +394,6 @@ namespace PitHero.VirtualGame
             planner.AddAction(new WanderPitAction());
             planner.AddAction(new ActivateWizardOrbAction());
             planner.AddAction(new JumpOutOfPitAction());
-            planner.AddAction(new ActivatePitRegenAction());
             planner.AddAction(new AttackMonsterAction());
             planner.AddAction(new OpenChestAction());
             

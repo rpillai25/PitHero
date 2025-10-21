@@ -37,7 +37,7 @@ namespace PitHero.ECS.Components
             }
         }
         public bool OutsidePit => !InsidePit;                        // Opposite of InsidePit (calculated)
-        public bool ExploredPit { get; set; }                        // True after all reachable FogOfWar uncovered, false upon ActivatePitRegenAction
+        public bool ExploredPit { get; set; }                        // True after all reachable FogOfWar uncovered, false upon pit regeneration
 
         // Track wizard orb discovery with a backing field (no side-effect logic here)
         private bool _foundWizardOrb;
@@ -49,7 +49,7 @@ namespace PitHero.ECS.Components
             get => _foundWizardOrb;
             set => _foundWizardOrb = value;
         }
-        public bool ActivatedWizardOrb { get; set; }                 // True after ActivateWizardOrbAction, false upon ActivatePitRegenAction
+        public bool ActivatedWizardOrb { get; set; }                 // True after ActivateWizardOrbAction, false upon pit regeneration
         public bool AdjacentToMonster { get; set; }                  // True when monster exists in tile adjacent to hero
         public bool AdjacentToChest { get; set; }                    // True when chest exists in tile adjacent to hero
 

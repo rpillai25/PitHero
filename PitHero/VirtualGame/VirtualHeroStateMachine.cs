@@ -186,8 +186,6 @@ namespace PitHero.VirtualGame
                     return ExecuteActivateWizardOrbAction();
                 case "JumpOutOfPitAction":
                     return ExecuteJumpOutOfPitAction();
-                case "ActivatePitRegenAction":
-                    return ExecuteActivatePitRegenAction();
                 default:
                     Console.WriteLine($"[VirtualStateMachine] Unknown action: {_currentAction.Name}");
                     return true;
@@ -438,19 +436,7 @@ namespace PitHero.VirtualGame
             return true;
         }
 
-        private bool ExecuteActivatePitRegenAction()
-        {
-            // Move to pit generation point and regenerate
-            var genPoint = new Point(34, 6);
-            _hero.TeleportTo(genPoint); // Use teleport for action execution
-            
-            var newLevel = _world.PitLevel + 10;
-            _world.RegeneratePit(newLevel);
-            _hero.PitInitialized = true;
-            
-            Console.WriteLine($"[VirtualStateMachine] Pit regenerated to level {newLevel}");
-            return true;
-        }
+
 
         /// <summary>
         /// Check if exploration is complete

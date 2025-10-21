@@ -25,12 +25,11 @@ namespace PitHero.Tests
         [TestMethod]
         public void GoapConstants_SimplifiedActions_ShouldExist()
         {
-            // Test that the 5 core GOAP actions exist and have correct values
+            // Test that the 4 core GOAP actions exist and have correct values
             Assert.AreEqual("JumpIntoPitAction", GoapConstants.JumpIntoPitAction);
             Assert.AreEqual("WanderPitAction", GoapConstants.WanderPitAction);
             Assert.AreEqual("ActivateWizardOrbAction", GoapConstants.ActivateWizardOrbAction);
             Assert.AreEqual("JumpOutOfPitAction", GoapConstants.JumpOutOfPitAction);
-            Assert.AreEqual("ActivatePitRegenAction", GoapConstants.ActivatePitRegenAction);
         }
 
         [TestMethod]
@@ -52,10 +51,6 @@ namespace PitHero.Tests
             var jumpOutOfPit = new JumpOutOfPitAction();
             Assert.IsNotNull(jumpOutOfPit);
             Assert.AreEqual(GoapConstants.JumpOutOfPitAction, jumpOutOfPit.Name);
-
-            var activatePitRegen = new ActivatePitRegenAction();
-            Assert.IsNotNull(activatePitRegen);
-            Assert.AreEqual(GoapConstants.ActivatePitRegenAction, activatePitRegen.Name);
         }
 
         [TestMethod]
