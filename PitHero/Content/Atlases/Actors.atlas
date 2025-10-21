@@ -919,6 +919,9 @@ Slime_WalkUp_2
 HeroShadow
 	198,499,27,5
 	0.5,0.5
+PlaceholderMonster
+	396,470,24,24
+	0.5,0.5
 
 HeroBodyJumpDown
 	8
