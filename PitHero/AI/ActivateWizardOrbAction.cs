@@ -3,6 +3,7 @@ using Nez;
 using PitHero.ECS.Components;
 using PitHero.AI.Interfaces;
 using PitHero.Util;
+using System.Collections;
 
 namespace PitHero.AI
 {
@@ -234,6 +235,10 @@ namespace PitHero.AI
                 tileMover.SnapToTileGrid();
                 // Force trigger update so the pit enter trigger updates immediately
                 tileMover.UpdateTriggersAfterTeleport();
+                
+                // Disable movement for 1 second after repositioning
+                tileMover.Enabled = false;
+                Core.StartCoroutine(EnableMoverAfterDelay(tileMover));
             }
             
             // Clear fog of war around the landing position
@@ -251,6 +256,14 @@ namespace PitHero.AI
             hero.AdjacentToChest = hero.CheckAdjacentToChest();
             
             Debug.Log($"[ActivateWizardOrb] Hero repositioned to ({targetPosition.X},{targetPosition.Y})");
+        }
+
+        /// <summary>Coroutine to re-enable TileByTileMover after 1 second delay</summary>
+        private IEnumerator EnableMoverAfterDelay(TileByTileMover tileMover)
+        {
+            yield return Coroutine.WaitForSeconds(1.0f);
+            tileMover.Enabled = true;
+            Debug.Log("[ActivateWizardOrb] Hero movement re-enabled after repositioning delay");
         }
 
         /// <summary>Clear all fog tiles inside current pit bounds.</summary>
