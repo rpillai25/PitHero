@@ -250,6 +250,7 @@ namespace PitHero.AI
             // Set battle in progress to prevent movement
             HeroStateMachine.IsBattleInProgress = true;
 
+            List<Entity> validMonsters = new List<Entity>();
             try
             {
                 // Get the hero's linked RPG hero
@@ -270,7 +271,6 @@ namespace PitHero.AI
                 participants.Add(new BattleParticipant(heroComponent));
 
                 // Add all monster participants and validate they have EnemyComponents
-                var validMonsters = new List<Entity>();
                 foreach (var monsterEntity in monsterEntities)
                 {
                     var enemyComponent = monsterEntity.GetComponent<EnemyComponent>();
@@ -290,6 +290,12 @@ namespace PitHero.AI
                 {
                     Debug.Log("[AttackMonster] No valid monsters to fight");
                     yield break;
+                }
+
+                // Add HP bar components to monsters
+                foreach (var monsterEntity in validMonsters)
+                {
+                    monsterEntity.AddComponent(new MonsterHPBarComponent());
                 }
 
                 Debug.Log($"[AttackMonster] Multi-participant battle: {hero.Name} (Lv.{hero.Level}, HP {hero.CurrentHP}/{hero.MaxHP}) vs {validMonsters.Count} monsters");
@@ -457,6 +463,19 @@ namespace PitHero.AI
                 // Always clear battle state
                 HeroStateMachine.IsBattleInProgress = false;
                 existingMultiParticipantBattleCoroutine = null;
+
+                // Remove HP bar components from monsters
+                if (validMonsters != null)
+                {
+                    foreach (var monsterEntity in validMonsters)
+                    {
+                        var hpBar = monsterEntity.GetComponent<MonsterHPBarComponent>();
+                        if (hpBar != null)
+                        {
+                            monsterEntity.RemoveComponent(hpBar);
+                        }
+                    }
+                }
             }
         }
 
