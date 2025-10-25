@@ -13,11 +13,23 @@ namespace PitHero.Config
         /// </summary>
         private static readonly Dictionary<string, int> EnemyLevels = new()
         {
+            // Level 1 enemies (spawn in Pit Level 1-3)
             ["Slime"] = 1,
-            // Future enemies can be added here with their preset levels
-            // ["Goblin"] = 2,
-            // ["Orc"] = 3,
-            // ["Dragon"] = 10,
+            ["Bat"] = 1,
+            ["Rat"] = 1,
+            
+            // Level 3 enemies (spawn in Pit Level 4-6)
+            ["Goblin"] = 3,
+            ["Spider"] = 3,
+            ["Snake"] = 3,
+            
+            // Level 6 enemies (spawn in Pit Level 7-8)
+            ["Skeleton"] = 6,
+            ["Orc"] = 6,
+            ["Wraith"] = 6,
+            
+            // Boss (spawn in Pit Level 9)
+            ["Pit Lord"] = 10,
         };
 
         /// <summary>
