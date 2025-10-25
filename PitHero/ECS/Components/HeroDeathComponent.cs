@@ -13,10 +13,18 @@ namespace PitHero.ECS.Components
     /// </summary>
     public class HeroDeathComponent : Component
     {
-        private Entity _shadowEntity;
-        private bool _deathAnimationStarted;
+        // Death animation configuration
         private const float DeathFadeOutDuration = 2.0f; // 2 seconds for rise and fade
         private const float DeathRiseDistance = 64f; // Distance hero rises in pixels
+        
+        // HeroShadow sprite coordinates from Actors.atlas
+        private const int ShadowSpriteX = 198;
+        private const int ShadowSpriteY = 499;
+        private const int ShadowSpriteWidth = 27;
+        private const int ShadowSpriteHeight = 5;
+        
+        private Entity _shadowEntity;
+        private bool _deathAnimationStarted;
         
         /// <summary>
         /// Starts the hero death animation sequence.
@@ -156,9 +164,9 @@ namespace PitHero.ECS.Components
             // Load the HeroShadow sprite from the Actors atlas
             var shadowTexture = Entity.Scene.Content.LoadTexture("Content/Atlases/Actors.png");
             
-            // Create sprite from atlas region: HeroShadow at (198, 499, 27, 5) with origin (0.5, 0.5)
-            var shadowRegion = new Sprite(shadowTexture, new Rectangle(198, 499, 27, 5));
-            shadowRegion.Origin = new Vector2(13.5f, 2.5f); // 0.5 * width, 0.5 * height
+            // Create sprite from atlas region: HeroShadow coordinates
+            var shadowRegion = new Sprite(shadowTexture, new Rectangle(ShadowSpriteX, ShadowSpriteY, ShadowSpriteWidth, ShadowSpriteHeight));
+            shadowRegion.Origin = new Vector2(ShadowSpriteWidth * 0.5f, ShadowSpriteHeight * 0.5f); // Center origin
             
             // Create shadow entity
             _shadowEntity = Entity.Scene.CreateEntity("hero-shadow");
