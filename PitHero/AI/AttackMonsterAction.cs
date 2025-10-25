@@ -420,9 +420,16 @@ namespace PitHero.AI
 
                                 if (heroDied)
                                 {
-                                    Debug.Log($"[AttackMonster] {hero.Name} died! Refilling HP to full for now.");
-                                    // Refill hero HP to full for now (as requested)
-                                    hero.RestoreHP(hero.MaxHP);
+                                    Debug.Log($"[AttackMonster] {hero.Name} died! Starting permadeath sequence.");
+                                    
+                                    // Start the hero death animation
+                                    var deathComponent = heroComponent.Entity.GetComponent<HeroDeathComponent>();
+                                    if (deathComponent == null)
+                                    {
+                                        deathComponent = heroComponent.Entity.AddComponent(new HeroDeathComponent());
+                                    }
+                                    deathComponent.StartDeathAnimation();
+                                    
                                     break; // End battle
                                 }
                             }

@@ -10,7 +10,8 @@ namespace RolePlayingFramework.Jobs.Tertiary
         public ShadowPaladin() : base(
             name: "Shadow Paladin",
             baseBonus: new StatBlock(strength: 3, agility: 4, vitality: 3, magic: 3),
-            growthPerLevel: new StatBlock(strength: 1, agility: 3, vitality: 2, magic: 2))
+            growthPerLevel: new StatBlock(strength: 1, agility: 3, vitality: 2, magic: 2),
+            tier: JobTier.Tertiary)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

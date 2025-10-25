@@ -10,7 +10,8 @@ namespace RolePlayingFramework.Jobs.Tertiary
         public MysticAvenger() : base(
             name: "Mystic Avenger",
             baseBonus: new StatBlock(strength: 3, agility: 4, vitality: 2, magic: 4),
-            growthPerLevel: new StatBlock(strength: 2, agility: 3, vitality: 1, magic: 2))
+            growthPerLevel: new StatBlock(strength: 2, agility: 3, vitality: 1, magic: 2),
+            tier: JobTier.Tertiary)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

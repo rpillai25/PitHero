@@ -10,7 +10,8 @@ namespace RolePlayingFramework.Jobs.Secondary
         public HolyArcher() : base(
             name: "Holy Archer",
             baseBonus: new StatBlock(strength: 1, agility: 2, vitality: 2, magic: 3),
-            growthPerLevel: new StatBlock(strength: 1, agility: 2, vitality: 1, magic: 2))
+            growthPerLevel: new StatBlock(strength: 1, agility: 2, vitality: 1, magic: 2),
+            tier: JobTier.Secondary)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

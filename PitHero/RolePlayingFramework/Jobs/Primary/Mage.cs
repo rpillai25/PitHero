@@ -10,7 +10,8 @@ namespace RolePlayingFramework.Jobs.Primary
         public Mage() : base(
             name: "Mage",
             baseBonus: new StatBlock(strength: 0, agility: 0, vitality: 0, magic: 5),
-            growthPerLevel: new StatBlock(strength: 0, agility: 1, vitality: 0, magic: 3))
+            growthPerLevel: new StatBlock(strength: 0, agility: 1, vitality: 0, magic: 3),
+            tier: JobTier.Primary)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

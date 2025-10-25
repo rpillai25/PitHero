@@ -111,6 +111,25 @@ namespace RolePlayingFramework.Heroes
             return true;
         }
 
+        /// <summary>Calculates the sell value of this crystal based on level and job tier.</summary>
+        /// <returns>The gold value for selling this crystal.</returns>
+        public int CalculateSellValue()
+        {
+            // Base value per level
+            const int baseValuePerLevel = 50;
+            
+            // Tier multipliers: Primary = 1.0x, Secondary = 1.5x, Tertiary = 2.0x
+            float tierMultiplier = Job.Tier switch
+            {
+                JobTier.Primary => 1.0f,
+                JobTier.Secondary => 1.5f,
+                JobTier.Tertiary => 2.0f,
+                _ => 1.0f
+            };
+            
+            return (int)(baseValuePerLevel * Level * tierMultiplier);
+        }
+
         /// <summary>Combines two crystals by averaging level, summing base stats, unioning skills and composing jobs.</summary>
         public static HeroCrystal Combine(string combinedName, HeroCrystal a, HeroCrystal b)
         {

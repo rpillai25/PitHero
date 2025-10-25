@@ -10,7 +10,8 @@ namespace RolePlayingFramework.Jobs.Tertiary
         public ShinobiMaster() : base(
             name: "Shinobi Master",
             baseBonus: new StatBlock(strength: 4, agility: 4, vitality: 3, magic: 2),
-            growthPerLevel: new StatBlock(strength: 2, agility: 3, vitality: 2, magic: 1))
+            growthPerLevel: new StatBlock(strength: 2, agility: 3, vitality: 2, magic: 1),
+            tier: JobTier.Tertiary)
         { }
 
         protected override void DefineSkills(List<ISkill> list)
