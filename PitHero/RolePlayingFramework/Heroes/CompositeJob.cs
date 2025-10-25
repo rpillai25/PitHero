@@ -37,6 +37,9 @@ namespace RolePlayingFramework.Heroes
         public StatBlock BaseBonus => _a.BaseBonus.Add(_b.BaseBonus);
         public StatBlock GrowthPerLevel => _a.GrowthPerLevel.Add(_b.GrowthPerLevel);
         public IReadOnlyList<ISkill> Skills => _skills;
+        
+        /// <summary>Tier is the maximum of the two component job tiers.</summary>
+        public JobTier Tier => _a.Tier > _b.Tier ? _a.Tier : _b.Tier;
 
         /// <summary>Computes combined job contribution at a level.</summary>
         public StatBlock GetJobContributionAtLevel(int level)

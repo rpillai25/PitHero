@@ -10,7 +10,8 @@ namespace RolePlayingFramework.Jobs.Tertiary
         public DragonMarksman() : base(
             name: "Dragon Marksman",
             baseBonus: new StatBlock(strength: 4, agility: 2, vitality: 2, magic: 3),
-            growthPerLevel: new StatBlock(strength: 2, agility: 2, vitality: 1, magic: 2))
+            growthPerLevel: new StatBlock(strength: 2, agility: 2, vitality: 1, magic: 2),
+            tier: JobTier.Tertiary)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

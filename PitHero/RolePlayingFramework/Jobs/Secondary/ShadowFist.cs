@@ -10,7 +10,8 @@ namespace RolePlayingFramework.Jobs.Secondary
         public ShadowFist() : base(
             name: "Shadow Fist",
             baseBonus: new StatBlock(strength: 2, agility: 4, vitality: 2, magic: 1),
-            growthPerLevel: new StatBlock(strength: 1, agility: 3, vitality: 1, magic: 1))
+            growthPerLevel: new StatBlock(strength: 1, agility: 3, vitality: 1, magic: 1),
+            tier: JobTier.Secondary)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

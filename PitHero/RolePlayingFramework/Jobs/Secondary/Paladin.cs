@@ -10,7 +10,8 @@ namespace RolePlayingFramework.Jobs.Secondary
         public Paladin() : base(
             name: "Paladin",
             baseBonus: new StatBlock(strength: 4, agility: 1, vitality: 3, magic: 2),
-            growthPerLevel: new StatBlock(strength: 2, agility: 1, vitality: 2, magic: 1))
+            growthPerLevel: new StatBlock(strength: 2, agility: 1, vitality: 2, magic: 1),
+            tier: JobTier.Secondary)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

@@ -10,7 +10,8 @@ namespace RolePlayingFramework.Jobs.Secondary
         public KiShot() : base(
             name: "Ki Shot",
             baseBonus: new StatBlock(strength: 2, agility: 3, vitality: 2, magic: 2),
-            growthPerLevel: new StatBlock(strength: 1, agility: 2, vitality: 1, magic: 2))
+            growthPerLevel: new StatBlock(strength: 1, agility: 2, vitality: 1, magic: 2),
+            tier: JobTier.Secondary)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

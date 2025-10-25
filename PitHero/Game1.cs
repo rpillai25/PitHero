@@ -20,6 +20,7 @@ namespace PitHero
 
             // Register global services
             Services.AddService(new PauseService());
+            Services.AddService(new CrystalMerchantVault());
 
             // Disable pausing when focus is lost - essential for idle game behavior
             PauseOnFocusLost = false;

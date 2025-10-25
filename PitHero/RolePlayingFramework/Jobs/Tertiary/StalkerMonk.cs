@@ -10,7 +10,8 @@ namespace RolePlayingFramework.Jobs.Tertiary
         public StalkerMonk() : base(
             name: "Stalker Monk",
             baseBonus: new StatBlock(strength: 2, agility: 4, vitality: 2, magic: 2),
-            growthPerLevel: new StatBlock(strength: 1, agility: 3, vitality: 1, magic: 1))
+            growthPerLevel: new StatBlock(strength: 1, agility: 3, vitality: 1, magic: 1),
+            tier: JobTier.Tertiary)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

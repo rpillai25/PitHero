@@ -10,7 +10,8 @@ namespace RolePlayingFramework.Jobs.Secondary
         public Shadowmender() : base(
             name: "Shadowmender",
             baseBonus: new StatBlock(strength: 1, agility: 3, vitality: 1, magic: 3),
-            growthPerLevel: new StatBlock(strength: 1, agility: 3, vitality: 1, magic: 2))
+            growthPerLevel: new StatBlock(strength: 1, agility: 3, vitality: 1, magic: 2),
+            tier: JobTier.Secondary)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

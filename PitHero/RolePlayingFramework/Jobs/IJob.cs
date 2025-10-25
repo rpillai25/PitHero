@@ -19,6 +19,9 @@ namespace RolePlayingFramework.Jobs
         /// <summary>All skill definitions (active + passive).</summary>
         IReadOnlyList<ISkill> Skills { get; }
 
+        /// <summary>Tier of this job (Primary, Secondary, or Tertiary).</summary>
+        JobTier Tier { get; }
+
         /// <summary>Computes total job stat contribution at a given level.</summary>
         StatBlock GetJobContributionAtLevel(int level);
     }

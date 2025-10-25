@@ -10,7 +10,8 @@ namespace RolePlayingFramework.Jobs.Secondary
         public Marksman() : base(
             name: "Marksman",
             baseBonus: new StatBlock(strength: 3, agility: 2, vitality: 2, magic: 2),
-            growthPerLevel: new StatBlock(strength: 2, agility: 2, vitality: 1, magic: 1))
+            growthPerLevel: new StatBlock(strength: 2, agility: 2, vitality: 1, magic: 1),
+            tier: JobTier.Secondary)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

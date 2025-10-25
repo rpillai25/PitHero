@@ -10,7 +10,8 @@ namespace RolePlayingFramework.Jobs.Secondary
         public Wizard() : base(
             name: "Wizard",
             baseBonus: new StatBlock(strength: 1, agility: 1, vitality: 1, magic: 6),
-            growthPerLevel: new StatBlock(strength: 1, agility: 1, vitality: 1, magic: 3))
+            growthPerLevel: new StatBlock(strength: 1, agility: 1, vitality: 1, magic: 3),
+            tier: JobTier.Secondary)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

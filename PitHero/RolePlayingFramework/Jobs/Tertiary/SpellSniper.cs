@@ -10,7 +10,8 @@ namespace RolePlayingFramework.Jobs.Tertiary
         public SpellSniper() : base(
             name: "Spell Sniper",
             baseBonus: new StatBlock(strength: 2, agility: 2, vitality: 2, magic: 6),
-            growthPerLevel: new StatBlock(strength: 1, agility: 2, vitality: 1, magic: 3))
+            growthPerLevel: new StatBlock(strength: 1, agility: 2, vitality: 1, magic: 3),
+            tier: JobTier.Tertiary)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

@@ -10,7 +10,8 @@ namespace RolePlayingFramework.Jobs.Secondary
         public Samurai() : base(
             name: "Samurai",
             baseBonus: new StatBlock(strength: 4, agility: 2, vitality: 3, magic: 1),
-            growthPerLevel: new StatBlock(strength: 2, agility: 2, vitality: 2, magic: 1))
+            growthPerLevel: new StatBlock(strength: 2, agility: 2, vitality: 2, magic: 1),
+            tier: JobTier.Secondary)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

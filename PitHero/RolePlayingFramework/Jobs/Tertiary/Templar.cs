@@ -10,7 +10,8 @@ namespace RolePlayingFramework.Jobs.Tertiary
         public Templar() : base(
             name: "Templar",
             baseBonus: new StatBlock(strength: 5, agility: 2, vitality: 4, magic: 3),
-            growthPerLevel: new StatBlock(strength: 2, agility: 2, vitality: 2, magic: 2))
+            growthPerLevel: new StatBlock(strength: 2, agility: 2, vitality: 2, magic: 2),
+            tier: JobTier.Tertiary)
         { }
 
         protected override void DefineSkills(List<ISkill> list)
