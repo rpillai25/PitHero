@@ -714,7 +714,17 @@ namespace PitHero
                     // Add animation component based on enemy type
                     // Use PlaceholderMonster sprite with color tint for all enemies for now
                     // TODO: Replace with specific sprites when available
-                    var enemyAnimation = entity.AddComponent(new PlaceholderMonsterAnimationComponent(enemyColor));
+
+                    EnemyAnimationComponent enemyAnimation;
+
+                    if (enemy is Slime)
+                    {
+                        enemyAnimation = entity.AddComponent(new SlimeAnimationComponent());
+                    }
+                    else
+                    {
+                        enemyAnimation = entity.AddComponent(new PlaceholderMonsterAnimationComponent(enemyColor));
+                    }
                     enemyAnimation.SetRenderLayer(GameConfig.RenderLayerActors);
 
                     // Add facing component for animation direction tracking
