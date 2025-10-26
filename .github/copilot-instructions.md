@@ -1,6 +1,7 @@
 # GitHub Copilot Instructions – Pit Hero Event-Driven Version
 
 - The project is written in C# using **FNA + Nez** (not MonoGame).
+- Do not create any .md files unless explicitly told to do so.
 - Run dotnet test PitHero.Tests/ for unit tests after code changes are complete and solution builds
 - /// <summary> Comment all methods with a very concise summary
 - If a method is unused, do not mark as unused in a comment, since this can change later
