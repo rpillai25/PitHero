@@ -31,6 +31,11 @@ namespace PitHero.Tests
                 : base("test.neutral", "Neutral Attack", "A test neutral attack", 
                       SkillKind.Active, SkillTargetType.SingleEnemy, 3, 80) 
             { }
+
+            public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
+            {
+                return "NeutralAttack";
+            }
         }
 
         /// <summary>Test skill with water element</summary>
@@ -40,6 +45,11 @@ namespace PitHero.Tests
                 : base("test.water", "Water Wave", "A test water attack", 
                       SkillKind.Active, SkillTargetType.SurroundingEnemies, 6, 120, ElementType.Water) 
             { }
+
+            public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
+            {
+                return "WaterWave";
+            }
         }
 
         /// <summary>Test skill with earth element</summary>
@@ -48,6 +58,11 @@ namespace PitHero.Tests
             public TestEarthSkill() 
                 : base("test.earth", "Earth Spike", SkillKind.Active, SkillTargetType.SingleEnemy, 4, 90, ElementType.Earth) 
             { }
+
+            public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
+            {
+                return "EarthSpike";
+            }
         }
 
         /// <summary>Test skill with wind element</summary>
@@ -57,6 +72,11 @@ namespace PitHero.Tests
                 : base("test.wind", "Wind Slash", "A test wind attack", 
                       SkillKind.Active, SkillTargetType.SingleEnemy, 4, 95, ElementType.Wind) 
             { }
+
+            public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
+            {
+                return "WindSlash";
+            }
         }
 
         /// <summary>Test skill with light element</summary>
@@ -66,6 +86,11 @@ namespace PitHero.Tests
                 : base("test.light", "Holy Light", "A test light attack", 
                       SkillKind.Active, SkillTargetType.SingleEnemy, 7, 150, ElementType.Light) 
             { }
+
+            public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
+            {
+                return "HolyLight";
+            }
         }
 
         /// <summary>Test skill with dark element</summary>
@@ -75,6 +100,11 @@ namespace PitHero.Tests
                 : base("test.dark", "Shadow Strike", "A test dark attack", 
                       SkillKind.Active, SkillTargetType.SingleEnemy, 7, 150, ElementType.Dark) 
             { }
+
+            public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
+            {
+                return "ShadowStrike";
+            }
         }
 
         /// <summary>Test passive skill with element</summary>
