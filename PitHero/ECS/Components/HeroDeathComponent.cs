@@ -3,6 +3,7 @@ using Nez;
 using Nez.Sprites;
 using Nez.Textures;
 using System.Collections;
+using System.Collections.Generic;
 using PitHero.Services;
 using PitHero.AI;
 
@@ -146,6 +147,55 @@ namespace PitHero.ECS.Components
             {
                 _shadowEntity.Destroy();
                 _shadowEntity = null;
+            }
+            
+            // Transfer all inventory items to PitMerchantVault and clear bags
+            var pitVault = Core.Services.GetService<PitMerchantVault>();
+            if (pitVault != null && heroComponent != null)
+            {
+                // Get all items from main inventory bag
+                var bagItems = new List<RolePlayingFramework.Equipment.IItem>();
+                if (heroComponent.Bag != null)
+                {
+                    foreach (var item in heroComponent.Bag.Items)
+                    {
+                        if (item != null)
+                        {
+                            bagItems.Add(item);
+                        }
+                    }
+                }
+                
+                // Get all items from shortcut bag
+                if (heroComponent.ShortcutBag != null)
+                {
+                    foreach (var item in heroComponent.ShortcutBag.Items)
+                    {
+                        if (item != null)
+                        {
+                            bagItems.Add(item);
+                        }
+                    }
+                }
+                
+                // Add all items to the vault
+                pitVault.AddItems(bagItems);
+                Debug.Log($"[HeroDeathComponent] Transferred {bagItems.Count} items to PitMerchantVault");
+                
+                // Clear both bags by setting empty items
+                if (heroComponent.Bag != null)
+                {
+                    heroComponent.Bag.SetItemsInOrder(new List<RolePlayingFramework.Equipment.IItem>());
+                }
+                if (heroComponent.ShortcutBag != null)
+                {
+                    heroComponent.ShortcutBag.SetItemsInOrder(new List<RolePlayingFramework.Equipment.IItem>());
+                }
+                Debug.Log("[HeroDeathComponent] Cleared hero's inventory and shortcut bags");
+            }
+            else if (pitVault == null)
+            {
+                Debug.Warn("[HeroDeathComponent] PitMerchantVault service not found");
             }
             
             // Add crystal to vault
