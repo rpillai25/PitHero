@@ -31,6 +31,7 @@
 - If a private method needs to be called from another class, change that method to be public.
 - Avoid the use of Reflection.
 - Do not add multiple classes to a single file. Classes should be in their own file.  Structs are an exception to this rule.
+- Do not log Microsoft.Xna.Framework.Vector2 as a whole.  Instead log its individual X and Y components, or else there will be an error.
 - Maintain integer scaling for pixel-perfect rendering
 - The width in tiles of the Pit is dynamic, as is the Pit Center X.  This changes for every 10 pit levels.
 - The heigh in tiles of the Pit is constant, as is the Pit Center Y

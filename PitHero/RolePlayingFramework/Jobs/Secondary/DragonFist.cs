@@ -10,7 +10,8 @@ namespace RolePlayingFramework.Jobs.Secondary
         public DragonFist() : base(
             name: "Dragon Fist",
             baseBonus: new StatBlock(strength: 3, agility: 2, vitality: 2, magic: 3),
-            growthPerLevel: new StatBlock(strength: 2, agility: 2, vitality: 1, magic: 2))
+            growthPerLevel: new StatBlock(strength: 2, agility: 2, vitality: 1, magic: 2),
+            tier: JobTier.Secondary)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

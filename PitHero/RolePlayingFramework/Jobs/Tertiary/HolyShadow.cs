@@ -10,7 +10,8 @@ namespace RolePlayingFramework.Jobs.Tertiary
         public HolyShadow() : base(
             name: "Holy Shadow",
             baseBonus: new StatBlock(strength: 1, agility: 3, vitality: 2, magic: 4),
-            growthPerLevel: new StatBlock(strength: 1, agility: 3, vitality: 1, magic: 2))
+            growthPerLevel: new StatBlock(strength: 1, agility: 3, vitality: 1, magic: 2),
+            tier: JobTier.Tertiary)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

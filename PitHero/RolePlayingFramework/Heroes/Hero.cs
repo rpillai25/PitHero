@@ -50,6 +50,9 @@ namespace RolePlayingFramework.Heroes
         private readonly HashSet<Equipment.ItemKind> _extraEquipPermissions = new HashSet<Equipment.ItemKind>();
 
         private readonly HeroCrystal? _boundCrystal;
+        
+        /// <summary>Gets the crystal bound to this hero (if any).</summary>
+        public HeroCrystal? BoundCrystal => _boundCrystal;
 
         public Hero(string name, IJob job, int level, in StatBlock baseStats, HeroCrystal? fromCrystal = null)
         {
