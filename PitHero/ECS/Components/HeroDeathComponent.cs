@@ -4,6 +4,7 @@ using Nez.Sprites;
 using Nez.Textures;
 using System.Collections;
 using PitHero.Services;
+using PitHero.AI;
 
 namespace PitHero.ECS.Components
 {
@@ -35,6 +36,10 @@ namespace PitHero.ECS.Components
                 return;
                 
             _deathAnimationStarted = true;
+            
+            // Disable all other components on the hero entity to prevent movement during death
+            DisableAllHeroComponents();
+            
             Core.StartCoroutine(ExecuteDeathAnimation());
         }
         
@@ -157,6 +162,7 @@ namespace PitHero.ECS.Components
             
             // Destroy hero entity
             Entity.Destroy();
+            Debug.Log("[HeroDeathComponent] Hero entity destroyed after death animation");
         }
         
         private void CreateShadowAtDeathLocation()
@@ -177,7 +183,7 @@ namespace PitHero.ECS.Components
             shadowRenderer.SetRenderLayer(GameConfig.RenderLayerLowest);
             shadowRenderer.Color = new Color(0, 0, 0, 128); // Semi-transparent black shadow
             
-            Debug.Log($"[HeroDeathComponent] Created shadow at {Entity.Transform.Position}");
+            Debug.Log($"[HeroDeathComponent] Created shadow at ({Entity.Transform.Position.X},{Entity.Transform.Position.Y})");
         }
         
         public override void OnRemovedFromEntity()
@@ -190,6 +196,18 @@ namespace PitHero.ECS.Components
             }
             
             base.OnRemovedFromEntity();
+        }
+        
+        /// <summary>
+        /// Disables all components on the hero entity except this death component
+        /// </summary>
+        private void DisableAllHeroComponents()
+        {
+            // Disable only the components that cause unwanted movement during death animation
+            Entity.GetComponent<TileByTileMover>()?.SetEnabled(false);
+            Entity.GetComponent<HeroStateMachine>()?.SetEnabled(false);
+            
+            Debug.Log("[HeroDeathComponent] Disabled TileByTileMover and HeroStateMachine to prevent movement during death animation");
         }
     }
 }
