@@ -1,3 +1,4 @@
+using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Equipment
@@ -15,5 +16,8 @@ namespace RolePlayingFramework.Equipment
         /// <summary>Optional flat HP/MP modifiers.</summary>
         int HPBonus { get; }
         int MPBonus { get; }
+        
+        /// <summary>Elemental type of the gear.</summary>
+        ElementType Element { get; }
     }
 }

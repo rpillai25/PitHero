@@ -12,6 +12,7 @@ namespace RolePlayingFramework.Enemies
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
+        public ElementType Element => ElementType.Dark;
         public int MaxHP { get; }
         public int CurrentHP => _hp;
         public int ExperienceYield { get; }
