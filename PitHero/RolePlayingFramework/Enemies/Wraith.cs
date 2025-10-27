@@ -4,6 +4,13 @@ using RolePlayingFramework.Stats;
 namespace RolePlayingFramework.Enemies
 {
     /// <summary>High speed and evasion.</summary>
+    /// <remarks>
+    /// Future Enhancement: Consider using BalanceConfig for dynamic stat generation:
+    /// - HP: BalanceConfig.CalculateMonsterHP(level, MonsterArchetype.MagicUser)
+    /// - Stats: BalanceConfig.CalculateMonsterStat(level, MonsterArchetype.MagicUser, statType)
+    /// - XP: BalanceConfig.CalculateMonsterExperience(level)
+    /// MagicUser archetype would give Wraiths higher Magic and moderate other stats.
+    /// </remarks>
     public sealed class Wraith : IEnemy
     {
         private int _hp;

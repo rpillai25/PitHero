@@ -66,6 +66,11 @@ namespace RolePlayingFramework.Combat
         /// 0.5 if attack element matches target element (disadvantage),
         /// 1.0 otherwise (neutral).
         /// </returns>
+        /// <remarks>
+        /// This method provides base elemental matchup logic. For complete damage calculation
+        /// with custom resistances, use BalanceConfig.GetElementalDamageMultiplier which wraps
+        /// this method and applies custom resistance modifiers from ElementalProperties.
+        /// </remarks>
         public static float GetElementalMultiplier(ElementType attackElement, ElementType targetElement)
         {
             // Neutral attacks or neutral targets have no modifier

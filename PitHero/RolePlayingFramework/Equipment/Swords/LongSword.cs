@@ -3,6 +3,12 @@ using RolePlayingFramework.Stats;
 namespace RolePlayingFramework.Equipment.Swords
 {
     /// <summary>Factory for creating Long Sword gear.</summary>
+    /// <remarks>
+    /// Future Enhancement: Consider using BalanceConfig for procedural generation:
+    /// - Attack: BalanceConfig.CalculateEquipmentAttackBonus(pitLevel, rarity)
+    /// - Stats: BalanceConfig.CalculateEquipmentStatBonus(pitLevel, rarity)
+    /// This would allow weapon stats to scale with dungeon depth and rarity.
+    /// </remarks>
     public static class LongSword
     {
         public static Gear Create() => new Gear(

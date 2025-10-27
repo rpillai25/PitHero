@@ -4,6 +4,13 @@ using RolePlayingFramework.Stats;
 namespace RolePlayingFramework.Enemies
 {
     /// <summary>Hits hard but slow.</summary>
+    /// <remarks>
+    /// Future Enhancement: Consider using BalanceConfig for dynamic stat generation:
+    /// - HP: BalanceConfig.CalculateMonsterHP(level, MonsterArchetype.Tank)
+    /// - Stats: BalanceConfig.CalculateMonsterStat(level, MonsterArchetype.Tank, statType)
+    /// - XP: BalanceConfig.CalculateMonsterExperience(level)
+    /// Tank archetype would give Orcs higher HP/Vitality and lower Agility.
+    /// </remarks>
     public sealed class Orc : IEnemy
     {
         private int _hp;

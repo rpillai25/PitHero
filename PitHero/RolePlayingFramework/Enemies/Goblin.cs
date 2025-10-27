@@ -4,6 +4,13 @@ using RolePlayingFramework.Stats;
 namespace RolePlayingFramework.Enemies
 {
     /// <summary>Smarter enemy, sometimes dodges.</summary>
+    /// <remarks>
+    /// Future Enhancement: Consider using BalanceConfig for dynamic stat generation:
+    /// - HP: BalanceConfig.CalculateMonsterHP(level, MonsterArchetype.FastFragile)
+    /// - Stats: BalanceConfig.CalculateMonsterStat(level, MonsterArchetype.FastFragile, statType)
+    /// - XP: BalanceConfig.CalculateMonsterExperience(level)
+    /// FastFragile archetype would give Goblins higher Agility and lower HP.
+    /// </remarks>
     public sealed class Goblin : IEnemy
     {
         private int _hp;
