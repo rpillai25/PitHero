@@ -1,9 +1,14 @@
 using Nez;
+using RolePlayingFramework.Balance;
 using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Combat
 {
     /// <summary>Enhanced attack resolver with new evasion and damage formulas</summary>
+    /// <remarks>
+    /// Uses BalanceConfig for damage and evasion calculations to ensure consistency
+    /// across all combat systems. See BalanceConfig for formula details and tuning.
+    /// </remarks>
     public sealed class EnhancedAttackResolver : IAttackResolver
     {
         /// <summary>Calculate if an attack is evaded based on target's evasion</summary>
@@ -13,21 +18,13 @@ namespace RolePlayingFramework.Combat
             return roll < targetEvasion; // True = evaded/missed
         }
 
-        /// <summary>Calculate damage using new formula</summary>
+        /// <summary>Calculate damage using BalanceConfig formula</summary>
+        /// <remarks>
+        /// Delegates to BalanceConfig.CalculateAttackDamage for consistent damage calculation.
+        /// </remarks>
         public int CalculateDamage(int attack, int defense)
         {
-            int damage;
-            if (attack >= defense)
-            {
-                damage = attack * 2 - defense;
-            }
-            else
-            {
-                damage = attack * attack / defense;
-            }
-
-            // Ensure minimum damage of 1
-            return System.Math.Max(1, damage);
+            return BalanceConfig.CalculateAttackDamage(attack, defense);
         }
 
         /// <summary>Computes an attack using enhanced battle stats</summary>
@@ -54,17 +51,17 @@ namespace RolePlayingFramework.Combat
         public AttackResult Resolve(in StatBlock attackerStats, in StatBlock defenderStats, DamageKind kind, int attackerLevel, int defenderLevel)
         {
             // For backwards compatibility, convert to battle stats
-            // This is a simplified conversion for legacy calls
+            // Uses BalanceConfig.CalculateEvasion for consistent evasion calculation
             var attackerBattle = new BattleStats(
                 attackerStats.Strength,
                 attackerStats.Agility / 2,
-                System.Math.Min(255, attackerStats.Agility * 2 + attackerLevel)
+                BalanceConfig.CalculateEvasion(attackerStats.Agility, attackerLevel)
             );
             
             var defenderBattle = new BattleStats(
                 defenderStats.Strength,
                 defenderStats.Agility / 2,
-                System.Math.Min(255, defenderStats.Agility * 2 + defenderLevel)
+                BalanceConfig.CalculateEvasion(defenderStats.Agility, defenderLevel)
             );
 
             return Resolve(attackerBattle, defenderBattle, kind);

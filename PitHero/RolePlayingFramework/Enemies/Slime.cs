@@ -4,6 +4,13 @@ using RolePlayingFramework.Stats;
 namespace RolePlayingFramework.Enemies
 {
     /// <summary>Simple beginner enemy with low physical offense.</summary>
+    /// <remarks>
+    /// Future Enhancement: Consider using BalanceConfig for dynamic stat generation:
+    /// - HP: BalanceConfig.CalculateMonsterHP(level, MonsterArchetype.Balanced)
+    /// - Stats: BalanceConfig.CalculateMonsterStat(level, archetype, statType)
+    /// - XP: BalanceConfig.CalculateMonsterExperience(level)
+    /// This would allow level-scaled Slimes with consistent balance.
+    /// </remarks>
     public sealed class Slime : IEnemy
     {
         private int _hp;

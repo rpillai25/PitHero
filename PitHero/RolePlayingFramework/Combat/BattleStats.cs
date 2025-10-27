@@ -1,3 +1,4 @@
+using RolePlayingFramework.Balance;
 using RolePlayingFramework.Stats;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Enemies;
@@ -5,6 +6,9 @@ using RolePlayingFramework.Enemies;
 namespace RolePlayingFramework.Combat
 {
     /// <summary>Derived battle-specific stats for combat calculations</summary>
+    /// <remarks>
+    /// Uses BalanceConfig.CalculateEvasion for consistent evasion calculation across all entities.
+    /// </remarks>
     public readonly struct BattleStats
     {
         public readonly int Attack;
@@ -29,9 +33,8 @@ namespace RolePlayingFramework.Combat
             // Defense = Agility/2 + armor bonuses
             int defense = totalStats.Agility / 2 + hero.GetEquipmentDefenseBonus();
             
-            // Evasion derived from Agility (0-255 range)
-            // Formula: min(255, Agility * 2 + Level)
-            int evasion = System.Math.Min(255, totalStats.Agility * 2 + hero.Level);
+            // Evasion calculated using BalanceConfig formula
+            int evasion = BalanceConfig.CalculateEvasion(totalStats.Agility, hero.Level);
             
             return new BattleStats(attack, defense, evasion);
         }
@@ -45,9 +48,8 @@ namespace RolePlayingFramework.Combat
             // Defense = Agility/2 (monsters have no armor bonus)
             int defense = enemy.Stats.Agility / 2;
             
-            // Evasion derived from Agility (0-255 range)
-            // Formula: min(255, Agility * 2 + Level)
-            int evasion = System.Math.Min(255, enemy.Stats.Agility * 2 + enemy.Level);
+            // Evasion calculated using BalanceConfig formula
+            int evasion = BalanceConfig.CalculateEvasion(enemy.Stats.Agility, enemy.Level);
             
             return new BattleStats(attack, defense, evasion);
         }
