@@ -153,9 +153,16 @@ namespace RolePlayingFramework.Heroes
         /// <summary>Returns current total stats (base + job + equipment).</summary>
         public StatBlock GetTotalStats()
         {
-            var jobStats = Job.GetJobContributionAtLevel(Level);
-            var total = BaseStats.Add(jobStats).Add(GetEquipmentStatBonus());
-            // Clamp total stats to ensure they don't exceed caps
+            // Use GrowthCurveCalculator to calculate base stats + job contribution at current level
+            var statsWithJob = GrowthCurveCalculator.CalculateTotalStatsAtLevel(
+                BaseStats,
+                Job.BaseBonus,
+                Job.GrowthPerLevel,
+                Level
+            );
+            
+            // Add equipment bonuses and clamp (equipment is already a StatBlock)
+            var total = statsWithJob.Add(GetEquipmentStatBonus());
             return StatConstants.ClampStatBlock(total);
         }
 

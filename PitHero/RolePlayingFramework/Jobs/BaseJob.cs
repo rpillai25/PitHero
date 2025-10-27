@@ -30,12 +30,14 @@ namespace RolePlayingFramework.Jobs
         /// <summary>Computes total job stat contribution at a given level.</summary>
         public StatBlock GetJobContributionAtLevel(int level)
         {
-            if (level <= 1)
-                return BaseBonus;
-            var extra = GrowthPerLevel.Scale(level - 1);
-            var contribution = BaseBonus.Add(extra);
-            // Clamp job contribution to ensure stats don't exceed caps
-            return StatConstants.ClampStatBlock(contribution);
+            // Use GrowthCurveCalculator to calculate job contribution
+            // Pass StatBlock.Zero as baseStats since we only want job contribution
+            return GrowthCurveCalculator.CalculateTotalStatsAtLevel(
+                StatBlock.Zero,
+                BaseBonus,
+                GrowthPerLevel,
+                level
+            );
         }
     }
 }
