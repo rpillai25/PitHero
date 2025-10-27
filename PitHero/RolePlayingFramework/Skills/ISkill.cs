@@ -15,6 +15,9 @@ namespace RolePlayingFramework.Skills
         SkillTargetType TargetType { get; }
         int MPCost { get; }
         int JPCost { get; }
+        
+        /// <summary>Elemental type of the skill.</summary>
+        ElementType Element { get; }
 
         /// <summary>Applies passive modifiers at aggregation time (no side effects).</summary>
         void ApplyPassive(Hero hero);

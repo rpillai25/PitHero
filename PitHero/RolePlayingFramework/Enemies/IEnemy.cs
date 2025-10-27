@@ -17,6 +17,9 @@ namespace RolePlayingFramework.Enemies
 
         /// <summary>Type of damage the basic attack deals.</summary>
         DamageKind AttackKind { get; }
+        
+        /// <summary>Elemental type of the enemy.</summary>
+        ElementType Element { get; }
 
         /// <summary>Current and maximum HP.</summary>
         int MaxHP { get; }

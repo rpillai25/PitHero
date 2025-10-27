@@ -15,13 +15,14 @@ namespace RolePlayingFramework.Skills
         public SkillTargetType TargetType { get; }
         public int MPCost { get; }
         public int JPCost { get; }
+        public ElementType Element { get; }
 
-        protected BaseSkill(string id, string name, SkillKind kind, SkillTargetType targetType, int mpCost, int jpCost)
-            : this(id, name, "", kind, targetType, mpCost, jpCost)
+        protected BaseSkill(string id, string name, SkillKind kind, SkillTargetType targetType, int mpCost, int jpCost, ElementType element = ElementType.Neutral)
+            : this(id, name, "", kind, targetType, mpCost, jpCost, element)
         {
         }
 
-        protected BaseSkill(string id, string name, string description, SkillKind kind, SkillTargetType targetType, int mpCost, int jpCost)
+        protected BaseSkill(string id, string name, string description, SkillKind kind, SkillTargetType targetType, int mpCost, int jpCost, ElementType element = ElementType.Neutral)
         {
             Id = id;
             Name = name;
@@ -30,6 +31,7 @@ namespace RolePlayingFramework.Skills
             TargetType = targetType;
             MPCost = mpCost;
             JPCost = jpCost;
+            Element = element;
         }
 
         public virtual void ApplyPassive(Hero hero) { }

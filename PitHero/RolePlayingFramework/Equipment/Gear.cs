@@ -1,3 +1,4 @@
+using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Equipment
@@ -15,8 +16,9 @@ namespace RolePlayingFramework.Equipment
         public int DefenseBonus { get; }
         public int HPBonus { get; }
         public int MPBonus { get; }
+        public ElementType Element { get; }
 
-        public Gear(string name, ItemKind kind, ItemRarity rarity, string description, int price, in StatBlock stats, int atk = 0, int def = 0, int hp = 0, int mp = 0)
+        public Gear(string name, ItemKind kind, ItemRarity rarity, string description, int price, in StatBlock stats, int atk = 0, int def = 0, int hp = 0, int mp = 0, ElementType element = ElementType.Neutral)
         {
             Name = name;
             Kind = kind;
@@ -28,6 +30,7 @@ namespace RolePlayingFramework.Equipment
             DefenseBonus = def;
             HPBonus = hp;
             MPBonus = mp;
+            Element = element;
         }
     }
 }
