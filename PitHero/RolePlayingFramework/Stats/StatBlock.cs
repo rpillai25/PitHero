@@ -8,6 +8,9 @@ namespace RolePlayingFramework.Stats
         public readonly int Vitality;
         public readonly int Magic;
 
+        /// <summary>Returns a StatBlock with all zeros.</summary>
+        public static readonly StatBlock Zero = new StatBlock(0, 0, 0, 0);
+
         public StatBlock(int strength, int agility, int vitality, int magic)
         {
             Strength = strength < 0 ? 0 : strength;
