@@ -33,7 +33,9 @@ namespace RolePlayingFramework.Jobs
             if (level <= 1)
                 return BaseBonus;
             var extra = GrowthPerLevel.Scale(level - 1);
-            return BaseBonus.Add(extra);
+            var contribution = BaseBonus.Add(extra);
+            // Clamp job contribution to ensure stats don't exceed caps
+            return StatConstants.ClampStatBlock(contribution);
         }
     }
 }

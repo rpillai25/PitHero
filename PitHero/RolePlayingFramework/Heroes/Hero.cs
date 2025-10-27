@@ -94,9 +94,23 @@ namespace RolePlayingFramework.Heroes
             while (Experience >= RequiredExpForNextLevel())
             {
                 Experience -= RequiredExpForNextLevel();
+                
+                // Clamp level to max before incrementing
+                if (Level >= StatConstants.MaxLevel) break;
+                
                 Level++;
                 leveled = true;
-                BaseStats = new StatBlock(BaseStats.Strength + 1, BaseStats.Agility + 1, BaseStats.Vitality + 1, BaseStats.Magic + 1);
+                
+                // Increment base stats by 1 per level, ensuring they don't exceed caps
+                BaseStats = StatConstants.ClampStatBlock(
+                    new StatBlock(
+                        BaseStats.Strength + 1, 
+                        BaseStats.Agility + 1, 
+                        BaseStats.Vitality + 1, 
+                        BaseStats.Magic + 1
+                    )
+                );
+                
                 RecalculateDerived();
                 ApplyPassiveSkills();
             }
@@ -111,8 +125,25 @@ namespace RolePlayingFramework.Heroes
         {
             var jobStats = Job.GetJobContributionAtLevel(Level);
             var total = BaseStats.Add(jobStats).Add(GetEquipmentStatBonus());
-            MaxHP = 25 + total.Vitality * 5 + GetEquipmentHPBonus(); // Add equipment HP bonus
-            MaxMP = 10 + total.Magic * 3 + GetEquipmentMPBonus();     // Add equipment MP bonus
+            
+            // Calculate HP and MP using the utility methods with capping
+            MaxHP = GrowthCurveCalculator.CalculateHP(
+                total.Vitality, 
+                baseHP: 25, 
+                vitalityMultiplier: 5
+            ) + GetEquipmentHPBonus();
+            
+            MaxMP = GrowthCurveCalculator.CalculateMP(
+                total.Magic, 
+                baseMP: 10, 
+                magicMultiplier: 3
+            ) + GetEquipmentMPBonus();
+            
+            // Ensure HP/MP stay within caps after adding equipment bonuses
+            MaxHP = StatConstants.ClampHP(MaxHP);
+            MaxMP = StatConstants.ClampMP(MaxMP);
+            
+            // Clamp current values to new maximums
             if (CurrentHP > MaxHP) CurrentHP = MaxHP;
             if (CurrentMP > MaxMP) CurrentMP = MaxMP;
         }
@@ -121,7 +152,9 @@ namespace RolePlayingFramework.Heroes
         public StatBlock GetTotalStats()
         {
             var jobStats = Job.GetJobContributionAtLevel(Level);
-            return BaseStats.Add(jobStats).Add(GetEquipmentStatBonus());
+            var total = BaseStats.Add(jobStats).Add(GetEquipmentStatBonus());
+            // Clamp total stats to ensure they don't exceed caps
+            return StatConstants.ClampStatBlock(total);
         }
 
         /// <summary>Inflicts damage, returns true if hero died.</summary>
