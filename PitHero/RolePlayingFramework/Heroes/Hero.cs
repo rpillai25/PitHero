@@ -125,6 +125,8 @@ namespace RolePlayingFramework.Heroes
         {
             var jobStats = Job.GetJobContributionAtLevel(Level);
             var total = BaseStats.Add(jobStats).Add(GetEquipmentStatBonus());
+            // Clamp total stats before using them for HP/MP calculations
+            total = StatConstants.ClampStatBlock(total);
             
             // Calculate HP and MP using the utility methods with capping
             MaxHP = GrowthCurveCalculator.CalculateHP(
