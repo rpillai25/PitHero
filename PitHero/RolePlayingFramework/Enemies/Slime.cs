@@ -20,6 +20,7 @@ namespace RolePlayingFramework.Enemies
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
         public ElementType Element => ElementType.Water;
+        public ElementalProperties ElementalProps { get; }
         public int MaxHP { get; }
         public int CurrentHP => _hp;
         public int ExperienceYield { get; }
@@ -35,6 +36,14 @@ namespace RolePlayingFramework.Enemies
             MaxHP = 15;
             _hp = MaxHP;
             ExperienceYield = 10;
+            
+            // Slime is Water element: resistant to Water, weak to Fire
+            var resistances = new System.Collections.Generic.Dictionary<ElementType, float>
+            {
+                { ElementType.Water, 0.3f },  // 30% resistance to Water
+                { ElementType.Fire, -0.3f }   // 30% weakness to Fire
+            };
+            ElementalProps = new ElementalProperties(ElementType.Water, resistances);
         }
 
         /// <summary>Inflicts damage, returns true if died.</summary>

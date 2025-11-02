@@ -20,6 +20,7 @@ namespace RolePlayingFramework.Enemies
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
         public ElementType Element => ElementType.Fire;
+        public ElementalProperties ElementalProps { get; }
         public int MaxHP { get; }
         public int CurrentHP => _hp;
         public int ExperienceYield { get; }
@@ -35,6 +36,14 @@ namespace RolePlayingFramework.Enemies
             MaxHP = 28;
             _hp = MaxHP;
             ExperienceYield = 50;
+            
+            // Orc is Fire element: resistant to Fire, weak to Water
+            var resistances = new System.Collections.Generic.Dictionary<ElementType, float>
+            {
+                { ElementType.Fire, 0.3f },   // 30% resistance to Fire
+                { ElementType.Water, -0.3f }  // 30% weakness to Water
+            };
+            ElementalProps = new ElementalProperties(ElementType.Fire, resistances);
         }
 
         /// <summary>Inflicts damage, returns true if died.</summary>

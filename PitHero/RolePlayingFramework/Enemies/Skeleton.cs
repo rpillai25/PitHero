@@ -13,6 +13,7 @@ namespace RolePlayingFramework.Enemies
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
         public ElementType Element => ElementType.Dark;
+        public ElementalProperties ElementalProps { get; }
         public int MaxHP { get; }
         public int CurrentHP => _hp;
         public int ExperienceYield { get; }
@@ -28,6 +29,14 @@ namespace RolePlayingFramework.Enemies
             MaxHP = 24;
             _hp = MaxHP;
             ExperienceYield = 50;
+            
+            // Skeleton is Dark element: resistant to Dark, weak to Light
+            var resistances = new System.Collections.Generic.Dictionary<ElementType, float>
+            {
+                { ElementType.Dark, 0.3f },   // 30% resistance to Dark
+                { ElementType.Light, -0.3f }  // 30% weakness to Light
+            };
+            ElementalProps = new ElementalProperties(ElementType.Dark, resistances);
         }
 
         /// <summary>Inflicts damage, returns true if died.</summary>

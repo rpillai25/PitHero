@@ -13,6 +13,7 @@ namespace RolePlayingFramework.Enemies
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
         public ElementType Element => ElementType.Neutral;
+        public ElementalProperties ElementalProps { get; }
         public int MaxHP { get; }
         public int CurrentHP => _hp;
         public int ExperienceYield { get; }
@@ -28,6 +29,9 @@ namespace RolePlayingFramework.Enemies
             MaxHP = 13;
             _hp = MaxHP;
             ExperienceYield = 10;
+            
+            // Rat is Neutral element: no special resistances
+            ElementalProps = new ElementalProperties(ElementType.Neutral);
         }
 
         /// <summary>Inflicts damage, returns true if died.</summary>
