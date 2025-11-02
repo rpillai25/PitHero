@@ -67,10 +67,10 @@ namespace PitHero.Tests
         {
             var job = new Marksman();
             Assert.AreEqual("Marksman", job.Name);
-            Assert.AreEqual(3, job.BaseBonus.Strength);
-            Assert.AreEqual(2, job.BaseBonus.Agility);
+            Assert.AreEqual(2, job.BaseBonus.Strength);
+            Assert.AreEqual(3, job.BaseBonus.Agility);
             Assert.AreEqual(2, job.BaseBonus.Vitality);
-            Assert.AreEqual(2, job.BaseBonus.Magic);
+            Assert.AreEqual(1, job.BaseBonus.Magic);
             Assert.AreEqual(4, job.Skills.Count);
         }
 
@@ -79,10 +79,10 @@ namespace PitHero.Tests
         {
             var job = new Wizard();
             Assert.AreEqual("Wizard", job.Name);
-            Assert.AreEqual(1, job.BaseBonus.Strength);
-            Assert.AreEqual(1, job.BaseBonus.Agility);
-            Assert.AreEqual(1, job.BaseBonus.Vitality);
-            Assert.AreEqual(6, job.BaseBonus.Magic);
+            Assert.AreEqual(2, job.BaseBonus.Strength);
+            Assert.AreEqual(2, job.BaseBonus.Agility);
+            Assert.AreEqual(2, job.BaseBonus.Vitality);
+            Assert.AreEqual(4, job.BaseBonus.Magic);
             Assert.AreEqual(4, job.Skills.Count);
         }
 
@@ -92,9 +92,9 @@ namespace PitHero.Tests
             var job = new DragonFist();
             Assert.AreEqual("Dragon Fist", job.Name);
             Assert.AreEqual(3, job.BaseBonus.Strength);
-            Assert.AreEqual(2, job.BaseBonus.Agility);
+            Assert.AreEqual(3, job.BaseBonus.Agility);
             Assert.AreEqual(2, job.BaseBonus.Vitality);
-            Assert.AreEqual(3, job.BaseBonus.Magic);
+            Assert.AreEqual(2, job.BaseBonus.Magic);
             Assert.AreEqual(4, job.Skills.Count);
         }
 
@@ -104,8 +104,8 @@ namespace PitHero.Tests
             var job = new Spellcloak();
             Assert.AreEqual("Spellcloak", job.Name);
             Assert.AreEqual(2, job.BaseBonus.Strength);
-            Assert.AreEqual(3, job.BaseBonus.Agility);
-            Assert.AreEqual(1, job.BaseBonus.Vitality);
+            Assert.AreEqual(2, job.BaseBonus.Agility);
+            Assert.AreEqual(2, job.BaseBonus.Vitality);
             Assert.AreEqual(3, job.BaseBonus.Magic);
             Assert.AreEqual(4, job.Skills.Count);
         }
@@ -127,7 +127,7 @@ namespace PitHero.Tests
         {
             var job = new DivineFist();
             Assert.AreEqual("Divine Fist", job.Name);
-            Assert.AreEqual(2, job.BaseBonus.Strength);
+            Assert.AreEqual(3, job.BaseBonus.Strength);
             Assert.AreEqual(2, job.BaseBonus.Agility);
             Assert.AreEqual(2, job.BaseBonus.Vitality);
             Assert.AreEqual(3, job.BaseBonus.Magic);
@@ -139,10 +139,10 @@ namespace PitHero.Tests
         {
             var job = new Shadowmender();
             Assert.AreEqual("Shadowmender", job.Name);
-            Assert.AreEqual(1, job.BaseBonus.Strength);
+            Assert.AreEqual(2, job.BaseBonus.Strength);
             Assert.AreEqual(3, job.BaseBonus.Agility);
-            Assert.AreEqual(1, job.BaseBonus.Vitality);
-            Assert.AreEqual(3, job.BaseBonus.Magic);
+            Assert.AreEqual(2, job.BaseBonus.Vitality);
+            Assert.AreEqual(2, job.BaseBonus.Magic);
             Assert.AreEqual(4, job.Skills.Count);
         }
 
@@ -151,7 +151,7 @@ namespace PitHero.Tests
         {
             var job = new HolyArcher();
             Assert.AreEqual("Holy Archer", job.Name);
-            Assert.AreEqual(1, job.BaseBonus.Strength);
+            Assert.AreEqual(2, job.BaseBonus.Strength);
             Assert.AreEqual(2, job.BaseBonus.Agility);
             Assert.AreEqual(2, job.BaseBonus.Vitality);
             Assert.AreEqual(3, job.BaseBonus.Magic);
@@ -163,8 +163,8 @@ namespace PitHero.Tests
         {
             var job = new ShadowFist();
             Assert.AreEqual("Shadow Fist", job.Name);
-            Assert.AreEqual(2, job.BaseBonus.Strength);
-            Assert.AreEqual(4, job.BaseBonus.Agility);
+            Assert.AreEqual(3, job.BaseBonus.Strength);
+            Assert.AreEqual(3, job.BaseBonus.Agility);
             Assert.AreEqual(2, job.BaseBonus.Vitality);
             Assert.AreEqual(1, job.BaseBonus.Magic);
             Assert.AreEqual(4, job.Skills.Count);
@@ -189,8 +189,8 @@ namespace PitHero.Tests
             Assert.AreEqual("Stalker", job.Name);
             Assert.AreEqual(2, job.BaseBonus.Strength);
             Assert.AreEqual(3, job.BaseBonus.Agility);
-            Assert.AreEqual(1, job.BaseBonus.Vitality);
-            Assert.AreEqual(2, job.BaseBonus.Magic);
+            Assert.AreEqual(2, job.BaseBonus.Vitality);
+            Assert.AreEqual(1, job.BaseBonus.Magic);
             Assert.AreEqual(4, job.Skills.Count);
         }
 
@@ -375,9 +375,12 @@ namespace PitHero.Tests
         public void Paladin_Has_Correct_Stat_Growth()
         {
             var job = new Paladin();
-            Assert.AreEqual(2, job.GrowthPerLevel.Strength);
-            Assert.AreEqual(1, job.GrowthPerLevel.Agility);
-            Assert.AreEqual(2, job.GrowthPerLevel.Vitality);
+            // Growth values are stored as floats but accessed as ints (rounded)
+            // The actual values used are 0.724, 0.480, 0.837, 0.592
+            // When accessed as ints, they appear as 1, 0, 1, 1
+            Assert.AreEqual(1, job.GrowthPerLevel.Strength);
+            Assert.AreEqual(0, job.GrowthPerLevel.Agility);
+            Assert.AreEqual(1, job.GrowthPerLevel.Vitality);
             Assert.AreEqual(1, job.GrowthPerLevel.Magic);
         }
 
@@ -406,8 +409,10 @@ namespace PitHero.Tests
         [TestMethod]
         public void ShadowFist_Has_Highest_Agility_Base()
         {
+            // Updated: After rebalancing, multiple jobs share Agi 3 base
+            // ShadowFist, Ninja, DragonFist, KiShot, Marksman, Stalker all have 3
             var shadowFist = new ShadowFist();
-            Assert.AreEqual(4, shadowFist.BaseBonus.Agility, "Shadow Fist should have 4 base agility");
+            Assert.AreEqual(3, shadowFist.BaseBonus.Agility, "Shadow Fist should have 3 base agility");
         }
 
         #endregion
