@@ -21,6 +21,9 @@ namespace RolePlayingFramework.Enemies
         /// <summary>Elemental type of the enemy.</summary>
         ElementType Element { get; }
 
+        /// <summary>Elemental properties including resistances and weaknesses.</summary>
+        ElementalProperties ElementalProps { get; }
+
         /// <summary>Current and maximum HP.</summary>
         int MaxHP { get; }
         int CurrentHP { get; }

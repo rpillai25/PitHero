@@ -20,6 +20,7 @@ namespace RolePlayingFramework.Enemies
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
         public ElementType Element => ElementType.Earth;
+        public ElementalProperties ElementalProps { get; }
         public int MaxHP { get; }
         public int CurrentHP => _hp;
         public int ExperienceYield { get; }
@@ -35,6 +36,14 @@ namespace RolePlayingFramework.Enemies
             MaxHP = 20;
             _hp = MaxHP;
             ExperienceYield = 25;
+            
+            // Goblin is Earth element: resistant to Earth, weak to Wind
+            var resistances = new System.Collections.Generic.Dictionary<ElementType, float>
+            {
+                { ElementType.Earth, 0.3f },  // 30% resistance to Earth
+                { ElementType.Wind, -0.3f }   // 30% weakness to Wind
+            };
+            ElementalProps = new ElementalProperties(ElementType.Earth, resistances);
         }
 
         /// <summary>Inflicts damage, returns true if died.</summary>

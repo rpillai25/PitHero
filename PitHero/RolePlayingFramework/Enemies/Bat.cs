@@ -13,6 +13,7 @@ namespace RolePlayingFramework.Enemies
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
         public ElementType Element => ElementType.Wind;
+        public ElementalProperties ElementalProps { get; }
         public int MaxHP { get; }
         public int CurrentHP => _hp;
         public int ExperienceYield { get; }
@@ -29,6 +30,14 @@ namespace RolePlayingFramework.Enemies
             MaxHP = 12;
             _hp = MaxHP;
             ExperienceYield = 10;
+            
+            // Bat is Wind element: resistant to Wind, weak to Earth
+            var resistances = new System.Collections.Generic.Dictionary<ElementType, float>
+            {
+                { ElementType.Wind, 0.3f },   // 30% resistance to Wind
+                { ElementType.Earth, -0.3f }  // 30% weakness to Earth
+            };
+            ElementalProps = new ElementalProperties(ElementType.Wind, resistances);
         }
 
         /// <summary>Inflicts damage, returns true if died.</summary>
