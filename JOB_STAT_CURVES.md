@@ -555,3 +555,544 @@ Secondary jobs inherit traits from their two parent primary jobs and excel in hy
 - StatBlock Implementation: `PitHero/RolePlayingFramework/Stats/StatBlock.cs`
 - Growth Calculator: `PitHero/RolePlayingFramework/Stats/GrowthCurveCalculator.cs`
 - Unit Tests: `PitHero.Tests/SecondaryJobStatGrowthTests.cs`
+
+---
+
+# Tertiary Job Stat Growth Curves
+
+This section details the stat progression for all 22 tertiary jobs. Tertiary jobs are endgame specializations that combine two secondary jobs or advanced combinations. They are designed to be 25-40% stronger than primary jobs and 10-15% stronger than secondary jobs. All values represent job contribution only (excluding hero base stats and equipment).
+
+## Tertiary Job Overview
+
+Tertiary jobs represent the pinnacle of character specialization, combining the best aspects of their parent jobs with unique synergies. These elite classes require significant investment but offer the highest stat potential in the game while still respecting stat caps.
+
+---
+
+## ArcaneSamurai (Samurai + Spellcloak)
+
+**Role**: Samurai with magical abilities and stealth  
+**Parents**: Samurai (Str 80), Spellcloak (Mag 88)  
+**BaseBonus**: Str 4, Agi 3, Vit 2, Mag 3  
+**GrowthPerLevel**: Str 0.796, Agi 0.704, Vit 0.776, Mag 0.867
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 4        | 3       | 2        | 3     | 35  | 19  |
+| 25    | 23       | 20      | 21       | 24    | 130 | 82  |
+| 50    | 43       | 37      | 40       | 45    | 225 | 145 |
+| 75    | 63       | 55      | 59       | 67    | 320 | 211 |
+| 99    | 82       | 72      | 78       | 88    | 415 | 274 |
+
+**Stat Distribution at L99**: Excellent Strength and Magic for hybrid melee-spell combat, high Vitality for survivability, balanced Agility.
+
+---
+
+## ArcaneStalker (Arcane Archer + Stalker)
+
+**Role**: Magical tracker with elemental attacks  
+**Parents**: Arcane Archer (Mag 92), Stalker (Agi 90)  
+**BaseBonus**: Str 2, Agi 3, Vit 2, Mag 4  
+**GrowthPerLevel**: Str 0.694, Agi 0.837, Vit 0.714, Mag 0.898
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 2        | 3       | 2        | 4     | 35  | 22  |
+| 25    | 19       | 23      | 19       | 25    | 120 | 85  |
+| 50    | 36       | 44      | 37       | 48    | 210 | 154 |
+| 75    | 53       | 65      | 55       | 71    | 300 | 223 |
+| 99    | 70       | 85      | 72       | 92    | 385 | 286 |
+
+**Stat Distribution at L99**: Highest Magic among ranged stealth classes, excellent Agility for evasion and tracking.
+
+---
+
+## DivineArcher (Divine Fist + Holy Archer)
+
+**Role**: Holy ranged monk with healing arrows  
+**Parents**: Divine Fist (Mag 85), Holy Archer (Agi 82)  
+**BaseBonus**: Str 2, Agi 2, Vit 2, Mag 5  
+**GrowthPerLevel**: Str 0.745, Agi 0.816, Vit 0.847, Mag 0.959
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 2        | 2       | 2        | 5     | 35  | 25  |
+| 25    | 20       | 22      | 22       | 28    | 135 | 94  |
+| 50    | 38       | 42      | 44       | 52    | 245 | 166 |
+| 75    | 57       | 62      | 65       | 76    | 350 | 238 |
+| 99    | 75       | 82      | 85       | 99    | 450 | 307 |
+
+**Stat Distribution at L99**: Capped Magic for maximum healing and holy power, excellent Vitality and Agility for ranged survivability.
+
+---
+
+## DivineCloak (Divine Fist + Spellcloak)
+
+**Role**: Holy monk with magical stealth  
+**Parents**: Divine Fist (Mag 85), Spellcloak (Agi 85)  
+**BaseBonus**: Str 2, Agi 4, Vit 2, Mag 4  
+**GrowthPerLevel**: Str 0.714, Agi 0.857, Vit 0.714, Mag 0.969
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 2        | 4       | 2        | 4     | 35  | 22  |
+| 25    | 19       | 25      | 19       | 27    | 120 | 91  |
+| 50    | 37       | 46      | 37       | 51    | 210 | 163 |
+| 75    | 55       | 67      | 55       | 76    | 300 | 238 |
+| 99    | 72       | 88      | 72       | 99    | 385 | 307 |
+
+**Stat Distribution at L99**: Capped Magic and near-capped Agility for ultimate evasive holy caster.
+
+---
+
+## DivineSamurai (Samurai + Divine Fist)
+
+**Role**: Holy warrior with spiritual discipline  
+**Parents**: Samurai (Str 80), Divine Fist (Mag 85)  
+**BaseBonus**: Str 4, Agi 2, Vit 3, Mag 3  
+**GrowthPerLevel**: Str 0.816, Agi 0.694, Vit 0.867, Mag 0.980
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 4        | 2       | 3        | 3     | 40  | 19  |
+| 25    | 24       | 19      | 24       | 27    | 145 | 91  |
+| 50    | 44       | 36      | 45       | 51    | 250 | 163 |
+| 75    | 64       | 53      | 67       | 76    | 360 | 238 |
+| 99    | 84       | 70      | 88       | 99    | 465 | 307 |
+
+**Stat Distribution at L99**: Capped Magic, excellent Strength and Vitality for ultimate holy warrior.
+
+---
+
+## DragonMarksman (Dragon Fist + Marksman)
+
+**Role**: Martial artist with enhanced ranged attacks  
+**Parents**: Dragon Fist (Str 77), Marksman (Agi 88)  
+**BaseBonus**: Str 4, Agi 2, Vit 2, Mag 3  
+**GrowthPerLevel**: Str 0.827, Agi 0.847, Vit 0.796, Mag 0.735
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 4        | 2       | 2        | 3     | 35  | 19  |
+| 25    | 24       | 22      | 21       | 21    | 130 | 73  |
+| 50    | 45       | 43      | 41       | 39    | 230 | 127 |
+| 75    | 65       | 65      | 61       | 57    | 330 | 181 |
+| 99    | 85       | 85      | 80       | 75    | 425 | 235 |
+
+**Stat Distribution at L99**: Perfect balance of Strength and Agility for hybrid melee-ranged combat, strong Vitality.
+
+---
+
+## HolyShadow (Holy Archer + Shadowmender)
+
+**Role**: Stealthy holy archer with healing  
+**Parents**: Holy Archer (Mag 88), Shadowmender (Agi 85)  
+**BaseBonus**: Str 1, Agi 3, Vit 2, Mag 4  
+**GrowthPerLevel**: Str 0.724, Agi 0.980, Vit 0.776, Mag 0.969
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 1        | 3       | 2        | 4     | 35  | 22  |
+| 25    | 18       | 27      | 21       | 27    | 130 | 91  |
+| 50    | 36       | 51      | 40       | 51    | 225 | 163 |
+| 75    | 55       | 76      | 59       | 76    | 320 | 238 |
+| 99    | 72       | 99      | 78       | 99    | 415 | 307 |
+
+**Stat Distribution at L99**: Capped Agility and Magic, ultimate holy stealth archer-healer.
+
+---
+
+## KiNinja (Ki Shot + Ninja)
+
+**Role**: Agile archer-ninja with ki-powered attacks  
+**Parents**: Ki Shot (Agi 90), Ninja (Agi 92)  
+**BaseBonus**: Str 2, Agi 4, Vit 2, Mag 2  
+**GrowthPerLevel**: Str 0.816, Agi 0.969, Vit 0.745, Mag 0.796
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 2        | 4       | 2        | 2     | 35  | 16  |
+| 25    | 22       | 27      | 20       | 21    | 125 | 73  |
+| 50    | 42       | 51      | 38       | 41    | 215 | 133 |
+| 75    | 62       | 76      | 57       | 61    | 310 | 193 |
+| 99    | 82       | 99      | 75       | 80    | 400 | 250 |
+
+**Stat Distribution at L99**: Capped Agility for maximum speed, excellent Strength and Magic for hybrid ki attacks.
+
+---
+
+## MarksmanWizard (Marksman + Wizard)
+
+**Role**: Long-range magical marksman  
+**Parents**: Marksman (Agi 88), Wizard (Mag 98)  
+**BaseBonus**: Str 2, Agi 2, Vit 2, Mag 5  
+**GrowthPerLevel**: Str 0.796, Agi 0.898, Vit 0.847, Mag 0.959
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 2        | 2       | 2        | 5     | 35  | 25  |
+| 25    | 21       | 24      | 22       | 28    | 135 | 94  |
+| 50    | 41       | 46      | 44       | 52    | 245 | 166 |
+| 75    | 61       | 68      | 65       | 76    | 350 | 238 |
+| 99    | 80       | 90      | 85       | 99    | 450 | 307 |
+
+**Stat Distribution at L99**: Capped Magic with excellent Agility, ultimate magical ranged DPS.
+
+---
+
+## MysticAvenger (Dragon Fist + Spellcloak)
+
+**Role**: Magic-infused martial artist with stealth  
+**Parents**: Dragon Fist (Str 77), Spellcloak (Mag 88)  
+**BaseBonus**: Str 3, Agi 4, Vit 2, Mag 4  
+**GrowthPerLevel**: Str 0.786, Agi 0.878, Vit 0.714, Mag 0.969
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 3        | 4       | 2        | 4     | 35  | 22  |
+| 25    | 22       | 25      | 19       | 27    | 120 | 91  |
+| 50    | 41       | 47      | 37       | 51    | 210 | 163 |
+| 75    | 61       | 69      | 55       | 76    | 300 | 238 |
+| 99    | 80       | 90      | 72       | 99    | 385 | 307 |
+
+**Stat Distribution at L99**: Capped Magic with excellent Agility and Strength, ultimate evasive battle mage.
+
+---
+
+## MysticMarksman (Marksman + Spellcloak)
+
+**Role**: Magical sharpshooter with stealth  
+**Parents**: Marksman (Agi 88), Spellcloak (Mag 88)  
+**BaseBonus**: Str 2, Agi 3, Vit 2, Mag 4  
+**GrowthPerLevel**: Str 0.776, Agi 0.980, Vit 0.714, Mag 0.969
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 2        | 3       | 2        | 4     | 35  | 22  |
+| 25    | 21       | 27      | 19       | 27    | 120 | 91  |
+| 50    | 40       | 51      | 37       | 51    | 210 | 163 |
+| 75    | 59       | 76      | 55       | 76    | 300 | 238 |
+| 99    | 78       | 99      | 72       | 99    | 385 | 307 |
+
+**Stat Distribution at L99**: Capped Agility and Magic, perfect magical stealth sniper.
+
+---
+
+## MysticStalker (Stalker + Spellcloak)
+
+**Role**: Magical tracker with arcane stealth  
+**Parents**: Stalker (Agi 90), Spellcloak (Mag 88)  
+**BaseBonus**: Str 2, Agi 4, Vit 2, Mag 3  
+**GrowthPerLevel**: Str 0.714, Agi 0.969, Vit 0.714, Mag 0.980
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 2        | 4       | 2        | 3     | 35  | 19  |
+| 25    | 19       | 27      | 19       | 26    | 120 | 88  |
+| 50    | 37       | 51      | 37       | 51    | 210 | 163 |
+| 75    | 55       | 76      | 55       | 76    | 300 | 238 |
+| 99    | 72       | 99      | 72       | 99    | 385 | 307 |
+
+**Stat Distribution at L99**: Capped Agility and Magic for ultimate magical tracker.
+
+---
+
+## SeraphHunter (Holy Archer + Ki Shot)
+
+**Role**: Divine archer with meditation and ranged holy attacks  
+**Parents**: Holy Archer (Mag 88), Ki Shot (Agi 90)  
+**BaseBonus**: Str 2, Agi 3, Vit 3, Mag 3  
+**GrowthPerLevel**: Str 0.816, Agi 0.980, Vit 0.837, Mag 0.980
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 2        | 3       | 3        | 3     | 40  | 19  |
+| 25    | 22       | 27      | 23       | 27    | 140 | 91  |
+| 50    | 42       | 51      | 44       | 51    | 245 | 163 |
+| 75    | 62       | 76      | 65       | 76    | 350 | 238 |
+| 99    | 82       | 99      | 85       | 99    | 450 | 307 |
+
+**Stat Distribution at L99**: Capped Agility and Magic, excellent Vitality and Strength, ultimate divine archer.
+
+---
+
+## ShadowAvenger (Shadow Fist + Spellcloak)
+
+**Role**: Stealthy monk with magical counters  
+**Parents**: Shadow Fist (Agi 88), Spellcloak (Mag 88)  
+**BaseBonus**: Str 2, Agi 4, Vit 2, Mag 3  
+**GrowthPerLevel**: Str 0.745, Agi 0.969, Vit 0.796, Mag 0.908
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 2        | 4       | 2        | 3     | 35  | 19  |
+| 25    | 20       | 27      | 21       | 25    | 130 | 85  |
+| 50    | 38       | 51      | 41       | 47    | 230 | 151 |
+| 75    | 57       | 76      | 61       | 70    | 330 | 220 |
+| 99    | 75       | 99      | 80       | 92    | 425 | 286 |
+
+**Stat Distribution at L99**: Capped Agility, near-capped Magic, excellent counter-attacking stealth monk.
+
+---
+
+## ShadowPaladin (Paladin + Shadowmender)
+
+**Role**: Holy warrior with stealth and shadow healing  
+**Parents**: Paladin (Vit 85), Shadowmender (Agi 85)  
+**BaseBonus**: Str 3, Agi 4, Vit 3, Mag 3  
+**GrowthPerLevel**: Str 0.806, Agi 0.969, Vit 0.837, Mag 0.980
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 3        | 4       | 3        | 3     | 40  | 19  |
+| 25    | 22       | 27      | 23       | 27    | 140 | 91  |
+| 50    | 42       | 51      | 44       | 51    | 245 | 163 |
+| 75    | 63       | 76      | 65       | 76    | 350 | 238 |
+| 99    | 82       | 99      | 85       | 99    | 450 | 307 |
+
+**Stat Distribution at L99**: Capped Agility and Magic, excellent all-around holy stealth warrior.
+
+---
+
+## ShinobiMaster (Samurai + Ninja)
+
+**Role**: Elite warrior with speed and stealth mastery  
+**Parents**: Samurai (Str 80), Ninja (Agi 92)  
+**BaseBonus**: Str 4, Agi 4, Vit 3, Mag 2  
+**GrowthPerLevel**: Str 0.857, Agi 0.969, Vit 0.867, Mag 0.796
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 4        | 4       | 3        | 2     | 40  | 16  |
+| 25    | 25       | 27      | 24       | 21    | 145 | 73  |
+| 50    | 46       | 51      | 45       | 41    | 250 | 133 |
+| 75    | 67       | 76      | 67       | 61    | 360 | 193 |
+| 99    | 88       | 99      | 88       | 80    | 465 | 250 |
+
+**Stat Distribution at L99**: Highest Strength among agility-focused classes, capped Agility, ultimate physical warrior.
+
+---
+
+## SilentHunter (Stalker + Ninja)
+
+**Role**: Master of stealth, tracking and evasion  
+**Parents**: Stalker (Agi 90), Ninja (Agi 92)  
+**BaseBonus**: Str 3, Agi 4, Vit 2, Mag 1  
+**GrowthPerLevel**: Str 0.786, Agi 0.969, Vit 0.776, Mag 0.806
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 3        | 4       | 2        | 1     | 35  | 13  |
+| 25    | 22       | 27      | 21       | 20    | 130 | 70  |
+| 50    | 41       | 51      | 40       | 40    | 225 | 130 |
+| 75    | 61       | 76      | 59       | 61    | 320 | 193 |
+| 99    | 80       | 99      | 78       | 80    | 415 | 250 |
+
+**Stat Distribution at L99**: Capped Agility, excellent Strength and Magic balance for stealth master.
+
+---
+
+## SoulGuardian (Divine Fist + Shadowmender)
+
+**Role**: Stealth healer with spirit powers  
+**Parents**: Divine Fist (Mag 85), Shadowmender (Agi 85)  
+**BaseBonus**: Str 2, Agi 4, Vit 2, Mag 4  
+**GrowthPerLevel**: Str 0.714, Agi 0.857, Vit 0.714, Mag 0.969
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 2        | 4       | 2        | 4     | 35  | 22  |
+| 25    | 19       | 25      | 19       | 27    | 120 | 91  |
+| 50    | 37       | 46      | 37       | 51    | 210 | 163 |
+| 75    | 55       | 67      | 55       | 76    | 300 | 238 |
+| 99    | 72       | 88      | 72       | 99    | 385 | 307 |
+
+**Stat Distribution at L99**: Capped Magic with excellent Agility for ultimate stealth healer.
+
+---
+
+## SpellSniper (Wizard + Arcane Archer)
+
+**Role**: Long-range magical marksman  
+**Parents**: Wizard (Mag 98), Arcane Archer (Mag 92)  
+**BaseBonus**: Str 2, Agi 2, Vit 2, Mag 6  
+**GrowthPerLevel**: Str 0.816, Agi 0.898, Vit 0.847, Mag 0.949
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 2        | 2       | 2        | 6     | 35  | 28  |
+| 25    | 22       | 24      | 22       | 29    | 135 | 97  |
+| 50    | 42       | 46      | 44       | 52    | 245 | 166 |
+| 75    | 62       | 68      | 65       | 76    | 350 | 238 |
+| 99    | 82       | 90      | 85       | 99    | 450 | 307 |
+
+**Stat Distribution at L99**: Capped Magic with highest base Magic, excellent Agility for supreme magical sniper.
+
+---
+
+## StalkerMonk (Stalker + Monk)
+
+**Role**: Fast evasive tracker with escape mastery  
+**Parents**: Stalker (Agi 90), Monk (Str 73)  
+**BaseBonus**: Str 2, Agi 4, Vit 2, Mag 2  
+**GrowthPerLevel**: Str 0.796, Agi 0.969, Vit 0.745, Mag 0.796
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 2        | 4       | 2        | 2     | 35  | 16  |
+| 25    | 21       | 27      | 20       | 21    | 125 | 73  |
+| 50    | 41       | 51      | 38       | 41    | 215 | 133 |
+| 75    | 61       | 76      | 57       | 61    | 310 | 193 |
+| 99    | 80       | 99      | 75       | 80    | 400 | 250 |
+
+**Stat Distribution at L99**: Capped Agility with excellent Strength and Magic for ultimate evasive tracker.
+
+---
+
+## Templar (Paladin + War Mage)
+
+**Role**: Powerful holy warrior combining defense and magic  
+**Parents**: Paladin (Vit 85), War Mage (Mag 80)  
+**BaseBonus**: Str 5, Agi 2, Vit 4, Mag 3  
+**GrowthPerLevel**: Str 0.816, Agi 0.796, Vit 0.969, Mag 0.980
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 5        | 2       | 4        | 3     | 45  | 19  |
+| 25    | 25       | 21      | 27       | 27    | 160 | 91  |
+| 50    | 45       | 41      | 51       | 51    | 280 | 163 |
+| 75    | 65       | 61      | 76       | 76    | 405 | 238 |
+| 99    | 85       | 80      | 99       | 99    | 520 | 307 |
+
+**Stat Distribution at L99**: Capped Vitality and Magic, highest HP in game, ultimate holy tank-mage.
+
+---
+
+## Trickshot (Marksman + Stalker)
+
+**Role**: Expert marksman with tracking and evasion  
+**Parents**: Marksman (Agi 88), Stalker (Agi 90)  
+**BaseBonus**: Str 3, Agi 3, Vit 2, Mag 2  
+**GrowthPerLevel**: Str 0.786, Agi 0.908, Vit 0.745, Mag 0.796
+
+### Stat Progression Table
+
+| Level | Strength | Agility | Vitality | Magic | HP  | MP  |
+|-------|----------|---------|----------|-------|-----|-----|
+| 1     | 3        | 3       | 2        | 2     | 35  | 16  |
+| 25    | 22       | 25      | 20       | 21    | 125 | 73  |
+| 50    | 41       | 47      | 38       | 41    | 215 | 133 |
+| 75    | 61       | 70      | 57       | 61    | 310 | 193 |
+| 99    | 80       | 92      | 75       | 80    | 400 | 250 |
+
+**Stat Distribution at L99**: Near-capped Agility with excellent Strength and Magic, ultimate precision archer.
+
+---
+
+## Tertiary Job Comparison at Level 99
+
+| Job              | Strength | Agility | Vitality | Magic | HP  | MP  | Primary Role              |
+|------------------|----------|---------|----------|-------|-----|-----|---------------------------|
+| ArcaneSamurai    | 82       | 72      | 78       | 88    | 415 | 274 | Magic Samurai             |
+| ArcaneStalker    | 70       | 85      | 72       | 92    | 385 | 286 | Magic Tracker             |
+| DivineArcher     | 75       | 82      | 85       | 99    | 450 | 307 | Holy Ranged Monk          |
+| DivineCloak      | 72       | 88      | 72       | 99    | 385 | 307 | Holy Evasive Caster       |
+| DivineSamurai    | 84       | 70      | 88       | 99    | 465 | 307 | Holy Warrior              |
+| DragonMarksman   | 85       | 85      | 80       | 75    | 425 | 235 | Balanced Physical         |
+| HolyShadow       | 72       | 99      | 78       | 99    | 415 | 307 | Holy Stealth Archer       |
+| KiNinja          | 82       | 99      | 75       | 80    | 400 | 250 | Ki Stealth Warrior        |
+| MarksmanWizard   | 80       | 90      | 85       | 99    | 450 | 307 | Magic Sniper              |
+| MysticAvenger    | 80       | 90      | 72       | 99    | 385 | 307 | Battle Mage               |
+| MysticMarksman   | 78       | 99      | 72       | 99    | 385 | 307 | Magic Stealth Sniper      |
+| MysticStalker    | 72       | 99      | 72       | 99    | 385 | 307 | Ultimate Magic Tracker    |
+| SeraphHunter     | 82       | 99      | 85       | 99    | 450 | 307 | Divine Archer             |
+| ShadowAvenger    | 75       | 99      | 80       | 92    | 425 | 286 | Stealth Counter Fighter   |
+| ShadowPaladin    | 82       | 99      | 85       | 99    | 450 | 307 | Holy Stealth Warrior      |
+| ShinobiMaster    | 88       | 99      | 88       | 80    | 465 | 250 | Ultimate Physical Warrior |
+| SilentHunter     | 80       | 99      | 78       | 80    | 415 | 250 | Stealth Master            |
+| SoulGuardian     | 72       | 88      | 72       | 99    | 385 | 307 | Stealth Spirit Healer     |
+| SpellSniper      | 82       | 90      | 85       | 99    | 450 | 307 | Supreme Magic Sniper      |
+| StalkerMonk      | 80       | 99      | 75       | 80    | 400 | 250 | Evasive Tracker           |
+| Templar          | 85       | 80      | 99       | 99    | 520 | 307 | Ultimate Holy Tank        |
+| Trickshot        | 80       | 92      | 75       | 80    | 400 | 250 | Precision Marksman        |
+
+### Tertiary Job Archetypes
+
+- **Highest Strength**: ShinobiMaster (88), DragonMarksman/Templar (85), DivineSamurai (84)
+- **Highest Agility**: 10 jobs capped at 99 - HolyShadow, KiNinja, MysticMarksman, MysticStalker, SeraphHunter, ShadowAvenger, ShadowPaladin, ShinobiMaster, SilentHunter, StalkerMonk
+- **Highest Vitality**: Templar (99), DivineSamurai/ShinobiMaster (88), DivineArcher/MarksmanWizard/SeraphHunter/ShadowPaladin/SpellSniper (85)
+- **Highest Magic**: 16 jobs capped at 99
+- **Highest HP**: Templar (520), DivineSamurai/ShinobiMaster (465), DivineArcher/MarksmanWizard/SeraphHunter/ShadowPaladin/SpellSniper (450)
+- **Highest MP**: 16 jobs at 307, ArcaneStalker (286), ShadowAvenger (286)
+
+---
+
+## Implementation Notes
+
+### Tertiary Job Design Philosophy
+
+1. **Elite Specialization**: Tertiary jobs represent the pinnacle of character progression, combining the best aspects of two secondary jobs or advanced primary combinations.
+
+2. **Power Scaling**: Tertiary jobs have 25-40% higher stats than primaries and 10-15% higher than secondaries, making them the strongest classes but requiring maximal investment to unlock.
+
+3. **Stat Cap Mastery**: Many tertiary jobs reach the 99 stat cap in their primary attributes:
+   - 10 jobs have capped Agility (99)
+   - 16 jobs have capped Magic (99)
+   - Multiple jobs cap 2-3 stats simultaneously
+
+4. **Role Diversity**: Tertiary jobs cover all major archetypes:
+   - **Ultimate Physical Warriors**: ShinobiMaster, DivineSamurai, DragonMarksman
+   - **Supreme Magic Users**: 16 jobs with capped Magic
+   - **Stealth Masters**: HolyShadow, MysticMarksman, MysticStalker, SilentHunter
+   - **Holy Warriors**: DivineArcher, DivineSamurai, SeraphHunter, ShadowPaladin, Templar
+   - **Hybrid Combat Specialists**: ArcaneSamurai, MysticAvenger, MarksmanWizard
+
+5. **Balance**: Despite exceptional power, all tertiary jobs respect stat caps (HP ≤ 9999, MP ≤ 999, individual stats ≤ 99).
+
+### Related Files
+
+- Job Definitions: `PitHero/RolePlayingFramework/Jobs/Tertiary/*.cs`
+- StatBlock Implementation: `PitHero/RolePlayingFramework/Stats/StatBlock.cs`
+- Growth Calculator: `PitHero/RolePlayingFramework/Stats/GrowthCurveCalculator.cs`
+- Unit Tests: `PitHero.Tests/TertiaryJobStatGrowthTests.cs`
