@@ -11,7 +11,6 @@ namespace PitHero.Tests
     [TestClass]
     public class PrimaryJobStatGrowthTests
     {
-        private const int MaxLevel = 99;
         private const double TolerancePercent = 0.05; // 5% tolerance
 
         #region Knight Tests
@@ -86,7 +85,7 @@ namespace PitHero.Tests
         public void Knight_Level99_ReachesTargetStats()
         {
             var knight = new Knight();
-            var stats = knight.GetJobContributionAtLevel(MaxLevel);
+            var stats = knight.GetJobContributionAtLevel(StatConstants.MaxLevel);
 
             // Target stats at L99
             const int targetStr = 68;
@@ -162,7 +161,7 @@ namespace PitHero.Tests
         public void Monk_Level99_ReachesTargetStats()
         {
             var monk = new Monk();
-            var stats = monk.GetJobContributionAtLevel(MaxLevel);
+            var stats = monk.GetJobContributionAtLevel(StatConstants.MaxLevel);
 
             AssertWithinTolerance(stats.Strength, 73, "Monk Strength at L99");
             AssertWithinTolerance(stats.Agility, 62, "Monk Agility at L99");
@@ -228,7 +227,7 @@ namespace PitHero.Tests
         public void Thief_Level99_ReachesTargetStats()
         {
             var thief = new Thief();
-            var stats = thief.GetJobContributionAtLevel(MaxLevel);
+            var stats = thief.GetJobContributionAtLevel(StatConstants.MaxLevel);
 
             AssertWithinTolerance(stats.Strength, 58, "Thief Strength at L99");
             AssertWithinTolerance(stats.Agility, 82, "Thief Agility at L99");
@@ -294,7 +293,7 @@ namespace PitHero.Tests
         public void Bowman_Level99_ReachesTargetStats()
         {
             var bowman = new Bowman();
-            var stats = bowman.GetJobContributionAtLevel(MaxLevel);
+            var stats = bowman.GetJobContributionAtLevel(StatConstants.MaxLevel);
 
             AssertWithinTolerance(stats.Strength, 62, "Bowman Strength at L99");
             AssertWithinTolerance(stats.Agility, 72, "Bowman Agility at L99");
@@ -360,7 +359,7 @@ namespace PitHero.Tests
         public void Mage_Level99_ReachesTargetStats()
         {
             var mage = new Mage();
-            var stats = mage.GetJobContributionAtLevel(MaxLevel);
+            var stats = mage.GetJobContributionAtLevel(StatConstants.MaxLevel);
 
             AssertWithinTolerance(stats.Strength, 33, "Mage Strength at L99");
             AssertWithinTolerance(stats.Agility, 48, "Mage Agility at L99");
@@ -426,7 +425,7 @@ namespace PitHero.Tests
         public void Priest_Level99_ReachesTargetStats()
         {
             var priest = new Priest();
-            var stats = priest.GetJobContributionAtLevel(MaxLevel);
+            var stats = priest.GetJobContributionAtLevel(StatConstants.MaxLevel);
 
             AssertWithinTolerance(stats.Strength, 38, "Priest Strength at L99");
             AssertWithinTolerance(stats.Agility, 53, "Priest Agility at L99");

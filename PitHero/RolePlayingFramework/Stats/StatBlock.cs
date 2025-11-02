@@ -56,7 +56,7 @@ namespace RolePlayingFramework.Stats
             );
         }
 
-        /// <summary>Scales a StatBlock by a positive factor (float).</summary>
+        /// <summary>Scales a StatBlock by a factor. Returns zero StatBlock if factor is zero or negative.</summary>
         public StatBlock Scale(float factor)
         {
             if (factor <= 0f) return new StatBlock(0, 0, 0, 0);
