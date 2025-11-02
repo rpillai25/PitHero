@@ -1,3 +1,4 @@
+using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 
@@ -24,11 +25,17 @@ namespace RolePlayingFramework.Enemies
             var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Pit Lord");
             Level = presetLevel;
             
-            // Fixed stats: HP: 70, Attack: 18, Defense: 7, Speed: 4
-            Stats = new StatBlock(strength: 18, agility: 4, vitality: 12, magic: 0);
-            MaxHP = 70;
+            // Use BalanceConfig for stats
+            var archetype = BalanceConfig.MonsterArchetype.Tank;
+            var strength = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Strength);
+            var agility = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Agility);
+            var vitality = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Vitality);
+            var magic = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Magic);
+            
+            Stats = new StatBlock(strength, agility, vitality, magic);
+            MaxHP = BalanceConfig.CalculateMonsterHP(Level, archetype);
             _hp = MaxHP;
-            ExperienceYield = 200;
+            ExperienceYield = BalanceConfig.CalculateMonsterExperience(Level);
             
             // Pit Lord is Fire element: resistant to Fire, weak to Water
             var resistances = new System.Collections.Generic.Dictionary<ElementType, float>

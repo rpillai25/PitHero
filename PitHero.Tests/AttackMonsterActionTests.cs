@@ -18,7 +18,7 @@ namespace PitHero.Tests
             var slimeLevel5 = new Slime(5);
             var slimeLevel10 = new Slime(10);
 
-            // Assert: Stats should be identical regardless of level
+            // Assert: Stats should be identical regardless of level (all use preset level 1)
             Assert.AreEqual(slimeLevel1.Stats.Strength, slimeLevel5.Stats.Strength, "Slime strength should be fixed across levels");
             Assert.AreEqual(slimeLevel1.Stats.Agility, slimeLevel5.Stats.Agility, "Slime agility should be fixed across levels");
             Assert.AreEqual(slimeLevel1.Stats.Vitality, slimeLevel5.Stats.Vitality, "Slime vitality should be fixed across levels");
@@ -32,10 +32,10 @@ namespace PitHero.Tests
             // Experience yield should also be fixed
             Assert.AreEqual(slimeLevel1.ExperienceYield, slimeLevel5.ExperienceYield, "Slime experience yield should be fixed across levels");
             Assert.AreEqual(slimeLevel1.ExperienceYield, slimeLevel10.ExperienceYield, "Slime experience yield should be fixed across levels");
-            Assert.AreEqual(10, slimeLevel1.ExperienceYield, "Slime should give exactly 10 experience");
+            Assert.AreEqual(18, slimeLevel1.ExperienceYield, "Slime should give exactly 18 experience");
         }
 
-        /// <summary>Test that fixed slime stats are weaker than before to ensure hero growth feeling</summary>
+        /// <summary>Test that fixed slime stats are from BalanceConfig</summary>
         [TestMethod]
         [TestCategory("Combat")]
         public void Slime_FixedStats_AreWeakerThanScaledStats()
@@ -53,11 +53,11 @@ namespace PitHero.Tests
             Assert.IsTrue(slimeLevel10.Stats.Agility < oldScaledAgility, $"Fixed agility {slimeLevel10.Stats.Agility} should be less than old scaled {oldScaledAgility}");
             Assert.IsTrue(slimeLevel10.Stats.Vitality < oldScaledVitality, $"Fixed vitality {slimeLevel10.Stats.Vitality} should be less than old scaled {oldScaledVitality}");
 
-            // Fixed stats should match the expected values (updated to match new stats: HP: 15, Attack: 3, Defense: 1, Speed: 2)
-            Assert.AreEqual(3, slimeLevel10.Stats.Strength, "Slime should have fixed strength of 3");
-            Assert.AreEqual(2, slimeLevel10.Stats.Agility, "Slime should have fixed agility of 2");
-            Assert.AreEqual(2, slimeLevel10.Stats.Vitality, "Slime should have fixed vitality of 2");
-            Assert.AreEqual(0, slimeLevel10.Stats.Magic, "Slime should have fixed magic of 0");
+            // Fixed stats should match the expected values from BalanceConfig (Level 1 Balanced archetype)
+            Assert.AreEqual(1, slimeLevel10.Stats.Strength, "Slime should have BalanceConfig strength of 1");
+            Assert.AreEqual(1, slimeLevel10.Stats.Agility, "Slime should have BalanceConfig agility of 1");
+            Assert.AreEqual(1, slimeLevel10.Stats.Vitality, "Slime should have BalanceConfig vitality of 1");
+            Assert.AreEqual(1, slimeLevel10.Stats.Magic, "Slime should have BalanceConfig magic of 1");
         }
 
         /// <summary>Test the basic structure of BattleParticipant</summary>

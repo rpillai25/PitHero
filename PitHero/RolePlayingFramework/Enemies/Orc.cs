@@ -1,16 +1,10 @@
+using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Enemies
 {
     /// <summary>Hits hard but slow.</summary>
-    /// <remarks>
-    /// Future Enhancement: Consider using BalanceConfig for dynamic stat generation:
-    /// - HP: BalanceConfig.CalculateMonsterHP(level, MonsterArchetype.Tank)
-    /// - Stats: BalanceConfig.CalculateMonsterStat(level, MonsterArchetype.Tank, statType)
-    /// - XP: BalanceConfig.CalculateMonsterExperience(level)
-    /// Tank archetype would give Orcs higher HP/Vitality and lower Agility.
-    /// </remarks>
     public sealed class Orc : IEnemy
     {
         private int _hp;
@@ -31,11 +25,17 @@ namespace RolePlayingFramework.Enemies
             var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Orc");
             Level = presetLevel;
             
-            // Fixed stats: HP: 28, Attack: 12, Defense: 4, Speed: 2
-            Stats = new StatBlock(strength: 12, agility: 2, vitality: 5, magic: 0);
-            MaxHP = 28;
+            // Use BalanceConfig for stats
+            var archetype = BalanceConfig.MonsterArchetype.Tank;
+            var strength = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Strength);
+            var agility = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Agility);
+            var vitality = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Vitality);
+            var magic = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Magic);
+            
+            Stats = new StatBlock(strength, agility, vitality, magic);
+            MaxHP = BalanceConfig.CalculateMonsterHP(Level, archetype);
             _hp = MaxHP;
-            ExperienceYield = 50;
+            ExperienceYield = BalanceConfig.CalculateMonsterExperience(Level);
             
             // Orc is Fire element: resistant to Fire, weak to Water
             var resistances = new System.Collections.Generic.Dictionary<ElementType, float>
