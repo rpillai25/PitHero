@@ -1,38 +1,74 @@
 namespace RolePlayingFramework.Stats
 {
-    /// <summary>Immutable bundle of primary stats.</summary>
+    /// <summary>Immutable bundle of primary stats. Internally uses floats for precision, converted to ints when accessed.</summary>
     public readonly struct StatBlock
     {
-        public readonly int Strength;
-        public readonly int Agility;
-        public readonly int Vitality;
-        public readonly int Magic;
+        // Internal storage uses floats for fractional growth rates
+        private readonly float _strength;
+        private readonly float _agility;
+        private readonly float _vitality;
+        private readonly float _magic;
+
+        /// <summary>Gets Strength stat, rounded to nearest integer.</summary>
+        public readonly int Strength => RoundToInt(_strength);
+        
+        /// <summary>Gets Agility stat, rounded to nearest integer.</summary>
+        public readonly int Agility => RoundToInt(_agility);
+        
+        /// <summary>Gets Vitality stat, rounded to nearest integer.</summary>
+        public readonly int Vitality => RoundToInt(_vitality);
+        
+        /// <summary>Gets Magic stat, rounded to nearest integer.</summary>
+        public readonly int Magic => RoundToInt(_magic);
 
         /// <summary>Returns a StatBlock with all zeros.</summary>
         public static readonly StatBlock Zero = new StatBlock(0, 0, 0, 0);
 
         public StatBlock(int strength, int agility, int vitality, int magic)
         {
-            Strength = strength < 0 ? 0 : strength;
-            Agility = agility < 0 ? 0 : agility;
-            Vitality = vitality < 0 ? 0 : vitality;
-            Magic = magic < 0 ? 0 : magic;
+            _strength = strength < 0 ? 0 : strength;
+            _agility = agility < 0 ? 0 : agility;
+            _vitality = vitality < 0 ? 0 : vitality;
+            _magic = magic < 0 ? 0 : magic;
+        }
+
+        /// <summary>
+        /// Creates a StatBlock from float values.
+        /// This constructor is useful for defining fractional growth rates per level.
+        /// Values are stored as floats internally and rounded when accessed.
+        /// </summary>
+        public StatBlock(float strength, float agility, float vitality, float magic)
+        {
+            _strength = strength < 0 ? 0 : strength;
+            _agility = agility < 0 ? 0 : agility;
+            _vitality = vitality < 0 ? 0 : vitality;
+            _magic = magic < 0 ? 0 : magic;
         }
 
         /// <summary>Adds two StatBlocks component-wise.</summary>
         public StatBlock Add(in StatBlock other)
-            => new StatBlock(Strength + other.Strength, Agility + other.Agility, Vitality + other.Vitality, Magic + other.Magic);
+        {
+            return new StatBlock(
+                _strength + other._strength,
+                _agility + other._agility,
+                _vitality + other._vitality,
+                _magic + other._magic
+            );
+        }
 
-        /// <summary>Scales a StatBlock by a positive factor (float), rounding to nearest int.</summary>
+        /// <summary>Scales a StatBlock by a factor. Returns zero StatBlock if factor is zero or negative.</summary>
         public StatBlock Scale(float factor)
         {
             if (factor <= 0f) return new StatBlock(0, 0, 0, 0);
             return new StatBlock(
-                (int)(Strength * factor + 0.5f),
-                (int)(Agility * factor + 0.5f),
-                (int)(Vitality * factor + 0.5f),
-                (int)(Magic * factor + 0.5f)
+                _strength * factor,
+                _agility * factor,
+                _vitality * factor,
+                _magic * factor
             );
         }
+
+        /// <summary>Helper method to round a float to the nearest integer.</summary>
+        private static int RoundToInt(float value) => (int)(value + 0.5f);
     }
 }
