@@ -1,3 +1,4 @@
+using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RolePlayingFramework.Jobs.Primary;
 using RolePlayingFramework.Stats;
@@ -442,7 +443,7 @@ namespace PitHero.Tests
         /// <summary>Asserts that a value is within ±5% tolerance of the target.</summary>
         private void AssertWithinTolerance(int actual, int target, string statName)
         {
-            double diff = System.Math.Abs(actual - target);
+            double diff = Math.Abs(actual - target);
             double percentDiff = diff / target;
 
             Assert.IsTrue(percentDiff <= TolerancePercent,

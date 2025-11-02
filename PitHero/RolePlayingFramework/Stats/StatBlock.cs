@@ -10,16 +10,16 @@ namespace RolePlayingFramework.Stats
         private readonly float _magic;
 
         /// <summary>Gets Strength stat, rounded to nearest integer.</summary>
-        public readonly int Strength => (int)(_strength + 0.5f);
+        public readonly int Strength => RoundToInt(_strength);
         
         /// <summary>Gets Agility stat, rounded to nearest integer.</summary>
-        public readonly int Agility => (int)(_agility + 0.5f);
+        public readonly int Agility => RoundToInt(_agility);
         
         /// <summary>Gets Vitality stat, rounded to nearest integer.</summary>
-        public readonly int Vitality => (int)(_vitality + 0.5f);
+        public readonly int Vitality => RoundToInt(_vitality);
         
         /// <summary>Gets Magic stat, rounded to nearest integer.</summary>
-        public readonly int Magic => (int)(_magic + 0.5f);
+        public readonly int Magic => RoundToInt(_magic);
 
         /// <summary>Returns a StatBlock with all zeros.</summary>
         public static readonly StatBlock Zero = new StatBlock(0, 0, 0, 0);
@@ -67,5 +67,8 @@ namespace RolePlayingFramework.Stats
                 _magic * factor
             );
         }
+
+        /// <summary>Helper method to round a float to the nearest integer.</summary>
+        private static int RoundToInt(float value) => (int)(value + 0.5f);
     }
 }
