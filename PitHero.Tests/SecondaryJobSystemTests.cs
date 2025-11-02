@@ -375,9 +375,6 @@ namespace PitHero.Tests
         public void Paladin_Has_Correct_Stat_Growth()
         {
             var job = new Paladin();
-            // Growth values are stored as floats but accessed as ints (rounded)
-            // The actual values used are 0.724, 0.480, 0.837, 0.592
-            // When accessed as ints, they appear as 1, 0, 1, 1
             Assert.AreEqual(1, job.GrowthPerLevel.Strength);
             Assert.AreEqual(0, job.GrowthPerLevel.Agility);
             Assert.AreEqual(1, job.GrowthPerLevel.Vitality);
@@ -409,8 +406,6 @@ namespace PitHero.Tests
         [TestMethod]
         public void ShadowFist_Has_Highest_Agility_Base()
         {
-            // Updated: After rebalancing, multiple jobs share Agi 3 base
-            // ShadowFist, Ninja, DragonFist, KiShot, Marksman, Stalker all have 3
             var shadowFist = new ShadowFist();
             Assert.AreEqual(3, shadowFist.BaseBonus.Agility, "Shadow Fist should have 3 base agility");
         }
