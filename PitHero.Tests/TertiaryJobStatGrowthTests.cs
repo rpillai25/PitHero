@@ -1,5 +1,6 @@
 using System;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Jobs.Tertiary;
 using RolePlayingFramework.Stats;
 

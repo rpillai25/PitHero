@@ -1,16 +1,10 @@
+using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Enemies
 {
     /// <summary>Simple beginner enemy with low physical offense.</summary>
-    /// <remarks>
-    /// Future Enhancement: Consider using BalanceConfig for dynamic stat generation:
-    /// - HP: BalanceConfig.CalculateMonsterHP(level, MonsterArchetype.Balanced)
-    /// - Stats: BalanceConfig.CalculateMonsterStat(level, archetype, statType)
-    /// - XP: BalanceConfig.CalculateMonsterExperience(level)
-    /// This would allow level-scaled Slimes with consistent balance.
-    /// </remarks>
     public sealed class Slime : IEnemy
     {
         private int _hp;
@@ -31,11 +25,17 @@ namespace RolePlayingFramework.Enemies
             var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Slime");
             Level = presetLevel;
             
-            // Fixed stats: HP: 15, Attack: 3, Defense: 1, Speed: 2
-            Stats = new StatBlock(strength: 3, agility: 2, vitality: 2, magic: 0);
-            MaxHP = 15;
+            // Use BalanceConfig for stats
+            var archetype = BalanceConfig.MonsterArchetype.Balanced;
+            var strength = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Strength);
+            var agility = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Agility);
+            var vitality = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Vitality);
+            var magic = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Magic);
+            
+            Stats = new StatBlock(strength, agility, vitality, magic);
+            MaxHP = BalanceConfig.CalculateMonsterHP(Level, archetype);
             _hp = MaxHP;
-            ExperienceYield = 10;
+            ExperienceYield = BalanceConfig.CalculateMonsterExperience(Level);
             
             // Slime is Water element: resistant to Water, weak to Fire
             var resistances = new System.Collections.Generic.Dictionary<ElementType, float>

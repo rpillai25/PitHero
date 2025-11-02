@@ -1,3 +1,4 @@
+using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 
@@ -24,12 +25,17 @@ namespace RolePlayingFramework.Enemies
             var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Bat");
             Level = presetLevel;
             
-            // Fixed stats: HP: 12, Attack: 4, Defense: 0, Speed: 4
-            // Mapping: Attack->Strength, Speed->Agility, HP based on vitality
-            Stats = new StatBlock(strength: 4, agility: 4, vitality: 2, magic: 0);
-            MaxHP = 12;
+            // Use BalanceConfig for stats
+            var archetype = BalanceConfig.MonsterArchetype.FastFragile;
+            var strength = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Strength);
+            var agility = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Agility);
+            var vitality = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Vitality);
+            var magic = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Magic);
+            
+            Stats = new StatBlock(strength, agility, vitality, magic);
+            MaxHP = BalanceConfig.CalculateMonsterHP(Level, archetype);
             _hp = MaxHP;
-            ExperienceYield = 10;
+            ExperienceYield = BalanceConfig.CalculateMonsterExperience(Level);
             
             // Bat is Wind element: resistant to Wind, weak to Earth
             var resistances = new System.Collections.Generic.Dictionary<ElementType, float>

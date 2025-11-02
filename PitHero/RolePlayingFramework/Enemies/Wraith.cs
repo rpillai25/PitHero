@@ -1,16 +1,10 @@
+using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Enemies
 {
     /// <summary>High speed and evasion.</summary>
-    /// <remarks>
-    /// Future Enhancement: Consider using BalanceConfig for dynamic stat generation:
-    /// - HP: BalanceConfig.CalculateMonsterHP(level, MonsterArchetype.MagicUser)
-    /// - Stats: BalanceConfig.CalculateMonsterStat(level, MonsterArchetype.MagicUser, statType)
-    /// - XP: BalanceConfig.CalculateMonsterExperience(level)
-    /// MagicUser archetype would give Wraiths higher Magic and moderate other stats.
-    /// </remarks>
     public sealed class Wraith : IEnemy
     {
         private int _hp;
@@ -31,11 +25,17 @@ namespace RolePlayingFramework.Enemies
             var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Wraith");
             Level = presetLevel;
             
-            // Fixed stats: HP: 18, Attack: 9, Defense: 2, Speed: 6
-            Stats = new StatBlock(strength: 9, agility: 6, vitality: 3, magic: 0);
-            MaxHP = 18;
+            // Use BalanceConfig for stats
+            var archetype = BalanceConfig.MonsterArchetype.FastFragile;
+            var strength = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Strength);
+            var agility = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Agility);
+            var vitality = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Vitality);
+            var magic = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Magic);
+            
+            Stats = new StatBlock(strength, agility, vitality, magic);
+            MaxHP = BalanceConfig.CalculateMonsterHP(Level, archetype);
             _hp = MaxHP;
-            ExperienceYield = 50;
+            ExperienceYield = BalanceConfig.CalculateMonsterExperience(Level);
             
             // Wraith is Dark element: resistant to Dark, weak to Light
             var resistances = new System.Collections.Generic.Dictionary<ElementType, float>

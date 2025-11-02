@@ -1,3 +1,4 @@
+using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 
@@ -24,11 +25,17 @@ namespace RolePlayingFramework.Enemies
             var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Rat");
             Level = presetLevel;
             
-            // Fixed stats: HP: 13, Attack: 3, Defense: 1, Speed: 3
-            Stats = new StatBlock(strength: 3, agility: 3, vitality: 2, magic: 0);
-            MaxHP = 13;
+            // Use BalanceConfig for stats
+            var archetype = BalanceConfig.MonsterArchetype.Balanced;
+            var strength = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Strength);
+            var agility = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Agility);
+            var vitality = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Vitality);
+            var magic = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Magic);
+            
+            Stats = new StatBlock(strength, agility, vitality, magic);
+            MaxHP = BalanceConfig.CalculateMonsterHP(Level, archetype);
             _hp = MaxHP;
-            ExperienceYield = 10;
+            ExperienceYield = BalanceConfig.CalculateMonsterExperience(Level);
             
             // Rat is Neutral element: no special resistances
             ElementalProps = new ElementalProperties(ElementType.Neutral);

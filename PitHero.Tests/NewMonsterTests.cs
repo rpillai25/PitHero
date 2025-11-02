@@ -76,22 +76,51 @@ namespace PitHero.Tests
             var wraith = new Wraith();
             var pitLord = new PitLord();
 
-            // Assert - Check HP values
+            // Assert - Check HP values (calculated using BalanceConfig formulas)
             Assert.AreEqual(15, slime.MaxHP, "Slime should have HP: 15");
-            Assert.AreEqual(12, bat.MaxHP, "Bat should have HP: 12");
-            Assert.AreEqual(13, rat.MaxHP, "Rat should have HP: 13");
-            Assert.AreEqual(20, goblin.MaxHP, "Goblin should have HP: 20");
-            Assert.AreEqual(16, spider.MaxHP, "Spider should have HP: 16");
-            Assert.AreEqual(15, snake.MaxHP, "Snake should have HP: 15");
-            Assert.AreEqual(24, skeleton.MaxHP, "Skeleton should have HP: 24");
-            Assert.AreEqual(28, orc.MaxHP, "Orc should have HP: 28");
-            Assert.AreEqual(18, wraith.MaxHP, "Wraith should have HP: 18");
-            Assert.AreEqual(70, pitLord.MaxHP, "Pit Lord should have HP: 70");
+            Assert.AreEqual(10, bat.MaxHP, "Bat should have HP: 10");
+            Assert.AreEqual(15, rat.MaxHP, "Rat should have HP: 15");
+            Assert.AreEqual(25, goblin.MaxHP, "Goblin should have HP: 25");
+            Assert.AreEqual(17, spider.MaxHP, "Spider should have HP: 17");
+            Assert.AreEqual(17, snake.MaxHP, "Snake should have HP: 17");
+            Assert.AreEqual(60, skeleton.MaxHP, "Skeleton should have HP: 60");
+            Assert.AreEqual(60, orc.MaxHP, "Orc should have HP: 60");
+            Assert.AreEqual(28, wraith.MaxHP, "Wraith should have HP: 28");
+            Assert.AreEqual(90, pitLord.MaxHP, "Pit Lord should have HP: 90");
 
-            // Assert - Check some specific attack values (Strength)
-            Assert.AreEqual(3, slime.Stats.Strength, "Slime should have Attack: 3");
-            Assert.AreEqual(4, bat.Stats.Strength, "Bat should have Attack: 4");
-            Assert.AreEqual(18, pitLord.Stats.Strength, "Pit Lord should have Attack: 18");
+            // Assert - Check all stats (calculated using BalanceConfig formulas)
+            Assert.AreEqual(1, slime.Stats.Strength, "Slime Strength");
+            Assert.AreEqual(1, slime.Stats.Agility, "Slime Agility");
+            Assert.AreEqual(1, slime.Stats.Vitality, "Slime Vitality");
+            Assert.AreEqual(1, slime.Stats.Magic, "Slime Magic");
+            
+            Assert.AreEqual(2, bat.Stats.Strength, "Bat Strength");
+            Assert.AreEqual(2, bat.Stats.Agility, "Bat Agility");
+            Assert.AreEqual(1, bat.Stats.Vitality, "Bat Vitality");
+            Assert.AreEqual(1, bat.Stats.Magic, "Bat Magic");
+            
+            Assert.AreEqual(3, goblin.Stats.Strength, "Goblin Strength");
+            Assert.AreEqual(3, spider.Stats.Strength, "Spider Strength");
+            Assert.AreEqual(4, spider.Stats.Agility, "Spider Agility");
+            
+            Assert.AreEqual(4, skeleton.Stats.Strength, "Skeleton Strength");
+            Assert.AreEqual(6, skeleton.Stats.Vitality, "Skeleton Vitality");
+            
+            Assert.AreEqual(4, orc.Stats.Strength, "Orc Strength");
+            Assert.AreEqual(6, orc.Stats.Vitality, "Orc Vitality");
+            
+            Assert.AreEqual(6, wraith.Stats.Strength, "Wraith Strength");
+            Assert.AreEqual(7, wraith.Stats.Agility, "Wraith Agility");
+            
+            Assert.AreEqual(6, pitLord.Stats.Strength, "Pit Lord Strength");
+            Assert.AreEqual(9, pitLord.Stats.Vitality, "Pit Lord Vitality");
+            
+            // Assert - Check experience values (calculated using BalanceConfig formulas)
+            Assert.AreEqual(18, slime.ExperienceYield, "Slime should give XP: 18");
+            Assert.AreEqual(18, bat.ExperienceYield, "Bat should give XP: 18");
+            Assert.AreEqual(34, goblin.ExperienceYield, "Goblin should give XP: 34");
+            Assert.AreEqual(58, skeleton.ExperienceYield, "Skeleton should give XP: 58");
+            Assert.AreEqual(90, pitLord.ExperienceYield, "Pit Lord should give XP: 90");
         }
 
         [TestMethod]

@@ -1,16 +1,10 @@
+using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Enemies
 {
     /// <summary>Smarter enemy, sometimes dodges.</summary>
-    /// <remarks>
-    /// Future Enhancement: Consider using BalanceConfig for dynamic stat generation:
-    /// - HP: BalanceConfig.CalculateMonsterHP(level, MonsterArchetype.FastFragile)
-    /// - Stats: BalanceConfig.CalculateMonsterStat(level, MonsterArchetype.FastFragile, statType)
-    /// - XP: BalanceConfig.CalculateMonsterExperience(level)
-    /// FastFragile archetype would give Goblins higher Agility and lower HP.
-    /// </remarks>
     public sealed class Goblin : IEnemy
     {
         private int _hp;
@@ -31,11 +25,17 @@ namespace RolePlayingFramework.Enemies
             var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Goblin");
             Level = presetLevel;
             
-            // Fixed stats: HP: 20, Attack: 7, Defense: 2, Speed: 3
-            Stats = new StatBlock(strength: 7, agility: 3, vitality: 3, magic: 0);
-            MaxHP = 20;
+            // Use BalanceConfig for stats
+            var archetype = BalanceConfig.MonsterArchetype.Balanced;
+            var strength = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Strength);
+            var agility = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Agility);
+            var vitality = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Vitality);
+            var magic = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Magic);
+            
+            Stats = new StatBlock(strength, agility, vitality, magic);
+            MaxHP = BalanceConfig.CalculateMonsterHP(Level, archetype);
             _hp = MaxHP;
-            ExperienceYield = 25;
+            ExperienceYield = BalanceConfig.CalculateMonsterExperience(Level);
             
             // Goblin is Earth element: resistant to Earth, weak to Wind
             var resistances = new System.Collections.Generic.Dictionary<ElementType, float>

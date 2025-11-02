@@ -1,3 +1,4 @@
+using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 
@@ -24,11 +25,17 @@ namespace RolePlayingFramework.Enemies
             var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Skeleton");
             Level = presetLevel;
             
-            // Fixed stats: HP: 24, Attack: 10, Defense: 3, Speed: 3
-            Stats = new StatBlock(strength: 10, agility: 3, vitality: 4, magic: 0);
-            MaxHP = 24;
+            // Use BalanceConfig for stats
+            var archetype = BalanceConfig.MonsterArchetype.Tank;
+            var strength = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Strength);
+            var agility = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Agility);
+            var vitality = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Vitality);
+            var magic = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Magic);
+            
+            Stats = new StatBlock(strength, agility, vitality, magic);
+            MaxHP = BalanceConfig.CalculateMonsterHP(Level, archetype);
             _hp = MaxHP;
-            ExperienceYield = 50;
+            ExperienceYield = BalanceConfig.CalculateMonsterExperience(Level);
             
             // Skeleton is Dark element: resistant to Dark, weak to Light
             var resistances = new System.Collections.Generic.Dictionary<ElementType, float>

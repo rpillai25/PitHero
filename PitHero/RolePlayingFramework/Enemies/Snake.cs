@@ -1,3 +1,4 @@
+using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 
@@ -24,11 +25,17 @@ namespace RolePlayingFramework.Enemies
             var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Snake");
             Level = presetLevel;
             
-            // Fixed stats: HP: 15, Attack: 8, Defense: 0, Speed: 4
-            Stats = new StatBlock(strength: 8, agility: 4, vitality: 2, magic: 0);
-            MaxHP = 15;
+            // Use BalanceConfig for stats
+            var archetype = BalanceConfig.MonsterArchetype.FastFragile;
+            var strength = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Strength);
+            var agility = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Agility);
+            var vitality = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Vitality);
+            var magic = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Magic);
+            
+            Stats = new StatBlock(strength, agility, vitality, magic);
+            MaxHP = BalanceConfig.CalculateMonsterHP(Level, archetype);
             _hp = MaxHP;
-            ExperienceYield = 25;
+            ExperienceYield = BalanceConfig.CalculateMonsterExperience(Level);
             
             // Snake is Earth element: resistant to Earth, weak to Wind
             var resistances = new System.Collections.Generic.Dictionary<ElementType, float>
