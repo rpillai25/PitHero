@@ -12,6 +12,26 @@ This guide provides comprehensive guidelines for creating and balancing equipmen
 
 ---
 
+## System Constants and Stat Caps
+
+All equipment stat bonuses are subject to the game's hard stat caps defined in `StatConstants.cs`:
+
+**Hard Caps:**
+- **HP:** Maximum 9999
+- **MP:** Maximum 999
+- **Stats (STR/AGI/VIT/MAG):** Maximum 99 each
+- **Level:** Maximum 99
+
+**Important Notes:**
+- Equipment bonuses cannot push stats beyond these caps
+- These caps apply to the final calculated values after all equipment and job bonuses
+- The stat caps ensure balance and prevent overflow issues in damage calculations
+- When designing equipment, consider that high-level characters may already be near cap values
+
+**Reference:** See `StatConstants.cs` for implementation and clamping functions.
+
+---
+
 ## Equipment Stat Calculation Formulas
 
 All equipment stats are calculated using formulas in `BalanceConfig.cs` that take into account the pit level and rarity.
@@ -287,6 +307,35 @@ Equipment can have elemental properties that affect combat:
 | NecklaceOfHealth | Light | Healing/vitality theme            |
 | ProtectRing    | Neutral | Universal defensive accessory       |
 | MagicChain     | Dark    | Magical/mysterious theme            |
+
+### Element Types and Matchups
+
+**Available Elements:**
+- **Neutral:** No advantages or disadvantages
+- **Fire:** Opposes Water
+- **Water:** Opposes Fire
+- **Earth:** Opposes Wind
+- **Wind:** Opposes Earth
+- **Light:** Opposes Dark
+- **Dark:** Opposes Light
+
+**Damage Multipliers (Base Elemental Matchups):**
+- **2.0x damage** when attacking with an element that opposes the defender's element (advantage)
+  - Example: Fire attack vs Water defender = 2.0x damage
+- **0.5x damage** when attacking with the same element as the defender (disadvantage)
+  - Example: Fire attack vs Fire defender = 0.5x damage
+- **1.0x damage** for Neutral attacks, Neutral defenders, or unrelated elements
+  - Example: Fire attack vs Earth defender = 1.0x damage (no relationship)
+
+**Custom Resistances:**
+Custom resistance values in `ElementalProperties.Resistances` modify the base multipliers:
+- **Positive values** = resistance (damage reduction)
+  - Example: `{ ElementType.Fire, 0.5f }` = 50% resistance to Fire (reduces damage by 50%)
+- **Negative values** = weakness (damage increase)
+  - Example: `{ ElementType.Ice, -0.5f }` = 50% weakness to Ice (increases damage by 50%)
+
+**Complete Formula:**
+See `BalanceConfig.GetElementalDamageMultiplier()` for the complete implementation.
 
 ### Resistance Patterns
 
