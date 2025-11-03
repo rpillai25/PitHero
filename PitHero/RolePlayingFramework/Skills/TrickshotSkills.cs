@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class TrackersIntuitionPassive : BaseSkill
     {
-        public TrackersIntuitionPassive() : base("trickshot.trackers_intuition", "Tracker's Intuition", SkillKind.Passive, SkillTargetType.Self, 0, 180) { }
+        public TrackersIntuitionPassive() : base("trickshot.trackers_intuition", "Tracker's Intuition", SkillKind.Passive, SkillTargetType.Self, 0, 180, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             // See hidden enemies/traps, bonus JP from escapes (placeholders)
@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class ChainShotPassive : BaseSkill
     {
-        public ChainShotPassive() : base("trickshot.chain_shot", "Chain Shot", SkillKind.Passive, SkillTargetType.Self, 0, 220) { }
+        public ChainShotPassive() : base("trickshot.chain_shot", "Chain Shot", SkillKind.Passive, SkillTargetType.Self, 0, 220, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             // Multi-hit attack, silence (placeholder)
@@ -29,7 +29,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class VenomVolleySkill : BaseSkill
     {
-        public VenomVolleySkill() : base("trickshot.venom_volley", "Venom Volley", SkillKind.Active, SkillTargetType.SurroundingEnemies, 10, 250) { }
+        public VenomVolleySkill() : base("trickshot.venom_volley", "Venom Volley", SkillKind.Active, SkillTargetType.SurroundingEnemies, 10, 250, ElementType.Dark) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -47,7 +47,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class QuietKillSkill : BaseSkill
     {
-        public QuietKillSkill() : base("trickshot.quiet_kill", "Quiet Kill", SkillKind.Active, SkillTargetType.SingleEnemy, 8, 220) { }
+        public QuietKillSkill() : base("trickshot.quiet_kill", "Quiet Kill", SkillKind.Active, SkillTargetType.SingleEnemy, 8, 220, ElementType.Dark) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();

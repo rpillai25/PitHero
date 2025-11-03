@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class EagleFocusPassive : BaseSkill
     {
-        public EagleFocusPassive() : base("marksmanwizard.eagle_focus", "Eagle Focus", SkillKind.Passive, SkillTargetType.Self, 0, 180) { }
+        public EagleFocusPassive() : base("marksmanwizard.eagle_focus", "Eagle Focus", SkillKind.Passive, SkillTargetType.Self, 0, 180, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             // +3 sight, +10% magic damage (placeholders)
@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class QuickcastVolleyPassive : BaseSkill
     {
-        public QuickcastVolleyPassive() : base("marksmanwizard.quickcast_volley", "Quickcast Volley", SkillKind.Passive, SkillTargetType.Self, 0, 220) { }
+        public QuickcastVolleyPassive() : base("marksmanwizard.quickcast_volley", "Quickcast Volley", SkillKind.Passive, SkillTargetType.Self, 0, 220, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             // First attack is magic AoE (placeholder)
@@ -29,7 +29,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class MeteorShotSkill : BaseSkill
     {
-        public MeteorShotSkill() : base("marksmanwizard.meteor_shot", "Meteor Shot", SkillKind.Active, SkillTargetType.SingleEnemy, 7, 250) { }
+        public MeteorShotSkill() : base("marksmanwizard.meteor_shot", "Meteor Shot", SkillKind.Active, SkillTargetType.SingleEnemy, 7, 250, ElementType.Fire) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -49,7 +49,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class PurifyingArrowSkill : BaseSkill
     {
-        public PurifyingArrowSkill() : base("marksmanwizard.purifying_arrow", "Purifying Arrow", SkillKind.Active, SkillTargetType.Self, 6, 220) { }
+        public PurifyingArrowSkill() : base("marksmanwizard.purifying_arrow", "Purifying Arrow", SkillKind.Active, SkillTargetType.Self, 6, 220, ElementType.Light) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             // Remove all debuffs from self/ally (placeholder - self only)

@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Skills
     
     public sealed class BushidoSpiritPassive : BaseSkill
     {
-        public BushidoSpiritPassive() : base("divinesamurai.bushido_spirit", "Bushido Spirit", SkillKind.Passive, SkillTargetType.Self, 0, 180) { }
+        public BushidoSpiritPassive() : base("divinesamurai.bushido_spirit", "Bushido Spirit", SkillKind.Passive, SkillTargetType.Self, 0, 180, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.EnableCounter = true; // Counterattack when undetected
@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class EnlightenedWillPassive : BaseSkill
     {
-        public EnlightenedWillPassive() : base("divinesamurai.enlightened_will", "Enlightened Will", SkillKind.Passive, SkillTargetType.Self, 0, 220) { }
+        public EnlightenedWillPassive() : base("divinesamurai.enlightened_will", "Enlightened Will", SkillKind.Passive, SkillTargetType.Self, 0, 220, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.MPTickRegen += 1; // Resist crowd control, MP boost
@@ -27,7 +27,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class SacredSlashSkill : BaseSkill
     {
-        public SacredSlashSkill() : base("divinesamurai.sacred_slash", "Sacred Slash", SkillKind.Active, SkillTargetType.SingleEnemy, 6, 250) { }
+        public SacredSlashSkill() : base("divinesamurai.sacred_slash", "Sacred Slash", SkillKind.Active, SkillTargetType.SingleEnemy, 6, 250, ElementType.Light) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -42,7 +42,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class DragonAuraSkill : BaseSkill
     {
-        public DragonAuraSkill() : base("divinesamurai.dragon_aura", "Dragon Aura", SkillKind.Active, SkillTargetType.SurroundingEnemies, 8, 220) { }
+        public DragonAuraSkill() : base("divinesamurai.dragon_aura", "Dragon Aura", SkillKind.Active, SkillTargetType.SurroundingEnemies, 8, 220, ElementType.Fire) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             // MP gain and debuff removal for surrounding allies (placeholder)

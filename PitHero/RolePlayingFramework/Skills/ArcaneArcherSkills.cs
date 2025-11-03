@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class SnipePassive : BaseSkill
     {
-        public SnipePassive() : base("arcanearcher.snipe", "Snipe", SkillKind.Passive, SkillTargetType.Self, 0, 120) { }
+        public SnipePassive() : base("arcanearcher.snipe", "Snipe", SkillKind.Passive, SkillTargetType.Self, 0, 120, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             // +2 sight, bonus magic damage at range (placeholder)
@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class QuickcastPassive : BaseSkill
     {
-        public QuickcastPassive() : base("arcanearcher.quickcast", "Quickcast", SkillKind.Passive, SkillTargetType.Self, 0, 160) { }
+        public QuickcastPassive() : base("arcanearcher.quickcast", "Quickcast", SkillKind.Passive, SkillTargetType.Self, 0, 160, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             // First spell in fight is free (placeholder)
@@ -29,7 +29,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class PiercingArrowSkill : BaseSkill
     {
-        public PiercingArrowSkill() : base("arcanearcher.piercing_arrow", "Piercing Arrow", SkillKind.Active, SkillTargetType.SingleEnemy, 6, 200) { }
+        public PiercingArrowSkill() : base("arcanearcher.piercing_arrow", "Piercing Arrow", SkillKind.Active, SkillTargetType.SingleEnemy, 6, 200, ElementType.Wind) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -53,7 +53,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class ElementalVolleySkill : BaseSkill
     {
-        public ElementalVolleySkill() : base("arcanearcher.elemental_volley", "Elemental Volley", SkillKind.Active, SkillTargetType.SurroundingEnemies, 8, 220) { }
+        public ElementalVolleySkill() : base("arcanearcher.elemental_volley", "Elemental Volley", SkillKind.Active, SkillTargetType.SurroundingEnemies, 8, 220, ElementType.Fire) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
