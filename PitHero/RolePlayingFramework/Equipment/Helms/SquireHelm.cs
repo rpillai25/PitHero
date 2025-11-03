@@ -1,3 +1,4 @@
+using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Equipment.Helms
@@ -12,6 +13,7 @@ namespace RolePlayingFramework.Equipment.Helms
             "+2 Defense",
             90,
             new StatBlock(0, 0, 0, 0),
-            def: 2);
+            def: 2,
+            element: ElementType.Neutral);
     }
 }

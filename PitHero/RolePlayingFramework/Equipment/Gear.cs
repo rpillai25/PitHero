@@ -17,8 +17,9 @@ namespace RolePlayingFramework.Equipment
         public int HPBonus { get; }
         public int MPBonus { get; }
         public ElementType Element { get; }
+        public ElementalProperties ElementalProps { get; }
 
-        public Gear(string name, ItemKind kind, ItemRarity rarity, string description, int price, in StatBlock stats, int atk = 0, int def = 0, int hp = 0, int mp = 0, ElementType element = ElementType.Neutral)
+        public Gear(string name, ItemKind kind, ItemRarity rarity, string description, int price, in StatBlock stats, int atk = 0, int def = 0, int hp = 0, int mp = 0, ElementType element = ElementType.Neutral, ElementalProperties elementalProps = null)
         {
             Name = name;
             Kind = kind;
@@ -31,6 +32,7 @@ namespace RolePlayingFramework.Equipment
             HPBonus = hp;
             MPBonus = mp;
             Element = element;
+            ElementalProps = elementalProps ?? new ElementalProperties(element);
         }
     }
 }

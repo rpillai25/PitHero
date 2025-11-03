@@ -1,3 +1,4 @@
+using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Equipment.Accessories
@@ -11,6 +12,7 @@ namespace RolePlayingFramework.Equipment.Accessories
             ItemRarity.Uncommon,
             "+1 Strength",
             150,
-            new StatBlock(1, 0, 0, 0));
+            new StatBlock(1, 0, 0, 0),
+            element: ElementType.Neutral);
     }
 }

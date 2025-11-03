@@ -1,6 +1,11 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Equipment.Swords;
+using RolePlayingFramework.Equipment.Armor;
+using RolePlayingFramework.Equipment.Shields;
+using RolePlayingFramework.Equipment.Helms;
+using RolePlayingFramework.Equipment.Accessories;
 using RolePlayingFramework.Stats;
 
 namespace PitHero.Tests
@@ -174,6 +179,163 @@ namespace PitHero.Tests
             );
 
             Assert.AreEqual(ElementType.Water, gear.Element);
+        }
+
+        [TestMethod]
+        public void IGear_Interface_ShouldExposeElementalPropsProperty()
+        {
+            IGear gear = new Gear(
+                "Test Item",
+                ItemKind.Accessory,
+                ItemRarity.Normal,
+                "Test",
+                50,
+                StatBlock.Zero,
+                element: ElementType.Fire
+            );
+
+            Assert.IsNotNull(gear.ElementalProps);
+            Assert.AreEqual(ElementType.Fire, gear.ElementalProps.Element);
+        }
+
+        [TestMethod]
+        public void Gear_WithElementalProperties_ShouldHaveCorrectResistances()
+        {
+            var resistances = new System.Collections.Generic.Dictionary<ElementType, float>
+            {
+                { ElementType.Fire, 0.3f },
+                { ElementType.Water, -0.15f }
+            };
+            var elementalProps = new ElementalProperties(ElementType.Fire, resistances);
+            
+            var gear = new Gear(
+                "Fire Resistant Armor",
+                ItemKind.ArmorMail,
+                ItemRarity.Rare,
+                "Armor with fire resistance",
+                800,
+                StatBlock.Zero,
+                def: 7,
+                hp: 30,
+                element: ElementType.Fire,
+                elementalProps: elementalProps
+            );
+
+            Assert.AreEqual(ElementType.Fire, gear.Element);
+            Assert.AreEqual(ElementType.Fire, gear.ElementalProps.Element);
+            Assert.IsTrue(gear.ElementalProps.Resistances.ContainsKey(ElementType.Fire));
+            Assert.AreEqual(0.3f, gear.ElementalProps.Resistances[ElementType.Fire]);
+            Assert.IsTrue(gear.ElementalProps.Resistances.ContainsKey(ElementType.Water));
+            Assert.AreEqual(-0.15f, gear.ElementalProps.Resistances[ElementType.Water]);
+        }
+
+        // Equipment Factory Tests
+        [TestMethod]
+        public void ShortSword_ShouldHaveNeutralElement()
+        {
+            var sword = ShortSword.Create();
+            Assert.AreEqual(ElementType.Neutral, sword.Element);
+            Assert.AreEqual(ElementType.Neutral, sword.ElementalProps.Element);
+        }
+
+        [TestMethod]
+        public void LongSword_ShouldHaveFireElement()
+        {
+            var sword = LongSword.Create();
+            Assert.AreEqual(ElementType.Fire, sword.Element);
+            Assert.AreEqual(ElementType.Fire, sword.ElementalProps.Element);
+        }
+
+        [TestMethod]
+        public void LeatherArmor_ShouldHaveNeutralElement()
+        {
+            var armor = LeatherArmor.Create();
+            Assert.AreEqual(ElementType.Neutral, armor.Element);
+            Assert.AreEqual(ElementType.Neutral, armor.ElementalProps.Element);
+        }
+
+        [TestMethod]
+        public void IronArmor_ShouldHaveEarthElementAndResistances()
+        {
+            var armor = IronArmor.Create();
+            Assert.AreEqual(ElementType.Earth, armor.Element);
+            Assert.AreEqual(ElementType.Earth, armor.ElementalProps.Element);
+            Assert.IsTrue(armor.ElementalProps.Resistances.ContainsKey(ElementType.Earth));
+            Assert.AreEqual(0.25f, armor.ElementalProps.Resistances[ElementType.Earth]);
+            Assert.IsTrue(armor.ElementalProps.Resistances.ContainsKey(ElementType.Wind));
+            Assert.AreEqual(-0.15f, armor.ElementalProps.Resistances[ElementType.Wind]);
+        }
+
+        [TestMethod]
+        public void WoodenShield_ShouldHaveNeutralElement()
+        {
+            var shield = WoodenShield.Create();
+            Assert.AreEqual(ElementType.Neutral, shield.Element);
+            Assert.AreEqual(ElementType.Neutral, shield.ElementalProps.Element);
+        }
+
+        [TestMethod]
+        public void IronShield_ShouldHaveWaterElementAndResistances()
+        {
+            var shield = IronShield.Create();
+            Assert.AreEqual(ElementType.Water, shield.Element);
+            Assert.AreEqual(ElementType.Water, shield.ElementalProps.Element);
+            Assert.IsTrue(shield.ElementalProps.Resistances.ContainsKey(ElementType.Water));
+            Assert.AreEqual(0.30f, shield.ElementalProps.Resistances[ElementType.Water]);
+            Assert.IsTrue(shield.ElementalProps.Resistances.ContainsKey(ElementType.Fire));
+            Assert.AreEqual(-0.15f, shield.ElementalProps.Resistances[ElementType.Fire]);
+        }
+
+        [TestMethod]
+        public void SquireHelm_ShouldHaveNeutralElement()
+        {
+            var helm = SquireHelm.Create();
+            Assert.AreEqual(ElementType.Neutral, helm.Element);
+            Assert.AreEqual(ElementType.Neutral, helm.ElementalProps.Element);
+        }
+
+        [TestMethod]
+        public void IronHelm_ShouldHaveEarthElementAndResistances()
+        {
+            var helm = IronHelm.Create();
+            Assert.AreEqual(ElementType.Earth, helm.Element);
+            Assert.AreEqual(ElementType.Earth, helm.ElementalProps.Element);
+            Assert.IsTrue(helm.ElementalProps.Resistances.ContainsKey(ElementType.Earth));
+            Assert.AreEqual(0.20f, helm.ElementalProps.Resistances[ElementType.Earth]);
+            Assert.IsTrue(helm.ElementalProps.Resistances.ContainsKey(ElementType.Wind));
+            Assert.AreEqual(-0.10f, helm.ElementalProps.Resistances[ElementType.Wind]);
+        }
+
+        [TestMethod]
+        public void RingOfPower_ShouldHaveNeutralElement()
+        {
+            var ring = RingOfPower.Create();
+            Assert.AreEqual(ElementType.Neutral, ring.Element);
+            Assert.AreEqual(ElementType.Neutral, ring.ElementalProps.Element);
+        }
+
+        [TestMethod]
+        public void NecklaceOfHealth_ShouldHaveLightElement()
+        {
+            var necklace = NecklaceOfHealth.Create();
+            Assert.AreEqual(ElementType.Light, necklace.Element);
+            Assert.AreEqual(ElementType.Light, necklace.ElementalProps.Element);
+        }
+
+        [TestMethod]
+        public void ProtectRing_ShouldHaveNeutralElement()
+        {
+            var ring = ProtectRing.Create();
+            Assert.AreEqual(ElementType.Neutral, ring.Element);
+            Assert.AreEqual(ElementType.Neutral, ring.ElementalProps.Element);
+        }
+
+        [TestMethod]
+        public void MagicChain_ShouldHaveDarkElement()
+        {
+            var chain = MagicChain.Create();
+            Assert.AreEqual(ElementType.Dark, chain.Element);
+            Assert.AreEqual(ElementType.Dark, chain.ElementalProps.Element);
         }
     }
 }

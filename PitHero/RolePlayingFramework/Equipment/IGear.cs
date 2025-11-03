@@ -19,5 +19,8 @@ namespace RolePlayingFramework.Equipment
         
         /// <summary>Elemental type of the gear.</summary>
         ElementType Element { get; }
+        
+        /// <summary>Elemental properties including resistances/weaknesses (optional, primarily for defensive gear).</summary>
+        ElementalProperties ElementalProps { get; }
     }
 }

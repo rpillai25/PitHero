@@ -1,4 +1,6 @@
+using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using System.Collections.Generic;
 
 namespace RolePlayingFramework.Equipment.Armor
 {
@@ -15,9 +17,17 @@ namespace RolePlayingFramework.Equipment.Armor
             "IronArmor",
             ItemKind.ArmorMail,
             ItemRarity.Normal,
-            "+4 Defense",
+            "+4 Defense, Earth Resistant",
             180,
             new StatBlock(0, 0, 0, 0),
-            def: 4);
+            def: 4,
+            element: ElementType.Earth,
+            elementalProps: new ElementalProperties(
+                ElementType.Earth,
+                new Dictionary<ElementType, float>
+                {
+                    { ElementType.Earth, 0.25f },   // 25% resistance to Earth
+                    { ElementType.Wind, -0.15f }    // 15% weakness to Wind (opposing element)
+                }));
     }
 }

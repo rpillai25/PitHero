@@ -1,3 +1,4 @@
+using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Equipment.Accessories
@@ -12,6 +13,7 @@ namespace RolePlayingFramework.Equipment.Accessories
             "+10 HP",
             150,
             new StatBlock(0, 0, 2, 0),
-            hp: 10);
+            hp: 10,
+            element: ElementType.Light);
     }
 }

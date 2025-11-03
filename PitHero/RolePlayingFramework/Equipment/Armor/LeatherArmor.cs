@@ -1,4 +1,6 @@
+using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using System.Collections.Generic;
 
 namespace RolePlayingFramework.Equipment.Armor
 {
@@ -12,6 +14,7 @@ namespace RolePlayingFramework.Equipment.Armor
             "+3 Defense",
             120,
             new StatBlock(0, 0, 0, 0),
-            def: 3);
+            def: 3,
+            element: ElementType.Neutral);
     }
 }

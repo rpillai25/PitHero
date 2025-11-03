@@ -1,3 +1,4 @@
+using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Equipment.Accessories
@@ -12,6 +13,7 @@ namespace RolePlayingFramework.Equipment.Accessories
             "+2 Defense",
             120,
             new StatBlock(0, 0, 1, 0),
-            def: 2);
+            def: 2,
+            element: ElementType.Neutral);
     }
 }
