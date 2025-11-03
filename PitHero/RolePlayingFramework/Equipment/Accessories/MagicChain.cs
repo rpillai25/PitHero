@@ -1,3 +1,4 @@
+using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Equipment.Accessories
@@ -12,6 +13,7 @@ namespace RolePlayingFramework.Equipment.Accessories
             "+2 Magic",
             200,
             new StatBlock(0, 0, 0, 2),
-            mp: 5);
+            mp: 5,
+            elementalProps: new ElementalProperties(ElementType.Dark));
     }
 }

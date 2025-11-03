@@ -1,3 +1,4 @@
+using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Equipment.Swords
@@ -18,6 +19,7 @@ namespace RolePlayingFramework.Equipment.Swords
             "+4 Attack",
             150,
             new StatBlock(0, 0, 0, 0),
-            atk: 4);
+            atk: 4,
+            elementalProps: new ElementalProperties(ElementType.Fire));
     }
 }

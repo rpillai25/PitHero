@@ -17,7 +17,7 @@ namespace RolePlayingFramework.Equipment
         int HPBonus { get; }
         int MPBonus { get; }
         
-        /// <summary>Elemental type of the gear.</summary>
-        ElementType Element { get; }
+        /// <summary>Elemental properties including type and resistances/weaknesses.</summary>
+        ElementalProperties ElementalProps { get; }
     }
 }

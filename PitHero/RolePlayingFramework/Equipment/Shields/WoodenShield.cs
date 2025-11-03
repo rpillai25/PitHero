@@ -1,3 +1,4 @@
+using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Equipment.Shields
@@ -17,6 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
             "+2 Defense",
             80,
             new StatBlock(0, 0, 0, 0),
-            def: 2);
+            def: 2,
+            elementalProps: new ElementalProperties(ElementType.Neutral));
     }
 }
