@@ -51,7 +51,7 @@ All equipment stats are calculated using formulas in `BalanceConfig.cs` that tak
 | 25        | 13     | 19       | 26   | 32   | 45        |
 | 50        | 26     | 39       | 52   | 65   | 91        |
 | 75        | 38     | 57       | 76   | 95   | 133       |
-| 100       | 50     | 75       | 100  | 125  | 175       |
+| 100       | 51     | 76       | 102  | 127  | 178       |
 
 **Tuning Advice:** Adjust divisor (2) if weapons feel too weak/strong relative to monster defense.
 
@@ -67,12 +67,12 @@ All equipment stats are calculated using formulas in `BalanceConfig.cs` that tak
 
 | Pit Level | Normal | Uncommon | Rare | Epic | Legendary |
 |-----------|--------|----------|------|------|-----------|
-| 1         | 1      | 1        | 2    | 2    | 3         |
-| 10        | 4      | 6        | 8    | 10   | 14        |
-| 25        | 9      | 13       | 18   | 22   | 31        |
-| 50        | 17     | 25       | 34   | 42   | 59        |
+| 1         | 1      | 2        | 2    | 3    | 4         |
+| 10        | 4      | 6        | 8    | 10   | 15        |
+| 25        | 9      | 14       | 18   | 23   | 32        |
+| 50        | 17     | 26       | 35   | 44   | 61        |
 | 75        | 26     | 39       | 52   | 65   | 91        |
-| 100       | 34     | 51       | 68   | 85   | 119       |
+| 100       | 34     | 51       | 68   | 85   | 120       |
 
 **Tuning Advice:** Defense is intentionally lower than attack to keep combat fast-paced. Adjust divisor (3) if armor feels too weak/strong.
 
