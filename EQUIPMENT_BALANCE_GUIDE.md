@@ -332,7 +332,7 @@ Custom resistance values in `ElementalProperties.Resistances` modify the base mu
 - **Positive values** = resistance (damage reduction)
   - Example: `{ ElementType.Fire, 0.5f }` = 50% resistance to Fire (reduces damage by 50%)
 - **Negative values** = weakness (damage increase)
-  - Example: `{ ElementType.Ice, -0.5f }` = 50% weakness to Ice (increases damage by 50%)
+  - Example: `{ ElementType.Water, -0.5f }` = 50% weakness to Water (increases damage by 50%)
 
 **Complete Formula:**
 See `BalanceConfig.GetElementalDamageMultiplier()` for the complete implementation.
