@@ -322,10 +322,14 @@ Equipment can have elemental properties that affect combat:
 **Damage Multipliers (Base Elemental Matchups):**
 - **2.0x damage** when attacking with an element that opposes the defender's element (advantage)
   - Example: Fire attack vs Water defender = 2.0x damage
+  - Fire is super-effective against Water
 - **0.5x damage** when attacking with the same element as the defender (disadvantage)
   - Example: Fire attack vs Fire defender = 0.5x damage
+  - Fire entities have natural resistance to Fire attacks
 - **1.0x damage** for Neutral attacks, Neutral defenders, or unrelated elements
   - Example: Fire attack vs Earth defender = 1.0x damage (no relationship)
+
+**Note:** This system encourages elemental diversity in combat. Entities with the same element are naturally resistant to each other, while opposing elements create tactical advantages.
 
 **Custom Resistances:**
 Custom resistance values in `ElementalProperties.Resistances` modify the base multipliers:
