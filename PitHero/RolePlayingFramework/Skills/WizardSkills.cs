@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class ManaSpringPassive : BaseSkill
     {
-        public ManaSpringPassive() : base("wizard.mana_spring", "Mana Spring", SkillKind.Passive, SkillTargetType.Self, 0, 120) { }
+        public ManaSpringPassive() : base("wizard.mana_spring", "Mana Spring", SkillKind.Passive, SkillTargetType.Self, 0, 120, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.MPTickRegen += 2; // +2 MP/tick regen
@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class BlessingPassive : BaseSkill
     {
-        public BlessingPassive() : base("wizard.blessing", "Blessing", SkillKind.Passive, SkillTargetType.Self, 0, 160) { }
+        public BlessingPassive() : base("wizard.blessing", "Blessing", SkillKind.Passive, SkillTargetType.Self, 0, 160, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             // Resist status effects (placeholder)
@@ -29,7 +29,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class MeteorSkill : BaseSkill
     {
-        public MeteorSkill() : base("wizard.meteor", "Meteor", SkillKind.Active, SkillTargetType.SurroundingEnemies, 8, 200) { }
+        public MeteorSkill() : base("wizard.meteor", "Meteor", SkillKind.Active, SkillTargetType.SurroundingEnemies, 8, 200, ElementType.Fire) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -45,7 +45,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class PurifySkill : BaseSkill
     {
-        public PurifySkill() : base("wizard.purify", "Purify", SkillKind.Active, SkillTargetType.Self, 4, 220) { }
+        public PurifySkill() : base("wizard.purify", "Purify", SkillKind.Active, SkillTargetType.Self, 4, 220, ElementType.Light) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             // Remove all debuffs (placeholder)

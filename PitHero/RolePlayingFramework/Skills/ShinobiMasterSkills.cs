@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class ShadowReflexPassive : BaseSkill
     {
-        public ShadowReflexPassive() : base("shinobimaster.shadow_reflex", "Shadow Reflex", SkillKind.Passive, SkillTargetType.Self, 0, 180) { }
+        public ShadowReflexPassive() : base("shinobimaster.shadow_reflex", "Shadow Reflex", SkillKind.Passive, SkillTargetType.Self, 0, 180, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.DeflectChance += 0.15f; // +15% evasion
@@ -20,7 +20,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class IronDisciplinePassive : BaseSkill
     {
-        public IronDisciplinePassive() : base("shinobimaster.iron_discipline", "Iron Discipline", SkillKind.Passive, SkillTargetType.Self, 0, 220) { }
+        public IronDisciplinePassive() : base("shinobimaster.iron_discipline", "Iron Discipline", SkillKind.Passive, SkillTargetType.Self, 0, 220, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             // Immunity to crowd control (placeholder)
@@ -30,7 +30,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class FlashStrikeSkill : BaseSkill
     {
-        public FlashStrikeSkill() : base("shinobimaster.flash_strike", "Flash Strike", SkillKind.Active, SkillTargetType.SingleEnemy, 6, 250) { }
+        public FlashStrikeSkill() : base("shinobimaster.flash_strike", "Flash Strike", SkillKind.Active, SkillTargetType.SingleEnemy, 6, 250, ElementType.Dark) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -43,7 +43,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class MistEscapeSkill : BaseSkill
     {
-        public MistEscapeSkill() : base("shinobimaster.mist_escape", "Mist Escape", SkillKind.Active, SkillTargetType.Self, 8, 220) { }
+        public MistEscapeSkill() : base("shinobimaster.mist_escape", "Mist Escape", SkillKind.Active, SkillTargetType.Self, 8, 220, ElementType.Neutral) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             // Untargetable for 3 turns (placeholder)

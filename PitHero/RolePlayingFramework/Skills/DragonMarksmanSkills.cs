@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class DragonSightPassive : BaseSkill
     {
-        public DragonSightPassive() : base("dragonmarksman.dragon_sight", "Dragon Sight", SkillKind.Passive, SkillTargetType.Self, 0, 180) { }
+        public DragonSightPassive() : base("dragonmarksman.dragon_sight", "Dragon Sight", SkillKind.Passive, SkillTargetType.Self, 0, 180, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             // +2 sight, +15% crit (placeholders)
@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class KiVolleyPassive : BaseSkill
     {
-        public KiVolleyPassive() : base("dragonmarksman.ki_volley", "Ki Volley", SkillKind.Passive, SkillTargetType.Self, 0, 220) { }
+        public KiVolleyPassive() : base("dragonmarksman.ki_volley", "Ki Volley", SkillKind.Passive, SkillTargetType.Self, 0, 220, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             // Bonus damage at range (placeholder)
@@ -29,7 +29,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class DragonArrowSkill : BaseSkill
     {
-        public DragonArrowSkill() : base("dragonmarksman.dragon_arrow", "Dragon Arrow", SkillKind.Active, SkillTargetType.SingleEnemy, 7, 250) { }
+        public DragonArrowSkill() : base("dragonmarksman.dragon_arrow", "Dragon Arrow", SkillKind.Active, SkillTargetType.SingleEnemy, 7, 250, ElementType.Fire) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -51,7 +51,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class EnergyShotSkill : BaseSkill
     {
-        public EnergyShotSkill() : base("dragonmarksman.energy_shot", "Energy Shot", SkillKind.Active, SkillTargetType.SurroundingEnemies, 8, 220) { }
+        public EnergyShotSkill() : base("dragonmarksman.energy_shot", "Energy Shot", SkillKind.Active, SkillTargetType.SurroundingEnemies, 8, 220, ElementType.Fire) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();

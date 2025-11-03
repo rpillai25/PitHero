@@ -7,7 +7,7 @@ namespace RolePlayingFramework.Skills
 {
     public sealed class RoundhouseSkill : BaseSkill
     {
-        public RoundhouseSkill() : base("monk.roundhouse", "Roundhouse", SkillKind.Active, SkillTargetType.SurroundingEnemies, 4, 120) { }
+        public RoundhouseSkill() : base("monk.roundhouse", "Roundhouse", SkillKind.Active, SkillTargetType.SurroundingEnemies, 4, 120, ElementType.Neutral) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -23,7 +23,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class FlamingFistSkill : BaseSkill
     {
-        public FlamingFistSkill() : base("monk.flaming_fist", "Flaming Fist", SkillKind.Active, SkillTargetType.SingleEnemy, 5, 170) { }
+        public FlamingFistSkill() : base("monk.flaming_fist", "Flaming Fist", SkillKind.Active, SkillTargetType.SingleEnemy, 5, 170, ElementType.Fire) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -35,7 +35,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class CounterPassive : BaseSkill
     {
-        public CounterPassive() : base("monk.counter", "Counter", SkillKind.Passive, SkillTargetType.Self, 0, 70) { }
+        public CounterPassive() : base("monk.counter", "Counter", SkillKind.Passive, SkillTargetType.Self, 0, 70, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.EnableCounter = true;
@@ -44,7 +44,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class DeflectPassive : BaseSkill
     {
-        public DeflectPassive() : base("monk.deflect", "Deflect", SkillKind.Passive, SkillTargetType.Self, 0, 90) { }
+        public DeflectPassive() : base("monk.deflect", "Deflect", SkillKind.Passive, SkillTargetType.Self, 0, 90, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.DeflectChance = 0.15f; // 15%

@@ -7,7 +7,7 @@ namespace RolePlayingFramework.Skills
 {
     public sealed class FireSkill : BaseSkill
     {
-        public FireSkill() : base("mage.fire", "Fire", SkillKind.Active, SkillTargetType.SingleEnemy, 3, 120) { }
+        public FireSkill() : base("mage.fire", "Fire", SkillKind.Active, SkillTargetType.SingleEnemy, 3, 120, ElementType.Fire) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class FireStormSkill : BaseSkill
     {
-        public FireStormSkill() : base("mage.firestorm", "FireStorm", SkillKind.Active, SkillTargetType.SurroundingEnemies, 6, 200) { }
+        public FireStormSkill() : base("mage.firestorm", "FireStorm", SkillKind.Active, SkillTargetType.SurroundingEnemies, 6, 200, ElementType.Fire) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -35,7 +35,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class HeartOfFirePassive : BaseSkill
     {
-        public HeartOfFirePassive() : base("mage.heart_fire", "Heart of Fire", SkillKind.Passive, SkillTargetType.Self, 0, 60) { }
+        public HeartOfFirePassive() : base("mage.heart_fire", "Heart of Fire", SkillKind.Passive, SkillTargetType.Self, 0, 60, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.FireDamageBonus += 0.25f; // +25% fire
@@ -44,7 +44,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class EconomistPassive : BaseSkill
     {
-        public EconomistPassive() : base("mage.economist", "Economist", SkillKind.Passive, SkillTargetType.Self, 0, 80) { }
+        public EconomistPassive() : base("mage.economist", "Economist", SkillKind.Passive, SkillTargetType.Self, 0, 80, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.MPCostReduction += 0.15f; // -15% MP costs

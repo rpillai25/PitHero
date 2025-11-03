@@ -7,7 +7,7 @@ namespace RolePlayingFramework.Skills
 {
     public sealed class SneakAttackSkill : BaseSkill
     {
-        public SneakAttackSkill() : base("thief.sneak_attack", "Sneak Attack", SkillKind.Active, SkillTargetType.SingleEnemy, 3, 130) { }
+        public SneakAttackSkill() : base("thief.sneak_attack", "Sneak Attack", SkillKind.Active, SkillTargetType.SingleEnemy, 3, 130, ElementType.Dark) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -20,7 +20,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class VanishSkill : BaseSkill
     {
-        public VanishSkill() : base("thief.vanish", "Vanish", SkillKind.Active, SkillTargetType.Self, 6, 180) { }
+        public VanishSkill() : base("thief.vanish", "Vanish", SkillKind.Active, SkillTargetType.Self, 6, 180, ElementType.Dark) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             // TODO: Implement untargetable status for 1 turn
@@ -31,7 +31,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class ShadowstepPassive : BaseSkill
     {
-        public ShadowstepPassive() : base("thief.shadowstep", "Shadowstep", SkillKind.Passive, SkillTargetType.Self, 0, 70) { }
+        public ShadowstepPassive() : base("thief.shadowstep", "Shadowstep", SkillKind.Passive, SkillTargetType.Self, 0, 70, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             // TODO: Implement evasion chance mechanic
@@ -41,7 +41,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class TrapSensePassive : BaseSkill
     {
-        public TrapSensePassive() : base("thief.trap_sense", "Trap Sense", SkillKind.Passive, SkillTargetType.Self, 0, 90) { }
+        public TrapSensePassive() : base("thief.trap_sense", "Trap Sense", SkillKind.Passive, SkillTargetType.Self, 0, 90, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             // TODO: Implement trap detection/disarm mechanic

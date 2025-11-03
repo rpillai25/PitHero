@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class EvasionMasteryPassive : BaseSkill
     {
-        public EvasionMasteryPassive() : base("ninja.evasion_mastery", "Evasion Mastery", SkillKind.Passive, SkillTargetType.Self, 0, 120) { }
+        public EvasionMasteryPassive() : base("ninja.evasion_mastery", "Evasion Mastery", SkillKind.Passive, SkillTargetType.Self, 0, 120, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             // +10% evasion (placeholder)
@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class TrapMasterPassive : BaseSkill
     {
-        public TrapMasterPassive() : base("ninja.trap_master", "Trap Master", SkillKind.Passive, SkillTargetType.Self, 0, 160) { }
+        public TrapMasterPassive() : base("ninja.trap_master", "Trap Master", SkillKind.Passive, SkillTargetType.Self, 0, 160, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             // Immunity to traps (placeholder)
@@ -29,7 +29,7 @@ namespace RolePlayingFramework.Skills
     // Active Skills
     public sealed class ShadowSlashSkill : BaseSkill
     {
-        public ShadowSlashSkill() : base("ninja.shadow_slash", "Shadow Slash", SkillKind.Active, SkillTargetType.SingleEnemy, 4, 200) { }
+        public ShadowSlashSkill() : base("ninja.shadow_slash", "Shadow Slash", SkillKind.Active, SkillTargetType.SingleEnemy, 4, 200, ElementType.Dark) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -42,7 +42,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class SmokeBombSkill : BaseSkill
     {
-        public SmokeBombSkill() : base("ninja.smoke_bomb", "Smoke Bomb", SkillKind.Active, SkillTargetType.Self, 6, 220) { }
+        public SmokeBombSkill() : base("ninja.smoke_bomb", "Smoke Bomb", SkillKind.Active, SkillTargetType.Self, 6, 220, ElementType.Neutral) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             // Untargetable for 2 turns (placeholder)
