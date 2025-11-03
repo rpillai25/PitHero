@@ -1,6 +1,5 @@
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
-using System.Collections.Generic;
 
 namespace RolePlayingFramework.Equipment.Shields
 {
