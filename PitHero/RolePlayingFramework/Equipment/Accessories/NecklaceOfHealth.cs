@@ -14,6 +14,6 @@ namespace RolePlayingFramework.Equipment.Accessories
             150,
             new StatBlock(0, 0, 2, 0),
             hp: 10,
-            element: ElementType.Light);
+            elementalProps: new ElementalProperties(ElementType.Light));
     }
 }

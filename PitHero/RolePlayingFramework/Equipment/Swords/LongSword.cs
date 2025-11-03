@@ -20,6 +20,6 @@ namespace RolePlayingFramework.Equipment.Swords
             150,
             new StatBlock(0, 0, 0, 0),
             atk: 4,
-            element: ElementType.Fire);
+            elementalProps: new ElementalProperties(ElementType.Fire));
     }
 }

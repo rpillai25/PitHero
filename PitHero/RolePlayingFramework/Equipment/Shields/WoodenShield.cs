@@ -19,6 +19,6 @@ namespace RolePlayingFramework.Equipment.Shields
             80,
             new StatBlock(0, 0, 0, 0),
             def: 2,
-            element: ElementType.Neutral);
+            elementalProps: new ElementalProperties(ElementType.Neutral));
     }
 }

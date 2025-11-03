@@ -15,7 +15,6 @@ namespace RolePlayingFramework.Equipment.Shields
             120,
             new StatBlock(0, 0, 0, 0),
             def: 3,
-            element: ElementType.Water,
             elementalProps: new ElementalProperties(
                 ElementType.Water,
                 new Dictionary<ElementType, float>

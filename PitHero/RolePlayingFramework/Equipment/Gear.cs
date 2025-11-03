@@ -9,9 +9,9 @@ namespace RolePlayingFramework.Equipment
     /// </summary>
     /// <remarks>
     /// Elemental System Integration:
-    /// - All gear has an Element property (Neutral, Fire, Water, Earth, Wind, Light, Dark)
+    /// - All gear has ElementalProperties (Neutral, Fire, Water, Earth, Wind, Light, Dark)
     /// - Weapons typically deal elemental damage matching their element
-    /// - Defensive gear (armor/shields/helms) can have ElementalProperties with resistances
+    /// - Defensive gear (armor/shields/helms) can have custom resistances
     /// - Resistances are percentage-based (0.25 = 25% damage reduction, -0.15 = 15% extra damage)
     /// - Defensive gear typically resists its own element and is weak to opposing element
     /// 
@@ -50,7 +50,6 @@ namespace RolePlayingFramework.Equipment
         public int DefenseBonus { get; }
         public int HPBonus { get; }
         public int MPBonus { get; }
-        public ElementType Element { get; }
         public ElementalProperties ElementalProps { get; }
 
         /// <summary>
@@ -66,9 +65,8 @@ namespace RolePlayingFramework.Equipment
         /// <param name="def">Flat defense bonus (for armor/shields/helms primarily)</param>
         /// <param name="hp">Flat HP bonus</param>
         /// <param name="mp">Flat MP bonus</param>
-        /// <param name="element">Elemental type (defaults to Neutral). Used for damage calculations.</param>
-        /// <param name="elementalProps">Optional custom elemental properties with resistances. If null, creates default properties matching the element parameter.</param>
-        public Gear(string name, ItemKind kind, ItemRarity rarity, string description, int price, in StatBlock stats, int atk = 0, int def = 0, int hp = 0, int mp = 0, ElementType element = ElementType.Neutral, ElementalProperties elementalProps = null)
+        /// <param name="elementalProps">Elemental properties with type and optional resistances. Defaults to Neutral if not specified.</param>
+        public Gear(string name, ItemKind kind, ItemRarity rarity, string description, int price, in StatBlock stats, int atk = 0, int def = 0, int hp = 0, int mp = 0, ElementalProperties elementalProps = null)
         {
             Name = name;
             Kind = kind;
@@ -80,8 +78,7 @@ namespace RolePlayingFramework.Equipment
             DefenseBonus = def;
             HPBonus = hp;
             MPBonus = mp;
-            Element = element;
-            ElementalProps = elementalProps ?? new ElementalProperties(element);
+            ElementalProps = elementalProps ?? new ElementalProperties(ElementType.Neutral);
         }
     }
 }

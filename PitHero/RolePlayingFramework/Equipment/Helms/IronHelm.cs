@@ -15,7 +15,6 @@ namespace RolePlayingFramework.Equipment.Helms
             135,
             new StatBlock(0, 0, 0, 0),
             def: 3,
-            element: ElementType.Earth,
             elementalProps: new ElementalProperties(
                 ElementType.Earth,
                 new Dictionary<ElementType, float>

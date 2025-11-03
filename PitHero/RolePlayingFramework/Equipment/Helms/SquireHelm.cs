@@ -14,6 +14,6 @@ namespace RolePlayingFramework.Equipment.Helms
             90,
             new StatBlock(0, 0, 0, 0),
             def: 2,
-            element: ElementType.Neutral);
+            elementalProps: new ElementalProperties(ElementType.Neutral));
     }
 }

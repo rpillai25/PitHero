@@ -14,6 +14,6 @@ namespace RolePlayingFramework.Equipment.Accessories
             200,
             new StatBlock(0, 0, 0, 2),
             mp: 5,
-            element: ElementType.Dark);
+            elementalProps: new ElementalProperties(ElementType.Dark));
     }
 }

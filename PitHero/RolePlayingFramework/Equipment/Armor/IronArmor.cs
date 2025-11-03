@@ -21,7 +21,6 @@ namespace RolePlayingFramework.Equipment.Armor
             180,
             new StatBlock(0, 0, 0, 0),
             def: 4,
-            element: ElementType.Earth,
             elementalProps: new ElementalProperties(
                 ElementType.Earth,
                 new Dictionary<ElementType, float>

@@ -26,7 +26,7 @@ namespace PitHero.Tests
                 atk: 5
             );
 
-            Assert.AreEqual(ElementType.Neutral, gear.Element);
+            Assert.AreEqual(ElementType.Neutral, gear.ElementalProps.Element);
         }
 
         [TestMethod]
@@ -40,10 +40,10 @@ namespace PitHero.Tests
                 500,
                 StatBlock.Zero,
                 atk: 10,
-                element: ElementType.Fire
+                elementalProps: new ElementalProperties(ElementType.Fire)
             );
 
-            Assert.AreEqual(ElementType.Fire, gear.Element);
+            Assert.AreEqual(ElementType.Fire, gear.ElementalProps.Element);
         }
 
         [TestMethod]
@@ -57,10 +57,10 @@ namespace PitHero.Tests
                 400,
                 StatBlock.Zero,
                 def: 8,
-                element: ElementType.Water
+                elementalProps: new ElementalProperties(ElementType.Water)
             );
 
-            Assert.AreEqual(ElementType.Water, gear.Element);
+            Assert.AreEqual(ElementType.Water, gear.ElementalProps.Element);
         }
 
         [TestMethod]
@@ -74,10 +74,10 @@ namespace PitHero.Tests
                 800,
                 StatBlock.Zero,
                 def: 15,
-                element: ElementType.Earth
+                elementalProps: new ElementalProperties(ElementType.Earth)
             );
 
-            Assert.AreEqual(ElementType.Earth, gear.Element);
+            Assert.AreEqual(ElementType.Earth, gear.ElementalProps.Element);
         }
 
         [TestMethod]
@@ -91,10 +91,10 @@ namespace PitHero.Tests
                 1000,
                 StatBlock.Zero,
                 atk: 18,
-                element: ElementType.Wind
+                elementalProps: new ElementalProperties(ElementType.Wind)
             );
 
-            Assert.AreEqual(ElementType.Wind, gear.Element);
+            Assert.AreEqual(ElementType.Wind, gear.ElementalProps.Element);
         }
 
         [TestMethod]
@@ -109,10 +109,10 @@ namespace PitHero.Tests
                 StatBlock.Zero,
                 def: 10,
                 hp: 20,
-                element: ElementType.Light
+                elementalProps: new ElementalProperties(ElementType.Light)
             );
 
-            Assert.AreEqual(ElementType.Light, gear.Element);
+            Assert.AreEqual(ElementType.Light, gear.ElementalProps.Element);
         }
 
         [TestMethod]
@@ -125,10 +125,10 @@ namespace PitHero.Tests
                 "A cloak woven from shadows",
                 2000,
                 new StatBlock(strength: 0, agility: 5, vitality: 0, magic: 3),
-                element: ElementType.Dark
+                elementalProps: new ElementalProperties(ElementType.Dark)
             );
 
-            Assert.AreEqual(ElementType.Dark, gear.Element);
+            Assert.AreEqual(ElementType.Dark, gear.ElementalProps.Element);
         }
 
         [TestMethod]
@@ -146,7 +146,7 @@ namespace PitHero.Tests
                 def: 5,
                 hp: 15,
                 mp: 10,
-                element: ElementType.Fire
+                elementalProps: new ElementalProperties(ElementType.Fire)
             );
 
             Assert.AreEqual("Elemental Sword", gear.Name);
@@ -162,7 +162,7 @@ namespace PitHero.Tests
             Assert.AreEqual(5, gear.DefenseBonus);
             Assert.AreEqual(15, gear.HPBonus);
             Assert.AreEqual(10, gear.MPBonus);
-            Assert.AreEqual(ElementType.Fire, gear.Element);
+            Assert.AreEqual(ElementType.Fire, gear.ElementalProps.Element);
         }
 
         [TestMethod]
@@ -175,10 +175,10 @@ namespace PitHero.Tests
                 "Test",
                 50,
                 StatBlock.Zero,
-                element: ElementType.Water
+                elementalProps: new ElementalProperties(ElementType.Water)
             );
 
-            Assert.AreEqual(ElementType.Water, gear.Element);
+            Assert.AreEqual(ElementType.Water, gear.ElementalProps.Element);
         }
 
         [TestMethod]
@@ -191,7 +191,7 @@ namespace PitHero.Tests
                 "Test",
                 50,
                 StatBlock.Zero,
-                element: ElementType.Fire
+                elementalProps: new ElementalProperties(ElementType.Fire)
             );
 
             Assert.IsNotNull(gear.ElementalProps);
@@ -217,11 +217,9 @@ namespace PitHero.Tests
                 StatBlock.Zero,
                 def: 7,
                 hp: 30,
-                element: ElementType.Fire,
                 elementalProps: elementalProps
             );
 
-            Assert.AreEqual(ElementType.Fire, gear.Element);
             Assert.AreEqual(ElementType.Fire, gear.ElementalProps.Element);
             Assert.IsTrue(gear.ElementalProps.Resistances.ContainsKey(ElementType.Fire));
             Assert.AreEqual(0.3f, gear.ElementalProps.Resistances[ElementType.Fire]);
@@ -234,7 +232,6 @@ namespace PitHero.Tests
         public void ShortSword_ShouldHaveNeutralElement()
         {
             var sword = ShortSword.Create();
-            Assert.AreEqual(ElementType.Neutral, sword.Element);
             Assert.AreEqual(ElementType.Neutral, sword.ElementalProps.Element);
         }
 
@@ -242,7 +239,6 @@ namespace PitHero.Tests
         public void LongSword_ShouldHaveFireElement()
         {
             var sword = LongSword.Create();
-            Assert.AreEqual(ElementType.Fire, sword.Element);
             Assert.AreEqual(ElementType.Fire, sword.ElementalProps.Element);
         }
 
@@ -250,7 +246,6 @@ namespace PitHero.Tests
         public void LeatherArmor_ShouldHaveNeutralElement()
         {
             var armor = LeatherArmor.Create();
-            Assert.AreEqual(ElementType.Neutral, armor.Element);
             Assert.AreEqual(ElementType.Neutral, armor.ElementalProps.Element);
         }
 
@@ -258,7 +253,6 @@ namespace PitHero.Tests
         public void IronArmor_ShouldHaveEarthElementAndResistances()
         {
             var armor = IronArmor.Create();
-            Assert.AreEqual(ElementType.Earth, armor.Element);
             Assert.AreEqual(ElementType.Earth, armor.ElementalProps.Element);
             Assert.IsTrue(armor.ElementalProps.Resistances.ContainsKey(ElementType.Earth));
             Assert.AreEqual(0.25f, armor.ElementalProps.Resistances[ElementType.Earth]);
@@ -270,7 +264,6 @@ namespace PitHero.Tests
         public void WoodenShield_ShouldHaveNeutralElement()
         {
             var shield = WoodenShield.Create();
-            Assert.AreEqual(ElementType.Neutral, shield.Element);
             Assert.AreEqual(ElementType.Neutral, shield.ElementalProps.Element);
         }
 
@@ -278,7 +271,6 @@ namespace PitHero.Tests
         public void IronShield_ShouldHaveWaterElementAndResistances()
         {
             var shield = IronShield.Create();
-            Assert.AreEqual(ElementType.Water, shield.Element);
             Assert.AreEqual(ElementType.Water, shield.ElementalProps.Element);
             Assert.IsTrue(shield.ElementalProps.Resistances.ContainsKey(ElementType.Water));
             Assert.AreEqual(0.30f, shield.ElementalProps.Resistances[ElementType.Water]);
@@ -290,7 +282,6 @@ namespace PitHero.Tests
         public void SquireHelm_ShouldHaveNeutralElement()
         {
             var helm = SquireHelm.Create();
-            Assert.AreEqual(ElementType.Neutral, helm.Element);
             Assert.AreEqual(ElementType.Neutral, helm.ElementalProps.Element);
         }
 
@@ -298,7 +289,6 @@ namespace PitHero.Tests
         public void IronHelm_ShouldHaveEarthElementAndResistances()
         {
             var helm = IronHelm.Create();
-            Assert.AreEqual(ElementType.Earth, helm.Element);
             Assert.AreEqual(ElementType.Earth, helm.ElementalProps.Element);
             Assert.IsTrue(helm.ElementalProps.Resistances.ContainsKey(ElementType.Earth));
             Assert.AreEqual(0.20f, helm.ElementalProps.Resistances[ElementType.Earth]);
@@ -310,7 +300,6 @@ namespace PitHero.Tests
         public void RingOfPower_ShouldHaveNeutralElement()
         {
             var ring = RingOfPower.Create();
-            Assert.AreEqual(ElementType.Neutral, ring.Element);
             Assert.AreEqual(ElementType.Neutral, ring.ElementalProps.Element);
         }
 
@@ -318,7 +307,6 @@ namespace PitHero.Tests
         public void NecklaceOfHealth_ShouldHaveLightElement()
         {
             var necklace = NecklaceOfHealth.Create();
-            Assert.AreEqual(ElementType.Light, necklace.Element);
             Assert.AreEqual(ElementType.Light, necklace.ElementalProps.Element);
         }
 
@@ -326,7 +314,6 @@ namespace PitHero.Tests
         public void ProtectRing_ShouldHaveNeutralElement()
         {
             var ring = ProtectRing.Create();
-            Assert.AreEqual(ElementType.Neutral, ring.Element);
             Assert.AreEqual(ElementType.Neutral, ring.ElementalProps.Element);
         }
 
@@ -334,7 +321,6 @@ namespace PitHero.Tests
         public void MagicChain_ShouldHaveDarkElement()
         {
             var chain = MagicChain.Create();
-            Assert.AreEqual(ElementType.Dark, chain.Element);
             Assert.AreEqual(ElementType.Dark, chain.ElementalProps.Element);
         }
     }

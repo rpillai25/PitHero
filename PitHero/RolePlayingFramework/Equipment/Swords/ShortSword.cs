@@ -14,6 +14,6 @@ namespace RolePlayingFramework.Equipment.Swords
             100,
             new StatBlock(0, 0, 0, 0),
             atk: 3,
-            element: ElementType.Neutral);
+            elementalProps: new ElementalProperties(ElementType.Neutral));
     }
 }

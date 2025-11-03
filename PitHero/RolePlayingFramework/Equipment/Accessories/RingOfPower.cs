@@ -13,6 +13,6 @@ namespace RolePlayingFramework.Equipment.Accessories
             "+1 Strength",
             150,
             new StatBlock(1, 0, 0, 0),
-            element: ElementType.Neutral);
+            elementalProps: new ElementalProperties(ElementType.Neutral));
     }
 }
