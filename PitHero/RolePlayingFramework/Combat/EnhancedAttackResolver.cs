@@ -30,16 +30,28 @@ namespace RolePlayingFramework.Combat
         /// <summary>Computes an attack using enhanced battle stats</summary>
         public AttackResult Resolve(BattleStats attackerBattleStats, BattleStats defenderBattleStats, DamageKind kind)
         {
+            // Default to Neutral element for backwards compatibility
+            return Resolve(attackerBattleStats, defenderBattleStats, kind, ElementType.Neutral, new ElementalProperties(ElementType.Neutral));
+        }
+
+        /// <summary>Computes an attack with elemental damage multipliers</summary>
+        public AttackResult Resolve(BattleStats attackerBattleStats, BattleStats defenderBattleStats, 
+            DamageKind kind, ElementType attackElement, ElementalProperties defenderProps)
+        {
             // Check for evasion first
             if (CalculateEvasion(defenderBattleStats.Evasion))
             {
-                return new AttackResult(false, 0); // Miss due to evasion
+                return new AttackResult(false, 0);
             }
 
-            // Calculate damage using new formula
-            int damage = CalculateDamage(attackerBattleStats.Attack, defenderBattleStats.Defense);
+            // Calculate base damage
+            int baseDamage = CalculateDamage(attackerBattleStats.Attack, defenderBattleStats.Defense);
 
-            // Add small variance +/-10%
+            // Apply elemental multiplier using BalanceConfig
+            float elementalMultiplier = BalanceConfig.GetElementalDamageMultiplier(attackElement, defenderProps);
+            int damage = (int)(baseDamage * elementalMultiplier);
+
+            // Add variance +/-10%
             var variance = (damage * 10) / 100;
             var finalDamage = damage + Random.Range(-variance, variance + 1);
             finalDamage = System.Math.Max(1, finalDamage);
@@ -50,8 +62,17 @@ namespace RolePlayingFramework.Combat
         /// <summary>Legacy method for compatibility</summary>
         public AttackResult Resolve(in StatBlock attackerStats, in StatBlock defenderStats, DamageKind kind, int attackerLevel, int defenderLevel)
         {
-            // For backwards compatibility, convert to battle stats
-            // Uses BalanceConfig.CalculateEvasion for consistent evasion calculation
+            // Default to Neutral element for backwards compatibility
+            return Resolve(attackerStats, defenderStats, kind, attackerLevel, defenderLevel, 
+                ElementType.Neutral, new ElementalProperties(ElementType.Neutral));
+        }
+
+        /// <summary>Legacy method with elemental support</summary>
+        public AttackResult Resolve(in StatBlock attackerStats, in StatBlock defenderStats, 
+            DamageKind kind, int attackerLevel, int defenderLevel, 
+            ElementType attackElement, ElementalProperties defenderProps)
+        {
+            // Convert to battle stats
             var attackerBattle = new BattleStats(
                 attackerStats.Strength,
                 attackerStats.Agility / 2,
@@ -64,7 +85,7 @@ namespace RolePlayingFramework.Combat
                 BalanceConfig.CalculateEvasion(defenderStats.Agility, defenderLevel)
             );
 
-            return Resolve(attackerBattle, defenderBattle, kind);
+            return Resolve(attackerBattle, defenderBattle, kind, attackElement, defenderProps);
         }
     }
 }

@@ -172,5 +172,74 @@ namespace PitHero.Tests
                 Assert.AreEqual(0, result.Damage, "Missed attacks must deal 0 damage");
             }
         }
+
+        /// <summary>Tests elemental advantage (2x damage multiplier)</summary>
+        [TestMethod]
+        [TestCategory("Combat")]
+        public void EnhancedAttackResolver_WithElementalAdvantage_DealsBonusDamage()
+        {
+            var resolver = new EnhancedAttackResolver();
+            var attackerStats = new BattleStats(attack: 20, defense: 10, evasion: 0);
+            var defenderStats = new BattleStats(attack: 15, defense: 10, evasion: 0);
+            var defenderProps = new ElementalProperties(ElementType.Water);
+            
+            // Fire vs Water should deal 2x damage (Fire opposes Water)
+            var result = resolver.Resolve(attackerStats, defenderStats, DamageKind.Physical, 
+                ElementType.Fire, defenderProps);
+            
+            int baseDamage = 20 * 2 - 10; // 30 base damage
+            int expectedMin = (int)(baseDamage * 2.0f * 0.9f); // Account for variance
+            int expectedMax = (int)(baseDamage * 2.0f * 1.1f);
+            
+            Assert.IsTrue(result.Hit);
+            Assert.IsTrue(result.Damage >= expectedMin && result.Damage <= expectedMax, 
+                $"Expected damage between {expectedMin}-{expectedMax}, got {result.Damage}");
+        }
+
+        /// <summary>Tests elemental disadvantage (0.5x damage multiplier)</summary>
+        [TestMethod]
+        [TestCategory("Combat")]
+        public void EnhancedAttackResolver_WithElementalDisadvantage_DealsReducedDamage()
+        {
+            var resolver = new EnhancedAttackResolver();
+            var attackerStats = new BattleStats(attack: 20, defense: 10, evasion: 0);
+            var defenderStats = new BattleStats(attack: 15, defense: 10, evasion: 0);
+            var defenderProps = new ElementalProperties(ElementType.Fire);
+            
+            // Fire vs Fire should deal 0.5x damage (same element = resistance)
+            var result = resolver.Resolve(attackerStats, defenderStats, DamageKind.Physical, 
+                ElementType.Fire, defenderProps);
+            
+            int baseDamage = 20 * 2 - 10; // 30 base damage
+            int expectedMin = (int)(baseDamage * 0.5f * 0.9f); // Account for variance
+            int expectedMax = (int)(baseDamage * 0.5f * 1.1f);
+            
+            Assert.IsTrue(result.Hit);
+            Assert.IsTrue(result.Damage >= expectedMin && result.Damage <= expectedMax, 
+                $"Expected damage between {expectedMin}-{expectedMax}, got {result.Damage}");
+        }
+
+        /// <summary>Tests neutral elements (1.0x damage multiplier)</summary>
+        [TestMethod]
+        [TestCategory("Combat")]
+        public void EnhancedAttackResolver_WithNeutralElement_DealsNormalDamage()
+        {
+            var resolver = new EnhancedAttackResolver();
+            var attackerStats = new BattleStats(attack: 20, defense: 10, evasion: 0);
+            var defenderStats = new BattleStats(attack: 15, defense: 10, evasion: 0);
+            var defenderProps = new ElementalProperties(ElementType.Fire);
+            
+            // Neutral vs Fire should deal 1.0x damage (no relationship)
+            var result = resolver.Resolve(attackerStats, defenderStats, DamageKind.Physical, 
+                ElementType.Neutral, defenderProps);
+            
+            int baseDamage = 20 * 2 - 10; // 30 base damage
+            int expectedMin = (int)(baseDamage * 1.0f * 0.9f); // Account for variance
+            int expectedMax = (int)(baseDamage * 1.0f * 1.1f);
+            
+            Assert.IsTrue(result.Hit);
+            Assert.IsTrue(result.Damage >= expectedMin && result.Damage <= expectedMax, 
+                $"Expected damage between {expectedMin}-{expectedMax}, got {result.Damage}");
+        }
     }
 }
