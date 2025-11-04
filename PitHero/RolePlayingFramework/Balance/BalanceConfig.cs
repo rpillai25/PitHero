@@ -248,24 +248,25 @@ namespace RolePlayingFramework.Balance
         /// <param name="archetype">Monster archetype affecting HP scaling.</param>
         /// <returns>Calculated HP value.</returns>
         /// <remarks>
-        /// Formula: (10 + level * 5) * archetype_hp_multiplier
+        /// Formula: (25 + level * 8) * archetype_hp_multiplier
         /// 
         /// Example values:
-        /// - Level 1 Balanced: 15 HP
-        /// - Level 10 Balanced: 60 HP
-        /// - Level 10 Tank: 90 HP
-        /// - Level 50 Balanced: 260 HP
-        /// - Level 99 Balanced: 505 HP
-        /// - Level 99 Tank: 758 HP
+        /// - Level 1 Balanced: 33 HP
+        /// - Level 10 Balanced: 105 HP
+        /// - Level 10 Tank: 158 HP
+        /// - Level 50 Balanced: 425 HP
+        /// - Level 99 Balanced: 817 HP
+        /// - Level 99 Tank: 1226 HP
         /// 
-        /// Tuning: Adjust base (10) or multiplier (5) if monsters die too quickly/slowly.
+        /// Tuning: Increased from (10 + level * 5) to provide better challenge in early game.
+        /// Monsters now survive multiple hits even at low levels, enabling back-and-forth combat.
         /// </remarks>
         public static int CalculateMonsterHP(int level, MonsterArchetype archetype)
         {
             if (level < 1) level = 1;
             if (level > 99) level = 99;
 
-            float baseHP = 10 + level * 5;
+            float baseHP = 25 + level * 8;
             float archetypeMultiplier = GetArchetypeHPMultiplier(archetype);
             
             return (int)(baseHP * archetypeMultiplier);
@@ -279,33 +280,34 @@ namespace RolePlayingFramework.Balance
         /// <param name="statType">Which stat to calculate (Strength, Agility, Vitality, Magic).</param>
         /// <returns>Calculated stat value.</returns>
         /// <remarks>
-        /// Formula: (1 + level * 2/3) * archetype_stat_multiplier
+        /// Formula: (3 + level * 1.0) * archetype_stat_multiplier
         /// 
         /// Example values (Balanced archetype):
-        /// - Level 1: 1 stat
-        /// - Level 10: 7 stat
-        /// - Level 30: 21 stat
-        /// - Level 50: 34 stat
-        /// - Level 99: 67 stat
+        /// - Level 1: 4 stat
+        /// - Level 10: 13 stat
+        /// - Level 30: 33 stat
+        /// - Level 50: 53 stat
+        /// - Level 99: 102 stat (capped at 99)
         /// 
         /// With archetype multipliers:
-        /// - Level 50 Tank Vitality: 44 (34 * 1.3)
-        /// - Level 50 FastFragile Agility: 51 (34 * 1.5)
+        /// - Level 50 Tank Vitality: 69 (53 * 1.3)
+        /// - Level 50 FastFragile Agility: 80 (53 * 1.5)
         /// 
-        /// Tuning: Adjust multiplier (2/3) if monster damage/defense feels off.
+        /// Tuning: Increased from (1 + level * 2/3) to provide better challenge.
+        /// Monsters now deal meaningful damage even at low levels, creating back-and-forth combat.
         /// </remarks>
         public static int CalculateMonsterStat(int level, MonsterArchetype archetype, StatType statType)
         {
             if (level < 1) level = 1;
             if (level > 99) level = 99;
 
-            float baseStat = 1 + level * (2f / 3f);
+            float baseStat = 3 + level * 1.0f;
             float archetypeMultiplier = GetArchetypeStatMultiplier(archetype, statType);
             
             int finalStat = (int)(baseStat * archetypeMultiplier);
             
-            // Ensure minimum of 1
-            return System.Math.Max(1, finalStat);
+            // Ensure minimum of 1, cap at 99
+            return System.Math.Min(99, System.Math.Max(1, finalStat));
         }
 
         /// <summary>
