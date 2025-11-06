@@ -6,6 +6,7 @@ using RolePlayingFramework.Skills;
 using RolePlayingFramework.Stats;
 using RolePlayingFramework.Enemies;
 using RolePlayingFramework.Combat;
+using RolePlayingFramework.Synergies;
 
 namespace RolePlayingFramework.Heroes
 {
@@ -51,6 +52,10 @@ namespace RolePlayingFramework.Heroes
         
         /// <summary>Gets the crystal bound to this hero (if any).</summary>
         public HeroCrystal? BoundCrystal => _boundCrystal;
+        
+        // Synergy tracking
+        private readonly List<ActiveSynergy> _activeSynergies;
+        public IReadOnlyList<ActiveSynergy> ActiveSynergies => _activeSynergies;
 
         public Hero(string name, IJob job, int level, in StatBlock baseStats, HeroCrystal? fromCrystal = null)
         {
@@ -60,6 +65,7 @@ namespace RolePlayingFramework.Heroes
             BaseStats = baseStats;
             _learnedSkills = new Dictionary<string, ISkill>(16);
             _boundCrystal = fromCrystal;
+            _activeSynergies = new List<ActiveSynergy>();
             if (fromCrystal != null)
             {
                 // preload crystal skills that exist in this job (handles composite jobs)
@@ -508,6 +514,75 @@ namespace RolePlayingFramework.Heroes
             CurrentMP += amount;
             if (CurrentMP > MaxMP) CurrentMP = MaxMP;
             return true;
+        }
+        
+        // Synergy system integration
+        
+        /// <summary>Updates active synergies based on current inventory state.</summary>
+        public void UpdateActiveSynergies(List<ActiveSynergy> detectedSynergies)
+        {
+            // Remove effects from old synergies
+            for (int i = 0; i < _activeSynergies.Count; i++)
+            {
+                var oldSynergy = _activeSynergies[i];
+                var effects = oldSynergy.Pattern.Effects;
+                for (int j = 0; j < effects.Count; j++)
+                {
+                    effects[j].Remove(this);
+                }
+            }
+            
+            // Clear old synergies
+            _activeSynergies.Clear();
+            
+            // Add new synergies
+            for (int i = 0; i < detectedSynergies.Count; i++)
+            {
+                _activeSynergies.Add(detectedSynergies[i]);
+                
+                // Apply effects from new synergies
+                var effects = detectedSynergies[i].Pattern.Effects;
+                for (int j = 0; j < effects.Count; j++)
+                {
+                    effects[j].Apply(this);
+                }
+                
+                // Mark synergy as discovered in crystal
+                _boundCrystal?.DiscoverSynergy(detectedSynergies[i].Pattern.Id);
+            }
+            
+            // Recalculate derived stats after synergy changes
+            RecalculateDerived();
+        }
+        
+        /// <summary>Earns synergy points from battles.</summary>
+        public void EarnSynergyPoints(int amount)
+        {
+            if (_boundCrystal == null) return;
+            
+            // Distribute points to all active synergies
+            for (int i = 0; i < _activeSynergies.Count; i++)
+            {
+                var synergy = _activeSynergies[i];
+                synergy.EarnPoints(amount);
+                _boundCrystal.EarnSynergyPoints(synergy.Pattern.Id, amount);
+                
+                // Check if synergy skill was unlocked
+                if (synergy.IsSkillUnlocked && synergy.Pattern.UnlockedSkill != null)
+                {
+                    var skillId = synergy.Pattern.UnlockedSkill.Id;
+                    if (!_boundCrystal.HasSynergySkill(skillId))
+                    {
+                        _boundCrystal.LearnSynergySkill(skillId);
+                        // Add skill to hero's learned skills
+                        if (!_learnedSkills.ContainsKey(skillId))
+                        {
+                            _learnedSkills[skillId] = synergy.Pattern.UnlockedSkill;
+                            ApplyPassiveSkills();
+                        }
+                    }
+                }
+            }
         }
     }
 }
