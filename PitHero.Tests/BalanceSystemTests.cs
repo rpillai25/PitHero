@@ -2,7 +2,6 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Equipment;
-using RolePlayingFramework.Equipment.Potions;
 using RolePlayingFramework.Enemies;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Jobs.Primary;

@@ -137,13 +137,15 @@ Comprehensive test suites have been created:
   - Bowman complete progression
   - All primary jobs verification
 
-## Secondary Job Extension Readiness
+## Job System Architecture
 
-The system is designed to support secondary jobs:
-- CompositeJob already exists for combining job stats and skills
+The system is designed around primary jobs with the following architecture:
+- CompositeJob exists for combining job stats and skills (used internally)
 - HeroCrystal.Combine() merges JP pools and skill sets
 - Hero can preload skills from composite jobs via crystal
 - Job level is per-crystal, enabling independent progression tracking
+
+**Note**: Secondary and tertiary jobs have been removed as part of the job-to-synergy system transition. The CompositeJob infrastructure remains for potential future use with the synergy system.
 
 ## Notes on Placeholders
 
