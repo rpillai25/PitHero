@@ -52,7 +52,7 @@ namespace RolePlayingFramework.Synergies
         /// <summary>
         /// Creates a "Mage's Focus" synergy pattern.
         /// Pattern: Rod and 2 Accessories arranged in a triangle
-        /// Effect: +10% Magic, -20% MP Cost
+        /// Effect: +5 Magic, -20% MP Cost
         /// </summary>
         public static SynergyPattern CreateMagesFocus()
         {
@@ -75,9 +75,8 @@ namespace RolePlayingFramework.Synergies
             {
                 new StatBonusEffect(
                     "mage_magic_boost",
-                    "+10% Magic",
-                    new StatBlock(0, 0, 0, 0),
-                    isPercentage: true
+                    "+5 Magic",
+                    new StatBlock(0, 0, 0, 5) // +5 Magic
                 ),
                 new SkillModifierEffect(
                     "mage_mp_reduction",

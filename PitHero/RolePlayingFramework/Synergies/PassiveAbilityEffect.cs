@@ -51,7 +51,11 @@ namespace RolePlayingFramework.Synergies
             // Apply passive ability modifiers
             hero.PassiveDefenseBonus += DefenseBonus;
             hero.DeflectChance += DeflectChanceIncrease;
-            hero.EnableCounter = hero.EnableCounter || EnableCounter;
+            if (EnableCounter)
+            {
+                hero._synergyCounterEnablers++;
+                hero.EnableCounter = true;
+            }
             hero.MPTickRegen += MPTickRegen;
             hero.HealPowerBonus += HealPowerBonus;
             hero.FireDamageBonus += FireDamageBonus;
@@ -62,7 +66,15 @@ namespace RolePlayingFramework.Synergies
             // Remove passive ability modifiers
             hero.PassiveDefenseBonus -= DefenseBonus;
             hero.DeflectChance -= DeflectChanceIncrease;
-            // Note: EnableCounter cannot be cleanly removed without tracking
+            if (EnableCounter)
+            {
+                hero._synergyCounterEnablers--;
+                if (hero._synergyCounterEnablers <= 0)
+                {
+                    hero._synergyCounterEnablers = 0;
+                    hero.EnableCounter = false;
+                }
+            }
             hero.MPTickRegen -= MPTickRegen;
             hero.HealPowerBonus -= HealPowerBonus;
             hero.FireDamageBonus -= FireDamageBonus;

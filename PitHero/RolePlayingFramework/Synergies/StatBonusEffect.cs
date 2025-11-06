@@ -33,14 +33,23 @@ namespace RolePlayingFramework.Synergies
         
         public void Apply(Hero hero)
         {
-            // Stat bonuses are applied through hero's synergy stat tracking
-            // This will be integrated with Hero class in next step
+            // Add stat bonuses to hero's synergy stat accumulator
+            hero._synergyStatBonus = hero._synergyStatBonus.Add(StatBonus);
+            hero._synergyHPBonus += HPBonus;
+            hero._synergyMPBonus += MPBonus;
         }
         
         public void Remove(Hero hero)
         {
-            // Stat bonuses are removed through hero's synergy stat tracking
-            // This will be integrated with Hero class in next step
+            // Remove stat bonuses from hero's synergy stat accumulator
+            hero._synergyStatBonus = new StatBlock(
+                hero._synergyStatBonus.Strength - StatBonus.Strength,
+                hero._synergyStatBonus.Agility - StatBonus.Agility,
+                hero._synergyStatBonus.Vitality - StatBonus.Vitality,
+                hero._synergyStatBonus.Magic - StatBonus.Magic
+            );
+            hero._synergyHPBonus -= HPBonus;
+            hero._synergyMPBonus -= MPBonus;
         }
     }
 }

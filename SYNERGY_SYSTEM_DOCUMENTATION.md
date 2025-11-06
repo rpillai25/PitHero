@@ -201,7 +201,7 @@ hero.EarnSynergyPoints(10);
 
 ### Mage's Focus
 - **Items**: Rod + 2 Accessories (triangle)
-- **Effect**: +10% Magic, -20% MP Cost
+- **Effect**: +5 Magic, -20% MP Cost
 - **Points**: 150
 
 ### Monk's Balance

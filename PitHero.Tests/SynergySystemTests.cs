@@ -384,5 +384,97 @@ namespace PitHero.Tests
             hero.UpdateActiveSynergies(new List<ActiveSynergy>());
             Assert.AreEqual(0, hero.PassiveDefenseBonus);
         }
+        
+        [TestMethod]
+        public void Hero_SynergyStatBonuses_AreAppliedToTotalStats()
+        {
+            var crystal = new HeroCrystal("TestCrystal", new Knight(), 1, new StatBlock(10, 5, 10, 5));
+            var hero = new Hero("TestHero", new Knight(), 1, new StatBlock(10, 5, 10, 5), crystal);
+            
+            var baseStats = hero.GetTotalStats();
+            var baseSTR = baseStats.Strength;
+            
+            // Create a synergy with stat bonus
+            var offsets = new List<Point> { new Point(0, 0) };
+            var kinds = new List<ItemKind> { ItemKind.WeaponSword };
+            var effects = new List<ISynergyEffect>
+            {
+                new StatBonusEffect("str_boost", "+5 STR", new StatBlock(5, 0, 0, 0))
+            };
+            var pattern = new SynergyPattern("test", "Test", "Test", offsets, kinds, effects, 100);
+            var synergy = new ActiveSynergy(pattern, new Point(0, 0), new List<Point> { new Point(0, 0) });
+            
+            hero.UpdateActiveSynergies(new List<ActiveSynergy> { synergy });
+            
+            var statsWithSynergy = hero.GetTotalStats();
+            Assert.AreEqual(baseSTR + 5, statsWithSynergy.Strength, "Synergy stat bonus should be applied");
+        }
+        
+        [TestMethod]
+        public void Hero_SynergyHPBonus_IsAppliedToMaxHP()
+        {
+            var crystal = new HeroCrystal("TestCrystal", new Knight(), 1, new StatBlock(10, 5, 10, 5));
+            var hero = new Hero("TestHero", new Knight(), 1, new StatBlock(10, 5, 10, 5), crystal);
+            
+            var baseMaxHP = hero.MaxHP;
+            
+            // Create a synergy with HP bonus
+            var offsets = new List<Point> { new Point(0, 0) };
+            var kinds = new List<ItemKind> { ItemKind.WeaponSword };
+            var effects = new List<ISynergyEffect>
+            {
+                new StatBonusEffect("hp_boost", "+50 HP", new StatBlock(0, 0, 0, 0), hpBonus: 50)
+            };
+            var pattern = new SynergyPattern("test", "Test", "Test", offsets, kinds, effects, 100);
+            var synergy = new ActiveSynergy(pattern, new Point(0, 0), new List<Point> { new Point(0, 0) });
+            
+            hero.UpdateActiveSynergies(new List<ActiveSynergy> { synergy });
+            
+            Assert.AreEqual(baseMaxHP + 50, hero.MaxHP, "Synergy HP bonus should be applied");
+        }
+        
+        [TestMethod]
+        public void PassiveAbilityEffect_CounterUseReferenceCount()
+        {
+            var crystal = new HeroCrystal("TestCrystal", new Knight(), 1, new StatBlock(4, 2, 4, 1));
+            var hero = new Hero("TestHero", new Knight(), 1, new StatBlock(4, 2, 4, 1), crystal);
+            
+            Assert.IsFalse(hero.EnableCounter);
+            
+            // First counter-enabling synergy
+            var offsets1 = new List<Point> { new Point(0, 0) };
+            var kinds1 = new List<ItemKind> { ItemKind.WeaponSword };
+            var effects1 = new List<ISynergyEffect>
+            {
+                new PassiveAbilityEffect("counter1", "Counter", enableCounter: true)
+            };
+            var pattern1 = new SynergyPattern("test1", "Test1", "Test", offsets1, kinds1, effects1, 100);
+            var synergy1 = new ActiveSynergy(pattern1, new Point(0, 0), new List<Point> { new Point(0, 0) });
+            
+            // Second counter-enabling synergy
+            var offsets2 = new List<Point> { new Point(1, 0) };
+            var kinds2 = new List<ItemKind> { ItemKind.Shield };
+            var effects2 = new List<ISynergyEffect>
+            {
+                new PassiveAbilityEffect("counter2", "Counter", enableCounter: true)
+            };
+            var pattern2 = new SynergyPattern("test2", "Test2", "Test", offsets2, kinds2, effects2, 100);
+            var synergy2 = new ActiveSynergy(pattern2, new Point(1, 0), new List<Point> { new Point(1, 0) });
+            
+            // Apply both synergies
+            hero.UpdateActiveSynergies(new List<ActiveSynergy> { synergy1, synergy2 });
+            Assert.IsTrue(hero.EnableCounter, "Counter should be enabled");
+            Assert.AreEqual(2, hero.SynergyCounterEnablers, "Should have 2 counter enablers");
+            
+            // Remove one synergy - counter should still be enabled
+            hero.UpdateActiveSynergies(new List<ActiveSynergy> { synergy1 });
+            Assert.IsTrue(hero.EnableCounter, "Counter should still be enabled with one synergy");
+            Assert.AreEqual(1, hero.SynergyCounterEnablers, "Should have 1 counter enabler");
+            
+            // Remove all synergies - counter should be disabled
+            hero.UpdateActiveSynergies(new List<ActiveSynergy>());
+            Assert.IsFalse(hero.EnableCounter, "Counter should be disabled");
+            Assert.AreEqual(0, hero.SynergyCounterEnablers, "Should have 0 counter enablers");
+        }
     }
 }
