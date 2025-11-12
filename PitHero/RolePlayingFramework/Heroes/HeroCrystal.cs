@@ -27,6 +27,19 @@ namespace RolePlayingFramework.Heroes
 
         /// <summary>Job level based on skills purchased.</summary>
         public int JobLevel => CalculateJobLevel();
+        
+        // Synergy progression tracking
+        /// <summary>Synergy points earned per synergy pattern ID.</summary>
+        private readonly Dictionary<string, int> _synergyPoints;
+        public IReadOnlyDictionary<string, int> SynergyPoints => _synergyPoints;
+        
+        /// <summary>Learned synergy skill IDs.</summary>
+        private readonly HashSet<string> _learnedSynergySkillIds;
+        public IReadOnlyCollection<string> LearnedSynergySkillIds => _learnedSynergySkillIds;
+        
+        /// <summary>Discovered synergy pattern IDs (for UI display).</summary>
+        private readonly HashSet<string> _discoveredSynergyIds;
+        public IReadOnlyCollection<string> DiscoveredSynergyIds => _discoveredSynergyIds;
 
         public HeroCrystal(string name, IJob job, int level, in StatBlock baseStats)
         {
@@ -37,9 +50,13 @@ namespace RolePlayingFramework.Heroes
             _learnedSkillIds = new HashSet<string>();
             TotalJP = 0;
             CurrentJP = 0;
+            _synergyPoints = new Dictionary<string, int>();
+            _learnedSynergySkillIds = new HashSet<string>();
+            _discoveredSynergyIds = new HashSet<string>();
         }
 
-        private HeroCrystal(string name, IJob job, int level, in StatBlock baseStats, HashSet<string> learned, int totalJP, int currentJP)
+        private HeroCrystal(string name, IJob job, int level, in StatBlock baseStats, HashSet<string> learned, int totalJP, int currentJP,
+            Dictionary<string, int>? synergyPoints = null, HashSet<string>? learnedSynergySkillIds = null, HashSet<string>? discoveredSynergyIds = null)
         {
             Name = name;
             Job = job;
@@ -48,6 +65,9 @@ namespace RolePlayingFramework.Heroes
             _learnedSkillIds = learned;
             TotalJP = totalJP;
             CurrentJP = currentJP;
+            _synergyPoints = synergyPoints ?? new Dictionary<string, int>();
+            _learnedSynergySkillIds = learnedSynergySkillIds ?? new HashSet<string>();
+            _discoveredSynergyIds = discoveredSynergyIds ?? new HashSet<string>();
         }
 
         /// <summary>Adds a learned skill id if not present.</summary>
@@ -108,6 +128,51 @@ namespace RolePlayingFramework.Heroes
             }
             return true;
         }
+        
+        // Synergy system methods
+        
+        /// <summary>Earns synergy points for a specific synergy pattern.</summary>
+        public void EarnSynergyPoints(string synergyId, int amount)
+        {
+            if (string.IsNullOrEmpty(synergyId) || amount < 0) return;
+            
+            if (!_synergyPoints.ContainsKey(synergyId))
+                _synergyPoints[synergyId] = 0;
+            
+            _synergyPoints[synergyId] += amount;
+        }
+        
+        /// <summary>Gets the total synergy points earned for a specific synergy pattern.</summary>
+        public int GetSynergyPoints(string synergyId)
+        {
+            return _synergyPoints.TryGetValue(synergyId, out var points) ? points : 0;
+        }
+        
+        /// <summary>Marks a synergy as discovered (for UI display).</summary>
+        public void DiscoverSynergy(string synergyId)
+        {
+            if (!string.IsNullOrEmpty(synergyId))
+                _discoveredSynergyIds.Add(synergyId);
+        }
+        
+        /// <summary>Checks if a synergy has been discovered.</summary>
+        public bool HasDiscoveredSynergy(string synergyId)
+        {
+            return _discoveredSynergyIds.Contains(synergyId);
+        }
+        
+        /// <summary>Learns a synergy skill.</summary>
+        public void LearnSynergySkill(string skillId)
+        {
+            if (!string.IsNullOrEmpty(skillId))
+                _learnedSynergySkillIds.Add(skillId);
+        }
+        
+        /// <summary>Checks if a synergy skill has been learned.</summary>
+        public bool HasSynergySkill(string skillId)
+        {
+            return _learnedSynergySkillIds.Contains(skillId);
+        }
 
         /// <summary>Calculates the sell value of this crystal based on level and job tier.</summary>
         /// <returns>The gold value for selling this crystal.</returns>
@@ -138,7 +203,25 @@ namespace RolePlayingFramework.Heroes
             foreach (var id in b._learnedSkillIds) union.Add(id);
             var totalJP = a.TotalJP + b.TotalJP;
             var currentJP = a.CurrentJP + b.CurrentJP;
-            return new HeroCrystal(combinedName, job, level, stats, union, totalJP, currentJP);
+            
+            // Combine synergy data
+            var combinedSynergyPoints = new Dictionary<string, int>(a._synergyPoints);
+            foreach (var kvp in b._synergyPoints)
+            {
+                if (combinedSynergyPoints.ContainsKey(kvp.Key))
+                    combinedSynergyPoints[kvp.Key] += kvp.Value;
+                else
+                    combinedSynergyPoints[kvp.Key] = kvp.Value;
+            }
+            
+            var combinedSynergySkills = new HashSet<string>(a._learnedSynergySkillIds);
+            foreach (var id in b._learnedSynergySkillIds) combinedSynergySkills.Add(id);
+            
+            var combinedDiscoveredSynergies = new HashSet<string>(a._discoveredSynergyIds);
+            foreach (var id in b._discoveredSynergyIds) combinedDiscoveredSynergies.Add(id);
+            
+            return new HeroCrystal(combinedName, job, level, stats, union, totalJP, currentJP,
+                combinedSynergyPoints, combinedSynergySkills, combinedDiscoveredSynergies);
         }
     }
 }

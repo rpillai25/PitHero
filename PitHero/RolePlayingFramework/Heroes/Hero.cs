@@ -6,6 +6,7 @@ using RolePlayingFramework.Skills;
 using RolePlayingFramework.Stats;
 using RolePlayingFramework.Enemies;
 using RolePlayingFramework.Combat;
+using RolePlayingFramework.Synergies;
 
 namespace RolePlayingFramework.Heroes
 {
@@ -31,6 +32,12 @@ namespace RolePlayingFramework.Heroes
         public float HealPowerBonus { get; set; }
         public float FireDamageBonus { get; set; }
         public float MPCostReduction { get; set; }
+        
+        // Synergy-based stat modifiers (internal for synergy effect access)
+        internal StatBlock _synergyStatBonus = new StatBlock(0, 0, 0, 0);
+        internal int _synergyHPBonus = 0;
+        internal int _synergyMPBonus = 0;
+        internal int _synergyCounterEnablers = 0; // Reference count for counter-enabling synergies
 
         // Equipment
         public IItem? WeaponShield1 { get; private set; }
@@ -51,6 +58,13 @@ namespace RolePlayingFramework.Heroes
         
         /// <summary>Gets the crystal bound to this hero (if any).</summary>
         public HeroCrystal? BoundCrystal => _boundCrystal;
+        
+        // Synergy tracking
+        private readonly List<ActiveSynergy> _activeSynergies;
+        public IReadOnlyList<ActiveSynergy> ActiveSynergies => _activeSynergies;
+        
+        /// <summary>Gets the number of active counter-enabling synergies (for testing).</summary>
+        public int SynergyCounterEnablers => _synergyCounterEnablers;
 
         public Hero(string name, IJob job, int level, in StatBlock baseStats, HeroCrystal? fromCrystal = null)
         {
@@ -60,6 +74,7 @@ namespace RolePlayingFramework.Heroes
             BaseStats = baseStats;
             _learnedSkills = new Dictionary<string, ISkill>(16);
             _boundCrystal = fromCrystal;
+            _activeSynergies = new List<ActiveSynergy>();
             if (fromCrystal != null)
             {
                 // preload crystal skills that exist in this job (handles composite jobs)
@@ -122,24 +137,24 @@ namespace RolePlayingFramework.Heroes
         public void RecalculateDerived()
         {
             var jobStats = Job.GetJobContributionAtLevel(Level);
-            var total = BaseStats.Add(jobStats).Add(GetEquipmentStatBonus());
+            var total = BaseStats.Add(jobStats).Add(GetEquipmentStatBonus()).Add(_synergyStatBonus);
             // Clamp total stats before using them for HP/MP calculations
             total = StatConstants.ClampStatBlock(total);
             
-            // Calculate HP and MP using the utility methods with capping
+            // Calculate HP and MP using the utility methods with capping, including synergy bonuses
             MaxHP = GrowthCurveCalculator.CalculateHP(
                 total.Vitality, 
                 baseHP: 25, 
                 vitalityMultiplier: 5
-            ) + GetEquipmentHPBonus();
+            ) + GetEquipmentHPBonus() + _synergyHPBonus;
             
             MaxMP = GrowthCurveCalculator.CalculateMP(
                 total.Magic, 
                 baseMP: 10, 
                 magicMultiplier: 3
-            ) + GetEquipmentMPBonus();
+            ) + GetEquipmentMPBonus() + _synergyMPBonus;
             
-            // Ensure HP/MP stay within caps after adding equipment bonuses
+            // Ensure HP/MP stay within caps after adding equipment and synergy bonuses
             MaxHP = StatConstants.ClampHP(MaxHP);
             MaxMP = StatConstants.ClampMP(MaxMP);
             
@@ -148,7 +163,7 @@ namespace RolePlayingFramework.Heroes
             if (CurrentMP > MaxMP) CurrentMP = MaxMP;
         }
 
-        /// <summary>Returns current total stats (base + job + equipment).</summary>
+        /// <summary>Returns current total stats (base + job + equipment + synergy).</summary>
         public StatBlock GetTotalStats()
         {
             // Use GrowthCurveCalculator to calculate base stats + job contribution at current level
@@ -159,8 +174,8 @@ namespace RolePlayingFramework.Heroes
                 Level
             );
             
-            // Add equipment bonuses and clamp (equipment is already a StatBlock)
-            var total = statsWithJob.Add(GetEquipmentStatBonus());
+            // Add equipment bonuses and synergy bonuses, then clamp
+            var total = statsWithJob.Add(GetEquipmentStatBonus()).Add(_synergyStatBonus);
             return StatConstants.ClampStatBlock(total);
         }
 
@@ -508,6 +523,75 @@ namespace RolePlayingFramework.Heroes
             CurrentMP += amount;
             if (CurrentMP > MaxMP) CurrentMP = MaxMP;
             return true;
+        }
+        
+        // Synergy system integration
+        
+        /// <summary>Updates active synergies based on current inventory state.</summary>
+        public void UpdateActiveSynergies(List<ActiveSynergy> detectedSynergies)
+        {
+            // Remove effects from old synergies
+            for (int i = 0; i < _activeSynergies.Count; i++)
+            {
+                var oldSynergy = _activeSynergies[i];
+                var effects = oldSynergy.Pattern.Effects;
+                for (int j = 0; j < effects.Count; j++)
+                {
+                    effects[j].Remove(this);
+                }
+            }
+            
+            // Clear old synergies
+            _activeSynergies.Clear();
+            
+            // Add new synergies
+            for (int i = 0; i < detectedSynergies.Count; i++)
+            {
+                _activeSynergies.Add(detectedSynergies[i]);
+                
+                // Apply effects from new synergies
+                var effects = detectedSynergies[i].Pattern.Effects;
+                for (int j = 0; j < effects.Count; j++)
+                {
+                    effects[j].Apply(this);
+                }
+                
+                // Mark synergy as discovered in crystal
+                _boundCrystal?.DiscoverSynergy(detectedSynergies[i].Pattern.Id);
+            }
+            
+            // Recalculate derived stats after synergy changes
+            RecalculateDerived();
+        }
+        
+        /// <summary>Earns synergy points from battles.</summary>
+        public void EarnSynergyPoints(int amount)
+        {
+            if (_boundCrystal == null) return;
+            
+            // Distribute points to all active synergies
+            for (int i = 0; i < _activeSynergies.Count; i++)
+            {
+                var synergy = _activeSynergies[i];
+                synergy.EarnPoints(amount);
+                _boundCrystal.EarnSynergyPoints(synergy.Pattern.Id, amount);
+                
+                // Check if synergy skill was unlocked
+                if (synergy.IsSkillUnlocked && synergy.Pattern.UnlockedSkill != null)
+                {
+                    var skillId = synergy.Pattern.UnlockedSkill.Id;
+                    if (!_boundCrystal.HasSynergySkill(skillId))
+                    {
+                        _boundCrystal.LearnSynergySkill(skillId);
+                        // Add skill to hero's learned skills
+                        if (!_learnedSkills.ContainsKey(skillId))
+                        {
+                            _learnedSkills[skillId] = synergy.Pattern.UnlockedSkill;
+                            ApplyPassiveSkills();
+                        }
+                    }
+                }
+            }
         }
     }
 }
