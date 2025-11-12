@@ -18,7 +18,7 @@ namespace PitHero.Tests.UI
         }
 
         [TestMethod]
-        public void FindNextAvailableSlot_ShouldReturnShortcutSlotFirst()
+        public void FindNextAvailableSlot_ShouldReturnInventorySlot()
         {
             // Arrange
             var inventoryGrid = new InventoryGrid();
@@ -26,27 +26,24 @@ namespace PitHero.Tests.UI
             // Act
             var nextSlot = inventoryGrid.FindNextAvailableSlot();
             
-            // Assert
+            // Assert - Should return first inventory slot which is (0,0) in the new 20x6 layout
             Assert.IsNotNull(nextSlot);
-            Assert.AreEqual(InventorySlotType.Shortcut, nextSlot.SlotType);
-            Assert.AreEqual(0, nextSlot.X);
-            Assert.AreEqual(3, nextSlot.Y);
-            Assert.AreEqual(1, nextSlot.ShortcutKey);
+            Assert.AreEqual(InventorySlotType.Inventory, nextSlot.SlotType);
         }
 
         [TestMethod]
-        public void UpdateBagCapacity_ShouldLimitInventorySlots()
+        public void UpdateBagCapacity_NoLongerLimitsSlots()
         {
             // Arrange
             var inventoryGrid = new InventoryGrid();
             
-            // Act - Set capacity to only 8 (just shortcut slots)
+            // Act - UpdateBagCapacity no longer limits slots (fixed 120 capacity)
             inventoryGrid.UpdateBagCapacity(8);
             
-            // Assert - All shortcut slots should still be available, no inventory slots
+            // Assert - Should still find inventory slots as capacity is fixed
             var nextSlot = inventoryGrid.FindNextAvailableSlot();
             Assert.IsNotNull(nextSlot);
-            Assert.AreEqual(InventorySlotType.Shortcut, nextSlot.SlotType);
+            Assert.AreEqual(InventorySlotType.Inventory, nextSlot.SlotType);
         }
     }
 }

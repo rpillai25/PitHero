@@ -16,8 +16,8 @@ namespace PitHero.Tests
         {
             var bag = new ItemBag();
 
-            Assert.AreEqual("Standard Bag", bag.BagName);
-            Assert.AreEqual(12, bag.Capacity);
+            Assert.AreEqual("Inventory", bag.BagName);
+            Assert.AreEqual(120, bag.Capacity);
             Assert.AreEqual(0, bag.Count);
             Assert.IsFalse(bag.IsFull);
         }
@@ -91,33 +91,6 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void ItemBag_TryUpgrade_WorksWithValidBags()
-        {
-            var bag = new ItemBag(); // Standard bag (8 capacity)
-            var foragersBag = BagItems.ForagersBag();
-
-            Assert.IsTrue(bag.TryUpgrade(foragersBag));
-            Assert.AreEqual("Forager's Bag", bag.BagName);
-            Assert.AreEqual(16, bag.Capacity);
-
-            var merchantsBag = BagItems.MerchantsBag();
-            Assert.IsTrue(bag.TryUpgrade(merchantsBag));
-            Assert.AreEqual("Merchant's Bag", bag.BagName);
-            Assert.AreEqual(32, bag.Capacity);
-        }
-
-        [TestMethod]
-        public void ItemBag_TryUpgrade_FailsForDowngrades()
-        {
-            var bag = new ItemBag("Merchant's Bag", 32);
-            var standardBag = BagItems.StandardBag();
-
-            Assert.IsFalse(bag.TryUpgrade(standardBag)); // Can't downgrade
-            Assert.AreEqual("Merchant's Bag", bag.BagName);
-            Assert.AreEqual(32, bag.Capacity);
-        }
-
-        [TestMethod]
         public void BagItems_CreateCorrectRarities()
         {
             Assert.AreEqual(ItemRarity.Normal, BagItems.StandardBag().Rarity);
@@ -125,30 +98,6 @@ namespace PitHero.Tests
             Assert.AreEqual(ItemRarity.Rare, BagItems.TravellersBag().Rarity);
             Assert.AreEqual(ItemRarity.Epic, BagItems.AdventurersBag().Rarity);
             Assert.AreEqual(ItemRarity.Legendary, BagItems.MerchantsBag().Rarity);
-        }
-
-        [TestMethod]
-        public void ItemBag_GetBagStats_ReturnsCorrectValues()
-        {
-            var (capacity1, name1) = ItemBag.GetBagStats(BagItems.StandardBag());
-            Assert.AreEqual(12, capacity1);
-            Assert.AreEqual("Standard Bag", name1);
-
-            var (capacity2, name2) = ItemBag.GetBagStats(BagItems.ForagersBag());
-            Assert.AreEqual(16, capacity2);
-            Assert.AreEqual("Forager's Bag", name2);
-
-            var (capacity3, name3) = ItemBag.GetBagStats(BagItems.TravellersBag());
-            Assert.AreEqual(20, capacity3);
-            Assert.AreEqual("Traveller's Bag", name3);
-
-            var (capacity4, name4) = ItemBag.GetBagStats(BagItems.AdventurersBag());
-            Assert.AreEqual(24, capacity4);
-            Assert.AreEqual("Adventurer's Bag", name4);
-
-            var (capacity5, name5) = ItemBag.GetBagStats(BagItems.MerchantsBag());
-            Assert.AreEqual(32, capacity5);
-            Assert.AreEqual("Merchant's Bag", name5);
         }
     }
 

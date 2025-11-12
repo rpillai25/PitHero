@@ -12,8 +12,8 @@ namespace PitHero.UI
     /// <summary>Grid layout container for inventory slots with interaction logic (single linear buffer version).</summary>
     public class InventoryGrid : Group
     {
-        private const int GRID_WIDTH = 8;
-        private const int GRID_HEIGHT = 7;
+        private const int GRID_WIDTH = 20;
+        private const int GRID_HEIGHT = 6;
         private const int CELL_COUNT = GRID_WIDTH * GRID_HEIGHT;
         private const float SLOT_SIZE = 32f;
         private const float SLOT_PADDING = 1f;
@@ -48,13 +48,6 @@ namespace PitHero.UI
         private int _nextAcquireIndex = 1; // monotonic acquisition counter
         private readonly Dictionary<IItem, int> _acquireIndexMap; // persistent mapping of items to acquire indices
         private readonly Dictionary<IItem, int> _itemStackMap;    // last known stack count per item instance
-
-        // Sorting state
-        private InventorySortOrder _currentSortOrder = InventorySortOrder.Time;
-        private SortDirection _currentSortDirection = SortDirection.Descending;
-
-        // Event for sort order changed
-        public event System.Action<InventorySortOrder, SortDirection> OnSortOrderChanged;
 
         public InventoryGrid()
         {
@@ -106,14 +99,15 @@ namespace PitHero.UI
         /// <summary>Creates slot data for a given grid coordinate.</summary>
         private InventorySlotData CreateSlotData(int x, int y)
         {
-            if (x == 3 && y == 0) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Hat };
-            if (y == 1 && x == 1) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield1 };
-            if (y == 1 && x == 3) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Armor };
-            if (y == 1 && x == 5) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield2 };
-            if (y == 2 && x == 2) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory1 };
-            if (y == 2 && x == 4) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory2 };
-            // Row y=3 is now regular inventory (no longer shortcuts)
-            if (y >= 3) return new InventorySlotData(x, y, InventorySlotType.Inventory);
+            // Equipment slots in first row (y=0)
+            if (y == 0 && x == 8) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield1 };
+            if (y == 0 && x == 10) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Hat };
+            if (y == 0 && x == 11) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield2 };
+            if (y == 1 && x == 8) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory1 };
+            if (y == 1 && x == 10) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Armor };
+            if (y == 1 && x == 11) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory2 };
+            // All other slots are inventory slots
+            if (x < 8 || x > 11 || y > 1) return new InventorySlotData(x, y, InventorySlotType.Inventory);
             return new InventorySlotData(x, y, InventorySlotType.Null);
         }
 
@@ -795,25 +789,7 @@ namespace PitHero.UI
         /// <summary>Updates active inventory slot availability based on capacity.</summary>
         public void UpdateBagCapacity(int capacity)
         {
-            int allowedInventorySlots = capacity;
-            if (allowedInventorySlots < 0) allowedInventorySlots = 0;
-            int inventorySeen = 0;
-            for (int i = 0; i < _slots.Length; i++)
-            {
-                var slot = _slots.Buffer[i];
-                if (slot == null) continue;
-                var data = slot.SlotData;
-                if (data.SlotType == InventorySlotType.Inventory)
-                {
-                    inventorySeen++;
-                    if (inventorySeen > allowedInventorySlots)
-                    {
-                        data.SlotType = InventorySlotType.Null;
-                        data.Item = null;
-                        slot.Remove();
-                    }
-                }
-            }
+            // Fixed capacity - no longer used for limiting slots
         }
 
         /// <summary>Finds next empty usable bag slot (shortcut first then inventory).</summary>
@@ -832,102 +808,6 @@ namespace PitHero.UI
                 if (d.SlotType == InventorySlotType.Inventory && d.Item == null) return d;
             }
             return null;
-        }
-
-        /// <summary>Gets the current sort order.</summary>
-        public InventorySortOrder GetCurrentSortOrder() => _currentSortOrder;
-
-        /// <summary>Gets the current sort direction.</summary>
-        public SortDirection GetCurrentSortDirection() => _currentSortDirection;
-
-        /// <summary>Sorts inventory items by the specified order and direction.</summary>
-        public void SortInventory(InventorySortOrder sortOrder, SortDirection sortDirection)
-        {
-            // Update current sort state first
-            _currentSortOrder = sortOrder;
-            _currentSortDirection = sortDirection;
-
-            // Notify listeners
-            OnSortOrderChanged?.Invoke(sortOrder, sortDirection);
-
-            if (_heroComponent?.Bag == null) return;
-
-            // Collect all bag slot items (shortcut + inventory)
-            var bagSlots = new System.Collections.Generic.List<InventorySlot>();
-            for (int i = 0; i < _slots.Length; i++)
-            {
-                var slot = _slots.Buffer[i];
-                if (slot == null) continue;
-                var type = slot.SlotData.SlotType;
-                if (type == InventorySlotType.Shortcut || type == InventorySlotType.Inventory)
-                {
-                    bagSlots.Add(slot);
-                }
-            }
-
-            // Sort the slots based on criteria
-            bagSlots.Sort((a, b) =>
-            {
-                // Empty slots always go to the end
-                if (a.SlotData.Item == null && b.SlotData.Item == null) return 0;
-                if (a.SlotData.Item == null) return 1;
-                if (b.SlotData.Item == null) return -1;
-
-                int comparison = 0;
-                switch (sortOrder)
-                {
-                    case InventorySortOrder.Time:
-                        comparison = a.SlotData.AcquireIndex.CompareTo(b.SlotData.AcquireIndex);
-                        break;
-                    case InventorySortOrder.Type:
-                        comparison = a.SlotData.Item.Kind.CompareTo(b.SlotData.Item.Kind);
-                        break;
-                    case InventorySortOrder.Name:
-                        comparison = string.Compare(a.SlotData.Item.Name, b.SlotData.Item.Name, System.StringComparison.Ordinal);
-                        break;
-                }
-
-                if (comparison == 0)
-                {
-                    // Deterministic tie-breakers to avoid non-deterministic order
-                    int nameCmp = string.Compare(a.SlotData.Item.Name, b.SlotData.Item.Name, System.StringComparison.Ordinal);
-                    if (nameCmp != 0) comparison = nameCmp;
-                    else
-                    {
-                        int kindCmp = a.SlotData.Item.Kind.CompareTo(b.SlotData.Item.Kind);
-                        if (kindCmp != 0) comparison = kindCmp;
-                        else
-                        {
-                            // Final fallback: bag index (should exist for these slots)
-                            var ai = a.SlotData.BagIndex.GetValueOrDefault(-1);
-                            var bi = b.SlotData.BagIndex.GetValueOrDefault(-1);
-                            comparison = ai.CompareTo(bi);
-                        }
-                    }
-                }
-
-                // Apply direction
-                if (sortDirection == SortDirection.Descending)
-                    comparison = -comparison;
-
-                return comparison;
-            });
-
-            // Rebuild item array in sorted order
-            for (int i = 0; i < bagSlots.Count; i++)
-            {
-                _persistBuffer[i] = bagSlots[i].SlotData.Item;
-            }
-            for (int i = bagSlots.Count; i < _persistBuffer.Length; i++)
-            {
-                _persistBuffer[i] = null;
-            }
-
-            // Persist to bag
-            _heroComponent.Bag.SetItemsInOrder(_persistBuffer, bagSlots.Count);
-
-            // Refresh UI
-            UpdateItemsFromBag();
         }
     }
 }
