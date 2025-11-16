@@ -166,32 +166,16 @@ namespace PitHero.ECS.Components
                     }
                 }
                 
-                // Get all items from shortcut bag
-                if (heroComponent.ShortcutBag != null)
-                {
-                    foreach (var item in heroComponent.ShortcutBag.Items)
-                    {
-                        if (item != null)
-                        {
-                            bagItems.Add(item);
-                        }
-                    }
-                }
-                
                 // Add all items to the vault
                 pitVault.AddItems(bagItems);
                 Debug.Log($"[HeroDeathComponent] Transferred {bagItems.Count} items to PitMerchantVault");
                 
-                // Clear both bags by setting empty items
+                // Clear the bag by setting empty items
                 if (heroComponent.Bag != null)
                 {
                     heroComponent.Bag.SetItemsInOrder(new List<RolePlayingFramework.Equipment.IItem>());
                 }
-                if (heroComponent.ShortcutBag != null)
-                {
-                    heroComponent.ShortcutBag.SetItemsInOrder(new List<RolePlayingFramework.Equipment.IItem>());
-                }
-                Debug.Log("[HeroDeathComponent] Cleared hero's inventory and shortcut bags");
+                Debug.Log("[HeroDeathComponent] Cleared hero's inventory bag");
             }
             else if (pitVault == null)
             {

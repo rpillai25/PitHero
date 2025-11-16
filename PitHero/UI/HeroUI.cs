@@ -350,6 +350,9 @@ namespace PitHero.UI
 
         public bool IsWindowVisible => _windowVisible;
 
+        /// <summary>Gets the inventory grid reference for shortcut bar integration.</summary>
+        public InventoryGrid GetInventoryGrid() => _inventoryGrid;
+
         /// <summary>Force close window</summary>
         public void ForceCloseWindow()
         {

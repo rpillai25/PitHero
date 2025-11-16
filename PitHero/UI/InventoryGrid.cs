@@ -395,16 +395,12 @@ namespace PitHero.UI
         /// <summary>Handles slot click highlighting and swapping.</summary>
         private void HandleSlotClicked(InventorySlot clickedSlot)
         {
-            // Check if there's a cross-component selection (from ShortcutBar)
+            // Ignore clicks from shortcut bar selections - shortcuts reference inventory slots, not swap with them
             if (InventorySelectionManager.HasSelection() && InventorySelectionManager.IsSelectionFromShortcutBar())
             {
-                // Attempt cross-component swap
-                if (InventorySelectionManager.TrySwapCrossComponent(clickedSlot, false, _heroComponent))
-                {
-                    // Clear local highlighted slot after cross-component swap
-                    ClearSelectionHighlight();
-                    return;
-                }
+                // Clear the shortcut selection - we don't support moving shortcuts back to inventory
+                InventorySelectionManager.ClearSelection();
+                return;
             }
             
             if (_highlightedSlot == null)
@@ -582,6 +578,9 @@ namespace PitHero.UI
                 AnimateSwap(a, b);
                 InventorySelectionManager.PerformAbsorbStacks(a, b, toAbsorb);
                 PersistBagOrdering();
+                
+                // Notify inventory changed for shortcut bar to refresh
+                InventorySelectionManager.OnInventoryChanged?.Invoke();
                 return;
             }
 
@@ -611,6 +610,9 @@ namespace PitHero.UI
             }
 
             PersistBagOrdering();
+            
+            // Notify inventory changed for shortcut bar to refresh
+            InventorySelectionManager.OnInventoryChanged?.Invoke();
         }
         
         /// <summary>Animates swap using unified InventorySelectionManager overlay in stage space.</summary>
@@ -704,7 +706,7 @@ namespace PitHero.UI
             heroEquipment.SetEquipmentSlot(d.EquipmentSlot.Value, d.Item);
         }
 
-        /// <summary>Finds the first empty bag slot (shortcut or inventory).</summary>
+        /// <summary>finds the first empty bag slot (shortcut or inventory).</summary>
         private InventorySlot FindFirstEmptyBagSlot()
         {
             for (int i = 0; i < _slots.Length; i++)
@@ -806,6 +808,23 @@ namespace PitHero.UI
                 var slot = _slots.Buffer[i]; if (slot == null) continue;
                 var d = slot.SlotData;
                 if (d.SlotType == InventorySlotType.Inventory && d.Item == null) return d;
+            }
+            return null;
+        }
+        
+        /// <summary>Finds the inventory slot containing a specific item instance.</summary>
+        public InventorySlot FindSlotContainingItem(IItem item)
+        {
+            if (item == null) return null;
+            
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                if (slot.SlotData.SlotType == InventorySlotType.Inventory && slot.SlotData.Item == item)
+                {
+                    return slot;
+                }
             }
             return null;
         }

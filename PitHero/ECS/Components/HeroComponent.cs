@@ -82,11 +82,6 @@ namespace PitHero.ECS.Components
         /// Hero's item bag for inventory management
         /// </summary>
         public RolePlayingFramework.Inventory.ItemBag Bag { get; private set; }
-        
-        /// <summary>
-        /// Hero's shortcut bag for quick-access items (independent from main inventory)
-        /// </summary>
-        public RolePlayingFramework.Inventory.ItemBag ShortcutBag { get; private set; }
 
         private PitWidthManager _pitWidthManager;
 
@@ -128,9 +123,6 @@ namespace PitHero.ECS.Components
 
             // Initialize hero's item bag
             Bag = new RolePlayingFramework.Inventory.ItemBag("Traveller's Bag", 20);
-            
-            // Initialize hero's shortcut bag (8 slots for shortcuts)
-            ShortcutBag = new RolePlayingFramework.Inventory.ItemBag("Shortcuts", 8);
 
             // Initialize state properties to clean state
             HeroInitialized = true;  // Set to true after hero entity and components initialized
@@ -149,30 +141,12 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Tries to add an item to the appropriate bag. Consumables go to shortcut bar first, then main bag if full.
-        /// Non-consumables go directly to main bag.
+        /// Tries to add an item to the main bag.
         /// </summary>
         public bool TryAddItem(IItem item)
         {
             if (item == null) return false;
-            
-            if (item is Consumable)
-            {
-                // Try shortcut bag first for consumables
-                if (ShortcutBag.TryAdd(item))
-                    return true;
-                // If shortcut bag is full, try main bag
-                if (Bag.TryAdd(item))
-                    return true;
-            }
-            else
-            {
-                // Non-consumables go directly to main bag
-                if (Bag.TryAdd(item))
-                    return true;
-            }
-            
-            return false;
+            return Bag.TryAdd(item);
         }
 
 #if DEBUG
@@ -181,14 +155,14 @@ namespace PitHero.ECS.Components
         /// </summary>
         public void DebugSetup()
         {
-            // Consumables should go to shortcut bar first
+            // All items go to main bag
             TryAddItem(PotionItems.HPPotion());
             TryAddItem(PotionItems.HPPotion());
             TryAddItem(PotionItems.MPPotion());
             TryAddItem(PotionItems.MPPotion());
             TryAddItem(PotionItems.MPPotion());
             TryAddItem(PotionItems.FullHPPotion());
-            
+
             // Non-consumables go to main bag
             Bag.TryAdd(GearItems.ShortSword());
             Bag.TryAdd(GearItems.WoodenShield());
@@ -322,7 +296,7 @@ namespace PitHero.ECS.Components
             else if (!PitInitialized && ActivatedWizardOrb)
             {
                 goalState.Set(GoapConstants.PitInitialized, true);
-            }            
+            }
             // Interactive entity goals - higher priority when inside pit
             if (InsidePit && AdjacentToMonster)
             {
@@ -340,12 +314,12 @@ namespace PitHero.ECS.Components
         public override void OnTriggerEnter(Collider other, Collider local)
         {
             base.OnTriggerEnter(other, local);
-            
+
             Debug.Log($"[HeroComponent] OnTriggerEnter: other.Entity.Name={other.Entity.Name}, " +
                       $"other.Entity.Tag={other.Entity.Tag}, " +
                       $"other.PhysicsLayer={other.PhysicsLayer}, " +
                       $"HeroPos={Entity.Transform.Position.X},{Entity.Transform.Position.Y}");
-            
+
             // Handle pit trigger separately from tilemap
             if (other.Entity.Tag == GameConfig.TAG_PIT)
             {
@@ -353,7 +327,7 @@ namespace PitHero.ECS.Components
                 HandlePitTriggerEnter();
                 return;
             }
-            
+
             // Handle tilemap triggers for FogOfWar clearing
             if (!IsTileMapCollision(other))
                 return;
@@ -377,7 +351,7 @@ namespace PitHero.ECS.Components
         public override void OnTriggerExit(Collider other, Collider local)
         {
             base.OnTriggerExit(other, local);
-            
+
             // Handle pit trigger separately
             if (other.PhysicsLayer == GameConfig.PhysicsPitLayer)
             {
@@ -390,16 +364,16 @@ namespace PitHero.ECS.Components
         {
             var currentTile = GetCurrentTilePosition();
             var pitBounds = PitCollisionRect;
-            
+
             Debug.Log($"[HeroComponent] HandlePitTriggerEnter: currentTile={currentTile.X},{currentTile.Y}, " +
                       $"pitBounds=({pitBounds.X},{pitBounds.Y},{pitBounds.Width},{pitBounds.Height})");
-            
+
             // Mark as inside pit when entering the pit trigger
             InsidePit = true;
 
             var historian = Entity.GetComponent<Historian>();
             historian?.RecordMilestone(MilestoneType.FirstJumpIntoPit, Time.TotalTime);
-            
+
             var tileCoords = GetTileCoordinates(Entity.Transform.Position, GameConfig.TileSize);
         }
 
@@ -407,22 +381,22 @@ namespace PitHero.ECS.Components
         {
             var currentTile = GetCurrentTilePosition();
             var pitBounds = PitCollisionRect;
-            
+
             Debug.Log($"[HeroComponent] HandlePitTriggerExit: currentTile={currentTile.X},{currentTile.Y}, " +
                       $"pitBounds=({pitBounds.X},{pitBounds.Y},{pitBounds.Width},{pitBounds.Height})");
-            
+
             // Only reset flags if hero is actually outside the pit area 
             // This prevents spurious trigger exits from resetting state during normal pit exploration
             if (!pitBounds.Contains(currentTile))
             {
                 Debug.Log("[HeroComponent] Hero truly exited pit area - resetting GOAP flags");
-                
+
                 // Reset flags when actually leaving pit area
                 InsidePit = false;
-                
+
                 // Reset wizard orb workflow flags when leaving pit
                 ActivatedWizardOrb = false;
-                
+
                 var historian = Entity.GetComponent<Historian>();
                 historian?.RecordMilestone(MilestoneType.FirstJumpOutOfPit, Time.TotalTime);
             }
@@ -442,7 +416,7 @@ namespace PitHero.ECS.Components
             {
                 return tileMover.GetCurrentTileCoordinates();
             }
-            
+
             // Fallback to manual calculation
             return GetTileCoordinates(Entity.Transform.Position, GameConfig.TileSize);
         }
@@ -616,12 +590,12 @@ namespace PitHero.ECS.Components
         public void UpdateExploredPitBasedOnPriorities()
         {
             var priorities = GetPrioritiesInOrder();
-            
+
             // Check priorities in order to find the current priority we should be working on
             for (int i = 0; i < priorities.Length; i++)
             {
                 var currentPriority = priorities[i];
-                
+
                 if (!IsPrioritySatisfied(currentPriority))
                 {
                     // This is the current priority we should be working on
@@ -653,7 +627,7 @@ namespace PitHero.ECS.Components
             try
             {
                 var scene = Core.Scene;
-                if (scene == null) 
+                if (scene == null)
                 {
                     // In test environment or scene not initialized, assume not satisfied
                     return false;
@@ -693,7 +667,7 @@ namespace PitHero.ECS.Components
             try
             {
                 var scene = Core.Scene;
-                if (scene == null) 
+                if (scene == null)
                 {
                     // In test environment or scene not initialized, assume not satisfied
                     return false;

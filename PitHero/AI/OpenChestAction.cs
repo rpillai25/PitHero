@@ -254,17 +254,8 @@ namespace PitHero.AI
             // Try to add item using hero's TryAddItem method (handles consumable priority logic)
             if (hero.TryAddItem(containedItem))
             {
-                // Log which bag it went to
-                if (containedItem is Consumable && BagContains(hero.ShortcutBag, containedItem))
-                {
-                    Debug.Log($"[OpenChest] Added {containedItem.Name} to hero's shortcut bar. ShortcutBag contents:");
-                    LogBagContents(hero.ShortcutBag);
-                }
-                else
-                {
-                    Debug.Log($"[OpenChest] Added {containedItem.Name} to hero's main bag. Bag contents:");
-                    LogBagContents(hero.Bag);
-                }
+                Debug.Log($"[OpenChest] Added {containedItem.Name} to hero's main bag. Bag contents:");
+                LogBagContents(hero.Bag);
                 
                 // Clear the item from the treasure chest
                 treasureComponent.ContainedItem = null;

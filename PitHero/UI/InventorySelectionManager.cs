@@ -15,6 +15,7 @@ namespace PitHero.UI
         private static InventorySlot _selectedSlot;
         private static bool _isFromShortcutBar;
         private static HeroComponent _heroComponent;
+        private static int _selectedShortcutIndex = -1; // For shortcut bar references
 
         // Overlay for cross-component and in-grid swap animations (stage-space tween)
         private static SwapAnimationOverlay _swapOverlay;
@@ -35,20 +36,20 @@ namespace PitHero.UI
             ClearSelectionInternal();
             _selectedSlot = slot;
             _isFromShortcutBar = false;
+            _selectedShortcutIndex = -1;
             _heroComponent = hero;
             if (slot != null)
                 slot.SlotData.IsHighlighted = true;
         }
         
-        /// <summary>Sets the selected slot from shortcut bar</summary>
-        public static void SetSelectedFromShortcut(InventorySlot slot, HeroComponent hero)
+        /// <summary>Sets the selected slot from shortcut bar (now just an index, not a slot with items)</summary>
+        public static void SetSelectedFromShortcut(int shortcutIndex, HeroComponent hero)
         {
             ClearSelectionInternal();
-            _selectedSlot = slot;
+            _selectedSlot = null; // Shortcut bar doesn't have real slots, just references
             _isFromShortcutBar = true;
+            _selectedShortcutIndex = shortcutIndex;
             _heroComponent = hero;
-            if (slot != null)
-                slot.SlotData.IsHighlighted = true;
         }
         
         /// <summary>Internal method to clear selection without triggering callbacks (used when switching selections)</summary>
@@ -60,6 +61,7 @@ namespace PitHero.UI
                 _selectedSlot = null;
             }
             _isFromShortcutBar = false;
+            _selectedShortcutIndex = -1;
             _heroComponent = null;
         }
         
@@ -75,11 +77,14 @@ namespace PitHero.UI
         /// <summary>Gets the currently selected slot</summary>
         public static InventorySlot GetSelectedSlot() => _selectedSlot;
         
+        /// <summary>Gets the currently selected shortcut index</summary>
+        public static int GetSelectedShortcutIndex() => _selectedShortcutIndex;
+        
         /// <summary>Returns true if the selected slot is from shortcut bar</summary>
         public static bool IsSelectionFromShortcutBar() => _isFromShortcutBar;
         
         /// <summary>Returns true if there is a selected slot</summary>
-        public static bool HasSelection() => _selectedSlot != null;
+        public static bool HasSelection() => _selectedSlot != null || _selectedShortcutIndex >= 0;
 
         /// <summary>Returns true if two slots can perform stack absorption and outputs amount to absorb.</summary>
         public static bool CanAbsorbStacks(InventorySlot source, InventorySlot target, out int toAbsorb)
@@ -224,106 +229,12 @@ namespace PitHero.UI
             return true;
         }
         
-        /// <summary>Attempts to swap between inventory and shortcut slot with animation and stack absorption.</summary>
+        /// <summary>No longer used - ShortcutBar uses references instead of swapping</summary>
+        [System.Obsolete("ShortcutBar now uses references instead of swapping items")]
         public static bool TrySwapCrossComponent(InventorySlot targetSlot, bool targetIsShortcut, HeroComponent targetHero)
         {
-            if (_selectedSlot == null || _heroComponent == null)
-                return false;
-                
-            // Only allow swap if they're from different components
-            if (_isFromShortcutBar == targetIsShortcut)
-                return false;
-                
-            // Setup source (selected) and destination (clicked target)
-            var sourceSlot = _selectedSlot;
-            var destSlot = targetSlot;
-
-            // Validate bag indices
-            if (!sourceSlot.SlotData.BagIndex.HasValue || !destSlot.SlotData.BagIndex.HasValue)
-                return false;
-
-            // Are we shortcut->inventory or inventory->shortcut?
-            bool sourceIsShortcut = _isFromShortcutBar;
-            int sourceIndex = sourceSlot.SlotData.BagIndex.Value;
-            int destIndex = destSlot.SlotData.BagIndex.Value;
-
-            var sourceItem = sourceSlot.SlotData.Item;
-            var destItem = destSlot.SlotData.Item;
-
-            // If both slots are empty, ignore and clear selection to avoid null refs
-            if (sourceItem == null && destItem == null)
-            {
-                // Ensure both slots are not highlighted
-                if (sourceSlot != null) sourceSlot.SlotData.IsHighlighted = false;
-                if (destSlot != null) destSlot.SlotData.IsHighlighted = false;
-                ClearSelection();
-                return true; // consume the click so caller does not re-select target
-            }
-
-            // Try absorption first
-            if (CanAbsorbStacks(sourceSlot, destSlot, out var toAbsorb))
-            {
-                // Animate then apply absorption
-                bool animated = TryAnimateSwap(sourceSlot, destSlot, CrossComponentSwapDuration, () =>
-                {
-                    PerformAbsorbStacks(sourceSlot, destSlot, toAbsorb);
-
-                    // If source depleted clear from its bag
-                    if (sourceSlot.SlotData.Item == null)
-                    {
-                        if (sourceIsShortcut)
-                            _heroComponent.ShortcutBag.SetSlotItem(sourceIndex, null);
-                        else
-                            _heroComponent.Bag.SetSlotItem(sourceIndex, null);
-                    }
-
-                    ClearSelection();
-                    OnInventoryChanged?.Invoke();
-                });
-
-                if (!animated)
-                {
-                    PerformAbsorbStacks(sourceSlot, destSlot, toAbsorb);
-                    if (sourceSlot.SlotData.Item == null)
-                    {
-                        if (sourceIsShortcut)
-                            _heroComponent.ShortcutBag.SetSlotItem(sourceIndex, null);
-                        else
-                            _heroComponent.Bag.SetSlotItem(sourceIndex, null);
-                    }
-                    ClearSelection();
-                    OnInventoryChanged?.Invoke();
-                }
-
-                return true;
-            }
-
-            // Otherwise do a normal swap between bags
-            // Determine which is inventory and which is shortcut for bag operations
-            InventorySlot inventorySlot = _isFromShortcutBar ? targetSlot : _selectedSlot;
-            InventorySlot shortcutSlot = _isFromShortcutBar ? _selectedSlot : targetSlot;
-            int inventoryBagIndex = inventorySlot.SlotData.BagIndex.Value;
-            int shortcutBagIndex = shortcutSlot.SlotData.BagIndex.Value;
-
-            // Try animate then swap
-            bool didAnimate = TryAnimateSwap(_selectedSlot, targetSlot, CrossComponentSwapDuration, () =>
-            {
-                _heroComponent.Bag.SetSlotItem(inventoryBagIndex, shortcutSlot.SlotData.Item);
-                _heroComponent.ShortcutBag.SetSlotItem(shortcutBagIndex, inventorySlot.SlotData.Item);
-
-                ClearSelection();
-                OnInventoryChanged?.Invoke();
-            });
-
-            if (!didAnimate)
-            {
-                _heroComponent.Bag.SetSlotItem(inventoryBagIndex, shortcutSlot.SlotData.Item);
-                _heroComponent.ShortcutBag.SetSlotItem(shortcutBagIndex, inventorySlot.SlotData.Item);
-                ClearSelection();
-                OnInventoryChanged?.Invoke();
-            }
-
-            return true;
+            // This method is obsolete - shortcut bar now uses SetShortcutReference instead
+            return false;
         }
     }
 }
