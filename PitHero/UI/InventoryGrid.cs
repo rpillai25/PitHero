@@ -21,7 +21,7 @@ namespace PitHero.UI
         private const float SWAP_TWEEN_DURATION = 0.2f; // Duration in seconds for swap animation
 
         private readonly FastList<InventorySlot> _slots;   // Row-major, may contain nulls for Null slots or capacity-disabled slots
-        private readonly IItem[] _persistBuffer;           // Reusable buffer for bag ordering persistence (32 max bag capacity)
+        private readonly IItem[] _persistBuffer;           // Reusable buffer for bag ordering persistence (120 slot capacity)
         private HeroComponent _heroComponent;
         private InventorySlot _highlightedSlot;
         private InventoryContextMenu _contextMenu;

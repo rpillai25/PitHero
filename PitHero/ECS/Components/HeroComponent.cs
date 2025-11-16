@@ -121,8 +121,8 @@ namespace PitHero.ECS.Components
             // Cache PitWidthManager service for dynamic pit sizing
             _pitWidthManager = Core.Services.GetService<PitWidthManager>();
 
-            // Initialize hero's item bag
-            Bag = new RolePlayingFramework.Inventory.ItemBag("Traveller's Bag", 20);
+            // Initialize hero's item bag with full 120 capacity (20×6 grid)
+            Bag = new RolePlayingFramework.Inventory.ItemBag("Traveller's Bag", 120);
 
             // Initialize state properties to clean state
             HeroInitialized = true;  // Set to true after hero entity and components initialized
