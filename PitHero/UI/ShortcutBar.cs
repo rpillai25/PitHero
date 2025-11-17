@@ -253,8 +253,22 @@ namespace PitHero.UI
                 return;
             }
             
-            // Block shortcut->inventory swaps - shortcuts cannot be moved back to inventory
-            // They can only be cleared or replaced with another inventory item reference
+            // Handle shortcut-to-shortcut interaction (swapping)
+            if (_highlightedIndex >= 0 && _highlightedIndex != index)
+            {
+                // We have a selected shortcut and clicked a different one - swap them
+                SwapShortcuts(_highlightedIndex, index);
+                
+                // Clear the highlight
+                var oldVisualSlot = _visualSlots.Buffer[_highlightedIndex];
+                if (oldVisualSlot != null)
+                    oldVisualSlot.SetHighlighted(false);
+                _highlightedIndex = -1;
+                
+                InventorySelectionManager.ClearSelection();
+                OnItemDeselected?.Invoke();
+                return;
+            }
             
             // Toggle highlight on the shortcut itself
             if (_highlightedIndex == -1)
@@ -298,6 +312,28 @@ namespace PitHero.UI
                         OnItemSelected?.Invoke(referencedSlot.SlotData.Item);
                 }
             }
+        }
+        
+        /// <summary>Swaps the item references between two shortcut slots.</summary>
+        private void SwapShortcuts(int indexA, int indexB)
+        {
+            if (indexA < 0 || indexA >= SHORTCUT_COUNT || indexB < 0 || indexB >= SHORTCUT_COUNT)
+                return;
+            
+            Debug.Log($"[ShortcutBar] Swapping shortcuts {indexA + 1} and {indexB + 1}");
+            
+            // Swap the slot references
+            var tempSlot = _referencedSlots[indexA];
+            _referencedSlots[indexA] = _referencedSlots[indexB];
+            _referencedSlots[indexB] = tempSlot;
+            
+            // Swap the tracked items
+            var tempItem = _referencedItems[indexA];
+            _referencedItems[indexA] = _referencedItems[indexB];
+            _referencedItems[indexB] = tempItem;
+            
+            // Refresh the visual display
+            RefreshVisualSlots();
         }
         
         /// <summary>Handles double-click to use consumables.</summary>
