@@ -13,7 +13,7 @@ namespace PitHero.UI
     public class InventoryGrid : Group
     {
         private const int GRID_WIDTH = 20;
-        private const int GRID_HEIGHT = 6;
+        private const int GRID_HEIGHT = 8;  // 2 rows for equipment area + 6 rows for inventory
         private const int CELL_COUNT = GRID_WIDTH * GRID_HEIGHT;
         private const float SLOT_SIZE = 32f;
         private const float SLOT_PADDING = 1f;
@@ -99,16 +99,23 @@ namespace PitHero.UI
         /// <summary>Creates slot data for a given grid coordinate.</summary>
         private InventorySlotData CreateSlotData(int x, int y)
         {
-            // Equipment slots in first row (y=0)
-            if (y == 0 && x == 8) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield1 };
-            if (y == 0 && x == 10) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Hat };
-            if (y == 0 && x == 11) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield2 };
-            if (y == 1 && x == 8) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory1 };
-            if (y == 1 && x == 10) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Armor };
-            if (y == 1 && x == 11) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory2 };
-            // All other slots are inventory slots
-            if (x < 8 || x > 11 || y > 1) return new InventorySlotData(x, y, InventorySlotType.Inventory);
-            return new InventorySlotData(x, y, InventorySlotType.Null);
+            // Top 2 rows (y=0,1) are ONLY for equipment display - everything else is NULL
+            if (y < 2)
+            {
+                // Equipment slots in top-right area (columns 8-11)
+                if (y == 0 && x == 8) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield1 };
+                if (y == 0 && x == 10) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Hat };
+                if (y == 0 && x == 11) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield2 };
+                if (y == 1 && x == 8) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory1 };
+                if (y == 1 && x == 10) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Armor };
+                if (y == 1 && x == 11) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory2 };
+                
+                // All other slots in top 2 rows are NULL (not displayed)
+                return new InventorySlotData(x, y, InventorySlotType.Null);
+            }
+            
+            // Rows 2-7: Pure inventory (6 rows × 20 columns = 120 inventory slots)
+            return new InventorySlotData(x, y, InventorySlotType.Inventory);
         }
 
         /// <summary>Connects grid to hero and loads items.</summary>
