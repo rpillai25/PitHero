@@ -8,31 +8,28 @@ using RolePlayingFramework.Equipment;
 
 namespace PitHero.UI
 {
-    /// <summary>UI component displaying shortcut slots (y=3, x=0-7) at bottom center of game HUD.</summary>
+    /// <summary>UI component displaying shortcut slots (y=3, x=0-7) at bottom center of game HUD. References InventoryGrid slots.</summary>
     public class ShortcutBar : Group
     {
         private const int SHORTCUT_COUNT = 8;
-        private const int SHORTCUT_ROW = 3;
         private const float SLOT_SIZE = 32f;
         private const float SLOT_PADDING = 1f;
-        private const float HOVER_OFFSET_Y = -16f; // Offset in pixels when hovering over a slot while another is selected
-        private const float SWAP_TWEEN_DURATION = 0.2f; // Duration in seconds for swap animation
+        private const float HOVER_OFFSET_Y = -16f;
         
-        private readonly FastList<InventorySlot> _slots;
+        // Array of references to InventoryGrid slots (one for each shortcut position)
+        private readonly InventorySlot[] _referencedSlots;
+        
+        // Track the items that are referenced (not the slots) so we can find them when they move
+        private readonly IItem[] _referencedItems;
+        
+        // Reference to inventory grid for finding items that moved
+        private InventoryGrid _inventoryGrid;
+        
+        // Visual slots for rendering the shortcuts (but they don't hold items themselves)
+        private readonly FastList<ShortcutSlotVisual> _visualSlots;
+        
         private HeroComponent _heroComponent;
-        private InventorySlot _highlightedSlot;
-        
-        // UI-based swap animation state
-        private bool _uiSwapActive;
-        private float _uiSwapElapsed;
-        private InventorySlot _uiSwapSlotA;
-        private InventorySlot _uiSwapSlotB;
-        private SpriteDrawable _uiSwapDrawableA;
-        private SpriteDrawable _uiSwapDrawableB;
-        private Vector2 _uiSwapStartA;
-        private Vector2 _uiSwapEndA;
-        private Vector2 _uiSwapStartB;
-        private Vector2 _uiSwapEndB;
+        private int _highlightedIndex = -1; // Index of highlighted shortcut (-1 = none)
         
         // Track scaling for different window modes
         private float _currentScale = 1f;
@@ -50,28 +47,26 @@ namespace PitHero.UI
         
         public ShortcutBar()
         {
-            _slots = new FastList<InventorySlot>(SHORTCUT_COUNT);
-            BuildSlots();
+            _referencedSlots = new InventorySlot[SHORTCUT_COUNT];
+            _referencedItems = new IItem[SHORTCUT_COUNT];
+            _visualSlots = new FastList<ShortcutSlotVisual>(SHORTCUT_COUNT);
+            BuildVisualSlots();
             LayoutSlots();
         }
         
-        /// <summary>Builds shortcut slot components (x=0-7 at y=3).</summary>
-        private void BuildSlots()
+        /// <summary>Builds visual slot components (x=0-7).</summary>
+        private void BuildVisualSlots()
         {
             for (int x = 0; x < SHORTCUT_COUNT; x++)
             {
-                var data = new InventorySlotData(x, SHORTCUT_ROW, InventorySlotType.Shortcut) 
-                { 
-                    ShortcutKey = x + 1 
-                };
+                int index = x; // Capture the loop variable by value
+                var slot = new ShortcutSlotVisual(x + 1); // Pass shortcut key (1-8)
+                slot.OnSlotClicked += () => HandleSlotClicked(index);
+                slot.OnSlotDoubleClicked += () => HandleSlotDoubleClicked(index);
+                slot.OnSlotHovered += () => HandleSlotHovered(index);
+                slot.OnSlotUnhovered += () => HandleSlotUnhovered(index);
                 
-                var slot = new InventorySlot(data);
-                slot.OnSlotClicked += HandleSlotClicked;
-                slot.OnSlotDoubleClicked += HandleSlotDoubleClicked;
-                slot.OnSlotHovered += HandleSlotHovered;
-                slot.OnSlotUnhovered += HandleSlotUnhovered;
-                
-                _slots.Add(slot);
+                _visualSlots.Add(slot);
                 AddElement(slot);
             }
         }
@@ -79,9 +74,9 @@ namespace PitHero.UI
         /// <summary>Positions slot components based on current scale.</summary>
         private void LayoutSlots()
         {
-            for (int i = 0; i < _slots.Length; i++)
+            for (int i = 0; i < _visualSlots.Length; i++)
             {
-                var slot = _slots.Buffer[i];
+                var slot = _visualSlots.Buffer[i];
                 if (slot == null) continue;
                 
                 float scaledSlotSize = SLOT_SIZE * _currentScale;
@@ -123,140 +118,233 @@ namespace PitHero.UI
             SetPosition(_baseX + _offsetX, _baseY);
         }
         
-        /// <summary>Connects shortcut bar to hero and loads items.</summary>
-        public void ConnectToHero(HeroComponent heroComponent)
+        /// <summary>Connects shortcut bar to hero and inventory grid.</summary>
+        public void ConnectToHero(HeroComponent heroComponent, InventoryGrid inventoryGrid = null)
         {
             _heroComponent = heroComponent;
-            UpdateItemsFromBag();
+            _inventoryGrid = inventoryGrid;
             
-            // Subscribe to cross-component inventory changes
-            InventorySelectionManager.OnInventoryChanged += UpdateItemsFromBag;
+            // Subscribe to inventory changes to refresh visual display
+            InventorySelectionManager.OnInventoryChanged += RefreshVisualSlots;
             
             // Subscribe to selection cleared event
             InventorySelectionManager.OnSelectionCleared += ClearLocalSelectionState;
+        }
+        
+        /// <summary>Sets a reference to an InventoryGrid slot at the specified shortcut index.</summary>
+        public void SetShortcutReference(int shortcutIndex, InventorySlot referencedSlot)
+        {
+            if (shortcutIndex < 0 || shortcutIndex >= SHORTCUT_COUNT)
+                return;
+                
+            _referencedSlots[shortcutIndex] = referencedSlot;
+            _referencedItems[shortcutIndex] = referencedSlot?.SlotData?.Item;
+            RefreshVisualSlots();
+        }
+        
+        /// <summary>Gets the referenced slot at the specified shortcut index.</summary>
+        public InventorySlot GetReferencedSlot(int shortcutIndex)
+        {
+            if (shortcutIndex < 0 || shortcutIndex >= SHORTCUT_COUNT)
+                return null;
+                
+            return _referencedSlots[shortcutIndex];
+        }
+        
+        /// <summary>Clears the reference at the specified shortcut index.</summary>
+        public void ClearShortcutReference(int shortcutIndex)
+        {
+            if (shortcutIndex < 0 || shortcutIndex >= SHORTCUT_COUNT)
+                return;
+                
+            _referencedSlots[shortcutIndex] = null;
+            _referencedItems[shortcutIndex] = null;
+            RefreshVisualSlots();
+        }
+        
+        /// <summary>Refreshes all visual slots to display referenced items.</summary>
+        private void RefreshVisualSlots()
+        {
+            // First, update slot references to track item movements
+            UpdateSlotReferences();
             
-            // Subscribe to cross-component swap animation
-            InventorySelectionManager.OnCrossComponentSwapAnimate += HandleCrossComponentSwapAnimate;
+            for (int i = 0; i < SHORTCUT_COUNT; i++)
+            {
+                var visualSlot = _visualSlots.Buffer[i];
+                var referencedSlot = _referencedSlots[i];
+                
+                if (visualSlot != null)
+                {
+                    // Update visual slot to show the referenced item (or null if no reference)
+                    visualSlot.SetReferencedItem(referencedSlot?.SlotData?.Item);
+                    visualSlot.SetStackCount(
+                        referencedSlot?.SlotData?.Item is Consumable consumable ? consumable.StackCount : 0
+                    );
+                }
+            }
+        }
+        
+        /// <summary>Updates slot references to track item movements in the inventory grid.</summary>
+        private void UpdateSlotReferences()
+        {
+            if (_heroComponent == null || _inventoryGrid == null)
+                return;
+            
+            // For each shortcut, check if the item moved
+            for (int i = 0; i < SHORTCUT_COUNT; i++)
+            {
+                var trackedItem = _referencedItems[i];
+                if (trackedItem == null)
+                    continue;
+                
+                var currentSlot = _referencedSlots[i];
+                
+                // Check if the current slot still has the tracked item
+                if (currentSlot?.SlotData?.Item == trackedItem)
+                {
+                    // Item is still in the same slot, no update needed
+                    continue;
+                }
+                
+                // The item moved! Find its new location
+                var newSlot = _inventoryGrid.FindSlotContainingItem(trackedItem);
+                if (newSlot != null)
+                {
+                    Debug.Log($"[ShortcutBar] Shortcut {i + 1} item '{trackedItem.Name}' moved to new slot, updating reference");
+                    _referencedSlots[i] = newSlot;
+                }
+                else
+                {
+                    // Item was consumed or removed from inventory
+                    Debug.Log($"[ShortcutBar] Shortcut {i + 1} item '{trackedItem.Name}' no longer in inventory, clearing reference");
+                    _referencedSlots[i] = null;
+                    _referencedItems[i] = null;
+                }
+            }
         }
         
         /// <summary>Clears only the local highlighted slot without invoking events.</summary>
         private void ClearLocalSelectionState()
         {
-            if (_highlightedSlot != null)
+            if (_highlightedIndex >= 0)
             {
-                _highlightedSlot.SlotData.IsHighlighted = false;
-                _highlightedSlot = null;
+                var visualSlot = _visualSlots.Buffer[_highlightedIndex];
+                if (visualSlot != null)
+                    visualSlot.SetHighlighted(false);
+                _highlightedIndex = -1;
             }
         }
         
-        /// <summary>Handles cross-component swap animation by triggering local animation for this component's slot.</summary>
-        private void HandleCrossComponentSwapAnimate(InventorySlot slotA, InventorySlot slotB)
-        {
-            // Find which slot belongs to this component
-            InventorySlot mySlot = null;
-            for (int i = 0; i < _slots.Length; i++)
-            {
-                var slot = _slots.Buffer[i];
-                if (slot == slotA || slot == slotB)
-                {
-                    mySlot = slot;
-                    break;
-                }
-            }
-            
-            if (mySlot != null)
-            {
-                // Trigger a brief "pop" animation by hiding and showing the sprite
-                AnimateCrossComponentSwap(mySlot);
-            }
-        }
-        
-        /// <summary>Animates a single slot for cross-component swap (simple hide/show effect).</summary>
-        private void AnimateCrossComponentSwap(InventorySlot slot)
-        {
-            // For cross-component swaps, we can't tween between different coordinate spaces,
-            // so we just hide the sprite briefly and let the refresh show the new item
-            if (slot.SlotData.Item != null)
-            {
-                slot.SetItemSpriteHidden(true);
-                // The sprite will be shown again when UpdateItemsFromBag is called after the swap
-            }
-        }
-        
-        /// <summary>Updates slot items from hero's shortcut bag.</summary>
-        private void UpdateItemsFromBag()
-        {
-            if (_heroComponent?.ShortcutBag == null)
-                return;
-                
-            var bag = _heroComponent.ShortcutBag;
-            
-            // The 8 items in the shortcut bag correspond to the 8 shortcut slots
-            for (int i = 0; i < _slots.Length; i++)
-            {
-                var slot = _slots.Buffer[i];
-                if (slot != null)
-                {
-                    slot.SlotData.BagIndex = i;
-                    slot.SlotData.Item = bag.GetSlotItem(i);
-                    slot.SetItemSpriteHidden(false); // Ensure sprites are visible after refresh
-                }
-            }
-        }
-        
-        /// <summary>Handles slot click highlighting and swapping.</summary>
-        private void HandleSlotClicked(InventorySlot clickedSlot)
+        /// <summary>Handles slot click highlighting.</summary>
+        private void HandleSlotClicked(int index)
         {
             // Check if there's a cross-component selection (from InventoryGrid)
             if (InventorySelectionManager.HasSelection() && !InventorySelectionManager.IsSelectionFromShortcutBar())
             {
-                // Attempt cross-component swap
-                if (InventorySelectionManager.TrySwapCrossComponent(clickedSlot, true, _heroComponent))
-                {
-                    // Clear local highlighted slot after cross-component swap
-                    if (_highlightedSlot != null)
-                    {
-                        _highlightedSlot.SlotData.IsHighlighted = false;
-                        _highlightedSlot = null;
-                    }
-                    OnItemDeselected?.Invoke();
-                    return;
-                }
+                // Get the selected inventory slot
+                var inventorySlot = InventorySelectionManager.GetSelectedSlot();
+                
+                // Set this shortcut to reference that inventory slot
+                SetShortcutReference(index, inventorySlot);
+                
+                // Clear the selection
+                InventorySelectionManager.ClearSelection();
+                OnItemDeselected?.Invoke();
+                return;
             }
             
-            if (_highlightedSlot == null)
+            // Handle shortcut-to-shortcut interaction (swapping)
+            if (_highlightedIndex >= 0 && _highlightedIndex != index)
             {
-                _highlightedSlot = clickedSlot;
-                clickedSlot.SlotData.IsHighlighted = true;
-                InventorySelectionManager.SetSelectedFromShortcut(clickedSlot, _heroComponent);
-                if (clickedSlot.SlotData.Item != null)
-                    OnItemSelected?.Invoke(clickedSlot.SlotData.Item);
+                // We have a selected shortcut and clicked a different one - swap them
+                SwapShortcuts(_highlightedIndex, index);
+                
+                // Clear the highlight
+                var oldVisualSlot = _visualSlots.Buffer[_highlightedIndex];
+                if (oldVisualSlot != null)
+                    oldVisualSlot.SetHighlighted(false);
+                _highlightedIndex = -1;
+                
+                InventorySelectionManager.ClearSelection();
+                OnItemDeselected?.Invoke();
+                return;
             }
-            else if (_highlightedSlot == clickedSlot)
+            
+            // Toggle highlight on the shortcut itself
+            if (_highlightedIndex == -1)
             {
-                _highlightedSlot.SlotData.IsHighlighted = false;
-                _highlightedSlot = null;
+                _highlightedIndex = index;
+                var visualSlot = _visualSlots.Buffer[index];
+                if (visualSlot != null)
+                {
+                    visualSlot.SetHighlighted(true);
+                    InventorySelectionManager.SetSelectedFromShortcut(index, _heroComponent);
+                    var referencedSlot = _referencedSlots[index];
+                    if (referencedSlot?.SlotData?.Item != null)
+                        OnItemSelected?.Invoke(referencedSlot.SlotData.Item);
+                }
+            }
+            else if (_highlightedIndex == index)
+            {
+                // Clicking the same slot clears the highlight
+                var visualSlot = _visualSlots.Buffer[_highlightedIndex];
+                if (visualSlot != null)
+                    visualSlot.SetHighlighted(false);
+                _highlightedIndex = -1;
                 InventorySelectionManager.ClearSelection();
                 OnItemDeselected?.Invoke();
             }
             else
             {
-                SwapSlotItems(_highlightedSlot, clickedSlot);
-                _highlightedSlot.SlotData.IsHighlighted = false;
-                _highlightedSlot = null;
-                InventorySelectionManager.ClearSelection();
-                OnItemDeselected?.Invoke();
+                // Clicking a different shortcut - just move the highlight
+                var oldVisualSlot = _visualSlots.Buffer[_highlightedIndex];
+                if (oldVisualSlot != null)
+                    oldVisualSlot.SetHighlighted(false);
+                    
+                _highlightedIndex = index;
+                var newVisualSlot = _visualSlots.Buffer[index];
+                if (newVisualSlot != null)
+                {
+                    newVisualSlot.SetHighlighted(true);
+                    InventorySelectionManager.SetSelectedFromShortcut(index, _heroComponent);
+                    var referencedSlot = _referencedSlots[index];
+                    if (referencedSlot?.SlotData?.Item != null)
+                        OnItemSelected?.Invoke(referencedSlot.SlotData.Item);
+                }
             }
         }
         
-        /// <summary>Handles double-click to use consumables.</summary>
-        private void HandleSlotDoubleClicked(InventorySlot slot)
+        /// <summary>Swaps the item references between two shortcut slots.</summary>
+        private void SwapShortcuts(int indexA, int indexB)
         {
-            if (slot.SlotData.Item == null || !slot.SlotData.BagIndex.HasValue)
+            if (indexA < 0 || indexA >= SHORTCUT_COUNT || indexB < 0 || indexB >= SHORTCUT_COUNT)
+                return;
+            
+            Debug.Log($"[ShortcutBar] Swapping shortcuts {indexA + 1} and {indexB + 1}");
+            
+            // Swap the slot references
+            var tempSlot = _referencedSlots[indexA];
+            _referencedSlots[indexA] = _referencedSlots[indexB];
+            _referencedSlots[indexB] = tempSlot;
+            
+            // Swap the tracked items
+            var tempItem = _referencedItems[indexA];
+            _referencedItems[indexA] = _referencedItems[indexB];
+            _referencedItems[indexB] = tempItem;
+            
+            // Refresh the visual display
+            RefreshVisualSlots();
+        }
+        
+        /// <summary>Handles double-click to use consumables.</summary>
+        private void HandleSlotDoubleClicked(int index)
+        {
+            var referencedSlot = _referencedSlots[index];
+            if (referencedSlot?.SlotData?.Item == null || !referencedSlot.SlotData.BagIndex.HasValue)
                 return;
                 
-            var item = slot.SlotData.Item;
-            var bagIndex = slot.SlotData.BagIndex.Value;
+            var item = referencedSlot.SlotData.Item;
+            var bagIndex = referencedSlot.SlotData.BagIndex.Value;
             
             // Only consumables can be used from shortcut bar
             if (item is Consumable)
@@ -265,132 +353,30 @@ namespace PitHero.UI
             }
         }
         
-        private void HandleSlotHovered(InventorySlot slot)
+        private void HandleSlotHovered(int index)
         {
-            // Check for cross-component hover (from InventoryGrid) or local hover
-            if ((InventorySelectionManager.HasSelection() && slot.SlotData.Item != null) || 
-                (_highlightedSlot != null && _highlightedSlot != slot && slot.SlotData.Item != null))
-                slot.SetItemSpriteOffsetY(HOVER_OFFSET_Y);
-            if (slot.SlotData.Item != null)
-                OnItemHovered?.Invoke(slot.SlotData.Item);
+            var visualSlot = _visualSlots.Buffer[index];
+            var referencedSlot = _referencedSlots[index];
+            
+            // Show hover effect if there's a cross-component selection or local highlight
+            if ((InventorySelectionManager.HasSelection() && referencedSlot?.SlotData?.Item != null) || 
+                (_highlightedIndex >= 0 && _highlightedIndex != index && referencedSlot?.SlotData?.Item != null))
+            {
+                visualSlot?.SetItemSpriteOffsetY(HOVER_OFFSET_Y);
+            }
+            
+            if (referencedSlot?.SlotData?.Item != null)
+                OnItemHovered?.Invoke(referencedSlot.SlotData.Item);
         }
         
-        private void HandleSlotUnhovered(InventorySlot slot)
+        private void HandleSlotUnhovered(int index)
         {
-            slot.SetItemSpriteOffsetY(0f);
+            var visualSlot = _visualSlots.Buffer[index];
+            visualSlot?.SetItemSpriteOffsetY(0f);
             OnItemUnhovered?.Invoke();
         }
         
-        /// <summary>Swaps items between two shortcut slots.</summary>
-        private void SwapSlotItems(InventorySlot slotA, InventorySlot slotB)
-        {
-            if (_heroComponent?.ShortcutBag == null)
-                return;
-                
-            var bag = _heroComponent.ShortcutBag;
-            var dataA = slotA.SlotData;
-            var dataB = slotB.SlotData;
-            
-            // Get bag indices
-            int? bagIndexA = dataA.BagIndex;
-            int? bagIndexB = dataB.BagIndex;
-            
-            // Animate swap before changing data
-            AnimateSwap(slotA, slotB);
-            
-            // Swap in bag using bag's API
-            if (bagIndexA.HasValue && bagIndexB.HasValue)
-            {
-                bag.SwapSlots(bagIndexA.Value, bagIndexB.Value);
-            }
-            
-            // Update display
-            UpdateItemsFromBag();
-        }
-        
-        /// <summary>Animates swap by hiding originals and rendering tweened sprites in Draw.</summary>
-        private void AnimateSwap(InventorySlot a, InventorySlot b)
-        {
-            if (_uiSwapActive)
-            {
-                if (_uiSwapSlotA != null) _uiSwapSlotA.SetItemSpriteHidden(false);
-                if (_uiSwapSlotB != null) _uiSwapSlotB.SetItemSpriteHidden(false);
-                _uiSwapActive = false;
-            }
-            var itemA = a.SlotData.Item;
-            var itemB = b.SlotData.Item;
-            if (itemA == null && itemB == null) return;
-            if (Core.Content == null) return;
-            Sprite spriteA = null;
-            Sprite spriteB = null;
-            try
-            {
-                var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
-                if (itemA != null) spriteA = itemsAtlas.GetSprite(itemA.Name);
-                if (itemB != null) spriteB = itemsAtlas.GetSprite(itemB.Name);
-            }
-            catch { return; }
-            if (spriteA == null && spriteB == null) return;
-            a.SetItemSpriteOffsetY(0f);
-            b.SetItemSpriteOffsetY(0f);
-            if (itemA != null) a.SetItemSpriteHidden(true);
-            if (itemB != null) b.SetItemSpriteHidden(true);
-            // Use local coordinates relative to ShortcutBar (matches how InventorySlot draws its item)
-            var aPos = new Vector2(a.GetX(), a.GetY());
-            var bPos = new Vector2(b.GetX(), b.GetY());
-            _uiSwapSlotA = a;
-            _uiSwapSlotB = b;
-            _uiSwapDrawableA = spriteA != null ? new SpriteDrawable(spriteA) : null;
-            _uiSwapDrawableB = spriteB != null ? new SpriteDrawable(spriteB) : null;
-            _uiSwapStartA = aPos;
-            _uiSwapEndA = bPos;
-            _uiSwapStartB = bPos;
-            _uiSwapEndB = aPos;
-            _uiSwapElapsed = 0f;
-            _uiSwapActive = true;
-        }
-        
-        /// <summary>Draw override also advances swap animation so we do not rely on a non-existent Act override.</summary>
-        public override void Draw(Batcher batcher, float parentAlpha)
-        {
-            // Draw children (slots) first so animated sprites render on top
-            base.Draw(batcher, parentAlpha);
-            if (!_uiSwapActive) return;
-            _uiSwapElapsed += Time.DeltaTime;
-            if (_uiSwapElapsed >= SWAP_TWEEN_DURATION)
-            {
-                if (_uiSwapSlotA != null) _uiSwapSlotA.SetItemSpriteHidden(false);
-                if (_uiSwapSlotB != null) _uiSwapSlotB.SetItemSpriteHidden(false);
-                _uiSwapActive = false;
-                return;
-            }
-            float t = _uiSwapElapsed / SWAP_TWEEN_DURATION;
-            if (t < 0f) t = 0f; else if (t > 1f) t = 1f;
-            float ease = 1f - (1f - t) * (1f - t); // QuadOut
-
-            // Base (stage) position of this ShortcutBar element
-            float baseX = GetX();
-            float baseY = GetY();
-
-            if (_uiSwapDrawableA != null && _uiSwapSlotA != null)
-            {
-                var pos = Vector2.Lerp(_uiSwapStartA, _uiSwapEndA, ease);
-                // Account for this group's stage position and current scale
-                float drawX = baseX + pos.X;
-                float drawY = baseY + pos.Y;
-                _uiSwapDrawableA.Draw(batcher, drawX, drawY, SLOT_SIZE * _currentScale, SLOT_SIZE * _currentScale, Color.White);
-            }
-            if (_uiSwapDrawableB != null && _uiSwapSlotB != null)
-            {
-                var pos = Vector2.Lerp(_uiSwapStartB, _uiSwapEndB, ease);
-                // Account for this group's stage position and current scale
-                float drawX = baseX + pos.X;
-                float drawY = baseY + pos.Y;
-                _uiSwapDrawableB.Draw(batcher, drawX, drawY, SLOT_SIZE * _currentScale, SLOT_SIZE * _currentScale, Color.White);
-            }
-        }
-        
-        /// <summary>Uses a consumable item.</summary>
+        /// <summary>Uses a consumable item from the referenced inventory slot.</summary>
         private void UseConsumable(IItem item, int bagIndex)
         {
             if (item is not Consumable consumable)
@@ -408,11 +394,14 @@ namespace PitHero.UI
             {
                 Debug.Log($"[ShortcutBar] Used {item.Name}");
                 
-                // Decrement stack or remove item from shortcut bag
-                if (_heroComponent.ShortcutBag.ConsumeFromStack(bagIndex))
+                // Decrement stack or remove item from main inventory bag
+                if (_heroComponent.Bag.ConsumeFromStack(bagIndex))
                 {
-                    // Refresh the UI to show updated stack counts
-                    UpdateItemsFromBag();
+                    // Refresh the visual slots
+                    RefreshVisualSlots();
+                    
+                    // Notify inventory changed so InventoryGrid also refreshes
+                    InventorySelectionManager.OnInventoryChanged?.Invoke();
                 }
             }
             else
@@ -421,10 +410,10 @@ namespace PitHero.UI
             }
         }
         
-        /// <summary>Public method to refresh items from bag (called externally when inventory changes).</summary>
+        /// <summary>Public method to refresh visual slots (called externally when inventory changes).</summary>
         public void RefreshItems()
         {
-            UpdateItemsFromBag();
+            RefreshVisualSlots();
         }
         
         /// <summary>Public method to clear selection state (called when closing inventory UI).</summary>
@@ -442,22 +431,217 @@ namespace PitHero.UI
                 var key = (Keys)((int)Keys.D1 + keyOffset);
                 if (!Input.IsKeyPressed(key)) continue;
                 
-                var slot = _slots.Buffer[keyOffset];
-                if (slot == null) continue;
-                
-                var data = slot.SlotData;
-                if (data.Item != null && data.BagIndex.HasValue)
+                var referencedSlot = _referencedSlots[keyOffset];
+                if (referencedSlot?.SlotData?.Item != null && referencedSlot.SlotData.BagIndex.HasValue)
                 {
-                    Debug.Log($"[ShortcutBar] Activated shortcut slot {data.ShortcutKey} with item: {data.Item.Name}");
+                    Debug.Log($"[ShortcutBar] Activated shortcut slot {keyOffset + 1} with item: {referencedSlot.SlotData.Item.Name}");
                     
                     // Use the consumable if it's a consumable
-                    if (data.Item is Consumable)
+                    if (referencedSlot.SlotData.Item is Consumable)
                     {
-                        UseConsumable(data.Item, data.BagIndex.Value);
+                        UseConsumable(referencedSlot.SlotData.Item, referencedSlot.SlotData.BagIndex.Value);
                     }
                     break;
                 }
             }
         }
+    }
+    
+    /// <summary>Visual representation of a shortcut slot that displays a referenced item.</summary>
+    public class ShortcutSlotVisual : Element, IInputListener
+    {
+        private readonly int _shortcutKey;
+        private Sprite _backgroundSprite;
+        private SpriteDrawable _backgroundDrawable;
+        private Sprite _selectBoxSprite;
+        private SpriteDrawable _selectBoxDrawable;
+        private Sprite _highlightBoxSprite;
+        private SpriteDrawable _highlightBoxDrawable;
+        private Nez.BitmapFonts.BitmapFont _font;
+        
+        private IItem _referencedItem;
+        private int _stackCount;
+        private bool _isHovered;
+        private bool _isHighlighted;
+        private float _itemSpriteOffsetY = 0f;
+        
+        // Double-click detection
+        private float _lastClickTime = -1f;
+        
+        public event System.Action OnSlotClicked;
+        public event System.Action OnSlotDoubleClicked;
+        public event System.Action OnSlotHovered;
+        public event System.Action OnSlotUnhovered;
+        
+        public float Scale { get; set; } = 1f;
+        
+        public ShortcutSlotVisual(int shortcutKey)
+        {
+            _shortcutKey = shortcutKey;
+            
+            // Load visual assets
+            if (Core.Content != null)
+            {
+                var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
+                var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+                
+                _backgroundSprite = itemsAtlas.GetSprite("Shortcut");
+                _backgroundDrawable = new SpriteDrawable(_backgroundSprite);
+                
+                _selectBoxSprite = uiAtlas.GetSprite("SelectBox");
+                _selectBoxDrawable = new SpriteDrawable(_selectBoxSprite);
+                
+                _highlightBoxSprite = uiAtlas.GetSprite("HighlightBox");
+                _highlightBoxDrawable = new SpriteDrawable(_highlightBoxSprite);
+                
+                try
+                {
+                    _font = Core.Content.LoadBitmapFont("Content/Fonts/HudSmall.fnt");
+                }
+                catch
+                {
+                    _font = Graphics.Instance.BitmapFont;
+                }
+            }
+            
+            SetSize(32f, 32f);
+            SetTouchable(Touchable.Enabled);
+        }
+        
+        public void SetReferencedItem(IItem item)
+        {
+            _referencedItem = item;
+        }
+        
+        public void SetStackCount(int stackCount)
+        {
+            _stackCount = stackCount;
+        }
+        
+        public void SetHighlighted(bool highlighted)
+        {
+            _isHighlighted = highlighted;
+        }
+        
+        public void SetItemSpriteOffsetY(float offsetY)
+        {
+            _itemSpriteOffsetY = offsetY;
+        }
+        
+        public override void Draw(Batcher batcher, float parentAlpha)
+        {
+            // Draw background
+            if (_backgroundDrawable != null)
+            {
+                _backgroundDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), new Color(255, 255, 255, 100));
+            }
+            
+            // Draw referenced item sprite if exists
+            if (_referencedItem != null && Core.Content != null)
+            {
+                try
+                {
+                    var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
+                    var itemSprite = itemsAtlas.GetSprite(_referencedItem.Name);
+                    if (itemSprite != null)
+                    {
+                        var itemDrawable = new SpriteDrawable(itemSprite);
+                        itemDrawable.Draw(batcher, GetX(), GetY() + _itemSpriteOffsetY, GetWidth(), GetHeight(), Color.White);
+                    }
+                }
+                catch
+                {
+                    // Silently ignore missing sprites
+                }
+                
+                // Draw stack count if applicable
+                if (_stackCount > 1 && _font != null)
+                {
+                    var stackText = _stackCount.ToString();
+                    var textPosition = new Vector2(GetX() + 2f * Scale, GetY() + _itemSpriteOffsetY + GetHeight() - _font.LineHeight * Scale + 2f * Scale);
+                    batcher.DrawString(_font, stackText, textPosition, Color.White, 0f, Vector2.Zero, Scale, Microsoft.Xna.Framework.Graphics.SpriteEffects.None, 0f);
+                }
+            }
+            
+            // Draw select box if hovered
+            if (_isHovered && _selectBoxDrawable != null)
+            {
+                _selectBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+            }
+            
+            // Draw highlight box if highlighted
+            if (_isHighlighted && _highlightBoxDrawable != null)
+            {
+                _highlightBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+            }
+            
+            // Draw shortcut key number below slot
+            if (_font != null)
+            {
+                var keyText = _shortcutKey.ToString();
+                var textSize = _font.MeasureString(keyText) * Scale;
+                var textX = GetX() + (GetWidth() - textSize.X) / 2f;
+                var textY = GetY() + GetHeight() + 2f * Scale;
+                batcher.DrawString(_font, keyText, new Vector2(textX, textY), Color.Goldenrod, 0f, Vector2.Zero, Scale, Microsoft.Xna.Framework.Graphics.SpriteEffects.None, 0f);
+            }
+            
+            base.Draw(batcher, parentAlpha);
+        }
+        
+        #region IInputListener Implementation
+        
+        void IInputListener.OnMouseEnter()
+        {
+            _isHovered = true;
+            OnSlotHovered?.Invoke();
+        }
+        
+        void IInputListener.OnMouseExit()
+        {
+            _isHovered = false;
+            OnSlotUnhovered?.Invoke();
+        }
+        
+        void IInputListener.OnMouseMoved(Vector2 mousePos)
+        {
+        }
+        
+        bool IInputListener.OnLeftMousePressed(Vector2 mousePos)
+        {
+            float currentTime = Time.TotalTime;
+            if (_lastClickTime >= 0 && (currentTime - _lastClickTime) <= GameConfig.DoubleClickThresholdSeconds)
+            {
+                OnSlotDoubleClicked?.Invoke();
+                _lastClickTime = -1f;
+            }
+            else
+            {
+                OnSlotClicked?.Invoke();
+                _lastClickTime = currentTime;
+            }
+            return true;
+        }
+        
+        bool IInputListener.OnRightMousePressed(Vector2 mousePos)
+        {
+            // Right-click clears the reference
+            // We need to access the parent ShortcutBar for this, but for now we'll handle it differently
+            return false;
+        }
+        
+        void IInputListener.OnLeftMouseUp(Vector2 mousePos)
+        {
+        }
+        
+        void IInputListener.OnRightMouseUp(Vector2 mousePos)
+        {
+        }
+        
+        bool IInputListener.OnMouseScrolled(int mouseWheelDelta)
+        {
+            return false;
+        }
+        
+        #endregion
     }
 }

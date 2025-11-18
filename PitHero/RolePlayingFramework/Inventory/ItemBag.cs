@@ -23,7 +23,7 @@ namespace RolePlayingFramework.Inventory
         /// <summary>Non-null items in insertion/slot order (reused list, do not modify).</summary>
         public IReadOnlyList<IItem> Items { get { EnsureCompact(); return _compact; } }
 
-        public ItemBag(string bagName = "Standard Bag", int capacity = 12)
+        public ItemBag(string bagName = "Inventory", int capacity = 120)
         {
             BagName = bagName;
             Capacity = capacity;
@@ -125,35 +125,6 @@ namespace RolePlayingFramework.Inventory
                 }
             }
             return false;
-        }
-
-        /// <summary>Upgrades bag capacity preserving slot ordering.</summary>
-        public bool TryUpgrade(IItem bagItem)
-        {
-            var (newCapacity, newBagName) = GetBagStats(bagItem);
-            if (newCapacity <= Capacity) return false;
-            var newSlots = new IItem[newCapacity];
-            for (int i = 0; i < _slots.Length; i++)
-                newSlots[i] = _slots[i];
-            _slots = newSlots;
-            Capacity = newCapacity;
-            BagName = newBagName;
-            _compactDirty = true;
-            return true;
-        }
-
-        /// <summary>Gets capacity and name metadata for a bag item.</summary>
-        public static (int capacity, string name) GetBagStats(IItem bagItem)
-        {
-            return bagItem.Name.ToLower() switch
-            {
-                "standard bag" => (12, "Standard Bag"),
-                "forager's bag" => (16, "Forager's Bag"),
-                "traveller's bag" => (20, "Traveller's Bag"),
-                "adventurer's bag" => (24, "Adventurer's Bag"),
-                "merchant's bag" => (32, "Merchant's Bag"),
-                _ => (12, "Standard Bag")
-            };
         }
 
         /// <summary>Gets item at slot index (can be null).</summary>

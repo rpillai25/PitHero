@@ -642,7 +642,7 @@ namespace PitHero.ECS.Scenes
         }
         
         /// <summary>
-        /// Connects the shortcut bar to the hero component
+        /// Connects the shortcut bar to the hero component and inventory grid
         /// </summary>
         private void ConnectShortcutBarToHero()
         {
@@ -663,8 +663,11 @@ namespace PitHero.ECS.Scenes
                 return;
             }
             
-            _shortcutBar.ConnectToHero(heroComponent);
-            Debug.Log("[MainGameScene] Connected shortcut bar to hero");
+            // Get the inventory grid from HeroUI
+            var inventoryGrid = _settingsUI?.HeroUI?.GetInventoryGrid();
+            
+            _shortcutBar.ConnectToHero(heroComponent, inventoryGrid);
+            Debug.Log("[MainGameScene] Connected shortcut bar to hero and inventory grid");
         }
 
         public override void Update()
