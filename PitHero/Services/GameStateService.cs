@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using RolePlayingFramework.Synergies;
 
 namespace PitHero.Services
 {
@@ -11,6 +8,22 @@ namespace PitHero.Services
     /// </summary>
     public class GameStateService
     {
-        //Discovered Stencils should be tracked in this service too
+        /// <summary>Discovered stencils mapped by pattern ID to discovery source.</summary>
+        public Dictionary<string, StencilDiscoverySource> DiscoveredStencils { get; } = new();
+        
+        /// <summary>Discovers a stencil if not already discovered.</summary>
+        public void DiscoverStencil(string patternId, StencilDiscoverySource source)
+        {
+            if (!DiscoveredStencils.ContainsKey(patternId))
+            {
+                DiscoveredStencils[patternId] = source;
+            }
+        }
+        
+        /// <summary>Checks if a stencil has been discovered.</summary>
+        public bool IsStencilDiscovered(string patternId)
+        {
+            return DiscoveredStencils.ContainsKey(patternId);
+        }
     }
 }

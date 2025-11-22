@@ -528,7 +528,9 @@ namespace RolePlayingFramework.Heroes
         // Synergy system integration
         
         /// <summary>Updates active synergies based on current inventory state.</summary>
-        public void UpdateActiveSynergies(List<ActiveSynergy> detectedSynergies)
+        /// <param name="detectedSynergies">List of detected synergies.</param>
+        /// <param name="gameStateService">Optional game state service for stencil discovery tracking.</param>
+        public void UpdateActiveSynergies(List<ActiveSynergy> detectedSynergies, PitHero.Services.GameStateService? gameStateService = null)
         {
             // Remove effects from old synergies
             for (int i = 0; i < _activeSynergies.Count; i++)
@@ -557,7 +559,14 @@ namespace RolePlayingFramework.Heroes
                 }
                 
                 // Mark synergy as discovered in crystal
-                _boundCrystal?.DiscoverSynergy(detectedSynergies[i].Pattern.Id);
+                var pattern = detectedSynergies[i].Pattern;
+                _boundCrystal?.DiscoverSynergy(pattern.Id);
+                
+                // Organic stencil discovery: if pattern has a stencil and it's not discovered yet, discover it
+                if (gameStateService != null && pattern.HasStencil && !gameStateService.IsStencilDiscovered(pattern.Id))
+                {
+                    gameStateService.DiscoverStencil(pattern.Id, Synergies.StencilDiscoverySource.PlayerMatch);
+                }
             }
             
             // Recalculate derived stats after synergy changes
