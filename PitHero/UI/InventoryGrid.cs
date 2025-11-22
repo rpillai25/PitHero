@@ -5,6 +5,7 @@ using Nez.Sprites;
 using Nez.UI;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Synergies;
 using System.Collections.Generic;
 
 namespace PitHero.UI
@@ -56,6 +57,10 @@ namespace PitHero.UI
         private Point? _stencilDragOffset; // Offset from stencil anchor to click position
         private List<RolePlayingFramework.Synergies.ActiveSynergy> _activeSynergies;
         private readonly Dictionary<Point, Nez.Tweens.ITween<Color>> _slotGlowTweens; // Track glow tweens per slot position
+        
+        // Synergy detection
+        private readonly SynergyDetector _synergyDetector;
+        private IItem?[,] _synergyDetectionGrid; // Reusable grid for synergy detection
 
         public InventoryGrid()
         {
@@ -67,8 +72,20 @@ namespace PitHero.UI
             _moveStencilsMode = false;
             _activeSynergies = new List<RolePlayingFramework.Synergies.ActiveSynergy>();
             _slotGlowTweens = new Dictionary<Point, Nez.Tweens.ITween<Color>>();
+            
+            // Initialize synergy detection
+            _synergyDetector = new SynergyDetector();
+            _synergyDetectionGrid = new IItem?[GRID_WIDTH, GRID_HEIGHT];
+            RegisterDefaultSynergyPatterns();
+            
             BuildSlots();
             LayoutSlots();
+        }
+        
+        /// <summary>Registers default synergy patterns for detection.</summary>
+        private void RegisterDefaultSynergyPatterns()
+        {
+            ExampleSynergyPatterns.RegisterAllExamplePatterns(_synergyDetector);
         }
 
         /// <summary>Returns true if any slot is currently hovered.</summary>
@@ -276,6 +293,9 @@ namespace PitHero.UI
             }
             UpdateEquipmentSlots();
             UpdateBagSlots();
+            
+            // Detect synergies after inventory refresh
+            DetectAndApplySynergies();
         }
 
         /// <summary>Updates equipment slot items from hero equipment.</summary>
@@ -637,6 +657,9 @@ namespace PitHero.UI
                 InventorySelectionManager.PerformAbsorbStacks(a, b, toAbsorb);
                 PersistBagOrdering();
                 
+                // Detect synergies after inventory change
+                DetectAndApplySynergies();
+                
                 // Notify inventory changed for shortcut bar to refresh
                 InventorySelectionManager.OnInventoryChanged?.Invoke();
                 return;
@@ -669,8 +692,70 @@ namespace PitHero.UI
 
             PersistBagOrdering();
             
+            // Detect synergies after inventory change
+            DetectAndApplySynergies();
+            
             // Notify inventory changed for shortcut bar to refresh
             InventorySelectionManager.OnInventoryChanged?.Invoke();
+        }
+        
+        /// <summary>Detects synergies in current inventory state and applies them to hero.</summary>
+        private void DetectAndApplySynergies()
+        {
+            var hero = _heroComponent?.LinkedHero;
+            if (hero == null) return;
+            
+            // Build synergy detection grid from current slot state
+            BuildSynergyDetectionGrid();
+            
+            // Detect synergies
+            var detectedSynergies = _synergyDetector.DetectSynergies(_synergyDetectionGrid, GRID_WIDTH, GRID_HEIGHT);
+            
+            // Get GameStateService for stencil discovery
+            var gameStateService = Core.Services?.GetService<PitHero.Services.GameStateService>();
+            
+            // Apply synergies to hero (this also handles stencil discovery)
+            hero.UpdateActiveSynergies(detectedSynergies, gameStateService);
+            
+            // Update local tracking for glow effects
+            UpdateActiveSynergies(detectedSynergies);
+            
+            // Log detected synergies
+            if (detectedSynergies.Count > 0)
+            {
+                Debug.Log($"[InventoryGrid] Detected {detectedSynergies.Count} active synergies:");
+                for (int i = 0; i < detectedSynergies.Count; i++)
+                {
+                    var synergy = detectedSynergies[i];
+                    Debug.Log($"  - {synergy.Pattern.Name} at anchor ({synergy.AnchorSlot.X},{synergy.AnchorSlot.Y})");
+                }
+            }
+        }
+        
+        /// <summary>Builds the synergy detection grid from current slot state.</summary>
+        private void BuildSynergyDetectionGrid()
+        {
+            // Clear grid
+            for (int x = 0; x < GRID_WIDTH; x++)
+            {
+                for (int y = 0; y < GRID_HEIGHT; y++)
+                {
+                    _synergyDetectionGrid[x, y] = null;
+                }
+            }
+            
+            // Populate grid from slots
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                
+                var data = slot.SlotData;
+                if (data.X >= 0 && data.X < GRID_WIDTH && data.Y >= 0 && data.Y < GRID_HEIGHT)
+                {
+                    _synergyDetectionGrid[data.X, data.Y] = data.Item;
+                }
+            }
         }
         
         /// <summary>Animates swap using unified InventorySelectionManager overlay in stage space.</summary>
