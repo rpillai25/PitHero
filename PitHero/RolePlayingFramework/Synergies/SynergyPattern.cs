@@ -32,6 +32,9 @@ namespace RolePlayingFramework.Synergies
         /// <summary>Skill unlocked when synergy is active and points requirement is met.</summary>
         public ISkill? UnlockedSkill { get; }
         
+        /// <summary>Whether this pattern has a discoverable stencil.</summary>
+        public bool HasStencil { get; }
+        
         public SynergyPattern(
             string id,
             string name,
@@ -40,7 +43,8 @@ namespace RolePlayingFramework.Synergies
             IReadOnlyList<ItemKind> requiredKinds,
             IReadOnlyList<ISynergyEffect> effects,
             int synergyPointsRequired,
-            ISkill? unlockedSkill = null)
+            ISkill? unlockedSkill = null,
+            bool hasStencil = true)
         {
             Id = id;
             Name = name;
@@ -50,6 +54,7 @@ namespace RolePlayingFramework.Synergies
             Effects = effects;
             SynergyPointsRequired = synergyPointsRequired;
             UnlockedSkill = unlockedSkill;
+            HasStencil = hasStencil;
         }
     }
 }
