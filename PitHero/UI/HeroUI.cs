@@ -251,16 +251,50 @@ namespace PitHero.UI
         
         private void HandleRemoveStencilClicked(Button button)
         {
-            if (_inventoryGrid != null)
+            if (_inventoryGrid != null && _stage != null)
             {
                 var placedStencils = _inventoryGrid.GetPlacedStencils();
-                if (placedStencils.Count > 0)
+                if (placedStencils.Count == 0)
                 {
-                    // For now, just remove the first stencil
-                    // TODO: Add selection UI to choose which stencil to remove
-                    _inventoryGrid.RemoveStencil(placedStencils[0]);
-                    Debug.Log("Removed stencil");
+                    Debug.Log("No stencils to remove");
+                    return;
                 }
+                
+                // If only one stencil, show confirmation dialog
+                if (placedStencils.Count == 1)
+                {
+                    ShowRemoveStencilConfirmation(placedStencils[0]);
+                }
+                else
+                {
+                    // If multiple stencils, show selection dialog
+                    ShowStencilSelectionDialog();
+                }
+            }
+        }
+        
+        private void ShowRemoveStencilConfirmation(PlacedStencil stencil)
+        {
+            var skin = Skin.CreateDefaultSkin();
+            var message = $"Remove stencil '{stencil.Pattern.Name}'?";
+            
+            var dialog = new ConfirmationDialog("Remove Stencil", message, skin, 
+                onYes: () =>
+                {
+                    _inventoryGrid.RemoveStencil(stencil);
+                    Debug.Log($"Removed stencil: {stencil.Pattern.Name}");
+                });
+            
+            dialog.Show(_stage);
+        }
+        
+        private void ShowStencilSelectionDialog()
+        {
+            // For now, just remove the first stencil with confirmation
+            var placedStencils = _inventoryGrid.GetPlacedStencils();
+            if (placedStencils.Count > 0)
+            {
+                ShowRemoveStencilConfirmation(placedStencils[0]);
             }
         }
         

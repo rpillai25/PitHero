@@ -54,6 +54,8 @@ namespace PitHero.UI
         private bool _moveStencilsMode;
         private PlacedStencil _selectedStencil;
         private Point? _stencilDragOffset; // Offset from stencil anchor to click position
+        private List<RolePlayingFramework.Synergies.ActiveSynergy> _activeSynergies;
+        private readonly Dictionary<Point, Nez.Tweens.ITween<Color>> _slotGlowTweens; // Track glow tweens per slot position
 
         public InventoryGrid()
         {
@@ -63,6 +65,8 @@ namespace PitHero.UI
             _itemStackMap = new Dictionary<IItem, int>(64);
             _stencilManager = new ActiveStencilManager();
             _moveStencilsMode = false;
+            _activeSynergies = new List<RolePlayingFramework.Synergies.ActiveSynergy>();
+            _slotGlowTweens = new Dictionary<Point, Nez.Tweens.ITween<Color>>();
             BuildSlots();
             LayoutSlots();
         }
@@ -714,10 +718,37 @@ namespace PitHero.UI
         {
             if (Core.Content == null) return;
             
+            // Draw stencil overlays first
             var placedStencils = _stencilManager.PlacedStencils;
             for (int i = 0; i < placedStencils.Count; i++)
             {
                 DrawStencilOverlay(batcher, placedStencils[i]);
+            }
+            
+            // Draw glow effects for completed synergies (independent of stencils)
+            DrawSynergyGlowEffects(batcher);
+        }
+        
+        /// <summary>Draws glow effects for completed synergy patterns.</summary>
+        private void DrawSynergyGlowEffects(Batcher batcher)
+        {
+            // Use oscillating alpha for glow effect
+            var time = Time.TotalTime;
+            var glowAlpha = (byte)((System.Math.Sin(time * 3f) * 0.5f + 0.5f) * 150f + 100f);
+            
+            foreach (var slotPos in _slotGlowTweens.Keys)
+            {
+                var slot = FindSlotAtGrid(slotPos.X, slotPos.Y);
+                if (slot == null) continue;
+                
+                // Draw green glow overlay
+                var glowColor = new Color(0, 255, 0, glowAlpha);
+                var slotX = slot.GetX();
+                var slotY = slot.GetY();
+                var slotW = slot.GetWidth();
+                var slotH = slot.GetHeight();
+                
+                batcher.DrawRect(slotX, slotY, slotW, slotH, glowColor);
             }
         }
         
@@ -1015,5 +1046,46 @@ namespace PitHero.UI
         
         /// <summary>Gets all placed stencils.</summary>
         public IReadOnlyList<PlacedStencil> GetPlacedStencils() => _stencilManager.PlacedStencils;
+        
+        /// <summary>Updates active synergies for glow effect rendering.</summary>
+        public void UpdateActiveSynergies(List<RolePlayingFramework.Synergies.ActiveSynergy> synergies)
+        {
+            _activeSynergies = synergies ?? new List<RolePlayingFramework.Synergies.ActiveSynergy>();
+            UpdateSynergyGlowEffects();
+        }
+        
+        /// <summary>Updates glow effects for completed synergy patterns.</summary>
+        private void UpdateSynergyGlowEffects()
+        {
+            // Stop all existing glow tweens
+            foreach (var tween in _slotGlowTweens.Values)
+            {
+                tween?.Stop();
+            }
+            _slotGlowTweens.Clear();
+            
+            // Start new glow tweens for active synergies
+            for (int i = 0; i < _activeSynergies.Count; i++)
+            {
+                var synergy = _activeSynergies[i];
+                var slots = synergy.AffectedSlots;
+                
+                for (int j = 0; j < slots.Count; j++)
+                {
+                    var slotPos = slots[j];
+                    var slot = FindSlotAtGrid(slotPos.X, slotPos.Y);
+                    
+                    if (slot != null && !_slotGlowTweens.ContainsKey(slotPos))
+                    {
+                        // Create a color tween for glow effect (green to white)
+                        var greenColor = new Color(0, 255, 0, 150);
+                        var whiteColor = new Color(255, 255, 255, 150);
+                        
+                        // We'll store the tween but apply the color in DrawStencilOverlays
+                        _slotGlowTweens[slotPos] = null; // Placeholder for now
+                    }
+                }
+            }
+        }
     }
 }
