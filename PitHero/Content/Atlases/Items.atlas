@@ -73,14 +73,53 @@ WoodenShield
 Shortcut
 	33,132,32,32
 	0.5,0.5
-LongSword
+StencilAccessory
 	0,165,32,32
 	0.5,0.5
-ShortSword
+StencilArmorGi
 	66,99,32,32
 	0.5,0.5
-WeaponShield
+StencilArmorMail
 	33,165,32,32
+	0.5,0.5
+StencilArmorRobe
+	0,198,32,32
+	0.5,0.5
+StencilConsumable
+	99,99,32,32
+	0.5,0.5
+StencilHatHelm
+	66,132,32,32
+	0.5,0.5
+StencilHatPriest
+	66,165,32,32
+	0.5,0.5
+StencilHatWizard
+	132,99,32,32
+	0.5,0.5
+StencilShield
+	33,198,32,32
+	0.5,0.5
+StencilWeaponKnuckle
+	99,132,32,32
+	0.5,0.5
+StencilWeaponRod
+	66,198,32,32
+	0.5,0.5
+StencilWeaponStaff
+	132,132,32,32
+	0.5,0.5
+StencilWeaponSword
+	99,165,32,32
+	0.5,0.5
+LongSword
+	165,99,32,32
+	0.5,0.5
+ShortSword
+	132,165,32,32
+	0.5,0.5
+WeaponShield
+	99,198,32,32
 	0.5,0.5
 
 Accessories
@@ -98,6 +137,9 @@ Helms
 Shields
 	8
 	22,23
+StencilIcons
+	8
+	25,26,27,28,29,30,31,32,33,34,35,36,37
 Swords
 	8
-	25,26
+	38,39

@@ -4,4 +4,9 @@
     <StartAction>Project</StartAction>
     <ExternalConsole>false</ExternalConsole>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Update="ECS\Components\ActorComponent.cs">
+      <SubType>Component</SubType>
+    </Compile>
+  </ItemGroup>
 </Project>
