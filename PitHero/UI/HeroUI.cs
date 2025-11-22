@@ -32,6 +32,13 @@ namespace PitHero.UI
         
         // Inventory tab content
         private InventoryGrid _inventoryGrid;
+        private TextButton _viewStencilsButton;
+        private TextButton _moveStencilsButton;
+        private TextButton _removeStencilButton;
+        
+        // Stencil system
+        private StencilLibraryPanel _stencilLibraryPanel;
+        private List<RolePlayingFramework.Synergies.SynergyPattern> _allSynergyPatterns;
         
         // Item card for selection only (hover uses tooltip)
         private ItemCard _selectedItemCard;
@@ -49,7 +56,16 @@ namespace PitHero.UI
         // Hero Crystal tab component
         private HeroCrystalTab _heroCrystalTab;
 
-        public HeroUI() { }
+        public HeroUI() 
+        {
+            // Initialize all synergy patterns
+            _allSynergyPatterns = new List<RolePlayingFramework.Synergies.SynergyPattern>();
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ExampleSynergyPatterns.CreateSwordShieldMastery());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ExampleSynergyPatterns.CreateMagesFocus());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ExampleSynergyPatterns.CreateMonksBalance());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ExampleSynergyPatterns.CreateHeavyArmorSet());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ExampleSynergyPatterns.CreatePriestsDevotion());
+        }
 
         /// <summary>Initializes the Hero button and adds it to the stage</summary>
         public void InitializeUI(Stage stage)
@@ -150,6 +166,8 @@ namespace PitHero.UI
 
         private void PopulateInventoryTab(Tab inventoryTab, Skin skin)
         {
+            var container = new Table();
+            
             _inventoryGrid = new InventoryGrid();
             _inventoryGrid.OnItemHovered += HandleItemHovered;
             _inventoryGrid.OnItemUnhovered += HandleItemUnhovered;
@@ -167,7 +185,94 @@ namespace PitHero.UI
             var scrollPane = new ScrollPane(_inventoryGrid, skin);
             scrollPane.SetScrollingDisabled(true, false);
             
-            inventoryTab.Add(scrollPane).Expand().Fill().Pad(10f);
+            container.Add(scrollPane).Expand().Fill().Pad(10f);
+            container.Row();
+            
+            // Add stencil control buttons
+            var buttonTable = new Table();
+            buttonTable.Pad(5f);
+            
+            _viewStencilsButton = new TextButton("View Stencils", skin);
+            _viewStencilsButton.OnClicked += HandleViewStencilsClicked;
+            buttonTable.Add(_viewStencilsButton).Width(120f).Height(30f).Pad(5f);
+            
+            _moveStencilsButton = new TextButton("Move Stencils", skin);
+            _moveStencilsButton.OnClicked += HandleMoveStencilsClicked;
+            buttonTable.Add(_moveStencilsButton).Width(120f).Height(30f).Pad(5f);
+            
+            _removeStencilButton = new TextButton("Remove Stencil", skin);
+            _removeStencilButton.OnClicked += HandleRemoveStencilClicked;
+            buttonTable.Add(_removeStencilButton).Width(120f).Height(30f).Pad(5f);
+            
+            container.Add(buttonTable).Fill();
+            
+            inventoryTab.Add(container).Expand().Fill();
+            
+            // Create stencil library panel
+            _stencilLibraryPanel = new StencilLibraryPanel(skin);
+            _stencilLibraryPanel.OnStencilActivated += HandleStencilActivated;
+            _stencilLibraryPanel.SetVisible(false);
+        }
+        
+        private void HandleViewStencilsClicked(Button button)
+        {
+            if (_stencilLibraryPanel != null && !_stencilLibraryPanel.IsVisible())
+            {
+                var gameStateService = Core.Services.GetService<GameStateService>();
+                if (gameStateService != null)
+                {
+                    _stencilLibraryPanel.UpdateWithGameState(gameStateService, _allSynergyPatterns);
+                }
+                
+                _stencilLibraryPanel.SetPosition(100f, 100f);
+                _stage.AddElement(_stencilLibraryPanel);
+                _stencilLibraryPanel.SetVisible(true);
+            }
+        }
+        
+        private void HandleMoveStencilsClicked(Button button)
+        {
+            if (_inventoryGrid != null)
+            {
+                bool newMode = !_inventoryGrid.IsMoveStencilsModeActive();
+                _inventoryGrid.SetMoveStencilsMode(newMode);
+                
+                // Update button appearance to show mode
+                if (newMode)
+                {
+                    _moveStencilsButton.SetText("Exit Move Mode");
+                }
+                else
+                {
+                    _moveStencilsButton.SetText("Move Stencils");
+                }
+            }
+        }
+        
+        private void HandleRemoveStencilClicked(Button button)
+        {
+            if (_inventoryGrid != null)
+            {
+                var placedStencils = _inventoryGrid.GetPlacedStencils();
+                if (placedStencils.Count > 0)
+                {
+                    // For now, just remove the first stencil
+                    // TODO: Add selection UI to choose which stencil to remove
+                    _inventoryGrid.RemoveStencil(placedStencils[0]);
+                    Debug.Log("Removed stencil");
+                }
+            }
+        }
+        
+        private void HandleStencilActivated(RolePlayingFramework.Synergies.SynergyPattern pattern)
+        {
+            if (_inventoryGrid != null)
+            {
+                // Place stencil at default position (top-left of inventory area, row 2)
+                var anchor = new Point(0, 2);
+                _inventoryGrid.PlaceStencil(pattern, anchor);
+                Debug.Log($"Activated stencil: {pattern.Name}");
+            }
         }
 
         private void PopulatePrioritiesTab(Tab prioritiesTab, Skin skin)

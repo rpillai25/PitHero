@@ -48,6 +48,12 @@ namespace PitHero.UI
         private int _nextAcquireIndex = 1; // monotonic acquisition counter
         private readonly Dictionary<IItem, int> _acquireIndexMap; // persistent mapping of items to acquire indices
         private readonly Dictionary<IItem, int> _itemStackMap;    // last known stack count per item instance
+        
+        // Stencil system
+        private readonly ActiveStencilManager _stencilManager;
+        private bool _moveStencilsMode;
+        private PlacedStencil _selectedStencil;
+        private Point? _stencilDragOffset; // Offset from stencil anchor to click position
 
         public InventoryGrid()
         {
@@ -55,6 +61,8 @@ namespace PitHero.UI
             _persistBuffer = new IItem[CELL_COUNT];
             _acquireIndexMap = new Dictionary<IItem, int>(64);
             _itemStackMap = new Dictionary<IItem, int>(64);
+            _stencilManager = new ActiveStencilManager();
+            _moveStencilsMode = false;
             BuildSlots();
             LayoutSlots();
         }
@@ -114,7 +122,7 @@ namespace PitHero.UI
                 return new InventorySlotData(x, y, InventorySlotType.Null);
             }
             
-            // Rows 2-7: Pure inventory (6 rows × 20 columns = 120 inventory slots)
+            // Rows 2-7: Pure inventory (6 rows ï¿½ 20 columns = 120 inventory slots)
             return new InventorySlotData(x, y, InventorySlotType.Inventory);
         }
 
@@ -402,6 +410,13 @@ namespace PitHero.UI
         /// <summary>Handles slot click highlighting and swapping.</summary>
         private void HandleSlotClicked(InventorySlot clickedSlot)
         {
+            // Handle stencil mode interactions
+            if (_moveStencilsMode)
+            {
+                HandleStencilModeClick(clickedSlot);
+                return;
+            }
+            
             // Ignore clicks from shortcut bar selections - shortcuts reference inventory slots, not swap with them
             if (InventorySelectionManager.HasSelection() && InventorySelectionManager.IsSelectionFromShortcutBar())
             {
@@ -435,6 +450,38 @@ namespace PitHero.UI
                 InventorySelectionManager.ClearSelection();
                 Debug.Log($"Swapped items between ({prev.SlotData.X},{clickedSlot.SlotData.Y}) and ({clickedSlot.SlotData.X},{clickedSlot.SlotData.Y})");
                 OnItemDeselected?.Invoke();
+            }
+        }
+        
+        /// <summary>Handles clicks when in move stencils mode.</summary>
+        private void HandleStencilModeClick(InventorySlot clickedSlot)
+        {
+            var gridPos = new Point(clickedSlot.SlotData.X, clickedSlot.SlotData.Y);
+            
+            if (_selectedStencil == null)
+            {
+                // Select a stencil if clicked on one
+                _selectedStencil = _stencilManager.FindStencilAtPosition(gridPos);
+                if (_selectedStencil != null)
+                {
+                    // Calculate offset from anchor to click position
+                    _stencilDragOffset = new Point(gridPos.X - _selectedStencil.Anchor.X, gridPos.Y - _selectedStencil.Anchor.Y);
+                    Debug.Log($"Selected stencil: {_selectedStencil.Pattern.Name}");
+                }
+            }
+            else
+            {
+                // Move the selected stencil
+                if (_stencilDragOffset.HasValue)
+                {
+                    var newAnchor = new Point(gridPos.X - _stencilDragOffset.Value.X, gridPos.Y - _stencilDragOffset.Value.Y);
+                    _stencilManager.MoveStencil(_selectedStencil, newAnchor, GRID_WIDTH, GRID_HEIGHT);
+                    Debug.Log($"Moved stencil to anchor: ({newAnchor.X}, {newAnchor.Y})");
+                }
+                
+                // Deselect stencil after move
+                _selectedStencil = null;
+                _stencilDragOffset = null;
             }
         }
 
@@ -642,6 +689,9 @@ namespace PitHero.UI
         {
             // Draw children (slots) first so animated sprites render on top
             base.Draw(batcher, parentAlpha);
+            
+            // Draw stencil overlays
+            DrawStencilOverlays(batcher);
 
             // Legacy UI tween disabled when using manager overlay
             if (!_uiSwapActive) return;
@@ -657,6 +707,105 @@ namespace PitHero.UI
             float t = _uiSwapElapsed / SWAP_TWEEN_DURATION;
             if (t < 0f) t = 0f; else if (t > 1f) t = 1f;
             float ease = 1f - (1f - t) * (1f - t); // QuadOut
+        }
+        
+        /// <summary>Draws stencil overlays on the inventory grid.</summary>
+        private void DrawStencilOverlays(Batcher batcher)
+        {
+            if (Core.Content == null) return;
+            
+            var placedStencils = _stencilManager.PlacedStencils;
+            for (int i = 0; i < placedStencils.Count; i++)
+            {
+                DrawStencilOverlay(batcher, placedStencils[i]);
+            }
+        }
+        
+        /// <summary>Draws a single stencil overlay.</summary>
+        private void DrawStencilOverlay(Batcher batcher, PlacedStencil stencil)
+        {
+            var pattern = stencil.Pattern;
+            var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
+            
+            var offsets = pattern.GridOffsets;
+            var requiredKinds = pattern.RequiredKinds;
+            
+            for (int i = 0; i < offsets.Count; i++)
+            {
+                var targetX = stencil.Anchor.X + offsets[i].X;
+                var targetY = stencil.Anchor.Y + offsets[i].Y;
+                
+                // Find the slot at this position
+                var slot = FindSlotAtGrid(targetX, targetY);
+                if (slot == null) continue;
+                
+                var slotItem = slot.SlotData.Item;
+                var requiredKind = requiredKinds[i];
+                
+                // Determine overlay color based on item match
+                Color overlayColor;
+                Nez.Textures.Sprite overlaySprite = null;
+                
+                if (slotItem == null)
+                {
+                    // Empty slot - show stencil icon
+                    var stencilSpriteName = $"Stencil{requiredKind}";
+                    try
+                    {
+                        overlaySprite = itemsAtlas.GetSprite(stencilSpriteName);
+                        overlayColor = new Color(255, 255, 255, 150); // Semi-transparent white
+                    }
+                    catch
+                    {
+                        // Sprite not found, skip
+                        continue;
+                    }
+                }
+                else if (slotItem.Kind == requiredKind)
+                {
+                    // Matching item - green highlight
+                    overlayColor = new Color(0, 255, 0, 100); // Semi-transparent green
+                }
+                else
+                {
+                    // Non-matching item - red highlight
+                    overlayColor = new Color(255, 0, 0, 100); // Semi-transparent red
+                }
+                
+                // Draw overlay
+                var slotX = slot.GetX();
+                var slotY = slot.GetY();
+                var slotW = slot.GetWidth();
+                var slotH = slot.GetHeight();
+                
+                if (overlaySprite != null)
+                {
+                    // Draw stencil icon sprite
+                    var drawable = new Nez.UI.SpriteDrawable(overlaySprite);
+                    drawable.Draw(batcher, slotX, slotY, slotW, slotH, overlayColor);
+                }
+                else
+                {
+                    // Draw color rectangle overlay
+                    batcher.DrawRect(slotX, slotY, slotW, slotH, overlayColor);
+                }
+            }
+        }
+        
+        /// <summary>Finds a slot at the given grid coordinates.</summary>
+        private InventorySlot FindSlotAtGrid(int gridX, int gridY)
+        {
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                var data = slot.SlotData;
+                if (data.X == gridX && data.Y == gridY)
+                {
+                    return slot;
+                }
+            }
+            return null;
         }
 
         /// <summary>Persists current bag ordering to ItemBag via raw buffer (no allocations).</summary>
@@ -835,5 +984,36 @@ namespace PitHero.UI
             }
             return null;
         }
+        
+        // Stencil system public methods
+        
+        /// <summary>Places a stencil on the inventory grid.</summary>
+        public void PlaceStencil(RolePlayingFramework.Synergies.SynergyPattern pattern, Point anchor)
+        {
+            _stencilManager.PlaceStencil(pattern, anchor);
+        }
+        
+        /// <summary>Removes a stencil from the grid.</summary>
+        public void RemoveStencil(PlacedStencil stencil)
+        {
+            _stencilManager.RemoveStencil(stencil);
+        }
+        
+        /// <summary>Toggles move stencils mode.</summary>
+        public void SetMoveStencilsMode(bool enabled)
+        {
+            _moveStencilsMode = enabled;
+            if (!enabled)
+            {
+                _selectedStencil = null;
+                _stencilDragOffset = null;
+            }
+        }
+        
+        /// <summary>Gets whether move stencils mode is active.</summary>
+        public bool IsMoveStencilsModeActive() => _moveStencilsMode;
+        
+        /// <summary>Gets all placed stencils.</summary>
+        public IReadOnlyList<PlacedStencil> GetPlacedStencils() => _stencilManager.PlacedStencils;
     }
 }
