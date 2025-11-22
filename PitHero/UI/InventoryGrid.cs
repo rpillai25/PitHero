@@ -817,17 +817,17 @@ namespace PitHero.UI
         /// <summary>Draws glow effects for completed synergy patterns.</summary>
         private void DrawSynergyGlowEffects(Batcher batcher)
         {
-            // Use oscillating alpha for glow effect
+            // Use oscillating alpha for glow effect (0 to 100, transparent to semi-transparent)
             var time = Time.TotalTime;
-            var glowAlpha = (byte)((System.Math.Sin(time * 3f) * 0.5f + 0.5f) * 150f + 100f);
-            
+            var glowIntensity = (System.Math.Sin(time * 3f) * 0.5f + 0.5f) * 0.5f; // 0.0 to 0.5
+
             foreach (var slotPos in _slotGlowTweens.Keys)
             {
                 var slot = FindSlotAtGrid(slotPos.X, slotPos.Y);
                 if (slot == null) continue;
-                
+
                 // Draw green glow overlay
-                var glowColor = new Color(0, 255, 0, glowAlpha);
+                var glowColor = new Color(0, 255, 0, 255) * (float)glowIntensity;
                 var slotX = slot.GetX();
                 var slotY = slot.GetY();
                 var slotW = slot.GetWidth();
@@ -836,7 +836,8 @@ namespace PitHero.UI
                 batcher.DrawRect(slotX, slotY, slotW, slotH, glowColor);
             }
         }
-        
+
+
         /// <summary>Draws a single stencil overlay.</summary>
         private void DrawStencilOverlay(Batcher batcher, PlacedStencil stencil)
         {
@@ -879,13 +880,13 @@ namespace PitHero.UI
                 }
                 else if (slotItem.Kind == requiredKind)
                 {
-                    // Matching item - green highlight
-                    overlayColor = new Color(0, 255, 0, 100); // Semi-transparent green
+                    // Matching item - more transparent green highlight
+                    overlayColor = new Color(0, 255, 0, 50); // 20% opacity green
                 }
                 else
                 {
-                    // Non-matching item - red highlight
-                    overlayColor = new Color(255, 0, 0, 100); // Semi-transparent red
+                    // Non-matching item - more transparent red highlight
+                    overlayColor = new Color(255, 0, 0, 50); // 20% opacity red
                 }
                 
                 // Draw overlay
@@ -1162,12 +1163,8 @@ namespace PitHero.UI
                     
                     if (slot != null && !_slotGlowTweens.ContainsKey(slotPos))
                     {
-                        // Create a color tween for glow effect (green to white)
-                        var greenColor = new Color(0, 255, 0, 150);
-                        var whiteColor = new Color(255, 255, 255, 150);
-                        
-                        // We'll store the tween but apply the color in DrawStencilOverlays
-                        _slotGlowTweens[slotPos] = null; // Placeholder for now
+                        // Mark slot for glow rendering (actual glow drawn in DrawSynergyGlowEffects)
+                        _slotGlowTweens[slotPos] = null;
                     }
                 }
             }
