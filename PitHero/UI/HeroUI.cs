@@ -173,6 +173,7 @@ namespace PitHero.UI
             _inventoryGrid.OnItemUnhovered += HandleItemUnhovered;
             _inventoryGrid.OnItemSelected += HandleItemSelected;
             _inventoryGrid.OnItemDeselected += HandleItemDeselected;
+            _inventoryGrid.OnStencilRemovalRequested += HandleStencilRemovalRequested;
             
             // Initialize context menu
             _inventoryGrid.InitializeContextMenu(_stage, skin);
@@ -214,6 +215,12 @@ namespace PitHero.UI
             _stencilLibraryPanel.SetVisible(false);
         }
         
+        private void HandleStencilRemovalRequested(PlacedStencil stencil)
+        {
+            // Show confirmation dialog immediately when stencil is clicked
+            ShowRemoveStencilConfirmation(stencil);
+        }
+        
         private void HandleViewStencilsClicked(Button button)
         {
             if (_stencilLibraryPanel != null && !_stencilLibraryPanel.IsVisible())
@@ -251,24 +258,32 @@ namespace PitHero.UI
         
         private void HandleRemoveStencilClicked(Button button)
         {
-            if (_inventoryGrid != null && _stage != null)
+            if (_inventoryGrid != null)
             {
-                var placedStencils = _inventoryGrid.GetPlacedStencils();
-                if (placedStencils.Count == 0)
-                {
-                    Debug.Log("No stencils to remove");
-                    return;
-                }
+                // Check if we're currently in remove mode
+                bool currentlyInRemoveMode = _inventoryGrid.IsRemoveStencilsModeActive();
                 
-                // If only one stencil, show confirmation dialog
-                if (placedStencils.Count == 1)
+                if (!currentlyInRemoveMode)
                 {
-                    ShowRemoveStencilConfirmation(placedStencils[0]);
+                    // Entering remove mode
+                    var placedStencils = _inventoryGrid.GetPlacedStencils();
+                    if (placedStencils.Count == 0)
+                    {
+                        Debug.Log("No stencils to remove");
+                        return;
+                    }
+                    
+                    // Activate remove mode - user must now click a stencil
+                    _inventoryGrid.SetRemoveStencilsMode(true);
+                    _removeStencilButton.SetText("Exit Remove Mode");
+                    Debug.Log("Remove Stencils mode activated - click a stencil to remove it");
                 }
                 else
                 {
-                    // If multiple stencils, show selection dialog
-                    ShowStencilSelectionDialog();
+                    // Exiting remove mode - just exit without showing any dialog
+                    _inventoryGrid.SetRemoveStencilsMode(false);
+                    _removeStencilButton.SetText("Remove Stencil");
+                    Debug.Log("Exited Remove Stencils mode");
                 }
             }
         }
@@ -283,6 +298,15 @@ namespace PitHero.UI
                 {
                     _inventoryGrid.RemoveStencil(stencil);
                     Debug.Log($"Removed stencil: {stencil.Pattern.Name}");
+                    
+                    // Exit remove mode after removal
+                    _inventoryGrid.SetRemoveStencilsMode(false);
+                    _removeStencilButton.SetText("Remove Stencil");
+                },
+                onNo: () =>
+                {
+                    // If user cancels, stay in remove mode so they can try again
+                    Debug.Log("Stencil removal cancelled");
                 });
             
             dialog.Show(_stage);

@@ -45,6 +45,9 @@ namespace PitHero.UI
         public event System.Action OnItemUnhovered;
         public event System.Action<IItem> OnItemSelected;
         public event System.Action OnItemDeselected;
+        
+        // Public event for stencil removal confirmation
+        public event System.Action<PlacedStencil> OnStencilRemovalRequested;
 
         private int _nextAcquireIndex = 1; // monotonic acquisition counter
         private readonly Dictionary<IItem, int> _acquireIndexMap; // persistent mapping of items to acquire indices
@@ -53,6 +56,7 @@ namespace PitHero.UI
         // Stencil system
         private readonly ActiveStencilManager _stencilManager;
         private bool _moveStencilsMode;
+        private bool _removeStencilsMode;
         private PlacedStencil _selectedStencil;
         private Point? _stencilDragOffset; // Offset from stencil anchor to click position
         private List<RolePlayingFramework.Synergies.ActiveSynergy> _activeSynergies;
@@ -482,6 +486,23 @@ namespace PitHero.UI
         {
             var gridPos = new Point(clickedSlot.SlotData.X, clickedSlot.SlotData.Y);
             
+            // Handle Remove Stencils Mode
+            if (_removeStencilsMode)
+            {
+                // Select a stencil if clicked on one and immediately trigger removal confirmation
+                var clickedStencil = _stencilManager.FindStencilAtPosition(gridPos);
+                if (clickedStencil != null)
+                {
+                    _selectedStencil = clickedStencil;
+                    Debug.Log($"Selected stencil for removal: {clickedStencil.Pattern.Name}");
+                    
+                    // Immediately trigger removal confirmation event
+                    OnStencilRemovalRequested?.Invoke(clickedStencil);
+                }
+                return;
+            }
+            
+            // Handle Move Stencils Mode
             if (_selectedStencil == null)
             {
                 // Select a stencil if clicked on one
@@ -810,8 +831,42 @@ namespace PitHero.UI
                 DrawStencilOverlay(batcher, placedStencils[i]);
             }
             
+            // Draw highlight box for selected stencil (in either move or remove mode)
+            if (_selectedStencil != null && (_moveStencilsMode || _removeStencilsMode))
+            {
+                DrawStencilHighlight(batcher, _selectedStencil);
+            }
+            
             // Draw glow effects for completed synergies (independent of stencils)
             DrawSynergyGlowEffects(batcher);
+        }
+        
+        /// <summary>Draws highlight box around selected stencil pattern.</summary>
+        private void DrawStencilHighlight(Batcher batcher, PlacedStencil stencil)
+        {
+            var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+            var highlightBoxSprite = uiAtlas.GetSprite("HighlightBox");
+            if (highlightBoxSprite == null) return;
+            
+            var highlightDrawable = new Nez.UI.SpriteDrawable(highlightBoxSprite);
+            var offsets = stencil.Pattern.GridOffsets;
+            
+            // Draw highlight on all slots in the stencil pattern
+            for (int i = 0; i < offsets.Count; i++)
+            {
+                var targetX = stencil.Anchor.X + offsets[i].X;
+                var targetY = stencil.Anchor.Y + offsets[i].Y;
+                
+                var slot = FindSlotAtGrid(targetX, targetY);
+                if (slot == null) continue;
+                
+                var slotX = slot.GetX();
+                var slotY = slot.GetY();
+                var slotW = slot.GetWidth();
+                var slotH = slot.GetHeight();
+                
+                highlightDrawable.Draw(batcher, slotX, slotY, slotW, slotH, Color.White);
+            }
         }
         
         /// <summary>Draws glow effects for completed synergy patterns.</summary>
@@ -836,8 +891,7 @@ namespace PitHero.UI
                 batcher.DrawRect(slotX, slotY, slotW, slotH, glowColor);
             }
         }
-
-
+        
         /// <summary>Draws a single stencil overlay.</summary>
         private void DrawStencilOverlay(Batcher batcher, PlacedStencil stencil)
         {
@@ -1141,14 +1195,43 @@ namespace PitHero.UI
                 _selectedStencil = null;
                 _stencilDragOffset = null;
             }
+            
+            // Ensure only one mode is active at a time
+            if (enabled && _removeStencilsMode)
+            {
+                _removeStencilsMode = false;
+            }
+        }
+        
+        /// <summary>Toggles remove stencils mode.</summary>
+        public void SetRemoveStencilsMode(bool enabled)
+        {
+            _removeStencilsMode = enabled;
+            if (!enabled)
+            {
+                _selectedStencil = null;
+            }
+            
+            // Ensure only one mode is active at a time
+            if (enabled && _moveStencilsMode)
+            {
+                _moveStencilsMode = false;
+                _stencilDragOffset = null;
+            }
         }
         
         /// <summary>Gets whether move stencils mode is active.</summary>
         public bool IsMoveStencilsModeActive() => _moveStencilsMode;
         
+        /// <summary>Gets whether remove stencils mode is active.</summary>
+        public bool IsRemoveStencilsModeActive() => _removeStencilsMode;
+        
+        /// <summary>Gets the currently selected stencil (for removal confirmation).</summary>
+        public PlacedStencil GetSelectedStencil() => _selectedStencil;
+        
         /// <summary>Gets all placed stencils.</summary>
         public IReadOnlyList<PlacedStencil> GetPlacedStencils() => _stencilManager.PlacedStencils;
-        
+
         /// <summary>Updates active synergies for glow effect rendering.</summary>
         public void UpdateActiveSynergies(List<RolePlayingFramework.Synergies.ActiveSynergy> synergies)
         {
