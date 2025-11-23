@@ -37,5 +37,15 @@ namespace RolePlayingFramework.Synergies
             if (amount < 0) return;
             PointsEarned += amount;
         }
+
+        public bool ContainsSlot(Point slot)
+        {
+            foreach (var affected in AffectedSlots)
+            {
+                if (affected == slot)
+                    return true;
+            }
+            return false;
+        }
     }
 }

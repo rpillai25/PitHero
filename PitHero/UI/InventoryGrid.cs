@@ -878,15 +878,20 @@ namespace PitHero.UI
                         continue;
                     }
                 }
+                else if (SlotIsInActiveSynergy(slot))
+                {
+                    // Part of active synergy, display no highlight. The glow effect is all that's needed
+                    continue;
+                }
                 else if (slotItem.Kind == requiredKind)
                 {
                     // Matching item - more transparent green highlight
-                    overlayColor = new Color(0, 255, 0, 50); // 20% opacity green
+                    overlayColor = new Color(255, 255, 0, 255) * 0.3f; // 20% opacity green
                 }
                 else
                 {
                     // Non-matching item - more transparent red highlight
-                    overlayColor = new Color(255, 0, 0, 50); // 20% opacity red
+                    overlayColor = new Color(255, 0, 0, 255) * 0.3f; // 20% opacity red
                 }
                 
                 // Draw overlay
@@ -908,7 +913,18 @@ namespace PitHero.UI
                 }
             }
         }
-        
+
+        private bool SlotIsInActiveSynergy(InventorySlot slot)
+        {
+            var slotPos = new Point(slot.SlotData.X, slot.SlotData.Y);
+            foreach (var active in _activeSynergies)
+            {
+                if (active.ContainsSlot(slotPos))
+                    return true;
+            }
+            return false;
+        }
+
         /// <summary>Finds a slot at the given grid coordinates.</summary>
         private InventorySlot FindSlotAtGrid(int gridX, int gridY)
         {

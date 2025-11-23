@@ -32,7 +32,7 @@ namespace PitHero.UI
             _slots = new StencilSlot[TOTAL_SLOTS];
             _allPatterns = new List<SynergyPattern>();
             
-            SetSize(400f, 400f);
+            SetSize(450f, 500f); // Increased size to accommodate scroll pane and details
             SetMovable(true);
             SetResizable(false);
             
@@ -43,6 +43,11 @@ namespace PitHero.UI
         {
             var mainTable = new Table();
             mainTable.SetFillParent(true);
+            mainTable.Pad(10f); // Add padding for better spacing
+            
+            // Create content table to hold grid and details
+            var contentTable = new Table();
+            contentTable.Pad(5f);
             
             // Create grid table
             _gridTable = new Table();
@@ -62,28 +67,33 @@ namespace PitHero.UI
                     _gridTable.Row();
             }
             
-            // Wrap grid in scroll pane
-            var scrollPane = new ScrollPane(_gridTable, skin);
-            scrollPane.SetScrollingDisabled(true, false);
-            
             // Create details panel
             var detailsTable = new Table();
             detailsTable.Pad(10f);
+            detailsTable.SetBackground(skin.Get<WindowStyle>().Background); // Add background for visibility
             
             _detailsLabel = new Label("Select a stencil to view details", skin);
             _detailsLabel.SetWrap(true);
-            detailsTable.Add(_detailsLabel).Width(350f).Fill();
+            detailsTable.Add(_detailsLabel).Width(400f).Expand().Fill().Top();
             detailsTable.Row();
             
             _activateButton = new TextButton("Activate Stencil", skin);
             _activateButton.SetTouchable(Touchable.Disabled);
             _activateButton.OnClicked += HandleActivateClicked;
-            detailsTable.Add(_activateButton).Pad(10f, 10f, 0, 0).Width(150f);
+            detailsTable.Add(_activateButton).Pad(10f, 10f, 0, 0).Width(150f).Height(30f);
             
-            // Add components to main table
-            mainTable.Add(scrollPane).Expand().Fill().Pad(0, 0, 10f, 0);
-            mainTable.Row();
-            mainTable.Add(detailsTable).Height(100f).Fill();
+            // Add grid and details to content table
+            contentTable.Add(_gridTable).Width(420f).Top().Left();
+            contentTable.Row();
+            contentTable.Add(detailsTable).Height(120f).Width(420f).Top().Left();
+            
+            // Wrap content in scroll pane
+            var scrollPane = new ScrollPane(contentTable, skin);
+            scrollPane.SetScrollingDisabled(true, false); // Disable horizontal, enable vertical scrolling
+            scrollPane.SetFadeScrollBars(false); // Always show scroll bar
+            
+            // Add scroll pane to main table
+            mainTable.Add(scrollPane).Height(300f).Width(420f).Top().Left();
             
             Add(mainTable);
         }
