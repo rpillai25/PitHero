@@ -241,6 +241,13 @@ namespace PitHero.UI
         {
             if (_inventoryGrid != null)
             {
+                // If remove mode is active, exit it first
+                if (_inventoryGrid.IsRemoveStencilsModeActive())
+                {
+                    _inventoryGrid.SetRemoveStencilsMode(false);
+                    _removeStencilButton.SetText("Remove Stencil");
+                }
+                
                 bool newMode = !_inventoryGrid.IsMoveStencilsModeActive();
                 _inventoryGrid.SetMoveStencilsMode(newMode);
                 
@@ -260,6 +267,13 @@ namespace PitHero.UI
         {
             if (_inventoryGrid != null)
             {
+                // If move mode is active, exit it first
+                if (_inventoryGrid.IsMoveStencilsModeActive())
+                {
+                    _inventoryGrid.SetMoveStencilsMode(false);
+                    _moveStencilsButton.SetText("Move Stencils");
+                }
+                
                 // Check if we're currently in remove mode
                 bool currentlyInRemoveMode = _inventoryGrid.IsRemoveStencilsModeActive();
                 

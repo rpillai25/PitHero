@@ -438,8 +438,8 @@ namespace PitHero.UI
         /// <summary>Handles slot click highlighting and swapping.</summary>
         private void HandleSlotClicked(InventorySlot clickedSlot)
         {
-            // Handle stencil mode interactions
-            if (_moveStencilsMode)
+            // Handle stencil mode interactions (both move and remove modes)
+            if (_moveStencilsMode || _removeStencilsMode)
             {
                 HandleStencilModeClick(clickedSlot);
                 return;
