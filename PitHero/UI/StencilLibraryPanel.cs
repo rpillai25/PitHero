@@ -23,6 +23,7 @@ namespace PitHero.UI
         private StencilSlot[] _slots;
         private Label _detailsLabel;
         private TextButton _activateButton;
+        private TextButton _closeButton;
         private SynergyPattern _selectedPattern;
         
         public event System.Action<SynergyPattern> OnStencilActivated;
@@ -74,13 +75,19 @@ namespace PitHero.UI
             
             _detailsLabel = new Label("Select a stencil to view details", skin);
             _detailsLabel.SetWrap(true);
-            detailsTable.Add(_detailsLabel).Width(400f).Expand().Fill().Top();
+            detailsTable.Add(_detailsLabel).Pad(20f, 0, 0, 0).Width(380f).Top().Left();
             detailsTable.Row();
             
             _activateButton = new TextButton("Activate Stencil", skin);
             _activateButton.SetTouchable(Touchable.Disabled);
             _activateButton.OnClicked += HandleActivateClicked;
-            detailsTable.Add(_activateButton).Pad(10f, 10f, 0, 0).Width(150f).Height(30f);
+            _closeButton = new TextButton("Close", skin);
+            _closeButton.OnClicked += HandleCloseClicked;
+            
+            var buttonsTable = new Table();
+            buttonsTable.Add(_activateButton).Pad(10f, 10f, 0, 0).Width(150f).Height(30f);
+            buttonsTable.Add(_closeButton).Pad(10f, 24f, 0, 0).Width(150f).Height(30f);
+            detailsTable.Add(buttonsTable).Top().Left();
             
             // Add grid and details to content table
             contentTable.Add(_gridTable).Width(420f).Top().Left();
@@ -149,13 +156,9 @@ namespace PitHero.UI
                 _activateButton.SetTouchable(Touchable.Disabled);
                 return;
             }
-            
+
             // Build details text
-            var details = $"{_selectedPattern.Name}\n\n{_selectedPattern.Description}\n\nRequired Items:\n";
-            for (int i = 0; i < _selectedPattern.RequiredKinds.Count; i++)
-            {
-                details += $"- {_selectedPattern.RequiredKinds[i]}\n";
-            }
+            var details = $"{_selectedPattern.Name}\n\n{_selectedPattern.Description}";
             
             _detailsLabel.SetText(details);
             _activateButton.SetTouchable(Touchable.Enabled);
@@ -168,6 +171,11 @@ namespace PitHero.UI
                 OnStencilActivated?.Invoke(_selectedPattern);
                 SetVisible(false);
             }
+        }
+        
+        private void HandleCloseClicked(Button button)
+        {
+            SetVisible(false);
         }
         
         /// <summary>Individual slot in the stencil library grid.</summary>
