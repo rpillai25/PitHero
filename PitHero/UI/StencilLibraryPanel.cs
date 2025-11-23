@@ -145,6 +145,13 @@ namespace PitHero.UI
                 return;
             
             _selectedPattern = pattern;
+            
+            // Update selection state for all slots
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                _slots[i].IsSelected = (_slots[i].Pattern == _selectedPattern);
+            }
+            
             UpdateDetailsPanel();
         }
         
@@ -169,12 +176,28 @@ namespace PitHero.UI
             if (_selectedPattern != null)
             {
                 OnStencilActivated?.Invoke(_selectedPattern);
+                _selectedPattern = null;
+                
+                // Clear selection state
+                for (int i = 0; i < _slots.Length; i++)
+                {
+                    _slots[i].IsSelected = false;
+                }
+                
                 SetVisible(false);
             }
         }
         
         private void HandleCloseClicked(Button button)
         {
+            _selectedPattern = null;
+            
+            // Clear selection state
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                _slots[i].IsSelected = false;
+            }
+            
             SetVisible(false);
         }
         
@@ -184,21 +207,40 @@ namespace PitHero.UI
             private readonly int _index;
             private readonly Sprite _backgroundSprite;
             private readonly SpriteDrawable _backgroundDrawable;
+            private Sprite _selectBoxSprite;
+            private Sprite _highlightBoxSprite;
+            private SpriteDrawable _selectBoxDrawable;
+            private SpriteDrawable _highlightBoxDrawable;
             private SynergyPattern _pattern;
             private bool _isDiscovered;
+            private bool _isHovered;
             private Tooltip _tooltip;
             private Skin _skin;
             
             public event System.Action<int> OnSlotClicked;
             
+            public SynergyPattern Pattern { get; private set; }
+            public bool IsSelected { get; set; }
+            
             public StencilSlot(int index, Skin skin)
             {
                 _index = index;
                 _skin = skin;
+                IsSelected = false;
                 
                 var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
                 _backgroundSprite = itemsAtlas.GetSprite("Inventory");
                 _backgroundDrawable = new SpriteDrawable(_backgroundSprite);
+                
+                // Load UI atlas for select and highlight sprites
+                if (Core.Content != null)
+                {
+                    var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+                    _selectBoxSprite = uiAtlas.GetSprite("SelectBox");
+                    _selectBoxDrawable = new SpriteDrawable(_selectBoxSprite);
+                    _highlightBoxSprite = uiAtlas.GetSprite("HighlightBox");
+                    _highlightBoxDrawable = new SpriteDrawable(_highlightBoxSprite);
+                }
                 
                 SetSize(SLOT_SIZE, SLOT_SIZE);
                 SetTouchable(Touchable.Enabled);
@@ -207,6 +249,7 @@ namespace PitHero.UI
             public void UpdateSlot(SynergyPattern pattern, bool discovered)
             {
                 _pattern = pattern;
+                Pattern = pattern;
                 _isDiscovered = discovered;
                 
                 // Update tooltip
@@ -234,6 +277,18 @@ namespace PitHero.UI
                 if (_isDiscovered && _pattern != null && Core.Content != null)
                 {
                     DrawStencilPreview(batcher);
+                }
+                
+                // Draw select box if hovered
+                if (_isHovered && _selectBoxDrawable != null)
+                {
+                    _selectBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+                }
+                
+                // Draw highlight box if selected
+                if (IsSelected && _highlightBoxDrawable != null)
+                {
+                    _highlightBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
                 }
                 
                 base.Draw(batcher, parentAlpha);
@@ -272,6 +327,7 @@ namespace PitHero.UI
             
             void IInputListener.OnMouseEnter()
             {
+                _isHovered = true;
                 if (_tooltip != null && _isDiscovered)
                 {
                     _tooltip.Hit(Nez.Input.MousePosition);
@@ -280,6 +336,7 @@ namespace PitHero.UI
             
             void IInputListener.OnMouseExit()
             {
+                _isHovered = false;
                 if (_tooltip != null)
                 {
                     _tooltip.Hit(new Vector2(-10000f, -10000f));
