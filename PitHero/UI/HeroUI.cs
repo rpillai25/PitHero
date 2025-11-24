@@ -340,11 +340,38 @@ namespace PitHero.UI
         {
             if (_inventoryGrid != null)
             {
-                // Place stencil at default position (top-left of inventory area, row 2)
-                var anchor = new Point(0, 2);
-                _inventoryGrid.PlaceStencil(pattern, anchor);
+                // Try to find the first empty inventory slot (row 2+, any column)
+                Point? targetAnchor = FindFirstEmptyInventorySlot();
+                
+                if (!targetAnchor.HasValue)
+                {
+                    // No empty slots found, use default position (top-left of inventory area, row 2)
+                    targetAnchor = new Point(0, 2);
+                    Debug.Log($"No empty inventory slots found, placing stencil at default position: {targetAnchor.Value}");
+                }
+                else
+                {
+                    Debug.Log($"Found empty inventory slot at ({targetAnchor.Value.X},{targetAnchor.Value.Y}) for stencil placement");
+                }
+                
+                _inventoryGrid.PlaceStencil(pattern, targetAnchor.Value);
                 Debug.Log($"Activated stencil: {pattern.Name}");
             }
+        }
+        
+        /// <summary>Finds the first empty inventory slot in the grid.</summary>
+        private Point? FindFirstEmptyInventorySlot()
+        {
+            if (_inventoryGrid == null) return null;
+            
+            // Get the available slot from the inventory grid
+            var availableSlot = _inventoryGrid.FindNextAvailableSlot();
+            if (availableSlot != null)
+            {
+                return new Point(availableSlot.X, availableSlot.Y);
+            }
+            
+            return null;
         }
 
         private void PopulatePrioritiesTab(Tab prioritiesTab, Skin skin)
