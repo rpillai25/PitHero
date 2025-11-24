@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Equipment.Accessories
                 "NecklaceOfHealth",
                 ItemKind.Accessory,
                 Rarity,
-                $"+{hpBonus} HP, +{statBonus} Vitality",
+                $"Adventurers wear this to for longevity.",
                 150,
                 new StatBlock(0, 0, statBonus, 0),
                 hp: hpBonus,

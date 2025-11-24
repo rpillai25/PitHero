@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Accessories
                 "ProtectRing",
                 ItemKind.Accessory,
                 Rarity,
-                $"+{defenseBonus} Defense, +{statBonus} Vitality",
+                $"Wear this for more protection\nfrom physical attacks.",
                 120,
                 new StatBlock(0, 0, statBonus, 0),
                 def: defenseBonus,

@@ -17,7 +17,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 "WoodenShield",
                 ItemKind.Shield,
                 Rarity,
-                $"+{defenseBonus} Defense",
+                $"No adventurer should be without one.",
                 80,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

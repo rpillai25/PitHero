@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Equipment.Accessories
                 "MagicChain",
                 ItemKind.Accessory,
                 Rarity,
-                $"+{mpBonus} MP, +{statBonus} Magic",
+                $"Mages wear this to enhance their spells.",
                 200,
                 new StatBlock(0, 0, 0, statBonus),
                 mp: mpBonus,
