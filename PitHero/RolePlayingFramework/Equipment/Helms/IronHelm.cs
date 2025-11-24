@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 "IronHelm",
                 ItemKind.HatHelm,
                 Rarity,
-                $"+{defenseBonus} Defense, Earth Resistant",
+                "Helm providing decent defense\nand earth resistance.",
                 135,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

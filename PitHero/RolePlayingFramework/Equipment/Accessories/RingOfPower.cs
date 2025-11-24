@@ -17,7 +17,7 @@ namespace RolePlayingFramework.Equipment.Accessories
                 "RingOfPower",
                 ItemKind.Accessory,
                 Rarity,
-                $"+{statBonus} Strength",
+                $"Gives a boost to strength.",
                 150,
                 new StatBlock(statBonus, 0, 0, 0),
                 elementalProps: new ElementalProperties(ElementType.Neutral));

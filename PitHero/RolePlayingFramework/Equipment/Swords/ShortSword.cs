@@ -17,7 +17,7 @@ namespace RolePlayingFramework.Equipment.Swords
                 "ShortSword",
                 ItemKind.WeaponSword,
                 Rarity,
-                $"+{attackBonus} Attack",
+                $"Basic sword for beginners.",
                 100,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

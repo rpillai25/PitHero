@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 "IronArmor",
                 ItemKind.ArmorMail,
                 Rarity,
-                $"+{defenseBonus} Defense, Earth Resistant",
+                $"Regular armor for soldiers.",
                 180,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

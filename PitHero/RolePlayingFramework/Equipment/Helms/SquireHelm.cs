@@ -17,7 +17,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 "SquireHelm",
                 ItemKind.HatHelm,
                 Rarity,
-                $"+{defenseBonus} Defense",
+                $"Helm used by novices.",
                 90,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

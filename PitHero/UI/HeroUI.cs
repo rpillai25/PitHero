@@ -32,6 +32,13 @@ namespace PitHero.UI
         
         // Inventory tab content
         private InventoryGrid _inventoryGrid;
+        private TextButton _viewStencilsButton;
+        private TextButton _moveStencilsButton;
+        private TextButton _removeStencilButton;
+        
+        // Stencil system
+        private StencilLibraryPanel _stencilLibraryPanel;
+        private List<RolePlayingFramework.Synergies.SynergyPattern> _allSynergyPatterns;
         
         // Item card for selection only (hover uses tooltip)
         private ItemCard _selectedItemCard;
@@ -49,7 +56,16 @@ namespace PitHero.UI
         // Hero Crystal tab component
         private HeroCrystalTab _heroCrystalTab;
 
-        public HeroUI() { }
+        public HeroUI() 
+        {
+            // Initialize all synergy patterns
+            _allSynergyPatterns = new List<RolePlayingFramework.Synergies.SynergyPattern>();
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ExampleSynergyPatterns.CreateSwordShieldMastery());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ExampleSynergyPatterns.CreateMagesFocus());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ExampleSynergyPatterns.CreateMonksBalance());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ExampleSynergyPatterns.CreateHeavyArmorSet());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ExampleSynergyPatterns.CreatePriestsDevotion());
+        }
 
         /// <summary>Initializes the Hero button and adds it to the stage</summary>
         public void InitializeUI(Stage stage)
@@ -150,11 +166,14 @@ namespace PitHero.UI
 
         private void PopulateInventoryTab(Tab inventoryTab, Skin skin)
         {
+            var container = new Table();
+            
             _inventoryGrid = new InventoryGrid();
             _inventoryGrid.OnItemHovered += HandleItemHovered;
             _inventoryGrid.OnItemUnhovered += HandleItemUnhovered;
             _inventoryGrid.OnItemSelected += HandleItemSelected;
             _inventoryGrid.OnItemDeselected += HandleItemDeselected;
+            _inventoryGrid.OnStencilRemovalRequested += HandleStencilRemovalRequested;
             
             // Initialize context menu
             _inventoryGrid.InitializeContextMenu(_stage, skin);
@@ -167,7 +186,192 @@ namespace PitHero.UI
             var scrollPane = new ScrollPane(_inventoryGrid, skin);
             scrollPane.SetScrollingDisabled(true, false);
             
-            inventoryTab.Add(scrollPane).Expand().Fill().Pad(10f);
+            container.Add(scrollPane).Expand().Fill().Pad(10f);
+            container.Row();
+            
+            // Add stencil control buttons
+            var buttonTable = new Table();
+            buttonTable.Pad(5f);
+            
+            _viewStencilsButton = new TextButton("View Stencils", skin);
+            _viewStencilsButton.OnClicked += HandleViewStencilsClicked;
+            buttonTable.Add(_viewStencilsButton).Width(120f).Height(30f).Pad(5f);
+            
+            _moveStencilsButton = new TextButton("Move Stencils", skin);
+            _moveStencilsButton.OnClicked += HandleMoveStencilsClicked;
+            buttonTable.Add(_moveStencilsButton).Width(120f).Height(30f).Pad(5f);
+            
+            _removeStencilButton = new TextButton("Remove Stencil", skin);
+            _removeStencilButton.OnClicked += HandleRemoveStencilClicked;
+            buttonTable.Add(_removeStencilButton).Width(120f).Height(30f).Pad(5f);
+            
+            container.Add(buttonTable).Fill();
+            
+            inventoryTab.Add(container).Expand().Fill();
+            
+            // Create stencil library panel
+            _stencilLibraryPanel = new StencilLibraryPanel(skin);
+            _stencilLibraryPanel.OnStencilActivated += HandleStencilActivated;
+            _stencilLibraryPanel.SetVisible(false);
+        }
+        
+        private void HandleStencilRemovalRequested(PlacedStencil stencil)
+        {
+            // Show confirmation dialog immediately when stencil is clicked
+            ShowRemoveStencilConfirmation(stencil);
+        }
+        
+        private void HandleViewStencilsClicked(Button button)
+        {
+            if (_stencilLibraryPanel != null && !_stencilLibraryPanel.IsVisible())
+            {
+                var gameStateService = Core.Services.GetService<GameStateService>();
+                if (gameStateService != null)
+                {
+                    _stencilLibraryPanel.UpdateWithGameState(gameStateService, _allSynergyPatterns);
+                }
+                
+                _stencilLibraryPanel.SetPosition(100f, 100f);
+                _stage.AddElement(_stencilLibraryPanel);
+                _stencilLibraryPanel.SetVisible(true);
+            }
+        }
+        
+        private void HandleMoveStencilsClicked(Button button)
+        {
+            if (_inventoryGrid != null)
+            {
+                // If remove mode is active, exit it first
+                if (_inventoryGrid.IsRemoveStencilsModeActive())
+                {
+                    _inventoryGrid.SetRemoveStencilsMode(false);
+                    _removeStencilButton.SetText("Remove Stencil");
+                }
+                
+                bool newMode = !_inventoryGrid.IsMoveStencilsModeActive();
+                _inventoryGrid.SetMoveStencilsMode(newMode);
+                
+                // Update button appearance to show mode
+                if (newMode)
+                {
+                    _moveStencilsButton.SetText("Exit Move Mode");
+                }
+                else
+                {
+                    _moveStencilsButton.SetText("Move Stencils");
+                }
+            }
+        }
+        
+        private void HandleRemoveStencilClicked(Button button)
+        {
+            if (_inventoryGrid != null)
+            {
+                // If move mode is active, exit it first
+                if (_inventoryGrid.IsMoveStencilsModeActive())
+                {
+                    _inventoryGrid.SetMoveStencilsMode(false);
+                    _moveStencilsButton.SetText("Move Stencils");
+                }
+                
+                // Check if we're currently in remove mode
+                bool currentlyInRemoveMode = _inventoryGrid.IsRemoveStencilsModeActive();
+                
+                if (!currentlyInRemoveMode)
+                {
+                    // Entering remove mode
+                    var placedStencils = _inventoryGrid.GetPlacedStencils();
+                    if (placedStencils.Count == 0)
+                    {
+                        Debug.Log("No stencils to remove");
+                        return;
+                    }
+                    
+                    // Activate remove mode - user must now click a stencil
+                    _inventoryGrid.SetRemoveStencilsMode(true);
+                    _removeStencilButton.SetText("Exit Remove Mode");
+                    Debug.Log("Remove Stencils mode activated - click a stencil to remove it");
+                }
+                else
+                {
+                    // Exiting remove mode - just exit without showing any dialog
+                    _inventoryGrid.SetRemoveStencilsMode(false);
+                    _removeStencilButton.SetText("Remove Stencil");
+                    Debug.Log("Exited Remove Stencils mode");
+                }
+            }
+        }
+        
+        private void ShowRemoveStencilConfirmation(PlacedStencil stencil)
+        {
+            var skin = Skin.CreateDefaultSkin();
+            var message = $"Remove stencil '{stencil.Pattern.Name}'?";
+            
+            var dialog = new ConfirmationDialog("Remove Stencil", message, skin, 
+                onYes: () =>
+                {
+                    _inventoryGrid.RemoveStencil(stencil);
+                    Debug.Log($"Removed stencil: {stencil.Pattern.Name}");
+                    
+                    // Exit remove mode after removal
+                    _inventoryGrid.SetRemoveStencilsMode(false);
+                    _removeStencilButton.SetText("Remove Stencil");
+                },
+                onNo: () =>
+                {
+                    // If user cancels, stay in remove mode so they can try again
+                    Debug.Log("Stencil removal cancelled");
+                });
+            
+            dialog.Show(_stage);
+        }
+        
+        private void ShowStencilSelectionDialog()
+        {
+            // For now, just remove the first stencil with confirmation
+            var placedStencils = _inventoryGrid.GetPlacedStencils();
+            if (placedStencils.Count > 0)
+            {
+                ShowRemoveStencilConfirmation(placedStencils[0]);
+            }
+        }
+        
+        private void HandleStencilActivated(RolePlayingFramework.Synergies.SynergyPattern pattern)
+        {
+            if (_inventoryGrid != null)
+            {
+                // Try to find the first empty inventory slot (row 2+, any column)
+                Point? targetAnchor = FindFirstEmptyInventorySlot();
+                
+                if (!targetAnchor.HasValue)
+                {
+                    // No empty slots found, use default position (top-left of inventory area, row 2)
+                    targetAnchor = new Point(0, 2);
+                    Debug.Log($"No empty inventory slots found, placing stencil at default position: {targetAnchor.Value}");
+                }
+                else
+                {
+                    Debug.Log($"Found empty inventory slot at ({targetAnchor.Value.X},{targetAnchor.Value.Y}) for stencil placement");
+                }
+                
+                _inventoryGrid.PlaceStencil(pattern, targetAnchor.Value);
+                Debug.Log($"Activated stencil: {pattern.Name}");
+            }
+        }
+        
+        /// <summary>Finds the first empty inventory slot in the grid.</summary>
+        private Point? FindFirstEmptyInventorySlot()
+        {
+            if (_inventoryGrid == null) return null;
+            
+            // Get the available slot from the inventory grid
+            var availableSlot = _inventoryGrid.FindNextAvailableSlot();
+            if (availableSlot != null)
+            {
+                return new Point(availableSlot.X, availableSlot.Y);
+            }
+            
+            return null;
         }
 
         private void PopulatePrioritiesTab(Tab prioritiesTab, Skin skin)

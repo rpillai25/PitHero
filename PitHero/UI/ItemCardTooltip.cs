@@ -4,6 +4,7 @@ using Nez.UI;
 using Nez.BitmapFonts;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Stats;
+using System;
 
 namespace PitHero.UI
 {
@@ -222,6 +223,21 @@ namespace PitHero.UI
                     _contentTable.Add(apLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                     max = Max(max, Measure(font, text));
+                }
+
+                // Elemental resistances
+                foreach (var resistance in gear.ElementalProps.Resistances)
+                {
+                    if (resistance.Value != 0)
+                    {
+                        //If resistance value > 0 it's a resistance, else it's a weakness;
+                        var type = resistance.Value > 0 ? "Resistance" : "Weakness";
+                        var text = $"{Mathf.RoundToInt(Math.Abs(resistance.Value) * 100)}% {resistance.Key} {type}";
+                        var resLabel = new Label(text, new LabelStyle { Font = font, FontColor = Color.White });
+                        _contentTable.Add(resLabel).Left().Pad(0, 0, LINE_SPACING, 0);
+                        _contentTable.Row();
+                        max = Max(max, Measure(font, text));
+                    }
                 }
             }
 

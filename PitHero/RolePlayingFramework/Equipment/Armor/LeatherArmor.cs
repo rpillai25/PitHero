@@ -17,7 +17,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 "LeatherArmor",
                 ItemKind.ArmorMail,
                 Rarity,
-                $"+{defenseBonus} Defense",
+                $"Basic armor for adventurers.",
                 120,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

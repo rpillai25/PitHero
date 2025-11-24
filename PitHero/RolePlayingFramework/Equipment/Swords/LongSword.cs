@@ -17,7 +17,7 @@ namespace RolePlayingFramework.Equipment.Swords
                 "LongSword",
                 ItemKind.WeaponSword,
                 Rarity,
-                $"+{attackBonus} Attack",
+                $"Longer sword for seasoned warriors.",
                 150,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

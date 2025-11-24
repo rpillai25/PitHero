@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 "IronShield",
                 ItemKind.Shield,
                 Rarity,
-                $"+{defenseBonus} Defense, Water Resistant",
+                $"Regular shield of soldiers.",
                 120,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,
