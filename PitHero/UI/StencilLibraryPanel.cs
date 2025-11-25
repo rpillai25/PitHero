@@ -44,11 +44,19 @@ namespace PitHero.UI
         {
             var mainTable = new Table();
             mainTable.SetFillParent(true);
-            mainTable.Pad(10f); // Add padding for better spacing
+            mainTable.Pad(5f); // Reduced padding for less empty space
             
             // Create content table to hold grid and details
             var contentTable = new Table();
-            contentTable.Pad(5f);
+            contentTable.Pad(0f); // Remove content table padding
+
+            // Add title label at the top (centered)
+            var titleSkin = Skin.CreateDefaultSkin();
+            var titleLabel = new Label("Stencil Library", titleSkin);
+            titleLabel.SetFontScale(2f); // Make it slightly larger
+            titleLabel.SetAlignment(Nez.UI.Align.Center);
+            contentTable.Add(titleLabel).Pad(0f, 0f, 5f, 0f).Top().Center();
+            contentTable.Row();
             
             // Create grid table
             _gridTable = new Table();
@@ -100,7 +108,7 @@ namespace PitHero.UI
             scrollPane.SetFadeScrollBars(false); // Always show scroll bar
             
             // Add scroll pane to main table
-            mainTable.Add(scrollPane).Height(300f).Width(420f).Top().Left();
+            mainTable.Add(scrollPane).Height(350f).Width(420f).Top().Left();
             
             Add(mainTable);
         }
