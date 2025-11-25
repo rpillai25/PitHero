@@ -28,12 +28,6 @@ namespace PitHero.UI
         private InventoryContextMenu _contextMenu;
         private Stage _stage; // Reference to stage for tooltip management
         
-        // Swap animation entities (scene-space approach retained but unused currently)
-        private Entity _swapEntity1;
-        private Entity _swapEntity2;
-        private SpriteRenderer _swapRenderer1;
-        private SpriteRenderer _swapRenderer2;
-        
         // Public events for item card display
         public event System.Action<IItem> OnItemHovered;
         public event System.Action OnItemUnhovered;
@@ -162,7 +156,6 @@ namespace PitHero.UI
                 UpdateBagCapacity(_heroComponent.Bag.Capacity);
                 UpdateItemsFromBag();
             }
-            InitializeSwapEntities();
             
             // Subscribe to cross-component inventory changes
             InventorySelectionManager.OnInventoryChanged += UpdateItemsFromBag;
@@ -256,24 +249,6 @@ namespace PitHero.UI
                     _stage.AddElement(tooltip);
                 }
             }
-        }
-        
-        /// <summary>Initializes scene entities for swap animation (unused currently).</summary>
-        private void InitializeSwapEntities()
-        {
-            if (_swapEntity1 != null) return;
-            var scene = GetStage()?.Entity?.Scene;
-            if (scene == null) return;
-            _swapEntity1 = scene.CreateEntity("SwapAnimEntity1");
-            _swapEntity1.Position = new Vector2(-1000, -1000);
-            _swapRenderer1 = _swapEntity1.AddComponent(new SpriteRenderer());
-            _swapRenderer1.RenderLayer = GameConfig.RenderLayerUI - 1;
-            _swapRenderer1.Enabled = false;
-            _swapEntity2 = scene.CreateEntity("SwapAnimEntity2");
-            _swapEntity2.Position = new Vector2(-1000, -1000);
-            _swapRenderer2 = _swapEntity2.AddComponent(new SpriteRenderer());
-            _swapRenderer2.RenderLayer = GameConfig.RenderLayerUI - 1;
-            _swapRenderer2.Enabled = false;
         }
 
         /// <summary>Refreshes items from hero state.</summary>

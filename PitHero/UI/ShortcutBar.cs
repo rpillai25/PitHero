@@ -151,17 +151,6 @@ namespace PitHero.UI
             return _referencedSlots[shortcutIndex];
         }
         
-        /// <summary>Clears the reference at the specified shortcut index.</summary>
-        public void ClearShortcutReference(int shortcutIndex)
-        {
-            if (shortcutIndex < 0 || shortcutIndex >= SHORTCUT_COUNT)
-                return;
-                
-            _referencedSlots[shortcutIndex] = null;
-            _referencedItems[shortcutIndex] = null;
-            RefreshVisualSlots();
-        }
-        
         /// <summary>Refreshes all visual slots to display referenced items.</summary>
         private void RefreshVisualSlots()
         {

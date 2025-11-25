@@ -121,7 +121,7 @@ namespace PitHero.ECS.Components
             // Cache PitWidthManager service for dynamic pit sizing
             _pitWidthManager = Core.Services.GetService<PitWidthManager>();
 
-            // Initialize hero's item bag with full 120 capacity (20×6 grid)
+            // Initialize hero's item bag with full 120 capacity (20ï¿½6 grid)
             Bag = new RolePlayingFramework.Inventory.ItemBag("Traveller's Bag", 120);
 
             // Initialize state properties to clean state
@@ -423,34 +423,6 @@ namespace PitHero.ECS.Components
 
             // Fallback to manual calculation
             return GetTileCoordinates(Entity.Transform.Position, GameConfig.TileSize);
-        }
-
-        /// <summary>
-        /// Check if hero is adjacent to the pit (collision tile within pit rectangle)
-        /// </summary>
-        public bool CheckAdjacentToPit(Vector2 position)
-        {
-            var tile = GetTileCoordinates(position, GameConfig.TileSize);
-            if (PitCollisionRect.Contains(tile))
-                return false; // inside is not "adjacent"
-            return DistanceTiles(tile, PitCenter) <= GameConfig.PitAdjacencyRadiusTiles;
-        }
-
-        /// <summary>
-        /// Check if hero is inside the pit
-        /// </summary>
-        public bool CheckInsidePit(Vector2 position)
-        {
-            var tile = GetTileCoordinates(position, GameConfig.TileSize);
-            return PitCollisionRect.Contains(tile);
-        }
-
-        /// <summary>
-        /// Get the pit center coordinates
-        /// </summary>
-        public Point GetPitCenter()
-        {
-            return PitCenter;
         }
 
         /// <summary>

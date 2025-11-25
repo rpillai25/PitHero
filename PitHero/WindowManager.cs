@@ -180,13 +180,6 @@ namespace PitHero
             _currentShrinkMode = ShrinkMode.Normal;
         }
 
-        /// <summary>Legacy compatibility: shrink to half if not already shrunk.</summary>
-        public static void ShrinkHeightToHalf(Game game)
-        {
-            if (!IsHalfHeightMode())
-                ShrinkToNextLevel(game);
-        }
-
         /// <summary>
         /// Configures the game window as a horizontal strip docked at the bottom of the screen.
         /// </summary>

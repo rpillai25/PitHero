@@ -40,14 +40,6 @@ namespace PitHero.UI
         public static WindowSizeMode PersistentWindowSize => _persistentWindowSize;
 
         /// <summary>
-        /// Gets debug information about the current state
-        /// </summary>
-        public static string GetDebugInfo()
-        {
-            return $"Initialized: {_isInitialized}, Persistent: {_persistentWindowSize}, Current: {GetCurrentWindowSize()}";
-        }
-
-        /// <summary>
         /// Updates the persistent window size based on current window manager state
         /// /// </summary>
         public static void UpdatePersistentWindowSize()

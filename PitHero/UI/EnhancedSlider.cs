@@ -51,14 +51,6 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Gets the committed value (the value that was last applied)
-        /// </summary>
-        public float GetCommittedValue()
-        {
-            return _committedValue;
-        }
-
-        /// <summary>
         /// Sets the value and immediately commits it (use for programmatic changes)
         /// </summary>
         public void SetValueAndCommit(float value)

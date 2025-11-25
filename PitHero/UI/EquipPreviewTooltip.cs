@@ -199,23 +199,5 @@ namespace PitHero.UI
             if (string.IsNullOrEmpty(text)) return 0f;
             return font.MeasureString(text).X;
         }
-
-        /// <summary>Checks if there are any changes to display.</summary>
-        public bool HasChanges()
-        {
-            if (_newGear == null || _equippedGear == null) return false;
-
-            var newStats = _newGear.StatBonus;
-            var equippedStats = _equippedGear.StatBonus;
-
-            return newStats.Strength != equippedStats.Strength ||
-                   newStats.Agility != equippedStats.Agility ||
-                   newStats.Vitality != equippedStats.Vitality ||
-                   newStats.Magic != equippedStats.Magic ||
-                   _newGear.AttackBonus != _equippedGear.AttackBonus ||
-                   _newGear.DefenseBonus != _equippedGear.DefenseBonus ||
-                   _newGear.HPBonus != _equippedGear.HPBonus ||
-                   _newGear.MPBonus != _equippedGear.MPBonus;
-        }
     }
 }

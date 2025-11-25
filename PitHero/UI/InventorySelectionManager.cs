@@ -77,9 +77,6 @@ namespace PitHero.UI
         /// <summary>Gets the currently selected slot</summary>
         public static InventorySlot GetSelectedSlot() => _selectedSlot;
         
-        /// <summary>Gets the currently selected shortcut index</summary>
-        public static int GetSelectedShortcutIndex() => _selectedShortcutIndex;
-        
         /// <summary>Returns true if the selected slot is from shortcut bar</summary>
         public static bool IsSelectionFromShortcutBar() => _isFromShortcutBar;
         
@@ -227,14 +224,6 @@ namespace PitHero.UI
             );
 
             return true;
-        }
-        
-        /// <summary>No longer used - ShortcutBar uses references instead of swapping</summary>
-        [System.Obsolete("ShortcutBar now uses references instead of swapping items")]
-        public static bool TrySwapCrossComponent(InventorySlot targetSlot, bool targetIsShortcut, HeroComponent targetHero)
-        {
-            // This method is obsolete - shortcut bar now uses SetShortcutReference instead
-            return false;
         }
     }
 }

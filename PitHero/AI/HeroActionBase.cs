@@ -63,19 +63,5 @@ namespace PitHero.AI
             var centerY = GameConfig.PitCenterTileY;
             return TileToWorldPosition(new Point(centerX, centerY));
         }
-
-        /// <summary>
-        /// Get map center world position (static since map center doesn't change)
-        /// </summary>
-        public static Vector2 GetMapCenterWorldPosition()
-            => TileToWorldPosition(new Point(GameConfig.MapCenterTileX, GameConfig.MapCenterTileY));
-
-        /// <summary>
-        /// Get pit center world position using dynamic PitWidthManager values (instance method)
-        /// </summary>
-        protected Vector2 GetDynamicPitCenterWorldPosition()
-        {
-            return GetPitCenterWorldPosition(); // Use the updated static method
-        }
     }
 }

@@ -45,17 +45,6 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Check if a specific milestone has been achieved
-        /// </summary>
-        public bool HasAchievedMilestone(MilestoneType type)
-        {
-            lock (_lock)
-            {
-                return _milestones.Any(m => m.Type == type);
-            }
-        }
-
-        /// <summary>
         /// Get the number of milestones achieved
         /// </summary>
         public int MilestoneCount

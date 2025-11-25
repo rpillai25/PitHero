@@ -152,20 +152,6 @@ namespace PitHero.ECS.Components
             }
         }
 
-        /// <summary>Updates the jump animation flip state (called during jump updates)</summary>
-        public void UpdateJumpAnimationFlip(Direction direction)
-        {
-            bool shouldFlip = direction == Direction.Left || direction == Direction.UpLeft || direction == Direction.DownLeft;
-            if (FlipX != shouldFlip)
-                SetFlipXAndAdjustLocalOffset(shouldFlip);
-        }
-
-        /// <summary>Sets a specific frame</summary>
-        public void SetAnimationFrame(int frameIndex) => SetFrame(frameIndex);
-
-        /// <summary>Pauses the current animation</summary>
-        public void PauseAnimation() => Pause();
-
         /// <summary>Unpauses the current animation</summary>
         public void UnpauseAnimation() => UnPause();
     }

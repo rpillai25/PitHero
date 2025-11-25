@@ -112,12 +112,6 @@ namespace PitHero.UI
             
             return new Point(clampedX, clampedY);
         }
-        
-        /// <summary>Clears all placed stencils.</summary>
-        public void ClearAll()
-        {
-            _placedStencils.Clear();
-        }
     }
     
     /// <summary>Represents a stencil placed on the inventory grid.</summary>

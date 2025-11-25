@@ -98,20 +98,6 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Stop current movement immediately and snap to current tile
-        /// </summary>
-        public void StopMoving()
-        {
-            if (IsMoving)
-            {
-                IsMoving = false;
-                CurrentDirection = null;
-                SnapToTileGrid();
-                Debug.Log($"[TileByTileMover] Movement stopped at {Entity.Transform.Position.X},{Entity.Transform.Position.Y}");
-            }
-        }
-
-        /// <summary>
         /// Update the current movement progress using elapsed/duration for smooth pixel interpolation
         /// </summary>
         private void UpdateMovement()
