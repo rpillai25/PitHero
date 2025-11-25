@@ -326,16 +326,6 @@ namespace PitHero.UI
             dialog.Show(_stage);
         }
         
-        private void ShowStencilSelectionDialog()
-        {
-            // For now, just remove the first stencil with confirmation
-            var placedStencils = _inventoryGrid.GetPlacedStencils();
-            if (placedStencils.Count > 0)
-            {
-                ShowRemoveStencilConfirmation(placedStencils[0]);
-            }
-        }
-        
         private void HandleStencilActivated(RolePlayingFramework.Synergies.SynergyPattern pattern)
         {
             if (_inventoryGrid != null)

@@ -62,10 +62,6 @@ namespace PitHero.UI
         private float _animationDuration = 0.3f; // 300ms
         private float _animationTimer = 0f;
 
-        // Track previous shrink mode so we can restore it after closing settings
-        private bool _prevWasHalfShrink = false;
-        private bool _prevWasQuarterShrink = false;
-
         // Add these fields
         private float _lastStageW = -1f;
         private float _lastStageH = -1f;
@@ -83,16 +79,6 @@ namespace PitHero.UI
         
         /// <summary>Gets the HeroUI instance.</summary>
         public HeroUI HeroUI => _heroUI;
-        
-        // Window size modes
-        public enum WindowSizeMode
-        {
-            Normal,
-            Half
-        }
-        
-        // Track desired size only during settings session (gets reset when settings open)
-        private WindowSizeMode _desiredWindowSize = WindowSizeMode.Normal;
 
         public SettingsUI(Game game)
         {
@@ -379,7 +365,6 @@ namespace PitHero.UI
                 if (isChecked) 
                 {
                     UIWindowManager.SetPersistentWindowSize(UIWindowManager.WindowSizeMode.Normal);
-                    _desiredWindowSize = WindowSizeMode.Normal;
                     Debug.Log("[SettingsUI] Selected Normal window size");
                 }
             };
@@ -388,7 +373,6 @@ namespace PitHero.UI
                 if (isChecked) 
                 {
                     UIWindowManager.SetPersistentWindowSize(UIWindowManager.WindowSizeMode.Half);
-                    _desiredWindowSize = WindowSizeMode.Half;
                     Debug.Log("[SettingsUI] Selected Half window size");
                 }
             };
@@ -631,40 +615,6 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Apply the persistent window size when settings UI is closed
-        /// </summary>
-        private void ApplyPersistentWindowSize()
-        {
-            // Delegate to centralized UI window manager
-            UIWindowManager.ApplyPersistentWindowSize();
-        }
-
-        /// <summary>
-        /// Apply the desired window size when settings UI is closed
-        /// </summary>
-        private void ApplyDesiredWindowSize()
-        {
-            // This method is now replaced by centralized UIWindowManager
-            UIWindowManager.OnUIWindowClosing();
-        }
-
-        /// <summary>
-        /// Update window size radio buttons to reflect persistent window size (legacy method)
-        /// </summary>
-        private void UpdateWindowSizeButtons()
-        {
-            UpdateRadioButtonsFromPersistentSize();
-        }
-
-        /// <summary>
-        /// Update window size radio buttons and desired size to reflect persistent window state (legacy method)
-        /// </summary>
-        private void UpdateWindowSizeButtonsAndDesiredSize()
-        {
-            UpdateRadioButtonsFromPersistentSize();
-        }
-
-        /// <summary>
         /// Update window size radio buttons based on persistent window size (not current window state)
         /// </summary>
         private void UpdateRadioButtonsFromPersistentSize()
@@ -677,12 +627,10 @@ namespace PitHero.UI
             {
                 case UIWindowManager.WindowSizeMode.Half:
                     _halfSizeButton.IsChecked = true;
-                    _desiredWindowSize = WindowSizeMode.Half;
                     break;
                 case UIWindowManager.WindowSizeMode.Normal:
                 default:
                     _normalSizeButton.IsChecked = true;
-                    _desiredWindowSize = WindowSizeMode.Normal;
                     break;
             }
             

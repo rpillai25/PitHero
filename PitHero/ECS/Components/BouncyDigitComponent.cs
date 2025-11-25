@@ -165,14 +165,6 @@ namespace PitHero.ECS.Components
 			}
 		}
 
-		/// <summary>FF4-style bounce (unused)</summary>
-		private void BounceStyle1(int i, float x, float y, float scale, float spacingWorld, Batcher batcher)
-		{
-			PrintDigit(_digits[i], x + spacingWorld * 3f - i * spacingWorld,
-				y - _digitTable[Mathf.Clamp((int)(5 + 3 * i + _elapsedFrames / 3), 0, _digitTable.Length - 1)],
-				scale, batcher);
-		}
-
 		/// <summary>FF5-style bounce animation</summary>
 		private void BounceStyle2(int i, float x, float y, float scale, float spacingWorld, Batcher batcher)
 		{

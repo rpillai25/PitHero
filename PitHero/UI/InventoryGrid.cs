@@ -33,12 +33,6 @@ namespace PitHero.UI
         private Entity _swapEntity2;
         private SpriteRenderer _swapRenderer1;
         private SpriteRenderer _swapRenderer2;
-
-        // UI-based swap animation state (legacy, kept disabled when using overlay)
-        private bool _uiSwapActive;
-        private float _uiSwapElapsed;
-        private InventorySlot _uiSwapSlotA;
-        private InventorySlot _uiSwapSlotB;
         
         // Public events for item card display
         public event System.Action<IItem> OnItemHovered;
@@ -794,19 +788,11 @@ namespace PitHero.UI
         /// <summary>Animates swap using unified InventorySelectionManager overlay in stage space.</summary>
         private void AnimateSwap(InventorySlot a, InventorySlot b)
         {
-            // Cancel any legacy UI tween
-            if (_uiSwapActive)
-            {
-                if (_uiSwapSlotA != null) _uiSwapSlotA.SetItemSpriteHidden(false);
-                if (_uiSwapSlotB != null) _uiSwapSlotB.SetItemSpriteHidden(false);
-                _uiSwapActive = false;
-            }
-
             // Delegate to manager. It will hide sprites, animate, then unhide on completion.
             InventorySelectionManager.TryAnimateSwap(a, b, SWAP_TWEEN_DURATION);
         }
 
-        /// <summary>Draw override also advances swap animation so we do not rely on a non-existent Act override.</summary>
+        /// <summary>Draw override.</summary>
         public override void Draw(Batcher batcher, float parentAlpha)
         {
             // Draw children (slots) first so animated sprites render on top
@@ -814,21 +800,6 @@ namespace PitHero.UI
             
             // Draw stencil overlays
             DrawStencilOverlays(batcher);
-
-            // Legacy UI tween disabled when using manager overlay
-            if (!_uiSwapActive) return;
-
-            _uiSwapElapsed += Time.DeltaTime;
-            if (_uiSwapElapsed >= SWAP_TWEEN_DURATION)
-            {
-                if (_uiSwapSlotA != null) _uiSwapSlotA.SetItemSpriteHidden(false);
-                if (_uiSwapSlotB != null) _uiSwapSlotB.SetItemSpriteHidden(false);
-                _uiSwapActive = false;
-                return;
-            }
-            float t = _uiSwapElapsed / SWAP_TWEEN_DURATION;
-            if (t < 0f) t = 0f; else if (t > 1f) t = 1f;
-            float ease = 1f - (1f - t) * (1f - t); // QuadOut
         }
         
         /// <summary>Draws stencil overlays on the inventory grid.</summary>

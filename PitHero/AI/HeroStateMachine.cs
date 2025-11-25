@@ -26,7 +26,6 @@ namespace PitHero.AI
         // GoTo state tracking
         private List<Point> _currentPath;
         private int _pathIndex;
-        private LocationType _targetLocationType;
         private Point _targetTile;
 
         // WanderPitAction exploration tracking  
@@ -451,33 +450,26 @@ namespace PitHero.AI
             switch (actionName)
             {
                 case GoapConstants.JumpIntoPitAction:
-                    _targetLocationType = LocationType.PitOutsideEdge;
                     return CalculatePitOutsideEdgeLocation();
 
                 case GoapConstants.WanderPitAction:
-                    _targetLocationType = LocationType.PitWanderPoint;
                     return CalculatePitWanderPointLocation();
 
                 case GoapConstants.ActivateWizardOrbAction:
-                    _targetLocationType = LocationType.WizardOrb;
                     return CalculateWizardOrbLocation();
 
                 case GoapConstants.JumpOutOfPitAction:
-                    _targetLocationType = LocationType.PitInsideEdge;
                     return CalculatePitInsideEdgeLocation();
 
                 case GoapConstants.AttackMonster:
                     // Attack happens in-place. No movement target required.
-                    _targetLocationType = LocationType.None;
                     return null;
 
                 case GoapConstants.OpenChest:
                     // Chest opening happens when already adjacent by precondition; no movement required.
-                    _targetLocationType = LocationType.None;
                     return null;
 
                 default:
-                    _targetLocationType = LocationType.None;
                     Debug.Warn($"[HeroStateMachine] Unknown action name for location calculation: {actionName}");
                     return null;
             }

@@ -426,15 +426,6 @@ namespace PitHero.ECS.Scenes
             PositionShortcutBar();
         }
 
-        private void AddPitLevelTestComponent()
-        {
-#if DEBUG
-            var testEntity = CreateEntity("pit-level-test");
-            testEntity.AddComponent(new PitLevelTestComponent());
-            Debug.Log("[MainGameScene] Added PitLevelTestComponent - Press number keys 0-9 to test pit level changes");
-#endif
-        }
-
         /// <summary>
         /// Update the pit collider bounds to match the current dynamic pit width
         /// </summary>

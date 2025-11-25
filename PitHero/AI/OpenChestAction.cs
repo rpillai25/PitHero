@@ -288,19 +288,5 @@ namespace PitHero.AI
                 Debug.Log($"[OpenChest]   {i + 1}. {item.Name} ({item.Rarity})");
             }
         }
-
-        /// <summary>
-        /// Returns true if the bag currently contains the provided item instance
-        /// </summary>
-        private bool BagContains(RolePlayingFramework.Inventory.ItemBag bag, IItem item)
-        {
-            var items = bag.Items;
-            for (int i = 0; i < items.Count; i++)
-            {
-                if (items[i] == item)
-                    return true;
-            }
-            return false;
-        }
     }
 }

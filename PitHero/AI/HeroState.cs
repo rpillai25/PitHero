@@ -9,24 +9,4 @@ namespace PitHero.AI
         GoTo,
         PerformAction
     }
-
-    /// <summary>
-    /// Location types for the state machine queue
-    /// </summary>
-    public enum LocationType
-    {
-        None,
-        PitOutsideEdge,
-        PitInsideEdge,
-        PitWanderPoint,
-        WizardOrb,
-        PitRegenPoint,
-        TownWanderPoint,
-        Inn,
-        ItemShop,
-        WeaponShop,
-        ArmorShop
-    }
-
-
 }
