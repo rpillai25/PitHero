@@ -162,8 +162,6 @@ namespace PitHero.Tests
             // Verify requirement: Atlas should be loaded at game startup and used for animations
             // This is verified through the structure and expected file path
             
-            var expectedAtlasPath = "Content/Atlases/Actors.atlas";
-            
             // The atlas path should be used in the component
             var componentType = typeof(HeroAnimationComponent);
             var methods = componentType.GetMethods(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
