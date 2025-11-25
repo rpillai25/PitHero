@@ -38,12 +38,38 @@ namespace RolePlayingFramework.Synergies
             PointsEarned += amount;
         }
 
+        /// <summary>Checks if a specific slot is part of this synergy.</summary>
         public bool ContainsSlot(Point slot)
         {
-            foreach (var affected in AffectedSlots)
+            for (int i = 0; i < AffectedSlots.Count; i++)
             {
-                if (affected == slot)
+                if (AffectedSlots[i] == slot)
                     return true;
+            }
+            return false;
+        }
+        
+        /// <summary>
+        /// Checks if this synergy shares any inventory slots with another synergy.
+        /// Used for overlap detection in stacking system.
+        /// Issue #133 - Synergy Stacking System
+        /// </summary>
+        /// <param name="other">The other synergy to compare against.</param>
+        /// <returns>True if any slots overlap, false otherwise.</returns>
+        public bool SharesItems(ActiveSynergy other)
+        {
+            if (other == null)
+                return false;
+            
+            // Check if any affected slots overlap
+            for (int i = 0; i < AffectedSlots.Count; i++)
+            {
+                var slot = AffectedSlots[i];
+                for (int j = 0; j < other.AffectedSlots.Count; j++)
+                {
+                    if (slot == other.AffectedSlots[j])
+                        return true;
+                }
             }
             return false;
         }

@@ -51,6 +51,67 @@ namespace RolePlayingFramework.Synergies
             return activeSynergies;
         }
         
+        /// <summary>
+        /// Detects all active synergies grouped by pattern, with overlap rejection and cap enforcement.
+        /// Issue #133 - Synergy Stacking System
+        /// </summary>
+        /// <param name="gridItems">2D array of items in the grid (null for empty slots).</param>
+        /// <param name="gridWidth">Width of the inventory grid.</param>
+        /// <param name="gridHeight">Height of the inventory grid.</param>
+        /// <returns>List of synergy groups, each containing non-overlapping instances.</returns>
+        public List<ActiveSynergyGroup> DetectSynergiesGrouped(IItem?[,] gridItems, int gridWidth, int gridHeight)
+        {
+            // Get all raw matches first
+            var rawMatches = new List<ActiveSynergy>();
+            
+            for (int i = 0; i < _allPatterns.Count; i++)
+            {
+                var pattern = _allPatterns[i];
+                
+                for (int x = 0; x < gridWidth; x++)
+                {
+                    for (int y = 0; y < gridHeight; y++)
+                    {
+                        var anchor = new Point(x, y);
+                        if (TryMatchPattern(gridItems, gridWidth, gridHeight, pattern, anchor, out var slots))
+                        {
+                            rawMatches.Add(new ActiveSynergy(pattern, anchor, slots));
+                        }
+                    }
+                }
+            }
+            
+            // Group by pattern ID with overlap rejection and cap enforcement
+            var grouped = new Dictionary<string, ActiveSynergyGroup>();
+            
+            for (int i = 0; i < rawMatches.Count; i++)
+            {
+                var match = rawMatches[i];
+                var id = match.Pattern.Id;
+                
+                if (!grouped.TryGetValue(id, out var group))
+                {
+                    group = new ActiveSynergyGroup(match.Pattern);
+                    grouped[id] = group;
+                }
+                
+                // TryAddInstance handles overlap rejection and cap enforcement
+                group.TryAddInstance(match);
+            }
+            
+            // Convert to list
+            var result = new List<ActiveSynergyGroup>(grouped.Count);
+            foreach (var kvp in grouped)
+            {
+                if (kvp.Value.InstanceCount > 0)
+                {
+                    result.Add(kvp.Value);
+                }
+            }
+            
+            return result;
+        }
+        
         /// <summary>Attempts to match a pattern at the given anchor position.</summary>
         private bool TryMatchPattern(
             IItem?[,] gridItems,

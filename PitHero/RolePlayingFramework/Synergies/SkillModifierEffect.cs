@@ -23,6 +23,9 @@ namespace RolePlayingFramework.Synergies
         /// <summary>Skill power multiplier (e.g., 1.2 = +20% power).</summary>
         public float PowerMultiplier { get; }
         
+        // Track applied values for proper removal with multipliers
+        private float _lastAppliedMultiplier;
+        
         public SkillModifierEffect(
             string effectId, 
             string description, 
@@ -39,25 +42,43 @@ namespace RolePlayingFramework.Synergies
             MPCostReductionPercent = mpCostReductionPercent;
             RangeIncrease = rangeIncrease;
             PowerMultiplier = powerMultiplier;
+            _lastAppliedMultiplier = 0f;
         }
         
+        /// <summary>Applies this effect with full multiplier (1.0).</summary>
         public void Apply(Hero hero)
+        {
+            Apply(hero, 1.0f);
+        }
+        
+        /// <summary>
+        /// Applies this effect to the hero with the given multiplier.
+        /// Issue #133 - Synergy Stacking System
+        /// </summary>
+        public void Apply(Hero hero, float multiplier)
         {
             // Skill modifiers are applied through hero's passive skill modifier system
             // This integrates with existing MPCostReduction property
             if (MPCostReductionPercent > 0)
             {
-                hero.MPCostReduction += MPCostReductionPercent / 100f;
+                hero.MPCostReduction += (MPCostReductionPercent / 100f) * multiplier;
             }
+            // TODO: Implement scaled RangeIncrease and PowerMultiplier when needed
+            _lastAppliedMultiplier = multiplier;
         }
         
         public void Remove(Hero hero)
         {
+            // Use the last applied multiplier for removal
+            float multiplier = _lastAppliedMultiplier > 0f ? _lastAppliedMultiplier : 1.0f;
+            
             // Skill modifiers are removed through hero's passive skill modifier system
             if (MPCostReductionPercent > 0)
             {
-                hero.MPCostReduction -= MPCostReductionPercent / 100f;
+                hero.MPCostReduction -= (MPCostReductionPercent / 100f) * multiplier;
             }
+            // TODO: Implement scaled RangeIncrease and PowerMultiplier when needed
+            _lastAppliedMultiplier = 0f;
         }
     }
 }

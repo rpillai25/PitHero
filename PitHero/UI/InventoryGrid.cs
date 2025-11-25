@@ -729,26 +729,38 @@ namespace PitHero.UI
             // Build synergy detection grid from current slot state
             BuildSynergyDetectionGrid();
             
-            // Detect synergies
-            var detectedSynergies = _synergyDetector.DetectSynergies(_synergyDetectionGrid, GRID_WIDTH, GRID_HEIGHT);
+            // Use grouped detection with stacking system (enforces 3-instance cap and overlap rejection)
+            var synergyGroups = _synergyDetector.DetectSynergiesGrouped(_synergyDetectionGrid, GRID_WIDTH, GRID_HEIGHT);
             
             // Get GameStateService for stencil discovery
             var gameStateService = Core.Services?.GetService<PitHero.Services.GameStateService>();
             
-            // Apply synergies to hero (this also handles stencil discovery)
-            hero.UpdateActiveSynergies(detectedSynergies, gameStateService);
+            // Apply synergies to hero using grouped method (respects stacking multipliers)
+            hero.UpdateActiveSynergiesGrouped(synergyGroups, gameStateService);
             
-            // Update local tracking for glow effects
-            UpdateActiveSynergies(detectedSynergies);
-            
-            // Log detected synergies
-            if (detectedSynergies.Count > 0)
+            // Extract all instances from groups for glow effects (respects 3-instance cap)
+            var allInstances = new List<RolePlayingFramework.Synergies.ActiveSynergy>();
+            for (int i = 0; i < synergyGroups.Count; i++)
             {
-                Debug.Log($"[InventoryGrid] Detected {detectedSynergies.Count} active synergies:");
-                for (int i = 0; i < detectedSynergies.Count; i++)
+                var group = synergyGroups[i];
+                var instances = group.Instances;
+                for (int j = 0; j < instances.Count; j++)
                 {
-                    var synergy = detectedSynergies[i];
-                    Debug.Log($"  - {synergy.Pattern.Name} at anchor ({synergy.AnchorSlot.X},{synergy.AnchorSlot.Y})");
+                    allInstances.Add(instances[j]);
+                }
+            }
+            
+            // Update local tracking for glow effects (only capped instances will glow)
+            UpdateActiveSynergies(allInstances);
+            
+            // Log detected synergies with stacking info
+            if (synergyGroups.Count > 0)
+            {
+                Debug.Log($"[InventoryGrid] Detected {synergyGroups.Count} synergy groups:");
+                for (int i = 0; i < synergyGroups.Count; i++)
+                {
+                    var group = synergyGroups[i];
+                    Debug.Log($"  - {group.Pattern.Name}: {group.InstanceCount} instances (multiplier: {group.TotalMultiplier:F2})");
                 }
             }
         }
