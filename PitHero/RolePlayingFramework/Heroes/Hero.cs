@@ -527,6 +527,12 @@ namespace RolePlayingFramework.Heroes
         
         // Synergy system integration
         
+        // Track active synergy groups for stacking system
+        private readonly List<ActiveSynergyGroup> _activeSynergyGroups = new List<ActiveSynergyGroup>();
+        
+        /// <summary>Read-only access to active synergy groups.</summary>
+        public IReadOnlyList<ActiveSynergyGroup> ActiveSynergyGroups => _activeSynergyGroups;
+        
         /// <summary>Updates active synergies based on current inventory state.</summary>
         /// <param name="detectedSynergies">List of detected synergies.</param>
         /// <param name="gameStateService">Optional game state service for stencil discovery tracking.</param>
@@ -563,6 +569,70 @@ namespace RolePlayingFramework.Heroes
                 _boundCrystal?.DiscoverSynergy(pattern.Id);
                 
                 // Organic stencil discovery: if pattern has a stencil and it's not discovered yet, discover it
+                // TODO: Reference Issue #134 for comprehensive stencil discovery integration
+                if (gameStateService != null && pattern.HasStencil && !gameStateService.IsStencilDiscovered(pattern.Id))
+                {
+                    gameStateService.DiscoverStencil(pattern.Id, Synergies.StencilDiscoverySource.PlayerMatch);
+                }
+            }
+            
+            // Recalculate derived stats after synergy changes
+            RecalculateDerived();
+        }
+        
+        /// <summary>
+        /// Updates active synergies using grouped detection with stacking support.
+        /// Applies effects with aggregate multipliers based on instance count.
+        /// Issue #133 - Synergy Stacking System
+        /// </summary>
+        /// <param name="synergyGroups">List of synergy groups with non-overlapping instances.</param>
+        /// <param name="gameStateService">Optional game state service for stencil discovery tracking.</param>
+        public void UpdateActiveSynergiesGrouped(List<ActiveSynergyGroup> synergyGroups, PitHero.Services.GameStateService? gameStateService = null)
+        {
+            // Remove effects from old synergy groups (effects are applied per-group, not per-instance)
+            for (int i = 0; i < _activeSynergyGroups.Count; i++)
+            {
+                var oldGroup = _activeSynergyGroups[i];
+                var effects = oldGroup.Pattern.Effects;
+                for (int j = 0; j < effects.Count; j++)
+                {
+                    effects[j].Remove(this);
+                }
+            }
+            
+            // Clear both lists (legacy list is just for backward compatibility reads, effects are managed via groups)
+            _activeSynergyGroups.Clear();
+            _activeSynergies.Clear();
+            
+            // Add new synergy groups
+            for (int i = 0; i < synergyGroups.Count; i++)
+            {
+                var group = synergyGroups[i];
+                if (group.InstanceCount == 0) continue;
+                
+                _activeSynergyGroups.Add(group);
+                
+                // Add all instances to legacy list for backward compatibility
+                var instances = group.Instances;
+                for (int j = 0; j < instances.Count; j++)
+                {
+                    _activeSynergies.Add(instances[j]);
+                }
+                
+                // Apply effects with aggregate multiplier
+                var effects = group.Pattern.Effects;
+                float multiplier = group.TotalMultiplier;
+                for (int j = 0; j < effects.Count; j++)
+                {
+                    effects[j].Apply(this, multiplier);
+                }
+                
+                // Mark synergy as discovered in crystal
+                var pattern = group.Pattern;
+                _boundCrystal?.DiscoverSynergy(pattern.Id);
+                
+                // Organic stencil discovery: if pattern has a stencil and it's not discovered yet, discover it
+                // TODO: Reference Issue #134 for comprehensive stencil discovery integration
                 if (gameStateService != null && pattern.HasStencil && !gameStateService.IsStencilDiscovered(pattern.Id))
                 {
                     gameStateService.DiscoverStencil(pattern.Id, Synergies.StencilDiscoverySource.PlayerMatch);
@@ -600,6 +670,102 @@ namespace RolePlayingFramework.Heroes
                         }
                     }
                 }
+            }
+        }
+        
+        /// <summary>
+        /// Earns synergy points from battles with acceleration based on instance count.
+        /// Uses diminishing returns: 1 instance = 1x, 2 = 1.35x, 3 = 1.70x (capped).
+        /// After skill is learned, acceleration stops and only stat/passive effects apply.
+        /// Issue #133 - Synergy Stacking System
+        /// </summary>
+        /// <param name="baseAmount">Base synergy points to earn before acceleration.</param>
+        public void EarnSynergyPointsWithAcceleration(int baseAmount)
+        {
+            if (_boundCrystal == null) return;
+            
+            // Process synergy groups with acceleration
+            for (int i = 0; i < _activeSynergyGroups.Count; i++)
+            {
+                var group = _activeSynergyGroups[i];
+                var patternId = group.Pattern.Id;
+                
+                // Check if skill already learned for this pattern
+                bool skillLearned = group.Pattern.UnlockedSkill != null && 
+                                   _boundCrystal.HasSynergySkill(group.Pattern.UnlockedSkill.Id);
+                
+                // Calculate accelerated points
+                float acceleration = SynergyEffectAggregator.GetPointsAccelerationMultiplier(
+                    group.InstanceCount, 
+                    skillLearned
+                );
+                int acceleratedAmount = (int)(baseAmount * acceleration);
+                
+                // Distribute accelerated points to crystal
+                _boundCrystal.EarnSynergyPoints(patternId, acceleratedAmount);
+                
+                // Distribute to individual instances
+                var instances = group.Instances;
+                for (int j = 0; j < instances.Count; j++)
+                {
+                    instances[j].EarnPoints(acceleratedAmount);
+                }
+                
+                // Attempt skill unlock if threshold reached (only once)
+                TryLearnSynergySkill(group.Pattern);
+            }
+            
+            // Also handle legacy synergies not in groups
+            for (int i = 0; i < _activeSynergies.Count; i++)
+            {
+                var synergy = _activeSynergies[i];
+                
+                // Skip if already processed in groups
+                bool inGroup = false;
+                for (int g = 0; g < _activeSynergyGroups.Count; g++)
+                {
+                    if (_activeSynergyGroups[g].Pattern.Id == synergy.Pattern.Id)
+                    {
+                        inGroup = true;
+                        break;
+                    }
+                }
+                if (inGroup) continue;
+                
+                // Legacy behavior - no acceleration
+                synergy.EarnPoints(baseAmount);
+                _boundCrystal.EarnSynergyPoints(synergy.Pattern.Id, baseAmount);
+                TryLearnSynergySkill(synergy.Pattern);
+            }
+        }
+        
+        /// <summary>
+        /// Attempts to learn a synergy skill if points threshold is reached.
+        /// Skill is learned exactly once.
+        /// Issue #133 - Synergy Stacking System
+        /// </summary>
+        private void TryLearnSynergySkill(SynergyPattern pattern)
+        {
+            if (_boundCrystal == null) return;
+            if (pattern.UnlockedSkill == null) return;
+            
+            var skillId = pattern.UnlockedSkill.Id;
+            
+            // Already learned - do nothing
+            if (_boundCrystal.HasSynergySkill(skillId)) return;
+            
+            // Check if threshold reached
+            int points = _boundCrystal.GetSynergyPoints(pattern.Id);
+            if (points < pattern.SynergyPointsRequired) return;
+            
+            // Learn the skill
+            _boundCrystal.LearnSynergySkill(skillId);
+            
+            // Add to hero's learned skills
+            if (!_learnedSkills.ContainsKey(skillId))
+            {
+                _learnedSkills[skillId] = pattern.UnlockedSkill;
+                ApplyPassiveSkills();
             }
         }
     }
