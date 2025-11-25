@@ -174,6 +174,10 @@ namespace PitHero.ECS.Components
             Bag.TryAdd(GearItems.IronArmor());
             Bag.TryAdd(GearItems.IronShield());
             Bag.TryAdd(GearItems.LongSword());
+            Bag.TryAdd(GearItems.IronShield());
+            Bag.TryAdd(GearItems.LongSword());
+            Bag.TryAdd(GearItems.IronShield());
+            Bag.TryAdd(GearItems.LongSword());
             Bag.TryAdd(GearItems.ProtectRing());
             Bag.TryAdd(GearItems.MagicChain());
         }
