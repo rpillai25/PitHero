@@ -12,7 +12,7 @@ namespace PitHero.UI
     public class StencilLibraryPanel : Window
     {
         private const int GRID_COLUMNS = 10;
-        private const int GRID_ROWS = 5;
+        private const int GRID_ROWS = 6;
         private const int TOTAL_SLOTS = GRID_COLUMNS * GRID_ROWS;
         private const float SLOT_SIZE = 32f;
         private const float SLOT_PADDING = 2f;
@@ -92,7 +92,7 @@ namespace PitHero.UI
             // Add grid and details to content table
             contentTable.Add(_gridTable).Width(420f).Top().Left();
             contentTable.Row();
-            contentTable.Add(detailsTable).Height(120f).Width(420f).Top().Left();
+            contentTable.Add(detailsTable).Height(64f).Width(420f).Top().Left();
             
             // Wrap content in scroll pane
             var scrollPane = new ScrollPane(contentTable, skin);
