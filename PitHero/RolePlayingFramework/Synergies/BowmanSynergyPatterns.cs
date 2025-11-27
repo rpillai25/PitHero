@@ -152,12 +152,12 @@ namespace RolePlayingFramework.Synergies
         {
             var offsets = new List<Point>
             { 
-                new Point(0, 0), new Point(1, 0), new Point(2, 0)
+                new Point(0, 0), new Point(1, 0), new Point(2, 0), new Point(3, 0)
             };
             
             var requiredKinds = new List<ItemKind>
             { 
-                ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory
+                ItemKind.Accessory, ItemKind.Accessory, ItemKind.Accessory, ItemKind.ArmorGi
             };
             
             var effects = new List<ISynergyEffect>
