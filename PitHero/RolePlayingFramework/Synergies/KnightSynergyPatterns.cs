@@ -12,20 +12,22 @@ namespace RolePlayingFramework.Synergies
         /// <summary>Holy Strike - Light element weapon synergy unlocking Paladin attack.</summary>
         public static SynergyPattern CreateHolyStrike()
         {
+            // L-Shape pattern:
+            // [Sword]      
+            // [Sword][Acc] 
+            //        [Acc] 
             var offsets = new List<Point>
             { 
                 new Point(0, 0),
-                new Point(0, 1),
-                new Point(1, 1),
-                new Point(1, 2)
+                new Point(0, 1), new Point(1, 1),
+                                 new Point(1, 2)
             };
             
             var requiredKinds = new List<ItemKind>
             { 
                 ItemKind.WeaponSword,
-                ItemKind.WeaponSword,
-                ItemKind.Accessory,
-                ItemKind.Accessory
+                ItemKind.WeaponSword, ItemKind.Accessory,
+                                      ItemKind.Accessory
             };
             
             var effects = new List<ISynergyEffect>
@@ -49,20 +51,16 @@ namespace RolePlayingFramework.Synergies
         /// <summary>Iaido Slash - Sword mastery unlocking quick draw attack.</summary>
         public static SynergyPattern CreateIaidoSlash()
         {
+            // Horizontal line:
+            // [Sword][Sword][Shield][Helm]
             var offsets = new List<Point>
             { 
-                new Point(0, 0),
-                new Point(1, 0),
-                new Point(2, 0),
-                new Point(3, 0)
+                new Point(0, 0), new Point(1, 0), new Point(2, 0), new Point(3, 0)
             };
             
             var requiredKinds = new List<ItemKind>
             { 
-                ItemKind.WeaponSword,
-                ItemKind.WeaponSword,
-                ItemKind.Shield,
-                ItemKind.HatHelm
+                ItemKind.WeaponSword, ItemKind.WeaponSword, ItemKind.Shield, ItemKind.HatHelm
             };
             
             var effects = new List<ISynergyEffect>
@@ -86,22 +84,22 @@ namespace RolePlayingFramework.Synergies
         /// <summary>Shadow Slash - Dagger/Sword combo for dark ninja strike.</summary>
         public static SynergyPattern CreateShadowSlash()
         {
+            // Cross pattern:
+            //        [Sword]
+            // [Sword][Acc  ][Acc]
+            //        [Gi   ]
             var offsets = new List<Point>
             { 
-                new Point(1, 0),
-                new Point(0, 1),
-                new Point(1, 1),
-                new Point(2, 1),
-                new Point(1, 2)
+                               new Point(1, 0),
+                new Point(0, 1), new Point(1, 1), new Point(2, 1),
+                               new Point(1, 2)
             };
             
             var requiredKinds = new List<ItemKind>
             { 
-                ItemKind.WeaponSword,
-                ItemKind.WeaponSword,
-                ItemKind.Accessory,
-                ItemKind.Accessory,
-                ItemKind.ArmorGi
+                                     ItemKind.WeaponSword,
+                ItemKind.WeaponSword, ItemKind.Accessory, ItemKind.Accessory,
+                                     ItemKind.ArmorGi
             };
             
             var effects = new List<ISynergyEffect>
@@ -125,30 +123,22 @@ namespace RolePlayingFramework.Synergies
         /// <summary>Spellblade - Sword and magic fusion for War Mage power.</summary>
         public static SynergyPattern CreateSpellblade()
         {
+            // 3x3 rectangle:
+            // [Sword][Acc  ][Acc  ]
+            // [Rod  ][Acc  ][Robe ]
+            // [Sword][Acc  ][WzHat]
             var offsets = new List<Point>
             { 
-                new Point(0, 0),
-                new Point(1, 0),
-                new Point(2, 0),
-                new Point(0, 1),
-                new Point(1, 1),
-                new Point(2, 1),
-                new Point(0, 2),
-                new Point(1, 2),
-                new Point(2, 2)
+                new Point(0, 0), new Point(1, 0), new Point(2, 0),
+                new Point(0, 1), new Point(1, 1), new Point(2, 1),
+                new Point(0, 2), new Point(1, 2), new Point(2, 2)
             };
             
             var requiredKinds = new List<ItemKind>
             { 
-                ItemKind.WeaponSword,
-                ItemKind.Accessory,
-                ItemKind.Accessory,
-                ItemKind.WeaponRod,
-                ItemKind.Accessory,
-                ItemKind.ArmorRobe,
-                ItemKind.WeaponSword,
-                ItemKind.Accessory,
-                ItemKind.HatWizard
+                ItemKind.WeaponSword, ItemKind.Accessory,  ItemKind.Accessory,
+                ItemKind.WeaponRod,   ItemKind.Accessory,  ItemKind.ArmorRobe,
+                ItemKind.WeaponSword, ItemKind.Accessory,  ItemKind.HatWizard
             };
             
             var effects = new List<ISynergyEffect>
@@ -173,20 +163,19 @@ namespace RolePlayingFramework.Synergies
         /// <summary>Armor Mastery - Heavy armor defensive bonus.</summary>
         public static SynergyPattern CreateArmorMastery()
         {
+            // 2x2 square:
+            // [Mail ][Mail ]
+            // [Helm ][Shield]
             var offsets = new List<Point>
             { 
-                new Point(0, 0),
-                new Point(1, 0),
-                new Point(0, 1),
-                new Point(1, 1)
+                new Point(0, 0), new Point(1, 0),
+                new Point(0, 1), new Point(1, 1)
             };
             
             var requiredKinds = new List<ItemKind>
             { 
-                ItemKind.ArmorMail,
-                ItemKind.ArmorMail,
-                ItemKind.HatHelm,
-                ItemKind.Shield
+                ItemKind.ArmorMail, ItemKind.ArmorMail,
+                ItemKind.HatHelm,   ItemKind.Shield
             };
             
             var effects = new List<ISynergyEffect>
@@ -209,18 +198,16 @@ namespace RolePlayingFramework.Synergies
         /// <summary>Sword Proficiency - Basic sword combat bonus.</summary>
         public static SynergyPattern CreateSwordProficiency()
         {
+            // Horizontal line:
+            // [Sword][Sword][Sword]
             var offsets = new List<Point>
             { 
-                new Point(0, 0),
-                new Point(1, 0),
-                new Point(2, 0)
+                new Point(0, 0), new Point(1, 0), new Point(2, 0)
             };
             
             var requiredKinds = new List<ItemKind>
             { 
-                ItemKind.WeaponSword,
-                ItemKind.WeaponSword,
-                ItemKind.WeaponSword
+                ItemKind.WeaponSword, ItemKind.WeaponSword, ItemKind.WeaponSword
             };
             
             var effects = new List<ISynergyEffect>
@@ -242,24 +229,19 @@ namespace RolePlayingFramework.Synergies
         /// <summary>Guardian's Resolve - Shield and armor for ultimate defense.</summary>
         public static SynergyPattern CreateGuardiansResolve()
         {
+            // 3x2 rectangle:
+            // [Shield][Mail ][Helm ]
+            // [Shield][Mail ][Acc  ]
             var offsets = new List<Point>
             { 
-                new Point(0, 0),
-                new Point(1, 0),
-                new Point(2, 0),
-                new Point(0, 1),
-                new Point(1, 1),
-                new Point(2, 1)
+                new Point(0, 0), new Point(1, 0), new Point(2, 0),
+                new Point(0, 1), new Point(1, 1), new Point(2, 1)
             };
             
             var requiredKinds = new List<ItemKind>
             { 
-                ItemKind.Shield,
-                ItemKind.ArmorMail,
-                ItemKind.HatHelm,
-                ItemKind.Shield,
-                ItemKind.ArmorMail,
-                ItemKind.Accessory
+                ItemKind.Shield,    ItemKind.ArmorMail, ItemKind.HatHelm,
+                ItemKind.Shield,    ItemKind.ArmorMail, ItemKind.Accessory
             };
             
             var effects = new List<ISynergyEffect>
@@ -283,24 +265,22 @@ namespace RolePlayingFramework.Synergies
         /// <summary>Berserker Rage - Aggressive fighting style with high damage.</summary>
         public static SynergyPattern CreateBerserkerRage()
         {
+            // 2x3 rectangle:
+            // [Sword][Mail ]
+            // [Sword][Mail ]
+            // [Helm ][Acc  ]
             var offsets = new List<Point>
             { 
-                new Point(0, 0),
-                new Point(1, 0),
-                new Point(0, 1),
-                new Point(1, 1),
-                new Point(0, 2),
-                new Point(1, 2)
+                new Point(0, 0), new Point(1, 0),
+                new Point(0, 1), new Point(1, 1),
+                new Point(0, 2), new Point(1, 2)
             };
             
             var requiredKinds = new List<ItemKind>
             { 
-                ItemKind.WeaponSword,
-                ItemKind.ArmorMail,
-                ItemKind.WeaponSword,
-                ItemKind.ArmorMail,
-                ItemKind.HatHelm,
-                ItemKind.Accessory
+                ItemKind.WeaponSword, ItemKind.ArmorMail,
+                ItemKind.WeaponSword, ItemKind.ArmorMail,
+                ItemKind.HatHelm,     ItemKind.Accessory
             };
             
             var effects = new List<ISynergyEffect>
