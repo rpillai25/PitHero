@@ -14,15 +14,15 @@ namespace RolePlayingFramework.Synergies
         {
             var offsets = new List<Point>
             { 
-                new Point(0, 0), new Point(2, 0),
-                new Point(1, 1), new Point(3, 1),
-                new Point(0, 2), new Point(2, 2)
+                new Point(0, 0), new Point(1, 0),
+                new Point(0, 1), new Point(1, 1),
+                new Point(0, 2), new Point(1, 2)
             };
             
             var requiredKinds = new List<ItemKind>
             { 
                 ItemKind.WeaponSword, ItemKind.Accessory,
-                ItemKind.Accessory, ItemKind.ArmorGi,
+                ItemKind.ArmorGi, ItemKind.Accessory,
                 ItemKind.WeaponSword, ItemKind.Accessory
             };
             
