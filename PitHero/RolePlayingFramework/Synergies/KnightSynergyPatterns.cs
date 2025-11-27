@@ -300,6 +300,72 @@ namespace RolePlayingFramework.Synergies
             );
         }
 
+        /// <summary>Shield Mastery - Basic sword and shield combo.</summary>
+        public static SynergyPattern CreateShieldMastery()
+        {
+            // Horizontal pair:
+            // [Sword][Shield]
+            var offsets = new List<Point>
+            { 
+                new Point(0, 0), new Point(1, 0)
+            };
+            
+            var requiredKinds = new List<ItemKind>
+            { 
+                ItemKind.WeaponSword, ItemKind.Shield
+            };
+            
+            var effects = new List<ISynergyEffect>
+            {
+                new PassiveAbilityEffect("shield_mastery_defense", "+5 Defense, +10% Deflect", defenseBonus: 5, deflectChanceIncrease: 0.1f)
+            };
+            
+            return new SynergyPattern(
+                "knight.shield_mastery",
+                "Shield Mastery",
+                "Classic sword and shield stance provides excellent defense",
+                offsets,
+                requiredKinds,
+                effects,
+                synergyPointsRequired: 100
+            );
+        }
+
+        /// <summary>Heavy Fortification - L-shaped armor set for durability.</summary>
+        public static SynergyPattern CreateHeavyFortification()
+        {
+            // L-Shape:
+            // [Mail ]
+            // [Helm ][Shield]
+            var offsets = new List<Point>
+            {
+                new Point(0, 0),
+                new Point(0, 1), new Point(1, 1)
+            };
+            
+            var requiredKinds = new List<ItemKind>
+            {
+                ItemKind.ArmorMail,
+                ItemKind.HatHelm, ItemKind.Shield
+            };
+            
+            var effects = new List<ISynergyEffect>
+            {
+                new PassiveAbilityEffect("heavy_fortification_defense", "+10 Defense", defenseBonus: 10),
+                new StatBonusEffect("heavy_fortification_hp", "+50 HP", new StatBlock(0, 0, 0, 0), hpBonus: 50)
+            };
+            
+            return new SynergyPattern(
+                "knight.heavy_fortification",
+                "Heavy Fortification",
+                "Full plate protection provides exceptional durability",
+                offsets,
+                requiredKinds,
+                effects,
+                synergyPointsRequired: 150
+            );
+        }
+
         /// <summary>Register all Knight patterns.</summary>
         public static void RegisterAllKnightPatterns(SynergyDetector detector)
         {
@@ -311,6 +377,8 @@ namespace RolePlayingFramework.Synergies
             detector.RegisterPattern(CreateSwordProficiency());
             detector.RegisterPattern(CreateGuardiansResolve());
             detector.RegisterPattern(CreateBerserkerRage());
+            detector.RegisterPattern(CreateShieldMastery());
+            detector.RegisterPattern(CreateHeavyFortification());
         }
     }
 }

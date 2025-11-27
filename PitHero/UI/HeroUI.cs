@@ -59,12 +59,14 @@ namespace PitHero.UI
         public HeroUI() 
         {
             // Initialize all synergy patterns
-            _allSynergyPatterns = new List<RolePlayingFramework.Synergies.SynergyPattern>();
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ExampleSynergyPatterns.CreateSwordShieldMastery());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ExampleSynergyPatterns.CreateMagesFocus());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ExampleSynergyPatterns.CreateMonksBalance());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ExampleSynergyPatterns.CreateHeavyArmorSet());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ExampleSynergyPatterns.CreatePriestsDevotion());
+            _allSynergyPatterns =
+            [
+                RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateShieldMastery(),
+                RolePlayingFramework.Synergies.MageSynergyPatterns.CreateRodFocus(),
+                RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateBalanceTraining(),
+                RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateHeavyFortification(),
+                RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateDivineVestments(),
+            ];
         }
 
         /// <summary>Initializes the Hero button and adds it to the stage</summary>

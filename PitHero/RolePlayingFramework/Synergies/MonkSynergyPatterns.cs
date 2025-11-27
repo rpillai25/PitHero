@@ -285,6 +285,38 @@ namespace RolePlayingFramework.Synergies
             );
         }
 
+        /// <summary>Balance Training - Horizontal monk equipment for counter ability.</summary>
+        public static SynergyPattern CreateBalanceTraining()
+        {
+            // Horizontal line (offset for uniqueness):
+            //        [Knuckle][Gi][Headband]
+            var offsets = new List<Point>
+            {
+                new Point(1, 1), new Point(0, 1), new Point(2, 1)
+            };
+            
+            var requiredKinds = new List<ItemKind>
+            {
+                ItemKind.WeaponKnuckle, ItemKind.ArmorGi, ItemKind.HatHeadband
+            };
+            
+            var effects = new List<ISynergyEffect>
+            {
+                new StatBonusEffect("balance_training_stats", "+3 Strength, +3 Agility", new StatBlock(3, 3, 0, 0)),
+                new PassiveAbilityEffect("balance_training_counter", "Counter enabled", enableCounter: true)
+            };
+            
+            return new SynergyPattern(
+                "monk.balance_training",
+                "Balance Training",
+                "Harmony between body and mind enables devastating counters",
+                offsets,
+                requiredKinds,
+                effects,
+                synergyPointsRequired: 200
+            );
+        }
+
         /// <summary>Register all Monk patterns.</summary>
         public static void RegisterAllMonkPatterns(SynergyDetector detector)
         {
@@ -296,6 +328,7 @@ namespace RolePlayingFramework.Synergies
             detector.RegisterPattern(CreateMartialFocus());
             detector.RegisterPattern(CreateKiMastery());
             detector.RegisterPattern(CreateEvasionTraining());
+            detector.RegisterPattern(CreateBalanceTraining());
         }
     }
 }

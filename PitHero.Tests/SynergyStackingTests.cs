@@ -284,7 +284,7 @@ namespace PitHero.Tests
         {
             // Arrange
             var detector = new SynergyDetector();
-            detector.RegisterPattern(ExampleSynergyPatterns.CreateSwordShieldMastery());
+            detector.RegisterPattern(KnightSynergyPatterns.CreateShieldMastery());
             
             // Create grid with 2 separate sword+shield pairs (non-overlapping)
             var grid = new IItem[20, 8];
@@ -297,8 +297,8 @@ namespace PitHero.Tests
             var groups = detector.DetectSynergiesGrouped(grid, 20, 8);
             
             // Assert
-            Assert.AreEqual(1, groups.Count, "Should have 1 group for sword_shield_mastery");
-            Assert.AreEqual("sword_shield_mastery", groups[0].Pattern.Id);
+            Assert.AreEqual(1, groups.Count, "Should have 1 group for knight.shield_mastery");
+            Assert.AreEqual("knight.shield_mastery", groups[0].Pattern.Id);
             Assert.AreEqual(2, groups[0].InstanceCount, "Group should have 2 non-overlapping instances");
             Assert.AreEqual(1.5f, groups[0].TotalMultiplier, 0.001f, "2 instances = 1.5x multiplier");
         }
@@ -308,7 +308,7 @@ namespace PitHero.Tests
         {
             // Arrange
             var detector = new SynergyDetector();
-            detector.RegisterPattern(ExampleSynergyPatterns.CreateSwordShieldMastery());
+            detector.RegisterPattern(KnightSynergyPatterns.CreateShieldMastery());
             
             // Create grid with overlapping patterns (sharing the shield)
             var grid = new IItem[20, 8];
@@ -347,7 +347,7 @@ namespace PitHero.Tests
         {
             // Arrange
             var detector = new SynergyDetector();
-            detector.RegisterPattern(ExampleSynergyPatterns.CreateSwordShieldMastery());
+            detector.RegisterPattern(KnightSynergyPatterns.CreateShieldMastery());
             
             // Create grid with 5 separate sword+shield pairs
             var grid = new IItem[50, 8];
@@ -380,7 +380,7 @@ namespace PitHero.Tests
             int baseDefense = hero.PassiveDefenseBonus;
             
             // Create a group with 2 instances of sword-shield pattern (+5 defense effect)
-            var pattern = ExampleSynergyPatterns.CreateSwordShieldMastery();
+            var pattern = KnightSynergyPatterns.CreateShieldMastery();
             var group = new ActiveSynergyGroup(pattern);
             group.TryAddInstance(new ActiveSynergy(pattern, new Point(0, 0), 
                 new List<Point> { new Point(0, 0), new Point(1, 0) }));
@@ -404,7 +404,7 @@ namespace PitHero.Tests
             
             int baseDefense = hero.PassiveDefenseBonus;
             
-            var pattern = ExampleSynergyPatterns.CreateSwordShieldMastery();
+            var pattern = KnightSynergyPatterns.CreateShieldMastery();
             var group = new ActiveSynergyGroup(pattern);
             group.TryAddInstance(new ActiveSynergy(pattern, new Point(0, 0), 
                 new List<Point> { new Point(0, 0), new Point(1, 0) }));
@@ -428,7 +428,7 @@ namespace PitHero.Tests
             var crystal = new HeroCrystal("TestCrystal", new Knight(), 1, new StatBlock(5, 5, 5, 5));
             var hero = new Hero("TestHero", new Knight(), 1, new StatBlock(5, 5, 5, 5), crystal);
             
-            var pattern = ExampleSynergyPatterns.CreateSwordShieldMastery();
+            var pattern = KnightSynergyPatterns.CreateShieldMastery();
             var group = new ActiveSynergyGroup(pattern);
             group.TryAddInstance(new ActiveSynergy(pattern, new Point(0, 0), 
                 new List<Point> { new Point(0, 0), new Point(1, 0) }));
@@ -454,7 +454,7 @@ namespace PitHero.Tests
             var crystal = new HeroCrystal("TestCrystal", new Knight(), 1, new StatBlock(5, 5, 5, 5));
             var hero = new Hero("TestHero", new Knight(), 1, new StatBlock(5, 5, 5, 5), crystal);
             
-            var pattern = ExampleSynergyPatterns.CreateSwordShieldMastery();
+            var pattern = KnightSynergyPatterns.CreateShieldMastery();
             var group = new ActiveSynergyGroup(pattern);
             
             // Add 3 instances for max acceleration
@@ -586,7 +586,7 @@ namespace PitHero.Tests
             var hero = new Hero("TestHero", new Knight(), 1, new StatBlock(5, 5, 5, 5), crystal);
             var gameStateService = new PitHero.Services.GameStateService();
             
-            var pattern = ExampleSynergyPatterns.CreateSwordShieldMastery();
+            var pattern = KnightSynergyPatterns.CreateShieldMastery();
             Assert.IsFalse(gameStateService.IsStencilDiscovered(pattern.Id));
             
             var group = new ActiveSynergyGroup(pattern);

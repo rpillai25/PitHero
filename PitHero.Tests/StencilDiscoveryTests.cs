@@ -105,7 +105,7 @@ namespace PitHero.Tests
         [TestMethod]
         public void SynergyPattern_HasStencil_DefaultsToTrue()
         {
-            var pattern = ExampleSynergyPatterns.CreateSwordShieldMastery();
+            var pattern = KnightSynergyPatterns.CreateShieldMastery();
             
             Assert.IsTrue(pattern.HasStencil);
         }

@@ -283,6 +283,41 @@ namespace RolePlayingFramework.Synergies
             );
         }
 
+        /// <summary>Rod Focus - L-shaped rod and accessories for magic power.</summary>
+        public static SynergyPattern CreateRodFocus()
+        {
+            // L-Shape:
+            // [Rod  ][Acc  ]
+            // [Acc  ]
+            var offsets = new List<Point>
+            {
+                new Point(0, 0), new Point(1, 0),
+                new Point(0, 1)
+            };
+            
+            var requiredKinds = new List<ItemKind>
+            {
+                ItemKind.WeaponRod, ItemKind.Accessory,
+                ItemKind.Accessory
+            };
+            
+            var effects = new List<ISynergyEffect>
+            {
+                new StatBonusEffect("rod_focus_magic", "+5 Magic", new StatBlock(0, 0, 0, 5)),
+                new SkillModifierEffect("rod_focus_mp", "-20% MP Cost", mpCostReductionPercent: 20f)
+            };
+            
+            return new SynergyPattern(
+                "mage.rod_focus",
+                "Rod Focus",
+                "Magical accessories amplify the rod's power and reduce spell costs",
+                offsets,
+                requiredKinds,
+                effects,
+                synergyPointsRequired: 150
+            );
+        }
+
         /// <summary>Register all Mage patterns.</summary>
         public static void RegisterAllMagePatterns(SynergyDetector detector)
         {
@@ -294,6 +329,7 @@ namespace RolePlayingFramework.Synergies
             detector.RegisterPattern(CreateElementalMastery());
             detector.RegisterPattern(CreateSpellWeaving());
             detector.RegisterPattern(CreateManaConvergence());
+            detector.RegisterPattern(CreateRodFocus());
         }
     }
 }

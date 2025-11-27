@@ -17,7 +17,7 @@ namespace PitHero.Tests
         {
             // Arrange: Create detector and register sword & shield pattern
             var detector = new SynergyDetector();
-            detector.RegisterPattern(ExampleSynergyPatterns.CreateSwordShieldMastery());
+            detector.RegisterPattern(KnightSynergyPatterns.CreateShieldMastery());
             
             // Create 8x7 grid (matching InventoryGrid dimensions)
             var grid = new IItem[20, 8];
@@ -31,7 +31,7 @@ namespace PitHero.Tests
             
             // Assert: Pattern should be detected
             Assert.AreEqual(1, synergies.Count, "Should detect exactly one synergy");
-            Assert.AreEqual("sword_shield_mastery", synergies[0].Pattern.Id);
+            Assert.AreEqual("knight.shield_mastery", synergies[0].Pattern.Id);
             Assert.AreEqual(new Point(0, 3), synergies[0].AnchorSlot);
         }
         
@@ -40,7 +40,7 @@ namespace PitHero.Tests
         {
             // Arrange
             var detector = new SynergyDetector();
-            detector.RegisterPattern(ExampleSynergyPatterns.CreateSwordShieldMastery());
+            detector.RegisterPattern(KnightSynergyPatterns.CreateShieldMastery());
             
             var grid = new IItem[20, 8];
             
@@ -60,7 +60,7 @@ namespace PitHero.Tests
         {
             // Arrange
             var detector = new SynergyDetector();
-            detector.RegisterPattern(ExampleSynergyPatterns.CreateSwordShieldMastery());
+            detector.RegisterPattern(KnightSynergyPatterns.CreateShieldMastery());
             
             var grid = new IItem[20, 8];
             
@@ -80,7 +80,7 @@ namespace PitHero.Tests
         {
             // Arrange: Create detector and hero
             var detector = new SynergyDetector();
-            detector.RegisterPattern(ExampleSynergyPatterns.CreateSwordShieldMastery());
+            detector.RegisterPattern(KnightSynergyPatterns.CreateShieldMastery());
             
             var crystal = new HeroCrystal("TestHero", new Knight(), 1, new StatBlock(5, 5, 5, 5));
             var hero = new Hero("TestHero", new Knight(), 1, new StatBlock(5, 5, 5, 5), crystal);
@@ -104,13 +104,13 @@ namespace PitHero.Tests
         {
             // Arrange
             var detector = new SynergyDetector();
-            detector.RegisterPattern(ExampleSynergyPatterns.CreateSwordShieldMastery());
+            detector.RegisterPattern(KnightSynergyPatterns.CreateShieldMastery());
             
             var crystal = new HeroCrystal("TestHero", new Knight(), 1, new StatBlock(5, 5, 5, 5));
             var hero = new Hero("TestHero", new Knight(), 1, new StatBlock(5, 5, 5, 5), crystal);
             
             // Verify synergy not discovered initially
-            Assert.IsFalse(crystal.HasDiscoveredSynergy("sword_shield_mastery"));
+            Assert.IsFalse(crystal.HasDiscoveredSynergy("knight.shield_mastery"));
             
             // Create grid with pattern
             var grid = new IItem[20, 8];
@@ -122,7 +122,7 @@ namespace PitHero.Tests
             hero.UpdateActiveSynergies(synergies);
             
             // Assert: Crystal should mark synergy as discovered
-            Assert.IsTrue(crystal.HasDiscoveredSynergy("sword_shield_mastery"), 
+            Assert.IsTrue(crystal.HasDiscoveredSynergy("knight.shield_mastery"), 
                 "Crystal should mark synergy as discovered after first match");
         }
         
@@ -131,14 +131,14 @@ namespace PitHero.Tests
         {
             // Arrange
             var detector = new SynergyDetector();
-            detector.RegisterPattern(ExampleSynergyPatterns.CreateSwordShieldMastery());
+            detector.RegisterPattern(KnightSynergyPatterns.CreateShieldMastery());
             
             var crystal = new HeroCrystal("TestHero", new Knight(), 1, new StatBlock(5, 5, 5, 5));
             var hero = new Hero("TestHero", new Knight(), 1, new StatBlock(5, 5, 5, 5), crystal);
             
             // Create GameStateService to track stencil discovery
             var gameStateService = new PitHero.Services.GameStateService();
-            Assert.IsFalse(gameStateService.IsStencilDiscovered("sword_shield_mastery"));
+            Assert.IsFalse(gameStateService.IsStencilDiscovered("knight.shield_mastery"));
             
             // Create grid with pattern
             var grid = new IItem[20, 8];
@@ -150,10 +150,10 @@ namespace PitHero.Tests
             hero.UpdateActiveSynergies(synergies, gameStateService);
             
             // Assert: Stencil should be discovered
-            Assert.IsTrue(gameStateService.IsStencilDiscovered("sword_shield_mastery"), 
+            Assert.IsTrue(gameStateService.IsStencilDiscovered("knight.shield_mastery"), 
                 "Stencil should be discovered when pattern is organically matched");
             Assert.AreEqual(StencilDiscoverySource.PlayerMatch, 
-                gameStateService.DiscoveredStencils["sword_shield_mastery"],
+                gameStateService.DiscoveredStencils["knight.shield_mastery"],
                 "Stencil should be marked as discovered via PlayerMatch");
         }
     }

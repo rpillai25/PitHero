@@ -286,6 +286,43 @@ namespace RolePlayingFramework.Synergies
             );
         }
 
+        /// <summary>Divine Vestments - Vertical staff and robes for healing power.</summary>
+        public static SynergyPattern CreateDivineVestments()
+        {
+            // Vertical line:
+            // [Staff]
+            // [Robe ]
+            // [PrHat]
+            var offsets = new List<Point>
+            {
+                new Point(0, 0),
+                new Point(0, 1),
+                new Point(0, 2)
+            };
+            
+            var requiredKinds = new List<ItemKind>
+            {
+                ItemKind.WeaponStaff,
+                ItemKind.ArmorRobe,
+                ItemKind.HatPriest
+            };
+            
+            var effects = new List<ISynergyEffect>
+            {
+                new PassiveAbilityEffect("divine_vestments_power", "+20% Heal Power, +2 MP Regen", healPowerBonus: 0.2f, mpTickRegen: 2)
+            };
+            
+            return new SynergyPattern(
+                "priest.divine_vestments",
+                "Divine Vestments",
+                "Sacred vestments enhance healing powers and spiritual energy",
+                offsets,
+                requiredKinds,
+                effects,
+                synergyPointsRequired: 175
+            );
+        }
+
         /// <summary>Register all Priest patterns.</summary>
         public static void RegisterAllPriestPatterns(SynergyDetector detector)
         {
@@ -297,6 +334,7 @@ namespace RolePlayingFramework.Synergies
             detector.RegisterPattern(CreateHealingAmplification());
             detector.RegisterPattern(CreateHolyAura());
             detector.RegisterPattern(CreateSanctifiedMind());
+            detector.RegisterPattern(CreateDivineVestments());
         }
     }
 }

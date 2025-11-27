@@ -89,7 +89,13 @@ namespace PitHero.UI
         /// <summary>Registers default synergy patterns for detection.</summary>
         private void RegisterDefaultSynergyPatterns()
         {
-            ExampleSynergyPatterns.RegisterAllExamplePatterns(_synergyDetector);
+            KnightSynergyPatterns.RegisterAllKnightPatterns(_synergyDetector);
+            MageSynergyPatterns.RegisterAllMagePatterns(_synergyDetector);
+            PriestSynergyPatterns.RegisterAllPriestPatterns(_synergyDetector);
+            MonkSynergyPatterns.RegisterAllMonkPatterns(_synergyDetector);
+            ThiefSynergyPatterns.RegisterAllThiefPatterns(_synergyDetector);
+            BowmanSynergyPatterns.RegisterAllBowmanPatterns(_synergyDetector);
+            CrossClassSynergyPatterns.RegisterAllCrossClassPatterns(_synergyDetector);
         }
 
         /// <summary>Returns true if any slot is currently hovered.</summary>
