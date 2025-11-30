@@ -177,7 +177,7 @@ namespace RolePlayingFramework.Synergies
         }
 
         /// <summary>Eagle Eye - Bows and hats for enhanced precision.</summary>
-        public static SynergyPattern CreateEagleEye()
+        public static SynergyPattern CreateSharpAim()
         {
             var offsets = new List<Point>
             { 
@@ -193,13 +193,13 @@ namespace RolePlayingFramework.Synergies
             
             var effects = new List<ISynergyEffect>
             {
-                new StatBonusEffect("eagle_eye_stats", "+12 Agility, +6 Vitality", new StatBlock(0, 12, 6, 0)),
-                new PassiveAbilityEffect("eagle_eye_deflect", "+8% Deflect", deflectChanceIncrease: 0.08f)
+                new StatBonusEffect("sharp_aim_stats", "+12 Agility, +6 Vitality", new StatBlock(0, 12, 6, 0)),
+                new PassiveAbilityEffect("sharp_aim_deflect", "+8% Deflect", deflectChanceIncrease: 0.08f)
             };
             
             return new SynergyPattern(
-                "bowman.eagle_eye",
-                "Eagle Eye",
+                "bowman.sharp_aim",
+                "Sharp Aim",
                 "Sharp vision identifies enemy weak points",
                 offsets,
                 requiredKinds,
@@ -280,7 +280,7 @@ namespace RolePlayingFramework.Synergies
             detector.RegisterPattern(CreateKiArrow());
             detector.RegisterPattern(CreateArrowFlurry());
             detector.RegisterPattern(CreateMarksman());
-            detector.RegisterPattern(CreateEagleEye());
+            //detector.RegisterPattern(CreateEagleEye());
             detector.RegisterPattern(CreateRangersPath());
             detector.RegisterPattern(CreateWindArcher());
         }

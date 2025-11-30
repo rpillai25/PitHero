@@ -1,0 +1,261 @@
+bowman.eagle_eye
+	0,0,32,32
+	0.5,0.5
+bowman.marksman
+	33,0,32,32
+	0.5,0.5
+bowman.power_shot
+	66,0,32,32
+	0.5,0.5
+bowman.quickdraw
+	0,33,32,32
+	0.5,0.5
+bowman.rangers_path
+	33,33,32,32
+	0.5,0.5
+bowman.sharp_aim
+	0,66,32,32
+	0.5,0.5
+bowman.volley
+	33,66,32,32
+	0.5,0.5
+bowman.wind_archer
+	66,33,32,32
+	0.5,0.5
+cross.arcane_protector
+	66,66,32,32
+	0.5,0.5
+cross.battle_mage
+	99,0,32,32
+	0.5,0.5
+cross.elemental_champion
+	99,33,32,32
+	0.5,0.5
+cross.holy_warrior
+	132,0,32,32
+	0.5,0.5
+cross.shadow_master
+	99,66,32,32
+	0.5,0.5
+knight.armor_mastery
+	132,33,32,32
+	0.5,0.5
+knight.berserker_rage
+	165,0,32,32
+	0.5,0.5
+knight.guardians_resolve
+	198,0,32,32
+	0.5,0.5
+knight.heavy_armor
+	165,33,32,32
+	0.5,0.5
+knight.heavy_fortification
+	132,66,32,32
+	0.5,0.5
+knight.heavy_strike
+	165,66,32,32
+	0.5,0.5
+knight.light_armor
+	198,33,32,32
+	0.5,0.5
+knight.shield_mastery
+	198,66,32,32
+	0.5,0.5
+knight.spin_slash
+	0,99,32,32
+	0.5,0.5
+knight.sword_proficiency
+	0,132,32,32
+	0.5,0.5
+mage.arcane_focus
+	33,99,32,32
+	0.5,0.5
+mage.economist
+	33,132,32,32
+	0.5,0.5
+mage.elemental_mastery
+	0,165,32,32
+	0.5,0.5
+mage.fire
+	66,99,32,32
+	0.5,0.5
+mage.firestorm
+	33,165,32,32
+	0.5,0.5
+mage.heart_fire
+	0,198,32,32
+	0.5,0.5
+mage.mana_convergence
+	99,99,32,32
+	0.5,0.5
+mage.rod_focus
+	66,132,32,32
+	0.5,0.5
+mage.spell_weaving
+	66,165,32,32
+	0.5,0.5
+monk.balance_training
+	132,99,32,32
+	0.5,0.5
+monk.counter
+	33,198,32,32
+	0.5,0.5
+monk.deflect
+	99,132,32,32
+	0.5,0.5
+monk.evasion_training
+	66,198,32,32
+	0.5,0.5
+monk.flaming_fist
+	132,132,32,32
+	0.5,0.5
+monk.iron_fist
+	99,165,32,32
+	0.5,0.5
+monk.ki_mastery
+	165,99,32,32
+	0.5,0.5
+monk.martial_focus
+	132,165,32,32
+	0.5,0.5
+monk.roundhouse
+	99,198,32,32
+	0.5,0.5
+priest.calm_spirit
+	198,99,32,32
+	0.5,0.5
+priest.defup
+	165,132,32,32
+	0.5,0.5
+priest.divine_protection
+	198,132,32,32
+	0.5,0.5
+priest.divine_vestments
+	165,165,32,32
+	0.5,0.5
+priest.heal
+	132,198,32,32
+	0.5,0.5
+priest.healing_amplification
+	165,198,32,32
+	0.5,0.5
+priest.holy_aura
+	198,165,32,32
+	0.5,0.5
+priest.mender
+	198,198,32,32
+	0.5,0.5
+priest.sanctified_mind
+	231,0,32,32
+	0.5,0.5
+synergy.arrow_flurry
+	231,33,32,32
+	0.5,0.5
+synergy.aura_heal
+	264,0,32,32
+	0.5,0.5
+synergy.blitz
+	264,33,32,32
+	0.5,0.5
+synergy.dragon_bolt
+	231,66,32,32
+	0.5,0.5
+synergy.dragon_claw
+	297,0,32,32
+	0.5,0.5
+synergy.dragon_kick
+	297,33,32,32
+	0.5,0.5
+synergy.elemental_storm
+	264,66,32,32
+	0.5,0.5
+synergy.elemental_volley
+	231,99,32,32
+	0.5,0.5
+synergy.energy_burst
+	330,0,32,32
+	0.5,0.5
+synergy.fade
+	363,0,32,32
+	0.5,0.5
+synergy.flash_strike
+	330,33,32,32
+	0.5,0.5
+synergy.holy_strike
+	297,66,32,32
+	0.5,0.5
+synergy.iaido_slash
+	264,99,32,32
+	0.5,0.5
+synergy.ki_arrow
+	231,132,32,32
+	0.5,0.5
+synergy.ki_cloak
+	330,66,32,32
+	0.5,0.5
+synergy.life_leech
+	297,99,32,32
+	0.5,0.5
+synergy.lightshot
+	264,132,32,32
+	0.5,0.5
+synergy.meteor
+	231,165,32,32
+	0.5,0.5
+synergy.piercing_arrow
+	396,0,32,32
+	0.5,0.5
+synergy.poison_arrow
+	363,33,32,32
+	0.5,0.5
+synergy.purify
+	231,198,32,32
+	0.5,0.5
+synergy.sacred_blade
+	429,0,32,32
+	0.5,0.5
+synergy.sacred_strike
+	396,33,32,32
+	0.5,0.5
+synergy.shadow_bolt
+	363,66,32,32
+	0.5,0.5
+synergy.shadow_slash
+	297,132,32,32
+	0.5,0.5
+synergy.smoke_bomb
+	264,165,32,32
+	0.5,0.5
+synergy.sneak_punch
+	330,99,32,32
+	0.5,0.5
+synergy.soul_ward
+	297,165,32,32
+	0.5,0.5
+synergy.spellblade
+	264,198,32,32
+	0.5,0.5
+thief.assassins_edge
+	363,99,32,32
+	0.5,0.5
+thief.lockpicking
+	330,132,32,32
+	0.5,0.5
+thief.shadow_step
+	396,66,32,32
+	0.5,0.5
+thief.shadowstep
+	429,33,32,32
+	0.5,0.5
+thief.sneak_attack
+	462,0,32,32
+	0.5,0.5
+thief.trap_mastery
+	429,66,32,32
+	0.5,0.5
+thief.trap_sense
+	462,33,32,32
+	0.5,0.5
+thief.vanish
+	363,132,32,32
+	0.5,0.5

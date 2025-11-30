@@ -12,7 +12,7 @@ namespace PitHero.UI
     public class StencilLibraryPanel : Window
     {
         private const int GRID_COLUMNS = 10;
-        private const int GRID_ROWS = 6;
+        private const int GRID_ROWS = 7;
         private const int TOTAL_SLOTS = GRID_COLUMNS * GRID_ROWS;
         private const float SLOT_SIZE = 32f;
         private const float SLOT_PADDING = 2f;
@@ -52,7 +52,7 @@ namespace PitHero.UI
 
             // Add title label at the top (centered)
             var titleSkin = Skin.CreateDefaultSkin();
-            var titleLabel = new Label("Stencil Library", titleSkin);
+            var titleLabel = new Label("Synergy Stencils", titleSkin);
             titleLabel.SetFontScale(2f); // Make it slightly larger
             titleLabel.SetAlignment(Nez.UI.Align.Center);
             contentTable.Add(titleLabel).Pad(0f, 0f, 5f, 0f).Top().Center();
