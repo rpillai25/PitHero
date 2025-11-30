@@ -58,15 +58,85 @@ namespace PitHero.UI
 
         public HeroUI() 
         {
-            // Initialize all synergy patterns
-            _allSynergyPatterns =
-            [
-                RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateShieldMastery(),
-                RolePlayingFramework.Synergies.MageSynergyPatterns.CreateRodFocus(),
-                RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateBalanceTraining(),
-                RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateHeavyFortification(),
-                RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateDivineVestments(),
-            ];
+            // Initialize all synergy patterns - must include ALL patterns for proper sprite display
+            _allSynergyPatterns = new List<RolePlayingFramework.Synergies.SynergyPattern>();
+            
+            // Knight patterns
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateHolyStrike());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateIaidoSlash());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateShadowSlash());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateSpellblade());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateArmorMastery());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateSwordProficiency());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateGuardiansResolve());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateBerserkerRage());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateShieldMastery());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateHeavyFortification());
+            
+            // Mage patterns
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateMeteor());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateShadowBolt());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateElementalVolley());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateBlitz());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateArcaneFocus());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateElementalMastery());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateSpellWeaving());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateManaConvergence());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateRodFocus());
+            
+            // Priest patterns
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateAuraHeal());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreatePurify());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateSacredStrike());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateLifeLeech());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateDivineProtection());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateHealingAmplification());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateHolyAura());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateSanctifiedMind());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateDivineVestments());
+            
+            // Monk patterns
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateDragonClaw());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateEnergyBurst());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateDragonKick());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateSneakPunch());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateIronFist());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateMartialFocus());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateKiMastery());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateEvasionTraining());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateBalanceTraining());
+            
+            // Thief patterns
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreateSmokeBomb());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreatePoisonArrow());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreateFade());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreateKiCloak());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreateShadowStep());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreateLockpicking());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreateTrapMastery());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreateAssassinsEdge());
+            
+            // Bowman patterns
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreatePiercingArrow());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreateLightshot());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreateKiArrow());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreateArrowFlurry());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreateMarksman());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreateSharpAim());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreateRangersPath());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreateWindArcher());
+            
+            // Cross-class patterns
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateSacredBlade());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateFlashStrike());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateSoulWard());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateDragonBolt());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateElementalStorm());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateBattleMage());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateHolyWarrior());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateShadowMaster());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateArcaneProtector());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateElementalChampion());
         }
 
         /// <summary>Initializes the Hero button and adds it to the stage</summary>
@@ -231,6 +301,8 @@ namespace PitHero.UI
                 if (gameStateService != null)
                 {
                     _stencilLibraryPanel.UpdateWithGameState(gameStateService, _allSynergyPatterns);
+                    // Refresh to show any newly discovered stencils
+                    _stencilLibraryPanel.Refresh();
                 }
                 
                 _stencilLibraryPanel.SetPosition(100f, 100f);

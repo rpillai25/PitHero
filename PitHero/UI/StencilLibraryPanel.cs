@@ -122,6 +122,15 @@ namespace PitHero.UI
             RefreshSlots();
         }
         
+        /// <summary>Refreshes the panel to show newly discovered stencils. Call this before showing the panel.</summary>
+        public void Refresh()
+        {
+            if (_gameStateService != null && _allPatterns != null)
+            {
+                RefreshSlots();
+            }
+        }
+        
         private void RefreshSlots()
         {
             if (_gameStateService == null || _allPatterns == null)
