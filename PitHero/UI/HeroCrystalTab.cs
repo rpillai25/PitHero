@@ -148,8 +148,47 @@ namespace PitHero.UI
             _skillGridContainer.Clear();
             _skillButtons.Clear();
             
-            var skills = hero.Job.Skills;
-            if (skills.Count == 0)
+            var crystal = hero.BoundCrystal;
+            if (crystal == null)
+            {
+                var noCrystalLabel = new Label("No crystal bound", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
+                _skillGridContainer.Add(noCrystalLabel).Center();
+                return;
+            }
+            
+            // Collect all skills: Job Skills + Synergy Skills
+            var allSkills = new List<SkillDisplayInfo>();
+            
+            // Add job skills
+            var jobSkills = hero.Job.Skills;
+            for (int i = 0; i < jobSkills.Count; i++)
+            {
+                var skill = jobSkills[i];
+                allSkills.Add(new SkillDisplayInfo
+                {
+                    Skill = skill,
+                    IsLearned = crystal.HasSkill(skill.Id),
+                    IsSynergySkill = false
+                });
+            }
+            
+            // Add learned synergy skills
+            var learnedSynergyIds = crystal.LearnedSynergySkillIds;
+            var learnedSkills = hero.LearnedSkills;
+            foreach (var synergySkillId in learnedSynergyIds)
+            {
+                if (learnedSkills.TryGetValue(synergySkillId, out var synergySkill))
+                {
+                    allSkills.Add(new SkillDisplayInfo
+                    {
+                        Skill = synergySkill,
+                        IsLearned = true,
+                        IsSynergySkill = true
+                    });
+                }
+            }
+            
+            if (allSkills.Count == 0)
             {
                 var noSkillsLabel = new Label("No skills available", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
                 _skillGridContainer.Add(noSkillsLabel).Center();
@@ -161,12 +200,10 @@ namespace PitHero.UI
             int row = 0;
             int col = 0;
             
-            for (int i = 0; i < skills.Count; i++)
+            for (int i = 0; i < allSkills.Count; i++)
             {
-                var skill = skills[i];
-                var isLearned = hero.LearnedSkills.ContainsKey(skill.Id);
-                
-                var skillButton = new SkillButton(skill, isLearned);
+                var skillInfo = allSkills[i];
+                var skillButton = new SkillButton(skillInfo.Skill, skillInfo.IsLearned, skillInfo.IsSynergySkill);
                 skillButton.OnHover += OnSkillHover;
                 skillButton.OnUnhover += OnSkillUnhover;
                 skillButton.OnClick += OnSkillClick;
@@ -217,6 +254,27 @@ namespace PitHero.UI
                 return;
             
             var hero = _heroComponent.LinkedHero;
+            
+            // Check if this is a synergy skill (can't be purchased with JP)
+            if (hero.BoundCrystal != null)
+            {
+                var learnedSynergyIds = hero.BoundCrystal.LearnedSynergySkillIds;
+                bool isSynergySkill = false;
+                foreach (var synergyId in learnedSynergyIds)
+                {
+                    if (synergyId == skill.Id)
+                    {
+                        isSynergySkill = true;
+                        break;
+                    }
+                }
+                
+                if (isSynergySkill)
+                {
+                    Debug.Log($"[HeroCrystalTab] Cannot purchase synergy skill {skill.Name} - it is unlocked automatically through synergy points");
+                    return;
+                }
+            }
             
             // Check if can afford
             if (hero.GetCurrentJP() < skill.JPCost)
@@ -323,21 +381,31 @@ namespace PitHero.UI
             _skillButtons?.Clear();
         }
         
+        /// <summary>Helper struct to track skill display information</summary>
+        private struct SkillDisplayInfo
+        {
+            public ISkill Skill;
+            public bool IsLearned;
+            public bool IsSynergySkill;
+        }
+        
         /// <summary>Individual skill button with hover/click support</summary>
         private class SkillButton : Element, IInputListener
         {
             private ISkill _skill;
             private bool _isLearned;
+            private bool _isSynergySkill;
             private SpriteDrawable _iconDrawable;
             
             public event System.Action<ISkill, bool> OnHover;
             public event System.Action OnUnhover;
             public event System.Action<ISkill, bool> OnClick;
             
-            public SkillButton(ISkill skill, bool isLearned)
+            public SkillButton(ISkill skill, bool isLearned, bool isSynergySkill = false)
             {
                 _skill = skill;
                 _isLearned = isLearned;
+                _isSynergySkill = isSynergySkill;
                 
                 CreateButton();
                 SetTouchable(Touchable.Enabled);
@@ -345,12 +413,18 @@ namespace PitHero.UI
             
             private void CreateButton()
             {
-                var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+                // Load skill icon from SkillsStencils atlas using skill ID
+                var skillsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/SkillsStencils.atlas");
                 
-                // Use different colored icons based on skill index for variety
-                // Cycle through SkillIcon1-10
-                var iconIndex = (System.Math.Abs(_skill.Id.GetHashCode()) % 10) + 1;
-                var iconSprite = uiAtlas.GetSprite($"SkillIcon{iconIndex}");
+                // Try to get the sprite using the skill's ID
+                var iconSprite = skillsAtlas.GetSprite(_skill.Id);
+                
+                // Fallback to a default icon if sprite not found
+                if (iconSprite == null)
+                {
+                    var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+                    iconSprite = uiAtlas.GetSprite("SkillIcon1");
+                }
                 
                 _iconDrawable = new SpriteDrawable(iconSprite);
                 
