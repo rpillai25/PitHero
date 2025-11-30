@@ -304,33 +304,107 @@ namespace PitHero.UI
             
             private void DrawStencilPreview(Batcher batcher)
             {
-                // Draw a simplified preview of the stencil pattern
-                // For now, just render the first required item icon as a preview
+                // Load sprite from SkillsStencils atlas
+                // Use skill ID if pattern has an unlocked skill, otherwise use pattern ID
+                try
+                {
+                    var skillsStencilsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/SkillsStencils.atlas");
+                    
+                    // Determine sprite name based on whether pattern has an unlocked skill
+                    string spriteName;
+                    if (_pattern.UnlockedSkill != null)
+                    {
+                        // Use the skill's ID as the sprite name
+                        spriteName = _pattern.UnlockedSkill.Id;
+                    }
+                    else
+                    {
+                        // Use the pattern's ID as the sprite name
+                        spriteName = _pattern.Id;
+                    }
+                    
+                    var sprite = skillsStencilsAtlas.GetSprite(spriteName);
+                    
+                    if (sprite != null)
+                    {
+                        var drawable = new SpriteDrawable(sprite);
+                        drawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+                    }
+                    else
+                    {
+                        // Fallback: Draw a placeholder icon if sprite not found
+                        DrawFallbackIcon(batcher);
+                    }
+                }
+                catch
+                {
+                    // Silently fail and draw fallback if sprite atlas not found
+                    DrawFallbackIcon(batcher);
+                }
+            }
+            
+            private void DrawFallbackIcon(Batcher batcher)
+            {
+                // Draw a simple colored square as fallback
+                // This could be enhanced to show the first item kind from the pattern
                 if (_pattern.RequiredKinds.Count > 0)
                 {
                     try
                     {
                         var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
                         var itemKind = _pattern.RequiredKinds[0];
-                        var spriteName = GetStencilSpriteName(itemKind);
+                        var spriteName = GetItemSpriteName(itemKind);
                         var sprite = itemsAtlas.GetSprite(spriteName);
                         
                         if (sprite != null)
                         {
                             var drawable = new SpriteDrawable(sprite);
-                            drawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+                            drawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), new Color(180, 180, 180, 200));
                         }
                     }
                     catch
                     {
-                        // Silently fail if sprite not found
+                        // Ultimate fallback: do nothing
                     }
                 }
             }
             
-            private string GetStencilSpriteName(RolePlayingFramework.Equipment.ItemKind kind)
+            private string GetItemSpriteName(RolePlayingFramework.Equipment.ItemKind kind)
             {
-                return $"Stencil{kind}";
+                // Map item kinds to their sprite names in the Items atlas
+                switch (kind)
+                {
+                    case RolePlayingFramework.Equipment.ItemKind.WeaponSword:
+                        return "ShortSword";
+                    case RolePlayingFramework.Equipment.ItemKind.WeaponKnuckle:
+                        return "IronKnuckle";
+                    case RolePlayingFramework.Equipment.ItemKind.WeaponStaff:
+                        return "OakStaff";
+                    case RolePlayingFramework.Equipment.ItemKind.WeaponRod:
+                        return "FireRod";
+                    case RolePlayingFramework.Equipment.ItemKind.Shield:
+                        return "WoodenShield";
+                    case RolePlayingFramework.Equipment.ItemKind.ArmorMail:
+                        return "IronMail";
+                    case RolePlayingFramework.Equipment.ItemKind.ArmorGi:
+                        return "LeatherGi";
+                    case RolePlayingFramework.Equipment.ItemKind.ArmorRobe:
+                        return "LinenRobe";
+                    case RolePlayingFramework.Equipment.ItemKind.HatHelm:
+                        return "IronHelm";
+                    case RolePlayingFramework.Equipment.ItemKind.HatHeadband:
+                        return "LeatherHeadband";
+                    case RolePlayingFramework.Equipment.ItemKind.HatWizard:
+                        return "PointyHat";
+                    case RolePlayingFramework.Equipment.ItemKind.HatPriest:
+                        return "WhiteMitre";
+                    case RolePlayingFramework.Equipment.ItemKind.Accessory:
+                        return "BronzeRing";
+                    case RolePlayingFramework.Equipment.ItemKind.Consumable:
+                        return "HealthPotion";
+                    default:
+                        return "Inventory"; // Default fallback
+                }
             }
             
             void IInputListener.OnMouseEnter()
