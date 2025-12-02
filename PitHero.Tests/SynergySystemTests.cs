@@ -476,5 +476,160 @@ namespace PitHero.Tests
             Assert.IsFalse(hero.EnableCounter, "Counter should be disabled");
             Assert.AreEqual(0, hero.SynergyCounterEnablers, "Should have 0 counter enablers");
         }
+        
+        #region Monster JP/SP Yield Tests
+        
+        [TestMethod]
+        public void Monster_HasJPYield_CalculatedFromLevel()
+        {
+            var slime = new RolePlayingFramework.Enemies.Slime();
+            Assert.IsTrue(slime.JPYield > 0, "Slime should have positive JP yield");
+            
+            // Formula is: 5 + level * 2
+            int expectedJP = 5 + slime.Level * 2;
+            Assert.AreEqual(expectedJP, slime.JPYield, "JP yield should match formula");
+        }
+        
+        [TestMethod]
+        public void Monster_HasSPYield_CalculatedFromLevel()
+        {
+            var slime = new RolePlayingFramework.Enemies.Slime();
+            Assert.IsTrue(slime.SPYield > 0, "Slime should have positive SP yield");
+            
+            // Formula is: 3 + level
+            int expectedSP = 3 + slime.Level;
+            Assert.AreEqual(expectedSP, slime.SPYield, "SP yield should match formula");
+        }
+        
+        [TestMethod]
+        public void AllMonsters_HaveJPAndSPYields()
+        {
+            // Test all monster types have JP and SP yields
+            var slime = new RolePlayingFramework.Enemies.Slime();
+            var goblin = new RolePlayingFramework.Enemies.Goblin();
+            var bat = new RolePlayingFramework.Enemies.Bat();
+            var snake = new RolePlayingFramework.Enemies.Snake();
+            var spider = new RolePlayingFramework.Enemies.Spider();
+            var rat = new RolePlayingFramework.Enemies.Rat();
+            var orc = new RolePlayingFramework.Enemies.Orc();
+            var skeleton = new RolePlayingFramework.Enemies.Skeleton();
+            var wraith = new RolePlayingFramework.Enemies.Wraith();
+            var pitLord = new RolePlayingFramework.Enemies.PitLord();
+            
+            Assert.IsTrue(slime.JPYield > 0, "Slime JP");
+            Assert.IsTrue(slime.SPYield > 0, "Slime SP");
+            Assert.IsTrue(goblin.JPYield > 0, "Goblin JP");
+            Assert.IsTrue(goblin.SPYield > 0, "Goblin SP");
+            Assert.IsTrue(bat.JPYield > 0, "Bat JP");
+            Assert.IsTrue(bat.SPYield > 0, "Bat SP");
+            Assert.IsTrue(snake.JPYield > 0, "Snake JP");
+            Assert.IsTrue(snake.SPYield > 0, "Snake SP");
+            Assert.IsTrue(spider.JPYield > 0, "Spider JP");
+            Assert.IsTrue(spider.SPYield > 0, "Spider SP");
+            Assert.IsTrue(rat.JPYield > 0, "Rat JP");
+            Assert.IsTrue(rat.SPYield > 0, "Rat SP");
+            Assert.IsTrue(orc.JPYield > 0, "Orc JP");
+            Assert.IsTrue(orc.SPYield > 0, "Orc SP");
+            Assert.IsTrue(skeleton.JPYield > 0, "Skeleton JP");
+            Assert.IsTrue(skeleton.SPYield > 0, "Skeleton SP");
+            Assert.IsTrue(wraith.JPYield > 0, "Wraith JP");
+            Assert.IsTrue(wraith.SPYield > 0, "Wraith SP");
+            Assert.IsTrue(pitLord.JPYield > 0, "PitLord JP");
+            Assert.IsTrue(pitLord.SPYield > 0, "PitLord SP");
+        }
+        
+        #endregion
+        
+        #region Synergy Pattern Registry Tests
+        
+        [TestMethod]
+        public void SynergyDetector_RegisterPattern_AddsToStaticRegistry()
+        {
+            var detector = new SynergyDetector();
+            var offsets = new List<Point> { new Point(0, 0), new Point(1, 0) };
+            var kinds = new List<ItemKind> { ItemKind.WeaponSword, ItemKind.Shield };
+            var effects = new List<ISynergyEffect>();
+            
+            var pattern = new SynergyPattern(
+                "test_registry_pattern",
+                "Test Registry Pattern",
+                "A test pattern for registry",
+                offsets,
+                kinds,
+                effects,
+                100
+            );
+            
+            detector.RegisterPattern(pattern);
+            
+            var retrieved = SynergyDetector.GetPatternById("test_registry_pattern");
+            Assert.IsNotNull(retrieved, "Pattern should be retrievable from registry");
+            Assert.AreEqual("Test Registry Pattern", retrieved.Name);
+        }
+        
+        [TestMethod]
+        public void SynergyDetector_GetPatternById_ReturnsNullForUnknownPattern()
+        {
+            var retrieved = SynergyDetector.GetPatternById("nonexistent_pattern_12345");
+            Assert.IsNull(retrieved, "Should return null for unknown pattern ID");
+        }
+        
+        #endregion
+        
+        #region HeroCrystal Discovered Synergy Tests
+        
+        [TestMethod]
+        public void HeroCrystal_DiscoverSynergy_TracksSynergyIds()
+        {
+            var knight = new Knight();
+            var stats = new StatBlock(5, 5, 5, 5);
+            var crystal = new HeroCrystal("Test Crystal", knight, 1, stats);
+            
+            crystal.DiscoverSynergy("knight.shield_mastery");
+            crystal.DiscoverSynergy("knight.holy_strike");
+            
+            Assert.IsTrue(crystal.HasDiscoveredSynergy("knight.shield_mastery"), "Should have discovered shield mastery");
+            Assert.IsTrue(crystal.HasDiscoveredSynergy("knight.holy_strike"), "Should have discovered holy strike");
+            Assert.IsFalse(crystal.HasDiscoveredSynergy("knight.spellblade"), "Should not have discovered spellblade");
+        }
+        
+        [TestMethod]
+        public void HeroCrystal_GetSynergyPoints_ReturnsZeroForNewSynergy()
+        {
+            var knight = new Knight();
+            var stats = new StatBlock(5, 5, 5, 5);
+            var crystal = new HeroCrystal("Test Crystal", knight, 1, stats);
+            
+            Assert.AreEqual(0, crystal.GetSynergyPoints("knight.shield_mastery"), "New synergy should have 0 points");
+        }
+        
+        [TestMethod]
+        public void HeroCrystal_EarnSynergyPoints_AccumulatesPoints()
+        {
+            var knight = new Knight();
+            var stats = new StatBlock(5, 5, 5, 5);
+            var crystal = new HeroCrystal("Test Crystal", knight, 1, stats);
+            
+            crystal.EarnSynergyPoints("knight.shield_mastery", 50);
+            Assert.AreEqual(50, crystal.GetSynergyPoints("knight.shield_mastery"));
+            
+            crystal.EarnSynergyPoints("knight.shield_mastery", 30);
+            Assert.AreEqual(80, crystal.GetSynergyPoints("knight.shield_mastery"));
+        }
+        
+        [TestMethod]
+        public void HeroCrystal_LearnSynergySkill_TracksLearnedSkills()
+        {
+            var knight = new Knight();
+            var stats = new StatBlock(5, 5, 5, 5);
+            var crystal = new HeroCrystal("Test Crystal", knight, 1, stats);
+            
+            crystal.LearnSynergySkill("holy_strike");
+            
+            Assert.IsTrue(crystal.HasSynergySkill("holy_strike"), "Should have learned holy strike");
+            Assert.IsFalse(crystal.HasSynergySkill("shadow_slash"), "Should not have learned shadow slash");
+        }
+        
+        #endregion
     }
 }

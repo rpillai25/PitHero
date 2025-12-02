@@ -202,8 +202,8 @@ namespace PitHero.UI
             PopulatePrioritiesTab(_prioritiesTab, skin);
             PopulateCrystalTab(_crystalTab, skin);
             _tabPane.AddTab(_inventoryTab);
-            _tabPane.AddTab(_prioritiesTab);
             _tabPane.AddTab(_crystalTab);
+            _tabPane.AddTab(_prioritiesTab);
             _heroWindow.Add(_tabPane).Expand().Fill();
             _heroWindow.SetVisible(false);
         }
@@ -246,6 +246,7 @@ namespace PitHero.UI
             _inventoryGrid.OnItemSelected += HandleItemSelected;
             _inventoryGrid.OnItemDeselected += HandleItemDeselected;
             _inventoryGrid.OnStencilRemovalRequested += HandleStencilRemovalRequested;
+            _inventoryGrid.OnSynergiesChanged += HandleSynergiesChanged;
             
             // Initialize context menu
             _inventoryGrid.InitializeContextMenu(_stage, skin);
@@ -291,6 +292,17 @@ namespace PitHero.UI
         {
             // Show confirmation dialog immediately when stencil is clicked
             ShowRemoveStencilConfirmation(stencil);
+        }
+        
+        private void HandleSynergiesChanged()
+        {
+            // Refresh Hero Crystal tab when synergies change
+            var heroComponent = GetHeroComponent();
+            if (heroComponent != null && _heroCrystalTab != null)
+            {
+                _heroCrystalTab.UpdateWithHero(heroComponent);
+                Debug.Log("[HeroUI] Refreshed Hero Crystal tab after synergies changed");
+            }
         }
         
         private void HandleViewStencilsClicked(Button button)

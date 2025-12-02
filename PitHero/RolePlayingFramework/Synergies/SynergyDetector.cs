@@ -9,6 +9,18 @@ namespace RolePlayingFramework.Synergies
     {
         private readonly List<SynergyPattern> _allPatterns;
         
+        /// <summary>Static registry of all synergy patterns by ID for lookup.</summary>
+        private static readonly Dictionary<string, SynergyPattern> _patternRegistry = new Dictionary<string, SynergyPattern>();
+        
+        /// <summary>Gets a pattern by ID from the global registry.</summary>
+        public static SynergyPattern? GetPatternById(string patternId)
+        {
+            return _patternRegistry.TryGetValue(patternId, out var pattern) ? pattern : null;
+        }
+        
+        /// <summary>Gets all registered patterns.</summary>
+        public static IReadOnlyDictionary<string, SynergyPattern> AllPatterns => _patternRegistry;
+        
         public SynergyDetector()
         {
             _allPatterns = new List<SynergyPattern>();
@@ -19,6 +31,12 @@ namespace RolePlayingFramework.Synergies
         {
             if (pattern == null) return;
             _allPatterns.Add(pattern);
+            
+            // Also register in static registry for global lookup
+            if (!_patternRegistry.ContainsKey(pattern.Id))
+            {
+                _patternRegistry[pattern.Id] = pattern;
+            }
         }
         
         /// <summary>Detects all active synergies in the given inventory grid.</summary>

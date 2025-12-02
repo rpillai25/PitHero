@@ -768,8 +768,14 @@ namespace PitHero.UI
                     var group = synergyGroups[i];
                     Debug.Log($"  - {group.Pattern.Name}: {group.InstanceCount} instances (multiplier: {group.TotalMultiplier:F2})");
                 }
+                
+                // Notify HeroCrystalTab to refresh when synergies change
+                OnSynergiesChanged?.Invoke();
             }
         }
+        
+        /// <summary>Event raised when synergies are detected and applied.</summary>
+        public event System.Action OnSynergiesChanged;
         
         /// <summary>Builds the synergy detection grid from current slot state.</summary>
         private void BuildSynergyDetectionGrid()

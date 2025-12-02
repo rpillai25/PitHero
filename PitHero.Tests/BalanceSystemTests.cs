@@ -820,6 +820,8 @@ namespace PitHero.Tests
             public int MaxHP { get; }
             public int CurrentHP => _hp;
             public int ExperienceYield { get; }
+            public int JPYield { get; }
+            public int SPYield { get; }
 
             public TestMonster(int level, BalanceConfig.MonsterArchetype archetype)
             {
@@ -834,6 +836,8 @@ namespace PitHero.Tests
                 MaxHP = BalanceConfig.CalculateMonsterHP(level, archetype);
                 _hp = MaxHP;
                 ExperienceYield = BalanceConfig.CalculateMonsterExperience(level);
+                JPYield = BalanceConfig.CalculateMonsterJPYield(level);
+                SPYield = BalanceConfig.CalculateMonsterSPYield(level);
                 ElementalProps = new ElementalProperties(ElementType.Neutral);
             }
 
