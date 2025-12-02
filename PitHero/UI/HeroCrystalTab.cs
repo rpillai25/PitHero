@@ -26,9 +26,12 @@ namespace PitHero.UI
         private Label _totalJPLabel;
         private Label _statsLabel;
         
-        // Skill grid
-        private Table _skillGridContainer;
+        // Skill grids (3 sections)
+        private Table _jobSkillsGridContainer;
+        private Table _synergySkillsGridContainer;
+        private Table _synergyEffectsGridContainer;
         private List<SkillButton> _skillButtons;
+        private List<SynergyEffectButton> _effectButtons;
         
         // Confirmation dialog
         private Dialog _confirmDialog;
@@ -41,6 +44,7 @@ namespace PitHero.UI
         public HeroCrystalTab()
         {
             _skillButtons = new List<SkillButton>();
+            _effectButtons = new List<SynergyEffectButton>();
         }
         
         /// <summary>Creates and returns the main container for this tab</summary>
@@ -60,9 +64,9 @@ namespace PitHero.UI
             _mainContainer.Add(infoSection).Expand().Fill().Pad(10f).Top();
             _mainContainer.Row();
             
-            // Middle section: Skill grid in scroll pane
-            var skillGridPane = CreateSkillGrid(skin);
-            _mainContainer.Add(skillGridPane).Expand().Fill().Pad(10f);
+            // Middle section: Three skill grids in scroll pane
+            var skillGridsPane = CreateSkillGrids(skin);
+            _mainContainer.Add(skillGridsPane).Expand().Fill().Pad(10f);
             
             // Create confirmation dialog (hidden initially)
             CreateConfirmationDialog(skin);
@@ -106,12 +110,44 @@ namespace PitHero.UI
             return infoTable;
         }
         
-        private ScrollPane CreateSkillGrid(Skin skin)
+        private ScrollPane CreateSkillGrids(Skin skin)
         {
-            _skillGridContainer = new Table();
-            _skillGridContainer.Defaults().Pad(2f);
+            var containerTable = new Table();
             
-            var scrollPane = new ScrollPane(_skillGridContainer, skin);
+            // Section 1: Job Skills
+            var jobSkillsLabel = new Label("Job Skills", skin);
+            jobSkillsLabel.SetFontScale(1.2f);
+            containerTable.Add(jobSkillsLabel).Left().Pad(5f);
+            containerTable.Row();
+            
+            _jobSkillsGridContainer = new Table();
+            _jobSkillsGridContainer.Defaults().Pad(2f);
+            containerTable.Add(_jobSkillsGridContainer).Left().Pad(5f);
+            containerTable.Row();
+            
+            // Section 2: Synergy Skills
+            var synergySkillsLabel = new Label("Synergy Skills", skin);
+            synergySkillsLabel.SetFontScale(1.2f);
+            containerTable.Add(synergySkillsLabel).Left().Pad(5f).SetPadTop(10f);
+            containerTable.Row();
+            
+            _synergySkillsGridContainer = new Table();
+            _synergySkillsGridContainer.Defaults().Pad(2f);
+            containerTable.Add(_synergySkillsGridContainer).Left().Pad(5f);
+            containerTable.Row();
+            
+            // Section 3: Synergy Effects
+            var synergyEffectsLabel = new Label("Synergy Effects", skin);
+            synergyEffectsLabel.SetFontScale(1.2f);
+            containerTable.Add(synergyEffectsLabel).Left().Pad(5f).SetPadTop(10f);
+            containerTable.Row();
+            
+            _synergyEffectsGridContainer = new Table();
+            _synergyEffectsGridContainer.Defaults().Pad(2f);
+            containerTable.Add(_synergyEffectsGridContainer).Left().Pad(5f);
+            containerTable.Row();
+            
+            var scrollPane = new ScrollPane(containerTable, skin);
             scrollPane.SetScrollingDisabled(true, false);
             
             return scrollPane;
@@ -146,40 +182,78 @@ namespace PitHero.UI
         
         private void RebuildSkillGrid(Hero hero)
         {
-            _skillGridContainer.Clear();
+            _jobSkillsGridContainer.Clear();
+            _synergySkillsGridContainer.Clear();
+            _synergyEffectsGridContainer.Clear();
             _skillButtons.Clear();
+            _effectButtons.Clear();
             
             var crystal = hero.BoundCrystal;
             if (crystal == null)
             {
                 var noCrystalLabel = new Label("No crystal bound", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
-                _skillGridContainer.Add(noCrystalLabel).Center();
+                _jobSkillsGridContainer.Add(noCrystalLabel).Center();
                 return;
             }
             
-            // Collect all skills: Job Skills + Synergy Skills (both learned and in-progress)
-            var allSkills = new List<SkillDisplayInfo>();
+            // Section 1: Job Skills
+            PopulateJobSkills(hero, crystal);
             
-            // Add job skills
+            // Section 2: Synergy Skills (discovered synergies with unlockable skills)
+            PopulateSynergySkills(hero, crystal);
+            
+            // Section 3: Synergy Effects (active synergy patterns)
+            PopulateSynergyEffects(hero);
+        }
+        
+        private void PopulateJobSkills(Hero hero, HeroCrystal crystal)
+        {
             var jobSkills = hero.Job.Skills;
+            
+            if (jobSkills.Count == 0)
+            {
+                var noSkillsLabel = new Label("No job skills available", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
+                _jobSkillsGridContainer.Add(noSkillsLabel).Center();
+                return;
+            }
+            
+            const int columns = 4;
+            int col = 0;
+            
             for (int i = 0; i < jobSkills.Count; i++)
             {
                 var skill = jobSkills[i];
-                allSkills.Add(new SkillDisplayInfo
+                bool isLearned = crystal.HasSkill(skill.Id);
+                
+                var skillButton = new SkillButton(
+                    skill, 
+                    isLearned, 
+                    false, // Not a synergy skill
+                    0, 
+                    0, 
+                    null);
+                skillButton.OnHover += OnSkillHover;
+                skillButton.OnUnhover += OnSkillUnhover;
+                skillButton.OnClick += OnSkillClick;
+                
+                _skillButtons.Add(skillButton);
+                _jobSkillsGridContainer.Add(skillButton).Size(32f, 32f);
+                
+                col++;
+                if (col >= columns)
                 {
-                    Skill = skill,
-                    IsLearned = crystal.HasSkill(skill.Id),
-                    IsSynergySkill = false,
-                    SynergyCurrentPoints = 0,
-                    SynergyRequiredPoints = 0,
-                    SynergyPatternId = null
-                });
+                    col = 0;
+                    _jobSkillsGridContainer.Row();
+                }
             }
-            
-            // Add synergy skills from discovered synergies (both learned and unlearned)
+        }
+        
+        private void PopulateSynergySkills(Hero hero, HeroCrystal crystal)
+        {
             var discoveredSynergyIds = crystal.DiscoveredSynergyIds;
             var learnedSynergySkillIds = crystal.LearnedSynergySkillIds;
             var processedSkillIds = new HashSet<string>();
+            var synergySkills = new List<SkillDisplayInfo>();
             
             foreach (var synergyId in discoveredSynergyIds)
             {
@@ -198,7 +272,7 @@ namespace PitHero.UI
                 int currentPoints = crystal.GetSynergyPoints(synergyId);
                 int requiredPoints = pattern.SynergyPointsRequired;
                 
-                allSkills.Add(new SkillDisplayInfo
+                synergySkills.Add(new SkillDisplayInfo
                 {
                     Skill = synergySkill,
                     IsLearned = isLearned,
@@ -209,20 +283,19 @@ namespace PitHero.UI
                 });
             }
             
-            if (allSkills.Count == 0)
+            if (synergySkills.Count == 0)
             {
-                var noSkillsLabel = new Label("No skills available", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
-                _skillGridContainer.Add(noSkillsLabel).Center();
+                var noSkillsLabel = new Label("No synergy skills discovered", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
+                _synergySkillsGridContainer.Add(noSkillsLabel).Center();
                 return;
             }
             
-            // Create skill buttons in a grid (4 columns)
             const int columns = 4;
             int col = 0;
             
-            for (int i = 0; i < allSkills.Count; i++)
+            for (int i = 0; i < synergySkills.Count; i++)
             {
-                var skillInfo = allSkills[i];
+                var skillInfo = synergySkills[i];
                 var skillButton = new SkillButton(
                     skillInfo.Skill, 
                     skillInfo.IsLearned, 
@@ -235,13 +308,48 @@ namespace PitHero.UI
                 skillButton.OnClick += OnSkillClick;
                 
                 _skillButtons.Add(skillButton);
-                _skillGridContainer.Add(skillButton).Size(32f, 32f);
+                _synergySkillsGridContainer.Add(skillButton).Size(32f, 32f);
                 
                 col++;
                 if (col >= columns)
                 {
                     col = 0;
-                    _skillGridContainer.Row();
+                    _synergySkillsGridContainer.Row();
+                }
+            }
+        }
+        
+        private void PopulateSynergyEffects(Hero hero)
+        {
+            var activeSynergyGroups = hero.ActiveSynergyGroups;
+            
+            if (activeSynergyGroups.Count == 0)
+            {
+                var noEffectsLabel = new Label("No active synergy effects", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
+                _synergyEffectsGridContainer.Add(noEffectsLabel).Center();
+                return;
+            }
+            
+            const int columns = 4;
+            int col = 0;
+            
+            for (int i = 0; i < activeSynergyGroups.Count; i++)
+            {
+                var group = activeSynergyGroups[i];
+                var pattern = group.Pattern;
+                
+                var effectButton = new SynergyEffectButton(pattern, group.InstanceCount, group.TotalMultiplier);
+                effectButton.OnHover += OnEffectHover;
+                effectButton.OnUnhover += OnEffectUnhover;
+                
+                _effectButtons.Add(effectButton);
+                _synergyEffectsGridContainer.Add(effectButton).Size(32f, 32f);
+                
+                col++;
+                if (col >= columns)
+                {
+                    col = 0;
+                    _synergyEffectsGridContainer.Row();
                 }
             }
         }
@@ -263,6 +371,27 @@ namespace PitHero.UI
         }
         
         private void OnSkillUnhover()
+        {
+            _skillTooltip.GetContainer().Remove();
+        }
+        
+        private void OnEffectHover(SynergyPattern pattern, int instanceCount, float multiplier)
+        {
+            if (_stage == null) return;
+            
+            // Show tooltip for synergy effect
+            _skillTooltip.ShowSynergyEffect(pattern, instanceCount, multiplier);
+            if (_skillTooltip.GetContainer().GetParent() == null)
+            {
+                _stage.AddElement(_skillTooltip.GetContainer());
+            }
+            
+            var mousePos = _stage.GetMousePosition();
+            _skillTooltip.GetContainer().SetPosition(mousePos.X + 10, mousePos.Y + 10);
+            _skillTooltip.GetContainer().ToFront();
+        }
+        
+        private void OnEffectUnhover()
         {
             _skillTooltip.GetContainer().Remove();
         }
@@ -402,8 +531,11 @@ namespace PitHero.UI
             _totalJPLabel?.SetText("Total JP: 0");
             _statsLabel?.SetText("STR:0 AGI:0 VIT:0 MAG:0");
             
-            _skillGridContainer?.Clear();
+            _jobSkillsGridContainer?.Clear();
+            _synergySkillsGridContainer?.Clear();
+            _synergyEffectsGridContainer?.Clear();
             _skillButtons?.Clear();
+            _effectButtons?.Clear();
         }
         
         /// <summary>Helper struct to track skill display information</summary>
@@ -512,6 +644,115 @@ namespace PitHero.UI
             void IInputListener.OnLeftMouseUp(Vector2 mousePos)
             {
                 OnClick?.Invoke(_skill, _isLearned);
+            }
+            
+            void IInputListener.OnRightMouseUp(Vector2 mousePos)
+            {
+                // Not needed
+            }
+            
+            bool IInputListener.OnMouseScrolled(int mouseWheelDelta)
+            {
+                return false;
+            }
+            
+            #endregion
+        }
+        
+        /// <summary>Button for displaying synergy pattern effects (not learnable, only active)</summary>
+        private class SynergyEffectButton : Element, IInputListener
+        {
+            private SynergyPattern _pattern;
+            private int _instanceCount;
+            private float _multiplier;
+            private SpriteDrawable _iconDrawable;
+            
+            public event System.Action<SynergyPattern, int, float> OnHover;
+            public event System.Action OnUnhover;
+            
+            public SynergyEffectButton(SynergyPattern pattern, int instanceCount, float multiplier)
+            {
+                _pattern = pattern;
+                _instanceCount = instanceCount;
+                _multiplier = multiplier;
+                
+                CreateButton();
+                SetTouchable(Touchable.Enabled);
+            }
+            
+            private void CreateButton()
+            {
+                // Load synergy effect icon from SkillsStencils atlas using pattern ID
+                var skillsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/SkillsStencils.atlas");
+                
+                // Use the pattern ID as sprite name (same as StencilLibraryPanel logic)
+                string spriteName;
+                if (_pattern.UnlockedSkill != null)
+                {
+                    spriteName = _pattern.UnlockedSkill.Id;
+                }
+                else
+                {
+                    spriteName = _pattern.Id;
+                }
+                
+                var iconSprite = skillsAtlas.GetSprite(spriteName);
+                
+                // Fallback to a default icon if sprite not found
+                if (iconSprite == null)
+                {
+                    var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+                    iconSprite = uiAtlas.GetSprite("SkillIcon1");
+                }
+                
+                _iconDrawable = new SpriteDrawable(iconSprite);
+                _iconDrawable.TintColor = new Color(128, 128, 256, 200);
+
+                // Active synergy effects are always shown in full color
+
+                SetSize(24f, 24f);
+            }
+            
+            public override void Draw(Batcher batcher, float parentAlpha)
+            {
+                base.Draw(batcher, parentAlpha);
+                
+                if (_iconDrawable != null)
+                {
+                    _iconDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+                }
+            }
+            
+            #region IInputListener Implementation
+            
+            void IInputListener.OnMouseEnter()
+            {
+                OnHover?.Invoke(_pattern, _instanceCount, _multiplier);
+            }
+            
+            void IInputListener.OnMouseExit()
+            {
+                OnUnhover?.Invoke();
+            }
+            
+            void IInputListener.OnMouseMoved(Vector2 mousePos)
+            {
+                // Not needed
+            }
+            
+            bool IInputListener.OnLeftMousePressed(Vector2 mousePos)
+            {
+                return true;
+            }
+            
+            bool IInputListener.OnRightMousePressed(Vector2 mousePos)
+            {
+                return false;
+            }
+            
+            void IInputListener.OnLeftMouseUp(Vector2 mousePos)
+            {
+                // Effects can't be clicked
             }
             
             void IInputListener.OnRightMouseUp(Vector2 mousePos)
