@@ -337,6 +337,61 @@ namespace RolePlayingFramework.Balance
             return 10 + level * 8;
         }
 
+        /// <summary>
+        /// Calculates Job Points (JP) yield for defeating a monster.
+        /// </summary>
+        /// <param name="level">Monster level (1-99).</param>
+        /// <returns>Job Points awarded for defeating this monster.</returns>
+        /// <remarks>
+        /// Formula: 5 + level * 2
+        /// 
+        /// Example values:
+        /// - Level 1: 7 JP
+        /// - Level 5: 15 JP
+        /// - Level 10: 25 JP
+        /// - Level 25: 55 JP
+        /// - Level 50: 105 JP
+        /// - Level 99: 203 JP
+        /// 
+        /// Tuning: JP gain is slower than XP to require more battles for skill progression.
+        /// Players should need 5-10 monsters per skill point threshold.
+        /// </remarks>
+        public static int CalculateMonsterJPYield(int level)
+        {
+            if (level < 1) level = 1;
+            if (level > 99) level = 99;
+
+            return 5 + level * 2;
+        }
+
+        /// <summary>
+        /// Calculates Synergy Points (SP) yield for defeating a monster.
+        /// </summary>
+        /// <param name="level">Monster level (1-99).</param>
+        /// <returns>Synergy Points awarded for defeating this monster.</returns>
+        /// <remarks>
+        /// Formula: 3 + level
+        /// 
+        /// Example values:
+        /// - Level 1: 4 SP
+        /// - Level 5: 8 SP
+        /// - Level 10: 13 SP
+        /// - Level 25: 28 SP
+        /// - Level 50: 53 SP
+        /// - Level 99: 102 SP
+        /// 
+        /// Tuning: SP gain is slower than JP to make synergy skill progression meaningful.
+        /// With synergy requirements of 100-230 points, players should need 10-30 monsters
+        /// to unlock a synergy skill, depending on level.
+        /// </remarks>
+        public static int CalculateMonsterSPYield(int level)
+        {
+            if (level < 1) level = 1;
+            if (level > 99) level = 99;
+
+            return 3 + level;
+        }
+
         #endregion
 
         #region Equipment Stat Calculation Methods

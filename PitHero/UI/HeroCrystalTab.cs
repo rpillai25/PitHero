@@ -4,6 +4,7 @@ using Nez.UI;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Skills;
+using RolePlayingFramework.Synergies;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -156,7 +157,7 @@ namespace PitHero.UI
                 return;
             }
             
-            // Collect all skills: Job Skills + Synergy Skills
+            // Collect all skills: Job Skills + Synergy Skills (both learned and in-progress)
             var allSkills = new List<SkillDisplayInfo>();
             
             // Add job skills
@@ -168,24 +169,44 @@ namespace PitHero.UI
                 {
                     Skill = skill,
                     IsLearned = crystal.HasSkill(skill.Id),
-                    IsSynergySkill = false
+                    IsSynergySkill = false,
+                    SynergyCurrentPoints = 0,
+                    SynergyRequiredPoints = 0,
+                    SynergyPatternId = null
                 });
             }
             
-            // Add learned synergy skills
-            var learnedSynergyIds = crystal.LearnedSynergySkillIds;
-            var learnedSkills = hero.LearnedSkills;
-            foreach (var synergySkillId in learnedSynergyIds)
+            // Add synergy skills from discovered synergies (both learned and unlearned)
+            var discoveredSynergyIds = crystal.DiscoveredSynergyIds;
+            var learnedSynergySkillIds = crystal.LearnedSynergySkillIds;
+            var processedSkillIds = new HashSet<string>();
+            
+            foreach (var synergyId in discoveredSynergyIds)
             {
-                if (learnedSkills.TryGetValue(synergySkillId, out var synergySkill))
+                var pattern = SynergyDetector.GetPatternById(synergyId);
+                if (pattern == null || pattern.UnlockedSkill == null)
+                    continue;
+                
+                var synergySkill = pattern.UnlockedSkill;
+                
+                // Skip if already processed (avoid duplicates)
+                if (processedSkillIds.Contains(synergySkill.Id))
+                    continue;
+                processedSkillIds.Add(synergySkill.Id);
+                
+                bool isLearned = learnedSynergySkillIds.Contains(synergySkill.Id);
+                int currentPoints = crystal.GetSynergyPoints(synergyId);
+                int requiredPoints = pattern.SynergyPointsRequired;
+                
+                allSkills.Add(new SkillDisplayInfo
                 {
-                    allSkills.Add(new SkillDisplayInfo
-                    {
-                        Skill = synergySkill,
-                        IsLearned = true,
-                        IsSynergySkill = true
-                    });
-                }
+                    Skill = synergySkill,
+                    IsLearned = isLearned,
+                    IsSynergySkill = true,
+                    SynergyCurrentPoints = currentPoints,
+                    SynergyRequiredPoints = requiredPoints,
+                    SynergyPatternId = synergyId
+                });
             }
             
             if (allSkills.Count == 0)
@@ -197,13 +218,18 @@ namespace PitHero.UI
             
             // Create skill buttons in a grid (4 columns)
             const int columns = 4;
-            int row = 0;
             int col = 0;
             
             for (int i = 0; i < allSkills.Count; i++)
             {
                 var skillInfo = allSkills[i];
-                var skillButton = new SkillButton(skillInfo.Skill, skillInfo.IsLearned, skillInfo.IsSynergySkill);
+                var skillButton = new SkillButton(
+                    skillInfo.Skill, 
+                    skillInfo.IsLearned, 
+                    skillInfo.IsSynergySkill,
+                    skillInfo.SynergyCurrentPoints,
+                    skillInfo.SynergyRequiredPoints,
+                    skillInfo.SynergyPatternId);
                 skillButton.OnHover += OnSkillHover;
                 skillButton.OnUnhover += OnSkillUnhover;
                 skillButton.OnClick += OnSkillClick;
@@ -215,18 +241,17 @@ namespace PitHero.UI
                 if (col >= columns)
                 {
                     col = 0;
-                    row++;
                     _skillGridContainer.Row();
                 }
             }
         }
         
-        private void OnSkillHover(ISkill skill, bool isLearned)
+        private void OnSkillHover(ISkill skill, bool isLearned, bool isSynergySkill, int synergyCurrentPoints, int synergyRequiredPoints)
         {
             if (_stage == null) return;
             
             // Show tooltip at cursor
-            _skillTooltip.ShowSkill(skill, isLearned, _heroComponent?.LinkedHero);
+            _skillTooltip.ShowSkill(skill, isLearned, _heroComponent?.LinkedHero, isSynergySkill, synergyCurrentPoints, synergyRequiredPoints);
             if (_skillTooltip.GetContainer().GetParent() == null)
             {
                 _stage.AddElement(_skillTooltip.GetContainer());
@@ -387,6 +412,9 @@ namespace PitHero.UI
             public ISkill Skill;
             public bool IsLearned;
             public bool IsSynergySkill;
+            public int SynergyCurrentPoints;
+            public int SynergyRequiredPoints;
+            public string SynergyPatternId;
         }
         
         /// <summary>Individual skill button with hover/click support</summary>
@@ -395,17 +423,24 @@ namespace PitHero.UI
             private ISkill _skill;
             private bool _isLearned;
             private bool _isSynergySkill;
+            private int _synergyCurrentPoints;
+            private int _synergyRequiredPoints;
+            private string _synergyPatternId;
             private SpriteDrawable _iconDrawable;
             
-            public event System.Action<ISkill, bool> OnHover;
+            public event System.Action<ISkill, bool, bool, int, int> OnHover;
             public event System.Action OnUnhover;
             public event System.Action<ISkill, bool> OnClick;
             
-            public SkillButton(ISkill skill, bool isLearned, bool isSynergySkill = false)
+            public SkillButton(ISkill skill, bool isLearned, bool isSynergySkill = false, 
+                int synergyCurrentPoints = 0, int synergyRequiredPoints = 0, string synergyPatternId = null)
             {
                 _skill = skill;
                 _isLearned = isLearned;
                 _isSynergySkill = isSynergySkill;
+                _synergyCurrentPoints = synergyCurrentPoints;
+                _synergyRequiredPoints = synergyRequiredPoints;
+                _synergyPatternId = synergyPatternId;
                 
                 CreateButton();
                 SetTouchable(Touchable.Enabled);
@@ -451,7 +486,7 @@ namespace PitHero.UI
             
             void IInputListener.OnMouseEnter()
             {
-                OnHover?.Invoke(_skill, _isLearned);
+                OnHover?.Invoke(_skill, _isLearned, _isSynergySkill, _synergyCurrentPoints, _synergyRequiredPoints);
             }
             
             void IInputListener.OnMouseExit()

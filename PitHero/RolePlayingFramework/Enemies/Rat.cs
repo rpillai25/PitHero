@@ -18,6 +18,8 @@ namespace RolePlayingFramework.Enemies
         public int MaxHP { get; }
         public int CurrentHP => _hp;
         public int ExperienceYield { get; }
+        public int JPYield { get; }
+        public int SPYield { get; }
 
         public Rat(int level = 1)
         {
@@ -36,6 +38,8 @@ namespace RolePlayingFramework.Enemies
             MaxHP = BalanceConfig.CalculateMonsterHP(Level, archetype);
             _hp = MaxHP;
             ExperienceYield = BalanceConfig.CalculateMonsterExperience(Level);
+            JPYield = BalanceConfig.CalculateMonsterJPYield(Level);
+            SPYield = BalanceConfig.CalculateMonsterSPYield(Level);
             
             // Rat is Neutral element: no special resistances
             ElementalProps = new ElementalProperties(ElementType.Neutral);

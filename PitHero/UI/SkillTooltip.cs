@@ -26,7 +26,7 @@ namespace PitHero.UI
             _container.SetVisible(false);
         }
         
-        public void ShowSkill(ISkill skill, bool isLearned, Hero hero)
+        public void ShowSkill(ISkill skill, bool isLearned, Hero hero, bool isSynergySkill = false, int synergyCurrentPoints = 0, int synergyRequiredPoints = 0)
         {
             _contentTable.Clear();
             
@@ -55,26 +55,49 @@ namespace PitHero.UI
                 _contentTable.Row();
             }
             
-            // JP cost
-            var costText = $"Cost: {skill.JPCost} JP";
-            var costLabel = new Label(costText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Yellow });
-            _contentTable.Add(costLabel).Left();
-            _contentTable.Row();
-            
-            // Status
-            if (isLearned)
+            // Synergy skill shows progress instead of JP cost
+            if (isSynergySkill)
             {
-                var learnedLabel = new Label("(Learned)", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Green });
-                _contentTable.Add(learnedLabel).Left();
-                _contentTable.Row();
-            }
-            else if (hero != null)
-            {
-                if (hero.GetCurrentJP() < skill.JPCost)
+                if (isLearned)
                 {
-                    var insufficientJPLabel = new Label("(Insufficient JP)", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Red });
-                    _contentTable.Add(insufficientJPLabel).Left();
+                    // Already learned synergy skill
+                    var learnedLabel = new Label("(Learned)", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Green });
+                    _contentTable.Add(learnedLabel).Left();
                     _contentTable.Row();
+                }
+                else
+                {
+                    // Show synergy progress
+                    var progressText = $"Progress: {synergyCurrentPoints} / {synergyRequiredPoints} SP";
+                    var progressColor = synergyCurrentPoints >= synergyRequiredPoints ? Color.Green : Color.Cyan;
+                    var progressLabel = new Label(progressText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = progressColor });
+                    _contentTable.Add(progressLabel).Left();
+                    _contentTable.Row();
+                }
+            }
+            else
+            {
+                // Regular JP cost for job skills
+                var costText = $"Cost: {skill.JPCost} JP";
+                var costLabel = new Label(costText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Yellow });
+                _contentTable.Add(costLabel).Left();
+                _contentTable.Row();
+                
+                // Status
+                if (isLearned)
+                {
+                    var learnedLabel = new Label("(Learned)", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Green });
+                    _contentTable.Add(learnedLabel).Left();
+                    _contentTable.Row();
+                }
+                else if (hero != null)
+                {
+                    if (hero.GetCurrentJP() < skill.JPCost)
+                    {
+                        var insufficientJPLabel = new Label("(Insufficient JP)", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Red });
+                        _contentTable.Add(insufficientJPLabel).Left();
+                        _contentTable.Row();
+                    }
                 }
             }
             

@@ -31,6 +31,12 @@ namespace RolePlayingFramework.Enemies
         /// <summary>Experience awarded when defeated.</summary>
         int ExperienceYield { get; }
 
+        /// <summary>Job Points awarded when defeated.</summary>
+        int JPYield { get; }
+
+        /// <summary>Synergy Points awarded when defeated.</summary>
+        int SPYield { get; }
+
         /// <summary>Inflicts damage, returns true if died.</summary>
         bool TakeDamage(int amount);
     }

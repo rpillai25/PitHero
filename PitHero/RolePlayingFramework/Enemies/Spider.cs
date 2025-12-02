@@ -18,6 +18,8 @@ namespace RolePlayingFramework.Enemies
         public int MaxHP { get; }
         public int CurrentHP => _hp;
         public int ExperienceYield { get; }
+        public int JPYield { get; }
+        public int SPYield { get; }
 
         public Spider(int level = 3)
         {
@@ -36,6 +38,8 @@ namespace RolePlayingFramework.Enemies
             MaxHP = BalanceConfig.CalculateMonsterHP(Level, archetype);
             _hp = MaxHP;
             ExperienceYield = BalanceConfig.CalculateMonsterExperience(Level);
+            JPYield = BalanceConfig.CalculateMonsterJPYield(Level);
+            SPYield = BalanceConfig.CalculateMonsterSPYield(Level);
             
             // Spider is Earth element: resistant to Earth, weak to Wind
             var resistances = new System.Collections.Generic.Dictionary<ElementType, float>
