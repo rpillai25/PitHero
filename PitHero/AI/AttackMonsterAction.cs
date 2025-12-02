@@ -371,6 +371,9 @@ namespace PitHero.AI
                                 {
                                     Debug.Log($"[AttackMonster] {targetEnemy.Name} defeated! Starting fade out");
                                     hero.AddExperience(targetEnemy.ExperienceYield);
+                                    hero.EarnJP(targetEnemy.JPYield);
+                                    hero.EarnSynergyPointsWithAcceleration(targetEnemy.SPYield);
+                                    Debug.Log($"[AttackMonster] Earned {targetEnemy.ExperienceYield} XP, {targetEnemy.JPYield} JP, {targetEnemy.SPYield} SP");
                                     validMonsters.Remove(targetMonster);
                                     // Start fade coroutine (wait for completion so removal timing stays consistent)
                                     yield return FadeOutAndDestroyMonster(targetMonster);
