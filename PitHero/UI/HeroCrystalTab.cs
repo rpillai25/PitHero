@@ -366,7 +366,7 @@ namespace PitHero.UI
             }
             
             var mousePos = _stage.GetMousePosition();
-            _skillTooltip.GetContainer().SetPosition(mousePos.X + 10, mousePos.Y + 10);
+            _skillTooltip.PositionWithinBounds(mousePos, _stage);
             _skillTooltip.GetContainer().ToFront();
         }
         
@@ -387,7 +387,7 @@ namespace PitHero.UI
             }
             
             var mousePos = _stage.GetMousePosition();
-            _skillTooltip.GetContainer().SetPosition(mousePos.X + 10, mousePos.Y + 10);
+            _skillTooltip.PositionWithinBounds(mousePos, _stage);
             _skillTooltip.GetContainer().ToFront();
         }
         
@@ -518,7 +518,7 @@ namespace PitHero.UI
             if (_skillTooltip != null && _skillTooltip.GetContainer().HasParent() && _stage != null)
             {
                 var mousePos = _stage.GetMousePosition();
-                _skillTooltip.GetContainer().SetPosition(mousePos.X + 10, mousePos.Y - 16);
+                _skillTooltip.PositionWithinBounds(mousePos, _stage);
             }
         }
         
@@ -706,10 +706,9 @@ namespace PitHero.UI
                 }
                 
                 _iconDrawable = new SpriteDrawable(iconSprite);
-                _iconDrawable.TintColor = new Color(128, 128, 256, 200);
-
+                
                 // Active synergy effects are always shown in full color
-
+                
                 SetSize(24f, 24f);
             }
             

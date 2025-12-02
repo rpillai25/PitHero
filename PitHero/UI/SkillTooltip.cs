@@ -196,6 +196,71 @@ namespace PitHero.UI
             return result.ToString();
         }
         
+        /// <summary>
+        /// Positions the tooltip near the mouse cursor while keeping it within stage bounds.
+        /// </summary>
+        /// <param name="mousePos">Current mouse position</param>
+        /// <param name="stage">The UI stage</param>
+        /// <param name="offsetX">Default X offset from cursor (can be negative)</param>
+        /// <param name="offsetY">Default Y offset from cursor (can be negative)</param>
+        public void PositionWithinBounds(Vector2 mousePos, Stage stage, float offsetX = 10f, float offsetY = 10f)
+        {
+            if (stage == null || _container == null)
+                return;
+            
+            // Make sure container is packed to get accurate size
+            _container.Pack();
+            
+            float tooltipWidth = _container.GetWidth();
+            float tooltipHeight = _container.GetHeight();
+            float stageWidth = stage.GetWidth();
+            float stageHeight = stage.GetHeight();
+            
+            // Start with default position (cursor + offset)
+            float x = mousePos.X + offsetX;
+            float y = mousePos.Y + offsetY;
+            
+            // Check right edge
+            if (x + tooltipWidth > stageWidth)
+            {
+                // Position to the left of cursor instead
+                x = mousePos.X - tooltipWidth - 10f;
+                
+                // If still off screen, clamp to right edge
+                if (x < 0)
+                {
+                    x = stageWidth - tooltipWidth - 5f;
+                }
+            }
+            
+            // Check left edge
+            if (x < 0)
+            {
+                x = 5f; // Small margin from left edge
+            }
+            
+            // Check bottom edge
+            if (y + tooltipHeight > stageHeight)
+            {
+                // Position above cursor instead
+                y = mousePos.Y - tooltipHeight - 10f;
+                
+                // If still off screen, clamp to bottom edge
+                if (y < 0)
+                {
+                    y = stageHeight - tooltipHeight - 5f;
+                }
+            }
+            
+            // Check top edge
+            if (y < 0)
+            {
+                y = 5f; // Small margin from top edge
+            }
+            
+            _container.SetPosition(x, y);
+        }
+        
         public Window GetContainer() => _container;
     }
 }
