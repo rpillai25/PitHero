@@ -116,7 +116,6 @@ namespace PitHero.UI
             
             // Section 1: Job Skills
             var jobSkillsLabel = new Label("Job Skills", skin);
-            jobSkillsLabel.SetFontScale(1.2f);
             containerTable.Add(jobSkillsLabel).Left().Pad(5f);
             containerTable.Row();
             
@@ -127,7 +126,6 @@ namespace PitHero.UI
             
             // Section 2: Synergy Skills
             var synergySkillsLabel = new Label("Synergy Skills", skin);
-            synergySkillsLabel.SetFontScale(1.2f);
             containerTable.Add(synergySkillsLabel).Left().Pad(5f).SetPadTop(10f);
             containerTable.Row();
             
@@ -138,7 +136,6 @@ namespace PitHero.UI
             
             // Section 3: Synergy Effects
             var synergyEffectsLabel = new Label("Synergy Effects", skin);
-            synergyEffectsLabel.SetFontScale(1.2f);
             containerTable.Add(synergyEffectsLabel).Left().Pad(5f).SetPadTop(10f);
             containerTable.Row();
             
@@ -706,9 +703,10 @@ namespace PitHero.UI
                 }
                 
                 _iconDrawable = new SpriteDrawable(iconSprite);
-                
+                _iconDrawable.TintColor = new Color(200, 255, 128, 200);
+
                 // Active synergy effects are always shown in full color
-                
+
                 SetSize(24f, 24f);
             }
             

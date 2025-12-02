@@ -143,10 +143,7 @@ namespace PitHero.UI
                     var effect = effects[i];
                     // Replace bullet with dash for compatibility
                     var effectText = SanitizeText(effect.Description);
-                    if (!effectText.StartsWith("-") && !effectText.StartsWith("*"))
-                    {
-                        effectText = "- " + effectText;
-                    }
+
                     var effectLabel = new Label(effectText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.LightGray });
                     effectLabel.SetWrap(true);
                     _contentTable.Add(effectLabel).Width(200f).Left();
@@ -156,7 +153,6 @@ namespace PitHero.UI
             
             // Note about temporary nature
             var noteLabel = new Label("(Active only while pattern is formed)", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Orange });
-            noteLabel.SetFontScale(0.8f);
             _contentTable.Add(noteLabel).Left().SetPadTop(5f);
             _contentTable.Row();
             

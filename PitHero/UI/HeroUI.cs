@@ -202,8 +202,8 @@ namespace PitHero.UI
             PopulatePrioritiesTab(_prioritiesTab, skin);
             PopulateCrystalTab(_crystalTab, skin);
             _tabPane.AddTab(_inventoryTab);
-            _tabPane.AddTab(_prioritiesTab);
             _tabPane.AddTab(_crystalTab);
+            _tabPane.AddTab(_prioritiesTab);
             _heroWindow.Add(_tabPane).Expand().Fill();
             _heroWindow.SetVisible(false);
         }
