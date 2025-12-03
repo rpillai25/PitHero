@@ -605,18 +605,19 @@ namespace PitHero.UI
                 // Try to get the sprite using the skill's ID
                 var iconSprite = skillsAtlas.GetSprite(_skill.Id);
                 
+                // Load UI atlas once for both fallback and SelectBox
+                var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+                
                 // Fallback to a default icon if sprite not found
                 if (iconSprite == null)
                 {
-                    var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
                     iconSprite = uiAtlas.GetSprite("SkillIcon1");
                 }
                 
                 _iconDrawable = new SpriteDrawable(iconSprite);
                 
                 // Load SelectBox sprite for selection visualization
-                var uiAtlas2 = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
-                _selectBoxSprite = uiAtlas2.GetSprite("SelectBox");
+                _selectBoxSprite = uiAtlas.GetSprite("SelectBox");
                 _selectBoxDrawable = new SpriteDrawable(_selectBoxSprite);
                 
                 // If not learned, apply grayscale effect by reducing alpha

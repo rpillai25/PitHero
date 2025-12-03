@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PitHero.UI;
+using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Skills;
 
 namespace PitHero.Tests
