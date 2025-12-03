@@ -389,7 +389,25 @@ namespace PitHero.UI
                 return;
             }
 
-            // Try to consume the item
+            // Check if hero is in battle
+            bool inBattle = PitHero.AI.HeroStateMachine.IsBattleInProgress;
+            
+            // If in battle, queue the action
+            if (inBattle)
+            {
+                Debug.Log($"[ShortcutBar] Queueing {item.Name} for battle");
+                _heroComponent.BattleActionQueue.EnqueueItem(consumable, bagIndex);
+                return;
+            }
+            
+            // Not in battle - check if item is battle-only
+            if (consumable.BattleOnly)
+            {
+                Debug.Log($"[ShortcutBar] Cannot use {item.Name}: Item is battle-only");
+                return;
+            }
+
+            // Try to consume the item immediately (out of battle)
             if (consumable.Consume(hero))
             {
                 Debug.Log($"[ShortcutBar] Used {item.Name}");

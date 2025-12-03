@@ -18,6 +18,9 @@ namespace RolePlayingFramework.Skills
         
         /// <summary>Elemental type of the skill.</summary>
         ElementType Element { get; }
+        
+        /// <summary>True if this skill can only be used during battle.</summary>
+        bool BattleOnly { get; }
 
         /// <summary>Applies passive modifiers at aggregation time (no side effects).</summary>
         void ApplyPassive(Hero hero);

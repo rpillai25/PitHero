@@ -82,6 +82,11 @@ namespace PitHero.ECS.Components
         /// Hero's item bag for inventory management
         /// </summary>
         public RolePlayingFramework.Inventory.ItemBag Bag { get; private set; }
+        
+        /// <summary>
+        /// Action queue for battle actions
+        /// </summary>
+        public ActionQueue BattleActionQueue { get; private set; }
 
         private PitWidthManager _pitWidthManager;
 
@@ -121,8 +126,11 @@ namespace PitHero.ECS.Components
             // Cache PitWidthManager service for dynamic pit sizing
             _pitWidthManager = Core.Services.GetService<PitWidthManager>();
 
-            // Initialize hero's item bag with full 120 capacity (20×6 grid)
+            // Initialize hero's item bag with full 120 capacity (20ï¿½6 grid)
             Bag = new RolePlayingFramework.Inventory.ItemBag("Traveller's Bag", 120);
+            
+            // Initialize battle action queue
+            BattleActionQueue = new ActionQueue();
 
             // Initialize state properties to clean state
             HeroInitialized = true;  // Set to true after hero entity and components initialized
