@@ -4,11 +4,12 @@ using Nez.Textures;
 using Nez.UI;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Skills;
 
 namespace PitHero.UI
 {
     /// <summary>
-    /// Manages selection and swapping between InventoryGrid and ShortcutBar
+    /// Manages selection and swapping between InventoryGrid, ShortcutBar, and HeroCrystalTab (for skills)
     /// </summary>
     public static class InventorySelectionManager
     {
@@ -16,6 +17,10 @@ namespace PitHero.UI
         private static bool _isFromShortcutBar;
         private static HeroComponent _heroComponent;
         private static int _selectedShortcutIndex = -1; // For shortcut bar references
+        
+        // Skill selection support
+        private static ISkill _selectedSkill;
+        private static bool _isFromHeroCrystalTab;
 
         // Overlay for cross-component and in-grid swap animations (stage-space tween)
         private static SwapAnimationOverlay _swapOverlay;
@@ -36,7 +41,9 @@ namespace PitHero.UI
             ClearSelectionInternal();
             _selectedSlot = slot;
             _isFromShortcutBar = false;
+            _isFromHeroCrystalTab = false;
             _selectedShortcutIndex = -1;
+            _selectedSkill = null;
             _heroComponent = hero;
             if (slot != null)
                 slot.SlotData.IsHighlighted = true;
@@ -48,7 +55,21 @@ namespace PitHero.UI
             ClearSelectionInternal();
             _selectedSlot = null; // Shortcut bar doesn't have real slots, just references
             _isFromShortcutBar = true;
+            _isFromHeroCrystalTab = false;
             _selectedShortcutIndex = shortcutIndex;
+            _selectedSkill = null;
+            _heroComponent = hero;
+        }
+        
+        /// <summary>Sets the selected skill from HeroCrystalTab</summary>
+        public static void SetSelectedFromHeroCrystalTab(ISkill skill, HeroComponent hero)
+        {
+            ClearSelectionInternal();
+            _selectedSlot = null;
+            _isFromShortcutBar = false;
+            _isFromHeroCrystalTab = true;
+            _selectedShortcutIndex = -1;
+            _selectedSkill = skill;
             _heroComponent = hero;
         }
         
@@ -61,7 +82,9 @@ namespace PitHero.UI
                 _selectedSlot = null;
             }
             _isFromShortcutBar = false;
+            _isFromHeroCrystalTab = false;
             _selectedShortcutIndex = -1;
+            _selectedSkill = null;
             _heroComponent = null;
         }
         
@@ -77,14 +100,20 @@ namespace PitHero.UI
         /// <summary>Gets the currently selected slot</summary>
         public static InventorySlot GetSelectedSlot() => _selectedSlot;
         
+        /// <summary>Gets the currently selected skill</summary>
+        public static ISkill GetSelectedSkill() => _selectedSkill;
+        
         /// <summary>Gets the currently selected shortcut index</summary>
         public static int GetSelectedShortcutIndex() => _selectedShortcutIndex;
         
         /// <summary>Returns true if the selected slot is from shortcut bar</summary>
         public static bool IsSelectionFromShortcutBar() => _isFromShortcutBar;
         
-        /// <summary>Returns true if there is a selected slot</summary>
-        public static bool HasSelection() => _selectedSlot != null || _selectedShortcutIndex >= 0;
+        /// <summary>Returns true if the selected skill is from HeroCrystalTab</summary>
+        public static bool IsSelectionFromHeroCrystalTab() => _isFromHeroCrystalTab;
+        
+        /// <summary>Returns true if there is a selected slot or skill</summary>
+        public static bool HasSelection() => _selectedSlot != null || _selectedShortcutIndex >= 0 || _selectedSkill != null;
 
         /// <summary>Returns true if two slots can perform stack absorption and outputs amount to absorb.</summary>
         public static bool CanAbsorbStacks(InventorySlot source, InventorySlot target, out int toAbsorb)

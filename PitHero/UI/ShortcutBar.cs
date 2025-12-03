@@ -5,10 +5,11 @@ using Nez.Textures;
 using Nez.UI;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Skills;
 
 namespace PitHero.UI
 {
-    /// <summary>UI component displaying shortcut slots (y=3, x=0-7) at bottom center of game HUD. References InventoryGrid slots.</summary>
+    /// <summary>UI component displaying shortcut slots (y=3, x=0-7) at bottom center of game HUD. Can reference items or skills.</summary>
     public class ShortcutBar : Group
     {
         private const int SHORTCUT_COUNT = 8;
@@ -16,8 +17,8 @@ namespace PitHero.UI
         private const float SLOT_PADDING = 1f;
         private const float HOVER_OFFSET_Y = -16f;
         
-        // Array of references to InventoryGrid slots (one for each shortcut position)
-        private readonly InventorySlot[] _referencedSlots;
+        // Array of shortcut slot data (can be item reference or skill reference)
+        private readonly ShortcutSlotData[] _shortcutSlots;
         
         // Track the items that are referenced (not the slots) so we can find them when they move
         private readonly IItem[] _referencedItems;
@@ -34,20 +35,28 @@ namespace PitHero.UI
         // Track scaling for different window modes
         private float _currentScale = 1f;
         
-        // Track base position and offset for inventory window
+        // Base position and offset for inventory window
         private float _baseX = 0f;
         private float _baseY = 0f;
         private float _offsetX = 0f;
         
-        // Public events for item card display (compatible with InventoryGrid)
+        // Public events for item/skill display
         public event System.Action<IItem> OnItemHovered;
         public event System.Action OnItemUnhovered;
         public event System.Action<IItem> OnItemSelected;
         public event System.Action OnItemDeselected;
+        public event System.Action<ISkill> OnSkillHovered;
+        public event System.Action OnSkillUnhovered;
+        public event System.Action<ISkill> OnSkillSelected;
+        public event System.Action OnSkillDeselected;
         
         public ShortcutBar()
         {
-            _referencedSlots = new InventorySlot[SHORTCUT_COUNT];
+            _shortcutSlots = new ShortcutSlotData[SHORTCUT_COUNT];
+            for (int i = 0; i < SHORTCUT_COUNT; i++)
+            {
+                _shortcutSlots[i] = new ShortcutSlotData();
+            }
             _referencedItems = new IItem[SHORTCUT_COUNT];
             _visualSlots = new FastList<ShortcutSlotVisual>(SHORTCUT_COUNT);
             BuildVisualSlots();
@@ -137,18 +146,38 @@ namespace PitHero.UI
             if (shortcutIndex < 0 || shortcutIndex >= SHORTCUT_COUNT)
                 return;
                 
-            _referencedSlots[shortcutIndex] = referencedSlot;
+            _shortcutSlots[shortcutIndex] = ShortcutSlotData.CreateItemReference(referencedSlot);
             _referencedItems[shortcutIndex] = referencedSlot?.SlotData?.Item;
             RefreshVisualSlots();
         }
         
-        /// <summary>Gets the referenced slot at the specified shortcut index.</summary>
+        /// <summary>Sets a reference to a skill at the specified shortcut index.</summary>
+        public void SetShortcutSkill(int shortcutIndex, ISkill skill)
+        {
+            if (shortcutIndex < 0 || shortcutIndex >= SHORTCUT_COUNT)
+                return;
+                
+            _shortcutSlots[shortcutIndex] = ShortcutSlotData.CreateSkillReference(skill);
+            _referencedItems[shortcutIndex] = null;
+            RefreshVisualSlots();
+        }
+        
+        /// <summary>Gets the shortcut slot data at the specified index.</summary>
+        public ShortcutSlotData GetShortcutSlotData(int shortcutIndex)
+        {
+            if (shortcutIndex < 0 || shortcutIndex >= SHORTCUT_COUNT)
+                return null;
+                
+            return _shortcutSlots[shortcutIndex];
+        }
+        
+        /// <summary>Gets the referenced slot at the specified shortcut index (for backward compatibility).</summary>
         public InventorySlot GetReferencedSlot(int shortcutIndex)
         {
             if (shortcutIndex < 0 || shortcutIndex >= SHORTCUT_COUNT)
                 return null;
                 
-            return _referencedSlots[shortcutIndex];
+            return _shortcutSlots[shortcutIndex]?.ReferencedSlot;
         }
         
         /// <summary>Clears the reference at the specified shortcut index.</summary>
@@ -157,12 +186,12 @@ namespace PitHero.UI
             if (shortcutIndex < 0 || shortcutIndex >= SHORTCUT_COUNT)
                 return;
                 
-            _referencedSlots[shortcutIndex] = null;
+            _shortcutSlots[shortcutIndex].Clear();
             _referencedItems[shortcutIndex] = null;
             RefreshVisualSlots();
         }
         
-        /// <summary>Refreshes all visual slots to display referenced items.</summary>
+        /// <summary>Refreshes all visual slots to display referenced items or skills.</summary>
         private void RefreshVisualSlots()
         {
             // First, update slot references to track item movements
@@ -171,15 +200,32 @@ namespace PitHero.UI
             for (int i = 0; i < SHORTCUT_COUNT; i++)
             {
                 var visualSlot = _visualSlots.Buffer[i];
-                var referencedSlot = _referencedSlots[i];
+                var shortcutData = _shortcutSlots[i];
                 
                 if (visualSlot != null)
                 {
-                    // Update visual slot to show the referenced item (or null if no reference)
-                    visualSlot.SetReferencedItem(referencedSlot?.SlotData?.Item);
-                    visualSlot.SetStackCount(
-                        referencedSlot?.SlotData?.Item is Consumable consumable ? consumable.StackCount : 0
-                    );
+                    // Update visual slot based on shortcut type
+                    if (shortcutData.SlotType == ShortcutSlotType.Item)
+                    {
+                        var referencedSlot = shortcutData.ReferencedSlot;
+                        visualSlot.SetReferencedItem(referencedSlot?.SlotData?.Item);
+                        visualSlot.SetReferencedSkill(null);
+                        visualSlot.SetStackCount(
+                            referencedSlot?.SlotData?.Item is Consumable consumable ? consumable.StackCount : 0
+                        );
+                    }
+                    else if (shortcutData.SlotType == ShortcutSlotType.Skill)
+                    {
+                        visualSlot.SetReferencedItem(null);
+                        visualSlot.SetReferencedSkill(shortcutData.ReferencedSkill);
+                        visualSlot.SetStackCount(0);
+                    }
+                    else
+                    {
+                        visualSlot.SetReferencedItem(null);
+                        visualSlot.SetReferencedSkill(null);
+                        visualSlot.SetStackCount(0);
+                    }
                 }
             }
         }
@@ -190,14 +236,17 @@ namespace PitHero.UI
             if (_heroComponent == null || _inventoryGrid == null)
                 return;
             
-            // For each shortcut, check if the item moved
+            // For each shortcut, check if the item moved (only for item shortcuts)
             for (int i = 0; i < SHORTCUT_COUNT; i++)
             {
+                if (_shortcutSlots[i].SlotType != ShortcutSlotType.Item)
+                    continue;
+                    
                 var trackedItem = _referencedItems[i];
                 if (trackedItem == null)
                     continue;
                 
-                var currentSlot = _referencedSlots[i];
+                var currentSlot = _shortcutSlots[i].ReferencedSlot;
                 
                 // Check if the current slot still has the tracked item
                 if (currentSlot?.SlotData?.Item == trackedItem)
@@ -211,13 +260,13 @@ namespace PitHero.UI
                 if (newSlot != null)
                 {
                     Debug.Log($"[ShortcutBar] Shortcut {i + 1} item '{trackedItem.Name}' moved to new slot, updating reference");
-                    _referencedSlots[i] = newSlot;
+                    _shortcutSlots[i].ReferencedSlot = newSlot;
                 }
                 else
                 {
                     // Item was consumed or removed from inventory
                     Debug.Log($"[ShortcutBar] Shortcut {i + 1} item '{trackedItem.Name}' no longer in inventory, clearing reference");
-                    _referencedSlots[i] = null;
+                    _shortcutSlots[i].Clear();
                     _referencedItems[i] = null;
                 }
             }
@@ -238,19 +287,37 @@ namespace PitHero.UI
         /// <summary>Handles slot click highlighting.</summary>
         private void HandleSlotClicked(int index)
         {
-            // Check if there's a cross-component selection (from InventoryGrid)
+            // Check if there's a cross-component selection (from InventoryGrid or HeroCrystalTab)
             if (InventorySelectionManager.HasSelection() && !InventorySelectionManager.IsSelectionFromShortcutBar())
             {
-                // Get the selected inventory slot
-                var inventorySlot = InventorySelectionManager.GetSelectedSlot();
-                
-                // Set this shortcut to reference that inventory slot
-                SetShortcutReference(index, inventorySlot);
-                
-                // Clear the selection
-                InventorySelectionManager.ClearSelection();
-                OnItemDeselected?.Invoke();
-                return;
+                // Check if it's a skill from HeroCrystalTab
+                if (InventorySelectionManager.IsSelectionFromHeroCrystalTab())
+                {
+                    var selectedSkill = InventorySelectionManager.GetSelectedSkill();
+                    if (selectedSkill != null)
+                    {
+                        // Set this shortcut to reference that skill
+                        SetShortcutSkill(index, selectedSkill);
+                        
+                        // Clear the selection
+                        InventorySelectionManager.ClearSelection();
+                        OnSkillDeselected?.Invoke();
+                        return;
+                    }
+                }
+                else
+                {
+                    // Get the selected inventory slot
+                    var inventorySlot = InventorySelectionManager.GetSelectedSlot();
+                    
+                    // Set this shortcut to reference that inventory slot
+                    SetShortcutReference(index, inventorySlot);
+                    
+                    // Clear the selection
+                    InventorySelectionManager.ClearSelection();
+                    OnItemDeselected?.Invoke();
+                    return;
+                }
             }
             
             // Handle shortcut-to-shortcut interaction (swapping)
@@ -267,6 +334,7 @@ namespace PitHero.UI
                 
                 InventorySelectionManager.ClearSelection();
                 OnItemDeselected?.Invoke();
+                OnSkillDeselected?.Invoke();
                 return;
             }
             
@@ -279,9 +347,12 @@ namespace PitHero.UI
                 {
                     visualSlot.SetHighlighted(true);
                     InventorySelectionManager.SetSelectedFromShortcut(index, _heroComponent);
-                    var referencedSlot = _referencedSlots[index];
-                    if (referencedSlot?.SlotData?.Item != null)
-                        OnItemSelected?.Invoke(referencedSlot.SlotData.Item);
+                    
+                    var shortcutData = _shortcutSlots[index];
+                    if (shortcutData.SlotType == ShortcutSlotType.Item && shortcutData.ReferencedSlot?.SlotData?.Item != null)
+                        OnItemSelected?.Invoke(shortcutData.ReferencedSlot.SlotData.Item);
+                    else if (shortcutData.SlotType == ShortcutSlotType.Skill && shortcutData.ReferencedSkill != null)
+                        OnSkillSelected?.Invoke(shortcutData.ReferencedSkill);
                 }
             }
             else if (_highlightedIndex == index)
@@ -293,6 +364,7 @@ namespace PitHero.UI
                 _highlightedIndex = -1;
                 InventorySelectionManager.ClearSelection();
                 OnItemDeselected?.Invoke();
+                OnSkillDeselected?.Invoke();
             }
             else
             {
@@ -307,14 +379,17 @@ namespace PitHero.UI
                 {
                     newVisualSlot.SetHighlighted(true);
                     InventorySelectionManager.SetSelectedFromShortcut(index, _heroComponent);
-                    var referencedSlot = _referencedSlots[index];
-                    if (referencedSlot?.SlotData?.Item != null)
-                        OnItemSelected?.Invoke(referencedSlot.SlotData.Item);
+                    
+                    var shortcutData = _shortcutSlots[index];
+                    if (shortcutData.SlotType == ShortcutSlotType.Item && shortcutData.ReferencedSlot?.SlotData?.Item != null)
+                        OnItemSelected?.Invoke(shortcutData.ReferencedSlot.SlotData.Item);
+                    else if (shortcutData.SlotType == ShortcutSlotType.Skill && shortcutData.ReferencedSkill != null)
+                        OnSkillSelected?.Invoke(shortcutData.ReferencedSkill);
                 }
             }
         }
         
-        /// <summary>Swaps the item references between two shortcut slots.</summary>
+        /// <summary>Swaps the item/skill references between two shortcut slots.</summary>
         private void SwapShortcuts(int indexA, int indexB)
         {
             if (indexA < 0 || indexA >= SHORTCUT_COUNT || indexB < 0 || indexB >= SHORTCUT_COUNT)
@@ -322,12 +397,12 @@ namespace PitHero.UI
             
             Debug.Log($"[ShortcutBar] Swapping shortcuts {indexA + 1} and {indexB + 1}");
             
-            // Swap the slot references
-            var tempSlot = _referencedSlots[indexA];
-            _referencedSlots[indexA] = _referencedSlots[indexB];
-            _referencedSlots[indexB] = tempSlot;
+            // Swap the shortcut data
+            var tempData = _shortcutSlots[indexA];
+            _shortcutSlots[indexA] = _shortcutSlots[indexB];
+            _shortcutSlots[indexB] = tempData;
             
-            // Swap the tracked items
+            // Swap the tracked items (only relevant for item shortcuts)
             var tempItem = _referencedItems[indexA];
             _referencedItems[indexA] = _referencedItems[indexB];
             _referencedItems[indexB] = tempItem;
@@ -336,37 +411,54 @@ namespace PitHero.UI
             RefreshVisualSlots();
         }
         
-        /// <summary>Handles double-click to use consumables.</summary>
+        /// <summary>Handles double-click to use consumables or skills.</summary>
         private void HandleSlotDoubleClicked(int index)
         {
-            var referencedSlot = _referencedSlots[index];
-            if (referencedSlot?.SlotData?.Item == null || !referencedSlot.SlotData.BagIndex.HasValue)
-                return;
-                
-            var item = referencedSlot.SlotData.Item;
-            var bagIndex = referencedSlot.SlotData.BagIndex.Value;
+            var shortcutData = _shortcutSlots[index];
             
-            // Only consumables can be used from shortcut bar
-            if (item is Consumable)
+            // Handle item double-click
+            if (shortcutData.SlotType == ShortcutSlotType.Item)
             {
-                UseConsumable(item, bagIndex);
+                var referencedSlot = shortcutData.ReferencedSlot;
+                if (referencedSlot?.SlotData?.Item == null || !referencedSlot.SlotData.BagIndex.HasValue)
+                    return;
+                    
+                var item = referencedSlot.SlotData.Item;
+                var bagIndex = referencedSlot.SlotData.BagIndex.Value;
+                
+                // Only consumables can be used from shortcut bar
+                if (item is Consumable)
+                {
+                    UseConsumable(item, bagIndex);
+                }
+            }
+            // Handle skill double-click (same as pressing the shortcut key)
+            else if (shortcutData.SlotType == ShortcutSlotType.Skill)
+            {
+                UseSkill(shortcutData.ReferencedSkill);
             }
         }
         
         private void HandleSlotHovered(int index)
         {
             var visualSlot = _visualSlots.Buffer[index];
-            var referencedSlot = _referencedSlots[index];
+            var shortcutData = _shortcutSlots[index];
             
             // Show hover effect if there's a cross-component selection or local highlight
-            if ((InventorySelectionManager.HasSelection() && referencedSlot?.SlotData?.Item != null) || 
-                (_highlightedIndex >= 0 && _highlightedIndex != index && referencedSlot?.SlotData?.Item != null))
+            bool hasContent = (shortcutData.SlotType == ShortcutSlotType.Item && shortcutData.ReferencedSlot?.SlotData?.Item != null) ||
+                              (shortcutData.SlotType == ShortcutSlotType.Skill && shortcutData.ReferencedSkill != null);
+            
+            if ((InventorySelectionManager.HasSelection() && hasContent) || 
+                (_highlightedIndex >= 0 && _highlightedIndex != index && hasContent))
             {
                 visualSlot?.SetItemSpriteOffsetY(HOVER_OFFSET_Y);
             }
             
-            if (referencedSlot?.SlotData?.Item != null)
-                OnItemHovered?.Invoke(referencedSlot.SlotData.Item);
+            // Invoke appropriate hover event
+            if (shortcutData.SlotType == ShortcutSlotType.Item && shortcutData.ReferencedSlot?.SlotData?.Item != null)
+                OnItemHovered?.Invoke(shortcutData.ReferencedSlot.SlotData.Item);
+            else if (shortcutData.SlotType == ShortcutSlotType.Skill && shortcutData.ReferencedSkill != null)
+                OnSkillHovered?.Invoke(shortcutData.ReferencedSkill);
         }
         
         private void HandleSlotUnhovered(int index)
@@ -428,6 +520,42 @@ namespace PitHero.UI
             }
         }
         
+        /// <summary>Uses a skill from the shortcut bar.</summary>
+        private void UseSkill(ISkill skill)
+        {
+            if (skill == null)
+                return;
+                
+            var hero = _heroComponent?.LinkedHero;
+            if (hero == null)
+            {
+                Debug.Log($"[ShortcutBar] Cannot use {skill.Name}: No hero linked");
+                return;
+            }
+            
+            // Check if hero is in battle
+            bool inBattle = PitHero.AI.HeroStateMachine.IsBattleInProgress;
+            
+            // If in battle, queue the action
+            if (inBattle)
+            {
+                Debug.Log($"[ShortcutBar] Queueing skill {skill.Name} for battle");
+                _heroComponent.BattleActionQueue.EnqueueSkill(skill);
+                return;
+            }
+            
+            // Not in battle - check if skill is battle-only
+            if (skill.BattleOnly)
+            {
+                Debug.Log($"[ShortcutBar] Cannot use {skill.Name}: Skill is battle-only");
+                return;
+            }
+            
+            // For non-battle skills used outside of battle, we would need to implement immediate execution
+            // This depends on the specific skill's Execute method and requires a context (no enemies)
+            Debug.Log($"[ShortcutBar] Cannot use {skill.Name} outside of battle (not yet implemented)");
+        }
+        
         /// <summary>Public method to refresh visual slots (called externally when inventory changes).</summary>
         public void RefreshItems()
         {
@@ -449,23 +577,40 @@ namespace PitHero.UI
                 var key = (Keys)((int)Keys.D1 + keyOffset);
                 if (!Input.IsKeyPressed(key)) continue;
                 
-                var referencedSlot = _referencedSlots[keyOffset];
-                if (referencedSlot?.SlotData?.Item != null && referencedSlot.SlotData.BagIndex.HasValue)
+                var shortcutData = _shortcutSlots[keyOffset];
+                
+                // Handle item shortcuts
+                if (shortcutData.SlotType == ShortcutSlotType.Item)
                 {
-                    Debug.Log($"[ShortcutBar] Activated shortcut slot {keyOffset + 1} with item: {referencedSlot.SlotData.Item.Name}");
-                    
-                    // Use the consumable if it's a consumable
-                    if (referencedSlot.SlotData.Item is Consumable)
+                    var referencedSlot = shortcutData.ReferencedSlot;
+                    if (referencedSlot?.SlotData?.Item != null && referencedSlot.SlotData.BagIndex.HasValue)
                     {
-                        UseConsumable(referencedSlot.SlotData.Item, referencedSlot.SlotData.BagIndex.Value);
+                        Debug.Log($"[ShortcutBar] Activated shortcut slot {keyOffset + 1} with item: {referencedSlot.SlotData.Item.Name}");
+                        
+                        // Use the consumable if it's a consumable
+                        if (referencedSlot.SlotData.Item is Consumable)
+                        {
+                            UseConsumable(referencedSlot.SlotData.Item, referencedSlot.SlotData.BagIndex.Value);
+                        }
                     }
-                    break;
                 }
+                // Handle skill shortcuts
+                else if (shortcutData.SlotType == ShortcutSlotType.Skill)
+                {
+                    var skill = shortcutData.ReferencedSkill;
+                    if (skill != null)
+                    {
+                        Debug.Log($"[ShortcutBar] Activated shortcut slot {keyOffset + 1} with skill: {skill.Name}");
+                        UseSkill(skill);
+                    }
+                }
+                
+                break;
             }
         }
     }
     
-    /// <summary>Visual representation of a shortcut slot that displays a referenced item.</summary>
+    /// <summary>Visual representation of a shortcut slot that displays a referenced item or skill.</summary>
     public class ShortcutSlotVisual : Element, IInputListener
     {
         private readonly int _shortcutKey;
@@ -478,6 +623,7 @@ namespace PitHero.UI
         private Nez.BitmapFonts.BitmapFont _font;
         
         private IItem _referencedItem;
+        private ISkill _referencedSkill;
         private int _stackCount;
         private bool _isHovered;
         private bool _isHighlighted;
@@ -531,6 +677,11 @@ namespace PitHero.UI
             _referencedItem = item;
         }
         
+        public void SetReferencedSkill(ISkill skill)
+        {
+            _referencedSkill = skill;
+        }
+        
         public void SetStackCount(int stackCount)
         {
             _stackCount = stackCount;
@@ -578,6 +729,24 @@ namespace PitHero.UI
                     var stackText = _stackCount.ToString();
                     var textPosition = new Vector2(GetX() + 2f * Scale, GetY() + _itemSpriteOffsetY + GetHeight() - _font.LineHeight * Scale + 2f * Scale);
                     batcher.DrawString(_font, stackText, textPosition, Color.White, 0f, Vector2.Zero, Scale, Microsoft.Xna.Framework.Graphics.SpriteEffects.None, 0f);
+                }
+            }
+            // Draw referenced skill sprite if exists
+            else if (_referencedSkill != null && Core.Content != null)
+            {
+                try
+                {
+                    var skillsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/SkillsStencils.atlas");
+                    var skillSprite = skillsAtlas.GetSprite(_referencedSkill.Id);
+                    if (skillSprite != null)
+                    {
+                        var skillDrawable = new SpriteDrawable(skillSprite);
+                        skillDrawable.Draw(batcher, GetX(), GetY() + _itemSpriteOffsetY, GetWidth(), GetHeight(), Color.White);
+                    }
+                }
+                catch
+                {
+                    // Silently ignore missing sprites
                 }
             }
             
