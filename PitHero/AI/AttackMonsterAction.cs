@@ -369,6 +369,9 @@ namespace PitHero.AI
                                         // Decrement stack or remove item from bag
                                         heroComponent.Bag.ConsumeFromStack(queuedAction.BagIndex);
                                         Debug.Log($"[AttackMonster] Successfully used {consumable.Name}");
+                                        
+                                        // Notify UI that inventory has changed
+                                        PitHero.UI.InventorySelectionManager.OnInventoryChanged?.Invoke();
                                     }
                                     else
                                     {
