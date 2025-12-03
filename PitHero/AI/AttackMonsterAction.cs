@@ -153,6 +153,14 @@ namespace PitHero.AI
         }
 
         /// <summary>
+        /// Get all living monsters from the valid monsters list (cached components to avoid repeated lookups)
+        /// </summary>
+        private List<Entity> GetLivingMonsters(List<Entity> validMonsters)
+        {
+            return validMonsters.Where(m => m.GetComponent<EnemyComponent>()?.Enemy.CurrentHP > 0).ToList();
+        }
+
+        /// <summary>
         /// Make hero face the target position
         /// </summary>
         private void FaceTarget(HeroComponent hero, Vector2 targetPosition)
@@ -376,10 +384,18 @@ namespace PitHero.AI
                                     // Check if hero has enough MP
                                     if (hero.CurrentMP >= skill.MPCost)
                                     {
-                                        // Get a living monster as the target
-                                        var livingMonsters = validMonsters.Where(m => m.GetComponent<EnemyComponent>()?.Enemy.CurrentHP > 0).ToList();
-                                        var primaryTarget = livingMonsters.Count > 0 ? livingMonsters[0].GetComponent<EnemyComponent>().Enemy : null;
-                                        var surroundingTargets = livingMonsters.Skip(1).Select(m => m.GetComponent<EnemyComponent>().Enemy).ToList();
+                                        // Get living monsters as targets
+                                        var livingMonsters = GetLivingMonsters(validMonsters);
+                                        
+                                        // Cache components to avoid repeated lookups
+                                        var primaryTarget = livingMonsters.Count > 0 ? livingMonsters[0].GetComponent<EnemyComponent>()?.Enemy : null;
+                                        var surroundingTargets = new List<RolePlayingFramework.Enemies.IEnemy>();
+                                        for (int i = 1; i < livingMonsters.Count; i++)
+                                        {
+                                            var enemyComp = livingMonsters[i].GetComponent<EnemyComponent>();
+                                            if (enemyComp?.Enemy != null)
+                                                surroundingTargets.Add(enemyComp.Enemy);
+                                        }
                                         
                                         // Execute the skill
                                         skill.Execute(hero, primaryTarget, surroundingTargets, attackResolver);
@@ -395,7 +411,7 @@ namespace PitHero.AI
                             else
                             {
                                 // No queued action - perform default attack on a random living monster
-                                var livingMonsters = validMonsters.Where(m => m.GetComponent<EnemyComponent>()?.Enemy.CurrentHP > 0).ToList();
+                                var livingMonsters = GetLivingMonsters(validMonsters);
                                 if (livingMonsters.Count == 0) break; // All monsters dead
 
                                 var targetMonster = livingMonsters[Nez.Random.Range(0, livingMonsters.Count)];
