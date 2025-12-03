@@ -157,7 +157,16 @@ namespace PitHero.AI
         /// </summary>
         private List<Entity> GetLivingMonsters(List<Entity> validMonsters)
         {
-            return validMonsters.Where(m => m.GetComponent<EnemyComponent>()?.Enemy.CurrentHP > 0).ToList();
+            _tempLivingMonsters.Clear();
+            for (int i = 0; i < validMonsters.Count; i++)
+            {
+                var enemyComponent = validMonsters[i].GetComponent<EnemyComponent>();
+                if (enemyComponent?.Enemy != null && enemyComponent.Enemy.CurrentHP > 0)
+                {
+                    _tempLivingMonsters.Add(validMonsters[i]);
+                }
+            }
+            return _tempLivingMonsters;
         }
 
         /// <summary>
