@@ -153,6 +153,23 @@ namespace PitHero.AI
         }
 
         /// <summary>
+        /// Get all living monsters from the valid monsters list (cached components to avoid repeated lookups)
+        /// </summary>
+        private List<Entity> GetLivingMonsters(List<Entity> validMonsters)
+        {
+            _tempLivingMonsters.Clear();
+            for (int i = 0; i < validMonsters.Count; i++)
+            {
+                var enemyComponent = validMonsters[i].GetComponent<EnemyComponent>();
+                if (enemyComponent?.Enemy != null && enemyComponent.Enemy.CurrentHP > 0)
+                {
+                    _tempLivingMonsters.Add(validMonsters[i]);
+                }
+            }
+            return _tempLivingMonsters;
+        }
+
+        /// <summary>
         /// Make hero face the target position
         /// </summary>
         private void FaceTarget(HeroComponent hero, Vector2 targetPosition)
@@ -342,54 +359,118 @@ namespace PitHero.AI
 
                         if (participant.IsHero)
                         {
-                            // Hero's turn - attack a random living monster
-                            var livingMonsters = validMonsters.Where(m => m.GetComponent<EnemyComponent>()?.Enemy.CurrentHP > 0).ToList();
-                            if (livingMonsters.Count == 0) break; // All monsters dead
-
-                            var targetMonster = livingMonsters[Nez.Random.Range(0, livingMonsters.Count)];
-                            var targetEnemy = targetMonster.GetComponent<EnemyComponent>().Enemy;
-                            var targetBattleStats = BattleStats.CalculateForMonster(targetEnemy);
-
-                            Debug.Log($"[AttackMonster] Hero's turn - attacking {targetEnemy.Name}");
-                            var heroAttackResult = attackResolver.Resolve(heroBattleStats, targetBattleStats, DamageKind.Physical);
+                            // Check if there's a queued action
+                            var queuedAction = heroComponent.BattleActionQueue.Dequeue();
                             
-                            if (heroAttackResult.Hit)
+                            if (queuedAction != null)
                             {
-                                bool enemyDied = targetEnemy.TakeDamage(heroAttackResult.Damage);
-                                Debug.Log($"[AttackMonster] Hero deals {heroAttackResult.Damage} damage to {targetEnemy.Name}. Enemy HP: {targetEnemy.CurrentHP}/{targetEnemy.MaxHP}");
-
-                                // Display damage on enemy
-                                var enemyBouncyDigit = targetMonster.GetComponent<BouncyDigitComponent>();
-                                if (enemyBouncyDigit != null)
+                                // Execute the queued action
+                                Debug.Log($"[AttackMonster] Hero's turn - executing queued action: {queuedAction.ActionType}");
+                                
+                                if (queuedAction.ActionType == QueuedActionType.UseItem)
                                 {
-                                    enemyBouncyDigit.Init(heroAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor, false);
-                                    enemyBouncyDigit.SetEnabled(true);
-                                    yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+                                    // Use the queued consumable
+                                    var consumable = queuedAction.Consumable;
+                                    Debug.Log($"[AttackMonster] Using queued item: {consumable.Name}");
+                                    
+                                    if (consumable.Consume(hero))
+                                    {
+                                        // Decrement stack or remove item from bag
+                                        heroComponent.Bag.ConsumeFromStack(queuedAction.BagIndex);
+                                        Debug.Log($"[AttackMonster] Successfully used {consumable.Name}");
+                                        
+                                        // Notify UI that inventory has changed
+                                        PitHero.UI.InventorySelectionManager.OnInventoryChanged?.Invoke();
+                                    }
+                                    else
+                                    {
+                                        Debug.Log($"[AttackMonster] Failed to use {consumable.Name}");
+                                    }
                                 }
-
-                                if (enemyDied)
+                                else if (queuedAction.ActionType == QueuedActionType.UseSkill)
                                 {
-                                    Debug.Log($"[AttackMonster] {targetEnemy.Name} defeated! Starting fade out");
-                                    hero.AddExperience(targetEnemy.ExperienceYield);
-                                    hero.EarnJP(targetEnemy.JPYield);
-                                    hero.EarnSynergyPointsWithAcceleration(targetEnemy.SPYield);
-                                    Debug.Log($"[AttackMonster] Earned {targetEnemy.ExperienceYield} XP, {targetEnemy.JPYield} JP, {targetEnemy.SPYield} SP");
-                                    validMonsters.Remove(targetMonster);
-                                    // Start fade coroutine (wait for completion so removal timing stays consistent)
-                                    yield return FadeOutAndDestroyMonster(targetMonster);
+                                    // Use the queued skill
+                                    var skill = queuedAction.Skill;
+                                    Debug.Log($"[AttackMonster] Using queued skill: {skill.Name}");
+                                    
+                                    // Check if hero has enough MP
+                                    if (hero.CurrentMP >= skill.MPCost)
+                                    {
+                                        // Get living monsters as targets
+                                        var livingMonsters = GetLivingMonsters(validMonsters);
+                                        
+                                        // Cache components to avoid repeated lookups
+                                        var primaryTarget = livingMonsters.Count > 0 ? livingMonsters[0].GetComponent<EnemyComponent>()?.Enemy : null;
+                                        var surroundingTargets = new List<RolePlayingFramework.Enemies.IEnemy>();
+                                        for (int i = 1; i < livingMonsters.Count; i++)
+                                        {
+                                            var enemyComp = livingMonsters[i].GetComponent<EnemyComponent>();
+                                            if (enemyComp?.Enemy != null)
+                                                surroundingTargets.Add(enemyComp.Enemy);
+                                        }
+                                        
+                                        // Execute the skill
+                                        skill.Execute(hero, primaryTarget, surroundingTargets, attackResolver);
+                                        hero.SpendMP(skill.MPCost);
+                                        Debug.Log($"[AttackMonster] Successfully used {skill.Name}, consumed {skill.MPCost} MP");
+                                    }
+                                    else
+                                    {
+                                        Debug.Log($"[AttackMonster] Not enough MP to use {skill.Name} (need {skill.MPCost}, have {hero.CurrentMP})");
+                                    }
                                 }
                             }
                             else
                             {
-                                Debug.Log($"[AttackMonster] Hero missed {targetEnemy.Name}!");
+                                // No queued action - perform default attack on a random living monster
+                                var livingMonsters = GetLivingMonsters(validMonsters);
+                                if (livingMonsters.Count == 0) break; // All monsters dead
+
+                                var targetMonster = livingMonsters[Nez.Random.Range(0, livingMonsters.Count)];
+                                var targetEnemy = targetMonster.GetComponent<EnemyComponent>().Enemy;
+                                var targetBattleStats = BattleStats.CalculateForMonster(targetEnemy);
+
+                                Debug.Log($"[AttackMonster] Hero's turn - attacking {targetEnemy.Name}");
+                                var heroAttackResult = attackResolver.Resolve(heroBattleStats, targetBattleStats, DamageKind.Physical);
                                 
-                                // Display "Miss" on enemy
-                                var enemyBouncyText = targetMonster.GetComponent<BouncyTextComponent>();
-                                if (enemyBouncyText != null)
+                                if (heroAttackResult.Hit)
                                 {
-                                    enemyBouncyText.Init("Miss", BouncyTextComponent.EnemyMissColor);
-                                    enemyBouncyText.SetEnabled(true);
-                                    yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+                                    bool enemyDied = targetEnemy.TakeDamage(heroAttackResult.Damage);
+                                    Debug.Log($"[AttackMonster] Hero deals {heroAttackResult.Damage} damage to {targetEnemy.Name}. Enemy HP: {targetEnemy.CurrentHP}/{targetEnemy.MaxHP}");
+
+                                    // Display damage on enemy
+                                    var enemyBouncyDigit = targetMonster.GetComponent<BouncyDigitComponent>();
+                                    if (enemyBouncyDigit != null)
+                                    {
+                                        enemyBouncyDigit.Init(heroAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor, false);
+                                        enemyBouncyDigit.SetEnabled(true);
+                                        yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+                                    }
+
+                                    if (enemyDied)
+                                    {
+                                        Debug.Log($"[AttackMonster] {targetEnemy.Name} defeated! Starting fade out");
+                                        hero.AddExperience(targetEnemy.ExperienceYield);
+                                        hero.EarnJP(targetEnemy.JPYield);
+                                        hero.EarnSynergyPointsWithAcceleration(targetEnemy.SPYield);
+                                        Debug.Log($"[AttackMonster] Earned {targetEnemy.ExperienceYield} XP, {targetEnemy.JPYield} JP, {targetEnemy.SPYield} SP");
+                                        validMonsters.Remove(targetMonster);
+                                        // Start fade coroutine (wait for completion so removal timing stays consistent)
+                                        yield return FadeOutAndDestroyMonster(targetMonster);
+                                    }
+                                }
+                                else
+                                {
+                                    Debug.Log($"[AttackMonster] Hero missed {targetEnemy.Name}!");
+                                    
+                                    // Display "Miss" on enemy
+                                    var enemyBouncyText = targetMonster.GetComponent<BouncyTextComponent>();
+                                    if (enemyBouncyText != null)
+                                    {
+                                        enemyBouncyText.Init("Miss", BouncyTextComponent.EnemyMissColor);
+                                        enemyBouncyText.SetEnabled(true);
+                                        yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+                                    }
                                 }
                             }
                         }
