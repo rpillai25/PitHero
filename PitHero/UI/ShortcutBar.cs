@@ -488,7 +488,10 @@ namespace PitHero.UI
             if (inBattle)
             {
                 Debug.Log($"[ShortcutBar] Queueing {item.Name} for battle");
-                _heroComponent.BattleActionQueue.EnqueueItem(consumable, bagIndex);
+                if (!_heroComponent.BattleActionQueue.EnqueueItem(consumable, bagIndex))
+                {
+                    Debug.Log($"[ShortcutBar] Cannot queue {item.Name}: Queue is full");
+                }
                 return;
             }
             
@@ -540,7 +543,10 @@ namespace PitHero.UI
             if (inBattle)
             {
                 Debug.Log($"[ShortcutBar] Queueing skill {skill.Name} for battle");
-                _heroComponent.BattleActionQueue.EnqueueSkill(skill);
+                if (!_heroComponent.BattleActionQueue.EnqueueSkill(skill))
+                {
+                    Debug.Log($"[ShortcutBar] Cannot queue {skill.Name}: Queue is full");
+                }
                 return;
             }
             
