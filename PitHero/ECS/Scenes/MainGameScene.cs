@@ -311,6 +311,10 @@ namespace PitHero.ECS.Scenes
             heroBouncyText.SetRenderLayer(GameConfig.RenderLayerLowest);
             heroBouncyText.SetEnabled(false);
             
+            // Add action queue visualization component
+            var actionQueueViz = hero.AddComponent(new ActionQueueVisualizationComponent());
+            actionQueueViz.SetRenderLayer(GameConfig.RenderLayerLowest);
+            
             hero.AddComponent(new Historian());
             hero.AddComponent(new HeroStateMachine());
             
