@@ -11,13 +11,15 @@ namespace PitHero.ECS.Components
     /// Renders the action queue as sprites displayed to the right of the hero during battle.
     /// Shows up to 5 actions vertically stacked from top to bottom.
     /// </summary>
-    public class ActionQueueVisualizationComponent : RenderableComponent, IUpdatable
+    public class ActionQueueVisualizationComponent : RenderableComponent
     {
         private const int SpriteSize = 32; // Size of each action sprite
         private const int SpriteSpacing = 2; // Spacing between sprites
         private const int OffsetX = 40; // Distance from hero center to first sprite
         
         private HeroComponent _heroComponent;
+        private object _itemsAtlas;
+        private object _skillsAtlas;
         
         public override float Width => SpriteSize;
         public override float Height => SpriteSize * ActionQueue.MaxQueueSize + SpriteSpacing * (ActionQueue.MaxQueueSize - 1);
@@ -27,12 +29,6 @@ namespace PitHero.ECS.Components
         {
             base.OnAddedToEntity();
             _heroComponent = Entity.GetComponent<HeroComponent>();
-        }
-        
-        /// <summary>Update the component (required by IUpdatable).</summary>
-        public void Update()
-        {
-            // Nothing to update per frame
         }
         
         /// <summary>Render the action queue sprites.</summary>
@@ -49,13 +45,27 @@ namespace PitHero.ECS.Components
             if (actions == null || actions.Length == 0)
                 return;
             
-            // Only render if Core.Content is available
-            if (Core.Content == null)
+            // Only load atlases if Core.Content is available and not already cached
+            if (Core.Content != null)
+            {
+                // Lazy load atlases on first use
+                if (_itemsAtlas == null)
+                {
+                    _itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
+                }
+                if (_skillsAtlas == null)
+                {
+                    _skillsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/SkillsStencils.atlas");
+                }
+            }
+            
+            // Can't render without atlases
+            if (_itemsAtlas == null || _skillsAtlas == null)
                 return;
             
-            // Load sprite atlases
-            var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
-            var skillsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/SkillsStencils.atlas");
+            // Cast to dynamic to call GetSprite (avoids type resolution issues)
+            dynamic itemsAtlas = _itemsAtlas;
+            dynamic skillsAtlas = _skillsAtlas;
             
             // Get hero position
             var heroPos = Entity.Transform.Position;
@@ -70,15 +80,23 @@ namespace PitHero.ECS.Components
                 var action = actions[i];
                 Sprite sprite = null;
                 
-                if (action.ActionType == QueuedActionType.UseItem && action.Consumable != null)
+                try
                 {
-                    // For items, use the item name as sprite key
-                    sprite = itemsAtlas.GetSprite(action.Consumable.Name);
+                    if (action.ActionType == QueuedActionType.UseItem && action.Consumable != null)
+                    {
+                        // For items, use the item name as sprite key
+                        sprite = itemsAtlas.GetSprite(action.Consumable.Name);
+                    }
+                    else if (action.ActionType == QueuedActionType.UseSkill && action.Skill != null)
+                    {
+                        // For skills, use the skill ID as sprite key
+                        sprite = skillsAtlas.GetSprite(action.Skill.Id);
+                    }
                 }
-                else if (action.ActionType == QueuedActionType.UseSkill && action.Skill != null)
+                catch
                 {
-                    // For skills, use the skill ID as sprite key
-                    sprite = skillsAtlas.GetSprite(action.Skill.Id);
+                    // Silently ignore missing sprites
+                    continue;
                 }
                 
                 // If we found a sprite, render it
