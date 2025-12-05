@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using Nez.Textures;
 using Nez.UI;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Heroes;
@@ -395,48 +396,67 @@ namespace PitHero.UI
         
         private void OnSkillClick(ISkill skill, bool isLearned)
         {
-            if (isLearned)
-            {
-                // Already learned, do nothing
-                return;
-            }
-            
             if (_heroComponent?.LinkedHero == null)
                 return;
             
             var hero = _heroComponent.LinkedHero;
             
-            // Check if this is a synergy skill (can't be purchased with JP)
-            if (hero.BoundCrystal != null)
+            // If skill is learned and Active, allow selecting it for shortcut bar
+            if (isLearned && skill.Kind == SkillKind.Active)
             {
-                var learnedSynergyIds = hero.BoundCrystal.LearnedSynergySkillIds;
-                bool isSynergySkill = false;
-                foreach (var synergyId in learnedSynergyIds)
+                // Toggle selection for active skills
+                if (InventorySelectionManager.HasSelection() && 
+                    InventorySelectionManager.IsSelectionFromHeroCrystalTab() &&
+                    InventorySelectionManager.GetSelectedSkill() == skill)
                 {
-                    if (synergyId == skill.Id)
-                    {
-                        isSynergySkill = true;
-                        break;
-                    }
+                    // Clicking the same skill deselects it
+                    InventorySelectionManager.ClearSelection();
+                    Debug.Log($"[HeroCrystalTab] Deselected skill: {skill.Name}");
                 }
-                
-                if (isSynergySkill)
+                else
                 {
-                    Debug.Log($"[HeroCrystalTab] Cannot purchase synergy skill {skill.Name} - it is unlocked automatically through synergy points");
-                    return;
+                    // Select this skill for assignment to shortcut bar
+                    InventorySelectionManager.SetSelectedFromHeroCrystalTab(skill, _heroComponent);
+                    Debug.Log($"[HeroCrystalTab] Selected skill for shortcut bar: {skill.Name}");
                 }
-            }
-            
-            // Check if can afford
-            if (hero.GetCurrentJP() < skill.JPCost)
-            {
-                Debug.Log($"[HeroCrystalTab] Cannot afford skill {skill.Name} (Cost: {skill.JPCost} JP, Current: {hero.GetCurrentJP()} JP)");
                 return;
             }
             
-            // Show confirmation dialog
-            _pendingSkillPurchase = skill;
-            ShowConfirmationDialog(skill);
+            // If skill is not learned, show purchase dialog
+            if (!isLearned)
+            {
+                // Check if this is a synergy skill (can't be purchased with JP)
+                if (hero.BoundCrystal != null)
+                {
+                    var learnedSynergyIds = hero.BoundCrystal.LearnedSynergySkillIds;
+                    bool isSynergySkill = false;
+                    foreach (var synergyId in learnedSynergyIds)
+                    {
+                        if (synergyId == skill.Id)
+                        {
+                            isSynergySkill = true;
+                            break;
+                        }
+                    }
+                    
+                    if (isSynergySkill)
+                    {
+                        Debug.Log($"[HeroCrystalTab] Cannot purchase synergy skill {skill.Name} - it is unlocked automatically through synergy points");
+                        return;
+                    }
+                }
+                
+                // Check if can afford
+                if (hero.GetCurrentJP() < skill.JPCost)
+                {
+                    Debug.Log($"[HeroCrystalTab] Cannot afford skill {skill.Name} (Cost: {skill.JPCost} JP, Current: {hero.GetCurrentJP()} JP)");
+                    return;
+                }
+                
+                // Show confirmation dialog
+                _pendingSkillPurchase = skill;
+                ShowConfirmationDialog(skill);
+            }
         }
         
         private void CreateConfirmationDialog(Skin skin)
@@ -556,6 +576,11 @@ namespace PitHero.UI
             private int _synergyRequiredPoints;
             private string _synergyPatternId;
             private SpriteDrawable _iconDrawable;
+            private Sprite _selectBoxSprite;
+            private SpriteDrawable _selectBoxDrawable;
+            private Sprite _highlightBoxSprite;
+            private SpriteDrawable _highlightBoxDrawable;
+            private bool _isHovered;
             
             public event System.Action<ISkill, bool, bool, int, int> OnHover;
             public event System.Action OnUnhover;
@@ -583,14 +608,24 @@ namespace PitHero.UI
                 // Try to get the sprite using the skill's ID
                 var iconSprite = skillsAtlas.GetSprite(_skill.Id);
                 
+                // Load UI atlas once for both fallback, SelectBox, and HighlightBox
+                var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+                
                 // Fallback to a default icon if sprite not found
                 if (iconSprite == null)
                 {
-                    var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
                     iconSprite = uiAtlas.GetSprite("SkillIcon1");
                 }
                 
                 _iconDrawable = new SpriteDrawable(iconSprite);
+                
+                // Load SelectBox sprite for hover visualization
+                _selectBoxSprite = uiAtlas.GetSprite("SelectBox");
+                _selectBoxDrawable = new SpriteDrawable(_selectBoxSprite);
+                
+                // Load HighlightBox sprite for selection visualization
+                _highlightBoxSprite = uiAtlas.GetSprite("HighlightBox");
+                _highlightBoxDrawable = new SpriteDrawable(_highlightBoxSprite);
                 
                 // If not learned, apply grayscale effect by reducing alpha
                 if (!_isLearned)
@@ -609,17 +644,34 @@ namespace PitHero.UI
                 {
                     _iconDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
                 }
+                
+                // Draw SelectBox if hovering over a learned Active skill
+                if (_isLearned && _skill.Kind == SkillKind.Active && _isHovered && _selectBoxDrawable != null)
+                {
+                    _selectBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+                }
+                
+                // Draw HighlightBox if this skill is selected and is an Active skill
+                if (_isLearned && _skill.Kind == SkillKind.Active && 
+                    InventorySelectionManager.IsSelectionFromHeroCrystalTab() &&
+                    InventorySelectionManager.GetSelectedSkill() == _skill &&
+                    _highlightBoxDrawable != null)
+                {
+                    _highlightBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+                }
             }
             
             #region IInputListener Implementation
             
             void IInputListener.OnMouseEnter()
             {
+                _isHovered = true;
                 OnHover?.Invoke(_skill, _isLearned, _isSynergySkill, _synergyCurrentPoints, _synergyRequiredPoints);
             }
             
             void IInputListener.OnMouseExit()
             {
+                _isHovered = false;
                 OnUnhover?.Invoke();
             }
             
