@@ -578,6 +578,9 @@ namespace PitHero.UI
             private SpriteDrawable _iconDrawable;
             private Sprite _selectBoxSprite;
             private SpriteDrawable _selectBoxDrawable;
+            private Sprite _highlightBoxSprite;
+            private SpriteDrawable _highlightBoxDrawable;
+            private bool _isHovered;
             
             public event System.Action<ISkill, bool, bool, int, int> OnHover;
             public event System.Action OnUnhover;
@@ -605,7 +608,7 @@ namespace PitHero.UI
                 // Try to get the sprite using the skill's ID
                 var iconSprite = skillsAtlas.GetSprite(_skill.Id);
                 
-                // Load UI atlas once for both fallback and SelectBox
+                // Load UI atlas once for both fallback, SelectBox, and HighlightBox
                 var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
                 
                 // Fallback to a default icon if sprite not found
@@ -616,9 +619,13 @@ namespace PitHero.UI
                 
                 _iconDrawable = new SpriteDrawable(iconSprite);
                 
-                // Load SelectBox sprite for selection visualization
+                // Load SelectBox sprite for hover visualization
                 _selectBoxSprite = uiAtlas.GetSprite("SelectBox");
                 _selectBoxDrawable = new SpriteDrawable(_selectBoxSprite);
+                
+                // Load HighlightBox sprite for selection visualization
+                _highlightBoxSprite = uiAtlas.GetSprite("HighlightBox");
+                _highlightBoxDrawable = new SpriteDrawable(_highlightBoxSprite);
                 
                 // If not learned, apply grayscale effect by reducing alpha
                 if (!_isLearned)
@@ -638,13 +645,19 @@ namespace PitHero.UI
                     _iconDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
                 }
                 
-                // Draw SelectBox if this skill is selected and is an Active skill
+                // Draw SelectBox if hovering over a learned Active skill
+                if (_isLearned && _skill.Kind == SkillKind.Active && _isHovered && _selectBoxDrawable != null)
+                {
+                    _selectBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+                }
+                
+                // Draw HighlightBox if this skill is selected and is an Active skill
                 if (_isLearned && _skill.Kind == SkillKind.Active && 
                     InventorySelectionManager.IsSelectionFromHeroCrystalTab() &&
                     InventorySelectionManager.GetSelectedSkill() == _skill &&
-                    _selectBoxDrawable != null)
+                    _highlightBoxDrawable != null)
                 {
-                    _selectBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+                    _highlightBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
                 }
             }
             
@@ -652,11 +665,13 @@ namespace PitHero.UI
             
             void IInputListener.OnMouseEnter()
             {
+                _isHovered = true;
                 OnHover?.Invoke(_skill, _isLearned, _isSynergySkill, _synergyCurrentPoints, _synergyRequiredPoints);
             }
             
             void IInputListener.OnMouseExit()
             {
+                _isHovered = false;
                 OnUnhover?.Invoke();
             }
             
