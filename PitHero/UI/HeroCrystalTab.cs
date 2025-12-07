@@ -394,7 +394,7 @@ namespace PitHero.UI
             _skillTooltip.GetContainer().Remove();
         }
         
-        private void OnSkillClick(ISkill skill, bool isLearned)
+        private void OnSkillClick(ISkill skill, bool isLearned, bool isSynergySkill)
         {
             if (_heroComponent?.LinkedHero == null)
                 return;
@@ -422,38 +422,24 @@ namespace PitHero.UI
                 return;
             }
             
-            // If skill is not learned, show purchase dialog
+            // If skill is not learned, attempt purchase only if it's a job skill
             if (!isLearned)
             {
-                // Check if this is a synergy skill (can't be purchased with JP)
-                if (hero.BoundCrystal != null)
+                // Synergy skills cannot be purchased with JP - they are unlocked automatically
+                if (isSynergySkill)
                 {
-                    var learnedSynergyIds = hero.BoundCrystal.LearnedSynergySkillIds;
-                    bool isSynergySkill = false;
-                    foreach (var synergyId in learnedSynergyIds)
-                    {
-                        if (synergyId == skill.Id)
-                        {
-                            isSynergySkill = true;
-                            break;
-                        }
-                    }
-                    
-                    if (isSynergySkill)
-                    {
-                        Debug.Log($"[HeroCrystalTab] Cannot purchase synergy skill {skill.Name} - it is unlocked automatically through synergy points");
-                        return;
-                    }
+                    Debug.Log($"[HeroCrystalTab] Cannot purchase synergy skill {skill.Name} - it is unlocked automatically through synergy points");
+                    return;
                 }
                 
-                // Check if can afford
+                // Check if can afford (only for job skills)
                 if (hero.GetCurrentJP() < skill.JPCost)
                 {
                     Debug.Log($"[HeroCrystalTab] Cannot afford skill {skill.Name} (Cost: {skill.JPCost} JP, Current: {hero.GetCurrentJP()} JP)");
                     return;
                 }
                 
-                // Show confirmation dialog
+                // Show confirmation dialog for job skill purchase
                 _pendingSkillPurchase = skill;
                 ShowConfirmationDialog(skill);
             }
@@ -584,7 +570,7 @@ namespace PitHero.UI
             
             public event System.Action<ISkill, bool, bool, int, int> OnHover;
             public event System.Action OnUnhover;
-            public event System.Action<ISkill, bool> OnClick;
+            public event System.Action<ISkill, bool, bool> OnClick;
             
             public SkillButton(ISkill skill, bool isLearned, bool isSynergySkill = false, 
                 int synergyCurrentPoints = 0, int synergyRequiredPoints = 0, string synergyPatternId = null)
@@ -692,7 +678,7 @@ namespace PitHero.UI
             
             void IInputListener.OnLeftMouseUp(Vector2 mousePos)
             {
-                OnClick?.Invoke(_skill, _isLearned);
+                OnClick?.Invoke(_skill, _isLearned, _isSynergySkill);
             }
             
             void IInputListener.OnRightMouseUp(Vector2 mousePos)

@@ -294,7 +294,7 @@ namespace PitHero.ECS.Scenes
             var testJob = new Knight(); // Using Knight job for testing
             var baseStats = new StatBlock(strength: 4, agility: 3, vitality: 5, magic: 1);
             var testCrystal = new HeroCrystal("Test Hero", testJob, 1, baseStats); // Level 1 hero for testing
-            testCrystal.EarnJP(150); // Give some starting JP
+            testCrystal.EarnJP(550); // Give some starting JP
 
             // Create the linked Hero from the crystal
             heroComponent.LinkedHero = new RolePlayingFramework.Heroes.Hero("Test Hero", testJob, 1, baseStats, testCrystal);
