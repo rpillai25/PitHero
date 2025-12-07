@@ -80,17 +80,19 @@ namespace PitHero.ECS.Components
             {
                 var action = actions[i];
                 Sprite sprite = null;
+                Sprite backgroundSprite = null;
                 
                 try
                 {
                     if (action.ActionType == QueuedActionType.UseItem && action.Consumable != null)
                     {
-                        // For items, use the item name as sprite key
+                        // For items, use the item name as sprite key with empty background
+                        backgroundSprite = skillsAtlas.GetSprite("base.empty");
                         sprite = itemsAtlas.GetSprite(action.Consumable.Name);
                     }
                     else if (action.ActionType == QueuedActionType.UseSkill && action.Skill != null)
                     {
-                        // For skills, use the skill ID as sprite key
+                        // For skills, use the skill ID as sprite key (skills already have their own backgrounds)
                         sprite = skillsAtlas.GetSprite(action.Skill.Id);
                     }
                     else if (action.ActionType == QueuedActionType.Attack)
@@ -98,12 +100,13 @@ namespace PitHero.ECS.Components
                         // For attacks, use weapon sprite if equipped, otherwise use "base.punch" sprite
                         if (action.WeaponItem != null)
                         {
-                            // Use weapon item sprite from items atlas
+                            // Use weapon item sprite from items atlas with empty background
+                            backgroundSprite = skillsAtlas.GetSprite("base.empty");
                             sprite = itemsAtlas.GetSprite(action.WeaponItem.Name);
                         }
                         else
                         {
-                            // Use base punch sprite for unarmed attacks
+                            // Use base punch sprite for unarmed attacks (already has background)
                             sprite = skillsAtlas.GetSprite("base.punch");
                         }
                     }
@@ -114,12 +117,20 @@ namespace PitHero.ECS.Components
                     continue;
                 }
                 
-                // If we found a sprite, render it using SpriteDrawable
+                // Calculate position for this action
+                float x = startX;
+                float y = startY + i * (SpriteSize + SpriteSpacing);
+                
+                // Draw background sprite first if needed
+                if (backgroundSprite != null)
+                {
+                    var backgroundDrawable = new SpriteDrawable(backgroundSprite);
+                    backgroundDrawable.Draw(batcher, x, y, SpriteSize, SpriteSize, Color.White);
+                }
+                
+                // Draw the action sprite on top
                 if (sprite != null)
                 {
-                    float x = startX;
-                    float y = startY + i * (SpriteSize + SpriteSpacing);
-                    
                     var drawable = new SpriteDrawable(sprite);
                     drawable.Draw(batcher, x, y, SpriteSize, SpriteSize, Color.White);
                 }
