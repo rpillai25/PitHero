@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Nez;
 using Nez.Textures;
+using Nez.UI;
 using PitHero.AI;
 using RolePlayingFramework.Equipment;
 
@@ -99,14 +100,14 @@ namespace PitHero.ECS.Components
                     continue;
                 }
                 
-                // If we found a sprite, render it
+                // If we found a sprite, render it using SpriteDrawable
                 if (sprite != null)
                 {
                     float x = startX;
                     float y = startY + i * (SpriteSize + SpriteSpacing);
                     
-                    var destRect = new Rectangle((int)x, (int)y, SpriteSize, SpriteSize);
-                    batcher.Draw(sprite, destRect, Color.White);
+                    var drawable = new SpriteDrawable(sprite);
+                    drawable.Draw(batcher, x, y, SpriteSize, SpriteSize, Color.White);
                 }
             }
         }
