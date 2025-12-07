@@ -165,5 +165,99 @@ namespace PitHero.Tests
             Assert.IsFalse(queue.HasActions());
             Assert.AreEqual(0, queue.Count);
         }
+        
+        [TestMethod]
+        public void ActionQueue_RespectMaxQueueSize()
+        {
+            // Arrange
+            var queue = new ActionQueue();
+            var potion = PotionItems.HPPotion();
+            
+            // Act - Enqueue up to max size (5)
+            for (int i = 0; i < ActionQueue.MaxQueueSize; i++)
+            {
+                bool result = queue.EnqueueItem(potion, i);
+                Assert.IsTrue(result, $"Should be able to enqueue item {i + 1}");
+            }
+            
+            // Assert - Queue should be full
+            Assert.AreEqual(ActionQueue.MaxQueueSize, queue.Count);
+            
+            // Act - Try to enqueue one more item
+            bool overflowResult = queue.EnqueueItem(potion, 99);
+            
+            // Assert - Should not be able to enqueue beyond max
+            Assert.IsFalse(overflowResult, "Should not be able to enqueue beyond max size");
+            Assert.AreEqual(ActionQueue.MaxQueueSize, queue.Count);
+        }
+        
+        [TestMethod]
+        public void ActionQueue_RespectMaxQueueSizeForSkills()
+        {
+            // Arrange
+            var queue = new ActionQueue();
+            var skill = new HealSkill();
+            
+            // Act - Enqueue up to max size (5)
+            for (int i = 0; i < ActionQueue.MaxQueueSize; i++)
+            {
+                bool result = queue.EnqueueSkill(skill);
+                Assert.IsTrue(result, $"Should be able to enqueue skill {i + 1}");
+            }
+            
+            // Assert - Queue should be full
+            Assert.AreEqual(ActionQueue.MaxQueueSize, queue.Count);
+            
+            // Act - Try to enqueue one more skill
+            bool overflowResult = queue.EnqueueSkill(skill);
+            
+            // Assert - Should not be able to enqueue beyond max
+            Assert.IsFalse(overflowResult, "Should not be able to enqueue beyond max size");
+            Assert.AreEqual(ActionQueue.MaxQueueSize, queue.Count);
+        }
+        
+        [TestMethod]
+        public void ActionQueue_GetAllReturnsAllActions()
+        {
+            // Arrange
+            var queue = new ActionQueue();
+            var potion1 = PotionItems.HPPotion();
+            var potion2 = PotionItems.MPPotion();
+            var skill = new HealSkill();
+            
+            queue.EnqueueItem(potion1, 0);
+            queue.EnqueueSkill(skill);
+            queue.EnqueueItem(potion2, 1);
+            
+            // Act
+            var actions = queue.GetAll();
+            
+            // Assert
+            Assert.IsNotNull(actions);
+            Assert.AreEqual(3, actions.Length);
+            Assert.AreEqual(QueuedActionType.UseItem, actions[0].ActionType);
+            Assert.AreEqual(potion1, actions[0].Consumable);
+            Assert.AreEqual(QueuedActionType.UseSkill, actions[1].ActionType);
+            Assert.AreEqual(skill, actions[1].Skill);
+            Assert.AreEqual(QueuedActionType.UseItem, actions[2].ActionType);
+            Assert.AreEqual(potion2, actions[2].Consumable);
+            
+            // GetAll should not modify the queue
+            Assert.AreEqual(3, queue.Count);
+        }
+        
+        [TestMethod]
+        public void ActionQueue_GetAllReturnsEmptyArrayWhenEmpty()
+        {
+            // Arrange
+            var queue = new ActionQueue();
+            
+            // Act
+            var actions = queue.GetAll();
+            
+            // Assert
+            Assert.IsNotNull(actions);
+            Assert.AreEqual(0, actions.Length);
+        }
     }
 }
