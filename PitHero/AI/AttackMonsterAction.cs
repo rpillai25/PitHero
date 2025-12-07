@@ -406,8 +406,19 @@ namespace PitHero.AI
                                         // Get living monsters as targets
                                         var livingMonsters = GetLivingMonsters(validMonsters);
                                         
+                                        if (livingMonsters.Count == 0) break; // All monsters dead
+                                        
+                                        // Store HP before skill execution to calculate damage dealt
+                                        var monsterHPBefore = new Dictionary<RolePlayingFramework.Enemies.IEnemy, int>();
+                                        for (int i = 0; i < livingMonsters.Count; i++)
+                                        {
+                                            var enemyComp = livingMonsters[i].GetComponent<EnemyComponent>();
+                                            if (enemyComp?.Enemy != null)
+                                                monsterHPBefore[enemyComp.Enemy] = enemyComp.Enemy.CurrentHP;
+                                        }
+                                        
                                         // Cache components to avoid repeated lookups
-                                        var primaryTarget = livingMonsters.Count > 0 ? livingMonsters[0].GetComponent<EnemyComponent>()?.Enemy : null;
+                                        var primaryTarget = livingMonsters[0].GetComponent<EnemyComponent>()?.Enemy;
                                         var surroundingTargets = new List<RolePlayingFramework.Enemies.IEnemy>();
                                         for (int i = 1; i < livingMonsters.Count; i++)
                                         {
@@ -420,6 +431,55 @@ namespace PitHero.AI
                                         skill.Execute(hero, primaryTarget, surroundingTargets, attackResolver);
                                         hero.SpendMP(skill.MPCost);
                                         Debug.Log($"[AttackMonster] Successfully used {skill.Name}, consumed {skill.MPCost} MP");
+                                        
+                                        // Display damage and handle deaths for all affected monsters
+                                        for (int i = livingMonsters.Count - 1; i >= 0; i--)
+                                        {
+                                            var monsterEntity = livingMonsters[i];
+                                            var enemyComp = monsterEntity.GetComponent<EnemyComponent>();
+                                            if (enemyComp?.Enemy == null) continue;
+                                            
+                                            var enemy = enemyComp.Enemy;
+                                            
+                                            // Calculate damage dealt
+                                            if (monsterHPBefore.TryGetValue(enemy, out int hpBefore))
+                                            {
+                                                int damage = hpBefore - enemy.CurrentHP;
+                                                if (damage > 0)
+                                                {
+                                                    Debug.Log($"[AttackMonster] {skill.Name} dealt {damage} damage to {enemy.Name}. Enemy HP: {enemy.CurrentHP}/{enemy.MaxHP}");
+                                                    
+                                                    // Display damage on enemy
+                                                    var enemyBouncyDigit = monsterEntity.GetComponent<BouncyDigitComponent>();
+                                                    if (enemyBouncyDigit != null)
+                                                    {
+                                                        enemyBouncyDigit.Init(damage, BouncyDigitComponent.EnemyDigitColor, false);
+                                                        enemyBouncyDigit.SetEnabled(true);
+                                                    }
+                                                    
+                                                    // Check if enemy died
+                                                    if (enemy.CurrentHP <= 0)
+                                                    {
+                                                        Debug.Log($"[AttackMonster] {enemy.Name} defeated by {skill.Name}! Starting fade out");
+                                                        hero.AddExperience(enemy.ExperienceYield);
+                                                        hero.EarnJP(enemy.JPYield);
+                                                        hero.EarnSynergyPointsWithAcceleration(enemy.SPYield);
+                                                        Debug.Log($"[AttackMonster] Earned {enemy.ExperienceYield} XP, {enemy.JPYield} JP, {enemy.SPYield} SP");
+                                                        validMonsters.Remove(monsterEntity);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        
+                                        // Wait for damage display
+                                        yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+                                        
+                                        // Fade out and destroy all dead monsters
+                                        var deadMonsters = livingMonsters.Where(m => m.GetComponent<EnemyComponent>()?.Enemy?.CurrentHP <= 0).ToList();
+                                        foreach (var deadMonster in deadMonsters)
+                                        {
+                                            yield return FadeOutAndDestroyMonster(deadMonster);
+                                        }
                                     }
                                     else
                                     {
