@@ -93,6 +93,20 @@ namespace PitHero.ECS.Components
                         // For skills, use the skill ID as sprite key
                         sprite = skillsAtlas.GetSprite(action.Skill.Id);
                     }
+                    else if (action.ActionType == QueuedActionType.Attack)
+                    {
+                        // For attacks, use weapon sprite if equipped, otherwise use "base.punch" sprite
+                        if (action.WeaponItem != null)
+                        {
+                            // Use weapon item sprite from items atlas
+                            sprite = itemsAtlas.GetSprite(action.WeaponItem.Name);
+                        }
+                        else
+                        {
+                            // Use base punch sprite for unarmed attacks
+                            sprite = skillsAtlas.GetSprite("base.punch");
+                        }
+                    }
                 }
                 catch
                 {

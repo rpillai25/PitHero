@@ -330,6 +330,13 @@ namespace PitHero.AI
                         if (participant.IsHero)
                         {
                             participant.TurnValue = CalculateTurnValue(hero.GetTotalStats().Agility);
+                            
+                            // Queue default attack for hero if queue is empty
+                            if (!heroComponent.BattleActionQueue.HasActions())
+                            {
+                                // Use equipped weapon or null for unarmed attack
+                                heroComponent.BattleActionQueue.EnqueueAttack(hero.WeaponShield1);
+                            }
                         }
                         else
                         {
@@ -419,59 +426,64 @@ namespace PitHero.AI
                                         Debug.Log($"[AttackMonster] Not enough MP to use {skill.Name} (need {skill.MPCost}, have {hero.CurrentMP})");
                                     }
                                 }
+                                else if (queuedAction.ActionType == QueuedActionType.Attack)
+                                {
+                                    // Execute queued attack
+                                    var livingMonsters = GetLivingMonsters(validMonsters);
+                                    if (livingMonsters.Count == 0) break; // All monsters dead
+
+                                    var targetMonster = livingMonsters[Nez.Random.Range(0, livingMonsters.Count)];
+                                    var targetEnemy = targetMonster.GetComponent<EnemyComponent>().Enemy;
+                                    var targetBattleStats = BattleStats.CalculateForMonster(targetEnemy);
+
+                                    Debug.Log($"[AttackMonster] Hero's turn - attacking {targetEnemy.Name}");
+                                    var heroAttackResult = attackResolver.Resolve(heroBattleStats, targetBattleStats, DamageKind.Physical);
+                                    
+                                    if (heroAttackResult.Hit)
+                                    {
+                                        bool enemyDied = targetEnemy.TakeDamage(heroAttackResult.Damage);
+                                        Debug.Log($"[AttackMonster] Hero deals {heroAttackResult.Damage} damage to {targetEnemy.Name}. Enemy HP: {targetEnemy.CurrentHP}/{targetEnemy.MaxHP}");
+
+                                        // Display damage on enemy
+                                        var enemyBouncyDigit = targetMonster.GetComponent<BouncyDigitComponent>();
+                                        if (enemyBouncyDigit != null)
+                                        {
+                                            enemyBouncyDigit.Init(heroAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor, false);
+                                            enemyBouncyDigit.SetEnabled(true);
+                                            yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+                                        }
+
+                                        if (enemyDied)
+                                        {
+                                            Debug.Log($"[AttackMonster] {targetEnemy.Name} defeated! Starting fade out");
+                                            hero.AddExperience(targetEnemy.ExperienceYield);
+                                            hero.EarnJP(targetEnemy.JPYield);
+                                            hero.EarnSynergyPointsWithAcceleration(targetEnemy.SPYield);
+                                            Debug.Log($"[AttackMonster] Earned {targetEnemy.ExperienceYield} XP, {targetEnemy.JPYield} JP, {targetEnemy.SPYield} SP");
+                                            validMonsters.Remove(targetMonster);
+                                            // Start fade coroutine (wait for completion so removal timing stays consistent)
+                                            yield return FadeOutAndDestroyMonster(targetMonster);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Debug.Log($"[AttackMonster] Hero missed {targetEnemy.Name}!");
+                                        
+                                        // Display "Miss" on enemy
+                                        var enemyBouncyText = targetMonster.GetComponent<BouncyTextComponent>();
+                                        if (enemyBouncyText != null)
+                                        {
+                                            enemyBouncyText.Init("Miss", BouncyTextComponent.EnemyMissColor);
+                                            enemyBouncyText.SetEnabled(true);
+                                            yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+                                        }
+                                    }
+                                }
                             }
                             else
                             {
-                                // No queued action - perform default attack on a random living monster
-                                var livingMonsters = GetLivingMonsters(validMonsters);
-                                if (livingMonsters.Count == 0) break; // All monsters dead
-
-                                var targetMonster = livingMonsters[Nez.Random.Range(0, livingMonsters.Count)];
-                                var targetEnemy = targetMonster.GetComponent<EnemyComponent>().Enemy;
-                                var targetBattleStats = BattleStats.CalculateForMonster(targetEnemy);
-
-                                Debug.Log($"[AttackMonster] Hero's turn - attacking {targetEnemy.Name}");
-                                var heroAttackResult = attackResolver.Resolve(heroBattleStats, targetBattleStats, DamageKind.Physical);
-                                
-                                if (heroAttackResult.Hit)
-                                {
-                                    bool enemyDied = targetEnemy.TakeDamage(heroAttackResult.Damage);
-                                    Debug.Log($"[AttackMonster] Hero deals {heroAttackResult.Damage} damage to {targetEnemy.Name}. Enemy HP: {targetEnemy.CurrentHP}/{targetEnemy.MaxHP}");
-
-                                    // Display damage on enemy
-                                    var enemyBouncyDigit = targetMonster.GetComponent<BouncyDigitComponent>();
-                                    if (enemyBouncyDigit != null)
-                                    {
-                                        enemyBouncyDigit.Init(heroAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor, false);
-                                        enemyBouncyDigit.SetEnabled(true);
-                                        yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
-                                    }
-
-                                    if (enemyDied)
-                                    {
-                                        Debug.Log($"[AttackMonster] {targetEnemy.Name} defeated! Starting fade out");
-                                        hero.AddExperience(targetEnemy.ExperienceYield);
-                                        hero.EarnJP(targetEnemy.JPYield);
-                                        hero.EarnSynergyPointsWithAcceleration(targetEnemy.SPYield);
-                                        Debug.Log($"[AttackMonster] Earned {targetEnemy.ExperienceYield} XP, {targetEnemy.JPYield} JP, {targetEnemy.SPYield} SP");
-                                        validMonsters.Remove(targetMonster);
-                                        // Start fade coroutine (wait for completion so removal timing stays consistent)
-                                        yield return FadeOutAndDestroyMonster(targetMonster);
-                                    }
-                                }
-                                else
-                                {
-                                    Debug.Log($"[AttackMonster] Hero missed {targetEnemy.Name}!");
-                                    
-                                    // Display "Miss" on enemy
-                                    var enemyBouncyText = targetMonster.GetComponent<BouncyTextComponent>();
-                                    if (enemyBouncyText != null)
-                                    {
-                                        enemyBouncyText.Init("Miss", BouncyTextComponent.EnemyMissColor);
-                                        enemyBouncyText.SetEnabled(true);
-                                        yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
-                                    }
-                                }
+                                // No queued action - this shouldn't happen anymore since we auto-queue attacks
+                                Debug.Warn("[AttackMonster] Hero turn but no queued action (unexpected)");
                             }
                         }
                         else
