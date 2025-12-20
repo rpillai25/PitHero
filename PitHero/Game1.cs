@@ -45,6 +45,17 @@ namespace PitHero
             WindowManager.ConfigureHorizontalStripOneThird(this,
                 alwaysOnTop: GameConfig.AlwaysOnTop);
         }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                // Unbind any render targets before disposal to prevent FNA exception
+                // "Disposing target that is still bound"
+                GraphicsDevice?.SetRenderTarget(null);
+            }
+            base.Dispose(disposing);
+        }
     }
 }
 
