@@ -8,13 +8,13 @@ namespace RolePlayingFramework.Synergies
     {
         public string EffectId { get; }
         public string Description { get; }
-        
+
         /// <summary>Growth rate modifiers for each stat (e.g., 1.1 = +10% growth).</summary>
         public StatBlock GrowthMultipliers { get; }
-        
+
         // Track applied values for proper removal with multipliers
         private float _lastAppliedMultiplier;
-        
+
         public GrowthModifierEffect(string effectId, string description, in StatBlock growthMultipliers)
         {
             EffectId = effectId;
@@ -22,13 +22,13 @@ namespace RolePlayingFramework.Synergies
             GrowthMultipliers = growthMultipliers;
             _lastAppliedMultiplier = 0f;
         }
-        
+
         /// <summary>Applies this effect with full multiplier (1.0).</summary>
         public void Apply(Hero hero)
         {
             Apply(hero, 1.0f);
         }
-        
+
         /// <summary>
         /// Applies this effect to the hero with the given multiplier.
         /// Growth modifiers affect level-up calculations.
@@ -42,7 +42,7 @@ namespace RolePlayingFramework.Synergies
             // For now, this is a placeholder for future implementation
             _lastAppliedMultiplier = multiplier;
         }
-        
+
         public void Remove(Hero hero)
         {
             // Growth modifiers are removed when synergy is broken

@@ -31,7 +31,7 @@ namespace PitHero.UI
         public static void Initialize(Stage stage)
         {
             _stage = stage;
-            
+
             LoadFonts();
             CreateLabelStyles();
             CreateHoverLabel();
@@ -73,7 +73,7 @@ namespace PitHero.UI
             var currentStyle = GetCurrentLabelStyle();
             _hoverLabel = new Label("", currentStyle);
             _hoverLabel.SetVisible(false);
-            
+
             // Add to stage
             _stage.AddElement(_hoverLabel);
         }

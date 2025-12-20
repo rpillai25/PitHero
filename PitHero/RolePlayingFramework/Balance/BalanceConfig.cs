@@ -268,7 +268,7 @@ namespace RolePlayingFramework.Balance
 
             float baseHP = 25 + level * 8;
             float archetypeMultiplier = GetArchetypeHPMultiplier(archetype);
-            
+
             return (int)(baseHP * archetypeMultiplier);
         }
 
@@ -303,9 +303,9 @@ namespace RolePlayingFramework.Balance
 
             float baseStat = 3 + level * 1.0f;
             float archetypeMultiplier = GetArchetypeStatMultiplier(archetype, statType);
-            
+
             int finalStat = (int)(baseStat * archetypeMultiplier);
-            
+
             // Ensure minimum of 1, cap at 99
             return System.Math.Min(99, System.Math.Max(1, finalStat));
         }
@@ -422,7 +422,7 @@ namespace RolePlayingFramework.Balance
 
             float baseAttack = 1 + pitLevel / 2f;
             float rarityMultiplier = GetRarityMultiplier(rarity);
-            
+
             return (int)(baseAttack * rarityMultiplier);
         }
 
@@ -453,7 +453,7 @@ namespace RolePlayingFramework.Balance
 
             float baseDefense = 1 + pitLevel / 3f;
             float rarityMultiplier = GetRarityMultiplier(rarity);
-            
+
             return (int)(baseDefense * rarityMultiplier);
         }
 
@@ -484,7 +484,7 @@ namespace RolePlayingFramework.Balance
 
             float baseStat = pitLevel / 5f;
             float rarityMultiplier = GetRarityMultiplier(rarity);
-            
+
             return (int)(baseStat * rarityMultiplier);
         }
 

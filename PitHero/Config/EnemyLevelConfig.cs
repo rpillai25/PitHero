@@ -17,17 +17,17 @@ namespace PitHero.Config
             ["Slime"] = 1,
             ["Bat"] = 1,
             ["Rat"] = 1,
-            
+
             // Level 3 enemies (spawn in Pit Level 4-6)
             ["Goblin"] = 3,
             ["Spider"] = 3,
             ["Snake"] = 3,
-            
+
             // Level 6 enemies (spawn in Pit Level 7-8)
             ["Skeleton"] = 6,
             ["Orc"] = 6,
             ["Wraith"] = 6,
-            
+
             // Boss (spawn in Pit Level 9)
             ["Pit Lord"] = 10,
         };

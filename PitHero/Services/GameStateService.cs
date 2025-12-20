@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using RolePlayingFramework.Synergies;
+﻿using RolePlayingFramework.Synergies;
+using System.Collections.Generic;
 
 namespace PitHero.Services
 {
@@ -10,7 +10,7 @@ namespace PitHero.Services
     {
         /// <summary>Discovered stencils mapped by pattern ID to discovery source.</summary>
         public Dictionary<string, StencilDiscoverySource> DiscoveredStencils { get; } = new();
-        
+
         /// <summary>Discovers a stencil if not already discovered.</summary>
         public void DiscoverStencil(string patternId, StencilDiscoverySource source)
         {
@@ -19,7 +19,7 @@ namespace PitHero.Services
                 DiscoveredStencils[patternId] = source;
             }
         }
-        
+
         /// <summary>Checks if a stencil has been discovered.</summary>
         public bool IsStencilDiscovered(string patternId)
         {

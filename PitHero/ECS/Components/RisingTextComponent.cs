@@ -4,12 +4,11 @@ using Nez;
 using PitHero.ECS.Scenes;
 using PitHero.Services;
 using PitHero.Util;
-using System;
 using System.Collections;
 
 
-namespace PitHero.ECS.Components 
-{ 
+namespace PitHero.ECS.Components
+{
     public class RisingTextComponent : RenderableComponent, IUpdatable
     {
         float _elapsedTime;
@@ -63,7 +62,7 @@ namespace PitHero.ECS.Components
             _elapsedTime += Time.DeltaTime;
 
             if (_pauseService?.IsPaused == true)
-            {                
+            {
                 _pausedLastFrame = true;
                 _pauseTime += Time.DeltaTime;
                 return;
@@ -100,7 +99,7 @@ namespace PitHero.ECS.Components
         {
             for (int i = 0; i < 10; i++)
             {
-                while(_pauseService?.IsPaused == true)
+                while (_pauseService?.IsPaused == true)
                 {
                     yield return 1;
                 }

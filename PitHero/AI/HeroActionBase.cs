@@ -1,8 +1,8 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.AI.GOAP;
-using PitHero.ECS.Components;
 using PitHero.AI.Interfaces;
+using PitHero.ECS.Components;
 
 namespace PitHero.AI
 {

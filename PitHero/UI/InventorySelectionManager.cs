@@ -1,6 +1,5 @@
 using Microsoft.Xna.Framework;
 using Nez;
-using Nez.Textures;
 using Nez.UI;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Equipment;
@@ -17,7 +16,7 @@ namespace PitHero.UI
         private static bool _isFromShortcutBar;
         private static HeroComponent _heroComponent;
         private static int _selectedShortcutIndex = -1; // For shortcut bar references
-        
+
         // Skill selection support
         private static ISkill _selectedSkill;
         private static bool _isFromHeroCrystalTab;
@@ -25,16 +24,16 @@ namespace PitHero.UI
         // Overlay for cross-component and in-grid swap animations (stage-space tween)
         private static SwapAnimationOverlay _swapOverlay;
         private const float CrossComponentSwapDuration = 0.2f; // match in-grid tween duration
-        
+
         /// <summary>Callback to refresh inventory grid after cross-component swap</summary>
         public static System.Action OnInventoryChanged;
-        
+
         /// <summary>Callback to clear local selection state in all components</summary>
         public static System.Action OnSelectionCleared;
-        
+
         /// <summary>Callback to animate cross-component swap (slotA, slotB)</summary>
         public static System.Action<InventorySlot, InventorySlot> OnCrossComponentSwapAnimate;
-        
+
         /// <summary>Sets the selected slot from inventory grid</summary>
         public static void SetSelectedFromInventory(InventorySlot slot, HeroComponent hero)
         {
@@ -48,7 +47,7 @@ namespace PitHero.UI
             if (slot != null)
                 slot.SlotData.IsHighlighted = true;
         }
-        
+
         /// <summary>Sets the selected slot from shortcut bar (now just an index, not a slot with items)</summary>
         public static void SetSelectedFromShortcut(int shortcutIndex, HeroComponent hero)
         {
@@ -60,7 +59,7 @@ namespace PitHero.UI
             _selectedSkill = null;
             _heroComponent = hero;
         }
-        
+
         /// <summary>Sets the selected skill from HeroCrystalTab</summary>
         public static void SetSelectedFromHeroCrystalTab(ISkill skill, HeroComponent hero)
         {
@@ -72,7 +71,7 @@ namespace PitHero.UI
             _selectedSkill = skill;
             _heroComponent = hero;
         }
-        
+
         /// <summary>Internal method to clear selection without triggering callbacks (used when switching selections)</summary>
         private static void ClearSelectionInternal()
         {
@@ -87,31 +86,31 @@ namespace PitHero.UI
             _selectedSkill = null;
             _heroComponent = null;
         }
-        
+
         /// <summary>Clears the current selection</summary>
         public static void ClearSelection()
         {
             ClearSelectionInternal();
-            
+
             // Notify all components to clear their local state
             OnSelectionCleared?.Invoke();
         }
-        
+
         /// <summary>Gets the currently selected slot</summary>
         public static InventorySlot GetSelectedSlot() => _selectedSlot;
-        
+
         /// <summary>Gets the currently selected skill</summary>
         public static ISkill GetSelectedSkill() => _selectedSkill;
-        
+
         /// <summary>Gets the currently selected shortcut index</summary>
         public static int GetSelectedShortcutIndex() => _selectedShortcutIndex;
-        
+
         /// <summary>Returns true if the selected slot is from shortcut bar</summary>
         public static bool IsSelectionFromShortcutBar() => _isFromShortcutBar;
-        
+
         /// <summary>Returns true if the selected skill is from HeroCrystalTab</summary>
         public static bool IsSelectionFromHeroCrystalTab() => _isFromHeroCrystalTab;
-        
+
         /// <summary>Returns true if there is a selected slot or skill</summary>
         public static bool HasSelection() => _selectedSlot != null || _selectedShortcutIndex >= 0 || _selectedSkill != null;
 
@@ -257,7 +256,7 @@ namespace PitHero.UI
 
             return true;
         }
-        
+
         /// <summary>No longer used - ShortcutBar uses references instead of swapping</summary>
         [System.Obsolete("ShortcutBar now uses references instead of swapping items")]
         public static bool TrySwapCrossComponent(InventorySlot targetSlot, bool targetIsShortcut, HeroComponent targetHero)

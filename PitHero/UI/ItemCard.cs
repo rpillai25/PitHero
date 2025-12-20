@@ -2,7 +2,6 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
 using RolePlayingFramework.Equipment;
-using RolePlayingFramework.Stats;
 
 namespace PitHero.UI
 {
@@ -12,7 +11,7 @@ namespace PitHero.UI
         private const float CARD_WIDTH = 200f;
         private const float CARD_PADDING = 5f;
         private const float LINE_SPACING = 2f;
-        
+
         private IItem _item;
         private Table _contentTable;
 
@@ -21,10 +20,10 @@ namespace PitHero.UI
             SetMovable(false);
             SetResizable(false);
             SetKeepWithinStage(false);
-            
+
             _contentTable = new Table();
             Add(_contentTable).Expand().Fill().Pad(CARD_PADDING);
-            
+
             SetWidth(CARD_WIDTH);
             SetVisible(false);
         }

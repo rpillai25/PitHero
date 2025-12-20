@@ -1,4 +1,3 @@
-using PitHero.VirtualGame;
 using System;
 
 namespace PitHero.VirtualGame
@@ -14,25 +13,25 @@ namespace PitHero.VirtualGame
             Console.WriteLine("PitHero Virtual Game Logic Simulation");
             Console.WriteLine("=====================================");
             Console.WriteLine();
-            
+
             if (args.Length > 0 && args[0] == "--help")
             {
                 ShowHelp();
                 return;
             }
-            
+
             try
             {
                 Console.WriteLine("Starting complete GOAP workflow simulation...");
                 Console.WriteLine();
-                
+
                 var simulation = new VirtualGameSimulation();
                 simulation.RunCompleteSimulation();
-                
+
                 Console.WriteLine();
                 Console.WriteLine("Simulation completed successfully!");
                 Console.WriteLine("Press any key to exit...");
-                
+
                 if (args.Length == 0) // Only wait for key if not running in automated mode
                 {
                     Console.ReadKey();
@@ -45,18 +44,18 @@ namespace PitHero.VirtualGame
                 Console.WriteLine();
                 Console.WriteLine("Stack trace:");
                 Console.WriteLine(ex.StackTrace);
-                
+
                 if (args.Length == 0)
                 {
                     Console.WriteLine();
                     Console.WriteLine("Press any key to exit...");
                     Console.ReadKey();
                 }
-                
+
                 Environment.Exit(1);
             }
         }
-        
+
         private static void ShowHelp()
         {
             Console.WriteLine("Usage: VirtualGameConsole [options]");

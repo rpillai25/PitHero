@@ -25,10 +25,10 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Current state of the treasure chest
         /// </summary>
-        public TreasureState State 
-        { 
+        public TreasureState State
+        {
             get => _state;
-            set 
+            set
             {
                 if (_state != value)
                 {
@@ -41,10 +41,10 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Treasure level (1-5) which determines the wood color
         /// </summary>
-        public int Level 
-        { 
+        public int Level
+        {
             get => _level;
-            set 
+            set
             {
                 if (_level != value && value >= 1 && value <= 5)
                 {
@@ -57,8 +57,8 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Item contained within this treasure chest
         /// </summary>
-        public IItem? ContainedItem 
-        { 
+        public IItem? ContainedItem
+        {
             get => _containedItem;
             set => _containedItem = value;
         }
@@ -143,7 +143,7 @@ namespace PitHero.ECS.Components
         public static IItem GenerateItemForTreasureLevel(int treasureLevel)
         {
             var rarity = RarityUtils.GetRarityForTreasureLevel(treasureLevel);
-            
+
             // Generate potions based on rarity
             return rarity switch
             {
@@ -207,15 +207,15 @@ namespace PitHero.ECS.Components
         public static int DetermineTreasureLevel(int pitLevel)
         {
             var random = Nez.Random.NextFloat();
-            
+
             return pitLevel switch
             {
                 // Pit Levels 1-10: Only Level 1 (100%)
                 <= 10 => 1,
-                
+
                 // Pit Levels 10-30: Level 1 (80%), Level 2 (20%)
                 <= 30 => random < 0.8f ? 1 : 2,
-                
+
                 // Pit Levels 30-60: Level 1 (70%), Level 2 (20%), Level 3 (10%)
                 <= 60 => random switch
                 {
@@ -223,7 +223,7 @@ namespace PitHero.ECS.Components
                     < 0.9f => 2,
                     _ => 3
                 },
-                
+
                 // Pit Levels 60-90: Level 1 (55%), Level 2 (25%), Level 3 (15%), Level 4 (5%)
                 <= 90 => random switch
                 {
@@ -232,7 +232,7 @@ namespace PitHero.ECS.Components
                     < 0.95f => 3,
                     _ => 4
                 },
-                
+
                 // Pit Levels 90+: Level 1 (40%), Level 2 (30%), Level 3 (20%), Level 4 (9%), Level 5 (1%)
                 _ => random switch
                 {

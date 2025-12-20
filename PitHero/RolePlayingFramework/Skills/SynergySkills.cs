@@ -1,14 +1,14 @@
-using System.Collections.Generic;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Enemies;
 using RolePlayingFramework.Heroes;
+using System.Collections.Generic;
 
 namespace RolePlayingFramework.Skills
 {
     // ==============================================================================
     // KNIGHT SYNERGY SKILLS
     // ==============================================================================
-    
+
     /// <summary>Holy Strike from Paladin - Light damage based on Strength.</summary>
     public sealed class HolyStrikeSkill : BaseSkill
     {

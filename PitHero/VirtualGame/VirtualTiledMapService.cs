@@ -19,7 +19,7 @@ namespace PitHero.VirtualGame
         {
             _worldState = worldState;
             _virtualMap = new VirtualTmxMap(width, height);
-            
+
             // Initialize the map with basic patterns that PitWidthManager expects
             InitializeBasicPatterns();
         }
@@ -28,7 +28,7 @@ namespace PitHero.VirtualGame
         {
             var layer = _virtualMap.GetVirtualLayer(layerName);
             layer?.RemoveTile(x, y);
-            
+
             Console.WriteLine($"[VirtualTiledMapService] Removed tile at {layerName}[{x},{y}]");
         }
 
@@ -36,7 +36,7 @@ namespace PitHero.VirtualGame
         {
             var layer = _virtualMap.GetVirtualLayer(layerName);
             layer?.SetTile(x, y, tileIndex);
-            
+
             Console.WriteLine($"[VirtualTiledMapService] Set tile at {layerName}[{x},{y}] = {tileIndex}");
         }
 
@@ -64,10 +64,10 @@ namespace PitHero.VirtualGame
             if (fogLayer != null)
             {
                 bool anyCleared = false;
-                
+
                 // Clear center tile
                 anyCleared |= ClearFogOfWarTile(centerTileX, centerTileY);
-                
+
                 if (radius == 1)
                 {
                     // Radius 1 = uncover square of 8 tiles surrounding player (3x3 grid minus center)
@@ -92,7 +92,7 @@ namespace PitHero.VirtualGame
                         }
                     }
                 }
-                
+
                 if (anyCleared)
                 {
                     Console.WriteLine($"[VirtualTiledMapService] Cleared FogOfWar around ({centerTileX},{centerTileY}) with radius {radius}");

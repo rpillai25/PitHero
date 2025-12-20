@@ -26,21 +26,21 @@ namespace RolePlayingFramework.Enemies
             // Always use the preset level for Spiders regardless of requested level
             var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Spider");
             Level = presetLevel;
-            
+
             // Use BalanceConfig for stats
             var archetype = BalanceConfig.MonsterArchetype.FastFragile;
             var strength = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Strength);
             var agility = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Agility);
             var vitality = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Vitality);
             var magic = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Magic);
-            
+
             Stats = new StatBlock(strength, agility, vitality, magic);
             MaxHP = BalanceConfig.CalculateMonsterHP(Level, archetype);
             _hp = MaxHP;
             ExperienceYield = BalanceConfig.CalculateMonsterExperience(Level);
             JPYield = BalanceConfig.CalculateMonsterJPYield(Level);
             SPYield = BalanceConfig.CalculateMonsterSPYield(Level);
-            
+
             // Spider is Earth element: resistant to Earth, weak to Wind
             var resistances = new System.Collections.Generic.Dictionary<ElementType, float>
             {

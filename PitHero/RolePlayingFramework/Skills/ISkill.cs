@@ -15,10 +15,10 @@ namespace RolePlayingFramework.Skills
         SkillTargetType TargetType { get; }
         int MPCost { get; }
         int JPCost { get; }
-        
+
         /// <summary>Elemental type of the skill.</summary>
         ElementType Element { get; }
-        
+
         /// <summary>True if this skill can only be used during battle.</summary>
         bool BattleOnly { get; }
 

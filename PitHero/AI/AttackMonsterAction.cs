@@ -1,11 +1,10 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Sprites;
-using PitHero.ECS.Components;
 using PitHero.AI.Interfaces;
+using PitHero.ECS.Components;
 using PitHero.Services;
 using RolePlayingFramework.Combat;
-using RolePlayingFramework.Heroes;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -20,7 +19,7 @@ namespace PitHero.AI
         public HeroComponent HeroComponent;
         public Entity MonsterEntity;
         public float TurnValue;
-        
+
         public BattleParticipant(HeroComponent hero)
         {
             IsHero = true;
@@ -28,7 +27,7 @@ namespace PitHero.AI
             MonsterEntity = null;
             TurnValue = 0f;
         }
-        
+
         public BattleParticipant(Entity monster)
         {
             IsHero = false;
@@ -50,14 +49,14 @@ namespace PitHero.AI
         {
             // Preconditions: Hero must be adjacent to a monster
             SetPrecondition(GoapConstants.AdjacentToMonster, true);
-            
+
             // Postconditions: Monster is defeated, recalculate adjacency
             SetPostcondition(GoapConstants.AdjacentToMonster, false);
         }
 
         public override bool Execute(HeroComponent hero)
         {
-            if(existingMultiParticipantBattleCoroutine != null)
+            if (existingMultiParticipantBattleCoroutine != null)
             {
                 Debug.Log("[AttackMonster] Multi-participant battle already in progress");
                 return !HeroStateMachine.IsBattleInProgress;
@@ -85,7 +84,7 @@ namespace PitHero.AI
 
             // Start multi-participant battle sequence using coroutine
             existingMultiParticipantBattleCoroutine = Core.StartCoroutine(ExecuteMultiParticipantBattleSequence(hero, adjacentMonsters));
-            
+
             Debug.Log("[AttackMonster] Multi-participant battle started successfully");
             return !HeroStateMachine.IsBattleInProgress;
         }
@@ -122,7 +121,7 @@ namespace PitHero.AI
         {
             // First wait while paused
             yield return WaitWhilePaused();
-            
+
             // Then wait for the specified time
             yield return Coroutine.WaitForSeconds(seconds);
         }
@@ -135,7 +134,7 @@ namespace PitHero.AI
             var heroTile = GetCurrentTilePosition(hero);
             var scene = Core.Scene;
             var adjacentMonsters = new List<Entity>();
-            
+
             if (scene == null) return adjacentMonsters;
 
             var monsterEntities = scene.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
@@ -206,7 +205,7 @@ namespace PitHero.AI
         {
             // Simple animation simulation - in a real implementation, this would be handled by an animation system
             Debug.Log("[AttackMonster] Performing attack animation (simulation)");
-            
+
             // For now, just log the animation. In a full implementation, this would:
             // 1. Move hero a few pixels backward
             // 2. Smoothly animate forward
@@ -233,7 +232,7 @@ namespace PitHero.AI
             {
                 return tileMover.GetCurrentTileCoordinates();
             }
-            
+
             // Fallback to manual calculation
             return GetTileCoordinates(hero.Entity.Transform.Position);
         }
@@ -279,7 +278,7 @@ namespace PitHero.AI
 
                 var hero = heroComponent.LinkedHero;
                 var attackResolver = new EnhancedAttackResolver();
-                
+
                 // Calculate hero's battle stats once for the entire battle
                 var heroBattleStats = BattleStats.CalculateForHero(hero);
 
@@ -330,7 +329,7 @@ namespace PitHero.AI
                         if (participant.IsHero)
                         {
                             participant.TurnValue = CalculateTurnValue(hero.GetTotalStats().Agility);
-                            
+
                             // Queue default attack for hero if queue is empty
                             if (!heroComponent.BattleActionQueue.HasActions())
                             {
@@ -368,24 +367,24 @@ namespace PitHero.AI
                         {
                             // Check if there's a queued action
                             var queuedAction = heroComponent.BattleActionQueue.Dequeue();
-                            
+
                             if (queuedAction != null)
                             {
                                 // Execute the queued action
                                 Debug.Log($"[AttackMonster] Hero's turn - executing queued action: {queuedAction.ActionType}");
-                                
+
                                 if (queuedAction.ActionType == QueuedActionType.UseItem)
                                 {
                                     // Use the queued consumable
                                     var consumable = queuedAction.Consumable;
                                     Debug.Log($"[AttackMonster] Using queued item: {consumable.Name}");
-                                    
+
                                     if (consumable.Consume(hero))
                                     {
                                         // Decrement stack or remove item from bag
                                         heroComponent.Bag.ConsumeFromStack(queuedAction.BagIndex);
                                         Debug.Log($"[AttackMonster] Successfully used {consumable.Name}");
-                                        
+
                                         // Notify UI that inventory has changed
                                         PitHero.UI.InventorySelectionManager.OnInventoryChanged?.Invoke();
                                     }
@@ -399,15 +398,15 @@ namespace PitHero.AI
                                     // Use the queued skill
                                     var skill = queuedAction.Skill;
                                     Debug.Log($"[AttackMonster] Using queued skill: {skill.Name}");
-                                    
+
                                     // Check if hero has enough MP
                                     if (hero.CurrentMP >= skill.MPCost)
                                     {
                                         // Get living monsters as targets
                                         var livingMonsters = GetLivingMonsters(validMonsters);
-                                        
+
                                         if (livingMonsters.Count == 0) break; // All monsters dead
-                                        
+
                                         // Store HP before skill execution to calculate damage dealt
                                         var monsterHPBefore = new Dictionary<RolePlayingFramework.Enemies.IEnemy, int>();
                                         for (int i = 0; i < livingMonsters.Count; i++)
@@ -416,7 +415,7 @@ namespace PitHero.AI
                                             if (enemyComp?.Enemy != null)
                                                 monsterHPBefore[enemyComp.Enemy] = enemyComp.Enemy.CurrentHP;
                                         }
-                                        
+
                                         // Cache components to avoid repeated lookups
                                         var primaryTarget = livingMonsters[0].GetComponent<EnemyComponent>()?.Enemy;
                                         var surroundingTargets = new List<RolePlayingFramework.Enemies.IEnemy>();
@@ -426,21 +425,21 @@ namespace PitHero.AI
                                             if (enemyComp?.Enemy != null)
                                                 surroundingTargets.Add(enemyComp.Enemy);
                                         }
-                                        
+
                                         // Execute the skill
                                         skill.Execute(hero, primaryTarget, surroundingTargets, attackResolver);
                                         hero.SpendMP(skill.MPCost);
                                         Debug.Log($"[AttackMonster] Successfully used {skill.Name}, consumed {skill.MPCost} MP");
-                                        
+
                                         // Display damage and handle deaths for all affected monsters
                                         for (int i = livingMonsters.Count - 1; i >= 0; i--)
                                         {
                                             var monsterEntity = livingMonsters[i];
                                             var enemyComp = monsterEntity.GetComponent<EnemyComponent>();
                                             if (enemyComp?.Enemy == null) continue;
-                                            
+
                                             var enemy = enemyComp.Enemy;
-                                            
+
                                             // Calculate damage dealt
                                             if (monsterHPBefore.TryGetValue(enemy, out int hpBefore))
                                             {
@@ -448,7 +447,7 @@ namespace PitHero.AI
                                                 if (damage > 0)
                                                 {
                                                     Debug.Log($"[AttackMonster] {skill.Name} dealt {damage} damage to {enemy.Name}. Enemy HP: {enemy.CurrentHP}/{enemy.MaxHP}");
-                                                    
+
                                                     // Display damage on enemy
                                                     var enemyBouncyDigit = monsterEntity.GetComponent<BouncyDigitComponent>();
                                                     if (enemyBouncyDigit != null)
@@ -456,7 +455,7 @@ namespace PitHero.AI
                                                         enemyBouncyDigit.Init(damage, BouncyDigitComponent.EnemyDigitColor, false);
                                                         enemyBouncyDigit.SetEnabled(true);
                                                     }
-                                                    
+
                                                     // Check if enemy died
                                                     if (enemy.CurrentHP <= 0)
                                                     {
@@ -470,10 +469,10 @@ namespace PitHero.AI
                                                 }
                                             }
                                         }
-                                        
+
                                         // Wait for damage display
                                         yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
-                                        
+
                                         // Fade out and destroy all dead monsters
                                         var deadMonsters = livingMonsters.Where(m => m.GetComponent<EnemyComponent>()?.Enemy?.CurrentHP <= 0).ToList();
                                         foreach (var deadMonster in deadMonsters)
@@ -498,7 +497,7 @@ namespace PitHero.AI
 
                                     Debug.Log($"[AttackMonster] Hero's turn - attacking {targetEnemy.Name}");
                                     var heroAttackResult = attackResolver.Resolve(heroBattleStats, targetBattleStats, DamageKind.Physical);
-                                    
+
                                     if (heroAttackResult.Hit)
                                     {
                                         bool enemyDied = targetEnemy.TakeDamage(heroAttackResult.Damage);
@@ -528,7 +527,7 @@ namespace PitHero.AI
                                     else
                                     {
                                         Debug.Log($"[AttackMonster] Hero missed {targetEnemy.Name}!");
-                                        
+
                                         // Display "Miss" on enemy
                                         var enemyBouncyText = targetMonster.GetComponent<BouncyTextComponent>();
                                         if (enemyBouncyText != null)
@@ -555,10 +554,10 @@ namespace PitHero.AI
                             var enemy = enemyComponent.Enemy;
                             var enemyBattleStats = BattleStats.CalculateForMonster(enemy);
                             Debug.Log($"[AttackMonster] {enemy.Name}'s turn - attacking hero");
-                            
+
                             // Make monster face the hero when attacking
                             FaceTarget(participant.MonsterEntity, heroComponent.Entity.Transform.Position);
-                            
+
                             var enemyAttackResult = attackResolver.Resolve(enemyBattleStats, heroBattleStats, enemy.AttackKind);
                             if (enemyAttackResult.Hit)
                             {
@@ -577,7 +576,7 @@ namespace PitHero.AI
                                 if (heroDied)
                                 {
                                     Debug.Log($"[AttackMonster] {hero.Name} died! Starting permadeath sequence.");
-                                    
+
                                     // Start the hero death animation
                                     var deathComponent = heroComponent.Entity.GetComponent<HeroDeathComponent>();
                                     if (deathComponent == null)
@@ -585,14 +584,14 @@ namespace PitHero.AI
                                         deathComponent = heroComponent.Entity.AddComponent(new HeroDeathComponent());
                                     }
                                     deathComponent.StartDeathAnimation();
-                                    
+
                                     break; // End battle
                                 }
                             }
                             else
                             {
                                 Debug.Log($"[AttackMonster] {enemy.Name} missed {hero.Name}!");
-                                
+
                                 // Display "Miss" on hero
                                 var heroBouncyText = heroComponent.Entity.GetComponent<BouncyTextComponent>();
                                 if (heroBouncyText != null)
@@ -618,7 +617,7 @@ namespace PitHero.AI
 
                 // Recalculate monster adjacency after battle
                 heroComponent.AdjacentToMonster = heroComponent.CheckAdjacentToMonster();
-                
+
                 Debug.Log("[AttackMonster] Multi-participant battle sequence completed");
             }
             finally

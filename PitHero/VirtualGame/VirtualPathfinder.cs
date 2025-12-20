@@ -1,7 +1,7 @@
 using Microsoft.Xna.Framework;
+using PitHero.AI.Interfaces;
 using System.Collections.Generic;
 using System.Linq;
-using PitHero.AI.Interfaces;
 
 namespace PitHero.VirtualGame
 {
@@ -104,7 +104,7 @@ namespace PitHero.VirtualGame
         private List<Point> ReconstructPath(Dictionary<Point, Point> cameFrom, Point current)
         {
             var path = new List<Point> { current };
-            
+
             while (cameFrom.ContainsKey(current))
             {
                 current = cameFrom[current];

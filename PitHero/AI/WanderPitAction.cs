@@ -5,7 +5,6 @@ using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
 using PitHero.Util;
 using PitHero.VirtualGame;
-using System.Collections.Generic;
 
 namespace PitHero.AI
 {
@@ -49,7 +48,7 @@ namespace PitHero.AI
             if (tiledMapService != null)
             {
                 bool fogCleared = tiledMapService.ClearFogOfWarAroundTile(currentTile.X, currentTile.Y, hero);
-                
+
                 // Trigger fog cooldown if fog was cleared
                 if (fogCleared)
                 {
@@ -65,7 +64,7 @@ namespace PitHero.AI
 
                 // After any fog changes or discoveries, update ExploredPit based on the current priority order
                 hero.UpdateExploredPitBasedOnPriorities();
-                
+
                 Debug.Log($"[WanderPitAction] Adjacent check: Monster={hero.AdjacentToMonster}, Chest={hero.AdjacentToChest}");
             }
             else
@@ -94,12 +93,12 @@ namespace PitHero.AI
             {
                 uncoverRadius = virtualContext.VirtualHero.UncoverRadius;
             }
-            
+
             context.WorldState.ClearFogOfWar(currentTile, uncoverRadius);
 
             // Update explored flag per priority rules in virtual context if possible
             // (Virtual world manages this internally in tests)
-            
+
             context.LogDebug("[WanderPitAction] Action completed");
             return true; // Action completed
         }

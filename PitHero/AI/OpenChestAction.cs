@@ -22,7 +22,7 @@ namespace PitHero.AI
         {
             // Preconditions: Hero must be adjacent to a chest
             SetPrecondition(GoapConstants.AdjacentToChest, true);
-            
+
             // Postconditions: Chest is opened, recalculate adjacency
             SetPostcondition(GoapConstants.AdjacentToChest, false);
         }
@@ -65,7 +65,7 @@ namespace PitHero.AI
                         {
                             _treasureComponent.State = TreasureComponent.TreasureState.OPEN;
                             Debug.Log("[OpenChest] Chest state changed to OPEN");
-                            
+
                             // Handle item pickup if there's a contained item
                             HandleItemPickup(hero, _treasureComponent);
                         }
@@ -214,7 +214,7 @@ namespace PitHero.AI
             {
                 return tileMover.GetCurrentTileCoordinates();
             }
-            
+
             // Fallback to manual calculation
             return GetTileCoordinates(hero.Entity.Transform.Position);
         }
@@ -247,7 +247,7 @@ namespace PitHero.AI
                 var animationEntity = scene.CreateEntity("itemPickupAnimation");
                 animationEntity.Transform.Position = _chestEntity.Transform.Position;
                 animationEntity.AddComponent(new ItemPickupAnimationComponent(containedItem));
-                
+
                 Debug.Log($"[OpenChest] Created pickup animation for {containedItem.Name} at position X: {_chestEntity.Transform.Position.X}, Y: {_chestEntity.Transform.Position.Y}");
             }
 
@@ -256,7 +256,7 @@ namespace PitHero.AI
             {
                 Debug.Log($"[OpenChest] Added {containedItem.Name} to hero's main bag. Bag contents:");
                 LogBagContents(hero.Bag);
-                
+
                 // Clear the item from the treasure chest
                 treasureComponent.ContainedItem = null;
             }

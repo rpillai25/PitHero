@@ -13,12 +13,12 @@ namespace PitHero
         public const int VirtualHeight = 360;
         public const int InternalWorldWidth = 1920;
         public const int InternalWorldHeight = 800;
-        
+
         // Window Configuration
         public const bool AlwaysOnTop = true;
         public const bool ClickThrough = false;
         public const bool BorderlessWindow = true;
-        
+
         // Hero Configuration
         public const int HeroWidth = 32;
         public const int HeroHeight = 32;
@@ -32,17 +32,17 @@ namespace PitHero
         public const float HeroMovementSpeed = 64f;  //Move speed in pixels per second (64 pixels = 2 tiles)
         public const float HeroPitMovementSpeed = 32f; //Move speed in pixels per second when in pit (32 pixels = 1 tile)
         public const float HeroJumpSpeed = 4f; //Jump speed in tiles per second
-        
+
         // Fog of war movement speed configuration
         public const float HeroFogCooldownDuration = 1f; // Duration in seconds for fog cooldown after clearing fog
 
         // Hero uncover radius configuration
         public const int DefaultHeroUncoverRadius = 1; // Default radius for hero fog clearing        
-        
+
         // Building Configuration
         public const int TownBuildingWidth = 48;
         public const int TownBuildingHeight = 48;
-        
+
         // Camera Configuration
         public const float CameraDefaultZoom = 1f; // default zoom level
         public const float CameraMinimumZoom = 0.5f; // can't zoom out past default for normal maps
@@ -50,7 +50,7 @@ namespace PitHero
         public const float CameraMinimumZoomLargeMap = 0.25f; // can zoom out to 0.5x for large maps (clean divisor)
         public const float CameraZoomSpeed = 0.001f; // zoom sensitivity per mouse wheel notch
         public const float CameraPanSpeed = 1f; // pan speed multiplier       
-        
+
         // World Bounds
         public static readonly Rectangle WorldBounds = new Rectangle(0, 0, InternalWorldWidth, InternalWorldHeight);
         public const int TileSize = 32;
@@ -120,10 +120,10 @@ namespace PitHero
 
         public const int RenderLayerUI = 998; // UI layer (always on top)
         public const int TransparentPauseOverlay = 999; // Transparent overlay for paused action when UI is active
-        
+
         // UI Button Spacing
         public const float UIButtonPadding = 4f; // Padding between UI buttons
-        
+
         // Inventory interaction
         public const float DoubleClickThresholdSeconds = 0.3f; // Time window for detecting double-click
 

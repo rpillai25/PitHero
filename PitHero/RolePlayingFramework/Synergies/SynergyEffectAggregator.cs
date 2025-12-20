@@ -10,16 +10,16 @@ namespace RolePlayingFramework.Synergies
     {
         /// <summary>Maximum number of instances allowed per pattern.</summary>
         public const int MaxInstancesPerPattern = 3;
-        
+
         /// <summary>Diminishing returns multipliers for each instance [1st, 2nd, 3rd].</summary>
         private static readonly float[] Multipliers = { 1.0f, 0.5f, 0.25f };
-        
+
         /// <summary>Acceleration bonus per extra instance (before skill learned).</summary>
         public const float AccelerationBonusPerInstance = 0.35f;
-        
+
         /// <summary>Maximum acceleration cap (70% bonus).</summary>
         public const float MaxAccelerationCap = 1.70f;
-        
+
         /// <summary>
         /// Calculates the total additive multiplier for a given instance count.
         /// 1 instance = 1.0, 2 instances = 1.5, 3 instances = 1.75
@@ -30,7 +30,7 @@ namespace RolePlayingFramework.Synergies
         {
             if (instanceCount <= 0)
                 return 0f;
-            
+
             float total = 0f;
             int count = Math.Min(instanceCount, Multipliers.Length);
             for (int i = 0; i < count; i++)
@@ -39,7 +39,7 @@ namespace RolePlayingFramework.Synergies
             }
             return total;
         }
-        
+
         /// <summary>
         /// Gets the individual multiplier for a specific instance index (0-based).
         /// </summary>
@@ -51,7 +51,7 @@ namespace RolePlayingFramework.Synergies
                 return 0f;
             return Multipliers[instanceIndex];
         }
-        
+
         /// <summary>
         /// Calculates the synergy point acceleration multiplier for earning points.
         /// Before skill is learned: BasePoints * (1 + 0.35 * (InstanceCount - 1)), capped at +70%
@@ -64,10 +64,10 @@ namespace RolePlayingFramework.Synergies
         {
             if (skillLearned)
                 return 1.0f;
-            
+
             if (instanceCount <= 1)
                 return 1.0f;
-            
+
             float acceleration = 1.0f + AccelerationBonusPerInstance * (instanceCount - 1);
             return Math.Min(acceleration, MaxAccelerationCap);
         }

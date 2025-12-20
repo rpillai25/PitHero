@@ -1,12 +1,11 @@
-using System.Collections.Generic;
+using RolePlayingFramework.Combat;
+using RolePlayingFramework.Enemies;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Jobs;
-using RolePlayingFramework.Jobs.Primary;
 using RolePlayingFramework.Skills;
 using RolePlayingFramework.Stats;
-using RolePlayingFramework.Enemies;
-using RolePlayingFramework.Combat;
 using RolePlayingFramework.Synergies;
+using System.Collections.Generic;
 
 namespace RolePlayingFramework.Heroes
 {
@@ -32,7 +31,7 @@ namespace RolePlayingFramework.Heroes
         public float HealPowerBonus { get; set; }
         public float FireDamageBonus { get; set; }
         public float MPCostReduction { get; set; }
-        
+
         // Synergy-based stat modifiers (internal for synergy effect access)
         internal StatBlock _synergyStatBonus = new StatBlock(0, 0, 0, 0);
         internal int _synergyHPBonus = 0;
@@ -55,14 +54,14 @@ namespace RolePlayingFramework.Heroes
         private readonly HashSet<Equipment.ItemKind> _extraEquipPermissions = new HashSet<Equipment.ItemKind>();
 
         private readonly HeroCrystal? _boundCrystal;
-        
+
         /// <summary>Gets the crystal bound to this hero (if any).</summary>
         public HeroCrystal? BoundCrystal => _boundCrystal;
-        
+
         // Synergy tracking
         private readonly List<ActiveSynergy> _activeSynergies;
         public IReadOnlyList<ActiveSynergy> ActiveSynergies => _activeSynergies;
-        
+
         /// <summary>Gets the number of active counter-enabling synergies (for testing).</summary>
         public int SynergyCounterEnablers => _synergyCounterEnablers;
 
@@ -107,23 +106,23 @@ namespace RolePlayingFramework.Heroes
             while (Experience >= RequiredExpForNextLevel())
             {
                 Experience -= RequiredExpForNextLevel();
-                
+
                 // Clamp level to max before incrementing
                 if (Level >= StatConstants.MaxLevel) break;
-                
+
                 Level++;
                 leveled = true;
-                
+
                 // Increment base stats by 1 per level, ensuring they don't exceed caps
                 BaseStats = StatConstants.ClampStatBlock(
                     new StatBlock(
-                        BaseStats.Strength + 1, 
-                        BaseStats.Agility + 1, 
-                        BaseStats.Vitality + 1, 
+                        BaseStats.Strength + 1,
+                        BaseStats.Agility + 1,
+                        BaseStats.Vitality + 1,
                         BaseStats.Magic + 1
                     )
                 );
-                
+
                 RecalculateDerived();
                 ApplyPassiveSkills();
             }
@@ -140,24 +139,24 @@ namespace RolePlayingFramework.Heroes
             var total = BaseStats.Add(jobStats).Add(GetEquipmentStatBonus()).Add(_synergyStatBonus);
             // Clamp total stats before using them for HP/MP calculations
             total = StatConstants.ClampStatBlock(total);
-            
+
             // Calculate HP and MP using the utility methods with capping, including synergy bonuses
             MaxHP = GrowthCurveCalculator.CalculateHP(
-                total.Vitality, 
-                baseHP: 25, 
+                total.Vitality,
+                baseHP: 25,
                 vitalityMultiplier: 5
             ) + GetEquipmentHPBonus() + _synergyHPBonus;
-            
+
             MaxMP = GrowthCurveCalculator.CalculateMP(
-                total.Magic, 
-                baseMP: 10, 
+                total.Magic,
+                baseMP: 10,
                 magicMultiplier: 3
             ) + GetEquipmentMPBonus() + _synergyMPBonus;
-            
+
             // Ensure HP/MP stay within caps after adding equipment and synergy bonuses
             MaxHP = StatConstants.ClampHP(MaxHP);
             MaxMP = StatConstants.ClampMP(MaxMP);
-            
+
             // Clamp current values to new maximums
             if (CurrentHP > MaxHP) CurrentHP = MaxHP;
             if (CurrentMP > MaxMP) CurrentMP = MaxMP;
@@ -173,7 +172,7 @@ namespace RolePlayingFramework.Heroes
                 Job.GrowthPerLevel,
                 Level
             );
-            
+
             // Add equipment bonuses and synergy bonuses, then clamp
             var total = statsWithJob.Add(GetEquipmentStatBonus()).Add(_synergyStatBonus);
             return StatConstants.ClampStatBlock(total);
@@ -524,15 +523,15 @@ namespace RolePlayingFramework.Heroes
             if (CurrentMP > MaxMP) CurrentMP = MaxMP;
             return true;
         }
-        
+
         // Synergy system integration
-        
+
         // Track active synergy groups for stacking system
         private readonly List<ActiveSynergyGroup> _activeSynergyGroups = new List<ActiveSynergyGroup>();
-        
+
         /// <summary>Read-only access to active synergy groups.</summary>
         public IReadOnlyList<ActiveSynergyGroup> ActiveSynergyGroups => _activeSynergyGroups;
-        
+
         /// <summary>Updates active synergies based on current inventory state.</summary>
         /// <param name="detectedSynergies">List of detected synergies.</param>
         /// <param name="gameStateService">Optional game state service for stencil discovery tracking.</param>
@@ -548,26 +547,26 @@ namespace RolePlayingFramework.Heroes
                     effects[j].Remove(this);
                 }
             }
-            
+
             // Clear old synergies
             _activeSynergies.Clear();
-            
+
             // Add new synergies
             for (int i = 0; i < detectedSynergies.Count; i++)
             {
                 _activeSynergies.Add(detectedSynergies[i]);
-                
+
                 // Apply effects from new synergies
                 var effects = detectedSynergies[i].Pattern.Effects;
                 for (int j = 0; j < effects.Count; j++)
                 {
                     effects[j].Apply(this);
                 }
-                
+
                 // Mark synergy as discovered in crystal
                 var pattern = detectedSynergies[i].Pattern;
                 _boundCrystal?.DiscoverSynergy(pattern.Id);
-                
+
                 // Organic stencil discovery: if pattern has a stencil and it's not discovered yet, discover it
                 // TODO: Reference Issue #134 for comprehensive stencil discovery integration
                 if (gameStateService != null && pattern.HasStencil && !gameStateService.IsStencilDiscovered(pattern.Id))
@@ -575,11 +574,11 @@ namespace RolePlayingFramework.Heroes
                     gameStateService.DiscoverStencil(pattern.Id, Synergies.StencilDiscoverySource.PlayerMatch);
                 }
             }
-            
+
             // Recalculate derived stats after synergy changes
             RecalculateDerived();
         }
-        
+
         /// <summary>
         /// Updates active synergies using grouped detection with stacking support.
         /// Applies effects with aggregate multipliers based on instance count.
@@ -599,26 +598,26 @@ namespace RolePlayingFramework.Heroes
                     effects[j].Remove(this);
                 }
             }
-            
+
             // Clear both lists (legacy list is just for backward compatibility reads, effects are managed via groups)
             _activeSynergyGroups.Clear();
             _activeSynergies.Clear();
-            
+
             // Add new synergy groups
             for (int i = 0; i < synergyGroups.Count; i++)
             {
                 var group = synergyGroups[i];
                 if (group.InstanceCount == 0) continue;
-                
+
                 _activeSynergyGroups.Add(group);
-                
+
                 // Add all instances to legacy list for backward compatibility
                 var instances = group.Instances;
                 for (int j = 0; j < instances.Count; j++)
                 {
                     _activeSynergies.Add(instances[j]);
                 }
-                
+
                 // Apply effects with aggregate multiplier
                 var effects = group.Pattern.Effects;
                 float multiplier = group.TotalMultiplier;
@@ -626,11 +625,11 @@ namespace RolePlayingFramework.Heroes
                 {
                     effects[j].Apply(this, multiplier);
                 }
-                
+
                 // Mark synergy as discovered in crystal
                 var pattern = group.Pattern;
                 _boundCrystal?.DiscoverSynergy(pattern.Id);
-                
+
                 // Organic stencil discovery: if pattern has a stencil and it's not discovered yet, discover it
                 // TODO: Reference Issue #134 for comprehensive stencil discovery integration
                 if (gameStateService != null && pattern.HasStencil && !gameStateService.IsStencilDiscovered(pattern.Id))
@@ -638,23 +637,23 @@ namespace RolePlayingFramework.Heroes
                     gameStateService.DiscoverStencil(pattern.Id, Synergies.StencilDiscoverySource.PlayerMatch);
                 }
             }
-            
+
             // Recalculate derived stats after synergy changes
             RecalculateDerived();
         }
-        
+
         /// <summary>Earns synergy points from battles.</summary>
         public void EarnSynergyPoints(int amount)
         {
             if (_boundCrystal == null) return;
-            
+
             // Distribute points to all active synergies
             for (int i = 0; i < _activeSynergies.Count; i++)
             {
                 var synergy = _activeSynergies[i];
                 synergy.EarnPoints(amount);
                 _boundCrystal.EarnSynergyPoints(synergy.Pattern.Id, amount);
-                
+
                 // Check if synergy skill was unlocked
                 if (synergy.IsSkillUnlocked && synergy.Pattern.UnlockedSkill != null)
                 {
@@ -672,7 +671,7 @@ namespace RolePlayingFramework.Heroes
                 }
             }
         }
-        
+
         /// <summary>
         /// Earns synergy points from battles with acceleration based on instance count.
         /// Uses diminishing returns: 1 instance = 1x, 2 = 1.35x, 3 = 1.70x (capped).
@@ -683,43 +682,43 @@ namespace RolePlayingFramework.Heroes
         public void EarnSynergyPointsWithAcceleration(int baseAmount)
         {
             if (_boundCrystal == null) return;
-            
+
             // Process synergy groups with acceleration
             for (int i = 0; i < _activeSynergyGroups.Count; i++)
             {
                 var group = _activeSynergyGroups[i];
                 var patternId = group.Pattern.Id;
-                
+
                 // Check if skill already learned for this pattern
-                bool skillLearned = group.Pattern.UnlockedSkill != null && 
+                bool skillLearned = group.Pattern.UnlockedSkill != null &&
                                    _boundCrystal.HasSynergySkill(group.Pattern.UnlockedSkill.Id);
-                
+
                 // Calculate accelerated points
                 float acceleration = SynergyEffectAggregator.GetPointsAccelerationMultiplier(
-                    group.InstanceCount, 
+                    group.InstanceCount,
                     skillLearned
                 );
                 int acceleratedAmount = (int)(baseAmount * acceleration);
-                
+
                 // Distribute accelerated points to crystal
                 _boundCrystal.EarnSynergyPoints(patternId, acceleratedAmount);
-                
+
                 // Distribute to individual instances
                 var instances = group.Instances;
                 for (int j = 0; j < instances.Count; j++)
                 {
                     instances[j].EarnPoints(acceleratedAmount);
                 }
-                
+
                 // Attempt skill unlock if threshold reached (only once)
                 TryLearnSynergySkill(group.Pattern);
             }
-            
+
             // Also handle legacy synergies not in groups
             for (int i = 0; i < _activeSynergies.Count; i++)
             {
                 var synergy = _activeSynergies[i];
-                
+
                 // Skip if already processed in groups
                 bool inGroup = false;
                 for (int g = 0; g < _activeSynergyGroups.Count; g++)
@@ -731,14 +730,14 @@ namespace RolePlayingFramework.Heroes
                     }
                 }
                 if (inGroup) continue;
-                
+
                 // Legacy behavior - no acceleration
                 synergy.EarnPoints(baseAmount);
                 _boundCrystal.EarnSynergyPoints(synergy.Pattern.Id, baseAmount);
                 TryLearnSynergySkill(synergy.Pattern);
             }
         }
-        
+
         /// <summary>
         /// Attempts to learn a synergy skill if points threshold is reached.
         /// Skill is learned exactly once.
@@ -748,19 +747,19 @@ namespace RolePlayingFramework.Heroes
         {
             if (_boundCrystal == null) return;
             if (pattern.UnlockedSkill == null) return;
-            
+
             var skillId = pattern.UnlockedSkill.Id;
-            
+
             // Already learned - do nothing
             if (_boundCrystal.HasSynergySkill(skillId)) return;
-            
+
             // Check if threshold reached
             int points = _boundCrystal.GetSynergyPoints(pattern.Id);
             if (points < pattern.SynergyPointsRequired) return;
-            
+
             // Learn the skill
             _boundCrystal.LearnSynergySkill(skillId);
-            
+
             // Add to hero's learned skills
             if (!_learnedSkills.ContainsKey(skillId))
             {

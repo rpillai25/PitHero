@@ -12,12 +12,12 @@ namespace PitHero.VirtualGame
     public class VirtualPitWidthManager : IPitWidthManager
     {
         private readonly VirtualTiledMapService _tiledMapService;
-        
+
         // State tracking (same as real PitWidthManager)
         private int _currentPitLevel = 1;
         private int _currentPitRightEdge;
         private bool _isInitialized = false;
-        
+
         // Tile patterns (same as real PitWidthManager)
         private Dictionary<int, int> _baseOuterFloor;
         private Dictionary<int, int> _collisionOuterFloor;
@@ -140,10 +140,10 @@ namespace PitHero.VirtualGame
 
             var previousLevel = _currentPitLevel;
             var previousRightEdge = _currentPitRightEdge;
-            
+
             Console.WriteLine($"[VirtualPitWidthManager] Setting pit level from {_currentPitLevel} to {newLevel}");
             _currentPitLevel = newLevel;
-            
+
             RegeneratePitWidth();
         }
 
@@ -195,7 +195,7 @@ namespace PitHero.VirtualGame
             // Update the current pit right edge
             _currentPitRightEdge = lastXCoordinate;
             Console.WriteLine($"[VirtualPitWidthManager] Pit extension complete. New right edge: {_currentPitRightEdge}");
-            
+
             // Regenerate FogOfWar for the entire current pit area
             RegenerateFogOfWar();
         }
@@ -231,10 +231,10 @@ namespace PitHero.VirtualGame
                 }
 
                 // Set FogOfWar layer tile - only for y=3 to y=9 and not for inner wall or outer floor columns
-                bool shouldSetFogOfWar = (y >= 3 && y <= 9) && 
-                                        !columnType.Contains("inner wall") && 
+                bool shouldSetFogOfWar = (y >= 3 && y <= 9) &&
+                                        !columnType.Contains("inner wall") &&
                                         !columnType.Contains("outer floor");
-                
+
                 if (shouldSetFogOfWar && _fogOfWarIndex != 0)
                 {
                     _tiledMapService.SetTile("FogOfWar", x, y, _fogOfWarIndex);

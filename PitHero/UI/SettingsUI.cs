@@ -31,16 +31,16 @@ namespace PitHero.UI
         private Label _yOffsetLabel;
         private Label _zoomLabel;
         private TextButton _resetZoomButton;
-        
+
         // Window size radio buttons
         private ButtonGroup _windowSizeButtonGroup;
         private CheckBox _normalSizeButton;
         private CheckBox _halfSizeButton;
-        
+
         // New Window tab controls
         private TextButton _swapMonitorButton;
         private CheckBox _alwaysOnTopCheckBox;
-        
+
         // Session tab controls
         private TextButton _saveButton;
         private TextButton _quitButton;
@@ -80,17 +80,17 @@ namespace PitHero.UI
         // New UI components
         private FastFUI _fastFUI;
         private HeroUI _heroUI;
-        
+
         /// <summary>Gets the HeroUI instance.</summary>
         public HeroUI HeroUI => _heroUI;
-        
+
         // Window size modes
         public enum WindowSizeMode
         {
             Normal,
             Half
         }
-        
+
         // Track desired size only during settings session (gets reset when settings open)
         private WindowSizeMode _desiredWindowSize = WindowSizeMode.Normal;
 
@@ -126,7 +126,7 @@ namespace PitHero.UI
             // Create FastF and Hero UI components
             _fastFUI = new FastFUI();
             _fastFUI.InitializeUI(_stage);
-            
+
             _heroUI = new HeroUI();
             _heroUI.InitializeUI(_stage);
 
@@ -209,30 +209,30 @@ namespace PitHero.UI
             var windowStyle = skin.Get<WindowStyle>();
             _settingsWindow = new Window("Settings", windowStyle);
             _settingsWindow.SetSize(450, 350);
-            
+
             // Create TabPane with proper styling
             var tabWindowStyle = CreateTabWindowStyle(skin);
             _tabPane = new TabPane(tabWindowStyle);
-            
+
             // Create tabs with content
             var tabStyle = CreateTabStyle(skin);
             _windowTab = new Tab("Window", tabStyle);
             _sessionTab = new Tab("Session", tabStyle);
-            
+
             // Add content to tabs
             PopulateWindowTab(_windowTab, skin);
             PopulateSessionTab(_sessionTab, skin);
-            
+
             // Add tabs to TabPane
             _tabPane.AddTab(_windowTab);
             _tabPane.AddTab(_sessionTab);
-            
+
             // Add TabPane to settings window
             _settingsWindow.Add(_tabPane).Expand().Fill();
 
             // Initially hidden
             _settingsWindow.SetVisible(false);
-            
+
             // Create confirmation dialog (initially hidden)
             CreateConfirmationDialog(skin);
         }
@@ -244,7 +244,7 @@ namespace PitHero.UI
         {
             var tabButtonStyle = new TabButtonStyle();
             tabButtonStyle.LabelStyle = skin.Get<LabelStyle>();
-            
+
             // Use button styles for tab button states
             var buttonStyle = skin.Get<TextButtonStyle>();
             tabButtonStyle.Inactive = buttonStyle.Up;
@@ -252,7 +252,7 @@ namespace PitHero.UI
             tabButtonStyle.Hover = buttonStyle.Over;
             tabButtonStyle.Locked = buttonStyle.Disabled;
             tabButtonStyle.PaddingTop = 2f;
-            
+
             return new TabWindowStyle
             {
                 Background = null, // Use window background instead
@@ -283,7 +283,8 @@ namespace PitHero.UI
             // Always On Top checkbox
             _alwaysOnTopCheckBox = new CheckBox("Always On Top", skin);
             _alwaysOnTopCheckBox.IsChecked = _alwaysOnTop;
-            _alwaysOnTopCheckBox.OnChanged += (isChecked) => {
+            _alwaysOnTopCheckBox.OnChanged += (isChecked) =>
+            {
                 _alwaysOnTop = isChecked;
                 WindowManager.SetAlwaysOnTop(_game, _alwaysOnTop);
             };
@@ -292,7 +293,8 @@ namespace PitHero.UI
 
             // Swap Monitor button
             _swapMonitorButton = new TextButton("Swap Monitor", skin);
-            _swapMonitorButton.OnClicked += (button) => {
+            _swapMonitorButton.OnClicked += (button) =>
+            {
                 WindowManager.SwapToNextMonitor(_game);
                 // Reapply current docking after monitor swap
                 ApplyCurrentWindowPosition();
@@ -308,18 +310,20 @@ namespace PitHero.UI
             // Create enhanced slider with initial range for bottom dock
             _yOffsetSlider = new EnhancedSlider(-200, 0, 1, false, skin, null, false);
             _yOffsetSlider.SetValueAndCommit(0);
-            
+
             // Update label during dragging (immediate feedback)
-            _yOffsetSlider.OnChanged += (value) => {
+            _yOffsetSlider.OnChanged += (value) =>
+            {
                 _yOffsetLabel.SetText($"Y Offset: {(int)value}");
             };
-            
+
             // Apply window position when value is committed (mouse released)
-            _yOffsetSlider.OnValueCommitted += (value) => {
+            _yOffsetSlider.OnValueCommitted += (value) =>
+            {
                 _currentYOffset = (int)value;
                 StartSmoothScrollToOffset(_currentYOffset);
             };
-            
+
             scrollContent.Add(_yOffsetSlider).Width(300).SetPadBottom(20);
             scrollContent.Row();
 
@@ -330,30 +334,33 @@ namespace PitHero.UI
 
             // Create table for zoom slider and reset button side by side
             var zoomTable = new Table();
-            
+
             // Create zoom slider (immediate mode since camera should update in real-time)
             _zoomSlider = new EnhancedSlider(GameConfig.CameraMinimumZoom, GameConfig.CameraMaximumZoom, 0.125f, false, skin, null, false);
             _zoomSlider.SetValueAndCommit(GameConfig.CameraDefaultZoom);
-            
+
             // Update label and camera zoom immediately
-            _zoomSlider.OnChanged += (value) => {
+            _zoomSlider.OnChanged += (value) =>
+            {
                 _zoomLabel.SetText($"Zoom: {value:F2}x");
             };
-            
-            _zoomSlider.OnValueCommitted += (value) => {
+
+            _zoomSlider.OnValueCommitted += (value) =>
+            {
                 ApplyCameraZoom(value);
             };
-            
+
             zoomTable.Add(_zoomSlider).Width(240).SetPadRight(10);
-            
+
             // Reset zoom button
             _resetZoomButton = new TextButton("Reset", skin);
-            _resetZoomButton.OnClicked += (button) => {
+            _resetZoomButton.OnClicked += (button) =>
+            {
                 _zoomSlider.SetValueAndCommit(GameConfig.CameraDefaultZoom);
                 _zoomLabel.SetText($"Zoom: {GameConfig.CameraDefaultZoom:F2}x");
                 ApplyCameraZoom(GameConfig.CameraDefaultZoom);
             };
-            
+
             zoomTable.Add(_resetZoomButton).Width(50);
             scrollContent.Add(zoomTable).SetPadBottom(20);
             scrollContent.Row();
@@ -365,39 +372,41 @@ namespace PitHero.UI
 
             // Create ButtonGroup for window size radio buttons
             _windowSizeButtonGroup = new ButtonGroup();
-            
+
             // Create radio buttons using CheckBox
             _normalSizeButton = new CheckBox("Normal", skin);
             _halfSizeButton = new CheckBox("Half", skin);
-            
+
             // Add buttons to ButtonGroup
             _windowSizeButtonGroup.Add(_normalSizeButton);
             _windowSizeButtonGroup.Add(_halfSizeButton);
-            
+
             // Set up event handlers for window size changes - update persistent size
-            _normalSizeButton.OnChanged += (isChecked) => {
-                if (isChecked) 
+            _normalSizeButton.OnChanged += (isChecked) =>
+            {
+                if (isChecked)
                 {
                     UIWindowManager.SetPersistentWindowSize(UIWindowManager.WindowSizeMode.Normal);
                     _desiredWindowSize = WindowSizeMode.Normal;
                     Debug.Log("[SettingsUI] Selected Normal window size");
                 }
             };
-            
-            _halfSizeButton.OnChanged += (isChecked) => {
-                if (isChecked) 
+
+            _halfSizeButton.OnChanged += (isChecked) =>
+            {
+                if (isChecked)
                 {
                     UIWindowManager.SetPersistentWindowSize(UIWindowManager.WindowSizeMode.Half);
                     _desiredWindowSize = WindowSizeMode.Half;
                     Debug.Log("[SettingsUI] Selected Half window size");
                 }
             };
-            
+
             // Create table for radio buttons layout
             var windowSizeTable = new Table();
             windowSizeTable.Add(_normalSizeButton).SetPadRight(15);
             windowSizeTable.Add(_halfSizeButton);
-            
+
             scrollContent.Add(windowSizeTable).Left().SetPadBottom(20);
             scrollContent.Row();
 
@@ -420,7 +429,7 @@ namespace PitHero.UI
             var scrollPane = new ScrollPane(scrollContent, skin);
             scrollPane.SetScrollingDisabled(true, false); // Only allow vertical scrolling
             scrollPane.SetFadeScrollBars(false); // Always show scroll bars when needed
-            
+
             // Add scroll pane to the tab
             windowTab.Add(scrollPane).Expand().Fill();
         }
@@ -440,7 +449,8 @@ namespace PitHero.UI
             // Save button (disabled placeholder)
             _saveButton = new TextButton("Save", skin);
             _saveButton.SetDisabled(true);
-            _saveButton.OnClicked += (button) => {
+            _saveButton.OnClicked += (button) =>
+            {
                 Debug.Log("Save functionality not yet implemented");
             };
             sessionTable.Add(_saveButton).Width(150).SetPadBottom(15);
@@ -460,31 +470,32 @@ namespace PitHero.UI
             var windowStyle = skin.Get<WindowStyle>();
             _confirmationDialog = new Window("Really Quit?", windowStyle);
             _confirmationDialog.SetSize(300, 150);
-            
+
             var dialogTable = new Table();
             dialogTable.Pad(20);
-            
+
             dialogTable.Add(new Label("Are you sure you want to quit?", skin)).SetPadBottom(20);
             dialogTable.Row();
-            
+
             var buttonTable = new Table();
-            
+
             var yesButton = new TextButton("Yes", skin);
-            yesButton.OnClicked += (button) => {
+            yesButton.OnClicked += (button) =>
+            {
                 HideQuitConfirmation();
                 Core.Exit();
             };
             buttonTable.Add(yesButton).Width(80).SetPadRight(10);
-            
+
             var noButton = new TextButton("No", skin);
             noButton.OnClicked += (button) => HideQuitConfirmation();
             buttonTable.Add(noButton).Width(80);
-            
+
             dialogTable.Add(buttonTable);
-            
+
             _confirmationDialog.Add(dialogTable).Expand().Fill();
             _confirmationDialog.SetVisible(false);
-            
+
             _confirmationDialog.SetPosition(
                 (_stage.GetWidth() - _confirmationDialog.GetWidth()) / 2,
                 (_stage.GetHeight() - _confirmationDialog.GetHeight()) / 2
@@ -547,10 +558,10 @@ namespace PitHero.UI
             float gearH = _gearButton.GetHeight();
             float fastFW = _fastFUI.GetWidth();
             float heroW = _heroUI.GetWidth();
-            
+
             // Calculate total width needed for all three buttons with padding
             float totalWidth = fastFW + gearW + heroW + (2 * GameConfig.UIButtonPadding);
-            
+
             // Center all buttons as a group
             float startX = (stageW - totalWidth) * 0.5f;
             float buttonY = 2f;
@@ -610,7 +621,7 @@ namespace PitHero.UI
 
                 // Update zoom slider to reflect current camera zoom
                 UpdateZoomSliderFromCamera();
-                
+
                 // Set radio buttons to reflect persistent size (not current temporary size)
                 UpdateRadioButtonsFromPersistentSize();
             }
@@ -670,7 +681,7 @@ namespace PitHero.UI
         private void UpdateRadioButtonsFromPersistentSize()
         {
             if (_windowSizeButtonGroup == null) return;
-            
+
             // Set radio buttons based on persistent size, not current window state
             var persistentSize = UIWindowManager.PersistentWindowSize;
             switch (persistentSize)
@@ -685,7 +696,7 @@ namespace PitHero.UI
                     _desiredWindowSize = WindowSizeMode.Normal;
                     break;
             }
-            
+
             Debug.Log($"[SettingsUI] Updated radio buttons to reflect persistent size: {persistentSize}");
         }
 
@@ -696,10 +707,10 @@ namespace PitHero.UI
         {
             // Update smooth scrolling animation
             UpdateSmoothScrolling();
-            
+
             // Update gear button style dynamically when shrink mode changes
             UpdateGearButtonStyleIfNeeded();
-            
+
             // Update FastF and Hero button styles
             _fastFUI?.Update();
             _heroUI?.Update();
@@ -804,12 +815,12 @@ namespace PitHero.UI
 
             _animationTimer += Time.DeltaTime;
             float progress = Math.Min(1f, _animationTimer / _animationDuration);
-            
+
             // Use easing for smooth animation (ease out)
             float easedProgress = 1f - (1f - progress) * (1f - progress);
-            
+
             float currentOffset = _animationStartOffset + (_animationTargetOffset - _animationStartOffset) * easedProgress;
-            
+
             // Apply the interpolated position
             int roundedOffset = (int)Math.Round(currentOffset);
             if (_isDockedTop)
@@ -837,7 +848,7 @@ namespace PitHero.UI
         {
             // Stop any ongoing animation and apply immediately
             _isAnimatingToOffset = false;
-            
+
             if (_isDockedTop)
             {
                 WindowManager.DockTop(_game, _currentYOffset);

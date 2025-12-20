@@ -1,8 +1,8 @@
-using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Skills;
 using RolePlayingFramework.Stats;
+using System.Collections.Generic;
 
 namespace RolePlayingFramework.Synergies
 {
@@ -13,25 +13,25 @@ namespace RolePlayingFramework.Synergies
         public static SynergyPattern CreateSmokeBomb()
         {
             var offsets = new List<Point>
-            { 
+            {
                 new Point(0, 0), new Point(1, 0),
                 new Point(0, 1), new Point(1, 1),
                 new Point(0, 2), new Point(1, 2)
             };
-            
+
             var requiredKinds = new List<ItemKind>
-            { 
+            {
                 ItemKind.WeaponSword, ItemKind.Accessory,
                 ItemKind.ArmorGi, ItemKind.Accessory,
                 ItemKind.WeaponSword, ItemKind.Accessory
             };
-            
+
             var effects = new List<ISynergyEffect>
             {
                 new StatBonusEffect("smoke_bomb_stats", "+12 Agility, +10 Strength", new StatBlock(10, 12, 0, 0)),
                 new PassiveAbilityEffect("smoke_bomb_deflect", "+18% Deflect", deflectChanceIncrease: 0.18f)
             };
-            
+
             return new SynergyPattern(
                 "thief.smoke_bomb",
                 "Smoke Bomb",
@@ -48,25 +48,25 @@ namespace RolePlayingFramework.Synergies
         public static SynergyPattern CreatePoisonArrow()
         {
             var offsets = new List<Point>
-            { 
+            {
                 new Point(0, 0), new Point(1, 0),
                 new Point(1, 1), new Point(2, 1),
                 new Point(2, 2), new Point(3, 2)
             };
-            
+
             var requiredKinds = new List<ItemKind>
-            { 
+            {
                 ItemKind.WeaponSword, ItemKind.Accessory,
                 ItemKind.Accessory, ItemKind.ArmorGi,
                 ItemKind.WeaponSword, ItemKind.Accessory
             };
-            
+
             var effects = new List<ISynergyEffect>
             {
                 new StatBonusEffect("poison_arrow_stats", "+14 Agility, +10 Strength", new StatBlock(10, 14, 0, 0)),
                 new PassiveAbilityEffect("poison_arrow_deflect", "+8% Deflect", deflectChanceIncrease: 0.08f)
             };
-            
+
             return new SynergyPattern(
                 "thief.poison_arrow",
                 "Poison Arrow",
@@ -83,26 +83,26 @@ namespace RolePlayingFramework.Synergies
         public static SynergyPattern CreateFade()
         {
             var offsets = new List<Point>
-            { 
+            {
                 new Point(0, 0), new Point(1, 0), new Point(2, 0),
                 new Point(0, 1), new Point(1, 1), new Point(2, 1),
                 new Point(0, 2), new Point(2, 2)
             };
-            
+
             var requiredKinds = new List<ItemKind>
-            { 
+            {
                 ItemKind.Accessory, ItemKind.WeaponSword, ItemKind.Accessory,
                 ItemKind.Accessory, ItemKind.ArmorGi, ItemKind.Accessory,
                 ItemKind.WeaponSword, ItemKind.HatHeadband
             };
-            
+
             var effects = new List<ISynergyEffect>
             {
                 new StatBonusEffect("fade_stats", "+16 Agility, +12 Magic, +40 MP", new StatBlock(0, 16, 0, 12), mpBonus: 40),
                 new PassiveAbilityEffect("fade_deflect", "+15% Deflect, +2 MP Regen", deflectChanceIncrease: 0.15f, mpTickRegen: 2),
                 new SkillModifierEffect("fade_mp", "-10% MP Cost", mpCostReductionPercent: 10f)
             };
-            
+
             return new SynergyPattern(
                 "thief.fade",
                 "Fade",
@@ -119,25 +119,25 @@ namespace RolePlayingFramework.Synergies
         public static SynergyPattern CreateKiCloak()
         {
             var offsets = new List<Point>
-            { 
+            {
                 new Point(0, 0), new Point(1, 0),
                 new Point(0, 1), new Point(1, 1),
                 new Point(0, 2), new Point(1, 2)
             };
-            
+
             var requiredKinds = new List<ItemKind>
-            { 
+            {
                 ItemKind.ArmorGi, ItemKind.Accessory,
                 ItemKind.Accessory, ItemKind.WeaponSword,
                 ItemKind.ArmorGi, ItemKind.Accessory
             };
-            
+
             var effects = new List<ISynergyEffect>
             {
                 new StatBonusEffect("ki_cloak_stats", "+12 Agility, +8 Magic, +30 MP", new StatBlock(0, 12, 0, 8), mpBonus: 30),
                 new PassiveAbilityEffect("ki_cloak_defense", "+4 Defense, +10% Deflect", defenseBonus: 4, deflectChanceIncrease: 0.1f)
             };
-            
+
             return new SynergyPattern(
                 "thief.ki_cloak",
                 "Ki Cloak",
@@ -154,25 +154,25 @@ namespace RolePlayingFramework.Synergies
         public static SynergyPattern CreateShadowStep()
         {
             var offsets = new List<Point>
-            { 
+            {
                 new Point(0, 0),
                 new Point(1, 1),
                 new Point(2, 2)
             };
-            
+
             var requiredKinds = new List<ItemKind>
-            { 
+            {
                 ItemKind.WeaponSword,
                 ItemKind.ArmorGi,
                 ItemKind.Accessory
             };
-            
+
             var effects = new List<ISynergyEffect>
             {
                 new StatBonusEffect("shadow_step_stats", "+10 Agility", new StatBlock(0, 10, 0, 0)),
                 new PassiveAbilityEffect("shadow_step_deflect", "+8% Deflect", deflectChanceIncrease: 0.08f)
             };
-            
+
             return new SynergyPattern(
                 "thief.shadow_step",
                 "Shadow Step",
@@ -188,22 +188,22 @@ namespace RolePlayingFramework.Synergies
         public static SynergyPattern CreateLockpicking()
         {
             var offsets = new List<Point>
-            { 
+            {
                 new Point(0, 0), new Point(1, 0),
                 new Point(0, 1), new Point(1, 1)
             };
-            
+
             var requiredKinds = new List<ItemKind>
-            { 
+            {
                 ItemKind.WeaponSword, ItemKind.Accessory,
                 ItemKind.WeaponSword, ItemKind.Accessory
             };
-            
+
             var effects = new List<ISynergyEffect>
             {
                 new StatBonusEffect("lockpicking_stats", "+8 Agility, +5 Strength", new StatBlock(5, 8, 0, 0))
             };
-            
+
             return new SynergyPattern(
                 "thief.lockpicking",
                 "Lockpicking",
@@ -219,23 +219,23 @@ namespace RolePlayingFramework.Synergies
         public static SynergyPattern CreateTrapMastery()
         {
             var offsets = new List<Point>
-            { 
+            {
                 new Point(0, 0), new Point(1, 0), new Point(2, 0),
                 new Point(0, 1), new Point(2, 1)
             };
-            
+
             var requiredKinds = new List<ItemKind>
-            { 
+            {
                 ItemKind.WeaponSword, ItemKind.Accessory, ItemKind.WeaponSword,
                 ItemKind.Accessory, ItemKind.ArmorGi
             };
-            
+
             var effects = new List<ISynergyEffect>
             {
                 new StatBonusEffect("trap_mastery_stats", "+12 Agility, +8 Strength, +6 Vitality", new StatBlock(8, 12, 6, 0)),
                 new PassiveAbilityEffect("trap_mastery_deflect", "+10% Deflect", deflectChanceIncrease: 0.1f)
             };
-            
+
             return new SynergyPattern(
                 "thief.trap_mastery",
                 "Trap Mastery",
@@ -251,23 +251,23 @@ namespace RolePlayingFramework.Synergies
         public static SynergyPattern CreateAssassinsEdge()
         {
             var offsets = new List<Point>
-            { 
+            {
                 new Point(0, 0), new Point(1, 0), new Point(2, 0),
                 new Point(0, 1), new Point(1, 1), new Point(2, 1)
             };
-            
+
             var requiredKinds = new List<ItemKind>
-            { 
+            {
                 ItemKind.WeaponSword, ItemKind.Accessory, ItemKind.WeaponSword,
                 ItemKind.Accessory, ItemKind.ArmorGi, ItemKind.HatHeadband
             };
-            
+
             var effects = new List<ISynergyEffect>
             {
                 new StatBonusEffect("assassin_edge_stats", "+18 Agility, +15 Strength", new StatBlock(15, 18, 0, 0)),
                 new PassiveAbilityEffect("assassin_edge_deflect", "+12% Deflect", deflectChanceIncrease: 0.12f)
             };
-            
+
             return new SynergyPattern(
                 "thief.assassins_edge",
                 "Assassin's Edge",

@@ -18,10 +18,10 @@ namespace RolePlayingFramework.Stats
         {
             // Ensure level is at least 1
             if (level < 1) level = 1;
-            
+
             // At level 1, return base value
             if (level == 1) return baseValue;
-            
+
             // Calculate linear growth: base + (growth * levels gained)
             return baseValue + (growthPerLevel * (level - 1));
         }
@@ -38,14 +38,14 @@ namespace RolePlayingFramework.Stats
         {
             // Ensure level is at least 1
             if (level < 1) level = 1;
-            
+
             // At level 1, return base value
             if (level == 1) return baseValue;
-            
+
             // Calculate exponential growth: base * (rate ^ levels)
             // Use level - 1 since we start at level 1 with baseValue
             double result = baseValue * System.Math.Pow(growthRate, level - 1);
-            
+
             // Round to nearest integer
             return (int)(result + 0.5);
         }
@@ -62,7 +62,7 @@ namespace RolePlayingFramework.Stats
         {
             // Calculate raw HP
             int hp = baseHP + (totalVitality * vitalityMultiplier);
-            
+
             // Clamp to valid range
             return StatConstants.ClampHP(hp);
         }
@@ -79,7 +79,7 @@ namespace RolePlayingFramework.Stats
         {
             // Calculate raw MP
             int mp = baseMP + (totalMagic * magicMultiplier);
-            
+
             // Clamp to valid range
             return StatConstants.ClampMP(mp);
         }
@@ -96,10 +96,10 @@ namespace RolePlayingFramework.Stats
         {
             // Ensure maxLevel is at least 2 to avoid division by zero
             if (maxLevel < 2) return 0;
-            
+
             // Calculate total growth needed
             int totalGrowth = targetValue - baseValue;
-            
+
             // Distribute growth evenly across levels
             // Use integer division with rounding
             int levelsToGrow = maxLevel - 1;
@@ -122,19 +122,19 @@ namespace RolePlayingFramework.Stats
             // Check if base value exceeds cap
             if (baseValue > cap)
                 return false;
-            
+
             // Calculate stat at max level
             int valueAtMaxLevel = CalculateLinearGrowth(baseValue, growthPerLevel, StatConstants.MaxLevel);
-            
+
             // Check if max level value exceeds cap
             if (valueAtMaxLevel > cap)
                 return false;
-            
+
             // Check if max level value is within tolerance of target
             int difference = System.Math.Abs(valueAtMaxLevel - targetValue);
             if (difference > tolerance)
                 return false;
-            
+
             return true;
         }
 
@@ -155,7 +155,7 @@ namespace RolePlayingFramework.Stats
         {
             // Ensure level is at least 1
             if (level < 1) level = 1;
-            
+
             // Calculate job contribution at this level
             // At level 1: jobBaseBonus
             // At level 2+: jobBaseBonus + (jobGrowthPerLevel * (level - 1))
@@ -170,10 +170,10 @@ namespace RolePlayingFramework.Stats
                 var scaledGrowth = jobGrowthPerLevel.Scale(level - 1);
                 jobContribution = jobBaseBonus.Add(scaledGrowth);
             }
-            
+
             // Combine base stats with job contribution
             var totalStats = baseStats.Add(jobContribution);
-            
+
             // Clamp all stats to their maximum values
             return StatConstants.ClampStatBlock(totalStats);
         }

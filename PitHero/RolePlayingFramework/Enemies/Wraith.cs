@@ -26,21 +26,21 @@ namespace RolePlayingFramework.Enemies
             // Always use the preset level for Wraiths regardless of requested level
             var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Wraith");
             Level = presetLevel;
-            
+
             // Use BalanceConfig for stats
             var archetype = BalanceConfig.MonsterArchetype.FastFragile;
             var strength = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Strength);
             var agility = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Agility);
             var vitality = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Vitality);
             var magic = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Magic);
-            
+
             Stats = new StatBlock(strength, agility, vitality, magic);
             MaxHP = BalanceConfig.CalculateMonsterHP(Level, archetype);
             _hp = MaxHP;
             ExperienceYield = BalanceConfig.CalculateMonsterExperience(Level);
             JPYield = BalanceConfig.CalculateMonsterJPYield(Level);
             SPYield = BalanceConfig.CalculateMonsterSPYield(Level);
-            
+
             // Wraith is Dark element: resistant to Dark, weak to Light
             var resistances = new System.Collections.Generic.Dictionary<ElementType, float>
             {

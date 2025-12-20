@@ -1,5 +1,5 @@
-using System.Collections.Generic;
 using RolePlayingFramework.Equipment;
+using System.Collections.Generic;
 
 namespace RolePlayingFramework.Inventory
 {

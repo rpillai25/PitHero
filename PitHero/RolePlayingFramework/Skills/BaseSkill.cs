@@ -1,7 +1,7 @@
-using System.Collections.Generic;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Enemies;
 using RolePlayingFramework.Heroes;
+using System.Collections.Generic;
 
 namespace RolePlayingFramework.Skills
 {

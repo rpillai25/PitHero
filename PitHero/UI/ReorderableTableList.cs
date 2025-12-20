@@ -1,7 +1,6 @@
+using Nez.UI;
 using System;
 using System.Collections.Generic;
-using Microsoft.Xna.Framework;
-using Nez.UI;
 
 namespace PitHero.UI
 {
@@ -24,10 +23,10 @@ namespace PitHero.UI
             Build();
         }
 
-        public void Rebuild() 
-        { 
-            ClearChildren(); 
-            Build(); 
+        public void Rebuild()
+        {
+            ClearChildren();
+            Build();
         }
 
         private void Build()
@@ -45,39 +44,39 @@ namespace PitHero.UI
         {
             var row = new Table();
             row.SetTouchable(Touchable.Enabled);
-            
+
             // Priority number label
             var num = new Label((index + 1).ToString(), _skin.Get<LabelStyle>());
-            
+
             // Item text
             var txt = new Label(item?.ToString() ?? string.Empty, _skin.Get<LabelStyle>());
-            
+
             // Up button
             var upButton = new TextButton("Up", _skin);
             upButton.SetDisabled(index == 0); // Disable if first item
             upButton.OnClicked += (btn) => MoveItemUp(index);
-            
+
             // Down button  
             var downButton = new TextButton("Down", _skin);
             downButton.SetDisabled(index == _items.Count - 1); // Disable if last item
             downButton.OnClicked += (btn) => MoveItemDown(index);
-            
+
             row.Add(num).SetMinWidth(30f).SetPadRight(5f);
             row.Add(txt).SetExpandX().Left().SetPadRight(5f);
             row.Add(upButton).SetMinWidth(30f).SetPadRight(2f);
             row.Add(downButton).SetMinWidth(30f);
-            
+
             return row;
         }
 
         private void MoveItemUp(int index)
         {
             if (index <= 0) return;
-            
+
             var item = _items[index];
             _items.RemoveAt(index);
             _items.Insert(index - 1, item);
-            
+
             Rebuild();
             OnReordered?.Invoke(index, index - 1, item);
         }
@@ -85,11 +84,11 @@ namespace PitHero.UI
         private void MoveItemDown(int index)
         {
             if (index >= _items.Count - 1) return;
-            
+
             var item = _items[index];
             _items.RemoveAt(index);
             _items.Insert(index + 1, item);
-            
+
             Rebuild();
             OnReordered?.Invoke(index, index + 1, item);
         }

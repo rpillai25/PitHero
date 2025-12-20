@@ -1,7 +1,6 @@
 using RolePlayingFramework.Balance;
-using RolePlayingFramework.Stats;
-using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Enemies;
+using RolePlayingFramework.Heroes;
 
 namespace RolePlayingFramework.Combat
 {
@@ -26,16 +25,16 @@ namespace RolePlayingFramework.Combat
         public static BattleStats CalculateForHero(Hero hero)
         {
             var totalStats = hero.GetTotalStats();
-            
+
             // Attack = Strength + weapon bonuses
             int attack = totalStats.Strength + hero.GetEquipmentAttackBonus();
-            
+
             // Defense = Agility/2 + armor bonuses
             int defense = totalStats.Agility / 2 + hero.GetEquipmentDefenseBonus();
-            
+
             // Evasion calculated using BalanceConfig formula
             int evasion = BalanceConfig.CalculateEvasion(totalStats.Agility, hero.Level);
-            
+
             return new BattleStats(attack, defense, evasion);
         }
 
@@ -44,13 +43,13 @@ namespace RolePlayingFramework.Combat
         {
             // Attack = Strength (monsters have no weapon bonus)
             int attack = enemy.Stats.Strength;
-            
+
             // Defense = Agility/2 (monsters have no armor bonus)
             int defense = enemy.Stats.Agility / 2;
-            
+
             // Evasion calculated using BalanceConfig formula
             int evasion = BalanceConfig.CalculateEvasion(enemy.Stats.Agility, enemy.Level);
-            
+
             return new BattleStats(attack, defense, evasion);
         }
     }

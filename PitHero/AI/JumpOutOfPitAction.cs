@@ -2,7 +2,6 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.ECS.Components;
 using PitHero.Util;
-using RolePlayingFramework.Heroes;
 using System.Collections;
 
 namespace PitHero.AI
@@ -16,11 +15,11 @@ namespace PitHero.AI
         private bool _isJumping = false;
         private bool _jumpFinished = false;
         private Point _plannedTargetTile;
-        
+
         public JumpOutOfPitAction() : base(GoapConstants.JumpOutOfPitAction)
         {
             // No preconditions - this action is preserved for future use but not used by GOAP planner currently
-            
+
             // Postcondition: Hero is outside pit
             SetPostcondition(GoapConstants.OutsidePit, true);
         }
@@ -37,8 +36,8 @@ namespace PitHero.AI
 
                 // Verify we actually reached the intended tile before completing
                 var tileMover = hero.Entity.GetComponent<TileByTileMover>();
-                var currentTile = tileMover?.GetCurrentTileCoordinates() 
-                    ?? new Point((int)(hero.Entity.Transform.Position.X / GameConfig.TileSize), 
+                var currentTile = tileMover?.GetCurrentTileCoordinates()
+                    ?? new Point((int)(hero.Entity.Transform.Position.X / GameConfig.TileSize),
                                (int)(hero.Entity.Transform.Position.Y / GameConfig.TileSize));
 
                 if (currentTile.X != _plannedTargetTile.X || currentTile.Y != _plannedTargetTile.Y)
@@ -46,7 +45,7 @@ namespace PitHero.AI
                     Debug.Warn($"[JumpOutOfPit] Jump finished flag set but hero at {currentTile.X},{currentTile.Y} not at planned target {_plannedTargetTile.X},{_plannedTargetTile.Y}. Waiting one more frame.");
                     return false;
                 }
-                
+
                 // Movement complete, finalize the jump
                 _isJumping = false;
                 _jumpFinished = false;
@@ -55,7 +54,7 @@ namespace PitHero.AI
                 tileMover?.UpdateTriggersAfterTeleport();
 
                 hero.InsidePit = false;  // Set InsidePit = False according to specification
-                
+
                 Debug.Log("[JumpOutOfPit] Jump out completed successfully");
                 return true; // Action complete
             }
@@ -74,7 +73,7 @@ namespace PitHero.AI
             StartJumpOutMovement(hero, _plannedTargetTile);
             _isJumping = true;
             _jumpFinished = false;
-            
+
             Debug.Log($"[JumpOutOfPit] Started jump out to tile {_plannedTargetTile.X},{_plannedTargetTile.Y}");
             return false; // Action in progress
         }
@@ -84,13 +83,13 @@ namespace PitHero.AI
         /// </summary>
         private Point? CalculateJumpOutTargetTile(HeroComponent hero)
         {
-            var currentTile = hero.Entity.GetComponent<TileByTileMover>()?.GetCurrentTileCoordinates() 
-                ?? new Point((int)(hero.Entity.Transform.Position.X / GameConfig.TileSize), 
+            var currentTile = hero.Entity.GetComponent<TileByTileMover>()?.GetCurrentTileCoordinates()
+                ?? new Point((int)(hero.Entity.Transform.Position.X / GameConfig.TileSize),
                            (int)(hero.Entity.Transform.Position.Y / GameConfig.TileSize));
 
             // Jump out 2 tiles to the right (reverse of jumping in from the right)
             var targetTile = new Point(currentTile.X + 2, currentTile.Y);
-            
+
             Debug.Log($"[JumpOutOfPit] Calculated jump out target from {currentTile.X},{currentTile.Y} to {targetTile.X},{targetTile.Y}");
             return targetTile;
         }
@@ -102,7 +101,7 @@ namespace PitHero.AI
         {
             var targetPosition = TileToWorldPosition(targetTile);
             var entity = hero.Entity;
-            
+
             // Start the movement coroutine
             Core.StartCoroutine(JumpOutMovementCoroutine(entity, targetPosition, GameConfig.HeroJumpSpeed));
         }
@@ -115,7 +114,7 @@ namespace PitHero.AI
             var startPosition = entity.Transform.Position;
             var distance = Vector2.Distance(startPosition, targetPosition);
             var duration = distance / (tilesPerSecond * GameConfig.TileSize); // Convert tiles per second to pixels per second
-            
+
             // Start jump animation - determine direction from start to target
             var jumpDirection = GetJumpDirection(startPosition, targetPosition);
             var jumpAnimComponent = entity.GetComponent<HeroJumpComponent>();
@@ -123,29 +122,29 @@ namespace PitHero.AI
             {
                 jumpAnimComponent.StartJump(jumpDirection, duration);
             }
-            
+
             var elapsed = 0f;
-            
+
             while (elapsed < duration)
             {
                 elapsed += Time.DeltaTime;
                 var progress = elapsed / duration;
-                
+
                 // Smooth interpolation
                 entity.Transform.Position = Vector2.Lerp(startPosition, targetPosition, progress);
-                
+
                 yield return null; // Wait for next frame
             }
-            
+
             // Ensure we end exactly at target
             entity.Transform.Position = targetPosition;
-            
+
             // End jump animation
             if (jumpAnimComponent != null)
             {
                 jumpAnimComponent.EndJump();
             }
-            
+
             // Snap to tile grid for precision
             var tileMover = entity.GetComponent<TileByTileMover>();
             if (tileMover != null)
@@ -162,7 +161,7 @@ namespace PitHero.AI
                 (int)(targetPosition.X / GameConfig.TileSize),
                 (int)(targetPosition.Y / GameConfig.TileSize), hero
             ) ?? false;
-            
+
             // Trigger fog cooldown if fog was cleared
             if (fogCleared)
             {
@@ -181,7 +180,7 @@ namespace PitHero.AI
         private Direction GetJumpDirection(Vector2 startPosition, Vector2 targetPosition)
         {
             var delta = targetPosition - startPosition;
-            
+
             // Since we're jumping out of the pit to the right, this should be right
             if (System.Math.Abs(delta.X) > System.Math.Abs(delta.Y))
             {

@@ -26,7 +26,7 @@ namespace PitHero.ECS.Scenes
             // This is necessary because Scene.Update() sets the render target, but when a scene
             // transition happens during Update, Scene.PostRender() never gets called to unbind it
             Core.GraphicsDevice.SetRenderTarget(null);
-            
+
             base.End();
         }
     }

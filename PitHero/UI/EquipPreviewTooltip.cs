@@ -1,10 +1,8 @@
 using Microsoft.Xna.Framework;
 using Nez;
-using Nez.UI;
 using Nez.BitmapFonts;
+using Nez.UI;
 using RolePlayingFramework.Equipment;
-using RolePlayingFramework.Stats;
-using RolePlayingFramework.Heroes;
 
 namespace PitHero.UI
 {
@@ -13,7 +11,7 @@ namespace PitHero.UI
     {
         private const float CARD_PADDING = 5f;
         private const float LINE_SPACING = 2f;
-        
+
         private IGear _newGear;
         private IGear _equippedGear;
         private Table _contentTable;
@@ -23,15 +21,15 @@ namespace PitHero.UI
         {
             // Create content table
             _contentTable = new Table();
-            
+
             // Create wrapper with background and padding
             _wrapper = new Container(_contentTable);
             _wrapper.SetBackground(skin.Get<WindowStyle>().Background);
-            
+
             // Add padding around content
             var wrapperTable = new Table();
             wrapperTable.Add(_wrapper).Pad(CARD_PADDING);
-            
+
             // Set the wrapper as the tooltip content
             _container.SetElement(wrapperTable);
             _container.SetTouchable(Touchable.Disabled);
@@ -42,7 +40,7 @@ namespace PitHero.UI
         {
             _newGear = newGear;
             _equippedGear = equippedGear;
-            
+
             if (_newGear == null || _equippedGear == null)
             {
                 return;
@@ -73,7 +71,7 @@ namespace PitHero.UI
             // Compare StatBlock bonuses
             var newStats = _newGear.StatBonus;
             var equippedStats = _equippedGear.StatBonus;
-            
+
             // Strength
             int strengthDiff = newStats.Strength - equippedStats.Strength;
             if (strengthDiff != 0)

@@ -1,5 +1,5 @@
-using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using System.Collections.Generic;
 
 namespace RolePlayingFramework.Synergies
 {
@@ -8,21 +8,21 @@ namespace RolePlayingFramework.Synergies
     {
         /// <summary>The pattern that was matched.</summary>
         public SynergyPattern Pattern { get; }
-        
+
         /// <summary>Grid position where the pattern was anchored.</summary>
         public Point AnchorSlot { get; }
-        
+
         /// <summary>All grid slots affected by this synergy pattern.</summary>
         public IReadOnlyList<Point> AffectedSlots { get; }
-        
+
         /// <summary>Synergy points earned for this specific pattern instance.</summary>
         public int PointsEarned { get; private set; }
-        
+
         /// <summary>True if the synergy skill has been unlocked.</summary>
-        public bool IsSkillUnlocked => 
-            Pattern.UnlockedSkill != null && 
+        public bool IsSkillUnlocked =>
+            Pattern.UnlockedSkill != null &&
             PointsEarned >= Pattern.SynergyPointsRequired;
-        
+
         public ActiveSynergy(SynergyPattern pattern, Point anchorSlot, IReadOnlyList<Point> affectedSlots)
         {
             Pattern = pattern;
@@ -30,7 +30,7 @@ namespace RolePlayingFramework.Synergies
             AffectedSlots = affectedSlots;
             PointsEarned = 0;
         }
-        
+
         /// <summary>Adds synergy points to this active synergy.</summary>
         public void EarnPoints(int amount)
         {
@@ -48,7 +48,7 @@ namespace RolePlayingFramework.Synergies
             }
             return false;
         }
-        
+
         /// <summary>
         /// Checks if this synergy shares any inventory slots with another synergy.
         /// Used for overlap detection in stacking system.
@@ -60,7 +60,7 @@ namespace RolePlayingFramework.Synergies
         {
             if (other == null)
                 return false;
-            
+
             // Check if any affected slots overlap
             for (int i = 0; i < AffectedSlots.Count; i++)
             {

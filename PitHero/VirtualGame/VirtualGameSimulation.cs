@@ -79,16 +79,16 @@ namespace PitHero.VirtualGame
             _currentAction = "JumpIntoPitAction";
             var startPos = _hero.Position;
             var pitBounds = _world.PitBounds;
-            
+
             // Target: Adjacent tile outside pit (left side)
             var targetPos = new Point(pitBounds.X - 1, pitBounds.Y + pitBounds.Height / 2);
-            
+
             Console.WriteLine($"[{_currentAction}] Moving from ({startPos.X},{startPos.Y}) to ({targetPos.X},{targetPos.Y})");
-            
+
             // Simulate pathfinding and movement
             var path = CalculateSimplePath(startPos, targetPos);
             _hero.SetMovementPath(path);
-            
+
             // Execute movement step by step
             while (!_hero.ExecuteMovementStep())
             {
@@ -98,7 +98,7 @@ namespace PitHero.VirtualGame
                     Console.WriteLine($"[{_currentAction}] Tick {_tickCount}: Hero at ({_hero.Position.X},{_hero.Position.Y})");
                 }
             }
-            
+
             Console.WriteLine($"[{_currentAction}] Completed. Hero adjacent to pit: {_hero.AdjacentToPitBoundaryFromOutside()}");
         }
 
@@ -109,29 +109,29 @@ namespace PitHero.VirtualGame
         {
             _currentAction = "WanderPitAction";
             Console.WriteLine($"[{_currentAction}] Starting exploration using VirtualHeroStateMachine");
-            
+
             // Create virtual state machine for proper pathfinding-based exploration
             var stateMachine = new VirtualHeroStateMachine(_hero, _world);
-            
+
             int maxTicks = 1000; // Safety limit
             int tickCount = 0;
-            
+
             while (!stateMachine.IsExplorationComplete() && tickCount < maxTicks)
             {
                 stateMachine.Update();
                 tickCount++;
-                
+
                 if (tickCount % 50 == 0) // Log every 50 ticks
                 {
                     var fogCount = CountRemainingFog();
                     Console.WriteLine($"[{_currentAction}] Tick {tickCount}: Hero at ({_hero.Position.X},{_hero.Position.Y}), fog remaining: {fogCount}");
                 }
             }
-            
+
             var finalFogCount = CountRemainingFog();
             var isExplored = stateMachine.IsExplorationComplete();
             Console.WriteLine($"[{_currentAction}] Completed after {tickCount} ticks. Fog remaining: {finalFogCount}, ExploredPit: {isExplored}");
-            
+
             if (isExplored)
             {
                 _hero.ExploredPit = true;
@@ -145,10 +145,10 @@ namespace PitHero.VirtualGame
         {
             // WanderPitAction (combines exploration and wizard orb finding)
             ExecuteWanderPitAction();
-            
+
             // ActivateWizardOrbAction
             ExecuteActivateWizardOrbAction();
-            
+
             // Cycle restarts with JumpIntoPitAction (pit regeneration now happens in ActivateWizardOrbAction)
             Console.WriteLine("\nSTEP 6: Cycle restarts - JumpIntoPitAction would begin again");
             Console.WriteLine("Hero would now target the new regenerated pit to start the cycle over");
@@ -158,14 +158,14 @@ namespace PitHero.VirtualGame
         {
             _currentAction = "ActivateWizardOrbAction";
             Console.WriteLine($"[{_currentAction}] Activating wizard orb and queuing next pit level");
-            
+
             _world.ActivateWizardOrb();
             _hero.ActivatedWizardOrb = true;
-            
+
             // Queue next pit level (current + 10)
             var nextLevel = _world.PitLevel + 10;
             _pitQueue.QueueLevel(nextLevel);
-            
+
             _tickCount++;
             Console.WriteLine($"[{_currentAction}] Completed. Orb activated, queued level {nextLevel}");
         }
@@ -176,24 +176,24 @@ namespace PitHero.VirtualGame
         {
             _currentAction = "JumpOutOfPitAction";
             var pitBounds = _world.PitBounds;
-            
+
             // Target: Outside pit
             var targetPos = new Point(pitBounds.X - 1, pitBounds.Y + pitBounds.Height / 2);
-            
+
             Console.WriteLine($"[{_currentAction}] Jumping out of pit to ({targetPos.X},{targetPos.Y})");
-            
+
             // Use pathfinding instead of teleportation
             var path = CalculateSimplePath(_hero.Position, targetPos);
             _hero.SetMovementPath(path);
-            
+
             // Execute movement step by step
             while (!_hero.ExecuteMovementStep())
             {
                 _tickCount++;
             }
-            
+
             _hero.ResetWizardOrbStates();
-            
+
             _tickCount++;
             var outsidePit = _hero.GetWorldState().ContainsKey(GoapConstants.OutsidePit);
             Console.WriteLine($"[{_currentAction}] Completed. OutsidePit: {outsidePit}");
@@ -208,7 +208,7 @@ namespace PitHero.VirtualGame
         {
             var path = new List<Point>();
             var current = start;
-            
+
             // Move horizontally first
             while (current.X != target.X)
             {
@@ -218,7 +218,7 @@ namespace PitHero.VirtualGame
                     path.Add(current);
                 }
             }
-            
+
             // Then move vertically
             while (current.Y != target.Y)
             {
@@ -228,7 +228,7 @@ namespace PitHero.VirtualGame
                     path.Add(current);
                 }
             }
-            
+
             return path;
         }
 
@@ -239,7 +239,7 @@ namespace PitHero.VirtualGame
         {
             var pitBounds = _world.PitBounds;
             int count = 0;
-            
+
             for (int x = pitBounds.X + 1; x < pitBounds.Right - 1; x++)
             {
                 for (int y = pitBounds.Y + 1; y < pitBounds.Bottom - 1; y++)
@@ -248,7 +248,7 @@ namespace PitHero.VirtualGame
                         count++;
                 }
             }
-            
+
             return count;
         }
 
@@ -258,7 +258,7 @@ namespace PitHero.VirtualGame
         private void LogWorldState()
         {
             Console.WriteLine(_world.GetVisualRepresentation());
-            
+
             var heroState = _hero.GetWorldState();
             Console.WriteLine("Hero GOAP States:");
             foreach (var kvp in heroState.OrderBy(x => x.Key))
@@ -276,9 +276,9 @@ namespace PitHero.VirtualGame
             Console.WriteLine($"Total simulation ticks: {_tickCount}");
             Console.WriteLine($"Current action: {_currentAction}");
             Console.WriteLine();
-            
+
             LogWorldState();
-            
+
             Console.WriteLine("Simulation verified the complete GOAP workflow:");
             Console.WriteLine("✓ Pit generation at level 40");
             Console.WriteLine("✓ Hero JumpIntoPitAction execution");
@@ -288,7 +288,7 @@ namespace PitHero.VirtualGame
             Console.WriteLine();
             Console.WriteLine("The hero is now ready to start the cycle again with the new pit!");
         }
-        
+
         /// <summary>
         /// Initialize level 40 pit for testing
         /// </summary>
@@ -297,7 +297,7 @@ namespace PitHero.VirtualGame
             _world.RegeneratePit(40);
             LogWorldState();
         }
-        
+
         /// <summary>
         /// Simulate hero jumping into pit
         /// </summary>
@@ -306,17 +306,17 @@ namespace PitHero.VirtualGame
             var targetPos = new Point(2, 3); // Inside pit area
             var path = CalculateSimplePath(_hero.Position, targetPos);
             _hero.SetMovementPath(path);
-            
+
             // Execute movement
             while (!_hero.ExecuteMovementStep())
             {
                 // Move step by step
             }
-            
+
             _hero.InsidePit = true;
             Console.WriteLine($"Hero jumped into pit at tile {_hero.Position.X},{_hero.Position.Y}");
         }
-        
+
         /// <summary>
         /// Complete exploration by clearing all fog tiles
         /// </summary>
@@ -326,7 +326,7 @@ namespace PitHero.VirtualGame
             _world.DiscoverWizardOrb(new Point(9, 4));
             Console.WriteLine("Exploration completed - all fog cleared, wizard orb discovered");
         }
-        
+
         /// <summary>
         /// Check if map is fully explored
         /// </summary>
@@ -334,7 +334,7 @@ namespace PitHero.VirtualGame
         {
             return _world.FogTilesInPit.Count == 0;
         }
-        
+
         /// <summary>
         /// Check if wizard orb is found
         /// </summary>
@@ -342,7 +342,7 @@ namespace PitHero.VirtualGame
         {
             return _world.WizardOrbPosition.HasValue;
         }
-        
+
         /// <summary>
         /// Create GOAP context for testing
         /// </summary>
@@ -350,18 +350,18 @@ namespace PitHero.VirtualGame
         {
             return new VirtualGoapContext(_world, _hero);
         }
-        
+
         /// <summary>
         /// Get progressive goal state based on current state
         /// </summary>
         public Dictionary<string, bool> GetProgressiveGoalState(Dictionary<string, bool> currentState)
         {
             var goal = new Dictionary<string, bool>();
-            
+
             bool mapExplored = currentState.GetValueOrDefault(GoapConstants.ExploredPit, false);
             bool wizardOrbActivated = currentState.GetValueOrDefault(GoapConstants.ActivatedWizardOrb, false);
             // Note: AtPitGenPoint removed from simplified GOAP - logic simplified to 2 main goals
-            
+
             if (!mapExplored)
             {
                 goal[GoapConstants.ExploredPit] = true;
@@ -375,20 +375,20 @@ namespace PitHero.VirtualGame
             {
                 goal[GoapConstants.OutsidePit] = true;
             }
-            
+
             return goal;
         }
-        
+
         /// <summary>
         /// Plan actions using GOAP
         /// </summary>
         public Stack<HeroActionBase> PlanActions(Dictionary<string, bool> currentState, Dictionary<string, bool> goalState)
         {
             var context = CreateGoapContext();
-            
+
             // Create action planner directly
             var planner = new Nez.AI.GOAP.ActionPlanner();
-            
+
             // Add all hero actions (extended interactive model)
             planner.AddAction(new JumpIntoPitAction());
             planner.AddAction(new WanderPitAction());
@@ -396,22 +396,22 @@ namespace PitHero.VirtualGame
             planner.AddAction(new JumpOutOfPitAction());
             planner.AddAction(new AttackMonsterAction());
             planner.AddAction(new OpenChestAction());
-            
+
             // Convert dictionaries to WorldState objects (simplified)
             var wsCurrentState = Nez.AI.GOAP.WorldState.Create(planner);
             foreach (var kvp in currentState)
             {
                 wsCurrentState.Set(kvp.Key, kvp.Value);
             }
-            
+
             var wsGoalState = Nez.AI.GOAP.WorldState.Create(planner);
             foreach (var kvp in goalState)
             {
                 wsGoalState.Set(kvp.Key, kvp.Value);
             }
-            
+
             var actionPlan = planner.Plan(wsCurrentState, wsGoalState);
-            
+
             var result = new Stack<HeroActionBase>();
             if (actionPlan != null && actionPlan.Count > 0)
             {
@@ -422,7 +422,7 @@ namespace PitHero.VirtualGame
                         result.Push(heroAction);
                     }
                 }
-                
+
                 // Reverse to get correct execution order
                 var temp = new Stack<HeroActionBase>();
                 while (result.Count > 0)
@@ -431,10 +431,10 @@ namespace PitHero.VirtualGame
                 }
                 result = temp;
             }
-            
+
             return result;
         }
-        
+
         /// <summary>
         /// Tick hero movement simulation
         /// </summary>
@@ -445,14 +445,14 @@ namespace PitHero.VirtualGame
             {
                 var current = _hero.Position;
                 var target = _hero.TargetTilePosition.Value;
-                
+
                 // Simple step towards target (only adjacent moves allowed)
                 Point nextStep = current;
                 if (current.X < target.X) nextStep.X++;
                 else if (current.X > target.X) nextStep.X--;
                 else if (current.Y < target.Y) nextStep.Y++;
                 else if (current.Y > target.Y) nextStep.Y--;
-                
+
                 // Use single-step MoveTo instead of teleportation
                 if (nextStep != current)
                 {
@@ -468,7 +468,7 @@ namespace PitHero.VirtualGame
                         return;
                     }
                 }
-                
+
                 // Stop moving if reached target
                 if (_hero.Position == target)
                 {
@@ -477,7 +477,7 @@ namespace PitHero.VirtualGame
                 }
             }
         }
-        
+
         /// <summary>
         /// Execute an action in the simulation
         /// </summary>
@@ -487,9 +487,9 @@ namespace PitHero.VirtualGame
             bool completed = false;
             int maxIterations = 100;
             int iterations = 0;
-            
+
             Console.WriteLine($"Executing action: {action.Name}");
-            
+
             while (!completed && iterations < maxIterations)
             {
                 completed = action.Execute(context);
@@ -499,10 +499,10 @@ namespace PitHero.VirtualGame
                 }
                 iterations++;
             }
-            
+
             // Sync state back to hero after action execution
             context.SyncBackToHero();
-            
+
             if (completed)
             {
                 Console.WriteLine($"Action {action.Name} completed successfully");
@@ -512,7 +512,7 @@ namespace PitHero.VirtualGame
                 Console.WriteLine($"Action {action.Name} failed to complete within {maxIterations} iterations");
             }
         }
-        
+
         /// <summary>
         /// Simulate pit trigger exit for testing
         /// </summary>
@@ -521,7 +521,7 @@ namespace PitHero.VirtualGame
             // This simulates the pit trigger exit logic
             var currentTile = _hero.CurrentTilePosition;
             var pitBounds = new Rectangle(1, 2, _world.PitWidthTiles, 8); // Level 40 pit bounds
-            
+
             if (!pitBounds.Contains(currentTile))
             {
                 // Hero is truly outside pit - reset flags

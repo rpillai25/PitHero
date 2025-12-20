@@ -1,5 +1,3 @@
-using RolePlayingFramework.Stats;
-
 namespace RolePlayingFramework.Equipment
 {
     /// <summary>Factory for creating concrete potion items.</summary>

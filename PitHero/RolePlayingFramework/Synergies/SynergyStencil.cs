@@ -7,19 +7,19 @@ namespace RolePlayingFramework.Synergies
     {
         /// <summary>Unique identifier for this stencil.</summary>
         public string Id { get; }
-        
+
         /// <summary>ID of the synergy pattern this stencil represents.</summary>
         public string SynergyPatternId { get; }
-        
+
         /// <summary>Whether this stencil can be placed on the inventory grid.</summary>
         public bool IsPlaceable { get; set; }
-        
+
         /// <summary>Anchor position of the stencil overlay on the inventory grid (null if not placed).</summary>
         public Point? OverlayAnchor { get; set; }
-        
+
         /// <summary>Source of how this stencil was discovered.</summary>
         public StencilDiscoverySource DiscoverySource { get; private set; }
-        
+
         public SynergyStencil(string id, string synergyPatternId)
         {
             Id = id;
@@ -28,7 +28,7 @@ namespace RolePlayingFramework.Synergies
             OverlayAnchor = null;
             DiscoverySource = StencilDiscoverySource.Unknown;
         }
-        
+
         /// <summary>Marks this stencil as discovered from a specific source.</summary>
         public void MarkDiscovered(StencilDiscoverySource source)
         {

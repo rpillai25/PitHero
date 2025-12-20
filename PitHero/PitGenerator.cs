@@ -24,7 +24,7 @@ namespace PitHero
         {
             _scene = scene;
             _collisionTiles = new HashSet<Point>(64);
-            
+
             try
             {
                 _tiledMapService = tiledMapService ?? Core.Services?.GetService<TiledMapService>();
@@ -107,7 +107,7 @@ namespace PitHero
             {
                 return (new PitLord(), Color.Red);
             }
-            
+
             // Level 7-8: Skeleton, Orc, Wraith
             if (pitLevel >= 7)
             {
@@ -119,7 +119,7 @@ namespace PitHero
                     _ => (new Wraith(), Color.Blue)
                 };
             }
-            
+
             // Level 4-6: Goblin, Spider, Snake
             if (pitLevel >= 4)
             {
@@ -131,7 +131,7 @@ namespace PitHero
                     _ => (new Snake(), Color.Yellow)
                 };
             }
-            
+
             // Level 1-3: Slime, Bat, Rat
             int lowLevelChoice = Nez.Random.Range(0, 3);
             return lowLevelChoice switch
@@ -166,13 +166,13 @@ namespace PitHero
         public void RegenerateForLevel(int level)
         {
             Debug.Log($"[PitGenerator] Regenerating pit content for level {level}");
-            
+
             // Clear existing pit entities
             ClearExistingPitEntities();
-            
+
             // Clear obstacle walls from A* graph
             ClearObstacleWallsFromAstar();
-            
+
             // Generate new content
             GenerateForLevel(level);
         }
@@ -183,27 +183,27 @@ namespace PitHero
         private void ClearExistingPitEntities()
         {
             Debug.Log("[PitGenerator] Clearing existing pit entities");
-            
+
             var entitiesToRemove = new List<Entity>();
-            
+
             // Find all entities with pit-related tags using FindEntitiesWithTag
             var obstacles = _scene.FindEntitiesWithTag(GameConfig.TAG_OBSTACLE);
             var treasures = _scene.FindEntitiesWithTag(GameConfig.TAG_TREASURE);
             var monsters = _scene.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
             var wizardOrbs = _scene.FindEntitiesWithTag(GameConfig.TAG_WIZARD_ORB);
-            
+
             // Add all found entities to removal list
             entitiesToRemove.AddRange(obstacles);
             entitiesToRemove.AddRange(treasures);
             entitiesToRemove.AddRange(monsters);
             entitiesToRemove.AddRange(wizardOrbs);
-            
+
             // Remove entities by calling Destroy on each
             for (int i = 0; i < entitiesToRemove.Count; i++)
             {
                 entitiesToRemove[i].Destroy();
             }
-            
+
             Debug.Log($"[PitGenerator] Cleared {entitiesToRemove.Count} existing pit entities");
         }
 
@@ -226,10 +226,10 @@ namespace PitHero
                 Debug.Warn("[PitGenerator] Hero pathfinding not initialized when clearing obstacle walls");
                 return;
             }
-            
+
             // Refresh the hero's pathfinding to clear dynamically added obstacles
             heroComponent.RefreshPathfinding();
-            
+
             Debug.Log($"[PitGenerator] Hero pathfinding refreshed with {heroComponent.PathfindingGraph.Walls.Count} walls from collision layer");
         }
 
@@ -242,7 +242,7 @@ namespace PitHero
 
             // Calculate pit bounds using PitWidthManager if available
             int validMinX, validMinY, validMaxX, validMaxY;
-            
+
             if (pitWidthManager != null && pitWidthManager.CurrentPitRightEdge > 0)
             {
                 // Use dynamic pit bounds
@@ -259,7 +259,7 @@ namespace PitHero
                 validMaxX = GameConfig.PitRectX + GameConfig.PitRectWidth - 3; // 10
                 validMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2; // 9
             }
-            
+
             Debug.Log($"[PitGenerator] Valid placement area for level {level}: tiles ({validMinX},{validMinY}) to ({validMaxX},{validMaxY})");
 
             // Calculate entity counts based on level
@@ -267,12 +267,12 @@ namespace PitHero
             int maxChests = MaxChests(level);
             int minObstacles = MinObstacles(level);
             int maxObstacles = MaxObstacles(level);
-            
+
             // Calculate actual entity counts with variance
             int obstacleCount = Nez.Random.Range(minObstacles, maxObstacles + 1);
             int chestCount = Nez.Random.Range(maxChests / 2, maxChests + 1);
             int monsterCount = Nez.Random.Range(maxMonsters / 2, maxMonsters + 1);
-            
+
             Debug.Log($"[PitGenerator] Level {level} calculated amounts:");
             Debug.Log($"[PitGenerator]   Max Monsters: {maxMonsters}, Actual: {monsterCount}");
             Debug.Log($"[PitGenerator]   Max Chests: {maxChests}, Actual: {chestCount}");
@@ -287,7 +287,7 @@ namespace PitHero
             for (int attempt = 1; attempt <= maxAttempts && !validLayoutGenerated; attempt++)
             {
                 Debug.Log($"[PitGenerator] Generation attempt {attempt}");
-                
+
                 var usedPositions = new HashSet<Point>(64);
                 var obstaclePositions = new HashSet<Point>(16);
                 var targetPositions = new List<Point>(8);
@@ -347,7 +347,7 @@ namespace PitHero
             var workingObstacles = new HashSet<Point>(obstaclePositions);
             var removedObstacles = new List<Point>(16);
             int maxRemovalAttempts = obstaclePositions.Count;
-            
+
             Debug.Log($"[PitGenerator] Starting obstacle removal validation with {workingObstacles.Count} obstacles and {targetPositions.Count} targets");
 
             for (int attempt = 0; attempt < maxRemovalAttempts; attempt++)
@@ -411,7 +411,7 @@ namespace PitHero
         {
             var reachableAreas = new HashSet<Point>(64);
             var queue = new Queue<Point>(32);
-            
+
             queue.Enqueue(entryPoint);
             reachableAreas.Add(entryPoint);
 
@@ -424,21 +424,21 @@ namespace PitHero
             while (queue.Count > 0)
             {
                 var current = queue.Dequeue();
-                
+
                 for (int i = 0; i < 4; i++)
                 {
                     var dir = directions[i];
                     var next = new Point(current.X + dir.X, current.Y + dir.Y);
-                    
+
                     if (next.X < minX || next.X > maxX || next.Y < minY || next.Y > maxY)
                         continue;
-                    
+
                     if (reachableAreas.Contains(next))
                         continue;
-                    
+
                     if (IsBlocked(next, obstaclePositions))
                         continue;
-                    
+
                     queue.Enqueue(next);
                     reachableAreas.Add(next);
                 }
@@ -522,7 +522,7 @@ namespace PitHero
 
             int randomIndex = Nez.Random.Range(0, obstaclePositions.Count);
             int currentIndex = 0;
-            
+
             foreach (var obstacle in obstaclePositions)
             {
                 if (currentIndex == randomIndex)
@@ -569,7 +569,7 @@ namespace PitHero
         private List<Point> GenerateEntityPositions(int count, int minX, int minY, int maxX, int maxY, HashSet<Point> usedPositions, string entityType)
         {
             var positions = new List<Point>(count);
-            
+
             for (int i = 0; i < count; i++)
             {
                 Point tilePos = GetRandomUnusedPosition(minX, minY, maxX, maxY, usedPositions);
@@ -591,7 +591,7 @@ namespace PitHero
             for (int i = 0; i < positions.Count; i++)
             {
                 var tilePos = positions[i];
-                
+
                 var worldPos = new Vector2(
                     tilePos.X * GameConfig.TileSize + GameConfig.TileSize / 2,
                     tilePos.Y * GameConfig.TileSize + GameConfig.TileSize / 2
@@ -657,7 +657,7 @@ namespace PitHero
                     // Use TreasureComponent for treasure chests
                     var pitWidthManager = Core.Services?.GetService<PitWidthManager>();
                     int currentPitLevel = pitWidthManager?.CurrentPitLevel ?? 1;
-                    
+
                     var treasureComponent = entity.AddComponent(new TreasureComponent());
                     treasureComponent.Level = TreasureComponent.DetermineTreasureLevel(currentPitLevel);
                     treasureComponent.InitializeForPitLevel(treasureComponent.Level);
@@ -707,7 +707,7 @@ namespace PitHero
 
                     // Create appropriate enemy for pit level
                     var (enemy, enemyColor) = CreateEnemyForPitLevel(pitLevel);
-                    
+
                     var enemyComponent = entity.AddComponent(new EnemyComponent(enemy, isStationary: false));
                     Debug.Log($"[PitGenerator] Created {enemy.Name} enemy (Level {enemy.Level}, HP {enemy.CurrentHP}) at tile ({tilePos.X},{tilePos.Y})");
 
@@ -738,7 +738,7 @@ namespace PitHero
                     var enemyBouncyDigit = entity.AddComponent(new BouncyDigitComponent());
                     enemyBouncyDigit.SetRenderLayer(GameConfig.RenderLayerLowest);
                     enemyBouncyDigit.SetEnabled(false);
-                    
+
                     // Add BouncyTextComponent for miss display (RenderLayerUI, disabled initially)
                     var enemyBouncyText = entity.AddComponent(new BouncyTextComponent());
                     enemyBouncyText.SetRenderLayer(GameConfig.RenderLayerLowest);
@@ -803,7 +803,7 @@ namespace PitHero
         {
             var queue = new Queue<Point>(32);
             var visited = new HashSet<Point>(64);
-            
+
             queue.Enqueue(start);
             visited.Add(start);
 
@@ -818,7 +818,7 @@ namespace PitHero
             while (queue.Count > 0)
             {
                 var current = queue.Dequeue();
-                
+
                 if (current == target)
                 {
                     return true;
@@ -828,16 +828,16 @@ namespace PitHero
                 {
                     var dir = directions[i];
                     var next = new Point(current.X + dir.X, current.Y + dir.Y);
-                    
+
                     if (next.X < minX || next.X > maxX || next.Y < minY || next.Y > maxY)
                         continue;
-                    
+
                     if (visited.Contains(next))
                         continue;
-                    
+
                     if (IsBlocked(next, obstaclePositions))
                         continue;
-                    
+
                     queue.Enqueue(next);
                     visited.Add(next);
                 }
@@ -854,7 +854,7 @@ namespace PitHero
         private void GenerateFallbackLayout(int minX, int minY, int maxX, int maxY)
         {
             Debug.Log("[PitGenerator] Generating fallback safe layout");
-            
+
             var safeObstacles = new List<Point>(10)
             {
                 new Point(minX, minY),
@@ -871,7 +871,7 @@ namespace PitHero
 
             var centerX = (minX + maxX) / 2;
             var centerY = (minY + maxY) / 2;
-            
+
             var safeTargets = new List<(Point pos, int tag, Color color, string name)>(5)
             {
                 (new Point(centerX, centerY), GameConfig.TAG_TREASURE, Color.Yellow, "treasure"),

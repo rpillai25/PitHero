@@ -1,6 +1,6 @@
+using Nez;
 using System.Collections.Generic;
 using System.Linq;
-using Nez;
 
 namespace PitHero.ECS.Components
 {

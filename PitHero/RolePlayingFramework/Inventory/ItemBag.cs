@@ -1,6 +1,5 @@
-using System;
-using System.Collections.Generic;
 using RolePlayingFramework.Equipment;
+using System.Collections.Generic;
 
 namespace RolePlayingFramework.Inventory
 {
@@ -37,7 +36,7 @@ namespace RolePlayingFramework.Inventory
         public bool TryAdd(IItem item)
         {
             if (item == null || IsFull) return false;
-            
+
             // If it's a consumable, try to stack it first
             if (item is Consumable consumable)
             {
@@ -54,7 +53,7 @@ namespace RolePlayingFramework.Inventory
                     }
                 }
             }
-            
+
             // If not stackable or no existing stack found, add to first empty slot
             for (int i = 0; i < _slots.Length; i++)
             {
@@ -140,7 +139,7 @@ namespace RolePlayingFramework.Inventory
             if (indexA == indexB) return true;
             if (indexA < 0 || indexB < 0) return false;
             if (indexA >= _slots.Length || indexB >= _slots.Length) return false;
-            
+
             var itemA = _slots[indexA];
             var itemB = _slots[indexB];
 
@@ -158,7 +157,7 @@ namespace RolePlayingFramework.Inventory
                 _compactDirty = true;
                 return true;
             }
-            
+
             // Regular swap if not absorbing
             var tmp = _slots[indexA];
             _slots[indexA] = _slots[indexB];

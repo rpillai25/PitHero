@@ -1,6 +1,5 @@
 using Microsoft.Xna.Framework;
 using Nez;
-using Nez.Sprites;
 
 namespace PitHero.ECS.Components
 {
@@ -39,7 +38,7 @@ namespace PitHero.ECS.Components
         public override void OnAddedToEntity()
         {
             base.OnAddedToEntity();
-            
+
             try
             {
                 var actorsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas");
@@ -58,7 +57,7 @@ namespace PitHero.ECS.Components
             {
                 Debug.Warn($"[HeroAnimationComponent] Failed to load Actors.atlas: {ex.Message}");
             }
-            
+
             _facing = Entity.GetComponent<ActorFacingComponent>();
             if (_facing == null)
             {

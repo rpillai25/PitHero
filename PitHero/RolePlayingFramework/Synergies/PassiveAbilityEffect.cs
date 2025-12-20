@@ -7,28 +7,28 @@ namespace RolePlayingFramework.Synergies
     {
         public string EffectId { get; }
         public string Description { get; }
-        
+
         /// <summary>Defense bonus amount.</summary>
         public int DefenseBonus { get; }
-        
+
         /// <summary>Deflect chance increase (0-1 range).</summary>
         public float DeflectChanceIncrease { get; }
-        
+
         /// <summary>Enables counter-attack ability.</summary>
         public bool EnableCounter { get; }
-        
+
         /// <summary>MP regeneration per tick.</summary>
         public int MPTickRegen { get; }
-        
+
         /// <summary>Healing power bonus multiplier.</summary>
         public float HealPowerBonus { get; }
-        
+
         /// <summary>Fire damage bonus multiplier.</summary>
         public float FireDamageBonus { get; }
-        
+
         // Track applied values for proper removal with multipliers
         private float _lastAppliedMultiplier;
-        
+
         public PassiveAbilityEffect(
             string effectId,
             string description,
@@ -49,13 +49,13 @@ namespace RolePlayingFramework.Synergies
             FireDamageBonus = fireDamageBonus;
             _lastAppliedMultiplier = 0f;
         }
-        
+
         /// <summary>Applies this effect with full multiplier (1.0).</summary>
         public void Apply(Hero hero)
         {
             Apply(hero, 1.0f);
         }
-        
+
         /// <summary>
         /// Applies this effect to the hero with the given multiplier.
         /// Note: EnableCounter is binary and not affected by multiplier.
@@ -66,30 +66,30 @@ namespace RolePlayingFramework.Synergies
             // Apply scaled passive ability modifiers
             hero.PassiveDefenseBonus += (int)(DefenseBonus * multiplier);
             hero.DeflectChance += DeflectChanceIncrease * multiplier;
-            
+
             // Counter is binary - not scaled by multiplier
             if (EnableCounter)
             {
                 hero._synergyCounterEnablers++;
                 hero.EnableCounter = true;
             }
-            
+
             hero.MPTickRegen += (int)(MPTickRegen * multiplier);
             hero.HealPowerBonus += HealPowerBonus * multiplier;
             hero.FireDamageBonus += FireDamageBonus * multiplier;
-            
+
             _lastAppliedMultiplier = multiplier;
         }
-        
+
         public void Remove(Hero hero)
         {
             // Use the last applied multiplier for removal
             float multiplier = _lastAppliedMultiplier > 0f ? _lastAppliedMultiplier : 1.0f;
-            
+
             // Remove scaled passive ability modifiers
             hero.PassiveDefenseBonus -= (int)(DefenseBonus * multiplier);
             hero.DeflectChance -= DeflectChanceIncrease * multiplier;
-            
+
             if (EnableCounter)
             {
                 hero._synergyCounterEnablers--;
@@ -99,11 +99,11 @@ namespace RolePlayingFramework.Synergies
                     hero.EnableCounter = false;
                 }
             }
-            
+
             hero.MPTickRegen -= (int)(MPTickRegen * multiplier);
             hero.HealPowerBonus -= HealPowerBonus * multiplier;
             hero.FireDamageBonus -= FireDamageBonus * multiplier;
-            
+
             _lastAppliedMultiplier = 0f;
         }
     }

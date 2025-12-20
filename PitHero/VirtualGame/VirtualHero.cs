@@ -33,14 +33,14 @@ namespace PitHero.VirtualGame
 
         // Current position in tiles
         public Point Position => _world.HeroPosition;
-        
+
         /// <summary>
         /// Current tile position (for tests)
         /// </summary>
-        public Point CurrentTilePosition 
-        { 
-            get => Position; 
-            set => _world.MoveHeroTo(value); 
+        public Point CurrentTilePosition
+        {
+            get => Position;
+            set => _world.MoveHeroTo(value);
         }
 
         public VirtualHero(IVirtualWorld world)
@@ -55,7 +55,7 @@ namespace PitHero.VirtualGame
         public void MoveTo(Point targetTile)
         {
             var currentPos = Position;
-            
+
             // Only allow single-step movement (adjacent tiles) to enforce pathfinding
             var distance = Math.Abs(targetTile.X - currentPos.X) + Math.Abs(targetTile.Y - currentPos.Y);
             if (distance > 1)
@@ -63,17 +63,17 @@ namespace PitHero.VirtualGame
                 System.Console.WriteLine($"[VirtualHero] ERROR: Attempted teleportation from ({currentPos.X},{currentPos.Y}) to ({targetTile.X},{targetTile.Y}), distance={distance}");
                 throw new InvalidOperationException($"MoveTo only allows adjacent tile movement. Use pathfinding for longer moves. Distance={distance}");
             }
-            
+
             // Check if target is passable
             if (_world.IsCollisionTile(targetTile))
             {
                 System.Console.WriteLine($"[VirtualHero] Cannot move to collision tile ({targetTile.X},{targetTile.Y})");
                 return;
             }
-            
+
             _world.MoveHeroTo(targetTile);
             UpdatePositionStates();
-            
+
             System.Console.WriteLine($"[VirtualHero] Moved to ({targetTile.X},{targetTile.Y}), states updated");
         }
 
@@ -84,7 +84,7 @@ namespace PitHero.VirtualGame
         {
             _world.MoveHeroTo(targetTile);
             UpdatePositionStates();
-            
+
             System.Console.WriteLine($"[VirtualHero] Teleported to ({targetTile.X},{targetTile.Y}) for testing");
         }
 
@@ -99,7 +99,7 @@ namespace PitHero.VirtualGame
                 System.Console.WriteLine($"[VirtualHero] No path found to ({targetTile.X},{targetTile.Y})");
                 return false;
             }
-            
+
             SetMovementPath(path);
             System.Console.WriteLine($"[VirtualHero] Set path to ({targetTile.X},{targetTile.Y}) with {path.Count} steps");
             return true;
@@ -116,7 +116,7 @@ namespace PitHero.VirtualGame
                 MovementQueue.Enqueue(point);
             }
             IsMoving = MovementQueue.Count > 0;
-            
+
             System.Console.WriteLine($"[VirtualHero] Set movement path with {path.Count} tiles");
         }
 
@@ -132,7 +132,7 @@ namespace PitHero.VirtualGame
             }
 
             var nextTile = MovementQueue.Dequeue();
-            
+
             // Validate movement step is adjacent (protect against bad path calculations)
             var currentPos = Position;
             var distance = Math.Abs(nextTile.X - currentPos.X) + Math.Abs(nextTile.Y - currentPos.Y);
@@ -145,13 +145,13 @@ namespace PitHero.VirtualGame
             {
                 MoveTo(nextTile);
             }
-            
+
             if (MovementQueue.Count == 0)
             {
                 IsMoving = false;
                 return true; // Movement complete
             }
-            
+
             return false; // Still moving
         }
 
@@ -173,20 +173,20 @@ namespace PitHero.VirtualGame
         private float CalculateDistanceToPitBoundary(Point pos)
         {
             var pitBounds = _world.PitBounds;
-            
+
             // Calculate distance to nearest edge of pit rectangle
             int dx = 0;
             if (pos.X < pitBounds.X)
                 dx = pitBounds.X - pos.X;
             else if (pos.X >= pitBounds.Right)
                 dx = pos.X - (pitBounds.Right - 1);
-            
+
             int dy = 0;
             if (pos.Y < pitBounds.Y)
                 dy = pitBounds.Y - pos.Y;
             else if (pos.Y >= pitBounds.Bottom)
                 dy = pos.Y - (pitBounds.Bottom - 1);
-            
+
             return (float)Math.Sqrt(dx * dx + dy * dy);
         }
 
@@ -196,7 +196,7 @@ namespace PitHero.VirtualGame
         public void ResetWizardOrbStates()
         {
             ActivatedWizardOrb = false;
-            
+
             System.Console.WriteLine("[VirtualHero] Reset wizard orb workflow states");
         }
 
@@ -207,10 +207,10 @@ namespace PitHero.VirtualGame
         {
             var pos = Position;
             var pitBounds = _world.PitBounds;
-            
+
             if (pitBounds.Contains(pos))
                 return false; // Inside pit, not outside
-                
+
             var distance = CalculateDistanceToPitBoundary(pos);
             return distance <= GameConfig.PitAdjacencyRadiusTiles;
         }
@@ -222,10 +222,10 @@ namespace PitHero.VirtualGame
         {
             var pos = Position;
             var pitBounds = _world.PitBounds;
-            
+
             if (!pitBounds.Contains(pos))
                 return false; // Outside pit, not inside
-                
+
             // Check if adjacent to pit boundary from inside
             return pos.X == pitBounds.X || pos.X == pitBounds.Right - 1 ||
                    pos.Y == pitBounds.Y || pos.Y == pitBounds.Bottom - 1;
@@ -240,7 +240,7 @@ namespace PitHero.VirtualGame
 
             ws[GoapConstants.HeroInitialized] = true;
             ws[GoapConstants.PitInitialized] = PitInitialized;
-            
+
             // Core position states
             if (InsidePit)
                 ws[GoapConstants.InsidePit] = true;
@@ -268,7 +268,7 @@ namespace PitHero.VirtualGame
         private bool CheckMapExplored()
         {
             var pitBounds = _world.PitBounds;
-            
+
             // Check explorable area (inside pit boundary)
             for (int x = pitBounds.X + 1; x < pitBounds.Right - 1; x++)
             {
@@ -278,7 +278,7 @@ namespace PitHero.VirtualGame
                         return false; // Still has fog
                 }
             }
-            
+
             return true; // All fog cleared
         }
 
@@ -290,7 +290,7 @@ namespace PitHero.VirtualGame
             var orbPos = _world.WizardOrbPosition;
             if (!orbPos.HasValue)
                 return false;
-            
+
             return !_world.HasFogOfWar(orbPos.Value);
         }
 
@@ -302,7 +302,7 @@ namespace PitHero.VirtualGame
             var orbPos = _world.WizardOrbPosition;
             if (!orbPos.HasValue)
                 return false;
-            
+
             return Position == orbPos.Value;
         }
 

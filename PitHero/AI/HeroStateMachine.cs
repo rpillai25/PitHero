@@ -6,7 +6,6 @@ using Nez.Tiled;
 using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.Util;
-using RolePlayingFramework.Enemies;
 using System;
 using System.Collections.Generic;
 
@@ -59,10 +58,10 @@ namespace PitHero.AI
 
             var wander = new WanderPitAction();
             _planner.AddAction(wander);
-            
+
             var activateWizardOrb = new ActivateWizardOrbAction();
             _planner.AddAction(activateWizardOrb);
-            
+
             var jumpOutOfPit = new JumpOutOfPitAction();
             _planner.AddAction(jumpOutOfPit);
 
@@ -80,7 +79,7 @@ namespace PitHero.AI
         {
             base.OnAddedToEntity();
             _hero = Entity.GetComponent<HeroComponent>();
-            
+
             // Set initial state to Idle - when it enters Idle it will ask the ActionPlanner for a new plan
             InitialState = ActorState.Idle;
         }
@@ -104,7 +103,7 @@ namespace PitHero.AI
         private WorldState GetWorldState()
         {
             var ws = WorldState.Create(_planner);
-            
+
             // Safety check for null hero
             if (_hero == null)
             {
@@ -114,7 +113,7 @@ namespace PitHero.AI
 
             // Use the HeroComponent's SetWorldState method for consistency
             _hero.SetWorldState(ref ws);
-            
+
             return ws;
         }
 
@@ -124,7 +123,7 @@ namespace PitHero.AI
         private WorldState GetGoalState()
         {
             var goal = WorldState.Create(_planner);
-            
+
             // Safety check for null hero
             if (_hero == null)
             {
@@ -134,7 +133,7 @@ namespace PitHero.AI
 
             // Use the HeroComponent's SetGoalState method for consistency
             _hero.SetGoalState(ref goal);
-            
+
             return goal;
         }
 
@@ -143,15 +142,15 @@ namespace PitHero.AI
         void Idle_Enter()
         {
             Debug.Log("[HeroStateMachine] Entering Idle state - planning next actions");
-            
+
             // Get a plan to run that will get us from our current state to our goal state
             var currentWorldState = GetWorldState();
             var goalState = GetGoalState();
-            
+
             // Add comprehensive debug logging for world state and goal state
             LogWorldStateDetails(currentWorldState, "Current World State");
             LogWorldStateDetails(goalState, "Goal State");
-            
+
             // CRITICAL DEBUG: Log what states we expect to see
             Debug.Log($"[HeroStateMachine] *** CRITICAL GOAP CHECK *** About to call GOAP planner");
 
@@ -179,17 +178,17 @@ namespace PitHero.AI
                 if (elapsedTimeInState > 1.0f) // Wait 1 second before retry
                 {
                     Debug.Log("[HeroStateMachine] Retrying action planning...");
-                    
+
                     var currentWorldState = GetWorldState();
                     var goalState = GetGoalState();
-                    
+
                     // Add comprehensive debug logging for world state and goal state
                     LogWorldStateDetails(currentWorldState, "Retry Current World State");
                     LogWorldStateDetails(goalState, "Retry Goal State");
-                    
+
                     // CRITICAL DEBUG: Log retry attempt
                     Debug.Log($"[HeroStateMachine] *** CRITICAL RETRY CHECK *** About to retry GOAP planner");
-                    
+
                     _actionPlan = _planner.Plan(currentWorldState, goalState);
 
                     if (_actionPlan != null && _actionPlan.Count > 0)
@@ -208,7 +207,7 @@ namespace PitHero.AI
         void GoTo_Enter()
         {
             Debug.Log("[HeroStateMachine] Entering GoTo state");
-            
+
             if (_actionPlan == null || _actionPlan.Count == 0)
             {
                 Debug.Warn("[HeroStateMachine] GoTo_Enter: No action plan available");
@@ -234,7 +233,7 @@ namespace PitHero.AI
 
             // Get current tile position
             var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
-            var currentTile = tileMover?.GetCurrentTileCoordinates() ?? 
+            var currentTile = tileMover?.GetCurrentTileCoordinates() ??
                 new Point((int)(_hero.Entity.Transform.Position.X / GameConfig.TileSize),
                          (int)(_hero.Entity.Transform.Position.Y / GameConfig.TileSize));
 
@@ -247,7 +246,7 @@ namespace PitHero.AI
             if (_currentPath == null || _currentPath.Count == 0)
             {
                 Debug.Log($"[HeroStateMachine] GoTo_Enter: No path needed or found to target ({_targetTile.X},{_targetTile.Y})");
-                
+
                 // If this was for a WanderPitAction and pathfinding failed, track the failed target
                 if (_actionPlan.Count > 0 && _actionPlan.Peek().Name == GoapConstants.WanderPitAction)
                 {
@@ -256,7 +255,7 @@ namespace PitHero.AI
                     CurrentState = ActorState.Idle; // Restart planning
                     return;
                 }
-                
+
                 Debug.Log("[HeroStateMachine] GoTo_Enter: Proceeding to action");
                 CurrentState = ActorState.PerformAction;
                 return;
@@ -292,19 +291,19 @@ namespace PitHero.AI
             if (_heroWasMovingLastFrame && !tileMover.IsMoving)
             {
                 _heroWasMovingLastFrame = false;
-                
+
                 // Check for adjacent monsters after reaching a new tile
                 var currentTile = tileMover.GetCurrentTileCoordinates();
                 bool wasAdjacent = _hero.AdjacentToMonster;
                 _hero.AdjacentToMonster = _hero.CheckAdjacentToMonster();
-                
+
                 if (_hero.AdjacentToMonster && !wasAdjacent)
                 {
                     Debug.Log($"[HeroStateMachine] Hero at ({currentTile.X},{currentTile.Y}) is now adjacent to monster(s), restarting planning");
                     CurrentState = ActorState.Idle;
                     return;
                 }
-                
+
                 // Hero just completed a tile movement, trigger enemy movement
                 TriggerEnemyMovement();
             }
@@ -359,7 +358,7 @@ namespace PitHero.AI
         void GoTo_Exit()
         {
             Debug.Log("[HeroStateMachine] Exiting GoTo state");
-            
+
             // Snap to tile grid for precision
             var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
             if (tileMover != null)
@@ -375,7 +374,7 @@ namespace PitHero.AI
         void PerformAction_Enter()
         {
             Debug.Log("[HeroStateMachine] Entering PerformAction state");
-            
+
             if (_actionPlan == null || _actionPlan.Count == 0)
             {
                 Debug.Warn("[HeroStateMachine] PerformAction_Enter: No action plan available");
@@ -409,17 +408,17 @@ namespace PitHero.AI
 
             // Execute the current action
             bool actionComplete = _currentAction.Execute(_hero);
-            
+
             if (actionComplete)
             {
                 Debug.Log($"[HeroStateMachine] Action {_currentAction.Name} completed");
-                
+
                 // Remove the completed action from the plan
                 if (_actionPlan != null && _actionPlan.Count > 0)
                     _actionPlan.Pop();
-                
+
                 _currentAction = null;
-                
+
                 // Check if we have more actions to execute
                 if (_actionPlan != null && _actionPlan.Count > 0)
                 {
@@ -491,7 +490,7 @@ namespace PitHero.AI
             // For jumping into pit, we want to be at the right edge outside the pit
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
             var pitRightEdge = pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth);
-            
+
             return new Point(pitRightEdge, GameConfig.PitCenterTileY); // Just outside right edge
         }
 
@@ -690,7 +689,7 @@ namespace PitHero.AI
             var wizardOrbEntity = wizardOrbEntities[0];
             var worldPos = wizardOrbEntity.Transform.Position;
             var tilePos = new Point((int)(worldPos.X / GameConfig.TileSize), (int)(worldPos.Y / GameConfig.TileSize));
-            
+
             return tilePos;
         }
 
@@ -702,7 +701,7 @@ namespace PitHero.AI
             // For jumping out, be near the right inside edge of the pit
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
             var pitRightEdge = pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth);
-            
+
             return new Point(pitRightEdge - 2, GameConfig.PitCenterTileY); // Just inside right edge
         }
 
@@ -732,7 +731,7 @@ namespace PitHero.AI
             // For diagonals, pick the stronger component or default to horizontal
             if (deltaX != 0 && deltaY != 0)
             {
-                return Math.Abs(deltaX) >= Math.Abs(deltaY) 
+                return Math.Abs(deltaX) >= Math.Abs(deltaY)
                     ? (deltaX > 0 ? Direction.Right : Direction.Left)
                     : (deltaY > 0 ? Direction.Down : Direction.Up);
             }
@@ -748,9 +747,9 @@ namespace PitHero.AI
         }
 
         #endregion
-        
+
         #region Debug Logging Methods
-        
+
         /// <summary>
         /// Log detailed world state for debugging GOAP planning issues
         /// </summary>
@@ -758,7 +757,7 @@ namespace PitHero.AI
         {
             Debug.Log($"[HeroStateMachine] {prefix}: {ws.Describe(_planner)}");
         }
-        
+
         /// <summary>
         /// Log action preconditions to debug why no action plan can be found
         /// </summary>
@@ -820,7 +819,7 @@ namespace PitHero.AI
         private System.Collections.IEnumerator MoveEnemyRandomly(Entity enemy, EnemyComponent enemyComponent)
         {
             enemyComponent.IsMoving = true;
-            
+
             try
             {
                 var tileMover = enemy.GetComponent<TileByTileMover>();
@@ -832,7 +831,7 @@ namespace PitHero.AI
 
                 var currentTile = tileMover.GetCurrentTileCoordinates();
                 var directions = new[] { Direction.Up, Direction.Down, Direction.Left, Direction.Right };
-                
+
                 // Shuffle directions for randomness
                 var shuffledDirections = new List<Direction>(directions);
                 for (int i = shuffledDirections.Count - 1; i > 0; i--)
@@ -845,19 +844,19 @@ namespace PitHero.AI
                 foreach (var direction in shuffledDirections)
                 {
                     var targetTile = GetTileInDirection(currentTile, direction);
-                    
+
                     // Check if target tile is passable (no obstacles)
                     if (IsEnemyTilePassable(targetTile))
                     {
                         Debug.Log($"[HeroStateMachine] Moving enemy from ({currentTile.X},{currentTile.Y}) to ({targetTile.X},{targetTile.Y}) direction {direction}");
-                        
+
                         // Update enemy facing direction for animation
                         var enemyFacing = enemy.GetComponent<ActorFacingComponent>();
                         if (enemyFacing != null)
                         {
                             enemyFacing.SetFacing(direction);
                         }
-                        
+
                         if (tileMover.StartMoving(direction))
                         {
                             moved = true;
@@ -929,7 +928,7 @@ namespace PitHero.AI
                     return currentTile;
             }
         }
-        
+
         #endregion
 
         #region Priority-Based Target Selection
@@ -941,15 +940,15 @@ namespace PitHero.AI
         {
             // Use planning-aware priority: once Advance is reached in the order, it takes precedence
             var nextPriority = _hero.GetCurrentPriorityForPlanning();
-            
+
             if (nextPriority == null)
             {
                 // All priorities satisfied, use existing fog tile logic as fallback
                 return FindNearestFogTile(heroTile, fogLayer, pitMinX, pitMinY, pitMaxX, pitMaxY);
             }
-            
+
             Point? priorityTarget = null;
-            
+
             switch (nextPriority.Value)
             {
                 case HeroPitPriority.Treasure:
@@ -962,14 +961,14 @@ namespace PitHero.AI
                     priorityTarget = FindUncoveredWizardOrbTarget();
                     break;
             }
-            
+
             // If we found a priority target, return it
             if (priorityTarget.HasValue)
             {
                 Debug.Log($"[HeroStateMachine] Priority-based target found: {nextPriority.Value} at ({priorityTarget.Value.X},{priorityTarget.Value.Y})");
                 return priorityTarget.Value;
             }
-            
+
             // If no priority target found, explore fog to potentially find targets
             return FindNearestFogTile(heroTile, fogLayer, pitMinX, pitMinY, pitMaxX, pitMaxY);
         }
@@ -1052,7 +1051,7 @@ namespace PitHero.AI
                     return GetAdjacentTile(monsterTile);
                 }
             }
-            
+
             return null;
         }
 
@@ -1091,7 +1090,7 @@ namespace PitHero.AI
                     return orbTile;
                 }
             }
-            
+
             return null;
         }
 
@@ -1108,7 +1107,7 @@ namespace PitHero.AI
                 new Point(targetTile.X - 1, targetTile.Y), // Left
                 new Point(targetTile.X + 1, targetTile.Y)  // Right
             };
-            
+
             foreach (var adj in adjacent)
             {
                 if (_hero.IsPathfindingInitialized && _hero.IsPassable(adj))
@@ -1116,7 +1115,7 @@ namespace PitHero.AI
                     return adj;
                 }
             }
-            
+
             return targetTile; // Fallback to target tile itself
         }
 

@@ -1,6 +1,6 @@
 using Microsoft.Xna.Framework;
-using System.Collections.Generic;
 using PitHero.AI.Interfaces;
+using System.Collections.Generic;
 
 namespace PitHero.VirtualGame
 {

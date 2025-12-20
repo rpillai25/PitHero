@@ -2,10 +2,10 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Sprites;
 using Nez.Textures;
+using PitHero.AI;
+using PitHero.Services;
 using System.Collections;
 using System.Collections.Generic;
-using PitHero.Services;
-using PitHero.AI;
 
 namespace PitHero.ECS.Components
 {
@@ -18,16 +18,16 @@ namespace PitHero.ECS.Components
         // Death animation configuration
         private const float DeathFadeOutDuration = 2.0f; // 2 seconds for rise and fade
         private const float DeathRiseDistance = 64f; // Distance hero rises in pixels
-        
+
         // HeroShadow sprite coordinates from Actors.atlas
         private const int ShadowSpriteX = 198;
         private const int ShadowSpriteY = 499;
         private const int ShadowSpriteWidth = 27;
         private const int ShadowSpriteHeight = 5;
-        
+
         private Entity _shadowEntity;
         private bool _deathAnimationStarted;
-        
+
         /// <summary>
         /// Starts the hero death animation sequence.
         /// </summary>
@@ -35,15 +35,15 @@ namespace PitHero.ECS.Components
         {
             if (_deathAnimationStarted)
                 return;
-                
+
             _deathAnimationStarted = true;
-            
+
             // Disable all other components on the hero entity to prevent movement during death
             DisableAllHeroComponents();
-            
+
             Core.StartCoroutine(ExecuteDeathAnimation());
         }
-        
+
         private IEnumerator ExecuteDeathAnimation()
         {
             var heroComponent = Entity.GetComponent<HeroComponent>();
@@ -52,29 +52,29 @@ namespace PitHero.ECS.Components
                 Debug.Warn("[HeroDeathComponent] Hero has no LinkedHero, cannot perform death animation");
                 yield break;
             }
-            
+
             var hero = heroComponent.LinkedHero;
             var crystal = hero.BoundCrystal;
-            
+
             if (crystal == null)
             {
                 Debug.Warn("[HeroDeathComponent] Hero has no bound crystal, cannot add to vault");
                 yield break;
             }
-            
+
             Debug.Log($"[HeroDeathComponent] Starting death animation for {hero.Name}");
-            
+
             // Face hero downward
             var facing = Entity.GetComponent<ActorFacingComponent>();
             facing?.SetFacing(Direction.Down);
-            
+
             // Create shadow entity at hero's death location
             CreateShadowAtDeathLocation();
-            
+
             // Get initial position
             var startPosition = Entity.Transform.Position;
             var endPosition = startPosition + new Vector2(0, -DeathRiseDistance);
-            
+
             // Get all renderers to fade them out
             var bodyRenderer = Entity.GetComponent<HeroBodyAnimationComponent>();
             var hairRenderer = Entity.GetComponent<HeroHairAnimationComponent>();
@@ -82,7 +82,7 @@ namespace PitHero.ECS.Components
             var pantsRenderer = Entity.GetComponent<HeroPantsAnimationComponent>();
             var hand1Renderer = Entity.GetComponent<HeroHand1AnimationComponent>();
             var hand2Renderer = Entity.GetComponent<HeroHand2AnimationComponent>();
-            
+
             // Animate rise and fade
             float elapsed = 0f;
             while (elapsed < DeathFadeOutDuration)
@@ -94,17 +94,17 @@ namespace PitHero.ECS.Components
                     yield return null;
                     continue;
                 }
-                
+
                 elapsed += Time.DeltaTime;
                 float progress = elapsed / DeathFadeOutDuration;
                 if (progress > 1f) progress = 1f;
-                
+
                 // Lerp position upward
                 Entity.Transform.Position = Vector2.Lerp(startPosition, endPosition, progress);
-                
+
                 // Fade out alpha
                 byte alpha = (byte)(255 * (1f - progress));
-                
+
                 // Apply alpha to all renderers
                 if (bodyRenderer != null)
                 {
@@ -136,19 +136,19 @@ namespace PitHero.ECS.Components
                     var color = hand2Renderer.Color;
                     hand2Renderer.Color = new Color(color.R, color.G, color.B, alpha);
                 }
-                
+
                 yield return null;
             }
-            
+
             Debug.Log($"[HeroDeathComponent] Death animation complete for {hero.Name}");
-            
+
             // Remove shadow
             if (_shadowEntity != null)
             {
                 _shadowEntity.Destroy();
                 _shadowEntity = null;
             }
-            
+
             // Transfer all inventory items to PitMerchantVault and clear bags
             var pitVault = Core.Services.GetService<PitMerchantVault>();
             if (pitVault != null && heroComponent != null)
@@ -165,11 +165,11 @@ namespace PitHero.ECS.Components
                         }
                     }
                 }
-                
+
                 // Add all items to the vault
                 pitVault.AddItems(bagItems);
                 Debug.Log($"[HeroDeathComponent] Transferred {bagItems.Count} items to PitMerchantVault");
-                
+
                 // Clear the bag by setting empty items
                 if (heroComponent.Bag != null)
                 {
@@ -181,7 +181,7 @@ namespace PitHero.ECS.Components
             {
                 Debug.Warn("[HeroDeathComponent] PitMerchantVault service not found");
             }
-            
+
             // Add crystal to vault
             var vault = Core.Services.GetService<CrystalMerchantVault>();
             if (vault != null)
@@ -193,33 +193,33 @@ namespace PitHero.ECS.Components
             {
                 Debug.Warn("[HeroDeathComponent] CrystalMerchantVault service not found");
             }
-            
+
             // Destroy hero entity
             Entity.Destroy();
             Debug.Log("[HeroDeathComponent] Hero entity destroyed after death animation");
         }
-        
+
         private void CreateShadowAtDeathLocation()
         {
             // Load the HeroShadow sprite from the Actors atlas
             var shadowTexture = Entity.Scene.Content.LoadTexture("Content/Atlases/Actors.png");
-            
+
             // Create sprite from atlas region: HeroShadow coordinates
             var shadowRegion = new Sprite(shadowTexture, new Rectangle(ShadowSpriteX, ShadowSpriteY, ShadowSpriteWidth, ShadowSpriteHeight));
             shadowRegion.Origin = new Vector2(ShadowSpriteWidth * 0.5f, ShadowSpriteHeight * 0.5f); // Center origin
-            
+
             // Create shadow entity
             _shadowEntity = Entity.Scene.CreateEntity("hero-shadow");
             _shadowEntity.Transform.Position = Entity.Transform.Position;
-            
+
             // Add sprite renderer
             var shadowRenderer = _shadowEntity.AddComponent(new SpriteRenderer(shadowRegion));
             shadowRenderer.SetRenderLayer(GameConfig.RenderLayerLowest);
             shadowRenderer.Color = new Color(0, 0, 0, 128); // Semi-transparent black shadow
-            
+
             Debug.Log($"[HeroDeathComponent] Created shadow at ({Entity.Transform.Position.X},{Entity.Transform.Position.Y})");
         }
-        
+
         public override void OnRemovedFromEntity()
         {
             // Clean up shadow if it still exists
@@ -228,10 +228,10 @@ namespace PitHero.ECS.Components
                 _shadowEntity.Destroy();
                 _shadowEntity = null;
             }
-            
+
             base.OnRemovedFromEntity();
         }
-        
+
         /// <summary>
         /// Disables all components on the hero entity except this death component
         /// </summary>
@@ -240,7 +240,7 @@ namespace PitHero.ECS.Components
             // Disable only the components that cause unwanted movement during death animation
             Entity.GetComponent<TileByTileMover>()?.SetEnabled(false);
             Entity.GetComponent<HeroStateMachine>()?.SetEnabled(false);
-            
+
             Debug.Log("[HeroDeathComponent] Disabled TileByTileMover and HeroStateMachine to prevent movement during death animation");
         }
     }

@@ -1,10 +1,8 @@
 using Microsoft.Xna.Framework;
 using Nez;
-using System.Collections.Generic;
+using Nez.Tiled;
 using PitHero.Services;
 using PitHero.Util;
-using Nez.Tweens;
-using Nez.Tiled;
 
 namespace PitHero.ECS.Components
 {
@@ -16,22 +14,22 @@ namespace PitHero.ECS.Components
         private ColliderTriggerHelper _triggerHelper;
         private readonly int _tileSize = GameConfig.TileSize;
         private ActorFacingComponent _facing; // facing component cache
-        
+
         /// <summary>
         /// Movement speed in pixels per second
         /// </summary>
         public float MovementSpeed { get; set; } = GameConfig.HeroMovementSpeed;
-        
+
         /// <summary>
         /// If true, movement is currently in progress
         /// </summary>
         public bool IsMoving { get; private set; }
-        
+
         /// <summary>
         /// Current movement direction (null if not moving)
         /// </summary>
         public Direction? CurrentDirection { get; private set; }
-        
+
         private Vector2 _moveStartPosition;
         private Vector2 _moveTargetPosition;
         private float _moveDuration;
@@ -72,7 +70,7 @@ namespace PitHero.ECS.Components
                 return false;
 
             var motion = GetMotionVector(direction);
-            
+
             // Check if movement is possible
             if (!CanMove(motion))
                 return false;
@@ -149,7 +147,7 @@ namespace PitHero.ECS.Components
         private void CompleteMove()
         {
             SnapToTileGrid();
-            
+
             // Update triggers after reaching destination
             _triggerHelper?.Update();
 
@@ -160,17 +158,17 @@ namespace PitHero.ECS.Components
             {
                 var tile = GetCurrentTileCoordinates();
                 bool fogCleared = tms.ClearFogOfWarAroundTile(tile.X, tile.Y, heroComponent);
-                
+
                 // Trigger fog cooldown if fog was cleared
                 if (fogCleared)
                 {
                     heroComponent.TriggerFogCooldown();
                 }
             }
-            
+
             IsMoving = false;
             CurrentDirection = null;
-            
+
             Debug.Log($"[TileByTileMover] Movement completed at {Entity.Transform.Position.X},{Entity.Transform.Position.Y}");
         }
 
@@ -194,7 +192,7 @@ namespace PitHero.ECS.Components
             // Check for collisions using Nez's collision system
             CollisionResult collisionResult;
             bool isBlocked = CalculateMovement(motion, out collisionResult);
-            
+
             if (isBlocked)
             {
                 var targetPos = Entity.Transform.Position + motion;
@@ -218,7 +216,7 @@ namespace PitHero.ECS.Components
                     }
                 }
             }
-            
+
             return !isBlocked;
         }
 
@@ -258,19 +256,19 @@ namespace PitHero.ECS.Components
         public void SnapToTileGrid()
         {
             var pos = Entity.Transform.Position;
-            
+
             // Account for the centered collider offset when calculating tile position
             var colliderCenterOffset = new Vector2(GameConfig.HeroWidth / 2f, GameConfig.HeroHeight / 2f);
             var colliderTopLeft = pos - colliderCenterOffset;
-            
+
             // Calculate which tile the collider's top-left should be in
             var tileX = (int)System.Math.Floor(colliderTopLeft.X / _tileSize);
             var tileY = (int)System.Math.Floor(colliderTopLeft.Y / _tileSize);
-            
+
             // Position entity so collider aligns with tile boundaries
             var tileCorner = new Vector2(tileX * _tileSize, tileY * _tileSize);
             Entity.Transform.Position = tileCorner + colliderCenterOffset;
-            
+
             Debug.Log($"[TileByTileMover] Snapped to tile grid: ({tileX},{tileY}) at world position ({Entity.Transform.Position.X},{Entity.Transform.Position.Y})");
         }
 

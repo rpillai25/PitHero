@@ -1,6 +1,6 @@
 using Microsoft.Xna.Framework;
-using System.Collections.Generic;
 using PitHero.AI.Interfaces;
+using System.Collections.Generic;
 
 namespace PitHero.VirtualGame
 {
@@ -10,7 +10,7 @@ namespace PitHero.VirtualGame
     public class VirtualHeroController : IHeroController
     {
         private readonly IWorldState _worldState;
-        
+
         // Movement simulation
         private readonly Queue<Point> _movementQueue = new Queue<Point>();
         private bool _isMoving = false;
@@ -80,10 +80,10 @@ namespace PitHero.VirtualGame
             // Start movement
             _movementQueue.Enqueue(targetPos);
             _isMoving = true;
-            
+
             // For virtual simulation, complete movement immediately
             ExecuteMovementStep();
-            
+
             return true;
         }
 
@@ -132,13 +132,13 @@ namespace PitHero.VirtualGame
 
             var nextTile = _movementQueue.Dequeue();
             MoveTo(nextTile);
-            
+
             if (_movementQueue.Count == 0)
             {
                 _isMoving = false;
                 return true; // Movement complete
             }
-            
+
             return false; // Still moving
         }
 

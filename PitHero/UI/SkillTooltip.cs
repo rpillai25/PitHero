@@ -12,7 +12,7 @@ namespace PitHero.UI
     {
         private Window _container;
         private Table _contentTable;
-        
+
         public SkillTooltip(Element target, Skin skin)
         {
             _container = new Window("", skin);
@@ -20,23 +20,23 @@ namespace PitHero.UI
             _container.SetResizable(false);
             _container.SetKeepWithinStage(false);
             _container.SetColor(GameConfig.TransparentMenu);
-            
+
             _contentTable = new Table();
             _container.Add(_contentTable).Expand().Fill().Pad(5f);
-            
+
             _container.SetVisible(false);
         }
-        
+
         public void ShowSkill(ISkill skill, bool isLearned, Hero hero, bool isSynergySkill = false, int synergyCurrentPoints = 0, int synergyRequiredPoints = 0)
         {
             _contentTable.Clear();
-            
+
             // Skill name
             var nameColor = isLearned ? Color.Green : Color.White;
             var nameLabel = new Label(skill.Name, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = nameColor });
             _contentTable.Add(nameLabel).Left();
             _contentTable.Row();
-            
+
             // Skill type
             var typeText = $"{skill.Kind}";
             if (skill.Kind == SkillKind.Active)
@@ -46,7 +46,7 @@ namespace PitHero.UI
             var typeLabel = new Label(typeText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.LightGray });
             _contentTable.Add(typeLabel).Left();
             _contentTable.Row();
-            
+
             // Description
             if (!string.IsNullOrEmpty(skill.Description))
             {
@@ -55,7 +55,7 @@ namespace PitHero.UI
                 _contentTable.Add(descLabel).Width(200f).Left().SetPadTop(5f).SetPadBottom(5f);
                 _contentTable.Row();
             }
-            
+
             // Synergy skill shows progress instead of JP cost
             if (isSynergySkill)
             {
@@ -83,7 +83,7 @@ namespace PitHero.UI
                 var costLabel = new Label(costText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Yellow });
                 _contentTable.Add(costLabel).Left();
                 _contentTable.Row();
-                
+
                 // Status
                 if (isLearned)
                 {
@@ -101,26 +101,26 @@ namespace PitHero.UI
                     }
                 }
             }
-            
+
             _container.SetVisible(true);
             _container.Pack();
         }
-        
+
         public void ShowSynergyEffect(SynergyPattern pattern, int instanceCount, float multiplier)
         {
             _contentTable.Clear();
-            
+
             // Pattern name
             var nameLabel = new Label(SanitizeText(pattern.Name), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Cyan });
             _contentTable.Add(nameLabel).Left();
             _contentTable.Row();
-            
+
             // Instance count and multiplier
             var instanceText = $"Active: {instanceCount}x (Multiplier: {multiplier:F2}x)";
             var instanceLabel = new Label(SanitizeText(instanceText), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.LightGreen });
             _contentTable.Add(instanceLabel).Left();
             _contentTable.Row();
-            
+
             // Description
             if (!string.IsNullOrEmpty(pattern.Description))
             {
@@ -129,7 +129,7 @@ namespace PitHero.UI
                 _contentTable.Add(descLabel).Width(200f).Left().SetPadTop(5f).SetPadBottom(5f);
                 _contentTable.Row();
             }
-            
+
             // Show effects
             var effects = pattern.Effects;
             if (effects.Count > 0)
@@ -137,7 +137,7 @@ namespace PitHero.UI
                 var effectsLabel = new Label("Effects:", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Yellow });
                 _contentTable.Add(effectsLabel).Left().SetPadTop(5f);
                 _contentTable.Row();
-                
+
                 for (int i = 0; i < effects.Count; i++)
                 {
                     var effect = effects[i];
@@ -150,22 +150,22 @@ namespace PitHero.UI
                     _contentTable.Row();
                 }
             }
-            
+
             // Note about temporary nature
             var noteLabel = new Label("(Active only while pattern is formed)", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Orange });
             _contentTable.Add(noteLabel).Left().SetPadTop(5f);
             _contentTable.Row();
-            
+
             _container.SetVisible(true);
             _container.Pack();
         }
-        
+
         /// <summary>Sanitizes text by removing or replacing unsupported characters.</summary>
         private string SanitizeText(string text)
         {
             if (string.IsNullOrEmpty(text))
                 return text;
-            
+
             // Replace common unsupported characters
             text = text.Replace('\u2022', '-');  // Bullet point •
             text = text.Replace('\u2013', '-');  // En dash –
@@ -175,23 +175,23 @@ namespace PitHero.UI
             text = text.Replace('\u201C', '"');  // Left double quote "
             text = text.Replace('\u201D', '"');  // Right double quote "
             text = text.Replace("\u2026", "..."); // Ellipsis …
-            
+
             // Filter out any remaining non-ASCII characters that might not be in the font
             var result = new System.Text.StringBuilder();
             foreach (char c in text)
             {
                 // Keep alphanumeric, common punctuation, and whitespace
-                if (char.IsLetterOrDigit(c) || 
-                    char.IsWhiteSpace(c) || 
+                if (char.IsLetterOrDigit(c) ||
+                    char.IsWhiteSpace(c) ||
                     ".,!?()-+:;/%*#@[]{}|<>=_&$\"'".Contains(c))
                 {
                     result.Append(c);
                 }
             }
-            
+
             return result.ToString();
         }
-        
+
         /// <summary>
         /// Positions the tooltip near the mouse cursor while keeping it within stage bounds.
         /// </summary>
@@ -203,60 +203,60 @@ namespace PitHero.UI
         {
             if (stage == null || _container == null)
                 return;
-            
+
             // Make sure container is packed to get accurate size
             _container.Pack();
-            
+
             float tooltipWidth = _container.GetWidth();
             float tooltipHeight = _container.GetHeight();
             float stageWidth = stage.GetWidth();
             float stageHeight = stage.GetHeight();
-            
+
             // Start with default position (cursor + offset)
             float x = mousePos.X + offsetX;
             float y = mousePos.Y + offsetY;
-            
+
             // Check right edge
             if (x + tooltipWidth > stageWidth)
             {
                 // Position to the left of cursor instead
                 x = mousePos.X - tooltipWidth - 10f;
-                
+
                 // If still off screen, clamp to right edge
                 if (x < 0)
                 {
                     x = stageWidth - tooltipWidth - 5f;
                 }
             }
-            
+
             // Check left edge
             if (x < 0)
             {
                 x = 5f; // Small margin from left edge
             }
-            
+
             // Check bottom edge
             if (y + tooltipHeight > stageHeight)
             {
                 // Position above cursor instead
                 y = mousePos.Y - tooltipHeight - 10f;
-                
+
                 // If still off screen, clamp to bottom edge
                 if (y < 0)
                 {
                     y = stageHeight - tooltipHeight - 5f;
                 }
             }
-            
+
             // Check top edge
             if (y < 0)
             {
                 y = 5f; // Small margin from top edge
             }
-            
+
             _container.SetPosition(x, y);
         }
-        
+
         public Window GetContainer() => _container;
     }
 }

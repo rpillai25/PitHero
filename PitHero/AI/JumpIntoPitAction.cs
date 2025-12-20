@@ -2,7 +2,6 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.ECS.Components;
 using PitHero.Util;
-using RolePlayingFramework.Heroes;
 
 namespace PitHero.AI
 {
@@ -14,13 +13,13 @@ namespace PitHero.AI
         private bool _isJumping = false;
         private bool _jumpFinished = false;
         private Point _plannedTargetTile;
-        
+
         public JumpIntoPitAction() : base(GoapConstants.JumpIntoPitAction, 1)
         {
             // Precondition: Hero and pit must be initialized
             SetPrecondition(GoapConstants.HeroInitialized, true);
             SetPrecondition(GoapConstants.PitInitialized, true);
-            
+
             // Postcondition: Hero enters pit
             SetPostcondition(GoapConstants.InsidePit, true);
         }
@@ -53,7 +52,7 @@ namespace PitHero.AI
                 tileMover?.UpdateTriggersAfterTeleport();
 
                 hero.InsidePit = true;
-                
+
                 // Log hero tile position at end of execution
                 var endTile = currentTile;
                 Debug.Log($"[JumpIntoPit] Hero tile position at end of execution: X={endTile.X}, Y={endTile.Y}");
@@ -62,8 +61,8 @@ namespace PitHero.AI
             }
 
             // Log hero tile position at start of execution
-            var currentStartTile = hero.Entity.GetComponent<TileByTileMover>()?.GetCurrentTileCoordinates() 
-                ?? new Point((int)(hero.Entity.Transform.Position.X / GameConfig.TileSize), 
+            var currentStartTile = hero.Entity.GetComponent<TileByTileMover>()?.GetCurrentTileCoordinates()
+                ?? new Point((int)(hero.Entity.Transform.Position.X / GameConfig.TileSize),
                            (int)(hero.Entity.Transform.Position.Y / GameConfig.TileSize));
             Debug.Log($"[JumpIntoPit] Hero tile position at start of execution: X={currentStartTile.X}, Y={currentStartTile.Y}");
 
@@ -80,7 +79,7 @@ namespace PitHero.AI
             StartJumpMovement(hero, _plannedTargetTile);
             _isJumping = true;
             _jumpFinished = false;
-            
+
             Debug.Log($"[JumpIntoPit] Started jump to tile {_plannedTargetTile.X},{_plannedTargetTile.Y}");
             return false; // Action in progress
         }
@@ -101,7 +100,7 @@ namespace PitHero.AI
         {
             var targetPosition = TileToWorldPosition(targetTile);
             var entity = hero.Entity;
-            
+
             // Start the movement coroutine
             Core.StartCoroutine(JumpMovementCoroutine(entity, targetPosition, GameConfig.HeroJumpSpeed));
         }
@@ -114,7 +113,7 @@ namespace PitHero.AI
             var startPosition = entity.Transform.Position;
             var distance = Vector2.Distance(startPosition, targetPosition);
             var duration = distance / (tilesPerSecond * GameConfig.TileSize); // Convert tiles per second to pixels per second
-            
+
             // Start jump animation - determine direction from start to target
             var jumpDirection = GetJumpDirection(startPosition, targetPosition);
             var jumpAnimComponent = entity.GetComponent<HeroJumpComponent>();
@@ -122,29 +121,29 @@ namespace PitHero.AI
             {
                 jumpAnimComponent.StartJump(jumpDirection, duration);
             }
-            
+
             var elapsed = 0f;
-            
+
             while (elapsed < duration)
             {
                 elapsed += Time.DeltaTime;
                 var progress = elapsed / duration;
-                
+
                 // Smooth interpolation
                 entity.Transform.Position = Vector2.Lerp(startPosition, targetPosition, progress);
-                
+
                 yield return null; // Wait for next frame
             }
-            
+
             // Ensure we end exactly at target
             entity.Transform.Position = targetPosition;
-            
+
             // End jump animation
             if (jumpAnimComponent != null)
             {
                 jumpAnimComponent.EndJump();
             }
-            
+
             // Snap to tile grid for precision
             var tileMover = entity.GetComponent<TileByTileMover>();
             if (tileMover != null)
@@ -182,7 +181,7 @@ namespace PitHero.AI
         private Direction GetJumpDirection(Vector2 startPosition, Vector2 targetPosition)
         {
             var delta = targetPosition - startPosition;
-            
+
             // Since we're jumping into the pit from the right, this should be left
             if (System.Math.Abs(delta.X) > System.Math.Abs(delta.Y))
             {

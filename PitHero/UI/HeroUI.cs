@@ -1,10 +1,10 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
-using PitHero.Services;
-using System.Collections.Generic;
 using PitHero.ECS.Components;
+using PitHero.Services;
 using RolePlayingFramework.Equipment;
+using System.Collections.Generic;
 
 namespace PitHero.UI
 {
@@ -15,7 +15,7 @@ namespace PitHero.UI
     {
         private Stage _stage;
         private HoverableImageButton _heroButton;
-        
+
         private ImageButtonStyle _heroNormalStyle;
         private ImageButtonStyle _heroHalfStyle;
         private enum HeroMode { Normal, Half }
@@ -29,38 +29,38 @@ namespace PitHero.UI
         private Tab _prioritiesTab;
         private Tab _crystalTab;
         private bool _windowVisible = false;
-        
+
         // Inventory tab content
         private InventoryGrid _inventoryGrid;
         private TextButton _viewStencilsButton;
         private TextButton _moveStencilsButton;
         private TextButton _removeStencilButton;
-        
+
         // Stencil system
         private StencilLibraryPanel _stencilLibraryPanel;
         private List<RolePlayingFramework.Synergies.SynergyPattern> _allSynergyPatterns;
-        
+
         // Item card for selection only (hover uses tooltip)
         private ItemCard _selectedItemCard;
-        
+
         // Tooltip for hovering over items
         private ItemCardTooltip _itemTooltip;
-        
+
         // Tooltip for showing equip preview comparison
         private EquipPreviewTooltip _equipPreviewTooltip;
-        
+
         // Priority reorder components (moved to priorities tab)
         private ReorderableTableList<string> _priorityList;
         private List<string> _priorityItems;
-        
+
         // Hero Crystal tab component
         private HeroCrystalTab _heroCrystalTab;
 
-        public HeroUI() 
+        public HeroUI()
         {
             // Initialize all synergy patterns - must include ALL patterns for proper sprite display
             _allSynergyPatterns = new List<RolePlayingFramework.Synergies.SynergyPattern>();
-            
+
             // Knight patterns
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateHolyStrike());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateIaidoSlash());
@@ -72,7 +72,7 @@ namespace PitHero.UI
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateBerserkerRage());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateShieldMastery());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateHeavyFortification());
-            
+
             // Mage patterns
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateMeteor());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateShadowBolt());
@@ -83,7 +83,7 @@ namespace PitHero.UI
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateSpellWeaving());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateManaConvergence());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateRodFocus());
-            
+
             // Priest patterns
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateAuraHeal());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreatePurify());
@@ -94,7 +94,7 @@ namespace PitHero.UI
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateHolyAura());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateSanctifiedMind());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateDivineVestments());
-            
+
             // Monk patterns
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateDragonClaw());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateEnergyBurst());
@@ -105,7 +105,7 @@ namespace PitHero.UI
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateKiMastery());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateEvasionTraining());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateBalanceTraining());
-            
+
             // Thief patterns
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreateSmokeBomb());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreatePoisonArrow());
@@ -115,7 +115,7 @@ namespace PitHero.UI
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreateLockpicking());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreateTrapMastery());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreateAssassinsEdge());
-            
+
             // Bowman patterns
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreatePiercingArrow());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreateLightshot());
@@ -125,7 +125,7 @@ namespace PitHero.UI
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreateSharpAim());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreateRangersPath());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreateWindArcher());
-            
+
             // Cross-class patterns
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateSacredBlade());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateFlashStrike());
@@ -212,12 +212,12 @@ namespace PitHero.UI
         {
             _selectedItemCard = new ItemCard(skin);
             _selectedItemCard.SetVisible(false);
-            
+
             // Create a dummy element for the tooltip target (the tooltip will follow the cursor)
             var dummyTarget = new Element();
             dummyTarget.SetSize(0, 0);
             _itemTooltip = new ItemCardTooltip(dummyTarget, skin);
-            
+
             // Create equip preview tooltip
             var dummyTarget2 = new Element();
             dummyTarget2.SetSize(0, 0);
@@ -239,7 +239,7 @@ namespace PitHero.UI
         private void PopulateInventoryTab(Tab inventoryTab, Skin skin)
         {
             var container = new Table();
-            
+
             _inventoryGrid = new InventoryGrid();
             _inventoryGrid.OnItemHovered += HandleItemHovered;
             _inventoryGrid.OnItemUnhovered += HandleItemUnhovered;
@@ -247,53 +247,53 @@ namespace PitHero.UI
             _inventoryGrid.OnItemDeselected += HandleItemDeselected;
             _inventoryGrid.OnStencilRemovalRequested += HandleStencilRemovalRequested;
             _inventoryGrid.OnSynergiesChanged += HandleSynergiesChanged;
-            
+
             // Initialize context menu
             _inventoryGrid.InitializeContextMenu(_stage, skin);
-            
+
             var heroComponent = GetHeroComponent();
             if (heroComponent != null)
                 _inventoryGrid.ConnectToHero(heroComponent);
-            
+
             // Create scroll pane for inventory grid
             var scrollPane = new ScrollPane(_inventoryGrid, skin);
             scrollPane.SetScrollingDisabled(true, false);
-            
+
             container.Add(scrollPane).Expand().Fill().Pad(10f);
             container.Row();
-            
+
             // Add stencil control buttons
             var buttonTable = new Table();
             buttonTable.Pad(5f);
-            
+
             _viewStencilsButton = new TextButton("View Stencils", skin);
             _viewStencilsButton.OnClicked += HandleViewStencilsClicked;
             buttonTable.Add(_viewStencilsButton).Width(120f).Height(30f).Pad(5f);
-            
+
             _moveStencilsButton = new TextButton("Move Stencils", skin);
             _moveStencilsButton.OnClicked += HandleMoveStencilsClicked;
             buttonTable.Add(_moveStencilsButton).Width(120f).Height(30f).Pad(5f);
-            
+
             _removeStencilButton = new TextButton("Remove Stencil", skin);
             _removeStencilButton.OnClicked += HandleRemoveStencilClicked;
             buttonTable.Add(_removeStencilButton).Width(120f).Height(30f).Pad(5f);
-            
+
             container.Add(buttonTable).Fill();
-            
+
             inventoryTab.Add(container).Expand().Fill();
-            
+
             // Create stencil library panel
             _stencilLibraryPanel = new StencilLibraryPanel(skin);
             _stencilLibraryPanel.OnStencilActivated += HandleStencilActivated;
             _stencilLibraryPanel.SetVisible(false);
         }
-        
+
         private void HandleStencilRemovalRequested(PlacedStencil stencil)
         {
             // Show confirmation dialog immediately when stencil is clicked
             ShowRemoveStencilConfirmation(stencil);
         }
-        
+
         private void HandleSynergiesChanged()
         {
             // Refresh Hero Crystal tab when synergies change
@@ -304,7 +304,7 @@ namespace PitHero.UI
                 Debug.Log("[HeroUI] Refreshed Hero Crystal tab after synergies changed");
             }
         }
-        
+
         private void HandleViewStencilsClicked(Button button)
         {
             if (_stencilLibraryPanel != null && !_stencilLibraryPanel.IsVisible())
@@ -316,13 +316,13 @@ namespace PitHero.UI
                     // Refresh to show any newly discovered stencils
                     _stencilLibraryPanel.Refresh();
                 }
-                
+
                 _stencilLibraryPanel.SetPosition(100f, 100f);
                 _stage.AddElement(_stencilLibraryPanel);
                 _stencilLibraryPanel.SetVisible(true);
             }
         }
-        
+
         private void HandleMoveStencilsClicked(Button button)
         {
             if (_inventoryGrid != null)
@@ -333,10 +333,10 @@ namespace PitHero.UI
                     _inventoryGrid.SetRemoveStencilsMode(false);
                     _removeStencilButton.SetText("Remove Stencil");
                 }
-                
+
                 bool newMode = !_inventoryGrid.IsMoveStencilsModeActive();
                 _inventoryGrid.SetMoveStencilsMode(newMode);
-                
+
                 // Update button appearance to show mode
                 if (newMode)
                 {
@@ -348,7 +348,7 @@ namespace PitHero.UI
                 }
             }
         }
-        
+
         private void HandleRemoveStencilClicked(Button button)
         {
             if (_inventoryGrid != null)
@@ -359,10 +359,10 @@ namespace PitHero.UI
                     _inventoryGrid.SetMoveStencilsMode(false);
                     _moveStencilsButton.SetText("Move Stencils");
                 }
-                
+
                 // Check if we're currently in remove mode
                 bool currentlyInRemoveMode = _inventoryGrid.IsRemoveStencilsModeActive();
-                
+
                 if (!currentlyInRemoveMode)
                 {
                     // Entering remove mode
@@ -372,7 +372,7 @@ namespace PitHero.UI
                         Debug.Log("No stencils to remove");
                         return;
                     }
-                    
+
                     // Activate remove mode - user must now click a stencil
                     _inventoryGrid.SetRemoveStencilsMode(true);
                     _removeStencilButton.SetText("Exit Remove Mode");
@@ -387,18 +387,18 @@ namespace PitHero.UI
                 }
             }
         }
-        
+
         private void ShowRemoveStencilConfirmation(PlacedStencil stencil)
         {
             var skin = Skin.CreateDefaultSkin();
             var message = $"Remove stencil '{stencil.Pattern.Name}'?";
-            
-            var dialog = new ConfirmationDialog("Remove Stencil", message, skin, 
+
+            var dialog = new ConfirmationDialog("Remove Stencil", message, skin,
                 onYes: () =>
                 {
                     _inventoryGrid.RemoveStencil(stencil);
                     Debug.Log($"Removed stencil: {stencil.Pattern.Name}");
-                    
+
                     // Exit remove mode after removal
                     _inventoryGrid.SetRemoveStencilsMode(false);
                     _removeStencilButton.SetText("Remove Stencil");
@@ -408,10 +408,10 @@ namespace PitHero.UI
                     // If user cancels, stay in remove mode so they can try again
                     Debug.Log("Stencil removal cancelled");
                 });
-            
+
             dialog.Show(_stage);
         }
-        
+
         private void ShowStencilSelectionDialog()
         {
             // For now, just remove the first stencil with confirmation
@@ -421,14 +421,14 @@ namespace PitHero.UI
                 ShowRemoveStencilConfirmation(placedStencils[0]);
             }
         }
-        
+
         private void HandleStencilActivated(RolePlayingFramework.Synergies.SynergyPattern pattern)
         {
             if (_inventoryGrid != null)
             {
                 // Try to find the first empty inventory slot (row 2+, any column)
                 Point? targetAnchor = FindFirstEmptyInventorySlot();
-                
+
                 if (!targetAnchor.HasValue)
                 {
                     // No empty slots found, use default position (top-left of inventory area, row 2)
@@ -439,24 +439,24 @@ namespace PitHero.UI
                 {
                     Debug.Log($"Found empty inventory slot at ({targetAnchor.Value.X},{targetAnchor.Value.Y}) for stencil placement");
                 }
-                
+
                 _inventoryGrid.PlaceStencil(pattern, targetAnchor.Value);
                 Debug.Log($"Activated stencil: {pattern.Name}");
             }
         }
-        
+
         /// <summary>Finds the first empty inventory slot in the grid.</summary>
         private Point? FindFirstEmptyInventorySlot()
         {
             if (_inventoryGrid == null) return null;
-            
+
             // Get the available slot from the inventory grid
             var availableSlot = _inventoryGrid.FindNextAvailableSlot();
             if (availableSlot != null)
             {
                 return new Point(availableSlot.X, availableSlot.Y);
             }
-            
+
             return null;
         }
 
@@ -466,7 +466,7 @@ namespace PitHero.UI
             _priorityList = new ReorderableTableList<string>(skin, _priorityItems, OnPriorityReordered);
             prioritiesTab.Add(_priorityList).Expand().Fill().Pad(15f);
         }
-        
+
         private void PopulateCrystalTab(Tab crystalTab, Skin skin)
         {
             _heroCrystalTab = new HeroCrystalTab();
@@ -511,7 +511,7 @@ namespace PitHero.UI
                 var heroComponent = GetHeroComponent();
                 if (heroComponent != null && _inventoryGrid != null)
                     _inventoryGrid.ConnectToHero(heroComponent);
-                
+
                 // Update Hero Crystal tab with current hero
                 if (heroComponent != null && _heroCrystalTab != null)
                     _heroCrystalTab.UpdateWithHero(heroComponent);
@@ -611,17 +611,17 @@ namespace PitHero.UI
         public void Update()
         {
             UpdateButtonStyleIfNeeded();
-            
+
             // Note: Keyboard shortcuts are now handled by ShortcutBar in MainGameScene
-            
-            if (_windowVisible && _inventoryGrid != null) 
+
+            if (_windowVisible && _inventoryGrid != null)
             {
                 // Update tooltip position if visible
                 if (_itemTooltip != null && _itemTooltip.GetContainer().HasParent())
                 {
                     var mousePos = _stage.GetMousePosition();
                     _itemTooltip.GetContainer().SetPosition(mousePos.X + 10, mousePos.Y + 10);
-                    
+
                     // Update equip preview tooltip position if visible
                     if (_equipPreviewTooltip != null && _equipPreviewTooltip.GetContainer().HasParent())
                     {
@@ -631,7 +631,7 @@ namespace PitHero.UI
                         _equipPreviewTooltip.GetContainer().SetPosition(previewX, previewY);
                     }
                 }
-                
+
                 // Update hero crystal tab tooltip
                 if (_heroCrystalTab != null)
                     _heroCrystalTab.Update();
@@ -655,19 +655,19 @@ namespace PitHero.UI
         private void HandleItemHovered(IItem item)
         {
             if (item == null) return;
-          
+
             // Show tooltip at cursor position
             _itemTooltip.ShowItem(item);
             if (_itemTooltip.GetContainer().GetParent() == null)
             {
                 _stage.AddElement(_itemTooltip.GetContainer());
             }
-            
+
             // Position tooltip at mouse cursor
             var mousePos = _stage.GetMousePosition();
             _itemTooltip.GetContainer().SetPosition(mousePos.X + 10, mousePos.Y + 10);
             _itemTooltip.GetContainer().ToFront();
-            
+
             // Show equip preview tooltip if item is qualifying gear
             if (item is IGear hoveredGear)
             {
@@ -690,7 +690,7 @@ namespace PitHero.UI
                         {
                             _stage.AddElement(_equipPreviewTooltip.GetContainer());
                         }
-                        
+
                         // Position equip preview tooltip to the right of item tooltip
                         var itemTooltipContainer = _itemTooltip.GetContainer();
                         float previewX = itemTooltipContainer.GetX() + itemTooltipContainer.GetWidth() + 5;
@@ -716,10 +716,10 @@ namespace PitHero.UI
         private IGear GetCurrentlyEquippedGear(IGear hoveredGear, RolePlayingFramework.Heroes.Hero hero)
         {
             if (hoveredGear == null || hero == null) return null;
-            
+
             // Determine which slot this gear would equip to
             var kind = hoveredGear.Kind;
-            
+
             if (kind == ItemKind.HatHelm || kind == ItemKind.HatHeadband || kind == ItemKind.HatWizard || kind == ItemKind.HatPriest)
             {
                 return hero.Hat as IGear;
@@ -741,7 +741,7 @@ namespace PitHero.UI
                 // For accessories do not show preview
                 return null;
             }
-            
+
             return null;
         }
 

@@ -1,7 +1,7 @@
-using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Sprites;
+using System.Collections.Generic;
 
 namespace PitHero.ECS.Components
 {
@@ -79,7 +79,7 @@ namespace PitHero.ECS.Components
             {
                 InitializeAnimators();
             }
-            
+
             foreach (var animator in _heroAnimators)
             {
                 animator?.SetColor(color);
@@ -145,7 +145,7 @@ namespace PitHero.ECS.Components
 
             // Use the first animator for offset tracking (they should all have the same offset)
             _initialYOffset = _heroAnimators[0].LocalOffset.Y;
-            
+
             // Start jump animation on all layers
             foreach (var animator in _heroAnimators)
             {
@@ -201,7 +201,7 @@ namespace PitHero.ECS.Components
             {
                 InitializeAnimators();
             }
-            
+
             if (_heroAnimators.Count == 0) return;
             if (progress < 0f) progress = 0f;
             if (progress > 1f) progress = 1f;
@@ -209,7 +209,7 @@ namespace PitHero.ECS.Components
             var t = progress;
             var heightFactor = 4f * t * (1f - t);
             var yOffset = _initialYOffset - (MAX_JUMP_HEIGHT_PX * heightFactor);
-            
+
             // Update offset for all layers
             foreach (var animator in _heroAnimators)
             {

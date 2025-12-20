@@ -1,9 +1,8 @@
 using Microsoft.Xna.Framework;
 using Nez;
-using Nez.UI;
 using Nez.BitmapFonts;
+using Nez.UI;
 using RolePlayingFramework.Equipment;
-using RolePlayingFramework.Stats;
 using System;
 
 namespace PitHero.UI
@@ -13,7 +12,7 @@ namespace PitHero.UI
     {
         private const float CARD_PADDING = 5f;
         private const float LINE_SPACING = 2f;
-        
+
         private IItem _item;
         private Table _contentTable;
         private Container _wrapper;
@@ -27,11 +26,11 @@ namespace PitHero.UI
             // Create wrapper with background and padding
             _wrapper = new Container(_contentTable);
             _wrapper.SetBackground(skin.Get<WindowStyle>().Background);
-            
+
             // Add padding around content
             var wrapperTable = new Table();
             wrapperTable.Add(_wrapper).Pad(CARD_PADDING);
-            
+
             // Set the wrapper as the tooltip content
             _container.SetElement(wrapperTable);
             _container.SetTouchable(Touchable.Disabled);

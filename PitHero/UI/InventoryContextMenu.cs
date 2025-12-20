@@ -1,5 +1,4 @@
 using Microsoft.Xna.Framework;
-using Nez;
 using Nez.UI;
 using RolePlayingFramework.Equipment;
 

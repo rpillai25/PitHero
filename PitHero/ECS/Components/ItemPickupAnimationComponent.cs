@@ -16,7 +16,7 @@ namespace PitHero.ECS.Components
         private float _animationDuration = 1.0f; // 1 second animation
         private float _elapsedTime;
         private bool _animationComplete = false;
-        
+
         public ItemPickupAnimationComponent(IItem item)
         {
             _item = item;
@@ -37,7 +37,7 @@ namespace PitHero.ECS.Components
             {
                 var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
                 var itemSprite = itemsAtlas?.GetSprite(_item.Name);
-                
+
                 if (itemSprite != null)
                 {
                     _renderer = Entity.AddComponent(new SpriteRenderer(itemSprite));

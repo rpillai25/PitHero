@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Combat
     {
         /// <summary>The element type of this entity, gear, or skill.</summary>
         public ElementType Element { get; }
-        
+
         /// <summary>
         /// Dictionary of elemental resistances and weaknesses.
         /// Positive values indicate resistance (damage reduction), negative values indicate weakness (damage increase).

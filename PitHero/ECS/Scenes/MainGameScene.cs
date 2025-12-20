@@ -9,7 +9,6 @@ using PitHero.Services;
 using PitHero.UI;
 using PitHero.Util;
 using RolePlayingFramework.Heroes;
-using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Jobs.Primary;
 using RolePlayingFramework.Stats;
 
@@ -108,7 +107,7 @@ namespace PitHero.ECS.Scenes
                 pitWidthManager.SetPitLevel(1);
 
             SpawnHero();
-            
+
             // Connect shortcut bar to hero
             ConnectShortcutBarToHero();
 
@@ -137,7 +136,7 @@ namespace PitHero.ECS.Scenes
             fogLayerRenderer.SetRenderLayer(GameConfig.RenderLayerFogOfWar);
 
             _cameraController?.ConfigureZoomForMap(_mapPath);
-            
+
             // Initialize pit width manager after map and services are set up
             SetupPitWidthManager();
         }
@@ -154,10 +153,10 @@ namespace PitHero.ECS.Scenes
         {
             var pitEntity = CreateEntity("pit");
             pitEntity.SetTag(GameConfig.TAG_PIT); // Make sure this is set!
-            
+
             // Calculate pit bounds in world coordinates with padding
             var pitWorldBounds = CalculatePitWorldBounds();
-            
+
             // Position the pit entity at the center of the bounds
             pitEntity.SetPosition(pitWorldBounds.Center.ToVector2());
 
@@ -176,7 +175,7 @@ namespace PitHero.ECS.Scenes
 
             Debug.Log($"[MainGameScene] Created pit entity with Tag={pitEntity.Tag} at position {pitEntity.Transform.Position.X},{pitEntity.Transform.Position.Y}");
             Debug.Log($"[MainGameScene] Pit trigger collider bounds: X={pitWorldBounds.X}, Y={pitWorldBounds.Y}, Width={pitWorldBounds.Width}, Height={pitWorldBounds.Height}");
-            
+
             // Do NOT add synthetic pit walls here. Collision layer + generated obstacles will populate walls.
         }
 
@@ -217,15 +216,15 @@ namespace PitHero.ECS.Scenes
 
             var minHeroTileX = rightmostPitTile + 8; // 20
             var maxHeroTileX = 50; // Leave some space from map edge
-            
+
             var heroTileX = Random.Range(minHeroTileX, maxHeroTileX + 1);
             var heroTileY = 6;
-            
+
             var heroStart = new Vector2(
                 heroTileX * GameConfig.TileSize + GameConfig.TileSize / 2,
                 heroTileY * GameConfig.TileSize + GameConfig.TileSize / 2
             );
-            
+
             var hero = CreateEntity("hero").SetPosition(heroStart);
             hero.SetTag(GameConfig.TAG_HERO); // Make sure this is set!
 
@@ -237,7 +236,7 @@ namespace PitHero.ECS.Scenes
 
             // Add all paperdoll layer animators in the correct order (Hand2 to Hand1)
             var offset = new Vector2(0, -GameConfig.TileSize / 2); // Offset so feet are at entity position
-            
+
             // Body layer
             var heroBodyAnimator = hero.AddComponent(new HeroBodyAnimationComponent(GameConfig.SkinColors.RandomItem()));
             heroBodyAnimator.SetRenderLayer(GameConfig.RenderLayerHeroBody);
@@ -253,17 +252,17 @@ namespace PitHero.ECS.Scenes
             var heroPantsAnimator = hero.AddComponent(new HeroPantsAnimationComponent(Color.White));
             heroPantsAnimator.SetRenderLayer(GameConfig.RenderLayerHeroPants);
             heroPantsAnimator.SetLocalOffset(offset);
-            
+
             // Shirt layer
             var heroShirtAnimator = hero.AddComponent(new HeroShirtAnimationComponent(GameConfig.ShirtColors.RandomItem()));
             heroShirtAnimator.SetRenderLayer(GameConfig.RenderLayerHeroShirt);
             heroShirtAnimator.SetLocalOffset(offset);
-            
+
             // Hair layer
             var heroHairAnimator = hero.AddComponent(new HeroHairAnimationComponent(GameConfig.HairColors.RandomItem()));
             heroHairAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHair);
             heroHairAnimator.SetLocalOffset(offset);
-            
+
             // Hand1 layer (bottom-most paperdoll layer)
             var heroHand1Animator = hero.AddComponent(new HeroHand1AnimationComponent(heroBodyAnimator.ComponentColor));
             heroHand1Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand1);
@@ -298,26 +297,26 @@ namespace PitHero.ECS.Scenes
 
             // Create the linked Hero from the crystal
             heroComponent.LinkedHero = new RolePlayingFramework.Heroes.Hero("Test Hero", testJob, 1, baseStats, testCrystal);
-            
+
             Debug.Log($"[MainGameScene] Created test hero with Level {heroComponent.LinkedHero.Level}, HP {heroComponent.LinkedHero.CurrentHP}/{heroComponent.LinkedHero.MaxHP}");
-            
+
             // Add BouncyDigitComponent for damage display (RenderLayerUI, disabled initially)
             var heroBouncyDigit = hero.AddComponent(new BouncyDigitComponent());
             heroBouncyDigit.SetRenderLayer(GameConfig.RenderLayerLowest);
             heroBouncyDigit.SetEnabled(false);
-            
+
             // Add BouncyTextComponent for miss display (RenderLayerUI, disabled initially)
             var heroBouncyText = hero.AddComponent(new BouncyTextComponent());
             heroBouncyText.SetRenderLayer(GameConfig.RenderLayerLowest);
             heroBouncyText.SetEnabled(false);
-            
+
             // Add action queue visualization component
             var actionQueueViz = hero.AddComponent(new ActionQueueVisualizationComponent());
             actionQueueViz.SetRenderLayer(GameConfig.RenderLayerLowest);
-            
+
             hero.AddComponent(new Historian());
             hero.AddComponent(new HeroStateMachine());
-            
+
             // Force pathfinding initialization to complete before adding obstacles
             // OnAddedToEntity() is called automatically by the framework after this method completes
             // But we need to explicitly wait for pathfinding to be ready
@@ -330,13 +329,13 @@ namespace PitHero.ECS.Scenes
         private System.Collections.IEnumerator AddObstaclesAfterPathfindingReady(Entity hero)
         {
             var heroComponent = hero.GetComponent<HeroComponent>();
-            
+
             // Wait until pathfinding is initialized
             while (heroComponent != null && !heroComponent.IsPathfindingInitialized)
             {
                 yield return null; // Wait one frame
             }
-            
+
             // Now add existing obstacles to the pathfinding graph
             AddExistingObstaclesToHeroPathfinding(hero);
         }
@@ -423,7 +422,7 @@ namespace PitHero.ECS.Scenes
             _heroHpLabel = uiCanvas.Stage.AddElement(new Label("HP: 100", _hudFontNormal));
             _heroHpLabel.SetStyle(_heroHpStyleNormal);
             _heroHpLabel.SetPosition(HeroHpLabelBaseX, PitLabelBaseY);
-            
+
             // Shortcut bar at bottom center
             _shortcutBar = new ShortcutBar();
             uiCanvas.Stage.AddElement(_shortcutBar);
@@ -508,7 +507,7 @@ namespace PitHero.ECS.Scenes
                 return;
 
             var linkedHero = heroComponent.LinkedHero;
-            
+
             // Update hero level if changed
             if (linkedHero.Level != _lastDisplayedHeroLevel)
             {
@@ -554,7 +553,7 @@ namespace PitHero.ECS.Scenes
                 _pitLevelLabel.Invalidate();
                 _heroLevelLabel.Invalidate();
                 _heroHpLabel.Invalidate();
-                
+
                 // Update shortcut bar position and scale when mode changes
                 PositionShortcutBar();
             }
@@ -563,7 +562,7 @@ namespace PitHero.ECS.Scenes
             int yOffset = 0;
             int heroLevelXOffset = 0;
             int heroHpXOffset = 0;
-            
+
             switch (_currentHudMode)
             {
                 case HudMode.Half:
@@ -578,30 +577,30 @@ namespace PitHero.ECS.Scenes
                     heroHpXOffset = 0;
                     break;
             }
-            
+
             // Only update positions if changed to avoid redundant property sets
             float targetY = PitLabelBaseY + yOffset;
             float targetHeroLevelX = HeroLevelLabelBaseX + heroLevelXOffset;
             float targetHeroHpX = HeroHpLabelBaseX + heroHpXOffset;
-            
+
             if (System.Math.Abs(_pitLevelLabel.GetY() - targetY) > 0.1f)
             {
                 _pitLevelLabel.SetY(targetY);
                 _heroLevelLabel.SetY(targetY);
                 _heroHpLabel.SetY(targetY);
             }
-            
+
             if (System.Math.Abs(_heroLevelLabel.GetX() - targetHeroLevelX) > 0.1f)
             {
                 _heroLevelLabel.SetX(targetHeroLevelX);
             }
-            
+
             if (System.Math.Abs(_heroHpLabel.GetX() - targetHeroHpX) > 0.1f)
             {
                 _heroHpLabel.SetX(targetHeroHpX);
             }
         }
-        
+
         /// <summary>
         /// Positions the shortcut bar at bottom center of screen based on current window mode
         /// </summary>
@@ -609,42 +608,42 @@ namespace PitHero.ECS.Scenes
         {
             if (_shortcutBar == null)
                 return;
-                
+
             // Determine scale and visibility based on window mode
             float scale = 1f;
             bool visible = true;
-            
+
             if (WindowManager.IsHalfHeightMode())
             {
                 // Scale 2x for Half mode
                 scale = 2f;
             }
-            
+
             _shortcutBar.SetVisible(visible);
             _shortcutBar.SetShortcutScale(scale);
-            
+
             if (visible)
             {
                 // Calculate bottom center position
                 // 8 slots * (32px slot size + 1px padding) * scale
                 float barWidth = 8 * (32f + 1f) * scale;
                 float barHeight = 32f * scale;
-                
+
                 float centerX = Screen.Width / 2f - barWidth / 2f;
                 // Add extra padding for shortcut number text below slots (14px for text + 2px offset = 16px total)
                 // Shift up by 16 pixels when in Half mode
                 float yOffset = WindowManager.IsHalfHeightMode() ? -16f : 0f;
                 float bottomY = Screen.Height - barHeight - 16f + yOffset;
-                
+
                 _shortcutBar.SetBasePosition(centerX, bottomY);
-                
+
                 // Offset left when inventory is open
                 bool inventoryOpen = _settingsUI?.HeroUI?.IsWindowVisible ?? false;
                 float offsetX = inventoryOpen ? -150f : 0f; // Offset left by 150px when inventory open
                 _shortcutBar.SetOffsetX(offsetX);
             }
         }
-        
+
         /// <summary>
         /// Connects the shortcut bar to the hero component and inventory grid
         /// </summary>
@@ -652,24 +651,24 @@ namespace PitHero.ECS.Scenes
         {
             if (_shortcutBar == null)
                 return;
-                
+
             var heroEntity = FindEntity("hero");
             if (heroEntity == null)
             {
                 Debug.Warn("[MainGameScene] Could not find hero entity to connect shortcut bar");
                 return;
             }
-            
+
             var heroComponent = heroEntity.GetComponent<HeroComponent>();
             if (heroComponent == null)
             {
                 Debug.Warn("[MainGameScene] Hero entity missing HeroComponent");
                 return;
             }
-            
+
             // Get the inventory grid from HeroUI
             var inventoryGrid = _settingsUI?.HeroUI?.GetInventoryGrid();
-            
+
             _shortcutBar.ConnectToHero(heroComponent, inventoryGrid);
             Debug.Log("[MainGameScene] Connected shortcut bar to hero and inventory grid");
         }
@@ -691,13 +690,13 @@ namespace PitHero.ECS.Scenes
             UpdatePitLevelLabel();
             UpdateHeroLabels();
             UpdateHudFontMode();
-            
+
             // Update shortcut bar position (handles offset when inventory open)
             PositionShortcutBar();
-            
+
             // Refresh shortcut bar to keep it in sync with inventory
             _shortcutBar?.RefreshItems();
-            
+
             // Handle keyboard shortcuts via shortcut bar
             _shortcutBar?.HandleKeyboardShortcuts();
         }

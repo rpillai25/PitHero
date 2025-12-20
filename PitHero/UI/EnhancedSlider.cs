@@ -1,5 +1,4 @@
 using Microsoft.Xna.Framework;
-using Nez;
 using Nez.UI;
 using System;
 
@@ -19,7 +18,7 @@ namespace PitHero.UI
         bool _mouseOver, _mouseDown;
         bool _isDragging = false;
         float _committedValue;
-        
+
         /// <summary>
         /// If true, value commitment is deferred until mouse release. If false, behaves like normal slider.
         /// </summary>
@@ -86,14 +85,14 @@ namespace PitHero.UI
             CalculatePositionAndValue(mousePos);
             _mouseDown = true;
             _isDragging = true;
-            
+
             // If not using deferred commit, commit immediately (normal slider behavior)
             if (!UseDeferredCommit)
             {
                 _committedValue = Value;
                 OnValueCommitted?.Invoke(_committedValue);
             }
-            
+
             return true;
         }
 
@@ -107,7 +106,7 @@ namespace PitHero.UI
             if (_isDragging)
             {
                 CalculatePositionAndValue(mousePos);
-                
+
                 // If not using deferred commit, commit immediately (normal slider behavior)
                 if (!UseDeferredCommit)
                 {
@@ -120,11 +119,11 @@ namespace PitHero.UI
         void IInputListener.OnLeftMouseUp(Vector2 mousePos)
         {
             _mouseDown = false;
-            
+
             if (_isDragging)
             {
                 _isDragging = false;
-                
+
                 // Always commit on mouse up (for both modes)
                 _committedValue = Value;
                 OnValueCommitted?.Invoke(_committedValue);

@@ -1,7 +1,7 @@
-using System.Collections.Generic;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Enemies;
 using RolePlayingFramework.Heroes;
+using System.Collections.Generic;
 
 namespace RolePlayingFramework.Skills
 {
@@ -13,14 +13,14 @@ namespace RolePlayingFramework.Skills
         {
             // Calculate battle stats for the hero
             var heroBattleStats = BattleStats.CalculateForHero(hero);
-            
+
             // Cast to EnhancedAttackResolver to use BattleStats overload
             var enhancedResolver = resolver as EnhancedAttackResolver;
             if (enhancedResolver == null)
             {
                 // Fallback to legacy method if not enhanced resolver
                 var stats = hero.GetTotalStats();
-                
+
                 // Hit primary target first
                 if (primary != null)
                 {
@@ -32,7 +32,7 @@ namespace RolePlayingFramework.Skills
                         primary.TakeDamage(damage);
                     }
                 }
-                
+
                 // Hit all surrounding enemies
                 for (int i = 0; i < surrounding.Count; i++)
                 {
@@ -48,7 +48,7 @@ namespace RolePlayingFramework.Skills
                 }
                 return "SpinSlash";
             }
-            
+
             // Hit primary target first
             if (primary != null)
             {
@@ -61,13 +61,13 @@ namespace RolePlayingFramework.Skills
                     primary.TakeDamage(damage);
                 }
             }
-            
+
             // Hit all surrounding enemies
             for (int i = 0; i < surrounding.Count; i++)
             {
                 var e = surrounding[i];
                 if (e == null) continue;
-                
+
                 var targetBattleStats = BattleStats.CalculateForMonster(e);
                 var res = enhancedResolver.Resolve(heroBattleStats, targetBattleStats, DamageKind.Physical);
                 if (res.Hit)
@@ -87,9 +87,9 @@ namespace RolePlayingFramework.Skills
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             if (primary == null) return "HeavyStrike";
-            
+
             var stats = hero.GetTotalStats();
-            
+
             // Cast to EnhancedAttackResolver to use BattleStats overload
             var enhancedResolver = resolver as EnhancedAttackResolver;
             if (enhancedResolver != null)

@@ -13,14 +13,14 @@ namespace RolePlayingFramework.Equipment
             {
                 bool hpRestored = false;
                 bool mpRestored = false;
-                
+
                 if (HPRestoreAmount < 0)
                     hpRestored = hero.RestoreHP(hero.MaxHP);
                 else
                     hpRestored = hero.RestoreHP(HPRestoreAmount);
-                
+
                 mpRestored = hero.RestoreMP(MPRestoreAmount);
-                
+
                 return hpRestored || mpRestored;
             }
             return false;

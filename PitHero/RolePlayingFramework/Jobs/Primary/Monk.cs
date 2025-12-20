@@ -1,6 +1,6 @@
-using System.Collections.Generic;
-using RolePlayingFramework.Stats;
 using RolePlayingFramework.Skills;
+using RolePlayingFramework.Stats;
+using System.Collections.Generic;
 
 namespace RolePlayingFramework.Jobs.Primary
 {

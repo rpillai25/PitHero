@@ -1,12 +1,9 @@
-using PitHero.ECS.Components;
-using RolePlayingFramework.Inventory;
-
 namespace RolePlayingFramework.Equipment
 {
     /// <summary>Base class for bag upgrade consumables.</summary>
     public abstract class Bag : Consumable
     {
-        protected Bag(string name, ItemRarity rarity, string description, int price) 
+        protected Bag(string name, ItemRarity rarity, string description, int price)
             : base(name, rarity, description, price)
         {
             StackSize = 1; // Bags don't stack

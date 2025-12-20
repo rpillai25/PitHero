@@ -1,4 +1,3 @@
-using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
 
@@ -27,7 +26,7 @@ namespace PitHero.UI
 
             // Check if mouse over state changed
             bool isMouseOver = _mouseOver; // Access the protected field from Button
-            
+
             if (isMouseOver && !_wasMouseOver)
             {
                 // Mouse entered
@@ -35,10 +34,10 @@ namespace PitHero.UI
                 {
                     // Calculate position with better centering using estimated text width
                     float estimatedTextWidth = EstimateTextWidth(_hoverText);
-                    
+
                     float hoverX = GetX() + (GetWidth() * 0.5f) - (estimatedTextWidth * 0.5f); // Center text properly
                     float hoverY = GetY() + GetHeight() + GetYPadding(); // Below button with proper padding
-                    
+
                     HoverTextManager.ShowHoverText(_hoverText, hoverX, hoverY);
                 }
             }

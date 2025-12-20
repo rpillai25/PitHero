@@ -26,7 +26,7 @@ namespace PitHero.VirtualGame
         }
 
         public VirtualActorState CurrentState { get; private set; } = VirtualActorState.Idle;
-        
+
         // Action tracking
         private HeroActionBase _currentAction;
 
@@ -60,10 +60,10 @@ namespace PitHero.VirtualGame
         private void UpdateIdleState()
         {
             var currentState = _hero.GetWorldState();
-            
+
             // Get goal state based on current progress
             var goalState = GetProgressiveGoalState(currentState);
-            
+
             if (goalState.Count == 0)
             {
                 Console.WriteLine("[VirtualStateMachine] No more goals to pursue");
@@ -72,7 +72,7 @@ namespace PitHero.VirtualGame
 
             // Plan action to achieve goal
             _currentAction = PlanNextAction(currentState, goalState);
-            
+
             if (_currentAction == null)
             {
                 Console.WriteLine("[VirtualStateMachine] No action plan found");
@@ -80,7 +80,7 @@ namespace PitHero.VirtualGame
             }
 
             Console.WriteLine($"[VirtualStateMachine] Planned action: {_currentAction.Name}");
-            
+
             // Go to PerformAction state to execute the action
             CurrentState = VirtualActorState.PerformAction;
         }
@@ -115,11 +115,11 @@ namespace PitHero.VirtualGame
         private Dictionary<string, bool> GetProgressiveGoalState(Dictionary<string, bool> currentState)
         {
             var goal = new Dictionary<string, bool>();
-            
+
             bool insidePit = currentState.ContainsKey(GoapConstants.InsidePit);
             bool exploredPit = currentState.ContainsKey(GoapConstants.ExploredPit);
             bool activatedWizardOrb = currentState.ContainsKey(GoapConstants.ActivatedWizardOrb);
-            
+
             if (!insidePit)
             {
                 goal[GoapConstants.InsidePit] = true;
@@ -136,7 +136,7 @@ namespace PitHero.VirtualGame
             {
                 goal[GoapConstants.OutsidePit] = true;
             }
-            
+
             return goal;
         }
 
@@ -148,7 +148,7 @@ namespace PitHero.VirtualGame
             bool insidePit = currentState.ContainsKey(GoapConstants.InsidePit);
             bool exploredPit = currentState.ContainsKey(GoapConstants.ExploredPit);
             bool activatedWizardOrb = currentState.ContainsKey(GoapConstants.ActivatedWizardOrb);
-            
+
             if (goalState.ContainsKey(GoapConstants.InsidePit) && !insidePit)
             {
                 return new JumpIntoPitAction();
@@ -165,7 +165,7 @@ namespace PitHero.VirtualGame
             {
                 return new JumpOutOfPitAction();
             }
-            
+
             return null;
         }
 
@@ -196,13 +196,13 @@ namespace PitHero.VirtualGame
         {
             var pitBounds = _world.PitBounds;
             var insidePos = new Point(pitBounds.X + 1, pitBounds.Y + 1);
-            
+
             Console.WriteLine($"[VirtualStateMachine] JumpIntoPit: From ({_hero.Position.X},{_hero.Position.Y}) to ({insidePos.X},{insidePos.Y})");
-            
+
             // Path to inside pit
             var path = _pathfinder.CalculatePath(_hero.Position, insidePos);
             Console.WriteLine($"[VirtualStateMachine] JumpIntoPit: Path calculated, length={path?.Count ?? 0}");
-            
+
             if (path != null && path.Count > 0)
             {
                 var target = path.Last();
@@ -219,7 +219,7 @@ namespace PitHero.VirtualGame
                 _hero.InsidePit = true;
                 Console.WriteLine($"[VirtualStateMachine] Hero jumped into pit at ({insidePos.X},{insidePos.Y}) via fallback");
             }
-            
+
             return true;
         }
 
@@ -230,7 +230,7 @@ namespace PitHero.VirtualGame
             if (wanderTarget.HasValue)
             {
                 var target = wanderTarget.Value;
-                
+
                 // Check if already at target
                 if (_hero.Position == target)
                 {
@@ -263,7 +263,7 @@ namespace PitHero.VirtualGame
             {
                 var target = connectivityTarget.Value;
                 Console.WriteLine($"[VirtualStateMachine] Connectivity check: moving to column {target.X} at ({target.X},{target.Y})");
-                
+
                 try
                 {
                     _hero.TeleportTo(target);
@@ -297,8 +297,8 @@ namespace PitHero.VirtualGame
                 for (int y = pitBounds.Y + 1; y < pitBounds.Bottom - 1; y++)
                 {
                     var tile = new Point(x, y);
-                    
-                    if (_world.HasFogOfWar(tile) && 
+
+                    if (_world.HasFogOfWar(tile) &&
                         !_failedWanderTargets.Contains(tile) &&
                         !_world.IsCollisionTile(tile))
                     {
@@ -316,21 +316,21 @@ namespace PitHero.VirtualGame
                     _failedWanderTargets.Clear();
                     return CalculatePitWanderPointLocation(); // Recursively retry
                 }
-                
+
                 Console.WriteLine("[VirtualStateMachine] No more fog tiles to explore - pit exploration complete");
                 return null;
             }
 
             var heroPos = _hero.Position;
-            
+
             // Systematic exploration: try to visit columns from left to right
             // Find the leftmost column that has fog candidates
             var leftmostColumn = candidates.Min(p => p.X);
             var leftmostCandidates = candidates.Where(p => p.X == leftmostColumn).ToList();
-            
+
             // Within the leftmost column, choose a central position for better coverage
             var target = leftmostCandidates.OrderBy(p => Math.Abs(p.Y - (pitBounds.Y + pitBounds.Height / 2))).First();
-            
+
             Console.WriteLine($"[VirtualStateMachine] Selected systematic wander target: ({target.X},{target.Y}) " +
                             $"from leftmost column {leftmostColumn} ({leftmostCandidates.Count} candidates in column, {candidates.Count} total)");
             return target;
@@ -345,7 +345,7 @@ namespace PitHero.VirtualGame
         private Point? CalculateConnectivityCheckTarget()
         {
             var pitBounds = _world.PitBounds;
-            
+
             // Update visited columns based on hero's current position
             if (pitBounds.Contains(_hero.Position))
             {
@@ -370,7 +370,7 @@ namespace PitHero.VirtualGame
 
             // Pick the leftmost unvisited column
             var targetColumn = unvisitedColumns.Min();
-            
+
             // Find a passable tile in this column (prefer middle of pit)
             for (int y = pitBounds.Y + pitBounds.Height / 2; y >= pitBounds.Y + 1 && y < pitBounds.Bottom - 1; y++)
             {
@@ -380,7 +380,7 @@ namespace PitHero.VirtualGame
                     return candidate;
                 }
             }
-            
+
             // If middle didn't work, try other positions in the column
             for (int y = pitBounds.Y + 1; y < pitBounds.Bottom - 1; y++)
             {
@@ -406,7 +406,7 @@ namespace PitHero.VirtualGame
                 Console.WriteLine("[VirtualStateMachine] Wizard orb activated");
                 return true;
             }
-            
+
             // Move to wizard orb first
             if (_world.WizardOrbPosition.HasValue)
             {
@@ -419,7 +419,7 @@ namespace PitHero.VirtualGame
                     Console.WriteLine($"[VirtualStateMachine] Moving to wizard orb at ({target.X},{target.Y})");
                 }
             }
-            
+
             return false; // Continue until at orb
         }
 
@@ -427,11 +427,11 @@ namespace PitHero.VirtualGame
         {
             var pitBounds = _world.PitBounds;
             var outsidePos = new Point(pitBounds.X - 1, pitBounds.Y + pitBounds.Height / 2);
-            
+
             _hero.TeleportTo(outsidePos); // Use teleport for action execution
             _hero.InsidePit = false;
             _hero.ResetWizardOrbStates();
-            
+
             Console.WriteLine($"[VirtualStateMachine] Hero jumped out of pit to ({outsidePos.X},{outsidePos.Y})");
             return true;
         }
@@ -445,7 +445,7 @@ namespace PitHero.VirtualGame
         {
             // Check if all fog in pit has been cleared (excluding collision tiles that hero can't reach)
             var pitBounds = _world.PitBounds;
-            
+
             for (int x = pitBounds.X + 1; x < pitBounds.Right - 1; x++)
             {
                 for (int y = pitBounds.Y + 1; y < pitBounds.Bottom - 1; y++)
@@ -456,7 +456,7 @@ namespace PitHero.VirtualGame
                         return false; // Still has explorable fog
                 }
             }
-            
+
             // All explorable fog cleared - mark hero state and return true
             _hero.ExploredPit = true;
             return true;

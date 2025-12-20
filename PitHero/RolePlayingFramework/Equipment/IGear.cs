@@ -16,7 +16,7 @@ namespace RolePlayingFramework.Equipment
         /// <summary>Optional flat HP/MP modifiers.</summary>
         int HPBonus { get; }
         int MPBonus { get; }
-        
+
         /// <summary>Elemental properties including type and resistances/weaknesses.</summary>
         ElementalProperties ElementalProps { get; }
     }

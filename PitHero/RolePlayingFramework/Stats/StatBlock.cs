@@ -11,13 +11,13 @@ namespace RolePlayingFramework.Stats
 
         /// <summary>Gets Strength stat, rounded to nearest integer.</summary>
         public readonly int Strength => RoundToInt(_strength);
-        
+
         /// <summary>Gets Agility stat, rounded to nearest integer.</summary>
         public readonly int Agility => RoundToInt(_agility);
-        
+
         /// <summary>Gets Vitality stat, rounded to nearest integer.</summary>
         public readonly int Vitality => RoundToInt(_vitality);
-        
+
         /// <summary>Gets Magic stat, rounded to nearest integer.</summary>
         public readonly int Magic => RoundToInt(_magic);
 

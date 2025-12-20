@@ -1,4 +1,3 @@
-using Microsoft.Xna.Framework;
 using Nez;
 
 namespace PitHero.ECS.Components
@@ -11,7 +10,7 @@ namespace PitHero.ECS.Components
         public float CrystalPower { get; set; } = 1f;
         public float EffectRadius { get; set; } = 100f;
         public bool IsActive { get; set; } = true;
-        
+
         public override void OnAddedToEntity()
         {
             base.OnAddedToEntity();

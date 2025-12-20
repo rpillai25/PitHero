@@ -1,7 +1,5 @@
-using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
-using PitHero.Services;
 
 namespace PitHero.UI
 {
@@ -12,7 +10,7 @@ namespace PitHero.UI
     {
         private Stage _stage;
         private HoverableImageButton _fastFButton;
-        
+
         private ImageButtonStyle _fastFNormalStyle;
         private ImageButtonStyle _fastFHalfStyle;
 
@@ -22,7 +20,7 @@ namespace PitHero.UI
 
         private enum FastFMode { Normal, NormalPressed, Half, HalfPressed }
         private FastFMode _currentFastFMode = FastFMode.Normal;
-        
+
         private bool _isSpeedUp = false; // Track current speed state
         private bool _styleChanged = false; // tracks when style (and thus size) changed
 
@@ -133,20 +131,20 @@ namespace PitHero.UI
             switch (desired)
             {
                 case FastFMode.Normal:
-                        _fastFButton.SetStyle(_fastFNormalStyle);
-                        _fastFButton.SetSize(((SpriteDrawable)_fastFNormalStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_fastFNormalStyle.ImageUp).Sprite.SourceRect.Height);
+                    _fastFButton.SetStyle(_fastFNormalStyle);
+                    _fastFButton.SetSize(((SpriteDrawable)_fastFNormalStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_fastFNormalStyle.ImageUp).Sprite.SourceRect.Height);
                     break;
                 case FastFMode.NormalPressed:
-                        _fastFButton.SetStyle(_fastFNormalPressedStyle);
-                        _fastFButton.SetSize(((SpriteDrawable)_fastFNormalPressedStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_fastFNormalPressedStyle.ImageUp).Sprite.SourceRect.Height);
+                    _fastFButton.SetStyle(_fastFNormalPressedStyle);
+                    _fastFButton.SetSize(((SpriteDrawable)_fastFNormalPressedStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_fastFNormalPressedStyle.ImageUp).Sprite.SourceRect.Height);
                     break;
                 case FastFMode.Half:
-                        _fastFButton.SetStyle(_fastFHalfStyle);
-                        _fastFButton.SetSize(((SpriteDrawable)_fastFHalfStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_fastFHalfStyle.ImageUp).Sprite.SourceRect.Height);
+                    _fastFButton.SetStyle(_fastFHalfStyle);
+                    _fastFButton.SetSize(((SpriteDrawable)_fastFHalfStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_fastFHalfStyle.ImageUp).Sprite.SourceRect.Height);
                     break;
                 case FastFMode.HalfPressed:
-                        _fastFButton.SetStyle(_fastFHalfPressedStyle);
-                        _fastFButton.SetSize(((SpriteDrawable)_fastFHalfPressedStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_fastFHalfPressedStyle.ImageUp).Sprite.SourceRect.Height);
+                    _fastFButton.SetStyle(_fastFHalfPressedStyle);
+                    _fastFButton.SetSize(((SpriteDrawable)_fastFHalfPressedStyle.ImageUp).Sprite.SourceRect.Width, ((SpriteDrawable)_fastFHalfPressedStyle.ImageUp).Sprite.SourceRect.Height);
                     break;
             }
 

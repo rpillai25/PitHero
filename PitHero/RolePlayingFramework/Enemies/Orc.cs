@@ -26,21 +26,21 @@ namespace RolePlayingFramework.Enemies
             // Always use the preset level for Orcs regardless of requested level
             var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Orc");
             Level = presetLevel;
-            
+
             // Use BalanceConfig for stats
             var archetype = BalanceConfig.MonsterArchetype.Tank;
             var strength = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Strength);
             var agility = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Agility);
             var vitality = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Vitality);
             var magic = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Magic);
-            
+
             Stats = new StatBlock(strength, agility, vitality, magic);
             MaxHP = BalanceConfig.CalculateMonsterHP(Level, archetype);
             _hp = MaxHP;
             ExperienceYield = BalanceConfig.CalculateMonsterExperience(Level);
             JPYield = BalanceConfig.CalculateMonsterJPYield(Level);
             SPYield = BalanceConfig.CalculateMonsterSPYield(Level);
-            
+
             // Orc is Fire element: resistant to Fire, weak to Water
             var resistances = new System.Collections.Generic.Dictionary<ElementType, float>
             {

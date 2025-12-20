@@ -1,7 +1,3 @@
-using RolePlayingFramework.Jobs;
-using RolePlayingFramework.Jobs.Primary;
-using RolePlayingFramework.Stats;
-
 namespace RolePlayingFramework.Heroes
 {
     /// <summary>Queues and infuses the next hero with a crystal.</summary>

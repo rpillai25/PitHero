@@ -5,7 +5,7 @@ namespace PitHero.UI
     {
         /// <summary>Sort in ascending order.</summary>
         Ascending,
-        
+
         /// <summary>Sort in descending order.</summary>
         Descending
     }

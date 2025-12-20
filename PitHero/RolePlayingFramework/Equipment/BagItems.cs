@@ -1,6 +1,3 @@
-using PitHero.ECS.Components;
-using RolePlayingFramework.Inventory;
-
 namespace RolePlayingFramework.Equipment
 {
     /// <summary>Factory for creating different types of bag items.</summary>

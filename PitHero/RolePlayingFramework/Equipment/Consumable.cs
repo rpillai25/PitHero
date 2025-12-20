@@ -1,5 +1,3 @@
-using RolePlayingFramework.Stats;
-
 namespace RolePlayingFramework.Equipment
 {
     /// <summary>Abstract base consumable with one-time effect.</summary>
@@ -14,7 +12,7 @@ namespace RolePlayingFramework.Equipment
         public int MPRestoreAmount { get; protected set; }
         public int StackSize { get; protected set; }
         public int StackCount { get; set; }
-        
+
         /// <summary>True if this consumable can only be used during battle.</summary>
         public bool BattleOnly { get; protected set; }
 

@@ -29,7 +29,7 @@ namespace PitHero
         private int _currentPitLevel = 1;
         private int _currentPitRightEdge; // The rightmost x coordinate of the current pit
         private bool _isInitialized = false;
-        
+
         // Interface dependencies
         private ITiledMapService _tiledMapService;
 
@@ -135,7 +135,7 @@ namespace PitHero
             // Initialize baseInnerFloor and collisionInnerFloor from coordinates (11,1) to (11,11)
             InitializeTilePattern(_baseInnerFloor, baseLayer, 11, 1, 11, "baseInnerFloor");
             InitializeTilePattern(_collisionInnerFloor, collisionLayer, 11, 1, 11, "collisionInnerFloor");
-            
+
             // CRITICAL FIX: Ensure inner floor collision pattern has no collision in explorable area
             // This prevents movement blocking when pit expands, as collision tiles in y=3-9 would
             // be copied to extended columns and block hero movement
@@ -193,23 +193,23 @@ namespace PitHero
 
             var previousLevel = _currentPitLevel;
             var previousRightEdge = _currentPitRightEdge;
-            
+
             Debug.Log($"[PitWidthManager] Setting pit level from {_currentPitLevel} to {newLevel}");
             _currentPitLevel = newLevel;
-            
+
             // Calculate new right edge
             int initialRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth;
             // Cap expansion at level 100 - pit stops expanding beyond level 100
             int expansionLevel = Math.Min(_currentPitLevel, 100);
             int innerFloorTilesToExtend = ((int)(expansionLevel / 10)) * 2;
             int newRightEdge = initialRightEdge + innerFloorTilesToExtend + (innerFloorTilesToExtend > 0 ? 2 : 0); // +2 for inner wall and outer floor
-            
+
             // If sizing down, clear tiles first
             if (newRightEdge < previousRightEdge)
             {
                 ClearTilesFromXToEnd(newRightEdge);
             }
-            
+
             RegeneratePitWidth();
         }
 
@@ -218,7 +218,7 @@ namespace PitHero
         /// </summary>
         private void ClearTilesFromXToEnd(int startX)
         {
-        if (!_isInitialized)
+            if (!_isInitialized)
             {
                 Debug.Error("[PitWidthManager] Cannot clear tiles - manager not initialized");
                 return;
@@ -332,7 +332,7 @@ namespace PitHero
 
             // Notify the scene to update pit collider bounds
             UpdatePitColliderBounds();
-            
+
             // Regenerate pit content for the new size
             RegeneratePitContent();
         }
@@ -441,13 +441,13 @@ namespace PitHero
         private void RegeneratePitContent()
         {
             Debug.Log("[PitWidthManager] Regenerating pit content after width change");
-            
+
             // Regenerate FogOfWar for the entire current pit area
             RegenerateFogOfWar();
 
             // Rebuild physics colliders so movement matches updated Collision layer
             RebuildTilemapColliders();
-            
+
             // Find the MainGameScene and regenerate pit content
             var scene = Core.Scene as MainGameScene;
             if (scene != null)
@@ -533,10 +533,10 @@ namespace PitHero
                 }
 
                 // Set FogOfWar layer tile - only for y=3 to y=9 and not for baseInnerWall or baseOuterFloor columns
-                bool shouldSetFogOfWar = (y >= 3 && y <= 9) && 
-                                        !columnType.Contains("inner wall") && 
+                bool shouldSetFogOfWar = (y >= 3 && y <= 9) &&
+                                        !columnType.Contains("inner wall") &&
                                         !columnType.Contains("outer floor");
-                
+
                 if (shouldSetFogOfWar && _fogOfWarIndex != 0)
                 {
                     tiledMapService.SetTile("FogOfWar", x, y, _fogOfWarIndex);

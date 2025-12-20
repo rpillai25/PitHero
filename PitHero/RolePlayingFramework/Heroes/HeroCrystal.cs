@@ -1,9 +1,7 @@
-using System.Collections.Generic;
-using System.Linq;
 using RolePlayingFramework.Jobs;
-using RolePlayingFramework.Jobs.Primary;
-using RolePlayingFramework.Stats;
 using RolePlayingFramework.Skills;
+using RolePlayingFramework.Stats;
+using System.Collections.Generic;
 
 namespace RolePlayingFramework.Heroes
 {
@@ -27,16 +25,16 @@ namespace RolePlayingFramework.Heroes
 
         /// <summary>Job level based on skills purchased.</summary>
         public int JobLevel => CalculateJobLevel();
-        
+
         // Synergy progression tracking
         /// <summary>Synergy points earned per synergy pattern ID.</summary>
         private readonly Dictionary<string, int> _synergyPoints;
         public IReadOnlyDictionary<string, int> SynergyPoints => _synergyPoints;
-        
+
         /// <summary>Learned synergy skill IDs.</summary>
         private readonly HashSet<string> _learnedSynergySkillIds;
         public IReadOnlyCollection<string> LearnedSynergySkillIds => _learnedSynergySkillIds;
-        
+
         /// <summary>Discovered synergy pattern IDs (for UI display).</summary>
         private readonly HashSet<string> _discoveredSynergyIds;
         public IReadOnlyCollection<string> DiscoveredSynergyIds => _discoveredSynergyIds;
@@ -128,46 +126,46 @@ namespace RolePlayingFramework.Heroes
             }
             return true;
         }
-        
+
         // Synergy system methods
-        
+
         /// <summary>Earns synergy points for a specific synergy pattern.</summary>
         public void EarnSynergyPoints(string synergyId, int amount)
         {
             if (string.IsNullOrEmpty(synergyId) || amount < 0) return;
-            
+
             if (!_synergyPoints.ContainsKey(synergyId))
                 _synergyPoints[synergyId] = 0;
-            
+
             _synergyPoints[synergyId] += amount;
         }
-        
+
         /// <summary>Gets the total synergy points earned for a specific synergy pattern.</summary>
         public int GetSynergyPoints(string synergyId)
         {
             return _synergyPoints.TryGetValue(synergyId, out var points) ? points : 0;
         }
-        
+
         /// <summary>Marks a synergy as discovered (for UI display).</summary>
         public void DiscoverSynergy(string synergyId)
         {
             if (!string.IsNullOrEmpty(synergyId))
                 _discoveredSynergyIds.Add(synergyId);
         }
-        
+
         /// <summary>Checks if a synergy has been discovered.</summary>
         public bool HasDiscoveredSynergy(string synergyId)
         {
             return _discoveredSynergyIds.Contains(synergyId);
         }
-        
+
         /// <summary>Learns a synergy skill.</summary>
         public void LearnSynergySkill(string skillId)
         {
             if (!string.IsNullOrEmpty(skillId))
                 _learnedSynergySkillIds.Add(skillId);
         }
-        
+
         /// <summary>Checks if a synergy skill has been learned.</summary>
         public bool HasSynergySkill(string skillId)
         {
@@ -180,7 +178,7 @@ namespace RolePlayingFramework.Heroes
         {
             // Base value per level (can be adjusted for game balance)
             const int BaseValuePerLevel = 50;
-            
+
             // Tier multipliers: Primary = 1.0x, Secondary = 1.5x, Tertiary = 2.0x
             float tierMultiplier = Job.Tier switch
             {
@@ -189,7 +187,7 @@ namespace RolePlayingFramework.Heroes
                 JobTier.Tertiary => 2.0f,
                 _ => 1.0f
             };
-            
+
             return (int)(BaseValuePerLevel * Level * tierMultiplier);
         }
 
@@ -203,7 +201,7 @@ namespace RolePlayingFramework.Heroes
             foreach (var id in b._learnedSkillIds) union.Add(id);
             var totalJP = a.TotalJP + b.TotalJP;
             var currentJP = a.CurrentJP + b.CurrentJP;
-            
+
             // Combine synergy data
             var combinedSynergyPoints = new Dictionary<string, int>(a._synergyPoints);
             foreach (var kvp in b._synergyPoints)
@@ -213,13 +211,13 @@ namespace RolePlayingFramework.Heroes
                 else
                     combinedSynergyPoints[kvp.Key] = kvp.Value;
             }
-            
+
             var combinedSynergySkills = new HashSet<string>(a._learnedSynergySkillIds);
             foreach (var id in b._learnedSynergySkillIds) combinedSynergySkills.Add(id);
-            
+
             var combinedDiscoveredSynergies = new HashSet<string>(a._discoveredSynergyIds);
             foreach (var id in b._discoveredSynergyIds) combinedDiscoveredSynergies.Add(id);
-            
+
             return new HeroCrystal(combinedName, job, level, stats, union, totalJP, currentJP,
                 combinedSynergyPoints, combinedSynergySkills, combinedDiscoveredSynergies);
         }

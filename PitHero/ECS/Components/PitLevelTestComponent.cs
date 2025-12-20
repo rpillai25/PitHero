@@ -14,7 +14,7 @@ namespace PitHero.ECS.Components
     public class PitLevelTestComponent : Component, IUpdatable, IPausableComponent
     {
         private KeyboardState _lastKeyboardState;
-        
+
         /// <summary>
         /// This component should respect pause state - only test during active gameplay
         /// </summary>
@@ -37,18 +37,18 @@ namespace PitHero.ECS.Components
             }
 
             var currentKeyboardState = Keyboard.GetState();
-            
+
             // Check for number key presses
             for (int i = 0; i <= 9; i++)
             {
                 Keys key = (Keys)((int)Keys.D0 + i);
-                
+
                 if (currentKeyboardState.IsKeyDown(key) && !_lastKeyboardState.IsKeyDown(key))
                 {
                     HandleNumberKeyPress(i);
                 }
             }
-            
+
             _lastKeyboardState = currentKeyboardState;
         }
 
@@ -65,10 +65,10 @@ namespace PitHero.ECS.Components
             }
 
             Debug.Log($"[PitLevelTest] Queuing pit level {newLevel} (key {number} pressed)");
-            
+
             // Use the new queuing functionality from ActivateWizardOrbAction
             PitHero.AI.ActivateWizardOrbAction.QueuePitLevel(newLevel);
-            
+
             // Set GOAP states to trigger the wizard orb workflow
             var heroEntities = Core.Scene?.FindEntitiesWithTag(GameConfig.TAG_HERO);
             var heroEntity = heroEntities?.Count > 0 ? heroEntities[0] : null;
@@ -85,7 +85,8 @@ namespace PitHero.ECS.Components
                     heroComponent.ActivatedWizardOrb = true;
                     heroComponent.FoundWizardOrb = false;  // Reset according to specification
                     heroComponent.ExploredPit = true; // Pretend pit has been explored
-                } else
+                }
+                else
                 {
                     //If outside pit, just mark as needing regeneration
                     heroComponent.PitInitialized = false; // Mark pit as needing regeneration

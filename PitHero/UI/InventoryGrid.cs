@@ -27,7 +27,7 @@ namespace PitHero.UI
         private InventorySlot _highlightedSlot;
         private InventoryContextMenu _contextMenu;
         private Stage _stage; // Reference to stage for tooltip management
-        
+
         // Swap animation entities (scene-space approach retained but unused currently)
         private Entity _swapEntity1;
         private Entity _swapEntity2;
@@ -39,20 +39,20 @@ namespace PitHero.UI
         private float _uiSwapElapsed;
         private InventorySlot _uiSwapSlotA;
         private InventorySlot _uiSwapSlotB;
-        
+
         // Public events for item card display
         public event System.Action<IItem> OnItemHovered;
         public event System.Action OnItemUnhovered;
         public event System.Action<IItem> OnItemSelected;
         public event System.Action OnItemDeselected;
-        
+
         // Public event for stencil removal confirmation
         public event System.Action<PlacedStencil> OnStencilRemovalRequested;
 
         private int _nextAcquireIndex = 1; // monotonic acquisition counter
         private readonly Dictionary<IItem, int> _acquireIndexMap; // persistent mapping of items to acquire indices
         private readonly Dictionary<IItem, int> _itemStackMap;    // last known stack count per item instance
-        
+
         // Stencil system
         private readonly ActiveStencilManager _stencilManager;
         private bool _moveStencilsMode;
@@ -61,7 +61,7 @@ namespace PitHero.UI
         private Point? _stencilDragOffset; // Offset from stencil anchor to click position
         private List<RolePlayingFramework.Synergies.ActiveSynergy> _activeSynergies;
         private readonly Dictionary<Point, Nez.Tweens.ITween<Color>> _slotGlowTweens; // Track glow tweens per slot position
-        
+
         // Synergy detection
         private readonly SynergyDetector _synergyDetector;
         private IItem?[,] _synergyDetectionGrid; // Reusable grid for synergy detection
@@ -76,16 +76,16 @@ namespace PitHero.UI
             _moveStencilsMode = false;
             _activeSynergies = new List<RolePlayingFramework.Synergies.ActiveSynergy>();
             _slotGlowTweens = new Dictionary<Point, Nez.Tweens.ITween<Color>>();
-            
+
             // Initialize synergy detection
             _synergyDetector = new SynergyDetector();
             _synergyDetectionGrid = new IItem?[GRID_WIDTH, GRID_HEIGHT];
             RegisterDefaultSynergyPatterns();
-            
+
             BuildSlots();
             LayoutSlots();
         }
-        
+
         /// <summary>Registers default synergy patterns for detection.</summary>
         private void RegisterDefaultSynergyPatterns()
         {
@@ -148,11 +148,11 @@ namespace PitHero.UI
                 if (y == 1 && x == 8) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory1 };
                 if (y == 1 && x == 9) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Armor };
                 if (y == 1 && x == 10) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory2 };
-                
+
                 // All other slots in top 2 rows are NULL (not displayed)
                 return new InventorySlotData(x, y, InventorySlotType.Null);
             }
-            
+
             // Rows 2-7: Pure inventory (6 rows � 20 columns = 120 inventory slots)
             return new InventorySlotData(x, y, InventorySlotType.Inventory);
         }
@@ -175,17 +175,17 @@ namespace PitHero.UI
                 UpdateItemsFromBag();
             }
             InitializeSwapEntities();
-            
+
             // Subscribe to cross-component inventory changes
             InventorySelectionManager.OnInventoryChanged += UpdateItemsFromBag;
-            
+
             // Subscribe to selection cleared event
             InventorySelectionManager.OnSelectionCleared += ClearLocalSelectionState;
-            
+
             // Subscribe to cross-component swap animation
             InventorySelectionManager.OnCrossComponentSwapAnimate += HandleCrossComponentSwapAnimate;
         }
-        
+
         /// <summary>Clears only the local highlighted slot without invoking events.</summary>
         private void ClearLocalSelectionState()
         {
@@ -195,7 +195,7 @@ namespace PitHero.UI
                 _highlightedSlot = null;
             }
         }
-        
+
         /// <summary>Handles cross-component swap animation by triggering local animation for this component's slot.</summary>
         private void HandleCrossComponentSwapAnimate(InventorySlot slotA, InventorySlot slotB)
         {
@@ -210,14 +210,14 @@ namespace PitHero.UI
                     break;
                 }
             }
-            
+
             if (mySlot != null)
             {
                 // Trigger a brief "pop" animation by hiding and showing the sprite
                 AnimateCrossComponentSwap(mySlot);
             }
         }
-        
+
         /// <summary>Animates a single slot for cross-component swap (simple hide/show effect).</summary>
         private void AnimateCrossComponentSwap(InventorySlot slot)
         {
@@ -229,38 +229,38 @@ namespace PitHero.UI
                 // The sprite will be shown again when UpdateItemsFromBag is called after the swap
             }
         }
-        
+
         /// <summary>Initializes the context menu for inventory interactions.</summary>
         public void InitializeContextMenu(Stage stage, Skin skin)
         {
             if (_contextMenu != null) return;
-            
+
             _stage = stage;
             _contextMenu = new InventoryContextMenu();
             _contextMenu.Initialize(stage, skin);
             _contextMenu.OnUseItem += (item, bagIndex) => UseConsumable(item, bagIndex);
             _contextMenu.OnDiscardItem += (item, bagIndex) => DiscardItem(bagIndex);
-            
+
             // Add placeholder tooltips to stage
             AddPlaceholderTooltipsToStage();
         }
-        
+
         /// <summary>Adds placeholder tooltips for empty equipment slots to the stage.</summary>
         private void AddPlaceholderTooltipsToStage()
         {
             if (_stage == null) return;
-            
+
             // Configure TooltipManager globally to avoid animations and delays
             var tm = TooltipManager.GetInstance();
             tm.Animations = false;
             tm.InitialTime = 0f;
             tm.SubsequentTime = 0f;
-            
+
             for (int i = 0; i < _slots.Length; i++)
             {
                 var slot = _slots.Buffer[i];
                 if (slot == null) continue;
-                
+
                 // Get the placeholder tooltip from the slot if it's an equipment slot
                 var tooltip = slot.GetPlaceholderTooltip();
                 if (tooltip != null)
@@ -269,7 +269,7 @@ namespace PitHero.UI
                 }
             }
         }
-        
+
         /// <summary>Initializes scene entities for swap animation (unused currently).</summary>
         private void InitializeSwapEntities()
         {
@@ -303,7 +303,7 @@ namespace PitHero.UI
             }
             UpdateEquipmentSlots();
             UpdateBagSlots();
-            
+
             // Detect synergies after inventory refresh
             DetectAndApplySynergies();
         }
@@ -417,7 +417,7 @@ namespace PitHero.UI
                     if (data.SlotType == InventorySlotType.Shortcut && data.ShortcutKey == keyOffset + 1 && data.Item != null)
                     {
                         Debug.Log($"Activated shortcut slot {data.ShortcutKey} with item: {data.Item.Name}");
-                        
+
                         // Use the consumable if it's a consumable
                         if (data.Item is Consumable && data.BagIndex.HasValue)
                         {
@@ -450,7 +450,7 @@ namespace PitHero.UI
                 HandleStencilModeClick(clickedSlot);
                 return;
             }
-            
+
             // Ignore clicks from shortcut bar selections - shortcuts reference inventory slots, not swap with them
             if (InventorySelectionManager.HasSelection() && InventorySelectionManager.IsSelectionFromShortcutBar())
             {
@@ -458,7 +458,7 @@ namespace PitHero.UI
                 InventorySelectionManager.ClearSelection();
                 return;
             }
-            
+
             if (_highlightedSlot == null)
             {
                 _highlightedSlot = clickedSlot;
@@ -486,12 +486,12 @@ namespace PitHero.UI
                 OnItemDeselected?.Invoke();
             }
         }
-        
+
         /// <summary>Handles clicks when in move stencils mode.</summary>
         private void HandleStencilModeClick(InventorySlot clickedSlot)
         {
             var gridPos = new Point(clickedSlot.SlotData.X, clickedSlot.SlotData.Y);
-            
+
             // Handle Remove Stencils Mode
             if (_removeStencilsMode)
             {
@@ -501,13 +501,13 @@ namespace PitHero.UI
                 {
                     _selectedStencil = clickedStencil;
                     Debug.Log($"Selected stencil for removal: {clickedStencil.Pattern.Name}");
-                    
+
                     // Immediately trigger removal confirmation event
                     OnStencilRemovalRequested?.Invoke(clickedStencil);
                 }
                 return;
             }
-            
+
             // Handle Move Stencils Mode
             if (_selectedStencil == null)
             {
@@ -529,7 +529,7 @@ namespace PitHero.UI
                     _stencilManager.MoveStencil(_selectedStencil, newAnchor, GRID_WIDTH, GRID_HEIGHT);
                     Debug.Log($"Moved stencil to anchor: ({newAnchor.X}, {newAnchor.Y})");
                 }
-                
+
                 // Deselect stencil after move
                 _selectedStencil = null;
                 _stencilDragOffset = null;
@@ -539,7 +539,7 @@ namespace PitHero.UI
         private void HandleSlotHovered(InventorySlot slot)
         {
             // Check for cross-component hover (from ShortcutBar) or local hover
-            if ((InventorySelectionManager.HasSelection() && slot.SlotData.Item != null) || 
+            if ((InventorySelectionManager.HasSelection() && slot.SlotData.Item != null) ||
                 (_highlightedSlot != null && _highlightedSlot != slot && slot.SlotData.Item != null))
                 slot.SetItemSpriteOffsetY(HOVER_OFFSET_Y);
             if (slot.SlotData.Item != null)
@@ -570,7 +570,7 @@ namespace PitHero.UI
                 ClearSelectionHighlight();
                 return;
             }
-            
+
             // Bag slots: use consumables or equip gear
             if (slot.SlotData.Item is Consumable && slot.SlotData.BagIndex.HasValue)
             {
@@ -584,7 +584,7 @@ namespace PitHero.UI
                     SwapSlotItems(slot, targetEquipmentSlot);
                 }
             }
-            
+
             // always clear selection/highlight after a double-click
             ClearSelectionHighlight();
         }
@@ -613,7 +613,7 @@ namespace PitHero.UI
             // Only show context menu for non-equipment slots with items
             if (slot.SlotData.SlotType == InventorySlotType.Equipment)
                 return;
-            
+
             if (slot.SlotData.Item != null && _contextMenu != null && slot.SlotData.BagIndex.HasValue)
             {
                 // Get the slot's top-left in stage coordinates
@@ -629,7 +629,7 @@ namespace PitHero.UI
         {
             if (item is not Consumable consumable)
                 return;
-            
+
             var hero = _heroComponent?.LinkedHero;
             if (hero == null)
             {
@@ -641,7 +641,7 @@ namespace PitHero.UI
             if (consumable.Consume(hero))
             {
                 Debug.Log($"Used {item.Name}");
-                
+
                 // Decrement stack or remove item
                 if (_heroComponent.Bag.ConsumeFromStack(bagIndex))
                 {
@@ -660,7 +660,7 @@ namespace PitHero.UI
         {
             if (_heroComponent?.Bag == null)
                 return;
-            
+
             var item = _heroComponent.Bag.GetSlotItem(bagIndex);
             if (item != null)
             {
@@ -683,10 +683,10 @@ namespace PitHero.UI
                 AnimateSwap(a, b);
                 InventorySelectionManager.PerformAbsorbStacks(a, b, toAbsorb);
                 PersistBagOrdering();
-                
+
                 // Detect synergies after inventory change
                 DetectAndApplySynergies();
-                
+
                 // Notify inventory changed for shortcut bar to refresh
                 InventorySelectionManager.OnInventoryChanged?.Invoke();
                 return;
@@ -718,32 +718,32 @@ namespace PitHero.UI
             }
 
             PersistBagOrdering();
-            
+
             // Detect synergies after inventory change
             DetectAndApplySynergies();
-            
+
             // Notify inventory changed for shortcut bar to refresh
             InventorySelectionManager.OnInventoryChanged?.Invoke();
         }
-        
+
         /// <summary>Detects synergies in current inventory state and applies them to hero.</summary>
         private void DetectAndApplySynergies()
         {
             var hero = _heroComponent?.LinkedHero;
             if (hero == null) return;
-            
+
             // Build synergy detection grid from current slot state
             BuildSynergyDetectionGrid();
-            
+
             // Use grouped detection with stacking system (enforces 3-instance cap and overlap rejection)
             var synergyGroups = _synergyDetector.DetectSynergiesGrouped(_synergyDetectionGrid, GRID_WIDTH, GRID_HEIGHT);
-            
+
             // Get GameStateService for stencil discovery
             var gameStateService = Core.Services?.GetService<PitHero.Services.GameStateService>();
-            
+
             // Apply synergies to hero using grouped method (respects stacking multipliers)
             hero.UpdateActiveSynergiesGrouped(synergyGroups, gameStateService);
-            
+
             // Extract all instances from groups for glow effects (respects 3-instance cap)
             var allInstances = new List<RolePlayingFramework.Synergies.ActiveSynergy>();
             for (int i = 0; i < synergyGroups.Count; i++)
@@ -755,10 +755,10 @@ namespace PitHero.UI
                     allInstances.Add(instances[j]);
                 }
             }
-            
+
             // Update local tracking for glow effects (only capped instances will glow)
             UpdateActiveSynergies(allInstances);
-            
+
             // Log detected synergies with stacking info
             if (synergyGroups.Count > 0)
             {
@@ -768,15 +768,15 @@ namespace PitHero.UI
                     var group = synergyGroups[i];
                     Debug.Log($"  - {group.Pattern.Name}: {group.InstanceCount} instances (multiplier: {group.TotalMultiplier:F2})");
                 }
-                
+
                 // Notify HeroCrystalTab to refresh when synergies change
                 OnSynergiesChanged?.Invoke();
             }
         }
-        
+
         /// <summary>Event raised when synergies are detected and applied.</summary>
         public event System.Action OnSynergiesChanged;
-        
+
         /// <summary>Builds the synergy detection grid from current slot state.</summary>
         private void BuildSynergyDetectionGrid()
         {
@@ -788,13 +788,13 @@ namespace PitHero.UI
                     _synergyDetectionGrid[x, y] = null;
                 }
             }
-            
+
             // Populate grid from slots
             for (int i = 0; i < _slots.Length; i++)
             {
                 var slot = _slots.Buffer[i];
                 if (slot == null) continue;
-                
+
                 var data = slot.SlotData;
                 if (data.X >= 0 && data.X < GRID_WIDTH && data.Y >= 0 && data.Y < GRID_HEIGHT)
                 {
@@ -802,7 +802,7 @@ namespace PitHero.UI
                 }
             }
         }
-        
+
         /// <summary>Animates swap using unified InventorySelectionManager overlay in stage space.</summary>
         private void AnimateSwap(InventorySlot a, InventorySlot b)
         {
@@ -823,7 +823,7 @@ namespace PitHero.UI
         {
             // Draw children (slots) first so animated sprites render on top
             base.Draw(batcher, parentAlpha);
-            
+
             // Draw stencil overlays
             DrawStencilOverlays(batcher);
 
@@ -842,57 +842,57 @@ namespace PitHero.UI
             if (t < 0f) t = 0f; else if (t > 1f) t = 1f;
             float ease = 1f - (1f - t) * (1f - t); // QuadOut
         }
-        
+
         /// <summary>Draws stencil overlays on the inventory grid.</summary>
         private void DrawStencilOverlays(Batcher batcher)
         {
             if (Core.Content == null) return;
-            
+
             // Draw stencil overlays first
             var placedStencils = _stencilManager.PlacedStencils;
             for (int i = 0; i < placedStencils.Count; i++)
             {
                 DrawStencilOverlay(batcher, placedStencils[i]);
             }
-            
+
             // Draw highlight box for selected stencil (in either move or remove mode)
             if (_selectedStencil != null && (_moveStencilsMode || _removeStencilsMode))
             {
                 DrawStencilHighlight(batcher, _selectedStencil);
             }
-            
+
             // Draw glow effects for completed synergies (independent of stencils)
             DrawSynergyGlowEffects(batcher);
         }
-        
+
         /// <summary>Draws highlight box around selected stencil pattern.</summary>
         private void DrawStencilHighlight(Batcher batcher, PlacedStencil stencil)
         {
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
             var highlightBoxSprite = uiAtlas.GetSprite("HighlightBox");
             if (highlightBoxSprite == null) return;
-            
+
             var highlightDrawable = new Nez.UI.SpriteDrawable(highlightBoxSprite);
             var offsets = stencil.Pattern.GridOffsets;
-            
+
             // Draw highlight on all slots in the stencil pattern
             for (int i = 0; i < offsets.Count; i++)
             {
                 var targetX = stencil.Anchor.X + offsets[i].X;
                 var targetY = stencil.Anchor.Y + offsets[i].Y;
-                
+
                 var slot = FindSlotAtGrid(targetX, targetY);
                 if (slot == null) continue;
-                
+
                 var slotX = slot.GetX();
                 var slotY = slot.GetY();
                 var slotW = slot.GetWidth();
                 var slotH = slot.GetHeight();
-                
+
                 highlightDrawable.Draw(batcher, slotX, slotY, slotW, slotH, Color.White);
             }
         }
-        
+
         /// <summary>Draws glow effects for completed synergy patterns.</summary>
         private void DrawSynergyGlowEffects(Batcher batcher)
         {
@@ -911,36 +911,36 @@ namespace PitHero.UI
                 var slotY = slot.GetY();
                 var slotW = slot.GetWidth();
                 var slotH = slot.GetHeight();
-                
+
                 batcher.DrawRect(slotX, slotY, slotW, slotH, glowColor);
             }
         }
-        
+
         /// <summary>Draws a single stencil overlay.</summary>
         private void DrawStencilOverlay(Batcher batcher, PlacedStencil stencil)
         {
             var pattern = stencil.Pattern;
             var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
-            
+
             var offsets = pattern.GridOffsets;
             var requiredKinds = pattern.RequiredKinds;
-            
+
             for (int i = 0; i < offsets.Count; i++)
             {
                 var targetX = stencil.Anchor.X + offsets[i].X;
                 var targetY = stencil.Anchor.Y + offsets[i].Y;
-                
+
                 // Find the slot at this position
                 var slot = FindSlotAtGrid(targetX, targetY);
                 if (slot == null) continue;
-                
+
                 var slotItem = slot.SlotData.Item;
                 var requiredKind = requiredKinds[i];
-                
+
                 // Determine overlay color based on item match
                 Color overlayColor;
                 Nez.Textures.Sprite overlaySprite = null;
-                
+
                 if (slotItem == null)
                 {
                     // Empty slot - show stencil icon
@@ -971,13 +971,13 @@ namespace PitHero.UI
                     // Non-matching item - more transparent red highlight
                     overlayColor = new Color(255, 0, 0, 255) * 0.3f; // 20% opacity red
                 }
-                
+
                 // Draw overlay
                 var slotX = slot.GetX();
                 var slotY = slot.GetY();
                 var slotW = slot.GetWidth();
                 var slotH = slot.GetHeight();
-                
+
                 if (overlaySprite != null)
                 {
                     // Draw stencil icon sprite
@@ -1094,7 +1094,7 @@ namespace PitHero.UI
         {
             // Determine the target equipment slot based on item kind
             EquipmentSlot? targetSlot = null;
-            
+
             if (gear.Kind == ItemKind.HatHelm || gear.Kind == ItemKind.HatHeadband || gear.Kind == ItemKind.HatWizard || gear.Kind == ItemKind.HatPriest)
             {
                 targetSlot = EquipmentSlot.Hat;
@@ -1116,7 +1116,7 @@ namespace PitHero.UI
                 // Find first empty accessory slot, or return null if both are occupied
                 var accessory1Slot = FindEquipmentSlot(EquipmentSlot.Accessory1);
                 var accessory2Slot = FindEquipmentSlot(EquipmentSlot.Accessory2);
-                
+
                 if (accessory1Slot != null && accessory1Slot.SlotData.Item == null)
                 {
                     return accessory1Slot;
@@ -1131,12 +1131,12 @@ namespace PitHero.UI
                     return null;
                 }
             }
-            
+
             if (targetSlot.HasValue)
             {
                 return FindEquipmentSlot(targetSlot.Value);
             }
-            
+
             return null;
         }
 
@@ -1178,12 +1178,12 @@ namespace PitHero.UI
             }
             return null;
         }
-        
+
         /// <summary>Finds the inventory slot containing a specific item instance.</summary>
         public InventorySlot FindSlotContainingItem(IItem item)
         {
             if (item == null) return null;
-            
+
             for (int i = 0; i < _slots.Length; i++)
             {
                 var slot = _slots.Buffer[i];
@@ -1195,21 +1195,21 @@ namespace PitHero.UI
             }
             return null;
         }
-        
+
         // Stencil system public methods
-        
+
         /// <summary>Places a stencil on the inventory grid.</summary>
         public void PlaceStencil(RolePlayingFramework.Synergies.SynergyPattern pattern, Point anchor)
         {
             _stencilManager.PlaceStencil(pattern, anchor);
         }
-        
+
         /// <summary>Removes a stencil from the grid.</summary>
         public void RemoveStencil(PlacedStencil stencil)
         {
             _stencilManager.RemoveStencil(stencil);
         }
-        
+
         /// <summary>Toggles move stencils mode.</summary>
         public void SetMoveStencilsMode(bool enabled)
         {
@@ -1219,14 +1219,14 @@ namespace PitHero.UI
                 _selectedStencil = null;
                 _stencilDragOffset = null;
             }
-            
+
             // Ensure only one mode is active at a time
             if (enabled && _removeStencilsMode)
             {
                 _removeStencilsMode = false;
             }
         }
-        
+
         /// <summary>Toggles remove stencils mode.</summary>
         public void SetRemoveStencilsMode(bool enabled)
         {
@@ -1235,7 +1235,7 @@ namespace PitHero.UI
             {
                 _selectedStencil = null;
             }
-            
+
             // Ensure only one mode is active at a time
             if (enabled && _moveStencilsMode)
             {
@@ -1243,16 +1243,16 @@ namespace PitHero.UI
                 _stencilDragOffset = null;
             }
         }
-        
+
         /// <summary>Gets whether move stencils mode is active.</summary>
         public bool IsMoveStencilsModeActive() => _moveStencilsMode;
-        
+
         /// <summary>Gets whether remove stencils mode is active.</summary>
         public bool IsRemoveStencilsModeActive() => _removeStencilsMode;
-        
+
         /// <summary>Gets the currently selected stencil (for removal confirmation).</summary>
         public PlacedStencil GetSelectedStencil() => _selectedStencil;
-        
+
         /// <summary>Gets all placed stencils.</summary>
         public IReadOnlyList<PlacedStencil> GetPlacedStencils() => _stencilManager.PlacedStencils;
 
@@ -1262,7 +1262,7 @@ namespace PitHero.UI
             _activeSynergies = synergies ?? new List<RolePlayingFramework.Synergies.ActiveSynergy>();
             UpdateSynergyGlowEffects();
         }
-        
+
         /// <summary>Updates glow effects for completed synergy patterns.</summary>
         private void UpdateSynergyGlowEffects()
         {
@@ -1272,18 +1272,18 @@ namespace PitHero.UI
                 tween?.Stop();
             }
             _slotGlowTweens.Clear();
-            
+
             // Start new glow tweens for active synergies
             for (int i = 0; i < _activeSynergies.Count; i++)
             {
                 var synergy = _activeSynergies[i];
                 var slots = synergy.AffectedSlots;
-                
+
                 for (int j = 0; j < slots.Count; j++)
                 {
                     var slotPos = slots[j];
                     var slot = FindSlotAtGrid(slotPos.X, slotPos.Y);
-                    
+
                     if (slot != null && !_slotGlowTweens.ContainsKey(slotPos))
                     {
                         // Mark slot for glow rendering (actual glow drawn in DrawSynergyGlowEffects)

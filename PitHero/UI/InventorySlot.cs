@@ -1,10 +1,9 @@
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework.Graphics;
 using Nez;
+using Nez.BitmapFonts;
 using Nez.Textures;
 using Nez.UI;
-using Nez.BitmapFonts;
 using RolePlayingFramework.Equipment;
 
 namespace PitHero.UI
@@ -16,22 +15,22 @@ namespace PitHero.UI
         private readonly Sprite _backgroundSprite;
         private Sprite _selectBoxSprite;
         private Sprite _highlightBoxSprite;
-        
+
         private SpriteDrawable _backgroundDrawable;
         private SpriteDrawable _selectBoxDrawable;
         private SpriteDrawable _highlightBoxDrawable;
         private BitmapFont _font;
-        
+
         private float _itemSpriteOffsetY = 0f;
         private bool _hideItemSprite = false;
-        
+
         // Placeholder sprites for empty equipment slots
         private SpriteDrawable _placeholderDrawable;
         private Tooltip _placeholderTooltip;
-        
+
         // Double-click detection
         private float _lastClickTime = -1f;
-        
+
         public event System.Action<InventorySlot> OnSlotClicked;
         public event System.Action<InventorySlot> OnSlotDoubleClicked;
         public event System.Action<InventorySlot> OnSlotHovered;
@@ -45,14 +44,14 @@ namespace PitHero.UI
         public InventorySlot(InventorySlotData slotData)
         {
             _slotData = slotData;
-            
+
             // Only load content if Core.Content is available (not in test environment)
             if (Core.Content != null)
             {
                 // Load atlases
                 var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
                 var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
-                
+
                 // Set up background sprite based on slot type
                 var spriteKey = _slotData.SlotType switch
                 {
@@ -67,20 +66,20 @@ namespace PitHero.UI
                     _backgroundSprite = itemsAtlas.GetSprite(spriteKey);
                     _backgroundDrawable = new SpriteDrawable(_backgroundSprite);
                 }
-                
+
                 // Pre-load select and highlight sprites
                 _selectBoxSprite = uiAtlas.GetSprite("SelectBox");
                 _selectBoxDrawable = new SpriteDrawable(_selectBoxSprite);
-                
+
                 _highlightBoxSprite = uiAtlas.GetSprite("HighlightBox");
                 _highlightBoxDrawable = new SpriteDrawable(_highlightBoxSprite);
-                
+
                 // Load placeholder sprites for equipment slots
                 if (_slotData.SlotType == InventorySlotType.Equipment && _slotData.EquipmentSlot.HasValue)
                 {
                     string placeholderSpriteName = GetPlaceholderSpriteName(_slotData.EquipmentSlot.Value);
                     string placeholderTooltipText = GetPlaceholderTooltipText(_slotData.EquipmentSlot.Value);
-                    
+
                     if (placeholderSpriteName != null)
                     {
                         var placeholderSprite = itemsAtlas.GetSprite(placeholderSpriteName);
@@ -89,7 +88,7 @@ namespace PitHero.UI
                             _placeholderDrawable = new SpriteDrawable(placeholderSprite);
                         }
                     }
-                    
+
                     // Create tooltip for placeholder if we have tooltip text
                     if (placeholderTooltipText != null && Graphics.Instance != null)
                     {
@@ -104,7 +103,7 @@ namespace PitHero.UI
                         _placeholderTooltip.SetAlways(true);
                     }
                 }
-                
+
                 // Load font for stack count display
                 try
                 {
@@ -116,12 +115,12 @@ namespace PitHero.UI
                     _font = Graphics.Instance.BitmapFont;
                 }
             }
-            
+
             // Set size to 32x32 pixels
             SetSize(32f, 32f);
             SetTouchable(Touchable.Enabled); // ensure we always receive hover events
         }
-        
+
         /// <summary>Gets the placeholder sprite name for an equipment slot.</summary>
         private string GetPlaceholderSpriteName(EquipmentSlot equipmentSlot)
         {
@@ -136,7 +135,7 @@ namespace PitHero.UI
                 _ => null
             };
         }
-        
+
         /// <summary>Gets the placeholder tooltip text for an equipment slot.</summary>
         private string GetPlaceholderTooltipText(EquipmentSlot equipmentSlot)
         {
@@ -151,19 +150,19 @@ namespace PitHero.UI
                 _ => null
             };
         }
-        
+
         /// <summary>Sets the item sprite Y offset for visual effects (like hover).</summary>
         public void SetItemSpriteOffsetY(float offsetY)
         {
             _itemSpriteOffsetY = offsetY;
         }
-        
+
         /// <summary>Sets whether the item sprite should be hidden (for swap animation).</summary>
         public void SetItemSpriteHidden(bool hidden)
         {
             _hideItemSprite = hidden;
         }
-        
+
         /// <summary>Gets the placeholder tooltip for this slot if it has one.</summary>
         public Tooltip GetPlaceholderTooltip()
         {
@@ -200,7 +199,7 @@ namespace PitHero.UI
                 {
                     // If item sprite doesn't exist, silently continue
                 }
-                
+
                 // Draw stack count if it's a stackable consumable with more than 1 item
                 if (_slotData.Item is Consumable consumable && consumable.StackCount > 1)
                 {
@@ -230,7 +229,7 @@ namespace PitHero.UI
             {
                 _highlightBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
             }
-            
+
             // Draw shortcut key number below slot for Shortcut type slots
             if (_slotData.SlotType == InventorySlotType.Shortcut && _slotData.ShortcutKey.HasValue && _font != null)
             {
@@ -241,7 +240,7 @@ namespace PitHero.UI
                 var textY = GetY() + GetHeight() + 2f * Scale; // 2 pixels below the slot
                 batcher.DrawString(_font, keyText, new Vector2(textX, textY), Color.Goldenrod, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
             }
-            
+
             base.Draw(batcher, parentAlpha);
         }
 

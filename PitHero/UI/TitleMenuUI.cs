@@ -32,11 +32,11 @@ namespace PitHero.UI
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
             var titleSprite = uiAtlas.GetSprite("PitHeroTitle");
             _titleLogo = new Image(titleSprite);
-            
+
             // Center the logo horizontally and position it higher to allow more space for buttons
             float logoX = (_stage.GetWidth() - titleSprite.SourceRect.Width) / 2f;
             float logoY = GameConfig.VirtualHeight * 0.10f; // 10% from top (moved higher)
-            
+
             _titleLogo.SetPosition(logoX, logoY);
             _stage.AddElement(_titleLogo);
         }
@@ -79,33 +79,34 @@ namespace PitHero.UI
             var windowStyle = skin.Get<WindowStyle>();
             _quitConfirmationDialog = new Window("Really Quit?", windowStyle);
             _quitConfirmationDialog.SetSize(300, 150);
-            
+
             var dialogTable = new Table();
             dialogTable.Pad(20);
-            
+
             // Message
             dialogTable.Add(new Label("Are you sure you want to quit?", skin)).SetPadBottom(20);
             dialogTable.Row();
-            
+
             // Button row
             var buttonTable = new Table();
-            
+
             var yesButton = new TextButton("Yes", skin);
-            yesButton.OnClicked += (button) => {
+            yesButton.OnClicked += (button) =>
+            {
                 HideQuitConfirmation();
                 Core.Exit();
             };
             buttonTable.Add(yesButton).Width(80).SetPadRight(10);
-            
+
             var noButton = new TextButton("No", skin);
             noButton.OnClicked += (button) => HideQuitConfirmation();
             buttonTable.Add(noButton).Width(80);
-            
+
             dialogTable.Add(buttonTable);
-            
+
             _quitConfirmationDialog.Add(dialogTable).Expand().Fill();
             _quitConfirmationDialog.SetVisible(false);
-            
+
             // Center the dialog
             _quitConfirmationDialog.SetPosition(
                 (_stage.GetWidth() - _quitConfirmationDialog.GetWidth()) / 2,

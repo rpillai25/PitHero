@@ -1,7 +1,6 @@
-using Microsoft.Xna.Framework;
-using System.Collections.Generic;
-using PitHero.AI.Interfaces;
 using PitHero.AI;
+using PitHero.AI.Interfaces;
+using System.Collections.Generic;
 
 namespace PitHero.VirtualGame
 {
@@ -40,22 +39,22 @@ namespace PitHero.VirtualGame
             _virtualWorld = worldState;
             _virtualHero = hero;
             WorldState = worldState;
-            
+
             _virtualHeroController = new VirtualHeroController(worldState);
             HeroController = _virtualHeroController;
-            
+
             // Copy state from VirtualHero to VirtualHeroController
             SyncHeroStates();
-            
+
             Pathfinder = new VirtualPathfinder(worldState);
             PitLevelManager = new VirtualPitLevelManager(worldState);
-            
+
             _virtualTiledMapService = new VirtualTiledMapService(worldState);
             TiledMapService = _virtualTiledMapService;
-            
+
             _virtualPitWidthManager = new VirtualPitWidthManager(_virtualTiledMapService);
             PitWidthManager = _virtualPitWidthManager;
-            
+
             _virtualPitGenerator = new VirtualPitGenerator(worldState, _virtualTiledMapService, _virtualPitWidthManager);
             PitGenerator = _virtualPitGenerator;
         }
@@ -85,7 +84,7 @@ namespace PitHero.VirtualGame
                 SyncHeroStates();
             }
         }
-        
+
         /// <summary>
         /// Sync state from VirtualHero to VirtualHeroController - simplified GOAP model
         /// </summary>
@@ -101,7 +100,7 @@ namespace PitHero.VirtualGame
                 _virtualHeroController.ActivatedWizardOrb = _virtualHero.ActivatedWizardOrb;
             }
         }
-        
+
         /// <summary>
         /// Sync state from VirtualHeroController back to VirtualHero (after action execution) - simplified GOAP model
         /// </summary>
@@ -136,7 +135,7 @@ namespace PitHero.VirtualGame
             var orbPos = WorldState.WizardOrbPosition;
             if (!orbPos.HasValue)
                 return false;
-            
+
             return HeroController.CurrentTilePosition == orbPos.Value;
         }
 

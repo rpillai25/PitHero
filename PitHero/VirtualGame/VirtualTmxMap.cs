@@ -1,5 +1,5 @@
-using System.Collections.Generic;
 using PitHero.AI.Interfaces;
+using System.Collections.Generic;
 
 namespace PitHero.VirtualGame
 {
@@ -18,7 +18,7 @@ namespace PitHero.VirtualGame
             Width = width;
             Height = height;
             _layers = new Dictionary<string, VirtualTmxLayer>();
-            
+
             // Initialize standard layers
             _layers["Base"] = new VirtualTmxLayer(width, height);
             _layers["Collision"] = new VirtualTmxLayer(width, height);

@@ -58,7 +58,7 @@ namespace PitHero.ECS.Components
 
             Debug.Log($"[PathfindingActor] Initialized pathfinding for {Entity.Name} with {_astarGraph.Walls.Count} walls from collision layer");
             Debug.Log($"[PathfindingActor] Map dimensions: {collisionLayer.Width}x{collisionLayer.Height}");
-            
+
             // Log some sample wall positions for debugging
             int wallCount = 0;
             foreach (var wall in _astarGraph.Walls)

@@ -1,9 +1,9 @@
-﻿using Nez;
-using Nez.Tiled;
-using Microsoft.Xna.Framework;
+﻿using Microsoft.Xna.Framework;
+using Nez;
 using Nez.AI.Pathfinding;
-using PitHero.ECS.Components;
+using Nez.Tiled;
 using PitHero.AI.Interfaces;
+using PitHero.ECS.Components;
 
 namespace PitHero.Util
 {
@@ -13,7 +13,7 @@ namespace PitHero.Util
     public class TiledMapService : ITiledMapService
     {
         public TmxMap CurrentMap;
-        
+
         // Interface implementation
         IMapData ITiledMapService.CurrentMap => CurrentMap != null ? new TmxMapWrapper(CurrentMap) : null;
 
@@ -111,7 +111,7 @@ namespace PitHero.Util
 
             // Clear tile at center position
             anyFogCleared |= ClearFogOfWarTile(centerTileX, centerTileY);
-            
+
             if (radius == 1)
             {
                 // Radius 1 = uncover square of 8 tiles surrounding player (3x3 grid minus center)
@@ -136,7 +136,7 @@ namespace PitHero.Util
                     }
                 }
             }
-            
+
             return anyFogCleared;
         }
 
@@ -150,7 +150,7 @@ namespace PitHero.Util
         public bool ClearFogOfWarAroundTileLegacy(int centerTileX, int centerTileY)
         {
             bool anyFogCleared = false;
-            
+
             // Clear tile at center position
             anyFogCleared |= ClearFogOfWarTile(centerTileX, centerTileY);
             // Clear tiles in 4 cardinal directions
@@ -168,7 +168,7 @@ namespace PitHero.Util
                 if (heroComponent != null && heroComponent.IsPathfindingInitialized)
                 {
                     var astarGraph = heroComponent.PathfindingGraph;
-                    
+
                     // Upper-left
                     TryClearDiagonalIfObstacle(astarGraph, centerTileX - 1, centerTileY - 1, ref anyFogCleared);
                     // Upper-right
@@ -179,7 +179,7 @@ namespace PitHero.Util
                     TryClearDiagonalIfObstacle(astarGraph, centerTileX + 1, centerTileY + 1, ref anyFogCleared);
                 }
             }
-            
+
             return anyFogCleared;
         }
 

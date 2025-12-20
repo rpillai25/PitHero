@@ -1,12 +1,12 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.AI.GOAP;
-using PitHero.AI;
-using System;
 using Nez.Tiled;
-using System.Collections.Generic;
+using PitHero.AI;
 using PitHero.Util;
 using RolePlayingFramework.Equipment;
+using System;
+using System.Collections.Generic;
 
 namespace PitHero.ECS.Components
 {
@@ -82,7 +82,7 @@ namespace PitHero.ECS.Components
         /// Hero's item bag for inventory management
         /// </summary>
         public RolePlayingFramework.Inventory.ItemBag Bag { get; private set; }
-        
+
         /// <summary>
         /// Action queue for battle actions
         /// </summary>
@@ -128,7 +128,7 @@ namespace PitHero.ECS.Components
 
             // Initialize hero's item bag with full 120 capacity (20�6 grid)
             Bag = new RolePlayingFramework.Inventory.ItemBag("Traveller's Bag", 120);
-            
+
             // Initialize battle action queue
             BattleActionQueue = new ActionQueue();
 
