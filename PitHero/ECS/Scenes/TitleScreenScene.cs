@@ -7,7 +7,7 @@ namespace PitHero.ECS.Scenes
     /// <summary>
     /// Title screen scene that displays the logo and main menu
     /// </summary>
-    public class TitleScreenScene : BaseScene
+    public class TitleScreenScene : Scene
     {
         private TitleMenuUI _titleMenuUI;
 

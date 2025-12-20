@@ -14,7 +14,7 @@ using RolePlayingFramework.Stats;
 
 namespace PitHero.ECS.Scenes
 {
-    public class MainGameScene : BaseScene
+    public class MainGameScene : Scene
     {
         private SettingsUI _settingsUI;
         private string _mapPath;
