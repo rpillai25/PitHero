@@ -25,9 +25,11 @@ namespace PitHero.ECS.Scenes
         private Label _pitLevelLabel; // UI label showing pit level
         private Label _heroLevelLabel; // UI label showing hero level
         private Label _heroHpLabel; // UI label showing hero HP
+        private Label _heroMpLabel; // UI label showing hero MP
         private int _lastDisplayedPitLevel = -1; // Track last displayed level to avoid string churn
         private int _lastDisplayedHeroLevel = -1; // Track last displayed hero level
         private int _lastDisplayedHeroHp = -1; // Track last displayed hero HP
+        private int _lastDisplayedHeroMp = -1; // Track last displayed hero MP
         private ShortcutBar _shortcutBar; // Shortcut bar displayed at bottom center
 
         // HUD fonts for different shrink levels
@@ -39,6 +41,8 @@ namespace PitHero.ECS.Scenes
         private LabelStyle _heroLevelStyleHalf;
         private LabelStyle _heroHpStyleNormal;
         private LabelStyle _heroHpStyleHalf;
+        private LabelStyle _heroMpStyleNormal;
+        private LabelStyle _heroMpStyleHalf;
         private enum HudMode { Normal, Half }
         private HudMode _currentHudMode = HudMode.Normal;
 
@@ -46,6 +50,7 @@ namespace PitHero.ECS.Scenes
         private const float PitLabelBaseY = 16f; // original Y before offsets applied
         private const float HeroLevelLabelBaseX = 120f; // Base X position for hero level
         private const float HeroHpLabelBaseX = 240f; // Base X position for hero HP
+        private const float HeroMpLabelBaseX = 330f; // Base X position for hero MP
 
         public BitmapFont HudFont; // legacy reference (normal)
 
@@ -88,6 +93,9 @@ namespace PitHero.ECS.Scenes
 
             _heroHpStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
             _heroHpStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
+
+            _heroMpStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
+            _heroMpStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
 
             SetupUIOverlay();
         }
@@ -423,6 +431,11 @@ namespace PitHero.ECS.Scenes
             _heroHpLabel.SetStyle(_heroHpStyleNormal);
             _heroHpLabel.SetPosition(HeroHpLabelBaseX, PitLabelBaseY);
 
+            // Hero MP label (to the right of hero HP)
+            _heroMpLabel = uiCanvas.Stage.AddElement(new Label("MP: 10", _hudFontNormal));
+            _heroMpLabel.SetStyle(_heroMpStyleNormal);
+            _heroMpLabel.SetPosition(HeroMpLabelBaseX, PitLabelBaseY);
+
             // Shortcut bar at bottom center
             _shortcutBar = new ShortcutBar();
             uiCanvas.Stage.AddElement(_shortcutBar);
@@ -495,7 +508,7 @@ namespace PitHero.ECS.Scenes
         /// </summary>
         private void UpdateHeroLabels()
         {
-            if (_heroLevelLabel == null || _heroHpLabel == null)
+            if (_heroLevelLabel == null || _heroHpLabel == null || _heroMpLabel == null)
                 return;
 
             var hero = FindEntity("hero");
@@ -521,6 +534,13 @@ namespace PitHero.ECS.Scenes
                 _heroHpLabel.SetText($"HP: {linkedHero.CurrentHP}");
                 _lastDisplayedHeroHp = linkedHero.CurrentHP;
             }
+
+            // Update hero MP if changed
+            if (linkedHero.CurrentMP != _lastDisplayedHeroMp)
+            {
+                _heroMpLabel.SetText($"MP: {linkedHero.CurrentMP}");
+                _lastDisplayedHeroMp = linkedHero.CurrentMP;
+            }
         }
 
         /// <summary>
@@ -542,17 +562,20 @@ namespace PitHero.ECS.Scenes
                         _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
                         _heroLevelLabel.SetStyle(_heroLevelStyleNormal);
                         _heroHpLabel.SetStyle(_heroHpStyleNormal);
+                        _heroMpLabel.SetStyle(_heroMpStyleNormal);
                         break;
                     case HudMode.Half:
                         _pitLevelLabel.SetStyle(_pitLevelStyleHalf);
                         _heroLevelLabel.SetStyle(_heroLevelStyleHalf);
                         _heroHpLabel.SetStyle(_heroHpStyleHalf);
+                        _heroMpLabel.SetStyle(_heroMpStyleHalf);
                         break;
                 }
                 _currentHudMode = desired;
                 _pitLevelLabel.Invalidate();
                 _heroLevelLabel.Invalidate();
                 _heroHpLabel.Invalidate();
+                _heroMpLabel.Invalidate();
 
                 // Update shortcut bar position and scale when mode changes
                 PositionShortcutBar();
@@ -562,6 +585,7 @@ namespace PitHero.ECS.Scenes
             int yOffset = 0;
             int heroLevelXOffset = 0;
             int heroHpXOffset = 0;
+            int heroMpXOffset = 0;
 
             switch (_currentHudMode)
             {
@@ -569,12 +593,14 @@ namespace PitHero.ECS.Scenes
                     yOffset = GameConfig.TopUiYOffsetHalf;
                     heroLevelXOffset = 120; // 2x font, proportional spacing increase
                     heroHpXOffset = 240;
+                    heroMpXOffset = 360;
                     break;
                 case HudMode.Normal:
                 default:
                     yOffset = GameConfig.TopUiYOffsetNormal;
                     heroLevelXOffset = 0; // Use base positions
                     heroHpXOffset = 0;
+                    heroMpXOffset = 0;
                     break;
             }
 
@@ -582,12 +608,14 @@ namespace PitHero.ECS.Scenes
             float targetY = PitLabelBaseY + yOffset;
             float targetHeroLevelX = HeroLevelLabelBaseX + heroLevelXOffset;
             float targetHeroHpX = HeroHpLabelBaseX + heroHpXOffset;
+            float targetHeroMpX = HeroMpLabelBaseX + heroMpXOffset;
 
             if (System.Math.Abs(_pitLevelLabel.GetY() - targetY) > 0.1f)
             {
                 _pitLevelLabel.SetY(targetY);
                 _heroLevelLabel.SetY(targetY);
                 _heroHpLabel.SetY(targetY);
+                _heroMpLabel.SetY(targetY);
             }
 
             if (System.Math.Abs(_heroLevelLabel.GetX() - targetHeroLevelX) > 0.1f)
@@ -598,6 +626,11 @@ namespace PitHero.ECS.Scenes
             if (System.Math.Abs(_heroHpLabel.GetX() - targetHeroHpX) > 0.1f)
             {
                 _heroHpLabel.SetX(targetHeroHpX);
+            }
+
+            if (System.Math.Abs(_heroMpLabel.GetX() - targetHeroMpX) > 0.1f)
+            {
+                _heroMpLabel.SetX(targetHeroMpX);
             }
         }
 
