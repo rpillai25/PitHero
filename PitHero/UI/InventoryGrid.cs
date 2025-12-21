@@ -110,6 +110,18 @@ namespace PitHero.UI
             return false;
         }
 
+        /// <summary>Gets the currently hovered slot, or null if no slot is hovered.</summary>
+        public InventorySlot GetHoveredSlot()
+        {
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                if (slot.SlotData.IsHovered) return slot;
+            }
+            return null;
+        }
+
         /// <summary>Builds all slot components in row-major order (adds null placeholders for Null slots).</summary>
         private void BuildSlots()
         {
@@ -1001,6 +1013,28 @@ namespace PitHero.UI
                     return true;
             }
             return false;
+        }
+
+        /// <summary>Gets all active synergies that contain the specified slot position.</summary>
+        public List<RolePlayingFramework.Synergies.ActiveSynergy> GetSynergiesForSlot(Point slotPos)
+        {
+            var result = new List<RolePlayingFramework.Synergies.ActiveSynergy>();
+            for (int i = 0; i < _activeSynergies.Count; i++)
+            {
+                if (_activeSynergies[i].ContainsSlot(slotPos))
+                {
+                    result.Add(_activeSynergies[i]);
+                }
+            }
+            return result;
+        }
+
+        /// <summary>Gets all active synergies for the specified inventory slot.</summary>
+        public List<RolePlayingFramework.Synergies.ActiveSynergy> GetSynergiesForSlot(InventorySlot slot)
+        {
+            if (slot == null) return new List<RolePlayingFramework.Synergies.ActiveSynergy>();
+            var slotPos = new Point(slot.SlotData.X, slot.SlotData.Y);
+            return GetSynergiesForSlot(slotPos);
         }
 
         /// <summary>Finds a slot at the given grid coordinates.</summary>

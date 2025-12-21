@@ -656,8 +656,11 @@ namespace PitHero.UI
         {
             if (item == null) return;
 
+            // Get synergies for the hovered item from the inventory grid
+            var synergies = GetSynergiesForHoveredItem();
+
             // Show tooltip at cursor position
-            _itemTooltip.ShowItem(item);
+            _itemTooltip.ShowItem(item, synergies);
             if (_itemTooltip.GetContainer().GetParent() == null)
             {
                 _stage.AddElement(_itemTooltip.GetContainer());
@@ -710,6 +713,21 @@ namespace PitHero.UI
                 _itemTooltip.GetContainer().Remove();
                 _equipPreviewTooltip.GetContainer().Remove();
             }
+        }
+
+        /// <summary>Gets synergies for the currently hovered item slot.</summary>
+        private System.Collections.Generic.List<RolePlayingFramework.Synergies.ActiveSynergy> GetSynergiesForHoveredItem()
+        {
+            if (_inventoryGrid == null)
+                return null;
+
+            // Find the hovered slot in the inventory grid
+            var hoveredSlot = _inventoryGrid.GetHoveredSlot();
+            if (hoveredSlot == null)
+                return null;
+
+            // Get synergies for this slot
+            return _inventoryGrid.GetSynergiesForSlot(hoveredSlot);
         }
 
         /// <summary>Gets the currently equipped gear for the same slot as the hovered gear.</summary>

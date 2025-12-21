@@ -1,9 +1,12 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.BitmapFonts;
+using Nez.Textures;
 using Nez.UI;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Synergies;
 using System;
+using System.Collections.Generic;
 
 namespace PitHero.UI
 {
@@ -12,8 +15,11 @@ namespace PitHero.UI
     {
         private const float CARD_PADDING = 5f;
         private const float LINE_SPACING = 2f;
+        private const float SYNERGY_ICON_SIZE = 20f;
+        private const float SYNERGY_ICON_SPACING = 4f;
 
         private IItem _item;
+        private List<ActiveSynergy> _synergies;
         private Table _contentTable;
         private Container _wrapper;
 
@@ -39,7 +45,14 @@ namespace PitHero.UI
         /// <summary>Shows the tooltip with the specified item.</summary>
         public void ShowItem(IItem item)
         {
+            ShowItem(item, null);
+        }
+
+        /// <summary>Shows the tooltip with the specified item and synergy information.</summary>
+        public void ShowItem(IItem item, List<ActiveSynergy> synergies)
+        {
             _item = item;
+            _synergies = synergies;
             if (_item == null)
             {
                 return;
@@ -104,6 +117,27 @@ namespace PitHero.UI
             _contentTable.Add(priceLabel).Left();
             _contentTable.Row();
             maxLineWidth = Max(maxLineWidth, Measure(font, priceText));
+
+            // Add synergy information if available
+            if (_synergies != null && _synergies.Count > 0)
+            {
+                // Add spacing before synergy section
+                var spacer = new Container();
+                spacer.SetHeight(LINE_SPACING * 2);
+                _contentTable.Add(spacer);
+                _contentTable.Row();
+
+                // Add "Synergies:" header
+                var synergyHeaderText = "Synergies:";
+                var synergyHeaderLabel = new Label(synergyHeaderText, new LabelStyle { Font = font, FontColor = new Color(200, 255, 128) });
+                _contentTable.Add(synergyHeaderLabel).Left().Pad(0, 0, LINE_SPACING, 0);
+                _contentTable.Row();
+                maxLineWidth = Max(maxLineWidth, Measure(font, synergyHeaderText));
+
+                // Add each synergy with icon
+                float synergyLineWidth = AddSynergyEntries(font);
+                maxLineWidth = Max(maxLineWidth, synergyLineWidth);
+            }
 
             // Ensure wrapper width is longest line plus padding on both sides
             var targetMinWidth = maxLineWidth + CARD_PADDING * 2f;
@@ -241,6 +275,69 @@ namespace PitHero.UI
             }
 
             return max;
+        }
+
+        /// <summary>Adds synergy entries with icons and names, returns max line width.</summary>
+        private float AddSynergyEntries(BitmapFont font)
+        {
+            if (_synergies == null || _synergies.Count == 0)
+                return 0f;
+
+            float maxWidth = 0f;
+
+            // Load synergy icon atlas
+            var skillsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/SkillsStencils.atlas");
+            var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+
+            for (int i = 0; i < _synergies.Count; i++)
+            {
+                var synergy = _synergies[i];
+                var pattern = synergy.Pattern;
+
+                // Create a horizontal container for icon + name
+                var synergyRow = new Table();
+
+                // Get synergy icon sprite
+                string spriteName;
+                if (pattern.UnlockedSkill != null)
+                {
+                    spriteName = pattern.UnlockedSkill.Id;
+                }
+                else
+                {
+                    spriteName = pattern.Id;
+                }
+
+                var iconSprite = skillsAtlas.GetSprite(spriteName);
+                if (iconSprite == null)
+                {
+                    // Fallback to default icon
+                    iconSprite = uiAtlas.GetSprite("SkillIcon1");
+                }
+
+                // Create icon image
+                if (iconSprite != null)
+                {
+                    var iconDrawable = new SpriteDrawable(iconSprite);
+                    var iconImage = new Image(iconDrawable);
+                    iconImage.SetSize(SYNERGY_ICON_SIZE, SYNERGY_ICON_SIZE);
+                    synergyRow.Add(iconImage).Space(0, SYNERGY_ICON_SPACING, 0, 0);
+                }
+
+                // Create synergy name label
+                var nameLabel = new Label(pattern.Name, new LabelStyle { Font = font, FontColor = new Color(200, 255, 128) });
+                synergyRow.Add(nameLabel);
+
+                // Add the row to content table
+                _contentTable.Add(synergyRow).Left().Pad(0, 0, LINE_SPACING, 0);
+                _contentTable.Row();
+
+                // Calculate width (icon + spacing + text)
+                float rowWidth = SYNERGY_ICON_SIZE + SYNERGY_ICON_SPACING + Measure(font, pattern.Name);
+                maxWidth = Max(maxWidth, rowWidth);
+            }
+
+            return maxWidth;
         }
 
         /// <summary>Returns the larger of a and b.</summary>
