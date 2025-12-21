@@ -321,7 +321,7 @@ namespace PitHero.UI
                     var iconDrawable = new SpriteDrawable(iconSprite);
                     var iconImage = new Image(iconDrawable);
                     iconImage.SetSize(SYNERGY_ICON_SIZE, SYNERGY_ICON_SIZE);
-                    synergyRow.Add(iconImage).Space(0, SYNERGY_ICON_SPACING, 0, 0);
+                    synergyRow.Add(iconImage).Pad(0, 0, 0, SYNERGY_ICON_SPACING);
                 }
 
                 // Create synergy name label
