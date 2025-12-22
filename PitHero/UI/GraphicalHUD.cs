@@ -20,14 +20,14 @@ namespace PitHero.UI
         // Constants from issue description
         private const int HP_BAR_WIDTH = 51;
         private const int MP_BAR_WIDTH = 51;
-        private const int HP_UNIT_X_OFFSET = 53;
+        private const int HP_UNIT_X_OFFSET = 3;
         private const int HP_UNIT_Y_OFFSET = 26;
-        private const int MP_UNIT_X_OFFSET = 156;
+        private const int MP_UNIT_X_OFFSET = 106;
         private const int MP_UNIT_Y_OFFSET = 26;
-        private const int HP_TEXT_X_OFFSET = 27;
-        private const int HP_TEXT_Y_OFFSET = 7;
-        private const int MP_TEXT_X_OFFSET = 130;
-        private const int MP_TEXT_Y_OFFSET = 7;
+        private const int HP_TEXT_X_OFFSET = 28;
+        private const int HP_TEXT_Y_OFFSET = 9;
+        private const int MP_TEXT_X_OFFSET = 131;
+        private const int MP_TEXT_Y_OFFSET = 9;
         private const int LEVEL_TEXT_X_OFFSET = 71;
         private const int LEVEL_TEXT_Y_OFFSET = 13;
 
@@ -37,6 +37,16 @@ namespace PitHero.UI
         private int _currentMp;
         private int _maxMp;
         private int _level;
+
+        /// <summary>
+        /// Override Width to return the HUD template sprite width (fixes StackOverflowException)
+        /// </summary>
+        public override float Width => _hudTemplateSprite?.SourceRect.Width ?? 160;
+
+        /// <summary>
+        /// Override Height to return the HUD template sprite height (fixes StackOverflowException)
+        /// </summary>
+        public override float Height => _hudTemplateSprite?.SourceRect.Height ?? 33;
 
         public GraphicalHUD()
         {
@@ -72,26 +82,23 @@ namespace PitHero.UI
 
         public override void Render(Batcher batcher, Camera camera)
         {
-            // Get entity position in screen space
+            // Get entity position in screen space (this should be top-left of HUD)
             var position = Entity.Transform.Position;
 
-            // Render HUD template background
-            batcher.Draw(_hudTemplateSprite, position, Color.White);
+            // Render HUD template background with origin at top-left (0,0) instead of center
+            batcher.Draw(_hudTemplateSprite, position, Color.White, 0f, Vector2.Zero, 1f, Microsoft.Xna.Framework.Graphics.SpriteEffects.None, 0f);
 
-            // Calculate top-left corner of the HudTemplate sprite
-            // Since the sprite origin is at center (0.5, 0.5), we need to offset by half the sprite size
-            var topLeft = position - new Vector2(_hudTemplateSprite.SourceRect.Width / 2f, _hudTemplateSprite.SourceRect.Height / 2f);
-
+            // Now all child elements use position directly as the top-left corner
             // Render HP bar (filled from right to left based on HP percentage)
-            RenderBar(batcher, topLeft, _hpUnitSprite, _currentHp, _maxHp, HP_UNIT_X_OFFSET, HP_UNIT_Y_OFFSET, HP_BAR_WIDTH);
+            RenderBar(batcher, position, _hpUnitSprite, _currentHp, _maxHp, HP_UNIT_X_OFFSET, HP_UNIT_Y_OFFSET, HP_BAR_WIDTH);
 
             // Render MP bar (filled from right to left based on MP percentage)
-            RenderBar(batcher, topLeft, _mpUnitSprite, _currentMp, _maxMp, MP_UNIT_X_OFFSET, MP_UNIT_Y_OFFSET, MP_BAR_WIDTH);
+            RenderBar(batcher, position, _mpUnitSprite, _currentMp, _maxMp, MP_UNIT_X_OFFSET, MP_UNIT_Y_OFFSET, MP_BAR_WIDTH);
 
             // Render dynamic numbers
-            RenderText(batcher, topLeft, _currentHp.ToString(), HP_TEXT_X_OFFSET, HP_TEXT_Y_OFFSET);
-            RenderText(batcher, topLeft, _currentMp.ToString(), MP_TEXT_X_OFFSET, MP_TEXT_Y_OFFSET);
-            RenderText(batcher, topLeft, _level.ToString(), LEVEL_TEXT_X_OFFSET, LEVEL_TEXT_Y_OFFSET);
+            RenderText(batcher, position, _currentHp.ToString(), HP_TEXT_X_OFFSET, HP_TEXT_Y_OFFSET);
+            RenderText(batcher, position, _currentMp.ToString(), MP_TEXT_X_OFFSET, MP_TEXT_Y_OFFSET);
+            RenderText(batcher, position, _level.ToString(), LEVEL_TEXT_X_OFFSET, LEVEL_TEXT_Y_OFFSET);
         }
 
         /// <summary>
@@ -114,7 +121,8 @@ namespace PitHero.UI
             {
                 // Start from right edge and go left
                 var unitPosition = hudTopLeft + new Vector2(rightEdge - i, yOffset);
-                batcher.Draw(unitSprite, unitPosition, Color.White);
+                // Draw with origin at top-left (Vector2.Zero) for pixel-perfect positioning
+                batcher.Draw(unitSprite, unitPosition, Color.White, 0f, Vector2.Zero, 1f, Microsoft.Xna.Framework.Graphics.SpriteEffects.None, 0f);
             }
         }
 
@@ -123,7 +131,14 @@ namespace PitHero.UI
         /// </summary>
         private void RenderText(Batcher batcher, Vector2 hudPosition, string text, int xOffset, int yOffset)
         {
-            var textPosition = hudPosition + new Vector2(xOffset, yOffset);
+            // Add 8 pixels of padding for single-digit levels to center them in the level circle
+            int adjustedXOffset = xOffset;
+            if (xOffset == LEVEL_TEXT_X_OFFSET && text.Length == 1)
+            {
+                adjustedXOffset += 4;
+            }
+
+            var textPosition = hudPosition + new Vector2(adjustedXOffset, yOffset);
             batcher.DrawString(_hudFont, text, textPosition, Color.White);
         }
     }

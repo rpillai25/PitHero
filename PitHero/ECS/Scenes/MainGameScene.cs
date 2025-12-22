@@ -38,7 +38,7 @@ namespace PitHero.ECS.Scenes
         // Cached base positions for top-left anchored UI (so offsets are relative and centralized)
         private const float PitLabelBaseY = 16f; // original Y before offsets applied
         private const float GraphicalHudBaseX = 110f; // Base X position for graphical HUD (to the right of Pit Lv label)
-        private const float GraphicalHudBaseY = 16f; // Base Y position for graphical HUD
+        private const float GraphicalHudBaseY = 4f; // Base Y position for graphical HUD
 
         public BitmapFont HudFont; // legacy reference (normal)
 
