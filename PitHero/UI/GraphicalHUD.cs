@@ -78,22 +78,26 @@ namespace PitHero.UI
             // Render HUD template background
             batcher.Draw(_hudTemplateSprite, position, Color.White);
 
+            // Calculate top-left corner of the HudTemplate sprite
+            // Since the sprite origin is at center (0.5, 0.5), we need to offset by half the sprite size
+            var topLeft = position - new Vector2(_hudTemplateSprite.SourceRect.Width / 2f, _hudTemplateSprite.SourceRect.Height / 2f);
+
             // Render HP bar (filled from right to left based on HP percentage)
-            RenderBar(batcher, position, _hpUnitSprite, _currentHp, _maxHp, HP_UNIT_X_OFFSET, HP_UNIT_Y_OFFSET, HP_BAR_WIDTH);
+            RenderBar(batcher, topLeft, _hpUnitSprite, _currentHp, _maxHp, HP_UNIT_X_OFFSET, HP_UNIT_Y_OFFSET, HP_BAR_WIDTH);
 
             // Render MP bar (filled from right to left based on MP percentage)
-            RenderBar(batcher, position, _mpUnitSprite, _currentMp, _maxMp, MP_UNIT_X_OFFSET, MP_UNIT_Y_OFFSET, MP_BAR_WIDTH);
+            RenderBar(batcher, topLeft, _mpUnitSprite, _currentMp, _maxMp, MP_UNIT_X_OFFSET, MP_UNIT_Y_OFFSET, MP_BAR_WIDTH);
 
             // Render dynamic numbers
-            RenderText(batcher, position, _currentHp.ToString(), HP_TEXT_X_OFFSET, HP_TEXT_Y_OFFSET);
-            RenderText(batcher, position, _currentMp.ToString(), MP_TEXT_X_OFFSET, MP_TEXT_Y_OFFSET);
-            RenderText(batcher, position, _level.ToString(), LEVEL_TEXT_X_OFFSET, LEVEL_TEXT_Y_OFFSET);
+            RenderText(batcher, topLeft, _currentHp.ToString(), HP_TEXT_X_OFFSET, HP_TEXT_Y_OFFSET);
+            RenderText(batcher, topLeft, _currentMp.ToString(), MP_TEXT_X_OFFSET, MP_TEXT_Y_OFFSET);
+            RenderText(batcher, topLeft, _level.ToString(), LEVEL_TEXT_X_OFFSET, LEVEL_TEXT_Y_OFFSET);
         }
 
         /// <summary>
         /// Render a bar (HP or MP) filled from right to left
         /// </summary>
-        private void RenderBar(Batcher batcher, Vector2 hudPosition, Sprite unitSprite, int current, int max, int xOffset, int yOffset, int barWidth)
+        private void RenderBar(Batcher batcher, Vector2 hudTopLeft, Sprite unitSprite, int current, int max, int xOffset, int yOffset, int barWidth)
         {
             if (max <= 0) return;
 
@@ -102,12 +106,14 @@ namespace PitHero.UI
             int pixelsToFill = (int)(percentage * barWidth);
 
             // Render units from right to left
-            // Starting position is at the right edge minus the pixels to fill
-            int startX = xOffset + barWidth - pixelsToFill;
+            // The bar area starts at xOffset and extends barWidth pixels to the right
+            // When filling from right to left, we start from the right edge and go left
+            int rightEdge = xOffset + barWidth - 1;
 
             for (int i = 0; i < pixelsToFill; i++)
             {
-                var unitPosition = hudPosition + new Vector2(startX + i, yOffset);
+                // Start from right edge and go left
+                var unitPosition = hudTopLeft + new Vector2(rightEdge - i, yOffset);
                 batcher.Draw(unitSprite, unitPosition, Color.White);
             }
         }
