@@ -23,34 +23,22 @@ namespace PitHero.ECS.Scenes
         private TmxMap _tmxMap; // Store reference to the map
         private Entity _pauseOverlayEntity; // Pause overlay entity
         private Label _pitLevelLabel; // UI label showing pit level
-        private Label _heroLevelLabel; // UI label showing hero level
-        private Label _heroHpLabel; // UI label showing hero HP
-        private Label _heroMpLabel; // UI label showing hero MP
         private int _lastDisplayedPitLevel = -1; // Track last displayed level to avoid string churn
-        private int _lastDisplayedHeroLevel = -1; // Track last displayed hero level
-        private int _lastDisplayedHeroHp = -1; // Track last displayed hero HP
-        private int _lastDisplayedHeroMp = -1; // Track last displayed hero MP
         private ShortcutBar _shortcutBar; // Shortcut bar displayed at bottom center
+        private GraphicalHUD _graphicalHUD; // Graphical HUD component for HP/MP/Level display
 
         // HUD fonts for different shrink levels
         public BitmapFont _hudFontNormal;
         public BitmapFont _hudFontHalf;
         private LabelStyle _pitLevelStyleNormal;
         private LabelStyle _pitLevelStyleHalf;
-        private LabelStyle _heroLevelStyleNormal;
-        private LabelStyle _heroLevelStyleHalf;
-        private LabelStyle _heroHpStyleNormal;
-        private LabelStyle _heroHpStyleHalf;
-        private LabelStyle _heroMpStyleNormal;
-        private LabelStyle _heroMpStyleHalf;
         private enum HudMode { Normal, Half }
         private HudMode _currentHudMode = HudMode.Normal;
 
         // Cached base positions for top-left anchored UI (so offsets are relative and centralized)
         private const float PitLabelBaseY = 16f; // original Y before offsets applied
-        private const float HeroLevelLabelBaseX = 120f; // Base X position for hero level
-        private const float HeroHpLabelBaseX = 240f; // Base X position for hero HP
-        private const float HeroMpLabelBaseX = 330f; // Base X position for hero MP
+        private const float GraphicalHudBaseX = 110f; // Base X position for graphical HUD (to the right of Pit Lv label)
+        private const float GraphicalHudBaseY = 4f; // Base Y position for graphical HUD
 
         public BitmapFont HudFont; // legacy reference (normal)
 
@@ -86,16 +74,6 @@ namespace PitHero.ECS.Scenes
             // Pre-create label styles to avoid per-frame allocations
             _pitLevelStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
             _pitLevelStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
-
-            // We'll use the same styles for hero level and HP labels
-            _heroLevelStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
-            _heroLevelStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
-
-            _heroHpStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
-            _heroHpStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
-
-            _heroMpStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
-            _heroMpStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
 
             SetupUIOverlay();
         }
@@ -421,20 +399,10 @@ namespace PitHero.ECS.Scenes
             _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
             _pitLevelLabel.SetPosition(10, PitLabelBaseY);
 
-            // Hero level label (to the right of pit level)
-            _heroLevelLabel = uiCanvas.Stage.AddElement(new Label("Hero Lv. 1", _hudFontNormal));
-            _heroLevelLabel.SetStyle(_heroLevelStyleNormal);
-            _heroLevelLabel.SetPosition(HeroLevelLabelBaseX, PitLabelBaseY);
-
-            // Hero HP label (to the right of hero level)
-            _heroHpLabel = uiCanvas.Stage.AddElement(new Label("HP: 100", _hudFontNormal));
-            _heroHpLabel.SetStyle(_heroHpStyleNormal);
-            _heroHpLabel.SetPosition(HeroHpLabelBaseX, PitLabelBaseY);
-
-            // Hero MP label (to the right of hero HP)
-            _heroMpLabel = uiCanvas.Stage.AddElement(new Label("MP: 10", _hudFontNormal));
-            _heroMpLabel.SetStyle(_heroMpStyleNormal);
-            _heroMpLabel.SetPosition(HeroMpLabelBaseX, PitLabelBaseY);
+            // Create graphical HUD entity to display HP/MP/Level
+            var hudEntity = CreateEntity("graphical-hud");
+            hudEntity.SetPosition(GraphicalHudBaseX, GraphicalHudBaseY);
+            _graphicalHUD = hudEntity.AddComponent(new GraphicalHUD());
 
             // Shortcut bar at bottom center
             _shortcutBar = new ShortcutBar();
@@ -504,11 +472,11 @@ namespace PitHero.ECS.Scenes
         }
 
         /// <summary>
-        /// Update hero level and HP labels when they change
+        /// Update graphical HUD with current hero stats
         /// </summary>
-        private void UpdateHeroLabels()
+        private void UpdateHeroHUD()
         {
-            if (_heroLevelLabel == null || _heroHpLabel == null || _heroMpLabel == null)
+            if (_graphicalHUD == null)
                 return;
 
             var hero = FindEntity("hero");
@@ -521,26 +489,14 @@ namespace PitHero.ECS.Scenes
 
             var linkedHero = heroComponent.LinkedHero;
 
-            // Update hero level if changed
-            if (linkedHero.Level != _lastDisplayedHeroLevel)
-            {
-                _heroLevelLabel.SetText($"Hero Lv. {linkedHero.Level}");
-                _lastDisplayedHeroLevel = linkedHero.Level;
-            }
-
-            // Update hero HP if changed
-            if (linkedHero.CurrentHP != _lastDisplayedHeroHp)
-            {
-                _heroHpLabel.SetText($"HP: {linkedHero.CurrentHP}");
-                _lastDisplayedHeroHp = linkedHero.CurrentHP;
-            }
-
-            // Update hero MP if changed
-            if (linkedHero.CurrentMP != _lastDisplayedHeroMp)
-            {
-                _heroMpLabel.SetText($"MP: {linkedHero.CurrentMP}");
-                _lastDisplayedHeroMp = linkedHero.CurrentMP;
-            }
+            // Update graphical HUD values
+            _graphicalHUD.UpdateValues(
+                linkedHero.CurrentHP,
+                linkedHero.MaxHP,
+                linkedHero.CurrentMP,
+                linkedHero.MaxMP,
+                linkedHero.Level
+            );
         }
 
         /// <summary>
@@ -560,22 +516,13 @@ namespace PitHero.ECS.Scenes
                 {
                     case HudMode.Normal:
                         _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
-                        _heroLevelLabel.SetStyle(_heroLevelStyleNormal);
-                        _heroHpLabel.SetStyle(_heroHpStyleNormal);
-                        _heroMpLabel.SetStyle(_heroMpStyleNormal);
                         break;
                     case HudMode.Half:
                         _pitLevelLabel.SetStyle(_pitLevelStyleHalf);
-                        _heroLevelLabel.SetStyle(_heroLevelStyleHalf);
-                        _heroHpLabel.SetStyle(_heroHpStyleHalf);
-                        _heroMpLabel.SetStyle(_heroMpStyleHalf);
                         break;
                 }
                 _currentHudMode = desired;
                 _pitLevelLabel.Invalidate();
-                _heroLevelLabel.Invalidate();
-                _heroHpLabel.Invalidate();
-                _heroMpLabel.Invalidate();
 
                 // Update shortcut bar position and scale when mode changes
                 PositionShortcutBar();
@@ -583,54 +530,35 @@ namespace PitHero.ECS.Scenes
 
             // Apply vertical offset based on mode
             int yOffset = 0;
-            int heroLevelXOffset = 0;
-            int heroHpXOffset = 0;
-            int heroMpXOffset = 0;
 
             switch (_currentHudMode)
             {
                 case HudMode.Half:
                     yOffset = GameConfig.TopUiYOffsetHalf;
-                    heroLevelXOffset = 120; // 2x font, proportional spacing increase
-                    heroHpXOffset = 240;
-                    heroMpXOffset = 360;
                     break;
                 case HudMode.Normal:
                 default:
                     yOffset = GameConfig.TopUiYOffsetNormal;
-                    heroLevelXOffset = 0; // Use base positions
-                    heroHpXOffset = 0;
-                    heroMpXOffset = 0;
                     break;
             }
 
             // Only update positions if changed to avoid redundant property sets
             float targetY = PitLabelBaseY + yOffset;
-            float targetHeroLevelX = HeroLevelLabelBaseX + heroLevelXOffset;
-            float targetHeroHpX = HeroHpLabelBaseX + heroHpXOffset;
-            float targetHeroMpX = HeroMpLabelBaseX + heroMpXOffset;
 
             if (System.Math.Abs(_pitLevelLabel.GetY() - targetY) > 0.1f)
             {
                 _pitLevelLabel.SetY(targetY);
-                _heroLevelLabel.SetY(targetY);
-                _heroHpLabel.SetY(targetY);
-                _heroMpLabel.SetY(targetY);
             }
 
-            if (System.Math.Abs(_heroLevelLabel.GetX() - targetHeroLevelX) > 0.1f)
+            // Update graphical HUD position based on mode
+            if (_graphicalHUD != null)
             {
-                _heroLevelLabel.SetX(targetHeroLevelX);
-            }
-
-            if (System.Math.Abs(_heroHpLabel.GetX() - targetHeroHpX) > 0.1f)
-            {
-                _heroHpLabel.SetX(targetHeroHpX);
-            }
-
-            if (System.Math.Abs(_heroMpLabel.GetX() - targetHeroMpX) > 0.1f)
-            {
-                _heroMpLabel.SetX(targetHeroMpX);
+                var hudEntity = _graphicalHUD.Entity;
+                if (hudEntity != null)
+                {
+                    float hudTargetY = GraphicalHudBaseY + yOffset;
+                    hudEntity.SetPosition(GraphicalHudBaseX, hudTargetY);
+                }
             }
         }
 
@@ -721,7 +649,7 @@ namespace PitHero.ECS.Scenes
 
             // Keep pit level label up to date
             UpdatePitLevelLabel();
-            UpdateHeroLabels();
+            UpdateHeroHUD();
             UpdateHudFontMode();
 
             // Update shortcut bar position (handles offset when inventory open)
