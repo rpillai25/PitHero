@@ -31,16 +31,15 @@ namespace PitHero.UI
         private int SizeMultiplier => _useDoubleSize ? 2 : 1;
 
         // Constants from issue description
-        private const int HP_BAR_WIDTH = 51;
-        private const int MP_BAR_WIDTH = 51;
+        private const int HP_MP_BAR_WIDTH = 51;
         private const int HP_UNIT_X_OFFSET = 3;
-        private const int HP_UNIT_Y_OFFSET = 26;
+        private const int HP_UNIT_Y_OFFSET = 19; // Shifted up 7 pixels from original 26
         private const int MP_UNIT_X_OFFSET = 106;
-        private const int MP_UNIT_Y_OFFSET = 26;
+        private const int MP_UNIT_Y_OFFSET = 19; // Shifted up 7 pixels from original 26
         private const int HP_TEXT_X_OFFSET = 28;
-        private const int HP_TEXT_Y_OFFSET = 9;
+        private const int HP_TEXT_Y_OFFSET = 2; // Shifted up 7 pixels from original 9
         private const int MP_TEXT_X_OFFSET = 131;
-        private const int MP_TEXT_Y_OFFSET = 9;
+        private const int MP_TEXT_Y_OFFSET = 2; // Shifted up 7 pixels from original 9
         private const int LEVEL_TEXT_X_OFFSET = 71;
         private const int LEVEL_TEXT_Y_OFFSET = 13;
 
@@ -124,7 +123,7 @@ namespace PitHero.UI
             int scaledMpTextYOffset = MP_TEXT_Y_OFFSET * SizeMultiplier;
             int scaledLevelTextXOffset = LEVEL_TEXT_X_OFFSET * SizeMultiplier;
             int scaledLevelTextYOffset = LEVEL_TEXT_Y_OFFSET * SizeMultiplier;
-            int scaledBarWidth = HP_BAR_WIDTH * SizeMultiplier;
+            int scaledBarWidth = HP_MP_BAR_WIDTH * SizeMultiplier;
 
             // Now all child elements use position directly as the top-left corner
             // Render HP bar (filled from right to left based on HP percentage)
