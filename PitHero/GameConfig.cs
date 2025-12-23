@@ -119,6 +119,7 @@ namespace PitHero
         public const int RenderLayerBase = 100; // Background layer
 
         public const int RenderLayerUI = 998; // UI layer (always on top)
+        public const int RenderLayerGraphicalHUD = 997; // Graphical HUD layer (screen space, not affected by scene scaling)
         public const int TransparentPauseOverlay = 999; // Transparent overlay for paused action when UI is active
 
         // UI Button Spacing

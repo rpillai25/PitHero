@@ -39,6 +39,7 @@ namespace PitHero.ECS.Scenes
         private const float PitLabelBaseY = 16f; // original Y before offsets applied
         private const float GraphicalHudBaseX = 110f; // Base X position for graphical HUD (to the right of Pit Lv label)
         private const float GraphicalHudBaseY = 4f; // Base Y position for graphical HUD
+        private const float GraphicalHudHalfModeXOffset = 110f; // Additional X offset when in half mode to avoid covering pit label
 
         public BitmapFont HudFont; // legacy reference (normal)
 
@@ -363,7 +364,7 @@ namespace PitHero.ECS.Scenes
 
         private void SetupUIOverlay()
         {
-            var screenSpaceRenderer = new ScreenSpaceRenderer(100, [GameConfig.TransparentPauseOverlay, GameConfig.RenderLayerUI]);
+            var screenSpaceRenderer = new ScreenSpaceRenderer(100, [GameConfig.TransparentPauseOverlay, GameConfig.RenderLayerUI, GameConfig.RenderLayerGraphicalHUD]);
             AddRenderer(screenSpaceRenderer);
 
             // Create pause overlay entity
@@ -403,6 +404,7 @@ namespace PitHero.ECS.Scenes
             var hudEntity = CreateEntity("graphical-hud");
             hudEntity.SetPosition(GraphicalHudBaseX, GraphicalHudBaseY);
             _graphicalHUD = hudEntity.AddComponent(new GraphicalHUD());
+            _graphicalHUD.SetRenderLayer(GameConfig.RenderLayerGraphicalHUD); // Use screen space renderer
 
             // Shortcut bar at bottom center
             _shortcutBar = new ShortcutBar();
@@ -516,9 +518,11 @@ namespace PitHero.ECS.Scenes
                 {
                     case HudMode.Normal:
                         _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
+                        _graphicalHUD?.SetUseDoubleSize(false);
                         break;
                     case HudMode.Half:
                         _pitLevelLabel.SetStyle(_pitLevelStyleHalf);
+                        _graphicalHUD?.SetUseDoubleSize(true);
                         break;
                 }
                 _currentHudMode = desired;
@@ -550,14 +554,22 @@ namespace PitHero.ECS.Scenes
                 _pitLevelLabel.SetY(targetY);
             }
 
-            // Update graphical HUD position based on mode
+            // Update graphical HUD position based on mode (no scaling needed - it's in screen space)
             if (_graphicalHUD != null)
             {
                 var hudEntity = _graphicalHUD.Entity;
                 if (hudEntity != null)
                 {
                     float hudTargetY = GraphicalHudBaseY + yOffset;
-                    hudEntity.SetPosition(GraphicalHudBaseX, hudTargetY);
+                    float hudTargetX = GraphicalHudBaseX;
+
+                    if (_currentHudMode == HudMode.Half)
+                    {
+                        // Shift right to avoid covering the pit label (no scale needed in screen space)
+                        hudTargetX += GraphicalHudHalfModeXOffset;
+                    }
+
+                    hudEntity.SetPosition(hudTargetX, hudTargetY);
                 }
             }
         }
