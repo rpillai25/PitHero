@@ -65,6 +65,9 @@ namespace PitHero.AI
             var jumpOutOfPit = new JumpOutOfPitAction();
             _planner.AddAction(jumpOutOfPit);
 
+            var sleepInBed = new SleepInBedAction();
+            _planner.AddAction(sleepInBed);
+
             // Add combat/interaction actions so the planner can satisfy interaction goals
             var attackMonster = new AttackMonsterAction();
             _planner.AddAction(attackMonster);
@@ -475,6 +478,10 @@ namespace PitHero.AI
                     _targetLocationType = LocationType.None;
                     return null;
 
+                case GoapConstants.SleepInBedAction:
+                    _targetLocationType = LocationType.Bed;
+                    return CalculateBedLocation();
+
                 default:
                     _targetLocationType = LocationType.None;
                     Debug.Warn($"[HeroStateMachine] Unknown action name for location calculation: {actionName}");
@@ -703,6 +710,15 @@ namespace PitHero.AI
             var pitRightEdge = pitWidthManager?.CurrentPitRightEdge ?? (GameConfig.PitRectX + GameConfig.PitRectWidth);
 
             return new Point(pitRightEdge - 2, GameConfig.PitCenterTileY); // Just inside right edge
+        }
+
+        /// <summary>
+        /// Calculate Bed location - position of the bed for sleeping
+        /// </summary>
+        private Point? CalculateBedLocation()
+        {
+            // Bed is at tile position (85, 4)
+            return new Point(85, 4);
         }
 
         /// <summary>

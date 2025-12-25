@@ -18,7 +18,9 @@ namespace PitHero.AI
 
         public JumpOutOfPitAction() : base(GoapConstants.JumpOutOfPitAction)
         {
-            // No preconditions - this action is preserved for future use but not used by GOAP planner currently
+            // Preconditions: Hero must be inside pit and have critical HP
+            SetPrecondition(GoapConstants.InsidePit, true);
+            SetPrecondition(GoapConstants.HPCritical, true);
 
             // Postcondition: Hero is outside pit
             SetPostcondition(GoapConstants.OutsidePit, true);

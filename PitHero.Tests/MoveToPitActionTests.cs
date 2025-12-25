@@ -41,8 +41,8 @@ namespace PitHero.Tests
             var constantsType = typeof(GoapConstants);
             var fields = constantsType.GetFields().Where(f => f.FieldType == typeof(string) && f.IsLiteral);
             
-            // Should have exactly 9 states + 7 actions = 16 constants (extended for interactive entities)
-            Assert.AreEqual(16, fields.Count(), "Should have exactly 16 GOAP constants in extended interactive model");
+            // Should have exactly 10 states + 7 actions = 17 constants (extended for interactive entities + HP critical state + sleep action)
+            Assert.AreEqual(17, fields.Count(), "Should have exactly 17 GOAP constants in extended interactive model");
         }
 
         [TestMethod]

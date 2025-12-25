@@ -12,6 +12,7 @@
         public const string ActivatedWizardOrb = "ActivatedWizardOrb";
         public const string AdjacentToMonster = "AdjacentToMonster";
         public const string AdjacentToChest = "AdjacentToChest";
+        public const string HPCritical = "HPCritical";
 
         // GOAP Actions (extended to include interactive entities)
         public const string JumpIntoPitAction = "JumpIntoPitAction";
@@ -20,5 +21,6 @@
         public const string JumpOutOfPitAction = "JumpOutOfPitAction";
         public const string AttackMonster = "AttackMonster";
         public const string OpenChest = "OpenChest";
+        public const string SleepInBedAction = "SleepInBedAction";
     }
 }

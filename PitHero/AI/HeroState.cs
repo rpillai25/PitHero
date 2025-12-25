@@ -22,6 +22,7 @@ namespace PitHero.AI
         WizardOrb,
         PitRegenPoint,
         TownWanderPoint,
+        Bed,
         Inn,
         ItemShop,
         WeaponShop,

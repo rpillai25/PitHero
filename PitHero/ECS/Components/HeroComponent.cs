@@ -54,6 +54,20 @@ namespace PitHero.ECS.Components
         public bool AdjacentToChest { get; set; }                    // True when chest exists in tile adjacent to hero
 
         /// <summary>
+        /// True when hero's HP falls below 40%
+        /// </summary>
+        public bool HPCritical
+        {
+            get
+            {
+                if (LinkedHero == null)
+                    return false;
+                float hpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
+                return hpPercent < 0.4f;
+            }
+        }
+
+        /// <summary>
         /// Hero uncover radius for fog of war clearing (default 1 = 8 surrounding tiles)
         /// </summary>
         public int UncoverRadius { get; set; } = GameConfig.DefaultHeroUncoverRadius;
@@ -292,6 +306,10 @@ namespace PitHero.ECS.Components
             {
                 worldState.Set(GoapConstants.AdjacentToChest, true);
             }
+            if (HPCritical)
+            {
+                worldState.Set(GoapConstants.HPCritical, true);
+            }
         }
 
         /// <summary>
@@ -299,6 +317,13 @@ namespace PitHero.ECS.Components
         /// </summary>
         public override void SetGoalState(ref WorldState goalState)
         {
+            // HIGHEST PRIORITY: HP recovery - if HP is critical, make it the primary goal
+            if (HPCritical)
+            {
+                goalState.Set(GoapConstants.HPCritical, false);
+                return; // Skip other goals when HP is critical
+            }
+
             // Main goals for the hero - planner should always plan the optimal path to these goals.
 
             if (PitInitialized && !ActivatedWizardOrb)
