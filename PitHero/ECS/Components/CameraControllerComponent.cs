@@ -6,7 +6,7 @@ using PitHero.Services;
 namespace PitHero.ECS.Components
 {
     /// <summary>
-    /// Component that handles camera zoom and pan controls via mouse input
+    /// Component that handles camera zoom and pan controls via mouse input, with automatic hero following
     /// </summary>
     public class CameraControllerComponent : Component, IUpdatable, IPausableComponent
     {
@@ -18,6 +18,10 @@ namespace PitHero.ECS.Components
         private float _currentMinimumZoom = GameConfig.CameraMinimumZoom;
         private float _currentMaximumZoom = GameConfig.CameraMaximumZoom;
         private const float PixelPerfectZoomStep = 0.125f; // 1/8 increments keeps scaling clean (32 * 0.125 = 4)
+
+        private bool _isFollowingHero = true; // camera auto-follows hero by default
+        private float _manualControlTimer = 0f; // tracks time since last manual control input
+        private Entity _heroEntity; // cached reference to hero entity
 
         /// <summary>
         /// Gets whether this component should respect the global pause state.
@@ -50,8 +54,19 @@ namespace PitHero.ECS.Components
             if (pauseService?.IsPaused == true && ShouldPause)
                 return;
 
+            // Cache hero entity reference if not already cached
+            if (_heroEntity == null)
+            {
+                var heroEntities = Entity.Scene.FindEntitiesWithTag(GameConfig.TAG_HERO);
+                if (heroEntities.Count > 0)
+                {
+                    _heroEntity = heroEntities[0];
+                }
+            }
+
             HandleZoomInput();
             HandlePanInput();
+            HandleHeroFollowing();
         }
 
         private void HandleZoomInput()
@@ -241,6 +256,9 @@ namespace PitHero.ECS.Components
 
                 _isPanning = true;
                 _lastMousePosition = currentMousePosition;
+                
+                // Switch to manual control mode
+                SwitchToManualControl();
             }
             else if (Input.RightMouseButtonReleased)
             {
@@ -258,6 +276,53 @@ namespace PitHero.ECS.Components
                 _camera.Position = newPosition;
                 QuantizeCameraPosition();
                 _lastMousePosition = currentMousePosition;
+                
+                // Reset manual control timer on active panning
+                _manualControlTimer = 0f;
+            }
+        }
+
+        /// <summary>
+        /// Handles automatic camera following of the hero
+        /// </summary>
+        private void HandleHeroFollowing()
+        {
+            // Update manual control timer if in manual mode
+            if (!_isFollowingHero)
+            {
+                _manualControlTimer += Time.DeltaTime;
+                
+                // Resume auto-following after timeout
+                if (_manualControlTimer >= GameConfig.CameraManualControlTimeout)
+                {
+                    _isFollowingHero = true;
+                    Debug.Log("[CameraController] Resuming auto-follow after inactivity timeout");
+                }
+            }
+
+            // Follow hero if in auto-follow mode
+            if (_isFollowingHero && _heroEntity != null)
+            {
+                var heroPosition = _heroEntity.Transform.Position;
+                var targetPosition = ConstrainCameraPosition(heroPosition);
+                
+                // Smoothly lerp camera to hero position
+                var lerpedPosition = Vector2.Lerp(_camera.Position, targetPosition, GameConfig.CameraFollowLerpSpeed * Time.DeltaTime);
+                _camera.Position = lerpedPosition;
+                QuantizeCameraPosition();
+            }
+        }
+
+        /// <summary>
+        /// Switches camera to manual control mode
+        /// </summary>
+        private void SwitchToManualControl()
+        {
+            if (_isFollowingHero)
+            {
+                _isFollowingHero = false;
+                _manualControlTimer = 0f;
+                Debug.Log("[CameraController] Switched to manual camera control");
             }
         }
 
