@@ -101,6 +101,7 @@ namespace PitHero
         public const int TAG_TREASURE = 5; // Tag for treasure entities
         public const int TAG_MONSTER = 6; // Tag for monster entities
         public const int TAG_WIZARD_ORB = 7; // Tag for wizard orb entity
+        public const int TAG_MERCENARY = 8; // Tag for mercenary entities
 
         // Render Layers (the lower the number, the higher the layer)
 
@@ -134,6 +135,7 @@ namespace PitHero
         public const int PhysicsTileMapLayer = 0;   // Tilemap "Collision" layer
         public const int PhysicsHeroWorldLayer = 1; // Hero layer for collision
         public const int PhysicsPitLayer = 2;       // Pit trigger layer
+        public const int PhysicsMercenaryLayer = 3; // Mercenary layer for collision
 
         // Entity names
         public const string EntityHero = "Hero";

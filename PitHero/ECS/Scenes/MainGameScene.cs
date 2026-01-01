@@ -26,6 +26,7 @@ namespace PitHero.ECS.Scenes
         private int _lastDisplayedPitLevel = -1; // Track last displayed level to avoid string churn
         private ShortcutBar _shortcutBar; // Shortcut bar displayed at bottom center
         private GraphicalHUD _graphicalHUD; // Graphical HUD component for HP/MP/Level display
+        private MercenaryHireDialog _mercenaryHireDialog; // Dialog for hiring mercenaries
 
         // HUD fonts for different shrink levels
         public BitmapFont _hudFontNormal;
@@ -97,6 +98,11 @@ namespace PitHero.ECS.Scenes
 
             // Connect shortcut bar to hero
             ConnectShortcutBarToHero();
+
+            // Initialize mercenary manager
+            var mercenaryManager = new MercenaryManager();
+            Core.Services.AddService(mercenaryManager);
+            mercenaryManager.Initialize(this);
 
             _isInitializationComplete = true;
         }
@@ -410,6 +416,10 @@ namespace PitHero.ECS.Scenes
             _shortcutBar = new ShortcutBar();
             uiCanvas.Stage.AddElement(_shortcutBar);
             PositionShortcutBar();
+
+            // Mercenary hire dialog
+            _mercenaryHireDialog = new MercenaryHireDialog();
+            uiCanvas.Stage.AddElement(_mercenaryHireDialog);
         }
 
         private void AddPitLevelTestComponent()
@@ -672,6 +682,59 @@ namespace PitHero.ECS.Scenes
 
             // Handle keyboard shortcuts via shortcut bar
             _shortcutBar?.HandleKeyboardShortcuts();
+
+            // Update mercenary manager
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            mercenaryManager?.Update();
+
+            // Handle mercenary click detection
+            HandleMercenaryClicks();
+        }
+
+        /// <summary>
+        /// Handles mouse clicks on mercenaries for hiring
+        /// </summary>
+        private void HandleMercenaryClicks()
+        {
+            // Only check if left mouse button was just pressed
+            if (!Input.LeftMouseButtonPressed)
+                return;
+
+            // Don't process clicks if dialog is already open
+            if (_mercenaryHireDialog?.IsDialogVisible == true)
+                return;
+
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager == null)
+                return;
+
+            // Don't show dialog if player can't hire more mercenaries
+            if (!mercenaryManager.CanHireMore())
+                return;
+
+            // Get mouse position in world coordinates
+            var mousePos = Camera.MouseToWorldPoint();
+
+            // Find all mercenary entities
+            var mercenaries = FindEntitiesWithTag(GameConfig.TAG_MERCENARY);
+            
+            for (int i = 0; i < mercenaries.Count; i++)
+            {
+                var mercEntity = mercenaries[i];
+                var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
+                
+                // Only show dialog for mercenaries waiting in tavern
+                if (mercComponent == null || !mercComponent.IsWaitingInTavern)
+                    continue;
+
+                // Check if click is within mercenary bounds (use simple distance check)
+                var distance = Vector2.Distance(mousePos, mercEntity.Transform.Position);
+                if (distance < GameConfig.TileSize)
+                {
+                    _mercenaryHireDialog?.Show(mercEntity);
+                    break;
+                }
+            }
         }
     }
 }
