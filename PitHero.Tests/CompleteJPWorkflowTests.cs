@@ -153,39 +153,39 @@ namespace PitHero.Tests
             Assert.AreEqual(30, hero.GetCurrentJP(), "Should have 30 JP remaining (500 - 470)");
         }
 
-        /// <summary>Tests the new Bowman job progression.</summary>
+        /// <summary>Tests the new Archer job progression.</summary>
         [TestMethod]
-        public void Bowman_Job_Complete_Progression()
+        public void Archer_Job_Complete_Progression()
         {
-            var crystal = new HeroCrystal("BowmanCore", new Bowman(), 3, new StatBlock(2, 2, 2, 1));
+            var crystal = new HeroCrystal("ArcherCore", new Archer(), 3, new StatBlock(2, 2, 2, 1));
             var hero = new Hero("Rosa", crystal.Job, crystal.Level, crystal.BaseStats, crystal);
             
             // Earn sufficient JP
             hero.EarnJP(550);
             
-            var bowman = new Bowman();
+            var archer = new Archer();
             
             // Verify skill order and costs
-            Assert.AreEqual("bowman.eagle_eye", bowman.Skills[0].Id);
-            Assert.AreEqual(70, bowman.Skills[0].JPCost);
+            Assert.AreEqual("archer.eagle_eye", archer.Skills[0].Id);
+            Assert.AreEqual(70, archer.Skills[0].JPCost);
             
-            Assert.AreEqual("bowman.quickdraw", bowman.Skills[1].Id);
-            Assert.AreEqual(100, bowman.Skills[1].JPCost);
+            Assert.AreEqual("archer.quickdraw", archer.Skills[1].Id);
+            Assert.AreEqual(100, archer.Skills[1].JPCost);
             
-            Assert.AreEqual("bowman.power_shot", bowman.Skills[2].Id);
-            Assert.AreEqual(130, bowman.Skills[2].JPCost);
+            Assert.AreEqual("archer.power_shot", archer.Skills[2].Id);
+            Assert.AreEqual(130, archer.Skills[2].JPCost);
             
-            Assert.AreEqual("bowman.volley", bowman.Skills[3].Id);
-            Assert.AreEqual(200, bowman.Skills[3].JPCost);
+            Assert.AreEqual("archer.volley", archer.Skills[3].Id);
+            Assert.AreEqual(200, archer.Skills[3].JPCost);
             
             // Purchase all skills
-            foreach (var skill in bowman.Skills)
+            foreach (var skill in archer.Skills)
             {
                 bool success = hero.TryPurchaseSkill(skill);
                 Assert.IsTrue(success, $"Should purchase {skill.Name}");
             }
             
-            Assert.IsTrue(hero.IsJobMastered(), "Bowman should be mastered");
+            Assert.IsTrue(hero.IsJobMastered(), "Archer should be mastered");
             Assert.AreEqual(50, hero.GetCurrentJP(), "Should have 50 JP remaining (550 - 500)");
         }
 
@@ -200,7 +200,7 @@ namespace PitHero.Tests
                 new Priest(),
                 new Monk(),
                 new Thief(),
-                new Bowman()
+                new Archer()
             };
             
             foreach (var job in jobs)

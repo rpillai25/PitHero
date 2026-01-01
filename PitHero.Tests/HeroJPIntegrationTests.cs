@@ -162,19 +162,19 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void Bowman_Hero_Can_Use_JP_System()
+        public void Archer_Hero_Can_Use_JP_System()
         {
-            var crystal = new HeroCrystal("BowmanCrystal", new Bowman(), 2, new StatBlock(2, 2, 2, 1));
+            var crystal = new HeroCrystal("ArcherCrystal", new Archer(), 2, new StatBlock(2, 2, 2, 1));
             var hero = new Hero("Rosa", crystal.Job, crystal.Level, crystal.BaseStats, crystal);
             
             hero.EarnJP(200);
             
-            var bowman = new Bowman();
-            var eagleEyeSkill = bowman.Skills[0]; // Eagle Eye
+            var archer = new Archer();
+            var eagleEyeSkill = archer.Skills[0]; // Eagle Eye
             
             bool success = hero.TryPurchaseSkill(eagleEyeSkill);
             
-            Assert.IsTrue(success, "Bowman should be able to purchase skills");
+            Assert.IsTrue(success, "Archer should be able to purchase skills");
             Assert.AreEqual(130, hero.GetCurrentJP(), "Should have 130 JP after purchasing 70 JP skill");
         }
 

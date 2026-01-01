@@ -116,15 +116,15 @@ namespace PitHero.UI
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreateTrapMastery());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreateAssassinsEdge());
 
-            // Bowman patterns
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreatePiercingArrow());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreateLightshot());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreateKiArrow());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreateArrowFlurry());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreateMarksman());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreateSharpAim());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreateRangersPath());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.BowmanSynergyPatterns.CreateWindArcher());
+            // Archer patterns
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ArcherSynergyPatterns.CreatePiercingArrow());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ArcherSynergyPatterns.CreateLightshot());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ArcherSynergyPatterns.CreateKiArrow());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ArcherSynergyPatterns.CreateArrowFlurry());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ArcherSynergyPatterns.CreateMarksman());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ArcherSynergyPatterns.CreateSharpAim());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ArcherSynergyPatterns.CreateRangersPath());
+            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ArcherSynergyPatterns.CreateWindArcher());
 
             // Cross-class patterns
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateSacredBlade());

@@ -386,7 +386,7 @@ Jobs provide stat bonuses that grow with level using linear formulas:
 - **Knight**: 68 STR, 42 AGI, 78 VIT, 28 MAG, 415 HP, 94 MP (Tank role)
 - **Monk**: 73 STR, 62 AGI, 58 VIT, 37 MAG, 315 HP, 121 MP (Balanced Fighter)
 - **Thief**: 58 STR, 82 AGI, 43 VIT, 32 MAG, 240 HP, 106 MP (Speed/Evasion)
-- **Bowman**: 62 STR, 72 AGI, 48 VIT, 37 MAG, 265 HP, 121 MP (Ranged)
+- **Archer**: 62 STR, 72 AGI, 48 VIT, 37 MAG, 265 HP, 121 MP (Ranged)
 - **Mage**: 33 STR, 48 AGI, 33 VIT, 88 MAG, 190 HP, 274 MP (Magic DPS)
 - **Priest**: 38 STR, 53 AGI, 43 VIT, 78 MAG, 240 HP, 244 MP (Healer)
 

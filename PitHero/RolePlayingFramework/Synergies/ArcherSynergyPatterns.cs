@@ -6,8 +6,8 @@ using System.Collections.Generic;
 
 namespace RolePlayingFramework.Synergies
 {
-    /// <summary>Bowman synergy patterns with ranged combat focus.</summary>
-    public static class BowmanSynergyPatterns
+    /// <summary>Archer synergy patterns with ranged combat focus.</summary>
+    public static class ArcherSynergyPatterns
     {
         /// <summary>Piercing Arrow - Bow line for armor-piercing shots.</summary>
         public static SynergyPattern CreatePiercingArrow()
@@ -29,7 +29,7 @@ namespace RolePlayingFramework.Synergies
             };
 
             return new SynergyPattern(
-                "bowman.piercing_arrow",
+                "archer.piercing_arrow",
                 "Piercing Arrow",
                 "Perfect aim pierces through enemy defenses",
                 offsets,
@@ -64,7 +64,7 @@ namespace RolePlayingFramework.Synergies
             };
 
             return new SynergyPattern(
-                "bowman.lightshot",
+                "archer.lightshot",
                 "Lightshot",
                 "Infuse arrows with holy light for magical damage",
                 offsets,
@@ -99,7 +99,7 @@ namespace RolePlayingFramework.Synergies
             };
 
             return new SynergyPattern(
-                "bowman.ki_arrow",
+                "archer.ki_arrow",
                 "Ki Arrow",
                 "Channel spiritual energy through arrows",
                 offsets,
@@ -136,7 +136,7 @@ namespace RolePlayingFramework.Synergies
             };
 
             return new SynergyPattern(
-                "bowman.arrow_flurry",
+                "archer.arrow_flurry",
                 "Arrow Flurry",
                 "Unleash devastating rapid-fire arrow barrages",
                 offsets,
@@ -166,7 +166,7 @@ namespace RolePlayingFramework.Synergies
             };
 
             return new SynergyPattern(
-                "bowman.marksman",
+                "archer.marksman",
                 "Marksman",
                 "Basic archery training improves accuracy",
                 offsets,
@@ -198,7 +198,7 @@ namespace RolePlayingFramework.Synergies
             };
 
             return new SynergyPattern(
-                "bowman.sharp_aim",
+                "archer.sharp_aim",
                 "Sharp Aim",
                 "Sharp vision identifies enemy weak points",
                 offsets,
@@ -230,7 +230,7 @@ namespace RolePlayingFramework.Synergies
             };
 
             return new SynergyPattern(
-                "bowman.rangers_path",
+                "archer.rangers_path",
                 "Ranger's Path",
                 "Move swiftly through terrain while maintaining aim",
                 offsets,
@@ -262,7 +262,7 @@ namespace RolePlayingFramework.Synergies
             };
 
             return new SynergyPattern(
-                "bowman.wind_archer",
+                "archer.wind_archer",
                 "Wind Archer",
                 "Wind magic guides arrows to their targets",
                 offsets,
@@ -272,8 +272,8 @@ namespace RolePlayingFramework.Synergies
             );
         }
 
-        /// <summary>Register all Bowman patterns.</summary>
-        public static void RegisterAllBowmanPatterns(SynergyDetector detector)
+        /// <summary>Register all Archer patterns.</summary>
+        public static void RegisterAllArcherPatterns(SynergyDetector detector)
         {
             detector.RegisterPattern(CreatePiercingArrow());
             detector.RegisterPattern(CreateLightshot());

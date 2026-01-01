@@ -94,7 +94,7 @@ namespace PitHero.UI
             PriestSynergyPatterns.RegisterAllPriestPatterns(_synergyDetector);
             MonkSynergyPatterns.RegisterAllMonkPatterns(_synergyDetector);
             ThiefSynergyPatterns.RegisterAllThiefPatterns(_synergyDetector);
-            BowmanSynergyPatterns.RegisterAllBowmanPatterns(_synergyDetector);
+            ArcherSynergyPatterns.RegisterAllArcherPatterns(_synergyDetector);
             CrossClassSynergyPatterns.RegisterAllCrossClassPatterns(_synergyDetector);
         }
 

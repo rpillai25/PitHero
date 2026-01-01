@@ -87,7 +87,7 @@ The `Hero` class now supports JP mechanics through its bound crystal:
   3. Sneak Attack (Active, JP: 130, Level: 2) - AP: 3, bonus AGI damage
   4. Vanish (Active, JP: 180, Level: 3) - AP: 6, untargetable for 1 turn (placeholder)
 
-### Bowman (New)
+### Archer (New)
 - **Base Stats**: STR 2, AGI 2, VIT 2, MAG 1
 - **Growth/Level**: STR +1, AGI +2, VIT +1, MAG +1
 - **Skills**:

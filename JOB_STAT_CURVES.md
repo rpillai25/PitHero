@@ -69,7 +69,7 @@ This document details the stat progression for all 6 primary jobs in the game. A
 
 ---
 
-## Bowman (Ranged Physical)
+## Archer (Ranged Physical)
 
 **Role**: Ranged attacker, balanced stats  
 **BaseBonus**: Str 7, Agi 9, Vit 6, Mag 4  

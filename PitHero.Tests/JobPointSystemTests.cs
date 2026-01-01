@@ -213,14 +213,14 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void Bowman_Skills_Have_Correct_JP_Costs()
+        public void Archer_Skills_Have_Correct_JP_Costs()
         {
-            var bowman = new Bowman();
+            var archer = new Archer();
             
-            Assert.AreEqual(70, bowman.Skills[0].JPCost, "Eagle Eye should cost 70 JP");
-            Assert.AreEqual(100, bowman.Skills[1].JPCost, "Quickdraw should cost 100 JP");
-            Assert.AreEqual(130, bowman.Skills[2].JPCost, "Power Shot should cost 130 JP");
-            Assert.AreEqual(200, bowman.Skills[3].JPCost, "Volley should cost 200 JP");
+            Assert.AreEqual(70, archer.Skills[0].JPCost, "Eagle Eye should cost 70 JP");
+            Assert.AreEqual(100, archer.Skills[1].JPCost, "Quickdraw should cost 100 JP");
+            Assert.AreEqual(130, archer.Skills[2].JPCost, "Power Shot should cost 130 JP");
+            Assert.AreEqual(200, archer.Skills[3].JPCost, "Volley should cost 200 JP");
         }
 
         [TestMethod]

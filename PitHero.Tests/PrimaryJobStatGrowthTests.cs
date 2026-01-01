@@ -240,66 +240,66 @@ namespace PitHero.Tests
 
         #endregion
 
-        #region Bowman Tests
+        #region Archer Tests
 
         [TestMethod]
-        public void Bowman_Level1_HasCorrectBaseStats()
+        public void Archer_Level1_HasCorrectBaseStats()
         {
-            var bowman = new Bowman();
-            var stats = bowman.BaseBonus;
+            var archer = new Archer();
+            var stats = archer.BaseBonus;
 
-            Assert.AreEqual(7, stats.Strength, "Bowman base Strength should be 7");
-            Assert.AreEqual(9, stats.Agility, "Bowman base Agility should be 9");
-            Assert.AreEqual(6, stats.Vitality, "Bowman base Vitality should be 6");
-            Assert.AreEqual(4, stats.Magic, "Bowman base Magic should be 4");
+            Assert.AreEqual(7, stats.Strength, "Archer base Strength should be 7");
+            Assert.AreEqual(9, stats.Agility, "Archer base Agility should be 9");
+            Assert.AreEqual(6, stats.Vitality, "Archer base Vitality should be 6");
+            Assert.AreEqual(4, stats.Magic, "Archer base Magic should be 4");
         }
 
         [TestMethod]
-        public void Bowman_Level25_StatsWithinExpectedRange()
+        public void Archer_Level25_StatsWithinExpectedRange()
         {
-            var bowman = new Bowman();
-            var stats = bowman.GetJobContributionAtLevel(25);
+            var archer = new Archer();
+            var stats = archer.GetJobContributionAtLevel(25);
 
-            Assert.IsTrue(stats.Strength >= 18 && stats.Strength <= 22, $"Bowman Str at L25, was {stats.Strength}");
-            Assert.IsTrue(stats.Agility >= 22 && stats.Agility <= 26, $"Bowman Agi at L25, was {stats.Agility}");
-            Assert.IsTrue(stats.Vitality >= 14 && stats.Vitality <= 18, $"Bowman Vit at L25, was {stats.Vitality}");
-            Assert.IsTrue(stats.Magic >= 10 && stats.Magic <= 14, $"Bowman Mag at L25, was {stats.Magic}");
+            Assert.IsTrue(stats.Strength >= 18 && stats.Strength <= 22, $"Archer Str at L25, was {stats.Strength}");
+            Assert.IsTrue(stats.Agility >= 22 && stats.Agility <= 26, $"Archer Agi at L25, was {stats.Agility}");
+            Assert.IsTrue(stats.Vitality >= 14 && stats.Vitality <= 18, $"Archer Vit at L25, was {stats.Vitality}");
+            Assert.IsTrue(stats.Magic >= 10 && stats.Magic <= 14, $"Archer Mag at L25, was {stats.Magic}");
         }
 
         [TestMethod]
-        public void Bowman_Level50_StatsWithinExpectedRange()
+        public void Archer_Level50_StatsWithinExpectedRange()
         {
-            var bowman = new Bowman();
-            var stats = bowman.GetJobContributionAtLevel(50);
+            var archer = new Archer();
+            var stats = archer.GetJobContributionAtLevel(50);
 
-            Assert.IsTrue(stats.Strength >= 32 && stats.Strength <= 36, $"Bowman Str at L50, was {stats.Strength}");
-            Assert.IsTrue(stats.Agility >= 38 && stats.Agility <= 42, $"Bowman Agi at L50, was {stats.Agility}");
-            Assert.IsTrue(stats.Vitality >= 24 && stats.Vitality <= 28, $"Bowman Vit at L50, was {stats.Vitality}");
-            Assert.IsTrue(stats.Magic >= 18 && stats.Magic <= 22, $"Bowman Mag at L50, was {stats.Magic}");
+            Assert.IsTrue(stats.Strength >= 32 && stats.Strength <= 36, $"Archer Str at L50, was {stats.Strength}");
+            Assert.IsTrue(stats.Agility >= 38 && stats.Agility <= 42, $"Archer Agi at L50, was {stats.Agility}");
+            Assert.IsTrue(stats.Vitality >= 24 && stats.Vitality <= 28, $"Archer Vit at L50, was {stats.Vitality}");
+            Assert.IsTrue(stats.Magic >= 18 && stats.Magic <= 22, $"Archer Mag at L50, was {stats.Magic}");
         }
 
         [TestMethod]
-        public void Bowman_Level75_StatsWithinExpectedRange()
+        public void Archer_Level75_StatsWithinExpectedRange()
         {
-            var bowman = new Bowman();
-            var stats = bowman.GetJobContributionAtLevel(75);
+            var archer = new Archer();
+            var stats = archer.GetJobContributionAtLevel(75);
 
-            Assert.IsTrue(stats.Strength >= 46 && stats.Strength <= 50, $"Bowman Str at L75, was {stats.Strength}");
-            Assert.IsTrue(stats.Agility >= 54 && stats.Agility <= 58, $"Bowman Agi at L75, was {stats.Agility}");
-            Assert.IsTrue(stats.Vitality >= 35 && stats.Vitality <= 39, $"Bowman Vit at L75, was {stats.Vitality}");
-            Assert.IsTrue(stats.Magic >= 27 && stats.Magic <= 31, $"Bowman Mag at L75, was {stats.Magic}");
+            Assert.IsTrue(stats.Strength >= 46 && stats.Strength <= 50, $"Archer Str at L75, was {stats.Strength}");
+            Assert.IsTrue(stats.Agility >= 54 && stats.Agility <= 58, $"Archer Agi at L75, was {stats.Agility}");
+            Assert.IsTrue(stats.Vitality >= 35 && stats.Vitality <= 39, $"Archer Vit at L75, was {stats.Vitality}");
+            Assert.IsTrue(stats.Magic >= 27 && stats.Magic <= 31, $"Archer Mag at L75, was {stats.Magic}");
         }
 
         [TestMethod]
-        public void Bowman_Level99_ReachesTargetStats()
+        public void Archer_Level99_ReachesTargetStats()
         {
-            var bowman = new Bowman();
-            var stats = bowman.GetJobContributionAtLevel(StatConstants.MaxLevel);
+            var archer = new Archer();
+            var stats = archer.GetJobContributionAtLevel(StatConstants.MaxLevel);
 
-            AssertWithinTolerance(stats.Strength, 62, "Bowman Strength at L99");
-            AssertWithinTolerance(stats.Agility, 72, "Bowman Agility at L99");
-            AssertWithinTolerance(stats.Vitality, 48, "Bowman Vitality at L99");
-            AssertWithinTolerance(stats.Magic, 37, "Bowman Magic at L99");
+            AssertWithinTolerance(stats.Strength, 62, "Archer Strength at L99");
+            AssertWithinTolerance(stats.Agility, 72, "Archer Agility at L99");
+            AssertWithinTolerance(stats.Vitality, 48, "Archer Vitality at L99");
+            AssertWithinTolerance(stats.Magic, 37, "Archer Magic at L99");
 
             AssertWithinCaps(stats);
         }

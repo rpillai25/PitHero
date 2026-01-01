@@ -9,10 +9,10 @@ namespace RolePlayingFramework.Jobs.Primary
     /// Role: Ranged attacker, balanced stats
     /// Target Stats at L99: HP ~265 (Vit 48), MP ~121 (Mag 37), Str 62, Agi 72, Vit 48, Mag 37
     /// </summary>
-    public sealed class Bowman : BaseJob
+    public sealed class Archer : BaseJob
     {
-        public Bowman() : base(
-            name: "Bowman",
+        public Archer() : base(
+            name: "Archer",
             // BaseBonus provides balanced physical stats
             // Target: Good Agility for ranged attacks, balanced other stats
             baseBonus: new StatBlock(strength: 7, agility: 9, vitality: 6, magic: 4),
