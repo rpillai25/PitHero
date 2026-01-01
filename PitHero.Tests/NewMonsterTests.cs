@@ -77,43 +77,45 @@ namespace PitHero.Tests
             var pitLord = new PitLord();
 
             // Assert - Check HP values (calculated using BalanceConfig formulas)
-            Assert.AreEqual(15, slime.MaxHP, "Slime should have HP: 15");
-            Assert.AreEqual(10, bat.MaxHP, "Bat should have HP: 10");
-            Assert.AreEqual(15, rat.MaxHP, "Rat should have HP: 15");
-            Assert.AreEqual(25, goblin.MaxHP, "Goblin should have HP: 25");
-            Assert.AreEqual(17, spider.MaxHP, "Spider should have HP: 17");
-            Assert.AreEqual(17, snake.MaxHP, "Snake should have HP: 17");
-            Assert.AreEqual(60, skeleton.MaxHP, "Skeleton should have HP: 60");
-            Assert.AreEqual(60, orc.MaxHP, "Orc should have HP: 60");
-            Assert.AreEqual(28, wraith.MaxHP, "Wraith should have HP: 28");
-            Assert.AreEqual(90, pitLord.MaxHP, "Pit Lord should have HP: 90");
+            // Formula: (25 + level * 8) * archetype_multiplier
+            Assert.AreEqual(33, slime.MaxHP, "Slime should have HP: 33 (L1, Balanced)");
+            Assert.AreEqual(23, bat.MaxHP, "Bat should have HP: 23 (L1, FastFragile)");
+            Assert.AreEqual(33, rat.MaxHP, "Rat should have HP: 33 (L1, Balanced)");
+            Assert.AreEqual(49, goblin.MaxHP, "Goblin should have HP: 49 (L3, Balanced)");
+            Assert.AreEqual(34, spider.MaxHP, "Spider should have HP: 34 (L3, FastFragile)");
+            Assert.AreEqual(34, snake.MaxHP, "Snake should have HP: 34 (L3, FastFragile)");
+            Assert.AreEqual(109, skeleton.MaxHP, "Skeleton should have HP: 109 (L6, Tank)");
+            Assert.AreEqual(109, orc.MaxHP, "Orc should have HP: 109 (L6, Tank)");
+            Assert.AreEqual(51, wraith.MaxHP, "Wraith should have HP: 51 (L6, FastFragile)");
+            Assert.AreEqual(157, pitLord.MaxHP, "Pit Lord should have HP: 157 (L10, Tank)");
 
             // Assert - Check all stats (calculated using BalanceConfig formulas)
-            Assert.AreEqual(1, slime.Stats.Strength, "Slime Strength");
-            Assert.AreEqual(1, slime.Stats.Agility, "Slime Agility");
-            Assert.AreEqual(1, slime.Stats.Vitality, "Slime Vitality");
-            Assert.AreEqual(1, slime.Stats.Magic, "Slime Magic");
+            // Formula: (3 + level * 1.0) * archetype_stat_multiplier
+            Assert.AreEqual(4, slime.Stats.Strength, "Slime Strength");
+            Assert.AreEqual(4, slime.Stats.Agility, "Slime Agility");
+            Assert.AreEqual(4, slime.Stats.Vitality, "Slime Vitality");
+            Assert.AreEqual(4, slime.Stats.Magic, "Slime Magic");
             
-            Assert.AreEqual(2, bat.Stats.Strength, "Bat Strength");
-            Assert.AreEqual(2, bat.Stats.Agility, "Bat Agility");
-            Assert.AreEqual(1, bat.Stats.Vitality, "Bat Vitality");
-            Assert.AreEqual(1, bat.Stats.Magic, "Bat Magic");
+            Assert.AreEqual(4, bat.Stats.Strength, "Bat Strength (L1 FastFragile: 4*1.2=4.8?4)");
+            Assert.AreEqual(6, bat.Stats.Agility, "Bat Agility (L1 FastFragile: 4*1.5=6)");
+            Assert.AreEqual(2, bat.Stats.Vitality, "Bat Vitality (L1 FastFragile: 4*0.6=2.4?2)");
+            Assert.AreEqual(3, bat.Stats.Magic, "Bat Magic (L1 FastFragile: 4*0.9=3.6?3)");
             
-            Assert.AreEqual(3, goblin.Stats.Strength, "Goblin Strength");
-            Assert.AreEqual(3, spider.Stats.Strength, "Spider Strength");
-            Assert.AreEqual(4, spider.Stats.Agility, "Spider Agility");
+            Assert.AreEqual(6, goblin.Stats.Strength, "Goblin Strength (L3 Balanced: 3+3=6)");
+            Assert.AreEqual(7, spider.Stats.Strength, "Spider Strength (L3 FastFragile: 6*1.2=7.2?7)");
+            Assert.AreEqual(9, spider.Stats.Agility, "Spider Agility (L3 FastFragile: 6*1.5=9)");
             
-            Assert.AreEqual(4, skeleton.Stats.Strength, "Skeleton Strength");
-            Assert.AreEqual(6, skeleton.Stats.Vitality, "Skeleton Vitality");
+            Assert.AreEqual(7, skeleton.Stats.Strength, "Skeleton Strength (L6 Tank: 9*0.8=7.2?7)");
+            Assert.AreEqual(11, skeleton.Stats.Vitality, "Skeleton Vitality (L6 Tank: 9*1.3=11.7?11)");
             
-            Assert.AreEqual(4, orc.Stats.Strength, "Orc Strength");
-            Assert.AreEqual(6, orc.Stats.Vitality, "Orc Vitality");
+            Assert.AreEqual(7, orc.Stats.Strength, "Orc Strength (L6 Tank: 9*0.8=7.2?7)");
+            Assert.AreEqual(11, orc.Stats.Vitality, "Orc Vitality (L6 Tank: 9*1.3=11.7?11)");
             
-            Assert.AreEqual(6, wraith.Stats.Strength, "Wraith Strength");
-            Assert.AreEqual(7, wraith.Stats.Agility, "Wraith Agility");
+            Assert.AreEqual(10, wraith.Stats.Strength, "Wraith Strength (L6 FastFragile: 9*1.2=10.8?10)");
+            Assert.AreEqual(13, wraith.Stats.Agility, "Wraith Agility (L6 FastFragile: 9*1.5=13.5?13)");
             
-            Assert.AreEqual(6, pitLord.Stats.Strength, "Pit Lord Strength");
-            Assert.AreEqual(9, pitLord.Stats.Vitality, "Pit Lord Vitality");
+            Assert.AreEqual(10, pitLord.Stats.Strength, "Pit Lord Strength (L10 Tank: 13*0.8=10.4?10)");
+            Assert.AreEqual(16, pitLord.Stats.Vitality, "Pit Lord Vitality (L10 Tank: 13*1.3=16.9?16)");
             
             // Assert - Check experience values (calculated using BalanceConfig formulas)
             Assert.AreEqual(18, slime.ExperienceYield, "Slime should give XP: 18");

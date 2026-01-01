@@ -113,9 +113,9 @@ namespace PitHero.Tests
             
             Assert.IsNotNull(slot0Item);
             Assert.IsNotNull(slot1Item);
-            Assert.AreEqual("AP Potion", slot0Item.Name);
+            Assert.AreEqual("MPPotion", slot0Item.Name);
             Assert.AreEqual(3, slot0Item.StackCount);
-            Assert.AreEqual("HP Potion", slot1Item.Name);
+            Assert.AreEqual("HPPotion", slot1Item.Name);
             Assert.AreEqual(5, slot1Item.StackCount);
             Assert.AreEqual(2, bag.Count);
         }

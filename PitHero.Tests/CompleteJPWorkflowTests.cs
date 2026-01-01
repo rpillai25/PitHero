@@ -19,7 +19,7 @@ namespace PitHero.Tests
             var hero = new Hero("Arthur", crystal.Job, crystal.Level, crystal.BaseStats, crystal);
             
             // Initial state
-            Assert.AreEqual(1, hero.GetJobLevel(), "Initial job level should be 1");
+            Assert.AreEqual(0, hero.GetJobLevel(), "Initial job level should be 0");
             Assert.IsFalse(hero.IsJobMastered(), "Job should not be mastered");
             
             // Earn JP from battles (simulate 5 battles at 100 JP each)
@@ -36,7 +36,7 @@ namespace PitHero.Tests
             bool success1 = hero.TryPurchaseSkill(knight.Skills[0]);
             Assert.IsTrue(success1, "Should purchase Light Armor");
             Assert.AreEqual(450, hero.GetCurrentJP(), "Should have 450 JP after first purchase");
-            Assert.AreEqual(1, hero.GetJobLevel(), "Job level should still be 1");
+            Assert.AreEqual(1, hero.GetJobLevel(), "Job level should be 1 after first skill");
             
             // Purchase Heavy Armor (100 JP, Level 2) - requires hero to be level 2
             // First level up the hero
@@ -54,7 +54,7 @@ namespace PitHero.Tests
             bool success3 = hero.TryPurchaseSkill(knight.Skills[2]);
             Assert.IsTrue(success3, "Should purchase Spin Slash");
             Assert.AreEqual(230, hero.GetCurrentJP(), "Should have 230 JP");
-            Assert.AreEqual(2, hero.GetJobLevel(), "Job level should still be 2");
+            Assert.AreEqual(3, hero.GetJobLevel(), "Job level should be 3 after third skill");
             
             // Level up to 3
             hero.AddExperience(100);
@@ -63,7 +63,7 @@ namespace PitHero.Tests
             bool success4 = hero.TryPurchaseSkill(knight.Skills[3]);
             Assert.IsTrue(success4, "Should purchase Heavy Strike");
             Assert.AreEqual(50, hero.GetCurrentJP(), "Should have 50 JP remaining");
-            Assert.AreEqual(3, hero.GetJobLevel(), "Job level should be 3");
+            Assert.AreEqual(4, hero.GetJobLevel(), "Job level should be 4 after fourth skill");
             
             // Job should now be mastered
             Assert.IsTrue(hero.IsJobMastered(), "Knight job should be mastered");

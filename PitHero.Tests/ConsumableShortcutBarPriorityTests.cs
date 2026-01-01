@@ -42,6 +42,8 @@ namespace PitHero.Tests
             // Fill all 8 slots with different consumable types
             Assert.IsTrue(shortcutBag.TryAdd(PotionItems.HPPotion()));
             Assert.IsTrue(shortcutBag.TryAdd(PotionItems.MPPotion()));
+            Assert.IsTrue(shortcutBag.TryAdd(PotionItems.MidHPPotion()));
+            Assert.IsTrue(shortcutBag.TryAdd(PotionItems.MidMPPotion()));
             Assert.IsTrue(shortcutBag.TryAdd(PotionItems.FullHPPotion()));
             Assert.IsTrue(shortcutBag.TryAdd(PotionItems.FullMPPotion()));
             Assert.IsTrue(shortcutBag.TryAdd(PotionItems.MixPotion()));
@@ -106,6 +108,8 @@ namespace PitHero.Tests
             // Fill shortcut bag with different consumable types (8 slots)
             shortcutBag.TryAdd(PotionItems.HPPotion());
             shortcutBag.TryAdd(PotionItems.MPPotion());
+            shortcutBag.TryAdd(PotionItems.MidHPPotion());
+            shortcutBag.TryAdd(PotionItems.MidMPPotion());
             shortcutBag.TryAdd(PotionItems.FullHPPotion());
             shortcutBag.TryAdd(PotionItems.FullMPPotion());
             shortcutBag.TryAdd(PotionItems.MixPotion());

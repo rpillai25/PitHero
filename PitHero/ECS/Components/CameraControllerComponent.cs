@@ -306,11 +306,29 @@ namespace PitHero.ECS.Components
                 var heroPosition = _heroEntity.Transform.Position;
                 var targetPosition = ConstrainCameraPosition(heroPosition);
                 
-                // Smoothly lerp camera to hero position
-                var lerpedPosition = Vector2.Lerp(_camera.Position, targetPosition, GameConfig.CameraFollowLerpSpeed * Time.DeltaTime);
+                // Quantize target position to avoid sub-pixel artifacts
+                var quantizedTarget = QuantizePosition(targetPosition);
+                
+                // Smoothly lerp camera to quantized hero position
+                var lerpedPosition = Vector2.Lerp(_camera.Position, quantizedTarget, GameConfig.CameraFollowLerpSpeed * Time.DeltaTime);
                 _camera.Position = lerpedPosition;
                 QuantizeCameraPosition();
             }
+        }
+        
+        /// <summary>
+        /// Quantize a position to pixel boundaries (helper for target positions)
+        /// </summary>
+        private Vector2 QuantizePosition(Vector2 pos)
+        {
+            var z = _camera.RawZoom;
+            if (z <= 0f)
+                z = 1f;
+            float step = 1f / z;
+            return new Vector2(
+                (float)System.Math.Round(pos.X / step) * step,
+                (float)System.Math.Round(pos.Y / step) * step
+            );
         }
 
         /// <summary>

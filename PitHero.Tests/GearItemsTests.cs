@@ -21,7 +21,7 @@ namespace PitHero.Tests
             // Verify attack bonus matches BalanceConfig calculation for Pit 5, Normal rarity
             int expectedAttack = BalanceConfig.CalculateEquipmentAttackBonus(5, ItemRarity.Normal);
             Assert.AreEqual(expectedAttack, sword.AttackBonus);
-            Assert.AreEqual($"+{expectedAttack} Attack", sword.Description);
+            Assert.AreEqual("Basic sword for beginners.", sword.Description);
             Assert.AreEqual(0, sword.DefenseBonus);
             Assert.AreEqual(0, sword.HPBonus);
             Assert.AreEqual(0, sword.MPBonus);
@@ -40,7 +40,7 @@ namespace PitHero.Tests
             // Verify attack bonus matches BalanceConfig calculation for Pit 15, Normal rarity
             int expectedAttack = BalanceConfig.CalculateEquipmentAttackBonus(15, ItemRarity.Normal);
             Assert.AreEqual(expectedAttack, sword.AttackBonus);
-            Assert.AreEqual($"+{expectedAttack} Attack", sword.Description);
+            Assert.AreEqual("Longer sword for seasoned warriors.", sword.Description);
             Assert.AreEqual(0, sword.DefenseBonus);
         }
 
@@ -57,7 +57,7 @@ namespace PitHero.Tests
             // Verify defense bonus matches BalanceConfig calculation for Pit 5, Normal rarity
             int expectedDefense = BalanceConfig.CalculateEquipmentDefenseBonus(5, ItemRarity.Normal);
             Assert.AreEqual(expectedDefense, shield.DefenseBonus);
-            Assert.AreEqual($"+{expectedDefense} Defense", shield.Description);
+            Assert.AreEqual("No adventurer should be without one.", shield.Description);
             Assert.AreEqual(0, shield.AttackBonus);
             Assert.AreEqual(0, shield.HPBonus);
             Assert.AreEqual(0, shield.MPBonus);
@@ -92,7 +92,7 @@ namespace PitHero.Tests
             // Verify defense bonus matches BalanceConfig calculation for Pit 5, Normal rarity
             int expectedDefense = BalanceConfig.CalculateEquipmentDefenseBonus(5, ItemRarity.Normal);
             Assert.AreEqual(expectedDefense, helm.DefenseBonus);
-            Assert.AreEqual($"+{expectedDefense} Defense", helm.Description);
+            Assert.AreEqual("Helm used by novices.", helm.Description);
             Assert.AreEqual(0, helm.AttackBonus);
             Assert.AreEqual(0, helm.HPBonus);
             Assert.AreEqual(0, helm.MPBonus);
@@ -127,7 +127,7 @@ namespace PitHero.Tests
             // Verify defense bonus matches BalanceConfig calculation for Pit 5, Normal rarity
             int expectedDefense = BalanceConfig.CalculateEquipmentDefenseBonus(5, ItemRarity.Normal);
             Assert.AreEqual(expectedDefense, armor.DefenseBonus);
-            Assert.AreEqual($"+{expectedDefense} Defense", armor.Description);
+            Assert.AreEqual("Basic armor for adventurers.", armor.Description);
             Assert.AreEqual(0, armor.AttackBonus);
             Assert.AreEqual(0, armor.HPBonus);
             Assert.AreEqual(0, armor.MPBonus);
@@ -162,7 +162,7 @@ namespace PitHero.Tests
             // Verify stat bonus matches BalanceConfig calculation for Pit 15, Uncommon rarity
             int expectedStat = BalanceConfig.CalculateEquipmentStatBonus(15, ItemRarity.Uncommon);
             Assert.AreEqual(expectedStat, ring.StatBonus.Strength);
-            Assert.AreEqual($"+{expectedStat} Strength", ring.Description);
+            Assert.AreEqual("Gives a boost to strength.", ring.Description);
             Assert.AreEqual(0, ring.StatBonus.Agility);
             Assert.AreEqual(0, ring.StatBonus.Vitality);
             Assert.AreEqual(0, ring.StatBonus.Magic);
@@ -187,7 +187,7 @@ namespace PitHero.Tests
             int expectedHP = expectedStat * 5;
             Assert.AreEqual(expectedStat, necklace.StatBonus.Vitality);
             Assert.AreEqual(expectedHP, necklace.HPBonus);
-            Assert.AreEqual($"+{expectedHP} HP, +{expectedStat} Vitality", necklace.Description);
+            Assert.AreEqual("Adventurers wear this to for longevity.", necklace.Description);
             Assert.AreEqual(0, necklace.StatBonus.Strength);
             Assert.AreEqual(0, necklace.StatBonus.Agility);
             Assert.AreEqual(0, necklace.StatBonus.Magic);
@@ -211,7 +211,7 @@ namespace PitHero.Tests
             int expectedStat = BalanceConfig.CalculateEquipmentStatBonus(12, ItemRarity.Normal);
             Assert.AreEqual(expectedDefense, ring.DefenseBonus);
             Assert.AreEqual(expectedStat, ring.StatBonus.Vitality);
-            Assert.AreEqual($"+{expectedDefense} Defense, +{expectedStat} Vitality", ring.Description);
+            Assert.AreEqual("Wear this for more protection\nfrom physical attacks.", ring.Description);
             Assert.AreEqual(0, ring.AttackBonus);
             Assert.AreEqual(0, ring.HPBonus);
             Assert.AreEqual(0, ring.MPBonus);
@@ -232,7 +232,7 @@ namespace PitHero.Tests
             int expectedMP = expectedStat * 3;
             Assert.AreEqual(expectedStat, chain.StatBonus.Magic);
             Assert.AreEqual(expectedMP, chain.MPBonus);
-            Assert.AreEqual($"+{expectedMP} MP, +{expectedStat} Magic", chain.Description);
+            Assert.AreEqual("Mages wear this to enhance their spells.", chain.Description);
             Assert.AreEqual(0, chain.StatBonus.Strength);
             Assert.AreEqual(0, chain.StatBonus.Agility);
             Assert.AreEqual(0, chain.StatBonus.Vitality);

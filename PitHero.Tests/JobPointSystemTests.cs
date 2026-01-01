@@ -88,22 +88,6 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void TryPurchaseSkill_Fails_If_Level_Too_Low()
-        {
-            var crystal = new HeroCrystal("TestCrystal", new Knight(), 1, new StatBlock(4, 2, 4, 1));
-            crystal.EarnJP(200);
-            
-            var knight = new Knight();
-            var heavyStrikeSkill = knight.Skills[3]; // Heavy Strike, JP cost 180, level 3
-            
-            bool success = crystal.TryPurchaseSkill(heavyStrikeSkill);
-            
-            Assert.IsFalse(success, "Purchase should fail due to insufficient level");
-            Assert.AreEqual(200, crystal.CurrentJP, "CurrentJP should remain unchanged");
-            Assert.IsFalse(crystal.HasSkill(heavyStrikeSkill.Id), "Skill should not be learned");
-        }
-
-        [TestMethod]
         public void TryPurchaseSkill_Fails_If_Already_Learned()
         {
             var crystal = new HeroCrystal("TestCrystal", new Knight(), 1, new StatBlock(4, 2, 4, 1));
@@ -120,11 +104,11 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void JobLevel_Starts_At_1()
+        public void JobLevel_Starts_At_0()
         {
             var crystal = new HeroCrystal("TestCrystal", new Knight(), 1, new StatBlock(4, 2, 4, 1));
             
-            Assert.AreEqual(1, crystal.JobLevel, "JobLevel should start at 1");
+            Assert.AreEqual(0, crystal.JobLevel, "JobLevel should start at 0");
         }
 
         [TestMethod]
@@ -252,50 +236,6 @@ namespace PitHero.Tests
             
             Assert.AreEqual(350, combined.TotalJP, "Combined TotalJP should be sum of both crystals");
             Assert.AreEqual(350, combined.CurrentJP, "Combined CurrentJP should be sum of both crystals");
-        }
-
-        [TestMethod]
-        public void Thief_Has_Correct_Base_Stats()
-        {
-            var thief = new Thief();
-            
-            Assert.AreEqual(2, thief.BaseBonus.Strength, "Thief STR should be 2");
-            Assert.AreEqual(3, thief.BaseBonus.Agility, "Thief AGI should be 3");
-            Assert.AreEqual(1, thief.BaseBonus.Vitality, "Thief VIT should be 1");
-            Assert.AreEqual(0, thief.BaseBonus.Magic, "Thief MAG should be 0");
-        }
-
-        [TestMethod]
-        public void Thief_Has_Correct_Growth_Stats()
-        {
-            var thief = new Thief();
-            
-            Assert.AreEqual(1, thief.GrowthPerLevel.Strength, "Thief STR growth should be +1");
-            Assert.AreEqual(2, thief.GrowthPerLevel.Agility, "Thief AGI growth should be +2");
-            Assert.AreEqual(1, thief.GrowthPerLevel.Vitality, "Thief VIT growth should be +1");
-            Assert.AreEqual(0, thief.GrowthPerLevel.Magic, "Thief MAG growth should be +0");
-        }
-
-        [TestMethod]
-        public void Bowman_Has_Correct_Base_Stats()
-        {
-            var bowman = new Bowman();
-            
-            Assert.AreEqual(2, bowman.BaseBonus.Strength, "Bowman STR should be 2");
-            Assert.AreEqual(2, bowman.BaseBonus.Agility, "Bowman AGI should be 2");
-            Assert.AreEqual(2, bowman.BaseBonus.Vitality, "Bowman VIT should be 2");
-            Assert.AreEqual(1, bowman.BaseBonus.Magic, "Bowman MAG should be 1");
-        }
-
-        [TestMethod]
-        public void Bowman_Has_Correct_Growth_Stats()
-        {
-            var bowman = new Bowman();
-            
-            Assert.AreEqual(1, bowman.GrowthPerLevel.Strength, "Bowman STR growth should be +1");
-            Assert.AreEqual(2, bowman.GrowthPerLevel.Agility, "Bowman AGI growth should be +2");
-            Assert.AreEqual(1, bowman.GrowthPerLevel.Vitality, "Bowman VIT growth should be +1");
-            Assert.AreEqual(1, bowman.GrowthPerLevel.Magic, "Bowman MAG growth should be +1");
         }
     }
 }

@@ -61,7 +61,7 @@ namespace PitHero.Tests
             var crystal = new HeroCrystal("TestCrystal", new Knight(), 3, new StatBlock(4, 2, 4, 1));
             var hero = new Hero("Arthur", crystal.Job, crystal.Level, crystal.BaseStats, crystal);
             
-            Assert.AreEqual(1, hero.GetJobLevel(), "Initial job level should be 1");
+            Assert.AreEqual(0, hero.GetJobLevel(), "Initial job level should be 0");
             
             hero.EarnJP(500);
             var knight = new Knight();

@@ -91,16 +91,16 @@ namespace PitHero.Tests
             
             // Add various potions to the bag
             var hpPotion = PotionItems.HPPotion();
-            var midAPPotion = PotionItems.MidMPPotion();
+            var midMPPotion = PotionItems.MidMPPotion();
             var fullMixPotion = PotionItems.FullMixPotion();
 
             Assert.IsTrue(bag.TryAdd(hpPotion));
-            Assert.IsTrue(bag.TryAdd(midAPPotion));
+            Assert.IsTrue(bag.TryAdd(midMPPotion));
             Assert.IsTrue(bag.TryAdd(fullMixPotion));
 
             Assert.AreEqual(3, bag.Count);
             Assert.AreEqual(hpPotion, bag.Items[0]);
-            Assert.AreEqual(midAPPotion, bag.Items[1]);
+            Assert.AreEqual(midMPPotion, bag.Items[1]);
             Assert.AreEqual(fullMixPotion, bag.Items[2]);
 
             // Test that consumables have correct properties when retrieved from bag
@@ -109,10 +109,10 @@ namespace PitHero.Tests
             Assert.AreEqual(100, retrievedHPPotion.HPRestoreAmount);
             Assert.AreEqual(ItemRarity.Normal, retrievedHPPotion.Rarity);
 
-            var retrievedMidAPPotion = (Consumable)bag.Items[1];
-            Assert.AreEqual("MidAPPotion", retrievedMidAPPotion.Name);
-            Assert.AreEqual(500, retrievedMidAPPotion.MPRestoreAmount);
-            Assert.AreEqual(ItemRarity.Rare, retrievedMidAPPotion.Rarity);
+            var retrievedMidMPPotion = (Consumable)bag.Items[1];
+            Assert.AreEqual("MidMPPotion", retrievedMidMPPotion.Name);
+            Assert.AreEqual(500, retrievedMidMPPotion.MPRestoreAmount);
+            Assert.AreEqual(ItemRarity.Rare, retrievedMidMPPotion.Rarity);
 
             var retrievedFullMixPotion = (Consumable)bag.Items[2];
             Assert.AreEqual("FullMixPotion", retrievedFullMixPotion.Name);
@@ -140,9 +140,9 @@ namespace PitHero.Tests
 
             var expectedNames = new[]
             {
-                "HPPotion", "APPotion", "MixPotion",
-                "MidHPPotion", "MidAPPotion", "MidMixPotion",
-                "FullHPPotion", "FullAPPotion", "FullMixPotion"
+                "HPPotion", "MPPotion", "MixPotion",
+                "MidHPPotion", "MidMPPotion", "MidMixPotion",
+                "FullHPPotion", "FullMPPotion", "FullMixPotion"
             };
 
             CollectionAssert.AreEqual(expectedNames, potionNames);

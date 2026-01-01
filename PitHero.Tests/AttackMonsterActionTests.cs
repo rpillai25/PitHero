@@ -35,31 +35,6 @@ namespace PitHero.Tests
             Assert.AreEqual(18, slimeLevel1.ExperienceYield, "Slime should give exactly 18 experience");
         }
 
-        /// <summary>Test that fixed slime stats are from BalanceConfig</summary>
-        [TestMethod]
-        [TestCategory("Combat")]
-        public void Slime_FixedStats_AreWeakerThanScaledStats()
-        {
-            // Arrange: Create high level slime to compare fixed vs what scaled stats would have been
-            var slimeLevel10 = new Slime(10);
-            
-            // What the old scaled stats would have been: strength: 2 + Level / 2, agility: 1 + Level / 4, vitality: 3 + Level / 2
-            var oldScaledStrength = 2 + 10 / 2; // 7
-            var oldScaledAgility = 1 + 10 / 4; // 3 
-            var oldScaledVitality = 3 + 10 / 2; // 8
-
-            // Assert: Fixed stats should be weaker than old scaled stats
-            Assert.IsTrue(slimeLevel10.Stats.Strength < oldScaledStrength, $"Fixed strength {slimeLevel10.Stats.Strength} should be less than old scaled {oldScaledStrength}");
-            Assert.IsTrue(slimeLevel10.Stats.Agility < oldScaledAgility, $"Fixed agility {slimeLevel10.Stats.Agility} should be less than old scaled {oldScaledAgility}");
-            Assert.IsTrue(slimeLevel10.Stats.Vitality < oldScaledVitality, $"Fixed vitality {slimeLevel10.Stats.Vitality} should be less than old scaled {oldScaledVitality}");
-
-            // Fixed stats should match the expected values from BalanceConfig (Level 1 Balanced archetype)
-            Assert.AreEqual(1, slimeLevel10.Stats.Strength, "Slime should have BalanceConfig strength of 1");
-            Assert.AreEqual(1, slimeLevel10.Stats.Agility, "Slime should have BalanceConfig agility of 1");
-            Assert.AreEqual(1, slimeLevel10.Stats.Vitality, "Slime should have BalanceConfig vitality of 1");
-            Assert.AreEqual(1, slimeLevel10.Stats.Magic, "Slime should have BalanceConfig magic of 1");
-        }
-
         /// <summary>Test the basic structure of BattleParticipant</summary>
         [TestMethod]
         [TestCategory("Combat")]

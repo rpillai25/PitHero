@@ -81,7 +81,7 @@ namespace PitHero.Tests
             Assert.AreEqual(5, hpStack.StackCount);
             
             var apStack = bag.GetSlotItem(1) as Consumable;
-            Assert.AreEqual("APPotion", apStack.Name);
+            Assert.AreEqual("MPPotion", apStack.Name);
             Assert.AreEqual(3, apStack.StackCount);
             
             var mixStack = bag.GetSlotItem(2) as Consumable;
