@@ -3,6 +3,7 @@ using Nez;
 using Nez.Sprites;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
+using PitHero.Services;
 using PitHero.Util;
 using RolePlayingFramework.Enemies;
 using System;
@@ -208,7 +209,7 @@ namespace PitHero
         }
 
         /// <summary>
-        /// Clear obstacle walls from hero's A* graph
+        /// Clear obstacle walls from hero's and mercenaries' A* graphs
         /// </summary>
         private void ClearObstacleWallsFromAstar()
         {
@@ -231,6 +232,28 @@ namespace PitHero
             heroComponent.RefreshPathfinding();
 
             Debug.Log($"[PitGenerator] Hero pathfinding refreshed with {heroComponent.PathfindingGraph.Walls.Count} walls from collision layer");
+
+            // Refresh all mercenaries' pathfinding
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager != null)
+            {
+                var allMercenaries = mercenaryManager.GetAllMercenaries();
+                int refreshedCount = 0;
+                
+                for (int i = 0; i < allMercenaries.Count; i++)
+                {
+                    var mercenary = allMercenaries[i];
+                    var pathfinding = mercenary.GetComponent<PathfindingActorComponent>();
+                    
+                    if (pathfinding != null && pathfinding.IsPathfindingInitialized)
+                    {
+                        pathfinding.RefreshPathfinding();
+                        refreshedCount++;
+                    }
+                }
+                
+                Debug.Log($"[PitGenerator] Refreshed pathfinding for {refreshedCount} mercenaries");
+            }
         }
 
         /// <summary>

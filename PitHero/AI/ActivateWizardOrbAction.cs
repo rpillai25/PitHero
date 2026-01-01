@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
+using PitHero.Services;
 using PitHero.Util;
 using System.Collections;
 
@@ -60,6 +61,9 @@ namespace PitHero.AI
 
             // Reposition hero to starting position inside pit (where they normally land when jumping in)
             RepositionHeroToStartPosition(hero);
+
+            // Reposition all hired mercenaries to hero position
+            RepositionMercenariesToHero(hero);
 
             // Set hero state flags - values from ActivateWizardOrbAction
             hero.FoundWizardOrb = false;  // Reset according to specification
@@ -255,7 +259,88 @@ namespace PitHero.AI
             hero.AdjacentToMonster = hero.CheckAdjacentToMonster();
             hero.AdjacentToChest = hero.CheckAdjacentToChest();
 
-            Debug.Log($"[ActivateWizardOrb] Hero repositioned to ({targetPosition.X},{targetPosition.Y})");
+            // Update hero's LastTilePosition immediately so mercenaries know where hero is
+            hero.LastTilePosition = targetTile;
+
+            Debug.Log($"[ActivateWizardOrb] Hero repositioned to ({targetPosition.X},{targetPosition.Y}), LastTilePosition updated to ({targetTile.X},{targetTile.Y})");
+        }
+
+        /// <summary>
+        /// Reposition all hired mercenaries to the hero's position after pit regeneration
+        /// </summary>
+        private void RepositionMercenariesToHero(HeroComponent hero)
+        {
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager == null)
+            {
+                Debug.Log("[ActivateWizardOrb] No MercenaryManager found - skipping mercenary repositioning");
+                return;
+            }
+
+            var hiredMercenaries = mercenaryManager.GetHiredMercenaries();
+            if (hiredMercenaries.Count == 0)
+            {
+                Debug.Log("[ActivateWizardOrb] No hired mercenaries to reposition");
+                return;
+            }
+
+            var heroPosition = hero.Entity.Transform.Position;
+            Debug.Log($"[ActivateWizardOrb] Repositioning {hiredMercenaries.Count} mercenaries to hero position ({heroPosition.X},{heroPosition.Y})");
+
+            for (int i = 0; i < hiredMercenaries.Count; i++)
+            {
+                var mercEntity = hiredMercenaries[i];
+                var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
+                
+                if (mercComponent == null)
+                    continue;
+
+                // Stop any in-progress movement first
+                var tileMover = mercEntity.GetComponent<TileByTileMover>();
+                if (tileMover != null)
+                {
+                    tileMover.StopMoving();
+                }
+
+                // Set mercenary to hero position
+                mercEntity.Transform.Position = heroPosition;
+
+                // Snap to tile grid
+                if (tileMover != null)
+                {
+                    tileMover.SnapToTileGrid();
+                    tileMover.UpdateTriggersAfterTeleport();
+
+                    // Disable movement for 1 second after repositioning
+                    tileMover.Enabled = false;
+                    Core.StartCoroutine(EnableMoverAfterDelay(tileMover));
+                }
+
+                // Update mercenary's last tile position to match hero's
+                mercComponent.LastTilePosition = hero.LastTilePosition;
+
+                Debug.Log($"[ActivateWizardOrb] Mercenary {mercComponent.LinkedMercenary.Name}: Position=({mercEntity.Transform.Position.X},{mercEntity.Transform.Position.Y}), LastTilePosition=({mercComponent.LastTilePosition.X},{mercComponent.LastTilePosition.Y})");
+                Debug.Log($"[ActivateWizardOrb] Hero for reference: Position=({hero.Entity.Transform.Position.X},{hero.Entity.Transform.Position.Y}), LastTilePosition=({hero.LastTilePosition.X},{hero.LastTilePosition.Y})");
+
+                // Reset pathfinding state to clear cached paths
+                var followComponent = mercEntity.GetComponent<MercenaryFollowComponent>();
+                if (followComponent != null)
+                {
+                    followComponent.ResetPathfinding();
+                    Debug.Log($"[ActivateWizardOrb] Reset MercenaryFollowComponent pathfinding for {mercComponent.LinkedMercenary.Name}");
+                }
+
+                var joinComponent = mercEntity.GetComponent<MercenaryJoinComponent>();
+                if (joinComponent != null)
+                {
+                    joinComponent.ResetPathfinding();
+                    Debug.Log($"[ActivateWizardOrb] Reset MercenaryJoinComponent pathfinding for {mercComponent.LinkedMercenary.Name}");
+                }
+
+                Debug.Log($"[ActivateWizardOrb] Repositioned mercenary {mercComponent.LinkedMercenary.Name} to hero position");
+            }
+
+            Debug.Log($"[ActivateWizardOrb] All mercenaries repositioned to hero");
         }
 
         /// <summary>Coroutine to re-enable TileByTileMover after 1 second delay</summary>
@@ -263,7 +348,7 @@ namespace PitHero.AI
         {
             yield return Coroutine.WaitForSeconds(1.0f);
             tileMover.Enabled = true;
-            Debug.Log("[ActivateWizardOrb] Hero movement re-enabled after repositioning delay");
+            Debug.Log("[ActivateWizardOrb] Movement re-enabled after repositioning delay");
         }
 
         /// <summary>Clear all fog tiles inside current pit bounds.</summary>

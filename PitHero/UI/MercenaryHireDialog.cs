@@ -71,6 +71,10 @@ namespace PitHero.UI
             SetVisible(true);
             _isVisible = true;
 
+            // Pause the game when dialog opens
+            var pauseService = Core.Services.GetService<PauseService>();
+            pauseService?.Pause();
+
             // Center the dialog on screen
             var stage = GetStage();
             if (stage != null)
@@ -89,6 +93,10 @@ namespace PitHero.UI
             SetVisible(false);
             _isVisible = false;
             _mercenaryEntity = null;
+
+            // Unpause the game when dialog closes
+            var pauseService = Core.Services.GetService<PauseService>();
+            pauseService?.Unpause();
         }
 
         /// <summary>Gets whether the dialog is currently visible</summary>

@@ -18,7 +18,6 @@ namespace PitHero.Services
     {
         private const int MaxMercenariesInTavern = 12;
         private const int MaxHiredMercenaries = 2;
-        private const float SpawnIntervalSeconds = 300f; // 5 minutes
 
         private static readonly Point[] TavernPositions = new Point[]
         {
@@ -65,10 +64,10 @@ namespace PitHero.Services
             if (pauseService?.IsPaused == true)
                 return;
 
-            // Use unscaled time for spawn timer
-            _timeSinceLastSpawn += Time.UnscaledDeltaTime;
+            // Use scaled time for spawn timer
+            _timeSinceLastSpawn += Time.DeltaTime;
 
-            if (_timeSinceLastSpawn >= SpawnIntervalSeconds)
+            if (_timeSinceLastSpawn >= GameConfig.MercenarySpawnIntervalSeconds)
             {
                 _timeSinceLastSpawn = 0f;
                 TrySpawnMercenary();
@@ -320,31 +319,52 @@ namespace PitHero.Services
 
             var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
             if (mercComponent == null || mercComponent.IsHired)
+            {
+                Debug.Warn($"[MercenaryManager] Cannot hire - mercComponent null or already hired");
                 return false;
+            }
 
-            mercComponent.IsHired = true;
-            mercComponent.IsWaitingInTavern = false;
-            _occupiedTavernPositions.Remove(mercComponent.TavernPosition);
-
-            // Set follow target
+            // Determine follow target BEFORE marking as hired
             var heroEntity = _scene?.FindEntity("hero");
+            Entity followTarget = null;
+            
             if (hiredCount == 0)
             {
                 // First mercenary follows hero
-                mercComponent.FollowTarget = heroEntity;
+                followTarget = heroEntity;
+                if (followTarget == null)
+                {
+                    Debug.Error("[MercenaryManager] Cannot hire first mercenary - hero entity not found!");
+                    return false;
+                }
+                Debug.Log($"[MercenaryManager] First mercenary will follow hero");
             }
             else
             {
                 // Second mercenary follows first mercenary
-                var firstMerc = GetHiredMercenaries().FirstOrDefault();
-                mercComponent.FollowTarget = firstMerc;
+                // Get the list BEFORE marking this one as hired to avoid confusion
+                followTarget = GetHiredMercenaries().FirstOrDefault();
+                if (followTarget == null)
+                {
+                    Debug.Error("[MercenaryManager] Cannot hire second mercenary - first mercenary not found!");
+                    return false;
+                }
+                var firstMercName = followTarget.GetComponent<MercenaryComponent>()?.LinkedMercenary?.Name ?? "Unknown";
+                Debug.Log($"[MercenaryManager] Second mercenary will follow {firstMercName}");
             }
+
+            // Now mark as hired and update state
+            mercComponent.IsHired = true;
+            mercComponent.IsWaitingInTavern = false;
+            _occupiedTavernPositions.Remove(mercComponent.TavernPosition);
+            mercComponent.FollowTarget = followTarget;
+
+            Debug.Log($"[MercenaryManager] Hired mercenary {mercComponent.LinkedMercenary.Name}, follow target set to: {followTarget.Name}");
 
             // Add join component to make mercenary navigate to their target (handles pit detection and jumping)
             // This will automatically switch to follow mode once the mercenary reaches the target
             mercEntity.AddComponent(new MercenaryJoinComponent());
 
-            Debug.Log($"[MercenaryManager] Hired mercenary {mercComponent.LinkedMercenary.Name}");
             return true;
         }
 
@@ -356,6 +376,12 @@ namespace PitHero.Services
                 var comp = m.GetComponent<MercenaryComponent>();
                 return comp != null && comp.IsHired;
             }).ToList();
+        }
+
+        /// <summary>Gets all mercenary entities (hired and unhired)</summary>
+        public List<Entity> GetAllMercenaries()
+        {
+            return new List<Entity>(_mercenaryEntities);
         }
 
         /// <summary>Gets a random job for mercenary generation</summary>

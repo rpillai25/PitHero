@@ -95,6 +95,13 @@ namespace PitHero.ECS.Components
             var myTile = GetCurrentTile();
             var targetTile = GetTargetTile();
 
+            // Update our last tile position for followers (but only if we're not disabled/frozen)
+            // This prevents overwriting LastTilePosition during teleportation/repositioning
+            if (_tileMover != null && _tileMover.Enabled && _mercComponent.LastTilePosition != myTile)
+            {
+                _mercComponent.LastTilePosition = myTile;
+            }
+
             if (targetTile == _lastTargetTile && _currentPath != null && _currentPathIndex < _currentPath.Count)
             {
                 // Continue following current path
@@ -161,6 +168,13 @@ namespace PitHero.ECS.Components
         private void HandleWalkingToPitEdge()
         {
             var myTile = GetCurrentTile();
+
+            // Update our last tile position for followers (but only if we're not disabled/frozen)
+            // This prevents overwriting LastTilePosition during teleportation/repositioning
+            if (_tileMover != null && _tileMover.Enabled && _mercComponent.LastTilePosition != myTile)
+            {
+                _mercComponent.LastTilePosition = myTile;
+            }
             
             if (myTile == _pitEdgeTile)
             {
@@ -333,11 +347,12 @@ namespace PitHero.ECS.Components
             var pitRight = pitLeft + pitWidth - 1;
             var pitBottom = pitTop + pitHeight - 1;
             
-            // Find the right edge of the pit (where we can jump in from)
-            var pitEdgeX = pitRight + 1; // One tile to the right of the pit
-            var targetY = Nez.Mathf.Clamp(fromTile.Y, pitTop, pitBottom);
+            // The pit edge jump-off position is always at the fixed center Y position
+            // Only the X position is dynamic (based on pit width)
+            var pitEdgeX = pitRight;
+            var pitEdgeY = GameConfig.PitCenterTileY;
 
-            return new Point(pitEdgeX, targetY);
+            return new Point(pitEdgeX, pitEdgeY);
         }
 
         private void SwitchToFollowMode()
@@ -351,6 +366,19 @@ namespace PitHero.ECS.Components
                 Entity.AddComponent(new MercenaryFollowComponent());
             }
             Entity.RemoveComponent(this);
+        }
+
+        /// <summary>
+        /// Reset pathfinding state (used when mercenary is teleported)
+        /// </summary>
+        public void ResetPathfinding()
+        {
+            _currentPath = null;
+            _currentPathIndex = 0;
+            _lastTargetTile = new Point(-1, -1);
+            _state = JoinState.PathfindingToTarget;
+            _isPerformingAction = false;
+            Debug.Log($"[MercenaryJoin] Pathfinding state reset for {Entity.Name}");
         }
     }
 }

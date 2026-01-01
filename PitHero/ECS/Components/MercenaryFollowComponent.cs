@@ -56,9 +56,11 @@ namespace PitHero.ECS.Components
                 (int)(myPos.Y / GameConfig.TileSize)
             );
 
-            // Update our last tile position when we move
-            if (_mercComponent.LastTilePosition != myTile)
+            // Update our last tile position when we move (but only if we're not disabled/frozen)
+            // This prevents overwriting LastTilePosition during teleportation/repositioning
+            if (_tileMover != null && _tileMover.Enabled && _mercComponent.LastTilePosition != myTile)
             {
+                Debug.Log($"[MercenaryFollow] {Entity.Name} updating LastTilePosition from ({_mercComponent.LastTilePosition.X},{_mercComponent.LastTilePosition.Y}) to ({myTile.X},{myTile.Y})");
                 _mercComponent.LastTilePosition = myTile;
             }
 
@@ -71,11 +73,13 @@ namespace PitHero.ECS.Components
             {
                 // Following hero - use their LastTilePosition
                 targetLastTile = targetHeroComponent.LastTilePosition;
+                Debug.Log($"[MercenaryFollow] {Entity.Name} reading hero's LastTilePosition: ({targetLastTile.X},{targetLastTile.Y}), hero world pos: ({targetHeroComponent.Entity.Transform.Position.X},{targetHeroComponent.Entity.Transform.Position.Y})");
             }
             else if (targetMercComponent != null)
             {
                 // Following another mercenary - use their LastTilePosition
                 targetLastTile = targetMercComponent.LastTilePosition;
+                Debug.Log($"[MercenaryFollow] {Entity.Name} reading target mercenary's LastTilePosition: ({targetLastTile.X},{targetLastTile.Y})");
             }
             else
             {
@@ -87,12 +91,14 @@ namespace PitHero.ECS.Components
             if (myTile == targetLastTile)
             {
                 _currentPath = null;
+                Debug.Log($"[MercenaryFollow] {Entity.Name} already at target position ({myTile.X},{myTile.Y}), no movement needed");
                 return;
             }
 
             // If target moved to a new position, recalculate path
             if (targetLastTile != _lastTargetTile)
             {
+                Debug.Log($"[MercenaryFollow] {Entity.Name} target moved from ({_lastTargetTile.X},{_lastTargetTile.Y}) to ({targetLastTile.X},{targetLastTile.Y}), recalculating path");
                 _lastTargetTile = targetLastTile;
                 _currentPath = _pathfinding.CalculatePath(myTile, targetLastTile);
                 _pathIndex = 0;
@@ -145,6 +151,17 @@ namespace PitHero.ECS.Components
             if (dy < 0 && dx == 0) return Direction.Up;
 
             return null;
+        }
+
+        /// <summary>
+        /// Reset pathfinding state (used when mercenary is teleported)
+        /// </summary>
+        public void ResetPathfinding()
+        {
+            _currentPath = null;
+            _pathIndex = 0;
+            _lastTargetTile = new Point(-1, -1);
+            Debug.Log($"[MercenaryFollow] Pathfinding state reset for {Entity.Name}");
         }
     }
 }

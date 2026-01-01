@@ -266,6 +266,7 @@ namespace PitHero.ECS.Scenes
             var heroJumpController = hero.AddComponent(new HeroJumpComponent());
             var collider = hero.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));
 
+            collider.IsTrigger = true; // Hero should not block mercenaries or other entities
             Flags.SetFlag(ref collider.CollidesWithLayers, GameConfig.PhysicsTileMapLayer);
             Flags.SetFlag(ref collider.CollidesWithLayers, GameConfig.PhysicsPitLayer);
             Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);

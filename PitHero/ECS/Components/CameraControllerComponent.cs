@@ -290,7 +290,7 @@ namespace PitHero.ECS.Components
             // Update manual control timer if in manual mode
             if (!_isFollowingHero)
             {
-                _manualControlTimer += Time.DeltaTime;
+                _manualControlTimer += Time.UnscaledDeltaTime;
                 
                 // Resume auto-following after timeout
                 if (_manualControlTimer >= GameConfig.CameraManualControlTimeout)

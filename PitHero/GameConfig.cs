@@ -33,6 +33,9 @@ namespace PitHero
         public const float HeroPitMovementSpeed = 32f; //Move speed in pixels per second when in pit (32 pixels = 1 tile)
         public const float HeroJumpSpeed = 4f; //Jump speed in tiles per second
 
+        // Mercenary configuration
+        public const float MercenarySpawnIntervalSeconds = 30f; // 5 minutes between mercenary spawns
+
         // Fog of war movement speed configuration
         public const float HeroFogCooldownDuration = 1f; // Duration in seconds for fog cooldown after clearing fog
 
