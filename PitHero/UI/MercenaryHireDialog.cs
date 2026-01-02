@@ -11,9 +11,14 @@ namespace PitHero.UI
     /// </summary>
     public class MercenaryHireDialog : Table
     {
-        private readonly Label _titleLabel;
+        private readonly Label _nameLabel;
         private readonly Label _jobLabel;
-        private readonly Label _levelLabel;
+        private readonly Label _hpLabel;
+        private readonly Label _mpLabel;
+        private readonly Label _strLabel;
+        private readonly Label _agiLabel;
+        private readonly Label _vitLabel;
+        private readonly Label _magLabel;
         private readonly TextButton _hireButton;
         private readonly TextButton _cancelButton;
         private Entity _mercenaryEntity;
@@ -24,16 +29,46 @@ namespace PitHero.UI
             SetBackground(new PrimitiveDrawable(new Color(40, 40, 40, 240)));
             Pad(20f);
 
-            _titleLabel = new Label("Hire Mercenary?", new LabelStyle(Core.Content.LoadBitmapFont("Content/Fonts/HUD.fnt"), Color.White));
-            Add(_titleLabel).SetColspan(2).Center();
-            Row().SetPadTop(10f);
+            var labelStyle = new LabelStyle(Core.Content.LoadBitmapFont("Content/Fonts/HUD.fnt"), Color.White);
 
-            _jobLabel = new Label("Job: Knight", new LabelStyle(Core.Content.LoadBitmapFont("Content/Fonts/HUD.fnt"), Color.White));
-            Add(_jobLabel).SetColspan(2).Left();
+            // Name
+            _nameLabel = new Label("Mercenary Name", labelStyle);
+            Add(_nameLabel).SetColspan(2).Center();
             Row().SetPadTop(5f);
 
-            _levelLabel = new Label("Level: 1", new LabelStyle(Core.Content.LoadBitmapFont("Content/Fonts/HUD.fnt"), Color.White));
-            Add(_levelLabel).SetColspan(2).Left();
+            // Job
+            _jobLabel = new Label("Job: Knight", labelStyle);
+            Add(_jobLabel).SetColspan(2).Left();
+            Row().SetPadTop(10f);
+
+            // HP
+            _hpLabel = new Label("HP: 100", labelStyle);
+            Add(_hpLabel).SetColspan(2).Left();
+            Row().SetPadTop(5f);
+
+            // MP
+            _mpLabel = new Label("MP: 50", labelStyle);
+            Add(_mpLabel).SetColspan(2).Left();
+            Row().SetPadTop(5f);
+
+            // STR
+            _strLabel = new Label("STR: 10", labelStyle);
+            Add(_strLabel).SetColspan(2).Left();
+            Row().SetPadTop(5f);
+
+            // AGI
+            _agiLabel = new Label("AGI: 10", labelStyle);
+            Add(_agiLabel).SetColspan(2).Left();
+            Row().SetPadTop(5f);
+
+            // VIT
+            _vitLabel = new Label("VIT: 10", labelStyle);
+            Add(_vitLabel).SetColspan(2).Left();
+            Row().SetPadTop(5f);
+
+            // MAG
+            _magLabel = new Label("MAG: 10", labelStyle);
+            Add(_magLabel).SetColspan(2).Left();
             Row().SetPadTop(15f);
 
             var buttonStyle = new TextButtonStyle(
@@ -65,8 +100,18 @@ namespace PitHero.UI
             if (mercComponent == null) return;
 
             var merc = mercComponent.LinkedMercenary;
+            var stats = merc.GetTotalStats();
+            var maxHP = 25 + (stats.Vitality * 5);
+            var maxMP = 10 + (stats.Magic * 3);
+
+            _nameLabel.SetText(merc.Name);
             _jobLabel.SetText($"Job: {merc.Job.Name}");
-            _levelLabel.SetText($"Level: {merc.Level}");
+            _hpLabel.SetText($"HP: {maxHP}");
+            _mpLabel.SetText($"MP: {maxMP}");
+            _strLabel.SetText($"STR: {stats.Strength}");
+            _agiLabel.SetText($"AGI: {stats.Agility}");
+            _vitLabel.SetText($"VIT: {stats.Vitality}");
+            _magLabel.SetText($"MAG: {stats.Magic}");
 
             SetVisible(true);
             _isVisible = true;

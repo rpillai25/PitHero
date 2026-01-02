@@ -7,7 +7,8 @@ using System.Collections.Generic;
 namespace PitHero.ECS.Components
 {
     /// <summary>
-    /// Component that makes hired mercenaries follow their target (hero or another mercenary) using A* pathfinding
+    /// Component that makes hired mercenaries follow their target (hero or another mercenary) using A* pathfinding.
+    /// This component has a single responsibility: pathfind to the target's last known position.
     /// </summary>
     public class MercenaryFollowComponent : Component, IUpdatable
     {
@@ -30,92 +31,76 @@ namespace PitHero.ECS.Components
 
         public void Update()
         {
+            Debug.Log($"[MercenaryFollowComponent] Update() called for {Entity.Name}");
+
             if (_mercComponent == null || !_mercComponent.IsHired)
+            {
+                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} early return: merc={_mercComponent != null}, hired={_mercComponent?.IsHired}");
                 return;
+            }
 
             if (_mercComponent.FollowTarget == null)
+            {
+                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} no follow target");
                 return;
+            }
 
-            // Check if game is paused
             var pauseService = Core.Services.GetService<PauseService>();
             if (pauseService?.IsPaused == true)
+            {
+                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} game is paused");
                 return;
+            }
 
-            // Wait for pathfinding to initialize
             if (_pathfinding == null || !_pathfinding.IsPathfindingInitialized)
+            {
+                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} pathfinding not initialized");
                 return;
+            }
 
-            // Don't move if already moving
             if (_tileMover != null && _tileMover.IsMoving)
+            {
+                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} already moving");
                 return;
+            }
 
-            // Get our current tile position
-            var myPos = Entity.Transform.Position;
-            var myTile = new Point(
-                (int)(myPos.X / GameConfig.TileSize),
-                (int)(myPos.Y / GameConfig.TileSize)
-            );
+            var myTile = GetCurrentTile();
+            Debug.Log($"[MercenaryFollowComponent] {Entity.Name} at tile ({myTile.X},{myTile.Y})");
 
-            // Update our last tile position when we move (but only if we're not disabled/frozen)
-            // This prevents overwriting LastTilePosition during teleportation/repositioning
             if (_tileMover != null && _tileMover.Enabled && _mercComponent.LastTilePosition != myTile)
             {
-                Debug.Log($"[MercenaryFollow] {Entity.Name} updating LastTilePosition from ({_mercComponent.LastTilePosition.X},{_mercComponent.LastTilePosition.Y}) to ({myTile.X},{myTile.Y})");
                 _mercComponent.LastTilePosition = myTile;
             }
 
-            // Get target's last tile position (where we should move to)
-            Point targetLastTile;
-            var targetHeroComponent = _mercComponent.FollowTarget.GetComponent<HeroComponent>();
-            var targetMercComponent = _mercComponent.FollowTarget.GetComponent<MercenaryComponent>();
-            
-            if (targetHeroComponent != null)
-            {
-                // Following hero - use their LastTilePosition
-                targetLastTile = targetHeroComponent.LastTilePosition;
-                Debug.Log($"[MercenaryFollow] {Entity.Name} reading hero's LastTilePosition: ({targetLastTile.X},{targetLastTile.Y}), hero world pos: ({targetHeroComponent.Entity.Transform.Position.X},{targetHeroComponent.Entity.Transform.Position.Y})");
-            }
-            else if (targetMercComponent != null)
-            {
-                // Following another mercenary - use their LastTilePosition
-                targetLastTile = targetMercComponent.LastTilePosition;
-                Debug.Log($"[MercenaryFollow] {Entity.Name} reading target mercenary's LastTilePosition: ({targetLastTile.X},{targetLastTile.Y})");
-            }
-            else
-            {
-                // No valid target component
-                return;
-            }
+            var targetLastTile = GetTargetLastTilePosition();
+            Debug.Log($"[MercenaryFollowComponent] {Entity.Name} target last tile ({targetLastTile.X},{targetLastTile.Y})");
 
-            // If we're already at the target position, we're done
             if (myTile == targetLastTile)
             {
+                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} already at target position");
                 _currentPath = null;
-                Debug.Log($"[MercenaryFollow] {Entity.Name} already at target position ({myTile.X},{myTile.Y}), no movement needed");
                 return;
             }
 
-            // If target moved to a new position, recalculate path
             if (targetLastTile != _lastTargetTile)
             {
-                Debug.Log($"[MercenaryFollow] {Entity.Name} target moved from ({_lastTargetTile.X},{_lastTargetTile.Y}) to ({targetLastTile.X},{targetLastTile.Y}), recalculating path");
+                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} target moved, recalculating path");
                 _lastTargetTile = targetLastTile;
                 _currentPath = _pathfinding.CalculatePath(myTile, targetLastTile);
                 _pathIndex = 0;
 
                 if (_currentPath == null || _currentPath.Count == 0)
                 {
-                    // No path found - wait for next update
+                    Debug.Log($"[MercenaryFollowComponent] {Entity.Name} no path found to target");
                     return;
                 }
+                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} found path with {_currentPath.Count} steps");
             }
 
-            // Follow the current path
             if (_currentPath != null && _pathIndex < _currentPath.Count)
             {
                 var nextTile = _currentPath[_pathIndex];
 
-                // If we're at the next tile in path, advance to next
                 if (myTile == nextTile)
                 {
                     _pathIndex++;
@@ -127,13 +112,44 @@ namespace PitHero.ECS.Components
                     nextTile = _currentPath[_pathIndex];
                 }
 
-                // Move toward next tile in path
                 var direction = GetDirectionToTile(myTile, nextTile);
                 if (direction.HasValue && _tileMover != null)
                 {
                     _tileMover.StartMoving(direction.Value);
                 }
             }
+        }
+
+        /// <summary>
+        /// Gets the current tile position of this mercenary
+        /// </summary>
+        private Point GetCurrentTile()
+        {
+            var pos = Entity.Transform.Position;
+            return new Point(
+                (int)(pos.X / GameConfig.TileSize),
+                (int)(pos.Y / GameConfig.TileSize)
+            );
+        }
+
+        /// <summary>
+        /// Gets the last tile position of the target (hero or another mercenary)
+        /// </summary>
+        private Point GetTargetLastTilePosition()
+        {
+            var targetHeroComponent = _mercComponent.FollowTarget.GetComponent<HeroComponent>();
+            var targetMercComponent = _mercComponent.FollowTarget.GetComponent<MercenaryComponent>();
+            
+            if (targetHeroComponent != null)
+            {
+                return targetHeroComponent.LastTilePosition;
+            }
+            else if (targetMercComponent != null)
+            {
+                return targetMercComponent.LastTilePosition;
+            }
+
+            return GetCurrentTile();
         }
 
         /// <summary>
@@ -144,7 +160,6 @@ namespace PitHero.ECS.Components
             var dx = target.X - current.X;
             var dy = target.Y - current.Y;
 
-            // Only handle adjacent tiles
             if (dx > 0 && dy == 0) return Direction.Right;
             if (dx < 0 && dy == 0) return Direction.Left;
             if (dy > 0 && dx == 0) return Direction.Down;
@@ -165,3 +180,4 @@ namespace PitHero.ECS.Components
         }
     }
 }
+

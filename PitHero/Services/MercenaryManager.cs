@@ -295,6 +295,13 @@ namespace PitHero.Services
             // Follow the path
             for (int i = 0; i < path.Count; i++)
             {
+                // Check if mercenary was hired during the walk - if so, stop walking to tavern
+                if (mercComponent.IsHired)
+                {
+                    Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} was hired during walk to tavern - stopping tavern walk");
+                    yield break;
+                }
+
                 var targetTile = path[i];
                 var currentTilePos = new Point(
                     (int)(mercEntity.Transform.Position.X / GameConfig.TileSize),
@@ -318,6 +325,12 @@ namespace PitHero.Services
                     // Wait for movement to complete
                     while (tileMover.IsMoving)
                     {
+                        // Also check during movement if mercenary was hired
+                        if (mercComponent.IsHired)
+                        {
+                            Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} was hired during movement - stopping tavern walk");
+                            yield break;
+                        }
                         yield return null;
                     }
                 }
@@ -344,6 +357,9 @@ namespace PitHero.Services
                 _isRemovingMercenary = false;
                 yield break;
             }
+
+            // Mark as being removed so it can't be hired during removal animation
+            mercComponent.IsBeingRemoved = true;
 
             // Calculate current tile position
             var currentPos = mercEntity.Transform.Position;
@@ -554,9 +570,12 @@ namespace PitHero.Services
 
             Debug.Log($"[MercenaryManager] Hired mercenary {mercComponent.LinkedMercenary.Name}, follow target set to: {followTarget.Name}");
 
-            // Add join component to make mercenary navigate to their target (handles pit detection and jumping)
-            // This will automatically switch to follow mode once the mercenary reaches the target
-            mercEntity.AddComponent(new MercenaryJoinComponent());
+            // Add state machine and jump component for pit jumping
+            if (!mercEntity.HasComponent<HeroJumpComponent>())
+            {
+                mercEntity.AddComponent(new HeroJumpComponent());
+            }
+            mercEntity.AddComponent(new AI.MercenaryStateMachine());
 
             return true;
         }

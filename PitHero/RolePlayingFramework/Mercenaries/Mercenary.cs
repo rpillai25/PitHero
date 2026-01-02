@@ -132,8 +132,8 @@ namespace RolePlayingFramework.Mercenaries
             return removed;
         }
 
-        /// <summary>Recalculates derived stats from base + job + equipment.</summary>
-        private void RecalculateDerived()
+        /// <summary>Gets total stats (base + job + equipment) clamped to maximums.</summary>
+        public StatBlock GetTotalStats()
         {
             var jobStats = Job.GetJobContributionAtLevel(Level);
             var total = BaseStats.Add(jobStats);
@@ -145,7 +145,13 @@ namespace RolePlayingFramework.Mercenaries
             if (Accessory1 != null) total = total.Add(Accessory1.StatBonus);
             if (Accessory2 != null) total = total.Add(Accessory2.StatBonus);
 
-            total = StatConstants.ClampStatBlock(total);
+            return StatConstants.ClampStatBlock(total);
+        }
+
+        /// <summary>Recalculates derived stats from base + job + equipment.</summary>
+        private void RecalculateDerived()
+        {
+            var total = GetTotalStats();
 
             int baseHP = 25 + (total.Vitality * 5);
             int baseMP = 10 + (total.Magic * 3);
@@ -160,17 +166,7 @@ namespace RolePlayingFramework.Mercenaries
         /// <summary>Computes battle stats for combat calculations.</summary>
         public BattleStats GetBattleStats()
         {
-            var jobStats = Job.GetJobContributionAtLevel(Level);
-            var effectiveStats = BaseStats.Add(jobStats);
-
-            if (WeaponShield1 != null) effectiveStats = effectiveStats.Add(WeaponShield1.StatBonus);
-            if (Armor != null) effectiveStats = effectiveStats.Add(Armor.StatBonus);
-            if (Hat != null) effectiveStats = effectiveStats.Add(Hat.StatBonus);
-            if (WeaponShield2 != null) effectiveStats = effectiveStats.Add(WeaponShield2.StatBonus);
-            if (Accessory1 != null) effectiveStats = effectiveStats.Add(Accessory1.StatBonus);
-            if (Accessory2 != null) effectiveStats = effectiveStats.Add(Accessory2.StatBonus);
-
-            effectiveStats = StatConstants.ClampStatBlock(effectiveStats);
+            var effectiveStats = GetTotalStats();
 
             int atk = effectiveStats.Strength;
             if (WeaponShield1 != null) atk += WeaponShield1.AttackBonus;

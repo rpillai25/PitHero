@@ -330,13 +330,6 @@ namespace PitHero.AI
                     Debug.Log($"[ActivateWizardOrb] Reset MercenaryFollowComponent pathfinding for {mercComponent.LinkedMercenary.Name}");
                 }
 
-                var joinComponent = mercEntity.GetComponent<MercenaryJoinComponent>();
-                if (joinComponent != null)
-                {
-                    joinComponent.ResetPathfinding();
-                    Debug.Log($"[ActivateWizardOrb] Reset MercenaryJoinComponent pathfinding for {mercComponent.LinkedMercenary.Name}");
-                }
-
                 Debug.Log($"[ActivateWizardOrb] Repositioned mercenary {mercComponent.LinkedMercenary.Name} to hero position");
             }
 

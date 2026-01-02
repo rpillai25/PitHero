@@ -27,6 +27,9 @@ namespace PitHero.ECS.Scenes
         private ShortcutBar _shortcutBar; // Shortcut bar displayed at bottom center
         private GraphicalHUD _graphicalHUD; // Graphical HUD component for HP/MP/Level display
         private MercenaryHireDialog _mercenaryHireDialog; // Dialog for hiring mercenaries
+        private Entity _hoveredMercenary; // Currently hovered mercenary
+        private Entity _mercenarySelectBoxEntity; // Entity for rendering SelectBox over hovered mercenary
+        private Entity _mercenaryNameLabelEntity; // Entity for rendering name above hovered mercenary
 
         // HUD fonts for different shrink levels
         public BitmapFont _hudFontNormal;
@@ -688,8 +691,107 @@ namespace PitHero.ECS.Scenes
             var mercenaryManager = Core.Services.GetService<MercenaryManager>();
             mercenaryManager?.Update();
 
-            // Handle mercenary click detection
+            // Handle mercenary hover and click detection
+            HandleMercenaryHover();
             HandleMercenaryClicks();
+        }
+
+        /// <summary>
+        /// Handles mouse hover over mercenaries to show SelectBox and name
+        /// </summary>
+        private void HandleMercenaryHover()
+        {
+            // Get mouse position in world coordinates
+            var mousePos = Camera.MouseToWorldPoint();
+
+            // Find all mercenary entities
+            var mercenaries = FindEntitiesWithTag(GameConfig.TAG_MERCENARY);
+            
+            Entity newHoveredMercenary = null;
+            
+            for (int i = 0; i < mercenaries.Count; i++)
+            {
+                var mercEntity = mercenaries[i];
+                var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
+                
+                // Skip hired mercenaries and mercenaries being removed
+                if (mercComponent == null || mercComponent.IsHired || mercComponent.IsBeingRemoved)
+                    continue;
+
+                // Check if mouse is within mercenary bounds
+                var distance = Vector2.Distance(mousePos, mercEntity.Transform.Position);
+                if (distance < GameConfig.TileSize)
+                {
+                    newHoveredMercenary = mercEntity;
+                    break;
+                }
+            }
+
+            // Update hovered mercenary
+            if (newHoveredMercenary != _hoveredMercenary)
+            {
+                _hoveredMercenary = newHoveredMercenary;
+                UpdateMercenaryHoverDisplay();
+            }
+            else if (_hoveredMercenary != null)
+            {
+                // Update position even if same mercenary (in case they're moving)
+                UpdateMercenaryHoverDisplay();
+            }
+        }
+
+        /// <summary>
+        /// Updates the SelectBox and name label display for hovered mercenary
+        /// </summary>
+        private void UpdateMercenaryHoverDisplay()
+        {
+            if (_hoveredMercenary == null)
+            {
+                // Hide SelectBox and name
+                if (_mercenarySelectBoxEntity != null)
+                    _mercenarySelectBoxEntity.SetEnabled(false);
+                if (_mercenaryNameLabelEntity != null)
+                    _mercenaryNameLabelEntity.SetEnabled(false);
+                return;
+            }
+
+            var mercComponent = _hoveredMercenary.GetComponent<MercenaryComponent>();
+            if (mercComponent == null)
+                return;
+
+            var mercPos = _hoveredMercenary.Transform.Position;
+
+            // Create or update SelectBox entity
+            if (_mercenarySelectBoxEntity == null)
+            {
+                _mercenarySelectBoxEntity = CreateEntity("mercenary-selectbox");
+                var selectBox = _mercenarySelectBoxEntity.AddComponent(new SelectBoxRenderComponent());
+                selectBox.SetRenderLayer(GameConfig.RenderLayerTop);
+            }
+            
+            _mercenarySelectBoxEntity.SetEnabled(true);
+            _mercenarySelectBoxEntity.SetPosition(mercPos);
+
+            // Create or update name label entity
+            if (_mercenaryNameLabelEntity == null)
+            {
+                _mercenaryNameLabelEntity = CreateEntity("mercenary-namelabel");
+                var nameLabel = _mercenaryNameLabelEntity.AddComponent(new TextRenderComponent());
+                nameLabel.SetRenderLayer(GameConfig.RenderLayerTop);
+                nameLabel.SetFont(Content.LoadBitmapFont("Content/Fonts/HUD.fnt"));
+                nameLabel.SetColor(Color.White);
+            }
+
+            var textComponent = _mercenaryNameLabelEntity.GetComponent<TextRenderComponent>();
+            if (textComponent != null)
+            {
+                textComponent.SetText(mercComponent.LinkedMercenary.Name);
+            }
+
+            // Position name label above the SelectBox (32 pixels up + additional offset for text height)
+            var namePos = new Vector2(mercPos.X, mercPos.Y - 40);
+            _mercenaryNameLabelEntity.SetEnabled(true);
+            _mercenaryNameLabelEntity.SetPosition(namePos);
         }
 
         /// <summary>
@@ -724,10 +826,11 @@ namespace PitHero.ECS.Scenes
                 var mercEntity = mercenaries[i];
                 var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
                 
-                // Only show dialog for mercenaries waiting in tavern
-                if (mercComponent == null || !mercComponent.IsWaitingInTavern)
+                // Skip hired mercenaries and mercenaries being removed
+                if (mercComponent == null || mercComponent.IsHired || mercComponent.IsBeingRemoved)
                     continue;
 
+                // Allow clicking anywhere (not just in tavern)
                 // Check if click is within mercenary bounds (use simple distance check)
                 var distance = Vector2.Distance(mousePos, mercEntity.Transform.Position);
                 if (distance < GameConfig.TileSize)
