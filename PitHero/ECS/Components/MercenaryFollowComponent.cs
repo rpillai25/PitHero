@@ -75,11 +75,30 @@ namespace PitHero.ECS.Components
             var targetLastTile = GetTargetLastTilePosition();
             Debug.Log($"[MercenaryFollowComponent] {Entity.Name} target last tile ({targetLastTile.X},{targetLastTile.Y})");
 
+            // Check if we're already at the target position
             if (myTile == targetLastTile)
             {
                 Debug.Log($"[MercenaryFollowComponent] {Entity.Name} already at target position");
                 _currentPath = null;
                 return;
+            }
+
+            // Check if the target is currently on their last tile position
+            // If so, stop one tile away to avoid occupying the same tile
+            var targetCurrentTile = GetTargetCurrentTilePosition();
+            if (targetCurrentTile == targetLastTile)
+            {
+                // Target is still on their last position, check if we're adjacent
+                var dx = System.Math.Abs(myTile.X - targetCurrentTile.X);
+                var dy = System.Math.Abs(myTile.Y - targetCurrentTile.Y);
+                bool isAdjacent = (dx == 1 && dy == 0) || (dx == 0 && dy == 1);
+
+                if (isAdjacent)
+                {
+                    Debug.Log($"[MercenaryFollowComponent] {Entity.Name} adjacent to target, stopping to avoid overlap");
+                    _currentPath = null;
+                    return;
+                }
             }
 
             if (targetLastTile != _lastTargetTile)
@@ -150,6 +169,23 @@ namespace PitHero.ECS.Components
             }
 
             return GetCurrentTile();
+        }
+
+        /// <summary>
+        /// Gets the current real-time tile position of the target entity
+        /// </summary>
+        private Point GetTargetCurrentTilePosition()
+        {
+            if (_mercComponent.FollowTarget == null)
+            {
+                return new Point(-1, -1);
+            }
+
+            var pos = _mercComponent.FollowTarget.Transform.Position;
+            return new Point(
+                (int)(pos.X / GameConfig.TileSize),
+                (int)(pos.Y / GameConfig.TileSize)
+            );
         }
 
         /// <summary>
