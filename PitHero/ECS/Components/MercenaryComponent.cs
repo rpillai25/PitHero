@@ -27,6 +27,9 @@ namespace PitHero.ECS.Components
         /// <summary>The time this mercenary was spawned (for tracking oldest unhired mercenary)</summary>
         public double SpawnTime { get; set; }
 
+        /// <summary>Unique spawn ID for tracking oldest mercenary (lower ID = older)</summary>
+        public int SpawnId { get; set; }
+
         /// <summary>The last tile position this mercenary was on (for chain following)</summary>
         public Point LastTilePosition { get; set; }
 

@@ -34,6 +34,8 @@ namespace PitHero.Services
         private float _timeSinceLastSpawn;
         private Scene _scene;
         private bool _hasSpawnedInitialMercenary;
+        private int _nextSpawnId; // Global spawn ID counter
+        private bool _isRemovingMercenary; // Flag to prevent overlapping removal/spawn
 
         public MercenaryManager()
         {
@@ -41,6 +43,8 @@ namespace PitHero.Services
             _occupiedTavernPositions = new HashSet<Point>();
             _timeSinceLastSpawn = 0f;
             _hasSpawnedInitialMercenary = false;
+            _nextSpawnId = 1; // Start spawn IDs at 1
+            _isRemovingMercenary = false;
         }
 
         /// <summary>Initialize the manager with the scene reference</summary>
@@ -77,16 +81,29 @@ namespace PitHero.Services
         /// <summary>Attempts to spawn a new mercenary</summary>
         private void TrySpawnMercenary()
         {
+            // Don't spawn if already in the process of removing a mercenary
+            if (_isRemovingMercenary)
+                return;
+
             // Count unhired mercenaries
             var unhiredMercenaries = GetUnhiredMercenaries();
 
             if (unhiredMercenaries.Count >= MaxMercenariesInTavern)
             {
-                // Remove oldest unhired mercenary
-                var oldestMercenary = unhiredMercenaries.OrderBy(m => m.GetComponent<MercenaryComponent>().SpawnTime).FirstOrDefault();
+                // Find the oldest unhired mercenary (lowest SpawnId)
+                var oldestMercenary = unhiredMercenaries
+                    .OrderBy(m => m.GetComponent<MercenaryComponent>()?.SpawnId ?? int.MaxValue)
+                    .FirstOrDefault();
+                    
                 if (oldestMercenary != null)
                 {
-                    RemoveMercenary(oldestMercenary);
+                    var mercName = oldestMercenary.GetComponent<MercenaryComponent>()?.LinkedMercenary?.Name ?? "Unknown";
+                    Debug.Log($"[MercenaryManager] Tavern full - oldest mercenary {mercName} will leave to make room");
+                    
+                    // Start the walk-off-and-remove process
+                    _isRemovingMercenary = true;
+                    Core.StartCoroutine(WalkOffscreenAndRemove(oldestMercenary));
+                    return; // Don't spawn yet - wait for removal to complete
                 }
             }
 
@@ -186,13 +203,17 @@ namespace PitHero.Services
                 IsWaitingInTavern = false,
                 TavernPosition = tavernPosition,
                 SpawnTime = Time.TotalTime,
+                SpawnId = _nextSpawnId, // Assign unique spawn ID
                 LastTilePosition = SpawnPosition
             });
+
+            // Increment spawn ID counter for next mercenary
+            _nextSpawnId++;
 
             _mercenaryEntities.Add(mercEntity);
             _occupiedTavernPositions.Add(tavernPosition);
 
-            Debug.Log($"[MercenaryManager] Spawned mercenary {name} (Level {heroLevel} {job.Name}) - moving to tavern position ({tavernPosition.X},{tavernPosition.Y})");
+            Debug.Log($"[MercenaryManager] Spawned mercenary {name} (Level {heroLevel} {job.Name}, SpawnId {mercComponent.SpawnId}) - moving to tavern position ({tavernPosition.X},{tavernPosition.Y})");
 
             // Start walking to tavern position
             Core.StartCoroutine(WalkToTavern(mercEntity, tavernPosition));
@@ -269,6 +290,139 @@ namespace PitHero.Services
             // Arrived at tavern position
             mercComponent.IsWaitingInTavern = true;
             Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} arrived at tavern");
+        }
+
+        /// <summary>Coroutine to walk mercenary offscreen (pathfind to exit point, then slide 64 pixels down) then remove them</summary>
+        private System.Collections.IEnumerator WalkOffscreenAndRemove(Entity mercEntity)
+        {
+            var tileMover = mercEntity.GetComponent<TileByTileMover>();
+            var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
+            var pathfinding = mercEntity.GetComponent<PathfindingActorComponent>();
+            var facingComponent = mercEntity.GetComponent<ActorFacingComponent>();
+            
+            if (tileMover == null || mercComponent == null || pathfinding == null)
+            {
+                _isRemovingMercenary = false;
+                yield break;
+            }
+
+            // Calculate current tile position
+            var currentPos = mercEntity.Transform.Position;
+            var currentTile = new Point(
+                (int)(currentPos.X / GameConfig.TileSize),
+                (int)(currentPos.Y / GameConfig.TileSize)
+            );
+
+            // Target is 2 tiles to the left of spawn position (exit point)
+            var exitTile = new Point(SpawnPosition.X - 2, SpawnPosition.Y);
+
+            Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} leaving tavern - walking to exit point ({exitTile.X},{exitTile.Y})");
+
+            // Calculate A* path to exit point
+            var path = pathfinding.CalculatePath(currentTile, exitTile);
+            
+            if (path == null || path.Count == 0)
+            {
+                Debug.Warn($"[MercenaryManager] Could not find path to exit for {mercComponent.LinkedMercenary.Name} - removing anyway");
+                RemoveMercenary(mercEntity);
+                _isRemovingMercenary = false;
+                
+                // Immediately try to spawn replacement
+                TrySpawnMercenary();
+                yield break;
+            }
+
+            // Follow the path to walk to exit point
+            for (int i = 0; i < path.Count; i++)
+            {
+                var targetTile = path[i];
+                var currentTilePos = new Point(
+                    (int)(mercEntity.Transform.Position.X / GameConfig.TileSize),
+                    (int)(mercEntity.Transform.Position.Y / GameConfig.TileSize)
+                );
+
+                // Determine direction to move
+                var dx = targetTile.X - currentTilePos.X;
+                var dy = targetTile.Y - currentTilePos.Y;
+
+                Direction? direction = null;
+                if (dx > 0) direction = Direction.Right;
+                else if (dx < 0) direction = Direction.Left;
+                else if (dy > 0) direction = Direction.Down;
+                else if (dy < 0) direction = Direction.Up;
+
+                if (direction.HasValue)
+                {
+                    tileMover.StartMoving(direction.Value);
+
+                    // Wait for movement to complete
+                    while (tileMover.IsMoving)
+                    {
+                        yield return null;
+                    }
+                }
+
+                // Small delay between moves
+                yield return Coroutine.WaitForSeconds(0.05f);
+            }
+
+            Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} reached exit point - now sliding down offscreen (64 pixels)");
+
+            // Now at exit point - set facing to down and switch animations
+            if (facingComponent != null)
+            {
+                facingComponent.SetFacing(Direction.Down);
+            }
+
+            // Get all animation components and switch to walk down
+            var bodyAnim = mercEntity.GetComponent<HeroBodyAnimationComponent>();
+            var hand1Anim = mercEntity.GetComponent<HeroHand1AnimationComponent>();
+            var hand2Anim = mercEntity.GetComponent<HeroHand2AnimationComponent>();
+            var pantsAnim = mercEntity.GetComponent<HeroPantsAnimationComponent>();
+            var shirtAnim = mercEntity.GetComponent<HeroShirtAnimationComponent>();
+            var hairAnim = mercEntity.GetComponent<HeroHairAnimationComponent>();
+
+            // Switch all animations to walk down
+            if (bodyAnim != null) bodyAnim.UpdateAnimationForDirection(Direction.Down);
+            if (hand1Anim != null) hand1Anim.UpdateAnimationForDirection(Direction.Down);
+            if (hand2Anim != null) hand2Anim.UpdateAnimationForDirection(Direction.Down);
+            if (pantsAnim != null) pantsAnim.UpdateAnimationForDirection(Direction.Down);
+            if (shirtAnim != null) shirtAnim.UpdateAnimationForDirection(Direction.Down);
+            if (hairAnim != null) hairAnim.UpdateAnimationForDirection(Direction.Down);
+
+            // Smoothly slide down 64 pixels to go offscreen
+            var startPosition = mercEntity.Transform.Position;
+            var offscreenDistance = 64f; // 64 pixels down (2 tiles)
+            var targetPosition = startPosition + new Vector2(0, offscreenDistance);
+            var moveSpeed = GameConfig.HeroMovementSpeed; // Use same speed as normal movement
+            var duration = offscreenDistance / moveSpeed;
+
+            Debug.Log($"[MercenaryManager] Sliding {mercComponent.LinkedMercenary.Name} from ({startPosition.X},{startPosition.Y}) down {offscreenDistance} pixels over {duration:F2} seconds");
+
+            var elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.DeltaTime;
+                var progress = elapsed / duration;
+                mercEntity.Transform.Position = Vector2.Lerp(startPosition, targetPosition, progress);
+                yield return null;
+            }
+
+            // Ensure we're exactly at target
+            mercEntity.Transform.Position = targetPosition;
+
+            // Reached offscreen position - now remove the mercenary
+            Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} has left offscreen - removing");
+            RemoveMercenary(mercEntity);
+
+            // Wait 2 seconds before spawning new mercenary to avoid immediate swap appearance
+            Debug.Log("[MercenaryManager] Waiting 2 seconds before spawning replacement mercenary");
+            yield return Coroutine.WaitForSeconds(2.0f);
+
+            _isRemovingMercenary = false;
+
+            // Now that removal is complete and delay has passed, spawn the new mercenary
+            TrySpawnMercenary();
         }
 
         /// <summary>Removes a mercenary from the game</summary>
