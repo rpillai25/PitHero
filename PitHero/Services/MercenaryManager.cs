@@ -71,11 +71,45 @@ namespace PitHero.Services
             // Use scaled time for spawn timer
             _timeSinceLastSpawn += Time.DeltaTime;
 
-            if (_timeSinceLastSpawn >= GameConfig.MercenarySpawnIntervalSeconds)
+            // Get current spawn interval based on number of unhired mercenaries
+            var currentInterval = GetSpawnInterval();
+
+            if (_timeSinceLastSpawn >= currentInterval)
             {
                 _timeSinceLastSpawn = 0f;
                 TrySpawnMercenary();
             }
+        }
+
+        /// <summary>
+        /// Calculates the spawn interval based on the number of unhired mercenaries.
+        /// Progressively increases from 5 seconds (1st merc) to 300 seconds (12th merc).
+        /// </summary>
+        private float GetSpawnInterval()
+        {
+            var unhiredCount = GetUnhiredMercenaries().Count;
+            
+            // Calculate interval for the NEXT mercenary to spawn
+            // If we have 0 mercenaries, the next one (1st) spawns in 5 seconds
+            // If we have 1 mercenary, the next one (2nd) spawns in 32 seconds
+            // If we have 11 mercenaries, the next one (12th) spawns in 300 seconds
+            
+            // Cap at max interval if we're at or above max capacity
+            if (unhiredCount >= MaxMercenariesInTavern)
+            {
+                return GameConfig.MercenaryMaxSpawnIntervalSeconds;
+            }
+
+            // Calculate progressive interval for the NEXT spawn
+            // Formula: linear interpolation from min to max based on unhired count
+            // unhiredCount 0 (spawning 1st merc) -> 5 seconds
+            // unhiredCount 1 (spawning 2nd merc) -> 32 seconds
+            // unhiredCount 11 (spawning 12th merc) -> 300 seconds
+            var t = unhiredCount / (float)(MaxMercenariesInTavern - 1); // 0 to 1 progression
+            var interval = GameConfig.MercenaryMinSpawnIntervalSeconds + 
+                          (t * (GameConfig.MercenaryMaxSpawnIntervalSeconds - GameConfig.MercenaryMinSpawnIntervalSeconds));
+            
+            return interval;
         }
 
         /// <summary>Attempts to spawn a new mercenary</summary>
@@ -117,6 +151,11 @@ namespace PitHero.Services
 
             // Spawn new mercenary
             SpawnMercenary(availablePosition.Value);
+            
+            // Calculate and log the interval for the NEXT spawn
+            var nextInterval = GetSpawnInterval();
+            var nextMercenaryNumber = GetUnhiredMercenaries().Count + 1;
+            Debug.Log($"[MercenaryManager] Timer reset. Next mercenary (#{nextMercenaryNumber}) will spawn in {nextInterval:F1} seconds");
         }
 
         /// <summary>Spawns a mercenary at the spawn position and moves them to tavern</summary>
