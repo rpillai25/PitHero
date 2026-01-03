@@ -21,13 +21,12 @@ namespace PitHero.Services
 
         private static readonly Point[] TavernPositions = new Point[]
         {
-            new Point(68, 5), new Point(69, 4), new Point(70, 5),
-            new Point(72, 5), new Point(73, 4), new Point(74, 5),
-            new Point(68, 7), new Point(69, 8), new Point(70, 7),
-            new Point(72, 7), new Point(73, 8), new Point(74, 7)
+            new Point(97, 6), new Point(93, 6), new Point(97, 4), new Point(93, 4),
+            new Point(98, 7), new Point(98, 3), new Point(94, 7), new Point(94, 3),
+            new Point(96, 7), new Point(96, 3), new Point(92, 7), new Point(92, 3)
         };
 
-        private static readonly Point SpawnPosition = new Point(62, 11);
+        private static readonly Point SpawnPosition = new Point(104, 11);
 
         private readonly List<Entity> _mercenaryEntities;
         private readonly HashSet<Point> _occupiedTavernPositions;
