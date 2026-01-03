@@ -33,6 +33,13 @@ namespace PitHero.ECS.Components
         {
             Debug.Log($"[MercenaryFollowComponent] Update() called for {Entity.Name}");
 
+            // Early return if component is disabled (e.g., during sleep)
+            if (!Enabled)
+            {
+                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} component disabled, skipping update");
+                return;
+            }
+
             if (_mercComponent == null || !_mercComponent.IsHired)
             {
                 Debug.Log($"[MercenaryFollowComponent] {Entity.Name} early return: merc={_mercComponent != null}, hired={_mercComponent?.IsHired}");
