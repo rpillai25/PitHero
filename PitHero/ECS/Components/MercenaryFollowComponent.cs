@@ -101,19 +101,22 @@ namespace PitHero.ECS.Components
                 }
             }
 
-            if (targetLastTile != _lastTargetTile)
+            // Recalculate path if target moved OR if we don't have a valid path
+            bool needsNewPath = targetLastTile != _lastTargetTile || _currentPath == null || _currentPath.Count == 0;
+            
+            if (needsNewPath)
             {
-                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} target moved, recalculating path");
+                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} recalculating path (target moved: {targetLastTile != _lastTargetTile}, no path: {_currentPath == null || _currentPath.Count == 0})");
                 _lastTargetTile = targetLastTile;
                 _currentPath = _pathfinding.CalculatePath(myTile, targetLastTile);
                 _pathIndex = 0;
 
                 if (_currentPath == null || _currentPath.Count == 0)
                 {
-                    Debug.Log($"[MercenaryFollowComponent] {Entity.Name} no path found to target");
+                    Debug.Log($"[MercenaryFollowComponent] {Entity.Name} no path found to target from ({myTile.X},{myTile.Y}) to ({targetLastTile.X},{targetLastTile.Y})");
                     return;
                 }
-                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} found path with {_currentPath.Count} steps");
+                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} found path with {_currentPath.Count} steps from ({myTile.X},{myTile.Y}) to ({targetLastTile.X},{targetLastTile.Y})");
             }
 
             if (_currentPath != null && _pathIndex < _currentPath.Count)
