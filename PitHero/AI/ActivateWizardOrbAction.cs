@@ -266,7 +266,8 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Reposition all hired mercenaries to the hero's position after pit regeneration
+        /// Reposition hired mercenaries that are inside the pit to the hero's position after pit regeneration.
+        /// Mercenaries outside the pit are left in their current positions.
         /// </summary>
         private void RepositionMercenariesToHero(HeroComponent hero)
         {
@@ -284,8 +285,20 @@ namespace PitHero.AI
                 return;
             }
 
+            // Get pit bounds for checking if mercenary is inside pit
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            var pitLeft = GameConfig.PitRectX;
+            var pitTop = GameConfig.PitRectY;
+            var pitWidth = pitWidthManager?.CurrentPitRectWidthTiles ?? GameConfig.PitRectWidth;
+            var pitHeight = GameConfig.PitRectHeight;
+            var pitRight = pitLeft + pitWidth - 1;
+            var pitBottom = pitTop + pitHeight - 1;
+
             var heroPosition = hero.Entity.Transform.Position;
-            Debug.Log($"[ActivateWizardOrb] Repositioning {hiredMercenaries.Count} mercenaries to hero position ({heroPosition.X},{heroPosition.Y})");
+            int repositionedCount = 0;
+            int skippedCount = 0;
+
+            Debug.Log($"[ActivateWizardOrb] Checking {hiredMercenaries.Count} mercenaries for repositioning. Pit bounds: ({pitLeft},{pitTop}) to ({pitRight},{pitBottom})");
 
             for (int i = 0; i < hiredMercenaries.Count; i++)
             {
@@ -294,6 +307,25 @@ namespace PitHero.AI
                 
                 if (mercComponent == null)
                     continue;
+
+                // Check if mercenary is inside the pit
+                var mercTile = new Point(
+                    (int)(mercEntity.Transform.Position.X / GameConfig.TileSize),
+                    (int)(mercEntity.Transform.Position.Y / GameConfig.TileSize)
+                );
+
+                // Use exclusive boundaries - pit edge is NOT inside the pit (same logic as HeroComponent)
+                bool mercInsidePit = mercTile.X > pitLeft && mercTile.X < pitRight && 
+                                     mercTile.Y > pitTop && mercTile.Y < pitBottom;
+
+                if (!mercInsidePit)
+                {
+                    Debug.Log($"[ActivateWizardOrb] Mercenary {mercComponent.LinkedMercenary.Name} is outside pit at ({mercTile.X},{mercTile.Y}) - skipping repositioning");
+                    skippedCount++;
+                    continue;
+                }
+
+                Debug.Log($"[ActivateWizardOrb] Mercenary {mercComponent.LinkedMercenary.Name} is inside pit at ({mercTile.X},{mercTile.Y}) - repositioning to hero");
 
                 // Stop any in-progress movement first
                 var tileMover = mercEntity.GetComponent<TileByTileMover>();
@@ -320,7 +352,6 @@ namespace PitHero.AI
                 mercComponent.LastTilePosition = hero.LastTilePosition;
 
                 Debug.Log($"[ActivateWizardOrb] Mercenary {mercComponent.LinkedMercenary.Name}: Position=({mercEntity.Transform.Position.X},{mercEntity.Transform.Position.Y}), LastTilePosition=({mercComponent.LastTilePosition.X},{mercComponent.LastTilePosition.Y})");
-                Debug.Log($"[ActivateWizardOrb] Hero for reference: Position=({hero.Entity.Transform.Position.X},{hero.Entity.Transform.Position.Y}), LastTilePosition=({hero.LastTilePosition.X},{hero.LastTilePosition.Y})");
 
                 // Reset pathfinding state to clear cached paths
                 var followComponent = mercEntity.GetComponent<MercenaryFollowComponent>();
@@ -330,10 +361,11 @@ namespace PitHero.AI
                     Debug.Log($"[ActivateWizardOrb] Reset MercenaryFollowComponent pathfinding for {mercComponent.LinkedMercenary.Name}");
                 }
 
+                repositionedCount++;
                 Debug.Log($"[ActivateWizardOrb] Repositioned mercenary {mercComponent.LinkedMercenary.Name} to hero position");
             }
 
-            Debug.Log($"[ActivateWizardOrb] All mercenaries repositioned to hero");
+            Debug.Log($"[ActivateWizardOrb] Mercenary repositioning complete: {repositionedCount} repositioned, {skippedCount} skipped (outside pit)");
         }
 
         /// <summary>Coroutine to re-enable TileByTileMover after 1 second delay</summary>
