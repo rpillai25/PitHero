@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.BitmapFonts;
+using Nez.Sprites;
 using Nez.Tiled;
 using Nez.UI; // Added for Label
 using PitHero.AI;
@@ -98,6 +99,7 @@ namespace PitHero.ECS.Scenes
                 pitWidthManager.SetPitLevel(1);
 
             SpawnHero();
+            SpawnHeroStatue();
 
             // Connect shortcut bar to hero
             ConnectShortcutBarToHero();
@@ -370,6 +372,45 @@ namespace PitHero.ECS.Scenes
             }
 
             Debug.Log($"[MainGameScene] Added {addedWalls} existing obstacle walls to hero pathfinding graph");
+        }
+
+        /// <summary>
+        /// Spawn the hero statue at tile coordinate (112, 6)
+        /// </summary>
+        private void SpawnHeroStatue()
+        {
+            var tileX = 112;
+            var tileY = 3;
+
+            var worldPos = new Vector2(
+                tileX * GameConfig.TileSize + GameConfig.TileSize / 2,
+                tileY * GameConfig.TileSize + GameConfig.TileSize / 2
+            );
+
+            var statueEntity = CreateEntity("hero-statue");
+            statueEntity.SetTag(GameConfig.TAG_HERO_STATUE);
+            statueEntity.SetPosition(worldPos);
+
+            // Load sprite from Actors.atlas
+            var actorsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas");
+            if (actorsAtlas != null)
+            {
+                var statueSprite = actorsAtlas.GetSprite("HeroStatue");
+                if (statueSprite != null)
+                {
+                    var renderer = statueEntity.AddComponent(new SpriteRenderer(statueSprite));
+                    renderer.SetRenderLayer(GameConfig.RenderLayerActors);
+                    Debug.Log($"[MainGameScene] Hero statue spawned at tile ({tileX}, {tileY}) with HeroStatue sprite");
+                }
+                else
+                {
+                    Debug.Warn("[MainGameScene] HeroStatue sprite not found in Actors.atlas");
+                }
+            }
+            else
+            {
+                Debug.Error("[MainGameScene] Failed to load Actors.atlas for hero statue");
+            }
         }
 
         private void SetupUIOverlay()

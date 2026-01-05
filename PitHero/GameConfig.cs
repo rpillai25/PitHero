@@ -106,6 +106,7 @@ namespace PitHero
         public const int TAG_MONSTER = 6; // Tag for monster entities
         public const int TAG_WIZARD_ORB = 7; // Tag for wizard orb entity
         public const int TAG_MERCENARY = 8; // Tag for mercenary entities
+        public const int TAG_HERO_STATUE = 9; // Tag for hero statue entity
 
         // Render Layers (the lower the number, the higher the layer)
 
