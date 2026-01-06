@@ -109,6 +109,11 @@ namespace PitHero.ECS.Scenes
             Core.Services.AddService(mercenaryManager);
             mercenaryManager.Initialize(this);
 
+            // Initialize player interaction service for camera control
+            var playerInteractionService = new PlayerInteractionService();
+            Core.Services.AddService(playerInteractionService);
+            Debug.Log("[MainGameScene] PlayerInteractionService initialized");
+
             _isInitializationComplete = true;
         }
 
@@ -768,16 +773,40 @@ namespace PitHero.ECS.Scenes
                 }
             }
 
+            // Get player interaction service
+            var interactionService = Core.Services.GetService<PlayerInteractionService>();
+
             // Update hovered mercenary
             if (newHoveredMercenary != _hoveredMercenary)
             {
                 _hoveredMercenary = newHoveredMercenary;
                 UpdateMercenaryHoverDisplay();
+
+                // Notify interaction service
+                if (_hoveredMercenary != null && interactionService != null)
+                {
+                    interactionService.OnSelectableHoverStart(_hoveredMercenary);
+                }
+                else if (interactionService != null)
+                {
+                    interactionService.OnSelectableHoverEnd();
+                }
             }
             else if (_hoveredMercenary != null)
             {
                 // Update position even if same mercenary (in case they're moving)
                 UpdateMercenaryHoverDisplay();
+
+                // Update hover state (resets camera timer if mouse moved)
+                if (interactionService != null)
+                {
+                    interactionService.UpdateHoverState();
+                }
+            }
+            else if (interactionService != null)
+            {
+                // No mercenary hovered - ensure interaction state is cleared
+                interactionService.OnSelectableHoverEnd();
             }
         }
 
@@ -876,6 +905,13 @@ namespace PitHero.ECS.Scenes
                 var distance = Vector2.Distance(mousePos, mercEntity.Transform.Position);
                 if (distance < GameConfig.TileSize)
                 {
+                    // Notify interaction service that player clicked a selectable
+                    var interactionService = Core.Services.GetService<PlayerInteractionService>();
+                    if (interactionService != null)
+                    {
+                        interactionService.OnSelectableClicked(mercEntity);
+                    }
+
                     _mercenaryHireDialog?.Show(mercEntity);
                     break;
                 }

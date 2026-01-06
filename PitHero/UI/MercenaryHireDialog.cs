@@ -142,6 +142,10 @@ namespace PitHero.UI
             // Unpause the game when dialog closes
             var pauseService = Core.Services.GetService<PauseService>();
             pauseService?.Unpause();
+
+            // Reset player interaction state when dialog closes
+            var interactionService = Core.Services.GetService<PlayerInteractionService>();
+            interactionService?.Reset();
         }
 
         /// <summary>Gets whether the dialog is currently visible</summary>

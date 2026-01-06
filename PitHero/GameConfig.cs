@@ -55,7 +55,7 @@ namespace PitHero
         public const float CameraZoomSpeed = 0.001f; // zoom sensitivity per mouse wheel notch
         public const float CameraPanSpeed = 1f; // pan speed multiplier
         public const float CameraFollowLerpSpeed = 5f; // speed at which camera lerps to hero position
-        public const float CameraManualControlTimeout = 15f; // seconds of inactivity before auto-following resumes
+        public const float CameraManualControlTimeout = 7f; // seconds of inactivity before auto-following resumes (paused when player interacts with selectables)
 
         // World Bounds
         public static readonly Rectangle WorldBounds = new Rectangle(0, 0, InternalWorldWidth, InternalWorldHeight);

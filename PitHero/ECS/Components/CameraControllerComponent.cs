@@ -287,6 +287,22 @@ namespace PitHero.ECS.Components
         /// </summary>
         private void HandleHeroFollowing()
         {
+            // Check if player is interacting with selectables - if so, reset timer to prevent auto-scroll
+            var interactionService = Core.Services.GetService<PlayerInteractionService>();
+            if (interactionService?.IsInteractingWithSelectable == true)
+            {
+                // Player is engaged with a selectable entity - reset timer to keep camera in manual mode
+                if (!_isFollowingHero)
+                {
+                    _manualControlTimer = 0f;
+                }
+                else
+                {
+                    // Switch to manual mode if player starts interacting while in auto-follow
+                    SwitchToManualControl();
+                }
+            }
+
             // Update manual control timer if in manual mode
             if (!_isFollowingHero)
             {
