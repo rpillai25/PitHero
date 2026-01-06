@@ -673,6 +673,32 @@ namespace PitHero
                     {
                         Debug.Log($"[PitGenerator] No hero found when creating obstacle at ({tilePos.X},{tilePos.Y}) - will be added to pathfinding when hero spawns");
                     }
+
+                    // Also add obstacle to all existing mercenaries' pathfinding graphs
+                    var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+                    if (mercenaryManager != null)
+                    {
+                        var allMercenaries = mercenaryManager.GetAllMercenaries();
+                        int mercenariesUpdated = 0;
+                        
+                        for (int j = 0; j < allMercenaries.Count; j++)
+                        {
+                            var mercenary = allMercenaries[j];
+                            var pathfinding = mercenary.GetComponent<PathfindingActorComponent>();
+                            
+                            if (pathfinding != null && pathfinding.IsPathfindingInitialized)
+                            {
+                                pathfinding.AddWall(tilePos);
+                                mercenariesUpdated++;
+                            }
+                        }
+                        
+                        if (mercenariesUpdated > 0)
+                        {
+                            Debug.Log($"[PitGenerator] Added obstacle tile to {mercenariesUpdated} mercenary pathfinding graphs at ({tilePos.X},{tilePos.Y})");
+                        }
+                    }
+
                     // Leave collider defaults so hero collides with obstacle (physics layer 0)
                 }
                 else if (tag == GameConfig.TAG_TREASURE)

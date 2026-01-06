@@ -215,7 +215,7 @@ namespace PitHero.ECS.Scenes
             var minHeroTileX = rightmostPitTile + 8; // 20
             var maxHeroTileX = 50; // Leave some space from map edge
 
-            var heroTileX = Random.Range(minHeroTileX, maxHeroTileX + 1);
+            var heroTileX = 62; // Random.Range(minHeroTileX, maxHeroTileX + 1);
             var heroTileY = 6;
 
             var heroStart = new Vector2(

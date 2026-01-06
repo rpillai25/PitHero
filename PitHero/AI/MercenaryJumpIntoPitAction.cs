@@ -129,6 +129,38 @@ namespace PitHero.AI
 
             // Mercenaries do not clear fog of war - only heroes can
 
+            // Refresh pathfinding to pick up collision layer, then add all existing obstacles
+            var pathfinding = entity.GetComponent<PathfindingActorComponent>();
+            if (pathfinding != null)
+            {
+                pathfinding.RefreshPathfinding();
+                
+                // Add all existing obstacle entities to the pathfinding graph
+                var scene = entity.Scene;
+                if (scene != null)
+                {
+                    var obstacles = scene.FindEntitiesWithTag(GameConfig.TAG_OBSTACLE);
+                    int obstaclesAdded = 0;
+                    
+                    for (int i = 0; i < obstacles.Count; i++)
+                    {
+                        var obstacle = obstacles[i];
+                        var obstaclePos = obstacle.Transform.Position;
+                        var obstacleTile = new Point(
+                            (int)(obstaclePos.X / GameConfig.TileSize),
+                            (int)(obstaclePos.Y / GameConfig.TileSize)
+                        );
+                        
+                        pathfinding.AddWall(obstacleTile);
+                        obstaclesAdded++;
+                    }
+                    
+                    Debug.Log($"[MercenaryJumpIntoPit] Added {obstaclesAdded} existing obstacles to {entity.Name} pathfinding graph");
+                }
+                
+                Debug.Log($"[MercenaryJumpIntoPit] Refreshed pathfinding for {entity.Name} after entering pit");
+            }
+
             _jumpFinished = true;
             Debug.Log($"[MercenaryJumpIntoPit] Jump movement completed at {entity.Transform.Position.X},{entity.Transform.Position.Y}");
         }

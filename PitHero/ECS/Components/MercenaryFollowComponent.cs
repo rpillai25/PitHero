@@ -114,6 +114,14 @@ namespace PitHero.ECS.Components
             if (needsNewPath)
             {
                 Debug.Log($"[MercenaryFollowComponent] {Entity.Name} recalculating path (target moved: {targetLastTile != _lastTargetTile}, no path: {_currentPath == null || _currentPath.Count == 0})");
+                
+                // Ensure pathfinding graph is up to date (safety check)
+                if (_pathfinding.PathfindingGraph?.Walls == null)
+                {
+                    Debug.Warn($"[MercenaryFollowComponent] {Entity.Name} pathfinding graph not properly initialized - refreshing");
+                    _pathfinding.RefreshPathfinding();
+                }
+                
                 _lastTargetTile = targetLastTile;
                 _currentPath = _pathfinding.CalculatePath(myTile, targetLastTile);
                 _pathIndex = 0;
