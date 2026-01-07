@@ -509,8 +509,34 @@ namespace PitHero.UI
                 InitializePriorityItems();
                 _priorityList?.Rebuild();
                 var heroComponent = GetHeroComponent();
-                if (heroComponent != null && _inventoryGrid != null)
-                    _inventoryGrid.ConnectToHero(heroComponent);
+                
+                // Don't open UI if hero is dead or dying (has death component or HP <= 0)
+                if (heroComponent != null)
+                {
+                    var deathComponent = heroComponent.Entity.GetComponent<HeroDeathComponent>();
+                    bool isDying = deathComponent != null;
+                    bool isDead = heroComponent.LinkedHero?.CurrentHP <= 0;
+                    
+                    if (isDying || isDead)
+                    {
+                        Debug.Log("[HeroUI] Cannot open Hero UI - hero is dead or dying");
+                        _windowVisible = false;
+                        UIWindowManager.OnUIWindowClosing();
+                        return;
+                    }
+                    
+                    // Always reconnect to hero to refresh inventory (in case hero died and items were cleared)
+                    if (_inventoryGrid != null)
+                        _inventoryGrid.ConnectToHero(heroComponent);
+                }
+                else
+                {
+                    // No hero found - cannot open UI
+                    Debug.Log("[HeroUI] Cannot open Hero UI - no hero found");
+                    _windowVisible = false;
+                    UIWindowManager.OnUIWindowClosing();
+                    return;
+                }
 
                 // Update Hero Crystal tab with current hero
                 if (heroComponent != null && _heroCrystalTab != null)

@@ -21,6 +21,7 @@ namespace PitHero
             Services.AddService(new PauseService());
             Services.AddService(new CrystalMerchantVault());
             Services.AddService(new PitMerchantVault());
+            Services.AddService(new SecondChanceMerchantVault());
             Services.AddService(new GameStateService());
 
             // Disable pausing when focus is lost - essential for idle game behavior
