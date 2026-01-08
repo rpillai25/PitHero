@@ -494,12 +494,13 @@ namespace PitHero.Services
         }
 
         /// <summary>Gets all unhired mercenaries</summary>
-        private List<Entity> GetUnhiredMercenaries()
+        public List<Entity> GetUnhiredMercenaries()
         {
             return _mercenaryEntities.Where(m =>
             {
                 var comp = m.GetComponent<MercenaryComponent>();
-                return comp != null && !comp.IsHired;
+                // Exclude hired mercenaries and mercenaries being promoted
+                return comp != null && !comp.IsHired && !comp.IsBeingPromoted;
             }).ToList();
         }
 

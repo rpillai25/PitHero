@@ -669,6 +669,9 @@ namespace PitHero.UI
         /// <summary>Gets the inventory grid reference for shortcut bar integration.</summary>
         public InventoryGrid GetInventoryGrid() => _inventoryGrid;
 
+        /// <summary>Gets the hero crystal tab reference for UI reconnection.</summary>
+        public HeroCrystalTab GetCrystalTab() => _heroCrystalTab;
+
         /// <summary>Force close window</summary>
         public void ForceCloseWindow()
         {

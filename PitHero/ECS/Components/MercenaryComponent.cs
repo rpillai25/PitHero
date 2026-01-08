@@ -36,6 +36,12 @@ namespace PitHero.ECS.Components
         /// <summary>The last tile position this mercenary was on (for chain following)</summary>
         public Point LastTilePosition { get; set; }
 
+        /// <summary>True if this mercenary is being promoted to hero</summary>
+        public bool IsBeingPromoted { get; set; }
+
+        /// <summary>True if this mercenary has arrived at the hero statue during promotion</summary>
+        public bool HasArrivedAtStatue { get; set; }
+
         public void Update()
         {
             // Future: Update mercenary behavior here

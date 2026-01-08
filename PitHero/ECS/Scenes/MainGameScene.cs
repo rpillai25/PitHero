@@ -109,6 +109,11 @@ namespace PitHero.ECS.Scenes
             Core.Services.AddService(mercenaryManager);
             mercenaryManager.Initialize(this);
 
+            // Initialize hero promotion service
+            var heroPromotionService = new HeroPromotionService(this);
+            Core.Services.AddService(heroPromotionService);
+            Debug.Log("[MainGameScene] HeroPromotionService initialized");
+
             // Initialize player interaction service for camera control
             var playerInteractionService = new PlayerInteractionService();
             Core.Services.AddService(playerInteractionService);
@@ -706,6 +711,39 @@ namespace PitHero.ECS.Scenes
             Debug.Log("[MainGameScene] Connected shortcut bar to hero and inventory grid");
         }
 
+        /// <summary>
+        /// Reconnects all UI components to the hero (called after hero promotion)
+        /// </summary>
+        public void ReconnectUIToHero()
+        {
+            var heroEntity = FindEntity("hero");
+            if (heroEntity == null)
+            {
+                Debug.Warn("[MainGameScene] Could not find hero entity to reconnect UI");
+                return;
+            }
+
+            var heroComponent = heroEntity.GetComponent<HeroComponent>();
+            if (heroComponent == null)
+            {
+                Debug.Warn("[MainGameScene] Hero entity missing HeroComponent");
+                return;
+            }
+
+            // Reconnect shortcut bar
+            ConnectShortcutBarToHero();
+
+            // Reconnect inventory grid in HeroUI
+            var inventoryGrid = _settingsUI?.HeroUI?.GetInventoryGrid();
+            if (inventoryGrid != null)
+            {
+                inventoryGrid.ConnectToHero(heroComponent);
+                Debug.Log("[MainGameScene] Reconnected inventory grid to new hero");
+            }
+
+            Debug.Log("[MainGameScene] Reconnected all UI to new hero");
+        }
+
         public override void Update()
         {
             base.Update();
@@ -737,6 +775,10 @@ namespace PitHero.ECS.Scenes
             var mercenaryManager = Core.Services.GetService<MercenaryManager>();
             mercenaryManager?.Update();
 
+            // Check if hero needs to be promoted from mercenary
+            var heroPromotionService = Core.Services.GetService<HeroPromotionService>();
+            heroPromotionService?.CheckAndPromoteIfNeeded();
+
             // Handle mercenary hover and click detection
             HandleMercenaryHover();
             HandleMercenaryClicks();
@@ -760,8 +802,8 @@ namespace PitHero.ECS.Scenes
                 var mercEntity = mercenaries[i];
                 var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
                 
-                // Skip hired mercenaries and mercenaries being removed
-                if (mercComponent == null || mercComponent.IsHired || mercComponent.IsBeingRemoved)
+                // Skip hired mercenaries, mercenaries being removed, and mercenaries being promoted
+                if (mercComponent == null || mercComponent.IsHired || mercComponent.IsBeingRemoved || mercComponent.IsBeingPromoted)
                     continue;
 
                 // Check if mouse is within mercenary bounds
@@ -896,8 +938,8 @@ namespace PitHero.ECS.Scenes
                 var mercEntity = mercenaries[i];
                 var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
                 
-                // Skip hired mercenaries and mercenaries being removed
-                if (mercComponent == null || mercComponent.IsHired || mercComponent.IsBeingRemoved)
+                // Skip hired mercenaries, mercenaries being removed, and mercenaries being promoted
+                if (mercComponent == null || mercComponent.IsHired || mercComponent.IsBeingRemoved || mercComponent.IsBeingPromoted)
                     continue;
 
                 // Allow clicking anywhere (not just in tavern)
