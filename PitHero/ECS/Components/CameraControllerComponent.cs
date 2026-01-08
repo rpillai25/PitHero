@@ -54,13 +54,30 @@ namespace PitHero.ECS.Components
             if (pauseService?.IsPaused == true && ShouldPause)
                 return;
 
-            // Cache hero entity reference if not already cached
+            // Cache hero entity reference if not already cached, or clear if hero is destroyed/dead
             if (_heroEntity == null)
             {
                 var heroEntities = Entity.Scene.FindEntitiesWithTag(GameConfig.TAG_HERO);
                 if (heroEntities.Count > 0)
                 {
                     _heroEntity = heroEntities[0];
+                }
+            }
+            else
+            {
+                // Check if cached hero is still valid (not destroyed and alive)
+                if (_heroEntity.IsDestroyed)
+                {
+                    _heroEntity = null;
+                }
+                else
+                {
+                    // Check if hero is dead or dying
+                    var heroComponent = _heroEntity.GetComponent<HeroComponent>();
+                    if (heroComponent?.LinkedHero != null && heroComponent.LinkedHero.CurrentHP <= 0)
+                    {
+                        _heroEntity = null;
+                    }
                 }
             }
 
