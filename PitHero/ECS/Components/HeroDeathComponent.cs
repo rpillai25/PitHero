@@ -211,6 +211,19 @@ namespace PitHero.ECS.Components
                 Debug.Warn("[HeroDeathComponent] CrystalMerchantVault service not found");
             }
 
+            // Block mercenary hiring and remove all hired mercenaries
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager != null)
+            {
+                mercenaryManager.BlockHiring();
+                mercenaryManager.RemoveAllHiredMercenaries();
+                Debug.Log("[HeroDeathComponent] Blocked hiring and started removal of hired mercenaries");
+            }
+            else
+            {
+                Debug.Warn("[HeroDeathComponent] MercenaryManager service not found");
+            }
+
             // Destroy hero entity
             Entity.Destroy();
             Debug.Log("[HeroDeathComponent] Hero entity destroyed after death animation");

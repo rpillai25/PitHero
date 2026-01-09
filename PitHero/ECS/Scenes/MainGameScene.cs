@@ -923,7 +923,7 @@ namespace PitHero.ECS.Scenes
             if (mercenaryManager == null)
                 return;
 
-            // Don't show dialog if player can't hire more mercenaries
+            // Don't show dialog if player can't hire more mercenaries (includes hiring block check)
             if (!mercenaryManager.CanHireMore())
                 return;
 

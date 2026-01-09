@@ -160,6 +160,18 @@ namespace PitHero.Services
             _mercenaryBeingPromoted = null;
 
             Debug.Log("[HeroPromotionService] *** PROMOTION COMPLETE ***");
+
+            // Unblock mercenary hiring now that new hero is ready
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager != null)
+            {
+                mercenaryManager.UnblockHiring();
+                Debug.Log("[HeroPromotionService] Unblocked mercenary hiring - new hero ready");
+            }
+            else
+            {
+                Debug.Warn("[HeroPromotionService] MercenaryManager service not found");
+            }
         }
 
         /// <summary>

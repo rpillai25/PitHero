@@ -35,6 +35,7 @@ namespace PitHero.Services
         private bool _hasSpawnedInitialMercenary;
         private int _nextSpawnId; // Global spawn ID counter
         private bool _isRemovingMercenary; // Flag to prevent overlapping removal/spawn
+        private bool _hiringBlocked; // Flag to prevent hiring during hero death/promotion
 
         public MercenaryManager()
         {
@@ -44,6 +45,7 @@ namespace PitHero.Services
             _hasSpawnedInitialMercenary = false;
             _nextSpawnId = 1; // Start spawn IDs at 1
             _isRemovingMercenary = false;
+            _hiringBlocked = false;
         }
 
         /// <summary>Initialize the manager with the scene reference</summary>
@@ -621,7 +623,145 @@ namespace PitHero.Services
         /// <summary>Checks if player can hire more mercenaries</summary>
         public bool CanHireMore()
         {
+            // Cannot hire if hiring is blocked (during hero death/promotion)
+            if (_hiringBlocked)
+                return false;
+
             return GetHiredMercenaries().Count < MaxHiredMercenaries;
+        }
+
+        /// <summary>Blocks mercenary hiring (called when hero dies)</summary>
+        public void BlockHiring()
+        {
+            _hiringBlocked = true;
+            Debug.Log("[MercenaryManager] Hiring blocked - hero is dead");
+        }
+
+        /// <summary>Unblocks mercenary hiring (called when new hero is promoted)</summary>
+        public void UnblockHiring()
+        {
+            _hiringBlocked = false;
+            Debug.Log("[MercenaryManager] Hiring unblocked - new hero ready");
+        }
+
+        /// <summary>Removes all hired mercenaries (called when hero dies)</summary>
+        public void RemoveAllHiredMercenaries()
+        {
+            var hiredMercenaries = GetHiredMercenaries();
+            
+            if (hiredMercenaries.Count == 0)
+            {
+                Debug.Log("[MercenaryManager] No hired mercenaries to remove");
+                return;
+            }
+
+            Debug.Log($"[MercenaryManager] Removing {hiredMercenaries.Count} hired mercenaries due to hero death");
+
+            // Start fade-out coroutine for each hired mercenary
+            for (int i = 0; i < hiredMercenaries.Count; i++)
+            {
+                Core.StartCoroutine(FadeOutAndRemoveMercenary(hiredMercenaries[i]));
+            }
+        }
+
+        /// <summary>Coroutine to fade out a hired mercenary in place and then remove them</summary>
+        private System.Collections.IEnumerator FadeOutAndRemoveMercenary(Entity mercEntity)
+        {
+            var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
+            if (mercComponent == null)
+                yield break;
+
+            Debug.Log($"[MercenaryManager] Starting fade-out removal of hired mercenary {mercComponent.LinkedMercenary.Name}");
+
+            // Mark as being removed so it can't be interacted with
+            mercComponent.IsBeingRemoved = true;
+
+            // Disable state machine and follow component to prevent AI interference
+            var stateMachine = mercEntity.GetComponent<AI.MercenaryStateMachine>();
+            var followComponent = mercEntity.GetComponent<MercenaryFollowComponent>();
+            var tileMover = mercEntity.GetComponent<TileByTileMover>();
+            
+            if (stateMachine != null)
+            {
+                stateMachine.SetEnabled(false);
+            }
+            if (followComponent != null)
+            {
+                followComponent.SetEnabled(false);
+            }
+            if (tileMover != null)
+            {
+                tileMover.SetEnabled(false);
+            }
+
+            // Get all renderers to fade them out
+            var bodyRenderer = mercEntity.GetComponent<HeroBodyAnimationComponent>();
+            var hairRenderer = mercEntity.GetComponent<HeroHairAnimationComponent>();
+            var shirtRenderer = mercEntity.GetComponent<HeroShirtAnimationComponent>();
+            var pantsRenderer = mercEntity.GetComponent<HeroPantsAnimationComponent>();
+            var hand1Renderer = mercEntity.GetComponent<HeroHand1AnimationComponent>();
+            var hand2Renderer = mercEntity.GetComponent<HeroHand2AnimationComponent>();
+
+            // Fade out duration (same as hero death fade)
+            const float fadeOutDuration = 2.0f;
+            float elapsed = 0f;
+
+            while (elapsed < fadeOutDuration)
+            {
+                // Check if game is paused
+                var pauseService = Core.Services.GetService<PauseService>();
+                if (pauseService?.IsPaused == true)
+                {
+                    yield return null;
+                    continue;
+                }
+
+                elapsed += Time.DeltaTime;
+                float progress = elapsed / fadeOutDuration;
+                if (progress > 1f) progress = 1f;
+
+                // Fade out alpha
+                byte alpha = (byte)(255 * (1f - progress));
+
+                // Apply alpha to all renderers
+                if (bodyRenderer != null)
+                {
+                    var color = bodyRenderer.Color;
+                    bodyRenderer.Color = new Color(color.R, color.G, color.B, alpha);
+                }
+                if (hairRenderer != null)
+                {
+                    var color = hairRenderer.Color;
+                    hairRenderer.Color = new Color(color.R, color.G, color.B, alpha);
+                }
+                if (shirtRenderer != null)
+                {
+                    var color = shirtRenderer.Color;
+                    shirtRenderer.Color = new Color(color.R, color.G, color.B, alpha);
+                }
+                if (pantsRenderer != null)
+                {
+                    var color = pantsRenderer.Color;
+                    pantsRenderer.Color = new Color(color.R, color.G, color.B, alpha);
+                }
+                if (hand1Renderer != null)
+                {
+                    var color = hand1Renderer.Color;
+                    hand1Renderer.Color = new Color(color.R, color.G, color.B, alpha);
+                }
+                if (hand2Renderer != null)
+                {
+                    var color = hand2Renderer.Color;
+                    hand2Renderer.Color = new Color(color.R, color.G, color.B, alpha);
+                }
+
+                yield return null;
+            }
+
+            Debug.Log($"[MercenaryManager] Fade-out complete for {mercComponent.LinkedMercenary.Name} - removing");
+
+            // Remove the mercenary
+            RemoveMercenary(mercEntity);
         }
     }
 }
