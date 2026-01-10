@@ -161,12 +161,13 @@ namespace PitHero.Services
 
             Debug.Log("[HeroPromotionService] *** PROMOTION COMPLETE ***");
 
-            // Unblock mercenary hiring now that new hero is ready
+            // Unblock mercenary hiring and unfreeze/reassign hired mercenaries to new hero
             var mercenaryManager = Core.Services.GetService<MercenaryManager>();
             if (mercenaryManager != null)
             {
                 mercenaryManager.UnblockHiring();
-                Debug.Log("[HeroPromotionService] Unblocked mercenary hiring - new hero ready");
+                mercenaryManager.UnfreezeAndReassignMercenaries(mercenary);
+                Debug.Log("[HeroPromotionService] Unblocked mercenary hiring and reassigned frozen mercenaries to new hero");
             }
             else
             {

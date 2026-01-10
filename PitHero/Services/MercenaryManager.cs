@@ -644,124 +644,114 @@ namespace PitHero.Services
             Debug.Log("[MercenaryManager] Hiring unblocked - new hero ready");
         }
 
-        /// <summary>Removes all hired mercenaries (called when hero dies)</summary>
-        public void RemoveAllHiredMercenaries()
+        /// <summary>Freezes all hired mercenaries in place (called when hero dies)</summary>
+        public void FreezeAllHiredMercenaries()
         {
             var hiredMercenaries = GetHiredMercenaries();
             
             if (hiredMercenaries.Count == 0)
             {
-                Debug.Log("[MercenaryManager] No hired mercenaries to remove");
+                Debug.Log("[MercenaryManager] No hired mercenaries to freeze");
                 return;
             }
 
-            Debug.Log($"[MercenaryManager] Removing {hiredMercenaries.Count} hired mercenaries due to hero death");
+            Debug.Log($"[MercenaryManager] Freezing {hiredMercenaries.Count} hired mercenaries due to hero death");
 
-            // Start fade-out coroutine for each hired mercenary
             for (int i = 0; i < hiredMercenaries.Count; i++)
             {
-                Core.StartCoroutine(FadeOutAndRemoveMercenary(hiredMercenaries[i]));
+                var mercEntity = hiredMercenaries[i];
+                var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
+                if (mercComponent == null)
+                    continue;
+
+                Debug.Log($"[MercenaryManager] Freezing hired mercenary {mercComponent.LinkedMercenary.Name} in place");
+
+                // Disable state machine and follow component to freeze mercenary
+                var stateMachine = mercEntity.GetComponent<AI.MercenaryStateMachine>();
+                var followComponent = mercEntity.GetComponent<MercenaryFollowComponent>();
+                var tileMover = mercEntity.GetComponent<TileByTileMover>();
+                
+                if (stateMachine != null)
+                {
+                    stateMachine.SetEnabled(false);
+                }
+                if (followComponent != null)
+                {
+                    followComponent.SetEnabled(false);
+                }
+                if (tileMover != null)
+                {
+                    tileMover.SetEnabled(false);
+                }
+
+                // Clear the follow target since hero is dead
+                mercComponent.FollowTarget = null;
             }
+
+            Debug.Log("[MercenaryManager] All hired mercenaries frozen");
         }
 
-        /// <summary>Coroutine to fade out a hired mercenary in place and then remove them</summary>
-        private System.Collections.IEnumerator FadeOutAndRemoveMercenary(Entity mercEntity)
+        /// <summary>Unfreezes all hired mercenaries and reassigns follow targets to new hero (called when new hero is promoted)</summary>
+        public void UnfreezeAndReassignMercenaries(Entity newHeroEntity)
         {
-            var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
-            if (mercComponent == null)
-                yield break;
-
-            Debug.Log($"[MercenaryManager] Starting fade-out removal of hired mercenary {mercComponent.LinkedMercenary.Name}");
-
-            // Mark as being removed so it can't be interacted with
-            mercComponent.IsBeingRemoved = true;
-
-            // Disable state machine and follow component to prevent AI interference
-            var stateMachine = mercEntity.GetComponent<AI.MercenaryStateMachine>();
-            var followComponent = mercEntity.GetComponent<MercenaryFollowComponent>();
-            var tileMover = mercEntity.GetComponent<TileByTileMover>();
+            var hiredMercenaries = GetHiredMercenaries();
             
-            if (stateMachine != null)
+            if (hiredMercenaries.Count == 0)
             {
-                stateMachine.SetEnabled(false);
-            }
-            if (followComponent != null)
-            {
-                followComponent.SetEnabled(false);
-            }
-            if (tileMover != null)
-            {
-                tileMover.SetEnabled(false);
+                Debug.Log("[MercenaryManager] No hired mercenaries to unfreeze");
+                return;
             }
 
-            // Get all renderers to fade them out
-            var bodyRenderer = mercEntity.GetComponent<HeroBodyAnimationComponent>();
-            var hairRenderer = mercEntity.GetComponent<HeroHairAnimationComponent>();
-            var shirtRenderer = mercEntity.GetComponent<HeroShirtAnimationComponent>();
-            var pantsRenderer = mercEntity.GetComponent<HeroPantsAnimationComponent>();
-            var hand1Renderer = mercEntity.GetComponent<HeroHand1AnimationComponent>();
-            var hand2Renderer = mercEntity.GetComponent<HeroHand2AnimationComponent>();
+            Debug.Log($"[MercenaryManager] Unfreezing {hiredMercenaries.Count} hired mercenaries and reassigning to new hero");
 
-            // Fade out duration (same as hero death fade)
-            const float fadeOutDuration = 2.0f;
-            float elapsed = 0f;
-
-            while (elapsed < fadeOutDuration)
+            // Reassign follow targets
+            for (int i = 0; i < hiredMercenaries.Count; i++)
             {
-                // Check if game is paused
-                var pauseService = Core.Services.GetService<PauseService>();
-                if (pauseService?.IsPaused == true)
-                {
-                    yield return null;
+                var mercEntity = hiredMercenaries[i];
+                var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
+                if (mercComponent == null)
                     continue;
+
+                // Determine follow target based on position in chain
+                Entity followTarget;
+                if (i == 0)
+                {
+                    // First mercenary follows new hero
+                    followTarget = newHeroEntity;
+                    Debug.Log($"[MercenaryManager] First mercenary {mercComponent.LinkedMercenary.Name} will follow new hero");
+                }
+                else
+                {
+                    // Second mercenary follows first mercenary
+                    followTarget = hiredMercenaries[0];
+                    var firstMercName = followTarget.GetComponent<MercenaryComponent>()?.LinkedMercenary?.Name ?? "Unknown";
+                    Debug.Log($"[MercenaryManager] Second mercenary {mercComponent.LinkedMercenary.Name} will follow {firstMercName}");
                 }
 
-                elapsed += Time.DeltaTime;
-                float progress = elapsed / fadeOutDuration;
-                if (progress > 1f) progress = 1f;
+                mercComponent.FollowTarget = followTarget;
 
-                // Fade out alpha
-                byte alpha = (byte)(255 * (1f - progress));
-
-                // Apply alpha to all renderers
-                if (bodyRenderer != null)
+                // Re-enable state machine and follow component
+                var stateMachine = mercEntity.GetComponent<AI.MercenaryStateMachine>();
+                var followComponent = mercEntity.GetComponent<MercenaryFollowComponent>();
+                var tileMover = mercEntity.GetComponent<TileByTileMover>();
+                
+                if (stateMachine != null)
                 {
-                    var color = bodyRenderer.Color;
-                    bodyRenderer.Color = new Color(color.R, color.G, color.B, alpha);
+                    stateMachine.SetEnabled(true);
                 }
-                if (hairRenderer != null)
+                if (followComponent != null)
                 {
-                    var color = hairRenderer.Color;
-                    hairRenderer.Color = new Color(color.R, color.G, color.B, alpha);
+                    followComponent.SetEnabled(true);
                 }
-                if (shirtRenderer != null)
+                if (tileMover != null)
                 {
-                    var color = shirtRenderer.Color;
-                    shirtRenderer.Color = new Color(color.R, color.G, color.B, alpha);
-                }
-                if (pantsRenderer != null)
-                {
-                    var color = pantsRenderer.Color;
-                    pantsRenderer.Color = new Color(color.R, color.G, color.B, alpha);
-                }
-                if (hand1Renderer != null)
-                {
-                    var color = hand1Renderer.Color;
-                    hand1Renderer.Color = new Color(color.R, color.G, color.B, alpha);
-                }
-                if (hand2Renderer != null)
-                {
-                    var color = hand2Renderer.Color;
-                    hand2Renderer.Color = new Color(color.R, color.G, color.B, alpha);
+                    tileMover.SetEnabled(true);
                 }
 
-                yield return null;
+                Debug.Log($"[MercenaryManager] Unfroze and reassigned {mercComponent.LinkedMercenary.Name} to follow {followTarget.Name}");
             }
 
-            Debug.Log($"[MercenaryManager] Fade-out complete for {mercComponent.LinkedMercenary.Name} - removing");
-
-            // Remove the mercenary
-            RemoveMercenary(mercEntity);
+            Debug.Log("[MercenaryManager] All hired mercenaries unfrozen and reassigned");
         }
     }
 }
