@@ -39,12 +39,15 @@ namespace PitHero.ECS.Components
         /// <summary>True if this mercenary is being promoted to hero</summary>
         public bool IsBeingPromoted { get; set; }
 
-        /// <summary>True if this mercenary has arrived at the hero statue during promotion</summary>
-        public bool HasArrivedAtStatue { get; set; }
+    /// <summary>True if this mercenary has arrived at the hero statue during promotion</summary>
+    public bool HasArrivedAtStatue { get; set; }
 
-        public void Update()
-        {
-            // Future: Update mercenary behavior here
-        }
+    /// <summary>True if this mercenary is inside the pit</summary>
+    public bool InsidePit { get; set; }
+
+    public void Update()
+    {
+        // Future: Update mercenary behavior here
     }
+}
 }

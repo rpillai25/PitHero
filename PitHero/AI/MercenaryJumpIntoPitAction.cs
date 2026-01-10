@@ -51,6 +51,8 @@ namespace PitHero.AI
 
                 tileMover?.UpdateTriggersAfterTeleport();
 
+                mercenary.InsidePit = true;
+
                 Debug.Log($"[MercenaryJumpIntoPit] {mercenary.Entity.Name} jump completed successfully");
                 return true;
             }
