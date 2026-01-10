@@ -333,6 +333,13 @@ namespace PitHero.Services
             var actionQueueViz = mercenary.AddComponent(new ActionQueueVisualizationComponent());
             actionQueueViz.SetRenderLayer(GameConfig.RenderLayerLowest);
 
+            // Add HeroJumpComponent if not already present (needed for pit jumping animation)
+            if (!mercenary.HasComponent<HeroJumpComponent>())
+            {
+                mercenary.AddComponent(new HeroJumpComponent());
+                Debug.Log("[HeroPromotionService] Added HeroJumpComponent to promoted hero");
+            }
+
             // Add Historian and HeroStateMachine
             mercenary.AddComponent(new Historian());
             var heroStateMachine = mercenary.AddComponent(new AI.HeroStateMachine());
