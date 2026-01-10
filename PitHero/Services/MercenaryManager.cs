@@ -630,6 +630,21 @@ namespace PitHero.Services
             return GetHiredMercenaries().Count < MaxHiredMercenaries;
         }
 
+        /// <summary>Removes the tavern position of a promoted mercenary from tracking</summary>
+        public void RemovePromotedMercenaryTavernPosition(Entity promotedMercenary)
+        {
+            var mercComponent = promotedMercenary.GetComponent<MercenaryComponent>();
+            if (mercComponent != null)
+            {
+                _occupiedTavernPositions.Remove(mercComponent.TavernPosition);
+                Debug.Log($"[MercenaryManager] Removed tavern position ({mercComponent.TavernPosition.X},{mercComponent.TavernPosition.Y}) for promoted mercenary {mercComponent.LinkedMercenary.Name}");
+            }
+            else
+            {
+                Debug.Warn("[MercenaryManager] Cannot remove tavern position - MercenaryComponent not found on promoted entity");
+            }
+        }
+
         /// <summary>Blocks mercenary hiring (called when hero dies)</summary>
         public void BlockHiring()
         {

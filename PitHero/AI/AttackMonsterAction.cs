@@ -561,7 +561,7 @@ namespace PitHero.AI
                             var enemyAttackResult = attackResolver.Resolve(enemyBattleStats, heroBattleStats, enemy.AttackKind);
                             if (enemyAttackResult.Hit)
                             {
-                                bool heroDied = hero.TakeDamage(enemyAttackResult.Damage * 100);
+                                bool heroDied = hero.TakeDamage(enemyAttackResult.Damage); //* 100);
                                 Debug.Log($"[AttackMonster] {enemy.Name} deals {enemyAttackResult.Damage} damage to {hero.Name}. Hero HP: {hero.CurrentHP}/{hero.MaxHP}");
 
                                 // Display damage on hero

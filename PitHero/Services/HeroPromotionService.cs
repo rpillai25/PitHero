@@ -151,6 +151,19 @@ namespace PitHero.Services
 
             Debug.Log("[HeroPromotionService] Lightning strike complete, starting conversion to hero");
 
+            // Get MercenaryManager service (used for tavern cleanup and unfreeze later)
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            
+            // Clean up tavern position BEFORE conversion (while MercenaryComponent still exists)
+            if (mercenaryManager != null)
+            {
+                mercenaryManager.RemovePromotedMercenaryTavernPosition(mercenary);
+            }
+            else
+            {
+                Debug.Warn("[HeroPromotionService] MercenaryManager service not found for tavern position cleanup");
+            }
+
             // Convert mercenary to hero (this is now a coroutine)
             yield return ConvertMercenaryToHero(mercenary);
 
@@ -162,7 +175,6 @@ namespace PitHero.Services
             Debug.Log("[HeroPromotionService] *** PROMOTION COMPLETE ***");
 
             // Unblock mercenary hiring and unfreeze/reassign hired mercenaries to new hero
-            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
             if (mercenaryManager != null)
             {
                 mercenaryManager.UnblockHiring();
