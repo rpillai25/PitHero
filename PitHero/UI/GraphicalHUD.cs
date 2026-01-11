@@ -14,24 +14,12 @@ namespace PitHero.UI
     public class GraphicalHUD : RenderableComponent
     {
         private Sprite _hudTemplateSprite;
-        private Sprite _hudTemplateSprite2x;
         private Sprite _hpUnitSprite;
-        private Sprite _hpUnitSprite2x;
         private Sprite _mpUnitSprite;
-        private Sprite _mpUnitSprite2x;
         private BitmapFont _hudFont;
-        private BitmapFont _hudFont2x;
         
-        private bool _useDoubleSize;
         private Entity _heroEntity;
         
-        // Active sprites and fonts (switch between normal and 2x)
-        private Sprite ActiveHudTemplate => _useDoubleSize ? _hudTemplateSprite2x : _hudTemplateSprite;
-        private Sprite ActiveHpUnit => _useDoubleSize ? _hpUnitSprite2x : _hpUnitSprite;
-        private Sprite ActiveMpUnit => _useDoubleSize ? _mpUnitSprite2x : _mpUnitSprite;
-        private BitmapFont ActiveFont => _useDoubleSize ? _hudFont2x : _hudFont;
-        private int SizeMultiplier => _useDoubleSize ? 2 : 1;
-
         // Constants from issue description
         private const int HP_MP_BAR_WIDTH = 51;
         private const int HP_UNIT_X_OFFSET = 3;
@@ -55,12 +43,12 @@ namespace PitHero.UI
         /// <summary>
         /// Override Width to return the HUD template sprite width (fixes StackOverflowException)
         /// </summary>
-        public override float Width => ActiveHudTemplate?.SourceRect.Width ?? 160;
+        public override float Width => _hudTemplateSprite?.SourceRect.Width ?? 160;
 
         /// <summary>
         /// Override Height to return the HUD template sprite height (fixes StackOverflowException)
         /// </summary>
-        public override float Height => ActiveHudTemplate?.SourceRect.Height ?? 33;
+        public override float Height => _hudTemplateSprite?.SourceRect.Height ?? 33;
 
         public GraphicalHUD()
         {
@@ -75,15 +63,11 @@ namespace PitHero.UI
             // Load sprites from UI atlas (both normal and 2x versions)
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
             _hudTemplateSprite = uiAtlas.GetSprite("HudTemplate");
-            _hudTemplateSprite2x = uiAtlas.GetSprite("HudTemplate2x");
             _hpUnitSprite = uiAtlas.GetSprite("HPUnit");
-            _hpUnitSprite2x = uiAtlas.GetSprite("HPUnit2x");
             _mpUnitSprite = uiAtlas.GetSprite("MPUnit");
-            _mpUnitSprite2x = uiAtlas.GetSprite("MPUnit2x");
 
-            // Load HUD fonts (normal and 2x)
+            // Load HUD font (normal size only)
             _hudFont = Core.Content.LoadBitmapFont("Content/Fonts/HUD.fnt");
-            _hudFont2x = Core.Content.LoadBitmapFont("Content/Fonts/Hud2x.fnt");
         }
 
         /// <summary>
@@ -96,14 +80,6 @@ namespace PitHero.UI
             _currentMp = currentMp;
             _maxMp = maxMp;
             _level = level;
-        }
-
-        /// <summary>
-        /// Set whether to use double-size (2x) sprites or normal sprites
-        /// </summary>
-        public void SetUseDoubleSize(bool useDoubleSize)
-        {
-            _useDoubleSize = useDoubleSize;
         }
 
         /// <summary>
@@ -120,37 +96,37 @@ namespace PitHero.UI
             var position = Entity.Transform.Position;
 
             // Render HUD template background with origin at top-left (0,0) instead of center
-            batcher.Draw(ActiveHudTemplate, position, Color.White, 0f, Vector2.Zero, 1f, Microsoft.Xna.Framework.Graphics.SpriteEffects.None, 0f);
+            batcher.Draw(_hudTemplateSprite, position, Color.White, 0f, Vector2.Zero, 1f, Microsoft.Xna.Framework.Graphics.SpriteEffects.None, 0f);
 
-            // Scale offsets based on size multiplier
-            int scaledHpUnitXOffset = HP_UNIT_X_OFFSET * SizeMultiplier;
-            int scaledHpUnitYOffset = HP_UNIT_Y_OFFSET * SizeMultiplier;
-            int scaledMpUnitXOffset = MP_UNIT_X_OFFSET * SizeMultiplier;
-            int scaledMpUnitYOffset = MP_UNIT_Y_OFFSET * SizeMultiplier;
-            int scaledHpTextXOffset = HP_TEXT_X_OFFSET * SizeMultiplier;
-            int scaledHpTextYOffset = HP_TEXT_Y_OFFSET * SizeMultiplier;
-            int scaledMpTextXOffset = MP_TEXT_X_OFFSET * SizeMultiplier;
-            int scaledMpTextYOffset = MP_TEXT_Y_OFFSET * SizeMultiplier;
-            int scaledLevelTextXOffset = LEVEL_TEXT_X_OFFSET * SizeMultiplier;
-            int scaledLevelTextYOffset = LEVEL_TEXT_Y_OFFSET * SizeMultiplier;
-            int scaledBarWidth = HP_MP_BAR_WIDTH * SizeMultiplier;
+            // Use constant offsets without scaling
+            int hpUnitXOffset = HP_UNIT_X_OFFSET;
+            int hpUnitYOffset = HP_UNIT_Y_OFFSET;
+            int mpUnitXOffset = MP_UNIT_X_OFFSET;
+            int mpUnitYOffset = MP_UNIT_Y_OFFSET;
+            int hpTextXOffset = HP_TEXT_X_OFFSET;
+            int hpTextYOffset = HP_TEXT_Y_OFFSET;
+            int mpTextXOffset = MP_TEXT_X_OFFSET;
+            int mpTextYOffset = MP_TEXT_Y_OFFSET;
+            int levelTextXOffset = LEVEL_TEXT_X_OFFSET;
+            int levelTextYOffset = LEVEL_TEXT_Y_OFFSET;
+            int barWidth = HP_MP_BAR_WIDTH;
 
             // Now all child elements use position directly as the top-left corner
             // Render HP bar (filled from right to left based on HP percentage)
-            RenderBar(batcher, position, ActiveHpUnit, _currentHp, _maxHp, scaledHpUnitXOffset, scaledHpUnitYOffset, scaledBarWidth);
+            RenderBar(batcher, position, _hpUnitSprite, _currentHp, _maxHp, hpUnitXOffset, hpUnitYOffset, barWidth);
 
             // Render MP bar (filled from right to left based on MP percentage)
-            RenderBar(batcher, position, ActiveMpUnit, _currentMp, _maxMp, scaledMpUnitXOffset, scaledMpUnitYOffset, scaledBarWidth);
+            RenderBar(batcher, position, _mpUnitSprite, _currentMp, _maxMp, mpUnitXOffset, mpUnitYOffset, barWidth);
 
             // Render dynamic numbers
-            RenderText(batcher, position, _currentHp.ToString(), scaledHpTextXOffset, scaledHpTextYOffset);
-            RenderText(batcher, position, _currentMp.ToString(), scaledMpTextXOffset, scaledMpTextYOffset);
+            RenderText(batcher, position, _currentHp.ToString(), hpTextXOffset, hpTextYOffset);
+            RenderText(batcher, position, _currentMp.ToString(), mpTextXOffset, mpTextYOffset);
             
             // Render hero body and hair sprites at level position (32x36 cropped from 32x46)
-            RenderHeroSprites(batcher, position, scaledLevelTextXOffset-6, scaledLevelTextYOffset-20);
+            RenderHeroSprites(batcher, position, levelTextXOffset-6, levelTextYOffset-20);
             
             // Render level text on top of hero sprites
-            RenderText(batcher, position, "Lv "+_level.ToString(), scaledLevelTextXOffset-10, scaledLevelTextYOffset+14);
+            RenderText(batcher, position, "Lv "+_level.ToString(), levelTextXOffset-10, levelTextYOffset+14);
         }
 
         /// <summary>
@@ -183,15 +159,15 @@ namespace PitHero.UI
         /// </summary>
         private void RenderText(Batcher batcher, Vector2 hudPosition, string text, int xOffset, int yOffset)
         {
-            // Add padding for single-digit levels to center them in the level circle (scaled based on size)
+            // Add padding for single-digit levels to center them
             int adjustedXOffset = xOffset;
-            if (xOffset == LEVEL_TEXT_X_OFFSET * SizeMultiplier && text.Length == 1)
+            if (xOffset == LEVEL_TEXT_X_OFFSET && text.Length == 1)
             {
-                adjustedXOffset += 4 * SizeMultiplier;
+                adjustedXOffset += 4;
             }
 
             var textPosition = hudPosition + new Vector2(adjustedXOffset, yOffset);
-            batcher.DrawString(ActiveFont, text, textPosition, Color.White);
+            batcher.DrawString(_hudFont, text, textPosition, Color.White);
         }
 
         /// <summary>

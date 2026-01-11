@@ -696,15 +696,9 @@ namespace PitHero.ECS.Scenes
                 {
                     case HudMode.Normal:
                         _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
-                        _graphicalHUD?.SetUseDoubleSize(false);
-                        _mercenary1HUD?.SetUseDoubleSize(false);
-                        _mercenary2HUD?.SetUseDoubleSize(false);
                         break;
                     case HudMode.Half:
                         _pitLevelLabel.SetStyle(_pitLevelStyleHalf);
-                        _graphicalHUD?.SetUseDoubleSize(true);
-                        _mercenary1HUD?.SetUseDoubleSize(true);
-                        _mercenary2HUD?.SetUseDoubleSize(true);
                         break;
                 }
                 _currentHudMode = desired;
