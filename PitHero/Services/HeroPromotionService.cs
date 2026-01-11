@@ -36,6 +36,13 @@ namespace PitHero.Services
             if (_isPromotingHero)
                 return;
 
+            // Don't start promotion if a battle is in progress - wait for battle to end first
+            if (AI.HeroStateMachine.IsBattleInProgress)
+            {
+                Debug.Log("[HeroPromotionService] Battle in progress - delaying promotion check");
+                return;
+            }
+
             // Check if there's a living hero
             var heroEntity = _scene.FindEntity("hero");
             if (heroEntity != null)

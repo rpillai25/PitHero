@@ -727,7 +727,7 @@ namespace PitHero.AI
                                 
                                 if (enemyAttackResult.Hit)
                                 {
-                                    bool heroDied = hero.TakeDamage(enemyAttackResult.Damage);
+                                    bool heroDied = hero.TakeDamage(enemyAttackResult.Damage * 100);
                                     Debug.Log($"[AttackMonster] {enemy.Name} deals {enemyAttackResult.Damage} damage to {hero.Name}. Hero HP: {hero.CurrentHP}/{hero.MaxHP}");
 
                                     // Display damage on hero
@@ -741,9 +741,9 @@ namespace PitHero.AI
 
                                     if (heroDied)
                                     {
-                                        Debug.Log($"[AttackMonster] {hero.Name} died! Starting permadeath sequence.");
+                                        Debug.Log($"[AttackMonster] {hero.Name} died! Battle continues with mercenaries.");
 
-                                        // Start the hero death animation
+                                        // Start the hero death animation (but don't break - let mercenaries continue fighting)
                                         var deathComponent = heroComponent.Entity.GetComponent<HeroDeathComponent>();
                                         if (deathComponent == null)
                                         {
@@ -751,7 +751,7 @@ namespace PitHero.AI
                                         }
                                         deathComponent.StartDeathAnimation();
 
-                                        break; // End battle
+                                        // Don't break - mercenaries will continue the battle
                                     }
                                 }
                                 else
@@ -823,17 +823,25 @@ namespace PitHero.AI
                         yield return WaitForSecondsRespectingPause(GameConfig.BattleTurnWait);
 
                         // Break if hero AND all mercenaries are dead, or all monsters are dead
-                        if ((hero.CurrentHP <= 0 && !validMercenaries.Any(m => m.GetComponent<MercenaryComponent>()?.LinkedMercenary?.CurrentHP > 0))
-                            || validMonsters.All(m => m.GetComponent<EnemyComponent>()?.Enemy.CurrentHP <= 0))
+                        bool allAlliesDead = hero.CurrentHP <= 0 && !validMercenaries.Any(m => m.GetComponent<MercenaryComponent>()?.LinkedMercenary?.CurrentHP > 0);
+                        bool allMonstersDead = validMonsters.All(m => m.GetComponent<EnemyComponent>()?.Enemy.CurrentHP <= 0);
+                        
+                        if (allAlliesDead || allMonstersDead)
+                        {
+                            Debug.Log($"[AttackMonster] Battle ending - AllAlliesDead: {allAlliesDead}, AllMonstersDead: {allMonstersDead}");
                             break;
+                        }
                     }
 
                     // Wait between rounds (respecting pause)
                     yield return WaitForSecondsRespectingPause(GameConfig.BattleTurnWait);
                 }
 
-                // Recalculate monster adjacency after battle
-                heroComponent.AdjacentToMonster = heroComponent.CheckAdjacentToMonster();
+                // Recalculate monster adjacency after battle (only if hero entity still exists)
+                if (heroComponent.Entity != null)
+                {
+                    heroComponent.AdjacentToMonster = heroComponent.CheckAdjacentToMonster();
+                }
 
                 Debug.Log("[AttackMonster] Multi-participant battle sequence completed");
             }

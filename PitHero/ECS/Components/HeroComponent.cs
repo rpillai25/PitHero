@@ -466,6 +466,12 @@ namespace PitHero.ECS.Components
         /// </summary>
         public Point GetCurrentTilePosition()
         {
+            // Check if entity still exists (not destroyed)
+            if (Entity == null)
+            {
+                return Point.Zero; // Return default position if entity destroyed
+            }
+
             var tileMover = Entity.GetComponent<TileByTileMover>();
             if (tileMover != null)
             {
@@ -509,6 +515,12 @@ namespace PitHero.ECS.Components
         /// </summary>
         public bool CheckAdjacentToMonster()
         {
+            // Check if entity still exists (not destroyed)
+            if (Entity == null)
+            {
+                return false;
+            }
+
             var heroTile = GetCurrentTilePosition();
             var scene = Core.Scene;
             if (scene == null) return false;
@@ -531,6 +543,12 @@ namespace PitHero.ECS.Components
         /// </summary>
         public bool CheckAdjacentToChest()
         {
+            // Check if entity still exists (not destroyed)
+            if (Entity == null)
+            {
+                return false;
+            }
+
             var heroTile = GetCurrentTilePosition();
             var scene = Core.Scene;
             if (scene == null) return false;
