@@ -14,7 +14,7 @@ namespace PitHero.UI
     public class InventoryGrid : Group
     {
         private const int GRID_WIDTH = 20;
-        private const int GRID_HEIGHT = 8;  // 2 rows for equipment area + 6 rows for inventory
+        private const int GRID_HEIGHT = 9;  // 1 row for hero name space + 2 rows for equipment area + 6 rows for inventory
         private const int CELL_COUNT = GRID_WIDTH * GRID_HEIGHT;
         private const float SLOT_SIZE = 32f;
         private const float SLOT_PADDING = 1f;
@@ -84,6 +84,7 @@ namespace PitHero.UI
 
             BuildSlots();
             LayoutSlots();
+            SetGridSize();
         }
 
         /// <summary>Registers default synergy patterns for detection.</summary>
@@ -150,22 +151,28 @@ namespace PitHero.UI
         /// <summary>Creates slot data for a given grid coordinate.</summary>
         private InventorySlotData CreateSlotData(int x, int y)
         {
-            // Top 2 rows (y=0,1) are ONLY for equipment display - everything else is NULL
-            if (y < 2)
+            // Top row (y=0) is reserved for hero name label - all NULL
+            if (y == 0)
             {
-                // Equipment slots in top-right area (columns 8-10, 3 adjacent columns)
-                if (y == 0 && x == 8) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield1 };
-                if (y == 0 && x == 9) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Hat };
-                if (y == 0 && x == 10) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield2 };
-                if (y == 1 && x == 8) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory1 };
-                if (y == 1 && x == 9) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Armor };
-                if (y == 1 && x == 10) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory2 };
-
-                // All other slots in top 2 rows are NULL (not displayed)
                 return new InventorySlotData(x, y, InventorySlotType.Null);
             }
 
-            // Rows 2-7: Pure inventory (6 rows � 20 columns = 120 inventory slots)
+            // Rows 1-2 (y=1,2) are ONLY for equipment display - everything else is NULL
+            if (y >= 1 && y <= 2)
+            {
+                // Equipment slots in top-right area (columns 8-10, 3 adjacent columns)
+                if (y == 1 && x == 8) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield1 };
+                if (y == 1 && x == 9) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Hat };
+                if (y == 1 && x == 10) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield2 };
+                if (y == 2 && x == 8) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory1 };
+                if (y == 2 && x == 9) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Armor };
+                if (y == 2 && x == 10) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory2 };
+
+                // All other slots in rows 1-2 are NULL (not displayed)
+                return new InventorySlotData(x, y, InventorySlotType.Null);
+            }
+
+            // Rows 3-8: Pure inventory (6 rows × 20 columns = 120 inventory slots)
             return new InventorySlotData(x, y, InventorySlotType.Inventory);
         }
 
@@ -444,13 +451,30 @@ namespace PitHero.UI
         /// <summary>Positions slot components based on grid coordinates.</summary>
         private void LayoutSlots()
         {
+            const float X_OFFSET = 32f; // Move grid right by 32 pixels for left padding
+            const float Y_OFFSET = -16f; // Move grid up by 16 pixels
             for (int i = 0; i < _slots.Length; i++)
             {
                 var slot = _slots.Buffer[i];
                 if (slot == null) continue;
                 var data = slot.SlotData;
-                slot.SetPosition(data.X * (SLOT_SIZE + SLOT_PADDING), data.Y * (SLOT_SIZE + SLOT_PADDING));
+                slot.SetPosition(data.X * (SLOT_SIZE + SLOT_PADDING) + X_OFFSET, data.Y * (SLOT_SIZE + SLOT_PADDING) + Y_OFFSET);
             }
+        }
+
+        /// <summary>Sets the explicit size of the grid to account for offsets and ensure all slots are clickable.</summary>
+        private void SetGridSize()
+        {
+            const float X_OFFSET = 32f; // Left padding
+            const float Y_OFFSET = -16f; // Top offset (negative means moving up)
+            
+            // Calculate total grid dimensions including offsets
+            // Width: (20 columns * 33px per slot) + 32px left padding = 692px
+            // Height: (9 rows * 33px per slot) - 16px top offset = 281px (but we use absolute value for size)
+            float gridWidth = (GRID_WIDTH * (SLOT_SIZE + SLOT_PADDING)) + X_OFFSET;
+            float gridHeight = (GRID_HEIGHT * (SLOT_SIZE + SLOT_PADDING)) + System.Math.Abs(Y_OFFSET);
+            
+            SetSize(gridWidth, gridHeight);
         }
 
         /// <summary>Handles slot click highlighting and swapping.</summary>
