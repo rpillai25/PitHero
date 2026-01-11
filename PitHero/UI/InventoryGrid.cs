@@ -41,7 +41,7 @@ namespace PitHero.UI
         private InventorySlot _uiSwapSlotB;
 
         // Public events for item card display
-        public event System.Action<IItem> OnItemHovered;
+        public event System.Action<IItem, InventorySlot> OnItemHovered;
         public event System.Action OnItemUnhovered;
         public event System.Action<IItem> OnItemSelected;
         public event System.Action OnItemDeselected;
@@ -65,6 +65,9 @@ namespace PitHero.UI
         // Synergy detection
         private readonly SynergyDetector _synergyDetector;
         private IItem?[,] _synergyDetectionGrid; // Reusable grid for synergy detection
+        
+        // Cached synergy lookup per slot position (only updated when inventory changes)
+        private readonly Dictionary<Point, List<RolePlayingFramework.Synergies.ActiveSynergy>> _slotSynergyCache;
 
         public InventoryGrid()
         {
@@ -80,6 +83,7 @@ namespace PitHero.UI
             // Initialize synergy detection
             _synergyDetector = new SynergyDetector();
             _synergyDetectionGrid = new IItem?[GRID_WIDTH, GRID_HEIGHT];
+            _slotSynergyCache = new Dictionary<Point, List<RolePlayingFramework.Synergies.ActiveSynergy>>();
             RegisterDefaultSynergyPatterns();
 
             BuildSlots();
@@ -579,7 +583,7 @@ namespace PitHero.UI
                 (_highlightedSlot != null && _highlightedSlot != slot && slot.SlotData.Item != null))
                 slot.SetItemSpriteOffsetY(HOVER_OFFSET_Y);
             if (slot.SlotData.Item != null)
-                OnItemHovered?.Invoke(slot.SlotData.Item);
+                OnItemHovered?.Invoke(slot.SlotData.Item, slot);
         }
 
         private void HandleSlotUnhovered(InventorySlot slot)
@@ -794,6 +798,9 @@ namespace PitHero.UI
 
             // Update local tracking for glow effects (only capped instances will glow)
             UpdateActiveSynergies(allInstances);
+            
+            // Rebuild the cached synergy lookup for fast per-slot queries
+            RebuildSlotSynergyCache();
 
             // Log detected synergies with stacking info
             if (synergyGroups.Count > 0)
@@ -812,6 +819,13 @@ namespace PitHero.UI
 
         /// <summary>Event raised when synergies are detected and applied.</summary>
         public event System.Action OnSynergiesChanged;
+
+        /// <summary>Publicly accessible method to force synergy re-detection (for eventual consistency).</summary>
+        public void RefreshSynergies()
+        {
+            DetectAndApplySynergies();
+        }
+
 
         /// <summary>Builds the synergy detection grid from current slot state.</summary>
         private void BuildSynergyDetectionGrid()
@@ -1039,18 +1053,17 @@ namespace PitHero.UI
             return false;
         }
 
-        /// <summary>Gets all active synergies that contain the specified slot position.</summary>
+        /// <summary>Gets all active synergies that contain the specified slot position (uses cached lookup for performance).</summary>
         public List<RolePlayingFramework.Synergies.ActiveSynergy> GetSynergiesForSlot(Point slotPos)
         {
-            var result = new List<RolePlayingFramework.Synergies.ActiveSynergy>();
-            for (int i = 0; i < _activeSynergies.Count; i++)
+            // Use cached lookup - returns empty list if no synergies at this position
+            if (_slotSynergyCache.TryGetValue(slotPos, out var cachedList))
             {
-                if (_activeSynergies[i].ContainsSlot(slotPos))
-                {
-                    result.Add(_activeSynergies[i]);
-                }
+                return cachedList;
             }
-            return result;
+            
+            // Return empty list if position not in cache (no synergies)
+            return new List<RolePlayingFramework.Synergies.ActiveSynergy>();
         }
 
         /// <summary>Gets all active synergies for the specified inventory slot.</summary>
@@ -1321,6 +1334,35 @@ namespace PitHero.UI
             UpdateSynergyGlowEffects();
         }
 
+        /// <summary>Rebuilds the cached synergy lookup for all slots (called after synergy detection).</summary>
+        private void RebuildSlotSynergyCache()
+        {
+            // Clear existing cache
+            _slotSynergyCache.Clear();
+            
+            // Build cache from active synergies
+            for (int i = 0; i < _activeSynergies.Count; i++)
+            {
+                var synergy = _activeSynergies[i];
+                var affectedSlots = synergy.AffectedSlots;
+                
+                for (int j = 0; j < affectedSlots.Count; j++)
+                {
+                    var slotPos = affectedSlots[j];
+                    
+                    // Get or create list for this slot position
+                    if (!_slotSynergyCache.TryGetValue(slotPos, out var synergyList))
+                    {
+                        synergyList = new List<RolePlayingFramework.Synergies.ActiveSynergy>();
+                        _slotSynergyCache[slotPos] = synergyList;
+                    }
+                    
+                    // Add this synergy to the slot's list
+                    synergyList.Add(synergy);
+                }
+            }
+        }
+        
         /// <summary>Updates glow effects for completed synergy patterns.</summary>
         private void UpdateSynergyGlowEffects()
         {
