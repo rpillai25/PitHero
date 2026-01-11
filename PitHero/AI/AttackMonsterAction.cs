@@ -59,7 +59,7 @@ namespace PitHero.AI
     {
         ICoroutine existingMultiParticipantBattleCoroutine;
 
-        private const int DEBUG_DAMAGE_MULT = 100;  //ToDo: Remove for production
+        private const int DEBUG_DAMAGE_MULT = 1;  //ToDo: Remove for production
 
         public AttackMonsterAction() : base(GoapConstants.AttackMonster, 3)
         {

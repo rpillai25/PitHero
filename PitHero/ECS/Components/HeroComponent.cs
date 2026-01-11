@@ -63,7 +63,7 @@ namespace PitHero.ECS.Components
                 if (LinkedHero == null)
                     return false;
                 float hpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
-                return hpPercent < 0.4f;
+                return hpPercent < GameConfig.HeroCriticalHPPercent;
             }
         }
 
