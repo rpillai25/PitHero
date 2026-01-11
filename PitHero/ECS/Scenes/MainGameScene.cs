@@ -27,6 +27,8 @@ namespace PitHero.ECS.Scenes
         private int _lastDisplayedPitLevel = -1; // Track last displayed level to avoid string churn
         private ShortcutBar _shortcutBar; // Shortcut bar displayed at bottom center
         private GraphicalHUD _graphicalHUD; // Graphical HUD component for HP/MP/Level display
+        private GraphicalHUD _mercenary1HUD; // Graphical HUD for mercenary #1
+        private GraphicalHUD _mercenary2HUD; // Graphical HUD for mercenary #2
         private MercenaryHireDialog _mercenaryHireDialog; // Dialog for hiring mercenaries
         private Entity _hoveredMercenary; // Currently hovered mercenary
         private Entity _mercenarySelectBoxEntity; // Entity for rendering SelectBox over hovered mercenary
@@ -45,6 +47,7 @@ namespace PitHero.ECS.Scenes
         private const float GraphicalHudBaseX = 110f; // Base X position for graphical HUD (to the right of Pit Lv label)
         private const float GraphicalHudBaseY = 4f; // Base Y position for graphical HUD
         private const float GraphicalHudHalfModeXOffset = 110f; // Additional X offset when in half mode to avoid covering pit label
+        private const float GraphicalHudSpacing = 170f; // Spacing between HUD elements (hero to merc1, merc1 to merc2)
 
         public BitmapFont HudFont; // legacy reference (normal)
 
@@ -467,6 +470,20 @@ namespace PitHero.ECS.Scenes
             _graphicalHUD = hudEntity.AddComponent(new GraphicalHUD());
             _graphicalHUD.SetRenderLayer(GameConfig.RenderLayerGraphicalHUD); // Use screen space renderer
 
+            // Create mercenary #1 HUD entity
+            var merc1HudEntity = CreateEntity("mercenary1-hud");
+            merc1HudEntity.SetPosition(GraphicalHudBaseX + GraphicalHudSpacing, GraphicalHudBaseY);
+            _mercenary1HUD = merc1HudEntity.AddComponent(new GraphicalHUD());
+            _mercenary1HUD.SetRenderLayer(GameConfig.RenderLayerGraphicalHUD);
+            _mercenary1HUD.SetEnabled(false); // Initially hidden until mercenary is hired
+
+            // Create mercenary #2 HUD entity
+            var merc2HudEntity = CreateEntity("mercenary2-hud");
+            merc2HudEntity.SetPosition(GraphicalHudBaseX + GraphicalHudSpacing * 2, GraphicalHudBaseY);
+            _mercenary2HUD = merc2HudEntity.AddComponent(new GraphicalHUD());
+            _mercenary2HUD.SetRenderLayer(GameConfig.RenderLayerGraphicalHUD);
+            _mercenary2HUD.SetEnabled(false); // Initially hidden until mercenary is hired
+
             // Shortcut bar at bottom center
             _shortcutBar = new ShortcutBar();
             uiCanvas.Stage.AddElement(_shortcutBar);
@@ -548,15 +565,31 @@ namespace PitHero.ECS.Scenes
 
             var hero = FindEntity("hero");
             if (hero == null)
+            {
+                // Hero doesn't exist - hide hero HUD
+                _graphicalHUD.SetEnabled(false);
                 return;
+            }
 
             var heroComponent = hero.GetComponent<HeroComponent>();
             if (heroComponent?.LinkedHero == null)
+            {
+                _graphicalHUD.SetEnabled(false);
                 return;
+            }
+
+            // Check if hero has HeroDeathComponent - if so, hero is dead
+            if (hero.HasComponent<HeroDeathComponent>())
+            {
+                _graphicalHUD.SetEnabled(false);
+                return;
+            }
 
             var linkedHero = heroComponent.LinkedHero;
 
-            // Update graphical HUD values
+            // Hero is alive - show and update HUD
+            _graphicalHUD.SetEnabled(true);
+            _graphicalHUD.SetHeroEntity(hero);
             _graphicalHUD.UpdateValues(
                 linkedHero.CurrentHP,
                 linkedHero.MaxHP,
@@ -564,6 +597,86 @@ namespace PitHero.ECS.Scenes
                 linkedHero.MaxMP,
                 linkedHero.Level
             );
+
+            // Update mercenary HUDs
+            UpdateMercenaryHUDs();
+        }
+
+        /// <summary>
+        /// Update graphical HUDs for hired mercenaries
+        /// </summary>
+        private void UpdateMercenaryHUDs()
+        {
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager == null)
+            {
+                // No mercenary manager - hide all mercenary HUDs
+                if (_mercenary1HUD != null) _mercenary1HUD.SetEnabled(false);
+                if (_mercenary2HUD != null) _mercenary2HUD.SetEnabled(false);
+                return;
+            }
+
+            var hiredMercenaries = mercenaryManager.GetHiredMercenaries();
+
+            // Update mercenary #1 HUD
+            if (hiredMercenaries.Count >= 1 && _mercenary1HUD != null)
+            {
+                var merc1Entity = hiredMercenaries[0];
+                var merc1Component = merc1Entity.GetComponent<MercenaryComponent>();
+
+                if (merc1Component?.LinkedMercenary != null && merc1Component.LinkedMercenary.CurrentHP > 0)
+                {
+                    _mercenary1HUD.SetEnabled(true);
+                    _mercenary1HUD.SetHeroEntity(merc1Entity);
+                    _mercenary1HUD.UpdateValues(
+                        merc1Component.LinkedMercenary.CurrentHP,
+                        merc1Component.LinkedMercenary.MaxHP,
+                        merc1Component.LinkedMercenary.CurrentMP,
+                        merc1Component.LinkedMercenary.MaxMP,
+                        merc1Component.LinkedMercenary.Level
+                    );
+                }
+                else
+                {
+                    // Mercenary is dead or invalid
+                    _mercenary1HUD.SetEnabled(false);
+                }
+            }
+            else
+            {
+                // No mercenary #1 hired
+                if (_mercenary1HUD != null) _mercenary1HUD.SetEnabled(false);
+            }
+
+            // Update mercenary #2 HUD
+            if (hiredMercenaries.Count >= 2 && _mercenary2HUD != null)
+            {
+                var merc2Entity = hiredMercenaries[1];
+                var merc2Component = merc2Entity.GetComponent<MercenaryComponent>();
+
+                if (merc2Component?.LinkedMercenary != null && merc2Component.LinkedMercenary.CurrentHP > 0)
+                {
+                    _mercenary2HUD.SetEnabled(true);
+                    _mercenary2HUD.SetHeroEntity(merc2Entity);
+                    _mercenary2HUD.UpdateValues(
+                        merc2Component.LinkedMercenary.CurrentHP,
+                        merc2Component.LinkedMercenary.MaxHP,
+                        merc2Component.LinkedMercenary.CurrentMP,
+                        merc2Component.LinkedMercenary.MaxMP,
+                        merc2Component.LinkedMercenary.Level
+                    );
+                }
+                else
+                {
+                    // Mercenary is dead or invalid
+                    _mercenary2HUD.SetEnabled(false);
+                }
+            }
+            else
+            {
+                // No mercenary #2 hired
+                if (_mercenary2HUD != null) _mercenary2HUD.SetEnabled(false);
+            }
         }
 
         /// <summary>
@@ -584,10 +697,14 @@ namespace PitHero.ECS.Scenes
                     case HudMode.Normal:
                         _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
                         _graphicalHUD?.SetUseDoubleSize(false);
+                        _mercenary1HUD?.SetUseDoubleSize(false);
+                        _mercenary2HUD?.SetUseDoubleSize(false);
                         break;
                     case HudMode.Half:
                         _pitLevelLabel.SetStyle(_pitLevelStyleHalf);
                         _graphicalHUD?.SetUseDoubleSize(true);
+                        _mercenary1HUD?.SetUseDoubleSize(true);
+                        _mercenary2HUD?.SetUseDoubleSize(true);
                         break;
                 }
                 _currentHudMode = desired;
@@ -635,6 +752,41 @@ namespace PitHero.ECS.Scenes
                     }
 
                     hudEntity.SetPosition(hudTargetX, hudTargetY);
+                }
+            }
+
+            // Update mercenary HUD positions based on mode
+            if (_mercenary1HUD != null)
+            {
+                var merc1Entity = _mercenary1HUD.Entity;
+                if (merc1Entity != null)
+                {
+                    float hudTargetY = GraphicalHudBaseY + yOffset;
+                    float hudTargetX = GraphicalHudBaseX + GraphicalHudSpacing;
+
+                    if (_currentHudMode == HudMode.Half)
+                    {
+                        hudTargetX += GraphicalHudHalfModeXOffset;
+                    }
+
+                    merc1Entity.SetPosition(hudTargetX, hudTargetY);
+                }
+            }
+
+            if (_mercenary2HUD != null)
+            {
+                var merc2Entity = _mercenary2HUD.Entity;
+                if (merc2Entity != null)
+                {
+                    float hudTargetY = GraphicalHudBaseY + yOffset;
+                    float hudTargetX = GraphicalHudBaseX + GraphicalHudSpacing * 2;
+
+                    if (_currentHudMode == HudMode.Half)
+                    {
+                        hudTargetX += GraphicalHudHalfModeXOffset;
+                    }
+
+                    merc2Entity.SetPosition(hudTargetX, hudTargetY);
                 }
             }
         }

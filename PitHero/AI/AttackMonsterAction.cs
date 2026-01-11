@@ -59,6 +59,8 @@ namespace PitHero.AI
     {
         ICoroutine existingMultiParticipantBattleCoroutine;
 
+        private const int DEBUG_DAMAGE_MULT = 100;  //ToDo: Remove for production
+
         public AttackMonsterAction() : base(GoapConstants.AttackMonster, 3)
         {
             // Preconditions: Hero must be adjacent to a monster
@@ -727,7 +729,7 @@ namespace PitHero.AI
                                 
                                 if (enemyAttackResult.Hit)
                                 {
-                                    bool heroDied = hero.TakeDamage(enemyAttackResult.Damage * 100);
+                                    bool heroDied = hero.TakeDamage(enemyAttackResult.Damage * DEBUG_DAMAGE_MULT);
                                     Debug.Log($"[AttackMonster] {enemy.Name} deals {enemyAttackResult.Damage} damage to {hero.Name}. Hero HP: {hero.CurrentHP}/{hero.MaxHP}");
 
                                     // Display damage on hero
@@ -779,7 +781,7 @@ namespace PitHero.AI
 
                                 if (enemyAttackResult.Hit)
                                 {
-                                    bool mercDied = targetMercenary.TakeDamage(enemyAttackResult.Damage);
+                                    bool mercDied = targetMercenary.TakeDamage(enemyAttackResult.Damage * DEBUG_DAMAGE_MULT);
                                     Debug.Log($"[AttackMonster] {enemy.Name} deals {enemyAttackResult.Damage} damage to {targetMercenary.Name}. Mercenary HP: {targetMercenary.CurrentHP}/{targetMercenary.MaxHP}");
 
                                     // Display damage on mercenary

@@ -4,6 +4,7 @@ using Nez;
 using Nez.BitmapFonts;
 using Nez.Sprites;
 using Nez.Textures;
+using PitHero.ECS.Components;
 
 namespace PitHero.UI
 {
@@ -22,6 +23,7 @@ namespace PitHero.UI
         private BitmapFont _hudFont2x;
         
         private bool _useDoubleSize;
+        private Entity _heroEntity;
         
         // Active sprites and fonts (switch between normal and 2x)
         private Sprite ActiveHudTemplate => _useDoubleSize ? _hudTemplateSprite2x : _hudTemplateSprite;
@@ -104,6 +106,14 @@ namespace PitHero.UI
             _useDoubleSize = useDoubleSize;
         }
 
+        /// <summary>
+        /// Set the hero entity reference for rendering hero sprites
+        /// </summary>
+        public void SetHeroEntity(Entity heroEntity)
+        {
+            _heroEntity = heroEntity;
+        }
+
         public override void Render(Batcher batcher, Camera camera)
         {
             // Get entity position in screen space (this should be top-left of HUD)
@@ -135,7 +145,12 @@ namespace PitHero.UI
             // Render dynamic numbers
             RenderText(batcher, position, _currentHp.ToString(), scaledHpTextXOffset, scaledHpTextYOffset);
             RenderText(batcher, position, _currentMp.ToString(), scaledMpTextXOffset, scaledMpTextYOffset);
-            RenderText(batcher, position, _level.ToString(), scaledLevelTextXOffset, scaledLevelTextYOffset);
+            
+            // Render hero body and hair sprites at level position (32x36 cropped from 32x46)
+            RenderHeroSprites(batcher, position, scaledLevelTextXOffset-6, scaledLevelTextYOffset-20);
+            
+            // Render level text on top of hero sprites
+            RenderText(batcher, position, "Lv "+_level.ToString(), scaledLevelTextXOffset-10, scaledLevelTextYOffset+14);
         }
 
         /// <summary>
@@ -177,6 +192,87 @@ namespace PitHero.UI
 
             var textPosition = hudPosition + new Vector2(adjustedXOffset, yOffset);
             batcher.DrawString(ActiveFont, text, textPosition, Color.White);
+        }
+
+        /// <summary>
+        /// Render hero body and hair sprites at the specified position (32x36 cropped from 32x46)
+        /// </summary>
+        private void RenderHeroSprites(Batcher batcher, Vector2 hudPosition, int xOffset, int yOffset)
+        {
+            if (_heroEntity == null)
+                return;
+
+            var bodyAnimComponent = _heroEntity.GetComponent<HeroBodyAnimationComponent>();
+            var hairAnimComponent = _heroEntity.GetComponent<HeroHairAnimationComponent>();
+
+            if (bodyAnimComponent == null || hairAnimComponent == null)
+                return;
+
+            // Get the walk down animation from each component's Animations dictionary
+            if (bodyAnimComponent.Animations == null || hairAnimComponent.Animations == null)
+                return;
+
+            var bodyAnimName = bodyAnimComponent.WalkDownAnimationName;
+            var hairAnimName = hairAnimComponent.WalkDownAnimationName;
+
+            if (!bodyAnimComponent.Animations.ContainsKey(bodyAnimName) || 
+                !hairAnimComponent.Animations.ContainsKey(hairAnimName))
+                return;
+
+            var bodyAnimation = bodyAnimComponent.Animations[bodyAnimName];
+            var hairAnimation = hairAnimComponent.Animations[hairAnimName];
+
+            // Get frame 0 sprite from each animation
+            if (bodyAnimation.Sprites == null || bodyAnimation.Sprites.Length == 0 ||
+                hairAnimation.Sprites == null || hairAnimation.Sprites.Length == 0)
+                return;
+
+            var bodySprite = bodyAnimation.Sprites[0];
+            var hairSprite = hairAnimation.Sprites[0];
+
+            var renderPosition = hudPosition + new Vector2(xOffset, yOffset);
+
+            // Define the source rectangle to crop the top 32x36 pixels from the body sprite
+            var bodyCroppedSourceRect = new Rectangle(
+                bodySprite.SourceRect.X,
+                bodySprite.SourceRect.Y,
+                32,
+                36
+            );
+
+            // Render body sprite first (cropped) with body color from animation component
+            batcher.Draw(
+                bodySprite.Texture2D,
+                renderPosition,
+                bodyCroppedSourceRect,
+                bodyAnimComponent.ComponentColor,
+                0f,
+                Vector2.Zero,
+                1f,
+                SpriteEffects.None,
+                0f
+            );
+
+            // Define the source rectangle to crop the top 32x36 pixels from the hair sprite
+            var hairCroppedSourceRect = new Rectangle(
+                hairSprite.SourceRect.X,
+                hairSprite.SourceRect.Y,
+                32,
+                36
+            );
+
+            // Render hair sprite on top (cropped) with hair color from animation component
+            batcher.Draw(
+                hairSprite.Texture2D,
+                renderPosition,
+                hairCroppedSourceRect,
+                hairAnimComponent.ComponentColor,
+                0f,
+                Vector2.Zero,
+                1f,
+                SpriteEffects.None,
+                0f
+            );
         }
     }
 }
