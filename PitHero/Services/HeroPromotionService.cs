@@ -81,8 +81,21 @@ namespace PitHero.Services
                 return;
             }
 
-            // Select a random unhired mercenary
-            var randomMercenary = unhiredMercenaries.RandomItem();
+            // Filter to only mercenaries who are waiting in the tavern (already arrived at their position)
+            var mercenariesInTavern = unhiredMercenaries.Where(m =>
+            {
+                var comp = m.GetComponent<MercenaryComponent>();
+                return comp != null && comp.IsWaitingInTavern;
+            }).ToList();
+
+            if (mercenariesInTavern.Count == 0)
+            {
+                Debug.Log("[HeroPromotionService] No mercenaries have arrived at tavern yet - will retry later");
+                return;
+            }
+
+            // Select a random mercenary from those waiting in tavern
+            var randomMercenary = mercenariesInTavern.RandomItem();
             var mercComponent = randomMercenary.GetComponent<MercenaryComponent>();
             
             if (mercComponent == null)
@@ -91,7 +104,7 @@ namespace PitHero.Services
                 return;
             }
 
-            Debug.Log($"[HeroPromotionService] Selected {mercComponent.LinkedMercenary.Name} for promotion to hero");
+            Debug.Log($"[HeroPromotionService] Selected {mercComponent.LinkedMercenary.Name} for promotion to hero (waiting in tavern at position ({mercComponent.TavernPosition.X},{mercComponent.TavernPosition.Y})");
 
             // Add state machine if not already present (for pathfinding and action execution)
             if (!randomMercenary.HasComponent<AI.MercenaryStateMachine>())
