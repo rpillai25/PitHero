@@ -304,6 +304,13 @@ namespace PitHero.ECS.Components
         /// </summary>
         private void HandleHeroFollowing()
         {
+            // Check if auto-scroll to hero is enabled
+            if (!UI.UIWindowManager.AutoScrollToHeroEnabled)
+            {
+                // Auto-scroll is disabled, don't follow hero
+                return;
+            }
+
             // Check if player is interacting with selectables - if so, reset timer to prevent auto-scroll
             var interactionService = Core.Services.GetService<PlayerInteractionService>();
             if (interactionService?.IsInteractingWithSelectable == true)

@@ -24,6 +24,9 @@ namespace PitHero.UI
         // Track how many UI windows are currently open to prevent external change detection interference
         private static int _openUIWindowCount = 0;
 
+        // Track auto-scroll to hero setting
+        private static bool _autoScrollToHeroEnabled = GameConfig.CameraAutoScrollToHeroDefault;
+
         /// <summary>
         /// Initialize the UI window manager with the game instance
         /// </summary>
@@ -38,6 +41,20 @@ namespace PitHero.UI
         /// Gets the current persistent window size
         /// </summary>
         public static WindowSizeMode PersistentWindowSize => _persistentWindowSize;
+
+        /// <summary>
+        /// Gets whether auto-scroll to hero is enabled
+        /// </summary>
+        public static bool AutoScrollToHeroEnabled => _autoScrollToHeroEnabled;
+
+        /// <summary>
+        /// Sets the auto-scroll to hero setting
+        /// </summary>
+        public static void SetAutoScrollToHero(bool enabled)
+        {
+            _autoScrollToHeroEnabled = enabled;
+            Debug.Log($"[UIWindowManager] Auto-scroll to hero: {(_autoScrollToHeroEnabled ? "Enabled" : "Disabled")}");
+        }
 
         /// <summary>
         /// Gets debug information about the current state
