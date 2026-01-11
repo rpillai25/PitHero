@@ -717,8 +717,8 @@ namespace PitHero.AI
         /// </summary>
         private Point? CalculateBedLocation()
         {
-            // Bed is at tile position (85, 4)
-            return new Point(85, 4);
+            // Bed is at tile position (73, 3)
+            return new Point(73, 3);
         }
 
         /// <summary>

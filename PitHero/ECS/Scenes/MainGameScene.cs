@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.BitmapFonts;
+using Nez.Sprites;
 using Nez.Tiled;
 using Nez.UI; // Added for Label
 using PitHero.AI;
@@ -26,6 +27,12 @@ namespace PitHero.ECS.Scenes
         private int _lastDisplayedPitLevel = -1; // Track last displayed level to avoid string churn
         private ShortcutBar _shortcutBar; // Shortcut bar displayed at bottom center
         private GraphicalHUD _graphicalHUD; // Graphical HUD component for HP/MP/Level display
+        private GraphicalHUD _mercenary1HUD; // Graphical HUD for mercenary #1
+        private GraphicalHUD _mercenary2HUD; // Graphical HUD for mercenary #2
+        private MercenaryHireDialog _mercenaryHireDialog; // Dialog for hiring mercenaries
+        private Entity _hoveredMercenary; // Currently hovered mercenary
+        private Entity _mercenarySelectBoxEntity; // Entity for rendering SelectBox over hovered mercenary
+        private Entity _mercenaryNameLabelEntity; // Entity for rendering name above hovered mercenary
 
         // HUD fonts for different shrink levels
         public BitmapFont _hudFontNormal;
@@ -40,6 +47,7 @@ namespace PitHero.ECS.Scenes
         private const float GraphicalHudBaseX = 110f; // Base X position for graphical HUD (to the right of Pit Lv label)
         private const float GraphicalHudBaseY = 4f; // Base Y position for graphical HUD
         private const float GraphicalHudHalfModeXOffset = 110f; // Additional X offset when in half mode to avoid covering pit label
+        private const float GraphicalHudSpacing = 170f; // Spacing between HUD elements (hero to merc1, merc1 to merc2)
 
         public BitmapFont HudFont; // legacy reference (normal)
 
@@ -94,9 +102,25 @@ namespace PitHero.ECS.Scenes
                 pitWidthManager.SetPitLevel(1);
 
             SpawnHero();
+            SpawnHeroStatue();
 
             // Connect shortcut bar to hero
             ConnectShortcutBarToHero();
+
+            // Initialize mercenary manager
+            var mercenaryManager = new MercenaryManager();
+            Core.Services.AddService(mercenaryManager);
+            mercenaryManager.Initialize(this);
+
+            // Initialize hero promotion service
+            var heroPromotionService = new HeroPromotionService(this);
+            Core.Services.AddService(heroPromotionService);
+            Debug.Log("[MainGameScene] HeroPromotionService initialized");
+
+            // Initialize player interaction service for camera control
+            var playerInteractionService = new PlayerInteractionService();
+            Core.Services.AddService(playerInteractionService);
+            Debug.Log("[MainGameScene] PlayerInteractionService initialized");
 
             _isInitializationComplete = true;
         }
@@ -204,7 +228,7 @@ namespace PitHero.ECS.Scenes
             var minHeroTileX = rightmostPitTile + 8; // 20
             var maxHeroTileX = 50; // Leave some space from map edge
 
-            var heroTileX = Random.Range(minHeroTileX, maxHeroTileX + 1);
+            var heroTileX = 62; // Random.Range(minHeroTileX, maxHeroTileX + 1);
             var heroTileY = 6;
 
             var heroStart = new Vector2(
@@ -260,6 +284,7 @@ namespace PitHero.ECS.Scenes
             var heroJumpController = hero.AddComponent(new HeroJumpComponent());
             var collider = hero.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));
 
+            collider.IsTrigger = true; // Hero should not block mercenaries or other entities
             Flags.SetFlag(ref collider.CollidesWithLayers, GameConfig.PhysicsTileMapLayer);
             Flags.SetFlag(ref collider.CollidesWithLayers, GameConfig.PhysicsPitLayer);
             Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
@@ -362,6 +387,45 @@ namespace PitHero.ECS.Scenes
             Debug.Log($"[MainGameScene] Added {addedWalls} existing obstacle walls to hero pathfinding graph");
         }
 
+        /// <summary>
+        /// Spawn the hero statue at tile coordinate (112, 6)
+        /// </summary>
+        private void SpawnHeroStatue()
+        {
+            var tileX = 112;
+            var tileY = 3;
+
+            var worldPos = new Vector2(
+                tileX * GameConfig.TileSize + GameConfig.TileSize / 2,
+                tileY * GameConfig.TileSize + GameConfig.TileSize / 2
+            );
+
+            var statueEntity = CreateEntity("hero-statue");
+            statueEntity.SetTag(GameConfig.TAG_HERO_STATUE);
+            statueEntity.SetPosition(worldPos);
+
+            // Load sprite from Actors.atlas
+            var actorsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas");
+            if (actorsAtlas != null)
+            {
+                var statueSprite = actorsAtlas.GetSprite("HeroStatue");
+                if (statueSprite != null)
+                {
+                    var renderer = statueEntity.AddComponent(new SpriteRenderer(statueSprite));
+                    renderer.SetRenderLayer(GameConfig.RenderLayerActors);
+                    Debug.Log($"[MainGameScene] Hero statue spawned at tile ({tileX}, {tileY}) with HeroStatue sprite");
+                }
+                else
+                {
+                    Debug.Warn("[MainGameScene] HeroStatue sprite not found in Actors.atlas");
+                }
+            }
+            else
+            {
+                Debug.Error("[MainGameScene] Failed to load Actors.atlas for hero statue");
+            }
+        }
+
         private void SetupUIOverlay()
         {
             var screenSpaceRenderer = new ScreenSpaceRenderer(100, [GameConfig.TransparentPauseOverlay, GameConfig.RenderLayerUI, GameConfig.RenderLayerGraphicalHUD]);
@@ -406,10 +470,28 @@ namespace PitHero.ECS.Scenes
             _graphicalHUD = hudEntity.AddComponent(new GraphicalHUD());
             _graphicalHUD.SetRenderLayer(GameConfig.RenderLayerGraphicalHUD); // Use screen space renderer
 
+            // Create mercenary #1 HUD entity
+            var merc1HudEntity = CreateEntity("mercenary1-hud");
+            merc1HudEntity.SetPosition(GraphicalHudBaseX + GraphicalHudSpacing, GraphicalHudBaseY);
+            _mercenary1HUD = merc1HudEntity.AddComponent(new GraphicalHUD());
+            _mercenary1HUD.SetRenderLayer(GameConfig.RenderLayerGraphicalHUD);
+            _mercenary1HUD.SetEnabled(false); // Initially hidden until mercenary is hired
+
+            // Create mercenary #2 HUD entity
+            var merc2HudEntity = CreateEntity("mercenary2-hud");
+            merc2HudEntity.SetPosition(GraphicalHudBaseX + GraphicalHudSpacing * 2, GraphicalHudBaseY);
+            _mercenary2HUD = merc2HudEntity.AddComponent(new GraphicalHUD());
+            _mercenary2HUD.SetRenderLayer(GameConfig.RenderLayerGraphicalHUD);
+            _mercenary2HUD.SetEnabled(false); // Initially hidden until mercenary is hired
+
             // Shortcut bar at bottom center
             _shortcutBar = new ShortcutBar();
             uiCanvas.Stage.AddElement(_shortcutBar);
             PositionShortcutBar();
+
+            // Mercenary hire dialog
+            _mercenaryHireDialog = new MercenaryHireDialog();
+            uiCanvas.Stage.AddElement(_mercenaryHireDialog);
         }
 
         private void AddPitLevelTestComponent()
@@ -483,15 +565,31 @@ namespace PitHero.ECS.Scenes
 
             var hero = FindEntity("hero");
             if (hero == null)
+            {
+                // Hero doesn't exist - hide hero HUD
+                _graphicalHUD.SetEnabled(false);
                 return;
+            }
 
             var heroComponent = hero.GetComponent<HeroComponent>();
             if (heroComponent?.LinkedHero == null)
+            {
+                _graphicalHUD.SetEnabled(false);
                 return;
+            }
+
+            // Check if hero has HeroDeathComponent - if so, hero is dead
+            if (hero.HasComponent<HeroDeathComponent>())
+            {
+                _graphicalHUD.SetEnabled(false);
+                return;
+            }
 
             var linkedHero = heroComponent.LinkedHero;
 
-            // Update graphical HUD values
+            // Hero is alive - show and update HUD
+            _graphicalHUD.SetEnabled(true);
+            _graphicalHUD.SetHeroEntity(hero);
             _graphicalHUD.UpdateValues(
                 linkedHero.CurrentHP,
                 linkedHero.MaxHP,
@@ -499,6 +597,86 @@ namespace PitHero.ECS.Scenes
                 linkedHero.MaxMP,
                 linkedHero.Level
             );
+
+            // Update mercenary HUDs
+            UpdateMercenaryHUDs();
+        }
+
+        /// <summary>
+        /// Update graphical HUDs for hired mercenaries
+        /// </summary>
+        private void UpdateMercenaryHUDs()
+        {
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager == null)
+            {
+                // No mercenary manager - hide all mercenary HUDs
+                if (_mercenary1HUD != null) _mercenary1HUD.SetEnabled(false);
+                if (_mercenary2HUD != null) _mercenary2HUD.SetEnabled(false);
+                return;
+            }
+
+            var hiredMercenaries = mercenaryManager.GetHiredMercenaries();
+
+            // Update mercenary #1 HUD
+            if (hiredMercenaries.Count >= 1 && _mercenary1HUD != null)
+            {
+                var merc1Entity = hiredMercenaries[0];
+                var merc1Component = merc1Entity.GetComponent<MercenaryComponent>();
+
+                if (merc1Component?.LinkedMercenary != null && merc1Component.LinkedMercenary.CurrentHP > 0)
+                {
+                    _mercenary1HUD.SetEnabled(true);
+                    _mercenary1HUD.SetHeroEntity(merc1Entity);
+                    _mercenary1HUD.UpdateValues(
+                        merc1Component.LinkedMercenary.CurrentHP,
+                        merc1Component.LinkedMercenary.MaxHP,
+                        merc1Component.LinkedMercenary.CurrentMP,
+                        merc1Component.LinkedMercenary.MaxMP,
+                        merc1Component.LinkedMercenary.Level
+                    );
+                }
+                else
+                {
+                    // Mercenary is dead or invalid
+                    _mercenary1HUD.SetEnabled(false);
+                }
+            }
+            else
+            {
+                // No mercenary #1 hired
+                if (_mercenary1HUD != null) _mercenary1HUD.SetEnabled(false);
+            }
+
+            // Update mercenary #2 HUD
+            if (hiredMercenaries.Count >= 2 && _mercenary2HUD != null)
+            {
+                var merc2Entity = hiredMercenaries[1];
+                var merc2Component = merc2Entity.GetComponent<MercenaryComponent>();
+
+                if (merc2Component?.LinkedMercenary != null && merc2Component.LinkedMercenary.CurrentHP > 0)
+                {
+                    _mercenary2HUD.SetEnabled(true);
+                    _mercenary2HUD.SetHeroEntity(merc2Entity);
+                    _mercenary2HUD.UpdateValues(
+                        merc2Component.LinkedMercenary.CurrentHP,
+                        merc2Component.LinkedMercenary.MaxHP,
+                        merc2Component.LinkedMercenary.CurrentMP,
+                        merc2Component.LinkedMercenary.MaxMP,
+                        merc2Component.LinkedMercenary.Level
+                    );
+                }
+                else
+                {
+                    // Mercenary is dead or invalid
+                    _mercenary2HUD.SetEnabled(false);
+                }
+            }
+            else
+            {
+                // No mercenary #2 hired
+                if (_mercenary2HUD != null) _mercenary2HUD.SetEnabled(false);
+            }
         }
 
         /// <summary>
@@ -518,11 +696,9 @@ namespace PitHero.ECS.Scenes
                 {
                     case HudMode.Normal:
                         _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
-                        _graphicalHUD?.SetUseDoubleSize(false);
                         break;
                     case HudMode.Half:
                         _pitLevelLabel.SetStyle(_pitLevelStyleHalf);
-                        _graphicalHUD?.SetUseDoubleSize(true);
                         break;
                 }
                 _currentHudMode = desired;
@@ -570,6 +746,41 @@ namespace PitHero.ECS.Scenes
                     }
 
                     hudEntity.SetPosition(hudTargetX, hudTargetY);
+                }
+            }
+
+            // Update mercenary HUD positions based on mode
+            if (_mercenary1HUD != null)
+            {
+                var merc1Entity = _mercenary1HUD.Entity;
+                if (merc1Entity != null)
+                {
+                    float hudTargetY = GraphicalHudBaseY + yOffset;
+                    float hudTargetX = GraphicalHudBaseX + GraphicalHudSpacing;
+
+                    if (_currentHudMode == HudMode.Half)
+                    {
+                        hudTargetX += GraphicalHudHalfModeXOffset;
+                    }
+
+                    merc1Entity.SetPosition(hudTargetX, hudTargetY);
+                }
+            }
+
+            if (_mercenary2HUD != null)
+            {
+                var merc2Entity = _mercenary2HUD.Entity;
+                if (merc2Entity != null)
+                {
+                    float hudTargetY = GraphicalHudBaseY + yOffset;
+                    float hudTargetX = GraphicalHudBaseX + GraphicalHudSpacing * 2;
+
+                    if (_currentHudMode == HudMode.Half)
+                    {
+                        hudTargetX += GraphicalHudHalfModeXOffset;
+                    }
+
+                    merc2Entity.SetPosition(hudTargetX, hudTargetY);
                 }
             }
         }
@@ -646,6 +857,39 @@ namespace PitHero.ECS.Scenes
             Debug.Log("[MainGameScene] Connected shortcut bar to hero and inventory grid");
         }
 
+        /// <summary>
+        /// Reconnects all UI components to the hero (called after hero promotion)
+        /// </summary>
+        public void ReconnectUIToHero()
+        {
+            var heroEntity = FindEntity("hero");
+            if (heroEntity == null)
+            {
+                Debug.Warn("[MainGameScene] Could not find hero entity to reconnect UI");
+                return;
+            }
+
+            var heroComponent = heroEntity.GetComponent<HeroComponent>();
+            if (heroComponent == null)
+            {
+                Debug.Warn("[MainGameScene] Hero entity missing HeroComponent");
+                return;
+            }
+
+            // Reconnect shortcut bar
+            ConnectShortcutBarToHero();
+
+            // Reconnect inventory grid in HeroUI
+            var inventoryGrid = _settingsUI?.HeroUI?.GetInventoryGrid();
+            if (inventoryGrid != null)
+            {
+                inventoryGrid.ConnectToHero(heroComponent);
+                Debug.Log("[MainGameScene] Reconnected inventory grid to new hero");
+            }
+
+            Debug.Log("[MainGameScene] Reconnected all UI to new hero");
+        }
+
         public override void Update()
         {
             base.Update();
@@ -672,6 +916,194 @@ namespace PitHero.ECS.Scenes
 
             // Handle keyboard shortcuts via shortcut bar
             _shortcutBar?.HandleKeyboardShortcuts();
+
+            // Update mercenary manager
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            mercenaryManager?.Update();
+
+            // Check if hero needs to be promoted from mercenary
+            var heroPromotionService = Core.Services.GetService<HeroPromotionService>();
+            heroPromotionService?.CheckAndPromoteIfNeeded();
+
+            // Handle mercenary hover and click detection
+            HandleMercenaryHover();
+            HandleMercenaryClicks();
+        }
+
+        /// <summary>
+        /// Handles mouse hover over mercenaries to show SelectBox and name
+        /// </summary>
+        private void HandleMercenaryHover()
+        {
+            // Get mouse position in world coordinates
+            var mousePos = Camera.MouseToWorldPoint();
+
+            // Find all mercenary entities
+            var mercenaries = FindEntitiesWithTag(GameConfig.TAG_MERCENARY);
+            
+            Entity newHoveredMercenary = null;
+            
+            for (int i = 0; i < mercenaries.Count; i++)
+            {
+                var mercEntity = mercenaries[i];
+                var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
+                
+                // Skip hired mercenaries, mercenaries being removed, and mercenaries being promoted
+                if (mercComponent == null || mercComponent.IsHired || mercComponent.IsBeingRemoved || mercComponent.IsBeingPromoted)
+                    continue;
+
+                // Check if mouse is within mercenary bounds
+                var distance = Vector2.Distance(mousePos, mercEntity.Transform.Position);
+                if (distance < GameConfig.TileSize)
+                {
+                    newHoveredMercenary = mercEntity;
+                    break;
+                }
+            }
+
+            // Get player interaction service
+            var interactionService = Core.Services.GetService<PlayerInteractionService>();
+
+            // Update hovered mercenary
+            if (newHoveredMercenary != _hoveredMercenary)
+            {
+                _hoveredMercenary = newHoveredMercenary;
+                UpdateMercenaryHoverDisplay();
+
+                // Notify interaction service
+                if (_hoveredMercenary != null && interactionService != null)
+                {
+                    interactionService.OnSelectableHoverStart(_hoveredMercenary);
+                }
+                else if (interactionService != null)
+                {
+                    interactionService.OnSelectableHoverEnd();
+                }
+            }
+            else if (_hoveredMercenary != null)
+            {
+                // Update position even if same mercenary (in case they're moving)
+                UpdateMercenaryHoverDisplay();
+
+                // Update hover state (resets camera timer if mouse moved)
+                if (interactionService != null)
+                {
+                    interactionService.UpdateHoverState();
+                }
+            }
+            else if (interactionService != null)
+            {
+                // No mercenary hovered - ensure interaction state is cleared
+                interactionService.OnSelectableHoverEnd();
+            }
+        }
+
+        /// <summary>
+        /// Updates the SelectBox and name label display for hovered mercenary
+        /// </summary>
+        private void UpdateMercenaryHoverDisplay()
+        {
+            if (_hoveredMercenary == null)
+            {
+                // Hide SelectBox and name
+                if (_mercenarySelectBoxEntity != null)
+                    _mercenarySelectBoxEntity.SetEnabled(false);
+                if (_mercenaryNameLabelEntity != null)
+                    _mercenaryNameLabelEntity.SetEnabled(false);
+                return;
+            }
+
+            var mercComponent = _hoveredMercenary.GetComponent<MercenaryComponent>();
+            if (mercComponent == null)
+                return;
+
+            var mercPos = _hoveredMercenary.Transform.Position;
+
+            // Create or update SelectBox entity
+            if (_mercenarySelectBoxEntity == null)
+            {
+                _mercenarySelectBoxEntity = CreateEntity("mercenary-selectbox");
+                var selectBox = _mercenarySelectBoxEntity.AddComponent(new SelectBoxRenderComponent());
+                selectBox.SetRenderLayer(GameConfig.RenderLayerTop);
+            }
+            
+            _mercenarySelectBoxEntity.SetEnabled(true);
+            _mercenarySelectBoxEntity.SetPosition(mercPos);
+
+            // Create or update name label entity
+            if (_mercenaryNameLabelEntity == null)
+            {
+                _mercenaryNameLabelEntity = CreateEntity("mercenary-namelabel");
+                var nameLabel = _mercenaryNameLabelEntity.AddComponent(new TextRenderComponent());
+                nameLabel.SetRenderLayer(GameConfig.RenderLayerTop);
+                nameLabel.SetFont(Content.LoadBitmapFont("Content/Fonts/HUD.fnt"));
+                nameLabel.SetColor(Color.White);
+            }
+
+            var textComponent = _mercenaryNameLabelEntity.GetComponent<TextRenderComponent>();
+            if (textComponent != null)
+            {
+                textComponent.SetText(mercComponent.LinkedMercenary.Name);
+            }
+
+            // Position name label above the SelectBox (32 pixels up + additional offset for text height)
+            var namePos = new Vector2(mercPos.X, mercPos.Y - 40);
+            _mercenaryNameLabelEntity.SetEnabled(true);
+            _mercenaryNameLabelEntity.SetPosition(namePos);
+        }
+
+        /// <summary>
+        /// Handles mouse clicks on mercenaries for hiring
+        /// </summary>
+        private void HandleMercenaryClicks()
+        {
+            // Only check if left mouse button was just pressed
+            if (!Input.LeftMouseButtonPressed)
+                return;
+
+            // Don't process clicks if dialog is already open
+            if (_mercenaryHireDialog?.IsDialogVisible == true)
+                return;
+
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager == null)
+                return;
+
+            // Don't show dialog if player can't hire more mercenaries (includes hiring block check)
+            if (!mercenaryManager.CanHireMore())
+                return;
+
+            // Get mouse position in world coordinates
+            var mousePos = Camera.MouseToWorldPoint();
+
+            // Find all mercenary entities
+            var mercenaries = FindEntitiesWithTag(GameConfig.TAG_MERCENARY);
+            
+            for (int i = 0; i < mercenaries.Count; i++)
+            {
+                var mercEntity = mercenaries[i];
+                var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
+                
+                // Skip hired mercenaries, mercenaries being removed, and mercenaries being promoted
+                if (mercComponent == null || mercComponent.IsHired || mercComponent.IsBeingRemoved || mercComponent.IsBeingPromoted)
+                    continue;
+
+                // Allow clicking anywhere (not just in tavern)
+                // Check if click is within mercenary bounds (use simple distance check)
+                var distance = Vector2.Distance(mousePos, mercEntity.Transform.Position);
+                if (distance < GameConfig.TileSize)
+                {
+                    // Notify interaction service that player clicked a selectable
+                    var interactionService = Core.Services.GetService<PlayerInteractionService>();
+                    if (interactionService != null)
+                    {
+                        interactionService.OnSelectableClicked(mercEntity);
+                    }
+
+                    _mercenaryHireDialog?.Show(mercEntity);
+                    break;
+                }
+            }
         }
     }
 }

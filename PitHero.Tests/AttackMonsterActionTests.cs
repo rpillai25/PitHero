@@ -45,8 +45,8 @@ namespace PitHero.Tests
             var monsterParticipant = new BattleParticipant((Nez.Entity)null);
 
             // Assert: Participants should have correct types
-            Assert.IsTrue(heroParticipant.IsHero, "Hero participant should be marked as hero");
-            Assert.IsFalse(monsterParticipant.IsHero, "Monster participant should not be marked as hero");
+            Assert.AreEqual(BattleParticipant.ParticipantType.Hero, heroParticipant.Type, "Hero participant should be marked as hero");
+            Assert.AreEqual(BattleParticipant.ParticipantType.Monster, monsterParticipant.Type, "Monster participant should be marked as monster");
 
             // Test that we can set turn values
             heroParticipant.TurnValue = 5.5f;

@@ -40,6 +40,7 @@ namespace PitHero.UI
         // New Window tab controls
         private TextButton _swapMonitorButton;
         private CheckBox _alwaysOnTopCheckBox;
+        private CheckBox _autoScrollToHeroCheckBox;
 
         // Session tab controls
         private TextButton _saveButton;
@@ -289,6 +290,16 @@ namespace PitHero.UI
                 WindowManager.SetAlwaysOnTop(_game, _alwaysOnTop);
             };
             scrollContent.Add(_alwaysOnTopCheckBox).Left().SetPadBottom(15);
+            scrollContent.Row();
+
+            // Auto-scroll to Hero checkbox
+            _autoScrollToHeroCheckBox = new CheckBox("Auto-scroll to Hero", skin);
+            _autoScrollToHeroCheckBox.IsChecked = UIWindowManager.AutoScrollToHeroEnabled;
+            _autoScrollToHeroCheckBox.OnChanged += (isChecked) =>
+            {
+                UIWindowManager.SetAutoScrollToHero(isChecked);
+            };
+            scrollContent.Add(_autoScrollToHeroCheckBox).Left().SetPadBottom(15);
             scrollContent.Row();
 
             // Swap Monitor button

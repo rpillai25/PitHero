@@ -30,6 +30,9 @@ namespace PitHero.ECS.Components
             set { _componentColor = value; }
         }
 
+        /// <summary>Gets the walk down animation name for this animation component</summary>
+        public string WalkDownAnimationName => AnimDown;
+
         public HeroAnimationComponent(Color color)
         {
             _componentColor = color;

@@ -38,19 +38,29 @@ namespace RolePlayingFramework.Combat
             return new BattleStats(attack, defense, evasion);
         }
 
-        /// <summary>Calculate battle stats for a monster</summary>
-        public static BattleStats CalculateForMonster(IEnemy enemy)
-        {
-            // Attack = Strength (monsters have no weapon bonus)
-            int attack = enemy.Stats.Strength;
+    /// <summary>Calculate battle stats for a monster</summary>
+    public static BattleStats CalculateForMonster(IEnemy enemy)
+    {
+        // Attack = Strength (monsters have no weapon bonus)
+        int attack = enemy.Stats.Strength;
 
-            // Defense = Agility/2 (monsters have no armor bonus)
-            int defense = enemy.Stats.Agility / 2;
+        // Defense = Agility/2 (monsters have no armor bonus)
+        int defense = enemy.Stats.Agility / 2;
 
-            // Evasion calculated using BalanceConfig formula
-            int evasion = BalanceConfig.CalculateEvasion(enemy.Stats.Agility, enemy.Level);
+        // Evasion calculated using BalanceConfig formula
+        int evasion = BalanceConfig.CalculateEvasion(enemy.Stats.Agility, enemy.Level);
 
-            return new BattleStats(attack, defense, evasion);
-        }
+        return new BattleStats(attack, defense, evasion);
     }
+
+    /// <summary>Calculate battle stats for a mercenary</summary>
+    public static BattleStats CalculateForMercenary(RolePlayingFramework.Mercenaries.Mercenary mercenary)
+    {
+        return new BattleStats(
+            mercenary.GetBattleStats().Attack,
+            mercenary.GetBattleStats().Defense,
+            mercenary.GetBattleStats().Evasion
+        );
+    }
+}
 }

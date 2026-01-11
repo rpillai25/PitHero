@@ -22,6 +22,7 @@ namespace PitHero
         // Hero Configuration
         public const int HeroWidth = 32;
         public const int HeroHeight = 32;
+        public const float HeroCriticalHPPercent = 0.4f;
 
         // Action Configuration
         public const float BattleDigitBounceWait = 0.5f;
@@ -32,6 +33,10 @@ namespace PitHero
         public const float HeroMovementSpeed = 64f;  //Move speed in pixels per second (64 pixels = 2 tiles)
         public const float HeroPitMovementSpeed = 32f; //Move speed in pixels per second when in pit (32 pixels = 1 tile)
         public const float HeroJumpSpeed = 4f; //Jump speed in tiles per second
+
+        // Mercenary configuration
+        public const float MercenaryMinSpawnIntervalSeconds = 5f; // First mercenary spawns after 5 seconds
+        public const float MercenaryMaxSpawnIntervalSeconds = 300f; // 12th mercenary spawns after 5 minutes (300 seconds)
 
         // Fog of war movement speed configuration
         public const float HeroFogCooldownDuration = 1f; // Duration in seconds for fog cooldown after clearing fog
@@ -51,7 +56,8 @@ namespace PitHero
         public const float CameraZoomSpeed = 0.001f; // zoom sensitivity per mouse wheel notch
         public const float CameraPanSpeed = 1f; // pan speed multiplier
         public const float CameraFollowLerpSpeed = 5f; // speed at which camera lerps to hero position
-        public const float CameraManualControlTimeout = 5f; // seconds of inactivity before auto-following resumes
+        public const float CameraManualControlTimeout = 7f; // seconds of inactivity before auto-following resumes (paused when player interacts with selectables)
+        public const bool CameraAutoScrollToHeroDefault = true; // default value for auto-scroll to hero setting
 
         // World Bounds
         public static readonly Rectangle WorldBounds = new Rectangle(0, 0, InternalWorldWidth, InternalWorldHeight);
@@ -101,6 +107,8 @@ namespace PitHero
         public const int TAG_TREASURE = 5; // Tag for treasure entities
         public const int TAG_MONSTER = 6; // Tag for monster entities
         public const int TAG_WIZARD_ORB = 7; // Tag for wizard orb entity
+        public const int TAG_MERCENARY = 8; // Tag for mercenary entities
+        public const int TAG_HERO_STATUE = 9; // Tag for hero statue entity
 
         // Render Layers (the lower the number, the higher the layer)
 
@@ -134,6 +142,7 @@ namespace PitHero
         public const int PhysicsTileMapLayer = 0;   // Tilemap "Collision" layer
         public const int PhysicsHeroWorldLayer = 1; // Hero layer for collision
         public const int PhysicsPitLayer = 2;       // Pit trigger layer
+        public const int PhysicsMercenaryLayer = 3; // Mercenary layer for collision
 
         // Entity names
         public const string EntityHero = "Hero";

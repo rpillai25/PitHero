@@ -149,37 +149,54 @@ namespace PitHero.ECS.Components
                 _shadowEntity = null;
             }
 
-            // Transfer all inventory items to PitMerchantVault and clear bags
-            var pitVault = Core.Services.GetService<PitMerchantVault>();
-            if (pitVault != null && heroComponent != null)
+            // Transfer all items (equipped + inventory) to SecondChanceMerchantVault
+            var secondChanceVault = Core.Services.GetService<SecondChanceMerchantVault>();
+            if (secondChanceVault != null && heroComponent != null)
             {
-                // Get all items from main inventory bag
-                var bagItems = new List<RolePlayingFramework.Equipment.IItem>();
+                var allItems = new List<RolePlayingFramework.Equipment.IItem>();
+
+                // Collect all equipped items
+                if (hero.WeaponShield1 != null) allItems.Add(hero.WeaponShield1);
+                if (hero.Armor != null) allItems.Add(hero.Armor);
+                if (hero.Hat != null) allItems.Add(hero.Hat);
+                if (hero.WeaponShield2 != null) allItems.Add(hero.WeaponShield2);
+                if (hero.Accessory1 != null) allItems.Add(hero.Accessory1);
+                if (hero.Accessory2 != null) allItems.Add(hero.Accessory2);
+
+                // Collect all items from inventory bag
                 if (heroComponent.Bag != null)
                 {
                     foreach (var item in heroComponent.Bag.Items)
                     {
                         if (item != null)
                         {
-                            bagItems.Add(item);
+                            allItems.Add(item);
                         }
                     }
                 }
 
-                // Add all items to the vault
-                pitVault.AddItems(bagItems);
-                Debug.Log($"[HeroDeathComponent] Transferred {bagItems.Count} items to PitMerchantVault");
+                // Add all items to the Second Chance vault (will stack automatically)
+                secondChanceVault.AddItems(allItems);
+                Debug.Log($"[HeroDeathComponent] Transferred {allItems.Count} items to SecondChanceMerchantVault");
+
+                // Clear equipped items
+                hero.SetEquipmentSlot(RolePlayingFramework.Equipment.EquipmentSlot.WeaponShield1, null);
+                hero.SetEquipmentSlot(RolePlayingFramework.Equipment.EquipmentSlot.Armor, null);
+                hero.SetEquipmentSlot(RolePlayingFramework.Equipment.EquipmentSlot.Hat, null);
+                hero.SetEquipmentSlot(RolePlayingFramework.Equipment.EquipmentSlot.WeaponShield2, null);
+                hero.SetEquipmentSlot(RolePlayingFramework.Equipment.EquipmentSlot.Accessory1, null);
+                hero.SetEquipmentSlot(RolePlayingFramework.Equipment.EquipmentSlot.Accessory2, null);
 
                 // Clear the bag by setting empty items
                 if (heroComponent.Bag != null)
                 {
                     heroComponent.Bag.SetItemsInOrder(new List<RolePlayingFramework.Equipment.IItem>());
                 }
-                Debug.Log("[HeroDeathComponent] Cleared hero's inventory bag");
+                Debug.Log("[HeroDeathComponent] Cleared hero's equipment and inventory");
             }
-            else if (pitVault == null)
+            else if (secondChanceVault == null)
             {
-                Debug.Warn("[HeroDeathComponent] PitMerchantVault service not found");
+                Debug.Warn("[HeroDeathComponent] SecondChanceMerchantVault service not found");
             }
 
             // Add crystal to vault
@@ -192,6 +209,19 @@ namespace PitHero.ECS.Components
             else
             {
                 Debug.Warn("[HeroDeathComponent] CrystalMerchantVault service not found");
+            }
+
+            // Block mercenary hiring and freeze all hired mercenaries in place
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager != null)
+            {
+                mercenaryManager.BlockHiring();
+                mercenaryManager.FreezeAllHiredMercenaries();
+                Debug.Log("[HeroDeathComponent] Blocked hiring and froze hired mercenaries in place");
+            }
+            else
+            {
+                Debug.Warn("[HeroDeathComponent] MercenaryManager service not found");
             }
 
             // Destroy hero entity

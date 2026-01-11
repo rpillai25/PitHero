@@ -32,6 +32,7 @@ namespace PitHero.UI
 
         // Inventory tab content
         private InventoryGrid _inventoryGrid;
+        private Label _heroNameLabel;
         private TextButton _viewStencilsButton;
         private TextButton _moveStencilsButton;
         private TextButton _removeStencilButton;
@@ -190,8 +191,9 @@ namespace PitHero.UI
         private void CreateHeroWindow(Skin skin)
         {
             _heroWindow = new Window("Hero", skin);
-            // Widen window to fit 20 inventory columns (20 * 33 = 660 pixels + padding)
-            _heroWindow.SetSize(700f, 350f);
+            // Start with inventory tab width (850px)
+            // Width will be adjusted dynamically when tabs change
+            _heroWindow.SetSize(850f, 350f);
             var tabWindowStyle = CreateTabWindowStyle(skin);
             _tabPane = new TabPane(tabWindowStyle);
             var tabStyle = CreateTabStyle(skin);
@@ -204,8 +206,38 @@ namespace PitHero.UI
             _tabPane.AddTab(_inventoryTab);
             _tabPane.AddTab(_crystalTab);
             _tabPane.AddTab(_prioritiesTab);
+            
+            // Hook into tab button clicks to adjust window width
+            for (int i = 0; i < _tabPane.TabButtons.Count; i++)
+            {
+                var tabButton = _tabPane.TabButtons[i];
+                var tab = _tabPane.Tabs[i];
+                tabButton.OnClick += () => HandleTabChanged(tab);
+            }
+            
             _heroWindow.Add(_tabPane).Expand().Fill();
             _heroWindow.SetVisible(false);
+        }
+
+        /// <summary>Adjusts window width when tabs are changed.</summary>
+        private void HandleTabChanged(Tab selectedTab)
+        {
+            if (_heroWindow == null) return;
+
+            float newWidth;
+            if (selectedTab == _inventoryTab)
+            {
+                // Inventory tab needs full width for 20-column grid
+                newWidth = 850f;
+            }
+            else
+            {
+                // Hero Crystal and Priorities tabs use half width
+                newWidth = 425f;
+            }
+
+            _heroWindow.SetSize(newWidth, 350f);
+            PositionHeroWindow(); // Reposition after resize to keep it on screen
         }
 
         private void CreateItemCards(Skin skin)
@@ -240,6 +272,25 @@ namespace PitHero.UI
         {
             var container = new Table();
 
+            // Create hero name label centered above equipment (equipment is at columns 8-10)
+            var heroComponent = GetHeroComponent();
+            var heroName = heroComponent?.LinkedHero?.Name ?? "Hero";
+            _heroNameLabel = new Label(heroName, skin);
+            // Removed SetFontScale to prevent font warping
+            
+            // Create a table to position the hero name above the equipment area
+            var headerTable = new Table();
+            // Add left spacing to align with equipment slots (columns 8-10 are at x position ~264-330)
+            // Each slot is 33 pixels (32 + 1 padding), so column 8 starts at 8 * 33 = 264
+            // Plus 32 pixel left padding = 296
+            headerTable.Add().Width(296f); // Spacer to align with equipment column 8
+            headerTable.Add(_heroNameLabel).Center();
+            container.Add(headerTable).Left().Pad(5f);
+            container.Row();
+
+            // Create horizontal container for inventory grid and buttons
+            var inventoryContainer = new Table();
+
             _inventoryGrid = new InventoryGrid();
             _inventoryGrid.OnItemHovered += HandleItemHovered;
             _inventoryGrid.OnItemUnhovered += HandleItemUnhovered;
@@ -251,7 +302,6 @@ namespace PitHero.UI
             // Initialize context menu
             _inventoryGrid.InitializeContextMenu(_stage, skin);
 
-            var heroComponent = GetHeroComponent();
             if (heroComponent != null)
                 _inventoryGrid.ConnectToHero(heroComponent);
 
@@ -259,26 +309,37 @@ namespace PitHero.UI
             var scrollPane = new ScrollPane(_inventoryGrid, skin);
             scrollPane.SetScrollingDisabled(true, false);
 
-            container.Add(scrollPane).Expand().Fill().Pad(10f);
-            container.Row();
+            // Add scroll pane to left side with explicit width to ensure rightmost column is clickable
+            // Grid is 692px wide (20 columns × 33px + 32px left padding)
+            inventoryContainer.Add(scrollPane).Width(700f).Expand().Fill().Pad(0f);
 
-            // Add stencil control buttons
+            // Add stencil control buttons vertically on the right
             var buttonTable = new Table();
-            buttonTable.Pad(5f);
+            buttonTable.Defaults().Width(120f).Height(30f).Pad(5f);
+
+            // Add top spacer to move buttons down 64 pixels
+            buttonTable.Add().Height(64f);
+            buttonTable.Row();
 
             _viewStencilsButton = new TextButton("View Stencils", skin);
             _viewStencilsButton.OnClicked += HandleViewStencilsClicked;
-            buttonTable.Add(_viewStencilsButton).Width(120f).Height(30f).Pad(5f);
+            buttonTable.Add(_viewStencilsButton);
+            buttonTable.Row();
 
             _moveStencilsButton = new TextButton("Move Stencils", skin);
             _moveStencilsButton.OnClicked += HandleMoveStencilsClicked;
-            buttonTable.Add(_moveStencilsButton).Width(120f).Height(30f).Pad(5f);
+            buttonTable.Add(_moveStencilsButton);
+            buttonTable.Row();
 
             _removeStencilButton = new TextButton("Remove Stencil", skin);
             _removeStencilButton.OnClicked += HandleRemoveStencilClicked;
-            buttonTable.Add(_removeStencilButton).Width(120f).Height(30f).Pad(5f);
+            buttonTable.Add(_removeStencilButton);
 
-            container.Add(buttonTable).Fill();
+            // Add button table to right side with left padding of 40px
+            var buttonCell = inventoryContainer.Add(buttonTable).Top();
+            buttonCell.SetPadLeft(40f);
+
+            container.Add(inventoryContainer).Expand().Fill();
 
             inventoryTab.Add(container).Expand().Fill();
 
@@ -302,6 +363,18 @@ namespace PitHero.UI
             {
                 _heroCrystalTab.UpdateWithHero(heroComponent);
                 Debug.Log("[HeroUI] Refreshed Hero Crystal tab after synergies changed");
+            }
+
+            // Refresh tooltip with fresh synergies if an item is currently hovered
+            if (_itemTooltip != null && _itemTooltip.GetContainer().HasParent())
+            {
+                var hoveredSlot = _inventoryGrid?.GetHoveredSlot();
+                if (hoveredSlot != null && hoveredSlot.SlotData.Item != null)
+                {
+                    var synergies = _inventoryGrid.GetSynergiesForSlot(hoveredSlot);
+                    _itemTooltip.ShowItem(hoveredSlot.SlotData.Item, synergies);
+                    Debug.Log($"[HeroUI] Refreshed tooltip synergies: {synergies?.Count ?? 0} synergies");
+                }
             }
         }
 
@@ -431,8 +504,8 @@ namespace PitHero.UI
 
                 if (!targetAnchor.HasValue)
                 {
-                    // No empty slots found, use default position (top-left of inventory area, row 2)
-                    targetAnchor = new Point(0, 2);
+                    // No empty slots found, use default position (top-left of inventory area, row 3)
+                    targetAnchor = new Point(0, 3);
                     Debug.Log($"No empty inventory slots found, placing stencil at default position: {targetAnchor.Value}");
                 }
                 else
@@ -509,8 +582,38 @@ namespace PitHero.UI
                 InitializePriorityItems();
                 _priorityList?.Rebuild();
                 var heroComponent = GetHeroComponent();
-                if (heroComponent != null && _inventoryGrid != null)
-                    _inventoryGrid.ConnectToHero(heroComponent);
+                
+                // Don't open UI if hero is dead or dying (has death component or HP <= 0)
+                if (heroComponent != null)
+                {
+                    var deathComponent = heroComponent.Entity.GetComponent<HeroDeathComponent>();
+                    bool isDying = deathComponent != null;
+                    bool isDead = heroComponent.LinkedHero?.CurrentHP <= 0;
+                    
+                    if (isDying || isDead)
+                    {
+                        Debug.Log("[HeroUI] Cannot open Hero UI - hero is dead or dying");
+                        _windowVisible = false;
+                        UIWindowManager.OnUIWindowClosing();
+                        return;
+                    }
+                    
+                    // Always reconnect to hero to refresh inventory (in case hero died and items were cleared)
+                    if (_inventoryGrid != null)
+                        _inventoryGrid.ConnectToHero(heroComponent);
+                    
+                    // Update hero name label
+                    if (_heroNameLabel != null)
+                        _heroNameLabel.SetText(heroComponent.LinkedHero?.Name ?? "Hero");
+                }
+                else
+                {
+                    // No hero found - cannot open UI
+                    Debug.Log("[HeroUI] Cannot open Hero UI - no hero found");
+                    _windowVisible = false;
+                    UIWindowManager.OnUIWindowClosing();
+                    return;
+                }
 
                 // Update Hero Crystal tab with current hero
                 if (heroComponent != null && _heroCrystalTab != null)
@@ -616,11 +719,23 @@ namespace PitHero.UI
 
             if (_windowVisible && _inventoryGrid != null)
             {
+
                 // Update tooltip position if visible
                 if (_itemTooltip != null && _itemTooltip.GetContainer().HasParent())
                 {
                     var mousePos = _stage.GetMousePosition();
-                    _itemTooltip.GetContainer().SetPosition(mousePos.X + 10, mousePos.Y + 10);
+                    var tooltipContainer = _itemTooltip.GetContainer();
+                    tooltipContainer.Validate(); // Ensure size is calculated
+                    
+                    float tooltipX = mousePos.X + 10;
+                    float tooltipY = mousePos.Y + 10;
+                    
+                    // Clamp Y to prevent tooltip from bleeding off bottom of screen
+                    float stageHeight = _stage.GetHeight();
+                    float tooltipHeight = tooltipContainer.GetHeight();
+                    tooltipY = Mathf.Clamp(tooltipY, 0, stageHeight - tooltipHeight);
+                    
+                    tooltipContainer.SetPosition(tooltipX, tooltipY);
 
                     // Update equip preview tooltip position if visible
                     if (_equipPreviewTooltip != null && _equipPreviewTooltip.GetContainer().HasParent())
@@ -643,6 +758,9 @@ namespace PitHero.UI
         /// <summary>Gets the inventory grid reference for shortcut bar integration.</summary>
         public InventoryGrid GetInventoryGrid() => _inventoryGrid;
 
+        /// <summary>Gets the hero crystal tab reference for UI reconnection.</summary>
+        public HeroCrystalTab GetCrystalTab() => _heroCrystalTab;
+
         /// <summary>Force close window</summary>
         public void ForceCloseWindow()
         {
@@ -652,24 +770,39 @@ namespace PitHero.UI
             }
         }
 
-        private void HandleItemHovered(IItem item)
+        private void HandleItemHovered(IItem item, InventorySlot slot)
         {
             if (item == null) return;
 
-            // Get synergies for the hovered item from the inventory grid
-            var synergies = GetSynergiesForHoveredItem();
+            // Get synergies for the hovered slot (passed directly, no search needed)
+            var synergies = slot != null ? _inventoryGrid?.GetSynergiesForSlot(slot) : null;
 
-            // Show tooltip at cursor position
+            // Show tooltip with item info and synergies immediately
             _itemTooltip.ShowItem(item, synergies);
             if (_itemTooltip.GetContainer().GetParent() == null)
             {
                 _stage.AddElement(_itemTooltip.GetContainer());
             }
 
-            // Position tooltip at mouse cursor
+            // Position tooltip at mouse cursor with clamping
             var mousePos = _stage.GetMousePosition();
-            _itemTooltip.GetContainer().SetPosition(mousePos.X + 10, mousePos.Y + 10);
-            _itemTooltip.GetContainer().ToFront();
+            var tooltipContainer = _itemTooltip.GetContainer();
+            tooltipContainer.Validate(); // Ensure size is calculated
+            
+            float tooltipX = mousePos.X + 10;
+            float tooltipY = mousePos.Y + 10;
+            
+            // Clamp Y to prevent tooltip from bleeding off bottom of screen
+            float stageHeight = _stage.GetHeight();
+            float tooltipHeight = tooltipContainer.GetHeight();
+            if (tooltipY + tooltipHeight > stageHeight)
+            {
+                tooltipY = stageHeight - tooltipHeight;
+            }
+            if (tooltipY < 0) tooltipY = 0;          
+            
+            tooltipContainer.SetPosition(tooltipX, tooltipY);
+            tooltipContainer.ToFront();
 
             // Show equip preview tooltip if item is qualifying gear
             if (item is IGear hoveredGear)
@@ -694,7 +827,7 @@ namespace PitHero.UI
                             _stage.AddElement(_equipPreviewTooltip.GetContainer());
                         }
 
-                        // Position equip preview tooltip to the right of item tooltip
+                        // Position equip preview tooltip to the right of item tooltip (using item tooltip's clamped Y)
                         var itemTooltipContainer = _itemTooltip.GetContainer();
                         float previewX = itemTooltipContainer.GetX() + itemTooltipContainer.GetWidth() + 5;
                         float previewY = itemTooltipContainer.GetY();
@@ -713,21 +846,6 @@ namespace PitHero.UI
                 _itemTooltip.GetContainer().Remove();
                 _equipPreviewTooltip.GetContainer().Remove();
             }
-        }
-
-        /// <summary>Gets synergies for the currently hovered item slot.</summary>
-        private System.Collections.Generic.List<RolePlayingFramework.Synergies.ActiveSynergy> GetSynergiesForHoveredItem()
-        {
-            if (_inventoryGrid == null)
-                return null;
-
-            // Find the hovered slot in the inventory grid
-            var hoveredSlot = _inventoryGrid.GetHoveredSlot();
-            if (hoveredSlot == null)
-                return null;
-
-            // Get synergies for this slot
-            return _inventoryGrid.GetSynergiesForSlot(hoveredSlot);
         }
 
         /// <summary>Gets the currently equipped gear for the same slot as the hovered gear.</summary>

@@ -63,7 +63,7 @@ namespace PitHero.ECS.Components
                 if (LinkedHero == null)
                     return false;
                 float hpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
-                return hpPercent < 0.4f;
+                return hpPercent < GameConfig.HeroCriticalHPPercent;
             }
         }
 
@@ -102,7 +102,13 @@ namespace PitHero.ECS.Components
         /// </summary>
         public ActionQueue BattleActionQueue { get; private set; }
 
+        /// <summary>
+        /// The last tile position the hero was on (for mercenary following)
+        /// </summary>
+        public Point LastTilePosition { get; set; }
+
         private PitWidthManager _pitWidthManager;
+        private Point _currentTile;
 
         // Fog of war movement speed tracking
         private float _fogCooldown = 0f;
@@ -153,6 +159,10 @@ namespace PitHero.ECS.Components
             ExploredPit = false;
             _foundWizardOrb = false;
             ActivatedWizardOrb = false;
+
+            // Initialize tile tracking
+            _currentTile = GetCurrentTilePosition();
+            LastTilePosition = _currentTile;
 
 #if DEBUG
             DebugSetup();
@@ -223,6 +233,14 @@ namespace PitHero.ECS.Components
                 {
                     ApplyMovementSpeedForPitState();
                 }
+            }
+
+            // Track tile position for mercenary following
+            var currentTile = GetCurrentTilePosition();
+            if (currentTile != _currentTile)
+            {
+                LastTilePosition = _currentTile;
+                _currentTile = currentTile;
             }
         }
 
@@ -448,6 +466,12 @@ namespace PitHero.ECS.Components
         /// </summary>
         public Point GetCurrentTilePosition()
         {
+            // Check if entity still exists (not destroyed)
+            if (Entity == null)
+            {
+                return Point.Zero; // Return default position if entity destroyed
+            }
+
             var tileMover = Entity.GetComponent<TileByTileMover>();
             if (tileMover != null)
             {
@@ -491,6 +515,12 @@ namespace PitHero.ECS.Components
         /// </summary>
         public bool CheckAdjacentToMonster()
         {
+            // Check if entity still exists (not destroyed)
+            if (Entity == null)
+            {
+                return false;
+            }
+
             var heroTile = GetCurrentTilePosition();
             var scene = Core.Scene;
             if (scene == null) return false;
@@ -513,6 +543,12 @@ namespace PitHero.ECS.Components
         /// </summary>
         public bool CheckAdjacentToChest()
         {
+            // Check if entity still exists (not destroyed)
+            if (Entity == null)
+            {
+                return false;
+            }
+
             var heroTile = GetCurrentTilePosition();
             var scene = Core.Scene;
             if (scene == null) return false;

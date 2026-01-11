@@ -54,13 +54,30 @@ namespace PitHero.ECS.Components
             if (pauseService?.IsPaused == true && ShouldPause)
                 return;
 
-            // Cache hero entity reference if not already cached
+            // Cache hero entity reference if not already cached, or clear if hero is destroyed/dead
             if (_heroEntity == null)
             {
                 var heroEntities = Entity.Scene.FindEntitiesWithTag(GameConfig.TAG_HERO);
                 if (heroEntities.Count > 0)
                 {
                     _heroEntity = heroEntities[0];
+                }
+            }
+            else
+            {
+                // Check if cached hero is still valid (not destroyed and alive)
+                if (_heroEntity.IsDestroyed)
+                {
+                    _heroEntity = null;
+                }
+                else
+                {
+                    // Check if hero is dead or dying
+                    var heroComponent = _heroEntity.GetComponent<HeroComponent>();
+                    if (heroComponent?.LinkedHero != null && heroComponent.LinkedHero.CurrentHP <= 0)
+                    {
+                        _heroEntity = null;
+                    }
                 }
             }
 
@@ -287,10 +304,33 @@ namespace PitHero.ECS.Components
         /// </summary>
         private void HandleHeroFollowing()
         {
+            // Check if auto-scroll to hero is enabled
+            if (!UI.UIWindowManager.AutoScrollToHeroEnabled)
+            {
+                // Auto-scroll is disabled, don't follow hero
+                return;
+            }
+
+            // Check if player is interacting with selectables - if so, reset timer to prevent auto-scroll
+            var interactionService = Core.Services.GetService<PlayerInteractionService>();
+            if (interactionService?.IsInteractingWithSelectable == true)
+            {
+                // Player is engaged with a selectable entity - reset timer to keep camera in manual mode
+                if (!_isFollowingHero)
+                {
+                    _manualControlTimer = 0f;
+                }
+                else
+                {
+                    // Switch to manual mode if player starts interacting while in auto-follow
+                    SwitchToManualControl();
+                }
+            }
+
             // Update manual control timer if in manual mode
             if (!_isFollowingHero)
             {
-                _manualControlTimer += Time.DeltaTime;
+                _manualControlTimer += Time.UnscaledDeltaTime;
                 
                 // Resume auto-following after timeout
                 if (_manualControlTimer >= GameConfig.CameraManualControlTimeout)

@@ -14,7 +14,7 @@ namespace PitHero.UI
     public class InventoryGrid : Group
     {
         private const int GRID_WIDTH = 20;
-        private const int GRID_HEIGHT = 8;  // 2 rows for equipment area + 6 rows for inventory
+        private const int GRID_HEIGHT = 9;  // 1 row for hero name space + 2 rows for equipment area + 6 rows for inventory
         private const int CELL_COUNT = GRID_WIDTH * GRID_HEIGHT;
         private const float SLOT_SIZE = 32f;
         private const float SLOT_PADDING = 1f;
@@ -41,7 +41,7 @@ namespace PitHero.UI
         private InventorySlot _uiSwapSlotB;
 
         // Public events for item card display
-        public event System.Action<IItem> OnItemHovered;
+        public event System.Action<IItem, InventorySlot> OnItemHovered;
         public event System.Action OnItemUnhovered;
         public event System.Action<IItem> OnItemSelected;
         public event System.Action OnItemDeselected;
@@ -65,6 +65,9 @@ namespace PitHero.UI
         // Synergy detection
         private readonly SynergyDetector _synergyDetector;
         private IItem?[,] _synergyDetectionGrid; // Reusable grid for synergy detection
+        
+        // Cached synergy lookup per slot position (only updated when inventory changes)
+        private readonly Dictionary<Point, List<RolePlayingFramework.Synergies.ActiveSynergy>> _slotSynergyCache;
 
         public InventoryGrid()
         {
@@ -80,10 +83,12 @@ namespace PitHero.UI
             // Initialize synergy detection
             _synergyDetector = new SynergyDetector();
             _synergyDetectionGrid = new IItem?[GRID_WIDTH, GRID_HEIGHT];
+            _slotSynergyCache = new Dictionary<Point, List<RolePlayingFramework.Synergies.ActiveSynergy>>();
             RegisterDefaultSynergyPatterns();
 
             BuildSlots();
             LayoutSlots();
+            SetGridSize();
         }
 
         /// <summary>Registers default synergy patterns for detection.</summary>
@@ -150,22 +155,28 @@ namespace PitHero.UI
         /// <summary>Creates slot data for a given grid coordinate.</summary>
         private InventorySlotData CreateSlotData(int x, int y)
         {
-            // Top 2 rows (y=0,1) are ONLY for equipment display - everything else is NULL
-            if (y < 2)
+            // Top row (y=0) is reserved for hero name label - all NULL
+            if (y == 0)
             {
-                // Equipment slots in top-right area (columns 8-10, 3 adjacent columns)
-                if (y == 0 && x == 8) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield1 };
-                if (y == 0 && x == 9) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Hat };
-                if (y == 0 && x == 10) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield2 };
-                if (y == 1 && x == 8) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory1 };
-                if (y == 1 && x == 9) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Armor };
-                if (y == 1 && x == 10) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory2 };
-
-                // All other slots in top 2 rows are NULL (not displayed)
                 return new InventorySlotData(x, y, InventorySlotType.Null);
             }
 
-            // Rows 2-7: Pure inventory (6 rows � 20 columns = 120 inventory slots)
+            // Rows 1-2 (y=1,2) are ONLY for equipment display - everything else is NULL
+            if (y >= 1 && y <= 2)
+            {
+                // Equipment slots in top-right area (columns 8-10, 3 adjacent columns)
+                if (y == 1 && x == 8) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield1 };
+                if (y == 1 && x == 9) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Hat };
+                if (y == 1 && x == 10) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield2 };
+                if (y == 2 && x == 8) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory1 };
+                if (y == 2 && x == 9) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Armor };
+                if (y == 2 && x == 10) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory2 };
+
+                // All other slots in rows 1-2 are NULL (not displayed)
+                return new InventorySlotData(x, y, InventorySlotType.Null);
+            }
+
+            // Rows 3-8: Pure inventory (6 rows × 20 columns = 120 inventory slots)
             return new InventorySlotData(x, y, InventorySlotType.Inventory);
         }
 
@@ -444,13 +455,30 @@ namespace PitHero.UI
         /// <summary>Positions slot components based on grid coordinates.</summary>
         private void LayoutSlots()
         {
+            const float X_OFFSET = 32f; // Move grid right by 32 pixels for left padding
+            const float Y_OFFSET = -16f; // Move grid up by 16 pixels
             for (int i = 0; i < _slots.Length; i++)
             {
                 var slot = _slots.Buffer[i];
                 if (slot == null) continue;
                 var data = slot.SlotData;
-                slot.SetPosition(data.X * (SLOT_SIZE + SLOT_PADDING), data.Y * (SLOT_SIZE + SLOT_PADDING));
+                slot.SetPosition(data.X * (SLOT_SIZE + SLOT_PADDING) + X_OFFSET, data.Y * (SLOT_SIZE + SLOT_PADDING) + Y_OFFSET);
             }
+        }
+
+        /// <summary>Sets the explicit size of the grid to account for offsets and ensure all slots are clickable.</summary>
+        private void SetGridSize()
+        {
+            const float X_OFFSET = 32f; // Left padding
+            const float Y_OFFSET = -16f; // Top offset (negative means moving up)
+            
+            // Calculate total grid dimensions including offsets
+            // Width: (20 columns * 33px per slot) + 32px left padding = 692px
+            // Height: (9 rows * 33px per slot) - 16px top offset = 281px (but we use absolute value for size)
+            float gridWidth = (GRID_WIDTH * (SLOT_SIZE + SLOT_PADDING)) + X_OFFSET;
+            float gridHeight = (GRID_HEIGHT * (SLOT_SIZE + SLOT_PADDING)) + System.Math.Abs(Y_OFFSET);
+            
+            SetSize(gridWidth, gridHeight);
         }
 
         /// <summary>Handles slot click highlighting and swapping.</summary>
@@ -555,7 +583,7 @@ namespace PitHero.UI
                 (_highlightedSlot != null && _highlightedSlot != slot && slot.SlotData.Item != null))
                 slot.SetItemSpriteOffsetY(HOVER_OFFSET_Y);
             if (slot.SlotData.Item != null)
-                OnItemHovered?.Invoke(slot.SlotData.Item);
+                OnItemHovered?.Invoke(slot.SlotData.Item, slot);
         }
 
         private void HandleSlotUnhovered(InventorySlot slot)
@@ -770,6 +798,9 @@ namespace PitHero.UI
 
             // Update local tracking for glow effects (only capped instances will glow)
             UpdateActiveSynergies(allInstances);
+            
+            // Rebuild the cached synergy lookup for fast per-slot queries
+            RebuildSlotSynergyCache();
 
             // Log detected synergies with stacking info
             if (synergyGroups.Count > 0)
@@ -788,6 +819,13 @@ namespace PitHero.UI
 
         /// <summary>Event raised when synergies are detected and applied.</summary>
         public event System.Action OnSynergiesChanged;
+
+        /// <summary>Publicly accessible method to force synergy re-detection (for eventual consistency).</summary>
+        public void RefreshSynergies()
+        {
+            DetectAndApplySynergies();
+        }
+
 
         /// <summary>Builds the synergy detection grid from current slot state.</summary>
         private void BuildSynergyDetectionGrid()
@@ -1015,18 +1053,17 @@ namespace PitHero.UI
             return false;
         }
 
-        /// <summary>Gets all active synergies that contain the specified slot position.</summary>
+        /// <summary>Gets all active synergies that contain the specified slot position (uses cached lookup for performance).</summary>
         public List<RolePlayingFramework.Synergies.ActiveSynergy> GetSynergiesForSlot(Point slotPos)
         {
-            var result = new List<RolePlayingFramework.Synergies.ActiveSynergy>();
-            for (int i = 0; i < _activeSynergies.Count; i++)
+            // Use cached lookup - returns empty list if no synergies at this position
+            if (_slotSynergyCache.TryGetValue(slotPos, out var cachedList))
             {
-                if (_activeSynergies[i].ContainsSlot(slotPos))
-                {
-                    result.Add(_activeSynergies[i]);
-                }
+                return cachedList;
             }
-            return result;
+            
+            // Return empty list if position not in cache (no synergies)
+            return new List<RolePlayingFramework.Synergies.ActiveSynergy>();
         }
 
         /// <summary>Gets all active synergies for the specified inventory slot.</summary>
@@ -1297,6 +1334,35 @@ namespace PitHero.UI
             UpdateSynergyGlowEffects();
         }
 
+        /// <summary>Rebuilds the cached synergy lookup for all slots (called after synergy detection).</summary>
+        private void RebuildSlotSynergyCache()
+        {
+            // Clear existing cache
+            _slotSynergyCache.Clear();
+            
+            // Build cache from active synergies
+            for (int i = 0; i < _activeSynergies.Count; i++)
+            {
+                var synergy = _activeSynergies[i];
+                var affectedSlots = synergy.AffectedSlots;
+                
+                for (int j = 0; j < affectedSlots.Count; j++)
+                {
+                    var slotPos = affectedSlots[j];
+                    
+                    // Get or create list for this slot position
+                    if (!_slotSynergyCache.TryGetValue(slotPos, out var synergyList))
+                    {
+                        synergyList = new List<RolePlayingFramework.Synergies.ActiveSynergy>();
+                        _slotSynergyCache[slotPos] = synergyList;
+                    }
+                    
+                    // Add this synergy to the slot's list
+                    synergyList.Add(synergy);
+                }
+            }
+        }
+        
         /// <summary>Updates glow effects for completed synergy patterns.</summary>
         private void UpdateSynergyGlowEffects()
         {

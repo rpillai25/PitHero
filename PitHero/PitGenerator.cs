@@ -3,6 +3,7 @@ using Nez;
 using Nez.Sprites;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
+using PitHero.Services;
 using PitHero.Util;
 using RolePlayingFramework.Enemies;
 using System;
@@ -208,7 +209,7 @@ namespace PitHero
         }
 
         /// <summary>
-        /// Clear obstacle walls from hero's A* graph
+        /// Clear obstacle walls from hero's and mercenaries' A* graphs
         /// </summary>
         private void ClearObstacleWallsFromAstar()
         {
@@ -231,6 +232,28 @@ namespace PitHero
             heroComponent.RefreshPathfinding();
 
             Debug.Log($"[PitGenerator] Hero pathfinding refreshed with {heroComponent.PathfindingGraph.Walls.Count} walls from collision layer");
+
+            // Refresh all mercenaries' pathfinding
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager != null)
+            {
+                var allMercenaries = mercenaryManager.GetAllMercenaries();
+                int refreshedCount = 0;
+                
+                for (int i = 0; i < allMercenaries.Count; i++)
+                {
+                    var mercenary = allMercenaries[i];
+                    var pathfinding = mercenary.GetComponent<PathfindingActorComponent>();
+                    
+                    if (pathfinding != null && pathfinding.IsPathfindingInitialized)
+                    {
+                        pathfinding.RefreshPathfinding();
+                        refreshedCount++;
+                    }
+                }
+                
+                Debug.Log($"[PitGenerator] Refreshed pathfinding for {refreshedCount} mercenaries");
+            }
         }
 
         /// <summary>
@@ -650,6 +673,32 @@ namespace PitHero
                     {
                         Debug.Log($"[PitGenerator] No hero found when creating obstacle at ({tilePos.X},{tilePos.Y}) - will be added to pathfinding when hero spawns");
                     }
+
+                    // Also add obstacle to all existing mercenaries' pathfinding graphs
+                    var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+                    if (mercenaryManager != null)
+                    {
+                        var allMercenaries = mercenaryManager.GetAllMercenaries();
+                        int mercenariesUpdated = 0;
+                        
+                        for (int j = 0; j < allMercenaries.Count; j++)
+                        {
+                            var mercenary = allMercenaries[j];
+                            var pathfinding = mercenary.GetComponent<PathfindingActorComponent>();
+                            
+                            if (pathfinding != null && pathfinding.IsPathfindingInitialized)
+                            {
+                                pathfinding.AddWall(tilePos);
+                                mercenariesUpdated++;
+                            }
+                        }
+                        
+                        if (mercenariesUpdated > 0)
+                        {
+                            Debug.Log($"[PitGenerator] Added obstacle tile to {mercenariesUpdated} mercenary pathfinding graphs at ({tilePos.X},{tilePos.Y})");
+                        }
+                    }
+
                     // Leave collider defaults so hero collides with obstacle (physics layer 0)
                 }
                 else if (tag == GameConfig.TAG_TREASURE)
