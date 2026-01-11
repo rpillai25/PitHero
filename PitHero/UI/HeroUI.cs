@@ -711,7 +711,18 @@ namespace PitHero.UI
                 if (_itemTooltip != null && _itemTooltip.GetContainer().HasParent())
                 {
                     var mousePos = _stage.GetMousePosition();
-                    _itemTooltip.GetContainer().SetPosition(mousePos.X + 10, mousePos.Y + 10);
+                    var tooltipContainer = _itemTooltip.GetContainer();
+                    tooltipContainer.Validate(); // Ensure size is calculated
+                    
+                    float tooltipX = mousePos.X + 10;
+                    float tooltipY = mousePos.Y + 10;
+                    
+                    // Clamp Y to prevent tooltip from bleeding off bottom of screen
+                    float stageHeight = _stage.GetHeight();
+                    float tooltipHeight = tooltipContainer.GetHeight();
+                    tooltipY = Mathf.Clamp(tooltipY, 0, stageHeight - tooltipHeight);
+                    
+                    tooltipContainer.SetPosition(tooltipX, tooltipY);
 
                     // Update equip preview tooltip position if visible
                     if (_equipPreviewTooltip != null && _equipPreviewTooltip.GetContainer().HasParent())
@@ -760,10 +771,25 @@ namespace PitHero.UI
                 _stage.AddElement(_itemTooltip.GetContainer());
             }
 
-            // Position tooltip at mouse cursor
+            // Position tooltip at mouse cursor with clamping
             var mousePos = _stage.GetMousePosition();
-            _itemTooltip.GetContainer().SetPosition(mousePos.X + 10, mousePos.Y + 10);
-            _itemTooltip.GetContainer().ToFront();
+            var tooltipContainer = _itemTooltip.GetContainer();
+            tooltipContainer.Validate(); // Ensure size is calculated
+            
+            float tooltipX = mousePos.X + 10;
+            float tooltipY = mousePos.Y + 10;
+            
+            // Clamp Y to prevent tooltip from bleeding off bottom of screen
+            float stageHeight = _stage.GetHeight();
+            float tooltipHeight = tooltipContainer.GetHeight();
+            if (tooltipY + tooltipHeight > stageHeight)
+            {
+                tooltipY = stageHeight - tooltipHeight;
+            }
+            if (tooltipY < 0) tooltipY = 0;          
+            
+            tooltipContainer.SetPosition(tooltipX, tooltipY);
+            tooltipContainer.ToFront();
 
             // Show equip preview tooltip if item is qualifying gear
             if (item is IGear hoveredGear)
@@ -788,7 +814,7 @@ namespace PitHero.UI
                             _stage.AddElement(_equipPreviewTooltip.GetContainer());
                         }
 
-                        // Position equip preview tooltip to the right of item tooltip
+                        // Position equip preview tooltip to the right of item tooltip (using item tooltip's clamped Y)
                         var itemTooltipContainer = _itemTooltip.GetContainer();
                         float previewX = itemTooltipContainer.GetX() + itemTooltipContainer.GetWidth() + 5;
                         float previewY = itemTooltipContainer.GetY();
