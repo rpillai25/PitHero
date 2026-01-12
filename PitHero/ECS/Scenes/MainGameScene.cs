@@ -24,7 +24,9 @@ namespace PitHero.ECS.Scenes
         private TmxMap _tmxMap; // Store reference to the map
         private Entity _pauseOverlayEntity; // Pause overlay entity
         private Label _pitLevelLabel; // UI label showing pit level
+        private Label _fundsLabel; // UI label showing total funds
         private int _lastDisplayedPitLevel = -1; // Track last displayed level to avoid string churn
+        private int _lastDisplayedFunds = -1; // Track last displayed funds to avoid string churn
         private ShortcutBar _shortcutBar; // Shortcut bar displayed at bottom center
         private GraphicalHUD _graphicalHUD; // Graphical HUD component for HP/MP/Level display
         private GraphicalHUD _mercenary1HUD; // Graphical HUD for mercenary #1
@@ -43,10 +45,13 @@ namespace PitHero.ECS.Scenes
         private HudMode _currentHudMode = HudMode.Normal;
 
         // Cached base positions for top-left anchored UI (so offsets are relative and centralized)
-        private const float PitLabelBaseY = 16f; // original Y before offsets applied
-        private const float GraphicalHudBaseX = 110f; // Base X position for graphical HUD (to the right of Pit Lv label)
+        private const float PitLabelBaseX = 10f; // X position for Pit Lv label (bottom-left)
+        private const float PitLabelBaseY = 350f; // Y position for Pit Lv label (bottom-left, ~30px from bottom at 360px height)
+        private const float FundsLabelBaseX = 120f; // X position for Funds label (next to Pit Lv)
+        private const float FundsLabelBaseY = 350f; // Y position for Funds label (same as Pit Lv)
+        private const float GraphicalHudBaseX = 10f; // Base X position for graphical HUD (shifted left to fill space)
         private const float GraphicalHudBaseY = 4f; // Base Y position for graphical HUD
-        private const float GraphicalHudHalfModeXOffset = 110f; // Additional X offset when in half mode to avoid covering pit label
+        private const float GraphicalHudHalfModeXOffset = 0f; // No additional X offset needed since Pit Lv is at bottom
         private const float GraphicalHudSpacing = 170f; // Spacing between HUD elements (hero to merc1, merc1 to merc2)
 
         public BitmapFont HudFont; // legacy reference (normal)
@@ -459,10 +464,15 @@ namespace PitHero.ECS.Scenes
             // Position the Hero button in the bottom-left corner  
             // _heroUI.SetPosition(10f, Screen.Height - _heroUI.GetHeight() - 10f);
 
-            // Pit level label (always visible top-left). Base position then offset applied per shrink level.
+            // Pit level label (bottom-left, always visible, no scaling)
             _pitLevelLabel = uiCanvas.Stage.AddElement(new Label("Pit Lv. 1", _hudFontNormal));
             _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
-            _pitLevelLabel.SetPosition(10, PitLabelBaseY);
+            _pitLevelLabel.SetPosition(PitLabelBaseX, PitLabelBaseY);
+
+            // Funds label (bottom-left next to Pit Lv, always visible, no scaling)
+            _fundsLabel = uiCanvas.Stage.AddElement(new Label("Gold: 0", _hudFontNormal));
+            _fundsLabel.SetStyle(_pitLevelStyleNormal);
+            _fundsLabel.SetPosition(FundsLabelBaseX, FundsLabelBaseY);
 
             // Create graphical HUD entity to display HP/MP/Level
             var hudEntity = CreateEntity("graphical-hud");
@@ -552,6 +562,26 @@ namespace PitHero.ECS.Scenes
             {
                 _pitLevelLabel.SetText($"Pit Lv. {currentLevel}");
                 _lastDisplayedPitLevel = currentLevel;
+            }
+        }
+
+        /// <summary>
+        /// Update funds label text when the funds change
+        /// </summary>
+        private void UpdateFundsLabel()
+        {
+            if (_fundsLabel == null)
+                return;
+
+            var gameState = Core.Services.GetService<GameStateService>();
+            if (gameState == null)
+                return;
+
+            var currentFunds = gameState.Funds;
+            if (currentFunds != _lastDisplayedFunds)
+            {
+                _fundsLabel.SetText($"Gold: {currentFunds}");
+                _lastDisplayedFunds = currentFunds;
             }
         }
 
@@ -692,23 +722,17 @@ namespace PitHero.ECS.Scenes
 
             if (desired != _currentHudMode)
             {
-                switch (desired)
-                {
-                    case HudMode.Normal:
-                        _pitLevelLabel.SetStyle(_pitLevelStyleNormal);
-                        break;
-                    case HudMode.Half:
-                        _pitLevelLabel.SetStyle(_pitLevelStyleHalf);
-                        break;
-                }
                 _currentHudMode = desired;
-                _pitLevelLabel.Invalidate();
 
                 // Update shortcut bar position and scale when mode changes
                 PositionShortcutBar();
             }
 
-            // Apply vertical offset based on mode
+            // Pit level label and Funds label stay at bottom-left with no scaling or offset changes
+            // (They are always at their base positions)
+
+            // Update graphical HUD position based on mode (no scaling needed - it's in screen space)
+            // Apply vertical offset for normal/half mode
             int yOffset = 0;
 
             switch (_currentHudMode)
@@ -722,28 +746,13 @@ namespace PitHero.ECS.Scenes
                     break;
             }
 
-            // Only update positions if changed to avoid redundant property sets
-            float targetY = PitLabelBaseY + yOffset;
-
-            if (System.Math.Abs(_pitLevelLabel.GetY() - targetY) > 0.1f)
-            {
-                _pitLevelLabel.SetY(targetY);
-            }
-
-            // Update graphical HUD position based on mode (no scaling needed - it's in screen space)
             if (_graphicalHUD != null)
             {
                 var hudEntity = _graphicalHUD.Entity;
                 if (hudEntity != null)
                 {
                     float hudTargetY = GraphicalHudBaseY + yOffset;
-                    float hudTargetX = GraphicalHudBaseX;
-
-                    if (_currentHudMode == HudMode.Half)
-                    {
-                        // Shift right to avoid covering the pit label (no scale needed in screen space)
-                        hudTargetX += GraphicalHudHalfModeXOffset;
-                    }
+                    float hudTargetX = GraphicalHudBaseX; // No extra offset needed
 
                     hudEntity.SetPosition(hudTargetX, hudTargetY);
                 }
@@ -756,12 +765,7 @@ namespace PitHero.ECS.Scenes
                 if (merc1Entity != null)
                 {
                     float hudTargetY = GraphicalHudBaseY + yOffset;
-                    float hudTargetX = GraphicalHudBaseX + GraphicalHudSpacing;
-
-                    if (_currentHudMode == HudMode.Half)
-                    {
-                        hudTargetX += GraphicalHudHalfModeXOffset;
-                    }
+                    float hudTargetX = GraphicalHudBaseX + GraphicalHudSpacing; // No extra offset needed
 
                     merc1Entity.SetPosition(hudTargetX, hudTargetY);
                 }
@@ -773,12 +777,7 @@ namespace PitHero.ECS.Scenes
                 if (merc2Entity != null)
                 {
                     float hudTargetY = GraphicalHudBaseY + yOffset;
-                    float hudTargetX = GraphicalHudBaseX + GraphicalHudSpacing * 2;
-
-                    if (_currentHudMode == HudMode.Half)
-                    {
-                        hudTargetX += GraphicalHudHalfModeXOffset;
-                    }
+                    float hudTargetX = GraphicalHudBaseX + GraphicalHudSpacing * 2; // No extra offset needed
 
                     merc2Entity.SetPosition(hudTargetX, hudTargetY);
                 }
@@ -905,6 +904,7 @@ namespace PitHero.ECS.Scenes
 
             // Keep pit level label up to date
             UpdatePitLevelLabel();
+            UpdateFundsLabel();
             UpdateHeroHUD();
             UpdateHudFontMode();
 
