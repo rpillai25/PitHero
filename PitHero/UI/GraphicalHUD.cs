@@ -13,12 +13,19 @@ namespace PitHero.UI
     /// </summary>
     public class GraphicalHUD : RenderableComponent
     {
-        private Sprite _hudTemplateSprite;
+        private Sprite _hudTemplateHeroSprite;
+        private Sprite _hudTemplateMercenarySprite;
         private Sprite _hpUnitSprite;
         private Sprite _mpUnitSprite;
         private BitmapFont _hudFont;
         
         private Entity _heroEntity;
+        private bool _isMercenary;
+        
+        /// <summary>
+        /// Gets the active HUD template sprite based on whether this is for a hero or mercenary
+        /// </summary>
+        private Sprite ActiveHudTemplate => _isMercenary ? _hudTemplateMercenarySprite : _hudTemplateHeroSprite;
         
         // Constants from issue description
         private const int HP_MP_BAR_WIDTH = 51;
@@ -43,12 +50,12 @@ namespace PitHero.UI
         /// <summary>
         /// Override Width to return the HUD template sprite width (fixes StackOverflowException)
         /// </summary>
-        public override float Width => _hudTemplateSprite?.SourceRect.Width ?? 160;
+        public override float Width => ActiveHudTemplate?.SourceRect.Width ?? 160;
 
         /// <summary>
         /// Override Height to return the HUD template sprite height (fixes StackOverflowException)
         /// </summary>
-        public override float Height => _hudTemplateSprite?.SourceRect.Height ?? 33;
+        public override float Height => ActiveHudTemplate?.SourceRect.Height ?? 33;
 
         public GraphicalHUD()
         {
@@ -60,9 +67,10 @@ namespace PitHero.UI
         {
             base.OnAddedToEntity();
 
-            // Load sprites from UI atlas (both normal and 2x versions)
+            // Load sprites from UI atlas
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
-            _hudTemplateSprite = uiAtlas.GetSprite("HudTemplate");
+            _hudTemplateHeroSprite = uiAtlas.GetSprite("HudTemplate");
+            _hudTemplateMercenarySprite = uiAtlas.GetSprite("HudTemplateMercenary");
             _hpUnitSprite = uiAtlas.GetSprite("HPUnit");
             _mpUnitSprite = uiAtlas.GetSprite("MPUnit");
 
@@ -88,6 +96,12 @@ namespace PitHero.UI
         public void SetHeroEntity(Entity heroEntity)
         {
             _heroEntity = heroEntity;
+            
+            // Detect if this entity is a mercenary or hero
+            if (heroEntity != null)
+            {
+                _isMercenary = heroEntity.HasComponent<MercenaryComponent>();
+            }
         }
 
         public override void Render(Batcher batcher, Camera camera)
@@ -96,7 +110,7 @@ namespace PitHero.UI
             var position = Entity.Transform.Position;
 
             // Render HUD template background with origin at top-left (0,0) instead of center
-            batcher.Draw(_hudTemplateSprite, position, Color.White, 0f, Vector2.Zero, 1f, Microsoft.Xna.Framework.Graphics.SpriteEffects.None, 0f);
+            batcher.Draw(ActiveHudTemplate, position, Color.White, 0f, Vector2.Zero, 1f, Microsoft.Xna.Framework.Graphics.SpriteEffects.None, 0f);
 
             // Use constant offsets without scaling
             int hpUnitXOffset = HP_UNIT_X_OFFSET;
