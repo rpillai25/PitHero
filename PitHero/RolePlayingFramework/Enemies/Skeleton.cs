@@ -20,6 +20,7 @@ namespace RolePlayingFramework.Enemies
         public int ExperienceYield { get; }
         public int JPYield { get; }
         public int SPYield { get; }
+        public int GoldYield { get; }
 
         public Skeleton(int level = 6)
         {
@@ -40,6 +41,7 @@ namespace RolePlayingFramework.Enemies
             ExperienceYield = BalanceConfig.CalculateMonsterExperience(Level);
             JPYield = BalanceConfig.CalculateMonsterJPYield(Level);
             SPYield = BalanceConfig.CalculateMonsterSPYield(Level);
+            GoldYield = BalanceConfig.CalculateMonsterGoldYield(Level);
 
             // Skeleton is Dark element: resistant to Dark, weak to Light
             var resistances = new System.Collections.Generic.Dictionary<ElementType, float>

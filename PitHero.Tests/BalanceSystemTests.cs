@@ -827,6 +827,7 @@ namespace PitHero.Tests
             public int ExperienceYield { get; }
             public int JPYield { get; }
             public int SPYield { get; }
+            public int GoldYield { get; }
 
             public TestMonster(int level, BalanceConfig.MonsterArchetype archetype)
             {
@@ -843,6 +844,7 @@ namespace PitHero.Tests
                 ExperienceYield = BalanceConfig.CalculateMonsterExperience(level);
                 JPYield = BalanceConfig.CalculateMonsterJPYield(level);
                 SPYield = BalanceConfig.CalculateMonsterSPYield(level);
+                GoldYield = BalanceConfig.CalculateMonsterGoldYield(level);
                 ElementalProps = new ElementalProperties(ElementType.Neutral);
             }
 

@@ -20,6 +20,7 @@ namespace RolePlayingFramework.Enemies
         public int ExperienceYield { get; }
         public int JPYield { get; }
         public int SPYield { get; }
+        public int GoldYield { get; }
 
         public Rat(int level = 1)
         {
@@ -40,6 +41,7 @@ namespace RolePlayingFramework.Enemies
             ExperienceYield = BalanceConfig.CalculateMonsterExperience(Level);
             JPYield = BalanceConfig.CalculateMonsterJPYield(Level);
             SPYield = BalanceConfig.CalculateMonsterSPYield(Level);
+            GoldYield = BalanceConfig.CalculateMonsterGoldYield(Level);
 
             // Rat is Neutral element: no special resistances
             ElementalProps = new ElementalProperties(ElementType.Neutral);

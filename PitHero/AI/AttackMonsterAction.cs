@@ -604,7 +604,19 @@ namespace PitHero.AI
                                             hero.AddExperience(targetEnemy.ExperienceYield);
                                             hero.EarnJP(targetEnemy.JPYield);
                                             hero.EarnSynergyPointsWithAcceleration(targetEnemy.SPYield);
-                                            Debug.Log($"[AttackMonster] Earned {targetEnemy.ExperienceYield} XP, {targetEnemy.JPYield} JP, {targetEnemy.SPYield} SP");
+                                            
+                                            // Add gold to global Funds
+                                            var gameState = Nez.Core.Services.GetService<PitHero.Services.GameStateService>();
+                                            if (gameState != null)
+                                            {
+                                                gameState.Funds += targetEnemy.GoldYield;
+                                                Debug.Log($"[AttackMonster] Earned {targetEnemy.ExperienceYield} XP, {targetEnemy.JPYield} JP, {targetEnemy.SPYield} SP, {targetEnemy.GoldYield} Gold (Total: {gameState.Funds})");
+                                            }
+                                            else
+                                            {
+                                                Debug.Log($"[AttackMonster] Earned {targetEnemy.ExperienceYield} XP, {targetEnemy.JPYield} JP, {targetEnemy.SPYield} SP, {targetEnemy.GoldYield} Gold");
+                                            }
+                                            
                                             validMonsters.Remove(targetMonster);
                                             // Start fade coroutine (wait for completion so removal timing stays consistent)
                                             yield return FadeOutAndDestroyMonster(targetMonster);
@@ -671,7 +683,15 @@ namespace PitHero.AI
                                 if (enemyDied)
                                 {
                                     Debug.Log($"[AttackMonster] {targetEnemy.Name} defeated by {mercenary.Name}! Starting fade out");
-                                    // Mercenaries don't gain XP/JP/SP
+                                    
+                                    // Add gold to global Funds (mercenaries don't gain XP/JP/SP but gold is still awarded)
+                                    var gameState = Nez.Core.Services.GetService<PitHero.Services.GameStateService>();
+                                    if (gameState != null)
+                                    {
+                                        gameState.Funds += targetEnemy.GoldYield;
+                                        Debug.Log($"[AttackMonster] Earned {targetEnemy.GoldYield} Gold (Total: {gameState.Funds})");
+                                    }
+                                    
                                     validMonsters.Remove(targetMonster);
                                     yield return FadeOutAndDestroyMonster(targetMonster);
                                 }

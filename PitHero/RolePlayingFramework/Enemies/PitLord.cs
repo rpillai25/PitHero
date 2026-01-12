@@ -20,6 +20,7 @@ namespace RolePlayingFramework.Enemies
         public int ExperienceYield { get; }
         public int JPYield { get; }
         public int SPYield { get; }
+        public int GoldYield { get; }
 
         public PitLord(int level = 10)
         {
@@ -40,6 +41,7 @@ namespace RolePlayingFramework.Enemies
             ExperienceYield = BalanceConfig.CalculateMonsterExperience(Level);
             JPYield = BalanceConfig.CalculateMonsterJPYield(Level);
             SPYield = BalanceConfig.CalculateMonsterSPYield(Level);
+            GoldYield = BalanceConfig.CalculateMonsterGoldYield(Level);
 
             // Pit Lord is Fire element: resistant to Fire, weak to Water
             var resistances = new System.Collections.Generic.Dictionary<ElementType, float>

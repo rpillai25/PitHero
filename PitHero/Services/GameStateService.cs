@@ -8,6 +8,9 @@ namespace PitHero.Services
     /// </summary>
     public class GameStateService
     {
+        /// <summary>Gold currency that persists across all heroes.</summary>
+        public int Funds { get; set; }
+
         /// <summary>Discovered stencils mapped by pattern ID to discovery source.</summary>
         public Dictionary<string, StencilDiscoverySource> DiscoveredStencils { get; } = new();
 

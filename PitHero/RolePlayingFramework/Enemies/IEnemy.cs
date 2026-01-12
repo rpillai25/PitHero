@@ -37,6 +37,9 @@ namespace RolePlayingFramework.Enemies
         /// <summary>Synergy Points awarded when defeated.</summary>
         int SPYield { get; }
 
+        /// <summary>Gold awarded when defeated.</summary>
+        int GoldYield { get; }
+
         /// <summary>Inflicts damage, returns true if died.</summary>
         bool TakeDamage(int amount);
     }

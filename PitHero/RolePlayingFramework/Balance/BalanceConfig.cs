@@ -392,6 +392,33 @@ namespace RolePlayingFramework.Balance
             return 3 + level;
         }
 
+        /// <summary>
+        /// Calculates Gold yield for defeating a monster.
+        /// </summary>
+        /// <param name="level">Monster level (1-99).</param>
+        /// <returns>Gold awarded for defeating this monster.</returns>
+        /// <remarks>
+        /// Formula: 5 + level * 3
+        /// 
+        /// Example values:
+        /// - Level 1: 8 gold
+        /// - Level 5: 20 gold
+        /// - Level 10: 35 gold
+        /// - Level 25: 80 gold
+        /// - Level 50: 155 gold
+        /// - Level 99: 302 gold
+        /// 
+        /// Tuning: Gold gain is balanced to provide meaningful currency for purchasing equipment and items.
+        /// Higher level monsters provide substantially more gold to match equipment costs at those levels.
+        /// </remarks>
+        public static int CalculateMonsterGoldYield(int level)
+        {
+            if (level < 1) level = 1;
+            if (level > 99) level = 99;
+
+            return 5 + level * 3;
+        }
+
         #endregion
 
         #region Equipment Stat Calculation Methods

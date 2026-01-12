@@ -20,6 +20,7 @@ namespace RolePlayingFramework.Enemies
         public int ExperienceYield { get; }
         public int JPYield { get; }
         public int SPYield { get; }
+        public int GoldYield { get; }
 
         public Spider(int level = 3)
         {
@@ -40,6 +41,7 @@ namespace RolePlayingFramework.Enemies
             ExperienceYield = BalanceConfig.CalculateMonsterExperience(Level);
             JPYield = BalanceConfig.CalculateMonsterJPYield(Level);
             SPYield = BalanceConfig.CalculateMonsterSPYield(Level);
+            GoldYield = BalanceConfig.CalculateMonsterGoldYield(Level);
 
             // Spider is Earth element: resistant to Earth, weak to Wind
             var resistances = new System.Collections.Generic.Dictionary<ElementType, float>
