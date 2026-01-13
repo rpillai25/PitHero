@@ -13,6 +13,7 @@
         public const string AdjacentToMonster = "AdjacentToMonster";
         public const string AdjacentToChest = "AdjacentToChest";
         public const string HPCritical = "HPCritical";
+        public const string HasEnoughInnGold = "HasEnoughInnGold";
         public const string IsAlive = "IsAlive";
 
         // Mercenary GOAP States

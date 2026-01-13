@@ -3,6 +3,7 @@ using Nez;
 using Nez.AI.GOAP;
 using Nez.Tiled;
 using PitHero.AI;
+using PitHero.Services;
 using PitHero.Util;
 using RolePlayingFramework.Equipment;
 using System;
@@ -64,6 +65,18 @@ namespace PitHero.ECS.Components
                     return false;
                 float hpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
                 return hpPercent < GameConfig.HeroCriticalHPPercent;
+            }
+        }
+
+        /// <summary>
+        /// True when hero has enough gold to pay for the inn (10 gold)
+        /// </summary>
+        public bool HasEnoughInnGold
+        {
+            get
+            {
+                var gameState = Core.Services.GetService<GameStateService>();
+                return gameState != null && gameState.Funds >= GameConfig.InnCostGold;
             }
         }
 
@@ -328,6 +341,10 @@ namespace PitHero.ECS.Components
             {
                 worldState.Set(GoapConstants.HPCritical, true);
             }
+            if (HasEnoughInnGold)
+            {
+                worldState.Set(GoapConstants.HasEnoughInnGold, true);
+            }
         }
 
         /// <summary>
@@ -335,11 +352,12 @@ namespace PitHero.ECS.Components
         /// </summary>
         public override void SetGoalState(ref WorldState goalState)
         {
-            // HIGHEST PRIORITY: HP recovery - if HP is critical, make it the primary goal
-            if (HPCritical)
+            // HIGHEST PRIORITY: HP recovery - if HP is critical AND we can afford the inn, make it the primary goal
+            // If we can't afford the inn, continue adventuring to get more gold (even though it's dangerous)
+            if (HPCritical && HasEnoughInnGold)
             {
                 goalState.Set(GoapConstants.HPCritical, false);
-                return; // Skip other goals when HP is critical
+                return; // Skip other goals when HP is critical and we can afford recovery
             }
 
             // Main goals for the hero - planner should always plan the optimal path to these goals.

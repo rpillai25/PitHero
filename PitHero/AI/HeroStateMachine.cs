@@ -713,12 +713,14 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Calculate Bed location - position of the bed for sleeping
+        /// Calculate Bed location - position of the inn payment tile for sleeping
+        /// The SleepInBedAction will handle walking from payment tile to bed internally
         /// </summary>
         private Point? CalculateBedLocation()
         {
-            // Bed is at tile position (73, 3)
-            return new Point(73, 3);
+            // Return the payment tile position (67, 3) instead of bed position (73, 3)
+            // This ensures hero walks to innkeeper first to pay before sleeping
+            return new Point(GameConfig.InnPaymentTileX, GameConfig.InnPaymentTileY);
         }
 
         /// <summary>

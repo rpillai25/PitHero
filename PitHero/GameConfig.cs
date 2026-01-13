@@ -22,7 +22,7 @@ namespace PitHero
         // Hero Configuration
         public const int HeroWidth = 32;
         public const int HeroHeight = 32;
-        public const float HeroCriticalHPPercent = 0.4f;
+        public const float HeroCriticalHPPercent = 0.99f;
 
         // Action Configuration
         public const float BattleDigitBounceWait = 0.5f;
@@ -37,6 +37,13 @@ namespace PitHero
         // Mercenary configuration
         public const float MercenaryMinSpawnIntervalSeconds = 5f; // First mercenary spawns after 5 seconds
         public const float MercenaryMaxSpawnIntervalSeconds = 300f; // 12th mercenary spawns after 5 minutes (300 seconds)
+
+        // Inn configuration
+        public const int InnkeeperTileX = 69; // Innkeeper stands at (69, 3)
+        public const int InnkeeperTileY = 3;
+        public const int InnPaymentTileX = 67; // Hero pays at (67, 3) facing right
+        public const int InnPaymentTileY = 3;
+        public const int InnCostGold = 10; // Cost to sleep at inn
 
         // Fog of war movement speed configuration
         public const float HeroFogCooldownDuration = 1f; // Duration in seconds for fog cooldown after clearing fog
@@ -109,6 +116,7 @@ namespace PitHero
         public const int TAG_WIZARD_ORB = 7; // Tag for wizard orb entity
         public const int TAG_MERCENARY = 8; // Tag for mercenary entities
         public const int TAG_HERO_STATUE = 9; // Tag for hero statue entity
+        public const int TAG_INNKEEPER = 10; // Tag for innkeeper entity
 
         // Render Layers (the lower the number, the higher the layer)
 

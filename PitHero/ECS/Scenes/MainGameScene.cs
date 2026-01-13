@@ -108,6 +108,7 @@ namespace PitHero.ECS.Scenes
 
             SpawnHero();
             SpawnHeroStatue();
+            SpawnInnkeeper();
 
             // Connect shortcut bar to hero
             ConnectShortcutBarToHero();
@@ -429,6 +430,63 @@ namespace PitHero.ECS.Scenes
             {
                 Debug.Error("[MainGameScene] Failed to load Actors.atlas for hero statue");
             }
+        }
+
+        /// <summary>
+        /// Spawn the innkeeper at tile coordinate (69, 3) facing left
+        /// </summary>
+        private void SpawnInnkeeper()
+        {
+            var tileX = GameConfig.InnkeeperTileX;
+            var tileY = GameConfig.InnkeeperTileY;
+
+            var worldPos = new Vector2(
+                tileX * GameConfig.TileSize + GameConfig.TileSize / 2,
+                tileY * GameConfig.TileSize + GameConfig.TileSize / 2
+            );
+
+            var innkeeperEntity = CreateEntity("innkeeper");
+            innkeeperEntity.SetTag(GameConfig.TAG_INNKEEPER);
+            innkeeperEntity.SetPosition(worldPos);
+
+            // Add facing component and set to face left
+            var facingComponent = innkeeperEntity.AddComponent(new ActorFacingComponent());
+            facingComponent.SetFacing(Direction.Left);
+
+            // Add animation components (similar to hero/mercenary)
+            var offset = new Vector2(0, -GameConfig.TileSize / 2);
+
+            // Use a distinct color scheme for innkeeper
+            var bodyColor = new Color(251, 200, 178); // Fair skin tone
+            var bodyAnimator = innkeeperEntity.AddComponent(new HeroBodyAnimationComponent(bodyColor));
+            bodyAnimator.SetRenderLayer(GameConfig.RenderLayerHeroBody);
+            bodyAnimator.SetLocalOffset(offset);
+
+            var hand2Animator = innkeeperEntity.AddComponent(new HeroHand2AnimationComponent(bodyColor));
+            hand2Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand2);
+            hand2Animator.SetLocalOffset(offset);
+
+            var pantsAnimator = innkeeperEntity.AddComponent(new HeroPantsAnimationComponent(Color.White));
+            pantsAnimator.SetRenderLayer(GameConfig.RenderLayerHeroPants);
+            pantsAnimator.SetLocalOffset(offset);
+
+            // Use a distinctive shirt color for innkeeper (brown/beige for apron-like appearance)
+            var shirtColor = new Color(140, 91, 62); // Brown
+            var shirtAnimator = innkeeperEntity.AddComponent(new HeroShirtAnimationComponent(shirtColor));
+            shirtAnimator.SetRenderLayer(GameConfig.RenderLayerHeroShirt);
+            shirtAnimator.SetLocalOffset(offset);
+
+            // Gray hair for older innkeeper appearance
+            var hairColor = new Color(100, 100, 100); // Gray
+            var hairAnimator = innkeeperEntity.AddComponent(new HeroHairAnimationComponent(hairColor));
+            hairAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHair);
+            hairAnimator.SetLocalOffset(offset);
+
+            var hand1Animator = innkeeperEntity.AddComponent(new HeroHand1AnimationComponent(bodyColor));
+            hand1Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand1);
+            hand1Animator.SetLocalOffset(offset);
+
+            Debug.Log($"[MainGameScene] Innkeeper spawned at tile ({tileX}, {tileY}) facing left");
         }
 
         private void SetupUIOverlay()
