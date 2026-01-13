@@ -55,16 +55,38 @@ namespace PitHero.ECS.Components
         public bool AdjacentToChest { get; set; }                    // True when chest exists in tile adjacent to hero
 
         /// <summary>
-        /// True when hero's HP falls below 40%
+        /// True when hero's HP or any hired mercenary's HP falls below HeroCriticalHPPercent
         /// </summary>
         public bool HPCritical
         {
             get
             {
+                // Check hero's HP
                 if (LinkedHero == null)
                     return false;
                 float hpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
-                return hpPercent < GameConfig.HeroCriticalHPPercent;
+                if (hpPercent < GameConfig.HeroCriticalHPPercent)
+                    return true;
+
+                // Check all hired mercenaries' HP
+                var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+                if (mercenaryManager != null)
+                {
+                    var hiredMercenaries = mercenaryManager.GetHiredMercenaries();
+                    for (int i = 0; i < hiredMercenaries.Count; i++)
+                    {
+                        var merc = hiredMercenaries[i];
+                        var mercComp = merc.GetComponent<MercenaryComponent>();
+                        if (mercComp?.LinkedMercenary != null)
+                        {
+                            float mercHpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
+                            if (mercHpPercent < GameConfig.HeroCriticalHPPercent)
+                                return true;
+                        }
+                    }
+                }
+
+                return false;
             }
         }
 
