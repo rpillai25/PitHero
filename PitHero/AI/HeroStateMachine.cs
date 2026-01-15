@@ -22,6 +22,11 @@ namespace PitHero.AI
         private Stack<Nez.AI.GOAP.Action> _actionPlan;
         private HeroActionBase _currentAction;
 
+        // References to healing actions for dynamic cost updates
+        private SleepInBedAction _sleepInBedAction;
+        private UseHealingItemAction _useHealingItemAction;
+        private UseHealingSkillAction _useHealingSkillAction;
+
         // GoTo state tracking
         private List<Point> _currentPath;
         private int _pathIndex;
@@ -65,8 +70,8 @@ namespace PitHero.AI
             var jumpOutOfPitForInn = new JumpOutOfPitForInnAction();
             _planner.AddAction(jumpOutOfPitForInn);
 
-            var sleepInBed = new SleepInBedAction();
-            _planner.AddAction(sleepInBed);
+            _sleepInBedAction = new SleepInBedAction();
+            _planner.AddAction(_sleepInBedAction);
 
             // Add combat/interaction actions so the planner can satisfy interaction goals
             var attackMonster = new AttackMonsterAction();
@@ -75,12 +80,12 @@ namespace PitHero.AI
             var openChest = new OpenChestAction();
             _planner.AddAction(openChest);
 
-            // Add new healing actions
-            var useHealingItem = new UseHealingItemAction();
-            _planner.AddAction(useHealingItem);
+            // Add new healing actions - store references for cost updates
+            _useHealingItemAction = new UseHealingItemAction();
+            _planner.AddAction(_useHealingItemAction);
 
-            var useHealingSkill = new UseHealingSkillAction();
-            _planner.AddAction(useHealingSkill);
+            _useHealingSkillAction = new UseHealingSkillAction();
+            _planner.AddAction(_useHealingSkillAction);
 
             // Don't set initial state here - wait for OnAddedToEntity
         }
@@ -89,6 +94,9 @@ namespace PitHero.AI
         {
             base.OnAddedToEntity();
             _hero = Entity.GetComponent<HeroComponent>();
+
+            // Initialize healing action costs based on default priorities
+            UpdateHealingActionCosts();
 
             // Set initial state to Idle - when it enters Idle it will ask the ActionPlanner for a new plan
             InitialState = ActorState.Idle;
@@ -1186,6 +1194,52 @@ namespace PitHero.AI
             }
 
             return nearestUnknownTile;
+        }
+
+        #endregion
+
+        #region Healing Action Cost Management
+
+        /// <summary>
+        /// Update healing action costs based on current heal priorities
+        /// Highest priority = lowest cost (1), next = 10, last = 20
+        /// </summary>
+        public void UpdateHealingActionCosts()
+        {
+            if (_hero == null) return;
+
+            var healPriorities = _hero.GetHealPrioritiesInOrder();
+            
+            // Assign costs based on priority order (1 = highest priority/lowest cost)
+            for (int i = 0; i < healPriorities.Length; i++)
+            {
+                int cost = (i == 0) ? 1 : (i == 1) ? 10 : 20;
+                
+                switch (healPriorities[i])
+                {
+                    case HeroHealPriority.Inn:
+                        if (_sleepInBedAction != null)
+                        {
+                            _sleepInBedAction.Cost = cost;
+                            Debug.Log($"[HeroStateMachine] Set SleepInBedAction cost to {cost} (priority {i + 1})");
+                        }
+                        break;
+                    case HeroHealPriority.HealingItem:
+                        if (_useHealingItemAction != null)
+                        {
+                            _useHealingItemAction.Cost = cost;
+                            Debug.Log($"[HeroStateMachine] Set UseHealingItemAction cost to {cost} (priority {i + 1})");
+                        }
+                        break;
+                    case HeroHealPriority.HealingSkill:
+                        if (_useHealingSkillAction != null)
+                        {
+                            _useHealingSkillAction.Cost = cost;
+                            Debug.Log($"[HeroStateMachine] Set UseHealingSkillAction cost to {cost} (priority {i + 1})");
+                        }
+                        break;
+                }
+            }
         }
 
         #endregion
