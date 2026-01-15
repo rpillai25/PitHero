@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
+using PitHero.Services;
 using PitHero.UI;
 using RolePlayingFramework.Equipment;
 using System.Collections.Generic;
@@ -10,7 +11,7 @@ namespace PitHero.AI
 {
     /// <summary>
     /// Action that uses a healing item from the shortcut bar to restore HP
-    /// Chooses the most efficient healing item (least waste) for the hero's current HP
+    /// Chooses the most efficient healing item (least waste) for the target with critical HP (hero or mercenary)
     /// </summary>
     public class UseHealingItemAction : HeroActionBase
     {
@@ -29,19 +30,13 @@ namespace PitHero.AI
         /// </summary>
         public override bool Execute(HeroComponent hero)
         {
-            // Check if hero actually has critical HP
-            if (hero.LinkedHero == null)
+            // Find the target (hero or mercenary) with critical HP
+            var target = FindCriticalHPTarget(hero, out bool isHero, out Entity targetEntity);
+            if (target == null)
             {
-                Debug.Log("[UseHealingItemAction] No linked hero found");
+                Debug.Log("[UseHealingItemAction] No target with critical HP found");
                 hero.HealingItemExhausted = true;
                 return true; // Action complete (failed, but complete)
-            }
-
-            float hpPercent = (float)hero.LinkedHero.CurrentHP / hero.LinkedHero.MaxHP;
-            if (hpPercent >= GameConfig.HeroCriticalHPPercent)
-            {
-                Debug.Log("[UseHealingItemAction] Hero HP not critical");
-                return true; // HP is fine, action complete
             }
 
             // Get the shortcut bar
@@ -53,8 +48,13 @@ namespace PitHero.AI
                 return true;
             }
 
+            // Get target stats
+            int currentHP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).CurrentHP : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentHP;
+            int maxHP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).MaxHP : ((RolePlayingFramework.Mercenaries.Mercenary)target).MaxHP;
+            string targetName = isHero ? ((RolePlayingFramework.Heroes.Hero)target).Name : ((RolePlayingFramework.Mercenaries.Mercenary)target).Name;
+
             // Find the most efficient healing item on the shortcut bar
-            (IItem item, int slotIndex) = FindMostEfficientHealingItem(shortcutBar, hero.LinkedHero);
+            (IItem item, int slotIndex) = FindMostEfficientHealingItem(shortcutBar, currentHP, maxHP);
             if (item == null)
             {
                 Debug.Log("[UseHealingItemAction] No healing items available on shortcut bar");
@@ -62,8 +62,8 @@ namespace PitHero.AI
                 return true;
             }
 
-            // Use the healing item on the hero
-            bool success = UseHealingItemOnTarget(item as Consumable, slotIndex, hero.LinkedHero, shortcutBar);
+            // Use the healing item on the target
+            bool success = UseHealingItemOnTarget(item as Consumable, slotIndex, target, isHero, shortcutBar);
             if (!success)
             {
                 Debug.Warn("[UseHealingItemAction] Failed to use healing item");
@@ -71,7 +71,7 @@ namespace PitHero.AI
                 return true;
             }
 
-            Debug.Log($"[UseHealingItemAction] Successfully used {item.Name} on {hero.LinkedHero.Name}");
+            Debug.Log($"[UseHealingItemAction] Successfully used {item.Name} on {targetName}");
             return true; // Action complete
         }
 
@@ -82,6 +82,51 @@ namespace PitHero.AI
         {
             context.LogDebug("[UseHealingItemAction] Healing item action executed (interface-based context)");
             return true;
+        }
+
+        /// <summary>
+        /// Find the target (hero or mercenary) with critical HP
+        /// Returns the target object, whether it's a hero, and the entity reference
+        /// </summary>
+        private object FindCriticalHPTarget(HeroComponent heroComponent, out bool isHero, out Entity targetEntity)
+        {
+            isHero = true;
+            targetEntity = null;
+
+            // Check hero first
+            if (heroComponent.LinkedHero != null)
+            {
+                float hpPercent = (float)heroComponent.LinkedHero.CurrentHP / heroComponent.LinkedHero.MaxHP;
+                if (hpPercent < GameConfig.HeroCriticalHPPercent)
+                {
+                    targetEntity = heroComponent.Entity;
+                    return heroComponent.LinkedHero;
+                }
+            }
+
+            // Check mercenaries
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager != null)
+            {
+                var hiredMercenaries = mercenaryManager.GetHiredMercenaries();
+                for (int i = 0; i < hiredMercenaries.Count; i++)
+                {
+                    var merc = hiredMercenaries[i];
+                    var mercComp = merc.GetComponent<MercenaryComponent>();
+                    if (mercComp?.LinkedMercenary != null)
+                    {
+                        float mercHpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
+                        if (mercHpPercent < GameConfig.HeroCriticalHPPercent)
+                        {
+                            isHero = false;
+                            targetEntity = merc;
+                            return mercComp.LinkedMercenary;
+                        }
+                    }
+                }
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -100,9 +145,9 @@ namespace PitHero.AI
         /// Find the most efficient healing item on the shortcut bar for the target
         /// Returns the healing item with the least waste (smallest amount over what's needed)
         /// </summary>
-        private (IItem, int) FindMostEfficientHealingItem(ShortcutBar shortcutBar, RolePlayingFramework.Heroes.Hero target)
+        private (IItem, int) FindMostEfficientHealingItem(ShortcutBar shortcutBar, int currentHP, int maxHP)
         {
-            int hpNeeded = target.MaxHP - target.CurrentHP;
+            int hpNeeded = maxHP - currentHP;
             IItem bestItem = null;
             int bestSlotIndex = -1;
             int bestWaste = int.MaxValue;
@@ -145,19 +190,40 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Use the healing item on the target
+        /// Use the healing item on the target (hero or mercenary)
         /// </summary>
-        private bool UseHealingItemOnTarget(Consumable consumable, int slotIndex, RolePlayingFramework.Heroes.Hero target, ShortcutBar shortcutBar)
+        private bool UseHealingItemOnTarget(Consumable consumable, int slotIndex, object target, bool isHero, ShortcutBar shortcutBar)
         {
             if (consumable == null || target == null) return false;
 
             // Restore HP
             int healAmount = consumable.HPRestoreAmount;
-            bool healed = target.RestoreHP(healAmount);
+            bool healed = false;
+            int currentHP = 0;
+            int maxHP = 0;
+            string targetName = "";
+
+            if (isHero)
+            {
+                var hero = (RolePlayingFramework.Heroes.Hero)target;
+                healed = hero.RestoreHP(healAmount);
+                currentHP = hero.CurrentHP;
+                maxHP = hero.MaxHP;
+                targetName = hero.Name;
+            }
+            else
+            {
+                var mercenary = (RolePlayingFramework.Mercenaries.Mercenary)target;
+                mercenary.Heal(healAmount);
+                healed = true;
+                currentHP = mercenary.CurrentHP;
+                maxHP = mercenary.MaxHP;
+                targetName = mercenary.Name;
+            }
 
             if (healed)
             {
-                Debug.Log($"[UseHealingItemAction] Healed {target.Name} for {healAmount} HP. Current HP: {target.CurrentHP}/{target.MaxHP}");
+                Debug.Log($"[UseHealingItemAction] Healed {targetName} for {healAmount} HP. Current HP: {currentHP}/{maxHP}");
 
                 // Consume the item (reduce stack count or remove from inventory)
                 var referencedSlot = shortcutBar.GetReferencedSlot(slotIndex);

@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
+using PitHero.Services;
 using PitHero.UI;
 using RolePlayingFramework.Skills;
 using System.Collections.Generic;
@@ -10,7 +11,7 @@ namespace PitHero.AI
 {
     /// <summary>
     /// Action that uses a healing skill from the shortcut bar to restore HP
-    /// Chooses the most efficient healing skill (least waste) for the hero's current HP
+    /// Chooses the most efficient healing skill (least waste) for the target with critical HP (hero or mercenary)
     /// </summary>
     public class UseHealingSkillAction : HeroActionBase
     {
@@ -29,19 +30,13 @@ namespace PitHero.AI
         /// </summary>
         public override bool Execute(HeroComponent hero)
         {
-            // Check if hero actually has critical HP
-            if (hero.LinkedHero == null)
+            // Find the target (hero or mercenary) with critical HP
+            var target = FindCriticalHPTarget(hero, out bool isHero, out Entity targetEntity);
+            if (target == null)
             {
-                Debug.Log("[UseHealingSkillAction] No linked hero found");
+                Debug.Log("[UseHealingSkillAction] No target with critical HP found");
                 hero.HealingSkillExhausted = true;
                 return true; // Action complete (failed, but complete)
-            }
-
-            float hpPercent = (float)hero.LinkedHero.CurrentHP / hero.LinkedHero.MaxHP;
-            if (hpPercent >= GameConfig.HeroCriticalHPPercent)
-            {
-                Debug.Log("[UseHealingSkillAction] Hero HP not critical");
-                return true; // HP is fine, action complete
             }
 
             // Get the shortcut bar
@@ -53,8 +48,14 @@ namespace PitHero.AI
                 return true;
             }
 
+            // Get target stats
+            int currentHP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).CurrentHP : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentHP;
+            int maxHP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).MaxHP : ((RolePlayingFramework.Mercenaries.Mercenary)target).MaxHP;
+            int currentMP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).CurrentMP : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentMP;
+            string targetName = isHero ? ((RolePlayingFramework.Heroes.Hero)target).Name : ((RolePlayingFramework.Mercenaries.Mercenary)target).Name;
+
             // Find the most efficient healing skill on the shortcut bar
-            var healingSkill = FindMostEfficientHealingSkill(shortcutBar, hero.LinkedHero);
+            var healingSkill = FindMostEfficientHealingSkill(shortcutBar, currentHP, maxHP, currentMP);
             if (healingSkill == null)
             {
                 Debug.Log("[UseHealingSkillAction] No healing skills available on shortcut bar");
@@ -62,16 +63,16 @@ namespace PitHero.AI
                 return true;
             }
 
-            // Check if hero has enough MP to use the skill
-            if (hero.LinkedHero.CurrentMP < healingSkill.MPCost)
+            // Check if target has enough MP to use the skill
+            if (currentMP < healingSkill.MPCost)
             {
-                Debug.Log($"[UseHealingSkillAction] Not enough MP to use {healingSkill.Name}. Need {healingSkill.MPCost}, have {hero.LinkedHero.CurrentMP}");
+                Debug.Log($"[UseHealingSkillAction] Not enough MP to use {healingSkill.Name}. Need {healingSkill.MPCost}, have {currentMP}");
                 hero.HealingSkillExhausted = true;
                 return true;
             }
 
-            // Use the healing skill on the hero
-            bool success = UseHealingSkillOnTarget(healingSkill, hero.LinkedHero);
+            // Use the healing skill on the target
+            bool success = UseHealingSkillOnTarget(healingSkill, target, isHero);
             if (!success)
             {
                 Debug.Warn("[UseHealingSkillAction] Failed to use healing skill");
@@ -79,7 +80,7 @@ namespace PitHero.AI
                 return true;
             }
 
-            Debug.Log($"[UseHealingSkillAction] Successfully used {healingSkill.Name} on {hero.LinkedHero.Name}");
+            Debug.Log($"[UseHealingSkillAction] Successfully used {healingSkill.Name} on {targetName}");
             return true; // Action complete
         }
 
@@ -90,6 +91,51 @@ namespace PitHero.AI
         {
             context.LogDebug("[UseHealingSkillAction] Healing skill action executed (interface-based context)");
             return true;
+        }
+
+        /// <summary>
+        /// Find the target (hero or mercenary) with critical HP
+        /// Returns the target object, whether it's a hero, and the entity reference
+        /// </summary>
+        private object FindCriticalHPTarget(HeroComponent heroComponent, out bool isHero, out Entity targetEntity)
+        {
+            isHero = true;
+            targetEntity = null;
+
+            // Check hero first
+            if (heroComponent.LinkedHero != null)
+            {
+                float hpPercent = (float)heroComponent.LinkedHero.CurrentHP / heroComponent.LinkedHero.MaxHP;
+                if (hpPercent < GameConfig.HeroCriticalHPPercent)
+                {
+                    targetEntity = heroComponent.Entity;
+                    return heroComponent.LinkedHero;
+                }
+            }
+
+            // Check mercenaries
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager != null)
+            {
+                var hiredMercenaries = mercenaryManager.GetHiredMercenaries();
+                for (int i = 0; i < hiredMercenaries.Count; i++)
+                {
+                    var merc = hiredMercenaries[i];
+                    var mercComp = merc.GetComponent<MercenaryComponent>();
+                    if (mercComp?.LinkedMercenary != null)
+                    {
+                        float mercHpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
+                        if (mercHpPercent < GameConfig.HeroCriticalHPPercent)
+                        {
+                            isHero = false;
+                            targetEntity = merc;
+                            return mercComp.LinkedMercenary;
+                        }
+                    }
+                }
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -109,9 +155,9 @@ namespace PitHero.AI
         /// Returns the healing skill with the least waste (smallest amount over what's needed)
         /// Also prefers skills with lower MP cost when healing amounts are equal
         /// </summary>
-        private ISkill FindMostEfficientHealingSkill(ShortcutBar shortcutBar, RolePlayingFramework.Heroes.Hero target)
+        private ISkill FindMostEfficientHealingSkill(ShortcutBar shortcutBar, int currentHP, int maxHP, int currentMP)
         {
-            int hpNeeded = target.MaxHP - target.CurrentHP;
+            int hpNeeded = maxHP - currentHP;
             ISkill bestSkill = null;
             int bestWaste = int.MaxValue;
             int bestMPCost = int.MaxValue;
@@ -128,7 +174,7 @@ namespace PitHero.AI
                 if (skill.BattleOnly) continue;
 
                 // Skip if not enough MP
-                if (target.CurrentMP < skill.MPCost) continue;
+                if (currentMP < skill.MPCost) continue;
 
                 // Calculate waste (how much healing would be wasted)
                 int waste = skill.HPRestoreAmount - hpNeeded;
@@ -160,20 +206,47 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Use the healing skill on the target
+        /// Use the healing skill on the target (hero or mercenary)
         /// </summary>
-        private bool UseHealingSkillOnTarget(ISkill skill, RolePlayingFramework.Heroes.Hero target)
+        private bool UseHealingSkillOnTarget(ISkill skill, object target, bool isHero)
         {
             if (skill == null || target == null) return false;
 
-            // Check MP cost again
-            if (target.CurrentMP < skill.MPCost)
+            int currentMP = 0;
+            int maxMP = 0;
+            string targetName = "";
+            bool mpSpent = false;
+
+            // Check MP cost and consume MP
+            if (isHero)
             {
-                return false;
+                var hero = (RolePlayingFramework.Heroes.Hero)target;
+                currentMP = hero.CurrentMP;
+                maxMP = hero.MaxMP;
+                targetName = hero.Name;
+
+                if (currentMP < skill.MPCost)
+                {
+                    return false;
+                }
+
+                mpSpent = hero.SpendMP(skill.MPCost);
+            }
+            else
+            {
+                var mercenary = (RolePlayingFramework.Mercenaries.Mercenary)target;
+                currentMP = mercenary.CurrentMP;
+                maxMP = mercenary.MaxMP;
+                targetName = mercenary.Name;
+
+                if (currentMP < skill.MPCost)
+                {
+                    return false;
+                }
+
+                mpSpent = mercenary.UseMP(skill.MPCost);
             }
 
-            // Consume MP
-            bool mpSpent = target.SpendMP(skill.MPCost);
             if (!mpSpent)
             {
                 return false;
@@ -181,11 +254,31 @@ namespace PitHero.AI
 
             // Restore HP
             int healAmount = skill.HPRestoreAmount;
-            bool healed = target.RestoreHP(healAmount);
+            bool healed = false;
+            int currentHP = 0;
+            int maxHP = 0;
+
+            if (isHero)
+            {
+                var hero = (RolePlayingFramework.Heroes.Hero)target;
+                healed = hero.RestoreHP(healAmount);
+                currentHP = hero.CurrentHP;
+                maxHP = hero.MaxHP;
+                currentMP = hero.CurrentMP;
+            }
+            else
+            {
+                var mercenary = (RolePlayingFramework.Mercenaries.Mercenary)target;
+                mercenary.Heal(healAmount);
+                healed = true;
+                currentHP = mercenary.CurrentHP;
+                maxHP = mercenary.MaxHP;
+                currentMP = mercenary.CurrentMP;
+            }
 
             if (healed)
             {
-                Debug.Log($"[UseHealingSkillAction] Healed {target.Name} for {healAmount} HP using {skill.Name}. Current HP: {target.CurrentHP}/{target.MaxHP}, MP: {target.CurrentMP}/{target.MaxMP}");
+                Debug.Log($"[UseHealingSkillAction] Healed {targetName} for {healAmount} HP using {skill.Name}. Current HP: {currentHP}/{maxHP}, MP: {currentMP}/{maxMP}");
                 return true;
             }
 
