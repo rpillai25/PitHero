@@ -257,6 +257,13 @@ namespace PitHero.AI
                 Debug.Log($"[OpenChest] Added {containedItem.Name} to hero's main bag. Bag contents:");
                 LogBagContents(hero.Bag);
 
+                // Reset HealingItemExhausted if picked up item is a healing consumable
+                if (containedItem is Consumable consumable && consumable.HPRestoreAmount > 0)
+                {
+                    hero.HealingItemExhausted = false;
+                    Debug.Log($"[OpenChest] Reset HealingItemExhausted flag (picked up {containedItem.Name})");
+                }
+
                 // Clear the item from the treasure chest
                 treasureComponent.ContainedItem = null;
             }

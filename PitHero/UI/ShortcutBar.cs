@@ -148,6 +148,14 @@ namespace PitHero.UI
 
             _shortcutSlots[shortcutIndex] = ShortcutSlotData.CreateItemReference(referencedSlot);
             _referencedItems[shortcutIndex] = referencedSlot?.SlotData?.Item;
+
+            // Reset HealingItemExhausted if a healing item is moved to shortcut bar
+            if (_heroComponent != null && referencedSlot?.SlotData?.Item is Consumable consumable && consumable.HPRestoreAmount > 0)
+            {
+                _heroComponent.HealingItemExhausted = false;
+                Debug.Log($"[ShortcutBar] Reset HealingItemExhausted flag (healing item added to shortcut bar)");
+            }
+
             RefreshVisualSlots();
         }
 
@@ -159,6 +167,14 @@ namespace PitHero.UI
 
             _shortcutSlots[shortcutIndex] = ShortcutSlotData.CreateSkillReference(skill);
             _referencedItems[shortcutIndex] = null;
+
+            // Reset HealingSkillExhausted if a healing skill is moved to shortcut bar
+            if (_heroComponent != null && skill != null && skill.HPRestoreAmount > 0)
+            {
+                _heroComponent.HealingSkillExhausted = false;
+                Debug.Log($"[ShortcutBar] Reset HealingSkillExhausted flag (healing skill added to shortcut bar)");
+            }
+
             RefreshVisualSlots();
         }
 
@@ -506,6 +522,13 @@ namespace PitHero.UI
             if (consumable.Consume(hero))
             {
                 Debug.Log($"[ShortcutBar] Used {item.Name}");
+
+                // Reset HealingSkillExhausted if MP restoration item is used
+                if (_heroComponent != null && consumable.MPRestoreAmount > 0)
+                {
+                    _heroComponent.HealingSkillExhausted = false;
+                    Debug.Log($"[ShortcutBar] Reset HealingSkillExhausted flag (MP restoration item used)");
+                }
 
                 // Decrement stack or remove item from main inventory bag
                 if (_heroComponent.Bag.ConsumeFromStack(bagIndex))
