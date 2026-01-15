@@ -367,6 +367,11 @@ namespace PitHero.AI
                 }
             }
 
+            // Reset healing exhausted flags so items and skills can be tried again
+            hero.HealingItemExhausted = false;
+            hero.HealingSkillExhausted = false;
+            Debug.Log("[SleepInBedAction] Reset HealingItemExhausted and HealingSkillExhausted flags");
+
             // Heal hired mercenaries to full HP and MP
             for (int i = 0; i < hiredMercenaries.Count; i++)
             {

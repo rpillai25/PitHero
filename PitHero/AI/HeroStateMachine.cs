@@ -62,8 +62,8 @@ namespace PitHero.AI
             var activateWizardOrb = new ActivateWizardOrbAction();
             _planner.AddAction(activateWizardOrb);
 
-            var jumpOutOfPit = new JumpOutOfPitAction();
-            _planner.AddAction(jumpOutOfPit);
+            var jumpOutOfPitForInn = new JumpOutOfPitForInnAction();
+            _planner.AddAction(jumpOutOfPitForInn);
 
             var sleepInBed = new SleepInBedAction();
             _planner.AddAction(sleepInBed);
@@ -74,6 +74,13 @@ namespace PitHero.AI
             // If/when chest interaction is implemented, register it as well
             var openChest = new OpenChestAction();
             _planner.AddAction(openChest);
+
+            // Add new healing actions
+            var useHealingItem = new UseHealingItemAction();
+            _planner.AddAction(useHealingItem);
+
+            var useHealingSkill = new UseHealingSkillAction();
+            _planner.AddAction(useHealingSkill);
 
             // Don't set initial state here - wait for OnAddedToEntity
         }
@@ -464,7 +471,7 @@ namespace PitHero.AI
                     _targetLocationType = LocationType.WizardOrb;
                     return CalculateWizardOrbLocation();
 
-                case GoapConstants.JumpOutOfPitAction:
+                case GoapConstants.JumpOutOfPitForInnAction:
                     _targetLocationType = LocationType.PitInsideEdge;
                     return CalculatePitInsideEdgeLocation();
 
@@ -481,6 +488,12 @@ namespace PitHero.AI
                 case GoapConstants.SleepInBedAction:
                     _targetLocationType = LocationType.Bed;
                     return CalculateBedLocation();
+
+                case GoapConstants.UseHealingItemAction:
+                case GoapConstants.UseHealingSkillAction:
+                    // Healing happens in-place. No movement target required.
+                    _targetLocationType = LocationType.None;
+                    return null;
 
                 default:
                     _targetLocationType = LocationType.None;

@@ -7,20 +7,22 @@ using System.Collections;
 namespace PitHero.AI
 {
     /// <summary>
-    /// Action that causes the hero to jump out of the pit when ready to jump out
+    /// Action that causes the hero to jump out of the pit to visit the inn for healing
     /// This is the reverse of JumpIntoPit - hero jumps from inside boundary to outside
+    /// Renamed from JumpOutOfPitAction to clarify this is specifically for inn visits
     /// </summary>
-    public class JumpOutOfPitAction : HeroActionBase
+    public class JumpOutOfPitForInnAction : HeroActionBase
     {
         private bool _isJumping = false;
         private bool _jumpFinished = false;
         private Point _plannedTargetTile;
 
-        public JumpOutOfPitAction() : base(GoapConstants.JumpOutOfPitAction)
+        public JumpOutOfPitForInnAction() : base(GoapConstants.JumpOutOfPitForInnAction)
         {
-            // Preconditions: Hero must be inside pit and have critical HP
+            // Preconditions: Hero must be inside pit, have critical HP, and have enough gold for inn
             SetPrecondition(GoapConstants.InsidePit, true);
             SetPrecondition(GoapConstants.HPCritical, true);
+            SetPrecondition(GoapConstants.HasEnoughInnGold, true);
 
             // Postcondition: Hero is outside pit
             SetPostcondition(GoapConstants.OutsidePit, true);
