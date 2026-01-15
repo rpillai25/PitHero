@@ -14,6 +14,8 @@
         public const string AdjacentToChest = "AdjacentToChest";
         public const string HPCritical = "HPCritical";
         public const string HasEnoughInnGold = "HasEnoughInnGold";
+        public const string HealingItemExhausted = "HealingItemExhausted";
+        public const string HealingSkillExhausted = "HealingSkillExhausted";
         public const string IsAlive = "IsAlive";
 
         // Mercenary GOAP States
@@ -32,6 +34,9 @@
         public const string AttackMonster = "AttackMonster";
         public const string OpenChest = "OpenChest";
         public const string SleepInBedAction = "SleepInBedAction";
+        public const string UseHealingItemAction = "UseHealingItemAction";
+        public const string UseHealingSkillAction = "UseHealingSkillAction";
+        public const string JumpOutOfPitForInnAction = "JumpOutOfPitForInnAction";
 
         // Mercenary GOAP Actions
         public const string FollowTargetAction = "FollowTargetAction";

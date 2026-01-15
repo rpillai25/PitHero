@@ -123,6 +123,31 @@ namespace PitHero.ECS.Components
         public HeroPitPriority Priority3 { get; set; } = HeroPitPriority.Advance;
 
         /// <summary>
+        /// Hero heal priority 1 (highest priority healing action)
+        /// </summary>
+        public HeroHealPriority HealPriority1 { get; set; } = HeroHealPriority.Inn;
+
+        /// <summary>
+        /// Hero heal priority 2 (medium priority healing action)
+        /// </summary>
+        public HeroHealPriority HealPriority2 { get; set; } = HeroHealPriority.HealingItem;
+
+        /// <summary>
+        /// Hero heal priority 3 (lowest priority healing action)
+        /// </summary>
+        public HeroHealPriority HealPriority3 { get; set; } = HeroHealPriority.HealingSkill;
+
+        /// <summary>
+        /// True when no more healing items are available on the shortcut bar
+        /// </summary>
+        public bool HealingItemExhausted { get; set; }
+
+        /// <summary>
+        /// True when no more healing skills can be used from the shortcut bar
+        /// </summary>
+        public bool HealingSkillExhausted { get; set; }
+
+        /// <summary>
         /// Link to the Hero class from RolePlayingFramework
         /// </summary>
         public RolePlayingFramework.Heroes.Hero LinkedHero { get; set; }
@@ -367,6 +392,14 @@ namespace PitHero.ECS.Components
             {
                 worldState.Set(GoapConstants.HasEnoughInnGold, true);
             }
+            if (HealingItemExhausted)
+            {
+                worldState.Set(GoapConstants.HealingItemExhausted, true);
+            }
+            if (HealingSkillExhausted)
+            {
+                worldState.Set(GoapConstants.HealingSkillExhausted, true);
+            }
         }
 
         /// <summary>
@@ -374,12 +407,12 @@ namespace PitHero.ECS.Components
         /// </summary>
         public override void SetGoalState(ref WorldState goalState)
         {
-            // HIGHEST PRIORITY: HP recovery - if HP is critical AND we can afford the inn, make it the primary goal
-            // If we can't afford the inn, continue adventuring to get more gold (even though it's dangerous)
-            if (HPCritical && HasEnoughInnGold)
+            // HIGHEST PRIORITY: HP recovery - if HP is critical, make it the primary goal
+            // The GOAP planner will choose the appropriate healing action based on priorities and preconditions
+            if (HPCritical)
             {
                 goalState.Set(GoapConstants.HPCritical, false);
-                return; // Skip other goals when HP is critical and we can afford recovery
+                return; // Skip other goals when HP is critical
             }
 
             // Main goals for the hero - planner should always plan the optimal path to these goals.
@@ -636,6 +669,27 @@ namespace PitHero.ECS.Components
             Priority1 = priorities[0];
             Priority2 = priorities[1];
             Priority3 = priorities[2];
+        }
+
+        /// <summary>
+        /// Gets the heal priorities in order (HealPriority1, HealPriority2, HealPriority3)
+        /// </summary>
+        public HeroHealPriority[] GetHealPrioritiesInOrder()
+        {
+            return new HeroHealPriority[] { HealPriority1, HealPriority2, HealPriority3 };
+        }
+
+        /// <summary>
+        /// Sets the heal priorities in order (HealPriority1, HealPriority2, HealPriority3)
+        /// </summary>
+        public void SetHealPrioritiesInOrder(HeroHealPriority[] priorities)
+        {
+            if (priorities == null || priorities.Length != 3)
+                throw new ArgumentException("Heal priorities array must contain exactly 3 elements");
+
+            HealPriority1 = priorities[0];
+            HealPriority2 = priorities[1];
+            HealPriority3 = priorities[2];
         }
 
         /// <summary>
