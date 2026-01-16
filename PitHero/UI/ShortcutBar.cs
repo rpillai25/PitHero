@@ -264,6 +264,15 @@ namespace PitHero.UI
 
                 var currentSlot = _shortcutSlots[i].ReferencedSlot;
 
+                // Check if the item is a consumable with zero or negative stack count
+                if (trackedItem is Consumable consumable && consumable.StackCount <= 0)
+                {
+                    Debug.Log($"[ShortcutBar] Shortcut {i + 1} item '{trackedItem.Name}' has stack count {consumable.StackCount}, clearing reference");
+                    _shortcutSlots[i].Clear();
+                    _referencedItems[i] = null;
+                    continue;
+                }
+
                 // Check if the current slot still has the tracked item
                 if (currentSlot?.SlotData?.Item == trackedItem)
                 {

@@ -139,15 +139,12 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Get the shortcut bar from the scene
+        /// Get the shortcut bar from the service
         /// </summary>
         private ShortcutBar GetShortcutBar()
         {
-            var scene = Core.Scene;
-            if (scene == null) return null;
-
-            var hudEntity = scene.FindEntity("hud");
-            return hudEntity?.GetComponent<ShortcutBar>();
+            var service = Core.Services.GetService<ShortcutBarService>();
+            return service?.ShortcutBar;
         }
 
         /// <summary>
@@ -162,6 +159,8 @@ namespace PitHero.AI
             int bestWaste = int.MaxValue;
             int bestMPCost = int.MaxValue;
 
+            Debug.Log($"[UseHealingSkillAction] Searching for healing skill. HP needed: {hpNeeded}, MP available: {currentMP}");
+
             for (int i = 0; i < 8; i++) // 8 shortcut slots
             {
                 var slotData = shortcutBar.GetShortcutSlotData(i);
@@ -174,7 +173,13 @@ namespace PitHero.AI
                 if (skill.BattleOnly) continue;
 
                 // Skip if not enough MP
-                if (currentMP < skill.MPCost) continue;
+                if (currentMP < skill.MPCost) 
+                {
+                    Debug.Log($"[UseHealingSkillAction] Slot {i + 1}: {skill.Name} (not enough MP: need {skill.MPCost}, have {currentMP})");
+                    continue;
+                }
+
+                Debug.Log($"[UseHealingSkillAction] Slot {i + 1}: {skill.Name} (heals {skill.HPRestoreAmount} HP, costs {skill.MPCost} MP)");
 
                 // Calculate waste (how much healing would be wasted)
                 int waste = skill.HPRestoreAmount - hpNeeded;
@@ -185,12 +190,14 @@ namespace PitHero.AI
                     bestSkill = skill;
                     bestWaste = waste;
                     bestMPCost = skill.MPCost;
+                    Debug.Log($"[UseHealingSkillAction] New best skill: {skill.Name} (waste: {waste}, MP cost: {skill.MPCost})");
                 }
                 // If waste is equal, prefer the skill with lower MP cost
                 else if (skill.HPRestoreAmount >= hpNeeded && waste == bestWaste && skill.MPCost < bestMPCost)
                 {
                     bestSkill = skill;
                     bestMPCost = skill.MPCost;
+                    Debug.Log($"[UseHealingSkillAction] Better MP efficiency: {skill.Name} (MP cost: {skill.MPCost})");
                 }
                 else if (bestSkill == null && skill.HPRestoreAmount > 0)
                 {
@@ -199,7 +206,17 @@ namespace PitHero.AI
                     bestSkill = skill;
                     bestWaste = waste;
                     bestMPCost = skill.MPCost;
+                    Debug.Log($"[UseHealingSkillAction] Fallback skill: {skill.Name} (partial heal)");
                 }
+            }
+
+            if (bestSkill != null)
+            {
+                Debug.Log($"[UseHealingSkillAction] Selected healing skill: {bestSkill.Name}");
+            }
+            else
+            {
+                Debug.Log($"[UseHealingSkillAction] No healing skills found on shortcut bar");
             }
 
             return bestSkill;
