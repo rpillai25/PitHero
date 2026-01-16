@@ -39,14 +39,6 @@ namespace PitHero.AI
         /// </summary>
         public override bool Execute(HeroComponent hero)
         {
-            // Check if hero has enough gold to pay for the inn
-            var gameState = Core.Services.GetService<GameStateService>();
-            if (gameState == null || gameState.Funds < GameConfig.InnCostGold)
-            {
-                Debug.Log($"[SleepInBedAction] Not enough gold to sleep at inn. Have {gameState?.Funds ?? 0}, need {GameConfig.InnCostGold}");
-                return true; // Return true to mark action as "complete" so hero can try other actions
-            }
-
             // If we've already completed sleeping, return true
             if (_sleepCompleted)
             {
@@ -63,6 +55,14 @@ namespace PitHero.AI
             {
                 Debug.Log("[SleepInBedAction] Sleep in progress...");
                 return false;
+            }
+
+            // Check if hero has enough gold to pay for the inn (only before starting the action)
+            var gameState = Core.Services.GetService<GameStateService>();
+            if (gameState == null || gameState.Funds < GameConfig.InnCostGold)
+            {
+                Debug.Log($"[SleepInBedAction] Not enough gold to sleep at inn. Have {gameState?.Funds ?? 0}, need {GameConfig.InnCostGold}");
+                return true; // Return true to mark action as "complete" so hero can try other actions
             }
 
             // Start the sleep coroutine

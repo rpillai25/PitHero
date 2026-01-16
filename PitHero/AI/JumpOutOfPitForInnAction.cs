@@ -17,7 +17,7 @@ namespace PitHero.AI
         private bool _jumpFinished = false;
         private Point _plannedTargetTile;
 
-        public JumpOutOfPitForInnAction() : base(GoapConstants.JumpOutOfPitForInnAction)
+        public JumpOutOfPitForInnAction() : base(GoapConstants.JumpOutOfPitForInnAction, 2)
         {
             // Preconditions: Hero must be inside pit, have critical HP, and have enough gold for inn
             SetPrecondition(GoapConstants.InsidePit, true);
