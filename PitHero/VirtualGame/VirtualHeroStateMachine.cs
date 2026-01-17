@@ -163,7 +163,7 @@ namespace PitHero.VirtualGame
             }
             else if (goalState.ContainsKey(GoapConstants.OutsidePit) && insidePit)
             {
-                return new JumpOutOfPitAction();
+                return new JumpOutOfPitForInnAction();
             }
 
             return null;
@@ -184,8 +184,8 @@ namespace PitHero.VirtualGame
                     return ExecuteWanderPitAction();
                 case "ActivateWizardOrbAction":
                     return ExecuteActivateWizardOrbAction();
-                case "JumpOutOfPitAction":
-                    return ExecuteJumpOutOfPitAction();
+                case "JumpOutOfPitForInnAction":
+                    return ExecuteJumpOutOfPitForInnAction();
                 default:
                     Console.WriteLine($"[VirtualStateMachine] Unknown action: {_currentAction.Name}");
                     return true;
@@ -423,7 +423,7 @@ namespace PitHero.VirtualGame
             return false; // Continue until at orb
         }
 
-        private bool ExecuteJumpOutOfPitAction()
+        private bool ExecuteJumpOutOfPitForInnAction()
         {
             var pitBounds = _world.PitBounds;
             var outsidePos = new Point(pitBounds.X - 1, pitBounds.Y + pitBounds.Height / 2);

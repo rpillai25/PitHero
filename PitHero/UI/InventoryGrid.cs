@@ -682,6 +682,13 @@ namespace PitHero.UI
             {
                 Debug.Log($"Used {item.Name}");
 
+                // Reset HealingSkillExhausted if MP restoration item is used
+                if (_heroComponent != null && consumable.MPRestoreAmount > 0)
+                {
+                    _heroComponent.HealingSkillExhausted = false;
+                    Debug.Log($"[InventoryGrid] Reset HealingSkillExhausted flag (MP restoration item used)");
+                }
+
                 // Decrement stack or remove item
                 if (_heroComponent.Bag.ConsumeFromStack(bagIndex))
                 {

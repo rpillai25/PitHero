@@ -170,11 +170,11 @@ namespace PitHero.VirtualGame
             Console.WriteLine($"[{_currentAction}] Completed. Orb activated, queued level {nextLevel}");
         }
 
-        // Note: MovingToInsidePitEdgeAction is replaced by JumpOutOfPitAction which handles its own movement
+        // Note: MovingToInsidePitEdgeAction is replaced by JumpOutOfPitForInnAction which handles its own movement
 
-        private void ExecuteJumpOutOfPitAction()
+        private void ExecuteJumpOutOfPitForInnAction()
         {
-            _currentAction = "JumpOutOfPitAction";
+            _currentAction = "JumpOutOfPitForInnAction";
             var pitBounds = _world.PitBounds;
 
             // Target: Outside pit
@@ -393,7 +393,7 @@ namespace PitHero.VirtualGame
             planner.AddAction(new JumpIntoPitAction());
             planner.AddAction(new WanderPitAction());
             planner.AddAction(new ActivateWizardOrbAction());
-            planner.AddAction(new JumpOutOfPitAction());
+            planner.AddAction(new JumpOutOfPitForInnAction());
             planner.AddAction(new AttackMonsterAction());
             planner.AddAction(new OpenChestAction());
 

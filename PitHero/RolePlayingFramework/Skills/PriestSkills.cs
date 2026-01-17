@@ -7,11 +7,10 @@ namespace RolePlayingFramework.Skills
 {
     public sealed class HealSkill : BaseSkill
     {
-        public HealSkill() : base("priest.heal", "Heal", "Restore HP based on Magic stat, enhanced by healing power bonuses.", SkillKind.Active, SkillTargetType.Self, 3, 100, ElementType.Light, battleOnly: false) { }
+        public HealSkill() : base("priest.heal", "Heal", "Restore 50 HP.", SkillKind.Active, SkillTargetType.Self, 3, 100, ElementType.Light, battleOnly: false, hpRestoreAmount: 50, mpRestoreAmount: 0) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
-            var mult = 1f + hero.HealPowerBonus;
-            hero.RestoreHP((int)((20 + hero.GetTotalStats().Magic * 2) * mult));
+            hero.RestoreHP(HPRestoreAmount);
             return "Heal";
         }
     }

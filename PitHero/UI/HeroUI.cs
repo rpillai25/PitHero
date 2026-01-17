@@ -54,6 +54,10 @@ namespace PitHero.UI
         private ReorderableTableList<string> _priorityList;
         private List<string> _priorityItems;
 
+        // Heal priority reorder components
+        private ReorderableTableList<string> _healPriorityList;
+        private List<string> _healPriorityItems;
+
         // Hero Crystal tab component
         private HeroCrystalTab _heroCrystalTab;
 
@@ -198,7 +202,7 @@ namespace PitHero.UI
             _tabPane = new TabPane(tabWindowStyle);
             var tabStyle = CreateTabStyle(skin);
             _inventoryTab = new Tab("Inventory", tabStyle);
-            _prioritiesTab = new Tab("Pit Priorities", tabStyle);
+            _prioritiesTab = new Tab("Behavior", tabStyle);
             _crystalTab = new Tab("Hero Crystal", tabStyle);
             PopulateInventoryTab(_inventoryTab, skin);
             PopulatePrioritiesTab(_prioritiesTab, skin);
@@ -310,7 +314,7 @@ namespace PitHero.UI
             scrollPane.SetScrollingDisabled(true, false);
 
             // Add scroll pane to left side with explicit width to ensure rightmost column is clickable
-            // Grid is 692px wide (20 columns × 33px + 32px left padding)
+            // Grid is 692px wide (20 columns ï¿½ 33px + 32px left padding)
             inventoryContainer.Add(scrollPane).Width(700f).Expand().Fill().Pad(0f);
 
             // Add stencil control buttons vertically on the right
@@ -535,9 +539,30 @@ namespace PitHero.UI
 
         private void PopulatePrioritiesTab(Tab prioritiesTab, Skin skin)
         {
+            // Create a vertical container for both priority lists
+            var container = new Table();
+            container.SetFillParent(true);
+
+            // Pit Priority section
+            var pitPriorityLabel = new Label("Pit Priority", skin);
+            container.Add(pitPriorityLabel).SetAlign(Align.Left).SetPadBottom(5f);
+            container.Row();
+
             InitializePriorityItems();
             _priorityList = new ReorderableTableList<string>(skin, _priorityItems, OnPriorityReordered);
-            prioritiesTab.Add(_priorityList).Expand().Fill().Pad(15f);
+            container.Add(_priorityList).SetExpandX().SetFillX().SetPadBottom(15f);
+            container.Row();
+
+            // Heal Priority section
+            var healPriorityLabel = new Label("Heal Priority", skin);
+            container.Add(healPriorityLabel).SetAlign(Align.Left).SetPadBottom(5f);
+            container.Row();
+
+            InitializeHealPriorityItems();
+            _healPriorityList = new ReorderableTableList<string>(skin, _healPriorityItems, OnHealPriorityReordered);
+            container.Add(_healPriorityList).SetExpandX().SetFillX();
+
+            prioritiesTab.Add(container).Expand().Fill().Pad(15f);
         }
 
         private void PopulateCrystalTab(Tab crystalTab, Skin skin)
@@ -570,6 +595,66 @@ namespace PitHero.UI
         {
             Debug.Log($"Priority reordered: {item} moved from position {from + 1} to {to + 1}");
             UpdateHeroPriorities();
+        }
+
+        private void InitializeHealPriorityItems()
+        {
+            if (_healPriorityItems == null) _healPriorityItems = new List<string>(3); else _healPriorityItems.Clear();
+            var hero = GetHeroComponent();
+            if (hero != null)
+            {
+                var healPriorities = hero.GetHealPrioritiesInOrder();
+                _healPriorityItems.Add(healPriorities[0].ToString());
+                _healPriorityItems.Add(healPriorities[1].ToString());
+                _healPriorityItems.Add(healPriorities[2].ToString());
+            }
+            else
+            {
+                _healPriorityItems.Add(HeroHealPriority.Inn.ToString());
+                _healPriorityItems.Add(HeroHealPriority.HealingItem.ToString());
+                _healPriorityItems.Add(HeroHealPriority.HealingSkill.ToString());
+            }
+        }
+
+        private void OnHealPriorityReordered(int from, int to, string item)
+        {
+            Debug.Log($"Heal priority reordered: {item} moved from position {from + 1} to {to + 1}");
+            UpdateHeroHealPriorities();
+            UpdateHealActionCosts();
+        }
+
+        private void UpdateHeroHealPriorities()
+        {
+            var hero = GetHeroComponent();
+            if (hero == null) return;
+
+            var healPriorities = new HeroHealPriority[3];
+            for (int i = 0; i < 3; i++)
+            {
+                if (System.Enum.TryParse<HeroHealPriority>(_healPriorityItems[i], out var priority))
+                {
+                    healPriorities[i] = priority;
+                }
+            }
+
+            hero.SetHealPrioritiesInOrder(healPriorities);
+            Debug.Log($"[HeroUI] Updated heal priorities: {healPriorities[0]}, {healPriorities[1]}, {healPriorities[2]}");
+        }
+
+        private void UpdateHealActionCosts()
+        {
+            // Find the HeroStateMachine to update action costs
+            var scene = Core.Scene;
+            if (scene == null) return;
+
+            var heroEntity = scene.FindEntity("hero");
+            if (heroEntity == null) return;
+
+            var stateMachine = heroEntity.GetComponent<AI.HeroStateMachine>();
+            if (stateMachine != null)
+            {
+                stateMachine.UpdateHealingActionCosts();
+            }
         }
 
         private void ToggleHeroWindow()

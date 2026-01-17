@@ -557,6 +557,11 @@ namespace PitHero.ECS.Scenes
             uiCanvas.Stage.AddElement(_shortcutBar);
             PositionShortcutBar();
 
+            // Register shortcut bar service so AI actions can find it
+            var shortcutBarService = new ShortcutBarService();
+            shortcutBarService.SetShortcutBar(_shortcutBar);
+            Core.Services.AddService(shortcutBarService);
+
             // Mercenary hire dialog
             _mercenaryHireDialog = new MercenaryHireDialog();
             uiCanvas.Stage.AddElement(_mercenaryHireDialog);

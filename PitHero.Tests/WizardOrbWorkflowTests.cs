@@ -29,7 +29,7 @@ namespace PitHero.Tests
             Assert.AreEqual("JumpIntoPitAction", GoapConstants.JumpIntoPitAction);
             Assert.AreEqual("WanderPitAction", GoapConstants.WanderPitAction);
             Assert.AreEqual("ActivateWizardOrbAction", GoapConstants.ActivateWizardOrbAction);
-            Assert.AreEqual("JumpOutOfPitAction", GoapConstants.JumpOutOfPitAction);
+            Assert.AreEqual("JumpOutOfPitForInnAction", GoapConstants.JumpOutOfPitForInnAction);
         }
 
         [TestMethod]
@@ -48,9 +48,9 @@ namespace PitHero.Tests
             Assert.IsNotNull(activateWizardOrb);
             Assert.AreEqual(GoapConstants.ActivateWizardOrbAction, activateWizardOrb.Name);
 
-            var jumpOutOfPit = new JumpOutOfPitAction();
+            var jumpOutOfPit = new JumpOutOfPitForInnAction();
             Assert.IsNotNull(jumpOutOfPit);
-            Assert.AreEqual(GoapConstants.JumpOutOfPitAction, jumpOutOfPit.Name);
+            Assert.AreEqual(GoapConstants.JumpOutOfPitForInnAction, jumpOutOfPit.Name);
         }
 
         [TestMethod]

@@ -22,6 +22,12 @@ namespace RolePlayingFramework.Skills
         /// <summary>True if this skill can only be used during battle.</summary>
         bool BattleOnly { get; }
 
+        /// <summary>Fixed amount of HP restored by this skill (0 if skill doesn't heal).</summary>
+        int HPRestoreAmount { get; }
+
+        /// <summary>Fixed amount of MP restored by this skill (0 if skill doesn't restore MP).</summary>
+        int MPRestoreAmount { get; }
+
         /// <summary>Applies passive modifiers at aggregation time (no side effects).</summary>
         void ApplyPassive(Hero hero);
 
