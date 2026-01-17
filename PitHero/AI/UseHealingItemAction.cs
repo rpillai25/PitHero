@@ -51,10 +51,12 @@ namespace PitHero.AI
             // Get target stats
             int currentHP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).CurrentHP : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentHP;
             int maxHP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).MaxHP : ((RolePlayingFramework.Mercenaries.Mercenary)target).MaxHP;
+            int currentMP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).CurrentMP : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentMP;
+            int maxMP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).MaxMP : ((RolePlayingFramework.Mercenaries.Mercenary)target).MaxMP;
             string targetName = isHero ? ((RolePlayingFramework.Heroes.Hero)target).Name : ((RolePlayingFramework.Mercenaries.Mercenary)target).Name;
 
             // Find the most efficient healing item on the shortcut bar
-            (IItem item, int slotIndex) = FindMostEfficientHealingItem(shortcutBar, currentHP, maxHP);
+            (IItem item, int slotIndex) = FindMostEfficientHealingItem(shortcutBar, currentHP, maxHP, currentMP, maxMP);
             if (item == null)
             {
                 Debug.Log("[UseHealingItemAction] No healing items available on shortcut bar");
@@ -141,15 +143,17 @@ namespace PitHero.AI
         /// <summary>
         /// Find the most efficient healing item on the shortcut bar for the target
         /// Returns the healing item with the least waste (smallest amount over what's needed)
+        /// Prioritizes by (HPWaste, MPWaste) - minimizes HP waste first, then MP waste as tiebreaker
         /// </summary>
-        private (IItem, int) FindMostEfficientHealingItem(ShortcutBar shortcutBar, int currentHP, int maxHP)
+        private (IItem, int) FindMostEfficientHealingItem(ShortcutBar shortcutBar, int currentHP, int maxHP, int currentMP, int maxMP)
         {
             int hpNeeded = maxHP - currentHP;
+            int mpNeeded = maxMP - currentMP;
             IItem bestItem = null;
             int bestSlotIndex = -1;
-            int bestWaste = int.MaxValue;
+            (int hpWaste, int mpWaste) bestWaste = (int.MaxValue, int.MaxValue);
 
-            Debug.Log($"[UseHealingItemAction] Searching for healing item. HP needed: {hpNeeded}");
+            Debug.Log($"[UseHealingItemAction] Searching for healing item. HP needed: {hpNeeded}, MP needed: {mpNeeded}");
             Debug.Log($"[UseHealingItemAction] === SHORTCUT BAR STATE ===");
 
             // First pass: log ALL slots to debug the shortcut bar state
@@ -192,7 +196,7 @@ namespace PitHero.AI
 
                 if (item is Consumable consumable)
                 {
-                    Debug.Log($"[UseHealingItemAction] Slot {i + 1}: CONSUMABLE - {consumable.Name} (heals {consumable.HPRestoreAmount} HP, stack: {consumable.StackCount}, battle-only: {consumable.BattleOnly})");
+                    Debug.Log($"[UseHealingItemAction] Slot {i + 1}: CONSUMABLE - {consumable.Name} (heals {consumable.HPRestoreAmount} HP, {consumable.MPRestoreAmount} MP, stack: {consumable.StackCount}, battle-only: {consumable.BattleOnly})");
                 }
                 else
                 {
@@ -221,54 +225,79 @@ namespace PitHero.AI
                     continue;
                 }
 
-                // Special case: -1 means "full heal" (restore to max HP)
-                bool isFullHeal = consumable.HPRestoreAmount == -1;
+                // Special case: -1 means "full heal" (restore to max HP/MP)
+                bool isFullHPHeal = consumable.HPRestoreAmount == -1;
+                bool isFullMPHeal = consumable.MPRestoreAmount == -1;
                 
                 // Skip items that don't heal HP (unless they're full heal items)
-                if (!isFullHeal && consumable.HPRestoreAmount <= 0) continue;
+                if (!isFullHPHeal && consumable.HPRestoreAmount <= 0) continue;
 
                 // Don't use battle-only consumables outside of battle
                 if (consumable.BattleOnly) continue;
 
-                // Calculate waste (how much healing would be wasted)
+                // Calculate HP waste (how much HP healing would be wasted)
                 // For full heal items, assign maximum waste so they're only used as last resort
-                // This ensures we always prefer cheaper/weaker potions when they can do the job
-                int actualHealAmount;
-                int waste;
+                int actualHPHealAmount;
+                int hpWaste;
                 
-                if (isFullHeal)
+                if (isFullHPHeal)
                 {
-                    actualHealAmount = maxHP; // Can heal any amount up to max HP
-                    waste = 999999; // Maximum waste - save full heal potions for emergencies
+                    actualHPHealAmount = maxHP; // Can heal any amount up to max HP
+                    hpWaste = 999999; // Maximum waste - save full heal potions for emergencies
                 }
                 else
                 {
-                    actualHealAmount = consumable.HPRestoreAmount;
-                    waste = actualHealAmount - hpNeeded;
+                    actualHPHealAmount = consumable.HPRestoreAmount;
+                    hpWaste = actualHPHealAmount - hpNeeded;
                 }
+
+                // Calculate MP waste (how much MP healing would be wasted)
+                // For full MP heal items, assign maximum waste so they're only used as last resort
+                int actualMPHealAmount;
+                int mpWaste;
+                
+                if (isFullMPHeal)
+                {
+                    actualMPHealAmount = maxMP; // Can heal any amount up to max MP
+                    mpWaste = 999999; // Maximum waste - save full heal potions for emergencies
+                }
+                else if (consumable.MPRestoreAmount > 0)
+                {
+                    actualMPHealAmount = consumable.MPRestoreAmount;
+                    mpWaste = actualMPHealAmount - mpNeeded;
+                }
+                else
+                {
+                    actualMPHealAmount = 0;
+                    mpWaste = 0; // No MP restoration = no waste
+                }
+
+                // Combine waste as tuple for comparison: (HPWaste, MPWaste)
+                // Tuple comparison prioritizes HP waste first, then MP waste as tiebreaker
+                var totalWaste = (hpWaste, mpWaste);
                 
                 // If this item can heal the target and has less waste than our current best, use it
-                if (actualHealAmount >= hpNeeded && waste < bestWaste)
+                if (actualHPHealAmount >= hpNeeded && totalWaste.CompareTo(bestWaste) < 0)
                 {
                     bestItem = item;
                     bestSlotIndex = i;
-                    bestWaste = waste;
-                    Debug.Log($"[UseHealingItemAction] New best item: {consumable.Name} (waste: {waste})");
+                    bestWaste = totalWaste;
+                    Debug.Log($"[UseHealingItemAction] New best item: {consumable.Name} (HP waste: {hpWaste}, MP waste: {mpWaste})");
                 }
-                else if (bestItem == null && actualHealAmount > 0)
+                else if (bestItem == null && actualHPHealAmount > 0)
                 {
                     // If we haven't found a perfect fit yet, keep track of any healing item
                     // (even if it won't fully heal, it's better than nothing)
                     bestItem = item;
                     bestSlotIndex = i;
-                    bestWaste = waste;
-                    Debug.Log($"[UseHealingItemAction] Fallback item: {consumable.Name} (partial heal)");
+                    bestWaste = totalWaste;
+                    Debug.Log($"[UseHealingItemAction] Fallback item: {consumable.Name} (partial heal, HP waste: {hpWaste}, MP waste: {mpWaste})");
                 }
             }
 
             if (bestItem != null)
             {
-                Debug.Log($"[UseHealingItemAction] Selected healing item: {bestItem.Name} from slot {bestSlotIndex + 1}");
+                Debug.Log($"[UseHealingItemAction] Selected healing item: {bestItem.Name} from slot {bestSlotIndex + 1} (HP waste: {bestWaste.hpWaste}, MP waste: {bestWaste.mpWaste})");
             }
             else
             {

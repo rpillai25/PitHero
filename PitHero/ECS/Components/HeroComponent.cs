@@ -253,6 +253,7 @@ namespace PitHero.ECS.Components
             TryAddItem(PotionItems.MPPotion());
             TryAddItem(PotionItems.MPPotion());
             TryAddItem(PotionItems.MPPotion());
+            TryAddItem(PotionItems.MixPotion());
             TryAddItem(PotionItems.FullHPPotion());
 
             // Non-consumables go to main bag
