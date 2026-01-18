@@ -52,7 +52,7 @@ namespace PitHero.Tests
                 Assert.IsTrue(output.Contains("[JumpIntoPitAction]"));
                 Assert.IsTrue(output.Contains("[WanderPitAction]"));
                 Assert.IsTrue(output.Contains("[ActivateWizardOrbAction]"));
-                Assert.IsTrue(output.Contains("[JumpOutOfPitAction]"));
+                Assert.IsTrue(output.Contains("[JumpOutOfPitForInnAction]"));
                 Assert.IsTrue(output.Contains("[ActivatePitRegenAction]"));
                 
                 // Verify world state changes
