@@ -39,28 +39,44 @@ namespace PitHero.AI
                 return true; // Action complete (failed, but complete)
             }
 
-            // Get the shortcut bar
-            var shortcutBar = GetShortcutBar();
-            if (shortcutBar == null)
-            {
-                Debug.Warn("[UseHealingSkillAction] Could not find shortcut bar");
-                hero.HealingSkillExhausted = true;
-                return true;
-            }
-
             // Get target stats
             int currentHP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).CurrentHP : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentHP;
             int maxHP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).MaxHP : ((RolePlayingFramework.Mercenaries.Mercenary)target).MaxHP;
             int currentMP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).CurrentMP : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentMP;
             string targetName = isHero ? ((RolePlayingFramework.Heroes.Hero)target).Name : ((RolePlayingFramework.Mercenaries.Mercenary)target).Name;
 
-            // Find the most efficient healing skill on the shortcut bar
-            var healingSkill = FindMostEfficientHealingSkill(shortcutBar, currentHP, maxHP, currentMP);
-            if (healingSkill == null)
+            ISkill healingSkill = null;
+
+            // Check if we should use only action bar skills or all learned skills
+            if (hero.OnlyUseActionBarItemsAndSkills)
             {
-                Debug.Log("[UseHealingSkillAction] No healing skills available on shortcut bar");
-                hero.HealingSkillExhausted = true;
-                return true;
+                // Original behavior: use only shortcut bar skills
+                var shortcutBar = GetShortcutBar();
+                if (shortcutBar == null)
+                {
+                    Debug.Warn("[UseHealingSkillAction] Could not find shortcut bar");
+                    hero.HealingSkillExhausted = true;
+                    return true;
+                }
+
+                healingSkill = FindMostEfficientHealingSkill(shortcutBar, currentHP, maxHP, currentMP);
+                if (healingSkill == null)
+                {
+                    Debug.Log("[UseHealingSkillAction] No healing skills available on shortcut bar");
+                    hero.HealingSkillExhausted = true;
+                    return true;
+                }
+            }
+            else
+            {
+                // New behavior: use all learned skills from hero crystal
+                healingSkill = FindMostEfficientHealingSkillFromCrystal(hero.LinkedHero, currentHP, maxHP, currentMP);
+                if (healingSkill == null)
+                {
+                    Debug.Log("[UseHealingSkillAction] No healing skills available in hero crystal");
+                    hero.HealingSkillExhausted = true;
+                    return true;
+                }
             }
 
             // Check if target has enough MP to use the skill
@@ -217,6 +233,142 @@ namespace PitHero.AI
             else
             {
                 Debug.Log($"[UseHealingSkillAction] No healing skills found on shortcut bar");
+            }
+
+            return bestSkill;
+        }
+
+        /// <summary>
+        /// Find the most efficient healing skill from all learned skills in the hero crystal
+        /// Returns the healing skill with the least waste (smallest amount over what's needed)
+        /// Also prefers skills with lower MP cost when healing amounts are equal
+        /// </summary>
+        private ISkill FindMostEfficientHealingSkillFromCrystal(RolePlayingFramework.Heroes.Hero hero, int currentHP, int maxHP, int currentMP)
+        {
+            if (hero == null)
+            {
+                Debug.Log("[UseHealingSkillAction] Hero is null, cannot find healing skills");
+                return null;
+            }
+
+            int hpNeeded = maxHP - currentHP;
+            ISkill bestSkill = null;
+            int bestWaste = int.MaxValue;
+            int bestMPCost = int.MaxValue;
+
+            Debug.Log($"[UseHealingSkillAction] Searching for healing skill in hero crystal. HP needed: {hpNeeded}, MP available: {currentMP}");
+
+            // Search through all learned skills (both regular and synergy skills)
+            var learnedSkills = hero.LearnedSkills;
+            if (learnedSkills != null)
+            {
+                foreach (var skillEntry in learnedSkills)
+                {
+                    var skill = skillEntry.Value;
+                    if (skill == null || skill.HPRestoreAmount <= 0) continue;
+
+                    // Don't use battle-only skills outside of battle
+                    if (skill.BattleOnly) continue;
+
+                    // Skip if not enough MP
+                    if (currentMP < skill.MPCost) 
+                    {
+                        Debug.Log($"[UseHealingSkillAction] {skill.Name} (not enough MP: need {skill.MPCost}, have {currentMP})");
+                        continue;
+                    }
+
+                    Debug.Log($"[UseHealingSkillAction] Learned skill: {skill.Name} (heals {skill.HPRestoreAmount} HP, costs {skill.MPCost} MP)");
+
+                    // Calculate waste
+                    int waste = skill.HPRestoreAmount - hpNeeded;
+                    
+                    // If this skill can heal the target and has less waste than our current best, use it
+                    if (skill.HPRestoreAmount >= hpNeeded && waste < bestWaste)
+                    {
+                        bestSkill = skill;
+                        bestWaste = waste;
+                        bestMPCost = skill.MPCost;
+                        Debug.Log($"[UseHealingSkillAction] New best skill: {skill.Name} (waste: {waste}, MP cost: {skill.MPCost})");
+                    }
+                    // If waste is equal, prefer the skill with lower MP cost
+                    else if (skill.HPRestoreAmount >= hpNeeded && waste == bestWaste && skill.MPCost < bestMPCost)
+                    {
+                        bestSkill = skill;
+                        bestMPCost = skill.MPCost;
+                        Debug.Log($"[UseHealingSkillAction] Better MP efficiency: {skill.Name} (MP cost: {skill.MPCost})");
+                    }
+                    else if (bestSkill == null && skill.HPRestoreAmount > 0)
+                    {
+                        // If we haven't found a perfect fit yet, keep track of any healing skill
+                        bestSkill = skill;
+                        bestWaste = waste;
+                        bestMPCost = skill.MPCost;
+                        Debug.Log($"[UseHealingSkillAction] Fallback skill: {skill.Name} (partial heal)");
+                    }
+                }
+            }
+
+            // Also check synergy skills from active synergies
+            var activeSynergies = hero.ActiveSynergies;
+            if (activeSynergies != null)
+            {
+                for (int i = 0; i < activeSynergies.Count; i++)
+                {
+                    var synergy = activeSynergies[i];
+                    if (synergy?.Pattern?.UnlockedSkill == null) continue;
+                    if (!synergy.IsSkillUnlocked) continue; // Skip if not unlocked yet
+
+                    var skill = synergy.Pattern.UnlockedSkill;
+                    if (skill.HPRestoreAmount <= 0) continue;
+
+                    // Don't use battle-only skills outside of battle
+                    if (skill.BattleOnly) continue;
+
+                    // Skip if not enough MP
+                    if (currentMP < skill.MPCost) 
+                    {
+                        Debug.Log($"[UseHealingSkillAction] Synergy skill: {skill.Name} (not enough MP: need {skill.MPCost}, have {currentMP})");
+                        continue;
+                    }
+
+                    Debug.Log($"[UseHealingSkillAction] Synergy skill: {skill.Name} (heals {skill.HPRestoreAmount} HP, costs {skill.MPCost} MP)");
+
+                    // Calculate waste
+                    int waste = skill.HPRestoreAmount - hpNeeded;
+                    
+                    // If this skill can heal the target and has less waste than our current best, use it
+                    if (skill.HPRestoreAmount >= hpNeeded && waste < bestWaste)
+                    {
+                        bestSkill = skill;
+                        bestWaste = waste;
+                        bestMPCost = skill.MPCost;
+                        Debug.Log($"[UseHealingSkillAction] New best synergy skill: {skill.Name} (waste: {waste}, MP cost: {skill.MPCost})");
+                    }
+                    // If waste is equal, prefer the skill with lower MP cost
+                    else if (skill.HPRestoreAmount >= hpNeeded && waste == bestWaste && skill.MPCost < bestMPCost)
+                    {
+                        bestSkill = skill;
+                        bestMPCost = skill.MPCost;
+                        Debug.Log($"[UseHealingSkillAction] Better MP efficiency: {skill.Name} (MP cost: {skill.MPCost})");
+                    }
+                    else if (bestSkill == null && skill.HPRestoreAmount > 0)
+                    {
+                        // If we haven't found a perfect fit yet, keep track of any healing skill
+                        bestSkill = skill;
+                        bestWaste = waste;
+                        bestMPCost = skill.MPCost;
+                        Debug.Log($"[UseHealingSkillAction] Fallback synergy skill: {skill.Name} (partial heal)");
+                    }
+                }
+            }
+
+            if (bestSkill != null)
+            {
+                Debug.Log($"[UseHealingSkillAction] Selected healing skill from hero crystal: {bestSkill.Name}");
+            }
+            else
+            {
+                Debug.Log($"[UseHealingSkillAction] No healing skills found in hero crystal");
             }
 
             return bestSkill;

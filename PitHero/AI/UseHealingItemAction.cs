@@ -15,6 +15,9 @@ namespace PitHero.AI
     /// </summary>
     public class UseHealingItemAction : HeroActionBase
     {
+        // Maximum waste value for full heal potions (save them for emergencies)
+        private const int MAX_WASTE_FULL_HEAL = 999999;
+
         public UseHealingItemAction() : base(GoapConstants.UseHealingItemAction, 10)
         {
             // Preconditions: HP is critical and we haven't exhausted healing items
@@ -39,15 +42,6 @@ namespace PitHero.AI
                 return true; // Action complete (failed, but complete)
             }
 
-            // Get the shortcut bar
-            var shortcutBar = GetShortcutBar();
-            if (shortcutBar == null)
-            {
-                Debug.Warn("[UseHealingItemAction] Could not find shortcut bar");
-                hero.HealingItemExhausted = true;
-                return true;
-            }
-
             // Get target stats
             int currentHP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).CurrentHP : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentHP;
             int maxHP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).MaxHP : ((RolePlayingFramework.Mercenaries.Mercenary)target).MaxHP;
@@ -55,26 +49,59 @@ namespace PitHero.AI
             int maxMP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).MaxMP : ((RolePlayingFramework.Mercenaries.Mercenary)target).MaxMP;
             string targetName = isHero ? ((RolePlayingFramework.Heroes.Hero)target).Name : ((RolePlayingFramework.Mercenaries.Mercenary)target).Name;
 
-            // Find the most efficient healing item on the shortcut bar
-            (IItem item, int slotIndex) = FindMostEfficientHealingItem(shortcutBar, currentHP, maxHP, currentMP, maxMP);
-            if (item == null)
+            // Check if we should use only action bar items or all inventory items
+            if (hero.OnlyUseActionBarItemsAndSkills)
             {
-                Debug.Log("[UseHealingItemAction] No healing items available on shortcut bar");
-                hero.HealingItemExhausted = true;
+                // Original behavior: use only shortcut bar items
+                var shortcutBar = GetShortcutBar();
+                if (shortcutBar == null)
+                {
+                    Debug.Warn("[UseHealingItemAction] Could not find shortcut bar");
+                    hero.HealingItemExhausted = true;
+                    return true;
+                }
+
+                (IItem item, int slotIndex) = FindMostEfficientHealingItem(shortcutBar, currentHP, maxHP, currentMP, maxMP);
+                if (item == null)
+                {
+                    Debug.Log("[UseHealingItemAction] No healing items available on shortcut bar");
+                    hero.HealingItemExhausted = true;
+                    return true;
+                }
+
+                bool success = UseHealingItemOnTarget(item as Consumable, slotIndex, target, isHero, shortcutBar, hero);
+                if (!success)
+                {
+                    Debug.Warn("[UseHealingItemAction] Failed to use healing item");
+                    hero.HealingItemExhausted = true;
+                    return true;
+                }
+
+                Debug.Log($"[UseHealingItemAction] Successfully used {item.Name} on {targetName}");
                 return true;
             }
-
-            // Use the healing item on the target
-            bool success = UseHealingItemOnTarget(item as Consumable, slotIndex, target, isHero, shortcutBar, hero);
-            if (!success)
+            else
             {
-                Debug.Warn("[UseHealingItemAction] Failed to use healing item");
-                hero.HealingItemExhausted = true;
+                // New behavior: use all items from inventory
+                (IItem item, int bagIndex) = FindMostEfficientHealingItemFromBag(hero.Bag, currentHP, maxHP, currentMP, maxMP);
+                if (item == null)
+                {
+                    Debug.Log("[UseHealingItemAction] No healing items available in inventory");
+                    hero.HealingItemExhausted = true;
+                    return true;
+                }
+
+                bool success = UseHealingItemFromBag(item as Consumable, bagIndex, target, isHero, hero);
+                if (!success)
+                {
+                    Debug.Warn("[UseHealingItemAction] Failed to use healing item from bag");
+                    hero.HealingItemExhausted = true;
+                    return true;
+                }
+
+                Debug.Log($"[UseHealingItemAction] Successfully used {item.Name} on {targetName} from inventory");
                 return true;
             }
-
-            Debug.Log($"[UseHealingItemAction] Successfully used {item.Name} on {targetName}");
-            return true; // Action complete
         }
 
         /// <summary>
@@ -243,7 +270,7 @@ namespace PitHero.AI
                 if (isFullHPHeal)
                 {
                     actualHPHealAmount = maxHP; // Can heal any amount up to max HP
-                    hpWaste = 999999; // Maximum waste - save full heal potions for emergencies
+                    hpWaste = MAX_WASTE_FULL_HEAL; // Maximum waste - save full heal potions for emergencies
                 }
                 else
                 {
@@ -259,7 +286,7 @@ namespace PitHero.AI
                 if (isFullMPHeal)
                 {
                     actualMPHealAmount = maxMP; // Can heal any amount up to max MP
-                    mpWaste = 999999; // Maximum waste - save full heal potions for emergencies
+                    mpWaste = MAX_WASTE_FULL_HEAL; // Maximum waste - save full heal potions for emergencies
                 }
                 else if (consumable.MPRestoreAmount > 0)
                 {
@@ -308,6 +335,110 @@ namespace PitHero.AI
         }
 
         /// <summary>
+        /// Find the most efficient healing item from the bag for the target
+        /// Returns the healing item with the least waste (smallest amount over what's needed)
+        /// Prioritizes by (HPWaste, MPWaste) - minimizes HP waste first, then MP waste as tiebreaker
+        /// </summary>
+        private (IItem, int) FindMostEfficientHealingItemFromBag(RolePlayingFramework.Inventory.ItemBag bag, int currentHP, int maxHP, int currentMP, int maxMP)
+        {
+            int hpNeeded = maxHP - currentHP;
+            int mpNeeded = maxMP - currentMP;
+            IItem bestItem = null;
+            int bestBagIndex = -1;
+            (int hpWaste, int mpWaste) bestWaste = (int.MaxValue, int.MaxValue);
+
+            Debug.Log($"[UseHealingItemAction] Searching for healing item in bag. HP needed: {hpNeeded}, MP needed: {mpNeeded}");
+
+            // Search through all bag slots
+            for (int i = 0; i < bag.Capacity; i++)
+            {
+                var item = bag.GetSlotItem(i);
+                if (item == null || item.Kind != ItemKind.Consumable) continue;
+
+                var consumable = item as Consumable;
+                if (consumable == null) continue;
+
+                // Skip consumables with zero or negative stack count
+                if (consumable.StackCount <= 0) continue;
+
+                // Special case: -1 means "full heal"
+                bool isFullHPHeal = consumable.HPRestoreAmount == -1;
+                bool isFullMPHeal = consumable.MPRestoreAmount == -1;
+                
+                // Skip items that don't heal HP
+                if (!isFullHPHeal && consumable.HPRestoreAmount <= 0) continue;
+
+                // Don't use battle-only consumables outside of battle
+                if (consumable.BattleOnly) continue;
+
+                // Calculate HP waste
+                int actualHPHealAmount;
+                int hpWaste;
+                
+                if (isFullHPHeal)
+                {
+                    actualHPHealAmount = maxHP;
+                    hpWaste = MAX_WASTE_FULL_HEAL; // Maximum waste - save full heal potions for emergencies
+                }
+                else
+                {
+                    actualHPHealAmount = consumable.HPRestoreAmount;
+                    hpWaste = actualHPHealAmount - hpNeeded;
+                }
+
+                // Calculate MP waste
+                int actualMPHealAmount;
+                int mpWaste;
+                
+                if (isFullMPHeal)
+                {
+                    actualMPHealAmount = maxMP;
+                    mpWaste = MAX_WASTE_FULL_HEAL;
+                }
+                else if (consumable.MPRestoreAmount > 0)
+                {
+                    actualMPHealAmount = consumable.MPRestoreAmount;
+                    mpWaste = actualMPHealAmount - mpNeeded;
+                }
+                else
+                {
+                    actualMPHealAmount = 0;
+                    mpWaste = 0;
+                }
+
+                var totalWaste = (hpWaste, mpWaste);
+                
+                // If this item can heal the target and has less waste than our current best, use it
+                if (actualHPHealAmount >= hpNeeded && totalWaste.CompareTo(bestWaste) < 0)
+                {
+                    bestItem = item;
+                    bestBagIndex = i;
+                    bestWaste = totalWaste;
+                    Debug.Log($"[UseHealingItemAction] New best item from bag: {consumable.Name} at index {i} (HP waste: {hpWaste}, MP waste: {mpWaste})");
+                }
+                else if (bestItem == null && actualHPHealAmount > 0)
+                {
+                    // If we haven't found a perfect fit yet, keep track of any healing item
+                    bestItem = item;
+                    bestBagIndex = i;
+                    bestWaste = totalWaste;
+                    Debug.Log($"[UseHealingItemAction] Fallback item from bag: {consumable.Name} at index {i} (partial heal)");
+                }
+            }
+
+            if (bestItem != null)
+            {
+                Debug.Log($"[UseHealingItemAction] Selected healing item from bag: {bestItem.Name} at index {bestBagIndex}");
+            }
+            else
+            {
+                Debug.Log($"[UseHealingItemAction] No healing items found in bag");
+            }
+
+            return (bestItem, bestBagIndex);
+        }
+
+        /// <summary>
         /// Use the healing item on the target (hero or mercenary)
         /// </summary>
         private bool UseHealingItemOnTarget(Consumable consumable, int slotIndex, object target, bool isHero, ShortcutBar shortcutBar, HeroComponent heroComponent)
@@ -353,6 +484,56 @@ namespace PitHero.AI
                 else
                 {
                     Debug.Warn($"[UseHealingItemAction] Could not find bag index for {consumable.Name}");
+                }
+
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Use the healing item from bag on the target (hero or mercenary)
+        /// Similar to InventoryGrid.UseConsumable but works for both Hero and Mercenary targets
+        /// </summary>
+        private bool UseHealingItemFromBag(Consumable consumable, int bagIndex, object target, bool isHero, HeroComponent heroComponent)
+        {
+            if (consumable == null || target == null || bagIndex < 0) return false;
+
+            // Use the consumable's Consume method which handles both Hero and Mercenary contexts
+            bool consumed = consumable.Consume(target);
+            
+            if (consumed)
+            {
+                string targetName = isHero 
+                    ? ((RolePlayingFramework.Heroes.Hero)target).Name 
+                    : ((RolePlayingFramework.Mercenaries.Mercenary)target).Name;
+                
+                int currentHP = isHero 
+                    ? ((RolePlayingFramework.Heroes.Hero)target).CurrentHP 
+                    : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentHP;
+                
+                int maxHP = isHero 
+                    ? ((RolePlayingFramework.Heroes.Hero)target).MaxHP 
+                    : ((RolePlayingFramework.Mercenaries.Mercenary)target).MaxHP;
+
+                Debug.Log($"[UseHealingItemAction] Used {consumable.Name} on {targetName}. Current HP: {currentHP}/{maxHP}");
+
+                // Consume the item from the hero's bag
+                if (heroComponent.Bag != null && heroComponent.Bag.ConsumeFromStack(bagIndex))
+                {
+                    Debug.Log($"[UseHealingItemAction] Consumed {consumable.Name} from bag index {bagIndex}");
+                    
+                    // Refresh the shortcut bar to update references after item consumption
+                    var shortcutBar = GetShortcutBar();
+                    if (shortcutBar != null)
+                    {
+                        shortcutBar.RefreshItems();
+                    }
+                }
+                else
+                {
+                    Debug.Warn($"[UseHealingItemAction] Failed to consume {consumable.Name} from bag index {bagIndex}");
                 }
 
                 return true;
