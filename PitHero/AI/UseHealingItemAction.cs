@@ -15,6 +15,9 @@ namespace PitHero.AI
     /// </summary>
     public class UseHealingItemAction : HeroActionBase
     {
+        // Maximum waste value for full heal potions (save them for emergencies)
+        private const int MAX_WASTE_FULL_HEAL = 999999;
+
         public UseHealingItemAction() : base(GoapConstants.UseHealingItemAction, 10)
         {
             // Preconditions: HP is critical and we haven't exhausted healing items
@@ -267,7 +270,7 @@ namespace PitHero.AI
                 if (isFullHPHeal)
                 {
                     actualHPHealAmount = maxHP; // Can heal any amount up to max HP
-                    hpWaste = 999999; // Maximum waste - save full heal potions for emergencies
+                    hpWaste = MAX_WASTE_FULL_HEAL; // Maximum waste - save full heal potions for emergencies
                 }
                 else
                 {
@@ -283,7 +286,7 @@ namespace PitHero.AI
                 if (isFullMPHeal)
                 {
                     actualMPHealAmount = maxMP; // Can heal any amount up to max MP
-                    mpWaste = 999999; // Maximum waste - save full heal potions for emergencies
+                    mpWaste = MAX_WASTE_FULL_HEAL; // Maximum waste - save full heal potions for emergencies
                 }
                 else if (consumable.MPRestoreAmount > 0)
                 {
@@ -375,7 +378,7 @@ namespace PitHero.AI
                 if (isFullHPHeal)
                 {
                     actualHPHealAmount = maxHP;
-                    hpWaste = 999999; // Maximum waste - save full heal potions for emergencies
+                    hpWaste = MAX_WASTE_FULL_HEAL; // Maximum waste - save full heal potions for emergencies
                 }
                 else
                 {
@@ -390,7 +393,7 @@ namespace PitHero.AI
                 if (isFullMPHeal)
                 {
                     actualMPHealAmount = maxMP;
-                    mpWaste = 999999;
+                    mpWaste = MAX_WASTE_FULL_HEAL;
                 }
                 else if (consumable.MPRestoreAmount > 0)
                 {
@@ -517,7 +520,7 @@ namespace PitHero.AI
                 Debug.Log($"[UseHealingItemAction] Used {consumable.Name} on {targetName}. Current HP: {currentHP}/{maxHP}");
 
                 // Consume the item from the hero's bag
-                if (heroComponent.Bag.ConsumeFromStack(bagIndex))
+                if (heroComponent.Bag != null && heroComponent.Bag.ConsumeFromStack(bagIndex))
                 {
                     Debug.Log($"[UseHealingItemAction] Consumed {consumable.Name} from bag index {bagIndex}");
                     
