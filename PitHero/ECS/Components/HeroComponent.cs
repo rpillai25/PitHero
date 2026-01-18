@@ -148,6 +148,12 @@ namespace PitHero.ECS.Components
         public bool HealingSkillExhausted { get; set; }
 
         /// <summary>
+        /// When true, only use items and skills from the shortcut bar for healing.
+        /// When false, use all items from inventory and all learned skills from hero crystal.
+        /// </summary>
+        public bool OnlyUseActionBarItemsAndSkills { get; set; } = true;
+
+        /// <summary>
         /// Link to the Hero class from RolePlayingFramework
         /// </summary>
         public RolePlayingFramework.Heroes.Hero LinkedHero { get; set; }
