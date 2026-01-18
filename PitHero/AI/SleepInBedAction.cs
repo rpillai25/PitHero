@@ -383,21 +383,20 @@ namespace PitHero.AI
                     int hpBefore = mercComp.LinkedMercenary.CurrentHP;
                     int mpBefore = mercComp.LinkedMercenary.CurrentMP;
                     
-                    // Calculate how much HP/MP to restore
-                    int hpToRestore = mercComp.LinkedMercenary.MaxHP - mercComp.LinkedMercenary.CurrentHP;
-                    int mpToRestore = mercComp.LinkedMercenary.MaxMP - mercComp.LinkedMercenary.CurrentMP;
-                    
-                    // Restore HP and MP to full
-                    if (hpToRestore > 0)
+                    // Restore HP to full
+                    bool hpRestored = mercComp.LinkedMercenary.RestoreHP(mercComp.LinkedMercenary.MaxHP);
+                    if (hpRestored)
                     {
-                        mercComp.LinkedMercenary.Heal(hpToRestore);
-                        Debug.Log($"[SleepInBedAction] Restored {hpToRestore} HP to mercenary {mercComp.LinkedMercenary.Name}. Current HP: {mercComp.LinkedMercenary.CurrentHP}/{mercComp.LinkedMercenary.MaxHP}");
+                        int hpRestoreAmount = mercComp.LinkedMercenary.CurrentHP - hpBefore;
+                        Debug.Log($"[SleepInBedAction] Restored {hpRestoreAmount} HP to mercenary {mercComp.LinkedMercenary.Name}. Current HP: {mercComp.LinkedMercenary.CurrentHP}/{mercComp.LinkedMercenary.MaxHP}");
                     }
                     else
                     {
                         Debug.Log($"[SleepInBedAction] Mercenary {mercComp.LinkedMercenary.Name} already at full HP");
                     }
                     
+                    // Restore MP to full
+                    int mpToRestore = mercComp.LinkedMercenary.MaxMP - mercComp.LinkedMercenary.CurrentMP;
                     if (mpToRestore > 0)
                     {
                         mercComp.LinkedMercenary.RestoreMP(mpToRestore);

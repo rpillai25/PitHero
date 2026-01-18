@@ -192,12 +192,14 @@ namespace RolePlayingFramework.Mercenaries
             return CurrentHP == 0;
         }
 
-        /// <summary>Heals the mercenary for the specified amount.</summary>
-        public void Heal(int amount)
+        /// <summary>Restores HP up to max. Returns true if HP was actually restored.</summary>
+        public bool RestoreHP(int amount)
         {
-            if (amount <= 0) return;
+            if (amount <= 0) return false;
+            if (CurrentHP >= MaxHP) return false; // Already at max HP
             CurrentHP += amount;
             if (CurrentHP > MaxHP) CurrentHP = MaxHP;
+            return true;
         }
 
         /// <summary>Restores MP for the specified amount.</summary>

@@ -314,41 +314,24 @@ namespace PitHero.AI
         {
             if (consumable == null || target == null) return false;
 
-            // Special case: -1 means "full heal" (restore to max HP)
-            bool isFullHeal = consumable.HPRestoreAmount == -1;
+            // Use the consumable's Consume method which handles both Hero and Mercenary contexts
+            bool consumed = consumable.Consume(target);
             
-            // Restore HP
-            int healAmount = 0;
-            bool healed = false;
-            int currentHP = 0;
-            int maxHP = 0;
-            string targetName = "";
+            if (consumed)
+            {
+                string targetName = isHero 
+                    ? ((RolePlayingFramework.Heroes.Hero)target).Name 
+                    : ((RolePlayingFramework.Mercenaries.Mercenary)target).Name;
+                
+                int currentHP = isHero 
+                    ? ((RolePlayingFramework.Heroes.Hero)target).CurrentHP 
+                    : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentHP;
+                
+                int maxHP = isHero 
+                    ? ((RolePlayingFramework.Heroes.Hero)target).MaxHP 
+                    : ((RolePlayingFramework.Mercenaries.Mercenary)target).MaxHP;
 
-            if (isHero)
-            {
-                var hero = (RolePlayingFramework.Heroes.Hero)target;
-                // For full heal items, restore to max HP
-                healAmount = isFullHeal ? hero.MaxHP : consumable.HPRestoreAmount;
-                healed = hero.RestoreHP(healAmount);
-                currentHP = hero.CurrentHP;
-                maxHP = hero.MaxHP;
-                targetName = hero.Name;
-            }
-            else
-            {
-                var mercenary = (RolePlayingFramework.Mercenaries.Mercenary)target;
-                // For full heal items, restore to max HP
-                healAmount = isFullHeal ? mercenary.MaxHP : consumable.HPRestoreAmount;
-                mercenary.Heal(healAmount);
-                healed = true;
-                currentHP = mercenary.CurrentHP;
-                maxHP = mercenary.MaxHP;
-                targetName = mercenary.Name;
-            }
-
-            if (healed)
-            {
-                Debug.Log($"[UseHealingItemAction] Healed {targetName} for {healAmount} HP. Current HP: {currentHP}/{maxHP}");
+                Debug.Log($"[UseHealingItemAction] Used {consumable.Name} on {targetName}. Current HP: {currentHP}/{maxHP}");
 
                 // Consume the item from the hero's bag using the proper bag index
                 var referencedSlot = shortcutBar.GetReferencedSlot(slotIndex);

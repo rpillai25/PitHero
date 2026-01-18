@@ -286,8 +286,7 @@ namespace PitHero.AI
             else
             {
                 var mercenary = (RolePlayingFramework.Mercenaries.Mercenary)target;
-                mercenary.Heal(healAmount);
-                healed = true;
+                healed = mercenary.RestoreHP(healAmount);
                 currentHP = mercenary.CurrentHP;
                 maxHP = mercenary.MaxHP;
                 currentMP = mercenary.CurrentMP;
