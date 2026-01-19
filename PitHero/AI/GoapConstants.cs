@@ -13,9 +13,9 @@
         public const string AdjacentToMonster = "AdjacentToMonster";
         public const string AdjacentToChest = "AdjacentToChest";
         public const string HPCritical = "HPCritical";
-        public const string HasEnoughInnGold = "HasEnoughInnGold";
         public const string HealingItemExhausted = "HealingItemExhausted";
         public const string HealingSkillExhausted = "HealingSkillExhausted";
+        public const string InnExhausted = "InnExhausted";
         public const string IsAlive = "IsAlive";
 
         // Mercenary GOAP States

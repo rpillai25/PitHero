@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.ECS.Scenes;
 using PitHero.Services;
+using PitHero.Util;
 
 namespace PitHero
 {
@@ -24,6 +25,11 @@ namespace PitHero
             Services.AddService(new SecondChanceMerchantVault());
             Services.AddService(new GameStateService());
 
+            // Register global managers
+            SoundEffectManager soundEffectManager = new SoundEffectManager();
+            soundEffectManager.Init(Content);
+            RegisterGlobalManager(soundEffectManager);
+
             // Disable pausing when focus is lost - essential for idle game behavior
             PauseOnFocusLost = false;
 
@@ -45,6 +51,16 @@ namespace PitHero
             //    clickThrough: GameConfig.ClickThrough);
             WindowManager.ConfigureHorizontalStripOneThird(this,
                 alwaysOnTop: GameConfig.AlwaysOnTop);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                var soundEffectManager = GetGlobalManager<SoundEffectManager>();
+                soundEffectManager?.Dispose();
+            }
+            base.Dispose(disposing);
         }
     }
 }

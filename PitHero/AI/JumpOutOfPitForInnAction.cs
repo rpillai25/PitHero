@@ -1,7 +1,9 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.ECS.Components;
+using PitHero.Services;
 using PitHero.Util;
+using PitHero.Util.SoundEffectTypes;
 using System.Collections;
 
 namespace PitHero.AI
@@ -19,10 +21,11 @@ namespace PitHero.AI
 
         public JumpOutOfPitForInnAction() : base(GoapConstants.JumpOutOfPitForInnAction, 2)
         {
-            // Preconditions: Hero must be inside pit, have critical HP, and have enough gold for inn
+            // Preconditions: Hero must be inside pit, have critical HP, and not have exhausted inn option
+            // Gold check happens in Execute() so we can set InnExhausted flag dynamically
             SetPrecondition(GoapConstants.InsidePit, true);
             SetPrecondition(GoapConstants.HPCritical, true);
-            SetPrecondition(GoapConstants.HasEnoughInnGold, true);
+            SetPrecondition(GoapConstants.InnExhausted, false);
 
             // Postcondition: Hero is outside pit
             SetPostcondition(GoapConstants.OutsidePit, true);
@@ -30,6 +33,15 @@ namespace PitHero.AI
 
         public override bool Execute(HeroComponent hero)
         {
+            // Check if hero has enough gold before starting the jump
+            var gameState = Core.Services.GetService<GameStateService>();
+            if (gameState == null || gameState.Funds < GameConfig.InnCostGold)
+            {
+                Debug.Log($"[JumpOutOfPitForInn] Not enough gold for inn. Have {gameState?.Funds ?? 0}, need {GameConfig.InnCostGold}. Setting InnExhausted.");
+                hero.InnExhausted = true;
+                return true; // Action complete (failed due to no gold)
+            }
+
             // If already jumping, check if movement is complete
             if (_isJumping)
             {
@@ -105,6 +117,10 @@ namespace PitHero.AI
         {
             var targetPosition = TileToWorldPosition(targetTile);
             var entity = hero.Entity;
+
+            // Play jump sound effect
+            SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
+            soundEffectManager.PlaySound(SoundEffectType.Jump);
 
             // Start the movement coroutine
             Core.StartCoroutine(JumpOutMovementCoroutine(entity, targetPosition, GameConfig.HeroJumpSpeed));

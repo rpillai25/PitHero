@@ -3,6 +3,8 @@ using Nez;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
 using PitHero.Services;
+using PitHero.Util;
+using PitHero.Util.SoundEffectTypes;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -24,7 +26,7 @@ namespace PitHero.AI
         {
             SetPrecondition(GoapConstants.OutsidePit, true);
             SetPrecondition(GoapConstants.HPCritical, true);
-            SetPrecondition(GoapConstants.HasEnoughInnGold, true);
+            SetPrecondition(GoapConstants.InnExhausted, false);
 
             SetPostcondition(GoapConstants.HPCritical, false);
             
@@ -333,6 +335,8 @@ namespace PitHero.AI
             }
 
             Debug.Log("[SleepInBedAction] Sleep complete, restoring HP and MP to full for hero and mercenaries");
+            SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
+            soundEffectManager.PlaySound(SoundEffectType.Restorative);
 
             // Heal hero to full HP and MP
             if (hero.LinkedHero != null)

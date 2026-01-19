@@ -4,6 +4,8 @@ using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.UI;
+using PitHero.Util;
+using PitHero.Util.SoundEffectTypes;
 using RolePlayingFramework.Equipment;
 using System.Collections.Generic;
 
@@ -447,9 +449,13 @@ namespace PitHero.AI
 
             // Use the consumable's Consume method which handles both Hero and Mercenary contexts
             bool consumed = consumable.Consume(target);
-            
+
             if (consumed)
             {
+                // Play restorative sound effect
+                SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
+                soundEffectManager.PlaySound(SoundEffectType.Restorative);
+
                 string targetName = isHero 
                     ? ((RolePlayingFramework.Heroes.Hero)target).Name 
                     : ((RolePlayingFramework.Mercenaries.Mercenary)target).Name;
@@ -505,6 +511,10 @@ namespace PitHero.AI
             
             if (consumed)
             {
+                // Play restorative sound effect
+                SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
+                soundEffectManager.PlaySound(SoundEffectType.Restorative);
+
                 string targetName = isHero 
                     ? ((RolePlayingFramework.Heroes.Hero)target).Name 
                     : ((RolePlayingFramework.Mercenaries.Mercenary)target).Name;

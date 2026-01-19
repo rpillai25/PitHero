@@ -22,12 +22,15 @@ namespace PitHero
         // Hero Configuration
         public const int HeroWidth = 32;
         public const int HeroHeight = 32;
-        public const float HeroCriticalHPPercent = 0.4f;
+        public const float HeroCriticalHPPercent = 0.99f;
 
         // Action Configuration
         public const float BattleDigitBounceWait = 0.5f;
         public const float BattleTurnWait = 0.7f;
         public const float TreasureOpenWait = 0.5f;
+
+        // Sound configuration (can be updated in UI)
+        public static float MasterVolume = 0.5f;
 
         // Hero movement speed
         public const float HeroMovementSpeed = 64f;  //Move speed in pixels per second (64 pixels = 2 tiles)

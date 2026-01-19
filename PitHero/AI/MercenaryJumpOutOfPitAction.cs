@@ -3,6 +3,7 @@ using Nez;
 using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.Util;
+using PitHero.Util.SoundEffectTypes;
 using System.Collections.Generic;
 
 namespace PitHero.AI
@@ -213,6 +214,10 @@ namespace PitHero.AI
         {
             var targetPosition = TileToWorldPosition(targetTile);
             var entity = mercenary.Entity;
+
+            // Play jump sound effect
+            SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
+            soundEffectManager.PlaySound(SoundEffectType.Jump);
 
             Core.StartCoroutine(JumpOutMovementCoroutine(entity, targetPosition, GameConfig.HeroJumpSpeed));
         }

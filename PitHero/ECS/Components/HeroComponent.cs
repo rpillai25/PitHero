@@ -148,6 +148,20 @@ namespace PitHero.ECS.Components
         public bool HealingSkillExhausted { get; set; }
 
         /// <summary>
+        /// True when inn cannot be used because hero doesn't have enough gold
+        /// Reset to false whenever hero gains gold
+        /// </summary>
+        public bool InnExhausted { get; set; }
+
+        /// <summary>
+        /// Returns true if all healing options are exhausted (items, skills, and inn)
+        /// </summary>
+        public bool AllHealingOptionsExhausted()
+        {
+            return HealingItemExhausted && HealingSkillExhausted && InnExhausted;
+        }
+
+        /// <summary>
         /// When true, only use items and skills from the shortcut bar for healing.
         /// When false, use all items from inventory and all learned skills from hero crystal.
         /// </summary>
@@ -395,10 +409,6 @@ namespace PitHero.ECS.Components
             {
                 worldState.Set(GoapConstants.HPCritical, true);
             }
-            if (HasEnoughInnGold)
-            {
-                worldState.Set(GoapConstants.HasEnoughInnGold, true);
-            }
             if (HealingItemExhausted)
             {
                 worldState.Set(GoapConstants.HealingItemExhausted, true);
@@ -407,6 +417,10 @@ namespace PitHero.ECS.Components
             {
                 worldState.Set(GoapConstants.HealingSkillExhausted, true);
             }
+            if (InnExhausted)
+            {
+                worldState.Set(GoapConstants.InnExhausted, true);
+            }
         }
 
         /// <summary>
@@ -414,9 +428,10 @@ namespace PitHero.ECS.Components
         /// </summary>
         public override void SetGoalState(ref WorldState goalState)
         {
-            // HIGHEST PRIORITY: HP recovery - if HP is critical, make it the primary goal
+            // HIGHEST PRIORITY: HP recovery - if HP is critical and healing options exist, make it the primary goal
             // The GOAP planner will choose the appropriate healing action based on priorities and preconditions
-            if (HPCritical)
+            // If all healing options are exhausted, skip this goal to allow hero to continue exploring
+            if (HPCritical && !AllHealingOptionsExhausted())
             {
                 goalState.Set(GoapConstants.HPCritical, false);
                 return; // Skip other goals when HP is critical

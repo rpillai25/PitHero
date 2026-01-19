@@ -4,6 +4,8 @@ using Nez.Sprites;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
 using PitHero.Services;
+using PitHero.Util;
+using PitHero.Util.SoundEffectTypes;
 using RolePlayingFramework.Combat;
 using System.Collections.Generic;
 using System.Linq;
@@ -584,6 +586,13 @@ namespace PitHero.AI
                                     Debug.Log($"[AttackMonster] Hero's turn - attacking {targetEnemy.Name}");
                                     var heroAttackResult = attackResolver.Resolve(heroBattleStats, targetBattleStats, DamageKind.Physical);
 
+                                    // Play punch sound effect for unarmed attacks
+                                    if (queuedAction.WeaponItem == null)
+                                    {
+                                        SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
+                                        soundEffectManager?.PlaySound(SoundEffectType.Punch);
+                                    }
+
                                     if (heroAttackResult.Hit)
                                     {
                                         bool enemyDied = targetEnemy.TakeDamage(heroAttackResult.Damage);
@@ -610,6 +619,13 @@ namespace PitHero.AI
                                             if (gameState != null)
                                             {
                                                 gameState.Funds += targetEnemy.GoldYield;
+                                                
+                                                // Reset InnExhausted flag when hero gains any gold
+                                                if (targetEnemy.GoldYield > 0)
+                                                {
+                                                    heroComponent.InnExhausted = false;
+                                                }
+                                                
                                                 Debug.Log($"[AttackMonster] Earned {targetEnemy.ExperienceYield} XP, {targetEnemy.JPYield} JP, {targetEnemy.SPYield} SP, {targetEnemy.GoldYield} Gold (Total: {gameState.Funds})");
                                             }
                                             else
@@ -665,6 +681,10 @@ namespace PitHero.AI
                             FaceTarget(participant.MercenaryEntity, targetMonster.Transform.Position);
 
                             var mercAttackResult = attackResolver.Resolve(mercBattleStats, targetBattleStats, DamageKind.Physical);
+
+                            // Play punch sound effect for unarmed attacks (mercenaries currently don't have weapons)
+                            SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
+                            soundEffectManager?.PlaySound(SoundEffectType.Punch);
 
                             if (mercAttackResult.Hit)
                             {
@@ -978,6 +998,10 @@ namespace PitHero.AI
             if (protoRenderer != null)
                 origColorProto = protoRenderer.Color;
 #endif
+
+            SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
+            soundEffectManager?.PlaySound(SoundEffectType.EnemyDefeat);
+
             const float fadeDuration = 0.5f;
             float elapsed = 0f;
             while (elapsed < fadeDuration)

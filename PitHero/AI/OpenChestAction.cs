@@ -2,6 +2,8 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
+using PitHero.Util;
+using PitHero.Util.SoundEffectTypes;
 using RolePlayingFramework.Equipment;
 
 namespace PitHero.AI
@@ -63,6 +65,9 @@ namespace PitHero.AI
                         _treasureComponent = _chestEntity.GetComponent<TreasureComponent>();
                         if (_treasureComponent != null && _treasureComponent.State == TreasureComponent.TreasureState.CLOSED)
                         {
+                            SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
+                            soundEffectManager?.PlaySound(SoundEffectType.ChestOpen);
+
                             _treasureComponent.State = TreasureComponent.TreasureState.OPEN;
                             Debug.Log("[OpenChest] Chest state changed to OPEN");
 

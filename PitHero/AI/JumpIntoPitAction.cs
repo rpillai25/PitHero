@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.ECS.Components;
 using PitHero.Util;
+using PitHero.Util.SoundEffectTypes;
 
 namespace PitHero.AI
 {
@@ -102,6 +103,10 @@ namespace PitHero.AI
             var targetPosition = TileToWorldPosition(targetTile);
             var entity = hero.Entity;
 
+            // Play jump sound effect
+            SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
+            soundEffectManager.PlaySound(SoundEffectType.Jump);
+
             // Start the movement coroutine
             Core.StartCoroutine(JumpMovementCoroutine(entity, targetPosition, GameConfig.HeroJumpSpeed));
         }
@@ -174,6 +179,10 @@ namespace PitHero.AI
 
             _jumpFinished = true;
             Debug.Log($"[JumpIntoPit] Jump movement completed at {entity.Transform.Position.X},{entity.Transform.Position.Y}");
+
+            // Play land sound effect
+            SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
+            soundEffectManager.PlaySound(SoundEffectType.Land);
         }
 
         /// <summary>

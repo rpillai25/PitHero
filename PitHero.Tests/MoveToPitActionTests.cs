@@ -42,7 +42,7 @@ namespace PitHero.Tests
             var fields = constantsType.GetFields().Where(f => f.FieldType == typeof(string) && f.IsLiteral);
             
             // Should have exactly 14 hero states + 6 mercenary states + 10 hero actions + 5 mercenary actions = 35 constants
-            // Added: HealingItemExhausted, HealingSkillExhausted states
+            // Added: HealingItemExhausted, HealingSkillExhausted, InnExhausted states
             // Added: UseHealingItemAction, UseHealingSkillAction, JumpOutOfPitForInnAction actions
             Assert.AreEqual(35, fields.Count(), "Should have exactly 35 GOAP constants (14 hero states + 6 mercenary states + 10 hero actions + 5 mercenary actions)");
         }
