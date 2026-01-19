@@ -769,6 +769,9 @@ namespace PitHero.AI
                                 
                                 if (enemyAttackResult.Hit)
                                 {
+                                    SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
+                                    soundEffectManager?.PlaySound(SoundEffectType.TakeDamage);
+
                                     bool heroDied = hero.TakeDamage(enemyAttackResult.Damage * DEBUG_DAMAGE_MULT);
                                     Debug.Log($"[AttackMonster] {enemy.Name} deals {enemyAttackResult.Damage} damage to {hero.Name}. Hero HP: {hero.CurrentHP}/{hero.MaxHP}");
 
@@ -821,6 +824,9 @@ namespace PitHero.AI
 
                                 if (enemyAttackResult.Hit)
                                 {
+                                    SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
+                                    soundEffectManager?.PlaySound(SoundEffectType.TakeDamage);
+
                                     bool mercDied = targetMercenary.TakeDamage(enemyAttackResult.Damage * DEBUG_DAMAGE_MULT);
                                     Debug.Log($"[AttackMonster] {enemy.Name} deals {enemyAttackResult.Damage} damage to {targetMercenary.Name}. Mercenary HP: {targetMercenary.CurrentHP}/{targetMercenary.MaxHP}");
 

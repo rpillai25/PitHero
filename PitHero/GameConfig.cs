@@ -22,7 +22,7 @@ namespace PitHero
         // Hero Configuration
         public const int HeroWidth = 32;
         public const int HeroHeight = 32;
-        public const float HeroCriticalHPPercent = 0.99f;
+        public const float HeroCriticalHPPercent = 0.4f;
 
         // Action Configuration
         public const float BattleDigitBounceWait = 0.5f;

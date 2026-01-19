@@ -36,6 +36,9 @@ namespace PitHero.Util
                 soundEffectDict.Add(SoundEffectType.EnemyDefeat,
                     new NormalSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/EnemyDefeat.wav")));
 
+                soundEffectDict.Add(SoundEffectType.TakeDamage,
+                    new NormalSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/TakeDamage.wav")));
+
                 soundEffectDict.Add(SoundEffectType.Restorative,
                     new GroupSoundEffect(new SoundEffect[]
                     {
