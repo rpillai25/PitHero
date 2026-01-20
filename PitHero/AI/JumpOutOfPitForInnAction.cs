@@ -25,10 +25,20 @@ namespace PitHero.AI
             // Gold check happens in Execute() so we can set InnExhausted flag dynamically
             SetPrecondition(GoapConstants.InsidePit, true);
             SetPrecondition(GoapConstants.HPCritical, true);
-            SetPrecondition(GoapConstants.InnExhausted, false);
 
             // Postcondition: Hero is outside pit
             SetPostcondition(GoapConstants.OutsidePit, true);
+        }
+
+        public override bool Validate()
+        {
+            var heroComponent = Game1.Scene.FindEntity("hero")?.GetComponent<HeroComponent>();
+            if (!heroComponent.HPCritical)
+            {
+                return false;
+            }
+
+            return heroComponent.HasEnoughInnGold;
         }
 
         public override bool Execute(HeroComponent hero)

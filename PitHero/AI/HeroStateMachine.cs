@@ -27,6 +27,12 @@ namespace PitHero.AI
         private UseHealingItemAction _useHealingItemAction;
         private UseHealingSkillAction _useHealingSkillAction;
 
+        // Healing priority tracking for replanning when priorities change
+        private HeroHealPriority _lastHealPriority1;
+        private HeroHealPriority _lastHealPriority2;
+        private HeroHealPriority _lastHealPriority3;
+        private bool _hasTrackedPriorities;
+
         // GoTo state tracking
         private List<Point> _currentPath;
         private int _pathIndex;
@@ -70,8 +76,6 @@ namespace PitHero.AI
             var jumpOutOfPitForInn = new JumpOutOfPitForInnAction();
             _planner.AddAction(jumpOutOfPitForInn);
 
-            _sleepInBedAction = new SleepInBedAction();
-            _planner.AddAction(_sleepInBedAction);
 
             // Add combat/interaction actions so the planner can satisfy interaction goals
             var attackMonster = new AttackMonsterAction();
@@ -86,6 +90,9 @@ namespace PitHero.AI
 
             _useHealingSkillAction = new UseHealingSkillAction();
             _planner.AddAction(_useHealingSkillAction);
+
+            _sleepInBedAction = new SleepInBedAction();
+            _planner.AddAction(_sleepInBedAction);
 
             // Don't set initial state here - wait for OnAddedToEntity
         }
@@ -169,6 +176,12 @@ namespace PitHero.AI
             LogWorldStateDetails(currentWorldState, "Current World State");
             LogWorldStateDetails(goalState, "Goal State");
 
+            // DEBUG: Log healing action costs before planning
+            Debug.Log($"[HeroStateMachine] Action costs before planning:");
+            Debug.Log($"[HeroStateMachine]   UseHealingItemAction cost: {_useHealingItemAction?.Cost ?? -1}");
+            Debug.Log($"[HeroStateMachine]   UseHealingSkillAction cost: {_useHealingSkillAction?.Cost ?? -1}");
+            Debug.Log($"[HeroStateMachine]   SleepInBedAction cost: {_sleepInBedAction?.Cost ?? -1}");
+
             // CRITICAL DEBUG: Log what states we expect to see
             Debug.Log($"[HeroStateMachine] *** CRITICAL GOAP CHECK *** About to call GOAP planner");
 
@@ -177,6 +190,13 @@ namespace PitHero.AI
             if (_actionPlan != null && _actionPlan.Count > 0)
             {
                 Debug.Log($"[HeroStateMachine] Got an action plan with {_actionPlan.Count} actions: {string.Join(" -> ", _actionPlan)}");
+                
+                // Track current healing priorities so we can detect changes
+                _lastHealPriority1 = _hero.HealPriority1;
+                _lastHealPriority2 = _hero.HealPriority2;
+                _lastHealPriority3 = _hero.HealPriority3;
+                _hasTrackedPriorities = true;
+                
                 CurrentState = ActorState.GoTo;
             }
             else
@@ -212,6 +232,13 @@ namespace PitHero.AI
                     if (_actionPlan != null && _actionPlan.Count > 0)
                     {
                         Debug.Log($"[HeroStateMachine] Got an action plan with {_actionPlan.Count} actions: {string.Join(" -> ", _actionPlan)}");
+                        
+                        // Track current healing priorities so we can detect changes
+                        _lastHealPriority1 = _hero.HealPriority1;
+                        _lastHealPriority2 = _hero.HealPriority2;
+                        _lastHealPriority3 = _hero.HealPriority3;
+                        _hasTrackedPriorities = true;
+                        
                         CurrentState = ActorState.GoTo;
                     }
                     else
@@ -284,6 +311,18 @@ namespace PitHero.AI
 
         void GoTo_Tick()
         {
+            // Check if healing priorities have changed (e.g., user changed healing priority in UI)
+            if (HasHealingPrioritiesChanged())
+            {
+                Debug.Log("[HeroStateMachine] Healing priorities changed during GoTo - cancelling current plan and replanning");
+                _actionPlan = null;
+                _currentAction = null;
+                _currentPath = null;
+                _pathIndex = 0;
+                CurrentState = ActorState.Idle;
+                return;
+            }
+
             // Don't move during battle
             if (IsBattleInProgress)
             {
@@ -417,6 +456,16 @@ namespace PitHero.AI
 
         void PerformAction_Tick()
         {
+            // Check if healing priorities have changed (e.g., user changed healing priority in UI)
+            if (HasHealingPrioritiesChanged())
+            {
+                Debug.Log("[HeroStateMachine] Healing priorities changed during PerformAction - cancelling current plan and replanning");
+                _actionPlan.Clear();
+                _currentAction = null;
+                CurrentState = ActorState.Idle;
+                return;
+            }
+
             if (_currentAction == null)
             {
                 Debug.Warn("[HeroStateMachine] PerformAction_Tick: No current action");
@@ -1194,6 +1243,34 @@ namespace PitHero.AI
             }
 
             return nearestUnknownTile;
+        }
+
+        #endregion
+
+        #region Healing Priority Change Detection
+
+        /// <summary>
+        /// Check if healing priorities have changed since the last plan was created.
+        /// If priorities have changed, we should cancel the current plan and replan
+        /// with the new action costs.
+        /// </summary>
+        private bool HasHealingPrioritiesChanged()
+        {
+            if (!_hasTrackedPriorities || _hero == null)
+                return false;
+
+            bool hasChanged = _hero.HealPriority1 != _lastHealPriority1 ||
+                              _hero.HealPriority2 != _lastHealPriority2 ||
+                              _hero.HealPriority3 != _lastHealPriority3;
+            
+            if (hasChanged)
+            {
+                Debug.Log("[HeroStateMachine] Healing priorities have changed - triggering replan");
+                Debug.Log($"[HeroStateMachine] Old priorities: {_lastHealPriority1}, {_lastHealPriority2}, {_lastHealPriority3}");
+                Debug.Log($"[HeroStateMachine] New priorities: {_hero.HealPriority1}, {_hero.HealPriority2}, {_hero.HealPriority3}");
+            }
+            
+            return hasChanged;
         }
 
         #endregion

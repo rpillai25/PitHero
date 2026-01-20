@@ -7,6 +7,7 @@ using PitHero.UI;
 using PitHero.Util;
 using PitHero.Util.SoundEffectTypes;
 using RolePlayingFramework.Equipment;
+using System;
 using System.Collections.Generic;
 
 namespace PitHero.AI
@@ -24,10 +25,35 @@ namespace PitHero.AI
         {
             // Preconditions: HP is critical and we haven't exhausted healing items
             SetPrecondition(GoapConstants.HPCritical, true);
-            SetPrecondition(GoapConstants.HealingItemExhausted, false);
 
             // Postcondition: HP is no longer critical
             SetPostcondition(GoapConstants.HPCritical, false);
+        }
+
+        public override bool Validate()
+        {
+            var heroComponent = Game1.Scene.FindEntity("hero")?.GetComponent<HeroComponent>();
+            var healPrioritiesInOrder = heroComponent?.GetHealPrioritiesInOrder();
+            if (!heroComponent.HPCritical)
+            {
+                return false;
+            }
+
+            if (healPrioritiesInOrder != null)
+            {
+                //If healing item priority is lower then healing skill and inn, and healing skill is not exhausted and inn is not exhausted, then we cannot use healing item
+                if (Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingItem) >
+                    Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingSkill) &&
+                    !heroComponent.HealingSkillExhausted ||
+                    Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingItem) >
+                    Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.Inn) &&
+                    !heroComponent.InnExhausted)
+                {
+                    return false;
+                }
+            }
+
+            return !heroComponent.HealingItemExhausted;
         }
 
         /// <summary>

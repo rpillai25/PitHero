@@ -26,13 +26,26 @@ namespace PitHero.AI
         {
             SetPrecondition(GoapConstants.OutsidePit, true);
             SetPrecondition(GoapConstants.HPCritical, true);
-            SetPrecondition(GoapConstants.InnExhausted, false);
 
             SetPostcondition(GoapConstants.HPCritical, false);
             
             _isSleeping = false;
             _hasReachedPaymentTile = false;
             _hasPaidInnkeeper = false;
+        }
+
+        public override bool Validate()
+        {
+            var heroComponent = Game1.Scene.FindEntity("hero")?.GetComponent<HeroComponent>();
+            if (!heroComponent.HPCritical)
+            {
+                return false;
+            }
+            if (!heroComponent.HasEnoughInnGold)
+            {
+                heroComponent.InnExhausted = true;
+            }
+            return heroComponent.HasEnoughInnGold;
         }
 
         /// <summary>
