@@ -79,41 +79,35 @@ namespace PitHero.ECS.Components
                 _mercComponent.LastTilePosition = myTile;
             }
 
-            var targetLastTile = GetTargetLastTilePosition();
-            Debug.Log($"[MercenaryFollowComponent] {Entity.Name} target last tile ({targetLastTile.X},{targetLastTile.Y})");
+            var targetTile = GetTargetCurrentTilePosition();
+            Debug.Log($"[MercenaryFollowComponent] {Entity.Name} target current tile ({targetTile.X},{targetTile.Y})");
 
             // Check if we're already at the target position
-            if (myTile == targetLastTile)
+            if (myTile == targetTile)
             {
                 Debug.Log($"[MercenaryFollowComponent] {Entity.Name} already at target position");
                 _currentPath = null;
                 return;
             }
 
-            // Check if the target is currently on their last tile position
-            // If so, stop one tile away to avoid occupying the same tile
-            var targetCurrentTile = GetTargetCurrentTilePosition();
-            if (targetCurrentTile == targetLastTile)
-            {
-                // Target is still on their last position, check if we're adjacent
-                var dx = System.Math.Abs(myTile.X - targetCurrentTile.X);
-                var dy = System.Math.Abs(myTile.Y - targetCurrentTile.Y);
-                bool isAdjacent = (dx == 1 && dy == 0) || (dx == 0 && dy == 1);
+            // Check if adjacent to target to avoid occupying the same tile
+            var dx = System.Math.Abs(myTile.X - targetTile.X);
+            var dy = System.Math.Abs(myTile.Y - targetTile.Y);
+            bool isAdjacent = (dx == 1 && dy == 0) || (dx == 0 && dy == 1) || (dx == 1 && dy == 1);
 
-                if (isAdjacent)
-                {
-                    Debug.Log($"[MercenaryFollowComponent] {Entity.Name} adjacent to target, stopping to avoid overlap");
-                    _currentPath = null;
-                    return;
-                }
+            if (isAdjacent)
+            {
+                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} adjacent to target, stopping to avoid overlap");
+                _currentPath = null;
+                return;
             }
 
             // Recalculate path if target moved OR if we don't have a valid path
-            bool needsNewPath = targetLastTile != _lastTargetTile || _currentPath == null || _currentPath.Count == 0;
+            bool needsNewPath = targetTile != _lastTargetTile || _currentPath == null || _currentPath.Count == 0;
             
             if (needsNewPath)
             {
-                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} recalculating path (target moved: {targetLastTile != _lastTargetTile}, no path: {_currentPath == null || _currentPath.Count == 0})");
+                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} recalculating path (target moved: {targetTile != _lastTargetTile}, no path: {_currentPath == null || _currentPath.Count == 0})");
                 
                 // Ensure pathfinding graph is up to date (safety check)
                 if (_pathfinding.PathfindingGraph?.Walls == null)
@@ -122,16 +116,16 @@ namespace PitHero.ECS.Components
                     _pathfinding.RefreshPathfinding();
                 }
                 
-                _lastTargetTile = targetLastTile;
-                _currentPath = _pathfinding.CalculatePath(myTile, targetLastTile);
+                _lastTargetTile = targetTile;
+                _currentPath = _pathfinding.CalculatePath(myTile, targetTile);
                 _pathIndex = 0;
 
                 if (_currentPath == null || _currentPath.Count == 0)
                 {
-                    Debug.Log($"[MercenaryFollowComponent] {Entity.Name} no path found to target from ({myTile.X},{myTile.Y}) to ({targetLastTile.X},{targetLastTile.Y})");
+                    Debug.Log($"[MercenaryFollowComponent] {Entity.Name} no path found to target from ({myTile.X},{myTile.Y}) to ({targetTile.X},{targetTile.Y})");
                     return;
                 }
-                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} found path with {_currentPath.Count} steps from ({myTile.X},{myTile.Y}) to ({targetLastTile.X},{targetLastTile.Y})");
+                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} found path with {_currentPath.Count} steps from ({myTile.X},{myTile.Y}) to ({targetTile.X},{targetTile.Y})");
             }
 
             if (_currentPath != null && _pathIndex < _currentPath.Count)
