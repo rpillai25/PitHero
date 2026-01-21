@@ -15,6 +15,11 @@ namespace PitHero.AI
         {
         }
 
+        public virtual bool ShouldNotOverride()
+        {
+            return false;
+        }
+
         /// <summary>
         /// Execute action using traditional HeroComponent (for backward compatibility)
         /// </summary>

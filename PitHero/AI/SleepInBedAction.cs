@@ -20,7 +20,7 @@ namespace PitHero.AI
         private bool _sleepCompleted;
         private bool _isSleeping;
         private bool _hasReachedPaymentTile;
-        private bool _hasPaidInnkeeper;
+        private bool _hasPaidInnkeeper;        
 
         public SleepInBedAction() : base(GoapConstants.SleepInBedAction, 5)
         {
@@ -46,6 +46,12 @@ namespace PitHero.AI
                 heroComponent.InnExhausted = true;
             }
             return heroComponent.HasEnoughInnGold;
+        }
+
+        public override bool ShouldNotOverride()
+        {
+            //Should not override this action if coroutine is still running
+            return _sleepCoroutine != null;
         }
 
         /// <summary>

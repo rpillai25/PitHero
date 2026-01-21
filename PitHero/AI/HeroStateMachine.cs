@@ -457,7 +457,7 @@ namespace PitHero.AI
         void PerformAction_Tick()
         {
             // Check if healing priorities have changed (e.g., user changed healing priority in UI)
-            if (HasHealingPrioritiesChanged())
+            if (HasHealingPrioritiesChanged() && _currentAction != null && !_currentAction.ShouldNotOverride())
             {
                 Debug.Log("[HeroStateMachine] Healing priorities changed during PerformAction - cancelling current plan and replanning");
                 _actionPlan.Clear();
