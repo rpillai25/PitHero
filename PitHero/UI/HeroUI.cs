@@ -58,9 +58,6 @@ namespace PitHero.UI
         private ReorderableTableList<string> _healPriorityList;
         private List<string> _healPriorityItems;
 
-        // Action bar only checkbox
-        private CheckBox _onlyUseActionBarCheckbox;
-
         // Hero Crystal tab component
         private HeroCrystalTab _heroCrystalTab;
 
@@ -566,16 +563,6 @@ namespace PitHero.UI
             container.Add(_healPriorityList).SetExpandX().SetFillX().SetPadBottom(15f);
             container.Row();
 
-            // Action bar only checkbox
-            _onlyUseActionBarCheckbox = new CheckBox("Only use action bar items and skills", skin);
-            var hero = GetHeroComponent();
-            if (hero != null)
-            {
-                _onlyUseActionBarCheckbox.IsChecked = hero.OnlyUseActionBarItemsAndSkills;
-            }
-            _onlyUseActionBarCheckbox.OnChanged += OnActionBarOnlyCheckboxChanged;
-            container.Add(_onlyUseActionBarCheckbox).SetAlign(Align.Left).SetPadTop(5f);
-
             prioritiesTab.Add(container).Expand().Fill().Pad(15f);
         }
 
@@ -635,15 +622,6 @@ namespace PitHero.UI
             Debug.Log($"Heal priority reordered: {item} moved from position {from + 1} to {to + 1}");
             UpdateHeroHealPriorities();
             UpdateHealActionCosts();
-        }
-
-        private void OnActionBarOnlyCheckboxChanged(bool isChecked)
-        {
-            var hero = GetHeroComponent();
-            if (hero == null) return;
-
-            hero.OnlyUseActionBarItemsAndSkills = isChecked;
-            Debug.Log($"[HeroUI] OnlyUseActionBarItemsAndSkills set to: {isChecked}");
         }
 
         private void UpdateHeroHealPriorities()
@@ -713,10 +691,6 @@ namespace PitHero.UI
                     // Update hero name label
                     if (_heroNameLabel != null)
                         _heroNameLabel.SetText(heroComponent.LinkedHero?.Name ?? "Hero");
-
-                    // Update checkbox state
-                    if (_onlyUseActionBarCheckbox != null)
-                        _onlyUseActionBarCheckbox.IsChecked = heroComponent.OnlyUseActionBarItemsAndSkills;
                 }
                 else
                 {
