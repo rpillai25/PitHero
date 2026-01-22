@@ -100,8 +100,17 @@ namespace PitHero.AI
         /// </summary>
         private void StartJumpMovement(HeroComponent hero, Point targetTile)
         {
-            var targetPosition = TileToWorldPosition(targetTile);
             var entity = hero.Entity;
+            
+            // CRITICAL: Snap to grid BEFORE calculating target position
+            // This ensures we start from a perfectly aligned position
+            var tileMover = entity.GetComponent<TileByTileMover>();
+            if (tileMover != null)
+            {
+                tileMover.SnapToTileGrid();
+            }
+            
+            var targetPosition = TileToWorldPosition(targetTile);
 
             // Play jump sound effect
             SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();

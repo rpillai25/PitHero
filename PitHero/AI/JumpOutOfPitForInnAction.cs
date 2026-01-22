@@ -79,7 +79,7 @@ namespace PitHero.AI
                 // Ensure triggers update so pit exit is registered
                 tileMover?.UpdateTriggersAfterTeleport();
 
-                hero.InsidePit = false;  // Set InsidePit = False according to specification
+                // InsidePit flag already set to false at jump start
 
                 Debug.Log("[JumpOutOfPit] Jump out completed successfully");
                 return true; // Action complete
@@ -95,12 +95,16 @@ namespace PitHero.AI
 
             _plannedTargetTile = targetTile.Value;
 
+            // CRITICAL: Update InsidePit flag BEFORE starting movement
+            // This ensures mercenaries immediately see the hero is outside and can trigger their own jump-out actions
+            hero.InsidePit = false;
+
             // Start the coroutine-based movement to avoid TileMap collider issues
             StartJumpOutMovement(hero, _plannedTargetTile);
             _isJumping = true;
             _jumpFinished = false;
 
-            Debug.Log($"[JumpOutOfPit] Started jump out to tile {_plannedTargetTile.X},{_plannedTargetTile.Y}");
+            Debug.Log($"[JumpOutOfPit] Started jump out to tile {_plannedTargetTile.X},{_plannedTargetTile.Y}, set InsidePit=false");
             return false; // Action in progress
         }
 
@@ -125,8 +129,17 @@ namespace PitHero.AI
         /// </summary>
         private void StartJumpOutMovement(HeroComponent hero, Point targetTile)
         {
-            var targetPosition = TileToWorldPosition(targetTile);
             var entity = hero.Entity;
+            
+            // CRITICAL: Snap to grid BEFORE calculating target position
+            // This ensures we start from a perfectly aligned position
+            var tileMover = entity.GetComponent<TileByTileMover>();
+            if (tileMover != null)
+            {
+                tileMover.SnapToTileGrid();
+            }
+            
+            var targetPosition = TileToWorldPosition(targetTile);
 
             // Play jump sound effect
             SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
