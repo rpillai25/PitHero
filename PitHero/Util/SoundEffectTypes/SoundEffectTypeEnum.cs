@@ -9,6 +9,7 @@
         ChestOpen,
         SwordSlash,
         TakeDamage,
-        EnemyDefeat
+        EnemyDefeat,
+        PayGold
     }
 }

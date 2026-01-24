@@ -101,14 +101,13 @@ namespace PitHero.AI
             var heroEntity = hero.Entity;
             var tileMover = heroEntity.GetComponent<TileByTileMover>();
             var facingComponent = heroEntity.GetComponent<ActorFacingComponent>();
+            SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
 
             if (tileMover == null)
             {
                 Debug.Error("[SleepInBedAction] Hero entity missing TileByTileMover");
                 yield break;
             }
-
-
 
 
             // Step 1: Hero should already be at payment tile (67, 3) from HeroStateMachine GoTo state
@@ -206,7 +205,8 @@ namespace PitHero.AI
             if (gameState != null && gameState.Funds >= GameConfig.InnCostGold)
             {
                 gameState.Funds -= GameConfig.InnCostGold;
-                _hasPaidInnkeeper = true;
+                _hasPaidInnkeeper = true;              
+                soundEffectManager.PlaySound(SoundEffectType.PayGold);
                 Debug.Log($"[SleepInBedAction] Paid {GameConfig.InnCostGold} gold to innkeeper. Remaining funds: {gameState.Funds}");
             }
             else
@@ -354,7 +354,6 @@ namespace PitHero.AI
             }
 
             Debug.Log("[SleepInBedAction] Sleep complete, restoring HP and MP to full for hero and mercenaries");
-            SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
             soundEffectManager.PlaySound(SoundEffectType.Restorative);
 
             // Heal hero to full HP and MP

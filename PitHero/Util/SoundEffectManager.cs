@@ -39,6 +39,9 @@ namespace PitHero.Util
                 soundEffectDict.Add(SoundEffectType.TakeDamage,
                     new NormalSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/TakeDamage.wav")));
 
+                soundEffectDict.Add(SoundEffectType.PayGold,
+                    new NormalSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/PayGold.wav")));
+
                 soundEffectDict.Add(SoundEffectType.Restorative,
                     new GroupSoundEffect(new SoundEffect[]
                     {

@@ -5,7 +5,7 @@ using System.Collections.Generic;
 
 namespace RolePlayingFramework.Heroes
 {
-    /// <summary>Combines two jobs; sums their stat contributions and unions skills.</summary>
+    /// <summary>Combines two jobs; averages their stat contributions and unions skills.</summary>
     public sealed class CompositeJob : IJob
     {
         private readonly IJob _a;
@@ -31,15 +31,15 @@ namespace RolePlayingFramework.Heroes
         }
 
         public string Name => $"{_a.Name}-{_b.Name}";
-        public StatBlock BaseBonus => _a.BaseBonus.Add(_b.BaseBonus);
-        public StatBlock GrowthPerLevel => _a.GrowthPerLevel.Add(_b.GrowthPerLevel);
+        public StatBlock BaseBonus => _a.BaseBonus.Add(_b.BaseBonus).Scale(0.5f);
+        public StatBlock GrowthPerLevel => _a.GrowthPerLevel.Add(_b.GrowthPerLevel).Scale(0.5f);
         public IReadOnlyList<ISkill> Skills => _skills;
 
         /// <summary>Tier is the maximum of the two component job tiers.</summary>
         public JobTier Tier => _a.Tier > _b.Tier ? _a.Tier : _b.Tier;
 
-        /// <summary>Computes combined job contribution at a level.</summary>
+        /// <summary>Computes averaged job contribution at a level.</summary>
         public StatBlock GetJobContributionAtLevel(int level)
-            => _a.GetJobContributionAtLevel(level).Add(_b.GetJobContributionAtLevel(level));
+            => _a.GetJobContributionAtLevel(level).Add(_b.GetJobContributionAtLevel(level)).Scale(0.5f);
     }
 }
