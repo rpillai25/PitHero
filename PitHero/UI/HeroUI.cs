@@ -198,7 +198,7 @@ namespace PitHero.UI
             _heroWindow.Pad(0); // Remove all window padding so tabs are flush with edges
             // Start with inventory tab width (850px)
             // Width will be adjusted dynamically when tabs change
-            _heroWindow.SetSize(850f, 350f);
+            _heroWindow.SetSize(870f, 350f);
             var tabWindowStyle = skin.Get<TabWindowStyle>(); // Use skin's tab window style
             _tabPane = new TabPane(tabWindowStyle);
             var tabStyle = CreateTabStyle(skin);
@@ -233,7 +233,7 @@ namespace PitHero.UI
             if (selectedTab == _inventoryTab)
             {
                 // Inventory tab needs full width for 20-column grid
-                newWidth = 850f;
+                newWidth = 870f;
             }
             else
             {
