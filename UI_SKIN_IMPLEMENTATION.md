@@ -54,6 +54,14 @@ To prevent visual clutter with the new NinePatch backgrounds, window titles were
 - **SettingsUI**: Empty title (tabs clearly show Window/Session)
 - **StencilLibraryPanel**: Retains "Stencil Library" title (no tabs, title provides context)
 
+### TabPane Positioning
+TabPanes are added to windows with padding removed at both the Window level and cell level to ensure tabs are flush with the window edges:
+```csharp
+_window.Pad(0); // Remove window padding
+_window.Add(_tabPane).Expand().Fill().Pad(0); // Remove cell padding
+```
+This prevents default padding from pushing tabs away from the top-left corner of the window. The `Window.Pad(0)` removes the internal Table padding that the Window inherits, while the cell `.Pad(0)` removes padding on the specific cell containing the TabPane.
+
 ## Technical Details
 
 ### NinePatch Configuration
@@ -126,6 +134,30 @@ skin.Add("default", scrollPaneStyle);
 - **HScrollKnob**: NinePatchScrollKnob texture, bounds (1,1,1,1), minWidth=25, minHeight=4
   - Centered vertically with TopHeight=3, BottomHeight=3 (knob height 4px centered in 10px scroll bar)
 - Applied to all ScrollPane instances using PitHeroSkin
+
+### Tab Style
+```csharp
+var tabButtonStyle = new TabButtonStyle
+{
+    LabelStyle = new LabelStyle { Font = font, FontColor = brownFontColor },
+    Inactive = tabBackground,  // NinePatchTab (3,3,3,3)
+    Active = tabBackground,    // NinePatchTab (3,3,3,3)
+    Hover = tabBackground,     // NinePatchTab (3,3,3,3)
+    PaddingTop = 4f
+};
+
+var tabWindowStyle = new TabWindowStyle
+{
+    TabButtonStyle = tabButtonStyle,
+    Background = null
+};
+skin.Add("default", tabWindowStyle);
+```
+- **Background**: NinePatchTab texture with bounds (3,3,3,3)
+- **Font Color**: Brown RGB(71, 36, 7) matching all other UI text
+- **States**: All states (Active, Inactive, Hover) use the same background for consistent appearance
+- **Padding**: 4px top padding for vertical spacing
+- Applied to all TabPane instances using PitHeroSkin
 
 ### Creating Hover Sprites
 

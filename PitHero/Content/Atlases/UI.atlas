@@ -97,62 +97,71 @@ UIHeroInverse
 UIGear
 	545,163,31,30
 	0.5,0.5
-SkillIcon1
+NinePatchTab_Active
 	129,224,24,24
 	0.5,0.5
-SkillIcon10
+NinePatchTab_Hover
 	0,482,24,24
 	0.5,0.5
-SkillIcon2
+NinePatchTab_Inactive
 	25,482,24,24
 	0.5,0.5
-SkillIcon3
+SkillIcon1
 	50,482,24,24
 	0.5,0.5
-SkillIcon4
+SkillIcon10
 	75,482,24,24
 	0.5,0.5
-SkillIcon5
+SkillIcon2
 	100,482,24,24
 	0.5,0.5
-SkillIcon6
+SkillIcon3
 	578,130,24,24
 	0.5,0.5
-SkillIcon7
+SkillIcon4
 	711,0,24,24
 	0.5,0.5
-SkillIcon8
+SkillIcon5
 	678,33,24,24
 	0.5,0.5
-SkillIcon9
+SkillIcon6
 	613,98,24,24
 	0.5,0.5
-UISortAlpha
+SkillIcon7
 	646,65,24,24
 	0.5,0.5
-UISortAlphaHighlight
+SkillIcon8
 	453,259,24,24
 	0.5,0.5
-UISortAlphaInverse
+SkillIcon9
 	420,292,24,24
 	0.5,0.5
-UISortTime
+UISortAlpha
 	387,325,24,24
 	0.5,0.5
-UISortTimeHighlight
+UISortAlphaHighlight
 	332,387,24,24
 	0.5,0.5
-UISortTimeInverse
+UISortAlphaInverse
 	268,452,24,24
 	0.5,0.5
-UISortType
+UISortTime
 	578,155,24,24
 	0.5,0.5
-UISortTypeHighlight
+UISortTimeHighlight
 	603,130,24,24
 	0.5,0.5
-UISortTypeInverse
+UISortTimeInverse
 	703,33,24,24
+	0.5,0.5
+UISortType
+	678,58,24,24
+	0.5,0.5
+UISortTypeHighlight
+	638,98,24,24
+	0.5,0.5
+UISortTypeInverse
+	736,0,24,24
 	0.5,0.5
 UIRadioButton_Selected
 	195,485,18,18
@@ -164,13 +173,13 @@ UIRadioButton_Unselected_Highlight
 	233,485,18,18
 	0.5,0.5
 UICheckbox_Checked
-	678,58,16,16
+	445,292,16,16
 	0.5,0.5
 UICheckbox_Unchecked
-	638,98,16,16
+	420,317,16,16
 	0.5,0.5
 UICheckbox_Unchecked_Highlight
-	736,0,16,16
+	387,350,16,16
 	0.5,0.5
 UISortOrderArrow
 	125,493,10,13

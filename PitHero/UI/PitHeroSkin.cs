@@ -95,6 +95,37 @@ namespace PitHero.UI
 
             skin.Add("radio", radioButtonStyle);
 
+            // Tab button style (for TabPane tab buttons)
+            var tabSpriteActive = uiAtlas.GetSprite("NinePatchTab_Active");
+            var tabNinePatchActive = new NinePatchSprite(tabSpriteActive, 8, 8, 8, 8);
+            var tabBackgroundActive = new NinePatchDrawable(tabNinePatchActive);
+
+            var tabSpriteInactive = uiAtlas.GetSprite("NinePatchTab_Inactive");
+            var tabNinePatchInactive = new NinePatchSprite(tabSpriteInactive, 8, 8, 8, 8);
+            var tabBackgroundInactive = new NinePatchDrawable(tabNinePatchInactive);
+
+            var tabSpriteHover = uiAtlas.GetSprite("NinePatchTab_Hover");
+            var tabNinePatchHover = new NinePatchSprite(tabSpriteHover, 8, 8, 8, 8);
+            var tabBackgroundHover = new NinePatchDrawable(tabNinePatchHover);
+
+            var tabButtonStyle = new TabButtonStyle
+            {
+                LabelStyle = new LabelStyle { Font = labelStyle.Font, FontColor = brownFontColor },
+                Inactive = tabBackgroundInactive,
+                Active = tabBackgroundActive,
+                Hover = tabBackgroundHover,
+                PaddingTop = 4f
+            };
+
+            // Tab window style (for TabPane container)
+            var tabWindowStyle = new TabWindowStyle
+            {
+                TabButtonStyle = tabButtonStyle,
+                Background = null
+            };
+
+            skin.Add("default", tabWindowStyle);
+
             // Scroll pane style
             var scrollSprite = uiAtlas.GetSprite("NinePatchScroll");
             var scrollKnobSprite = uiAtlas.GetSprite("NinePatchScrollKnob");

@@ -195,10 +195,11 @@ namespace PitHero.UI
         private void CreateHeroWindow(Skin skin)
         {
             _heroWindow = new Window("", skin); // Empty title since tabs provide context
+            _heroWindow.Pad(0); // Remove all window padding so tabs are flush with edges
             // Start with inventory tab width (850px)
             // Width will be adjusted dynamically when tabs change
             _heroWindow.SetSize(850f, 350f);
-            var tabWindowStyle = CreateTabWindowStyle(skin);
+            var tabWindowStyle = skin.Get<TabWindowStyle>(); // Use skin's tab window style
             _tabPane = new TabPane(tabWindowStyle);
             var tabStyle = CreateTabStyle(skin);
             _inventoryTab = new Tab("Inventory", tabStyle);
@@ -219,7 +220,7 @@ namespace PitHero.UI
                 tabButton.OnClick += () => HandleTabChanged(tab);
             }
             
-            _heroWindow.Add(_tabPane).Expand().Fill();
+            _heroWindow.Add(_tabPane).Expand().Fill().Pad(0); // No cell padding - tabs flush with window edges
             _heroWindow.SetVisible(false);
         }
 
@@ -258,15 +259,6 @@ namespace PitHero.UI
             var dummyTarget2 = new Element();
             dummyTarget2.SetSize(0, 0);
             _equipPreviewTooltip = new EquipPreviewTooltip(dummyTarget2, skin);
-        }
-
-        private TabWindowStyle CreateTabWindowStyle(Skin skin)
-        {
-            var tabButtonStyle = new TabButtonStyle { LabelStyle = skin.Get<LabelStyle>() };
-            var buttonStyle = skin.Get<TextButtonStyle>();
-            tabButtonStyle.Inactive = buttonStyle.Up;
-            tabButtonStyle.Active = buttonStyle.Down;
-            return new TabWindowStyle { TabButtonStyle = tabButtonStyle, Background = null };
         }
 
         private TabStyle CreateTabStyle(Skin skin) => new TabStyle { Background = null };

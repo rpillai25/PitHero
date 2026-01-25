@@ -209,10 +209,11 @@ namespace PitHero.UI
             // Create settings window with TabPane
             var windowStyle = skin.Get<WindowStyle>();
             _settingsWindow = new Window("", windowStyle); // Empty title since tabs provide context
+            _settingsWindow.Pad(0); // Remove all window padding so tabs are flush with edges
             _settingsWindow.SetSize(450, 350);
 
             // Create TabPane with proper styling
-            var tabWindowStyle = CreateTabWindowStyle(skin);
+            var tabWindowStyle = skin.Get<TabWindowStyle>(); // Use skin's tab window style
             _tabPane = new TabPane(tabWindowStyle);
 
             // Create tabs with content
@@ -229,36 +230,13 @@ namespace PitHero.UI
             _tabPane.AddTab(_sessionTab);
 
             // Add TabPane to settings window
-            _settingsWindow.Add(_tabPane).Expand().Fill();
+            _settingsWindow.Add(_tabPane).Expand().Fill().Pad(0); // No cell padding - tabs flush with window edges
 
             // Initially hidden
             _settingsWindow.SetVisible(false);
 
             // Create confirmation dialog (initially hidden)
             CreateConfirmationDialog(skin);
-        }
-
-        /// <summary>
-        /// Creates TabWindowStyle for the TabPane
-        /// </summary>
-        private TabWindowStyle CreateTabWindowStyle(Skin skin)
-        {
-            var tabButtonStyle = new TabButtonStyle();
-            tabButtonStyle.LabelStyle = skin.Get<LabelStyle>();
-
-            // Use button styles for tab button states
-            var buttonStyle = skin.Get<TextButtonStyle>();
-            tabButtonStyle.Inactive = buttonStyle.Up;
-            tabButtonStyle.Active = buttonStyle.Down;
-            tabButtonStyle.Hover = buttonStyle.Over;
-            tabButtonStyle.Locked = buttonStyle.Disabled;
-            tabButtonStyle.PaddingTop = 2f;
-
-            return new TabWindowStyle
-            {
-                Background = null, // Use window background instead
-                TabButtonStyle = tabButtonStyle
-            };
         }
 
         /// <summary>
