@@ -51,8 +51,7 @@ namespace PitHero.UI
             contentTable.Pad(0f); // Remove content table padding
 
             // Add title label at the top (centered)
-            var titleSkin = Skin.CreateDefaultSkin();
-            var titleLabel = new Label("Synergy Stencils", titleSkin);
+            var titleLabel = new Label("Synergy Stencils", skin);
             titleLabel.SetFontScale(2f); // Make it slightly larger
             titleLabel.SetAlignment(Nez.UI.Align.Center);
             contentTable.Add(titleLabel).Pad(0f, 0f, 5f, 0f).Top().Center();

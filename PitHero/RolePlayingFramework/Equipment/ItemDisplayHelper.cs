@@ -47,8 +47,8 @@ namespace RolePlayingFramework.Equipment
         {
             return rarity switch
             {
-                ItemRarity.Normal => Color.White,
-                ItemRarity.Uncommon => new Color(30, 255, 0), // Green
+                ItemRarity.Normal => new Color(71, 36, 7),
+                ItemRarity.Uncommon => new Color(42, 153, 28), // Green
                 ItemRarity.Rare => new Color(0, 112, 221), // Blue
                 ItemRarity.Epic => new Color(163, 53, 238), // Purple
                 ItemRarity.Legendary => new Color(255, 128, 0), // Orange

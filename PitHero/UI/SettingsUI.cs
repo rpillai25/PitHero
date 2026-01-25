@@ -113,8 +113,8 @@ namespace PitHero.UI
             // Initialize hover text manager
             HoverTextManager.Initialize(_stage);
 
-            // Use default skin
-            var skin = Skin.CreateDefaultSkin();
+            // Use PitHero skin
+            var skin = PitHeroSkin.CreateSkin();
 
             // Create main table for layout (kept to avoid breaking other UI expectations)
             _mainTable = new Table();
@@ -208,7 +208,7 @@ namespace PitHero.UI
         {
             // Create settings window with TabPane
             var windowStyle = skin.Get<WindowStyle>();
-            _settingsWindow = new Window("Settings", windowStyle);
+            _settingsWindow = new Window("", windowStyle); // Empty title since tabs provide context
             _settingsWindow.SetSize(450, 350);
 
             // Create TabPane with proper styling
@@ -384,9 +384,9 @@ namespace PitHero.UI
             // Create ButtonGroup for window size radio buttons
             _windowSizeButtonGroup = new ButtonGroup();
 
-            // Create radio buttons using CheckBox
-            _normalSizeButton = new CheckBox("Normal", skin);
-            _halfSizeButton = new CheckBox("Half", skin);
+            // Create radio buttons using CheckBox with "radio" style
+            _normalSizeButton = new CheckBox("Normal", skin, "radio");
+            _halfSizeButton = new CheckBox("Half", skin, "radio");
 
             // Add buttons to ButtonGroup
             _windowSizeButtonGroup.Add(_normalSizeButton);

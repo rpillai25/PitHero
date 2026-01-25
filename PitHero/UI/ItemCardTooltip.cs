@@ -18,6 +18,9 @@ namespace PitHero.UI
         private const float SYNERGY_ICON_SIZE = 20f;
         private const float SYNERGY_ICON_SPACING = 4f;
 
+        // Brown font color matching PitHeroSkin default
+        private static readonly Color BrownFontColor = new Color(71, 36, 7);
+
         private IItem _item;
         private List<ActiveSynergy> _synergies;
         private Table _contentTable;
@@ -99,7 +102,7 @@ namespace PitHero.UI
             if (!skipDescription)
             {
                 var descText = _item.Description;
-                var descLabel = new Label(descText, new LabelStyle { Font = font, FontColor = Color.White });
+                var descLabel = new Label(descText, new LabelStyle { Font = font, FontColor = BrownFontColor });
                 // no wrapping so width reflects actual longest line
                 descLabel.SetWrap(false);
                 _contentTable.Add(descLabel).Left().Pad(0, 0, LINE_SPACING, 0);
@@ -113,7 +116,7 @@ namespace PitHero.UI
             // Sell Price (always shown)
             var sellPrice = _item.GetSellPrice();
             var priceText = $"Sell Price: {sellPrice}G";
-            var priceLabel = new Label(priceText, new LabelStyle { Font = font, FontColor = Color.White });
+            var priceLabel = new Label(priceText, new LabelStyle { Font = font, FontColor = BrownFontColor });
             _contentTable.Add(priceLabel).Left();
             _contentTable.Row();
             maxLineWidth = Max(maxLineWidth, Measure(font, priceText));
@@ -154,7 +157,7 @@ namespace PitHero.UI
                 if (consumable.HPRestoreAmount > 0)
                 {
                     var text = $"Restores {consumable.HPRestoreAmount} HP";
-                    var hpLabel = new Label(text, new LabelStyle { Font = font, FontColor = Color.White });
+                    var hpLabel = new Label(text, new LabelStyle { Font = font, FontColor = BrownFontColor });
                     _contentTable.Add(hpLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                     max = Max(max, Measure(font, text));
@@ -162,7 +165,7 @@ namespace PitHero.UI
                 else if (consumable.HPRestoreAmount < 0)
                 {
                     var text = "Fully restores HP";
-                    var hpLabel = new Label(text, new LabelStyle { Font = font, FontColor = Color.White });
+                    var hpLabel = new Label(text, new LabelStyle { Font = font, FontColor = BrownFontColor });
                     _contentTable.Add(hpLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                     max = Max(max, Measure(font, text));
@@ -171,7 +174,7 @@ namespace PitHero.UI
                 if (consumable.MPRestoreAmount > 0)
                 {
                     var text = $"Restores {consumable.MPRestoreAmount} MP";
-                    var apLabel = new Label(text, new LabelStyle { Font = font, FontColor = Color.White });
+                    var apLabel = new Label(text, new LabelStyle { Font = font, FontColor = BrownFontColor });
                     _contentTable.Add(apLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                     max = Max(max, Measure(font, text));
@@ -179,7 +182,7 @@ namespace PitHero.UI
                 else if (consumable.MPRestoreAmount < 0)
                 {
                     var text = "Fully restores MP";
-                    var apLabel = new Label(text, new LabelStyle { Font = font, FontColor = Color.White });
+                    var apLabel = new Label(text, new LabelStyle { Font = font, FontColor = BrownFontColor });
                     _contentTable.Add(apLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                     max = Max(max, Measure(font, text));
@@ -194,7 +197,7 @@ namespace PitHero.UI
                 if (stats.Strength > 0)
                 {
                     var text = $"+{stats.Strength} Strength";
-                    var strLabel = new Label(text, new LabelStyle { Font = font, FontColor = Color.White });
+                    var strLabel = new Label(text, new LabelStyle { Font = font, FontColor = BrownFontColor });
                     _contentTable.Add(strLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                     max = Max(max, Measure(font, text));
@@ -202,7 +205,7 @@ namespace PitHero.UI
                 if (stats.Agility > 0)
                 {
                     var text = $"+{stats.Agility} Agility";
-                    var agiLabel = new Label(text, new LabelStyle { Font = font, FontColor = Color.White });
+                    var agiLabel = new Label(text, new LabelStyle { Font = font, FontColor = BrownFontColor });
                     _contentTable.Add(agiLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                     max = Max(max, Measure(font, text));
@@ -210,7 +213,7 @@ namespace PitHero.UI
                 if (stats.Vitality > 0)
                 {
                     var text = $"+{stats.Vitality} Vitality";
-                    var vitLabel = new Label(text, new LabelStyle { Font = font, FontColor = Color.White });
+                    var vitLabel = new Label(text, new LabelStyle { Font = font, FontColor = BrownFontColor });
                     _contentTable.Add(vitLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                     max = Max(max, Measure(font, text));
@@ -218,7 +221,7 @@ namespace PitHero.UI
                 if (stats.Magic > 0)
                 {
                     var text = $"+{stats.Magic} Magic";
-                    var magLabel = new Label(text, new LabelStyle { Font = font, FontColor = Color.White });
+                    var magLabel = new Label(text, new LabelStyle { Font = font, FontColor = BrownFontColor });
                     _contentTable.Add(magLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                     max = Max(max, Measure(font, text));
@@ -228,7 +231,7 @@ namespace PitHero.UI
                 if (gear.AttackBonus != 0)
                 {
                     var text = $"+{gear.AttackBonus} Attack";
-                    var atkLabel = new Label(text, new LabelStyle { Font = font, FontColor = Color.White });
+                    var atkLabel = new Label(text, new LabelStyle { Font = font, FontColor = BrownFontColor });
                     _contentTable.Add(atkLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                     max = Max(max, Measure(font, text));
@@ -236,7 +239,7 @@ namespace PitHero.UI
                 if (gear.DefenseBonus != 0)
                 {
                     var text = $"+{gear.DefenseBonus} Defense";
-                    var defLabel = new Label(text, new LabelStyle { Font = font, FontColor = Color.White });
+                    var defLabel = new Label(text, new LabelStyle { Font = font, FontColor = BrownFontColor });
                     _contentTable.Add(defLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                     max = Max(max, Measure(font, text));
@@ -244,7 +247,7 @@ namespace PitHero.UI
                 if (gear.HPBonus != 0)
                 {
                     var text = $"+{gear.HPBonus} HP";
-                    var hpLabel = new Label(text, new LabelStyle { Font = font, FontColor = Color.White });
+                    var hpLabel = new Label(text, new LabelStyle { Font = font, FontColor = BrownFontColor });
                     _contentTable.Add(hpLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                     max = Max(max, Measure(font, text));
@@ -252,7 +255,7 @@ namespace PitHero.UI
                 if (gear.MPBonus != 0)
                 {
                     var text = $"+{gear.MPBonus} MP";
-                    var apLabel = new Label(text, new LabelStyle { Font = font, FontColor = Color.White });
+                    var apLabel = new Label(text, new LabelStyle { Font = font, FontColor = BrownFontColor });
                     _contentTable.Add(apLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                     max = Max(max, Measure(font, text));
@@ -266,7 +269,7 @@ namespace PitHero.UI
                         //If resistance value > 0 it's a resistance, else it's a weakness;
                         var type = resistance.Value > 0 ? "Resistance" : "Weakness";
                         var text = $"{Mathf.RoundToInt(Math.Abs(resistance.Value) * 100)}% {resistance.Key} {type}";
-                        var resLabel = new Label(text, new LabelStyle { Font = font, FontColor = Color.White });
+                        var resLabel = new Label(text, new LabelStyle { Font = font, FontColor = BrownFontColor });
                         _contentTable.Add(resLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                         _contentTable.Row();
                         max = Max(max, Measure(font, text));

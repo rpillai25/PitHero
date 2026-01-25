@@ -148,7 +148,7 @@ namespace PitHero.UI
         public void InitializeUI(Stage stage)
         {
             _stage = stage;
-            var skin = Skin.CreateDefaultSkin();
+            var skin = PitHeroSkin.CreateSkin();
             CreateHeroButton(skin);
             CreateHeroWindow(skin);
             CreateItemCards(skin);
@@ -194,7 +194,7 @@ namespace PitHero.UI
 
         private void CreateHeroWindow(Skin skin)
         {
-            _heroWindow = new Window("Hero", skin);
+            _heroWindow = new Window("", skin); // Empty title since tabs provide context
             // Start with inventory tab width (850px)
             // Width will be adjusted dynamically when tabs change
             _heroWindow.SetSize(850f, 350f);
@@ -266,7 +266,7 @@ namespace PitHero.UI
             var buttonStyle = skin.Get<TextButtonStyle>();
             tabButtonStyle.Inactive = buttonStyle.Up;
             tabButtonStyle.Active = buttonStyle.Down;
-            return new TabWindowStyle { TabButtonStyle = tabButtonStyle, Background = skin.Get<WindowStyle>().Background };
+            return new TabWindowStyle { TabButtonStyle = tabButtonStyle, Background = null };
         }
 
         private TabStyle CreateTabStyle(Skin skin) => new TabStyle { Background = null };
@@ -467,7 +467,7 @@ namespace PitHero.UI
 
         private void ShowRemoveStencilConfirmation(PlacedStencil stencil)
         {
-            var skin = Skin.CreateDefaultSkin();
+            var skin = PitHeroSkin.CreateSkin();
             var message = $"Remove stencil '{stencil.Pattern.Name}'?";
 
             var dialog = new ConfirmationDialog("Remove Stencil", message, skin,

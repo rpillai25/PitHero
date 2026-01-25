@@ -35,8 +35,8 @@ namespace PitHero.UI
         {
             _stage = stage;
 
-            // Use default skin
-            var skin = Skin.CreateDefaultSkin();
+            // Use PitHero skin
+            var skin = PitHeroSkin.CreateSkin();
 
             // Create FastF button
             CreateFastFButton(skin);

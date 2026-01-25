@@ -147,6 +147,7 @@ namespace PitHero.UI
 
             var scrollPane = new ScrollPane(containerTable, skin);
             scrollPane.SetScrollingDisabled(true, false);
+            scrollPane.SetFadeScrollBars(false); // Disable fade animation to prevent flashing
 
             return scrollPane;
         }

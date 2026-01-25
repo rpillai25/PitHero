@@ -19,7 +19,7 @@ namespace PitHero.UI
         {
             _stage = stage;
 
-            var skin = Skin.CreateDefaultSkin();
+            var skin = PitHeroSkin.CreateSkin();
 
             CreateTitleLogo();
             CreateMainMenu(skin);
