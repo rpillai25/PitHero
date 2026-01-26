@@ -295,6 +295,10 @@ namespace PitHero.UI
             scrollContent.Add(_yOffsetLabel).Left().SetPadBottom(10);
             scrollContent.Row();
 
+
+            // Create table for y offset slider and reset button side by side
+            var yOffsetTable = new Table();
+
             // Create enhanced slider with initial range for bottom dock
             _yOffsetSlider = new EnhancedSlider(-200, 0, 1, false, skin, null, false);
             _yOffsetSlider.SetValueAndCommit(0);
@@ -312,7 +316,18 @@ namespace PitHero.UI
                 StartSmoothScrollToOffset(_currentYOffset);
             };
 
-            scrollContent.Add(_yOffsetSlider).Width(300).SetPadBottom(20);
+            yOffsetTable.Add(_yOffsetSlider).Width(240).SetPadRight(10);
+
+            // Reset Y Offset button
+            var resetYOffsetButton = new TextButton("Reset", skin, "ph-default");
+            resetYOffsetButton.OnClicked += (button) =>
+            {
+                _yOffsetSlider.SetValueAndCommit(0);
+                _yOffsetLabel.SetText("Y Offset: 0");
+            };
+            yOffsetTable.Add(resetYOffsetButton).Width(50).Height(16f);
+
+            scrollContent.Add(yOffsetTable).SetPadBottom(20);
             scrollContent.Row();
 
             // Zoom level slider with reset button (left-aligned label)

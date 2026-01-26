@@ -1,7 +1,8 @@
 using Microsoft.Xna.Framework;
 using Nez;
-using Nez.UI;
 using Nez.Textures;
+using Nez.UI;
+using RolePlayingFramework.Equipment;
 
 namespace PitHero.UI
 {
@@ -151,9 +152,9 @@ namespace PitHero.UI
 
             // Create NinePatch sprites for scroll bar and knob
             var vScrollNinePatch = new NinePatchSprite(scrollSprite, 3, 3, 3, 3);
-            var vScrollKnobNinePatch = new NinePatchSprite(scrollKnobSprite, 1, 1, 1, 1);
+            var vScrollKnobNinePatch = new NinePatchSprite(scrollKnobSprite, 3, 3, 3, 3);
             var hScrollNinePatch = new NinePatchSprite(scrollSprite, 3, 3, 3, 3);
-            var hScrollKnobNinePatch = new NinePatchSprite(scrollKnobSprite, 1, 1, 1, 1);
+            var hScrollKnobNinePatch = new NinePatchSprite(scrollKnobSprite, 3, 3, 3, 3);
 
             // Create drawables and set min dimensions
             // Key insight: VScroll width is used for the scroll track, VScrollKnob width is the actual knob
@@ -198,7 +199,23 @@ namespace PitHero.UI
                 HScrollKnob = hScrollKnobDrawable
             };
 
+
             skin.Add("default", scrollPaneStyle);
+
+            // --- Custom SliderStyle ---
+            var sliderBackground = new PrimitiveDrawable(6, new Color(89, 55, 32));
+            var sliderKnob = new SpriteDrawable(uiAtlas.GetSprite("UISliderKnob"));
+            var sliderKnobOver = new SpriteDrawable(uiAtlas.GetSprite("UISliderKnobOver"));
+            var sliderKnobDown = new SpriteDrawable(uiAtlas.GetSprite("UISliderKnobDown"));
+
+            var sliderStyle = new SliderStyle
+            {
+                Background = sliderBackground,
+                Knob = sliderKnob,
+                KnobOver = sliderKnobOver,
+                KnobDown = sliderKnobDown
+            };
+            skin.Add("default", sliderStyle);
 
             _cachedSkin = skin;
             return _cachedSkin;

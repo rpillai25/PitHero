@@ -181,33 +181,42 @@ UICheckbox_Unchecked
 UICheckbox_Unchecked_Highlight
 	387,350,16,16
 	0.5,0.5
+UISliderKnob
+	125,493,14,14
+	0.5,0.5
+UISliderKnobDown
+	140,493,14,14
+	0.5,0.5
+UISliderKnobOver
+	155,493,14,14
+	0.5,0.5
 NinePatchButton_Down
-	125,493,12,12
+	170,493,12,12
 	0.5,0.5
 NinePatchButton_Over
-	138,493,12,12
+	252,485,12,12
 	0.5,0.5
 NinePatchButton_Up
-	151,493,12,12
+	478,259,12,12
 	0.5,0.5
 UISortOrderArrow
-	164,493,10,13
+	183,493,10,13
 	0.5,0.5
 NinePatchScroll
-	175,493,9,9
+	545,194,9,9
 	0.5,0.5
 NinePatchScrollKnob
-	157,66,3,3
+	332,412,9,9
 	0.5,0.5
 HPUnit2x
-	157,70,2,8
+	157,66,2,8
 	0.5,0.5
 MPUnit2x
-	157,79,2,8
+	157,75,2,8
 	0.5,0.5
 HPUnit
-	157,88,1,4
+	157,84,1,4
 	0.5,0.5
 MPUnit
-	159,88,1,4
+	159,84,1,4
 	0.5,0.5
