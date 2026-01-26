@@ -52,19 +52,19 @@ namespace PitHero.UI
             var txt = new Label(item?.ToString() ?? string.Empty, _skin.Get<LabelStyle>());
 
             // Up button
-            var upButton = new TextButton("Up", _skin);
+            var upButton = new TextButton("Up", _skin, "ph-default");           
             upButton.SetDisabled(index == 0); // Disable if first item
             upButton.OnClicked += (btn) => MoveItemUp(index);
 
             // Down button  
-            var downButton = new TextButton("Down", _skin);
+            var downButton = new TextButton("Down", _skin, "ph-default");
             downButton.SetDisabled(index == _items.Count - 1); // Disable if last item
             downButton.OnClicked += (btn) => MoveItemDown(index);
 
             row.Add(num).SetMinWidth(30f).SetPadRight(5f);
             row.Add(txt).SetExpandX().Left().SetPadRight(5f);
-            row.Add(upButton).SetMinWidth(30f).SetPadRight(2f);
-            row.Add(downButton).SetMinWidth(30f);
+            row.Add(upButton).SetMinWidth(30f).SetMinHeight(16f).SetPadRight(2f);
+            row.Add(downButton).SetMinWidth(30f).SetMinHeight(16f);
 
             return row;
         }

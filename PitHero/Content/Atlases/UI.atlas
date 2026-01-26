@@ -181,11 +181,20 @@ UICheckbox_Unchecked
 UICheckbox_Unchecked_Highlight
 	387,350,16,16
 	0.5,0.5
+NinePatchButton_Down
+	125,493,12,12
+	0.5,0.5
+NinePatchButton_Over
+	138,493,12,12
+	0.5,0.5
+NinePatchButton_Up
+	151,493,12,12
+	0.5,0.5
 UISortOrderArrow
-	125,493,10,13
+	164,493,10,13
 	0.5,0.5
 NinePatchScroll
-	136,493,9,9
+	175,493,9,9
 	0.5,0.5
 NinePatchScrollKnob
 	157,66,3,3

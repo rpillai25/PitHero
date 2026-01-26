@@ -38,6 +38,25 @@ namespace PitHero.UI
             skin.Add("default", textButtonStyle);
 
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+
+            // --- Custom TextButtonStyle with NinePatchDrawable for up/down/over ---
+            var ninePatchUp = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Up"), 4, 4, 4, 4));
+            var ninePatchDown = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Down"), 4, 4, 4, 4));
+            var ninePatchOver = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Over"), 4, 4, 4, 4));
+
+            var phTextButtonStyle = new TextButtonStyle
+            {
+                Up = ninePatchUp,
+                Down = ninePatchDown,
+                Over = ninePatchOver,
+                FontColor = brownFontColor,
+                DownFontColor = brownFontColor,
+                OverFontColor = brownFontColor,
+                PressedOffsetX = 1,
+                PressedOffsetY = 1
+            };
+            phTextButtonStyle.Up.SetPadding(0, 0, 25, 25); //Force centered text
+            skin.Add("ph-default", phTextButtonStyle);
             
             // Window background
             var ninepatchSprite = uiAtlas.GetSprite("NinepatchWindowBackground");

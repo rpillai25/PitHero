@@ -67,7 +67,7 @@ namespace PitHero.UI
 
             // Middle section: Three skill grids in scroll pane
             var skillGridsPane = CreateSkillGrids(skin);
-            _mainContainer.Add(skillGridsPane).Expand().Fill().Pad(10f);
+            _mainContainer.Add(skillGridsPane).Expand().Fill().Pad(20f);
 
             // Create confirmation dialog (hidden initially)
             CreateConfirmationDialog(skin);

@@ -257,7 +257,6 @@ namespace PitHero.UI
         {
             // Create scroll pane container
             var scrollContent = new Table();
-            scrollContent.Pad(20);
 
             // Always On Top checkbox
             _alwaysOnTopCheckBox = new CheckBox("Always On Top", skin);
@@ -281,14 +280,14 @@ namespace PitHero.UI
             scrollContent.Row();
 
             // Swap Monitor button
-            _swapMonitorButton = new TextButton("Swap Monitor", skin);
+            _swapMonitorButton = new TextButton("Swap Monitor", skin, "ph-default");
             _swapMonitorButton.OnClicked += (button) =>
             {
                 WindowManager.SwapToNextMonitor(_game);
                 // Reapply current docking after monitor swap
                 ApplyCurrentWindowPosition();
             };
-            scrollContent.Add(_swapMonitorButton).Width(200).SetPadBottom(15);
+            scrollContent.Add(_swapMonitorButton).Width(100f).Height(24f).SetPadBottom(15);
             scrollContent.Row();
 
             // Y Offset slider (left-aligned label)
@@ -342,7 +341,7 @@ namespace PitHero.UI
             zoomTable.Add(_zoomSlider).Width(240).SetPadRight(10);
 
             // Reset zoom button
-            _resetZoomButton = new TextButton("Reset", skin);
+            _resetZoomButton = new TextButton("Reset", skin, "ph-default");
             _resetZoomButton.OnClicked += (button) =>
             {
                 _zoomSlider.SetValueAndCommit(GameConfig.CameraDefaultZoom);
@@ -350,7 +349,7 @@ namespace PitHero.UI
                 ApplyCameraZoom(GameConfig.CameraDefaultZoom);
             };
 
-            zoomTable.Add(_resetZoomButton).Width(50);
+            zoomTable.Add(_resetZoomButton).Width(50).Height(16f);
             scrollContent.Add(zoomTable).SetPadBottom(20);
             scrollContent.Row();
 
@@ -400,27 +399,27 @@ namespace PitHero.UI
             scrollContent.Row();
 
             // Dock buttons
-            _dockTopButton = new TextButton("Dock Top", skin);
+            _dockTopButton = new TextButton("Dock Top", skin, "ph-default");
             _dockTopButton.OnClicked += (button) => DockTop();
-            scrollContent.Add(_dockTopButton).Width(150).SetPadBottom(10);
+            scrollContent.Add(_dockTopButton).Width(100f).Height(24f).SetPadBottom(10);
             scrollContent.Row();
 
-            _dockBottomButton = new TextButton("Dock Bottom", skin);
+            _dockBottomButton = new TextButton("Dock Bottom", skin, "ph-default");
             _dockBottomButton.OnClicked += (button) => DockBottom();
-            scrollContent.Add(_dockBottomButton).Width(150).SetPadBottom(10);
+            scrollContent.Add(_dockBottomButton).Width(100f).Height(24f).SetPadBottom(10);
             scrollContent.Row();
 
-            _dockCenterButton = new TextButton("Dock Center", skin);
+            _dockCenterButton = new TextButton("Dock Center", skin, "ph-default");
             _dockCenterButton.OnClicked += (button) => DockCenter();
-            scrollContent.Add(_dockCenterButton).Width(150);
+            scrollContent.Add(_dockCenterButton).Width(100f).Height(24f);
 
             // Create scroll pane with the content
             var scrollPane = new ScrollPane(scrollContent, skin);
             scrollPane.SetScrollingDisabled(true, false); // Only allow vertical scrolling
             scrollPane.SetFadeScrollBars(false); // Always show scroll bars when needed
 
-            // Add scroll pane to the tab
-            windowTab.Add(scrollPane).Expand().Fill();
+            // Add scroll pane to the tab with padding on the cell, not the content
+            windowTab.Add(scrollPane).Expand().Fill().Pad(20);
         }
 
         /// <summary>
@@ -436,19 +435,19 @@ namespace PitHero.UI
             sessionTable.Row();
 
             // Save button (disabled placeholder)
-            _saveButton = new TextButton("Save", skin);
+            _saveButton = new TextButton("Save", skin, "ph-default");
             _saveButton.SetDisabled(true);
             _saveButton.OnClicked += (button) =>
             {
                 Debug.Log("Save functionality not yet implemented");
             };
-            sessionTable.Add(_saveButton).Width(150).SetPadBottom(15);
+            sessionTable.Add(_saveButton).SetMinWidth(64f).Height(24f).SetPadBottom(15);
             sessionTable.Row();
 
             // Quit button
-            _quitButton = new TextButton("Quit", skin);
+            _quitButton = new TextButton("Quit", skin, "ph-default");
             _quitButton.OnClicked += (button) => ShowQuitConfirmation();
-            sessionTable.Add(_quitButton).Width(150);
+            sessionTable.Add(_quitButton).SetMinWidth(64f).Height(24f);
 
             // Add content table to the tab
             sessionTab.Add(sessionTable).Expand().Fill().Top().Left();
@@ -468,7 +467,7 @@ namespace PitHero.UI
 
             var buttonTable = new Table();
 
-            var yesButton = new TextButton("Yes", skin);
+            var yesButton = new TextButton("Yes", skin, "ph-default");
             yesButton.OnClicked += (button) =>
             {
                 HideQuitConfirmation();
@@ -476,7 +475,7 @@ namespace PitHero.UI
             };
             buttonTable.Add(yesButton).Width(80).SetPadRight(10);
 
-            var noButton = new TextButton("No", skin);
+            var noButton = new TextButton("No", skin, "ph-default");
             noButton.OnClicked += (button) => HideQuitConfirmation();
             buttonTable.Add(noButton).Width(80);
 

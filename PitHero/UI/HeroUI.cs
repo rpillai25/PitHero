@@ -281,7 +281,7 @@ namespace PitHero.UI
             // Plus 32 pixel left padding = 296
             headerTable.Add().Width(296f); // Spacer to align with equipment column 8
             headerTable.Add(_heroNameLabel).Center();
-            container.Add(headerTable).Left().Pad(5f);
+            container.Add(headerTable).Left();
             container.Row();
 
             // Create horizontal container for inventory grid and buttons
@@ -317,23 +317,23 @@ namespace PitHero.UI
             buttonTable.Add().Height(64f);
             buttonTable.Row();
 
-            _viewStencilsButton = new TextButton("View Stencils", skin);
+            _viewStencilsButton = new TextButton("View Stencils", skin, "ph-default");
             _viewStencilsButton.OnClicked += HandleViewStencilsClicked;
             buttonTable.Add(_viewStencilsButton);
             buttonTable.Row();
 
-            _moveStencilsButton = new TextButton("Move Stencils", skin);
+            _moveStencilsButton = new TextButton("Move Stencils", skin, "ph-default");
             _moveStencilsButton.OnClicked += HandleMoveStencilsClicked;
             buttonTable.Add(_moveStencilsButton);
             buttonTable.Row();
 
-            _removeStencilButton = new TextButton("Remove Stencil", skin);
+            _removeStencilButton = new TextButton("Remove Stencil", skin, "ph-default");
             _removeStencilButton.OnClicked += HandleRemoveStencilClicked;
             buttonTable.Add(_removeStencilButton);
 
             // Add button table to right side with left padding of 40px
             var buttonCell = inventoryContainer.Add(buttonTable).Top();
-            buttonCell.SetPadLeft(40f);
+            buttonCell.SetPadRight(20f);
 
             container.Add(inventoryContainer).Expand().Fill();
 
