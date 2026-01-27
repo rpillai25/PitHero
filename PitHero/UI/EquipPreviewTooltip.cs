@@ -12,6 +12,9 @@ namespace PitHero.UI
         private const float CARD_PADDING = 5f;
         private const float LINE_SPACING = 2f;
 
+        // Brown font color matching PitHeroSkin default
+        private static readonly Color BrownFontColor = new Color(71, 36, 7);
+
         private IGear _newGear;
         private IGear _equippedGear;
         private Table _contentTable;
@@ -63,7 +66,7 @@ namespace PitHero.UI
 
             // Title
             var titleText = "Changes";
-            var titleLabel = new Label(titleText, new LabelStyle { Font = font, FontColor = Color.White });
+            var titleLabel = new Label(titleText, new LabelStyle { Font = font, FontColor = BrownFontColor });
             _contentTable.Add(titleLabel).Left().Pad(0, 0, LINE_SPACING, 0);
             _contentTable.Row();
             maxLineWidth = Max(maxLineWidth, Measure(font, titleText));

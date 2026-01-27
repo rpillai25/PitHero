@@ -20,6 +20,8 @@ namespace PitHero.UI
 
         // Brown font color matching PitHeroSkin default
         private static readonly Color BrownFontColor = new Color(71, 36, 7);
+        private static readonly Color SynergyCyan = new Color(0, 156, 156);
+        private static readonly Color SynergyGreen = new Color(11, 117, 11);
 
         private IItem _item;
         private List<ActiveSynergy> _synergies;
@@ -132,7 +134,7 @@ namespace PitHero.UI
 
                 // Add "Synergies:" header
                 var synergyHeaderText = "Synergies:";
-                var synergyHeaderLabel = new Label(synergyHeaderText, new LabelStyle { Font = font, FontColor = new Color(200, 255, 128) });
+                var synergyHeaderLabel = new Label(synergyHeaderText, new LabelStyle { Font = font, FontColor = SynergyGreen });
                 _contentTable.Add(synergyHeaderLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                 _contentTable.Row();
                 maxLineWidth = Max(maxLineWidth, Measure(font, synergyHeaderText));
@@ -328,7 +330,7 @@ namespace PitHero.UI
                 }
 
                 // Create synergy name label
-                var nameLabel = new Label(pattern.Name, new LabelStyle { Font = font, FontColor = new Color(200, 255, 128) });
+                var nameLabel = new Label(pattern.Name, new LabelStyle { Font = font, FontColor = SynergyCyan });
                 synergyRow.Add(nameLabel);
 
                 // Add the row to content table

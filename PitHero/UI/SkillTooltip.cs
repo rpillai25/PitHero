@@ -4,6 +4,7 @@ using Nez.UI;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Skills;
 using RolePlayingFramework.Synergies;
+using System.ComponentModel;
 
 namespace PitHero.UI
 {
@@ -12,6 +13,14 @@ namespace PitHero.UI
     {
         private Window _container;
         private Table _contentTable;
+
+        // Brown font color matching PitHeroSkin default
+        private static readonly Color BrownFontColor = new Color(71, 36, 7);
+        private static readonly Color Detail1FontColor = new Color(37, 80, 112);
+        private static readonly Color SynergyGreen = new Color(11, 117, 11);
+        private static readonly Color SynergyCyan = new Color(0, 156, 156);
+        private static readonly Color SynergyOrange = new Color(201, 132, 4);
+        private static readonly Color SynergyYellow = new Color(135, 135, 20);
 
         public SkillTooltip(Element target, Skin skin)
         {
@@ -32,7 +41,7 @@ namespace PitHero.UI
             _contentTable.Clear();
 
             // Skill name
-            var nameColor = isLearned ? Color.Green : Color.White;
+            var nameColor = isLearned ? Color.Green : BrownFontColor;
             var nameLabel = new Label(skill.Name, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = nameColor });
             _contentTable.Add(nameLabel).Left();
             _contentTable.Row();
@@ -43,14 +52,14 @@ namespace PitHero.UI
             {
                 typeText += $" (MP: {skill.MPCost})";
             }
-            var typeLabel = new Label(typeText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.LightGray });
+            var typeLabel = new Label(typeText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Detail1FontColor });
             _contentTable.Add(typeLabel).Left();
             _contentTable.Row();
 
             // Description
             if (!string.IsNullOrEmpty(skill.Description))
             {
-                var descLabel = new Label(skill.Description, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
+                var descLabel = new Label(skill.Description, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = BrownFontColor });
                 descLabel.SetWrap(true);
                 _contentTable.Add(descLabel).Width(200f).Left().SetPadTop(5f).SetPadBottom(5f);
                 _contentTable.Row();
@@ -62,7 +71,7 @@ namespace PitHero.UI
                 if (isLearned)
                 {
                     // Already learned synergy skill
-                    var learnedLabel = new Label("(Learned)", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Green });
+                    var learnedLabel = new Label("(Learned)", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = SynergyGreen });
                     _contentTable.Add(learnedLabel).Left();
                     _contentTable.Row();
                 }
@@ -80,7 +89,7 @@ namespace PitHero.UI
             {
                 // Regular JP cost for job skills
                 var costText = $"Cost: {skill.JPCost} JP";
-                var costLabel = new Label(costText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Yellow });
+                var costLabel = new Label(costText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Detail1FontColor });
                 _contentTable.Add(costLabel).Left();
                 _contentTable.Row();
 
@@ -111,20 +120,20 @@ namespace PitHero.UI
             _contentTable.Clear();
 
             // Pattern name
-            var nameLabel = new Label(SanitizeText(pattern.Name), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Cyan });
+            var nameLabel = new Label(SanitizeText(pattern.Name), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = SynergyCyan });
             _contentTable.Add(nameLabel).Left();
             _contentTable.Row();
 
             // Instance count and multiplier
             var instanceText = $"Active: {instanceCount}x (Multiplier: {multiplier:F2}x)";
-            var instanceLabel = new Label(SanitizeText(instanceText), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.LightGreen });
+            var instanceLabel = new Label(SanitizeText(instanceText), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = SynergyGreen });
             _contentTable.Add(instanceLabel).Left();
             _contentTable.Row();
 
             // Description
             if (!string.IsNullOrEmpty(pattern.Description))
             {
-                var descLabel = new Label(SanitizeText(pattern.Description), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
+                var descLabel = new Label(SanitizeText(pattern.Description), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = BrownFontColor });
                 descLabel.SetWrap(true);
                 _contentTable.Add(descLabel).Width(200f).Left().SetPadTop(5f).SetPadBottom(5f);
                 _contentTable.Row();
@@ -134,7 +143,7 @@ namespace PitHero.UI
             var effects = pattern.Effects;
             if (effects.Count > 0)
             {
-                var effectsLabel = new Label("Effects:", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Yellow });
+                var effectsLabel = new Label("Effects:", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = SynergyYellow });
                 _contentTable.Add(effectsLabel).Left().SetPadTop(5f);
                 _contentTable.Row();
 
@@ -144,7 +153,7 @@ namespace PitHero.UI
                     // Replace bullet with dash for compatibility
                     var effectText = SanitizeText(effect.Description);
 
-                    var effectLabel = new Label(effectText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.LightGray });
+                    var effectLabel = new Label(effectText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Detail1FontColor });
                     effectLabel.SetWrap(true);
                     _contentTable.Add(effectLabel).Width(200f).Left();
                     _contentTable.Row();
@@ -152,7 +161,7 @@ namespace PitHero.UI
             }
 
             // Note about temporary nature
-            var noteLabel = new Label("(Active only while pattern is formed)", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Orange });
+            var noteLabel = new Label("(Active only while pattern is formed)", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = SynergyOrange });
             _contentTable.Add(noteLabel).Left().SetPadTop(5f);
             _contentTable.Row();
 
