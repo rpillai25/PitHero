@@ -143,6 +143,12 @@ namespace PitHero
         public const int RenderLayerGraphicalHUD = 997; // Graphical HUD layer (screen space, not affected by scene scaling)
         public const int TransparentPauseOverlay = 999; // Transparent overlay for paused action when UI is active
 
+        // Font paths
+        public const string FontMainUI = "Content/Fonts/Express.fnt";
+        public const string FontPathHud = "Content/Fonts/Skullboy.fnt";
+        public const string FontPathHud2x = "Content/Fonts/Skullboy2x.fnt";
+        public const string FontPathHudSmall = "Content/Fonts/CratesSmall.fnt";
+
         // UI Button Spacing
         public const float UIButtonPadding = 4f; // Padding between UI buttons
 

@@ -42,8 +42,8 @@ namespace PitHero.UI
         /// </summary>
         private static void LoadFonts()
         {
-            _hudFontNormal = Core.Content.LoadBitmapFont("Content/Fonts/HUD.fnt");
-            _hudFontHalf = Core.Content.LoadBitmapFont("Content/Fonts/Hud2x.fnt");
+            _hudFontNormal = Core.Content.LoadBitmapFont(GameConfig.FontPathHud);
+            _hudFontHalf = Core.Content.LoadBitmapFont(GameConfig.FontPathHud2x);
         }
 
         /// <summary>

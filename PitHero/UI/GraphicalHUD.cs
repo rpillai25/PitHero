@@ -75,7 +75,7 @@ namespace PitHero.UI
             _mpUnitSprite = uiAtlas.GetSprite("MPUnit");
 
             // Load HUD font (normal size only)
-            _hudFont = Core.Content.LoadBitmapFont("Content/Fonts/HUD.fnt");
+            _hudFont = Core.Content.LoadBitmapFont(GameConfig.FontPathHud);
         }
 
         /// <summary>

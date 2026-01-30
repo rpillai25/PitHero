@@ -107,7 +107,7 @@ namespace PitHero.UI
                 // Load font for stack count display
                 try
                 {
-                    _font = Core.Content.LoadBitmapFont("Content/Fonts/HudSmall.fnt");
+                    _font = Core.Content.LoadBitmapFont(GameConfig.FontPathHudSmall);
                 }
                 catch
                 {

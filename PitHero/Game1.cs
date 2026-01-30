@@ -18,6 +18,8 @@ namespace PitHero
         {
             base.Initialize();
 
+            Graphics.Instance.BitmapFont = Content.LoadBitmapFont(GameConfig.FontMainUI);
+
             // Register global services
             Services.AddService(new PauseService());
             Services.AddService(new CrystalMerchantVault());

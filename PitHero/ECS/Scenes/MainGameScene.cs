@@ -80,9 +80,9 @@ namespace PitHero.ECS.Scenes
             _cameraController = cameraEntity.AddComponent(new CameraControllerComponent());
 
             // Load HUD fonts (normal, 2x, 4x for shrink levels)
-            _hudFontNormal = Content.LoadBitmapFont("Content/Fonts/HUD.fnt");
+            _hudFontNormal = Content.LoadBitmapFont(GameConfig.FontPathHud);
             // New enlarged fonts for smaller window modes
-            _hudFontHalf = Content.LoadBitmapFont("Content/Fonts/Hud2x.fnt");
+            _hudFontHalf = Content.LoadBitmapFont(GameConfig.FontPathHud2x);
             HudFont = _hudFontNormal; // maintain old field
 
             // Pre-create label styles to avoid per-frame allocations
@@ -1099,7 +1099,7 @@ namespace PitHero.ECS.Scenes
                 _mercenaryNameLabelEntity = CreateEntity("mercenary-namelabel");
                 var nameLabel = _mercenaryNameLabelEntity.AddComponent(new TextRenderComponent());
                 nameLabel.SetRenderLayer(GameConfig.RenderLayerTop);
-                nameLabel.SetFont(Content.LoadBitmapFont("Content/Fonts/HUD.fnt"));
+                nameLabel.SetFont(Content.LoadBitmapFont(GameConfig.FontPathHud));
                 nameLabel.SetColor(Color.White);
             }
 

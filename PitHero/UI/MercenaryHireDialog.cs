@@ -29,7 +29,7 @@ namespace PitHero.UI
             SetBackground(new PrimitiveDrawable(new Color(40, 40, 40, 240)));
             Pad(20f);
 
-            var labelStyle = new LabelStyle(Core.Content.LoadBitmapFont("Content/Fonts/HUD.fnt"), Color.White);
+            var labelStyle = new LabelStyle(Core.Content.LoadBitmapFont(GameConfig.FontPathHud), Color.White);
 
             // Name
             _nameLabel = new Label("Mercenary Name", labelStyle);
@@ -77,7 +77,7 @@ namespace PitHero.UI
                 new PrimitiveDrawable(new Color(40, 40, 40))
             )
             {
-                Font = Core.Content.LoadBitmapFont("Content/Fonts/HUD.fnt"),
+                Font = Core.Content.LoadBitmapFont(GameConfig.FontPathHud),
                 FontColor = Color.White
             };
 
