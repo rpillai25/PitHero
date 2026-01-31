@@ -45,11 +45,11 @@ namespace PitHero.UI
             var row = new Table();
             row.SetTouchable(Touchable.Enabled);
 
-            // Priority number label
-            var num = new Label((index + 1).ToString(), _skin.Get<LabelStyle>());
+            // Priority number label - use ph-default style
+            var num = new Label((index + 1).ToString(), _skin, "ph-default");
 
-            // Item text
-            var txt = new Label(item?.ToString() ?? string.Empty, _skin.Get<LabelStyle>());
+            // Item text - use ph-default style
+            var txt = new Label(item?.ToString() ?? string.Empty, _skin, "ph-default");
 
             // Up button
             var upButton = new TextButton("Up", _skin, "ph-default");           

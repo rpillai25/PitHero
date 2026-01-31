@@ -207,13 +207,13 @@ namespace PitHero.UI
         private void CreateSettingsWindow(Skin skin)
         {
             // Create settings window with TabPane
-            var windowStyle = skin.Get<WindowStyle>();
+            var windowStyle = skin.Get<WindowStyle>("ph-default");
             _settingsWindow = new Window("", windowStyle); // Empty title since tabs provide context
             _settingsWindow.Pad(0); // Remove all window padding so tabs are flush with edges
             _settingsWindow.SetSize(450, 350);
 
             // Create TabPane with proper styling
-            var tabWindowStyle = skin.Get<TabWindowStyle>(); // Use skin's tab window style
+            var tabWindowStyle = skin.Get<TabWindowStyle>("ph-default"); // Use PitHero's custom tab window style
             _tabPane = new TabPane(tabWindowStyle);
 
             // Create tabs with content
@@ -259,7 +259,7 @@ namespace PitHero.UI
             var scrollContent = new Table();
 
             // Always On Top checkbox
-            _alwaysOnTopCheckBox = new CheckBox("Always On Top", skin);
+            _alwaysOnTopCheckBox = new CheckBox("Always On Top", skin, "ph-default");
             _alwaysOnTopCheckBox.IsChecked = _alwaysOnTop;
             _alwaysOnTopCheckBox.OnChanged += (isChecked) =>
             {
@@ -270,7 +270,7 @@ namespace PitHero.UI
             scrollContent.Row();
 
             // Auto-scroll to Hero checkbox
-            _autoScrollToHeroCheckBox = new CheckBox("Auto-scroll to Hero", skin);
+            _autoScrollToHeroCheckBox = new CheckBox("Auto-scroll to Hero", skin, "ph-default");
             _autoScrollToHeroCheckBox.IsChecked = UIWindowManager.AutoScrollToHeroEnabled;
             _autoScrollToHeroCheckBox.OnChanged += (isChecked) =>
             {
@@ -291,7 +291,7 @@ namespace PitHero.UI
             scrollContent.Row();
 
             // Y Offset slider (left-aligned label)
-            _yOffsetLabel = new Label("Y Offset: 0", skin);
+            _yOffsetLabel = new Label("Y Offset: 0", skin, "ph-default");
             scrollContent.Add(_yOffsetLabel).Left().SetPadBottom(10);
             scrollContent.Row();
 
@@ -331,7 +331,7 @@ namespace PitHero.UI
             scrollContent.Row();
 
             // Zoom level slider with reset button (left-aligned label)
-            _zoomLabel = new Label("Zoom: 1.00x", skin);
+            _zoomLabel = new Label("Zoom: 1.00x", skin, "ph-default");
             scrollContent.Add(_zoomLabel).Left().SetPadBottom(10);
             scrollContent.Row();
 
@@ -369,16 +369,16 @@ namespace PitHero.UI
             scrollContent.Row();
 
             // Window Size radio buttons
-            var windowSizeLabel = new Label("Window Size:", skin);
+            var windowSizeLabel = new Label("Window Size:", skin, "ph-default");
             scrollContent.Add(windowSizeLabel).Left().SetPadBottom(10);
             scrollContent.Row();
 
             // Create ButtonGroup for window size radio buttons
             _windowSizeButtonGroup = new ButtonGroup();
 
-            // Create radio buttons using CheckBox with "radio" style
-            _normalSizeButton = new CheckBox("Normal", skin, "radio");
-            _halfSizeButton = new CheckBox("Half", skin, "radio");
+            // Create radio buttons using CheckBox with "ph-default" style
+            _normalSizeButton = new CheckBox("Normal", skin, "ph-default");
+            _halfSizeButton = new CheckBox("Half", skin, "ph-default");
 
             // Add buttons to ButtonGroup
             _windowSizeButtonGroup.Add(_normalSizeButton);
@@ -429,7 +429,7 @@ namespace PitHero.UI
             scrollContent.Add(_dockCenterButton).Width(100f).Height(24f);
 
             // Create scroll pane with the content
-            var scrollPane = new ScrollPane(scrollContent, skin);
+            var scrollPane = new ScrollPane(scrollContent, skin, "ph-default");
             scrollPane.SetScrollingDisabled(true, false); // Only allow vertical scrolling
             scrollPane.SetFadeScrollBars(false); // Always show scroll bars when needed
 
@@ -446,7 +446,7 @@ namespace PitHero.UI
             sessionTable.Pad(20);
 
             // Session label
-            sessionTable.Add(new Label("Game Session", skin)).Left().SetPadBottom(20);
+            sessionTable.Add(new Label("Game Session", skin, "ph-default")).Left().SetPadBottom(20);
             sessionTable.Row();
 
             // Save button (disabled placeholder)
@@ -470,14 +470,14 @@ namespace PitHero.UI
 
         private void CreateConfirmationDialog(Skin skin)
         {
-            var windowStyle = skin.Get<WindowStyle>();
+            var windowStyle = skin.Get<WindowStyle>("ph-default");
             _confirmationDialog = new Window("Really Quit?", windowStyle);
             _confirmationDialog.SetSize(300, 150);
 
             var dialogTable = new Table();
             dialogTable.Pad(20);
 
-            dialogTable.Add(new Label("Are you sure you want to quit?", skin)).SetPadBottom(20);
+            dialogTable.Add(new Label("Are you sure you want to quit?", skin, "ph-default")).SetPadBottom(20);
             dialogTable.Row();
 
             var buttonTable = new Table();

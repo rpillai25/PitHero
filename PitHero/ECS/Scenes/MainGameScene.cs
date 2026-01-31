@@ -509,7 +509,7 @@ namespace PitHero.ECS.Scenes
 
             var uiEntity = CreateEntity("ui-overlay");
             var uiCanvas = uiEntity.AddComponent(new UICanvas());
-            uiCanvas.IsFullScreen = true;
+            uiCanvas.IsFullScreen = false;
             uiCanvas.RenderLayer = GameConfig.RenderLayerUI;
 
             _settingsUI = new SettingsUI(Core.Instance);

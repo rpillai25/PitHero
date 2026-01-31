@@ -21,24 +21,36 @@ namespace PitHero.UI
             if (_cachedSkin != null)
                 return _cachedSkin;
 
-            var skin = Skin.CreateDefaultSkin();
+            // Create a completely fresh skin without Nez's defaults
+            var skin = new Skin();
 
             // Define custom brown font color for PitHero UI
             var brownFontColor = new Color(71, 36, 7);
-
-            // Update default label style to use brown color
-            var labelStyle = skin.Get<LabelStyle>();
-            labelStyle.FontColor = brownFontColor;
-            skin.Add("default", labelStyle);
-
-            // Update text button style to use brown color
-            var textButtonStyle = skin.Get<TextButtonStyle>();
-            textButtonStyle.FontColor = brownFontColor;
-            textButtonStyle.DownFontColor = brownFontColor;
-            textButtonStyle.OverFontColor = brownFontColor;
-            skin.Add("default", textButtonStyle);
+            var defaultFont = Graphics.Instance.BitmapFont;           
 
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+
+            // Create custom label style (don't use "default" to avoid Nez conflicts)
+            var labelStyle = new LabelStyle
+            {
+                Font = defaultFont,
+                FontColor = brownFontColor,
+                FontScaleX = 1f,
+                FontScaleY = 1f
+            };
+            skin.Add("ph-default", labelStyle);
+
+            // Create custom text button style to use brown color
+            var textButtonStyle = new TextButtonStyle
+            {
+                Font = defaultFont,
+                FontColor = brownFontColor,
+                DownFontColor = brownFontColor,
+                OverFontColor = brownFontColor,
+                FontScaleX = 1f,
+                FontScaleY = 1f
+            };
+            skin.Add("ph-default", textButtonStyle);
 
             // --- Custom TextButtonStyle with NinePatchDrawable for up/down/over ---
             var ninePatchUp = new NinePatchDrawable(new NinePatchSprite(uiAtlas.GetSprite("NinePatchButton_Up"), 4, 4, 4, 4));
@@ -68,8 +80,8 @@ namespace PitHero.UI
             {
                 Background = windowBackground
             };
-            
-            skin.Add("default", windowStyle);
+
+            skin.Add("ph-default", windowStyle);
 
             // Checkbox style
             var checkboxUnchecked = uiAtlas.GetSprite("UICheckbox_Unchecked");
@@ -88,10 +100,12 @@ namespace PitHero.UI
                 CheckboxOn = new SpriteDrawable(checkboxChecked),
                 CheckboxOver = new SpriteDrawable(checkboxUncheckedHover), // Hover when unchecked only
                 Font = labelStyle.Font,
-                FontColor = brownFontColor
+                FontColor = brownFontColor,
+                FontScaleX = 1f,
+                FontScaleY = 1f
             };
 
-            skin.Add("default", checkboxStyle);
+            skin.Add("ph-default", checkboxStyle);
 
             // Radio button style (for mutually exclusive options)
             var radioButtonUnselected = uiAtlas.GetSprite("UIRadioButton_Unselected");
@@ -110,10 +124,12 @@ namespace PitHero.UI
                 CheckboxOn = new SpriteDrawable(radioButtonSelected),
                 CheckboxOver = new SpriteDrawable(radioButtonUnselectedHover), // Hover when unselected only
                 Font = labelStyle.Font,
-                FontColor = brownFontColor
+                FontColor = brownFontColor,
+                FontScaleX = 1f,
+                FontScaleY = 1f
             };
 
-            skin.Add("radio", radioButtonStyle);
+            skin.Add("ph-default", radioButtonStyle);
 
             // Tab button style (for TabPane tab buttons)
             var tabSpriteActive = uiAtlas.GetSprite("NinePatchTab_Active");
@@ -130,7 +146,7 @@ namespace PitHero.UI
 
             var tabButtonStyle = new TabButtonStyle
             {
-                LabelStyle = new LabelStyle { Font = labelStyle.Font, FontColor = brownFontColor },
+                LabelStyle = new LabelStyle { Font = labelStyle.Font, FontColor = brownFontColor, FontScaleX = 1f, FontScaleY = 1f },
                 Inactive = tabBackgroundInactive,
                 Active = tabBackgroundActive,
                 Hover = tabBackgroundHover,
@@ -144,7 +160,7 @@ namespace PitHero.UI
                 Background = null
             };
 
-            skin.Add("default", tabWindowStyle);
+            skin.Add("ph-default", tabWindowStyle);
 
             // Scroll pane style
             var scrollSprite = uiAtlas.GetSprite("NinePatchScroll");
@@ -200,7 +216,7 @@ namespace PitHero.UI
             };
 
 
-            skin.Add("default", scrollPaneStyle);
+            skin.Add("ph-default", scrollPaneStyle);
 
             // --- Custom SliderStyle ---
             var sliderBackground = new PrimitiveDrawable(6, new Color(89, 55, 32));
@@ -215,7 +231,7 @@ namespace PitHero.UI
                 KnobOver = sliderKnobOver,
                 KnobDown = sliderKnobDown
             };
-            skin.Add("default", sliderStyle);
+            skin.Add("ph-default", sliderStyle);
 
             _cachedSkin = skin;
             return _cachedSkin;

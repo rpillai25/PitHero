@@ -81,28 +81,28 @@ namespace PitHero.UI
 
             // Left column: Job and Level info
             var leftCol = new Table();
-            _jobNameLabel = new Label("Job: Unknown", skin);
+            _jobNameLabel = new Label("Job: Unknown", skin, "ph-default");
             leftCol.Add(_jobNameLabel).Left();
             leftCol.Row();
 
-            _levelLabel = new Label("Level: 1", skin);
+            _levelLabel = new Label("Level: 1", skin, "ph-default");
             leftCol.Add(_levelLabel).Left();
             leftCol.Row();
 
-            _jobLevelLabel = new Label("Job Level: 1", skin);
+            _jobLevelLabel = new Label("Job Level: 1", skin, "ph-default");
             leftCol.Add(_jobLevelLabel).Left();
 
             // Right column: JP info and stats
             var rightCol = new Table();
-            _currentJPLabel = new Label("Current JP: 0", skin);
+            _currentJPLabel = new Label("Current JP: 0", skin, "ph-default");
             rightCol.Add(_currentJPLabel).Left();
             rightCol.Row();
 
-            _totalJPLabel = new Label("Total JP: 0", skin);
+            _totalJPLabel = new Label("Total JP: 0", skin, "ph-default");
             rightCol.Add(_totalJPLabel).Left();
             rightCol.Row();
 
-            _statsLabel = new Label("STR:0 AGI:0 VIT:0 MAG:0", skin);
+            _statsLabel = new Label("STR:0 AGI:0 VIT:0 MAG:0", skin, "ph-default");
             rightCol.Add(_statsLabel).Left();
 
             infoTable.Add(leftCol).Left().Expand().Pad(5f);
@@ -116,7 +116,7 @@ namespace PitHero.UI
             var containerTable = new Table();
 
             // Section 1: Job Skills
-            var jobSkillsLabel = new Label("Job Skills", skin);
+            var jobSkillsLabel = new Label("Job Skills", skin, "ph-default");
             containerTable.Add(jobSkillsLabel).Left().Pad(5f);
             containerTable.Row();
 
@@ -126,7 +126,7 @@ namespace PitHero.UI
             containerTable.Row();
 
             // Section 2: Synergy Skills
-            var synergySkillsLabel = new Label("Synergy Skills", skin);
+            var synergySkillsLabel = new Label("Synergy Skills", skin, "ph-default");
             containerTable.Add(synergySkillsLabel).Left().Pad(5f).SetPadTop(10f);
             containerTable.Row();
 
@@ -136,7 +136,7 @@ namespace PitHero.UI
             containerTable.Row();
 
             // Section 3: Synergy Effects
-            var synergyEffectsLabel = new Label("Synergy Effects", skin);
+            var synergyEffectsLabel = new Label("Synergy Effects", skin, "ph-default");
             containerTable.Add(synergyEffectsLabel).Left().Pad(5f).SetPadTop(10f);
             containerTable.Row();
 
@@ -145,7 +145,7 @@ namespace PitHero.UI
             containerTable.Add(_synergyEffectsGridContainer).Left().Pad(5f);
             containerTable.Row();
 
-            var scrollPane = new ScrollPane(containerTable, skin);
+            var scrollPane = new ScrollPane(containerTable, skin, "ph-default");
             scrollPane.SetScrollingDisabled(true, false);
             scrollPane.SetFadeScrollBars(false); // Disable fade animation to prevent flashing
 

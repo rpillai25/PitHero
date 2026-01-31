@@ -61,6 +61,8 @@ namespace PitHero.UI
         // Hero Crystal tab component
         private HeroCrystalTab _heroCrystalTab;
 
+        private const float HERO_WINDOW_WIDTH = 870f;
+
         public HeroUI()
         {
             // Initialize all synergy patterns - must include ALL patterns for proper sprite display
@@ -198,7 +200,7 @@ namespace PitHero.UI
             _heroWindow.Pad(0); // Remove all window padding so tabs are flush with edges
             // Start with inventory tab width (850px)
             // Width will be adjusted dynamically when tabs change
-            _heroWindow.SetSize(870f, 350f);
+            _heroWindow.SetSize(HERO_WINDOW_WIDTH, 350f);
             var tabWindowStyle = skin.Get<TabWindowStyle>(); // Use skin's tab window style
             _tabPane = new TabPane(tabWindowStyle);
             var tabStyle = CreateTabStyle(skin);
@@ -233,7 +235,7 @@ namespace PitHero.UI
             if (selectedTab == _inventoryTab)
             {
                 // Inventory tab needs full width for 20-column grid
-                newWidth = 870f;
+                newWidth = HERO_WINDOW_WIDTH;
             }
             else
             {
@@ -536,7 +538,7 @@ namespace PitHero.UI
             container.SetFillParent(true);
 
             // Pit Priority section
-            var pitPriorityLabel = new Label("Pit Priority", skin);
+            var pitPriorityLabel = new Label("Pit Priority", skin, "ph-default");
             container.Add(pitPriorityLabel).SetAlign(Align.Left).SetPadBottom(5f);
             container.Row();
 
@@ -546,7 +548,7 @@ namespace PitHero.UI
             container.Row();
 
             // Heal Priority section
-            var healPriorityLabel = new Label("Heal Priority", skin);
+            var healPriorityLabel = new Label("Heal Priority", skin, "ph-default");
             container.Add(healPriorityLabel).SetAlign(Align.Left).SetPadBottom(5f);
             container.Row();
 
