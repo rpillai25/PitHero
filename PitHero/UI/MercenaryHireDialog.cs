@@ -26,66 +26,66 @@ namespace PitHero.UI
 
         public MercenaryHireDialog()
         {
-            SetBackground(new PrimitiveDrawable(new Color(40, 40, 40, 240)));
+            var skin = PitHeroSkin.CreateSkin();
+
+            // Use the same window background as PitHeroSkin WindowStyle
+            var windowStyle = skin.Get<WindowStyle>("ph-default");
+            SetBackground(windowStyle.Background);
             Pad(20f);
 
-            var labelStyle = new LabelStyle(Core.Content.LoadBitmapFont(GameConfig.FontPathHud), Color.White);
-
-            // Name
-            _nameLabel = new Label("Mercenary Name", labelStyle);
+            // Name (with custom green color)
+            var defaultLabelStyle = skin.Get<LabelStyle>("ph-default");
+            var nameLabelStyle = new LabelStyle
+            {
+                Font = defaultLabelStyle.Font,
+                FontColor = new Color(0, 80, 156),
+                FontScaleX = defaultLabelStyle.FontScaleX,
+                FontScaleY = defaultLabelStyle.FontScaleY
+            };
+            _nameLabel = new Label("Mercenary Name", nameLabelStyle);
             Add(_nameLabel).SetColspan(2).Center();
             Row().SetPadTop(5f);
 
             // Job
-            _jobLabel = new Label("Job: Knight", labelStyle);
+            _jobLabel = new Label("Job: Knight", skin);
             Add(_jobLabel).SetColspan(2).Left();
             Row().SetPadTop(10f);
 
             // HP
-            _hpLabel = new Label("HP: 100", labelStyle);
+            _hpLabel = new Label("HP: 100", skin);
             Add(_hpLabel).SetColspan(2).Left();
             Row().SetPadTop(5f);
 
             // MP
-            _mpLabel = new Label("MP: 50", labelStyle);
+            _mpLabel = new Label("MP: 50", skin);
             Add(_mpLabel).SetColspan(2).Left();
             Row().SetPadTop(5f);
 
             // STR
-            _strLabel = new Label("STR: 10", labelStyle);
+            _strLabel = new Label("STR: 10", skin);
             Add(_strLabel).SetColspan(2).Left();
             Row().SetPadTop(5f);
 
             // AGI
-            _agiLabel = new Label("AGI: 10", labelStyle);
+            _agiLabel = new Label("AGI: 10", skin);
             Add(_agiLabel).SetColspan(2).Left();
             Row().SetPadTop(5f);
 
             // VIT
-            _vitLabel = new Label("VIT: 10", labelStyle);
+            _vitLabel = new Label("VIT: 10", skin);
             Add(_vitLabel).SetColspan(2).Left();
             Row().SetPadTop(5f);
 
             // MAG
-            _magLabel = new Label("MAG: 10", labelStyle);
+            _magLabel = new Label("MAG: 10", skin);
             Add(_magLabel).SetColspan(2).Left();
             Row().SetPadTop(15f);
 
-            var buttonStyle = new TextButtonStyle(
-                new PrimitiveDrawable(new Color(60, 60, 60)),
-                new PrimitiveDrawable(new Color(80, 80, 80)),
-                new PrimitiveDrawable(new Color(40, 40, 40))
-            )
-            {
-                Font = Core.Content.LoadBitmapFont(GameConfig.FontPathHud),
-                FontColor = Color.White
-            };
-
-            _hireButton = new TextButton("Hire", buttonStyle);
+            _hireButton = new TextButton("Hire", skin, "ph-default");
             _hireButton.OnClicked += OnHireClicked;
             Add(_hireButton).SetPadRight(10f).SetMinWidth(80f).SetMinHeight(30f);
 
-            _cancelButton = new TextButton("Cancel", buttonStyle);
+            _cancelButton = new TextButton("Cancel", skin, "ph-default");
             _cancelButton.OnClicked += OnCancelClicked;
             Add(_cancelButton).SetMinWidth(80f).SetMinHeight(30f);
 
@@ -105,7 +105,7 @@ namespace PitHero.UI
             var maxMP = 10 + (stats.Magic * 3);
 
             _nameLabel.SetText(merc.Name);
-            _jobLabel.SetText($"Job: {merc.Job.Name}");
+            _jobLabel.SetText($"Job: {merc.Job.Name}  Lv: {merc.Level}");
             _hpLabel.SetText($"HP: {maxHP}");
             _mpLabel.SetText($"MP: {maxMP}");
             _strLabel.SetText($"STR: {stats.Strength}");

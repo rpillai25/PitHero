@@ -471,7 +471,7 @@ namespace PitHero.UI
         private void CreateConfirmationDialog(Skin skin)
         {
             var windowStyle = skin.Get<WindowStyle>("ph-default");
-            _confirmationDialog = new Window("Really Quit?", windowStyle);
+            _confirmationDialog = new Window("", windowStyle);
             _confirmationDialog.SetSize(300, 150);
 
             var dialogTable = new Table();
@@ -488,11 +488,11 @@ namespace PitHero.UI
                 HideQuitConfirmation();
                 Core.Exit();
             };
-            buttonTable.Add(yesButton).Width(80).SetPadRight(10);
+            buttonTable.Add(yesButton).Width(80).Height(24).SetPadRight(10);
 
             var noButton = new TextButton("No", skin, "ph-default");
             noButton.OnClicked += (button) => HideQuitConfirmation();
-            buttonTable.Add(noButton).Width(80);
+            buttonTable.Add(noButton).Width(80).Height(24);
 
             dialogTable.Add(buttonTable);
 
