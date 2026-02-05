@@ -128,10 +128,12 @@ namespace PitHero
         public const int RenderLayerTop = 2;
         public const int RenderLayerHeroHand1 = 4;
         public const int RenderLayerHeroHair = 5;
-        public const int RenderLayerHeroShirt = 6;
-        public const int RenderLayerHeroPants = 7;
-        public const int RenderLayerHeroBody = 8;
-        public const int RenderLayerHeroHand2 = 9;
+        public const int RenderLayerHeroEyes = 6;
+        public const int RenderLayerHeroHead = 7;
+        public const int RenderLayerHeroShirt = 8;
+        public const int RenderLayerHeroPants = 9;
+        public const int RenderLayerHeroBody = 10;
+        public const int RenderLayerHeroHand2 = 11;
         public const int RenderLayerFogOfWar = 40;   // Fog of war layer above most things, except hero
         public const int RenderLayerActors = 60; // Actors and entities layer
         public const int RenderLayerDroppedItems = 65; // Dropped items layer
