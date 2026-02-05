@@ -275,6 +275,17 @@ namespace PitHero.ECS.Scenes
             heroShirtAnimator.SetRenderLayer(GameConfig.RenderLayerHeroShirt);
             heroShirtAnimator.SetLocalOffset(offset);
 
+            // Head layer
+            var heroHeadAnimator = hero.AddComponent(new HeroHeadAnimationComponent(heroBodyAnimator.ComponentColor));
+            heroHeadAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHead);
+            heroHeadAnimator.SetLocalOffset(offset);
+            heroHeadAnimator.ComponentColor = heroBodyAnimator.ComponentColor; // Sync color with body
+
+            // Eyes layer
+            var heroEyesAnimator = hero.AddComponent(new HeroEyesAnimationComponent(Color.White));
+            heroEyesAnimator.SetRenderLayer(GameConfig.RenderLayerHeroEyes);
+            heroEyesAnimator.SetLocalOffset(offset);
+
             // Hair layer
             var heroHairAnimator = hero.AddComponent(new HeroHairAnimationComponent(GameConfig.HairColors.RandomItem()));
             heroHairAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHair);
@@ -475,6 +486,14 @@ namespace PitHero.ECS.Scenes
             var shirtAnimator = innkeeperEntity.AddComponent(new HeroShirtAnimationComponent(shirtColor));
             shirtAnimator.SetRenderLayer(GameConfig.RenderLayerHeroShirt);
             shirtAnimator.SetLocalOffset(offset);
+
+            var headAnimator = innkeeperEntity.AddComponent(new HeroHeadAnimationComponent(bodyColor));
+            headAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHead);
+            headAnimator.SetLocalOffset(offset);
+
+            var eyesAnimator = innkeeperEntity.AddComponent(new HeroEyesAnimationComponent(Color.White));
+            eyesAnimator.SetRenderLayer(GameConfig.RenderLayerHeroEyes);
+            eyesAnimator.SetLocalOffset(offset);
 
             // Gray hair for older innkeeper appearance
             var hairColor = new Color(100, 100, 100); // Gray

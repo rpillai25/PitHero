@@ -50,13 +50,15 @@ namespace PitHero.ECS.Components
 
         private void InitializeAnimators()
         {
-            // Get all hero animation components (the paperdoll layers)
+            // Get all hero animation components (the paperdoll layers) in render order
             _heroAnimators = new List<HeroAnimationComponent>
             {
                 Entity?.GetComponent<HeroHand2AnimationComponent>(),
                 Entity?.GetComponent<HeroBodyAnimationComponent>(),
                 Entity?.GetComponent<HeroPantsAnimationComponent>(),
                 Entity?.GetComponent<HeroShirtAnimationComponent>(),
+                Entity?.GetComponent<HeroHeadAnimationComponent>(),
+                Entity?.GetComponent<HeroEyesAnimationComponent>(),
                 Entity?.GetComponent<HeroHairAnimationComponent>(),
                 Entity?.GetComponent<HeroHand1AnimationComponent>()
             };

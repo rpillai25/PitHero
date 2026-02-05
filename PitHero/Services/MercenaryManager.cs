@@ -214,6 +214,14 @@ namespace PitHero.Services
             shirtAnimator.SetRenderLayer(GameConfig.RenderLayerHeroShirt);
             shirtAnimator.SetLocalOffset(offset);
 
+            var headAnimator = mercEntity.AddComponent(new HeroHeadAnimationComponent(bodyColor));
+            headAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHead);
+            headAnimator.SetLocalOffset(offset);
+
+            var eyesAnimator = mercEntity.AddComponent(new HeroEyesAnimationComponent(Color.White));
+            eyesAnimator.SetRenderLayer(GameConfig.RenderLayerHeroEyes);
+            eyesAnimator.SetLocalOffset(offset);
+
             var hairAnimator = mercEntity.AddComponent(new HeroHairAnimationComponent(GameConfig.HairColors.RandomItem()));
             hairAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHair);
             hairAnimator.SetLocalOffset(offset);
