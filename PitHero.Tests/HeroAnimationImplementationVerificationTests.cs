@@ -30,6 +30,8 @@ namespace PitHero.Tests
                 typeof(HeroBodyAnimationComponent),
                 typeof(HeroPantsAnimationComponent),
                 typeof(HeroShirtAnimationComponent),
+                typeof(HeroHeadAnimationComponent),
+                typeof(HeroEyesAnimationComponent),
                 typeof(HeroHairAnimationComponent),
                 typeof(HeroHand1AnimationComponent)
             };
@@ -133,12 +135,14 @@ namespace PitHero.Tests
             // Verify requirement: Each paperdoll layer has correct default animations
             var paperdollTests = new[]
             {
-                (typeof(HeroBodyAnimationComponent), "HeroBodyWalkDown"),
-                (typeof(HeroHand1AnimationComponent), "HeroHand1WalkDown"),
-                (typeof(HeroHand2AnimationComponent), "HeroHand2WalkDown"),
-                (typeof(HeroHairAnimationComponent), "HeroHairWalkDown"),
-                (typeof(HeroPantsAnimationComponent), "HeroPantsWalkDown"),
-                (typeof(HeroShirtAnimationComponent), "HeroShirtWalkDown")
+                (typeof(HeroBodyAnimationComponent), "MaleHeroBodyWalkDown"),
+                (typeof(HeroHand1AnimationComponent), "MaleHeroArmWalkDown"),
+                (typeof(HeroHand2AnimationComponent), "MaleHeroBackArmWalkDown"),
+                (typeof(HeroHairAnimationComponent), "MaleHeroHairWalkDown"),
+                (typeof(HeroPantsAnimationComponent), "MaleHeroPantsWalkDown"),
+                (typeof(HeroShirtAnimationComponent), "MaleHeroShirtWalkDown"),
+                (typeof(HeroHeadAnimationComponent), "MaleHeroHeadWalkDown"),
+                (typeof(HeroEyesAnimationComponent), "MaleHeroEyesWalkDown")
             };
             
             foreach (var (componentType, expectedDefaultAnimation) in paperdollTests)

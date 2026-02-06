@@ -26,6 +26,8 @@ namespace PitHero.Tests
                 _heroEntity.AddComponent(new HeroBodyAnimationComponent(Color.White)),
                 _heroEntity.AddComponent(new HeroPantsAnimationComponent(Color.White)),
                 _heroEntity.AddComponent(new HeroShirtAnimationComponent(Color.White)),
+                _heroEntity.AddComponent(new HeroHeadAnimationComponent(Color.White)),
+                _heroEntity.AddComponent(new HeroEyesAnimationComponent(Color.White)),
                 _heroEntity.AddComponent(new HeroHairAnimationComponent(Color.White)),
                 _heroEntity.AddComponent(new HeroHand1AnimationComponent(Color.White))
             };
@@ -42,7 +44,7 @@ namespace PitHero.Tests
         [TestMethod]
         public void PaperdollSystem_AllLayersCreated_ShouldHaveCorrectCount()
         {
-            Assert.AreEqual(6, _paperdollLayers.Count, "Should have exactly 6 paperdoll layers");
+            Assert.AreEqual(8, _paperdollLayers.Count, "Should have exactly 8 paperdoll layers");
             Assert.IsTrue(_paperdollLayers.All(layer => layer != null), "All layers should be non-null");
         }
 
@@ -51,12 +53,14 @@ namespace PitHero.Tests
         {
             var expectedAnimations = new[]
             {
-                "HeroHand2WalkDown",
-                "HeroBodyWalkDown", 
-                "HeroPantsWalkDown",
-                "HeroShirtWalkDown",
-                "HeroHairWalkDown",
-                "HeroHand1WalkDown"
+                "MaleHeroBackArmWalkDown",
+                "MaleHeroBodyWalkDown", 
+                "MaleHeroPantsWalkDown",
+                "MaleHeroShirtWalkDown",
+                "MaleHeroHeadWalkDown",
+                "MaleHeroEyesWalkDown",
+                "MaleHeroHairWalkDown",
+                "MaleHeroArmWalkDown"
             };
 
             for (int i = 0; i < _paperdollLayers.Count; i++)
@@ -113,7 +117,7 @@ namespace PitHero.Tests
                     // Should return valid jump animation name
                     var jumpAnimName = layer.GetJumpAnimationNameForDirection(direction);
                     Assert.IsNotNull(jumpAnimName);
-                    Assert.IsTrue(jumpAnimName.StartsWith("Hero") && jumpAnimName.Contains("Jump"),
+                    Assert.IsTrue(jumpAnimName.StartsWith("MaleHero") && jumpAnimName.Contains("Jump"),
                         $"Jump animation name should be valid for {layer.GetType().Name}");
                 }
             }

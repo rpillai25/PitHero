@@ -11,14 +11,14 @@ namespace PitHero.ECS.Components
         {
         }
 
-        protected override string DefaultAnimation => "HeroBodyWalkDown";
-        protected override string AnimDown => "HeroBodyWalkDown";
-        protected override string AnimLeft => "HeroBodyWalkRight";   // Flipped in code
-        protected override string AnimRight => "HeroBodyWalkRight";
-        protected override string AnimUp => "HeroBodyWalkUp";
-        protected override string JumpAnimDown => "HeroBodyJumpDown";
-        protected override string JumpAnimLeft => "HeroBodyJumpRight";  // Flipped in code
-        protected override string JumpAnimRight => "HeroBodyJumpRight";
-        protected override string JumpAnimUp => "HeroBodyJumpUp";
+        protected override string DefaultAnimation => "MaleHeroBodyWalkDown";
+        protected override string AnimDown => "MaleHeroBodyWalkDown";
+        protected override string AnimLeft => "MaleHeroBodyWalkRight";   // Flipped in code
+        protected override string AnimRight => "MaleHeroBodyWalkRight";
+        protected override string AnimUp => "MaleHeroBodyWalkUp";
+        protected override string JumpAnimDown => "MaleHeroBodyJumpRight";
+        protected override string JumpAnimLeft => "MaleHeroBodyJumpRight";  // Flipped in code
+        protected override string JumpAnimRight => "MaleHeroBodyJumpRight";
+        protected override string JumpAnimUp => "MaleHeroBodyJumpRight";
     }
 }
