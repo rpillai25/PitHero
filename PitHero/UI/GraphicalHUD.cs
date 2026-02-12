@@ -192,54 +192,54 @@ namespace PitHero.UI
             if (_heroEntity == null)
                 return;
 
-            var bodyAnimComponent = _heroEntity.GetComponent<HeroHeadAnimationComponent>();
+            var headAnimComponent = _heroEntity.GetComponent<HeroHeadAnimationComponent>();
             var eyesAnimComponent = _heroEntity.GetComponent<HeroEyesAnimationComponent>();
             var hairAnimComponent = _heroEntity.GetComponent<HeroHairAnimationComponent>();
 
-            if (bodyAnimComponent == null || eyesAnimComponent == null || hairAnimComponent == null)
+            if (headAnimComponent == null || eyesAnimComponent == null || hairAnimComponent == null)
                 return;
 
             // Get the walk down animation from each component's Animations dictionary
-            if (bodyAnimComponent.Animations == null || eyesAnimComponent.Animations == null || hairAnimComponent.Animations == null)
+            if (headAnimComponent.Animations == null || eyesAnimComponent.Animations == null || hairAnimComponent.Animations == null)
                 return;
 
-            var bodyAnimName = bodyAnimComponent.WalkDownAnimationName;
+            var headAnimName = headAnimComponent.WalkDownAnimationName;
             var hairAnimName = hairAnimComponent.WalkDownAnimationName;
             var eyesAnimName = eyesAnimComponent.WalkDownAnimationName;
 
-            if (!bodyAnimComponent.Animations.ContainsKey(bodyAnimName) || 
+            if (!headAnimComponent.Animations.ContainsKey(headAnimName) || 
                 !hairAnimComponent.Animations.ContainsKey(hairAnimName) ||
                 !eyesAnimComponent.Animations.ContainsKey(eyesAnimName))
                 return;
 
-            var bodyAnimation = bodyAnimComponent.Animations[bodyAnimName];
+            var headAnimation = headAnimComponent.Animations[headAnimName];
             var hairAnimation = hairAnimComponent.Animations[hairAnimName];
             var eyesAnimation = eyesAnimComponent.Animations[eyesAnimName];
             // Get frame 0 sprite from each animation
-            if (bodyAnimation.Sprites == null || bodyAnimation.Sprites.Length == 0 ||
+            if (headAnimation.Sprites == null || headAnimation.Sprites.Length == 0 ||
                 hairAnimation.Sprites == null || hairAnimation.Sprites.Length == 0 ||
                 eyesAnimation.Sprites == null || eyesAnimation.Sprites.Length == 0)
                 return;
 
-            var bodySprite = bodyAnimation.Sprites[0];
+            var headSprite = headAnimation.Sprites[0];
             var hairSprite = hairAnimation.Sprites[0];
             var eyesSprite = eyesAnimation.Sprites[0];
             var renderPosition = hudPosition + new Vector2(xOffset, yOffset);
 
-            // Define the source rectangle to crop the top 32x31 pixels from the body sprite
-            var bodyCroppedSourceRect = new Rectangle(
-                bodySprite.SourceRect.X,
-                bodySprite.SourceRect.Y,
+            // Define the source rectangle to crop the top 32x31 pixels from the head sprite
+            var headCroppedSourceRect = new Rectangle(
+                headSprite.SourceRect.X,
+                headSprite.SourceRect.Y,
                 32,
                 31
             );
 
-            // Render body sprite first (cropped) with body color from animation component
+            // Render head sprite first (cropped) with head color from animation component
             batcher.Draw(
-                bodySprite.Texture2D,
+                headSprite.Texture2D,
                 renderPosition,
-                bodyCroppedSourceRect,
-                bodyAnimComponent.ComponentColor,
+                headCroppedSourceRect,
+                headAnimComponent.ComponentColor,
                 0f,
                 Vector2.Zero,
                 1f,
