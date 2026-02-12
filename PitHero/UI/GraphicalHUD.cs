@@ -136,8 +136,8 @@ namespace PitHero.UI
             RenderText(batcher, position, _currentHp.ToString(), hpTextXOffset, hpTextYOffset);
             RenderText(batcher, position, _currentMp.ToString(), mpTextXOffset, mpTextYOffset);
             
-            // Render hero body and hair sprites at level position (32x36 cropped from 32x46)
-            RenderHeroSprites(batcher, position, levelTextXOffset-6, levelTextYOffset-20);
+            // Render hero body and hair sprites at level position (32x31 cropped from 32x46)
+            RenderHeroSprites(batcher, position, levelTextXOffset-7, levelTextYOffset-15);
             
             // Render level text on top of hero sprites
             RenderText(batcher, position, "Lv "+_level.ToString(), levelTextXOffset-10, levelTextYOffset+14);
@@ -192,42 +192,46 @@ namespace PitHero.UI
             if (_heroEntity == null)
                 return;
 
-            var bodyAnimComponent = _heroEntity.GetComponent<HeroBodyAnimationComponent>();
+            var bodyAnimComponent = _heroEntity.GetComponent<HeroHeadAnimationComponent>();
+            var eyesAnimComponent = _heroEntity.GetComponent<HeroEyesAnimationComponent>();
             var hairAnimComponent = _heroEntity.GetComponent<HeroHairAnimationComponent>();
 
-            if (bodyAnimComponent == null || hairAnimComponent == null)
+            if (bodyAnimComponent == null || eyesAnimComponent == null || hairAnimComponent == null)
                 return;
 
             // Get the walk down animation from each component's Animations dictionary
-            if (bodyAnimComponent.Animations == null || hairAnimComponent.Animations == null)
+            if (bodyAnimComponent.Animations == null || eyesAnimComponent.Animations == null || hairAnimComponent.Animations == null)
                 return;
 
             var bodyAnimName = bodyAnimComponent.WalkDownAnimationName;
             var hairAnimName = hairAnimComponent.WalkDownAnimationName;
+            var eyesAnimName = eyesAnimComponent.WalkDownAnimationName;
 
             if (!bodyAnimComponent.Animations.ContainsKey(bodyAnimName) || 
-                !hairAnimComponent.Animations.ContainsKey(hairAnimName))
+                !hairAnimComponent.Animations.ContainsKey(hairAnimName) ||
+                !eyesAnimComponent.Animations.ContainsKey(eyesAnimName))
                 return;
 
             var bodyAnimation = bodyAnimComponent.Animations[bodyAnimName];
             var hairAnimation = hairAnimComponent.Animations[hairAnimName];
-
+            var eyesAnimation = eyesAnimComponent.Animations[eyesAnimName];
             // Get frame 0 sprite from each animation
             if (bodyAnimation.Sprites == null || bodyAnimation.Sprites.Length == 0 ||
-                hairAnimation.Sprites == null || hairAnimation.Sprites.Length == 0)
+                hairAnimation.Sprites == null || hairAnimation.Sprites.Length == 0 ||
+                eyesAnimation.Sprites == null || eyesAnimation.Sprites.Length == 0)
                 return;
 
             var bodySprite = bodyAnimation.Sprites[0];
             var hairSprite = hairAnimation.Sprites[0];
-
+            var eyesSprite = eyesAnimation.Sprites[0];
             var renderPosition = hudPosition + new Vector2(xOffset, yOffset);
 
-            // Define the source rectangle to crop the top 32x36 pixels from the body sprite
+            // Define the source rectangle to crop the top 32x31 pixels from the body sprite
             var bodyCroppedSourceRect = new Rectangle(
                 bodySprite.SourceRect.X,
                 bodySprite.SourceRect.Y,
                 32,
-                36
+                31
             );
 
             // Render body sprite first (cropped) with body color from animation component
@@ -243,12 +247,32 @@ namespace PitHero.UI
                 0f
             );
 
-            // Define the source rectangle to crop the top 32x36 pixels from the hair sprite
+            // Define the source rectangle to crop the top 32x31 pixels from the eyes sprite
+            var eyesCroppedSourceRect = new Rectangle(
+                eyesSprite.SourceRect.X,
+                eyesSprite.SourceRect.Y,
+                32,
+                31
+            );
+            // Render eyes sprite on top (cropped) with eyes color from animation component
+            batcher.Draw(
+                eyesSprite.Texture2D,
+                renderPosition,
+                eyesCroppedSourceRect,
+                eyesAnimComponent.ComponentColor,
+                0f,
+                Vector2.Zero,
+                1f,
+                SpriteEffects.None,
+                0f
+            );
+
+            // Define the source rectangle to crop the top 32x31 pixels from the hair sprite
             var hairCroppedSourceRect = new Rectangle(
                 hairSprite.SourceRect.X,
                 hairSprite.SourceRect.Y,
                 32,
-                36
+                31
             );
 
             // Render hair sprite on top (cropped) with hair color from animation component
