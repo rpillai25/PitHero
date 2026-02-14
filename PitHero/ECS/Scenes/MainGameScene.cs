@@ -287,7 +287,8 @@ namespace PitHero.ECS.Scenes
             heroEyesAnimator.SetLocalOffset(offset);
 
             // Hair layer
-            var heroHairAnimator = hero.AddComponent(new HeroHairAnimationComponent(GameConfig.HairColors.RandomItem()));
+            var heroHairstyle = Nez.Random.Range(1, GameConfig.MaleHeroHairstyleCount + 1); // Random hairstyle (1 to MaleHeroHairstyleCount)
+            var heroHairAnimator = hero.AddComponent(new HeroHairAnimationComponent(GameConfig.HairColors.RandomItem(), heroHairstyle));
             heroHairAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHair);
             heroHairAnimator.SetLocalOffset(offset);
 
@@ -497,7 +498,7 @@ namespace PitHero.ECS.Scenes
 
             // Gray hair for older innkeeper appearance
             var hairColor = new Color(100, 100, 100); // Gray
-            var hairAnimator = innkeeperEntity.AddComponent(new HeroHairAnimationComponent(hairColor));
+            var hairAnimator = innkeeperEntity.AddComponent(new HeroHairAnimationComponent(hairColor, hairstyleIndex: 1)); // Use default hairstyle for innkeeper
             hairAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHair);
             hairAnimator.SetLocalOffset(offset);
 
