@@ -287,7 +287,8 @@ namespace PitHero.ECS.Scenes
             heroEyesAnimator.SetLocalOffset(offset);
 
             // Hair layer
-            var heroHairstyle = Nez.Random.Range(1, GameConfig.MaleHeroHairstyleCount + 1); // Random hairstyle (1 to MaleHeroHairstyleCount)
+            var hairstyleService = Core.Services.GetService<HairstyleQueueService>();
+            var heroHairstyle = hairstyleService.GetNextHairstyle();
             var heroHairAnimator = hero.AddComponent(new HeroHairAnimationComponent(GameConfig.HairColors.RandomItem(), heroHairstyle));
             heroHairAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHair);
             heroHairAnimator.SetLocalOffset(offset);

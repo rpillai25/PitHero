@@ -222,7 +222,8 @@ namespace PitHero.Services
             eyesAnimator.SetRenderLayer(GameConfig.RenderLayerHeroEyes);
             eyesAnimator.SetLocalOffset(offset);
 
-            var hairAnimator = mercEntity.AddComponent(new HeroHairAnimationComponent(GameConfig.HairColors.RandomItem(), Nez.Random.Range(1, GameConfig.MaleHeroHairstyleCount + 1)));
+            var hairstyleService = Core.Services.GetService<HairstyleQueueService>();
+            var hairAnimator = mercEntity.AddComponent(new HeroHairAnimationComponent(GameConfig.HairColors.RandomItem(), hairstyleService.GetNextHairstyle()));
             hairAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHair);
             hairAnimator.SetLocalOffset(offset);
 

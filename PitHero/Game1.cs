@@ -26,6 +26,7 @@ namespace PitHero
             Services.AddService(new PitMerchantVault());
             Services.AddService(new SecondChanceMerchantVault());
             Services.AddService(new GameStateService());
+            Services.AddService(new HairstyleQueueService(GameConfig.MaleHeroHairstyleCount));
 
             // Register global managers
             SoundEffectManager soundEffectManager = new SoundEffectManager();
