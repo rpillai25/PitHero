@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace PitHero.Services
@@ -15,7 +16,15 @@ namespace PitHero.Services
         /// <param name="hairstyleCount">Total number of available hairstyles.</param>
         public HairstyleQueueService(int hairstyleCount)
         {
+            if (hairstyleCount <= 0)
+            {
+                throw new ArgumentException("Hairstyle count must be positive", nameof(hairstyleCount));
+            }
+
             _hairstyleCount = hairstyleCount;
+            
+            // Pre-fill queue on initialization to ensure first hairstyle is already randomized
+            RefillQueue();
         }
 
         /// <summary>Gets the next hairstyle index from the queue.</summary>

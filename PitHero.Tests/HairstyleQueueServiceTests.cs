@@ -77,5 +77,14 @@ namespace PitHero.Tests
             Assert.AreEqual(hairstyleCount, firstRound.Count);
             Assert.AreEqual(hairstyleCount, secondRound.Count);
         }
+
+        /// <summary>Test that constructor validates hairstyle count.</summary>
+        [TestMethod]
+        public void Constructor_ThrowsExceptionForInvalidHairstyleCount()
+        {
+            // Act & Assert
+            Assert.ThrowsException<System.ArgumentException>(() => new HairstyleQueueService(0));
+            Assert.ThrowsException<System.ArgumentException>(() => new HairstyleQueueService(-1));
+        }
     }
 }
