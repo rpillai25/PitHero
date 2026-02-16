@@ -9,7 +9,7 @@ namespace PitHero.Services
     /// </summary>
     public class HairstyleQueueService
     {
-        private readonly Queue<int> _hairstyleQueue = new Queue<int>();
+        private readonly Queue<int> _hairstyleQueue;
         private readonly int _hairstyleCount;
 
         /// <summary>Creates a new hairstyle queue service.</summary>
@@ -22,6 +22,7 @@ namespace PitHero.Services
             }
 
             _hairstyleCount = hairstyleCount;
+            _hairstyleQueue = new Queue<int>(hairstyleCount);
             
             // Pre-fill queue on initialization to ensure first hairstyle is already randomized
             RefillQueue();
