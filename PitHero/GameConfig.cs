@@ -23,7 +23,7 @@ namespace PitHero
         public const int HeroWidth = 32;
         public const int HeroHeight = 32;
         public const float HeroCriticalHPPercent = 0.4f;
-        public const int MaleHeroHairstyleCount = 3; // Number of available hairstyles for male heroes
+        public const int MaleHeroHairstyleCount = 5; // Number of available hairstyles for male heroes
 
         // Action Configuration
         public const float BattleDigitBounceWait = 0.5f;

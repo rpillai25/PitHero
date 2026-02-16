@@ -562,497 +562,677 @@ male_hero_hair3_walk_up_6
 male_hero_hair3_walk_up_7
 	687,376,32,46
 	0.5,0.5
-male_hero_hair_jump_right_0
+male_hero_hair4_jump_right_0
 	785,282,32,46
 	0.5,0.5
-male_hero_hair_jump_right_1
+male_hero_hair4_jump_right_1
 	884,188,32,46
 	0.5,0.5
-male_hero_hair_jump_right_2
+male_hero_hair4_jump_right_2
 	981,94,32,46
 	0.5,0.5
-male_hero_hair_jump_right_3
+male_hero_hair4_jump_right_3
 	753,329,32,46
 	0.5,0.5
-male_hero_hair_jump_right_4
+male_hero_hair4_jump_right_4
 	660,423,32,46
 	0.5,0.5
-male_hero_hair_jump_right_5
+male_hero_hair4_jump_right_5
 	851,235,32,46
 	0.5,0.5
-male_hero_hair_walk_down_0
+male_hero_hair4_walk_down_0
 	950,141,32,46
 	0.5,0.5
-male_hero_hair_walk_down_1
+male_hero_hair4_walk_down_1
 	720,376,32,46
 	0.5,0.5
-male_hero_hair_walk_down_2
+male_hero_hair4_walk_down_2
 	818,282,32,46
 	0.5,0.5
-male_hero_hair_walk_down_3
+male_hero_hair4_walk_down_3
 	917,188,32,46
 	0.5,0.5
-male_hero_hair_walk_down_4
+male_hero_hair4_walk_down_4
 	786,329,32,46
 	0.5,0.5
-male_hero_hair_walk_down_5
+male_hero_hair4_walk_down_5
 	693,423,32,46
 	0.5,0.5
-male_hero_hair_walk_down_6
+male_hero_hair4_walk_down_6
 	884,235,32,46
 	0.5,0.5
-male_hero_hair_walk_down_7
+male_hero_hair4_walk_down_7
 	983,141,32,46
 	0.5,0.5
-male_hero_hair_walk_right_0
+male_hero_hair4_walk_right_0
 	753,376,32,46
 	0.5,0.5
-male_hero_hair_walk_right_1
+male_hero_hair4_walk_right_1
 	851,282,32,46
 	0.5,0.5
-male_hero_hair_walk_right_2
+male_hero_hair4_walk_right_2
 	950,188,32,46
 	0.5,0.5
-male_hero_hair_walk_right_3
+male_hero_hair4_walk_right_3
 	819,329,32,46
 	0.5,0.5
-male_hero_hair_walk_right_4
+male_hero_hair4_walk_right_4
 	726,423,32,46
 	0.5,0.5
-male_hero_hair_walk_right_5
+male_hero_hair4_walk_right_5
 	917,235,32,46
 	0.5,0.5
-male_hero_hair_walk_right_6
+male_hero_hair4_walk_right_6
 	786,376,32,46
 	0.5,0.5
-male_hero_hair_walk_right_7
+male_hero_hair4_walk_right_7
 	884,282,32,46
 	0.5,0.5
-male_hero_hair_walk_up_0
+male_hero_hair4_walk_up_0
 	983,188,32,46
 	0.5,0.5
-male_hero_hair_walk_up_1
+male_hero_hair4_walk_up_1
 	852,329,32,46
 	0.5,0.5
-male_hero_hair_walk_up_2
+male_hero_hair4_walk_up_2
 	759,423,32,46
 	0.5,0.5
-male_hero_hair_walk_up_3
+male_hero_hair4_walk_up_3
 	950,235,32,46
 	0.5,0.5
-male_hero_hair_walk_up_4
+male_hero_hair4_walk_up_4
 	819,376,32,46
 	0.5,0.5
-male_hero_hair_walk_up_5
+male_hero_hair4_walk_up_5
 	917,282,32,46
 	0.5,0.5
-male_hero_hair_walk_up_6
+male_hero_hair4_walk_up_6
 	885,329,32,46
 	0.5,0.5
-male_hero_hair_walk_up_7
+male_hero_hair4_walk_up_7
 	792,423,32,46
 	0.5,0.5
-male_hero_head_jump_right_0
+male_hero_hair5_jump_right_0
 	983,235,32,46
 	0.5,0.5
-male_hero_head_jump_right_1
+male_hero_hair5_jump_right_1
 	852,376,32,46
 	0.5,0.5
-male_hero_head_jump_right_2
+male_hero_hair5_jump_right_2
 	950,282,32,46
 	0.5,0.5
-male_hero_head_jump_right_3
+male_hero_hair5_jump_right_3
 	918,329,32,46
 	0.5,0.5
-male_hero_head_jump_right_4
+male_hero_hair5_jump_right_4
 	825,423,32,46
 	0.5,0.5
-male_hero_head_jump_right_5
+male_hero_hair5_jump_right_5
 	885,376,32,46
 	0.5,0.5
-male_hero_head_walk_down_0
+male_hero_hair5_walk_down_0
 	983,282,32,46
 	0.5,0.5
-male_hero_head_walk_down_1
+male_hero_hair5_walk_down_1
 	951,329,32,46
 	0.5,0.5
-male_hero_head_walk_down_2
+male_hero_hair5_walk_down_2
 	858,423,32,46
 	0.5,0.5
-male_hero_head_walk_down_3
+male_hero_hair5_walk_down_3
 	918,376,32,46
 	0.5,0.5
-male_hero_head_walk_down_4
+male_hero_hair5_walk_down_4
 	984,329,32,46
 	0.5,0.5
-male_hero_head_walk_down_5
+male_hero_hair5_walk_down_5
 	891,423,32,46
 	0.5,0.5
-male_hero_head_walk_down_6
+male_hero_hair5_walk_down_6
 	951,376,32,46
 	0.5,0.5
-male_hero_head_walk_down_7
+male_hero_hair5_walk_down_7
 	924,423,32,46
 	0.5,0.5
-male_hero_head_walk_right_0
+male_hero_hair5_walk_right_0
 	984,376,32,46
 	0.5,0.5
-male_hero_head_walk_right_1
+male_hero_hair5_walk_right_1
 	957,423,32,46
 	0.5,0.5
-male_hero_head_walk_right_2
+male_hero_hair5_walk_right_2
 	990,423,32,46
 	0.5,0.5
-male_hero_head_walk_right_3
+male_hero_hair5_walk_right_3
 	0,481,32,46
 	0.5,0.5
-male_hero_head_walk_right_4
+male_hero_hair5_walk_right_4
 	33,481,32,46
 	0.5,0.5
-male_hero_head_walk_right_5
+male_hero_hair5_walk_right_5
 	0,528,32,46
 	0.5,0.5
-male_hero_head_walk_right_6
+male_hero_hair5_walk_right_6
 	66,481,32,46
 	0.5,0.5
-male_hero_head_walk_right_7
+male_hero_hair5_walk_right_7
 	33,528,32,46
 	0.5,0.5
-male_hero_head_walk_up_0
+male_hero_hair5_walk_up_0
 	0,575,32,46
 	0.5,0.5
-male_hero_head_walk_up_1
+male_hero_hair5_walk_up_1
 	99,481,32,46
 	0.5,0.5
-male_hero_head_walk_up_2
+male_hero_hair5_walk_up_2
 	66,528,32,46
 	0.5,0.5
-male_hero_head_walk_up_3
+male_hero_hair5_walk_up_3
 	33,575,32,46
 	0.5,0.5
-male_hero_head_walk_up_4
+male_hero_hair5_walk_up_4
 	132,481,32,46
 	0.5,0.5
-male_hero_head_walk_up_5
+male_hero_hair5_walk_up_5
 	0,622,32,46
 	0.5,0.5
-male_hero_head_walk_up_6
+male_hero_hair5_walk_up_6
 	99,528,32,46
 	0.5,0.5
-male_hero_head_walk_up_7
+male_hero_hair5_walk_up_7
 	66,575,32,46
 	0.5,0.5
-male_hero_headwear_jump_right_0
+male_hero_hair_jump_right_0
 	165,481,32,46
 	0.5,0.5
-male_hero_headwear_jump_right_1
+male_hero_hair_jump_right_1
 	33,622,32,46
 	0.5,0.5
-male_hero_headwear_jump_right_2
+male_hero_hair_jump_right_2
 	132,528,32,46
 	0.5,0.5
-male_hero_headwear_jump_right_3
+male_hero_hair_jump_right_3
 	0,669,32,46
 	0.5,0.5
-male_hero_headwear_jump_right_4
+male_hero_hair_jump_right_4
 	99,575,32,46
 	0.5,0.5
-male_hero_headwear_jump_right_5
+male_hero_hair_jump_right_5
 	198,481,32,46
 	0.5,0.5
-male_hero_headwear_walk_down_0
+male_hero_hair_walk_down_0
 	66,622,32,46
 	0.5,0.5
-male_hero_headwear_walk_down_1
+male_hero_hair_walk_down_1
 	165,528,32,46
 	0.5,0.5
-male_hero_headwear_walk_down_2
+male_hero_hair_walk_down_2
 	33,669,32,46
 	0.5,0.5
-male_hero_headwear_walk_down_3
+male_hero_hair_walk_down_3
 	132,575,32,46
 	0.5,0.5
-male_hero_headwear_walk_down_4
+male_hero_hair_walk_down_4
 	0,716,32,46
 	0.5,0.5
-male_hero_headwear_walk_down_5
+male_hero_hair_walk_down_5
 	99,622,32,46
 	0.5,0.5
-male_hero_headwear_walk_down_6
+male_hero_hair_walk_down_6
 	198,528,32,46
 	0.5,0.5
-male_hero_headwear_walk_down_7
+male_hero_hair_walk_down_7
 	231,499,32,46
 	0.5,0.5
-male_hero_headwear_walk_right_0
+male_hero_hair_walk_right_0
 	66,669,32,46
 	0.5,0.5
-male_hero_headwear_walk_right_1
+male_hero_hair_walk_right_1
 	165,575,32,46
 	0.5,0.5
-male_hero_headwear_walk_right_2
+male_hero_hair_walk_right_2
 	33,716,32,46
 	0.5,0.5
-male_hero_headwear_walk_right_3
+male_hero_hair_walk_right_3
 	132,622,32,46
 	0.5,0.5
-male_hero_headwear_walk_right_4
+male_hero_hair_walk_right_4
 	0,763,32,46
 	0.5,0.5
-male_hero_headwear_walk_right_5
+male_hero_hair_walk_right_5
 	297,470,32,46
 	0.5,0.5
-male_hero_headwear_walk_right_6
+male_hero_hair_walk_right_6
 	99,669,32,46
 	0.5,0.5
-male_hero_headwear_walk_right_7
+male_hero_hair_walk_right_7
 	264,505,32,46
 	0.5,0.5
-male_hero_headwear_walk_up_0
+male_hero_hair_walk_up_0
 	198,575,32,46
 	0.5,0.5
-male_hero_headwear_walk_up_1
+male_hero_hair_walk_up_1
 	231,546,32,46
 	0.5,0.5
-male_hero_headwear_walk_up_2
+male_hero_hair_walk_up_2
 	66,716,32,46
 	0.5,0.5
-male_hero_headwear_walk_up_3
+male_hero_hair_walk_up_3
 	165,622,32,46
 	0.5,0.5
-male_hero_headwear_walk_up_4
+male_hero_hair_walk_up_4
 	33,763,32,46
 	0.5,0.5
-male_hero_headwear_walk_up_5
+male_hero_hair_walk_up_5
 	330,470,32,46
 	0.5,0.5
-male_hero_headwear_walk_up_6
+male_hero_hair_walk_up_6
 	132,669,32,46
 	0.5,0.5
-male_hero_headwear_walk_up_7
+male_hero_hair_walk_up_7
 	0,810,32,46
 	0.5,0.5
-male_hero_pants_jump_right_0
+male_hero_head_jump_right_0
 	297,517,32,46
 	0.5,0.5
-male_hero_pants_jump_right_1
+male_hero_head_jump_right_1
 	99,716,32,46
 	0.5,0.5
-male_hero_pants_jump_right_2
+male_hero_head_jump_right_2
 	264,552,32,46
 	0.5,0.5
-male_hero_pants_jump_right_3
+male_hero_head_jump_right_3
 	198,622,32,46
 	0.5,0.5
-male_hero_pants_jump_right_4
+male_hero_head_jump_right_4
 	231,593,32,46
 	0.5,0.5
-male_hero_pants_jump_right_5
+male_hero_head_jump_right_5
 	66,763,32,46
 	0.5,0.5
-male_hero_pants_walk_down_0
+male_hero_head_walk_down_0
 	363,470,32,46
 	0.5,0.5
-male_hero_pants_walk_down_1
+male_hero_head_walk_down_1
 	165,669,32,46
 	0.5,0.5
-male_hero_pants_walk_down_2
+male_hero_head_walk_down_2
 	33,810,32,46
 	0.5,0.5
-male_hero_pants_walk_down_3
+male_hero_head_walk_down_3
 	330,517,32,46
 	0.5,0.5
-male_hero_pants_walk_down_4
+male_hero_head_walk_down_4
 	132,716,32,46
 	0.5,0.5
-male_hero_pants_walk_down_5
+male_hero_head_walk_down_5
 	0,857,32,46
 	0.5,0.5
-male_hero_pants_walk_down_6
+male_hero_head_walk_down_6
 	297,564,32,46
 	0.5,0.5
-male_hero_pants_walk_down_7
+male_hero_head_walk_down_7
 	99,763,32,46
 	0.5,0.5
-male_hero_pants_walk_right_0
+male_hero_head_walk_right_0
 	264,599,32,46
 	0.5,0.5
-male_hero_pants_walk_right_1
+male_hero_head_walk_right_1
 	396,470,32,46
 	0.5,0.5
-male_hero_pants_walk_right_2
+male_hero_head_walk_right_2
 	198,669,32,46
 	0.5,0.5
-male_hero_pants_walk_right_3
+male_hero_head_walk_right_3
 	231,640,32,46
 	0.5,0.5
-male_hero_pants_walk_right_4
+male_hero_head_walk_right_4
 	66,810,32,46
 	0.5,0.5
-male_hero_pants_walk_right_5
+male_hero_head_walk_right_5
 	363,517,32,46
 	0.5,0.5
-male_hero_pants_walk_right_6
+male_hero_head_walk_right_6
 	165,716,32,46
 	0.5,0.5
-male_hero_pants_walk_right_7
+male_hero_head_walk_right_7
 	33,857,32,46
 	0.5,0.5
-male_hero_pants_walk_up_0
+male_hero_head_walk_up_0
 	330,564,32,46
 	0.5,0.5
-male_hero_pants_walk_up_1
+male_hero_head_walk_up_1
 	132,763,32,46
 	0.5,0.5
-male_hero_pants_walk_up_2
+male_hero_head_walk_up_2
 	429,470,32,46
 	0.5,0.5
-male_hero_pants_walk_up_3
+male_hero_head_walk_up_3
 	0,904,32,46
 	0.5,0.5
-male_hero_pants_walk_up_4
+male_hero_head_walk_up_4
 	297,611,32,46
 	0.5,0.5
-male_hero_pants_walk_up_5
+male_hero_head_walk_up_5
 	99,810,32,46
 	0.5,0.5
-male_hero_pants_walk_up_6
+male_hero_head_walk_up_6
 	264,646,32,46
 	0.5,0.5
-male_hero_pants_walk_up_7
+male_hero_head_walk_up_7
 	396,517,32,46
 	0.5,0.5
-male_hero_shirt_jump_right_0
+male_hero_headwear_jump_right_0
 	198,716,32,46
 	0.5,0.5
-male_hero_shirt_jump_right_1
+male_hero_headwear_jump_right_1
 	231,687,32,46
 	0.5,0.5
-male_hero_shirt_jump_right_2
+male_hero_headwear_jump_right_2
 	66,857,32,46
 	0.5,0.5
-male_hero_shirt_jump_right_3
+male_hero_headwear_jump_right_3
 	363,564,32,46
 	0.5,0.5
-male_hero_shirt_jump_right_4
+male_hero_headwear_jump_right_4
 	165,763,32,46
 	0.5,0.5
-male_hero_shirt_jump_right_5
+male_hero_headwear_jump_right_5
 	462,470,32,46
 	0.5,0.5
-male_hero_shirt_walk_down_0
+male_hero_headwear_walk_down_0
 	33,904,32,46
 	0.5,0.5
-male_hero_shirt_walk_down_1
+male_hero_headwear_walk_down_1
 	330,611,32,46
 	0.5,0.5
-male_hero_shirt_walk_down_2
+male_hero_headwear_walk_down_2
 	132,810,32,46
 	0.5,0.5
-male_hero_shirt_walk_down_3
+male_hero_headwear_walk_down_3
 	429,517,32,46
 	0.5,0.5
-male_hero_shirt_walk_down_4
+male_hero_headwear_walk_down_4
 	0,951,32,46
 	0.5,0.5
-male_hero_shirt_walk_down_5
+male_hero_headwear_walk_down_5
 	297,658,32,46
 	0.5,0.5
-male_hero_shirt_walk_down_6
+male_hero_headwear_walk_down_6
 	99,857,32,46
 	0.5,0.5
-male_hero_shirt_walk_down_7
+male_hero_headwear_walk_down_7
 	264,693,32,46
 	0.5,0.5
-male_hero_shirt_walk_right_0
+male_hero_headwear_walk_right_0
 	396,564,32,46
 	0.5,0.5
-male_hero_shirt_walk_right_1
+male_hero_headwear_walk_right_1
 	198,763,32,46
 	0.5,0.5
-male_hero_shirt_walk_right_2
+male_hero_headwear_walk_right_2
 	231,734,32,46
 	0.5,0.5
-male_hero_shirt_walk_right_3
+male_hero_headwear_walk_right_3
 	495,470,32,46
 	0.5,0.5
-male_hero_shirt_walk_right_4
+male_hero_headwear_walk_right_4
 	66,904,32,46
 	0.5,0.5
-male_hero_shirt_walk_right_5
+male_hero_headwear_walk_right_5
 	363,611,32,46
 	0.5,0.5
-male_hero_shirt_walk_right_6
+male_hero_headwear_walk_right_6
 	165,810,32,46
 	0.5,0.5
-male_hero_shirt_walk_right_7
+male_hero_headwear_walk_right_7
 	462,517,32,46
 	0.5,0.5
-male_hero_shirt_walk_up_0
+male_hero_headwear_walk_up_0
 	33,951,32,46
 	0.5,0.5
-male_hero_shirt_walk_up_1
+male_hero_headwear_walk_up_1
 	330,658,32,46
 	0.5,0.5
-male_hero_shirt_walk_up_2
+male_hero_headwear_walk_up_2
 	132,857,32,46
 	0.5,0.5
-male_hero_shirt_walk_up_3
+male_hero_headwear_walk_up_3
 	429,564,32,46
 	0.5,0.5
-male_hero_shirt_walk_up_4
+male_hero_headwear_walk_up_4
 	528,470,32,46
 	0.5,0.5
-male_hero_shirt_walk_up_5
+male_hero_headwear_walk_up_5
 	297,705,32,46
 	0.5,0.5
-male_hero_shirt_walk_up_6
+male_hero_headwear_walk_up_6
 	99,904,32,46
 	0.5,0.5
-male_hero_shirt_walk_up_7
+male_hero_headwear_walk_up_7
 	264,740,32,46
 	0.5,0.5
+male_hero_pants_jump_right_0
+	396,611,32,46
+	0.5,0.5
+male_hero_pants_jump_right_1
+	198,810,32,46
+	0.5,0.5
+male_hero_pants_jump_right_2
+	495,517,32,46
+	0.5,0.5
+male_hero_pants_jump_right_3
+	231,781,32,46
+	0.5,0.5
+male_hero_pants_jump_right_4
+	66,951,32,46
+	0.5,0.5
+male_hero_pants_jump_right_5
+	363,658,32,46
+	0.5,0.5
+male_hero_pants_walk_down_0
+	165,857,32,46
+	0.5,0.5
+male_hero_pants_walk_down_1
+	462,564,32,46
+	0.5,0.5
+male_hero_pants_walk_down_2
+	561,470,32,46
+	0.5,0.5
+male_hero_pants_walk_down_3
+	330,705,32,46
+	0.5,0.5
+male_hero_pants_walk_down_4
+	132,904,32,46
+	0.5,0.5
+male_hero_pants_walk_down_5
+	429,611,32,46
+	0.5,0.5
+male_hero_pants_walk_down_6
+	528,517,32,46
+	0.5,0.5
+male_hero_pants_walk_down_7
+	297,752,32,46
+	0.5,0.5
+male_hero_pants_walk_right_0
+	99,951,32,46
+	0.5,0.5
+male_hero_pants_walk_right_1
+	264,787,32,46
+	0.5,0.5
+male_hero_pants_walk_right_2
+	396,658,32,46
+	0.5,0.5
+male_hero_pants_walk_right_3
+	198,857,32,46
+	0.5,0.5
+male_hero_pants_walk_right_4
+	495,564,32,46
+	0.5,0.5
+male_hero_pants_walk_right_5
+	231,828,32,46
+	0.5,0.5
+male_hero_pants_walk_right_6
+	594,470,32,46
+	0.5,0.5
+male_hero_pants_walk_right_7
+	363,705,32,46
+	0.5,0.5
+male_hero_pants_walk_up_0
+	165,904,32,46
+	0.5,0.5
+male_hero_pants_walk_up_1
+	462,611,32,46
+	0.5,0.5
+male_hero_pants_walk_up_2
+	561,517,32,46
+	0.5,0.5
+male_hero_pants_walk_up_3
+	330,752,32,46
+	0.5,0.5
+male_hero_pants_walk_up_4
+	132,951,32,46
+	0.5,0.5
+male_hero_pants_walk_up_5
+	429,658,32,46
+	0.5,0.5
+male_hero_pants_walk_up_6
+	528,564,32,46
+	0.5,0.5
+male_hero_pants_walk_up_7
+	297,799,32,46
+	0.5,0.5
+male_hero_shirt_jump_right_0
+	627,470,32,46
+	0.5,0.5
+male_hero_shirt_jump_right_1
+	264,834,32,46
+	0.5,0.5
+male_hero_shirt_jump_right_2
+	396,705,32,46
+	0.5,0.5
+male_hero_shirt_jump_right_3
+	198,904,32,46
+	0.5,0.5
+male_hero_shirt_jump_right_4
+	495,611,32,46
+	0.5,0.5
+male_hero_shirt_jump_right_5
+	231,875,32,46
+	0.5,0.5
+male_hero_shirt_walk_down_0
+	594,517,32,46
+	0.5,0.5
+male_hero_shirt_walk_down_1
+	363,752,32,46
+	0.5,0.5
+male_hero_shirt_walk_down_2
+	165,951,32,46
+	0.5,0.5
+male_hero_shirt_walk_down_3
+	462,658,32,46
+	0.5,0.5
+male_hero_shirt_walk_down_4
+	561,564,32,46
+	0.5,0.5
+male_hero_shirt_walk_down_5
+	330,799,32,46
+	0.5,0.5
+male_hero_shirt_walk_down_6
+	660,470,32,46
+	0.5,0.5
+male_hero_shirt_walk_down_7
+	429,705,32,46
+	0.5,0.5
+male_hero_shirt_walk_right_0
+	528,611,32,46
+	0.5,0.5
+male_hero_shirt_walk_right_1
+	297,846,32,46
+	0.5,0.5
+male_hero_shirt_walk_right_2
+	627,517,32,46
+	0.5,0.5
+male_hero_shirt_walk_right_3
+	264,881,32,46
+	0.5,0.5
+male_hero_shirt_walk_right_4
+	396,752,32,46
+	0.5,0.5
+male_hero_shirt_walk_right_5
+	198,951,32,46
+	0.5,0.5
+male_hero_shirt_walk_right_6
+	231,922,32,46
+	0.5,0.5
+male_hero_shirt_walk_right_7
+	495,658,32,46
+	0.5,0.5
+male_hero_shirt_walk_up_0
+	594,564,32,46
+	0.5,0.5
+male_hero_shirt_walk_up_1
+	363,799,32,46
+	0.5,0.5
+male_hero_shirt_walk_up_2
+	693,470,32,46
+	0.5,0.5
+male_hero_shirt_walk_up_3
+	462,705,32,46
+	0.5,0.5
+male_hero_shirt_walk_up_4
+	561,611,32,46
+	0.5,0.5
+male_hero_shirt_walk_up_5
+	330,846,32,46
+	0.5,0.5
+male_hero_shirt_walk_up_6
+	660,517,32,46
+	0.5,0.5
+male_hero_shirt_walk_up_7
+	429,752,32,46
+	0.5,0.5
 treasure_base_closed
-	396,611,32,32
+	528,658,32,32
 	0.5,0.5
 treasure_base_open
-	198,810,32,32
+	297,893,32,32
 	0.5,0.5
 treasure_wood_closed
-	495,517,32,32
+	627,564,32,32
 	0.5,0.5
 treasure_wood_open
-	231,781,32,32
+	264,928,32,32
 	0.5,0.5
 wall
-	66,951,32,32
+	396,799,32,32
 	0.5,0.5
 wizard_orb
-	363,658,32,32
+	726,470,32,32
 	0.5,0.5
 Slime_WalkDown_1
-	165,857,32,28
+	495,705,32,28
 	0.5,0.5
 Slime_WalkDown_2
-	462,564,32,28
+	231,969,32,28
 	0.5,0.5
 Slime_WalkRight_1
-	561,470,32,28
+	594,611,32,28
 	0.5,0.5
 Slime_WalkRight_2
-	330,705,32,28
+	363,846,32,28
 	0.5,0.5
 Slime_WalkUp_1
-	132,904,32,28
+	693,517,32,28
 	0.5,0.5
 Slime_WalkUp_2
-	429,611,32,28
+	462,752,32,28
 	0.5,0.5
 HeroShadow
 	356,129,27,5
 	0.5,0.5
 PlaceholderMonster
-	396,644,24,24
+	528,691,24,24
 	0.5,0.5
 
 MaleHeroArmJumpRight
@@ -1127,81 +1307,105 @@ MaleHeroHair3WalkRight
 MaleHeroHair3WalkUp
 	10
 	180,181,182,183,184,185,186,187
-MaleHeroHairJumpRight
+MaleHeroHair4JumpRight
 	10
 	188,189,190,191,192,193
-MaleHeroHairWalkDown
+MaleHeroHair4WalkDown
 	10
 	194,195,196,197,198,199,200,201
-MaleHeroHairWalkRight
+MaleHeroHair4WalkRight
 	10
 	202,203,204,205,206,207,208,209
-MaleHeroHairWalkUp
+MaleHeroHair4WalkUp
 	10
 	210,211,212,213,214,215,216,217
-MaleHeroHeadJumpRight
+MaleHeroHair5JumpRight
 	10
 	218,219,220,221,222,223
-MaleHeroHeadWalkDown
+MaleHeroHair5WalkDown
 	10
 	224,225,226,227,228,229,230,231
-MaleHeroHeadWalkRight
+MaleHeroHair5WalkRight
 	10
 	232,233,234,235,236,237,238,239
-MaleHeroHeadWalkUp
+MaleHeroHair5WalkUp
 	10
 	240,241,242,243,244,245,246,247
-MaleHeroHeadwearJumpRight
+MaleHeroHairJumpRight
 	10
 	248,249,250,251,252,253
-MaleHeroHeadwearWalkDown
+MaleHeroHairWalkDown
 	10
 	254,255,256,257,258,259,260,261
-MaleHeroHeadwearWalkRight
+MaleHeroHairWalkRight
 	10
 	262,263,264,265,266,267,268,269
-MaleHeroHeadwearWalkUp
+MaleHeroHairWalkUp
 	10
 	270,271,272,273,274,275,276,277
-MaleHeroPantsJumpRight
+MaleHeroHeadJumpRight
 	10
 	278,279,280,281,282,283
-MaleHeroPantsWalkDown
+MaleHeroHeadWalkDown
 	10
 	284,285,286,287,288,289,290,291
-MaleHeroPantsWalkRight
+MaleHeroHeadWalkRight
 	10
 	292,293,294,295,296,297,298,299
-MaleHeroPantsWalkUp
+MaleHeroHeadWalkUp
 	10
 	300,301,302,303,304,305,306,307
-MaleHeroShirtJumpRight
+MaleHeroHeadwearJumpRight
 	10
 	308,309,310,311,312,313
-MaleHeroShirtWalkDown
+MaleHeroHeadwearWalkDown
 	10
 	314,315,316,317,318,319,320,321
-MaleHeroShirtWalkRight
+MaleHeroHeadwearWalkRight
 	10
 	322,323,324,325,326,327,328,329
-MaleHeroShirtWalkUp
+MaleHeroHeadwearWalkUp
 	10
 	330,331,332,333,334,335,336,337
+MaleHeroPantsJumpRight
+	10
+	338,339,340,341,342,343
+MaleHeroPantsWalkDown
+	10
+	344,345,346,347,348,349,350,351
+MaleHeroPantsWalkRight
+	10
+	352,353,354,355,356,357,358,359
+MaleHeroPantsWalkUp
+	10
+	360,361,362,363,364,365,366,367
+MaleHeroShirtJumpRight
+	10
+	368,369,370,371,372,373
+MaleHeroShirtWalkDown
+	10
+	374,375,376,377,378,379,380,381
+MaleHeroShirtWalkRight
+	10
+	382,383,384,385,386,387,388,389
+MaleHeroShirtWalkUp
+	10
+	390,391,392,393,394,395,396,397
 Props
 	10
 	7
 SlimeWalkDown
 	10
-	344,345
+	404,405
 SlimeWalkRight
 	10
-	346,347
+	406,407
 SlimeWalkUp
 	10
-	348,349
+	408,409
 Things
 	10
-	338,339,340,341,342,343
+	398,399,400,401,402,403
 LightningStrike
 	40
 	0,1,2,3,4,5,6
