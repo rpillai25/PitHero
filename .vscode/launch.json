@@ -1,10 +1,39 @@
 {
-    // Change "mono" to "clr" for 64-bit .NET Framework debugging on Windows.
-    // (See: https://github.com/OmniSharp/omnisharp-vscode/wiki/Desktop-.NET-Framework)
-
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    
     "version": "0.2.0",
     "configurations": [
+        // Modern .NET configurations (recommended for .NET 8.0)
+        {
+            "name": ".NET: Launch",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "dotnet: build (Debug)",
+            "program": "${workspaceFolder}/PitHero/bin/Debug/PitHero.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/PitHero",
+            "stopAtEntry": false,
+            "console": "internalConsole"
+        },
+        {
+            "name": ".NET: Launch Without Building",
+            "type": "coreclr",
+            "request": "launch",
+            "program": "${workspaceFolder}/PitHero/bin/Debug/PitHero.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/PitHero",
+            "stopAtEntry": false,
+            "console": "internalConsole"
+        },
+        {
+            "name": ".NET: Attach to Process",
+            "type": "coreclr",
+            "request": "attach"
+        },
 
+        // Legacy Mono/CLR configurations (for backward compatibility)
         {
             "name": "Launch (Mac)",
             "type": "mono",
