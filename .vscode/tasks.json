@@ -1,6 +1,83 @@
 {
     "version": "2.0.0",
     "tasks": [
+        // Modern .NET tasks (recommended for .NET 8.0)
+        {
+            "label": "dotnet: build",
+            "type": "dotnet",
+            "task": "build",
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "dotnet: build (Debug)",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "build",
+                "${workspaceFolder}/PitHero.sln",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary",
+                "--configuration",
+                "Debug"
+            ],
+            "group": "build",
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "dotnet: build (Release)",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "build",
+                "${workspaceFolder}/PitHero.sln",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary",
+                "--configuration",
+                "Release"
+            ],
+            "group": "build",
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "dotnet: run",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "run",
+                "--project",
+                "${workspaceFolder}/PitHero/PitHero.csproj"
+            ],
+            "group": "none",
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "dotnet: test",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "test",
+                "${workspaceFolder}/PitHero.Tests/PitHero.Tests.csproj"
+            ],
+            "group": "test",
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "dotnet: clean",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "clean",
+                "${workspaceFolder}/PitHero.sln"
+            ],
+            "group": "build",
+            "problemMatcher": "$msCompile"
+        },
+
+        // Legacy MSBuild tasks (for Visual Studio compatibility)
         {
             "label": "Restore Project",
             "type": "shell",

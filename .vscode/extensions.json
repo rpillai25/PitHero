@@ -1,0 +1,17 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=827846 to learn about workspace recommendations.
+    "recommendations": [
+        // C# support for modern .NET (required)
+        "ms-dotnettools.csdevkit",
+        
+        // C# language support (required, installed with C# Dev Kit)
+        "ms-dotnettools.csharp",
+        
+        // Mono debugger for macOS debugging (required for Mac users)
+        "ms-vscode.mono-debug",
+        
+        // EditorConfig support for consistent code style
+        "editorconfig.editorconfig"
+    ],
+    "unwantedRecommendations": []
+}
