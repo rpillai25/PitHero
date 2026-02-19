@@ -653,10 +653,10 @@ public PitLord(int level = 99)
 - What challenge should this monster present?
 
 **Level Guidelines:**
-- Pit 1-10: Levels 1-15 (beginner)
-- Pit 11-20: Levels 16-35 (intermediate)
-- Pit 21-40: Levels 36-70 (advanced)
-- Pit 41+: Levels 71-99 (expert)
+- Pit 1-25: Levels 1-15 (beginner)
+- Pit 25-50: Levels 16-35 (intermediate)
+- Pit 50-75: Levels 36-70 (advanced)
+- Pit 75+: Levels 71-99 (expert)
 
 Use `BalanceConfig.EstimatePlayerLevelForPitLevel(pitLevel)` for guidance.
 

@@ -4,15 +4,11 @@
     // and may replace OmniSharp in future VS Code versions
     "omnisharp.autoStart": true,
 
-    // This just circumvents annoying default behavior with the C# extension...
-    // If you really like Code Lens, feel free to change this.
-    "csharp.referencesCodeLens.enabled": false,
-
     // Modern .NET settings
     "dotnet.defaultSolution": "PitHero.sln",
 	
     "files.exclude": {
-        "**/.[^v]*": true, // hide any files that start with a '.' but keep the .vscode folder
+        "**/.[^v][^github]*": true, // hide any files that start with a '.' but keep the .vscode folder and .github folder
         ".vs": true, // Visual Studio settings
         "getFNA.*": true,
         "imgui.ini": true,
@@ -29,6 +25,7 @@
         "FNA/[^src]*": true, // hide everything but the src folder
         "Nez/{[^DN]*}": true, // hide everything except what begins with D or N
         "Nez/Nez.*.*": true, // hide the files in the root of the repo
-    }
+    },
+    "dotnet.codeLens.enableReferencesCodeLens": false
 }
 
