@@ -2,6 +2,7 @@
 name: Planner
 description: Planning-only agent that converts Researcher context into a detailed implementation plan and hands it to downstream agents.
 tools: ['read', 'search', 'todo', 'edit']
+user-invokable: false
 ---
 
 You are the **Planner** agent.
