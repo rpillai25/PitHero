@@ -391,22 +391,9 @@ Jobs provide stat bonuses that grow with level using linear formulas:
 - **Mage**: 33 STR, 48 AGI, 33 VIT, 88 MAG, 190 HP, 274 MP (Magic DPS)
 - **Priest**: 38 STR, 53 AGI, 43 VIT, 78 MAG, 240 HP, 244 MP (Healer)
 
-### Secondary Jobs (15 total)
-Combinations of two primary jobs, 15-25% stronger than primaries:
-- Examples: Paladin (Knight+Priest), Ninja (Knight+Thief), Wizard (Mage+Priest)
-- Implementation: `PitHero/RolePlayingFramework/Jobs/Secondary/`
-
-### Tertiary Jobs (22 total)
-Elite combinations of secondary jobs, 25-40% stronger than primaries:
-- Examples: Templar (Paladin+WarMage), ShinobiMaster (Samurai+Ninja)
-- Many tertiary jobs reach stat cap (99) in their primary attributes
-- Implementation: `PitHero/RolePlayingFramework/Jobs/Tertiary/`
 
 ### Job Implementation Files
 - **Primary**: `PitHero/RolePlayingFramework/Jobs/Primary/*.cs`
-- **Secondary**: `PitHero/RolePlayingFramework/Jobs/Secondary/*.cs`
-- **Tertiary**: `PitHero/RolePlayingFramework/Jobs/Tertiary/*.cs`
-- **Growth Calculator**: `PitHero/RolePlayingFramework/Stats/GrowthCurveCalculator.cs`
 
 ---
 
