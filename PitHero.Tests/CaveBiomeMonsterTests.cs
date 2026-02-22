@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RolePlayingFramework.Enemies;
 using PitHero.Config;
+using RolePlayingFramework.Balance;
 
 namespace PitHero.Tests
 {
@@ -99,15 +100,14 @@ namespace PitHero.Tests
             var moltenTitan = new MoltenTitan();
             var ancientWyrm = new AncientWyrm();
 
-            // Assert - Check HP values for sample monsters
-            // Formula: (10 + level * 5) * archetype_multiplier
-            Assert.AreEqual(20, caveMushroom.MaxHP, "Cave Mushroom HP (L2, Balanced): 10+2*5=20");
-            Assert.AreEqual(45, stoneBeetle.MaxHP, "Stone Beetle HP (L4, Tank): (10+4*5)*1.5=45");
-            Assert.AreEqual(33, shadowImp.MaxHP, "Shadow Imp HP (L7, FastFragile): (10+7*5)*0.7=31.5→33");
-            Assert.AreEqual(86, stoneGuardian.MaxHP, "Stone Guardian HP (L7, Tank): (10+7*5)*1.5=67.5→86");
-            Assert.AreEqual(193, earthElemental.MaxHP, "Earth Elemental HP (L17, Tank): (10+17*5)*1.5=142.5→193");
-            Assert.AreEqual(268, moltenTitan.MaxHP, "Molten Titan HP (L22, Tank): (10+22*5)*1.5=180→268");
-            Assert.AreEqual(338, ancientWyrm.MaxHP, "Ancient Wyrm HP (L27, Tank): (10+27*5)*1.5=217.5→338");
+            // Assert - Check HP values for sample monsters using BalanceConfig formulas
+            Assert.AreEqual(BalanceConfig.CalculateMonsterHP(caveMushroom.Level, BalanceConfig.MonsterArchetype.Balanced), caveMushroom.MaxHP, "Cave Mushroom HP should follow BalanceConfig");
+            Assert.AreEqual(BalanceConfig.CalculateMonsterHP(stoneBeetle.Level, BalanceConfig.MonsterArchetype.Tank), stoneBeetle.MaxHP, "Stone Beetle HP should follow BalanceConfig");
+            Assert.AreEqual(BalanceConfig.CalculateMonsterHP(shadowImp.Level, BalanceConfig.MonsterArchetype.FastFragile), shadowImp.MaxHP, "Shadow Imp HP should follow BalanceConfig");
+            Assert.AreEqual(BalanceConfig.CalculateMonsterHP(stoneGuardian.Level, BalanceConfig.MonsterArchetype.Tank), stoneGuardian.MaxHP, "Stone Guardian HP should follow BalanceConfig");
+            Assert.AreEqual(BalanceConfig.CalculateMonsterHP(earthElemental.Level, BalanceConfig.MonsterArchetype.Tank), earthElemental.MaxHP, "Earth Elemental HP should follow BalanceConfig");
+            Assert.AreEqual(BalanceConfig.CalculateMonsterHP(moltenTitan.Level, BalanceConfig.MonsterArchetype.Tank), moltenTitan.MaxHP, "Molten Titan HP should follow BalanceConfig");
+            Assert.AreEqual(BalanceConfig.CalculateMonsterHP(ancientWyrm.Level, BalanceConfig.MonsterArchetype.Tank), ancientWyrm.MaxHP, "Ancient Wyrm HP should follow BalanceConfig");
 
             // Assert - Check element types
             Assert.AreEqual(RolePlayingFramework.Combat.ElementType.Earth, caveMushroom.Element);

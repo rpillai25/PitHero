@@ -946,6 +946,28 @@ Key methods:
 
 ---
 
+## Cave Biome (Pit 1-25) Reference
+
+### Enemy Pool Behavior
+
+- Cave progression uses explicit per-level pools in `CaveBiomeConfig`.
+- Pit 1-4 use a starter 5-entry pool for stable early encounters.
+- Pit 6-9, 11-14, 16-19, and 21-24 use 10-entry sliding windows to increase variety while preserving continuity.
+- Boss floors (5/10/15/20/25) intentionally have empty regular pools because boss flow controls those floors.
+
+### Boss Cadence
+
+- Cave boss cadence is fixed at every fifth pit level: 5, 10, 15, 20, and 25.
+- This cadence provides predictable milestone spikes and regular checkpoint pacing across the 25-level biome.
+
+### Cave Boss Level Scaling
+
+- Cave enemies use `BalanceConfig.EstimatePlayerLevelForPitLevel(pitLevel)` as the base.
+- Boss floors apply a +2 level bonus before clamping.
+- Final level is clamped with `StatConstants.ClampLevel` to keep scaling inside global level limits.
+
+---
+
 ## Conclusion
 
 This guide provides a comprehensive framework for creating balanced monsters in PitHero. By following these formulas and guidelines, you can create diverse, challenging, and fair combat encounters.

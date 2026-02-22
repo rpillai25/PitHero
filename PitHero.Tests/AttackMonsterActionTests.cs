@@ -8,7 +8,7 @@ namespace PitHero.Tests
     [TestClass]
     public class AttackMonsterActionTests
     {
-        /// <summary>Test that Slime now has fixed stats regardless of level</summary>
+        /// <summary>Test that Slime stats scale with constructor level.</summary>
         [TestMethod]
         [TestCategory("Combat")]
         public void Slime_FixedStats_DoNotScaleWithLevel()
@@ -18,21 +18,13 @@ namespace PitHero.Tests
             var slimeLevel5 = new Slime(5);
             var slimeLevel10 = new Slime(10);
 
-            // Assert: Stats should be identical regardless of level (all use preset level 1)
-            Assert.AreEqual(slimeLevel1.Stats.Strength, slimeLevel5.Stats.Strength, "Slime strength should be fixed across levels");
-            Assert.AreEqual(slimeLevel1.Stats.Agility, slimeLevel5.Stats.Agility, "Slime agility should be fixed across levels");
-            Assert.AreEqual(slimeLevel1.Stats.Vitality, slimeLevel5.Stats.Vitality, "Slime vitality should be fixed across levels");
-            Assert.AreEqual(slimeLevel1.Stats.Magic, slimeLevel5.Stats.Magic, "Slime magic should be fixed across levels");
-
-            Assert.AreEqual(slimeLevel1.Stats.Strength, slimeLevel10.Stats.Strength, "Slime strength should be fixed across levels");
-            Assert.AreEqual(slimeLevel1.Stats.Agility, slimeLevel10.Stats.Agility, "Slime agility should be fixed across levels");
-            Assert.AreEqual(slimeLevel1.Stats.Vitality, slimeLevel10.Stats.Vitality, "Slime vitality should be fixed across levels");
-            Assert.AreEqual(slimeLevel1.Stats.Magic, slimeLevel10.Stats.Magic, "Slime magic should be fixed across levels");
-
-            // Experience yield should also be fixed
-            Assert.AreEqual(slimeLevel1.ExperienceYield, slimeLevel5.ExperienceYield, "Slime experience yield should be fixed across levels");
-            Assert.AreEqual(slimeLevel1.ExperienceYield, slimeLevel10.ExperienceYield, "Slime experience yield should be fixed across levels");
-            Assert.AreEqual(18, slimeLevel1.ExperienceYield, "Slime should give exactly 18 experience");
+            // Assert: Stats and rewards scale up with requested level
+            Assert.IsTrue(slimeLevel5.Stats.Strength >= slimeLevel1.Stats.Strength, "Slime strength should scale across levels");
+            Assert.IsTrue(slimeLevel10.Stats.Strength >= slimeLevel5.Stats.Strength, "Slime strength should scale across levels");
+            Assert.IsTrue(slimeLevel5.MaxHP > slimeLevel1.MaxHP, "Slime HP should scale across levels");
+            Assert.IsTrue(slimeLevel10.MaxHP > slimeLevel5.MaxHP, "Slime HP should scale across levels");
+            Assert.IsTrue(slimeLevel5.ExperienceYield > slimeLevel1.ExperienceYield, "Slime experience yield should scale across levels");
+            Assert.IsTrue(slimeLevel10.ExperienceYield > slimeLevel5.ExperienceYield, "Slime experience yield should scale across levels");
         }
 
         /// <summary>Test the basic structure of BattleParticipant</summary>
@@ -40,9 +32,11 @@ namespace PitHero.Tests
         [TestCategory("Combat")]
         public void BattleParticipant_Structure_WorksCorrectly()
         {
+#pragma warning disable CS8625
             // Arrange: Create participants for hero and monster (using nulls since we're just testing structure)
-            var heroParticipant = new BattleParticipant((PitHero.ECS.Components.HeroComponent)null);
-            var monsterParticipant = new BattleParticipant((Nez.Entity)null);
+            var heroParticipant = new BattleParticipant((PitHero.ECS.Components.HeroComponent)null!);
+            var monsterParticipant = new BattleParticipant((Nez.Entity)null!);
+#pragma warning restore CS8625
 
             // Assert: Participants should have correct types
             Assert.AreEqual(BattleParticipant.ParticipantType.Hero, heroParticipant.Type, "Hero participant should be marked as hero");

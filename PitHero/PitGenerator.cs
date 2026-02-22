@@ -99,7 +99,7 @@ namespace PitHero
         /// Create a random enemy appropriate for the given pit level.
         /// Cave levels 1-25 use explicit mapping with boss floors at 5/10/15/20/25.
         /// </summary>
-        private (IEnemy enemy, Color color) CreateEnemyForPitLevel(int pitLevel)
+        public (IEnemy enemy, Color color) CreateEnemyForPitLevel(int pitLevel)
         {
             if (CaveBiomeConfig.IsCaveLevel(pitLevel))
             {

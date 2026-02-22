@@ -596,6 +596,23 @@ Key methods:
 
 ---
 
+## Cave Biome Loot Progression (Pit 1-25)
+
+### Treasure Level Behavior
+
+- Pit 1-10 always return treasure level 1.
+- Pit 11+ introduces treasure level transitions through weighted roll thresholds.
+- Non-boss cave floors in pit 11-25 use 35% chance for treasure level 2 and 65% for level 1.
+- Boss floors in pit 11-25 use 60% chance for treasure level 2 and 40% for level 1.
+
+### Rarity-Band Transition
+
+- Cave rarity band is `Normal` for pit 1-10.
+- Cave rarity band transitions to `Uncommon` starting at pit 11.
+- This transition aligns with the treasure-level probability change so item progression increases without a hard loot reset.
+
+---
+
 ## Conclusion
 
 This guide provides a comprehensive framework for creating balanced equipment in PitHero. By following these formulas and guidelines, you can create diverse, meaningful, and balanced equipment that scales appropriately across all 100 pit levels.

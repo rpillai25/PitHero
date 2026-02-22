@@ -18,6 +18,9 @@ PitHero is a horizontal RPG strip game built with C# using **FNA + Nez** (not Mo
 ### Build & Testing
 - Run `dotnet build` after making code changes to ensure it compiles
 - Run `dotnet test PitHero.Tests/` for unit tests after code changes are complete
+- For Cave biome updates, validate pit-level boundaries (1 and 25), boss floors (5/10/15/20/25), and non-boss transition floors (10/11)
+- For Cave loot updates, verify pit 1-10 always yields treasure level 1, then verify pit 11+ weighted transitions (35% non-boss, 60% boss)
+- For Cave progression updates, confirm boss level scaling applies +2 before `StatConstants.ClampLevel`
 - Initialize submodules before first build: `git submodule update --init --recursive`
 - Clone FNA if missing: `git clone --recursive https://github.com/FNA-XNA/FNA.git FNA`
 - Both FNA and Nez must be properly initialized before building
@@ -79,6 +82,9 @@ PitHero is a horizontal RPG strip game built with C# using **FNA + Nez** (not Mo
 
 ### Constants & Configuration
 - Keep all constants in `GameConfig.cs` (sizes, positions, movement speeds, physics layers)
+- Use `PitHero/Config/CaveBiomeConfig.cs` for Cave-specific progression rules (pit bounds, boss floors, enemy pools, cave loot thresholds)
+- Keep Cave floor cadence explicit (boss every 5 levels) and avoid duplicating Cave rules across generators/components
+- Route Cave enemy scaling through `GetScaledEnemyLevelForPitLevel` and Cave treasure transitions through `DetermineCaveTreasureLevel`
 - If a private method needs to be called from another class, make it public
 
 ### AOT Compilation Compliance

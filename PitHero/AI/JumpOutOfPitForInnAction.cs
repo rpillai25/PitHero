@@ -32,7 +32,21 @@ namespace PitHero.AI
 
         public override bool Validate()
         {
-            var heroComponent = Game1.Scene.FindEntity("hero")?.GetComponent<HeroComponent>();
+            HeroComponent heroComponent;
+            try
+            {
+                heroComponent = Game1.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
+            }
+            catch
+            {
+                return false;
+            }
+
+            if (heroComponent == null)
+            {
+                return false;
+            }
+
             if (!heroComponent.HPCritical)
             {
                 return false;

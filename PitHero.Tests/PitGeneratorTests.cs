@@ -9,6 +9,157 @@ namespace PitHero.Tests
     [TestClass]
     public class PitGeneratorTests
     {
+        /// <summary>
+        /// Validates cave levels 1-4 only generate tier 1 enemies.
+        /// </summary>
+        [TestMethod]
+        public void CaveEnemies_Pit1To4_OnlyTier1()
+        {
+            var generator = new PitGenerator((Nez.Scene)null!);
+            string[] allowed = { "Slime", "Bat", "Rat", "CaveMushroom", "StoneBeetle" };
+
+            for (int level = 1; level <= 4; level++)
+            {
+                for (int sample = 0; sample < 50; sample++)
+                {
+                    var result = generator.CreateEnemyForPitLevel(level);
+                    string enemyType = result.enemy.GetType().Name;
+                    Assert.IsTrue(IsAllowedEnemy(enemyType, allowed),
+                        $"Level {level} generated unexpected enemy '{enemyType}'");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Validates cave levels 6-9 generate only tier 1 and tier 2 enemies.
+        /// </summary>
+        [TestMethod]
+        public void CaveEnemies_Pit6To9_Tier1AndTier2()
+        {
+            var generator = new PitGenerator((Nez.Scene)null!);
+            string[] allowed = { "Slime", "Bat", "Rat", "CaveMushroom", "StoneBeetle", "Goblin", "Spider", "Snake", "ShadowImp", "TunnelWorm", "FireLizard" };
+
+            for (int level = 6; level <= 9; level++)
+            {
+                for (int sample = 0; sample < 50; sample++)
+                {
+                    var result = generator.CreateEnemyForPitLevel(level);
+                    string enemyType = result.enemy.GetType().Name;
+                    Assert.IsTrue(IsAllowedEnemy(enemyType, allowed),
+                        $"Level {level} generated unexpected enemy '{enemyType}'");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Validates cave levels 11-24 include tier 3 enemies in the spawn pool.
+        /// </summary>
+        [TestMethod]
+        public void CaveEnemies_Pit11Plus_IncludesTier3()
+        {
+            var generator = new PitGenerator((Nez.Scene)null!);
+            int[] levels = { 11, 16, 21, 24 };
+
+            for (int index = 0; index < levels.Length; index++)
+            {
+                int level = levels[index];
+                bool sawSkeleton = false;
+                bool sawOrc = false;
+                bool sawWraith = false;
+
+                for (int sample = 0; sample < 300; sample++)
+                {
+                    var result = generator.CreateEnemyForPitLevel(level);
+                    string enemyType = result.enemy.GetType().Name;
+
+                    if (enemyType == "Skeleton")
+                    {
+                        sawSkeleton = true;
+                    }
+                    else if (enemyType == "Orc")
+                    {
+                        sawOrc = true;
+                    }
+                    else if (enemyType == "Wraith")
+                    {
+                        sawWraith = true;
+                    }
+                }
+
+                Assert.IsTrue(sawSkeleton, $"Level {level} should include Skeleton in pool");
+                Assert.IsTrue(sawOrc, $"Level {level} should include Orc in pool");
+                Assert.IsTrue(sawWraith, $"Level {level} should include Wraith in pool");
+            }
+        }
+
+        /// <summary>
+        /// Validates cave boss floors spawn the configured boss for each floor and expected scaled level.
+        /// </summary>
+        [TestMethod]
+        public void CaveEnemies_BossFloors_SpawnConfiguredBossWithExpectedLevel()
+        {
+            var generator = new PitGenerator((Nez.Scene)null!);
+            int[] bossFloors = { 5, 10, 15, 20, 25 };
+            string[] expectedBosses = { "StoneGuardian", "PitLord", "EarthElemental", "MoltenTitan", "AncientWyrm" };
+            int[] expectedLevels = { 10, 10, 28, 38, 46 };
+
+            for (int index = 0; index < bossFloors.Length; index++)
+            {
+                int floor = bossFloors[index];
+                var result = generator.CreateEnemyForPitLevel(floor);
+
+                Assert.AreEqual(expectedBosses[index], result.enemy.GetType().Name,
+                    $"Boss floor {floor} should spawn {expectedBosses[index]}");
+                Assert.AreEqual(expectedLevels[index], result.enemy.Level,
+                    $"Boss floor {floor} should spawn level {expectedLevels[index]}");
+            }
+        }
+
+        /// <summary>
+        /// Validates non-boss cave floors never spawn the PitLord boss.
+        /// </summary>
+        [TestMethod]
+        public void CaveEnemies_NonBossFloors_NoPitLord()
+        {
+            var generator = new PitGenerator((Nez.Scene)null!);
+
+            for (int level = 1; level <= 25; level++)
+            {
+                if (PitHero.Config.CaveBiomeConfig.IsBossFloor(level))
+                {
+                    continue;
+                }
+
+                for (int sample = 0; sample < 60; sample++)
+                {
+                    var result = generator.CreateEnemyForPitLevel(level);
+                    Assert.AreNotEqual("PitLord", result.enemy.GetType().Name,
+                        $"Non-boss level {level} should never spawn PitLord");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Validates generated enemy level scaling follows CaveBiomeConfig for all cave levels.
+        /// </summary>
+        [TestMethod]
+        public void CaveEnemies_LevelScaling_FollowsBalanceConfig()
+        {
+            var generator = new PitGenerator((Nez.Scene)null!);
+
+            for (int level = 1; level <= 25; level++)
+            {
+                int expected = PitHero.Config.CaveBiomeConfig.GetScaledEnemyLevelForPitLevel(level);
+
+                for (int sample = 0; sample < 10; sample++)
+                {
+                    var result = generator.CreateEnemyForPitLevel(level);
+                    Assert.IsTrue(result.enemy.Level >= 1 && result.enemy.Level <= expected,
+                        $"Level {level} should generate enemies between level 1 and scaled level {expected}");
+                }
+            }
+        }
+
         [TestMethod]
         public void PitGenerator_Constants_ShouldBeValidValues()
         {
@@ -148,6 +299,22 @@ namespace PitHero.Tests
                 $"MinObstacles for level {level} should be {expectedMinObstacles}");
             Assert.AreEqual(expectedMaxObstacles, actualMaxObstacles, 
                 $"MaxObstacles for level {level} should be {expectedMaxObstacles}");
+        }
+
+        /// <summary>
+        /// Checks if an enemy name is allowed for a level band.
+        /// </summary>
+        private bool IsAllowedEnemy(string enemyType, string[] allowed)
+        {
+            for (int index = 0; index < allowed.Length; index++)
+            {
+                if (allowed[index] == enemyType)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         [TestMethod]

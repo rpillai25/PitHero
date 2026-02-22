@@ -19,7 +19,7 @@ namespace PitHero.Tests
             // Verify that GameConfig has MaleHeroHairstyleCount constant
             var hairstyleCount = GameConfig.MaleHeroHairstyleCount;
             Assert.IsTrue(hairstyleCount >= 1, "MaleHeroHairstyleCount should be at least 1");
-            Assert.AreEqual(3, hairstyleCount, "MaleHeroHairstyleCount should be 3");
+            Assert.AreEqual(5, hairstyleCount, "MaleHeroHairstyleCount should be 5");
         }
 
         [TestMethod]
@@ -34,7 +34,7 @@ namespace PitHero.Tests
                 .GetProperty("DefaultAnimation", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             Assert.IsNotNull(defaultAnimProperty);
 
-            var defaultAnim = defaultAnimProperty.GetValue(component) as string;
+            var defaultAnim = defaultAnimProperty!.GetValue(component) as string;
             Assert.AreEqual("MaleHeroHairWalkDown", defaultAnim, 
                 "Hairstyle 1 should use 'MaleHeroHairWalkDown' (no number suffix)");
         }
@@ -51,7 +51,7 @@ namespace PitHero.Tests
                 .GetProperty("DefaultAnimation", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             Assert.IsNotNull(defaultAnimProperty);
 
-            var defaultAnim = defaultAnimProperty.GetValue(component) as string;
+            var defaultAnim = defaultAnimProperty!.GetValue(component) as string;
             Assert.AreEqual("MaleHeroHair2WalkDown", defaultAnim, 
                 "Hairstyle 2 should use 'MaleHeroHair2WalkDown'");
         }
@@ -68,7 +68,7 @@ namespace PitHero.Tests
                 .GetProperty("DefaultAnimation", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             Assert.IsNotNull(defaultAnimProperty);
 
-            var defaultAnim = defaultAnimProperty.GetValue(component) as string;
+            var defaultAnim = defaultAnimProperty!.GetValue(component) as string;
             Assert.AreEqual("MaleHeroHair3WalkDown", defaultAnim, 
                 "Hairstyle 3 should use 'MaleHeroHair3WalkDown'");
         }
@@ -115,7 +115,7 @@ namespace PitHero.Tests
                 .GetProperty("DefaultAnimation", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             Assert.IsNotNull(defaultAnimProperty);
 
-            var defaultAnim = defaultAnimProperty.GetValue(component) as string;
+            var defaultAnim = defaultAnimProperty!.GetValue(component) as string;
             Assert.AreEqual("MaleHeroHairWalkDown", defaultAnim, 
                 "Default constructor should use hairstyle 1");
         }
@@ -131,7 +131,8 @@ namespace PitHero.Tests
 
                 var defaultAnimProperty = typeof(HeroHairAnimationComponent)
                     .GetProperty("DefaultAnimation", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                var defaultAnim = defaultAnimProperty.GetValue(component) as string;
+                Assert.IsNotNull(defaultAnimProperty, "DefaultAnimation property should exist");
+                var defaultAnim = defaultAnimProperty!.GetValue(component) as string;
 
                 string expectedSuffix = i == 1 ? "" : i.ToString();
                 string expectedAnimation = $"MaleHeroHair{expectedSuffix}WalkDown";

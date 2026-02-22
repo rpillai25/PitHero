@@ -32,7 +32,7 @@ namespace PitHero.Tests
             // Test multiple times to get distribution
             for (int i = 0; i < 1000; i++)
             {
-                var treasureLevel = TreasureComponent.DetermineTreasureLevel(25); // Mid-range
+                var treasureLevel = TreasureComponent.DetermineTreasureLevel(26); // Non-cave mid-range
                 if (!results.ContainsKey(treasureLevel))
                     results[treasureLevel] = 0;
                 results[treasureLevel]++;

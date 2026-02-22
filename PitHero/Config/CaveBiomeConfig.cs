@@ -58,7 +58,9 @@ namespace PitHero.Config
         public static int GetScaledEnemyLevelForPitLevel(int pitLevel)
         {
             int baseLevel = BalanceConfig.EstimatePlayerLevelForPitLevel(pitLevel);
+            // Boss floors get a small +2 spike to preserve milestone difficulty without changing the base curve.
             int bossBonus = IsBossFloor(pitLevel) ? 2 : 0;
+            // Clamp keeps levels in the global 1-99 bounds for safety at all call sites.
             return StatConstants.ClampLevel(baseLevel + bossBonus);
         }
 
@@ -85,6 +87,7 @@ namespace PitHero.Config
                 return 1;
             }
 
+            // Transition probabilities: boss floors favor level 2 at 60%, non-boss cave floors use 35%.
             if (IsBossFloor(pitLevel))
             {
                 return roll < 0.6f ? 2 : 1;
@@ -95,7 +98,9 @@ namespace PitHero.Config
 
         /// <summary>
         /// Creates explicit cave enemy pool mapping for levels 1-25.
-        /// Each pool contains 10 monsters following the sliding window system.
+        /// Pool 1 uses a 5-entry starter roster for levels 1-4.
+        /// Pools 2-5 use 10-entry sliding windows for levels 6-9, 11-14, 16-19, and 21-24.
+        /// Boss floors (5, 10, 15, 20, 25) intentionally use empty regular pools because boss logic handles those floors.
         /// </summary>
         private static string[][] CreateCaveEnemyPools()
         {

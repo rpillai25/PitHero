@@ -181,11 +181,12 @@ namespace PitHero.Tests
             }
             _balanceReport.AppendLine();
 
-            // Validate smooth progression (no sudden jumps > 5 levels)
+            // Validate smooth progression (allow a small dip after boss floors)
             for (int i = 1; i < scalingData.Count; i++)
             {
                 int levelDiff = scalingData[i].EnemyLevel - scalingData[i - 1].EnemyLevel;
-                Assert.IsTrue(levelDiff >= 0 && levelDiff <= 5,
+                int minAllowedDiff = scalingData[i - 1].IsBoss ? -2 : 0;
+                Assert.IsTrue(levelDiff >= minAllowedDiff && levelDiff <= 5,
                     $"Enemy level progression between pit {scalingData[i - 1].PitLevel} and {scalingData[i].PitLevel} should be gradual (diff: {levelDiff})");
             }
 
