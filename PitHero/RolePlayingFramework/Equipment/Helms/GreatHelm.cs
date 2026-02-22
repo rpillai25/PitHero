@@ -1,0 +1,27 @@
+using RolePlayingFramework.Balance;
+using RolePlayingFramework.Combat;
+using RolePlayingFramework.Stats;
+
+namespace RolePlayingFramework.Equipment.Helms
+{
+    /// <summary>Factory for creating Great Helm gear.</summary>
+    public static class GreatHelm
+    {
+        private const int PitLevel = 15;
+        private const ItemRarity Rarity = ItemRarity.Uncommon;
+
+        public static Gear Create()
+        {
+            int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
+            return new Gear(
+                "GreatHelm",
+                ItemKind.HatHelm,
+                Rarity,
+                "Fully enclosed helmet.",
+                600,
+                new StatBlock(0, 0, 0, 0),
+                def: defenseBonus,
+                elementalProps: new ElementalProperties(ElementType.Neutral));
+        }
+    }
+}

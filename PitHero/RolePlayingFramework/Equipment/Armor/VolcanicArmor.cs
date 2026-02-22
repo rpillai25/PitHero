@@ -1,0 +1,27 @@
+using RolePlayingFramework.Balance;
+using RolePlayingFramework.Combat;
+using RolePlayingFramework.Stats;
+
+namespace RolePlayingFramework.Equipment.Armor
+{
+    /// <summary>Factory for creating Volcanic Armor gear.</summary>
+    public static class VolcanicArmor
+    {
+        private const int PitLevel = 21;
+        private const ItemRarity Rarity = ItemRarity.Uncommon;
+
+        public static Gear Create()
+        {
+            int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
+            return new Gear(
+                "VolcanicArmor",
+                ItemKind.ArmorMail,
+                Rarity,
+                "Armor tempered in volcanic heat.",
+                900,
+                new StatBlock(0, 0, 0, 0),
+                def: defenseBonus,
+                elementalProps: new ElementalProperties(ElementType.Fire));
+        }
+    }
+}

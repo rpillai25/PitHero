@@ -1,0 +1,27 @@
+using RolePlayingFramework.Balance;
+using RolePlayingFramework.Combat;
+using RolePlayingFramework.Stats;
+
+namespace RolePlayingFramework.Equipment.Shields
+{
+    /// <summary>Factory for creating Reinforced Buckler gear.</summary>
+    public static class ReinforcedBuckler
+    {
+        private const int PitLevel = 4;
+        private const ItemRarity Rarity = ItemRarity.Normal;
+
+        public static Gear Create()
+        {
+            int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
+            return new Gear(
+                "ReinforcedBuckler",
+                ItemKind.Shield,
+                Rarity,
+                "Small metal-rimmed shield.",
+                125,
+                new StatBlock(0, 0, 0, 0),
+                def: defenseBonus,
+                elementalProps: new ElementalProperties(ElementType.Neutral));
+        }
+    }
+}
