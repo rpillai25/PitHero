@@ -18,6 +18,10 @@ namespace PitHero.Config
             ["Bat"] = 1,
             ["Rat"] = 1,
 
+            // Level 2-4 enemies (early cave)
+            ["Cave Mushroom"] = 2,
+            ["Stone Beetle"] = 4,
+
             // Level 3 enemies (spawn in Pit Level 4-6)
             ["Goblin"] = 3,
             ["Spider"] = 3,
@@ -28,8 +32,30 @@ namespace PitHero.Config
             ["Orc"] = 6,
             ["Wraith"] = 6,
 
+            // Level 7-9 enemies (mid cave)
+            ["Shadow Imp"] = 7,
+            ["Tunnel Worm"] = 8,
+            ["Fire Lizard"] = 9,
+
             // Boss (spawn in Pit Level 9)
             ["Pit Lord"] = 10,
+
+            // Level 11-14 enemies (deep cave)
+            ["Magma Ooze"] = 11,
+            ["Crystal Golem"] = 12,
+            ["Cave Troll"] = 13,
+            ["Ghost Miner"] = 14,
+
+            // Level 16-18 enemies (ancient cave)
+            ["Shadow Beast"] = 16,
+            ["Lava Drake"] = 17,
+            ["Stone Wyrm"] = 18,
+
+            // Boss enemies (Cave Biome)
+            ["Stone Guardian"] = 7,
+            ["Earth Elemental"] = 17,
+            ["Molten Titan"] = 22,
+            ["Ancient Wyrm"] = 27,
         };
 
         /// <summary>

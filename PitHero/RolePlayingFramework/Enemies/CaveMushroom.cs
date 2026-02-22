@@ -4,16 +4,16 @@ using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Enemies
 {
-    /// <summary>Simple beginner enemy with low physical offense.</summary>
-    public sealed class Slime : IEnemy
+    /// <summary>Ambulatory fungus with toxic spores.</summary>
+    public sealed class CaveMushroom : IEnemy
     {
         private int _hp;
 
-        public string Name => "Slime";
+        public string Name => "Cave Mushroom";
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
-        public ElementType Element => ElementType.Water;
+        public ElementType Element => ElementType.Earth;
         public ElementalProperties ElementalProps { get; }
         public int MaxHP { get; }
         public int CurrentHP => _hp;
@@ -22,12 +22,12 @@ namespace RolePlayingFramework.Enemies
         public int SPYield { get; }
         public int GoldYield { get; }
 
-        public Slime(int level = 1)
+        public CaveMushroom(int level = 2)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Slime");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Cave Mushroom");
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
-            // Use BalanceConfig for stats
+            // Use BalanceConfig for stats - Balanced archetype
             var archetype = BalanceConfig.MonsterArchetype.Balanced;
             var strength = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Strength);
             var agility = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Agility);
@@ -42,13 +42,13 @@ namespace RolePlayingFramework.Enemies
             SPYield = BalanceConfig.CalculateMonsterSPYield(Level);
             GoldYield = BalanceConfig.CalculateMonsterGoldYield(Level);
 
-            // Slime is Water element: resistant to Water, weak to Fire
+            // Cave Mushroom is Earth element: resistant to Earth, weak to Wind
             var resistances = new System.Collections.Generic.Dictionary<ElementType, float>
             {
-                { ElementType.Water, 0.3f },  // 30% resistance to Water
-                { ElementType.Fire, -0.3f }   // 30% weakness to Fire
+                { ElementType.Earth, 0.3f },  // 30% resistance to Earth
+                { ElementType.Wind, -0.3f }   // 30% weakness to Wind
             };
-            ElementalProps = new ElementalProperties(ElementType.Water, resistances);
+            ElementalProps = new ElementalProperties(ElementType.Earth, resistances);
         }
 
         /// <summary>Inflicts damage, returns true if died.</summary>

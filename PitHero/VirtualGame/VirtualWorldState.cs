@@ -25,6 +25,10 @@ namespace PitHero.VirtualGame
         public Rectangle PitBounds { get; private set; }
         public int PitLevel { get; private set; }
         public bool IsWizardOrbActivated { get; private set; }
+        public int LastGeneratedBossMonsterCount { get; private set; }
+        public List<int> LastGeneratedTreasureLevels { get; } = new List<int>(16);
+        public List<string> LastGeneratedMonsterTypes { get; } = new List<string>(16);
+        public List<string> LastGeneratedEquipmentTypes { get; } = new List<string>(16);
 
         public VirtualWorldState()
         {
@@ -133,26 +137,80 @@ namespace PitHero.VirtualGame
 
         public void AddTreasure(Point position)
         {
+            AddTreasure(position, "Unknown", 1);
+        }
+
+        /// <summary>
+        /// Adds a treasure and records the generated treasure level for parity tests.
+        /// </summary>
+        public void AddTreasure(Point position, int treasureLevel)
+        {
+            AddTreasure(position, "Unknown", treasureLevel);
+        }
+
+        /// <summary>
+        /// Adds a treasure and records both equipment type and treasure level for parity tests.
+        /// </summary>
+        public void AddTreasure(Point position, string equipmentType, int treasureLevel)
+        {
             if (!_entities.ContainsKey("Treasures"))
                 _entities["Treasures"] = new List<Point>();
 
             _entities["Treasures"].Add(position);
-            Console.WriteLine($"[VirtualWorld] Added treasure at ({position.X},{position.Y})");
+            LastGeneratedTreasureLevels.Add(treasureLevel);
+            LastGeneratedEquipmentTypes.Add(equipmentType);
+            Console.WriteLine($"[VirtualWorld] Added {equipmentType} treasure (level {treasureLevel}) at ({position.X},{position.Y})");
         }
 
         public void AddMonster(Point position)
+        {
+            AddMonster(position, "Unknown");
+        }
+
+        /// <summary>
+        /// Adds a monster and records the monster type for parity tests.
+        /// </summary>
+        public void AddMonster(Point position, string monsterType)
         {
             if (!_entities.ContainsKey("Monsters"))
                 _entities["Monsters"] = new List<Point>();
 
             _entities["Monsters"].Add(position);
-            Console.WriteLine($"[VirtualWorld] Added monster at ({position.X},{position.Y})");
+            LastGeneratedMonsterTypes.Add(monsterType);
+            Console.WriteLine($"[VirtualWorld] Added {monsterType} monster at ({position.X},{position.Y})");
+        }
+
+        /// <summary>
+        /// Adds a boss monster marker for virtual cave boss floor parity.
+        /// </summary>
+        public void AddBossMonster(Point position)
+        {
+            AddBossMonster(position, "BossMonster");
+        }
+
+        /// <summary>
+        /// Adds a boss monster with type tracking for virtual cave boss floor parity.
+        /// </summary>
+        public void AddBossMonster(Point position, string monsterType)
+        {
+            if (!_entities.ContainsKey("BossMonsters"))
+            {
+                _entities["BossMonsters"] = new List<Point>();
+            }
+
+            _entities["BossMonsters"].Add(position);
+            LastGeneratedBossMonsterCount++;
+            AddMonster(position, monsterType);
         }
 
         public void ClearAllEntities()
         {
             _entities.Clear();
             WizardOrbPosition = null;
+            LastGeneratedBossMonsterCount = 0;
+            LastGeneratedTreasureLevels.Clear();
+            LastGeneratedMonsterTypes.Clear();
+            LastGeneratedEquipmentTypes.Clear();
 
             // Clear collision map except for pit boundaries
             for (int x = 0; x < WORLD_WIDTH_TILES; x++)
@@ -237,6 +295,10 @@ namespace PitHero.VirtualGame
         private void GeneratePitEntities(int level)
         {
             _entities.Clear();
+            LastGeneratedBossMonsterCount = 0;
+            LastGeneratedTreasureLevels.Clear();
+            LastGeneratedMonsterTypes.Clear();
+            LastGeneratedEquipmentTypes.Clear();
 
             // Generate wizard orb at center-ish position
             var pitCenter = new Point(PitBounds.X + PitBounds.Width / 2, PitBounds.Y + PitBounds.Height / 2);

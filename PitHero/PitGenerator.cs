@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Sprites;
 using PitHero.AI.Interfaces;
+using PitHero.Config;
 using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.Util;
@@ -96,28 +97,52 @@ namespace PitHero
 
         /// <summary>
         /// Create a random enemy appropriate for the given pit level.
-        /// Level 1-3: Slime, Bat, Rat
-        /// Level 4-6: Goblin, Spider, Snake
-        /// Level 7-8: Skeleton, Orc, Wraith
-        /// Level 9: Pit Lord (Boss)
+        /// Cave levels 1-25 use explicit mapping with boss floors at 5/10/15/20/25.
         /// </summary>
         private (IEnemy enemy, Color color) CreateEnemyForPitLevel(int pitLevel)
         {
-            // Boss on level 9
-            if (pitLevel == 9)
+            if (CaveBiomeConfig.IsCaveLevel(pitLevel))
             {
-                return (new PitLord(), Color.Red);
+                int scaledLevel = CaveBiomeConfig.GetScaledEnemyLevelForPitLevel(pitLevel);
+                if (CaveBiomeConfig.IsBossFloor(pitLevel))
+                {
+                    // Spawn unique boss for each boss floor
+                    return pitLevel switch
+                    {
+                        5 => (new StoneGuardian(scaledLevel), Color.DarkGray),
+                        10 => (new PitLord(scaledLevel), Color.Red),
+                        15 => (new EarthElemental(scaledLevel), Color.Brown),
+                        20 => (new MoltenTitan(scaledLevel), Color.DarkRed),
+                        25 => (new AncientWyrm(scaledLevel), Color.DarkRed),
+                        _ => (new PitLord(scaledLevel), Color.Red)
+                    };
+                }
+
+                var enemyPool = CaveBiomeConfig.GetEnemyPoolForLevel(pitLevel);
+                if (enemyPool.Length == 0)
+                {
+                    return (new Slime(scaledLevel), Color.LightGreen);
+                }
+
+                int choice = Nez.Random.Range(0, enemyPool.Length);
+                return CreateEnemyByName(enemyPool[choice], scaledLevel);
             }
 
-            // Level 7-8: Skeleton, Orc, Wraith
+            // Fallback mapping outside cave
+            if (pitLevel % 5 == 0)
+            {
+                int bossLevel = Math.Clamp(pitLevel, 1, 99);
+                return (new PitLord(bossLevel), Color.Red);
+            }
+
             if (pitLevel >= 7)
             {
                 int choice = Nez.Random.Range(0, 3);
                 return choice switch
                 {
-                    0 => (new Skeleton(), Color.White),
-                    1 => (new Orc(), Color.DarkGreen),
-                    _ => (new Wraith(), Color.Blue)
+                    0 => (new Skeleton(Math.Clamp(pitLevel, 1, 99)), Color.White),
+                    1 => (new Orc(Math.Clamp(pitLevel, 1, 99)), Color.DarkGreen),
+                    _ => (new Wraith(Math.Clamp(pitLevel, 1, 99)), Color.Blue)
                 };
             }
 
@@ -127,9 +152,9 @@ namespace PitHero
                 int choice = Nez.Random.Range(0, 3);
                 return choice switch
                 {
-                    0 => (new Goblin(), Color.Green),
-                    1 => (new Spider(), Color.DarkGray),
-                    _ => (new Snake(), Color.Yellow)
+                    0 => (new Goblin(Math.Clamp(pitLevel, 1, 99)), Color.Green),
+                    1 => (new Spider(Math.Clamp(pitLevel, 1, 99)), Color.DarkGray),
+                    _ => (new Snake(Math.Clamp(pitLevel, 1, 99)), Color.Yellow)
                 };
             }
 
@@ -137,9 +162,47 @@ namespace PitHero
             int lowLevelChoice = Nez.Random.Range(0, 3);
             return lowLevelChoice switch
             {
-                0 => (new Slime(), Color.LightGreen),
-                1 => (new Bat(), Color.Purple),
-                _ => (new Rat(), Color.Brown)
+                0 => (new Slime(Math.Clamp(pitLevel, 1, 99)), Color.LightGreen),
+                1 => (new Bat(Math.Clamp(pitLevel, 1, 99)), Color.Purple),
+                _ => (new Rat(Math.Clamp(pitLevel, 1, 99)), Color.Brown)
+            };
+        }
+
+        /// <summary>
+        /// Create an enemy instance by roster name at the provided level.
+        /// </summary>
+        private (IEnemy enemy, Color color) CreateEnemyByName(string enemyName, int level)
+        {
+            int clampedLevel = Math.Clamp(level, 1, 99);
+
+            return enemyName switch
+            {
+                "Slime" => (new Slime(clampedLevel), Color.LightGreen),
+                "Bat" => (new Bat(clampedLevel), Color.Purple),
+                "Rat" => (new Rat(clampedLevel), Color.Brown),
+                "Cave Mushroom" => (new CaveMushroom(clampedLevel), Color.SaddleBrown),
+                "Stone Beetle" => (new StoneBeetle(clampedLevel), Color.Gray),
+                "Goblin" => (new Goblin(clampedLevel), Color.Green),
+                "Spider" => (new Spider(clampedLevel), Color.DarkGray),
+                "Snake" => (new Snake(clampedLevel), Color.Yellow),
+                "Shadow Imp" => (new ShadowImp(clampedLevel), Color.DarkMagenta),
+                "Tunnel Worm" => (new TunnelWorm(clampedLevel), Color.Pink),
+                "Fire Lizard" => (new FireLizard(clampedLevel), Color.Orange),
+                "Skeleton" => (new Skeleton(clampedLevel), Color.White),
+                "Orc" => (new Orc(clampedLevel), Color.DarkGreen),
+                "Wraith" => (new Wraith(clampedLevel), Color.Blue),
+                "Magma Ooze" => (new MagmaOoze(clampedLevel), Color.OrangeRed),
+                "Crystal Golem" => (new CrystalGolem(clampedLevel), Color.Cyan),
+                "Cave Troll" => (new CaveTroll(clampedLevel), Color.DarkGray),
+                "Ghost Miner" => (new GhostMiner(clampedLevel), Color.LightBlue),
+                "Shadow Beast" => (new ShadowBeast(clampedLevel), Color.Black),
+                "Lava Drake" => (new LavaDrake(clampedLevel), Color.Red),
+                "Stone Wyrm" => (new StoneWyrm(clampedLevel), Color.SlateGray),
+                "Stone Guardian" => (new StoneGuardian(clampedLevel), Color.DarkGray),
+                "Earth Elemental" => (new EarthElemental(clampedLevel), Color.Brown),
+                "Molten Titan" => (new MoltenTitan(clampedLevel), Color.DarkRed),
+                "Ancient Wyrm" => (new AncientWyrm(clampedLevel), Color.DarkRed),
+                _ => (new Slime(clampedLevel), Color.LightGreen)
             };
         }
 
@@ -708,8 +771,7 @@ namespace PitHero
                     int currentPitLevel = pitWidthManager?.CurrentPitLevel ?? 1;
 
                     var treasureComponent = entity.AddComponent(new TreasureComponent());
-                    treasureComponent.Level = TreasureComponent.DetermineTreasureLevel(currentPitLevel);
-                    treasureComponent.InitializeForPitLevel(treasureComponent.Level);
+                    treasureComponent.InitializeForPitLevel(currentPitLevel);
 
                     var collider = entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
                     collider.IsTrigger = true;

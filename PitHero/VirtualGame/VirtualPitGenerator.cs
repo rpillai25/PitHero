@@ -1,5 +1,7 @@
 using Microsoft.Xna.Framework;
 using PitHero.AI.Interfaces;
+using PitHero.Config;
+using PitHero.ECS.Components;
 using System;
 using System.Collections.Generic;
 
@@ -103,29 +105,138 @@ namespace PitHero.VirtualGame
                 }
             }
 
-            // Generate treasures
+            // Generate treasures with Cave Biome progression
             for (int i = 0; i < chestCount; i++)
             {
                 var pos = GetRandomPosition(minX, minY, maxX, maxY, usedPositions, random);
                 if (pos.HasValue)
                 {
                     usedPositions.Add(pos.Value);
-                    _worldState.AddTreasure(pos.Value);
+                    
+                    // Use Cave Biome treasure level if in cave range, otherwise use default
+                    int treasureLevel;
+                    string equipmentType;
+                    if (CaveBiomeConfig.IsCaveLevel(level))
+                    {
+                        float roll = (float)random.NextDouble();
+                        treasureLevel = CaveBiomeConfig.DetermineCaveTreasureLevel(level, roll);
+                        equipmentType = GetRandomEquipmentType(level, treasureLevel, random);
+                    }
+                    else
+                    {
+                        treasureLevel = TreasureComponent.DetermineTreasureLevel(level);
+                        equipmentType = "GenericEquipment";
+                    }
+                    
+                    _worldState.AddTreasure(pos.Value, equipmentType, treasureLevel);
                 }
             }
 
-            // Generate monsters
-            for (int i = 0; i < monsterCount; i++)
+            int caveScaledEnemyLevel = CaveBiomeConfig.GetScaledEnemyLevelForPitLevel(level);
+            bool isCaveBossFloor = CaveBiomeConfig.IsBossFloor(level);
+
+            // Generate boss marker first on cave boss floors
+            if (isCaveBossFloor && monsterCount > 0)
             {
-                var pos = GetRandomPosition(minX, minY, maxX, maxY, usedPositions, random);
-                if (pos.HasValue)
+                var bossPos = GetRandomPosition(minX, minY, maxX, maxY, usedPositions, random);
+                if (bossPos.HasValue)
                 {
-                    usedPositions.Add(pos.Value);
-                    _worldState.AddMonster(pos.Value);
+                    usedPositions.Add(bossPos.Value);
+                    string bossType = GetBossTypeForLevel(level);
+                    _worldState.AddBossMonster(bossPos.Value, bossType);
+                    monsterCount--;
+                    Console.WriteLine($"[VirtualPitGenerator] Cave boss floor at level {level} with {bossType} (scaled level {caveScaledEnemyLevel})");
+                }
+            }
+
+            // Generate monsters from Cave Biome pool if in cave range
+            if (CaveBiomeConfig.IsCaveLevel(level) && !isCaveBossFloor)
+            {
+                string[] enemyPool = CaveBiomeConfig.GetEnemyPoolForLevel(level);
+                for (int i = 0; i < monsterCount; i++)
+                {
+                    var pos = GetRandomPosition(minX, minY, maxX, maxY, usedPositions, random);
+                    if (pos.HasValue)
+                    {
+                        usedPositions.Add(pos.Value);
+                        string monsterType = enemyPool.Length > 0 ? enemyPool[random.Next(enemyPool.Length)] : "GenericMonster";
+                        _worldState.AddMonster(pos.Value, monsterType);
+                    }
+                }
+            }
+            else if (!isCaveBossFloor)
+            {
+                // Non-cave levels use generic monster spawning
+                for (int i = 0; i < monsterCount; i++)
+                {
+                    var pos = GetRandomPosition(minX, minY, maxX, maxY, usedPositions, random);
+                    if (pos.HasValue)
+                    {
+                        usedPositions.Add(pos.Value);
+                        _worldState.AddMonster(pos.Value, "GenericMonster");
+                    }
                 }
             }
 
             Console.WriteLine($"[VirtualPitGenerator] Generated {obstacles.Count} obstacles, {chestCount} treasures, {monsterCount} monsters, and 1 wizard orb");
+        }
+
+        /// <summary>
+        /// Gets the boss type for a specific Cave Biome boss floor.
+        /// </summary>
+        private string GetBossTypeForLevel(int level)
+        {
+            // Cave biome boss progression: unique bosses at each major milestone
+            switch (level)
+            {
+                case 5:
+                    return "Stone Guardian";
+                case 10:
+                    return "Pit Lord";
+                case 15:
+                    return "Earth Elemental";
+                case 20:
+                    return "Molten Titan";
+                case 25:
+                    return "Ancient Wyrm";
+                default:
+                    return "Pit Lord";
+            }
+        }
+
+        /// <summary>
+        /// Gets a random equipment type from appropriate Cave Biome spawn pool.
+        /// Virtual stub - actual equipment pool logic will be implemented by Principal Game Engineer.
+        /// </summary>
+        private string GetRandomEquipmentType(int level, int treasureLevel, Random random)
+        {
+            // Simplified equipment pool logic - stub implementation for virtual layer
+            // Actual implementation will have 135 equipment pieces with spawn windows
+            
+            // Equipment categories
+            string[] categories = { "Sword", "Axe", "Dagger", "Spear", "Hammer", "Staff", 
+                                   "Armor", "Shield", "Helm" };
+            
+            // Select random category
+            string category = categories[random.Next(categories.Length)];
+            
+            // Determine rarity suffix based on treasure level
+            string raritySuffix = treasureLevel == 1 ? "Normal" : "Uncommon";
+            
+            // Determine pit tier for equipment naming
+            string tierPrefix;
+            if (level <= 5)
+                tierPrefix = "Early";
+            else if (level <= 10)
+                tierPrefix = "Mid";
+            else if (level <= 15)
+                tierPrefix = "Late";
+            else if (level <= 20)
+                tierPrefix = "Advanced";
+            else
+                tierPrefix = "Elite";
+            
+            return $"{tierPrefix}{category}_{raritySuffix}";
         }
 
         private Point? GetRandomPosition(int minX, int minY, int maxX, int maxY, HashSet<Point> usedPositions, Random random)

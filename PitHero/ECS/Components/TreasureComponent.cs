@@ -1,5 +1,6 @@
 using Nez;
 using Nez.Sprites;
+using PitHero.Config;
 using RolePlayingFramework.Equipment;
 
 namespace PitHero.ECS.Components
@@ -20,7 +21,7 @@ namespace PitHero.ECS.Components
         private SpriteRenderer _baseRenderer;
         private SpriteRenderer _woodRenderer;
         private SpriteAtlas _actorsAtlas;
-        private IItem? _containedItem;
+        private IItem _containedItem;
 
         /// <summary>
         /// Current state of the treasure chest
@@ -57,7 +58,7 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Item contained within this treasure chest
         /// </summary>
-        public IItem? ContainedItem
+        public IItem ContainedItem
         {
             get => _containedItem;
             set => _containedItem = value;
@@ -157,6 +158,19 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
+        /// Generate cave biome loot for the given treasure level using existing equipment items.
+        /// </summary>
+        public static IItem GenerateCaveItemForTreasureLevel(int treasureLevel)
+        {
+            return treasureLevel switch
+            {
+                1 => GenerateCaveCommonLoot(),
+                2 => GenerateCaveUncommonLoot(),
+                _ => GenerateItemForTreasureLevel(treasureLevel)
+            };
+        }
+
+        /// <summary>
         /// Generate a random Normal (Common) potion
         /// </summary>
         private static IItem GenerateNormalPotion()
@@ -202,11 +216,51 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
+        /// Generate cave common loot from early equipment and base potions.
+        /// </summary>
+        private static IItem GenerateCaveCommonLoot()
+        {
+            var random = Nez.Random.NextInt(7);
+            return random switch
+            {
+                0 => GearItems.ShortSword(),
+                1 => GearItems.WoodenShield(),
+                2 => GearItems.SquireHelm(),
+                3 => GearItems.LeatherArmor(),
+                4 => PotionItems.HPPotion(),
+                5 => PotionItems.MPPotion(),
+                _ => PotionItems.MixPotion()
+            };
+        }
+
+        /// <summary>
+        /// Generate cave uncommon loot from cave-upgrade equipment and utility items.
+        /// </summary>
+        private static IItem GenerateCaveUncommonLoot()
+        {
+            var random = Nez.Random.NextInt(6);
+            return random switch
+            {
+                0 => GearItems.LongSword(),
+                1 => GearItems.IronShield(),
+                2 => GearItems.IronHelm(),
+                3 => GearItems.IronArmor(),
+                4 => GearItems.ProtectRing(),
+                _ => BagItems.ForagersBag()
+            };
+        }
+
+        /// <summary>
         /// Determine treasure level based on pit level using probability distribution
         /// </summary>
         public static int DetermineTreasureLevel(int pitLevel)
         {
             var random = Nez.Random.NextFloat();
+
+            if (CaveBiomeConfig.IsCaveLevel(pitLevel))
+            {
+                return CaveBiomeConfig.DetermineCaveTreasureLevel(pitLevel, random);
+            }
 
             return pitLevel switch
             {
@@ -251,6 +305,12 @@ namespace PitHero.ECS.Components
         public void InitializeForPitLevel(int pitLevel)
         {
             Level = DetermineTreasureLevel(pitLevel);
+            if (CaveBiomeConfig.IsCaveLevel(pitLevel))
+            {
+                ContainedItem = GenerateCaveItemForTreasureLevel(Level);
+                return;
+            }
+
             ContainedItem = GenerateItemForTreasureLevel(Level);
         }
     }

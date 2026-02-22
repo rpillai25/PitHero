@@ -8,20 +8,35 @@ namespace PitHero.Tests
     public class EnemyLevelSystemIntegrationTests
     {
         [TestMethod]
-        public void SlimeEnemy_AlwaysCreatedAtPresetLevel()
+        public void SlimeEnemy_UsesRequestedLevel_WhenProvided()
         {
             // Arrange
-            var expectedLevel = EnemyLevelConfig.GetPresetLevel("Slime");
+            int requestedLevel1 = 1;
+            int requestedLevel2 = 5;
+            int requestedLevel3 = 10;
 
-            // Act - Create slimes with different requested levels
+            // Act
             var slime1 = new Slime(1);
             var slime2 = new Slime(5);
             var slime3 = new Slime(10);
 
-            // Assert - All slimes should be at the preset level (1), not the requested level
-            Assert.AreEqual(expectedLevel, slime1.Level);
-            Assert.AreEqual(expectedLevel, slime2.Level);  
-            Assert.AreEqual(expectedLevel, slime3.Level);
+            // Assert
+            Assert.AreEqual(requestedLevel1, slime1.Level);
+            Assert.AreEqual(requestedLevel2, slime2.Level);
+            Assert.AreEqual(requestedLevel3, slime3.Level);
+        }
+
+        [TestMethod]
+        public void SlimeEnemy_UsesPresetLevel_WhenRequestedLevelIsInvalid()
+        {
+            // Arrange
+            var presetLevel = EnemyLevelConfig.GetPresetLevel("Slime");
+
+            // Act
+            var slime = new Slime(0);
+
+            // Assert
+            Assert.AreEqual(presetLevel, slime.Level);
         }
 
         [TestMethod]
@@ -46,8 +61,6 @@ namespace PitHero.Tests
         [TestMethod]
         public void EnemyLevelConfig_SlimeLevel_IsAlwaysOne()
         {
-            // This test ensures slimes are always level 1 as per the design requirement
-            
             // Arrange & Act
             var slimeLevel = EnemyLevelConfig.GetPresetLevel("Slime");
 

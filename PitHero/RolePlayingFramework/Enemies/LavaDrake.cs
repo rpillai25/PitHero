@@ -4,16 +4,16 @@ using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Enemies
 {
-    /// <summary>Simple beginner enemy with low physical offense.</summary>
-    public sealed class Slime : IEnemy
+    /// <summary>Small dragon inhabiting volcanic caves.</summary>
+    public sealed class LavaDrake : IEnemy
     {
         private int _hp;
 
-        public string Name => "Slime";
+        public string Name => "Lava Drake";
         public int Level { get; }
         public StatBlock Stats { get; }
-        public DamageKind AttackKind => DamageKind.Physical;
-        public ElementType Element => ElementType.Water;
+        public DamageKind AttackKind => DamageKind.Magical;
+        public ElementType Element => ElementType.Fire;
         public ElementalProperties ElementalProps { get; }
         public int MaxHP { get; }
         public int CurrentHP => _hp;
@@ -22,13 +22,13 @@ namespace RolePlayingFramework.Enemies
         public int SPYield { get; }
         public int GoldYield { get; }
 
-        public Slime(int level = 1)
+        public LavaDrake(int level = 17)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Slime");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Lava Drake");
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
-            // Use BalanceConfig for stats
-            var archetype = BalanceConfig.MonsterArchetype.Balanced;
+            // Use BalanceConfig for stats - MagicUser archetype
+            var archetype = BalanceConfig.MonsterArchetype.MagicUser;
             var strength = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Strength);
             var agility = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Agility);
             var vitality = BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Vitality);
@@ -42,13 +42,13 @@ namespace RolePlayingFramework.Enemies
             SPYield = BalanceConfig.CalculateMonsterSPYield(Level);
             GoldYield = BalanceConfig.CalculateMonsterGoldYield(Level);
 
-            // Slime is Water element: resistant to Water, weak to Fire
+            // Lava Drake is Fire element: resistant to Fire, weak to Water
             var resistances = new System.Collections.Generic.Dictionary<ElementType, float>
             {
-                { ElementType.Water, 0.3f },  // 30% resistance to Water
-                { ElementType.Fire, -0.3f }   // 30% weakness to Fire
+                { ElementType.Fire, 0.3f },   // 30% resistance to Fire
+                { ElementType.Water, -0.3f }  // 30% weakness to Water
             };
-            ElementalProps = new ElementalProperties(ElementType.Water, resistances);
+            ElementalProps = new ElementalProperties(ElementType.Fire, resistances);
         }
 
         /// <summary>Inflicts damage, returns true if died.</summary>
