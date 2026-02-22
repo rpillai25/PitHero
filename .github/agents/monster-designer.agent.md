@@ -14,6 +14,7 @@ Your output must follow the Feature Builder handoff contract exactly.
 # Constraints
 - No gameplay/source-code implementation.
 - Creating or updating MONSTER_LIBRARY.md is explicitly allowed for this workflow.
+- Creating or updating a planning artifact under /features is explicitly allowed for this workflow.
 
 # Your approach
 When you design monsters, you consider ones that are commonly used in roleplaying games, whether they are JRPGs or tabletop RPGs.  This will give the player a sense of familiarity.  

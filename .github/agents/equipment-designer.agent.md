@@ -14,6 +14,7 @@ Your output must follow the Feature Builder handoff contract exactly.
 # Constraints
 - No gameplay/source-code implementation.
 - Creating or updating EQUIPMENT_LIBRARY.md is explicitly allowed for this workflow.
+- Creating or updating a planning artifact under /features is explicitly allowed for this workflow.
 
 # Your approach
 Your focus is on designing armor, helms, shields, and weapons.  When you design equipment, you consider ones that are commonly used in roleplaying games, whether they are JRPGs or tabletop RPGs.  This will give the player a sense of familiarity.  

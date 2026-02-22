@@ -4,10 +4,12 @@ namespace RolePlayingFramework.Equipment
     public enum ItemKind
     {
         Consumable,
-        WeaponSword,
-        WeaponKnuckle,
-        WeaponStaff,
-        WeaponRod,
+        WeaponSword, //For Knight
+        WeaponKnife, // For Thief
+        WeaponKnuckle, // For Monk
+        WeaponStaff, // For Priest
+        WeaponRod, // For Mage
+        WeaponBow, // For Archer
         ArmorMail,
         ArmorGi,
         ArmorRobe,

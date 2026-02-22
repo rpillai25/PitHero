@@ -33,6 +33,7 @@ Do not invoke the next agent until Ready for Next Step is Yes, or you explicitly
 - Skip Monster Designer if the approved plan does not require new monsters.
 - Skip Equipment Designer if the approved plan does not require new equipment.
 - Skip Virtual Game Layer Engineer if Researcher + Planner confirm virtual coverage is already sufficient.
+- Skip UI Engineer if the feature does not require any UI changes.
 - Skip Pit Balance Tester only for non-balance, non-combat, non-progression changes and only if explicitly justified.
 
 ## Markdown Artifact Exception
@@ -45,6 +46,7 @@ A feature is complete only when all are true:
 3. Build validation passed: dotnet build
 4. Test validation passed: dotnet test PitHero.Tests/
 5. No unresolved blockers remain.
+6. Verify that the new feature was fully implemented by the Principal Game Engineer and not just designed or partially implemented. If the feature was only partially implemented, identify what is missing and route back to Principal Game Engineer for completion before marking the feature as complete.  Only exception to partial implementation is if the feature is planned to be implemented in multiple phases, in which case the Planner should have explicitly documented the phased implementation plan and the expected deliverables for each phase, and the Principal Game Engineer should have implemented the feature according to that plan.  In this case, the feature can be marked as complete for the current phase, but the overall feature is not fully complete until all phases are implemented.
 
 ## Handoff Template (Copy/Paste)
 Use this exact skeleton for every handoff:

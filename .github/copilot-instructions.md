@@ -111,7 +111,7 @@ The balance system consists of several interconnected components:
 - **Combat**: `PitHero/RolePlayingFramework/Combat/ElementType.cs`, `ElementalProperties.cs`, `EnhancedAttackResolver.cs`
 - **Equipment**: `PitHero/RolePlayingFramework/Equipment/Gear.cs`, `GearItems.cs`
 - **Enemies**: `PitHero/RolePlayingFramework/Enemies/IEnemy.cs` and individual enemy classes
-- **Jobs**: `PitHero/RolePlayingFramework/Jobs/Primary/`, `Secondary/`, `Tertiary/`
+- **Jobs**: `PitHero/RolePlayingFramework/Jobs/Primary/`
 
 ---
 

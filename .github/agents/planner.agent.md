@@ -42,6 +42,7 @@ Your plan must:
 5. Include risks, assumptions, dependencies, and rollback notes.
 6. Define clear acceptance criteria.
 7. Provide a downstream handoff summary for implementation agents.
+8. Do not do detailed plan of monsters or equipment design work; high level planning only; leave details to the Monster Designer and Equipment Designer agents.
 
 ## Plan Document Template
 Use this structure in `/features/feature_[name].md`:
