@@ -23,6 +23,107 @@ Your output is a well-implemented feature or change to the codebase that meets t
 - Run build validation: dotnet build
 - Run test validation: dotnet test PitHero.Tests/
 
+## Cave Biome Validation
+When making Cave biome changes, additionally validate:
+- Pit-level boundaries (1 and 25), boss floors (5/10/15/20/25), and non-boss transition floors (10/11)
+- For Cave loot updates, verify pit 1-10 always yields treasure level 1, then verify pit 11+ weighted transitions (35% non-boss, 60% boss)
+- For Cave progression updates, confirm boss level scaling applies +2 before `StatConstants.ClampLevel`
+
+## Monster Creation Pattern
+When implementing new monsters from MONSTER_LIBRARY.md, follow this code pattern:
+```csharp
+using RolePlayingFramework.Balance;
+using RolePlayingFramework.Combat;
+using RolePlayingFramework.Stats;
+
+public sealed class YourMonster : IEnemy
+{
+    private int _hp;
+    public string Name => "YourMonster";
+    public int Level { get; }
+    public StatBlock Stats { get; }
+    public DamageKind AttackKind => DamageKind.Physical; // or DamageKind.Magic
+    public ElementType Element => ElementType.Fire;
+    public ElementalProperties ElementalProps { get; }
+    public int MaxHP { get; }
+    public int CurrentHP => _hp;
+    public int ExperienceYield { get; }
+
+    public YourMonster(int level = 25)
+    {
+        Level = level;
+        var archetype = BalanceConfig.MonsterArchetype.Balanced;
+        
+        Stats = new StatBlock(
+            BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Strength),
+            BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Agility),
+            BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Vitality),
+            BalanceConfig.CalculateMonsterStat(Level, archetype, BalanceConfig.StatType.Magic)
+        );
+        
+        MaxHP = BalanceConfig.CalculateMonsterHP(Level, archetype);
+        _hp = MaxHP;
+        ExperienceYield = BalanceConfig.CalculateMonsterExperience(Level);
+        
+        var resistances = new Dictionary<ElementType, float>
+        {
+            { ElementType.Fire, 0.3f },
+            { ElementType.Water, -0.3f }
+        };
+        ElementalProps = new ElementalProperties(ElementType.Fire, resistances);
+    }
+
+    public bool TakeDamage(int amount)
+    {
+        if (amount <= 0) return false;
+        _hp -= amount;
+        if (_hp < 0) _hp = 0;
+        return _hp == 0;
+    }
+}
+```
+
+## Equipment Creation Pattern
+When implementing new equipment from EQUIPMENT_LIBRARY.md, follow this code pattern:
+```csharp
+using RolePlayingFramework.Balance;
+using RolePlayingFramework.Combat;
+using RolePlayingFramework.Stats;
+using System.Collections.Generic;
+
+namespace RolePlayingFramework.Equipment.Swords
+{
+    /// <summary>Factory for creating YourWeapon gear.</summary>
+    public static class YourWeapon
+    {
+        private const int PitLevel = 25;
+        private const ItemRarity Rarity = ItemRarity.Rare;
+
+        public static Gear Create()
+        {
+            int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
+            
+            var resistances = new Dictionary<ElementType, float>
+            {
+                { ElementType.Fire, 0.3f },
+                { ElementType.Water, -0.15f }
+            };
+            
+            return new Gear(
+                "YourWeapon",
+                ItemKind.WeaponSword,
+                Rarity,
+                $"+{attackBonus} Attack",
+                500,
+                new StatBlock(0, 0, 0, 0),
+                atk: attackBonus,
+                elementalProps: new ElementalProperties(ElementType.Fire, resistances)
+            );
+        }
+    }
+}
+```
+
 # Handoff Requirements
 Use the Feature Builder handoff contract.
 

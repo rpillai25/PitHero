@@ -23,6 +23,15 @@ Within each biome you consider that every 5 levels has a boss monster.  Every mu
 In addition to the raw stats of the equipment, you also consider their elemental attributes.  The biome they are in may influence this.  Not all equipment needs to have elemental attributes, especially the ones in the beginning.
 You consider the fact that the hero would be growing in strength too, and so the equipment shouldn't be too powerful as to make the hero overpowered for the level he's on.  Of course items of epic or legendary rarity is perfectly fine to be overpowered because the chances of getting them is low.  This rule mainly applies to normal and uncommon equipment.  Rare equipment can give the player a big advantage, but not feel overpowered.
 
+# Element Assignment Guidelines for Equipment
+- Weapons: Usually pure element (no resistances)
+- Armor/Shields/Helms: Can have resistances to own element
+- Accessories: Typically pure element (no resistances)
+- Neutral equipment: No resistances or weaknesses
+- Standard resistance pattern: 25-30% resistance to own element, 10-15% weakness to opposing element
+- HP Bonus Scaling: `stat * 5` (for vitality-focused items)
+- MP Bonus Scaling: `stat * 3` (for magic-focused items)
+
 # When asked to design equipment
 Add to a EQUIPMENT_LIBRARY.md file with the following info, in addition to relevant information from [EQUIPMENT_BALANCE_GUIDE.md](/EQUIPMENT_BALANCE_GUIDE.md) which will help an implementer to actually create the implementation file for the monster.
 

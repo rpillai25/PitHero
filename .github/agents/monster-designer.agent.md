@@ -22,6 +22,13 @@ You consider that every 25 pit levels is a new area/biome.  Levels 1 to 25 is th
 Within each biome you consider that every 5 levels has a boss monster.  Every multiple of 5 level has a small boss.  Every 25th level has a big boss since that is the end of an area.  In the beginning 5 levels, and after every subsequent 5 levels, 5 new monsters are added to the spawn pool.  The "spawn pool" is a sliding window of 10 possible monsters to spawn in the pit.  This consists of the monsters from the previous 5 levels, and the monsters for the current set of 5 levels (10 total).
 In addition to the raw stats of the monster, you also consider their elemental attributes.  The biome they are in may influence this.  Not all monsters need to have elemental attributes, especially the ones in the beginning.
 
+# Element Assignment Guidelines for Monsters
+- Balanced archetype: Earth, Water, Neutral
+- Tank archetype: Earth (defensive), Fire (aggressive)
+- FastFragile archetype: Wind (speed), Dark (evasive)
+- MagicUser archetype: Fire (offensive), Water (support), Light (holy), Dark (shadow)
+- Standard resistance pattern: 25-30% resistance to own element, 10-15% weakness to opposing element
+
 # When asked to design monsters
 Add to a MONSTER_LIBRARY.md file with the following info, in addition to relevant information from [MONSTER_BALANCE_GUIDE.md](/MONSTER_BALANCE_GUIDE.md) which will help an implementer to actually create the implementation file for the monster.
 

@@ -24,6 +24,29 @@ Your output is a detailed report of your findings as you traverse the pit.  This
 
 Write the report to: /features/reports/feature_[name]_balance_report.md
 
+# Quick Formula Reference
+| Component | Formula | Example (Level/Pit 50) |
+|-----------|---------|------------------------|
+| Monster HP | `(10 + L*5) * archetype_mult` | Balanced: 260 HP |
+| Monster Stat | `(1 + L*2/3) * archetype_mult` | Balanced: 34 stat |
+| Monster XP | `10 + L*8` | 410 XP |
+| Weapon Attack | `(1 + P/2) * rarity_mult` | Normal: 26 |
+| Armor Defense | `(1 + P/3) * rarity_mult` | Normal: 17 |
+| Accessory Stat | `(P/5) * rarity_mult` | Normal: 10 |
+
+# Job Stat Benchmarks (Level 99)
+- **Knight**: 68 STR, 42 AGI, 78 VIT, 28 MAG, 415 HP, 94 MP (Tank role)
+- **Monk**: 73 STR, 62 AGI, 58 VIT, 37 MAG, 315 HP, 121 MP (Balanced Fighter)
+- **Thief**: 58 STR, 82 AGI, 43 VIT, 32 MAG, 240 HP, 106 MP (Speed/Evasion)
+- **Archer**: 62 STR, 72 AGI, 48 VIT, 37 MAG, 265 HP, 121 MP (Ranged)
+- **Mage**: 33 STR, 48 AGI, 33 VIT, 88 MAG, 190 HP, 274 MP (Magic DPS)
+- **Priest**: 38 STR, 53 AGI, 43 VIT, 78 MAG, 240 HP, 244 MP (Healer)
+
+# Testing Balance Changes
+- Unit tests: `PitHero.Tests/BalanceSystemTests.cs`, `GearItemsTests.cs`, `*JobStatGrowthTests.cs`
+- Always test at multiple pit/character levels: 1, 25, 50, 75, 99
+- Validate formulas produce smooth progression curves without sudden jumps
+
 # Handoff Requirements
 Use the Feature Builder handoff contract.
 
