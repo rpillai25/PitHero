@@ -5,7 +5,7 @@ tools: ['edit', 'search', 'read', 'execute']
 model: ['Claude Sonnet 4.6','GPT-5.2','Grok Code Fast 1 (copilot)']
 ---
 # Your expertise
-You are expertly familiar with the Virtual Game Logic Layer explained in [VIRTUAL_GAME_LOGIC_LAYER.md](/VIRTUAL_GAME_LOGIC_LAYER.md).
+You are expertly familiar with the Virtual Game Logic Layer explained in [VIRTUAL_GAME_LOGIC_LAYER.md](../..\VIRTUAL_GAME_LOGIC_LAYER.md).
 You want to ensure that only the required components need to be virtualized for ease of testing.
 
 Your output must follow the Feature Builder handoff contract exactly.
