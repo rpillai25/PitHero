@@ -37,11 +37,13 @@ namespace PitHero.Tests
                 Assert.AreEqual(world.LastGeneratedTreasureLevels.Count, world.LastGeneratedEquipmentTypes.Count,
                     $"Level {level} should track equipment types for every treasure");
 
+                // Pit levels 1-15: max treasure level 2. Pit levels 16-25: max treasure level 3 (Rare).
+                int maxTreasureAllowed = level >= 16 ? 3 : 2;
                 for (int treasureIndex = 0; treasureIndex < world.LastGeneratedTreasureLevels.Count; treasureIndex++)
                 {
                     int treasureLevel = world.LastGeneratedTreasureLevels[treasureIndex];
-                    Assert.IsTrue(treasureLevel == 1 || treasureLevel == 2,
-                        $"Level {level} generated invalid cave treasure level {treasureLevel}");
+                    Assert.IsTrue(treasureLevel >= 1 && treasureLevel <= maxTreasureAllowed,
+                        $"Level {level} generated invalid cave treasure level {treasureLevel} (max allowed: {maxTreasureAllowed})");
                 }
 
                 bool isBossFloor = CaveBiomeConfig.IsBossFloor(level);

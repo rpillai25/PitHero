@@ -468,12 +468,13 @@ namespace PitHero.Tests
                     }
                 }
 
-                // Check 2: Treasure levels are valid (1 or 2)
+                // Check 2: Treasure levels are valid (1-2 for pit<=15, 1-3 for pit 16-25)
+                int maxTreasureLevel = level >= 16 ? 3 : 2;
                 foreach (int treasureLevel in _world.LastGeneratedTreasureLevels)
                 {
-                    if (treasureLevel < 1 || treasureLevel > 2)
+                    if (treasureLevel < 1 || treasureLevel > maxTreasureLevel)
                     {
-                        issues.Add($"Level {level} has invalid treasure level: {treasureLevel}");
+                        issues.Add($"Level {level} has invalid treasure level: {treasureLevel} (max allowed: {maxTreasureLevel})");
                         allTestsPassed = false;
                     }
                 }

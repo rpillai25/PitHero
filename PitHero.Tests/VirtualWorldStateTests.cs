@@ -51,11 +51,13 @@ namespace PitHero.Tests
                 int level = sampleLevels[levelIndex];
                 context.PitGenerator.RegenerateForLevel(level);
 
+                // Pit levels 1-15: max treasure level 2. Pit levels 16-25: max treasure level 3 (Rare).
+                int maxAllowed = level >= 16 ? 3 : 2;
                 for (int itemIndex = 0; itemIndex < world.LastGeneratedTreasureLevels.Count; itemIndex++)
                 {
                     int treasureLevel = world.LastGeneratedTreasureLevels[itemIndex];
-                    Assert.IsTrue(treasureLevel == 1 || treasureLevel == 2,
-                        $"Cave level {level} generated invalid treasure level {treasureLevel}");
+                    Assert.IsTrue(treasureLevel >= 1 && treasureLevel <= maxAllowed,
+                        $"Cave level {level} generated invalid treasure level {treasureLevel} (max allowed: {maxAllowed})");
                 }
             }
         }

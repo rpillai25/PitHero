@@ -166,6 +166,7 @@ namespace PitHero.ECS.Components
             {
                 1 => GenerateCaveCommonLoot(),
                 2 => GenerateCaveUncommonLoot(),
+                3 => GenerateCaveRareLoot(),
                 _ => GenerateItemForTreasureLevel(treasureLevel)
             };
         }
@@ -216,38 +217,200 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Generate cave common loot from early equipment and base potions.
+        /// Generate cave common loot from all Normal-rarity cave gear items (56 items) plus Normal potions.
         /// </summary>
         private static IItem GenerateCaveCommonLoot()
         {
-            var random = Nez.Random.NextInt(7);
-            return random switch
+            int random = Nez.Random.NextInt(59);
+            switch (random)
             {
-                0 => GearItems.ShortSword(),
-                1 => GearItems.WoodenShield(),
-                2 => GearItems.SquireHelm(),
-                3 => GearItems.LeatherArmor(),
-                4 => PotionItems.HPPotion(),
-                5 => PotionItems.MPPotion(),
-                _ => PotionItems.MixPotion()
-            };
+                // Swords (Normal) — 0..10
+                case 0:  return GearItems.RustyBlade();
+                case 1:  return GearItems.ShortSword();
+                case 2:  return GearItems.CavernCutter();
+                case 3:  return GearItems.CaveStalkersBlade();
+                case 4:  return GearItems.GraniteBlade();
+                case 5:  return GearItems.LongSword();
+                case 6:  return GearItems.MinersPickSword();
+                case 7:  return GearItems.ShadowFang();
+                case 8:  return GearItems.SpelunkersSaber();
+                case 9:  return GearItems.StoneSword();
+                case 10: return GearItems.TorchBlade();
+                // Axes (Normal) — 11..14
+                case 11: return GearItems.FlameHatchet();
+                case 12: return GearItems.MinersAxe();
+                case 13: return GearItems.StoneHatchet();
+                case 14: return GearItems.WoodcuttersAxe();
+                // Daggers (Normal) — 15..17
+                case 15: return GearItems.CaveShiv();
+                case 16: return GearItems.RustyDagger();
+                case 17: return GearItems.SilentFang();
+                // Spears (Normal) — 18..19
+                case 18: return GearItems.StoneLance();
+                case 19: return GearItems.WoodenSpear();
+                // Hammers (Normal) — 20..21
+                case 20: return GearItems.Mallet();
+                case 21: return GearItems.StoneCrusher();
+                // Staves (Normal) — 22..23
+                case 22: return GearItems.TorchStaff();
+                case 23: return GearItems.WalkingStick();
+                // Armor (Normal) — 24..34
+                case 24: return GearItems.BurlapTunic();
+                case 25: return GearItems.CaveExplorersVest();
+                case 26: return GearItems.ChainShirt();
+                case 27: return GearItems.HardenedLeather();
+                case 28: return GearItems.HideVest();
+                case 29: return GearItems.IronArmor();
+                case 30: return GearItems.LeatherArmor();
+                case 31: return GearItems.PaddedArmor();
+                case 32: return GearItems.ScaleMail();
+                case 33: return GearItems.StuddedLeather();
+                case 34: return GearItems.TatteredCloth();
+                // Shields (Normal) — 35..44
+                case 35: return GearItems.CaveGuard();
+                case 36: return GearItems.HideShield();
+                case 37: return GearItems.IronBuckler();
+                case 38: return GearItems.IronShield();
+                case 39: return GearItems.KiteShield();
+                case 40: return GearItems.ReinforcedBuckler();
+                case 41: return GearItems.RoundShield();
+                case 42: return GearItems.StoneShield();
+                case 43: return GearItems.WoodenPlank();
+                case 44: return GearItems.WoodenShield();
+                // Helms (Normal) — 45..54
+                case 45: return GearItems.Bascinet();
+                case 46: return GearItems.CaveExplorersHood();
+                case 47: return GearItems.ChainCoif();
+                case 48: return GearItems.ClothCap();
+                case 49: return GearItems.HideHood();
+                case 50: return GearItems.IronHelm();
+                case 51: return GearItems.LeatherCap();
+                case 52: return GearItems.PaddedCoif();
+                case 53: return GearItems.ReinforcedCap();
+                case 54: return GearItems.SquireHelm();
+                // Accessories (Normal) — 55
+                case 55: return GearItems.ProtectRing();
+                // Potions (Normal) — 56..58
+                case 56: return PotionItems.HPPotion();
+                case 57: return PotionItems.MPPotion();
+                default: return PotionItems.MixPotion();
+            }
         }
 
         /// <summary>
-        /// Generate cave uncommon loot from cave-upgrade equipment and utility items.
+        /// Generate cave uncommon loot from all Uncommon-rarity cave gear items plus Uncommon bags.
+        /// All 78 items in this pool are verified Uncommon rarity.
         /// </summary>
         private static IItem GenerateCaveUncommonLoot()
         {
-            var random = Nez.Random.NextInt(6);
-            return random switch
+            int random = Nez.Random.NextInt(78);
+            switch (random)
             {
-                0 => GearItems.LongSword(),
-                1 => GearItems.IronShield(),
-                2 => GearItems.IronHelm(),
-                3 => GearItems.IronArmor(),
-                4 => GearItems.ProtectRing(),
-                _ => BagItems.ForagersBag()
-            };
+                // Swords (Uncommon) — 0..13
+                case 0:  return GearItems.AbyssFang();
+                case 1:  return GearItems.CrystalEdge();
+                case 2:  return GearItems.DepthsReaver();
+                case 3:  return GearItems.DiamondEdge();
+                case 4:  return GearItems.EmberSword();
+                case 5:  return GearItems.GloomBlade();
+                case 6:  return GearItems.InfernoEdge();
+                case 7:  return GearItems.LavaForgedSword();
+                case 8:  return GearItems.MagmaBlade();
+                case 9:  return GearItems.PitLordsSword();
+                case 10: return GearItems.QuartzSaber();
+                case 11: return GearItems.StalagmiteSword();
+                case 12: return GearItems.UndergroundRapier();
+                case 13: return GearItems.VoidCutter();
+                // Axes (Uncommon) — 14..17
+                case 14: return GearItems.CrystalCleaver();
+                case 15: return GearItems.ObsidianCleaver();
+                case 16: return GearItems.ShadowSplitter();
+                case 17: return GearItems.VolcanicAxe();
+                // Daggers (Uncommon) — 18..20
+                case 18: return GearItems.AssassinsEdge();
+                case 19: return GearItems.SerpentsTooth();
+                case 20: return GearItems.ShadowStiletto();
+                // Spears (Uncommon) — 21..24
+                case 21: return GearItems.CavePike();
+                case 22: return GearItems.FlameLance();
+                case 23: return GearItems.InfernalPike();
+                case 24: return GearItems.StalactiteSpear();
+                // Hammers (Uncommon) — 25..27
+                case 25: return GearItems.GeologistsHammer();
+                case 26: return GearItems.MagmaMaul();
+                case 27: return GearItems.QuakeHammer();
+                // Staves (Uncommon) — 28..30
+                case 28: return GearItems.EarthenStaff();
+                case 29: return GearItems.EmberRod();
+                case 30: return GearItems.ShadowwoodStaff();
+                // Armor (Uncommon) — 31..44
+                case 31: return GearItems.AbyssPlate();
+                case 32: return GearItems.CrystalGuard();
+                case 33: return GearItems.DiamondMail();
+                case 34: return GearItems.EmberguardMail();
+                case 35: return GearItems.GranitePlate();
+                case 36: return GearItems.LavaplateArmor();
+                case 37: return GearItems.MagmaForgedPlate();
+                case 38: return GearItems.PitLordsArmor();
+                case 39: return GearItems.ReinforcedPlate();
+                case 40: return GearItems.ShadowVest();
+                case 41: return GearItems.SteelCuirass();
+                case 42: return GearItems.StonePlate();
+                case 43: return GearItems.Voidmail();
+                case 44: return GearItems.VolcanicArmor();
+                // Shields (Uncommon) — 45..59
+                case 45: return GearItems.AbyssWall();
+                case 46: return GearItems.CrystalBarrier();
+                case 47: return GearItems.DiamondBarrier();
+                case 48: return GearItems.EmberShield();
+                case 49: return GearItems.GraniteGuard();
+                case 50: return GearItems.HeaterShield();
+                case 51: return GearItems.InfernoGuard();
+                case 52: return GearItems.LavaShield();
+                case 53: return GearItems.MagmaWall();
+                case 54: return GearItems.PitLordsAegis();
+                case 55: return GearItems.QuartzWall();
+                case 56: return GearItems.ShadowGuard();
+                case 57: return GearItems.SteelShield();
+                case 58: return GearItems.TowerShield();
+                case 59: return GearItems.VoidBarrier();
+                // Helms (Uncommon) — 60..74
+                case 60: return GearItems.AbyssHelm();
+                case 61: return GearItems.CrystalCirclet();
+                case 62: return GearItems.DiamondCirclet();
+                case 63: return GearItems.EmberHelm();
+                case 64: return GearItems.GreatHelm();
+                case 65: return GearItems.InfernoCrown();
+                case 66: return GearItems.LavaCrown();
+                case 67: return GearItems.MagmaHelm();
+                case 68: return GearItems.PitLordsCrown();
+                case 69: return GearItems.QuartzHelm();
+                case 70: return GearItems.ShadowCowl();
+                case 71: return GearItems.SteelHelm();
+                case 72: return GearItems.StoneCrown();
+                case 73: return GearItems.VoidMask();
+                case 74: return GearItems.WingedHelm();
+                // Accessories (Uncommon) — 75..76
+                case 75: return GearItems.MagicChain();
+                case 76: return GearItems.RingOfPower();
+                // Bags (Uncommon) — 77
+                default: return BagItems.ForagersBag();
+            }
+        }
+
+        /// <summary>
+        /// Generate cave rare loot from all Rare-rarity items (4 items).
+        /// </summary>
+        private static IItem GenerateCaveRareLoot()
+        {
+            int random = Nez.Random.NextInt(4);
+            switch (random)
+            {
+                case 0: return GearItems.NecklaceOfHealth();
+                case 1: return PotionItems.MidHPPotion();
+                case 2: return PotionItems.MidMPPotion();
+                default: return PotionItems.MidMixPotion();
+            }
         }
 
         /// <summary>

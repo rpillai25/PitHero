@@ -79,6 +79,11 @@ namespace PitHero.Config
 
         /// <summary>
         /// Determines cave treasure level using cave-specific rarity bands.
+        /// Pit levels 1-10 always yield level 1 (Normal).
+        /// Pit levels 11-14 (non-boss): 35% level 2 (Uncommon), 65% level 1.
+        /// Pit level 15 (boss): 60% level 2 (Uncommon), 40% level 1. No level 3.
+        /// Boss floors 20 and 25: 20% level 3 (Rare), 50% level 2, 30% level 1.
+        /// Non-boss pit levels 16-25: 10% level 3 (Rare), 35% level 2, 55% level 1.
         /// </summary>
         public static int DetermineCaveTreasureLevel(int pitLevel, float roll)
         {
@@ -87,13 +92,30 @@ namespace PitHero.Config
                 return 1;
             }
 
-            // Transition probabilities: boss floors favor level 2 at 60%, non-boss cave floors use 35%.
-            if (IsBossFloor(pitLevel))
+            // Boss floor 15 does not grant level 3 — only levels 1 and 2.
+            if (pitLevel == 15)
             {
                 return roll < 0.6f ? 2 : 1;
             }
 
-            return roll < 0.35f ? 2 : 1;
+            // Non-boss floors 11-14.
+            if (pitLevel < 16)
+            {
+                return roll < 0.35f ? 2 : 1;
+            }
+
+            // Boss floors 20 and 25: 20% level 3, 50% level 2, 30% level 1.
+            if (IsBossFloor(pitLevel))
+            {
+                if (roll < 0.2f) return 3;
+                if (roll < 0.7f) return 2;
+                return 1;
+            }
+
+            // Non-boss pit levels 16-25: 10% level 3, 35% level 2, 55% level 1.
+            if (roll < 0.1f) return 3;
+            if (roll < 0.45f) return 2;
+            return 1;
         }
 
         /// <summary>

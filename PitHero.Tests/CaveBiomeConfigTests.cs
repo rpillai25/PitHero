@@ -53,22 +53,41 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void CaveBiome_DetermineCaveTreasureLevel_ShouldStayWithinOneToTwo()
+        public void CaveBiome_DetermineCaveTreasureLevel_ShouldStayWithinOneToThree()
         {
+            // Pit levels 1-15 must stay in band [1, 2]; levels 16-25 may also return 3 (Rare) on low rolls.
             for (int level = 1; level <= 25; level++)
             {
                 var levelLowRoll = CaveBiomeConfig.DetermineCaveTreasureLevel(level, 0.0f);
                 var levelMidRoll = CaveBiomeConfig.DetermineCaveTreasureLevel(level, 0.5f);
                 var levelHighRoll = CaveBiomeConfig.DetermineCaveTreasureLevel(level, 0.99f);
 
-                Assert.IsTrue(levelLowRoll == 1 || levelLowRoll == 2);
-                Assert.IsTrue(levelMidRoll == 1 || levelMidRoll == 2);
-                Assert.IsTrue(levelHighRoll == 1 || levelHighRoll == 2);
+                Assert.IsTrue(levelLowRoll >= 1 && levelLowRoll <= 3,
+                    $"Level {level} low roll produced out-of-range treasure level {levelLowRoll}");
+                Assert.IsTrue(levelMidRoll >= 1 && levelMidRoll <= 3,
+                    $"Level {level} mid roll produced out-of-range treasure level {levelMidRoll}");
+                Assert.IsTrue(levelHighRoll >= 1 && levelHighRoll <= 3,
+                    $"Level {level} high roll produced out-of-range treasure level {levelHighRoll}");
+
+                // Levels 1-15 must never produce level 3.
+                if (level <= 15)
+                {
+                    Assert.IsTrue(levelLowRoll <= 2,
+                        $"Level {level} (<=15) must not produce treasure level 3, got {levelLowRoll}");
+                    Assert.IsTrue(levelMidRoll <= 2,
+                        $"Level {level} (<=15) must not produce treasure level 3, got {levelMidRoll}");
+                    Assert.IsTrue(levelHighRoll <= 2,
+                        $"Level {level} (<=15) must not produce treasure level 3, got {levelHighRoll}");
+                }
             }
 
             Assert.AreEqual(1, CaveBiomeConfig.DetermineCaveTreasureLevel(5, 0.25f));
             Assert.AreEqual(2, CaveBiomeConfig.DetermineCaveTreasureLevel(15, 0.5f));
             Assert.AreEqual(1, CaveBiomeConfig.DetermineCaveTreasureLevel(15, 0.8f));
+            // Boss floor 20: roll 0.0f should give level 3 (20% chance).
+            Assert.AreEqual(3, CaveBiomeConfig.DetermineCaveTreasureLevel(20, 0.0f));
+            // Boss floor 20: roll 0.5f should give level 2 (50% chance band).
+            Assert.AreEqual(2, CaveBiomeConfig.DetermineCaveTreasureLevel(20, 0.5f));
         }
 
         [TestMethod]
@@ -108,8 +127,10 @@ namespace PitHero.Tests
                 for (int i = 0; i < world.LastGeneratedTreasureLevels.Count; i++)
                 {
                     var treasureLevel = world.LastGeneratedTreasureLevels[i];
-                    Assert.IsTrue(treasureLevel == 1 || treasureLevel == 2,
-                        $"Cave pit {level} generated invalid treasure level {treasureLevel}");
+                    // Levels 1-15: max treasure level 2. Levels 16-25: max treasure level 3 (Rare possible).
+                    int maxAllowed = level >= 16 ? 3 : 2;
+                    Assert.IsTrue(treasureLevel >= 1 && treasureLevel <= maxAllowed,
+                        $"Cave pit {level} generated invalid treasure level {treasureLevel} (max allowed: {maxAllowed})");
                 }
             }
         }

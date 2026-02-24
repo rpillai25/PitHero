@@ -248,5 +248,38 @@ namespace PitHero.Tests
             var expectedRarity = RarityUtils.GetRarityForTreasureLevel(component.Level);
             Assert.AreEqual(expectedRarity, component.ContainedItem.Rarity);
         }
+
+        [TestMethod]
+        public void CaveLoot_Level1_AlwaysNormalRarity()
+        {
+            for (int i = 0; i < 200; i++)
+            {
+                var item = TreasureComponent.GenerateCaveItemForTreasureLevel(1);
+                Assert.AreEqual(ItemRarity.Normal, item.Rarity,
+                    $"Cave level 1 loot must be Normal rarity but got {item.Rarity} ({item.Name}) on iteration {i}");
+            }
+        }
+
+        [TestMethod]
+        public void CaveLoot_Level2_AlwaysUncommonRarity()
+        {
+            for (int i = 0; i < 200; i++)
+            {
+                var item = TreasureComponent.GenerateCaveItemForTreasureLevel(2);
+                Assert.AreEqual(ItemRarity.Uncommon, item.Rarity,
+                    $"Cave level 2 loot must be Uncommon rarity but got {item.Rarity} ({item.Name}) on iteration {i}");
+            }
+        }
+
+        [TestMethod]
+        public void CaveLoot_Level3_AlwaysRareRarity()
+        {
+            for (int i = 0; i < 200; i++)
+            {
+                var item = TreasureComponent.GenerateCaveItemForTreasureLevel(3);
+                Assert.AreEqual(ItemRarity.Rare, item.Rarity,
+                    $"Cave level 3 loot must be Rare rarity but got {item.Rarity} ({item.Name}) on iteration {i}");
+            }
+        }
     }
 }
