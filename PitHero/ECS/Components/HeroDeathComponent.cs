@@ -3,6 +3,7 @@ using Nez;
 using Nez.Sprites;
 using Nez.Textures;
 using PitHero.AI;
+using PitHero.ECS.Scenes;
 using PitHero.Services;
 using System.Collections;
 using System.Collections.Generic;
@@ -211,22 +212,19 @@ namespace PitHero.ECS.Components
                 Debug.Warn("[HeroDeathComponent] CrystalMerchantVault service not found");
             }
 
-            // Block mercenary hiring and freeze all hired mercenaries in place
-            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
-            if (mercenaryManager != null)
-            {
-                mercenaryManager.BlockHiring();
-                mercenaryManager.FreezeAllHiredMercenaries();
-                Debug.Log("[HeroDeathComponent] Blocked hiring and froze hired mercenaries in place");
-            }
-            else
-            {
-                Debug.Warn("[HeroDeathComponent] MercenaryManager service not found");
-            }
+            // Capture scene reference before destroying entity
+            var scene = Entity.Scene;
 
-            // Destroy hero entity
+            // Destroy hero entity (will be respawned by MainGameScene)
             Entity.Destroy();
             Debug.Log("[HeroDeathComponent] Hero entity destroyed after death animation");
+
+            // Trigger hero respawn after a brief delay
+            if (scene is MainGameScene mainGameScene)
+            {
+                Core.StartCoroutine(mainGameScene.RespawnHeroAfterDelay(2.0f));
+                Debug.Log("[HeroDeathComponent] Triggered hero respawn sequence");
+            }
         }
 
         private void CreateShadowAtDeathLocation()

@@ -118,13 +118,9 @@ namespace PitHero.UI
 
         private void StartGame(string mapPath)
         {
-            // Create and switch to the main game scene with the selected map
-            var mainGameScene = new MainGameScene(mapPath);
-            Color grassColor = new Color(71, 114, 56);
-            mainGameScene.ClearColor = grassColor;   // Set background
-            // Optional: letterbox bars (if any) also blue
-            mainGameScene.LetterboxColor = grassColor;
-            Core.Scene = mainGameScene;
+            // Transition to hero creation scene instead of directly to the game
+            var heroCreationScene = new HeroCreationScene(mapPath);
+            Core.Scene = heroCreationScene;
         }
 
         private void ShowQuitConfirmation()

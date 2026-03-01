@@ -27,6 +27,7 @@ namespace PitHero
             Services.AddService(new SecondChanceMerchantVault());
             Services.AddService(new GameStateService());
             Services.AddService(new HairstyleQueueService(GameConfig.MaleHeroHairstyleCount));
+            Services.AddService(new HeroDesignService());
 
             // Register global managers
             SoundEffectManager soundEffectManager = new SoundEffectManager();
@@ -37,10 +38,6 @@ namespace PitHero
             PauseOnFocusLost = false;
 
             var scene = new TitleScreenScene();
-            scene.ClearColor = Color.CornflowerBlue;   // Set background
-            // Optional: letterbox bars (if any) also blue
-            scene.LetterboxColor = Color.CornflowerBlue;
-
             Scene = scene;
         }
 
