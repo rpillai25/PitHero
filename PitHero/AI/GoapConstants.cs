@@ -26,6 +26,10 @@
         public const string IsBeingPromotedToHero = "IsBeingPromotedToHero";
         public const string HasArrivedAtHeroStatue = "HasArrivedAtHeroStatue";
 
+        // Hero crystal promotion states (hero respawning without crystal)
+        public const string NeedsCrystal = "NeedsCrystal";
+        public const string HasArrivedAtStatueForCrystal = "HasArrivedAtStatueForCrystal";
+
         // GOAP Actions (extended to include interactive entities)
         public const string JumpIntoPitAction = "JumpIntoPitAction";
         public const string WanderPitAction = "WanderPitAction";
@@ -44,5 +48,8 @@
         public const string MercenaryJumpOutOfPitAction = "MercenaryJumpOutOfPitAction";
         public const string WalkToPitEdgeAction = "WalkToPitEdgeAction";
         public const string WalkToHeroStatueAction = "WalkToHeroStatueAction";
+
+        // Hero crystal promotion actions
+        public const string WalkToStatueForCrystalAction = "WalkToStatueForCrystalAction";
     }
 }

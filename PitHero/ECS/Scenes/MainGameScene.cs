@@ -35,6 +35,7 @@ namespace PitHero.ECS.Scenes
         private Entity _hoveredMercenary; // Currently hovered mercenary
         private Entity _mercenarySelectBoxEntity; // Entity for rendering SelectBox over hovered mercenary
         private Entity _mercenaryNameLabelEntity; // Entity for rendering name above hovered mercenary
+        private Services.HeroPromotionService _heroPromotionService; // Manages hero crystal promotion after death
 
         // HUD fonts for different shrink levels
         public BitmapFont _hudFontNormal;
@@ -117,6 +118,10 @@ namespace PitHero.ECS.Scenes
             var mercenaryManager = new MercenaryManager();
             Core.Services.AddService(mercenaryManager);
             mercenaryManager.Initialize(this);
+
+            // Initialize hero promotion service (handles mercenary promotions and hero crystal ceremonies after death)
+            _heroPromotionService = new Services.HeroPromotionService(this);
+            Core.Services.AddService(_heroPromotionService);
 
             // Initialize player interaction service for camera control
             var playerInteractionService = new PlayerInteractionService();
@@ -228,9 +233,10 @@ namespace PitHero.ECS.Scenes
         }
 
         /// <summary>
-        /// Creates a hero entity at the specified tile coordinates using HeroDesign for appearance
+        /// Creates a hero entity at the specified tile coordinates using HeroDesign for appearance.
+        /// When needsCrystal is true, the hero spawns without a crystal and waits for the promotion ceremony.
         /// </summary>
-        private Entity CreateHeroEntity(int tileX, int tileY)
+        private Entity CreateHeroEntity(int tileX, int tileY, bool needsCrystal = false)
         {
             var designService = Core.Services.GetService<HeroDesignService>();
             var design = designService.GetDesign();
@@ -315,16 +321,25 @@ namespace PitHero.ECS.Scenes
                 PitInitialized = true
             });
 
-            // Initialize HeroCrystal for crystal-infused stats
-            var heroJob = new Knight();
-            var baseStats = new StatBlock(strength: 4, agility: 3, vitality: 5, magic: 1);
-            var heroCrystal = new HeroCrystal(design.Name, heroJob, 1, baseStats);
-            heroCrystal.EarnJP(550);
+            if (!needsCrystal)
+            {
+                // Initialize HeroCrystal for crystal-infused stats (normal spawn)
+                var heroJob = new Knight();
+                var baseStats = new StatBlock(strength: 4, agility: 3, vitality: 5, magic: 1);
+                var heroCrystal = new HeroCrystal(design.Name, heroJob, 1, baseStats);
+                heroCrystal.EarnJP(550);
 
-            // Create the linked Hero from the crystal
-            heroComponent.LinkedHero = new RolePlayingFramework.Heroes.Hero(design.Name, heroJob, 1, baseStats, heroCrystal);
+                // Create the linked Hero from the crystal
+                heroComponent.LinkedHero = new RolePlayingFramework.Heroes.Hero(design.Name, heroJob, 1, baseStats, heroCrystal);
 
-            Debug.Log($"[MainGameScene] Created hero '{design.Name}' with Level {heroComponent.LinkedHero.Level}, HP {heroComponent.LinkedHero.CurrentHP}/{heroComponent.LinkedHero.MaxHP}");
+                Debug.Log($"[MainGameScene] Created hero '{design.Name}' with Level {heroComponent.LinkedHero.Level}, HP {heroComponent.LinkedHero.CurrentHP}/{heroComponent.LinkedHero.MaxHP}");
+            }
+            else
+            {
+                // Hero respawned without a crystal — will receive one at the statue
+                heroComponent.NeedsCrystal = true;
+                Debug.Log($"[MainGameScene] Hero '{design.Name}' respawned without crystal — walking to statue for crystal ceremony");
+            }
 
             // Add BouncyDigitComponent for damage display (RenderLayerUI, disabled initially)
             var heroBouncyDigit = hero.AddComponent(new BouncyDigitComponent());
@@ -365,15 +380,12 @@ namespace PitHero.ECS.Scenes
         }
 
         /// <summary>
-        /// Respawns the hero at the hero statue location (112, 8) after death
+        /// Respawns the hero at the hero statue location (112, 8) after death.
+        /// The hero spawns without a crystal and must walk to the statue for the crystal ceremony.
         /// </summary>
         private void RespawnHero()
         {
-            CreateHeroEntity(112, 8);
-
-            // Reconnect UI to new hero
-            ReconnectUIToHero();
-            ConnectShortcutBarToHero();
+            CreateHeroEntity(34, 6, needsCrystal: true);
 
             // Unfreeze and reassign mercenaries to follow the new hero
             var mercenaryManager = Core.Services.GetService<MercenaryManager>();
@@ -388,7 +400,7 @@ namespace PitHero.ECS.Scenes
                 }
             }
 
-            Debug.Log("[MainGameScene] Hero respawned at hero statue location (112, 8)");
+            Debug.Log("[MainGameScene] Hero respawned at tile (34, 6) — awaiting crystal ceremony");
         }
 
         /// <summary>
@@ -1041,6 +1053,9 @@ namespace PitHero.ECS.Scenes
             // Update mercenary manager
             var mercenaryManager = Core.Services.GetService<MercenaryManager>();
             mercenaryManager?.Update();
+
+            // Check if a living hero who respawned without a crystal has arrived at the statue
+            _heroPromotionService?.CheckAndPromoteHeroIfNeeded();
 
             // Handle mercenary hover and click detection
             HandleMercenaryHover();

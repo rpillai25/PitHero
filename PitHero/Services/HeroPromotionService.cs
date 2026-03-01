@@ -19,12 +19,14 @@ namespace PitHero.Services
     {
         private Scene _scene;
         private bool _isPromotingHero;
+        private bool _isGrantingCrystal;
         private Entity _mercenaryBeingPromoted;
 
         public HeroPromotionService(Scene scene)
         {
             _scene = scene;
             _isPromotingHero = false;
+            _isGrantingCrystal = false;
         }
 
         /// <summary>
@@ -58,6 +60,131 @@ namespace PitHero.Services
             // No living hero - try to promote a mercenary
             Debug.Log("[HeroPromotionService] No living hero detected - attempting to promote a mercenary");
             TryPromoteMercenary();
+        }
+
+        /// <summary>
+        /// Checks if a living hero needs a crystal (spawned without one after death) and has arrived at the statue.
+        /// When both conditions are true, plays the promotion ceremony and grants the hero a new crystal.
+        /// </summary>
+        public void CheckAndPromoteHeroIfNeeded()
+        {
+            if (_isGrantingCrystal)
+                return;
+
+            var heroEntity = _scene.FindEntity("hero");
+            if (heroEntity == null)
+                return;
+
+            var heroComponent = heroEntity.GetComponent<HeroComponent>();
+            if (heroComponent == null)
+                return;
+
+            if (!heroComponent.NeedsCrystal || !heroComponent.HasArrivedAtStatueForCrystal)
+                return;
+
+            Debug.Log("[HeroPromotionService] Hero has arrived at statue and needs a crystal — starting crystal ceremony");
+            _isGrantingCrystal = true;
+            Core.StartCoroutine(ExecuteHeroCrystalCeremony(heroEntity));
+        }
+
+        /// <summary>
+        /// Plays the lightning strike at the hero's position and then grants the hero a new crystal
+        /// </summary>
+        private IEnumerator ExecuteHeroCrystalCeremony(Entity heroEntity)
+        {
+            var heroComponent = heroEntity.GetComponent<HeroComponent>();
+            if (heroComponent == null)
+            {
+                _isGrantingCrystal = false;
+                yield break;
+            }
+
+            // Brief pause before the ceremony
+            yield return Coroutine.WaitForSeconds(0.5f);
+
+            // Disable movement and AI while the ceremony plays
+            var tileMover = heroEntity.GetComponent<TileByTileMover>();
+            var stateMachine = heroEntity.GetComponent<AI.HeroStateMachine>();
+
+            if (tileMover != null)
+                tileMover.SetEnabled(false);
+            if (stateMachine != null)
+                stateMachine.SetEnabled(false);
+
+            // Make hero face the statue
+            var facingComponent = heroEntity.GetComponent<ActorFacingComponent>();
+            if (facingComponent != null)
+                facingComponent.SetFacing(Direction.Up);
+
+            yield return Coroutine.WaitForSeconds(1.0f);
+
+            // Play lightning strike animation on the hero entity
+            yield return PlayLightningStrikeAtHero(heroEntity);
+
+            Debug.Log("[HeroPromotionService] Crystal ceremony lightning complete — granting crystal to hero");
+
+            // Generate and assign a random crystal
+            var randomCrystal = GenerateRandomHeroCrystal();
+            heroComponent.LinkedHero = new RolePlayingFramework.Heroes.Hero(
+                "Hero",
+                randomCrystal.Job,
+                randomCrystal.Level,
+                randomCrystal.BaseStats,
+                randomCrystal
+            );
+
+            Debug.Log($"[HeroPromotionService] Hero granted crystal: {randomCrystal.Job.Name} Level {randomCrystal.Level}");
+
+            // Clear the crystal-needed flags so GOAP resumes normal behavior
+            heroComponent.NeedsCrystal = false;
+            heroComponent.HasArrivedAtStatueForCrystal = false;
+
+            // Re-enable movement and AI
+            if (tileMover != null)
+                tileMover.SetEnabled(true);
+            if (stateMachine != null)
+                stateMachine.SetEnabled(true);
+
+            // Reconnect UI
+            ReconnectUIToHero(heroEntity);
+
+            _isGrantingCrystal = false;
+            Debug.Log("[HeroPromotionService] *** HERO CRYSTAL CEREMONY COMPLETE ***");
+        }
+
+        /// <summary>
+        /// Plays the lightning strike animation centered on the hero entity
+        /// </summary>
+        private IEnumerator PlayLightningStrikeAtHero(Entity heroEntity)
+        {
+            Debug.Log("[HeroPromotionService] Playing lightning strike on hero");
+
+            var lightningEntity = _scene.CreateEntity("lightning-strike-hero");
+            lightningEntity.SetPosition(heroEntity.Transform.Position);
+
+            var actorsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas");
+            if (actorsAtlas == null)
+            {
+                Debug.Error("[HeroPromotionService] Failed to load Actors.atlas for hero lightning strike");
+                yield break;
+            }
+
+            var animator = lightningEntity.AddComponent<PausableSpriteAnimator>();
+            animator.AddAnimationsFromAtlas(actorsAtlas);
+            animator.SetRenderLayer(GameConfig.RenderLayerTop);
+
+            animator.Play("LightningStrike", Nez.Sprites.SpriteAnimator.LoopMode.Once);
+
+            float timeout = 5.0f;
+            float elapsed = 0f;
+            while (animator.IsRunning && elapsed < timeout)
+            {
+                yield return null;
+                elapsed += Time.DeltaTime;
+            }
+
+            lightningEntity.Destroy();
+            Debug.Log("[HeroPromotionService] Hero lightning strike complete");
         }
 
         /// <summary>

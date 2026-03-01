@@ -154,6 +154,16 @@ namespace PitHero.ECS.Components
         public bool InnExhausted { get; set; }
 
         /// <summary>
+        /// True when the hero has respawned after death without a crystal and needs to walk to the statue to receive one
+        /// </summary>
+        public bool NeedsCrystal { get; set; }
+
+        /// <summary>
+        /// True when the hero has arrived at the statue tile (112,6) to receive a crystal promotion ceremony
+        /// </summary>
+        public bool HasArrivedAtStatueForCrystal { get; set; }
+
+        /// <summary>
         /// Returns true if all healing options are exhausted (items, skills, and inn)
         /// </summary>
         public bool AllHealingOptionsExhausted()
@@ -415,6 +425,14 @@ namespace PitHero.ECS.Components
             {
                 worldState.Set(GoapConstants.InnExhausted, true);
             }
+            if (NeedsCrystal)
+            {
+                worldState.Set(GoapConstants.NeedsCrystal, true);
+            }
+            if (HasArrivedAtStatueForCrystal)
+            {
+                worldState.Set(GoapConstants.HasArrivedAtStatueForCrystal, true);
+            }
         }
 
         /// <summary>
@@ -422,6 +440,13 @@ namespace PitHero.ECS.Components
         /// </summary>
         public override void SetGoalState(ref WorldState goalState)
         {
+            // HIGHEST PRIORITY: Hero needs a crystal — walk to statue for promotion ceremony
+            if (NeedsCrystal)
+            {
+                goalState.Set(GoapConstants.HasArrivedAtStatueForCrystal, true);
+                return;
+            }
+
             // HIGHEST PRIORITY: HP recovery - if HP is critical and healing options exist, make it the primary goal
             // The GOAP planner will choose the appropriate healing action based on priorities and preconditions
             // If all healing options are exhausted, skip this goal to allow hero to continue exploring
