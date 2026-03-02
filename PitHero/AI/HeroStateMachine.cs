@@ -94,6 +94,9 @@ namespace PitHero.AI
             _sleepInBedAction = new SleepInBedAction();
             _planner.AddAction(_sleepInBedAction);
 
+            var walkToStatueForCrystal = new WalkToStatueForCrystalAction();
+            _planner.AddAction(walkToStatueForCrystal);
+
             // Don't set initial state here - wait for OnAddedToEntity
         }
 

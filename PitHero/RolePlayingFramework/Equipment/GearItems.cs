@@ -185,7 +185,7 @@ namespace RolePlayingFramework.Equipment
         public static Gear CaveExplorersVest() => Armor.CaveExplorersVest.Create();
 
         /// <summary>Create Chain Shirt.</summary>
-        public static Gear ChainShirt() => Armor.ChainShirt.Create();
+        public static Gear ChainShirt() => Armor.ChainMail.Create();
 
         /// <summary>Create Crystal Guard.</summary>
         public static Gear CrystalGuard() => Armor.CrystalGuard.Create();
@@ -214,8 +214,8 @@ namespace RolePlayingFramework.Equipment
         /// <summary>Create Leather Armor.</summary>
         public static Gear LeatherArmor() => Armor.LeatherArmor.Create();
 
-        /// <summary>Create Magma Forged Plate.</summary>
-        public static Gear MagmaForgedPlate() => Armor.MagmaForgedPlate.Create();
+        /// <summary>Create Magma Blast Plate.</summary>
+        public static Gear MagmaBlastPlate() => Armor.MagmaBlastPlate.Create();
 
         /// <summary>Create Padded Armor.</summary>
         public static Gear PaddedArmor() => Armor.PaddedArmor.Create();

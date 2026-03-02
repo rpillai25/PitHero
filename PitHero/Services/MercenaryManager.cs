@@ -620,13 +620,10 @@ namespace PitHero.Services
             return (IJob)Activator.CreateInstance(randomType);
         }
 
-        /// <summary>Generates a random name for mercenary</summary>
+        /// <summary>Generates a random name for mercenary using shared NameGenerator</summary>
         private string GenerateRandomName()
         {
-            var firstNames = new[] { "Aldric", "Brynn", "Cedric", "Diana", "Elara", "Finn", "Gareth", "Helena", "Ivan", "Jade", "Kael", "Luna", "Marcus", "Nina", "Owen", "Petra", "Quinn", "Rowan", "Sasha", "Thane" };
-            var lastNames = new[] { "Swift", "Strong", "Wise", "Brave", "Bold", "Quick", "Keen", "True", "Steel", "Bright" };
-            
-            return $"{firstNames[global::Nez.Random.Range(0, firstNames.Length)]} {lastNames[global::Nez.Random.Range(0, lastNames.Length)]}";
+            return Util.NameGenerator.GenerateRandomName();
         }
 
         /// <summary>Checks if player can hire more mercenaries</summary>

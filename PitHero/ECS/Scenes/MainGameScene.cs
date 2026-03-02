@@ -35,6 +35,7 @@ namespace PitHero.ECS.Scenes
         private Entity _hoveredMercenary; // Currently hovered mercenary
         private Entity _mercenarySelectBoxEntity; // Entity for rendering SelectBox over hovered mercenary
         private Entity _mercenaryNameLabelEntity; // Entity for rendering name above hovered mercenary
+        private Services.HeroPromotionService _heroPromotionService; // Manages hero crystal promotion after death
 
         // HUD fonts for different shrink levels
         public BitmapFont _hudFontNormal;
@@ -118,10 +119,9 @@ namespace PitHero.ECS.Scenes
             Core.Services.AddService(mercenaryManager);
             mercenaryManager.Initialize(this);
 
-            // Initialize hero promotion service
-            var heroPromotionService = new HeroPromotionService(this);
-            Core.Services.AddService(heroPromotionService);
-            Debug.Log("[MainGameScene] HeroPromotionService initialized");
+            // Initialize hero promotion service (handles mercenary promotions and hero crystal ceremonies after death)
+            _heroPromotionService = new Services.HeroPromotionService(this);
+            Core.Services.AddService(_heroPromotionService);
 
             // Initialize player interaction service for camera control
             var playerInteractionService = new PlayerInteractionService();
@@ -224,46 +224,49 @@ namespace PitHero.ECS.Scenes
             );
         }
 
+        /// <summary>
+        /// Spawns the initial hero at tile (62, 6)
+        /// </summary>
         private void SpawnHero()
         {
-            // Calculate random position at least 8 tiles to the right of rightmost pit edge
-            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
-            var pitWidth = pitWidthManager?.CurrentPitRectWidthTiles ?? GameConfig.PitRectWidth;
-            var rightmostPitTile = GameConfig.PitRectX + pitWidth - 1;
+            CreateHeroEntity(62, 6);
+        }
 
-            var minHeroTileX = rightmostPitTile + 8; // 20
-            var maxHeroTileX = 50; // Leave some space from map edge
-
-            var heroTileX = 62; // Random.Range(minHeroTileX, maxHeroTileX + 1);
-            var heroTileY = 6;
+        /// <summary>
+        /// Creates a hero entity at the specified tile coordinates using HeroDesign for appearance.
+        /// When needsCrystal is true, the hero spawns without a crystal and waits for the promotion ceremony.
+        /// </summary>
+        private Entity CreateHeroEntity(int tileX, int tileY, bool needsCrystal = false)
+        {
+            var designService = Core.Services.GetService<HeroDesignService>();
+            var design = designService.GetDesign();
 
             var heroStart = new Vector2(
-                heroTileX * GameConfig.TileSize + GameConfig.TileSize / 2,
-                heroTileY * GameConfig.TileSize + GameConfig.TileSize / 2
+                tileX * GameConfig.TileSize + GameConfig.TileSize / 2,
+                tileY * GameConfig.TileSize + GameConfig.TileSize / 2
             );
 
             var hero = CreateEntity("hero").SetPosition(heroStart);
-            hero.SetTag(GameConfig.TAG_HERO); // Make sure this is set!
+            hero.SetTag(GameConfig.TAG_HERO);
 
-            Debug.Log($"[MainGameScene] Hero spawned at random position {heroStart.X},{heroStart.Y} , tile coordinates: " +
-                      $"({heroTileX}, {heroTileY}) - {minHeroTileX - rightmostPitTile} tiles from pit edge");
+            Debug.Log($"[MainGameScene] Hero spawned at position {heroStart.X},{heroStart.Y}, tile coordinates: ({tileX}, {tileY})");
 
-            // NEW: add facing component first so animators can query it immediately
+            // Add facing component first so animators can query it immediately
             hero.AddComponent(new ActorFacingComponent());
 
             // Add all paperdoll layer animators in the correct order (Hand2 to Hand1)
             var offset = new Vector2(0, -GameConfig.TileSize / 2); // Offset so feet are at entity position
 
             // Body layer
-            var heroBodyAnimator = hero.AddComponent(new HeroBodyAnimationComponent(GameConfig.SkinColors.RandomItem()));
+            var heroBodyAnimator = hero.AddComponent(new HeroBodyAnimationComponent(design.SkinColor));
             heroBodyAnimator.SetRenderLayer(GameConfig.RenderLayerHeroBody);
             heroBodyAnimator.SetLocalOffset(offset);
 
             // Hand2 layer (top-most paperdoll layer)
-            var heroHand2Animator = hero.AddComponent(new HeroHand2AnimationComponent(heroBodyAnimator.ComponentColor));
+            var heroHand2Animator = hero.AddComponent(new HeroHand2AnimationComponent(design.SkinColor));
             heroHand2Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand2);
             heroHand2Animator.SetLocalOffset(offset);
-            heroHand2Animator.ComponentColor = heroBodyAnimator.ComponentColor; // Sync color with body
+            heroHand2Animator.ComponentColor = design.SkinColor;
 
             // Pants layer
             var heroPantsAnimator = hero.AddComponent(new HeroPantsAnimationComponent(Color.White));
@@ -271,15 +274,15 @@ namespace PitHero.ECS.Scenes
             heroPantsAnimator.SetLocalOffset(offset);
 
             // Shirt layer
-            var heroShirtAnimator = hero.AddComponent(new HeroShirtAnimationComponent(GameConfig.ShirtColors.RandomItem()));
+            var heroShirtAnimator = hero.AddComponent(new HeroShirtAnimationComponent(design.ShirtColor));
             heroShirtAnimator.SetRenderLayer(GameConfig.RenderLayerHeroShirt);
             heroShirtAnimator.SetLocalOffset(offset);
 
             // Head layer
-            var heroHeadAnimator = hero.AddComponent(new HeroHeadAnimationComponent(heroBodyAnimator.ComponentColor));
+            var heroHeadAnimator = hero.AddComponent(new HeroHeadAnimationComponent(design.SkinColor));
             heroHeadAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHead);
             heroHeadAnimator.SetLocalOffset(offset);
-            heroHeadAnimator.ComponentColor = heroBodyAnimator.ComponentColor; // Sync color with body
+            heroHeadAnimator.ComponentColor = design.SkinColor;
 
             // Eyes layer
             var heroEyesAnimator = hero.AddComponent(new HeroEyesAnimationComponent(Color.White));
@@ -287,17 +290,15 @@ namespace PitHero.ECS.Scenes
             heroEyesAnimator.SetLocalOffset(offset);
 
             // Hair layer
-            var hairstyleService = Core.Services.GetService<HairstyleQueueService>();
-            var heroHairstyle = hairstyleService.GetNextHairstyle();
-            var heroHairAnimator = hero.AddComponent(new HeroHairAnimationComponent(GameConfig.HairColors.RandomItem(), heroHairstyle));
+            var heroHairAnimator = hero.AddComponent(new HeroHairAnimationComponent(design.HairColor, design.HairstyleIndex));
             heroHairAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHair);
             heroHairAnimator.SetLocalOffset(offset);
 
             // Hand1 layer (bottom-most paperdoll layer)
-            var heroHand1Animator = hero.AddComponent(new HeroHand1AnimationComponent(heroBodyAnimator.ComponentColor));
+            var heroHand1Animator = hero.AddComponent(new HeroHand1AnimationComponent(design.SkinColor));
             heroHand1Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand1);
             heroHand1Animator.SetLocalOffset(offset);
-            heroHand1Animator.ComponentColor = heroBodyAnimator.ComponentColor; // Sync color with body
+            heroHand1Animator.ComponentColor = design.SkinColor;
 
             // Add jump animation component for pit jumping animations
             var heroJumpController = hero.AddComponent(new HeroJumpComponent());
@@ -320,16 +321,25 @@ namespace PitHero.ECS.Scenes
                 PitInitialized = true
             });
 
-            // Initialize a test HeroCrystal for crystal-infused stats
-            var testJob = new Knight(); // Using Knight job for testing
-            var baseStats = new StatBlock(strength: 4, agility: 3, vitality: 5, magic: 1);
-            var testCrystal = new HeroCrystal("Test Hero", testJob, 1, baseStats); // Level 1 hero for testing
-            testCrystal.EarnJP(550); // Give some starting JP
+            if (!needsCrystal)
+            {
+                // Initialize HeroCrystal for crystal-infused stats (normal spawn)
+                var heroJob = new Knight();
+                var baseStats = new StatBlock(strength: 4, agility: 3, vitality: 5, magic: 1);
+                var heroCrystal = new HeroCrystal(design.Name, heroJob, 1, baseStats);
+                heroCrystal.EarnJP(550);
 
-            // Create the linked Hero from the crystal
-            heroComponent.LinkedHero = new RolePlayingFramework.Heroes.Hero("Test Hero", testJob, 1, baseStats, testCrystal);
+                // Create the linked Hero from the crystal
+                heroComponent.LinkedHero = new RolePlayingFramework.Heroes.Hero(design.Name, heroJob, 1, baseStats, heroCrystal);
 
-            Debug.Log($"[MainGameScene] Created test hero with Level {heroComponent.LinkedHero.Level}, HP {heroComponent.LinkedHero.CurrentHP}/{heroComponent.LinkedHero.MaxHP}");
+                Debug.Log($"[MainGameScene] Created hero '{design.Name}' with Level {heroComponent.LinkedHero.Level}, HP {heroComponent.LinkedHero.CurrentHP}/{heroComponent.LinkedHero.MaxHP}");
+            }
+            else
+            {
+                // Hero respawned without a crystal — will receive one at the statue
+                heroComponent.NeedsCrystal = true;
+                Debug.Log($"[MainGameScene] Hero '{design.Name}' respawned without crystal — walking to statue for crystal ceremony");
+            }
 
             // Add BouncyDigitComponent for damage display (RenderLayerUI, disabled initially)
             var heroBouncyDigit = hero.AddComponent(new BouncyDigitComponent());
@@ -348,10 +358,49 @@ namespace PitHero.ECS.Scenes
             hero.AddComponent(new Historian());
             hero.AddComponent(new HeroStateMachine());
 
-            // Force pathfinding initialization to complete before adding obstacles
-            // OnAddedToEntity() is called automatically by the framework after this method completes
-            // But we need to explicitly wait for pathfinding to be ready
+            // Wait for pathfinding initialization then add obstacles
             Core.StartCoroutine(AddObstaclesAfterPathfindingReady(hero));
+
+            return hero;
+        }
+
+        /// <summary>
+        /// Coroutine that waits for the specified delay then respawns the hero
+        /// </summary>
+        public System.Collections.IEnumerator RespawnHeroAfterDelay(float delay)
+        {
+            float elapsed = 0f;
+            while (elapsed < delay)
+            {
+                elapsed += Time.DeltaTime;
+                yield return null;
+            }
+
+            RespawnHero();
+        }
+
+        /// <summary>
+        /// Respawns the hero at the hero statue location (112, 8) after death.
+        /// The hero spawns without a crystal and must walk to the statue for the crystal ceremony.
+        /// </summary>
+        private void RespawnHero()
+        {
+            CreateHeroEntity(34, 6, needsCrystal: true);
+
+            // Unfreeze and reassign mercenaries to follow the new hero
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager != null)
+            {
+                var heroEntity = FindEntity("hero");
+                if (heroEntity != null)
+                {
+                    mercenaryManager.UnblockHiring();
+                    mercenaryManager.UnfreezeAndReassignMercenaries(heroEntity);
+                    Debug.Log("[MainGameScene] Unblocked hiring and reassigned mercenaries to respawned hero");
+                }
+            }
+
+            Debug.Log("[MainGameScene] Hero respawned at tile (34, 6) — awaiting crystal ceremony");
         }
 
         /// <summary>
@@ -1005,9 +1054,8 @@ namespace PitHero.ECS.Scenes
             var mercenaryManager = Core.Services.GetService<MercenaryManager>();
             mercenaryManager?.Update();
 
-            // Check if hero needs to be promoted from mercenary
-            var heroPromotionService = Core.Services.GetService<HeroPromotionService>();
-            heroPromotionService?.CheckAndPromoteIfNeeded();
+            // Check if a living hero who respawned without a crystal has arrived at the statue
+            _heroPromotionService?.CheckAndPromoteHeroIfNeeded();
 
             // Handle mercenary hover and click detection
             HandleMercenaryHover();
@@ -1032,8 +1080,8 @@ namespace PitHero.ECS.Scenes
                 var mercEntity = mercenaries[i];
                 var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
                 
-                // Skip hired mercenaries, mercenaries being removed, and mercenaries being promoted
-                if (mercComponent == null || mercComponent.IsHired || mercComponent.IsBeingRemoved || mercComponent.IsBeingPromoted)
+                // Skip hired mercenaries and mercenaries being removed
+                if (mercComponent == null || mercComponent.IsHired || mercComponent.IsBeingRemoved)
                     continue;
 
                 // Check if mouse is within mercenary bounds
@@ -1168,8 +1216,8 @@ namespace PitHero.ECS.Scenes
                 var mercEntity = mercenaries[i];
                 var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
                 
-                // Skip hired mercenaries, mercenaries being removed, and mercenaries being promoted
-                if (mercComponent == null || mercComponent.IsHired || mercComponent.IsBeingRemoved || mercComponent.IsBeingPromoted)
+                // Skip hired mercenaries and mercenaries being removed
+                if (mercComponent == null || mercComponent.IsHired || mercComponent.IsBeingRemoved)
                     continue;
 
                 // Allow clicking anywhere (not just in tavern)

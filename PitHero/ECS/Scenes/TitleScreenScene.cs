@@ -16,7 +16,7 @@ namespace PitHero.ECS.Scenes
             base.Initialize();
 
             SetDesignResolution(GameConfig.VirtualWidth, GameConfig.VirtualHeight, SceneResolutionPolicy.BestFit);
-            ClearColor = Color.Black;
+            ClearColor = Color.CornflowerBlue;
 
             // Set up UI overlay using ScreenSpaceRenderer
             SetupTitleUI();
