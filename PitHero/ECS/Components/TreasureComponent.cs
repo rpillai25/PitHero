@@ -350,7 +350,7 @@ namespace PitHero.ECS.Components
                 case 34: return GearItems.EmberguardMail();
                 case 35: return GearItems.GranitePlate();
                 case 36: return GearItems.LavaplateArmor();
-                case 37: return GearItems.MagmaForgedPlate();
+                case 37: return GearItems.MagmaBlastPlate();
                 case 38: return GearItems.PitLordsArmor();
                 case 39: return GearItems.ReinforcedPlate();
                 case 40: return GearItems.ShadowVest();

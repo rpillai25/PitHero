@@ -4,24 +4,24 @@ using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Equipment.Armor
 {
-    /// <summary>Factory for creating Chain Shirt gear.</summary>
-    public static class ChainShirt
+    /// <summary>Factory for creating Magma Blast Plate gear.</summary>
+public static class MagmaBlastPlate
     {
-        private const int PitLevel = 10;
-        private const ItemRarity Rarity = ItemRarity.Normal;
+        private const int PitLevel = 24;
+        private const ItemRarity Rarity = ItemRarity.Uncommon;
 
         public static Gear Create()
         {
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "ChainShirt",
+                "MagmaBlastPlate",
                 ItemKind.ArmorMail,
                 Rarity,
-                "Interlocking metal rings.",
-                300,
+                "Ultimate fire-resistant armor.",
+                1050,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,
-                elementalProps: new ElementalProperties(ElementType.Neutral));
+                elementalProps: new ElementalProperties(ElementType.Fire));
         }
     }
 }
