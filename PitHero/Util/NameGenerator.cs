@@ -22,5 +22,11 @@ namespace PitHero.Util
         {
             return $"{FirstNames[Nez.Random.Range(0, FirstNames.Length)]} {LastNames[Nez.Random.Range(0, LastNames.Length)]}";
         }
+
+        /// <summary>Generates a random first name only using Nez.Random</summary>
+        public static string GenerateFirstName()
+        {
+            return FirstNames[Nez.Random.Range(0, FirstNames.Length)];
+        }
     }
 }

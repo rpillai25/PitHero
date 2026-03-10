@@ -119,6 +119,10 @@ namespace PitHero.ECS.Scenes
             Core.Services.AddService(mercenaryManager);
             mercenaryManager.Initialize(this);
 
+            // Initialize allied monster manager
+            var alliedMonsterManager = new AlliedMonsterManager();
+            Core.Services.AddService(alliedMonsterManager);
+
             // Initialize hero promotion service (handles mercenary promotions and hero crystal ceremonies after death)
             _heroPromotionService = new Services.HeroPromotionService(this);
             Core.Services.AddService(_heroPromotionService);

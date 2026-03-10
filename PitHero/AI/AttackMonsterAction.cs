@@ -552,6 +552,16 @@ namespace PitHero.AI
                                                         hero.EarnJP(enemy.JPYield);
                                                         hero.EarnSynergyPointsWithAcceleration(enemy.SPYield);
                                                         Debug.Log($"[AttackMonster] Earned {enemy.ExperienceYield} XP, {enemy.JPYield} JP, {enemy.SPYield} SP");
+
+                                                        // Try to recruit the defeated monster
+                                                        var alliedMonsterMgrSkill = Core.Services.GetService<PitHero.Services.AlliedMonsterManager>();
+                                                        if (alliedMonsterMgrSkill != null)
+                                                        {
+                                                            var recruited = alliedMonsterMgrSkill.TryRecruit(enemy);
+                                                            if (recruited != null)
+                                                                Debug.Log($"[AttackMonster] {enemy.Name} recruited as '{recruited.Name}'");
+                                                        }
+
                                                         validMonsters.Remove(monsterEntity);
                                                     }
                                                 }
@@ -633,6 +643,15 @@ namespace PitHero.AI
                                                 Debug.Log($"[AttackMonster] Earned {targetEnemy.ExperienceYield} XP, {targetEnemy.JPYield} JP, {targetEnemy.SPYield} SP, {targetEnemy.GoldYield} Gold");
                                             }
                                             
+                                            // Try to recruit the defeated monster
+                                            var alliedMonsterMgr = Core.Services.GetService<PitHero.Services.AlliedMonsterManager>();
+                                            if (alliedMonsterMgr != null)
+                                            {
+                                                var recruited = alliedMonsterMgr.TryRecruit(targetEnemy);
+                                                if (recruited != null)
+                                                    Debug.Log($"[AttackMonster] {targetEnemy.Name} recruited as '{recruited.Name}'");
+                                            }
+                                            
                                             validMonsters.Remove(targetMonster);
                                             // Start fade coroutine (wait for completion so removal timing stays consistent)
                                             yield return FadeOutAndDestroyMonster(targetMonster);
@@ -710,6 +729,15 @@ namespace PitHero.AI
                                     {
                                         gameState.Funds += targetEnemy.GoldYield;
                                         Debug.Log($"[AttackMonster] Earned {targetEnemy.GoldYield} Gold (Total: {gameState.Funds})");
+                                    }
+
+                                    // Try to recruit the defeated monster
+                                    var alliedMonsterMgrMerc = Core.Services.GetService<PitHero.Services.AlliedMonsterManager>();
+                                    if (alliedMonsterMgrMerc != null)
+                                    {
+                                        var recruited = alliedMonsterMgrMerc.TryRecruit(targetEnemy);
+                                        if (recruited != null)
+                                            Debug.Log($"[AttackMonster] {targetEnemy.Name} recruited as '{recruited.Name}'");
                                     }
                                     
                                     validMonsters.Remove(targetMonster);
