@@ -111,7 +111,6 @@ namespace PitHero.UI
             }
             else
             {
-                _windowVisible = false;
                 UIWindowManager.OnUIWindowClosing();
                 _monsterWindow.SetVisible(false);
                 _monsterWindow.Remove();

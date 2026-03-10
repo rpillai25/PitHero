@@ -554,10 +554,10 @@ namespace PitHero.AI
                                                         Debug.Log($"[AttackMonster] Earned {enemy.ExperienceYield} XP, {enemy.JPYield} JP, {enemy.SPYield} SP");
 
                                                         // Try to recruit the defeated monster
-                                                        var alliedMonsterMgrSkill = Core.Services.GetService<PitHero.Services.AlliedMonsterManager>();
-                                                        if (alliedMonsterMgrSkill != null)
+                                                        var alliedMonsterMgr = Core.Services.GetService<PitHero.Services.AlliedMonsterManager>();
+                                                        if (alliedMonsterMgr != null)
                                                         {
-                                                            var recruited = alliedMonsterMgrSkill.TryRecruit(enemy);
+                                                            var recruited = alliedMonsterMgr.TryRecruit(enemy);
                                                             if (recruited != null)
                                                                 Debug.Log($"[AttackMonster] {enemy.Name} recruited as '{recruited.Name}'");
                                                         }
@@ -732,10 +732,10 @@ namespace PitHero.AI
                                     }
 
                                     // Try to recruit the defeated monster
-                                    var alliedMonsterMgrMerc = Core.Services.GetService<PitHero.Services.AlliedMonsterManager>();
-                                    if (alliedMonsterMgrMerc != null)
+                                    var alliedMonsterMgr = Core.Services.GetService<PitHero.Services.AlliedMonsterManager>();
+                                    if (alliedMonsterMgr != null)
                                     {
-                                        var recruited = alliedMonsterMgrMerc.TryRecruit(targetEnemy);
+                                        var recruited = alliedMonsterMgr.TryRecruit(targetEnemy);
                                         if (recruited != null)
                                             Debug.Log($"[AttackMonster] {targetEnemy.Name} recruited as '{recruited.Name}'");
                                     }
