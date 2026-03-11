@@ -1,4 +1,3 @@
-using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
 using PitHero.Services;
@@ -23,8 +22,6 @@ namespace PitHero.UI
         private const float WindowHeight = 36f;
         private const float LeftPadding = 10f;
 
-        private static readonly Color NotificationColor = new Color(255, 220, 60);
-
         /// <summary>Initializes the notification UI and registers it with the stage.</summary>
         public void InitializeUI(Stage stage, Skin skin)
         {
@@ -37,11 +34,13 @@ namespace PitHero.UI
         {
             _notificationWindow = new Window("", _skin);
             _notificationWindow.SetSize(WindowWidth, WindowHeight);
-            _notificationWindow.PadTop(0f);
+            // Override all background-derived padding so the label can fill the full window area
+            _notificationWindow.Pad(0f);
 
             _messageLabel = new Label("", _skin);
-            _messageLabel.SetFontColor(NotificationColor);
-            _notificationWindow.Add(_messageLabel).Left().Pad(6f, 8f, 4f, 8f).Expand().Fill();
+            // Center text vertically within the label bounds
+            _messageLabel.SetAlignment(Align.Center);
+            _notificationWindow.Add(_messageLabel).Pad(4f, 8f, 4f, 8f).Expand().Fill();
 
             _notificationWindow.SetVisible(false);
         }
