@@ -9,6 +9,7 @@ namespace PitHero.Services
     public class AlliedMonsterManager
     {
         private readonly List<AlliedMonster> _alliedMonsters;
+        private readonly Queue<string> _pendingNotifications;
 
         /// <summary>Read-only list of all recruited allied monsters.</summary>
         public IReadOnlyList<AlliedMonster> AlliedMonsters => _alliedMonsters;
@@ -16,10 +17,14 @@ namespace PitHero.Services
         /// <summary>Number of allied monsters currently recruited.</summary>
         public int Count => _alliedMonsters.Count;
 
+        /// <summary>Whether there are recruitment notifications waiting to be displayed.</summary>
+        public bool HasPendingNotification => _pendingNotifications.Count > 0;
+
         /// <summary>Creates a new AlliedMonsterManager with an empty roster.</summary>
         public AlliedMonsterManager()
         {
             _alliedMonsters = new List<AlliedMonster>(16);
+            _pendingNotifications = new Queue<string>(8);
         }
 
         /// <summary>
@@ -41,8 +46,15 @@ namespace PitHero.Services
 
             var allied = new AlliedMonster(firstName, enemy.Name, battle, cooking, farming);
             _alliedMonsters.Add(allied);
+            _pendingNotifications.Enqueue($"{enemy.Name} {firstName} was recruited!");
             Debug.Log($"[AlliedMonsterManager] {enemy.Name} joined as '{firstName}'! Battle:{battle} Cooking:{cooking} Farming:{farming}");
             return allied;
+        }
+
+        /// <summary>Removes and returns the next pending notification message, or null if none.</summary>
+        public string DequeueNotification()
+        {
+            return _pendingNotifications.Count > 0 ? _pendingNotifications.Dequeue() : null;
         }
     }
 }

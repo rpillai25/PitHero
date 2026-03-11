@@ -82,6 +82,7 @@ namespace PitHero.UI
         private FastFUI _fastFUI;
         private HeroUI _heroUI;
         private MonsterUI _monsterUI;
+        private RecruitmentNotificationUI _recruitmentNotificationUI;
 
         /// <summary>Gets the HeroUI instance.</summary>
         public HeroUI HeroUI => _heroUI;
@@ -134,6 +135,9 @@ namespace PitHero.UI
 
             _monsterUI = new MonsterUI();
             _monsterUI.InitializeUI(_stage);
+
+            _recruitmentNotificationUI = new RecruitmentNotificationUI();
+            _recruitmentNotificationUI.InitializeUI(_stage, skin);
 
             // Create settings window with TabPane (initially hidden)
             CreateSettingsWindow(skin);
@@ -736,6 +740,7 @@ namespace PitHero.UI
             _fastFUI?.Update();
             _heroUI?.Update();
             _monsterUI?.Update();
+            _recruitmentNotificationUI?.Update();
 
             // Update persistent size if window size changed externally (e.g., Shift+Mouse Wheel)
             if (!_isVisible) // Only update when settings are closed

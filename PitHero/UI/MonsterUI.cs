@@ -19,6 +19,8 @@ namespace PitHero.UI
         private ScrollPane _scrollPane;
         private Skin _skin;
 
+        private const float SpriteSize = 32f;
+
         /// <summary>Whether the monster window is currently visible.</summary>
         public bool IsWindowVisible => _windowVisible;
 
@@ -84,12 +86,14 @@ namespace PitHero.UI
         private void CreateMonsterWindow(Skin skin)
         {
             _monsterWindow = new Window("Monsters", skin);
-            _monsterWindow.SetSize(340f, 300f);
+            _monsterWindow.SetSize(380f, 280f);
 
             _monsterListTable = new Table();
             _monsterListTable.Top().Left();
 
-            _scrollPane = new ScrollPane(_monsterListTable, skin);
+            _scrollPane = new ScrollPane(_monsterListTable, skin, "ph-default");
+            _scrollPane.SetScrollingDisabled(true, false);
+            _scrollPane.SetFadeScrollBars(false);
             _monsterWindow.Add(_scrollPane).Expand().Fill().Pad(4f);
             _monsterWindow.SetVisible(false);
         }
@@ -131,15 +135,64 @@ namespace PitHero.UI
                 return;
             }
 
+            // Load the actors atlas once for sprite lookups
+            Nez.Sprites.SpriteAtlas actorsAtlas = null;
+            try
+            {
+                actorsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.Warn($"[MonsterUI] Failed to load Actors.atlas: {ex.Message}");
+            }
+
             var monsters = manager.AlliedMonsters;
             for (int i = 0; i < monsters.Count; i++)
             {
                 var monster = monsters[i];
+
+                // Build a row: [Sprite] [Name + Stats]
+                var rowTable = new Table();
+                rowTable.Left();
+
+                // Try the down-facing frame for this monster type, fall back to placeholder
+                if (actorsAtlas != null)
+                {
+                    Nez.Textures.Sprite monsterSprite = null;
+                    try
+                    {
+                        monsterSprite = actorsAtlas.GetSprite($"{monster.MonsterTypeName}_WalkDown_1");
+                        if (monsterSprite == null)
+                            monsterSprite = actorsAtlas.GetSprite("PlaceholderMonster");
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Debug.Warn($"[MonsterUI] Failed to load sprite for {monster.MonsterTypeName}: {ex.Message}");
+                        monsterSprite = null;
+                    }
+
+                    if (monsterSprite != null)
+                    {
+                        var spriteImage = new Image(new SpriteDrawable(monsterSprite));
+                        spriteImage.SetSize(SpriteSize, SpriteSize);
+                        rowTable.Add(spriteImage).Size(SpriteSize, SpriteSize).Pad(2f, 2f, 2f, 8f);
+                    }
+                }
+
+                // Text columns: name on top, stats on second line
+                var textTable = new Table();
+                textTable.Top().Left();
+
                 var nameLabel  = new Label($"{monster.Name} ({monster.MonsterTypeName})", _skin);
-                var statsLabel = new Label($"  Battle:{monster.BattleProficiency}  Cooking:{monster.CookingProficiency}  Farming:{monster.FarmingProficiency}", _skin);
-                _monsterListTable.Add(nameLabel).Left().SetPadTop(6f).SetPadBottom(2f);
-                _monsterListTable.Row();
-                _monsterListTable.Add(statsLabel).Left().SetPadBottom(4f);
+                var statsLabel = new Label($"Battle:{monster.BattleProficiency}  Cook:{monster.CookingProficiency}  Farm:{monster.FarmingProficiency}", _skin);
+
+                textTable.Add(nameLabel).Left();
+                textTable.Row();
+                textTable.Add(statsLabel).Left();
+
+                rowTable.Add(textTable).Left();
+
+                _monsterListTable.Add(rowTable).Left().Pad(4f, 2f, 0f, 2f);
                 _monsterListTable.Row();
             }
         }
@@ -209,3 +262,4 @@ namespace PitHero.UI
         }
     }
 }
+
