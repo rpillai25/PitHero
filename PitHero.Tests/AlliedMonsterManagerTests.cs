@@ -123,8 +123,8 @@ namespace PitHero.Tests
             var result = manager.TryRecruit(enemy);
 
             Assert.IsNotNull(result, "Should recruit successfully");
-            Assert.IsTrue(result.BattleProficiency >= 1 && result.BattleProficiency <= 9,
-                $"Battle proficiency {result.BattleProficiency} should be in range 1-9");
+            Assert.IsTrue(result.FishingProficiency >= 1 && result.FishingProficiency <= 9,
+                $"Fishing proficiency {result.FishingProficiency} should be in range 1-9");
             Assert.IsTrue(result.CookingProficiency >= 1 && result.CookingProficiency <= 9,
                 $"Cooking proficiency {result.CookingProficiency} should be in range 1-9");
             Assert.IsTrue(result.FarmingProficiency >= 1 && result.FarmingProficiency <= 9,

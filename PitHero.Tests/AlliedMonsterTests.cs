@@ -24,7 +24,7 @@ namespace PitHero.Tests
         {
             var monster = new AlliedMonster("Alice", "Rat", 3, 7, 9);
 
-            Assert.AreEqual(3, monster.BattleProficiency, "Battle proficiency should be 3");
+            Assert.AreEqual(3, monster.FishingProficiency, "Fishing proficiency should be 3");
             Assert.AreEqual(7, monster.CookingProficiency, "Cooking proficiency should be 7");
             Assert.AreEqual(9, monster.FarmingProficiency, "Farming proficiency should be 9");
         }
@@ -36,7 +36,7 @@ namespace PitHero.Tests
         {
             var monster = new AlliedMonster("Test", "Goblin", 0, -5, -100);
 
-            Assert.AreEqual(1, monster.BattleProficiency, "Battle proficiency below 1 should clamp to 1");
+            Assert.AreEqual(1, monster.FishingProficiency, "Fishing proficiency below 1 should clamp to 1");
             Assert.AreEqual(1, monster.CookingProficiency, "Cooking proficiency below 1 should clamp to 1");
             Assert.AreEqual(1, monster.FarmingProficiency, "Farming proficiency below 1 should clamp to 1");
         }
@@ -48,7 +48,7 @@ namespace PitHero.Tests
         {
             var monster = new AlliedMonster("Test", "Orc", 10, 50, 999);
 
-            Assert.AreEqual(9, monster.BattleProficiency, "Battle proficiency above 9 should clamp to 9");
+            Assert.AreEqual(9, monster.FishingProficiency, "Fishing proficiency above 9 should clamp to 9");
             Assert.AreEqual(9, monster.CookingProficiency, "Cooking proficiency above 9 should clamp to 9");
             Assert.AreEqual(9, monster.FarmingProficiency, "Farming proficiency above 9 should clamp to 9");
         }
@@ -60,7 +60,7 @@ namespace PitHero.Tests
         {
             var monster = new AlliedMonster("Test", "Bat", 1, 9, 5);
 
-            Assert.AreEqual(1, monster.BattleProficiency, "Minimum proficiency of 1 should be accepted");
+            Assert.AreEqual(1, monster.FishingProficiency, "Minimum proficiency of 1 should be accepted");
             Assert.AreEqual(9, monster.CookingProficiency, "Maximum proficiency of 9 should be accepted");
         }
     }

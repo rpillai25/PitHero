@@ -40,14 +40,14 @@ namespace PitHero.Services
             if (roll > joinChance) return null;
 
             string firstName = Util.NameGenerator.GenerateFirstName();
-            int battle  = Nez.Random.Range(1, 10);
+            int fishing = Nez.Random.Range(1, 10);
             int cooking = Nez.Random.Range(1, 10);
             int farming = Nez.Random.Range(1, 10);
 
-            var allied = new AlliedMonster(firstName, enemy.Name, battle, cooking, farming);
+            var allied = new AlliedMonster(firstName, enemy.Name, fishing, cooking, farming);
             _alliedMonsters.Add(allied);
             _pendingNotifications.Enqueue($"{enemy.Name} {firstName} was recruited!");
-            Debug.Log($"[AlliedMonsterManager] {enemy.Name} joined as '{firstName}'! Battle:{battle} Cooking:{cooking} Farming:{farming}");
+            Debug.Log($"[AlliedMonsterManager] {enemy.Name} joined as '{firstName}'! Fishing:{fishing} Cooking:{cooking} Farming:{farming}");
             return allied;
         }
 
