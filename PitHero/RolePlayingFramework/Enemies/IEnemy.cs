@@ -40,6 +40,12 @@ namespace RolePlayingFramework.Enemies
         /// <summary>Gold awarded when defeated.</summary>
         int GoldYield { get; }
 
+        /// <summary>
+        /// Multiplier applied to the base join chance on defeat.
+        /// Values above 1.0 increase chance, below 1.0 decrease it.
+        /// </summary>
+        float JoinPercentageModifier { get; }
+
         /// <summary>Inflicts damage, returns true if died.</summary>
         bool TakeDamage(int amount);
     }

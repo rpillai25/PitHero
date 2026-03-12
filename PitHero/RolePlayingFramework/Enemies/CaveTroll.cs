@@ -21,6 +21,7 @@ namespace RolePlayingFramework.Enemies
         public int JPYield { get; }
         public int SPYield { get; }
         public int GoldYield { get; }
+        public float JoinPercentageModifier => 0.4f;
 
         public CaveTroll(int level = 13)
         {

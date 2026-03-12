@@ -21,6 +21,7 @@ namespace RolePlayingFramework.Enemies
         public int JPYield { get; }
         public int SPYield { get; }
         public int GoldYield { get; }
+        public float JoinPercentageModifier => 0.7f;
 
         public Skeleton(int level = 6)
         {

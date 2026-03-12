@@ -21,6 +21,7 @@ namespace RolePlayingFramework.Enemies
         public int JPYield { get; }
         public int SPYield { get; }
         public int GoldYield { get; }
+        public float JoinPercentageModifier => 0.9f;
 
         public Goblin(int level = 3)
         {

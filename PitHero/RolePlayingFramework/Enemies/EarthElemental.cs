@@ -21,6 +21,7 @@ namespace RolePlayingFramework.Enemies
         public int JPYield { get; }
         public int SPYield { get; }
         public int GoldYield { get; }
+        public float JoinPercentageModifier => 0.6f;
 
         public EarthElemental(int level = 17)
         {

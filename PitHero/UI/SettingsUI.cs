@@ -81,6 +81,8 @@ namespace PitHero.UI
         // New UI components
         private FastFUI _fastFUI;
         private HeroUI _heroUI;
+        private MonsterUI _monsterUI;
+        private RecruitmentNotificationUI _recruitmentNotificationUI;
 
         /// <summary>Gets the HeroUI instance.</summary>
         public HeroUI HeroUI => _heroUI;
@@ -130,6 +132,12 @@ namespace PitHero.UI
 
             _heroUI = new HeroUI();
             _heroUI.InitializeUI(_stage);
+
+            _monsterUI = new MonsterUI();
+            _monsterUI.InitializeUI(_stage);
+
+            _recruitmentNotificationUI = new RecruitmentNotificationUI();
+            _recruitmentNotificationUI.InitializeUI(_stage, skin);
 
             // Create settings window with TabPane (initially hidden)
             CreateSettingsWindow(skin);
@@ -559,13 +567,14 @@ namespace PitHero.UI
             float stageW = _stage.GetWidth();
             float stageH = _stage.GetHeight();
 
-            float gearW = _gearButton.GetWidth();
-            float gearH = _gearButton.GetHeight();
-            float fastFW = _fastFUI.GetWidth();
-            float heroW = _heroUI.GetWidth();
+            float gearW    = _gearButton.GetWidth();
+            float gearH    = _gearButton.GetHeight();
+            float fastFW   = _fastFUI.GetWidth();
+            float heroW    = _heroUI.GetWidth();
+            float monsterW = _monsterUI.GetWidth();
 
-            // Calculate total width needed for all three buttons with padding
-            float totalWidth = fastFW + gearW + heroW + (2 * GameConfig.UIButtonPadding);
+            // Calculate total width needed for all four buttons with padding
+            float totalWidth = fastFW + gearW + heroW + monsterW + (3 * GameConfig.UIButtonPadding);
 
             // Center all buttons as a group
             float startX = (stageW - totalWidth) * 0.5f;
@@ -575,13 +584,17 @@ namespace PitHero.UI
             float fastFX = startX;
             _fastFUI.SetPosition(fastFX, buttonY);
 
-            // Position gear button in the center
+            // Position gear button second
             float gearX = fastFX + fastFW + GameConfig.UIButtonPadding;
             _gearButton.SetPosition(gearX, buttonY);
 
-            // Position hero button to the right
+            // Position hero button third
             float heroX = gearX + gearW + GameConfig.UIButtonPadding;
             _heroUI.SetPosition(heroX, buttonY);
+
+            // Position monster button to the right of hero
+            float monsterX = heroX + heroW + GameConfig.UIButtonPadding;
+            _monsterUI.SetPosition(monsterX, buttonY);
 
             if (_isVisible)
             {
@@ -619,6 +632,13 @@ namespace PitHero.UI
                 {
                     _heroUI.ForceCloseWindow();
                     Debug.Log("[SettingsUI] Closed HeroUI window to enforce single window policy");
+                }
+
+                // Close MonsterUI window if it's open before opening settings (single window policy)
+                if (_monsterUI != null && _monsterUI.IsWindowVisible)
+                {
+                    _monsterUI.ForceCloseWindow();
+                    Debug.Log("[SettingsUI] Closed MonsterUI window to enforce single window policy");
                 }
 
                 // Use centralized UI window manager for opening behavior
@@ -719,6 +739,8 @@ namespace PitHero.UI
             // Update FastF and Hero button styles
             _fastFUI?.Update();
             _heroUI?.Update();
+            _monsterUI?.Update();
+            _recruitmentNotificationUI?.Update();
 
             // Update persistent size if window size changed externally (e.g., Shift+Mouse Wheel)
             if (!_isVisible) // Only update when settings are closed
@@ -730,6 +752,7 @@ namespace PitHero.UI
             bool needsReposition = _gearStyleChanged;
             if (_fastFUI != null && _fastFUI.ConsumeStyleChangedFlag()) needsReposition = true;
             if (_heroUI != null && _heroUI.ConsumeStyleChangedFlag()) needsReposition = true;
+            if (_monsterUI != null && _monsterUI.ConsumeStyleChangedFlag()) needsReposition = true;
 
             if (_stage.GetWidth() != _lastStageW || _stage.GetHeight() != _lastStageH)
                 needsReposition = true;
