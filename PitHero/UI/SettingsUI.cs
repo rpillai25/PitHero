@@ -45,6 +45,7 @@ namespace PitHero.UI
         // Session tab controls
         private TextButton _saveButton;
         private TextButton _quitButton;
+        private SaveLoadUI _saveLoadUI;
 
         // Confirmation dialog
         private Window _confirmationDialog;
@@ -459,12 +460,11 @@ namespace PitHero.UI
             sessionTable.Add(new Label("Game Session", skin, "ph-default")).Left().SetPadBottom(20);
             sessionTable.Row();
 
-            // Save button (disabled placeholder)
+            // Save button
             _saveButton = new TextButton("Save", skin, "ph-default");
-            _saveButton.SetDisabled(true);
             _saveButton.OnClicked += (button) =>
             {
-                Debug.Log("Save functionality not yet implemented");
+                ShowSaveLoadUI(SaveLoadUI.Mode.Save);
             };
             sessionTable.Add(_saveButton).SetMinWidth(64f).Height(24f).SetPadBottom(15);
             sessionTable.Row();
@@ -476,6 +476,19 @@ namespace PitHero.UI
 
             // Add content table to the tab
             sessionTab.Add(sessionTable).Expand().Fill().Top().Left();
+        }
+
+        /// <summary>Shows the save/load UI in the specified mode.</summary>
+        private void ShowSaveLoadUI(SaveLoadUI.Mode mode)
+        {
+            if (_saveLoadUI == null)
+                _saveLoadUI = new SaveLoadUI();
+            
+            _saveLoadUI.Show(_stage, mode, () =>
+            {
+                // Callback when save/load UI is closed
+                Debug.Log("[SettingsUI] Save/Load UI closed");
+            });
         }
 
         private void CreateConfirmationDialog(Skin skin)

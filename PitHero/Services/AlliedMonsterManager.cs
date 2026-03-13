@@ -56,5 +56,11 @@ namespace PitHero.Services
         {
             return _pendingNotifications.Count > 0 ? _pendingNotifications.Dequeue() : null;
         }
+
+        /// <summary>Directly adds a pre-constructed allied monster (used when restoring saved state).</summary>
+        public void AddAlliedMonster(AlliedMonster ally)
+        {
+            _alliedMonsters.Add(ally);
+        }
     }
 }

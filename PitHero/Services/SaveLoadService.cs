@@ -134,7 +134,7 @@ namespace PitHero.Services
             }
 
             // Find hero entity
-            var heroEntity = Core.Scene?.FindEntity(GameConfig.EntityHero);
+            var heroEntity = Core.Scene?.FindEntity("hero");
             if (heroEntity != null)
             {
                 var heroComp = heroEntity.GetComponent<HeroComponent>();

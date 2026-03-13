@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
 using PitHero.ECS.Scenes;
+using PitHero.Services;
 
 namespace PitHero.UI
 {
@@ -14,6 +15,7 @@ namespace PitHero.UI
         private Image _titleLogo;
         private Table _mainMenuTable;
         private Window _quitConfirmationDialog;
+        private SaveLoadUI _saveLoadUI;
 
         public void InitializeUI(Stage stage)
         {
@@ -57,7 +59,7 @@ namespace PitHero.UI
 
             // Wire up button events
             newButton.OnClicked += (button) => StartGame("Content/Tilemaps/PitHero.tmx");
-            loadButton.OnClicked += (button) => { /* TODO: Implement load functionality */ };
+            loadButton.OnClicked += (button) => ShowLoadUI();
             quitButton.OnClicked += (button) => ShowQuitConfirmation();
 
             // Add buttons to table horizontally with spacing
@@ -127,6 +129,15 @@ namespace PitHero.UI
         {
             _quitConfirmationDialog.SetVisible(true);
             _quitConfirmationDialog.ToFront();
+        }
+
+        /// <summary>Shows the load UI.</summary>
+        private void ShowLoadUI()
+        {
+            if (_saveLoadUI == null)
+                _saveLoadUI = new SaveLoadUI();
+            
+            _saveLoadUI.Show(_stage, SaveLoadUI.Mode.Load);
         }
 
         private void HideQuitConfirmation()
