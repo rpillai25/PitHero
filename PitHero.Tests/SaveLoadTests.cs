@@ -43,7 +43,7 @@ namespace PitHero.Tests
                 original.CurrentHP = 200;
                 original.CurrentMP = 50;
 
-                original.EquipmentNames = new string[] { "Rusty Blade", "", "Squire Helm", "", "", "" };
+                original.EquipmentNames = new string[] { "RustyBlade", "", "SquireHelm", "", "", "" };
 
                 original.HasCrystal = true;
                 original.CrystalJobName = "Knight";
@@ -73,7 +73,7 @@ namespace PitHero.Tests
                 original.InventoryItems = new List<SavedItem>
                 {
                     new SavedItem { Name = "HPPotion", IsConsumable = true, StackCount = 5, SlotIndex = 0 },
-                    new SavedItem { Name = "Rusty Blade", IsConsumable = false, StackCount = 0, SlotIndex = 3 }
+                    new SavedItem { Name = "RustyBlade", IsConsumable = false, StackCount = 0, SlotIndex = 3 }
                 };
 
                 original.AlliedMonsters = new List<SavedAlliedMonster>
@@ -118,6 +118,8 @@ namespace PitHero.Tests
                 Assert.AreEqual(original.InventoryItems.Count, loaded.InventoryItems.Count);
                 Assert.AreEqual(original.InventoryItems[0].Name, loaded.InventoryItems[0].Name);
                 Assert.AreEqual(original.InventoryItems[0].StackCount, loaded.InventoryItems[0].StackCount);
+                Assert.AreEqual(original.InventoryItems[0].SlotIndex, loaded.InventoryItems[0].SlotIndex);
+                Assert.AreEqual(original.InventoryItems[1].SlotIndex, loaded.InventoryItems[1].SlotIndex);
 
                 Assert.AreEqual(original.AlliedMonsters.Count, loaded.AlliedMonsters.Count);
                 Assert.AreEqual(original.AlliedMonsters[0].Name, loaded.AlliedMonsters[0].Name);
@@ -169,9 +171,9 @@ namespace PitHero.Tests
         [TestMethod]
         public void ItemRegistry_TryCreateItem_FindsKnownGearItems()
         {
-            Assert.IsTrue(ItemRegistry.TryCreateItem("Rusty Blade", out var sword));
+            Assert.IsTrue(ItemRegistry.TryCreateItem("RustyBlade", out var sword));
             Assert.IsNotNull(sword);
-            Assert.AreEqual("Rusty Blade", sword.Name);
+            Assert.AreEqual("RustyBlade", sword.Name);
         }
 
         /// <summary>Verifies ItemRegistry finds known potion items.</summary>

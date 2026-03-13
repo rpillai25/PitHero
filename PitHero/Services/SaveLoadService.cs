@@ -27,6 +27,12 @@ namespace PitHero.Services
         /// <summary>Records when a save or load operation occurs (Time.TotalTime at that moment).</summary>
         public double TimeAtSaveLoad { get; private set; }
 
+        /// <summary>Total time played from the loaded save file. Zero for a new game.</summary>
+        public float LoadedTimePlayed { get; private set; }
+
+        /// <summary>Time.TotalTime at the moment the save was loaded. Zero for a new game.</summary>
+        public double TimeAtLoad { get; private set; }
+
         /// <summary>Creates a new SaveLoadService with the given FileDataStore.</summary>
         public SaveLoadService(FileDataStore fileDataStore)
         {
@@ -109,6 +115,8 @@ namespace PitHero.Services
             }
 
             TimeAtSaveLoad = Time.TotalTime;
+            LoadedTimePlayed = data.TotalTimePlayed;
+            TimeAtLoad = Time.TotalTime;
             Debug.Log("SaveLoadService: Loaded from slot " + slotIndex);
             return data;
         }
@@ -118,8 +126,18 @@ namespace PitHero.Services
         {
             var data = new SaveData();
 
-            // Time - capture the current total time
-            data.TotalTimePlayed = (float)Time.TotalTime;
+            // Time - accumulate previously saved time plus time elapsed since load
+            var saveLoadService = Core.Services.GetService<SaveLoadService>();
+            if (saveLoadService != null)
+            {
+                float previousTime = saveLoadService.LoadedTimePlayed;
+                double timeAtLoad = saveLoadService.TimeAtLoad;
+                data.TotalTimePlayed = previousTime + (float)(Time.TotalTime - timeAtLoad);
+            }
+            else
+            {
+                data.TotalTimePlayed = (float)Time.TotalTime;
+            }
 
             // Hero Design
             var designService = Core.Services.GetService<HeroDesignService>();
