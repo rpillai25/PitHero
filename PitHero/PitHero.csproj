@@ -88,6 +88,7 @@
     <ItemGroup>
       <ProjectReference Include="..\FNA\FNA.Core.csproj" />
       <ProjectReference Include="..\Nez\Nez.Portable\Nez.FNA.Core.csproj" />
+      <ProjectReference Include="..\Nez\Nez.Persistence\Nez.FNA.Core.Persistence.csproj" />
     </ItemGroup>
     
 </Project>
