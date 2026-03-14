@@ -223,5 +223,132 @@ namespace PitHero.Tests
             Assert.IsNotNull(job);
             Assert.AreEqual("Knight", job.Name);
         }
+
+        /// <summary>Verifies non-sequential slot positions survive full ItemBag → SaveData → ItemBag round-trip.</summary>
+        [TestMethod]
+        public void InventorySlotPositions_NonSequential_PreservedThroughSaveLoad()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_slot_test_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                // Step 1: Create a bag and place items at NON-sequential positions (simulating rearrangement)
+                var originalBag = new RolePlayingFramework.Inventory.ItemBag("Test Bag", 120);
+
+                var shortSword = GearItems.ShortSword();
+                var ironHelm = GearItems.IronHelm();
+                var hpPotion = PotionItems.HPPotion();
+                hpPotion.StackCount = 3;
+
+                // Place items at non-default positions (as if user rearranged them)
+                originalBag.SetSlotItem(15, shortSword);  // Not slot 0
+                originalBag.SetSlotItem(42, ironHelm);    // Not slot 1
+                originalBag.SetSlotItem(99, hpPotion);    // Not slot 2
+
+                // Step 2: Gather items (same logic as GatherCurrentState)
+                var savedItems = new List<SavedItem>();
+                for (int i = 0; i < originalBag.Capacity; i++)
+                {
+                    var item = originalBag.GetSlotItem(i);
+                    if (item != null)
+                    {
+                        var savedItem = new SavedItem();
+                        savedItem.Name = item.Name;
+                        savedItem.SlotIndex = i;
+                        if (item is RolePlayingFramework.Equipment.Consumable c)
+                        {
+                            savedItem.IsConsumable = true;
+                            savedItem.StackCount = c.StackCount;
+                        }
+                        savedItems.Add(savedItem);
+                    }
+                }
+
+                // Verify saved positions match original placement
+                Assert.AreEqual(3, savedItems.Count);
+                Assert.AreEqual(15, savedItems[0].SlotIndex);
+                Assert.AreEqual("ShortSword", savedItems[0].Name);
+                Assert.AreEqual(42, savedItems[1].SlotIndex);
+                Assert.AreEqual("IronHelm", savedItems[1].Name);
+                Assert.AreEqual(99, savedItems[2].SlotIndex);
+                Assert.AreEqual("HPPotion", savedItems[2].Name);
+                Assert.AreEqual(3, savedItems[2].StackCount);
+
+                // Step 3: Save through binary persistence
+                var saveData = new SaveData();
+                saveData.HeroName = "SlotTest";
+                saveData.JobName = "Knight";
+                saveData.Level = 1;
+                saveData.InventoryItems = savedItems;
+
+                var dataStore = new Nez.Persistence.Binary.FileDataStore(tempDir);
+                dataStore.Save("slot_test.bin", saveData);
+
+                // Step 4: Load from file
+                var loaded = new SaveData();
+                dataStore.Load("slot_test.bin", loaded);
+
+                // Step 5: Verify loaded slot positions
+                Assert.AreEqual(3, loaded.InventoryItems.Count);
+                Assert.AreEqual(15, loaded.InventoryItems[0].SlotIndex);
+                Assert.AreEqual("ShortSword", loaded.InventoryItems[0].Name);
+                Assert.AreEqual(42, loaded.InventoryItems[1].SlotIndex);
+                Assert.AreEqual("IronHelm", loaded.InventoryItems[1].Name);
+                Assert.AreEqual(99, loaded.InventoryItems[2].SlotIndex);
+                Assert.AreEqual("HPPotion", loaded.InventoryItems[2].Name);
+                Assert.AreEqual(3, loaded.InventoryItems[2].StackCount);
+
+                // Step 6: Restore into a new bag (same logic as ApplyPendingLoadData)
+                var restoredBag = new RolePlayingFramework.Inventory.ItemBag("Test Bag", 120);
+
+                // Clear bag first (matches new defensive code)
+                for (int i = 0; i < restoredBag.Capacity; i++)
+                    restoredBag.SetSlotItem(i, null);
+
+                for (int i = 0; i < loaded.InventoryItems.Count; i++)
+                {
+                    var savedItem = loaded.InventoryItems[i];
+                    if (ItemRegistry.TryCreateItem(savedItem.Name, out var item))
+                    {
+                        if (savedItem.IsConsumable && item is RolePlayingFramework.Equipment.Consumable consumable)
+                            consumable.StackCount = savedItem.StackCount;
+                        restoredBag.SetSlotItem(savedItem.SlotIndex, item);
+                    }
+                }
+
+                // Step 7: Verify items are at correct slot positions in restored bag
+                Assert.IsNull(restoredBag.GetSlotItem(0), "Slot 0 should be empty");
+                Assert.IsNull(restoredBag.GetSlotItem(1), "Slot 1 should be empty");
+                Assert.IsNull(restoredBag.GetSlotItem(14), "Slot 14 should be empty");
+
+                var restoredSword = restoredBag.GetSlotItem(15);
+                Assert.IsNotNull(restoredSword, "ShortSword should be at slot 15");
+                Assert.AreEqual("ShortSword", restoredSword.Name);
+
+                Assert.IsNull(restoredBag.GetSlotItem(16), "Slot 16 should be empty");
+                Assert.IsNull(restoredBag.GetSlotItem(41), "Slot 41 should be empty");
+
+                var restoredHelm = restoredBag.GetSlotItem(42);
+                Assert.IsNotNull(restoredHelm, "IronHelm should be at slot 42");
+                Assert.AreEqual("IronHelm", restoredHelm.Name);
+
+                Assert.IsNull(restoredBag.GetSlotItem(43), "Slot 43 should be empty");
+                Assert.IsNull(restoredBag.GetSlotItem(98), "Slot 98 should be empty");
+
+                var restoredPotion = restoredBag.GetSlotItem(99);
+                Assert.IsNotNull(restoredPotion, "HPPotion should be at slot 99");
+                Assert.AreEqual("HPPotion", restoredPotion.Name);
+                Assert.IsTrue(restoredPotion is RolePlayingFramework.Equipment.Consumable);
+                Assert.AreEqual(3, ((RolePlayingFramework.Equipment.Consumable)restoredPotion).StackCount);
+
+                Assert.AreEqual(3, restoredBag.Count, "Bag should have exactly 3 items");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
     }
 }

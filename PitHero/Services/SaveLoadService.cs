@@ -199,6 +199,7 @@ namespace PitHero.Services
                                 }
 
                                 data.InventoryItems.Add(savedItem);
+                                Debug.Log("[SaveLoadService] Saving item '" + item.Name + "' at slot " + i);
                             }
                         }
                     }

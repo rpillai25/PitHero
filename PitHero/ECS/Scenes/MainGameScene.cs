@@ -261,9 +261,15 @@ namespace PitHero.ECS.Scenes
             // Assign reconstructed hero to the component
             heroComp.LinkedHero = hero;
             
-            // Restore inventory
+            // Restore inventory - clear bag first to remove any default items, then place at saved positions
             if (pendingData.InventoryItems != null && heroComp.Bag != null)
             {
+                // Clear entire bag to ensure no stale items from initialization
+                for (int i = 0; i < heroComp.Bag.Capacity; i++)
+                {
+                    heroComp.Bag.SetSlotItem(i, null);
+                }
+
                 for (int i = 0; i < pendingData.InventoryItems.Count; i++)
                 {
                     var savedItem = pendingData.InventoryItems[i];
@@ -273,7 +279,8 @@ namespace PitHero.ECS.Scenes
                         {
                             consumable.StackCount = savedItem.StackCount;
                         }
-                        heroComp.Bag.SetSlotItem(savedItem.SlotIndex, item);
+                        bool placed = heroComp.Bag.SetSlotItem(savedItem.SlotIndex, item);
+                        Debug.Log("[MainGameScene] Restored item '" + savedItem.Name + "' at slot " + savedItem.SlotIndex + " (placed=" + placed + ")");
                     }
                     else
                     {
