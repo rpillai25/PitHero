@@ -261,32 +261,13 @@ namespace PitHero.ECS.Scenes
             // Assign reconstructed hero to the component
             heroComp.LinkedHero = hero;
             
-            // Restore inventory - clear bag first to remove any default items, then place at saved positions
-            if (pendingData.InventoryItems != null && heroComp.Bag != null)
+            // Store pending inventory items on the HeroComponent for deferred restoration.
+            // Nez defers OnAddedToEntity, so Bag is null at this point during Begin().
+            // HeroComponent.OnAddedToEntity will restore these items after creating the Bag.
+            if (pendingData.InventoryItems != null && pendingData.InventoryItems.Count > 0)
             {
-                // Clear entire bag to ensure no stale items from initialization
-                for (int i = 0; i < heroComp.Bag.Capacity; i++)
-                {
-                    heroComp.Bag.SetSlotItem(i, null);
-                }
-
-                for (int i = 0; i < pendingData.InventoryItems.Count; i++)
-                {
-                    var savedItem = pendingData.InventoryItems[i];
-                    if (RolePlayingFramework.Equipment.ItemRegistry.TryCreateItem(savedItem.Name, out var item))
-                    {
-                        if (savedItem.IsConsumable && item is RolePlayingFramework.Equipment.Consumable consumable)
-                        {
-                            consumable.StackCount = savedItem.StackCount;
-                        }
-                        bool placed = heroComp.Bag.SetSlotItem(savedItem.SlotIndex, item);
-                        Debug.Log("[MainGameScene] Restored item '" + savedItem.Name + "' at slot " + savedItem.SlotIndex + " (placed=" + placed + ")");
-                    }
-                    else
-                    {
-                        Debug.Warn("[MainGameScene] Could not find inventory item: " + savedItem.Name);
-                    }
-                }
+                heroComp.PendingInventoryItems = pendingData.InventoryItems;
+                Debug.Log("[MainGameScene] Stored " + pendingData.InventoryItems.Count + " pending inventory items for deferred restoration");
             }
             
             // Restore priorities

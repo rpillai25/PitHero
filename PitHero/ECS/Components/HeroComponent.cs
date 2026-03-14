@@ -182,6 +182,11 @@ namespace PitHero.ECS.Components
         public RolePlayingFramework.Inventory.ItemBag Bag { get; private set; }
 
         /// <summary>
+        /// Pending inventory items to restore after Bag initialization (set during load, applied in OnAddedToEntity).
+        /// </summary>
+        public System.Collections.Generic.List<SavedItem> PendingInventoryItems { get; set; }
+
+        /// <summary>
         /// Action queue for battle actions
         /// </summary>
         public ActionQueue BattleActionQueue { get; private set; }
@@ -230,8 +235,32 @@ namespace PitHero.ECS.Components
             // Cache PitWidthManager service for dynamic pit sizing
             _pitWidthManager = Core.Services.GetService<PitWidthManager>();
 
-            // Initialize hero's item bag with full 120 capacity (20�6 grid)
+            // Initialize hero's item bag with full 120 capacity (20x6 grid)
             Bag = new RolePlayingFramework.Inventory.ItemBag("Traveller's Bag", 120);
+
+            // Restore pending inventory items from save data (must happen after Bag is created
+            // because Nez defers OnAddedToEntity, so Bag is null during ApplyPendingLoadData in Begin)
+            if (PendingInventoryItems != null)
+            {
+                for (int i = 0; i < PendingInventoryItems.Count; i++)
+                {
+                    var savedItem = PendingInventoryItems[i];
+                    if (RolePlayingFramework.Equipment.ItemRegistry.TryCreateItem(savedItem.Name, out var item))
+                    {
+                        if (savedItem.IsConsumable && item is RolePlayingFramework.Equipment.Consumable consumable)
+                        {
+                            consumable.StackCount = savedItem.StackCount;
+                        }
+                        Bag.SetSlotItem(savedItem.SlotIndex, item);
+                        Debug.Log("[HeroComponent] Restored item '" + savedItem.Name + "' at slot " + savedItem.SlotIndex);
+                    }
+                    else
+                    {
+                        Debug.Warn("[HeroComponent] Could not find inventory item: " + savedItem.Name);
+                    }
+                }
+                PendingInventoryItems = null;
+            }
 
             // Initialize battle action queue
             BattleActionQueue = new ActionQueue();
