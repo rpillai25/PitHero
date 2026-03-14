@@ -234,9 +234,14 @@ namespace PitHero.UI
 
             Debug.Log("[ShortcutBar] Restoring " + _pendingShortcutSlots.Count + " pending shortcut slots");
 
-            for (int i = 0; i < _pendingShortcutSlots.Count && i < SHORTCUT_COUNT; i++)
+            // Capture and clear pending slots before restoration to prevent infinite recursion.
+            // SetShortcutReference/SetShortcutSkill → RefreshVisualSlots → TryRestorePendingShortcuts
+            var pendingSlots = _pendingShortcutSlots;
+            _pendingShortcutSlots = null;
+
+            for (int i = 0; i < pendingSlots.Count && i < SHORTCUT_COUNT; i++)
             {
-                var saved = _pendingShortcutSlots[i];
+                var saved = pendingSlots[i];
                 if (saved.SlotType == 1) // Item
                 {
                     // Find the inventory grid slot that has this bag index
@@ -277,8 +282,6 @@ namespace PitHero.UI
                     }
                 }
             }
-
-            _pendingShortcutSlots = null;
         }
 
         /// <summary>Refreshes all visual slots to display referenced items or skills.</summary>
