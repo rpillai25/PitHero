@@ -234,6 +234,11 @@ namespace PitHero.UI
 
             Debug.Log("[ShortcutBar] Restoring " + _pendingShortcutSlots.Count + " pending shortcut slots");
 
+            // Ensure the inventory grid has synced its slots from the bag.
+            // InventoryGrid.ConnectToHero may have been called before the Bag was created
+            // (Nez defers OnAddedToEntity), so grid slots may still have null items.
+            _inventoryGrid.UpdateItemsFromBag();
+
             // Capture and clear pending slots before restoration to prevent infinite recursion.
             // SetShortcutReference/SetShortcutSkill → RefreshVisualSlots → TryRestorePendingShortcuts
             var pendingSlots = _pendingShortcutSlots;
