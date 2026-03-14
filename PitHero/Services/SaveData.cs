@@ -13,6 +13,17 @@ namespace PitHero.Services
         public int SlotIndex;
     }
 
+    /// <summary>Lightweight struct representing a saved shortcut bar slot.</summary>
+    public struct SavedShortcutSlot
+    {
+        /// <summary>0 = Empty, 1 = Item, 2 = Skill.</summary>
+        public int SlotType;
+        /// <summary>Bag index of the referenced item (only valid when SlotType == 1).</summary>
+        public int ItemBagIndex;
+        /// <summary>Skill ID string (only valid when SlotType == 2).</summary>
+        public string SkillId;
+    }
+
     /// <summary>Lightweight struct representing a saved allied monster.</summary>
     public struct SavedAlliedMonster
     {
@@ -27,7 +38,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 1;
+        public const int CurrentVersion = 2;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -159,6 +170,10 @@ namespace PitHero.Services
         /// <summary>Saved allied monsters.</summary>
         public List<SavedAlliedMonster> AlliedMonsters;
 
+        // Shortcut Bar
+        /// <summary>Saved shortcut bar slots (8 slots).</summary>
+        public List<SavedShortcutSlot> ShortcutSlots;
+
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
         {
@@ -170,6 +185,7 @@ namespace PitHero.Services
             DiscoveredSynergyIds = new List<string>();
             DiscoveredStencils = new Dictionary<string, int>();
             AlliedMonsters = new List<SavedAlliedMonster>();
+            ShortcutSlots = new List<SavedShortcutSlot>();
         }
 
         /// <summary>Writes all game state to the persistence writer.</summary>
@@ -298,6 +314,22 @@ namespace PitHero.Services
                 writer.Write(monster.FishingProficiency);
                 writer.Write(monster.CookingProficiency);
                 writer.Write(monster.FarmingProficiency);
+            }
+
+            // 12. Shortcut Bar (added in version 2)
+            writer.Write(ShortcutSlots.Count);
+            for (int i = 0; i < ShortcutSlots.Count; i++)
+            {
+                SavedShortcutSlot slot = ShortcutSlots[i];
+                writer.Write(slot.SlotType);
+                if (slot.SlotType == 1) // Item
+                {
+                    writer.Write(slot.ItemBagIndex);
+                }
+                else if (slot.SlotType == 2) // Skill
+                {
+                    writer.Write(slot.SkillId ?? string.Empty);
+                }
             }
         }
 
@@ -428,6 +460,29 @@ namespace PitHero.Services
                 monster.CookingProficiency = reader.ReadInt();
                 monster.FarmingProficiency = reader.ReadInt();
                 AlliedMonsters.Add(monster);
+            }
+
+            // 12. Shortcut Bar (added in version 2)
+            if (version >= 2)
+            {
+                int shortcutCount = reader.ReadInt();
+                ShortcutSlots = new List<SavedShortcutSlot>(shortcutCount);
+                for (int i = 0; i < shortcutCount; i++)
+                {
+                    SavedShortcutSlot slot;
+                    slot.SlotType = reader.ReadInt();
+                    slot.ItemBagIndex = 0;
+                    slot.SkillId = null;
+                    if (slot.SlotType == 1) // Item
+                    {
+                        slot.ItemBagIndex = reader.ReadInt();
+                    }
+                    else if (slot.SlotType == 2) // Skill
+                    {
+                        slot.SkillId = reader.ReadString();
+                    }
+                    ShortcutSlots.Add(slot);
+                }
             }
         }
 

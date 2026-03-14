@@ -1,6 +1,7 @@
 using Nez;
 using Nez.Persistence.Binary;
 using PitHero.ECS.Components;
+using PitHero.UI;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Synergies;
@@ -302,6 +303,51 @@ namespace PitHero.Services
                     saved.CookingProficiency = monster.CookingProficiency;
                     saved.FarmingProficiency = monster.FarmingProficiency;
                     data.AlliedMonsters.Add(saved);
+                }
+            }
+
+            // Shortcut bar
+            var shortcutBarService = Core.Services.GetService<ShortcutBarService>();
+            if (shortcutBarService?.ShortcutBar != null)
+            {
+                var bar = shortcutBarService.ShortcutBar;
+                const int ShortcutCount = 8;
+                data.ShortcutSlots = new List<SavedShortcutSlot>(ShortcutCount);
+                for (int i = 0; i < ShortcutCount; i++)
+                {
+                    var slotData = bar.GetShortcutSlotData(i);
+                    var saved = new SavedShortcutSlot();
+                    if (slotData == null || slotData.SlotType == ShortcutSlotType.Empty)
+                    {
+                        saved.SlotType = 0; // Empty
+                    }
+                    else if (slotData.SlotType == ShortcutSlotType.Item)
+                    {
+                        saved.SlotType = 1;
+                        saved.ItemBagIndex = slotData.ReferencedSlot?.SlotData?.BagIndex ?? -1;
+                        if (saved.ItemBagIndex >= 0)
+                        {
+                            Debug.Log("[SaveLoadService] Saving shortcut " + i + " as item at bag index " + saved.ItemBagIndex);
+                        }
+                        else
+                        {
+                            saved.SlotType = 0; // No valid bag index, treat as empty
+                        }
+                    }
+                    else if (slotData.SlotType == ShortcutSlotType.Skill)
+                    {
+                        saved.SlotType = 2;
+                        saved.SkillId = slotData.ReferencedSkill?.Id;
+                        if (!string.IsNullOrEmpty(saved.SkillId))
+                        {
+                            Debug.Log("[SaveLoadService] Saving shortcut " + i + " as skill '" + saved.SkillId + "'");
+                        }
+                        else
+                        {
+                            saved.SlotType = 0; // No valid skill ID, treat as empty
+                        }
+                    }
+                    data.ShortcutSlots.Add(saved);
                 }
             }
 

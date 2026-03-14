@@ -299,6 +299,13 @@ namespace PitHero.ECS.Scenes
                 }
             }
             
+            // Store pending shortcut slots on the shortcut bar for deferred restoration
+            if (pendingData.ShortcutSlots != null && pendingData.ShortcutSlots.Count > 0 && _shortcutBar != null)
+            {
+                _shortcutBar.SetPendingShortcutSlots(pendingData.ShortcutSlots);
+                Debug.Log("[MainGameScene] Stored " + pendingData.ShortcutSlots.Count + " pending shortcut slots for deferred restoration");
+            }
+            
             Debug.Log("[MainGameScene] Load data applied successfully - Hero: " + (pendingData.HeroName ?? "?") + " Level " + pendingData.Level);
         }
 
