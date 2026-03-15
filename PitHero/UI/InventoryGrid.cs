@@ -199,6 +199,11 @@ namespace PitHero.UI
             }
             InitializeSwapEntities();
 
+            // Unsubscribe before re-subscribing to prevent duplicate handlers (idempotent)
+            InventorySelectionManager.OnInventoryChanged -= UpdateItemsFromBag;
+            InventorySelectionManager.OnSelectionCleared -= ClearLocalSelectionState;
+            InventorySelectionManager.OnCrossComponentSwapAnimate -= HandleCrossComponentSwapAnimate;
+
             // Subscribe to cross-component inventory changes
             InventorySelectionManager.OnInventoryChanged += UpdateItemsFromBag;
 

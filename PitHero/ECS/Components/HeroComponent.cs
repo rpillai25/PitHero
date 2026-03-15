@@ -277,11 +277,11 @@ namespace PitHero.ECS.Components
             _currentTile = GetCurrentTilePosition();
             LastTilePosition = _currentTile;
 
-#if DEBUG
-            // Only add debug items for a fresh hero, not when loading a save file
-            if (SaveLoadService.PendingLoadData == null)
-                DebugSetup();
-#endif
+// #if DEBUG
+//             // Only add debug items for a fresh hero, not when loading a save file
+//             if (SaveLoadService.PendingLoadData == null)
+//                 DebugSetup();
+// #endif
 
             // Ensure initial movement speed matches starting pit state (outside by default)
             ApplyMovementSpeedForPitState();

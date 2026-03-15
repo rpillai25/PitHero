@@ -1163,6 +1163,14 @@ namespace PitHero.ECS.Scenes
             // Get the inventory grid from HeroUI
             var inventoryGrid = _settingsUI?.HeroUI?.GetInventoryGrid();
 
+            // Connect the inventory grid to the hero so it can resolve item references
+            // (required for TryRestorePendingShortcuts to find items after save/load)
+            if (inventoryGrid != null)
+            {
+                inventoryGrid.ConnectToHero(heroComponent);
+                Debug.Log("[MainGameScene] Connected inventory grid to hero in ConnectShortcutBarToHero");
+            }
+
             _shortcutBar.ConnectToHero(heroComponent, inventoryGrid);
             Debug.Log("[MainGameScene] Connected shortcut bar to hero and inventory grid");
         }
