@@ -1,5 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using Nez.Sprites;
+using Nez.Textures;
 using Nez.UI;
 using PitHero.ECS.Scenes;
 using PitHero.Services;
@@ -30,6 +32,7 @@ namespace PitHero.UI
         private Mode _currentMode;
         private Action _onClose;
         private Skin _skin;
+        private SpriteAtlas _actorsAtlas;
 
         /// <summary>Whether the save/load window is currently visible.</summary>
         public bool IsVisible => _window != null && _window.IsVisible();
@@ -75,6 +78,16 @@ namespace PitHero.UI
             var slotsTable = new Table();
             var service = Core.Services.GetService<SaveLoadService>();
 
+            // Load the actors atlas for hero sprite previews
+            try
+            {
+                _actorsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas");
+            }
+            catch (System.Exception)
+            {
+                _actorsAtlas = null;
+            }
+
             for (int i = 0; i < SaveLoadService.MaxSlots; i++)
             {
                 SaveData preview = service != null ? service.GetSlotPreview(i) : null;
@@ -115,7 +128,17 @@ namespace PitHero.UI
 
             if (preview != null)
             {
-                // Left column: hero name and level
+                // Left column: hero sprite preview
+                if (_actorsAtlas != null)
+                {
+                    var heroDrawable = new HeroPreviewDrawable(
+                        _actorsAtlas, preview.SkinColor, preview.HairColor,
+                        preview.ShirtColor, preview.HairstyleIndex);
+                    var heroImage = new Image(heroDrawable, Scaling.Fit);
+                    rowTable.Add(heroImage).Size(32f, 46f).SetPadLeft(4f).SetPadRight(8f);
+                }
+
+                // Middle column: hero name and level
                 var infoTable = new Table();
                 var nameLabel = new Label(preview.HeroName ?? "Unknown", _skin, "ph-default");
                 infoTable.Add(nameLabel).Left();
