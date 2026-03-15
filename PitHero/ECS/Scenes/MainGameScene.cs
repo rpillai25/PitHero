@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.BitmapFonts;
@@ -103,9 +104,12 @@ namespace PitHero.ECS.Scenes
             LoadMap();
             SpawnPit();
 
-            // Set starting pit level to 9 (after pit exists to avoid early collider warnings)
+            // Only generate the default pit level when there is no save to load.
+            // When a save exists, ApplyPendingLoadData will call SetPitLevel with the
+            // saved level.  Generating here first would create deferred entities that
+            // ClearExistingPitEntities cannot find, producing a conflicting dual-state pit.
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
-            if (pitWidthManager != null)
+            if (pitWidthManager != null && SaveLoadService.PendingLoadData == null)
                 pitWidthManager.SetPitLevel(1);
 
             SpawnHero();
@@ -278,11 +282,13 @@ namespace PitHero.ECS.Scenes
             heroComp.HealPriority2 = (HeroHealPriority)pendingData.HealPriority2;
             heroComp.HealPriority3 = (HeroHealPriority)pendingData.HealPriority3;
             
-            // Restore pit level
+            // Restore pit level (always call SetPitLevel so the pit is generated once
+            // from saved state; the initial SetPitLevel(1) in Begin is skipped when
+            // pending load data exists to prevent a conflicting dual-state pit)
             var pitManager = Core.Services.GetService<PitWidthManager>();
-            if (pitManager != null && pendingData.PitLevel > 1)
+            if (pitManager != null)
             {
-                pitManager.SetPitLevel(pendingData.PitLevel);
+                pitManager.SetPitLevel(Math.Max(1, pendingData.PitLevel));
             }
             
             // Restore allied monsters
