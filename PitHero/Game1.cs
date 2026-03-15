@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using Nez.Persistence.Binary;
 using PitHero.ECS.Scenes;
 using PitHero.Services;
 using PitHero.Util;
@@ -28,6 +29,11 @@ namespace PitHero
             Services.AddService(new GameStateService());
             Services.AddService(new HairstyleQueueService(GameConfig.MaleHeroHairstyleCount));
             Services.AddService(new HeroDesignService());
+
+            // Register persistence services
+            var fileDataStore = new FileDataStore(null);
+            Services.AddService(fileDataStore);
+            Services.AddService(new SaveLoadService(fileDataStore));
 
             // Register global managers
             SoundEffectManager soundEffectManager = new SoundEffectManager();

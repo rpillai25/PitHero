@@ -9,6 +9,7 @@ using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.UI;
 using PitHero.Util;
+using RolePlayingFramework.AlliedMonsters;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Jobs.Primary;
 using RolePlayingFramework.Stats;
@@ -132,7 +133,180 @@ namespace PitHero.ECS.Scenes
             Core.Services.AddService(playerInteractionService);
             Debug.Log("[MainGameScene] PlayerInteractionService initialized");
 
+            // Apply pending load data if available
+            ApplyPendingLoadData();
+
             _isInitializationComplete = true;
+        }
+
+        /// <summary>Applies pending save data to restore game state after scene initialization.</summary>
+        private void ApplyPendingLoadData()
+        {
+            var pendingData = SaveLoadService.PendingLoadData;
+            if (pendingData == null)
+                return;
+
+            // Clear pending data so it's not applied again
+            SaveLoadService.PendingLoadData = null;
+            
+            Debug.Log("[MainGameScene] Applying pending load data...");
+            
+            // Find hero entity and component
+            var heroEntity = FindEntity("hero");
+            if (heroEntity == null)
+            {
+                Debug.Error("[MainGameScene] Cannot apply load data - hero entity not found");
+                return;
+            }
+            
+            var heroComp = heroEntity.GetComponent<HeroComponent>();
+            if (heroComp == null)
+            {
+                Debug.Error("[MainGameScene] Cannot apply load data - HeroComponent not found");
+                return;
+            }
+            
+            // Reconstruct the hero from saved data
+            var job = RolePlayingFramework.Jobs.JobFactory.CreateJob(pendingData.JobName ?? "Knight");
+            var baseStats = new StatBlock(
+                pendingData.BaseStrength, pendingData.BaseAgility,
+                pendingData.BaseVitality, pendingData.BaseMagic);
+            
+            // Reconstruct crystal if present
+            HeroCrystal heroCrystal = null;
+            if (pendingData.HasCrystal)
+            {
+                var crystalJob = RolePlayingFramework.Jobs.JobFactory.CreateJob(pendingData.CrystalJobName ?? "Knight");
+                var crystalStats = new StatBlock(
+                    pendingData.CrystalBaseStrength, pendingData.CrystalBaseAgility,
+                    pendingData.CrystalBaseVitality, pendingData.CrystalBaseMagic);
+                
+                heroCrystal = new HeroCrystal(
+                    pendingData.HeroName ?? "Hero", crystalJob, pendingData.CrystalLevel, crystalStats);
+                
+                // Restore JP
+                heroCrystal.EarnJP(pendingData.TotalJP);
+                
+                // Restore learned skills on the crystal
+                for (int i = 0; i < pendingData.LearnedSkillIds.Count; i++)
+                {
+                    heroCrystal.AddLearnedSkill(pendingData.LearnedSkillIds[i]);
+                }
+                
+                // Restore synergy data
+                for (int i = 0; i < pendingData.DiscoveredSynergyIds.Count; i++)
+                {
+                    heroCrystal.DiscoverSynergy(pendingData.DiscoveredSynergyIds[i]);
+                }
+                
+                for (int i = 0; i < pendingData.LearnedSynergySkillIds.Count; i++)
+                {
+                    heroCrystal.LearnSynergySkill(pendingData.LearnedSynergySkillIds[i]);
+                }
+                
+                // Restore synergy points
+                var synergyEnumerator = pendingData.SynergyPoints.GetEnumerator();
+                while (synergyEnumerator.MoveNext())
+                {
+                    heroCrystal.EarnSynergyPoints(synergyEnumerator.Current.Key, synergyEnumerator.Current.Value);
+                }
+                synergyEnumerator.Dispose();
+            }
+            
+            // Create hero with saved level and stats
+            var hero = new Hero(
+                pendingData.HeroName ?? "Hero",
+                job,
+                pendingData.Level,
+                baseStats,
+                heroCrystal);
+            
+            // Restore equipment (affects MaxHP/MaxMP through RecalculateDerived)
+            if (pendingData.EquipmentNames != null)
+            {
+                for (int i = 0; i < 6 && i < pendingData.EquipmentNames.Length; i++)
+                {
+                    string itemName = pendingData.EquipmentNames[i];
+                    if (string.IsNullOrEmpty(itemName))
+                        continue;
+                    
+                    if (RolePlayingFramework.Equipment.ItemRegistry.TryCreateItem(itemName, out var item))
+                    {
+                        var slot = (RolePlayingFramework.Equipment.EquipmentSlot)i;
+                        hero.SetEquipmentSlot(slot, item);
+                    }
+                    else
+                    {
+                        Debug.Warn("[MainGameScene] Could not find equipment item: " + itemName);
+                    }
+                }
+            }
+            
+            // Restore remaining experience toward next level
+            if (pendingData.Experience > 0)
+            {
+                hero.AddExperience(pendingData.Experience);
+            }
+            
+            // Adjust HP from max to saved value
+            int hpDiff = hero.MaxHP - pendingData.CurrentHP;
+            if (hpDiff > 0)
+                hero.TakeDamage(hpDiff);
+            
+            // Adjust MP from max to saved value
+            int mpDiff = hero.MaxMP - pendingData.CurrentMP;
+            if (mpDiff > 0)
+                hero.SpendMP(mpDiff);
+            
+            // Assign reconstructed hero to the component
+            heroComp.LinkedHero = hero;
+            
+            // Store pending inventory items on the HeroComponent for deferred restoration.
+            // Nez defers OnAddedToEntity, so Bag is null at this point during Begin().
+            // HeroComponent.OnAddedToEntity will restore these items after creating the Bag.
+            if (pendingData.InventoryItems != null && pendingData.InventoryItems.Count > 0)
+            {
+                heroComp.PendingInventoryItems = pendingData.InventoryItems;
+                Debug.Log("[MainGameScene] Stored " + pendingData.InventoryItems.Count + " pending inventory items for deferred restoration");
+            }
+            
+            // Restore priorities
+            heroComp.Priority1 = (HeroPitPriority)pendingData.Priority1;
+            heroComp.Priority2 = (HeroPitPriority)pendingData.Priority2;
+            heroComp.Priority3 = (HeroPitPriority)pendingData.Priority3;
+            heroComp.HealPriority1 = (HeroHealPriority)pendingData.HealPriority1;
+            heroComp.HealPriority2 = (HeroHealPriority)pendingData.HealPriority2;
+            heroComp.HealPriority3 = (HeroHealPriority)pendingData.HealPriority3;
+            
+            // Restore pit level
+            var pitManager = Core.Services.GetService<PitWidthManager>();
+            if (pitManager != null && pendingData.PitLevel > 1)
+            {
+                pitManager.SetPitLevel(pendingData.PitLevel);
+            }
+            
+            // Restore allied monsters
+            var alliedManager = Core.Services.GetService<AlliedMonsterManager>();
+            if (alliedManager != null && pendingData.AlliedMonsters != null)
+            {
+                for (int i = 0; i < pendingData.AlliedMonsters.Count; i++)
+                {
+                    var saved = pendingData.AlliedMonsters[i];
+                    var allied = new AlliedMonster(
+                        saved.Name, saved.MonsterTypeName,
+                        saved.FishingProficiency, saved.CookingProficiency, saved.FarmingProficiency);
+                    alliedManager.AddAlliedMonster(allied);
+                }
+            }
+            
+            // Store pending shortcut slots on the shortcut bar for deferred restoration
+            if (pendingData.ShortcutSlots != null && pendingData.ShortcutSlots.Count > 0 && _shortcutBar != null)
+            {
+                _shortcutBar.SetPendingShortcutSlots(pendingData.ShortcutSlots);
+                Debug.Log("[MainGameScene] Stored " + pendingData.ShortcutSlots.Count + " pending shortcut slots for deferred restoration");
+            }
+            
+            Debug.Log("[MainGameScene] Load data applied successfully - Hero: " + (pendingData.HeroName ?? "?") + " Level " + pendingData.Level);
         }
 
         private void LoadMap()
@@ -988,6 +1162,14 @@ namespace PitHero.ECS.Scenes
 
             // Get the inventory grid from HeroUI
             var inventoryGrid = _settingsUI?.HeroUI?.GetInventoryGrid();
+
+            // Connect the inventory grid to the hero so it can resolve item references
+            // (required for TryRestorePendingShortcuts to find items after save/load)
+            if (inventoryGrid != null)
+            {
+                inventoryGrid.ConnectToHero(heroComponent);
+                Debug.Log("[MainGameScene] Connected inventory grid to hero in ConnectShortcutBarToHero");
+            }
 
             _shortcutBar.ConnectToHero(heroComponent, inventoryGrid);
             Debug.Log("[MainGameScene] Connected shortcut bar to hero and inventory grid");

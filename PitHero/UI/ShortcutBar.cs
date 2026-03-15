@@ -4,8 +4,10 @@ using Nez;
 using Nez.Textures;
 using Nez.UI;
 using PitHero.ECS.Components;
+using PitHero.Services;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Skills;
+using System.Collections.Generic;
 
 namespace PitHero.UI
 {
@@ -22,6 +24,9 @@ namespace PitHero.UI
 
         // Track the items that are referenced (not the slots) so we can find them when they move
         private readonly IItem[] _referencedItems;
+
+        // Pending shortcut slots to restore after inventory is loaded (set during save/load)
+        private List<SavedShortcutSlot> _pendingShortcutSlots;
 
         // Reference to inventory grid for finding items that moved
         private InventoryGrid _inventoryGrid;
@@ -207,9 +212,89 @@ namespace PitHero.UI
             RefreshVisualSlots();
         }
 
+        /// <summary>Sets pending shortcut slots to restore after inventory is loaded.</summary>
+        public void SetPendingShortcutSlots(List<SavedShortcutSlot> slots)
+        {
+            _pendingShortcutSlots = slots;
+        }
+
+        /// <summary>Attempts to restore pending shortcut slots from save data. Called during RefreshVisualSlots.</summary>
+        private void TryRestorePendingShortcuts()
+        {
+            if (_pendingShortcutSlots == null || _heroComponent == null)
+                return;
+
+            // Need the inventory grid to find item slots by bag index
+            if (_inventoryGrid == null)
+                return;
+
+            // Wait until pending inventory items have been restored (they are cleared after restoration in OnAddedToEntity)
+            if (_heroComponent.Bag == null || _heroComponent.PendingInventoryItems != null)
+                return;
+
+            Debug.Log("[ShortcutBar] Restoring " + _pendingShortcutSlots.Count + " pending shortcut slots");
+
+            // Ensure the inventory grid has synced its slots from the bag.
+            // InventoryGrid.ConnectToHero may have been called before the Bag was created
+            // (Nez defers OnAddedToEntity), so grid slots may still have null items.
+            _inventoryGrid.UpdateItemsFromBag();
+
+            // Capture and clear pending slots before restoration to prevent infinite recursion.
+            // SetShortcutReference/SetShortcutSkill → RefreshVisualSlots → TryRestorePendingShortcuts
+            var pendingSlots = _pendingShortcutSlots;
+            _pendingShortcutSlots = null;
+
+            for (int i = 0; i < pendingSlots.Count && i < SHORTCUT_COUNT; i++)
+            {
+                var saved = pendingSlots[i];
+                if (saved.SlotType == 1) // Item
+                {
+                    // Find the inventory grid slot that has this bag index
+                    var item = _heroComponent.Bag.GetSlotItem(saved.ItemBagIndex);
+                    if (item != null)
+                    {
+                        var inventorySlot = _inventoryGrid.FindSlotContainingItem(item);
+                        if (inventorySlot != null)
+                        {
+                            SetShortcutReference(i, inventorySlot);
+                            Debug.Log("[ShortcutBar] Restored shortcut " + i + " as item '" + item.Name + "' at bag index " + saved.ItemBagIndex);
+                        }
+                        else
+                        {
+                            Debug.Warn("[ShortcutBar] Could not find inventory slot for item at bag index " + saved.ItemBagIndex);
+                        }
+                    }
+                    else
+                    {
+                        Debug.Warn("[ShortcutBar] No item at bag index " + saved.ItemBagIndex + " for shortcut " + i);
+                    }
+                }
+                else if (saved.SlotType == 2) // Skill
+                {
+                    // Find the skill by ID in the hero's learned skills
+                    if (_heroComponent.LinkedHero != null && !string.IsNullOrEmpty(saved.SkillId))
+                    {
+                        ISkill skill = null;
+                        if (_heroComponent.LinkedHero.LearnedSkills.TryGetValue(saved.SkillId, out skill))
+                        {
+                            SetShortcutSkill(i, skill);
+                            Debug.Log("[ShortcutBar] Restored shortcut " + i + " as skill '" + saved.SkillId + "'");
+                        }
+                        else
+                        {
+                            Debug.Warn("[ShortcutBar] Could not find learned skill '" + saved.SkillId + "' for shortcut " + i);
+                        }
+                    }
+                }
+            }
+        }
+
         /// <summary>Refreshes all visual slots to display referenced items or skills.</summary>
         private void RefreshVisualSlots()
         {
+            // Try to restore pending shortcuts from save data (deferred until inventory is ready)
+            TryRestorePendingShortcuts();
+
             // First, update slot references to track item movements
             UpdateSlotReferences();
 
