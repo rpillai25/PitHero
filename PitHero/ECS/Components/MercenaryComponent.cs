@@ -39,6 +39,18 @@ namespace PitHero.ECS.Components
         /// <summary>True if this mercenary is being promoted to hero</summary>
         public bool IsBeingPromoted { get; set; }
 
+        /// <summary>Skin/body color used for rendering (saved for persistence).</summary>
+        public Color SkinColor { get; set; }
+
+        /// <summary>Hair color used for rendering (saved for persistence).</summary>
+        public Color HairColor { get; set; }
+
+        /// <summary>Hairstyle index used for rendering (saved for persistence).</summary>
+        public int HairstyleIndex { get; set; }
+
+        /// <summary>Shirt color used for rendering (saved for persistence).</summary>
+        public Color ShirtColor { get; set; }
+
     /// <summary>True if this mercenary has arrived at the hero statue during promotion</summary>
     public bool HasArrivedAtStatue { get; set; }
 

@@ -304,6 +304,17 @@ namespace PitHero.ECS.Scenes
                     alliedManager.AddAlliedMonster(allied);
                 }
             }
+
+            // Restore hired mercenaries
+            var mercManager = Core.Services.GetService<MercenaryManager>();
+            if (mercManager != null && pendingData.HiredMercenaries != null && pendingData.HiredMercenaries.Count > 0)
+            {
+                for (int i = 0; i < pendingData.HiredMercenaries.Count; i++)
+                {
+                    mercManager.SpawnHiredMercenaryFromSave(pendingData.HiredMercenaries[i], heroEntity, i);
+                }
+                Debug.Log("[MainGameScene] Restored " + pendingData.HiredMercenaries.Count + " hired mercenaries");
+            }
             
             // Store pending shortcut slots on the shortcut bar for deferred restoration
             if (pendingData.ShortcutSlots != null && pendingData.ShortcutSlots.Count > 0 && _shortcutBar != null)

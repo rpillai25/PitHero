@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.ECS.Components;
+using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Jobs.Primary;
 using RolePlayingFramework.Mercenaries;
@@ -198,6 +199,11 @@ namespace PitHero.Services
             var offset = new Vector2(0, -GameConfig.TileSize / 2);
 
             var bodyColor = GameConfig.SkinColors.RandomItem();
+            var shirtColor = GameConfig.ShirtColors.RandomItem();
+            var hairColor = GameConfig.HairColors.RandomItem();
+            var hairstyleService = Core.Services.GetService<HairstyleQueueService>();
+            var hairstyleIndex = hairstyleService.GetNextHairstyle();
+
             var bodyAnimator = mercEntity.AddComponent(new HeroBodyAnimationComponent(bodyColor));
             bodyAnimator.SetRenderLayer(GameConfig.RenderLayerHeroBody);
             bodyAnimator.SetLocalOffset(offset);
@@ -210,7 +216,7 @@ namespace PitHero.Services
             pantsAnimator.SetRenderLayer(GameConfig.RenderLayerHeroPants);
             pantsAnimator.SetLocalOffset(offset);
 
-            var shirtAnimator = mercEntity.AddComponent(new HeroShirtAnimationComponent(GameConfig.ShirtColors.RandomItem()));
+            var shirtAnimator = mercEntity.AddComponent(new HeroShirtAnimationComponent(shirtColor));
             shirtAnimator.SetRenderLayer(GameConfig.RenderLayerHeroShirt);
             shirtAnimator.SetLocalOffset(offset);
 
@@ -222,8 +228,7 @@ namespace PitHero.Services
             eyesAnimator.SetRenderLayer(GameConfig.RenderLayerHeroEyes);
             eyesAnimator.SetLocalOffset(offset);
 
-            var hairstyleService = Core.Services.GetService<HairstyleQueueService>();
-            var hairAnimator = mercEntity.AddComponent(new HeroHairAnimationComponent(GameConfig.HairColors.RandomItem(), hairstyleService.GetNextHairstyle()));
+            var hairAnimator = mercEntity.AddComponent(new HeroHairAnimationComponent(hairColor, hairstyleIndex));
             hairAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHair);
             hairAnimator.SetLocalOffset(offset);
 
@@ -253,7 +258,11 @@ namespace PitHero.Services
                 TavernPosition = tavernPosition,
                 SpawnTime = Time.TotalTime,
                 SpawnId = _nextSpawnId, // Assign unique spawn ID
-                LastTilePosition = SpawnPosition
+                LastTilePosition = SpawnPosition,
+                SkinColor = bodyColor,
+                HairColor = hairColor,
+                HairstyleIndex = hairstyleIndex,
+                ShirtColor = shirtColor
             });
 
             // Increment spawn ID counter for next mercenary
@@ -589,6 +598,143 @@ namespace PitHero.Services
             mercEntity.AddComponent(new AI.MercenaryStateMachine());
 
             return true;
+        }
+
+        /// <summary>Spawns a hired mercenary from saved data and positions it near the hero.</summary>
+        public Entity SpawnHiredMercenaryFromSave(
+            SavedMercenary saved, Entity heroEntity, int hiredIndex)
+        {
+            if (_scene == null) return null;
+
+            // Reconstruct job and RPG object
+            var job = JobFactory.CreateJob(saved.JobName ?? "Knight");
+            var baseStats = new StatBlock(
+                saved.BaseStrength, saved.BaseAgility,
+                saved.BaseVitality, saved.BaseMagic);
+            var mercenary = new Mercenary(saved.Name, job, saved.Level, baseStats);
+
+            // Restore equipment
+            if (saved.EquipmentNames != null)
+            {
+                for (int i = 0; i < 6 && i < saved.EquipmentNames.Length; i++)
+                {
+                    if (!string.IsNullOrEmpty(saved.EquipmentNames[i]))
+                    {
+                        if (ItemRegistry.TryCreateItem(saved.EquipmentNames[i], out var item) && item is IGear gear)
+                        {
+                            mercenary.Equip(gear);
+                        }
+                    }
+                }
+            }
+
+            // Adjust HP/MP to saved values
+            int hpDiff = mercenary.MaxHP - saved.CurrentHP;
+            if (hpDiff > 0) mercenary.TakeDamage(hpDiff);
+            int mpDiff = mercenary.MaxMP - saved.CurrentMP;
+            if (mpDiff > 0) mercenary.UseMP(mpDiff);
+
+            // Position near hero
+            var heroPos = heroEntity.Transform.Position;
+            var spawnWorldPos = new Vector2(
+                heroPos.X - ((hiredIndex + 1) * GameConfig.TileSize),
+                heroPos.Y);
+
+            var mercEntity = _scene.CreateEntity($"mercenary_{saved.Name}");
+            mercEntity.SetPosition(spawnWorldPos);
+            mercEntity.SetTag(GameConfig.TAG_MERCENARY);
+
+            // Facing component
+            mercEntity.AddComponent(new ActorFacingComponent());
+
+            // Animation components using saved appearance
+            var offset = new Vector2(0, -GameConfig.TileSize / 2);
+
+            var bodyAnimator = mercEntity.AddComponent(new HeroBodyAnimationComponent(saved.SkinColor));
+            bodyAnimator.SetRenderLayer(GameConfig.RenderLayerHeroBody);
+            bodyAnimator.SetLocalOffset(offset);
+
+            var hand2Animator = mercEntity.AddComponent(new HeroHand2AnimationComponent(saved.SkinColor));
+            hand2Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand2);
+            hand2Animator.SetLocalOffset(offset);
+
+            var pantsAnimator = mercEntity.AddComponent(new HeroPantsAnimationComponent(Color.White));
+            pantsAnimator.SetRenderLayer(GameConfig.RenderLayerHeroPants);
+            pantsAnimator.SetLocalOffset(offset);
+
+            var shirtAnimator = mercEntity.AddComponent(new HeroShirtAnimationComponent(saved.ShirtColor));
+            shirtAnimator.SetRenderLayer(GameConfig.RenderLayerHeroShirt);
+            shirtAnimator.SetLocalOffset(offset);
+
+            var headAnimator = mercEntity.AddComponent(new HeroHeadAnimationComponent(saved.SkinColor));
+            headAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHead);
+            headAnimator.SetLocalOffset(offset);
+
+            var eyesAnimator = mercEntity.AddComponent(new HeroEyesAnimationComponent(Color.White));
+            eyesAnimator.SetRenderLayer(GameConfig.RenderLayerHeroEyes);
+            eyesAnimator.SetLocalOffset(offset);
+
+            var hairAnimator = mercEntity.AddComponent(new HeroHairAnimationComponent(saved.HairColor, saved.HairstyleIndex));
+            hairAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHair);
+            hairAnimator.SetLocalOffset(offset);
+
+            var hand1Animator = mercEntity.AddComponent(new HeroHand1AnimationComponent(saved.SkinColor));
+            hand1Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand1);
+            hand1Animator.SetLocalOffset(offset);
+
+            // Collider
+            var collider = mercEntity.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));
+            collider.IsTrigger = true;
+            Flags.SetFlag(ref collider.CollidesWithLayers, GameConfig.PhysicsTileMapLayer);
+            Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsMercenaryLayer);
+
+            // Tile mover and pathfinding
+            var tileMover = mercEntity.AddComponent(new TileByTileMover());
+            tileMover.MovementSpeed = GameConfig.HeroMovementSpeed;
+            mercEntity.AddComponent(new PathfindingActorComponent());
+
+            // Determine follow target
+            Entity followTarget;
+            if (hiredIndex == 0)
+            {
+                followTarget = heroEntity;
+            }
+            else
+            {
+                var existingHired = GetHiredMercenaries();
+                followTarget = existingHired.Count > 0 ? existingHired[0] : heroEntity;
+            }
+
+            // Mercenary component (already hired)
+            var currentTile = new Point(
+                (int)(spawnWorldPos.X / GameConfig.TileSize),
+                (int)(spawnWorldPos.Y / GameConfig.TileSize));
+
+            var mercComponent = mercEntity.AddComponent(new MercenaryComponent
+            {
+                LinkedMercenary = mercenary,
+                IsHired = true,
+                IsWaitingInTavern = false,
+                TavernPosition = Point.Zero,
+                SpawnTime = Time.TotalTime,
+                SpawnId = _nextSpawnId,
+                LastTilePosition = currentTile,
+                FollowTarget = followTarget,
+                SkinColor = saved.SkinColor,
+                HairColor = saved.HairColor,
+                HairstyleIndex = saved.HairstyleIndex,
+                ShirtColor = saved.ShirtColor
+            });
+            _nextSpawnId++;
+
+            _mercenaryEntities.Add(mercEntity);
+
+            // Add state machine and jump component (same as HireMercenary)
+            mercEntity.AddComponent(new HeroJumpComponent());
+            mercEntity.AddComponent(new AI.MercenaryStateMachine());
+
+            Debug.Log($"[MercenaryManager] Restored hired mercenary {saved.Name} (Level {saved.Level} {job.Name})");
+            return mercEntity;
         }
 
         /// <summary>Gets all hired mercenaries</summary>

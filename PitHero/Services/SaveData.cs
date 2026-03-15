@@ -34,11 +34,30 @@ namespace PitHero.Services
         public int FarmingProficiency;
     }
 
+    /// <summary>Lightweight struct representing a saved hired mercenary.</summary>
+    public struct SavedMercenary
+    {
+        public string Name;
+        public string JobName;
+        public int Level;
+        public int BaseStrength;
+        public int BaseAgility;
+        public int BaseVitality;
+        public int BaseMagic;
+        public int CurrentHP;
+        public int CurrentMP;
+        public string[] EquipmentNames;
+        public Color SkinColor;
+        public Color HairColor;
+        public int HairstyleIndex;
+        public Color ShirtColor;
+    }
+
     /// <summary>Central save data container implementing IPersistable for binary persistence.</summary>
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 2;
+        public const int CurrentVersion = 3;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -174,6 +193,10 @@ namespace PitHero.Services
         /// <summary>Saved shortcut bar slots (8 slots).</summary>
         public List<SavedShortcutSlot> ShortcutSlots;
 
+        // Hired Mercenaries
+        /// <summary>Saved hired mercenaries.</summary>
+        public List<SavedMercenary> HiredMercenaries;
+
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
         {
@@ -186,6 +209,7 @@ namespace PitHero.Services
             DiscoveredStencils = new Dictionary<string, int>();
             AlliedMonsters = new List<SavedAlliedMonster>();
             ShortcutSlots = new List<SavedShortcutSlot>();
+            HiredMercenaries = new List<SavedMercenary>();
         }
 
         /// <summary>Writes all game state to the persistence writer.</summary>
@@ -330,6 +354,35 @@ namespace PitHero.Services
                 {
                     writer.Write(slot.SkillId ?? string.Empty);
                 }
+            }
+
+            // 13. Hired Mercenaries (added in version 3)
+            writer.Write(HiredMercenaries.Count);
+            for (int i = 0; i < HiredMercenaries.Count; i++)
+            {
+                SavedMercenary merc = HiredMercenaries[i];
+                writer.Write(merc.Name ?? string.Empty);
+                writer.Write(merc.JobName ?? string.Empty);
+                writer.Write(merc.Level);
+                writer.Write(merc.BaseStrength);
+                writer.Write(merc.BaseAgility);
+                writer.Write(merc.BaseVitality);
+                writer.Write(merc.BaseMagic);
+                writer.Write(merc.CurrentHP);
+                writer.Write(merc.CurrentMP);
+                for (int e = 0; e < 6; e++)
+                {
+                    bool hasEquip = merc.EquipmentNames != null && e < merc.EquipmentNames.Length && !string.IsNullOrEmpty(merc.EquipmentNames[e]);
+                    writer.Write(hasEquip);
+                    if (hasEquip)
+                    {
+                        writer.Write(merc.EquipmentNames[e]);
+                    }
+                }
+                WriteColor(writer, merc.SkinColor);
+                WriteColor(writer, merc.HairColor);
+                writer.Write(merc.HairstyleIndex);
+                WriteColor(writer, merc.ShirtColor);
             }
         }
 
@@ -482,6 +535,37 @@ namespace PitHero.Services
                         slot.SkillId = reader.ReadString();
                     }
                     ShortcutSlots.Add(slot);
+                }
+            }
+
+            // 13. Hired Mercenaries (added in version 3)
+            if (version >= 3)
+            {
+                int mercCount = reader.ReadInt();
+                HiredMercenaries = new List<SavedMercenary>(mercCount);
+                for (int i = 0; i < mercCount; i++)
+                {
+                    SavedMercenary merc;
+                    merc.Name = reader.ReadString();
+                    merc.JobName = reader.ReadString();
+                    merc.Level = reader.ReadInt();
+                    merc.BaseStrength = reader.ReadInt();
+                    merc.BaseAgility = reader.ReadInt();
+                    merc.BaseVitality = reader.ReadInt();
+                    merc.BaseMagic = reader.ReadInt();
+                    merc.CurrentHP = reader.ReadInt();
+                    merc.CurrentMP = reader.ReadInt();
+                    merc.EquipmentNames = new string[6];
+                    for (int e = 0; e < 6; e++)
+                    {
+                        bool hasEquip = reader.ReadBool();
+                        merc.EquipmentNames[e] = hasEquip ? reader.ReadString() : null;
+                    }
+                    merc.SkinColor = ReadColor(reader);
+                    merc.HairColor = ReadColor(reader);
+                    merc.HairstyleIndex = reader.ReadInt();
+                    merc.ShirtColor = ReadColor(reader);
+                    HiredMercenaries.Add(merc);
                 }
             }
         }
