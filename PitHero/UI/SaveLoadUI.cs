@@ -83,8 +83,9 @@ namespace PitHero.UI
             {
                 _actorsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas");
             }
-            catch (System.Exception)
+            catch (System.Exception ex)
             {
+                Debug.Warn("[SaveLoadUI] Failed to load Actors.atlas for hero previews: " + ex.Message);
                 _actorsAtlas = null;
             }
 
