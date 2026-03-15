@@ -1,6 +1,7 @@
 using Nez;
 using Nez.Sprites;
 using PitHero.Config;
+using RolePlayingFramework.Balance;
 using RolePlayingFramework.Equipment;
 
 namespace PitHero.ECS.Components
@@ -158,15 +159,29 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Generate cave biome loot for the given treasure level using existing equipment items.
+        /// Generate cave biome loot for the given treasure level.
+        /// Rolls consumable vs equipment first using CaveConsumableDropRate (60/40 split).
         /// </summary>
         public static IItem GenerateCaveItemForTreasureLevel(int treasureLevel)
         {
+            bool isConsumable = Nez.Random.NextFloat() < BalanceConfig.CaveConsumableDropRate;
+
+            if (isConsumable)
+            {
+                return treasureLevel switch
+                {
+                    1 => GenerateNormalPotion(),
+                    2 => BagItems.ForagersBag(),
+                    3 => GenerateMidPotion(),
+                    _ => GenerateItemForTreasureLevel(treasureLevel)
+                };
+            }
+
             return treasureLevel switch
             {
-                1 => GenerateCaveCommonLoot(),
-                2 => GenerateCaveUncommonLoot(),
-                3 => GenerateCaveRareLoot(),
+                1 => GenerateCaveCommonEquipment(),
+                2 => GenerateCaveUncommonEquipment(),
+                3 => GearItems.NecklaceOfHealth(),
                 _ => GenerateItemForTreasureLevel(treasureLevel)
             };
         }
@@ -217,11 +232,11 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Generate cave common loot from all Normal-rarity cave gear items (56 items) plus Normal potions.
+        /// Generate cave common equipment from all Normal-rarity cave gear items (56 items).
         /// </summary>
-        private static IItem GenerateCaveCommonLoot()
+        private static IItem GenerateCaveCommonEquipment()
         {
-            int random = Nez.Random.NextInt(59);
+            int random = Nez.Random.NextInt(56);
             switch (random)
             {
                 // Swords (Normal) — 0..10
@@ -289,21 +304,16 @@ namespace PitHero.ECS.Components
                 case 53: return GearItems.ReinforcedCap();
                 case 54: return GearItems.SquireHelm();
                 // Accessories (Normal) — 55
-                case 55: return GearItems.ProtectRing();
-                // Potions (Normal) — 56..58
-                case 56: return PotionItems.HPPotion();
-                case 57: return PotionItems.MPPotion();
-                default: return PotionItems.MixPotion();
+                default: return GearItems.ProtectRing();
             }
         }
 
         /// <summary>
-        /// Generate cave uncommon loot from all Uncommon-rarity cave gear items plus Uncommon bags.
-        /// All 78 items in this pool are verified Uncommon rarity.
+        /// Generate cave uncommon equipment from all Uncommon-rarity cave gear items (77 items).
         /// </summary>
-        private static IItem GenerateCaveUncommonLoot()
+        private static IItem GenerateCaveUncommonEquipment()
         {
-            int random = Nez.Random.NextInt(78);
+            int random = Nez.Random.NextInt(77);
             switch (random)
             {
                 // Swords (Uncommon) — 0..13
@@ -392,24 +402,7 @@ namespace PitHero.ECS.Components
                 case 74: return GearItems.WingedHelm();
                 // Accessories (Uncommon) — 75..76
                 case 75: return GearItems.MagicChain();
-                case 76: return GearItems.RingOfPower();
-                // Bags (Uncommon) — 77
-                default: return BagItems.ForagersBag();
-            }
-        }
-
-        /// <summary>
-        /// Generate cave rare loot from all Rare-rarity items (4 items).
-        /// </summary>
-        private static IItem GenerateCaveRareLoot()
-        {
-            int random = Nez.Random.NextInt(4);
-            switch (random)
-            {
-                case 0: return GearItems.NecklaceOfHealth();
-                case 1: return PotionItems.MidHPPotion();
-                case 2: return PotionItems.MidMPPotion();
-                default: return PotionItems.MidMixPotion();
+                default: return GearItems.RingOfPower();
             }
         }
 
