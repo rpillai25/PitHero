@@ -306,6 +306,43 @@ namespace PitHero.Services
                 }
             }
 
+            // Hired mercenaries
+            var mercManager = Core.Services.GetService<MercenaryManager>();
+            if (mercManager != null)
+            {
+                var hiredMercs = mercManager.GetHiredMercenaries();
+                data.HiredMercenaries = new List<SavedMercenary>(hiredMercs.Count);
+                for (int i = 0; i < hiredMercs.Count; i++)
+                {
+                    var mercComp = hiredMercs[i].GetComponent<MercenaryComponent>();
+                    if (mercComp?.LinkedMercenary == null) continue;
+
+                    var merc = mercComp.LinkedMercenary;
+                    var savedMerc = new SavedMercenary();
+                    savedMerc.Name = merc.Name;
+                    savedMerc.JobName = merc.Job.Name;
+                    savedMerc.Level = merc.Level;
+                    savedMerc.BaseStrength = merc.BaseStats.Strength;
+                    savedMerc.BaseAgility = merc.BaseStats.Agility;
+                    savedMerc.BaseVitality = merc.BaseStats.Vitality;
+                    savedMerc.BaseMagic = merc.BaseStats.Magic;
+                    savedMerc.CurrentHP = merc.CurrentHP;
+                    savedMerc.CurrentMP = merc.CurrentMP;
+                    savedMerc.EquipmentNames = new string[6];
+                    savedMerc.EquipmentNames[0] = merc.WeaponShield1?.Name ?? "";
+                    savedMerc.EquipmentNames[1] = merc.Armor?.Name ?? "";
+                    savedMerc.EquipmentNames[2] = merc.Hat?.Name ?? "";
+                    savedMerc.EquipmentNames[3] = merc.WeaponShield2?.Name ?? "";
+                    savedMerc.EquipmentNames[4] = merc.Accessory1?.Name ?? "";
+                    savedMerc.EquipmentNames[5] = merc.Accessory2?.Name ?? "";
+                    savedMerc.SkinColor = mercComp.SkinColor;
+                    savedMerc.HairColor = mercComp.HairColor;
+                    savedMerc.HairstyleIndex = mercComp.HairstyleIndex;
+                    savedMerc.ShirtColor = mercComp.ShirtColor;
+                    data.HiredMercenaries.Add(savedMerc);
+                }
+            }
+
             // Shortcut bar
             var shortcutBarService = Core.Services.GetService<ShortcutBarService>();
             if (shortcutBarService?.ShortcutBar != null)
