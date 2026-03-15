@@ -129,6 +129,16 @@ namespace RolePlayingFramework.Balance
 
         #endregion
 
+        #region Loot Drop Constants
+
+        /// <summary>
+        /// Probability that a cave treasure chest contains a consumable instead of equipment.
+        /// 0.6 = 60% consumables, 40% equipment.
+        /// </summary>
+        public const float CaveConsumableDropRate = 0.6f;
+
+        #endregion
+
         #region Rarity Multipliers
 
         /// <summary>

@@ -281,5 +281,28 @@ namespace PitHero.Tests
                     $"Cave level 3 loot must be Rare rarity but got {item.Rarity} ({item.Name}) on iteration {i}");
             }
         }
+
+        [TestMethod]
+        public void CaveLoot_ConsumableToEquipmentRatio_Approximately60To40()
+        {
+            int consumableCount = 0;
+            int equipmentCount = 0;
+            int totalIterations = 5000;
+
+            for (int i = 0; i < totalIterations; i++)
+            {
+                var item = TreasureComponent.GenerateCaveItemForTreasureLevel(1);
+                if (item is Consumable)
+                    consumableCount++;
+                else
+                    equipmentCount++;
+            }
+
+            double consumableRatio = (double)consumableCount / totalIterations;
+
+            // Allow a reasonable tolerance (±5%) around the expected 60% consumable rate
+            Assert.IsTrue(consumableRatio > 0.55 && consumableRatio < 0.65,
+                $"Consumable ratio should be approximately 60% but was {consumableRatio:P1} ({consumableCount} consumables, {equipmentCount} equipment)");
+        }
     }
 }
