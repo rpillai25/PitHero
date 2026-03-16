@@ -547,7 +547,7 @@ namespace PitHero.UI
 
             // Pit Priority section (extra top padding to clear tab buttons)
             var pitPriorityLabel = new Label("Pit Priority", skin, "ph-default");
-            container.Add(pitPriorityLabel).SetAlign(Align.Left).SetPadTop(15f).SetPadBottom(5f);
+            container.Add(pitPriorityLabel).SetAlign(Align.Left).SetPadTop(72f).SetPadBottom(5f);
             container.Row();
 
             InitializePriorityItems();
