@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
+using PitHero.ECS.Components;
 using PitHero.Services;
 using System;
 
@@ -20,6 +21,7 @@ namespace PitHero.UI
         // Tab management using actual TabPane
         private TabPane _tabPane;
         private Tab _windowTab;
+        private Tab _behaviorTab;
         private Tab _sessionTab;
 
         // Window positioning controls
@@ -46,6 +48,14 @@ namespace PitHero.UI
         private TextButton _saveButton;
         private TextButton _quitButton;
         private SaveLoadUI _saveLoadUI;
+
+        // Behavior tab controls
+        private ButtonGroup _battleTacticButtonGroup;
+        private CheckBox _blitzButton;
+        private CheckBox _strategicButton;
+        private CheckBox _defensiveButton;
+        private CheckBox _useConsumablesOnMercsCheckBox;
+        private CheckBox _mercsCanUseConsumablesCheckBox;
 
         // Confirmation dialog
         private Window _confirmationDialog;
@@ -228,14 +238,17 @@ namespace PitHero.UI
             // Create tabs with content
             var tabStyle = CreateTabStyle(skin);
             _windowTab = new Tab("Window", tabStyle);
+            _behaviorTab = new Tab("Behavior", tabStyle);
             _sessionTab = new Tab("Session", tabStyle);
 
             // Add content to tabs
             PopulateWindowTab(_windowTab, skin);
+            PopulateBehaviorTab(_behaviorTab, skin);
             PopulateSessionTab(_sessionTab, skin);
 
             // Add tabs to TabPane
             _tabPane.AddTab(_windowTab);
+            _tabPane.AddTab(_behaviorTab);
             _tabPane.AddTab(_sessionTab);
 
             // Add TabPane to settings window
@@ -446,6 +459,110 @@ namespace PitHero.UI
 
             // Add scroll pane to the tab with padding on the cell, not the content
             windowTab.Add(scrollPane).Expand().Fill().Pad(20);
+        }
+
+        /// <summary>
+        /// Populates the Behavior tab with battle tactic and consumable option controls
+        /// </summary>
+        private void PopulateBehaviorTab(Tab behaviorTab, Skin skin)
+        {
+            var content = new Table();
+
+            // Battle Tactics section
+            var tacticsLabel = new Label("Battle Tactics:", skin, "ph-default");
+            content.Add(tacticsLabel).Left().SetPadBottom(10);
+            content.Row();
+
+            _battleTacticButtonGroup = new ButtonGroup();
+
+            _blitzButton = new CheckBox("Blitz", skin, "ph-default");
+            _strategicButton = new CheckBox("Strategic", skin, "ph-default");
+            _defensiveButton = new CheckBox("Defensive", skin, "ph-default");
+
+            _battleTacticButtonGroup.Add(_blitzButton);
+            _battleTacticButtonGroup.Add(_strategicButton);
+            _battleTacticButtonGroup.Add(_defensiveButton);
+
+            var blitzTable = new Table();
+            blitzTable.Add(_blitzButton).Left();
+            blitzTable.Row();
+            blitzTable.Add(new Label("  Max damage, ignore healing", skin, "ph-default")).Left().SetPadLeft(20);
+            content.Add(blitzTable).Left().SetPadBottom(8);
+            content.Row();
+
+            var strategicTable = new Table();
+            strategicTable.Add(_strategicButton).Left();
+            strategicTable.Row();
+            strategicTable.Add(new Label("  Balanced attacks and healing", skin, "ph-default")).Left().SetPadLeft(20);
+            content.Add(strategicTable).Left().SetPadBottom(8);
+            content.Row();
+
+            var defensiveTable = new Table();
+            defensiveTable.Add(_defensiveButton).Left();
+            defensiveTable.Row();
+            defensiveTable.Add(new Label("  Prioritize survival, heal at 60%", skin, "ph-default")).Left().SetPadLeft(20);
+            content.Add(defensiveTable).Left().SetPadBottom(20);
+            content.Row();
+
+            // Default to Strategic
+            _strategicButton.IsChecked = true;
+
+            // Wire up events
+            _blitzButton.OnChanged += (isChecked) =>
+            {
+                if (isChecked)
+                {
+                    var heroComp = Game1.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
+                    if (heroComp != null) heroComp.CurrentBattleTactic = BattleTactic.Blitz;
+                }
+            };
+            _strategicButton.OnChanged += (isChecked) =>
+            {
+                if (isChecked)
+                {
+                    var heroComp = Game1.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
+                    if (heroComp != null) heroComp.CurrentBattleTactic = BattleTactic.Strategic;
+                }
+            };
+            _defensiveButton.OnChanged += (isChecked) =>
+            {
+                if (isChecked)
+                {
+                    var heroComp = Game1.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
+                    if (heroComp != null) heroComp.CurrentBattleTactic = BattleTactic.Defensive;
+                }
+            };
+
+            // Consumable Options section
+            var consumableLabel = new Label("Consumable Options:", skin, "ph-default");
+            content.Add(consumableLabel).Left().SetPadBottom(10);
+            content.Row();
+
+            _useConsumablesOnMercsCheckBox = new CheckBox("Use consumable items on mercenaries", skin, "ph-default");
+            _useConsumablesOnMercsCheckBox.IsChecked = true;
+            _useConsumablesOnMercsCheckBox.OnChanged += (isChecked) =>
+            {
+                var heroComp = Game1.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
+                if (heroComp != null) heroComp.UseConsumablesOnMercenaries = isChecked;
+            };
+            content.Add(_useConsumablesOnMercsCheckBox).Left().SetPadBottom(10);
+            content.Row();
+
+            _mercsCanUseConsumablesCheckBox = new CheckBox("Mercenaries can use consumable items", skin, "ph-default");
+            _mercsCanUseConsumablesCheckBox.IsChecked = true;
+            _mercsCanUseConsumablesCheckBox.OnChanged += (isChecked) =>
+            {
+                var heroComp = Game1.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
+                if (heroComp != null) heroComp.MercenariesCanUseConsumables = isChecked;
+            };
+            content.Add(_mercsCanUseConsumablesCheckBox).Left();
+
+            // Wrap in scroll pane for consistency with other tabs
+            var scrollPane = new ScrollPane(content, skin, "ph-default");
+            scrollPane.SetScrollingDisabled(true, false);
+            scrollPane.SetFadeScrollBars(false);
+
+            behaviorTab.Add(scrollPane).Expand().Fill().Pad(20);
         }
 
         /// <summary>
