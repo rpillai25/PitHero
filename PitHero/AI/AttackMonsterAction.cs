@@ -7,6 +7,9 @@ using PitHero.Services;
 using PitHero.Util;
 using PitHero.Util.SoundEffectTypes;
 using RolePlayingFramework.Combat;
+using RolePlayingFramework.Heroes;
+using RolePlayingFramework.Mercenaries;
+using RolePlayingFramework.Skills;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -211,6 +214,27 @@ namespace PitHero.AI
         }
 
         /// <summary>
+        /// Find the entity associated with a healing/buff target (hero or mercenary)
+        /// </summary>
+        private Entity FindTargetEntity(object target, bool targetsHero, HeroComponent heroComponent, List<Entity> validMercenaries)
+        {
+            if (targetsHero || target is Hero)
+                return heroComponent.Entity;
+
+            if (target is Mercenary merc)
+            {
+                for (int i = 0; i < validMercenaries.Count; i++)
+                {
+                    var mc = validMercenaries[i].GetComponent<MercenaryComponent>();
+                    if (mc?.LinkedMercenary == merc)
+                        return validMercenaries[i];
+                }
+            }
+
+            return heroComponent.Entity;
+        }
+
+        /// <summary>
         /// Make hero face the target position
         /// </summary>
         private void FaceTarget(HeroComponent hero, Vector2 targetPosition)
@@ -406,11 +430,28 @@ namespace PitHero.AI
                         {
                             participant.TurnValue = CalculateTurnValue(hero.GetTotalStats().Agility);
 
-                            // Queue default attack for hero if queue is empty
+                            // Use AI to decide action when queue is empty
                             if (!heroComponent.BattleActionQueue.HasActions())
                             {
-                                // Use equipped weapon or null for unarmed attack
-                                heroComponent.BattleActionQueue.EnqueueAttack(hero.WeaponShield1);
+                                var currentLivingMonsters = GetLivingMonsters(validMonsters);
+                                var decision = BattleTacticDecisionEngine.DecideHeroAction(heroComponent, currentLivingMonsters, validMercenaries);
+
+                                switch (decision.Kind)
+                                {
+                                    case BattleAction.ActionKind.UseAttackSkill:
+                                        heroComponent.BattleActionQueue.EnqueueSkill(decision.Skill);
+                                        break;
+                                    case BattleAction.ActionKind.UseHealingSkill:
+                                        heroComponent.BattleActionQueue.EnqueueSkill(decision.Skill, decision.Target, decision.TargetsHero);
+                                        break;
+                                    case BattleAction.ActionKind.UseConsumable:
+                                        heroComponent.BattleActionQueue.EnqueueItem(decision.Consumable, decision.BagIndex, decision.Target, decision.TargetsHero);
+                                        break;
+                                    case BattleAction.ActionKind.PhysicalAttack:
+                                    default:
+                                        heroComponent.BattleActionQueue.EnqueueAttack(hero.WeaponShield1);
+                                        break;
+                                }
                             }
                         }
                         else if (participant.Type == BattleParticipant.ParticipantType.Mercenary)
@@ -463,18 +504,45 @@ namespace PitHero.AI
 
                                 if (queuedAction.ActionType == QueuedActionType.UseItem)
                                 {
-                                    // Use the queued consumable
                                     var consumable = queuedAction.Consumable;
+                                    var consumeTarget = queuedAction.Target ?? hero;
                                     Debug.Log($"[AttackMonster] Using queued item: {consumable.Name}");
 
-                                    if (consumable.Consume(hero))
+                                    // Track HP before for healing display
+                                    int hpBeforeItem = 0;
+                                    if (consumeTarget is Hero heroPreItem)
+                                        hpBeforeItem = heroPreItem.CurrentHP;
+                                    else if (consumeTarget is Mercenary mercPreItem)
+                                        hpBeforeItem = mercPreItem.CurrentHP;
+
+                                    if (consumable.Consume(consumeTarget))
                                     {
-                                        // Decrement stack or remove item from bag
                                         heroComponent.Bag.ConsumeFromStack(queuedAction.BagIndex);
                                         Debug.Log($"[AttackMonster] Successfully used {consumable.Name}");
-
-                                        // Notify UI that inventory has changed
                                         PitHero.UI.InventorySelectionManager.OnInventoryChanged?.Invoke();
+
+                                        // Show healing effect if HP was restored
+                                        int hpAfterItem = 0;
+                                        if (consumeTarget is Hero heroPostItem)
+                                            hpAfterItem = heroPostItem.CurrentHP;
+                                        else if (consumeTarget is Mercenary mercPostItem)
+                                            hpAfterItem = mercPostItem.CurrentHP;
+
+                                        int itemHealAmount = hpAfterItem - hpBeforeItem;
+                                        if (itemHealAmount > 0)
+                                        {
+                                            var itemTargetEntity = FindTargetEntity(consumeTarget, queuedAction.TargetsHero, heroComponent, validMercenaries);
+                                            SoundEffectManager itemSfx = Core.GetGlobalManager<SoundEffectManager>();
+                                            itemSfx?.PlaySound(SoundEffectType.Restorative);
+
+                                            var itemDigit = itemTargetEntity?.GetComponent<BouncyDigitComponent>();
+                                            if (itemDigit != null)
+                                            {
+                                                itemDigit.Init(itemHealAmount, Color.Green, false);
+                                                itemDigit.SetEnabled(true);
+                                                yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+                                            }
+                                        }
                                     }
                                     else
                                     {
@@ -490,7 +558,52 @@ namespace PitHero.AI
                                     // Check if hero has enough MP
                                     if (hero.CurrentMP >= skill.MPCost)
                                     {
-                                        // Get living monsters as targets
+                                        // Check if this is a healing/buff skill (targets allies)
+                                        if (skill.HPRestoreAmount > 0 || skill.MPRestoreAmount > 0 ||
+                                            skill.TargetType == SkillTargetType.Self ||
+                                            skill.TargetType == SkillTargetType.SingleAlly ||
+                                            skill.TargetType == SkillTargetType.AllAllies)
+                                        {
+                                            hero.SpendMP(skill.MPCost);
+                                            var healTarget = queuedAction.Target ?? hero;
+
+                                            if (skill.HPRestoreAmount > 0)
+                                            {
+                                                bool healed = false;
+                                                if (healTarget is Hero hpHero)
+                                                    healed = hpHero.RestoreHP(skill.HPRestoreAmount);
+                                                else if (healTarget is Mercenary hpMerc)
+                                                    healed = hpMerc.RestoreHP(skill.HPRestoreAmount);
+
+                                                if (healed)
+                                                {
+                                                    var hEntity = FindTargetEntity(healTarget, queuedAction.TargetsHero, heroComponent, validMercenaries);
+                                                    SoundEffectManager hSfx = Core.GetGlobalManager<SoundEffectManager>();
+                                                    hSfx?.PlaySound(SoundEffectType.Restorative);
+
+                                                    var hDigit = hEntity?.GetComponent<BouncyDigitComponent>();
+                                                    if (hDigit != null)
+                                                    {
+                                                        hDigit.Init(skill.HPRestoreAmount, Color.Green, false);
+                                                        hDigit.SetEnabled(true);
+                                                        yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+                                                    }
+                                                }
+                                            }
+
+                                            if (skill.MPRestoreAmount > 0)
+                                            {
+                                                if (healTarget is Hero mpHero)
+                                                    mpHero.RestoreMP(skill.MPRestoreAmount);
+                                                else if (healTarget is Mercenary mpMerc)
+                                                    mpMerc.RestoreMP(skill.MPRestoreAmount);
+                                            }
+
+                                            Debug.Log($"[AttackMonster] Used healing skill {skill.Name}");
+                                        }
+                                        else
+                                        {
+                                        // Attack skill - get living monsters as targets
                                         var livingMonsters = GetLivingMonsters(validMonsters);
 
                                         if (livingMonsters.Count == 0) break; // All monsters dead
@@ -577,6 +690,7 @@ namespace PitHero.AI
                                         {
                                             yield return FadeOutAndDestroyMonster(deadMonster);
                                         }
+                                        } // end attack skill else
                                     }
                                     else
                                     {
@@ -680,7 +794,6 @@ namespace PitHero.AI
                         }
                         else if (participant.Type == BattleParticipant.ParticipantType.Mercenary)
                         {
-                            // Mercenary's turn - attack a random monster
                             var mercComponent = participant.MercenaryEntity.GetComponent<MercenaryComponent>();
                             if (mercComponent?.LinkedMercenary == null || mercComponent.LinkedMercenary.CurrentHP <= 0) continue;
 
@@ -688,73 +801,288 @@ namespace PitHero.AI
                             var mercBattleStats = BattleStats.CalculateForMercenary(mercenary);
 
                             var livingMonsters = GetLivingMonsters(validMonsters);
-                            if (livingMonsters.Count == 0) break; // All monsters dead
+                            if (livingMonsters.Count == 0) break;
 
-                            var targetMonster = livingMonsters[Nez.Random.Range(0, livingMonsters.Count)];
-                            var targetEnemy = targetMonster.GetComponent<EnemyComponent>().Enemy;
-                            var targetBattleStats = BattleStats.CalculateForMonster(targetEnemy);
+                            var mercDecision = BattleTacticDecisionEngine.DecideMercenaryAction(mercComponent, heroComponent, livingMonsters, validMercenaries);
 
-                            Debug.Log($"[AttackMonster] {mercenary.Name}'s turn - attacking {targetEnemy.Name}");
-
-                            // Make mercenary face the target monster
-                            FaceTarget(participant.MercenaryEntity, targetMonster.Transform.Position);
-
-                            var mercAttackResult = attackResolver.Resolve(mercBattleStats, targetBattleStats, DamageKind.Physical);
-
-                            // Play punch sound effect for unarmed attacks (mercenaries currently don't have weapons)
-                            SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
-                            soundEffectManager?.PlaySound(SoundEffectType.Punch);
-
-                            if (mercAttackResult.Hit)
+                            switch (mercDecision.Kind)
                             {
-                                bool enemyDied = targetEnemy.TakeDamage(mercAttackResult.Damage);
-                                Debug.Log($"[AttackMonster] {mercenary.Name} deals {mercAttackResult.Damage} damage to {targetEnemy.Name}. Enemy HP: {targetEnemy.CurrentHP}/{targetEnemy.MaxHP}");
-
-                                // Display damage on enemy
-                                var enemyBouncyDigit = targetMonster.GetComponent<BouncyDigitComponent>();
-                                if (enemyBouncyDigit != null)
+                                case BattleAction.ActionKind.UseHealingSkill:
                                 {
-                                    enemyBouncyDigit.Init(mercAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor, false);
-                                    enemyBouncyDigit.SetEnabled(true);
-                                    yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+                                    var healSkill = mercDecision.Skill;
+                                    if (mercenary.CurrentMP >= healSkill.MPCost)
+                                    {
+                                        mercenary.UseMP(healSkill.MPCost);
+                                        var healTarget = mercDecision.Target;
+                                        if (healTarget == null) healTarget = hero;
+
+                                        if (healSkill.HPRestoreAmount > 0)
+                                        {
+                                            bool healed = false;
+                                            if (healTarget is Hero mhHero)
+                                                healed = mhHero.RestoreHP(healSkill.HPRestoreAmount);
+                                            else if (healTarget is Mercenary mhMerc)
+                                                healed = mhMerc.RestoreHP(healSkill.HPRestoreAmount);
+
+                                            if (healed)
+                                            {
+                                                var mhEntity = FindTargetEntity(healTarget, mercDecision.TargetsHero, heroComponent, validMercenaries);
+                                                SoundEffectManager mhSfx = Core.GetGlobalManager<SoundEffectManager>();
+                                                mhSfx?.PlaySound(SoundEffectType.Restorative);
+
+                                                var mhDigit = mhEntity?.GetComponent<BouncyDigitComponent>();
+                                                if (mhDigit != null)
+                                                {
+                                                    mhDigit.Init(healSkill.HPRestoreAmount, Color.Green, false);
+                                                    mhDigit.SetEnabled(true);
+                                                    yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+                                                }
+                                            }
+                                        }
+
+                                        if (healSkill.MPRestoreAmount > 0)
+                                        {
+                                            if (healTarget is Hero mpRestoreHero)
+                                                mpRestoreHero.RestoreMP(healSkill.MPRestoreAmount);
+                                            else if (healTarget is Mercenary mpRestoreMerc)
+                                                mpRestoreMerc.RestoreMP(healSkill.MPRestoreAmount);
+                                        }
+
+                                        Debug.Log($"[AttackMonster] {mercenary.Name} used {healSkill.Name}");
+                                    }
+                                    break;
                                 }
 
-                                if (enemyDied)
+                                case BattleAction.ActionKind.UseConsumable:
                                 {
-                                    Debug.Log($"[AttackMonster] {targetEnemy.Name} defeated by {mercenary.Name}! Starting fade out");
-                                    
-                                    // Add gold to global Funds (mercenaries don't gain XP/JP/SP but gold is still awarded)
-                                    var gameState = Nez.Core.Services.GetService<PitHero.Services.GameStateService>();
-                                    if (gameState != null)
-                                    {
-                                        gameState.Funds += targetEnemy.GoldYield;
-                                        Debug.Log($"[AttackMonster] Earned {targetEnemy.GoldYield} Gold (Total: {gameState.Funds})");
-                                    }
+                                    var mcConsumable = mercDecision.Consumable;
+                                    var mcTarget = mercDecision.Target ?? hero;
 
-                                    // Try to recruit the defeated monster
-                                    var alliedMonsterMgr = Core.Services.GetService<PitHero.Services.AlliedMonsterManager>();
-                                    if (alliedMonsterMgr != null)
+                                    int mcHpBefore = 0;
+                                    if (mcTarget is Hero mcPreHero)
+                                        mcHpBefore = mcPreHero.CurrentHP;
+                                    else if (mcTarget is Mercenary mcPreMerc)
+                                        mcHpBefore = mcPreMerc.CurrentHP;
+
+                                    if (mcConsumable.Consume(mcTarget))
                                     {
-                                        var recruited = alliedMonsterMgr.TryRecruit(targetEnemy);
-                                        if (recruited != null)
-                                            Debug.Log($"[AttackMonster] {targetEnemy.Name} recruited as '{recruited.Name}'");
+                                        heroComponent.Bag.ConsumeFromStack(mercDecision.BagIndex);
+                                        Debug.Log($"[AttackMonster] {mercenary.Name} used {mcConsumable.Name}");
+                                        PitHero.UI.InventorySelectionManager.OnInventoryChanged?.Invoke();
+
+                                        int mcHpAfter = 0;
+                                        if (mcTarget is Hero mcPostHero)
+                                            mcHpAfter = mcPostHero.CurrentHP;
+                                        else if (mcTarget is Mercenary mcPostMerc)
+                                            mcHpAfter = mcPostMerc.CurrentHP;
+
+                                        int mcHealAmt = mcHpAfter - mcHpBefore;
+                                        if (mcHealAmt > 0)
+                                        {
+                                            var mcHealEntity = FindTargetEntity(mcTarget, mercDecision.TargetsHero, heroComponent, validMercenaries);
+                                            SoundEffectManager mcSfx = Core.GetGlobalManager<SoundEffectManager>();
+                                            mcSfx?.PlaySound(SoundEffectType.Restorative);
+
+                                            var mcDigit = mcHealEntity?.GetComponent<BouncyDigitComponent>();
+                                            if (mcDigit != null)
+                                            {
+                                                mcDigit.Init(mcHealAmt, Color.Green, false);
+                                                mcDigit.SetEnabled(true);
+                                                yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+                                            }
+                                        }
                                     }
-                                    
-                                    validMonsters.Remove(targetMonster);
-                                    yield return FadeOutAndDestroyMonster(targetMonster);
+                                    break;
                                 }
-                            }
-                            else
-                            {
-                                Debug.Log($"[AttackMonster] {mercenary.Name} missed {targetEnemy.Name}!");
 
-                                // Display "Miss" on enemy
-                                var enemyBouncyText = targetMonster.GetComponent<BouncyTextComponent>();
-                                if (enemyBouncyText != null)
+                                case BattleAction.ActionKind.UseAttackSkill:
                                 {
-                                    enemyBouncyText.Init("Miss", BouncyTextComponent.EnemyMissColor);
-                                    enemyBouncyText.SetEnabled(true);
-                                    yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+                                    var atkSkill = mercDecision.Skill;
+                                    if (mercenary.CurrentMP >= atkSkill.MPCost)
+                                    {
+                                        mercenary.UseMP(atkSkill.MPCost);
+                                        var skillDamageKind = atkSkill.Element != ElementType.Neutral ? DamageKind.Magical : DamageKind.Physical;
+
+                                        // Build target list based on skill target type
+                                        var skillLiving = GetLivingMonsters(validMonsters);
+                                        if (skillLiving.Count == 0) break;
+
+                                        bool isAoE = atkSkill.TargetType == SkillTargetType.SurroundingEnemies;
+                                        int startIndex = 0;
+                                        int endIndex = isAoE ? skillLiving.Count : 1;
+
+                                        // For single target, pick the decision target or random
+                                        if (!isAoE && mercDecision.TargetEntity != null)
+                                        {
+                                            int found = -1;
+                                            for (int si = 0; si < skillLiving.Count; si++)
+                                            {
+                                                if (skillLiving[si] == mercDecision.TargetEntity)
+                                                {
+                                                    found = si;
+                                                    break;
+                                                }
+                                            }
+                                            if (found >= 0)
+                                            {
+                                                startIndex = found;
+                                                endIndex = found + 1;
+                                            }
+                                        }
+
+                                        for (int si = startIndex; si < endIndex && si < skillLiving.Count; si++)
+                                        {
+                                            var sMonsterEntity = skillLiving[si];
+                                            var sEnemyComp = sMonsterEntity.GetComponent<EnemyComponent>();
+                                            if (sEnemyComp?.Enemy == null || sEnemyComp.Enemy.CurrentHP <= 0) continue;
+
+                                            var sEnemy = sEnemyComp.Enemy;
+                                            var sTargetStats = BattleStats.CalculateForMonster(sEnemy);
+                                            var sResult = attackResolver.Resolve(mercBattleStats, sTargetStats, skillDamageKind);
+
+                                            FaceTarget(participant.MercenaryEntity, sMonsterEntity.Transform.Position);
+
+                                            if (sResult.Hit)
+                                            {
+                                                bool sEnemyDied = sEnemy.TakeDamage(sResult.Damage);
+                                                Debug.Log($"[AttackMonster] {mercenary.Name}'s {atkSkill.Name} dealt {sResult.Damage} to {sEnemy.Name}. HP: {sEnemy.CurrentHP}/{sEnemy.MaxHP}");
+
+                                                var sDigit = sMonsterEntity.GetComponent<BouncyDigitComponent>();
+                                                if (sDigit != null)
+                                                {
+                                                    sDigit.Init(sResult.Damage, BouncyDigitComponent.EnemyDigitColor, false);
+                                                    sDigit.SetEnabled(true);
+                                                }
+
+                                                if (sEnemyDied)
+                                                {
+                                                    Debug.Log($"[AttackMonster] {sEnemy.Name} defeated by {mercenary.Name}'s {atkSkill.Name}!");
+
+                                                    var sGameState = Nez.Core.Services.GetService<PitHero.Services.GameStateService>();
+                                                    if (sGameState != null)
+                                                    {
+                                                        sGameState.Funds += sEnemy.GoldYield;
+                                                        Debug.Log($"[AttackMonster] Earned {sEnemy.GoldYield} Gold (Total: {sGameState.Funds})");
+                                                    }
+
+                                                    var sAllyMgr = Core.Services.GetService<PitHero.Services.AlliedMonsterManager>();
+                                                    if (sAllyMgr != null)
+                                                    {
+                                                        var sRecruited = sAllyMgr.TryRecruit(sEnemy);
+                                                        if (sRecruited != null)
+                                                            Debug.Log($"[AttackMonster] {sEnemy.Name} recruited as '{sRecruited.Name}'");
+                                                    }
+
+                                                    validMonsters.Remove(sMonsterEntity);
+                                                }
+                                            }
+                                            else
+                                            {
+                                                Debug.Log($"[AttackMonster] {mercenary.Name}'s {atkSkill.Name} missed {sEnemy.Name}!");
+                                                var sMissText = sMonsterEntity.GetComponent<BouncyTextComponent>();
+                                                if (sMissText != null)
+                                                {
+                                                    sMissText.Init("Miss", BouncyTextComponent.EnemyMissColor);
+                                                    sMissText.SetEnabled(true);
+                                                }
+                                            }
+                                        }
+
+                                        yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+
+                                        // Fade out dead monsters
+                                        for (int di = skillLiving.Count - 1; di >= 0; di--)
+                                        {
+                                            var dEntity = skillLiving[di];
+                                            var dComp = dEntity.GetComponent<EnemyComponent>();
+                                            if (dComp?.Enemy != null && dComp.Enemy.CurrentHP <= 0)
+                                            {
+                                                yield return FadeOutAndDestroyMonster(dEntity);
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Debug.Log($"[AttackMonster] {mercenary.Name} not enough MP for {atkSkill.Name}");
+                                    }
+                                    break;
+                                }
+
+                                case BattleAction.ActionKind.PhysicalAttack:
+                                default:
+                                {
+                                    // Physical attack - use target from decision or pick random
+                                    var paTarget = mercDecision.TargetEntity;
+                                    if (paTarget == null || paTarget.GetComponent<EnemyComponent>()?.Enemy?.CurrentHP <= 0)
+                                    {
+                                        var paLiving = GetLivingMonsters(validMonsters);
+                                        if (paLiving.Count == 0) break;
+                                        paTarget = paLiving[Nez.Random.Range(0, paLiving.Count)];
+                                    }
+
+                                    var targetEnemy = paTarget.GetComponent<EnemyComponent>().Enemy;
+                                    var targetBattleStats = BattleStats.CalculateForMonster(targetEnemy);
+
+                                    Debug.Log($"[AttackMonster] {mercenary.Name}'s turn - attacking {targetEnemy.Name}");
+
+                                    // Make mercenary face the target monster
+                                    FaceTarget(participant.MercenaryEntity, paTarget.Transform.Position);
+
+                                    var mercAttackResult = attackResolver.Resolve(mercBattleStats, targetBattleStats, DamageKind.Physical);
+
+                                    // Play punch sound effect
+                                    SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
+                                    soundEffectManager?.PlaySound(SoundEffectType.Punch);
+
+                                    if (mercAttackResult.Hit)
+                                    {
+                                        bool enemyDied = targetEnemy.TakeDamage(mercAttackResult.Damage);
+                                        Debug.Log($"[AttackMonster] {mercenary.Name} deals {mercAttackResult.Damage} damage to {targetEnemy.Name}. Enemy HP: {targetEnemy.CurrentHP}/{targetEnemy.MaxHP}");
+
+                                        var enemyBouncyDigit = paTarget.GetComponent<BouncyDigitComponent>();
+                                        if (enemyBouncyDigit != null)
+                                        {
+                                            enemyBouncyDigit.Init(mercAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor, false);
+                                            enemyBouncyDigit.SetEnabled(true);
+                                            yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+                                        }
+
+                                        if (enemyDied)
+                                        {
+                                            Debug.Log($"[AttackMonster] {targetEnemy.Name} defeated by {mercenary.Name}! Starting fade out");
+                                            
+                                            var gameState = Nez.Core.Services.GetService<PitHero.Services.GameStateService>();
+                                            if (gameState != null)
+                                            {
+                                                gameState.Funds += targetEnemy.GoldYield;
+                                                Debug.Log($"[AttackMonster] Earned {targetEnemy.GoldYield} Gold (Total: {gameState.Funds})");
+                                            }
+
+                                            var alliedMonsterMgr = Core.Services.GetService<PitHero.Services.AlliedMonsterManager>();
+                                            if (alliedMonsterMgr != null)
+                                            {
+                                                var recruited = alliedMonsterMgr.TryRecruit(targetEnemy);
+                                                if (recruited != null)
+                                                    Debug.Log($"[AttackMonster] {targetEnemy.Name} recruited as '{recruited.Name}'");
+                                            }
+                                            
+                                            validMonsters.Remove(paTarget);
+                                            yield return FadeOutAndDestroyMonster(paTarget);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        Debug.Log($"[AttackMonster] {mercenary.Name} missed {targetEnemy.Name}!");
+
+                                        var enemyBouncyText = paTarget.GetComponent<BouncyTextComponent>();
+                                        if (enemyBouncyText != null)
+                                        {
+                                            enemyBouncyText.Init("Miss", BouncyTextComponent.EnemyMissColor);
+                                            enemyBouncyText.SetEnabled(true);
+                                            yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+                                        }
+                                    }
+                                    break;
                                 }
                             }
                         }
