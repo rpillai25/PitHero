@@ -62,38 +62,50 @@ namespace PitHero.AI
         {
             // Find the target (hero or mercenary) with critical HP
             var target = FindCriticalHPTarget(hero, out bool isHero, out Entity targetEntity);
-            if (target == null)
+            if (target != null)
             {
-                Debug.Log("[UseHealingItemAction] No target with critical HP found");
-                hero.HealingItemExhausted = true;
-                return true; // Action complete (failed, but complete)
+                // Get target stats
+                int currentHP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).CurrentHP : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentHP;
+                int maxHP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).MaxHP : ((RolePlayingFramework.Mercenaries.Mercenary)target).MaxHP;
+                int currentMP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).CurrentMP : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentMP;
+                int maxMP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).MaxMP : ((RolePlayingFramework.Mercenaries.Mercenary)target).MaxMP;
+                string targetName = isHero ? ((RolePlayingFramework.Heroes.Hero)target).Name : ((RolePlayingFramework.Mercenaries.Mercenary)target).Name;
+
+                // Use all items from inventory
+                (IItem item, int bagIndex) = FindMostEfficientHealingItemFromBag(hero.Bag, currentHP, maxHP, currentMP, maxMP);
+                if (item != null)
+                {
+                    bool success = UseHealingItemFromBag(item as Consumable, bagIndex, target, isHero, hero);
+                    if (success)
+                    {
+                        Debug.Log($"[UseHealingItemAction] Successfully used {item.Name} on {targetName} from inventory");
+                        return true;
+                    }
+                }
             }
 
-            // Get target stats
-            int currentHP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).CurrentHP : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentHP;
-            int maxHP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).MaxHP : ((RolePlayingFramework.Mercenaries.Mercenary)target).MaxHP;
-            int currentMP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).CurrentMP : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentMP;
-            int maxMP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).MaxMP : ((RolePlayingFramework.Mercenaries.Mercenary)target).MaxMP;
-            string targetName = isHero ? ((RolePlayingFramework.Heroes.Hero)target).Name : ((RolePlayingFramework.Mercenaries.Mercenary)target).Name;
-
-            // Use all items from inventory
-            (IItem item, int bagIndex) = FindMostEfficientHealingItemFromBag(hero.Bag, currentHP, maxHP, currentMP, maxMP);
-            if (item == null)
+            // If no HP-critical target found (or no HP item found), check for MP-critical targets
+            var mpTarget = FindCriticalMPTarget(hero, out bool mpIsHero, out Entity mpTargetEntity);
+            if (mpTarget != null)
             {
-                Debug.Log("[UseHealingItemAction] No healing items available in inventory");
-                hero.HealingItemExhausted = true;
-                return true;
+                int currentMP = mpIsHero ? ((RolePlayingFramework.Heroes.Hero)mpTarget).CurrentMP : ((RolePlayingFramework.Mercenaries.Mercenary)mpTarget).CurrentMP;
+                int maxMP = mpIsHero ? ((RolePlayingFramework.Heroes.Hero)mpTarget).MaxMP : ((RolePlayingFramework.Mercenaries.Mercenary)mpTarget).MaxMP;
+                string mpTargetName = mpIsHero ? ((RolePlayingFramework.Heroes.Hero)mpTarget).Name : ((RolePlayingFramework.Mercenaries.Mercenary)mpTarget).Name;
+
+                (IItem mpItem, int mpBagIndex) = FindMostEfficientMPItemFromBag(hero.Bag, currentMP, maxMP);
+                if (mpItem != null)
+                {
+                    bool mpSuccess = UseHealingItemFromBag(mpItem as Consumable, mpBagIndex, mpTarget, mpIsHero, hero);
+                    if (mpSuccess)
+                    {
+                        Debug.Log($"[UseHealingItemAction] Successfully used {mpItem.Name} on {mpTargetName} for MP restoration");
+                        return true;
+                    }
+                }
             }
 
-            bool success = UseHealingItemFromBag(item as Consumable, bagIndex, target, isHero, hero);
-            if (!success)
-            {
-                Debug.Warn("[UseHealingItemAction] Failed to use healing item from bag");
-                hero.HealingItemExhausted = true;
-                return true;
-            }
-
-            Debug.Log($"[UseHealingItemAction] Successfully used {item.Name} on {targetName} from inventory");
+            Debug.Log("[UseHealingItemAction] No healing or MP items available");
+            hero.HealingItemExhausted = true;
             return true;
         }
 
@@ -139,6 +151,51 @@ namespace PitHero.AI
                     {
                         float mercHpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
                         if (mercHpPercent < GameConfig.HeroCriticalHPPercent)
+                        {
+                            isHero = false;
+                            targetEntity = merc;
+                            return mercComp.LinkedMercenary;
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Find the target (hero or mercenary) with critical MP (below 50%)
+        /// Returns the target object, whether it's a hero, and the entity reference
+        /// </summary>
+        private object FindCriticalMPTarget(HeroComponent heroComponent, out bool isHero, out Entity targetEntity)
+        {
+            isHero = true;
+            targetEntity = null;
+
+            // Check hero first
+            if (heroComponent.LinkedHero != null && heroComponent.LinkedHero.MaxMP > 0)
+            {
+                float mpPercent = (float)heroComponent.LinkedHero.CurrentMP / heroComponent.LinkedHero.MaxMP;
+                if (mpPercent < GameConfig.HeroCriticalMPPercent)
+                {
+                    targetEntity = heroComponent.Entity;
+                    return heroComponent.LinkedHero;
+                }
+            }
+
+            // Check mercenaries
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager != null)
+            {
+                var hiredMercenaries = mercenaryManager.GetHiredMercenaries();
+                for (int i = 0; i < hiredMercenaries.Count; i++)
+                {
+                    var merc = hiredMercenaries[i];
+                    var mercComp = merc.GetComponent<MercenaryComponent>();
+                    if (mercComp?.LinkedMercenary != null && mercComp.LinkedMercenary.MaxMP > 0)
+                    {
+                        float mercMpPercent = (float)mercComp.LinkedMercenary.CurrentMP / mercComp.LinkedMercenary.MaxMP;
+                        if (mercMpPercent < GameConfig.HeroCriticalMPPercent)
                         {
                             isHero = false;
                             targetEntity = merc;
@@ -250,6 +307,68 @@ namespace PitHero.AI
             else
             {
                 Debug.Log($"[UseHealingItemAction] No healing items found in bag");
+            }
+
+            return (bestItem, bestBagIndex);
+        }
+
+        /// <summary>
+        /// Find the most efficient MP-restoring consumable from the bag
+        /// Uses the same least-waste logic as HP healing but applied to MP values
+        /// </summary>
+        private (IItem, int) FindMostEfficientMPItemFromBag(RolePlayingFramework.Inventory.ItemBag bag, int currentMP, int maxMP)
+        {
+            int mpNeeded = maxMP - currentMP;
+            IItem bestItem = null;
+            int bestBagIndex = -1;
+            int bestWaste = int.MaxValue;
+
+            Debug.Log($"[UseHealingItemAction] Searching for MP item in bag. MP needed: {mpNeeded}");
+
+            for (int i = 0; i < bag.Capacity; i++)
+            {
+                var item = bag.GetSlotItem(i);
+                if (item == null || item.Kind != ItemKind.Consumable) continue;
+
+                var consumable = item as Consumable;
+                if (consumable == null) continue;
+
+                if (consumable.StackCount <= 0) continue;
+
+                // Don't use battle-only consumables outside of battle
+                if (consumable.BattleOnly) continue;
+
+                bool isFullMPHeal = consumable.MPRestoreAmount == -1;
+
+                // Skip items that don't restore MP
+                if (!isFullMPHeal && consumable.MPRestoreAmount <= 0) continue;
+
+                int waste;
+                if (isFullMPHeal)
+                {
+                    waste = MAX_WASTE_FULL_HEAL; // Save full restore potions for emergencies
+                }
+                else
+                {
+                    waste = System.Math.Abs(consumable.MPRestoreAmount - mpNeeded);
+                }
+
+                if (waste < bestWaste)
+                {
+                    bestWaste = waste;
+                    bestItem = item;
+                    bestBagIndex = i;
+                    Debug.Log($"[UseHealingItemAction] New best MP item from bag: {consumable.Name} at index {i} (waste: {waste})");
+                }
+            }
+
+            if (bestItem != null)
+            {
+                Debug.Log($"[UseHealingItemAction] Selected MP item from bag: {bestItem.Name} at index {bestBagIndex}");
+            }
+            else
+            {
+                Debug.Log($"[UseHealingItemAction] No MP items found in bag");
             }
 
             return (bestItem, bestBagIndex);

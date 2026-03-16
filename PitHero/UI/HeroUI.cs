@@ -58,6 +58,14 @@ namespace PitHero.UI
         private ReorderableTableList<string> _healPriorityList;
         private List<string> _healPriorityItems;
 
+        // Battle tactic and consumable option controls
+        private ButtonGroup _battleTacticButtonGroup;
+        private CheckBox _blitzButton;
+        private CheckBox _strategicButton;
+        private CheckBox _defensiveButton;
+        private CheckBox _useConsumablesOnMercsCheckBox;
+        private CheckBox _mercsCanUseConsumablesCheckBox;
+
         // Hero Crystal tab component
         private HeroCrystalTab _heroCrystalTab;
 
@@ -533,7 +541,7 @@ namespace PitHero.UI
 
         private void PopulatePrioritiesTab(Tab prioritiesTab, Skin skin)
         {
-            // Create a vertical container for both priority lists
+            // Create a vertical container for all behavior content
             var container = new Table();
             container.SetFillParent(true);
 
@@ -557,7 +565,101 @@ namespace PitHero.UI
             container.Add(_healPriorityList).SetExpandX().SetFillX().SetPadBottom(15f);
             container.Row();
 
-            prioritiesTab.Add(container).Expand().Fill().Pad(15f);
+            // Battle Tactics section
+            var tacticsLabel = new Label("Battle Tactics", skin, "ph-default");
+            container.Add(tacticsLabel).SetAlign(Align.Left).SetPadBottom(5f);
+            container.Row();
+
+            _battleTacticButtonGroup = new ButtonGroup();
+
+            _blitzButton = new CheckBox("Blitz", skin, "ph-default");
+            _strategicButton = new CheckBox("Strategic", skin, "ph-default");
+            _defensiveButton = new CheckBox("Defensive", skin, "ph-default");
+
+            _battleTacticButtonGroup.Add(_blitzButton);
+            _battleTacticButtonGroup.Add(_strategicButton);
+            _battleTacticButtonGroup.Add(_defensiveButton);
+
+            var blitzTable = new Table();
+            blitzTable.Add(_blitzButton).Left();
+            blitzTable.Row();
+            blitzTable.Add(new Label("  Max damage, ignore healing", skin, "ph-default")).Left().SetPadLeft(20);
+            container.Add(blitzTable).Left().SetPadBottom(8);
+            container.Row();
+
+            var strategicTable = new Table();
+            strategicTable.Add(_strategicButton).Left();
+            strategicTable.Row();
+            strategicTable.Add(new Label("  Balanced attacks and healing", skin, "ph-default")).Left().SetPadLeft(20);
+            container.Add(strategicTable).Left().SetPadBottom(8);
+            container.Row();
+
+            var defensiveTable = new Table();
+            defensiveTable.Add(_defensiveButton).Left();
+            defensiveTable.Row();
+            defensiveTable.Add(new Label("  Prioritize survival, heal at 60%", skin, "ph-default")).Left().SetPadLeft(20);
+            container.Add(defensiveTable).Left().SetPadBottom(15);
+            container.Row();
+
+            // Default to Strategic
+            _strategicButton.IsChecked = true;
+
+            // Wire up battle tactic events
+            _blitzButton.OnChanged += (isChecked) =>
+            {
+                if (isChecked)
+                {
+                    var heroComp = GetHeroComponent();
+                    if (heroComp != null) heroComp.CurrentBattleTactic = BattleTactic.Blitz;
+                }
+            };
+            _strategicButton.OnChanged += (isChecked) =>
+            {
+                if (isChecked)
+                {
+                    var heroComp = GetHeroComponent();
+                    if (heroComp != null) heroComp.CurrentBattleTactic = BattleTactic.Strategic;
+                }
+            };
+            _defensiveButton.OnChanged += (isChecked) =>
+            {
+                if (isChecked)
+                {
+                    var heroComp = GetHeroComponent();
+                    if (heroComp != null) heroComp.CurrentBattleTactic = BattleTactic.Defensive;
+                }
+            };
+
+            // Consumable Options section
+            var consumableLabel = new Label("Consumable Options", skin, "ph-default");
+            container.Add(consumableLabel).SetAlign(Align.Left).SetPadBottom(5f);
+            container.Row();
+
+            _useConsumablesOnMercsCheckBox = new CheckBox("Use consumable items on mercenaries", skin, "ph-default");
+            _useConsumablesOnMercsCheckBox.IsChecked = true;
+            _useConsumablesOnMercsCheckBox.OnChanged += (isChecked) =>
+            {
+                var heroComp = GetHeroComponent();
+                if (heroComp != null) heroComp.UseConsumablesOnMercenaries = isChecked;
+            };
+            container.Add(_useConsumablesOnMercsCheckBox).Left().SetPadBottom(8);
+            container.Row();
+
+            _mercsCanUseConsumablesCheckBox = new CheckBox("Mercenaries can use consumable items", skin, "ph-default");
+            _mercsCanUseConsumablesCheckBox.IsChecked = true;
+            _mercsCanUseConsumablesCheckBox.OnChanged += (isChecked) =>
+            {
+                var heroComp = GetHeroComponent();
+                if (heroComp != null) heroComp.MercenariesCanUseConsumables = isChecked;
+            };
+            container.Add(_mercsCanUseConsumablesCheckBox).Left();
+
+            // Wrap in scroll pane so all content is accessible
+            var scrollPane = new ScrollPane(container, skin, "ph-default");
+            scrollPane.SetScrollingDisabled(true, false);
+            scrollPane.SetFadeScrollBars(false);
+
+            prioritiesTab.Add(scrollPane).Expand().Fill().Pad(15f);
         }
 
         private void PopulateCrystalTab(Tab crystalTab, Skin skin)
