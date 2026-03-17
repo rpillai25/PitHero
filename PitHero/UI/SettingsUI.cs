@@ -554,6 +554,9 @@ namespace PitHero.UI
             quitToTitleYesButton.OnClicked += (button) =>
             {
                 HideConfirmationDialog(_quitToTitleConfirmationDialog);
+                var pauseService = Core.Services.GetService<PauseService>();
+                if (pauseService != null)
+                    pauseService.Unpause();
                 Core.Scene = new TitleScreenScene();
             };
             quitToTitleButtonTable.Add(quitToTitleYesButton).Width(80).Height(24).SetPadRight(10);
