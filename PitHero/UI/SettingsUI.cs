@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
+using PitHero.ECS.Scenes;
 using PitHero.Services;
 using System;
 
@@ -44,11 +45,13 @@ namespace PitHero.UI
 
         // Session tab controls
         private TextButton _saveButton;
-        private TextButton _quitButton;
+        private TextButton _quitToTitleButton;
+        private TextButton _exitButton;
         private SaveLoadUI _saveLoadUI;
 
-        // Confirmation dialog
-        private Window _confirmationDialog;
+        // Confirmation dialogs
+        private Window _exitConfirmationDialog;
+        private Window _quitToTitleConfirmationDialog;
 
         private Game _game;
         private int _currentYOffset = 0;
@@ -244,8 +247,8 @@ namespace PitHero.UI
             // Initially hidden
             _settingsWindow.SetVisible(false);
 
-            // Create confirmation dialog (initially hidden)
-            CreateConfirmationDialog(skin);
+            // Create confirmation dialogs (initially hidden)
+            CreateConfirmationDialogs(skin);
         }
 
         /// <summary>
@@ -469,10 +472,16 @@ namespace PitHero.UI
             sessionTable.Add(_saveButton).SetMinWidth(64f).Height(24f).SetPadBottom(15);
             sessionTable.Row();
 
-            // Quit button
-            _quitButton = new TextButton("Quit", skin, "ph-default");
-            _quitButton.OnClicked += (button) => ShowQuitConfirmation();
-            sessionTable.Add(_quitButton).SetMinWidth(64f).Height(24f);
+            // Quit to Title button
+            _quitToTitleButton = new TextButton("Quit to Title", skin, "ph-default");
+            _quitToTitleButton.OnClicked += (button) => ShowQuitToTitleConfirmation();
+            sessionTable.Add(_quitToTitleButton).SetMinWidth(64f).Height(24f).SetPadBottom(15);
+            sessionTable.Row();
+
+            // Exit button
+            _exitButton = new TextButton("Exit", skin, "ph-default");
+            _exitButton.OnClicked += (button) => ShowExitConfirmation();
+            sessionTable.Add(_exitButton).SetMinWidth(64f).Height(24f);
 
             // Add content table to the tab
             sessionTab.Add(sessionTable).Expand().Fill().Top().Left();
@@ -491,52 +500,98 @@ namespace PitHero.UI
             });
         }
 
-        private void CreateConfirmationDialog(Skin skin)
+        private void CreateConfirmationDialogs(Skin skin)
         {
             var windowStyle = skin.Get<WindowStyle>("ph-default");
-            _confirmationDialog = new Window("", windowStyle);
-            _confirmationDialog.SetSize(300, 150);
 
-            var dialogTable = new Table();
-            dialogTable.Pad(20);
+            // Exit confirmation dialog
+            _exitConfirmationDialog = new Window("", windowStyle);
+            _exitConfirmationDialog.SetSize(300, 150);
 
-            dialogTable.Add(new Label("Are you sure you want to quit?", skin, "ph-default")).SetPadBottom(20);
-            dialogTable.Row();
+            var exitDialogTable = new Table();
+            exitDialogTable.Pad(20);
 
-            var buttonTable = new Table();
+            exitDialogTable.Add(new Label("Are you sure you want to exit?", skin, "ph-default")).SetPadBottom(20);
+            exitDialogTable.Row();
 
-            var yesButton = new TextButton("Yes", skin, "ph-default");
-            yesButton.OnClicked += (button) =>
+            var exitButtonTable = new Table();
+
+            var exitYesButton = new TextButton("Yes", skin, "ph-default");
+            exitYesButton.OnClicked += (button) =>
             {
-                HideQuitConfirmation();
+                HideConfirmationDialog(_exitConfirmationDialog);
                 Core.Exit();
             };
-            buttonTable.Add(yesButton).Width(80).Height(24).SetPadRight(10);
+            exitButtonTable.Add(exitYesButton).Width(80).Height(24).SetPadRight(10);
 
-            var noButton = new TextButton("No", skin, "ph-default");
-            noButton.OnClicked += (button) => HideQuitConfirmation();
-            buttonTable.Add(noButton).Width(80).Height(24);
+            var exitNoButton = new TextButton("No", skin, "ph-default");
+            exitNoButton.OnClicked += (button) => HideConfirmationDialog(_exitConfirmationDialog);
+            exitButtonTable.Add(exitNoButton).Width(80).Height(24);
 
-            dialogTable.Add(buttonTable);
+            exitDialogTable.Add(exitButtonTable);
 
-            _confirmationDialog.Add(dialogTable).Expand().Fill();
-            _confirmationDialog.SetVisible(false);
+            _exitConfirmationDialog.Add(exitDialogTable).Expand().Fill();
+            _exitConfirmationDialog.SetVisible(false);
 
-            _confirmationDialog.SetPosition(
-                (_stage.GetWidth() - _confirmationDialog.GetWidth()) / 2,
-                (_stage.GetHeight() - _confirmationDialog.GetHeight()) / 2
+            _exitConfirmationDialog.SetPosition(
+                (_stage.GetWidth() - _exitConfirmationDialog.GetWidth()) / 2,
+                (_stage.GetHeight() - _exitConfirmationDialog.GetHeight()) / 2
+            );
+
+            // Quit to Title confirmation dialog
+            _quitToTitleConfirmationDialog = new Window("", windowStyle);
+            _quitToTitleConfirmationDialog.SetSize(300, 150);
+
+            var quitToTitleDialogTable = new Table();
+            quitToTitleDialogTable.Pad(20);
+
+            quitToTitleDialogTable.Add(new Label("Are you sure you want to quit to title?", skin, "ph-default")).SetPadBottom(20);
+            quitToTitleDialogTable.Row();
+
+            var quitToTitleButtonTable = new Table();
+
+            var quitToTitleYesButton = new TextButton("Yes", skin, "ph-default");
+            quitToTitleYesButton.OnClicked += (button) =>
+            {
+                HideConfirmationDialog(_quitToTitleConfirmationDialog);
+                Core.Scene = new TitleScreenScene();
+            };
+            quitToTitleButtonTable.Add(quitToTitleYesButton).Width(80).Height(24).SetPadRight(10);
+
+            var quitToTitleNoButton = new TextButton("No", skin, "ph-default");
+            quitToTitleNoButton.OnClicked += (button) => HideConfirmationDialog(_quitToTitleConfirmationDialog);
+            quitToTitleButtonTable.Add(quitToTitleNoButton).Width(80).Height(24);
+
+            quitToTitleDialogTable.Add(quitToTitleButtonTable);
+
+            _quitToTitleConfirmationDialog.Add(quitToTitleDialogTable).Expand().Fill();
+            _quitToTitleConfirmationDialog.SetVisible(false);
+
+            _quitToTitleConfirmationDialog.SetPosition(
+                (_stage.GetWidth() - _quitToTitleConfirmationDialog.GetWidth()) / 2,
+                (_stage.GetHeight() - _quitToTitleConfirmationDialog.GetHeight()) / 2
             );
         }
 
-        private void ShowQuitConfirmation()
+        private void ShowExitConfirmation()
+        {
+            ShowConfirmationDialog(_exitConfirmationDialog);
+        }
+
+        private void ShowQuitToTitleConfirmation()
+        {
+            ShowConfirmationDialog(_quitToTitleConfirmationDialog);
+        }
+
+        private void ShowConfirmationDialog(Window dialog)
         {
             _settingsWindow.Validate();
-            _confirmationDialog.Validate();
+            dialog.Validate();
 
             float winX = _settingsWindow.GetX();
             float winY = _settingsWindow.GetY();
-            float dialogW = _confirmationDialog.GetWidth();
-            float dialogH = _confirmationDialog.GetHeight();
+            float dialogW = dialog.GetWidth();
+            float dialogH = dialog.GetHeight();
 
             const float padding = 8f;
             float targetX = winX - dialogW - padding;
@@ -548,18 +603,18 @@ namespace PitHero.UI
             if (targetY < 0) targetY = 0;
             if (targetY + dialogH > stageH) targetY = stageH - dialogH;
 
-            _confirmationDialog.SetPosition(targetX, targetY);
+            dialog.SetPosition(targetX, targetY);
 
-            if (_confirmationDialog.GetStage() == null)
-                _stage.AddElement(_confirmationDialog);
+            if (dialog.GetStage() == null)
+                _stage.AddElement(dialog);
 
-            _confirmationDialog.SetVisible(true);
-            _confirmationDialog.ToFront();
+            dialog.SetVisible(true);
+            dialog.ToFront();
         }
 
-        private void HideQuitConfirmation()
+        private void HideConfirmationDialog(Window dialog)
         {
-            _confirmationDialog.SetVisible(false);
+            dialog.SetVisible(false);
         }
 
         /// <summary>Applies visibility and positions gear/settings window</summary>
@@ -667,6 +722,10 @@ namespace PitHero.UI
             {
                 // Use centralized UI window manager for closing behavior
                 UIWindowManager.OnUIWindowClosing();
+
+                // Hide any open confirmation dialogs
+                HideConfirmationDialog(_exitConfirmationDialog);
+                HideConfirmationDialog(_quitToTitleConfirmationDialog);
             }
 
             _isVisible = willShow;
