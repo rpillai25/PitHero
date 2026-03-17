@@ -557,6 +557,7 @@ namespace PitHero.UI
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null)
                     pauseService.Unpause();
+                Time.TimeScale = 1f;
                 Core.Scene = new TitleScreenScene();
             };
             quitToTitleButtonTable.Add(quitToTitleYesButton).Width(80).Height(24).SetPadRight(10);
