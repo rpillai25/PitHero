@@ -22,6 +22,12 @@ namespace PitHero.AI
         /// <summary>Weapon item for visualization (if ActionType is Attack). Can be null for unarmed attacks.</summary>
         public RolePlayingFramework.Equipment.IItem WeaponItem { get; }
 
+        /// <summary>Target for this action (Hero object, Mercenary object, or null for default/self)</summary>
+        public object Target;
+
+        /// <summary>Whether this action targets the hero specifically</summary>
+        public bool TargetsHero;
+
         /// <summary>Constructor for item action.</summary>
         public QueuedAction(RolePlayingFramework.Equipment.Consumable consumable, int bagIndex)
         {
@@ -93,6 +99,30 @@ namespace PitHero.AI
             if (_queue.Count >= MaxQueueSize)
                 return false;
             _queue.Enqueue(new QueuedAction(skill));
+            return true;
+        }
+
+        /// <summary>Enqueue a consumable item targeting a specific character</summary>
+        public bool EnqueueItem(RolePlayingFramework.Equipment.Consumable consumable, int bagIndex, object target, bool targetsHero)
+        {
+            if (_queue.Count >= MaxQueueSize)
+                return false;
+            var action = new QueuedAction(consumable, bagIndex);
+            action.Target = target;
+            action.TargetsHero = targetsHero;
+            _queue.Enqueue(action);
+            return true;
+        }
+
+        /// <summary>Enqueue a skill targeting a specific character</summary>
+        public bool EnqueueSkill(RolePlayingFramework.Skills.ISkill skill, object target, bool targetsHero)
+        {
+            if (_queue.Count >= MaxQueueSize)
+                return false;
+            var action = new QueuedAction(skill);
+            action.Target = target;
+            action.TargetsHero = targetsHero;
+            _queue.Enqueue(action);
             return true;
         }
 

@@ -3,6 +3,7 @@ using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Skills;
 using RolePlayingFramework.Stats;
+using System.Collections.Generic;
 
 namespace RolePlayingFramework.Mercenaries
 {
@@ -33,6 +34,11 @@ namespace RolePlayingFramework.Mercenaries
         public IGear? WeaponShield2 { get; private set; }
         public IGear? Accessory1 { get; private set; }
         public IGear? Accessory2 { get; private set; }
+
+        private readonly Dictionary<string, ISkill> _learnedSkills = new Dictionary<string, ISkill>(16);
+
+        /// <summary>Skills learned by this mercenary, keyed by skill Id.</summary>
+        public IReadOnlyDictionary<string, ISkill> LearnedSkills => _learnedSkills;
 
         public Mercenary(string name, IJob job, int level, in StatBlock baseStats)
         {
@@ -217,6 +223,22 @@ namespace RolePlayingFramework.Mercenaries
             if (CurrentMP < amount) return false;
             CurrentMP -= amount;
             return true;
+        }
+
+        /// <summary>Teaches the mercenary a skill. Returns true if learned successfully.</summary>
+        public bool LearnSkill(ISkill skill)
+        {
+            if (skill == null || _learnedSkills.ContainsKey(skill.Id))
+                return false;
+            _learnedSkills[skill.Id] = skill;
+            return true;
+        }
+
+        /// <summary>Removes a learned skill by Id. Returns true if removed.</summary>
+        public bool ForgetSkill(string skillId)
+        {
+            if (skillId == null) return false;
+            return _learnedSkills.Remove(skillId);
         }
     }
 }

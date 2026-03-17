@@ -31,7 +31,7 @@ namespace PitHero.ECS.Components
 
         public void Update()
         {
-            Debug.Log($"[MercenaryFollowComponent] Update() called for {Entity.Name}");
+            // Debug.Log($"[MercenaryFollowComponent] Update() called for {Entity.Name}");
 
             // Early return if component is disabled (e.g., during sleep)
             if (!Enabled)
@@ -55,7 +55,7 @@ namespace PitHero.ECS.Components
             var pauseService = Core.Services.GetService<PauseService>();
             if (pauseService?.IsPaused == true)
             {
-                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} game is paused");
+                // Debug.Log($"[MercenaryFollowComponent] {Entity.Name} game is paused");
                 return;
             }
 
@@ -67,12 +67,12 @@ namespace PitHero.ECS.Components
 
             if (_tileMover != null && _tileMover.IsMoving)
             {
-                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} already moving");
+                // Debug.Log($"[MercenaryFollowComponent] {Entity.Name} already moving");
                 return;
             }
 
             var myTile = GetCurrentTile();
-            Debug.Log($"[MercenaryFollowComponent] {Entity.Name} at tile ({myTile.X},{myTile.Y})");
+            // Debug.Log($"[MercenaryFollowComponent] {Entity.Name} at tile ({myTile.X},{myTile.Y})");
 
             if (_tileMover != null && _tileMover.Enabled && _mercComponent.LastTilePosition != myTile)
             {
@@ -80,12 +80,12 @@ namespace PitHero.ECS.Components
             }
 
             var targetTile = GetTargetCurrentTilePosition();
-            Debug.Log($"[MercenaryFollowComponent] {Entity.Name} target current tile ({targetTile.X},{targetTile.Y})");
+            // Debug.Log($"[MercenaryFollowComponent] {Entity.Name} target current tile ({targetTile.X},{targetTile.Y})");
 
             // Check if we're already at the target position
             if (myTile == targetTile)
             {
-                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} already at target position");
+                // Debug.Log($"[MercenaryFollowComponent] {Entity.Name} already at target position");
                 _currentPath = null;
                 return;
             }
@@ -97,7 +97,7 @@ namespace PitHero.ECS.Components
 
             if (isAdjacent)
             {
-                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} adjacent to target, stopping to avoid overlap");
+                // Debug.Log($"[MercenaryFollowComponent] {Entity.Name} adjacent to target, stopping to avoid overlap");
                 _currentPath = null;
                 return;
             }

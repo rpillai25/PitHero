@@ -68,6 +68,14 @@ namespace PitHero.ECS.Components
                 if (hpPercent < GameConfig.HeroCriticalHPPercent)
                     return true;
 
+                // Check hero's MP (low MP triggers healing actions so Inn or consumable can restore it)
+                if (LinkedHero.MaxMP > 0)
+                {
+                    float mpPercent = (float)LinkedHero.CurrentMP / LinkedHero.MaxMP;
+                    if (mpPercent < GameConfig.HeroCriticalMPPercent)
+                        return true;
+                }
+
                 // Check all hired mercenaries' HP
                 var mercenaryManager = Core.Services.GetService<MercenaryManager>();
                 if (mercenaryManager != null)
@@ -82,6 +90,14 @@ namespace PitHero.ECS.Components
                             float mercHpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
                             if (mercHpPercent < GameConfig.HeroCriticalHPPercent)
                                 return true;
+
+                            // Check mercenary MP
+                            if (mercComp.LinkedMercenary.MaxMP > 0)
+                            {
+                                float mercMpPercent = (float)mercComp.LinkedMercenary.CurrentMP / mercComp.LinkedMercenary.MaxMP;
+                                if (mercMpPercent < GameConfig.HeroCriticalMPPercent)
+                                    return true;
+                            }
                         }
                     }
                 }
@@ -136,6 +152,15 @@ namespace PitHero.ECS.Components
         /// Hero heal priority 3 (lowest priority healing action)
         /// </summary>
         public HeroHealPriority HealPriority3 { get; set; } = HeroHealPriority.HealingSkill;
+
+        /// <summary>Current battle tactic for AI decision-making</summary>
+        public BattleTactic CurrentBattleTactic { get; set; } = BattleTactic.Strategic;
+
+        /// <summary>If true, consumable items can be used on mercenaries during battle</summary>
+        public bool UseConsumablesOnMercenaries { get; set; } = true;
+
+        /// <summary>If true, mercenaries are allowed to use consumable items from the shared inventory</summary>
+        public bool MercenariesCanUseConsumables { get; set; } = true;
 
         /// <summary>
         /// True when no more healing items are available on the shortcut bar
