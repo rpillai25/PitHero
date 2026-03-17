@@ -263,6 +263,11 @@ namespace PitHero.Services
                     data.HealPriority1 = (int)heroComp.HealPriority1;
                     data.HealPriority2 = (int)heroComp.HealPriority2;
                     data.HealPriority3 = (int)heroComp.HealPriority3;
+
+                    // Behavior settings
+                    data.BattleTacticValue = (int)heroComp.CurrentBattleTactic;
+                    data.UseConsumablesOnMercenaries = heroComp.UseConsumablesOnMercenaries;
+                    data.MercenariesCanUseConsumables = heroComp.MercenariesCanUseConsumables;
                 }
             }
 

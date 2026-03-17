@@ -57,7 +57,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 3;
+        public const int CurrentVersion = 4;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -184,6 +184,16 @@ namespace PitHero.Services
 
         /// <summary>Third heal priority.</summary>
         public int HealPriority3;
+
+        // Behavior Settings (added in version 4)
+        /// <summary>Current battle tactic (cast from BattleTactic enum).</summary>
+        public int BattleTacticValue;
+
+        /// <summary>Whether the hero uses consumable items on mercenaries.</summary>
+        public bool UseConsumablesOnMercenaries = true;
+
+        /// <summary>Whether mercenaries can use consumable items.</summary>
+        public bool MercenariesCanUseConsumables = true;
 
         // Allied Monsters
         /// <summary>Saved allied monsters.</summary>
@@ -328,6 +338,11 @@ namespace PitHero.Services
             writer.Write(HealPriority2);
             writer.Write(HealPriority3);
 
+            // 10b. Behavior Settings (added in version 4)
+            writer.Write(BattleTacticValue);
+            writer.Write(UseConsumablesOnMercenaries);
+            writer.Write(MercenariesCanUseConsumables);
+
             // 11. Allied Monsters
             writer.Write(AlliedMonsters.Count);
             for (int i = 0; i < AlliedMonsters.Count; i++)
@@ -391,7 +406,6 @@ namespace PitHero.Services
         {
             // 1. File Version (reserved for future migration logic)
             int version = reader.ReadInt();
-            _ = version;
 
             // 2. Total Time Played
             TotalTimePlayed = reader.ReadFloat();
@@ -500,6 +514,14 @@ namespace PitHero.Services
             HealPriority1 = reader.ReadInt();
             HealPriority2 = reader.ReadInt();
             HealPriority3 = reader.ReadInt();
+
+            // 10b. Behavior Settings (added in version 4)
+            if (version >= 4)
+            {
+                BattleTacticValue = reader.ReadInt();
+                UseConsumablesOnMercenaries = reader.ReadBool();
+                MercenariesCanUseConsumables = reader.ReadBool();
+            }
 
             // 11. Allied Monsters
             int monsterCount = reader.ReadInt();

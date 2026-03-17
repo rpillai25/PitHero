@@ -282,6 +282,11 @@ namespace PitHero.ECS.Scenes
             heroComp.HealPriority2 = (HeroHealPriority)pendingData.HealPriority2;
             heroComp.HealPriority3 = (HeroHealPriority)pendingData.HealPriority3;
             
+            // Restore behavior settings
+            heroComp.CurrentBattleTactic = (BattleTactic)pendingData.BattleTacticValue;
+            heroComp.UseConsumablesOnMercenaries = pendingData.UseConsumablesOnMercenaries;
+            heroComp.MercenariesCanUseConsumables = pendingData.MercenariesCanUseConsumables;
+            
             // Restore pit level (always call SetPitLevel so the pit is generated once
             // from saved state; the initial SetPitLevel(1) in Begin is skipped when
             // pending load data exists to prevent a conflicting dual-state pit)

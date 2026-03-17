@@ -763,6 +763,9 @@ namespace PitHero.UI
                 UIWindowManager.OnUIWindowOpening();
                 InitializePriorityItems();
                 _priorityList?.Rebuild();
+                InitializeHealPriorityItems();
+                _healPriorityList?.Rebuild();
+                RefreshBehaviorUIFromHero();
                 var heroComponent = GetHeroComponent();
                 
                 // Don't open UI if hero is dead or dying (has death component or HP <= 0)
@@ -842,6 +845,31 @@ namespace PitHero.UI
         {
             var heroEntity = Core.Scene?.FindEntity("hero");
             return heroEntity?.GetComponent<HeroComponent>();
+        }
+
+        /// <summary>Refreshes battle tactic radio buttons and consumable checkboxes from HeroComponent state.</summary>
+        private void RefreshBehaviorUIFromHero()
+        {
+            var heroComp = GetHeroComponent();
+            if (heroComp == null) return;
+
+            // Refresh battle tactic radio buttons
+            switch (heroComp.CurrentBattleTactic)
+            {
+                case BattleTactic.Blitz:
+                    _blitzButton.IsChecked = true;
+                    break;
+                case BattleTactic.Strategic:
+                    _strategicButton.IsChecked = true;
+                    break;
+                case BattleTactic.Defensive:
+                    _defensiveButton.IsChecked = true;
+                    break;
+            }
+
+            // Refresh consumable option checkboxes
+            _useConsumablesOnMercsCheckBox.IsChecked = heroComp.UseConsumablesOnMercenaries;
+            _mercsCanUseConsumablesCheckBox.IsChecked = heroComp.MercenariesCanUseConsumables;
         }
 
         private void UpdateHeroPriorities()
