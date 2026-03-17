@@ -95,6 +95,20 @@ namespace PitHero.ECS.Scenes
             SetupUIOverlay();
         }
 
+        /// <summary>
+        /// Removes scene-specific services so a new MainGameScene can register them again.
+        /// </summary>
+        public override void Unload()
+        {
+            Core.Services.RemoveService(typeof(MercenaryManager));
+            Core.Services.RemoveService(typeof(AlliedMonsterManager));
+            Core.Services.RemoveService(typeof(HeroPromotionService));
+            Core.Services.RemoveService(typeof(PlayerInteractionService));
+            Core.Services.RemoveService(typeof(TiledMapService));
+            Core.Services.RemoveService(typeof(PitWidthManager));
+            Core.Services.RemoveService(typeof(ShortcutBarService));
+        }
+
         public override void Begin()
         {
             base.Begin();
