@@ -95,6 +95,22 @@ namespace PitHero.ECS.Scenes
             SetupUIOverlay();
         }
 
+        /// <summary>
+        /// Removes scene-specific services and unloads the cached TiledMap so a new
+        /// MainGameScene can register them again with a fresh map from disk.
+        /// </summary>
+        public override void Unload()
+        {
+            Core.Content.UnloadAsset<TmxMap>(_mapPath);
+            Core.Services.RemoveService(typeof(MercenaryManager));
+            Core.Services.RemoveService(typeof(AlliedMonsterManager));
+            Core.Services.RemoveService(typeof(HeroPromotionService));
+            Core.Services.RemoveService(typeof(PlayerInteractionService));
+            Core.Services.RemoveService(typeof(TiledMapService));
+            Core.Services.RemoveService(typeof(PitWidthManager));
+            Core.Services.RemoveService(typeof(ShortcutBarService));
+        }
+
         public override void Begin()
         {
             base.Begin();
