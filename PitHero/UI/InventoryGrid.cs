@@ -1134,6 +1134,11 @@ namespace PitHero.UI
         {
             if (item == null) return true;
             if (slotData.SlotType != InventorySlotType.Equipment) return true;
+
+            // Check job restriction for gear in equipment slots
+            var hero = _heroComponent?.LinkedHero;
+            if (hero != null && !hero.CanEquipItem(item)) return false;
+
             switch (slotData.EquipmentSlot)
             {
                 case EquipmentSlot.WeaponShield1:

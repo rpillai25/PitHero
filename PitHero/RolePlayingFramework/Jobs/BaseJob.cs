@@ -12,14 +12,16 @@ namespace RolePlayingFramework.Jobs
         public StatBlock GrowthPerLevel { get; }
         public IReadOnlyList<ISkill> Skills => _skills;
         public JobTier Tier { get; }
+        public JobType JobFlag { get; }
         private readonly List<ISkill> _skills;
 
-        protected BaseJob(string name, StatBlock baseBonus, StatBlock growthPerLevel, JobTier tier)
+        protected BaseJob(string name, StatBlock baseBonus, StatBlock growthPerLevel, JobTier tier, JobType jobFlag = JobType.None)
         {
             Name = name;
             BaseBonus = baseBonus;
             GrowthPerLevel = growthPerLevel;
             Tier = tier;
+            JobFlag = jobFlag;
             _skills = new List<ISkill>(8);
             DefineSkills(_skills);
         }

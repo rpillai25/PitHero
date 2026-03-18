@@ -4,6 +4,7 @@ using Nez.BitmapFonts;
 using Nez.Textures;
 using Nez.UI;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Synergies;
 using System;
 using System.Collections.Generic;
@@ -22,6 +23,7 @@ namespace PitHero.UI
         private static readonly Color BrownFontColor = new Color(71, 36, 7);
         private static readonly Color SynergyCyan = new Color(0, 156, 156);
         private static readonly Color SynergyGreen = new Color(11, 117, 11);
+        private static readonly Color JobsTextColor = new Color(100, 100, 180);
 
         private IItem _item;
         private List<ActiveSynergy> _synergies;
@@ -114,6 +116,16 @@ namespace PitHero.UI
 
             // Add conditional properties and track max width
             maxLineWidth = Max(maxLineWidth, AddConditionalProperties(font));
+
+            // Show allowed jobs for gear items
+            if (_item is IGear gearItem && gearItem.AllowedJobs != JobType.All)
+            {
+                var jobsText = "Classes: " + FormatAllowedJobs(gearItem.AllowedJobs);
+                var jobsLabel = new Label(jobsText, new LabelStyle { Font = font, FontColor = JobsTextColor });
+                _contentTable.Add(jobsLabel).Left().Pad(0, 0, LINE_SPACING, 0);
+                _contentTable.Row();
+                maxLineWidth = Max(maxLineWidth, Measure(font, jobsText));
+            }
 
             // Sell Price (always shown)
             var sellPrice = _item.GetSellPrice();
@@ -357,5 +369,18 @@ namespace PitHero.UI
 
         /// <summary>Gets the current item being displayed.</summary>
         public IItem CurrentItem => _item;
+
+        /// <summary>Formats a JobType bitflag into a comma-separated list of job names.</summary>
+        private static string FormatAllowedJobs(JobType jobs)
+        {
+            var parts = new List<string>(6);
+            if ((jobs & JobType.Knight) != 0) parts.Add("Knight");
+            if ((jobs & JobType.Monk) != 0) parts.Add("Monk");
+            if ((jobs & JobType.Mage) != 0) parts.Add("Mage");
+            if ((jobs & JobType.Priest) != 0) parts.Add("Priest");
+            if ((jobs & JobType.Thief) != 0) parts.Add("Thief");
+            if ((jobs & JobType.Archer) != 0) parts.Add("Archer");
+            return string.Join(", ", parts);
+        }
     }
 }

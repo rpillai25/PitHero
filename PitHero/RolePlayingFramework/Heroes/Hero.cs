@@ -97,6 +97,19 @@ namespace RolePlayingFramework.Heroes
             _extraEquipPermissions.Add(kind);
         }
 
+        /// <summary>Checks whether this hero can equip the given item based on job and extra permissions.</summary>
+        public bool CanEquipItem(IItem item)
+        {
+            if (item == null) return false;
+            if (item is IGear gear)
+            {
+                if ((gear.AllowedJobs & Job.JobFlag) != 0) return true;
+                if (_extraEquipPermissions.Contains(gear.Kind)) return true;
+                return false;
+            }
+            return true;
+        }
+
         /// <summary>Adds experience and levels up linearly.</summary>
         public bool AddExperience(int amount)
         {
@@ -218,10 +231,11 @@ namespace RolePlayingFramework.Heroes
             }
         }
 
-        /// <summary>Equips an item into the appropriate slot based on item type.</summary>
+        /// <summary>Equips an item into the appropriate slot based on item type and job restrictions.</summary>
         public bool TryEquip(IItem item)
         {
             if (item == null) return false;
+            if (!CanEquipItem(item)) return false;
             switch (item.Kind)
             {
                 case ItemKind.WeaponSword:
@@ -249,7 +263,7 @@ namespace RolePlayingFramework.Heroes
             }
         }
 
-        /// <summary>Sets the specified equipment slot to the provided item (or null), enforcing slot-type rules.</summary>
+        /// <summary>Sets the specified equipment slot to the provided item (or null), enforcing slot-type and job rules.</summary>
         public bool SetEquipmentSlot(EquipmentSlot slot, IItem? item)
         {
             // Clear case
@@ -268,7 +282,10 @@ namespace RolePlayingFramework.Heroes
                 return true;
             }
 
-            // Assign with slot-type validation (no job restrictions)
+            // Check job restriction
+            if (!CanEquipItem(item)) return false;
+
+            // Assign with slot-type validation
             switch (slot)
             {
                 case EquipmentSlot.WeaponShield1:

@@ -38,6 +38,9 @@ namespace RolePlayingFramework.Heroes
         /// <summary>Tier is the maximum of the two component job tiers.</summary>
         public JobTier Tier => _a.Tier > _b.Tier ? _a.Tier : _b.Tier;
 
+        /// <summary>Combined job flags from both component jobs.</summary>
+        public JobType JobFlag => _a.JobFlag | _b.JobFlag;
+
         /// <summary>Computes averaged job contribution at a level.</summary>
         public StatBlock GetJobContributionAtLevel(int level)
             => _a.GetJobContributionAtLevel(level).Add(_b.GetJobContributionAtLevel(level)).Scale(0.5f);
