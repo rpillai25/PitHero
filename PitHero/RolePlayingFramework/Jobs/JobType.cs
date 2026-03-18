@@ -2,7 +2,10 @@ using System;
 
 namespace RolePlayingFramework.Jobs
 {
-    /// <summary>Bitflag enum identifying which job classes can equip a piece of gear.</summary>
+    /// <summary>
+    /// Bitflag enum identifying which job classes can equip a piece of gear.
+    /// Supports bitwise operations to combine multiple jobs (e.g. JobType.Knight | JobType.Mage).
+    /// </summary>
     [Flags]
     public enum JobType
     {

@@ -1,4 +1,6 @@
 using Microsoft.Xna.Framework;
+using RolePlayingFramework.Jobs;
+using System.Collections.Generic;
 
 namespace RolePlayingFramework.Equipment
 {
@@ -54,6 +56,19 @@ namespace RolePlayingFramework.Equipment
                 ItemRarity.Legendary => new Color(255, 128, 0), // Orange
                 _ => Color.White
             };
+        }
+
+        /// <summary>Formats a JobType bitflag into a comma-separated list of job names.</summary>
+        public static string FormatAllowedJobs(JobType jobs)
+        {
+            var parts = new List<string>(6);
+            if ((jobs & JobType.Knight) != 0) parts.Add("Knight");
+            if ((jobs & JobType.Monk) != 0) parts.Add("Monk");
+            if ((jobs & JobType.Mage) != 0) parts.Add("Mage");
+            if ((jobs & JobType.Priest) != 0) parts.Add("Priest");
+            if ((jobs & JobType.Thief) != 0) parts.Add("Thief");
+            if ((jobs & JobType.Archer) != 0) parts.Add("Archer");
+            return string.Join(", ", parts);
         }
     }
 }
