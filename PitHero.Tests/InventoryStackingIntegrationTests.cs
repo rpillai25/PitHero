@@ -111,31 +111,6 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void StackingIntegration_BagUpgrades_DontStack()
-        {
-            var bag = new ItemBag();
-
-            // Add multiple bag items
-            Assert.IsTrue(bag.TryAdd(BagItems.StandardBag()));
-            Assert.IsTrue(bag.TryAdd(BagItems.ForagersBag()));
-            Assert.IsTrue(bag.TryAdd(BagItems.TravellersBag()));
-
-            // Should have 3 slots - bags don't stack
-            Assert.AreEqual(3, bag.Count);
-            
-            // Verify each bag is separate
-            var bag1 = bag.GetSlotItem(0) as Consumable;
-            Assert.AreEqual("Standard Bag", bag1.Name);
-            Assert.AreEqual(1, bag1.StackCount);
-            Assert.AreEqual(1, bag1.StackSize); // Not stackable
-            
-            var bag2 = bag.GetSlotItem(1) as Consumable;
-            Assert.AreEqual("Forager's Bag", bag2.Name);
-            Assert.AreEqual(1, bag2.StackCount);
-            Assert.AreEqual(1, bag2.StackSize);
-        }
-
-        [TestMethod]
         public void StackingIntegration_ConsumeFromStack_WorksCorrectly()
         {
             var bag = new ItemBag();

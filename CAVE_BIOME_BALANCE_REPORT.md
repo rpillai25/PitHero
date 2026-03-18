@@ -149,7 +149,7 @@ Comprehensive balance test suite created for Cave Biome (Pit Levels 1-25) using 
 
 **Equipment Availability**:
 - **Normal Rarity** (Pit 1-10): Short Sword, Wooden Shield, Squire Helm, Leather Armor
-- **Uncommon Rarity** (Pit 11-25): Long Sword, Iron Shield, Iron Helm, Iron Armor, Protect Ring, Forager's Bag
+- **Uncommon Rarity** (Pit 11-25): Long Sword, Iron Shield, Iron Helm, Iron Armor, Protect Ring
 - **Consumables** (All Pits): HP/MP/Mix Potions
 
 **Upgrade Timeline**:

@@ -26,9 +26,9 @@ namespace PitHero.Tests
                         Assert.IsTrue(normalPotion.Name.EndsWith("Potion") && !normalPotion.Name.StartsWith("Mid") && !normalPotion.Name.StartsWith("Full"));
                         break;
                         
-                    case 2: // Uncommon - still bags for now
-                        Assert.AreEqual(ItemRarity.Uncommon, item.Rarity);
-                        Assert.AreEqual("Forager's Bag", item.Name);
+                    case 2: // No Uncommon consumables exist, falls back to Normal potions
+                        Assert.AreEqual(ItemRarity.Normal, item.Rarity);
+                        Assert.IsTrue(item is Consumable);
                         break;
                         
                     case 3: // Mid potions
@@ -45,9 +45,9 @@ namespace PitHero.Tests
                         Assert.IsTrue(fullPotion.Name.StartsWith("Full") && fullPotion.Name.EndsWith("Potion"));
                         break;
                         
-                    case 5: // Legendary - still bags for now
-                        Assert.AreEqual(ItemRarity.Legendary, item.Rarity);
-                        Assert.AreEqual("Merchant's Bag", item.Name);
+                    case 5: // No Legendary consumables exist, falls back to Full potions
+                        Assert.AreEqual(ItemRarity.Epic, item.Rarity);
+                        Assert.IsTrue(item is Consumable);
                         break;
                 }
             }

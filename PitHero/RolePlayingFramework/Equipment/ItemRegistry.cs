@@ -30,7 +30,7 @@ namespace RolePlayingFramework.Equipment
             _registry[item.Name] = factory;
         }
 
-        /// <summary>Populates the registry with all known items from GearItems, PotionItems, and BagItems.</summary>
+        /// <summary>Populates the registry with all known items from GearItems and PotionItems.</summary>
         private static void Initialize()
         {
             _registry = new Dictionary<string, Func<IItem>>(100);
@@ -200,12 +200,7 @@ namespace RolePlayingFramework.Equipment
             Register(() => PotionItems.FullMPPotion());
             Register(() => PotionItems.FullMixPotion());
 
-            // Bag items
-            Register(() => BagItems.StandardBag());
-            Register(() => BagItems.ForagersBag());
-            Register(() => BagItems.TravellersBag());
-            Register(() => BagItems.AdventurersBag());
-            Register(() => BagItems.MerchantsBag());
+
         }
 
         /// <summary>Attempts to create an item by name. Returns true if found.</summary>
