@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using Nez.Systems;
 using Nez.UI;
 using PitHero.ECS.Scenes;
 using PitHero.Services;
@@ -558,6 +559,7 @@ namespace PitHero.UI
                 if (pauseService != null)
                     pauseService.Unpause();
                 Time.TimeScale = 1f;
+                Core.GetGlobalManager<CoroutineManager>().StopAllCoroutines();
                 Core.Scene = new TitleScreenScene();
             };
             quitToTitleButtonTable.Add(quitToTitleYesButton).Width(80).Height(24).SetPadRight(10);
