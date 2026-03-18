@@ -16,110 +16,434 @@ Accessory
 Armor
 	0,66,32,32
 	0.5,0.5
-IronArmor
+AbyssPlate
 	33,66,32,32
 	0.5,0.5
-LeatherArmor
+BurlapTunic
 	66,33,32,32
 	0.5,0.5
-FullHPPotion
+CaveExplorersVest 
 	66,66,32,32
 	0.5,0.5
-FullMixPotion
+ChainMail
 	99,0,32,32
 	0.5,0.5
-FullMPPotion
+CrystalGuard
 	99,33,32,32
 	0.5,0.5
-HPPotion
+DiamondMail
 	132,0,32,32
 	0.5,0.5
-MidHPPotion
+EmberguardMail
 	99,66,32,32
 	0.5,0.5
-MidMixPotion
+GranitePlate
 	132,33,32,32
 	0.5,0.5
-MidMPPotion
+HardenedLeather
 	165,0,32,32
 	0.5,0.5
-MixPotion
+HideVest
 	198,0,32,32
 	0.5,0.5
-MPPotion
+IronArmor
 	165,33,32,32
 	0.5,0.5
-Equipment
+LavaplateArmor
 	132,66,32,32
 	0.5,0.5
-Helm
+LeatherArmor
 	165,66,32,32
 	0.5,0.5
-IronHelm
+MagmaBlastPlate
 	198,33,32,32
 	0.5,0.5
-SquireHelm
+Padded Armor
 	198,66,32,32
 	0.5,0.5
-Inventory
+PitLordsArmor
 	0,99,32,32
 	0.5,0.5
-IronShield
+ReinforcedPlate
 	0,132,32,32
 	0.5,0.5
-WoodenShield
+ScaleMail
 	33,99,32,32
 	0.5,0.5
-Shortcut
+ShadowVest
 	33,132,32,32
 	0.5,0.5
-StencilAccessory
+SteelCuirass
 	0,165,32,32
 	0.5,0.5
-StencilArmorGi
+StonePlate
 	66,99,32,32
 	0.5,0.5
-StencilArmorMail
+StuddedLeather
 	33,165,32,32
 	0.5,0.5
-StencilArmorRobe
+TatteredCloth
 	0,198,32,32
 	0.5,0.5
-StencilConsumable
+Voidmail
 	99,99,32,32
 	0.5,0.5
-StencilHatHelm
+VolcanicArmor
 	66,132,32,32
 	0.5,0.5
-StencilHatPriest
+CrystalCleaver
 	66,165,32,32
 	0.5,0.5
-StencilHatWizard
+FlameHatchet
 	132,99,32,32
 	0.5,0.5
-StencilShield
+MinersAxe
 	33,198,32,32
 	0.5,0.5
-StencilWeaponKnuckle
+ObsidianCleaver
 	99,132,32,32
 	0.5,0.5
-StencilWeaponRod
+ShadowSplitter
 	66,198,32,32
 	0.5,0.5
-StencilWeaponStaff
+StoneHatchet
 	132,132,32,32
 	0.5,0.5
-StencilWeaponSword
+VolcanicAxe
 	99,165,32,32
 	0.5,0.5
-LongSword
+WoodcuttersAxe
 	165,99,32,32
 	0.5,0.5
-ShortSword
+FullHPPotion
 	132,165,32,32
 	0.5,0.5
-WeaponShield
+FullMixPotion
 	99,198,32,32
+	0.5,0.5
+FullMPPotion
+	198,99,32,32
+	0.5,0.5
+HPPotion
+	165,132,32,32
+	0.5,0.5
+MidHPPotion
+	198,132,32,32
+	0.5,0.5
+MidMixPotion
+	165,165,32,32
+	0.5,0.5
+MidMPPotion
+	132,198,32,32
+	0.5,0.5
+MixPotion
+	165,198,32,32
+	0.5,0.5
+MPPotion
+	198,165,32,32
+	0.5,0.5
+CaveShiv
+	198,198,32,32
+	0.5,0.5
+RustyDagger
+	231,0,32,32
+	0.5,0.5
+SerpentsTooth
+	231,33,32,32
+	0.5,0.5
+Equipment
+	264,0,32,32
+	0.5,0.5
+GeologistsHammer
+	264,33,32,32
+	0.5,0.5
+MagmaMaul
+	231,66,32,32
+	0.5,0.5
+Mallet
+	297,0,32,32
+	0.5,0.5
+QuakeHammer
+	297,33,32,32
+	0.5,0.5
+StoneCrusher
+	264,66,32,32
+	0.5,0.5
+Helm
+	231,99,32,32
+	0.5,0.5
+AbyssHelm
+	330,0,32,32
+	0.5,0.5
+Bascinet
+	363,0,32,32
+	0.5,0.5
+CaveExplorersHood
+	330,33,32,32
+	0.5,0.5
+ChainCoif
+	297,66,32,32
+	0.5,0.5
+ClothCap
+	264,99,32,32
+	0.5,0.5
+CrystalCirclet
+	231,132,32,32
+	0.5,0.5
+DiamondCirclet
+	330,66,32,32
+	0.5,0.5
+EmberHelm
+	297,99,32,32
+	0.5,0.5
+GreatHelm
+	264,132,32,32
+	0.5,0.5
+HideHood
+	231,165,32,32
+	0.5,0.5
+InfernoCrown
+	396,0,32,32
+	0.5,0.5
+IronHelm
+	363,33,32,32
+	0.5,0.5
+LavaCrown
+	231,198,32,32
+	0.5,0.5
+LeatherCap
+	429,0,32,32
+	0.5,0.5
+MagmaHelm
+	396,33,32,32
+	0.5,0.5
+PaddedCoif
+	363,66,32,32
+	0.5,0.5
+PitLordsCrown
+	297,132,32,32
+	0.5,0.5
+QuartzHelm
+	264,165,32,32
+	0.5,0.5
+ReinforcedCap
+	330,99,32,32
+	0.5,0.5
+ShadowCowl
+	297,165,32,32
+	0.5,0.5
+SquireHelm
+	264,198,32,32
+	0.5,0.5
+SteelHelm
+	363,99,32,32
+	0.5,0.5
+StoneCrown
+	330,132,32,32
+	0.5,0.5
+VoidMask
+	396,66,32,32
+	0.5,0.5
+WingedHelm
+	429,33,32,32
+	0.5,0.5
+Inventory
+	462,0,32,32
+	0.5,0.5
+AbyssWall
+	429,66,32,32
+	0.5,0.5
+CaveGuard
+	462,33,32,32
+	0.5,0.5
+CrystalBarrier
+	363,132,32,32
+	0.5,0.5
+DiamondBarrier
+	330,165,32,32
+	0.5,0.5
+EmberShield
+	396,99,32,32
+	0.5,0.5
+GraniteGuard
+	297,198,32,32
+	0.5,0.5
+HeaterShield
+	363,165,32,32
+	0.5,0.5
+HideShield
+	330,198,32,32
+	0.5,0.5
+InfernoGuard
+	429,99,32,32
+	0.5,0.5
+IronBuckler
+	396,132,32,32
+	0.5,0.5
+IronShield
+	462,66,32,32
+	0.5,0.5
+KiteShield
+	429,132,32,32
+	0.5,0.5
+LavaShield
+	396,165,32,32
+	0.5,0.5
+MagmaWall
+	462,99,32,32
+	0.5,0.5
+PitLordsAegis
+	363,198,32,32
+	0.5,0.5
+QuartzWall
+	462,132,32,32
+	0.5,0.5
+ReinforcedBuckler
+	396,198,32,32
+	0.5,0.5
+RoundShield
+	429,165,32,32
+	0.5,0.5
+ShadowGuard
+	462,165,32,32
+	0.5,0.5
+SteelShield
+	429,198,32,32
+	0.5,0.5
+StoneShield
+	462,198,32,32
+	0.5,0.5
+TowerShield
+	0,231,32,32
+	0.5,0.5
+VoidBarrier
+	33,231,32,32
+	0.5,0.5
+WoodenPlank
+	0,264,32,32
+	0.5,0.5
+WoodenShield
+	66,231,32,32
+	0.5,0.5
+Shortcut
+	33,264,32,32
+	0.5,0.5
+CavePike
+	0,297,32,32
+	0.5,0.5
+InfernalPike
+	99,231,32,32
+	0.5,0.5
+StalactiteSpear
+	66,264,32,32
+	0.5,0.5
+EarthenStaff
+	33,297,32,32
+	0.5,0.5
+ShadowwoodStaff
+	0,330,32,32
+	0.5,0.5
+TorchStaff
+	132,231,32,32
+	0.5,0.5
+StencilAccessory
+	99,264,32,32
+	0.5,0.5
+StencilArmorGi
+	66,297,32,32
+	0.5,0.5
+StencilArmorMail
+	33,330,32,32
+	0.5,0.5
+StencilArmorRobe
+	0,363,32,32
+	0.5,0.5
+StencilConsumable
+	99,297,32,32
+	0.5,0.5
+StencilHatHelm
+	66,330,32,32
+	0.5,0.5
+StencilHatPriest
+	33,363,32,32
+	0.5,0.5
+StencilHatWizard
+	0,396,32,32
+	0.5,0.5
+StencilShield
+	132,264,32,32
+	0.5,0.5
+StencilWeaponKnuckle
+	165,231,32,32
+	0.5,0.5
+StencilWeaponRod
+	132,297,32,32
+	0.5,0.5
+StencilWeaponStaff
+	99,330,32,32
+	0.5,0.5
+StencilWeaponSword
+	66,363,32,32
+	0.5,0.5
+CavernCutter
+	33,396,32,32
+	0.5,0.5
+CrystalEdge
+	0,429,32,32
+	0.5,0.5
+DepthsReaver
+	165,264,32,32
+	0.5,0.5
+EmberSword
+	198,231,32,32
+	0.5,0.5
+GloomBlade
+	33,429,32,32
+	0.5,0.5
+GraniteBlade
+	165,297,32,32
+	0.5,0.5
+InfernoEdge
+	231,231,32,32
+	0.5,0.5
+LavaForgedSword
+	198,264,32,32
+	0.5,0.5
+LongSword
+	132,330,32,32
+	0.5,0.5
+MagmaBlade
+	99,363,32,32
+	0.5,0.5
+MinersPickSword
+	66,396,32,32
+	0.5,0.5
+PitLordsSword
+	66,429,32,32
+	0.5,0.5
+QuartzSaber
+	198,297,32,32
+	0.5,0.5
+RustyBlade
+	165,330,32,32
+	0.5,0.5
+ShadowFang
+	231,264,32,32
+	0.5,0.5
+ShortSword
+	132,363,32,32
+	0.5,0.5
+StoneSword
+	99,396,32,32
+	0.5,0.5
+TorchBlade
+	264,231,32,32
+	0.5,0.5
+VoidCutter
+	132,396,32,32
+	0.5,0.5
+WeaponShield
+	99,429,32,32
 	0.5,0.5
 
 Accessories
@@ -127,19 +451,34 @@ Accessories
 	0,1,2,3
 Armor
 	8
-	6,7
+	6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30
+Axes
+	8
+	31,32,33,34,35,36,37,38
 Consumables
 	8
-	8,9,10,11,12,13,14,15,16
+	39,40,41,42,43,44,45,46,47
+Daggers
+	8
+	48,49,50
+Hammers
+	8
+	52,53,54,55,56
 Helms
 	8
-	19,20
+	58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,80,81,82
 Shields
 	8
-	22,23
+	84,85,86,87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108
+Spears
+	8
+	110,111,112
+Staffs
+	8
+	113,114,115
 StencilIcons
 	8
-	25,26,27,28,29,30,31,32,33,34,35,36,37
+	116,117,118,119,120,121,122,123,124,125,126,127,128
 Swords
 	8
-	38,39
+	129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,144,145,146,147
