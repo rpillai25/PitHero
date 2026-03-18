@@ -764,8 +764,14 @@ namespace PitHero.UI
                 }
                 else
                 {
-                    UpdateHeroDataFromSlot(a);
-                    UpdateHeroDataFromSlot(b);
+                    if (!UpdateHeroDataFromSlot(a) || !UpdateHeroDataFromSlot(b))
+                    {
+                        // Revert logical swap if hero rejected the equipment
+                        b.SlotData.Item = a.SlotData.Item;
+                        a.SlotData.Item = tmp;
+                        UpdateHeroDataFromSlot(a);
+                        UpdateHeroDataFromSlot(b);
+                    }
                 }
             }
 
@@ -1146,14 +1152,14 @@ namespace PitHero.UI
             return item.Kind == ItemKind.WeaponSword || item.Kind == ItemKind.WeaponKnuckle || item.Kind == ItemKind.WeaponStaff || item.Kind == ItemKind.WeaponRod || item.Kind == ItemKind.Shield;
         }
 
-        /// <summary>Updates hero equipment when equipment slot changed.</summary>
-        private void UpdateHeroDataFromSlot(InventorySlot slot)
+        /// <summary>Updates hero equipment when equipment slot changed. Returns false if hero rejected the item.</summary>
+        private bool UpdateHeroDataFromSlot(InventorySlot slot)
         {
             var heroEquipment = _heroComponent?.LinkedHero;
-            if (heroEquipment == null) return;
+            if (heroEquipment == null) return true;
             var d = slot.SlotData;
-            if (d.SlotType != InventorySlotType.Equipment || !d.EquipmentSlot.HasValue) return;
-            heroEquipment.SetEquipmentSlot(d.EquipmentSlot.Value, d.Item);
+            if (d.SlotType != InventorySlotType.Equipment || !d.EquipmentSlot.HasValue) return true;
+            return heroEquipment.SetEquipmentSlot(d.EquipmentSlot.Value, d.Item);
         }
 
         /// <summary>finds the first empty bag slot (shortcut or inventory).</summary>

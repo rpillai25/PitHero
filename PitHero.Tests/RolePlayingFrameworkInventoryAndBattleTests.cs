@@ -28,21 +28,25 @@ namespace PitHero.Tests
             Assert.IsTrue(hero.MaxMP > maxMPBefore, "MaxMP should increase after leveling.");
         }
 
-        /// <summary>Job-based equip restrictions: Mage cannot equip swords, Knight cannot equip rods.</summary>
+        /// <summary>All jobs can equip any weapon or armor type in the appropriate slot.</summary>
         [TestMethod]
-        public void Equip_Restrictions_ByJob()
+        public void Equip_NoJobRestrictions_AnyJobCanEquipAnyGear()
         {
             var mage = new Hero("Mage", new Mage(), level: 2, baseStats: new StatBlock(1, 2, 2, 6));
             var knight = new Hero("Knight", new Knight(), level: 2, baseStats: new StatBlock(6, 2, 4, 1));
 
             var sword = new Gear("Bronze Sword", ItemKind.WeaponSword, ItemRarity.Normal, "A bronze sword", 10, new StatBlock(1, 0, 0, 0));
             var rod = new Gear("Oak Rod", ItemKind.WeaponRod, ItemRarity.Normal, "An oak rod", 10, new StatBlock(0, 0, 0, 1));
+            var staff = new Gear("Walking Stick", ItemKind.WeaponStaff, ItemRarity.Normal, "A walking stick", 10, new StatBlock(0, 0, 0, 1));
+            var robe = new Gear("Tattered Cloth", ItemKind.ArmorRobe, ItemRarity.Normal, "Worn cloth garments", 10, new StatBlock(0, 0, 1, 0));
 
-            Assert.IsFalse(mage.TryEquip(sword), "Mage should not be able to equip swords.");
+            Assert.IsTrue(mage.TryEquip(sword), "Mage should be able to equip swords.");
             Assert.IsTrue(mage.TryEquip(rod), "Mage should be able to equip rods.");
 
             Assert.IsTrue(knight.TryEquip(sword), "Knight should be able to equip swords.");
-            Assert.IsFalse(knight.TryEquip(rod), "Knight should not be able to equip rods.");
+            Assert.IsTrue(knight.TryEquip(rod), "Knight should be able to equip rods.");
+            Assert.IsTrue(knight.TryEquip(staff), "Knight should be able to equip staves.");
+            Assert.IsTrue(knight.TryEquip(robe), "Knight should be able to equip robes.");
         }
     }
 }
