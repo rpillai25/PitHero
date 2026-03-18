@@ -73,12 +73,5 @@ namespace PitHero.Tests
             Assert.AreEqual(-1, fullMixPotion.MPRestoreAmount); // -1 indicates full restore
         }
 
-        [TestMethod]
-        public void Consumable_WithoutRestoreAmounts_UsesDefaults()
-        {
-            var bag = BagItems.StandardBag();
-            Assert.AreEqual(0, bag.HPRestoreAmount);
-            Assert.AreEqual(0, bag.MPRestoreAmount);
-        }
     }
 }

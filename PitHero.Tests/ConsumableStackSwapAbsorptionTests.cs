@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Inventory;
+using RolePlayingFramework.Stats;
 
 namespace PitHero.Tests
 {
@@ -147,18 +148,18 @@ namespace PitHero.Tests
         {
             // Non-consumable items should not absorb
             var bag = new ItemBag("Test Bag", 12);
-            var bagItem1 = BagItems.StandardBag();
-            var bagItem2 = BagItems.StandardBag();
+            var gear1 = new Gear("Sword", ItemKind.WeaponSword, ItemRarity.Normal, "A test sword", 10, new StatBlock(1, 0, 0, 0));
+            var gear2 = new Gear("Sword", ItemKind.WeaponSword, ItemRarity.Normal, "A test sword", 10, new StatBlock(1, 0, 0, 0));
 
-            bag.SetSlotItem(0, bagItem1);
-            bag.SetSlotItem(1, bagItem2);
+            bag.SetSlotItem(0, gear1);
+            bag.SetSlotItem(1, gear2);
 
             // Perform swap
             Assert.IsTrue(bag.SwapSlots(0, 1));
 
             // Should be a regular swap, no absorption
-            Assert.AreSame(bagItem2, bag.GetSlotItem(0));
-            Assert.AreSame(bagItem1, bag.GetSlotItem(1));
+            Assert.AreSame(gear2, bag.GetSlotItem(0));
+            Assert.AreSame(gear1, bag.GetSlotItem(1));
             Assert.AreEqual(2, bag.Count);
         }
 
@@ -215,16 +216,16 @@ namespace PitHero.Tests
             var bag = new ItemBag("Test Bag", 12);
             var potion = PotionItems.HPPotion();
             potion.StackCount = 5;
-            var bagItem = BagItems.StandardBag();
+            var gear = new Gear("Sword", ItemKind.WeaponSword, ItemRarity.Normal, "A test sword", 10, new StatBlock(1, 0, 0, 0));
 
             bag.SetSlotItem(0, potion);
-            bag.SetSlotItem(1, bagItem);
+            bag.SetSlotItem(1, gear);
 
             // Perform swap
             Assert.IsTrue(bag.SwapSlots(0, 1));
 
             // Should be a regular swap
-            Assert.AreSame(bagItem, bag.GetSlotItem(0));
+            Assert.AreSame(gear, bag.GetSlotItem(0));
             var slot1Item = bag.GetSlotItem(1) as Consumable;
             Assert.IsNotNull(slot1Item);
             Assert.AreEqual(5, slot1Item.StackCount);

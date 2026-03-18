@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Inventory;
+using RolePlayingFramework.Stats;
 
 namespace PitHero.Tests
 {
@@ -138,19 +139,15 @@ namespace PitHero.Tests
         public void ItemBag_DoesNotStackNonConsumables()
         {
             var bag = new ItemBag("Test Bag", 12);
-            var bag1 = BagItems.StandardBag();
-            var bag2 = BagItems.StandardBag();
+            var gear1 = new Gear("Sword", ItemKind.WeaponSword, ItemRarity.Normal, "A test sword", 10, new StatBlock(1, 0, 0, 0));
+            var gear2 = new Gear("Sword", ItemKind.WeaponSword, ItemRarity.Normal, "A test sword", 10, new StatBlock(1, 0, 0, 0));
 
-            // Verify bags are consumables but have StackSize of 1
-            Assert.AreEqual(1, bag1.StackSize);
-            Assert.AreEqual(1, bag2.StackSize);
-
-            // Add first bag
-            Assert.IsTrue(bag.TryAdd(bag1));
+            // Add first gear item
+            Assert.IsTrue(bag.TryAdd(gear1));
             Assert.AreEqual(1, bag.Count);
 
-            // Add second bag - should NOT stack (StackSize is 1)
-            Assert.IsTrue(bag.TryAdd(bag2));
+            // Add second gear item of same type - should NOT stack (gear items don't stack)
+            Assert.IsTrue(bag.TryAdd(gear2));
             Assert.AreEqual(2, bag.Count); // 2 slots used
         }
 
@@ -201,20 +198,5 @@ namespace PitHero.Tests
             Assert.AreEqual(0, bag.Count); // Now empty
         }
 
-        [TestMethod]
-        public void ItemBag_ConsumeFromStack_HandlesNonStackableConsumable()
-        {
-            var bag = new ItemBag("Test Bag", 12);
-            var bagItem = BagItems.StandardBag();
-
-            Assert.IsTrue(bag.TryAdd(bagItem));
-            Assert.AreEqual(1, bag.Count);
-            Assert.AreEqual(1, bagItem.StackCount);
-
-            // Consume - should remove the bag item since StackSize is 1
-            Assert.IsTrue(bag.ConsumeFromStack(0));
-            Assert.AreEqual(0, bagItem.StackCount);
-            Assert.AreEqual(0, bag.Count); // Item removed
-        }
     }
 }

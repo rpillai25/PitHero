@@ -90,15 +90,6 @@ namespace PitHero.Tests
             Assert.AreEqual(0, bag.Count);
         }
 
-        [TestMethod]
-        public void BagItems_CreateCorrectRarities()
-        {
-            Assert.AreEqual(ItemRarity.Normal, BagItems.StandardBag().Rarity);
-            Assert.AreEqual(ItemRarity.Uncommon, BagItems.ForagersBag().Rarity);
-            Assert.AreEqual(ItemRarity.Rare, BagItems.TravellersBag().Rarity);
-            Assert.AreEqual(ItemRarity.Epic, BagItems.AdventurersBag().Rarity);
-            Assert.AreEqual(ItemRarity.Legendary, BagItems.MerchantsBag().Rarity);
-        }
     }
 
     [TestClass]

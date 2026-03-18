@@ -150,10 +150,10 @@ namespace PitHero.ECS.Components
             return rarity switch
             {
                 ItemRarity.Normal => GenerateNormalPotion(),
-                ItemRarity.Uncommon => BagItems.ForagersBag(), // Keep bags for Uncommon since we only have Normal, Rare, Epic potions
+                ItemRarity.Uncommon => GenerateNormalPotion(),
                 ItemRarity.Rare => GenerateMidPotion(),
                 ItemRarity.Epic => GenerateFullPotion(),
-                ItemRarity.Legendary => BagItems.MerchantsBag(), // Keep bags for Legendary since we only have Normal, Rare, Epic potions
+                ItemRarity.Legendary => GenerateFullPotion(),
                 _ => PotionItems.HPPotion() // Default to basic HP potion
             };
         }
@@ -171,7 +171,7 @@ namespace PitHero.ECS.Components
                 return treasureLevel switch
                 {
                     1 => GenerateNormalPotion(),
-                    2 => BagItems.ForagersBag(),
+                    2 => GenerateCaveUncommonEquipment(),
                     3 => GenerateMidPotion(),
                     _ => GenerateItemForTreasureLevel(treasureLevel)
                 };
