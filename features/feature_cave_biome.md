@@ -49,7 +49,7 @@ Fully implement and validate the Cave Biome system for pit levels 1-25, includin
    - `DetermineCaveTreasureLevel()` integrated
    - `GenerateCaveItemForTreasureLevel()` implemented
    - Common loot (Level 1): ShortSword, WoodenShield, SquireHelm, LeatherArmor, basic potions
-   - Uncommon loot (Level 2): LongSword, IronShield, IronHelm, IronArmor, ProtectRing, ForagersBag
+   - Uncommon loot (Level 2): LongSword, IronShield, IronHelm, IronArmor, ProtectRing
 
 4. ✅ Enemy Roster - 10 enemies defined
    - Tier 1 (Levels 1-4): Slime, Bat, Rat
@@ -60,7 +60,7 @@ Fully implement and validate the Cave Biome system for pit levels 1-25, includin
 5. ✅ Equipment Roster - Cave-appropriate items
    - Normal rarity (Pit 1-10): Short Sword, Wooden Shield, Squire Helm, Leather Armor
    - Uncommon rarity (Pit 11-25): Long Sword, Iron Shield, Iron Helm, Iron Armor, Protect Ring
-   - Utility: Forager's Bag, HP/MP/Mix Potions
+   - Utility: HP/MP/Mix Potions
 
 6. ⚠️ Partial Virtual Layer
    - `VirtualPitGenerator.cs` has boss floor detection
@@ -263,7 +263,7 @@ Based on `BalanceConfig.EstimatePlayerLevelForPitLevel()`:
     - Verify no uncommon items appear
   - Add test: `CaveTreasure_Level2_GeneratesUncommonLoot()`
     - Run 100 iterations of `GenerateCaveItemForTreasureLevel(2)`
-    - Verify all items are from uncommon pool: LongSword, IronShield, IronHelm, IronArmor, ProtectRing, ForagersBag
+    - Verify all items are from uncommon pool: LongSword, IronShield, IronHelm, IronArmor, ProtectRing
     - Verify no common-only items appear
   - Add test: `CaveTreasure_Distribution_CoversAllItems()`
     - Run 1000 iterations for each treasure level

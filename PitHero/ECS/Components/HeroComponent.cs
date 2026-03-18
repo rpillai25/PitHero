@@ -261,7 +261,7 @@ namespace PitHero.ECS.Components
             _pitWidthManager = Core.Services.GetService<PitWidthManager>();
 
             // Initialize hero's item bag with full 120 capacity (20x6 grid)
-            Bag = new RolePlayingFramework.Inventory.ItemBag("Traveller's Bag", 120);
+            Bag = new RolePlayingFramework.Inventory.ItemBag("Inventory", 120);
 
             // Restore pending inventory items from save data (must happen after Bag is created)
             // (Nez defers OnAddedToEntity, so Bag is null during ApplyPendingLoadData in Begin)
