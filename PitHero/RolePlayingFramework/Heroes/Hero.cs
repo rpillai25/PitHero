@@ -218,7 +218,7 @@ namespace RolePlayingFramework.Heroes
             }
         }
 
-        /// <summary>Equips an item into the appropriate slot if job allows.</summary>
+        /// <summary>Equips an item into the appropriate slot based on item type.</summary>
         public bool TryEquip(IItem item)
         {
             if (item == null) return false;

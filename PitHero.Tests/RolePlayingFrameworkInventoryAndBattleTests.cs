@@ -48,5 +48,33 @@ namespace PitHero.Tests
             Assert.IsTrue(knight.TryEquip(staff), "Knight should be able to equip staves.");
             Assert.IsTrue(knight.TryEquip(robe), "Knight should be able to equip robes.");
         }
+
+        /// <summary>SetEquipmentSlot accepts any weapon/armor/hat type regardless of job.</summary>
+        [TestMethod]
+        public void SetEquipmentSlot_NoJobRestrictions_AcceptsAllTypes()
+        {
+            var knight = new Hero("Knight", new Knight(), level: 2, baseStats: new StatBlock(6, 2, 4, 1));
+
+            var staff = new Gear("Walking Stick", ItemKind.WeaponStaff, ItemRarity.Normal, "A walking stick", 10, new StatBlock(0, 0, 0, 1));
+            var robe = new Gear("Tattered Cloth", ItemKind.ArmorRobe, ItemRarity.Normal, "Worn cloth garments", 10, new StatBlock(0, 0, 1, 0));
+            var wizardHat = new Gear("Pointy Hat", ItemKind.HatWizard, ItemRarity.Normal, "A wizard hat", 10, new StatBlock(0, 0, 0, 1));
+
+            Assert.IsTrue(knight.SetEquipmentSlot(EquipmentSlot.WeaponShield1, staff), "Knight should equip staff via SetEquipmentSlot.");
+            Assert.IsTrue(knight.SetEquipmentSlot(EquipmentSlot.Armor, robe), "Knight should equip robe via SetEquipmentSlot.");
+            Assert.IsTrue(knight.SetEquipmentSlot(EquipmentSlot.Hat, wizardHat), "Knight should equip wizard hat via SetEquipmentSlot.");
+        }
+
+        /// <summary>SetEquipmentSlot still rejects wrong item types for the slot.</summary>
+        [TestMethod]
+        public void SetEquipmentSlot_RejectsWrongSlotType()
+        {
+            var knight = new Hero("Knight", new Knight(), level: 2, baseStats: new StatBlock(6, 2, 4, 1));
+
+            var sword = new Gear("Bronze Sword", ItemKind.WeaponSword, ItemRarity.Normal, "A bronze sword", 10, new StatBlock(1, 0, 0, 0));
+            var robe = new Gear("Tattered Cloth", ItemKind.ArmorRobe, ItemRarity.Normal, "Worn cloth garments", 10, new StatBlock(0, 0, 1, 0));
+
+            Assert.IsFalse(knight.SetEquipmentSlot(EquipmentSlot.Armor, sword), "Weapon should not go in armor slot.");
+            Assert.IsFalse(knight.SetEquipmentSlot(EquipmentSlot.WeaponShield1, robe), "Armor should not go in weapon slot.");
+        }
     }
 }
