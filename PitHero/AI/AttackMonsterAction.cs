@@ -664,9 +664,22 @@ namespace PitHero.AI
                                                         hero.AddExperience(enemy.ExperienceYield);
                                                         hero.EarnJP(enemy.JPYield);
                                                         hero.EarnSynergyPointsWithAcceleration(enemy.SPYield);
-                                                        Debug.Log($"[AttackMonster] Earned {enemy.ExperienceYield} XP, {enemy.JPYield} JP, {enemy.SPYield} SP");
 
                                                         AwardMercenaryExperience(validMercenaries, enemy.ExperienceYield);
+
+                                                        // Add gold to global Funds
+                                                        var gameState = Nez.Core.Services.GetService<PitHero.Services.GameStateService>();
+                                                        if (gameState != null)
+                                                        {
+                                                            gameState.Funds += enemy.GoldYield;
+
+                                                            if (enemy.GoldYield > 0)
+                                                            {
+                                                                heroComponent.InnExhausted = false;
+                                                            }
+                                                        }
+
+                                                        Debug.Log($"[AttackMonster] Earned {enemy.ExperienceYield} XP, {enemy.JPYield} JP, {enemy.SPYield} SP, {enemy.GoldYield} Gold");
 
                                                         // Try to recruit the defeated monster
                                                         var alliedMonsterMgr = Core.Services.GetService<PitHero.Services.AlliedMonsterManager>();
