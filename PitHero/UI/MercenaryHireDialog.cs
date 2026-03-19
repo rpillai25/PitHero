@@ -89,9 +89,7 @@ namespace PitHero.UI
             var costLabelStyle = new LabelStyle
             {
                 Font = defaultLabelStyle.Font,
-                FontColor = new Color(184, 138, 13),
-                FontScaleX = defaultLabelStyle.FontScaleX,
-                FontScaleY = defaultLabelStyle.FontScaleY
+                FontColor = new Color(184, 138, 13)
             };
             _costLabel = new Label("Cost: 0 gold", costLabelStyle);
             Add(_costLabel).SetColspan(2).Left();
@@ -170,10 +168,9 @@ namespace PitHero.UI
                     _hireTooltip.SetAlways(true);
                 }
             }
-            else if (_hireTooltip != null)
+            else
             {
-                _hireTooltip.GetContainer().Remove();
-                _hireTooltip = null;
+                ClearHireTooltip();
             }
 
             SetVisible(true);
@@ -202,12 +199,7 @@ namespace PitHero.UI
             _isVisible = false;
             _mercenaryEntity = null;
 
-            // Clean up tooltip
-            if (_hireTooltip != null)
-            {
-                _hireTooltip.GetContainer().Remove();
-                _hireTooltip = null;
-            }
+            ClearHireTooltip();
 
             // Unpause the game when dialog closes
             var pauseService = Core.Services.GetService<PauseService>();
@@ -245,6 +237,16 @@ namespace PitHero.UI
         private void OnCancelClicked(Button button)
         {
             Hide();
+        }
+
+        /// <summary>Removes the hire tooltip if present.</summary>
+        private void ClearHireTooltip()
+        {
+            if (_hireTooltip != null)
+            {
+                _hireTooltip.GetContainer().Remove();
+                _hireTooltip = null;
+            }
         }
     }
 }

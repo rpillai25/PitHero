@@ -156,6 +156,7 @@ namespace PitHero.Tests
         public void DetermineMercenaryLevel_ProducesVariedLevels()
         {
             // With hero level 50, we should see a variety of levels over many rolls
+            // heroLevel/3 ≈ 16.67 → low is [1, 16], heroLevel/2 = 25 → mid is [16, 25]
             var seenLevel1 = false;
             var seenLowLevel = false;
             var seenMidLevel = false;
@@ -174,6 +175,8 @@ namespace PitHero.Tests
 
             Assert.IsTrue(seenLevel1, "Should sometimes produce level 1 (20% chance)");
             Assert.IsTrue(seenLowLevel, "Should sometimes produce low levels (30% chance for 1 to heroLevel/3)");
+            Assert.IsTrue(seenMidLevel, "Should sometimes produce mid levels (20% chance for heroLevel/3 to heroLevel/2)");
+            Assert.IsTrue(seenHighLevel, "Should sometimes produce high levels (20% chance for heroLevel/2 to heroLevel)");
             Assert.IsTrue(seenHeroLevel, "Should sometimes produce hero level (10% chance)");
         }
 

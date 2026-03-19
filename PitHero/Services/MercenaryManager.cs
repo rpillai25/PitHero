@@ -554,25 +554,25 @@ namespace PitHero.Services
             }
             else if (roll < 0.50f)
             {
-                // 30% chance: random(1, heroLevel/3)
+                // 30% chance: random [1, heroLevel/3] inclusive
                 var max = heroLevel / 3;
-                level = max < 1 ? 1 : Nez.Random.Range(1, max);
+                level = max < 1 ? 1 : Nez.Random.Range(1, max + 1);
             }
             else if (roll < 0.70f)
             {
-                // 20% chance: random(heroLevel/3, heroLevel/2)
+                // 20% chance: random [heroLevel/3, heroLevel/2] inclusive
                 var min = heroLevel / 3;
                 var max = heroLevel / 2;
                 if (min < 1) min = 1;
                 if (max < min) max = min;
-                level = Nez.Random.Range(min, max);
+                level = Nez.Random.Range(min, max + 1);
             }
             else if (roll < 0.90f)
             {
-                // 20% chance: random(heroLevel/2, heroLevel)
+                // 20% chance: random [heroLevel/2, heroLevel] inclusive
                 var min = heroLevel / 2;
                 if (min < 1) min = 1;
-                level = Nez.Random.Range(min, heroLevel);
+                level = Nez.Random.Range(min, heroLevel + 1);
             }
             else
             {
