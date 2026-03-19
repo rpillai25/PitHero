@@ -666,7 +666,7 @@ namespace RolePlayingFramework.Balance
         /// - Levels 30-39: 125 gold per level
         /// - And so on...
         /// 
-        /// Formula: level * (50 + (level / 10) * 25)
+        /// Formula: costPerLevel = 50 + (level / 10) * 25, then cost = level * costPerLevel
         /// 
         /// Example values:
         /// - Level 1: 1 * 50 = 50 gold
