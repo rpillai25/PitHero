@@ -613,9 +613,9 @@ namespace PitHero.Services
                 saved.BaseVitality, saved.BaseMagic);
             var mercenary = new Mercenary(saved.Name, job, saved.Level, baseStats);
 
-            // Restore partial experience toward next level
+            // Restore partial experience toward next level (set directly to avoid re-triggering level-ups)
             if (saved.Experience > 0)
-                mercenary.AddExperience(saved.Experience);
+                mercenary.Experience = saved.Experience;
 
             // Restore equipment
             if (saved.EquipmentNames != null)

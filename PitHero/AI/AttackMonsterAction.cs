@@ -666,13 +666,7 @@ namespace PitHero.AI
                                                         hero.EarnSynergyPointsWithAcceleration(enemy.SPYield);
                                                         Debug.Log($"[AttackMonster] Earned {enemy.ExperienceYield} XP, {enemy.JPYield} JP, {enemy.SPYield} SP");
 
-                                                        // Award XP to all mercenaries in the battle
-                                                        for (int mi = 0; mi < validMercenaries.Count; mi++)
-                                                        {
-                                                            var mComp = validMercenaries[mi].GetComponent<MercenaryComponent>();
-                                                            if (mComp?.LinkedMercenary != null)
-                                                                mComp.LinkedMercenary.AddExperience(enemy.ExperienceYield);
-                                                        }
+                                                        AwardMercenaryExperience(validMercenaries, enemy.ExperienceYield);
 
                                                         // Try to recruit the defeated monster
                                                         var alliedMonsterMgr = Core.Services.GetService<PitHero.Services.AlliedMonsterManager>();
@@ -746,13 +740,7 @@ namespace PitHero.AI
                                             hero.EarnJP(targetEnemy.JPYield);
                                             hero.EarnSynergyPointsWithAcceleration(targetEnemy.SPYield);
 
-                                            // Award XP to all mercenaries in the battle
-                                            for (int mi = 0; mi < validMercenaries.Count; mi++)
-                                            {
-                                                var mComp = validMercenaries[mi].GetComponent<MercenaryComponent>();
-                                                if (mComp?.LinkedMercenary != null)
-                                                    mComp.LinkedMercenary.AddExperience(targetEnemy.ExperienceYield);
-                                            }
+                                            AwardMercenaryExperience(validMercenaries, targetEnemy.ExperienceYield);
                                             
                                             // Add gold to global Funds
                                             var gameState = Nez.Core.Services.GetService<PitHero.Services.GameStateService>();
@@ -978,12 +966,7 @@ namespace PitHero.AI
                                                     hero.AddExperience(sEnemy.ExperienceYield);
                                                     hero.EarnJP(sEnemy.JPYield);
                                                     hero.EarnSynergyPointsWithAcceleration(sEnemy.SPYield);
-                                                    for (int mi = 0; mi < validMercenaries.Count; mi++)
-                                                    {
-                                                        var mComp = validMercenaries[mi].GetComponent<MercenaryComponent>();
-                                                        if (mComp?.LinkedMercenary != null)
-                                                            mComp.LinkedMercenary.AddExperience(sEnemy.ExperienceYield);
-                                                    }
+                                                    AwardMercenaryExperience(validMercenaries, sEnemy.ExperienceYield);
 
                                                     var sGameState = Nez.Core.Services.GetService<PitHero.Services.GameStateService>();
                                                     if (sGameState != null)
@@ -1082,12 +1065,7 @@ namespace PitHero.AI
                                             hero.AddExperience(targetEnemy.ExperienceYield);
                                             hero.EarnJP(targetEnemy.JPYield);
                                             hero.EarnSynergyPointsWithAcceleration(targetEnemy.SPYield);
-                                            for (int mi = 0; mi < validMercenaries.Count; mi++)
-                                            {
-                                                var mComp = validMercenaries[mi].GetComponent<MercenaryComponent>();
-                                                if (mComp?.LinkedMercenary != null)
-                                                    mComp.LinkedMercenary.AddExperience(targetEnemy.ExperienceYield);
-                                            }
+                                            AwardMercenaryExperience(validMercenaries, targetEnemy.ExperienceYield);
                                             
                                             var gameState = Nez.Core.Services.GetService<PitHero.Services.GameStateService>();
                                             if (gameState != null)
@@ -1499,6 +1477,18 @@ namespace PitHero.AI
             }
 
             mercenaryEntity.Destroy();
+        }
+
+
+        /// <summary>Awards experience to all mercenaries in the battle.</summary>
+        private static void AwardMercenaryExperience(List<Entity> mercenaries, int xpAmount)
+        {
+            for (int mi = 0; mi < mercenaries.Count; mi++)
+            {
+                var mComp = mercenaries[mi].GetComponent<MercenaryComponent>();
+                if (mComp?.LinkedMercenary != null)
+                    mComp.LinkedMercenary.AddExperience(xpAmount);
+            }
         }
 
         // Temp list to avoid allocations each turn when picking random living monster

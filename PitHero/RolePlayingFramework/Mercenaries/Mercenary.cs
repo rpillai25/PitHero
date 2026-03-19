@@ -13,7 +13,7 @@ namespace RolePlayingFramework.Mercenaries
         public string Name { get; }
         public IJob Job { get; }
         public int Level { get; private set; }
-        public int Experience { get; private set; }
+        public int Experience { get; internal set; }
         public StatBlock BaseStats { get; private set; }
 
         public int MaxHP { get; private set; }
