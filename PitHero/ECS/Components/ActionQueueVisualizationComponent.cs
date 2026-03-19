@@ -47,7 +47,7 @@ namespace PitHero.ECS.Components
         public override float Width => SpriteSize;
         public override float Height => SpriteSize * ActionQueue.MaxQueueSize + SpriteSpacing * (ActionQueue.MaxQueueSize - 1);
 
-        /// <summary>Set the hero component to monitor for queue changes (hero mode).</summary>
+        /// <summary>Set the hero component to continuously monitor its action queue for automatic animation triggers.</summary>
         public void SetHeroComponent(HeroComponent heroComponent)
         {
             _heroComponent = heroComponent;

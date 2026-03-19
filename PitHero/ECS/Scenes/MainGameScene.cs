@@ -59,8 +59,8 @@ namespace PitHero.ECS.Scenes
         private const float GraphicalHudBaseY = 4f; // Base Y position for graphical HUD
         private const float GraphicalHudHalfModeXOffset = 0f; // No additional X offset needed since Pit Lv is at bottom
         private const float GraphicalHudSpacing = 170f; // Spacing between HUD elements (hero to merc1, merc1 to merc2)
-        private const float HudHeadXOffset = 64f; // X offset of head sprite within HUD (LEVEL_TEXT_X_OFFSET - 7)
-        private const float HudHeadYOffset = -2f; // Y offset of head sprite within HUD (LEVEL_TEXT_Y_OFFSET - 15)
+        private const float HudHeadXOffset = 64f; // X offset to center viz over the HUD head sprite
+        private const float HudHeadYOffset = -2f; // Y offset to center viz over the HUD head sprite
 
         public BitmapFont HudFont; // legacy reference (normal)
 
