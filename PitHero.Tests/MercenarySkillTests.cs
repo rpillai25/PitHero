@@ -79,10 +79,10 @@ namespace PitHero.Tests
             merc.LearnAllJobSkills();
 
             bool hasActive = false;
-            var enumerator = merc.LearnedSkills.GetEnumerator();
-            while (enumerator.MoveNext())
+            var skills = merc.Job.Skills;
+            for (int i = 0; i < skills.Count; i++)
             {
-                if (enumerator.Current.Value.Kind == SkillKind.Active)
+                if (skills[i].Kind == SkillKind.Active && merc.LearnedSkills.ContainsKey(skills[i].Id))
                 {
                     hasActive = true;
                     break;
@@ -98,10 +98,10 @@ namespace PitHero.Tests
             merc.LearnAllJobSkills();
 
             bool hasActive = false;
-            var enumerator = merc.LearnedSkills.GetEnumerator();
-            while (enumerator.MoveNext())
+            var skills = merc.Job.Skills;
+            for (int i = 0; i < skills.Count; i++)
             {
-                if (enumerator.Current.Value.Kind == SkillKind.Active)
+                if (skills[i].Kind == SkillKind.Active && merc.LearnedSkills.ContainsKey(skills[i].Id))
                 {
                     hasActive = true;
                     break;

@@ -298,10 +298,10 @@ namespace RolePlayingFramework.Mercenaries
             FireDamageBonus = 0f;
             MPCostReduction = 0f;
 
-            var enumerator = _learnedSkills.GetEnumerator();
-            while (enumerator.MoveNext())
+            var skills = Job.Skills;
+            for (int i = 0; i < skills.Count; i++)
             {
-                var skill = enumerator.Current.Value;
+                var skill = skills[i];
                 if (skill.Kind != SkillKind.Passive) continue;
 
                 switch (skill.Id)
