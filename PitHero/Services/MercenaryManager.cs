@@ -185,6 +185,7 @@ namespace PitHero.Services
 
             // Create mercenary
             var mercenary = new Mercenary(name, job, mercLevel, baseStats);
+            mercenary.LearnAllJobSkills();
 
             // Create entity at spawn position
             var spawnWorldPos = new Vector2(
@@ -670,6 +671,7 @@ namespace PitHero.Services
                 saved.BaseStrength, saved.BaseAgility,
                 saved.BaseVitality, saved.BaseMagic);
             var mercenary = new Mercenary(saved.Name, job, saved.Level, baseStats);
+            mercenary.LearnAllJobSkills();
 
             // Restore partial experience toward next level (set directly to avoid re-triggering level-ups)
             if (saved.Experience > 0)

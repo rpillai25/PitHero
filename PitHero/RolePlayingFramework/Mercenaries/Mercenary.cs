@@ -275,5 +275,60 @@ namespace RolePlayingFramework.Mercenaries
             if (skillId == null) return false;
             return _learnedSkills.Remove(skillId);
         }
+
+        /// <summary>Learns all skills from the mercenary's job and applies passive effects.</summary>
+        public void LearnAllJobSkills()
+        {
+            var skills = Job.Skills;
+            for (int i = 0; i < skills.Count; i++)
+            {
+                LearnSkill(skills[i]);
+            }
+            ApplyPassiveSkills();
+        }
+
+        /// <summary>Applies passive skill effects to mercenary properties.</summary>
+        private void ApplyPassiveSkills()
+        {
+            PassiveDefenseBonus = 0;
+            DeflectChance = 0f;
+            EnableCounter = false;
+            MPTickRegen = 0;
+            HealPowerBonus = 0f;
+            FireDamageBonus = 0f;
+            MPCostReduction = 0f;
+
+            var enumerator = _learnedSkills.GetEnumerator();
+            while (enumerator.MoveNext())
+            {
+                var skill = enumerator.Current.Value;
+                if (skill.Kind != SkillKind.Passive) continue;
+
+                switch (skill.Id)
+                {
+                    case "knight.heavy_armor":
+                        PassiveDefenseBonus += 2;
+                        break;
+                    case "mage.heart_fire":
+                        FireDamageBonus += 0.25f;
+                        break;
+                    case "mage.economist":
+                        MPCostReduction += 0.15f;
+                        break;
+                    case "priest.calm_spirit":
+                        MPTickRegen += 1;
+                        break;
+                    case "priest.mender":
+                        HealPowerBonus += 0.25f;
+                        break;
+                    case "monk.counter":
+                        EnableCounter = true;
+                        break;
+                    case "monk.deflect":
+                        DeflectChance = 0.15f;
+                        break;
+                }
+            }
+        }
     }
 }
