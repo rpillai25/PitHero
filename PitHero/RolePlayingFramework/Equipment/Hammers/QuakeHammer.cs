@@ -15,7 +15,7 @@ namespace RolePlayingFramework.Equipment.Hammers
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
                 "QuakeHammer",
-                ItemKind.WeaponKnuckle,
+                ItemKind.WeaponHammer,
                 Rarity,
                 "Massive hammer that shakes the ground.",
                 575,

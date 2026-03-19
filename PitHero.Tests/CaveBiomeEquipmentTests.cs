@@ -243,7 +243,7 @@ namespace PitHero.Tests
             int expectedAttack = BalanceConfig.CalculateEquipmentAttackBonus(3, ItemRarity.Normal);
             
             Assert.IsNotNull(item);
-            Assert.AreEqual(ItemKind.WeaponKnuckle, item.Kind); // Hammers use WeaponKnuckle
+            Assert.AreEqual(ItemKind.WeaponHammer, item.Kind); // Hammers use WeaponHammer
             Assert.AreEqual(expectedAttack, item.AttackBonus);
         }
 
@@ -254,7 +254,7 @@ namespace PitHero.Tests
             int expectedAttack = BalanceConfig.CalculateEquipmentAttackBonus(25, ItemRarity.Uncommon);
             
             Assert.IsNotNull(item);
-            Assert.AreEqual(ItemKind.WeaponKnuckle, item.Kind);
+            Assert.AreEqual(ItemKind.WeaponHammer, item.Kind);
             Assert.AreEqual(ItemRarity.Uncommon, item.Rarity);
             Assert.AreEqual(expectedAttack, item.AttackBonus);
             Assert.AreEqual(ElementType.Fire, item.ElementalProps.Element);

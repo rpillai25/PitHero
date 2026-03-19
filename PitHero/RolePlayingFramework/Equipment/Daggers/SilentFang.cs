@@ -15,7 +15,7 @@ namespace RolePlayingFramework.Equipment.Daggers
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
                 "SilentFang",
-                ItemKind.WeaponSword,
+                ItemKind.WeaponKnife,
                 Rarity,
                 "Slim blade for stealth attacks.",
                 225,

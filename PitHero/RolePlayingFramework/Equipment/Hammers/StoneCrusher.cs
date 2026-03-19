@@ -15,7 +15,7 @@ namespace RolePlayingFramework.Equipment.Hammers
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
                 "StoneCrusher",
-                ItemKind.WeaponKnuckle,
+                ItemKind.WeaponHammer,
                 Rarity,
                 "Heavy stone-headed hammer.",
                 200,

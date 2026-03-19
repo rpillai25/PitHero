@@ -15,7 +15,7 @@ namespace RolePlayingFramework.Equipment.Daggers
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
                 "RustyDagger",
-                ItemKind.WeaponSword,
+                ItemKind.WeaponKnife,
                 Rarity,
                 $"Old corroded blade.",
                 40,

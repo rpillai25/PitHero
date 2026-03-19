@@ -15,7 +15,7 @@ namespace RolePlayingFramework.Equipment.Daggers
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
                 "SerpentsTooth",
-                ItemKind.WeaponSword,
+                ItemKind.WeaponKnife,
                 Rarity,
                 "Curved dagger shaped like a snake fang.",
                 425,

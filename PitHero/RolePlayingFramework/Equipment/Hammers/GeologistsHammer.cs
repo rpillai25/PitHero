@@ -15,7 +15,7 @@ namespace RolePlayingFramework.Equipment.Hammers
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
                 "GeologistsHammer",
-                ItemKind.WeaponKnuckle,
+                ItemKind.WeaponHammer,
                 Rarity,
                 "Precision hammer for breaking minerals.",
                 425,

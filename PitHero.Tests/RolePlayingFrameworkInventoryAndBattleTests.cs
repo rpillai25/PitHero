@@ -118,8 +118,9 @@ namespace PitHero.Tests
             Assert.AreEqual(JobType.Monk, Gear.GetDefaultAllowedJobs(ItemKind.WeaponKnuckle));
             Assert.AreEqual(JobType.Priest, Gear.GetDefaultAllowedJobs(ItemKind.WeaponStaff));
             Assert.AreEqual(JobType.Mage, Gear.GetDefaultAllowedJobs(ItemKind.WeaponRod));
-            Assert.AreEqual(JobType.Thief, Gear.GetDefaultAllowedJobs(ItemKind.WeaponKnife));
+            Assert.AreEqual(JobType.Thief | JobType.Mage, Gear.GetDefaultAllowedJobs(ItemKind.WeaponKnife));
             Assert.AreEqual(JobType.Archer, Gear.GetDefaultAllowedJobs(ItemKind.WeaponBow));
+            Assert.AreEqual(JobType.Knight | JobType.Priest, Gear.GetDefaultAllowedJobs(ItemKind.WeaponHammer));
             Assert.AreEqual(JobType.Knight, Gear.GetDefaultAllowedJobs(ItemKind.ArmorMail));
             Assert.AreEqual(JobType.Monk, Gear.GetDefaultAllowedJobs(ItemKind.ArmorGi));
             Assert.AreEqual(JobType.Mage | JobType.Priest, Gear.GetDefaultAllowedJobs(ItemKind.ArmorRobe));

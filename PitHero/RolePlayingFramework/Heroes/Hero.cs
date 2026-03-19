@@ -239,9 +239,11 @@ namespace RolePlayingFramework.Heroes
             switch (item.Kind)
             {
                 case ItemKind.WeaponSword:
+                case ItemKind.WeaponKnife:
                 case ItemKind.WeaponKnuckle:
                 case ItemKind.WeaponStaff:
                 case ItemKind.WeaponRod:
+                case ItemKind.WeaponHammer:
                     WeaponShield1 = item; RecalculateDerived(); return true;
                 case ItemKind.ArmorMail:
                 case ItemKind.ArmorGi:
@@ -289,8 +291,9 @@ namespace RolePlayingFramework.Heroes
             switch (slot)
             {
                 case EquipmentSlot.WeaponShield1:
-                    if (item.Kind == ItemKind.WeaponSword || item.Kind == ItemKind.WeaponKnuckle
-                        || item.Kind == ItemKind.WeaponStaff || item.Kind == ItemKind.WeaponRod)
+                    if (item.Kind == ItemKind.WeaponSword || item.Kind == ItemKind.WeaponKnife
+                        || item.Kind == ItemKind.WeaponKnuckle || item.Kind == ItemKind.WeaponStaff
+                        || item.Kind == ItemKind.WeaponRod || item.Kind == ItemKind.WeaponHammer)
                     {
                         WeaponShield1 = item; RecalculateDerived(); return true;
                     }

@@ -91,11 +91,12 @@ namespace RolePlayingFramework.Equipment
             switch (kind)
             {
                 case ItemKind.WeaponSword: return JobType.Knight;
-                case ItemKind.WeaponKnife: return JobType.Thief;
+                case ItemKind.WeaponKnife: return JobType.Thief | JobType.Mage;
                 case ItemKind.WeaponKnuckle: return JobType.Monk;
                 case ItemKind.WeaponStaff: return JobType.Priest;
                 case ItemKind.WeaponRod: return JobType.Mage;
                 case ItemKind.WeaponBow: return JobType.Archer;
+                case ItemKind.WeaponHammer: return JobType.Knight | JobType.Priest;
                 case ItemKind.ArmorMail: return JobType.Knight;
                 case ItemKind.ArmorGi: return JobType.Monk;
                 case ItemKind.ArmorRobe: return JobType.Mage | JobType.Priest;

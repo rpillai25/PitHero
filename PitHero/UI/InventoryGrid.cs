@@ -1154,7 +1154,7 @@ namespace PitHero.UI
         /// <summary>Checks if item is a weapon or shield.</summary>
         private bool IsWeaponOrShield(IItem item)
         {
-            return item.Kind == ItemKind.WeaponSword || item.Kind == ItemKind.WeaponKnuckle || item.Kind == ItemKind.WeaponStaff || item.Kind == ItemKind.WeaponRod || item.Kind == ItemKind.Shield;
+            return item.Kind == ItemKind.WeaponSword || item.Kind == ItemKind.WeaponKnife || item.Kind == ItemKind.WeaponKnuckle || item.Kind == ItemKind.WeaponStaff || item.Kind == ItemKind.WeaponRod || item.Kind == ItemKind.WeaponHammer || item.Kind == ItemKind.Shield;
         }
 
         /// <summary>Updates hero equipment when equipment slot changed. Returns false if hero rejected the item.</summary>
@@ -1197,7 +1197,7 @@ namespace PitHero.UI
             {
                 targetSlot = EquipmentSlot.Armor;
             }
-            else if (gear.Kind == ItemKind.WeaponSword || gear.Kind == ItemKind.WeaponKnuckle || gear.Kind == ItemKind.WeaponStaff || gear.Kind == ItemKind.WeaponRod)
+            else if (gear.Kind == ItemKind.WeaponSword || gear.Kind == ItemKind.WeaponKnife || gear.Kind == ItemKind.WeaponKnuckle || gear.Kind == ItemKind.WeaponStaff || gear.Kind == ItemKind.WeaponRod || gear.Kind == ItemKind.WeaponHammer)
             {
                 targetSlot = EquipmentSlot.WeaponShield1;
             }

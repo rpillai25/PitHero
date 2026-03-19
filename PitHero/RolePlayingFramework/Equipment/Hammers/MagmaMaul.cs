@@ -15,7 +15,7 @@ namespace RolePlayingFramework.Equipment.Hammers
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
                 "MagmaMaul",
-                ItemKind.WeaponKnuckle,
+                ItemKind.WeaponHammer,
                 Rarity,
                 "Molten-core war hammer.",
                 750,

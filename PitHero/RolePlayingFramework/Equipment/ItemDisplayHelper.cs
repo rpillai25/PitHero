@@ -14,9 +14,11 @@ namespace RolePlayingFramework.Equipment
             {
                 ItemKind.Consumable => "Consumable",
                 ItemKind.WeaponSword => "Weapon",
+                ItemKind.WeaponKnife => "Weapon",
                 ItemKind.WeaponKnuckle => "Weapon",
                 ItemKind.WeaponStaff => "Weapon",
                 ItemKind.WeaponRod => "Weapon",
+                ItemKind.WeaponHammer => "Weapon",
                 ItemKind.ArmorMail => "Armor",
                 ItemKind.ArmorGi => "Armor",
                 ItemKind.ArmorRobe => "Armor",
