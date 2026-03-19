@@ -278,6 +278,17 @@ namespace PitHero.AI
             // 3. Use proper timing with Time.DeltaTime
         }
 
+        /// <summary>Shows the skill name as bouncy text above a mercenary entity.</summary>
+        private static void ShowMercenarySkillName(Entity mercenaryEntity, string skillName)
+        {
+            var bouncyText = mercenaryEntity.GetComponent<BouncyTextComponent>();
+            if (bouncyText != null)
+            {
+                bouncyText.Init(skillName, Color.Cyan);
+                bouncyText.SetEnabled(true);
+            }
+        }
+
         /// <summary>
         /// Check if two tile positions are adjacent (8-directional adjacency)
         /// </summary>
@@ -832,12 +843,7 @@ namespace PitHero.AI
                                         mercenary.UseMP(healSkill.MPCost);
 
                                         // Show skill name above mercenary
-                                        var healSkillText = participant.MercenaryEntity.GetComponent<BouncyTextComponent>();
-                                        if (healSkillText != null)
-                                        {
-                                            healSkillText.Init(healSkill.Name, Color.Cyan);
-                                            healSkillText.SetEnabled(true);
-                                        }
+                                        ShowMercenarySkillName(participant.MercenaryEntity, healSkill.Name);
 
                                         var healTarget = mercDecision.Target;
                                         if (healTarget == null) healTarget = hero;
@@ -930,12 +936,7 @@ namespace PitHero.AI
                                         var skillDamageKind = atkSkill.Element != ElementType.Neutral ? DamageKind.Magical : DamageKind.Physical;
 
                                         // Show skill name above mercenary
-                                        var atkSkillText = participant.MercenaryEntity.GetComponent<BouncyTextComponent>();
-                                        if (atkSkillText != null)
-                                        {
-                                            atkSkillText.Init(atkSkill.Name, Color.Cyan);
-                                            atkSkillText.SetEnabled(true);
-                                        }
+                                        ShowMercenarySkillName(participant.MercenaryEntity, atkSkill.Name);
 
                                         // Build target list based on skill target type
                                         var skillLiving = GetLivingMonsters(validMonsters);
