@@ -830,6 +830,15 @@ namespace PitHero.AI
                                     if (mercenary.CurrentMP >= healSkill.MPCost)
                                     {
                                         mercenary.UseMP(healSkill.MPCost);
+
+                                        // Show skill name above mercenary
+                                        var healSkillText = participant.MercenaryEntity.GetComponent<BouncyTextComponent>();
+                                        if (healSkillText != null)
+                                        {
+                                            healSkillText.Init(healSkill.Name, Color.Cyan);
+                                            healSkillText.SetEnabled(true);
+                                        }
+
                                         var healTarget = mercDecision.Target;
                                         if (healTarget == null) healTarget = hero;
 
@@ -919,6 +928,14 @@ namespace PitHero.AI
                                     {
                                         mercenary.UseMP(atkSkill.MPCost);
                                         var skillDamageKind = atkSkill.Element != ElementType.Neutral ? DamageKind.Magical : DamageKind.Physical;
+
+                                        // Show skill name above mercenary
+                                        var atkSkillText = participant.MercenaryEntity.GetComponent<BouncyTextComponent>();
+                                        if (atkSkillText != null)
+                                        {
+                                            atkSkillText.Init(atkSkill.Name, Color.Cyan);
+                                            atkSkillText.SetEnabled(true);
+                                        }
 
                                         // Build target list based on skill target type
                                         var skillLiving = GetLivingMonsters(validMonsters);
