@@ -244,8 +244,8 @@ namespace PitHero.AI
                 return;
             }
 
-            // Check if item is a consumable potion (has sprite in Items.atlas)
-            if (containedItem is Consumable && IsItemVisualizable(containedItem))
+            // Check if item has a sprite in Items.atlas (consumables and gear)
+            if (IsItemVisualizable(containedItem))
             {
                 // Create visual pickup animation entity at chest position
                 var scene = Core.Scene;
@@ -283,9 +283,7 @@ namespace PitHero.AI
         /// </summary>
         private bool IsItemVisualizable(IItem item)
         {
-            // For now, assume all items with names matching Items.atlas sprites are visualizable
-            // This includes all the potion names: HPPotion, MPPotion, MixPotion, etc.
-            return item.Name.EndsWith("Potion");
+            return item is Consumable || item is IGear;
         }
 
         /// <summary>
