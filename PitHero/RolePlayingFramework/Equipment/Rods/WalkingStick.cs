@@ -2,7 +2,7 @@ using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 
-namespace RolePlayingFramework.Equipment.Staves
+namespace RolePlayingFramework.Equipment.Rods
 {
     /// <summary>Factory for creating Walking Stick gear.</summary>
     public static class WalkingStick
@@ -15,9 +15,9 @@ namespace RolePlayingFramework.Equipment.Staves
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
                 "WalkingStick",
-                ItemKind.WeaponStaff,
+                ItemKind.WeaponRod,
                 Rarity,
-                "Simple wooden staff.",
+                "Simple wooden rod.",
                 75,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

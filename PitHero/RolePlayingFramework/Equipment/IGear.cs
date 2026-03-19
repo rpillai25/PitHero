@@ -1,4 +1,5 @@
 using RolePlayingFramework.Combat;
+using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Equipment
@@ -19,5 +20,8 @@ namespace RolePlayingFramework.Equipment
 
         /// <summary>Elemental properties including type and resistances/weaknesses.</summary>
         ElementalProperties ElementalProps { get; }
+
+        /// <summary>Bitflag of job classes that can equip this gear.</summary>
+        JobType AllowedJobs { get; }
     }
 }

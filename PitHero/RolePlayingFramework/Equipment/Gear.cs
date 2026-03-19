@@ -1,4 +1,5 @@
 using RolePlayingFramework.Combat;
+using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Equipment
@@ -51,6 +52,7 @@ namespace RolePlayingFramework.Equipment
         public int HPBonus { get; }
         public int MPBonus { get; }
         public ElementalProperties ElementalProps { get; }
+        public JobType AllowedJobs { get; }
 
         /// <summary>
         /// Creates a new Gear item with specified properties.
@@ -66,7 +68,8 @@ namespace RolePlayingFramework.Equipment
         /// <param name="hp">Flat HP bonus</param>
         /// <param name="mp">Flat MP bonus</param>
         /// <param name="elementalProps">Elemental properties with type and optional resistances. Defaults to Neutral if not specified.</param>
-        public Gear(string name, ItemKind kind, ItemRarity rarity, string description, int price, in StatBlock stats, int atk = 0, int def = 0, int hp = 0, int mp = 0, ElementalProperties elementalProps = null)
+        /// <param name="allowedJobs">Bitflag of job classes that can equip this gear. Defaults based on ItemKind if not specified.</param>
+        public Gear(string name, ItemKind kind, ItemRarity rarity, string description, int price, in StatBlock stats, int atk = 0, int def = 0, int hp = 0, int mp = 0, ElementalProperties elementalProps = null, JobType? allowedJobs = null)
         {
             Name = name;
             Kind = kind;
@@ -79,6 +82,32 @@ namespace RolePlayingFramework.Equipment
             HPBonus = hp;
             MPBonus = mp;
             ElementalProps = elementalProps ?? new ElementalProperties(ElementType.Neutral);
+            AllowedJobs = allowedJobs ?? GetDefaultAllowedJobs(kind);
+        }
+
+        /// <summary>Returns the default allowed jobs for a given ItemKind.</summary>
+        public static JobType GetDefaultAllowedJobs(ItemKind kind)
+        {
+            switch (kind)
+            {
+                case ItemKind.WeaponSword: return JobType.Knight;
+                case ItemKind.WeaponKnife: return JobType.Thief | JobType.Mage;
+                case ItemKind.WeaponKnuckle: return JobType.Monk;
+                case ItemKind.WeaponStaff: return JobType.Priest;
+                case ItemKind.WeaponRod: return JobType.Mage;
+                case ItemKind.WeaponBow: return JobType.Archer;
+                case ItemKind.WeaponHammer: return JobType.Knight | JobType.Priest;
+                case ItemKind.ArmorMail: return JobType.Knight;
+                case ItemKind.ArmorGi: return JobType.Monk;
+                case ItemKind.ArmorRobe: return JobType.Mage | JobType.Priest;
+                case ItemKind.HatHelm: return JobType.Knight;
+                case ItemKind.HatHeadband: return JobType.Monk;
+                case ItemKind.HatWizard: return JobType.Mage;
+                case ItemKind.HatPriest: return JobType.Priest;
+                case ItemKind.Shield: return JobType.All;
+                case ItemKind.Accessory: return JobType.All;
+                default: return JobType.All;
+            }
         }
     }
 }

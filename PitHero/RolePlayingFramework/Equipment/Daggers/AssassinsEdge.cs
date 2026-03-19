@@ -15,7 +15,7 @@ namespace RolePlayingFramework.Equipment.Daggers
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
                 "AssassinsEdge",
-                ItemKind.WeaponSword,
+                ItemKind.WeaponKnife,
                 Rarity,
                 "Perfectly balanced killing blade.",
                 675,

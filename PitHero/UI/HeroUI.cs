@@ -1074,7 +1074,7 @@ namespace PitHero.UI
             {
                 return hero.Armor as IGear;
             }
-            else if (kind == ItemKind.WeaponSword || kind == ItemKind.WeaponKnuckle || kind == ItemKind.WeaponStaff || kind == ItemKind.WeaponRod)
+            else if (kind == ItemKind.WeaponSword || kind == ItemKind.WeaponKnife || kind == ItemKind.WeaponKnuckle || kind == ItemKind.WeaponStaff || kind == ItemKind.WeaponRod || kind == ItemKind.WeaponHammer)
             {
                 return hero.WeaponShield1 as IGear;
             }

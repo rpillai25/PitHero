@@ -60,9 +60,11 @@ namespace RolePlayingFramework.Mercenaries
             switch (item.Kind)
             {
                 case ItemKind.WeaponSword:
+                case ItemKind.WeaponKnife:
                 case ItemKind.WeaponKnuckle:
                 case ItemKind.WeaponStaff:
                 case ItemKind.WeaponRod:
+                case ItemKind.WeaponHammer:
                 case ItemKind.Shield:
                     if (WeaponShield1 == null)
                         WeaponShield1 = item;

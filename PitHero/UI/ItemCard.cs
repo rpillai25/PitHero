@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Jobs;
 
 namespace PitHero.UI
 {
@@ -11,6 +12,7 @@ namespace PitHero.UI
         private const float CARD_WIDTH = 200f;
         private const float CARD_PADDING = 5f;
         private const float LINE_SPACING = 2f;
+        private static readonly Color JobsTextColor = new Color(100, 100, 180);
 
         private IItem _item;
         private Table _contentTable;
@@ -90,6 +92,15 @@ namespace PitHero.UI
 
             // Add conditional properties
             AddConditionalProperties();
+
+            // Show allowed jobs for gear items
+            if (_item is IGear gearItem && gearItem.AllowedJobs != JobType.All)
+            {
+                var jobsText = "Classes: " + ItemDisplayHelper.FormatAllowedJobs(gearItem.AllowedJobs);
+                var jobsLabel = new Label(jobsText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = JobsTextColor });
+                _contentTable.Add(jobsLabel).Left().Pad(0, 0, LINE_SPACING, 0);
+                _contentTable.Row();
+            }
 
             // Sell Price (always shown)
             var sellPrice = _item.GetSellPrice();

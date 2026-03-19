@@ -15,7 +15,7 @@ namespace RolePlayingFramework.Equipment.Hammers
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
                 "Mallet",
-                ItemKind.WeaponKnuckle,
+                ItemKind.WeaponHammer,
                 Rarity,
                 "Simple wooden mallet.",
                 100,

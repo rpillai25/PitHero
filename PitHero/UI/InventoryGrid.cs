@@ -764,8 +764,14 @@ namespace PitHero.UI
                 }
                 else
                 {
-                    UpdateHeroDataFromSlot(a);
-                    UpdateHeroDataFromSlot(b);
+                    if (!UpdateHeroDataFromSlot(a) || !UpdateHeroDataFromSlot(b))
+                    {
+                        // Revert logical swap if hero rejected the equipment
+                        b.SlotData.Item = a.SlotData.Item;
+                        a.SlotData.Item = tmp;
+                        UpdateHeroDataFromSlot(a);
+                        UpdateHeroDataFromSlot(b);
+                    }
                 }
             }
 
@@ -1128,6 +1134,11 @@ namespace PitHero.UI
         {
             if (item == null) return true;
             if (slotData.SlotType != InventorySlotType.Equipment) return true;
+
+            // Check job restriction for gear in equipment slots
+            var hero = _heroComponent?.LinkedHero;
+            if (hero != null && !hero.CanEquipItem(item)) return false;
+
             switch (slotData.EquipmentSlot)
             {
                 case EquipmentSlot.WeaponShield1:
@@ -1143,17 +1154,17 @@ namespace PitHero.UI
         /// <summary>Checks if item is a weapon or shield.</summary>
         private bool IsWeaponOrShield(IItem item)
         {
-            return item.Kind == ItemKind.WeaponSword || item.Kind == ItemKind.WeaponKnuckle || item.Kind == ItemKind.WeaponStaff || item.Kind == ItemKind.WeaponRod || item.Kind == ItemKind.Shield;
+            return item.Kind == ItemKind.WeaponSword || item.Kind == ItemKind.WeaponKnife || item.Kind == ItemKind.WeaponKnuckle || item.Kind == ItemKind.WeaponStaff || item.Kind == ItemKind.WeaponRod || item.Kind == ItemKind.WeaponHammer || item.Kind == ItemKind.Shield;
         }
 
-        /// <summary>Updates hero equipment when equipment slot changed.</summary>
-        private void UpdateHeroDataFromSlot(InventorySlot slot)
+        /// <summary>Updates hero equipment when equipment slot changed. Returns false if hero rejected the item.</summary>
+        private bool UpdateHeroDataFromSlot(InventorySlot slot)
         {
             var heroEquipment = _heroComponent?.LinkedHero;
-            if (heroEquipment == null) return;
+            if (heroEquipment == null) return true;
             var d = slot.SlotData;
-            if (d.SlotType != InventorySlotType.Equipment || !d.EquipmentSlot.HasValue) return;
-            heroEquipment.SetEquipmentSlot(d.EquipmentSlot.Value, d.Item);
+            if (d.SlotType != InventorySlotType.Equipment || !d.EquipmentSlot.HasValue) return true;
+            return heroEquipment.SetEquipmentSlot(d.EquipmentSlot.Value, d.Item);
         }
 
         /// <summary>finds the first empty bag slot (shortcut or inventory).</summary>
@@ -1186,7 +1197,7 @@ namespace PitHero.UI
             {
                 targetSlot = EquipmentSlot.Armor;
             }
-            else if (gear.Kind == ItemKind.WeaponSword || gear.Kind == ItemKind.WeaponKnuckle || gear.Kind == ItemKind.WeaponStaff || gear.Kind == ItemKind.WeaponRod)
+            else if (gear.Kind == ItemKind.WeaponSword || gear.Kind == ItemKind.WeaponKnife || gear.Kind == ItemKind.WeaponKnuckle || gear.Kind == ItemKind.WeaponStaff || gear.Kind == ItemKind.WeaponRod || gear.Kind == ItemKind.WeaponHammer)
             {
                 targetSlot = EquipmentSlot.WeaponShield1;
             }

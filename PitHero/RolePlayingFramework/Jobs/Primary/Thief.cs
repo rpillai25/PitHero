@@ -20,7 +20,8 @@ namespace RolePlayingFramework.Jobs.Primary
             // Str: 7 + (0.520 * 98) ≈ 58, Agi: 10 + (0.735 * 98) ≈ 82
             // Vit: 5 + (0.388 * 98) ≈ 43, Mag: 4 + (0.286 * 98) ≈ 32
             growthPerLevel: new StatBlock(strength: 0.520f, agility: 0.735f, vitality: 0.388f, magic: 0.286f),
-            tier: JobTier.Primary)
+            tier: JobTier.Primary,
+            jobFlag: JobType.Thief)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

@@ -10,6 +10,7 @@ namespace RolePlayingFramework.Equipment
         WeaponStaff, // For Priest
         WeaponRod, // For Mage
         WeaponBow, // For Archer
+        WeaponHammer, // For Knight, Priest
         ArmorMail,
         ArmorGi,
         ArmorRobe,

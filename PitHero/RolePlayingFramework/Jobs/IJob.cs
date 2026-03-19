@@ -22,6 +22,9 @@ namespace RolePlayingFramework.Jobs
         /// <summary>Tier of this job (Primary, Secondary, or Tertiary).</summary>
         JobTier Tier { get; }
 
+        /// <summary>Bitflag identifying this job for equipment restriction checks.</summary>
+        JobType JobFlag { get; }
+
         /// <summary>Computes total job stat contribution at a given level.</summary>
         StatBlock GetJobContributionAtLevel(int level);
     }

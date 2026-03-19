@@ -2,7 +2,7 @@ using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 
-namespace RolePlayingFramework.Equipment.Staves
+namespace RolePlayingFramework.Equipment.Rods
 {
     /// <summary>Factory for creating Ember Rod gear.</summary>
     public static class EmberRod
@@ -15,7 +15,7 @@ namespace RolePlayingFramework.Equipment.Staves
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
                 "EmberRod",
-                ItemKind.WeaponStaff,
+                ItemKind.WeaponRod,
                 Rarity,
                 "Staff topped with ever-burning ember.",
                 650,

@@ -15,7 +15,7 @@ namespace RolePlayingFramework.Equipment.Daggers
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
                 "CaveShiv",
-                ItemKind.WeaponSword,
+                ItemKind.WeaponKnife,
                 Rarity,
                 $"Crude knife made from cave debris.",
                 125,
