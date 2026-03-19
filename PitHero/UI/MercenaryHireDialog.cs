@@ -3,6 +3,7 @@ using Nez;
 using Nez.UI;
 using PitHero.ECS.Components;
 using PitHero.Services;
+using RolePlayingFramework.Balance;
 
 namespace PitHero.UI
 {
@@ -19,8 +20,11 @@ namespace PitHero.UI
         private readonly Label _agiLabel;
         private readonly Label _vitLabel;
         private readonly Label _magLabel;
+        private readonly Label _costLabel;
         private readonly TextButton _hireButton;
         private readonly TextButton _cancelButton;
+        private readonly TextButtonStyle _hireButtonStyle;
+        private TextTooltip _hireTooltip;
         private Entity _mercenaryEntity;
         private bool _isVisible;
 
@@ -79,9 +83,34 @@ namespace PitHero.UI
             // MAG
             _magLabel = new Label("MAG: 10", skin);
             Add(_magLabel).SetColspan(2).Left();
+            Row().SetPadTop(5f);
+
+            // Hire cost
+            var costLabelStyle = new LabelStyle
+            {
+                Font = defaultLabelStyle.Font,
+                FontColor = new Color(184, 138, 13)
+            };
+            _costLabel = new Label("Cost: 0 gold", costLabelStyle);
+            Add(_costLabel).SetColspan(2).Left();
             Row().SetPadTop(15f);
 
-            _hireButton = new TextButton("Hire", skin, "ph-default");
+            // Create hire button with a style that supports DisabledFontColor
+            var baseStyle = skin.Get<TextButtonStyle>("ph-default");
+            _hireButtonStyle = new TextButtonStyle
+            {
+                Up = baseStyle.Up,
+                Down = baseStyle.Down,
+                Over = baseStyle.Over,
+                FontColor = baseStyle.FontColor,
+                DownFontColor = baseStyle.DownFontColor,
+                OverFontColor = baseStyle.OverFontColor,
+                DisabledFontColor = new Color(180, 40, 40),
+                PressedOffsetX = baseStyle.PressedOffsetX,
+                PressedOffsetY = baseStyle.PressedOffsetY
+            };
+
+            _hireButton = new TextButton("Hire", _hireButtonStyle);
             _hireButton.OnClicked += OnHireClicked;
             Add(_hireButton).SetPadRight(10f).SetMinWidth(80f).SetMinHeight(30f);
 
@@ -113,6 +142,37 @@ namespace PitHero.UI
             _vitLabel.SetText($"VIT: {stats.Vitality}");
             _magLabel.SetText($"MAG: {stats.Magic}");
 
+            // Display hire cost and check affordability
+            var hireCost = BalanceConfig.CalculateMercenaryHireCost(merc.Level);
+            _costLabel.SetText($"Cost: {hireCost} gold");
+
+            var gameState = Core.Services.GetService<GameStateService>();
+            var canAfford = gameState != null && gameState.Funds >= hireCost;
+            _hireButton.SetDisabled(!canAfford);
+
+            // Add or remove tooltip based on affordability
+            if (!canAfford)
+            {
+                if (_hireTooltip == null)
+                {
+                    var tooltipStyle = new TextTooltipStyle
+                    {
+                        LabelStyle = new LabelStyle
+                        {
+                            Font = Graphics.Instance.BitmapFont,
+                            FontColor = Color.White
+                        }
+                    };
+                    _hireTooltip = new TextTooltip("Not enough gold", _hireButton, tooltipStyle);
+                    _hireTooltip.SetInstant(true);
+                    _hireTooltip.SetAlways(true);
+                }
+            }
+            else
+            {
+                ClearHireTooltip();
+            }
+
             SetVisible(true);
             _isVisible = true;
 
@@ -139,6 +199,8 @@ namespace PitHero.UI
             _isVisible = false;
             _mercenaryEntity = null;
 
+            ClearHireTooltip();
+
             // Unpause the game when dialog closes
             var pauseService = Core.Services.GetService<PauseService>();
             pauseService?.Unpause();
@@ -154,6 +216,7 @@ namespace PitHero.UI
         private void OnHireClicked(Button button)
         {
             if (_mercenaryEntity == null) return;
+            if (_hireButton.GetDisabled()) return;
 
             var mercenaryManager = Core.Services.GetService<MercenaryManager>();
             if (mercenaryManager != null)
@@ -174,6 +237,16 @@ namespace PitHero.UI
         private void OnCancelClicked(Button button)
         {
             Hide();
+        }
+
+        /// <summary>Removes the hire tooltip if present.</summary>
+        private void ClearHireTooltip()
+        {
+            if (_hireTooltip != null)
+            {
+                _hireTooltip.GetContainer().Remove();
+                _hireTooltip = null;
+            }
         }
     }
 }

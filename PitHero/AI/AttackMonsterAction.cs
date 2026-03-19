@@ -278,6 +278,17 @@ namespace PitHero.AI
             // 3. Use proper timing with Time.DeltaTime
         }
 
+        /// <summary>Shows the skill name as bouncy text above a mercenary entity.</summary>
+        private static void ShowMercenarySkillName(Entity mercenaryEntity, string skillName)
+        {
+            var bouncyText = mercenaryEntity.GetComponent<BouncyTextComponent>();
+            if (bouncyText != null)
+            {
+                bouncyText.Init(skillName, Color.Cyan);
+                bouncyText.SetEnabled(true);
+            }
+        }
+
         /// <summary>
         /// Check if two tile positions are adjacent (8-directional adjacency)
         /// </summary>
@@ -664,9 +675,22 @@ namespace PitHero.AI
                                                         hero.AddExperience(enemy.ExperienceYield);
                                                         hero.EarnJP(enemy.JPYield);
                                                         hero.EarnSynergyPointsWithAcceleration(enemy.SPYield);
-                                                        Debug.Log($"[AttackMonster] Earned {enemy.ExperienceYield} XP, {enemy.JPYield} JP, {enemy.SPYield} SP");
 
                                                         AwardMercenaryExperience(validMercenaries, enemy.ExperienceYield);
+
+                                                        // Add gold to global Funds
+                                                        var gameState = Nez.Core.Services.GetService<PitHero.Services.GameStateService>();
+                                                        if (gameState != null)
+                                                        {
+                                                            gameState.Funds += enemy.GoldYield;
+
+                                                            if (enemy.GoldYield > 0)
+                                                            {
+                                                                heroComponent.InnExhausted = false;
+                                                            }
+                                                        }
+
+                                                        Debug.Log($"[AttackMonster] Earned {enemy.ExperienceYield} XP, {enemy.JPYield} JP, {enemy.SPYield} SP, {enemy.GoldYield} Gold");
 
                                                         // Try to recruit the defeated monster
                                                         var alliedMonsterMgr = Core.Services.GetService<PitHero.Services.AlliedMonsterManager>();
@@ -817,6 +841,10 @@ namespace PitHero.AI
                                     if (mercenary.CurrentMP >= healSkill.MPCost)
                                     {
                                         mercenary.UseMP(healSkill.MPCost);
+
+                                        // Show skill name above mercenary
+                                        ShowMercenarySkillName(participant.MercenaryEntity, healSkill.Name);
+
                                         var healTarget = mercDecision.Target;
                                         if (healTarget == null) healTarget = hero;
 
@@ -906,6 +934,9 @@ namespace PitHero.AI
                                     {
                                         mercenary.UseMP(atkSkill.MPCost);
                                         var skillDamageKind = atkSkill.Element != ElementType.Neutral ? DamageKind.Magical : DamageKind.Physical;
+
+                                        // Show skill name above mercenary
+                                        ShowMercenarySkillName(participant.MercenaryEntity, atkSkill.Name);
 
                                         // Build target list based on skill target type
                                         var skillLiving = GetLivingMonsters(validMonsters);

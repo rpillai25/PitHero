@@ -1,5 +1,6 @@
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Stats;
 
 namespace RolePlayingFramework.Balance
 {
@@ -650,6 +651,38 @@ namespace RolePlayingFramework.Balance
         public static int CalculateEvasion(int agility, int level)
         {
             return System.Math.Min(255, agility * 2 + level);
+        }
+
+        /// <summary>
+        /// Calculates the gold cost to hire a mercenary based on their level.
+        /// </summary>
+        /// <param name="level">Mercenary level (1-99).</param>
+        /// <returns>Gold cost to hire the mercenary.</returns>
+        /// <remarks>
+        /// The cost-per-level increases by 25 every 10 levels:
+        /// - Levels 1-9: 50 gold per level
+        /// - Levels 10-19: 75 gold per level
+        /// - Levels 20-29: 100 gold per level
+        /// - Levels 30-39: 125 gold per level
+        /// - And so on...
+        /// 
+        /// Formula: costPerLevel = 50 + (level / 10) * 25, then cost = level * costPerLevel
+        /// 
+        /// Example values:
+        /// - Level 1: 1 * 50 = 50 gold
+        /// - Level 9: 9 * 50 = 450 gold
+        /// - Level 10: 10 * 75 = 750 gold
+        /// - Level 19: 19 * 75 = 1425 gold
+        /// - Level 20: 20 * 100 = 2000 gold
+        /// - Level 99: 99 * 275 = 27225 gold
+        /// </remarks>
+        public static int CalculateMercenaryHireCost(int level)
+        {
+            if (level < 1) level = 1;
+            if (level > StatConstants.MaxLevel) level = StatConstants.MaxLevel;
+
+            var costPerLevel = 50 + (level / 10) * 25;
+            return level * costPerLevel;
         }
 
         #endregion
