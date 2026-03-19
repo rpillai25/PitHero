@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.ECS.Components;
+using RolePlayingFramework.Balance;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Jobs.Primary;
@@ -165,10 +166,13 @@ namespace PitHero.Services
         {
             if (_scene == null) return;
 
-            // Get hero level for mercenary level
+            // Get hero level for mercenary level distribution
             var heroEntity = _scene.FindEntity("hero");
             var heroComponent = heroEntity?.GetComponent<HeroComponent>();
             var heroLevel = heroComponent?.LinkedHero?.Level ?? 1;
+
+            // Determine mercenary level from distribution
+            var mercLevel = DetermineMercenaryLevel(heroLevel);
 
             // Generate random job
             var job = GetRandomJob();
@@ -180,7 +184,7 @@ namespace PitHero.Services
             var name = GenerateRandomName();
 
             // Create mercenary
-            var mercenary = new Mercenary(name, job, heroLevel, baseStats);
+            var mercenary = new Mercenary(name, job, mercLevel, baseStats);
 
             // Create entity at spawn position
             var spawnWorldPos = new Vector2(
@@ -271,7 +275,7 @@ namespace PitHero.Services
             _mercenaryEntities.Add(mercEntity);
             _occupiedTavernPositions.Add(tavernPosition);
 
-            Debug.Log($"[MercenaryManager] Spawned mercenary {name} (Level {heroLevel} {job.Name}, SpawnId {mercComponent.SpawnId}) - moving to tavern position ({tavernPosition.X},{tavernPosition.Y})");
+            Debug.Log($"[MercenaryManager] Spawned mercenary {name} (Level {mercLevel} {job.Name}, SpawnId {mercComponent.SpawnId}) - moving to tavern position ({tavernPosition.X},{tavernPosition.Y})");
 
             // Start walking to tavern position
             Core.StartCoroutine(WalkToTavern(mercEntity, tavernPosition));
@@ -535,6 +539,50 @@ namespace PitHero.Services
             return null;
         }
 
+        /// <summary>Determines mercenary level using a weighted distribution based on hero level.</summary>
+        public static int DetermineMercenaryLevel(int heroLevel)
+        {
+            if (heroLevel < 1) heroLevel = 1;
+
+            var roll = Nez.Random.NextFloat();
+            int level;
+
+            if (roll < 0.20f)
+            {
+                // 20% chance: level 1
+                level = 1;
+            }
+            else if (roll < 0.50f)
+            {
+                // 30% chance: random(1, heroLevel/3)
+                var max = heroLevel / 3;
+                level = max < 1 ? 1 : Nez.Random.Range(1, max);
+            }
+            else if (roll < 0.70f)
+            {
+                // 20% chance: random(heroLevel/3, heroLevel/2)
+                var min = heroLevel / 3;
+                var max = heroLevel / 2;
+                if (min < 1) min = 1;
+                if (max < min) max = min;
+                level = Nez.Random.Range(min, max);
+            }
+            else if (roll < 0.90f)
+            {
+                // 20% chance: random(heroLevel/2, heroLevel)
+                var min = heroLevel / 2;
+                if (min < 1) min = 1;
+                level = Nez.Random.Range(min, heroLevel);
+            }
+            else
+            {
+                // 10% chance: heroLevel
+                level = heroLevel;
+            }
+
+            return level < 1 ? 1 : level;
+        }
+
         /// <summary>Hires a mercenary</summary>
         public bool HireMercenary(Entity mercEntity)
         {
@@ -552,6 +600,16 @@ namespace PitHero.Services
                 Debug.Warn($"[MercenaryManager] Cannot hire - mercComponent null or already hired");
                 return false;
             }
+
+            // Deduct gold cost
+            var hireCost = BalanceConfig.CalculateMercenaryHireCost(mercComponent.LinkedMercenary.Level);
+            var gameState = Core.Services.GetService<GameStateService>();
+            if (gameState == null || gameState.Funds < hireCost)
+            {
+                Debug.Warn("[MercenaryManager] Cannot hire - not enough gold");
+                return false;
+            }
+            gameState.Funds -= hireCost;
 
             // Determine follow target BEFORE marking as hired
             var heroEntity = _scene?.FindEntity("hero");
