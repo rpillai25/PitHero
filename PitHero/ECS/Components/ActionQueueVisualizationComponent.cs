@@ -33,8 +33,8 @@ namespace PitHero.ECS.Components
     {
         private const int SpriteSize = 32; // Size of each action sprite
         private const int SpriteSpacing = 2; // Spacing between sprites
-        private const float AnimationDuration = 0.5f; // Duration of slide + fade animation in seconds
-        private const float SlideDistance = SpriteSize + SpriteSpacing; // Distance to slide up (32 pixels)
+        private const float AnimationDuration = 1.0f; // Duration of slide + fade animation in seconds (increase to slow down, decrease to speed up)
+        private const float SlideDistance = SpriteSize + SpriteSpacing; // Distance to slide up (34 pixels)
 
         private HeroComponent _heroComponent;
         private object _itemsAtlas;
