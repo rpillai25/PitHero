@@ -40,6 +40,7 @@ namespace PitHero.Services
         public string Name;
         public string JobName;
         public int Level;
+        public int Experience;
         public int BaseStrength;
         public int BaseAgility;
         public int BaseVitality;
@@ -57,7 +58,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 4;
+        public const int CurrentVersion = 5;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -379,6 +380,7 @@ namespace PitHero.Services
                 writer.Write(merc.Name ?? string.Empty);
                 writer.Write(merc.JobName ?? string.Empty);
                 writer.Write(merc.Level);
+                writer.Write(merc.Experience);
                 writer.Write(merc.BaseStrength);
                 writer.Write(merc.BaseAgility);
                 writer.Write(merc.BaseVitality);
@@ -571,6 +573,7 @@ namespace PitHero.Services
                     merc.Name = reader.ReadString();
                     merc.JobName = reader.ReadString();
                     merc.Level = reader.ReadInt();
+                    merc.Experience = version >= 5 ? reader.ReadInt() : 0;
                     merc.BaseStrength = reader.ReadInt();
                     merc.BaseAgility = reader.ReadInt();
                     merc.BaseVitality = reader.ReadInt();

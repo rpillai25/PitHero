@@ -327,6 +327,7 @@ namespace PitHero.Services
                     savedMerc.Name = merc.Name;
                     savedMerc.JobName = merc.Job.Name;
                     savedMerc.Level = merc.Level;
+                    savedMerc.Experience = merc.Experience;
                     savedMerc.BaseStrength = merc.BaseStats.Strength;
                     savedMerc.BaseAgility = merc.BaseStats.Agility;
                     savedMerc.BaseVitality = merc.BaseStats.Vitality;

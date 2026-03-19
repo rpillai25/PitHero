@@ -12,8 +12,9 @@ namespace RolePlayingFramework.Mercenaries
     {
         public string Name { get; }
         public IJob Job { get; }
-        public int Level { get; }
-        public StatBlock BaseStats { get; }
+        public int Level { get; private set; }
+        public int Experience { get; private set; }
+        public StatBlock BaseStats { get; private set; }
 
         public int MaxHP { get; private set; }
         public int MaxMP { get; private set; }
@@ -51,6 +52,38 @@ namespace RolePlayingFramework.Mercenaries
             CurrentHP = MaxHP;
             CurrentMP = MaxMP;
         }
+
+        /// <summary>Adds experience and levels up, growing stats each level.</summary>
+        public bool AddExperience(int amount)
+        {
+            if (amount <= 0) return false;
+            Experience += amount;
+            var leveled = false;
+            while (Experience >= RequiredExpForNextLevel())
+            {
+                Experience -= RequiredExpForNextLevel();
+
+                if (Level >= StatConstants.MaxLevel) break;
+
+                Level++;
+                leveled = true;
+
+                BaseStats = StatConstants.ClampStatBlock(
+                    new StatBlock(
+                        BaseStats.Strength + 1,
+                        BaseStats.Agility + 1,
+                        BaseStats.Vitality + 1,
+                        BaseStats.Magic + 1
+                    )
+                );
+
+                RecalculateDerived();
+            }
+            return leveled;
+        }
+
+        /// <summary>Gets required XP for the next level.</summary>
+        public int RequiredExpForNextLevel() => Level * 100;
 
         /// <summary>Equips an item in the appropriate slot.</summary>
         public bool Equip(IGear item)
