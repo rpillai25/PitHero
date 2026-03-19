@@ -163,7 +163,7 @@ namespace RolePlayingFramework.Equipment
         public static Gear EarthenStaff() => Staves.EarthenStaff.Create();
 
         /// <summary>Create Ember Rod.</summary>
-        public static Gear EmberRod() => Staves.EmberRod.Create();
+        public static Gear EmberRod() => Rods.EmberRod.Create();
 
         /// <summary>Create Shadowwood Staff.</summary>
         public static Gear ShadowwoodStaff() => Staves.ShadowwoodStaff.Create();
@@ -172,7 +172,7 @@ namespace RolePlayingFramework.Equipment
         public static Gear TorchStaff() => Staves.TorchStaff.Create();
 
         /// <summary>Create Walking Stick.</summary>
-        public static Gear WalkingStick() => Staves.WalkingStick.Create();
+        public static Gear WalkingStick() => Rods.WalkingStick.Create();
 
         // ARMOR
         /// <summary>Create Abyss Plate.</summary>
