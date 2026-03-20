@@ -1079,13 +1079,13 @@ namespace PitHero.UI
             float ease = 1f - (1f - t) * (1f - t); // QuadOut
         }
 
-        /// <summary>Draws mercenary names above their equip slot areas.</summary>
+        /// <summary>Draws character names above their equip slot areas.</summary>
         private void DrawMercenaryNames(Batcher batcher)
         {
             if (_nameFont == null) return;
 
             const float X_OFFSET = 32f;
-            const float Y_OFFSET = -16f;
+            const float Y_OFFSET = 8f;
             int[] colStarts = { MERC0_COL_START, MERC1_COL_START };
 
             for (int m = 0; m < MAX_MERCENARY_SLOTS; m++)
@@ -1104,6 +1104,22 @@ namespace PitHero.UI
                 var textX = centerX - textSize.X / 2f;
 
                 batcher.DrawString(_nameFont, nameText, new Vector2(textX, nameY), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
+            }
+
+            // Draw hero name at the same Y position, centered above hero equip columns (8-10)
+            if (_heroComponent?.LinkedHero != null)
+            {
+                const int HERO_COL_START = 8;
+                float heroLeftX = HERO_COL_START * (SLOT_SIZE + SLOT_PADDING) + X_OFFSET;
+                float heroRightX = (HERO_COL_START + 3) * (SLOT_SIZE + SLOT_PADDING) + X_OFFSET;
+                float heroCenterX = (heroLeftX + heroRightX) / 2f;
+                float heroNameY = 0f * (SLOT_SIZE + SLOT_PADDING) + Y_OFFSET;
+
+                var heroNameText = _heroComponent.LinkedHero.Name;
+                var heroTextSize = _nameFont.MeasureString(heroNameText);
+                var heroTextX = heroCenterX - heroTextSize.X / 2f;
+
+                batcher.DrawString(_nameFont, heroNameText, new Vector2(heroTextX, heroNameY), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
             }
         }
 

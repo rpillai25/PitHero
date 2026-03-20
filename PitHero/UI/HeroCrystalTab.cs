@@ -12,7 +12,7 @@ using System.Linq;
 namespace PitHero.UI
 {
     /// <summary>
-    /// UI component for the Hero Crystal tab showing job info and skill purchase grid
+    /// UI component for the Hero Info tab showing job info and skill purchase grid
     /// </summary>
     public class HeroCrystalTab
     {
@@ -20,12 +20,17 @@ namespace PitHero.UI
         private HeroComponent _heroComponent;
 
         // Info display labels
+        private Label _heroNameLabel;
         private Label _jobNameLabel;
         private Label _levelLabel;
         private Label _jobLevelLabel;
         private Label _currentJPLabel;
         private Label _totalJPLabel;
         private Label _statsLabel;
+
+        // Hero sprite preview
+        private Image _heroPreviewImage;
+        private Table _heroPreviewContainer;
 
         // Skill grids (3 sections)
         private Table _jobSkillsGridContainer;
@@ -79,8 +84,12 @@ namespace PitHero.UI
         {
             var infoTable = new Table();
 
-            // Left column: Job and Level info
+            // Left column: Name, Job and Level info
             var leftCol = new Table();
+            _heroNameLabel = new Label("Name: Unknown", skin, "ph-default");
+            leftCol.Add(_heroNameLabel).Left();
+            leftCol.Row();
+
             _jobNameLabel = new Label("Job: Unknown", skin, "ph-default");
             leftCol.Add(_jobNameLabel).Left();
             leftCol.Row();
@@ -91,6 +100,9 @@ namespace PitHero.UI
 
             _jobLevelLabel = new Label("Job Level: 1", skin, "ph-default");
             leftCol.Add(_jobLevelLabel).Left();
+
+            // Middle column: Hero sprite preview
+            _heroPreviewContainer = new Table();
 
             // Right column: JP info and stats
             var rightCol = new Table();
@@ -106,6 +118,7 @@ namespace PitHero.UI
             rightCol.Add(_statsLabel).Left();
 
             infoTable.Add(leftCol).Left().Expand().Pad(5f);
+            infoTable.Add(_heroPreviewContainer).Center().Pad(5f);
             infoTable.Add(rightCol).Right().Expand().Pad(5f);
 
             return infoTable;
@@ -166,6 +179,7 @@ namespace PitHero.UI
             var hero = _heroComponent.LinkedHero;
 
             // Update info labels
+            _heroNameLabel.SetText($"Name: {hero.Name}");
             _jobNameLabel.SetText($"Job: {hero.Job.Name}");
             _levelLabel.SetText($"Level: {hero.Level}");
             _jobLevelLabel.SetText($"Job Level: {hero.GetJobLevel()}");
@@ -177,6 +191,26 @@ namespace PitHero.UI
 
             // Rebuild skill grid
             RebuildSkillGrid(hero);
+        }
+
+        /// <summary>Updates the hero sprite preview with appearance data</summary>
+        public void UpdateHeroPreview(Color skinColor, Color hairColor, Color shirtColor, int hairstyleIndex)
+        {
+            if (_heroPreviewContainer == null) return;
+
+            _heroPreviewContainer.Clear();
+
+            try
+            {
+                var actorsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas");
+                var heroDrawable = new HeroPreviewDrawable(actorsAtlas, skinColor, hairColor, shirtColor, hairstyleIndex);
+                _heroPreviewImage = new Image(heroDrawable, Scaling.Fit);
+                _heroPreviewContainer.Add(_heroPreviewImage).Size(32f, 46f);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.Warn("[HeroCrystalTab] Failed to load hero preview: " + ex.Message);
+            }
         }
 
         private void RebuildSkillGrid(Hero hero)

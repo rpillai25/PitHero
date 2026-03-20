@@ -34,7 +34,6 @@ namespace PitHero.UI
 
         // Inventory tab content
         private InventoryGrid _inventoryGrid;
-        private Label _heroNameLabel;
         private TextButton _viewStencilsButton;
         private TextButton _moveStencilsButton;
         private TextButton _removeStencilButton;
@@ -219,7 +218,7 @@ namespace PitHero.UI
             var tabStyle = CreateTabStyle(skin);
             _inventoryTab = new Tab("Inventory", tabStyle);
             _prioritiesTab = new Tab("Behavior", tabStyle);
-            _crystalTab = new Tab("Hero Crystal", tabStyle);
+            _crystalTab = new Tab("Hero Info", tabStyle);
             _mercenariesTab = new Tab("Mercenaries", tabStyle);
             PopulateInventoryTab(_inventoryTab, skin);
             PopulatePrioritiesTab(_prioritiesTab, skin);
@@ -286,22 +285,6 @@ namespace PitHero.UI
         {
             var container = new Table();
 
-            // Create hero name label centered above equipment (equipment is at columns 8-10)
-            var heroComponent = GetHeroComponent();
-            var heroName = heroComponent?.LinkedHero?.Name ?? "Hero";
-            _heroNameLabel = new Label(heroName, skin);
-            // Removed SetFontScale to prevent font warping
-            
-            // Create a table to position the hero name above the equipment area
-            var headerTable = new Table();
-            // Add left spacing to align with equipment slots (columns 8-10 are at x position ~264-330)
-            // Each slot is 33 pixels (32 + 1 padding), so column 8 starts at 8 * 33 = 264
-            // Plus 32 pixel left padding = 296
-            headerTable.Add().Width(296f); // Spacer to align with equipment column 8
-            headerTable.Add(_heroNameLabel).Center();
-            container.Add(headerTable).Left();
-            container.Row();
-
             // Create horizontal container for inventory grid and buttons
             var inventoryContainer = new Table();
 
@@ -316,6 +299,7 @@ namespace PitHero.UI
             // Initialize context menu
             _inventoryGrid.InitializeContextMenu(_stage, skin);
 
+            var heroComponent = GetHeroComponent();
             if (heroComponent != null)
                 _inventoryGrid.ConnectToHero(heroComponent);
 
@@ -804,10 +788,6 @@ namespace PitHero.UI
                         _inventoryGrid.ConnectToHero(heroComponent);
                         RefreshMercenaryEquipSlots();
                     }
-                    
-                    // Update hero name label
-                    if (_heroNameLabel != null)
-                        _heroNameLabel.SetText(heroComponent.LinkedHero?.Name ?? "Hero");
                 }
                 else
                 {
@@ -818,9 +798,19 @@ namespace PitHero.UI
                     return;
                 }
 
-                // Update Hero Crystal tab with current hero
+                // Update Hero Info tab with current hero
                 if (heroComponent != null && _heroCrystalTab != null)
+                {
                     _heroCrystalTab.UpdateWithHero(heroComponent);
+
+                    // Update hero sprite preview using design service
+                    var designService = Core.Services?.GetService<HeroDesignService>();
+                    if (designService != null && designService.HasDesign)
+                    {
+                        var design = designService.GetDesign();
+                        _heroCrystalTab.UpdateHeroPreview(design.SkinColor, design.HairColor, design.ShirtColor, design.HairstyleIndex);
+                    }
+                }
 
                 // Update Mercenaries tab
                 RefreshMercenariesTab();
@@ -901,6 +891,7 @@ namespace PitHero.UI
 
             var mercManager = Core.Services?.GetService<MercenaryManager>();
             List<Mercenary> hiredMercs = null;
+            List<MercenaryAppearance> appearances = null;
 
             if (mercManager != null)
             {
@@ -908,16 +899,26 @@ namespace PitHero.UI
                 if (hiredEntities != null && hiredEntities.Count > 0)
                 {
                     hiredMercs = new List<Mercenary>(hiredEntities.Count);
+                    appearances = new List<MercenaryAppearance>(hiredEntities.Count);
                     for (int i = 0; i < hiredEntities.Count; i++)
                     {
                         var mc = hiredEntities[i].GetComponent<MercenaryComponent>();
                         if (mc?.LinkedMercenary != null)
+                        {
                             hiredMercs.Add(mc.LinkedMercenary);
+                            appearances.Add(new MercenaryAppearance
+                            {
+                                SkinColor = mc.SkinColor,
+                                HairColor = mc.HairColor,
+                                HairstyleIndex = mc.HairstyleIndex,
+                                ShirtColor = mc.ShirtColor
+                            });
+                        }
                     }
                 }
             }
 
-            _mercenariesTabComponent.UpdateWithMercenaries(hiredMercs);
+            _mercenariesTabComponent.UpdateWithMercenaries(hiredMercs, appearances);
         }
 
         /// <summary>Refreshes battle tactic radio buttons and consumable checkboxes from HeroComponent state.</summary>
