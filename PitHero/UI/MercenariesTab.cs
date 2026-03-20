@@ -209,8 +209,8 @@ namespace PitHero.UI
         {
             if (_stage == null) return;
 
-            // Show a simplified tooltip (no JP cost, no hero reference)
-            _skillTooltip.ShowSkill(skill, isLearned, null, false, 0, 0);
+            // Show a simplified tooltip (no JP cost or learned status for mercenaries)
+            _skillTooltip.ShowSkill(skill, isLearned, null, false, 0, 0, showCostAndStatus: false);
             if (_skillTooltip.GetContainer().GetParent() == null)
             {
                 _stage.AddElement(_skillTooltip.GetContainer());
