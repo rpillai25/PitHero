@@ -28,6 +28,9 @@ namespace PitHero.UI
         private readonly Table[] _skillGrids = new Table[2];
         private readonly Label[] _noMercLabels = new Label[2];
 
+        // Per-mercenary sprite preview containers
+        private readonly Table[] _previewContainers = new Table[2];
+
         // Skill buttons for tooltip support
         private readonly List<MercSkillButton> _skillButtons = new List<MercSkillButton>(32);
 
@@ -85,11 +88,9 @@ namespace PitHero.UI
             _noMercLabels[index] = new Label(index == 0 ? "No mercenaries hired" : "", skin, "ph-default");
             _noMercLabels[index].SetColor(Color.Gray);
 
-            // Name and level on first line
+            // Labels
             _nameLabels[index] = new Label("", skin, "ph-default");
             _levelLabels[index] = new Label("", skin, "ph-default");
-
-            // Job and stats on second line
             _jobLabels[index] = new Label("", skin, "ph-default");
             _statsLabels[index] = new Label("", skin, "ph-default");
 
@@ -97,40 +98,49 @@ namespace PitHero.UI
             _skillGrids[index] = new Table();
             _skillGrids[index].Defaults().Pad(2f);
 
-            // Row 1: Name + Level
-            var line1 = new Table();
-            line1.Add(_nameLabels[index]).Left().Expand();
-            line1.Add(_levelLabels[index]).Right();
-            row.Add(line1).Expand().Fill();
+            // Sprite preview container
+            _previewContainers[index] = new Table();
+
+            // Info section: left column (labels) + middle column (sprite preview)
+            var infoSection = new Table();
+
+            // Left column: Name, Level, Job, Stats (all left-aligned, similar to Hero Info tab)
+            var leftCol = new Table();
+            leftCol.Add(_nameLabels[index]).Left();
+            leftCol.Row();
+            leftCol.Add(_levelLabels[index]).Left();
+            leftCol.Row();
+            leftCol.Add(_jobLabels[index]).Left();
+            leftCol.Row();
+            leftCol.Add(_statsLabels[index]).Left();
+
+            infoSection.Add(leftCol).Left().Expand().Pad(5f);
+            infoSection.Add(_previewContainers[index]).Center().Pad(5f);
+
+            row.Add(infoSection).Expand().Fill();
             row.Row();
 
-            // Row 2: Job + Stats
-            var line2 = new Table();
-            line2.Add(_jobLabels[index]).Left().Expand();
-            line2.Add(_statsLabels[index]).Right();
-            row.Add(line2).Expand().Fill();
-            row.Row();
-
-            // Row 3: "Job Skills" label
+            // Row: "Job Skills" label
             var skillsSectionLabel = new Label("Job Skills", skin, "ph-default");
             row.Add(skillsSectionLabel).Left().SetPadTop(4f);
             row.Row();
 
-            // Row 4: Skill icon grid
+            // Row: Skill icon grid
             row.Add(_skillGrids[index]).Left().SetPadTop(2f);
             row.Row();
 
             // The no-merc label is shown/hidden via SetVisible on the row
         }
 
-        /// <summary>Refreshes the tab with current mercenary data.</summary>
-        public void UpdateWithMercenaries(List<Mercenary> hiredMercenaries)
+        /// <summary>Refreshes the tab with current mercenary data and appearance.</summary>
+        public void UpdateWithMercenaries(List<Mercenary> hiredMercenaries, List<MercenaryAppearance> appearances)
         {
             _skillButtons.Clear();
 
             for (int m = 0; m < 2; m++)
             {
                 _skillGrids[m].Clear();
+                _previewContainers[m].Clear();
 
                 Mercenary merc = null;
                 if (hiredMercenaries != null && m < hiredMercenaries.Count)
@@ -160,6 +170,23 @@ namespace PitHero.UI
 
                 var stats = merc.GetTotalStats();
                 _statsLabels[m].SetText($"STR:{stats.Strength} AGI:{stats.Agility} VIT:{stats.Vitality} MAG:{stats.Magic}");
+
+                // Update sprite preview
+                if (appearances != null && m < appearances.Count)
+                {
+                    var appearance = appearances[m];
+                    try
+                    {
+                        var actorsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas");
+                        var drawable = new HeroPreviewDrawable(actorsAtlas, appearance.SkinColor, appearance.HairColor, appearance.ShirtColor, appearance.HairstyleIndex);
+                        var previewImage = new Image(drawable, Scaling.Fit);
+                        _previewContainers[m].Add(previewImage).Size(32f, 46f);
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Debug.Warn("[MercenariesTab] Failed to load mercenary preview: " + ex.Message);
+                    }
+                }
 
                 // Populate job skill icons
                 PopulateSkillGrid(m, merc);
@@ -300,5 +327,14 @@ namespace PitHero.UI
 
             #endregion
         }
+    }
+
+    /// <summary>Lightweight struct holding mercenary appearance data for UI display.</summary>
+    public struct MercenaryAppearance
+    {
+        public Color SkinColor;
+        public Color HairColor;
+        public int HairstyleIndex;
+        public Color ShirtColor;
     }
 }

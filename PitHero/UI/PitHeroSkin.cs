@@ -78,7 +78,8 @@ namespace PitHero.UI
 
             var windowStyle = new WindowStyle
             {
-                Background = windowBackground
+                Background = windowBackground,
+                TitleFontColor = brownFontColor,
             };
 
             skin.Add("ph-default", windowStyle);

@@ -56,6 +56,8 @@ PitHero is a horizontal RPG strip game built with C# using **FNA + Nez** (not Mo
 - Services: Register with `Core.Services.AddService()`, retrieve with `Core.Services.GetService<Service>()`
 - GOAP Conditions: Add to `GoapConstants` for strong typing
 - Keep `Program.cs` as standard Nez boilerplate (only modify if absolutely required)
+- For UI code that uses PitHeroSkin, use the "ph-default" style for all elements (unless a unique style is explicitly needed)
+- Never override the ph-default style's FontColor by doing a .GetStyle().FontColor = someColor.  If a unique color is needed, create a new style that inherits from ph-default and set the FontColor there.
 
 ### Game World Layout
 - Virtual resolution: **1920×360** (horizontal strip at bottom of screen)

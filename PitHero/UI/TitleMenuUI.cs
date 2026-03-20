@@ -98,11 +98,11 @@ namespace PitHero.UI
                 HideQuitConfirmation();
                 Core.Exit();
             };
-            buttonTable.Add(yesButton).Width(80).SetPadRight(10);
+            buttonTable.Add(yesButton).Width(80).Height(24).SetPadRight(10);
 
             var noButton = new TextButton("No", skin);
             noButton.OnClicked += (button) => HideQuitConfirmation();
-            buttonTable.Add(noButton).Width(80);
+            buttonTable.Add(noButton).Width(80).Height(24);;
 
             dialogTable.Add(buttonTable);
 
