@@ -153,7 +153,6 @@ namespace PitHero.UI
                 // Right column: time header and formatted time
                 var timeTable = new Table();
                 var timeHeaderLabel = new Label("TIME", _skin, "ph-default");
-                timeHeaderLabel.GetStyle().FontColor = TimeHeaderColor;
                 // Create a unique style so color doesn't bleed to other labels
                 var timeHeaderStyle = new LabelStyle
                 {
