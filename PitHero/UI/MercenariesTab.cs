@@ -115,7 +115,7 @@ namespace PitHero.UI
             leftCol.Add(_statsLabels[index]).Left();
 
             infoSection.Add(leftCol).Left().Expand().Pad(5f);
-            infoSection.Add(_previewContainers[index]).Center().Pad(5f);
+            infoSection.Add(_previewContainers[index]).Left().SetPadRight(64f);
 
             row.Add(infoSection).Expand().Fill();
             row.Row();
