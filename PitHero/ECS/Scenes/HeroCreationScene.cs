@@ -38,7 +38,7 @@ namespace PitHero.ECS.Scenes
         private void SetupHeroCreationUI()
         {
             // Add ScreenSpaceRenderer for UI
-            var screenSpaceRenderer = new ScreenSpaceRenderer(100, 999);
+            var screenSpaceRenderer = new ScreenSpaceRenderer(100, new int[]{999,998});
             AddRenderer(screenSpaceRenderer);
 
             // Create UI entity with UICanvas

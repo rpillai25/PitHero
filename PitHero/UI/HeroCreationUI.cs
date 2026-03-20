@@ -327,13 +327,13 @@ namespace PitHero.UI
             var border = _previewEntity.AddComponent(new PrototypeSpriteRenderer(36, 50));
             border.SetColor(Color.White);
             border.SetLocalOffset(bgOffset);
-            border.SetRenderLayer(16);
+            border.SetRenderLayer(998);
 
             // Green background on top of white border, behind hero layers
             var background = _previewEntity.AddComponent(new PrototypeSpriteRenderer(32, 46));
             background.SetColor(Color.Green);
             background.SetLocalOffset(bgOffset);
-            background.SetRenderLayer(15);
+            background.SetRenderLayer(998);
         }
 
         /// <summary>Removes all animation components and re-adds them with current appearance selections</summary>
@@ -355,44 +355,44 @@ namespace PitHero.UI
 
             // Body layer
             var bodyAnimator = _previewEntity.AddComponent(new HeroBodyAnimationComponent(skinColor));
-            bodyAnimator.SetRenderLayer(GameConfig.RenderLayerHeroBody);
+            bodyAnimator.SetRenderLayer(GameConfig.RenderLayerUI);
             bodyAnimator.SetLocalOffset(offset);
 
             // Hand2 layer
             var hand2Animator = _previewEntity.AddComponent(new HeroHand2AnimationComponent(skinColor));
-            hand2Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand2);
+            hand2Animator.SetRenderLayer(GameConfig.RenderLayerUI);
             hand2Animator.SetLocalOffset(offset);
             hand2Animator.ComponentColor = skinColor;
 
             // Pants layer
             var pantsAnimator = _previewEntity.AddComponent(new HeroPantsAnimationComponent(Color.White));
-            pantsAnimator.SetRenderLayer(GameConfig.RenderLayerHeroPants);
+            pantsAnimator.SetRenderLayer(GameConfig.RenderLayerUI);
             pantsAnimator.SetLocalOffset(offset);
 
             // Shirt layer
             var shirtAnimator = _previewEntity.AddComponent(new HeroShirtAnimationComponent(shirtColor));
-            shirtAnimator.SetRenderLayer(GameConfig.RenderLayerHeroShirt);
+            shirtAnimator.SetRenderLayer(GameConfig.RenderLayerUI);
             shirtAnimator.SetLocalOffset(offset);
 
             // Head layer
             var headAnimator = _previewEntity.AddComponent(new HeroHeadAnimationComponent(skinColor));
-            headAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHead);
+            headAnimator.SetRenderLayer(GameConfig.RenderLayerUI);
             headAnimator.SetLocalOffset(offset);
             headAnimator.ComponentColor = skinColor;
 
             // Eyes layer
             var eyesAnimator = _previewEntity.AddComponent(new HeroEyesAnimationComponent(Color.White));
-            eyesAnimator.SetRenderLayer(GameConfig.RenderLayerHeroEyes);
+            eyesAnimator.SetRenderLayer(GameConfig.RenderLayerUI);
             eyesAnimator.SetLocalOffset(offset);
 
             // Hair layer
             var hairAnimator = _previewEntity.AddComponent(new HeroHairAnimationComponent(hairColor, _currentHairstyleIndex));
-            hairAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHair);
+            hairAnimator.SetRenderLayer(GameConfig.RenderLayerUI);
             hairAnimator.SetLocalOffset(offset);
 
             // Hand1 layer
             var hand1Animator = _previewEntity.AddComponent(new HeroHand1AnimationComponent(skinColor));
-            hand1Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand1);
+            hand1Animator.SetRenderLayer(GameConfig.RenderLayerUI);
             hand1Animator.SetLocalOffset(offset);
             hand1Animator.ComponentColor = skinColor;
         }
