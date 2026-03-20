@@ -11,11 +11,6 @@ namespace PitHero.UI
     /// <summary>UI component representing a single inventory slot.</summary>
     public class InventorySlot : Element, IInputListener
     {
-        /// <summary>Brown accent color for stack counts and hover highlights.</summary>
-        private static readonly Color StackCountColor = new Color(71, 36, 7);
-        /// <summary>Brown accent color for hover select box tint.</summary>
-        private static readonly Color HoverTintColor = new Color(71, 36, 7);
-
         private readonly InventorySlotData _slotData;
         private readonly Sprite _backgroundSprite;
         private Sprite _selectBoxSprite;
@@ -218,7 +213,7 @@ namespace PitHero.UI
                         var stackText = consumable.StackCount.ToString();
                         // Apply offset to stack count as well
                         var textPosition = new Vector2(GetX() + 2f * Scale, GetY() + _itemSpriteOffsetY + GetHeight() - _font.LineHeight * Scale + 2f * Scale);
-                        batcher.DrawString(_font, stackText, textPosition, StackCountColor, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
+                        batcher.DrawString(_font, stackText, textPosition, Color.White, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
                     }
                 }
             }
@@ -231,7 +226,7 @@ namespace PitHero.UI
             // Draw select box if hovered (only if sprite is loaded)
             if (_slotData.IsHovered && _selectBoxDrawable != null)
             {
-                _selectBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), HoverTintColor);
+                _selectBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
             }
 
             // Draw highlight box if highlighted (only if sprite is loaded)

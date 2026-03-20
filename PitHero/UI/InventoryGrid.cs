@@ -1087,7 +1087,6 @@ namespace PitHero.UI
             const float X_OFFSET = 32f;
             const float Y_OFFSET = 8f;
             int[] colStarts = { MERC0_COL_START, MERC1_COL_START };
-            var nameColor = new Color(5, 33, 81);
 
             for (int m = 0; m < MAX_MERCENARY_SLOTS; m++)
             {
@@ -1104,7 +1103,7 @@ namespace PitHero.UI
                 var textSize = _nameFont.MeasureString(nameText);
                 var textX = centerX - textSize.X / 2f;
 
-                batcher.DrawString(_nameFont, nameText, new Vector2(textX, nameY), nameColor, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
+                batcher.DrawString(_nameFont, nameText, new Vector2(textX, nameY), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
             }
 
             // Draw hero name at the same Y position, centered above hero equip columns (8-10)
@@ -1120,7 +1119,7 @@ namespace PitHero.UI
                 var heroTextSize = _nameFont.MeasureString(heroNameText);
                 var heroTextX = heroCenterX - heroTextSize.X / 2f;
 
-                batcher.DrawString(_nameFont, heroNameText, new Vector2(heroTextX, heroNameY), nameColor, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
+                batcher.DrawString(_nameFont, heroNameText, new Vector2(heroTextX, heroNameY), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
             }
         }
 

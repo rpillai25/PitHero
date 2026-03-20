@@ -51,7 +51,7 @@ namespace PitHero.UI
             contentTable.Pad(0f); // Remove content table padding
 
             // Add title label at the top (centered)
-            var titleLabel = new Label("Synergy Stencils", skin, "ph-default");
+            var titleLabel = new Label("Synergy Stencils", skin);
             titleLabel.SetAlignment(Nez.UI.Align.Center);
             contentTable.Add(titleLabel).Pad(0f, 0f, 5f, 0f).Top().Center();
             contentTable.Row();
@@ -79,7 +79,7 @@ namespace PitHero.UI
             detailsTable.Pad(10f);
             detailsTable.SetBackground(skin.Get<WindowStyle>().Background); // Add background for visibility
 
-            _detailsLabel = new Label("Select a stencil to view details", skin, "ph-default");
+            _detailsLabel = new Label("Select a stencil to view details", skin);
             _detailsLabel.SetWrap(true);
             detailsTable.Add(_detailsLabel).Pad(20f, 0, 0, 0).Width(380f).Top().Left();
             detailsTable.Row();

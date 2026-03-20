@@ -24,8 +24,8 @@ namespace PitHero.UI
             // Create a completely fresh skin without Nez's defaults
             var skin = new Skin();
 
-            // Define dark blue font color for PitHero UI text on parchment background
-            var uiTextColor = new Color(5, 33, 81);
+            // Define custom brown font color for PitHero UI
+            var brownFontColor = new Color(71, 36, 7);
             var defaultFont = Graphics.Instance.BitmapFont;           
 
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
@@ -34,28 +34,19 @@ namespace PitHero.UI
             var labelStyle = new LabelStyle
             {
                 Font = defaultFont,
-                FontColor = uiTextColor,
+                FontColor = brownFontColor,
                 FontScaleX = 1f,
                 FontScaleY = 1f
             };
             skin.Add("ph-default", labelStyle);
 
-            // Also register as "default" so labels without explicit style name get the correct color
-            skin.Add("default", new LabelStyle
-            {
-                Font = defaultFont,
-                FontColor = uiTextColor,
-                FontScaleX = 1f,
-                FontScaleY = 1f
-            });
-
-            // Create custom text button style to use dark blue color
+            // Create custom text button style to use brown color
             var textButtonStyle = new TextButtonStyle
             {
                 Font = defaultFont,
-                FontColor = uiTextColor,
-                DownFontColor = uiTextColor,
-                OverFontColor = uiTextColor,
+                FontColor = brownFontColor,
+                DownFontColor = brownFontColor,
+                OverFontColor = brownFontColor,
                 FontScaleX = 1f,
                 FontScaleY = 1f
             };
@@ -71,9 +62,9 @@ namespace PitHero.UI
                 Up = ninePatchUp,
                 Down = ninePatchDown,
                 Over = ninePatchOver,
-                FontColor = uiTextColor,
-                DownFontColor = uiTextColor,
-                OverFontColor = uiTextColor,
+                FontColor = brownFontColor,
+                DownFontColor = brownFontColor,
+                OverFontColor = brownFontColor,
                 PressedOffsetX = 1,
                 PressedOffsetY = 1
             };
@@ -109,7 +100,7 @@ namespace PitHero.UI
                 CheckboxOn = new SpriteDrawable(checkboxChecked),
                 CheckboxOver = new SpriteDrawable(checkboxUncheckedHover), // Hover when unchecked only
                 Font = labelStyle.Font,
-                FontColor = uiTextColor,
+                FontColor = brownFontColor,
                 FontScaleX = 1f,
                 FontScaleY = 1f
             };
@@ -133,7 +124,7 @@ namespace PitHero.UI
                 CheckboxOn = new SpriteDrawable(radioButtonSelected),
                 CheckboxOver = new SpriteDrawable(radioButtonUnselectedHover), // Hover when unselected only
                 Font = labelStyle.Font,
-                FontColor = uiTextColor,
+                FontColor = brownFontColor,
                 FontScaleX = 1f,
                 FontScaleY = 1f
             };
@@ -155,7 +146,7 @@ namespace PitHero.UI
 
             var tabButtonStyle = new TabButtonStyle
             {
-                LabelStyle = new LabelStyle { Font = labelStyle.Font, FontColor = uiTextColor, FontScaleX = 1f, FontScaleY = 1f },
+                LabelStyle = new LabelStyle { Font = labelStyle.Font, FontColor = brownFontColor, FontScaleX = 1f, FontScaleY = 1f },
                 Inactive = tabBackgroundInactive,
                 Active = tabBackgroundActive,
                 Hover = tabBackgroundHover,
