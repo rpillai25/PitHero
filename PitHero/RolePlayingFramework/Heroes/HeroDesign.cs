@@ -31,7 +31,7 @@ namespace RolePlayingFramework.Heroes
             HairColor = hairColor;
             HairstyleIndex = hairstyleIndex;
             ShirtColor = shirtColor;
-            JobName = jobName ?? "Knight";
+            JobName = string.IsNullOrEmpty(jobName) ? "Knight" : jobName;
         }
     }
 }
