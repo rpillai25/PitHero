@@ -13,6 +13,9 @@ namespace PitHero.UI
         Shortcut,
 
         /// <summary>Equipment slot for specific gear types.</summary>
-        Equipment
+        Equipment,
+
+        /// <summary>Equipment slot for mercenary gear (shown only when a mercenary is assigned).</summary>
+        MercenaryEquipment
     }
 }

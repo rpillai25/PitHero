@@ -1,4 +1,5 @@
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Mercenaries;
 
 namespace PitHero.UI
 {
@@ -14,7 +15,7 @@ namespace PitHero.UI
         /// <summary>Type of slot.</summary>
         public InventorySlotType SlotType { get; set; }
 
-        /// <summary>Equipment slot type (only used for Equipment slots).</summary>
+        /// <summary>Equipment slot type (only used for Equipment and MercenaryEquipment slots).</summary>
         public EquipmentSlot? EquipmentSlot { get; set; }
 
         /// <summary>Shortcut key number (1-8, only used for Shortcut slots).</summary>
@@ -37,6 +38,12 @@ namespace PitHero.UI
 
         /// <summary>Acquisition order index (higher means more recently acquired/stacked).</summary>
         public int AcquireIndex { get; set; }
+
+        /// <summary>Mercenary slot group index (0 or 1, only used for MercenaryEquipment slots).</summary>
+        public int MercenaryIndex { get; set; }
+
+        /// <summary>Reference to the mercenary assigned to this slot (null when inactive).</summary>
+        public Mercenary? MercenaryRef { get; set; }
 
         public InventorySlotData(int x, int y, InventorySlotType slotType)
         {

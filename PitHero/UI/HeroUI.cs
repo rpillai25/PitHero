@@ -4,6 +4,7 @@ using Nez.UI;
 using PitHero.ECS.Components;
 using PitHero.Services;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Mercenaries;
 using System.Collections.Generic;
 
 namespace PitHero.UI
@@ -28,6 +29,7 @@ namespace PitHero.UI
         private Tab _inventoryTab;
         private Tab _prioritiesTab;
         private Tab _crystalTab;
+        private Tab _mercenariesTab;
         private bool _windowVisible = false;
 
         // Inventory tab content
@@ -68,6 +70,9 @@ namespace PitHero.UI
 
         // Hero Crystal tab component
         private HeroCrystalTab _heroCrystalTab;
+
+        // Mercenaries tab component
+        private MercenariesTab _mercenariesTabComponent;
 
         private const float HERO_WINDOW_WIDTH = 870f;
 
@@ -215,11 +220,14 @@ namespace PitHero.UI
             _inventoryTab = new Tab("Inventory", tabStyle);
             _prioritiesTab = new Tab("Behavior", tabStyle);
             _crystalTab = new Tab("Hero Crystal", tabStyle);
+            _mercenariesTab = new Tab("Mercenaries", tabStyle);
             PopulateInventoryTab(_inventoryTab, skin);
             PopulatePrioritiesTab(_prioritiesTab, skin);
             PopulateCrystalTab(_crystalTab, skin);
+            PopulateMercenariesTab(_mercenariesTab, skin);
             _tabPane.AddTab(_inventoryTab);
             _tabPane.AddTab(_crystalTab);
+            _tabPane.AddTab(_mercenariesTab);
             _tabPane.AddTab(_prioritiesTab);
             
             // Hook into tab button clicks to adjust window width
@@ -669,6 +677,13 @@ namespace PitHero.UI
             crystalTab.Add(content).Expand().Fill();
         }
 
+        private void PopulateMercenariesTab(Tab mercenariesTab, Skin skin)
+        {
+            _mercenariesTabComponent = new MercenariesTab();
+            var content = _mercenariesTabComponent.CreateContent(skin, _stage);
+            mercenariesTab.Add(content).Expand().Fill();
+        }
+
         private void InitializePriorityItems()
         {
             if (_priorityItems == null) _priorityItems = new List<string>(3); else _priorityItems.Clear();
@@ -785,7 +800,10 @@ namespace PitHero.UI
                     
                     // Always reconnect to hero to refresh inventory (in case hero died and items were cleared)
                     if (_inventoryGrid != null)
+                    {
                         _inventoryGrid.ConnectToHero(heroComponent);
+                        RefreshMercenaryEquipSlots();
+                    }
                     
                     // Update hero name label
                     if (_heroNameLabel != null)
@@ -803,6 +821,9 @@ namespace PitHero.UI
                 // Update Hero Crystal tab with current hero
                 if (heroComponent != null && _heroCrystalTab != null)
                     _heroCrystalTab.UpdateWithHero(heroComponent);
+
+                // Update Mercenaries tab
+                RefreshMercenariesTab();
 
                 PositionHeroWindow();
                 _stage.AddElement(_heroWindow);
@@ -845,6 +866,58 @@ namespace PitHero.UI
         {
             var heroEntity = Core.Scene?.FindEntity("hero");
             return heroEntity?.GetComponent<HeroComponent>();
+        }
+
+        /// <summary>Gathers hired mercenaries and refreshes their equip slots in the inventory grid.</summary>
+        private void RefreshMercenaryEquipSlots()
+        {
+            if (_inventoryGrid == null) return;
+
+            var mercManager = Core.Services?.GetService<MercenaryManager>();
+            List<Mercenary> hiredMercs = null;
+
+            if (mercManager != null)
+            {
+                var hiredEntities = mercManager.GetHiredMercenaries();
+                if (hiredEntities != null && hiredEntities.Count > 0)
+                {
+                    hiredMercs = new List<Mercenary>(hiredEntities.Count);
+                    for (int i = 0; i < hiredEntities.Count; i++)
+                    {
+                        var mc = hiredEntities[i].GetComponent<MercenaryComponent>();
+                        if (mc?.LinkedMercenary != null)
+                            hiredMercs.Add(mc.LinkedMercenary);
+                    }
+                }
+            }
+
+            _inventoryGrid.RefreshMercenarySlots(hiredMercs);
+        }
+
+        /// <summary>Gathers hired mercenaries and refreshes the Mercenaries tab.</summary>
+        private void RefreshMercenariesTab()
+        {
+            if (_mercenariesTabComponent == null) return;
+
+            var mercManager = Core.Services?.GetService<MercenaryManager>();
+            List<Mercenary> hiredMercs = null;
+
+            if (mercManager != null)
+            {
+                var hiredEntities = mercManager.GetHiredMercenaries();
+                if (hiredEntities != null && hiredEntities.Count > 0)
+                {
+                    hiredMercs = new List<Mercenary>(hiredEntities.Count);
+                    for (int i = 0; i < hiredEntities.Count; i++)
+                    {
+                        var mc = hiredEntities[i].GetComponent<MercenaryComponent>();
+                        if (mc?.LinkedMercenary != null)
+                            hiredMercs.Add(mc.LinkedMercenary);
+                    }
+                }
+            }
+
+            _mercenariesTabComponent.UpdateWithMercenaries(hiredMercs);
         }
 
         /// <summary>Refreshes battle tactic radio buttons and consumable checkboxes from HeroComponent state.</summary>

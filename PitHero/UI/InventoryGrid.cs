@@ -1,10 +1,13 @@
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Nez;
+using Nez.BitmapFonts;
 using Nez.Sprites;
 using Nez.UI;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Mercenaries;
 using RolePlayingFramework.Synergies;
 using System.Collections.Generic;
 
@@ -21,12 +24,21 @@ namespace PitHero.UI
         private const float HOVER_OFFSET_Y = -16f; // Offset in pixels when hovering over a slot while another is selected
         private const float SWAP_TWEEN_DURATION = 0.2f; // Duration in seconds for swap animation
 
+        // Mercenary equip slot column positions (3 columns each, matching hero layout)
+        private const int MERC0_COL_START = 4;   // First mercenary: columns 4-6 (left of hero)
+        private const int MERC1_COL_START = 12;  // Second mercenary: columns 12-14 (right of hero)
+        private const int MAX_MERCENARY_SLOTS = 2;
+
         private readonly FastList<InventorySlot> _slots;   // Row-major, may contain nulls for Null slots or capacity-disabled slots
         private readonly IItem[] _persistBuffer;           // Reusable buffer for bag ordering persistence (120 slot capacity)
         private HeroComponent _heroComponent;
         private InventorySlot _highlightedSlot;
         private InventoryContextMenu _contextMenu;
         private Stage _stage; // Reference to stage for tooltip management
+
+        // Mercenary references for equip slot groups
+        private readonly Mercenary[] _mercenaryRefs = new Mercenary[MAX_MERCENARY_SLOTS];
+        private BitmapFont _nameFont; // Font for drawing mercenary/hero names above equip slots
 
         // Swap animation entities (scene-space approach retained but unused currently)
         private Entity _swapEntity1;
@@ -155,16 +167,16 @@ namespace PitHero.UI
         /// <summary>Creates slot data for a given grid coordinate.</summary>
         private InventorySlotData CreateSlotData(int x, int y)
         {
-            // Top row (y=0) is reserved for hero name label - all NULL
+            // Top row (y=0) is reserved for hero/mercenary name labels - all NULL
             if (y == 0)
             {
                 return new InventorySlotData(x, y, InventorySlotType.Null);
             }
 
-            // Rows 1-2 (y=1,2) are ONLY for equipment display - everything else is NULL
+            // Rows 1-2 (y=1,2) are for equipment display (hero + mercenaries)
             if (y >= 1 && y <= 2)
             {
-                // Equipment slots in top-right area (columns 8-10, 3 adjacent columns)
+                // Hero equipment slots (columns 8-10)
                 if (y == 1 && x == 8) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield1 };
                 if (y == 1 && x == 9) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Hat };
                 if (y == 1 && x == 10) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.WeaponShield2 };
@@ -172,12 +184,49 @@ namespace PitHero.UI
                 if (y == 2 && x == 9) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Armor };
                 if (y == 2 && x == 10) return new InventorySlotData(x, y, InventorySlotType.Equipment) { EquipmentSlot = EquipmentSlot.Accessory2 };
 
+                // Mercenary 0 equipment slots (columns 4-6, left of hero)
+                var merc0Data = TryCreateMercenarySlotData(x, y, MERC0_COL_START, 0);
+                if (merc0Data != null) return merc0Data;
+
+                // Mercenary 1 equipment slots (columns 12-14, right of hero)
+                var merc1Data = TryCreateMercenarySlotData(x, y, MERC1_COL_START, 1);
+                if (merc1Data != null) return merc1Data;
+
                 // All other slots in rows 1-2 are NULL (not displayed)
                 return new InventorySlotData(x, y, InventorySlotType.Null);
             }
 
             // Rows 3-8: Pure inventory (6 rows × 20 columns = 120 inventory slots)
             return new InventorySlotData(x, y, InventorySlotType.Inventory);
+        }
+
+        /// <summary>Creates a mercenary equipment slot data if the coordinate matches the mercenary block.</summary>
+        private InventorySlotData TryCreateMercenarySlotData(int x, int y, int colStart, int mercIndex)
+        {
+            if (x < colStart || x > colStart + 2) return null;
+
+            int colOffset = x - colStart;
+            EquipmentSlot? eqSlot = null;
+            if (y == 1)
+            {
+                if (colOffset == 0) eqSlot = EquipmentSlot.WeaponShield1;
+                else if (colOffset == 1) eqSlot = EquipmentSlot.Hat;
+                else if (colOffset == 2) eqSlot = EquipmentSlot.WeaponShield2;
+            }
+            else if (y == 2)
+            {
+                if (colOffset == 0) eqSlot = EquipmentSlot.Accessory1;
+                else if (colOffset == 1) eqSlot = EquipmentSlot.Armor;
+                else if (colOffset == 2) eqSlot = EquipmentSlot.Accessory2;
+            }
+
+            if (!eqSlot.HasValue) return null;
+
+            return new InventorySlotData(x, y, InventorySlotType.MercenaryEquipment)
+            {
+                EquipmentSlot = eqSlot.Value,
+                MercenaryIndex = mercIndex
+            };
         }
 
         /// <summary>Connects grid to hero and loads items.</summary>
@@ -212,6 +261,55 @@ namespace PitHero.UI
 
             // Subscribe to cross-component swap animation
             InventorySelectionManager.OnCrossComponentSwapAnimate += HandleCrossComponentSwapAnimate;
+
+            // Load name font for drawing mercenary names
+            if (_nameFont == null && Core.Content != null)
+            {
+                try
+                {
+                    _nameFont = Core.Content.LoadBitmapFont(GameConfig.FontPathHudSmall);
+                }
+                catch (System.Exception ex)
+                {
+                    Debug.Log("Failed to load mercenary name font: " + ex.Message);
+                    if (Graphics.Instance != null)
+                        _nameFont = Graphics.Instance.BitmapFont;
+                }
+            }
+        }
+
+        /// <summary>Updates mercenary equip slots with the current set of hired mercenaries.</summary>
+        public void RefreshMercenarySlots(List<Mercenary> hiredMercenaries)
+        {
+            // Clear all mercenary references
+            for (int m = 0; m < MAX_MERCENARY_SLOTS; m++)
+                _mercenaryRefs[m] = null;
+
+            // Assign mercenaries to slot groups
+            if (hiredMercenaries != null)
+            {
+                for (int m = 0; m < hiredMercenaries.Count && m < MAX_MERCENARY_SLOTS; m++)
+                    _mercenaryRefs[m] = hiredMercenaries[m];
+            }
+
+            // Update all mercenary equipment slot data with references
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                if (slot.SlotData.SlotType != InventorySlotType.MercenaryEquipment) continue;
+
+                int idx = slot.SlotData.MercenaryIndex;
+                var merc = (idx >= 0 && idx < MAX_MERCENARY_SLOTS) ? _mercenaryRefs[idx] : null;
+                slot.SlotData.MercenaryRef = merc;
+
+                // Clear item if no mercenary assigned
+                if (merc == null)
+                    slot.SlotData.Item = null;
+            }
+
+            // Populate items from assigned mercenaries
+            UpdateMercenaryEquipmentSlots();
         }
 
         /// <summary>Clears only the local highlighted slot without invoking events.</summary>
@@ -325,11 +423,14 @@ namespace PitHero.UI
                 var slot = _slots.Buffer[i];
                 if (slot != null)
                 {
-                    slot.SlotData.Item = null;
+                    // Don't clear mercenary equipment items during bag refresh (they aren't bag items)
+                    if (slot.SlotData.SlotType != InventorySlotType.MercenaryEquipment)
+                        slot.SlotData.Item = null;
                     slot.SetItemSpriteHidden(false); // Ensure sprites are visible after refresh
                 }
             }
             UpdateEquipmentSlots();
+            UpdateMercenaryEquipmentSlots();
             UpdateBagSlots();
 
             // Detect synergies after inventory refresh
@@ -354,6 +455,34 @@ namespace PitHero.UI
                     case EquipmentSlot.WeaponShield2: slot.SlotData.Item = heroEquipment.WeaponShield2; break;
                     case EquipmentSlot.Accessory1: slot.SlotData.Item = heroEquipment.Accessory1; break;
                     case EquipmentSlot.Accessory2: slot.SlotData.Item = heroEquipment.Accessory2; break;
+                }
+            }
+        }
+
+        /// <summary>Updates mercenary equipment slot items from their equipped gear.</summary>
+        private void UpdateMercenaryEquipmentSlots()
+        {
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                if (slot.SlotData.SlotType != InventorySlotType.MercenaryEquipment) continue;
+
+                var merc = slot.SlotData.MercenaryRef;
+                if (merc == null)
+                {
+                    slot.SlotData.Item = null;
+                    continue;
+                }
+
+                switch (slot.SlotData.EquipmentSlot)
+                {
+                    case EquipmentSlot.WeaponShield1: slot.SlotData.Item = merc.WeaponShield1; break;
+                    case EquipmentSlot.Armor: slot.SlotData.Item = merc.Armor; break;
+                    case EquipmentSlot.Hat: slot.SlotData.Item = merc.Hat; break;
+                    case EquipmentSlot.WeaponShield2: slot.SlotData.Item = merc.WeaponShield2; break;
+                    case EquipmentSlot.Accessory1: slot.SlotData.Item = merc.Accessory1; break;
+                    case EquipmentSlot.Accessory2: slot.SlotData.Item = merc.Accessory2; break;
                 }
             }
         }
@@ -616,6 +745,21 @@ namespace PitHero.UI
                 return;
             }
 
+            // Mercenary equipment slot: attempt to unequip to first empty bag slot
+            if (slot.SlotData.SlotType == InventorySlotType.MercenaryEquipment)
+            {
+                if (slot.SlotData.Item != null && slot.SlotData.MercenaryRef != null)
+                {
+                    var emptySlot = FindFirstEmptyBagSlot();
+                    if (emptySlot != null)
+                    {
+                        SwapSlotItems(slot, emptySlot);
+                    }
+                }
+                ClearSelectionHighlight();
+                return;
+            }
+
             // Bag slots: use consumables or equip gear
             if (slot.SlotData.Item is Consumable && slot.SlotData.BagIndex.HasValue)
             {
@@ -656,7 +800,7 @@ namespace PitHero.UI
         private void HandleSlotRightClicked(InventorySlot slot, Vector2 mousePos)
         {
             // Only show context menu for non-equipment slots with items
-            if (slot.SlotData.SlotType == InventorySlotType.Equipment)
+            if (slot.SlotData.SlotType == InventorySlotType.Equipment || slot.SlotData.SlotType == InventorySlotType.MercenaryEquipment)
                 return;
 
             if (slot.SlotData.Item != null && _contextMenu != null && slot.SlotData.BagIndex.HasValue)
@@ -752,17 +896,21 @@ namespace PitHero.UI
             a.SlotData.Item = b.SlotData.Item;
             b.SlotData.Item = tmp;
 
-            // Update hero equipment accurately depending on swap types
+            // Determine slot categories
+            var aIsHeroEquip = a.SlotData.SlotType == InventorySlotType.Equipment && a.SlotData.EquipmentSlot.HasValue;
+            var bIsHeroEquip = b.SlotData.SlotType == InventorySlotType.Equipment && b.SlotData.EquipmentSlot.HasValue;
+            var aIsMercEquip = a.SlotData.SlotType == InventorySlotType.MercenaryEquipment && a.SlotData.EquipmentSlot.HasValue;
+            var bIsMercEquip = b.SlotData.SlotType == InventorySlotType.MercenaryEquipment && b.SlotData.EquipmentSlot.HasValue;
+
+            // Handle hero equipment swaps
             var heroEquipment = _heroComponent?.LinkedHero;
             if (heroEquipment != null)
             {
-                var aEquip = a.SlotData.SlotType == InventorySlotType.Equipment && a.SlotData.EquipmentSlot.HasValue;
-                var bEquip = b.SlotData.SlotType == InventorySlotType.Equipment && b.SlotData.EquipmentSlot.HasValue;
-                if (aEquip && bEquip)
+                if (aIsHeroEquip && bIsHeroEquip)
                 {
                     heroEquipment.ApplyEquipmentSwap(a.SlotData.EquipmentSlot.Value, a.SlotData.Item, b.SlotData.EquipmentSlot.Value, b.SlotData.Item);
                 }
-                else
+                else if (aIsHeroEquip || bIsHeroEquip)
                 {
                     if (!UpdateHeroDataFromSlot(a) || !UpdateHeroDataFromSlot(b))
                     {
@@ -773,6 +921,23 @@ namespace PitHero.UI
                         UpdateHeroDataFromSlot(b);
                     }
                 }
+            }
+
+            // Handle mercenary equipment swaps
+            if (aIsMercEquip && bIsMercEquip && a.SlotData.MercenaryRef != null && a.SlotData.MercenaryRef == b.SlotData.MercenaryRef)
+            {
+                // Same-mercenary equipment swap
+                a.SlotData.MercenaryRef?.ApplyEquipmentSwap(
+                    a.SlotData.EquipmentSlot.Value, a.SlotData.Item,
+                    b.SlotData.EquipmentSlot.Value, b.SlotData.Item);
+            }
+            else
+            {
+                // Update each mercenary slot independently (covers merc↔inventory, merc↔hero, cross-merc)
+                if (aIsMercEquip)
+                    UpdateMercenaryDataFromSlot(a);
+                if (bIsMercEquip)
+                    UpdateMercenaryDataFromSlot(b);
             }
 
             PersistBagOrdering();
@@ -895,6 +1060,9 @@ namespace PitHero.UI
             // Draw stencil overlays
             DrawStencilOverlays(batcher);
 
+            // Draw mercenary names above their equip slot areas
+            DrawMercenaryNames(batcher);
+
             // Legacy UI tween disabled when using manager overlay
             if (!_uiSwapActive) return;
 
@@ -909,6 +1077,34 @@ namespace PitHero.UI
             float t = _uiSwapElapsed / SWAP_TWEEN_DURATION;
             if (t < 0f) t = 0f; else if (t > 1f) t = 1f;
             float ease = 1f - (1f - t) * (1f - t); // QuadOut
+        }
+
+        /// <summary>Draws mercenary names above their equip slot areas.</summary>
+        private void DrawMercenaryNames(Batcher batcher)
+        {
+            if (_nameFont == null) return;
+
+            const float X_OFFSET = 32f;
+            const float Y_OFFSET = -16f;
+            int[] colStarts = { MERC0_COL_START, MERC1_COL_START };
+
+            for (int m = 0; m < MAX_MERCENARY_SLOTS; m++)
+            {
+                var merc = _mercenaryRefs[m];
+                if (merc == null) continue;
+
+                // Center name above the 3 equip columns (colStart to colStart+2)
+                float leftX = colStarts[m] * (SLOT_SIZE + SLOT_PADDING) + X_OFFSET;
+                float rightX = (colStarts[m] + 3) * (SLOT_SIZE + SLOT_PADDING) + X_OFFSET;
+                float centerX = (leftX + rightX) / 2f;
+                float nameY = 0f * (SLOT_SIZE + SLOT_PADDING) + Y_OFFSET;
+
+                var nameText = merc.Name;
+                var textSize = _nameFont.MeasureString(nameText);
+                var textX = centerX - textSize.X / 2f;
+
+                batcher.DrawString(_nameFont, nameText, new Vector2(textX, nameY), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
+            }
         }
 
         /// <summary>Draws stencil overlays on the inventory grid.</summary>
@@ -1133,13 +1329,30 @@ namespace PitHero.UI
         private bool CanPlaceItemInSlot(IItem item, InventorySlotData slotData)
         {
             if (item == null) return true;
+
+            // Mercenary equipment slot validation
+            if (slotData.SlotType == InventorySlotType.MercenaryEquipment)
+            {
+                if (item is not IGear) return false;
+                var merc = slotData.MercenaryRef;
+                if (merc == null) return false;
+                if (!merc.CanEquipItem(item)) return false;
+                return IsItemValidForEquipSlot(item, slotData.EquipmentSlot);
+            }
+
             if (slotData.SlotType != InventorySlotType.Equipment) return true;
 
-            // Check job restriction for gear in equipment slots
+            // Check job restriction for gear in hero equipment slots
             var hero = _heroComponent?.LinkedHero;
             if (hero != null && !hero.CanEquipItem(item)) return false;
 
-            switch (slotData.EquipmentSlot)
+            return IsItemValidForEquipSlot(item, slotData.EquipmentSlot);
+        }
+
+        /// <summary>Checks whether an item's kind is valid for the given equipment slot type.</summary>
+        private bool IsItemValidForEquipSlot(IItem item, EquipmentSlot? equipSlot)
+        {
+            switch (equipSlot)
             {
                 case EquipmentSlot.WeaponShield1:
                 case EquipmentSlot.WeaponShield2: return IsWeaponOrShield(item);
@@ -1165,6 +1378,16 @@ namespace PitHero.UI
             var d = slot.SlotData;
             if (d.SlotType != InventorySlotType.Equipment || !d.EquipmentSlot.HasValue) return true;
             return heroEquipment.SetEquipmentSlot(d.EquipmentSlot.Value, d.Item);
+        }
+
+        /// <summary>Updates mercenary equipment when a mercenary equipment slot changed.</summary>
+        private void UpdateMercenaryDataFromSlot(InventorySlot slot)
+        {
+            var d = slot.SlotData;
+            if (d.SlotType != InventorySlotType.MercenaryEquipment || !d.EquipmentSlot.HasValue) return;
+            var merc = d.MercenaryRef;
+            if (merc == null) return;
+            merc.SetEquipmentSlot(d.EquipmentSlot.Value, d.Item);
         }
 
         /// <summary>finds the first empty bag slot (shortcut or inventory).</summary>

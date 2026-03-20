@@ -36,7 +36,7 @@ namespace PitHero.UI
             _container.SetVisible(false);
         }
 
-        public void ShowSkill(ISkill skill, bool isLearned, Hero hero, bool isSynergySkill = false, int synergyCurrentPoints = 0, int synergyRequiredPoints = 0)
+        public void ShowSkill(ISkill skill, bool isLearned, Hero hero, bool isSynergySkill = false, int synergyCurrentPoints = 0, int synergyRequiredPoints = 0, bool showCostAndStatus = true)
         {
             _contentTable.Clear();
 
@@ -85,7 +85,7 @@ namespace PitHero.UI
                     _contentTable.Row();
                 }
             }
-            else
+            else if (showCostAndStatus)
             {
                 // Regular JP cost for job skills
                 var costText = $"Cost: {skill.JPCost} JP";
@@ -176,14 +176,14 @@ namespace PitHero.UI
                 return text;
 
             // Replace common unsupported characters
-            text = text.Replace('\u2022', '-');  // Bullet point •
-            text = text.Replace('\u2013', '-');  // En dash –
-            text = text.Replace('\u2014', '-');  // Em dash —
+            text = text.Replace('\u2022', '-');  // Bullet point ï¿½
+            text = text.Replace('\u2013', '-');  // En dash ï¿½
+            text = text.Replace('\u2014', '-');  // Em dash ï¿½
             text = text.Replace('\u2018', '\''); // Left single quote '
             text = text.Replace('\u2019', '\''); // Right single quote '
             text = text.Replace('\u201C', '"');  // Left double quote "
             text = text.Replace('\u201D', '"');  // Right double quote "
-            text = text.Replace("\u2026", "..."); // Ellipsis …
+            text = text.Replace("\u2026", "..."); // Ellipsis ï¿½
 
             // Filter out any remaining non-ASCII characters that might not be in the font
             var result = new System.Text.StringBuilder();
