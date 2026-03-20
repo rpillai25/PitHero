@@ -58,6 +58,7 @@ namespace PitHero.UI
                     InventorySlotType.Inventory => "Inventory",
                     InventorySlotType.Shortcut => "Shortcut",
                     InventorySlotType.Equipment => "Equipment",
+                    InventorySlotType.MercenaryEquipment => "Equipment",
                     _ => null
                 };
 
@@ -74,8 +75,8 @@ namespace PitHero.UI
                 _highlightBoxSprite = uiAtlas.GetSprite("HighlightBox");
                 _highlightBoxDrawable = new SpriteDrawable(_highlightBoxSprite);
 
-                // Load placeholder sprites for equipment slots
-                if (_slotData.SlotType == InventorySlotType.Equipment && _slotData.EquipmentSlot.HasValue)
+                // Load placeholder sprites for equipment slots (hero and mercenary)
+                if ((_slotData.SlotType == InventorySlotType.Equipment || _slotData.SlotType == InventorySlotType.MercenaryEquipment) && _slotData.EquipmentSlot.HasValue)
                 {
                     string placeholderSpriteName = GetPlaceholderSpriteName(_slotData.EquipmentSlot.Value);
                     string placeholderTooltipText = GetPlaceholderTooltipText(_slotData.EquipmentSlot.Value);
@@ -175,6 +176,10 @@ namespace PitHero.UI
             if (_slotData.SlotType == InventorySlotType.Null)
                 return;
 
+            // Hide mercenary equipment slots that have no assigned mercenary
+            if (_slotData.SlotType == InventorySlotType.MercenaryEquipment && _slotData.MercenaryRef == null)
+                return;
+
             // Draw background (only if sprite is loaded)
             if (_backgroundDrawable != null)
             {
@@ -212,7 +217,7 @@ namespace PitHero.UI
                     }
                 }
             }
-            else if (_slotData.Item == null && _slotData.SlotType == InventorySlotType.Equipment && _placeholderDrawable != null)
+            else if (_slotData.Item == null && (_slotData.SlotType == InventorySlotType.Equipment || _slotData.SlotType == InventorySlotType.MercenaryEquipment) && _placeholderDrawable != null)
             {
                 // Draw placeholder sprite for empty equipment slot
                 _placeholderDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
@@ -248,9 +253,13 @@ namespace PitHero.UI
 
         void IInputListener.OnMouseEnter()
         {
+            // Skip interaction for inactive mercenary equipment slots
+            if (_slotData.SlotType == InventorySlotType.MercenaryEquipment && _slotData.MercenaryRef == null)
+                return;
+
             _slotData.IsHovered = true;
             // Manually drive tooltip enter when hovering an empty equipment slot
-            if (_slotData.SlotType == InventorySlotType.Equipment && _slotData.Item == null && _placeholderTooltip != null)
+            if ((_slotData.SlotType == InventorySlotType.Equipment || _slotData.SlotType == InventorySlotType.MercenaryEquipment) && _slotData.Item == null && _placeholderTooltip != null)
             {
                 _placeholderTooltip.Hit(Input.MousePosition);
             }
@@ -271,7 +280,7 @@ namespace PitHero.UI
         void IInputListener.OnMouseMoved(Vector2 mousePos)
         {
             // Keep placeholder tooltip following the cursor while hovering
-            if (_slotData.SlotType == InventorySlotType.Equipment && _slotData.Item == null && _placeholderTooltip != null)
+            if ((_slotData.SlotType == InventorySlotType.Equipment || _slotData.SlotType == InventorySlotType.MercenaryEquipment) && _slotData.Item == null && _placeholderTooltip != null)
             {
                 _placeholderTooltip.Hit(Input.MousePosition);
             }
@@ -279,6 +288,10 @@ namespace PitHero.UI
 
         bool IInputListener.OnLeftMousePressed(Vector2 mousePos)
         {
+            // Skip interaction for inactive mercenary equipment slots
+            if (_slotData.SlotType == InventorySlotType.MercenaryEquipment && _slotData.MercenaryRef == null)
+                return false;
+
             // Check for double-click
             float currentTime = Time.TotalTime;
             if (_lastClickTime >= 0 && (currentTime - _lastClickTime) <= GameConfig.DoubleClickThresholdSeconds)

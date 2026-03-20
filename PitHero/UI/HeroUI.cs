@@ -4,6 +4,7 @@ using Nez.UI;
 using PitHero.ECS.Components;
 using PitHero.Services;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Mercenaries;
 using System.Collections.Generic;
 
 namespace PitHero.UI
@@ -785,7 +786,10 @@ namespace PitHero.UI
                     
                     // Always reconnect to hero to refresh inventory (in case hero died and items were cleared)
                     if (_inventoryGrid != null)
+                    {
                         _inventoryGrid.ConnectToHero(heroComponent);
+                        RefreshMercenaryEquipSlots();
+                    }
                     
                     // Update hero name label
                     if (_heroNameLabel != null)
@@ -845,6 +849,32 @@ namespace PitHero.UI
         {
             var heroEntity = Core.Scene?.FindEntity("hero");
             return heroEntity?.GetComponent<HeroComponent>();
+        }
+
+        /// <summary>Gathers hired mercenaries and refreshes their equip slots in the inventory grid.</summary>
+        private void RefreshMercenaryEquipSlots()
+        {
+            if (_inventoryGrid == null) return;
+
+            var mercManager = Core.Services?.GetService<MercenaryManager>();
+            List<Mercenary> hiredMercs = null;
+
+            if (mercManager != null)
+            {
+                var hiredEntities = mercManager.GetHiredMercenaries();
+                if (hiredEntities != null && hiredEntities.Count > 0)
+                {
+                    hiredMercs = new List<Mercenary>(hiredEntities.Count);
+                    for (int i = 0; i < hiredEntities.Count; i++)
+                    {
+                        var mc = hiredEntities[i].GetComponent<MercenaryComponent>();
+                        if (mc?.LinkedMercenary != null)
+                            hiredMercs.Add(mc.LinkedMercenary);
+                    }
+                }
+            }
+
+            _inventoryGrid.RefreshMercenarySlots(hiredMercs);
         }
 
         /// <summary>Refreshes battle tactic radio buttons and consumable checkboxes from HeroComponent state.</summary>

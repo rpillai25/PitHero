@@ -85,6 +85,17 @@ namespace RolePlayingFramework.Mercenaries
         /// <summary>Gets required XP for the next level.</summary>
         public int RequiredExpForNextLevel() => Level * 100;
 
+        /// <summary>Checks whether this mercenary can equip the given item based on job restrictions.</summary>
+        public bool CanEquipItem(IItem item)
+        {
+            if (item == null) return false;
+            if (item is IGear gear)
+            {
+                return (gear.AllowedJobs & Job.JobFlag) != 0;
+            }
+            return true;
+        }
+
         /// <summary>Equips an item in the appropriate slot.</summary>
         public bool Equip(IGear item)
         {
@@ -171,6 +182,89 @@ namespace RolePlayingFramework.Mercenaries
                 RecalculateDerived();
 
             return removed;
+        }
+
+        /// <summary>Sets equipment in a specific slot with job restriction and slot-type validation.</summary>
+        public bool SetEquipmentSlot(EquipmentSlot slot, IItem? item)
+        {
+            if (item == null)
+            {
+                switch (slot)
+                {
+                    case EquipmentSlot.WeaponShield1: WeaponShield1 = null; break;
+                    case EquipmentSlot.Armor: Armor = null; break;
+                    case EquipmentSlot.Hat: Hat = null; break;
+                    case EquipmentSlot.WeaponShield2: WeaponShield2 = null; break;
+                    case EquipmentSlot.Accessory1: Accessory1 = null; break;
+                    case EquipmentSlot.Accessory2: Accessory2 = null; break;
+                }
+                RecalculateDerived();
+                return true;
+            }
+
+            if (!CanEquipItem(item)) return false;
+            if (item is not IGear gear) return false;
+
+            switch (slot)
+            {
+                case EquipmentSlot.WeaponShield1:
+                    if (gear.Kind == ItemKind.WeaponSword || gear.Kind == ItemKind.WeaponKnife
+                        || gear.Kind == ItemKind.WeaponKnuckle || gear.Kind == ItemKind.WeaponStaff
+                        || gear.Kind == ItemKind.WeaponRod || gear.Kind == ItemKind.WeaponHammer)
+                    {
+                        WeaponShield1 = gear; RecalculateDerived(); return true;
+                    }
+                    return false;
+                case EquipmentSlot.Armor:
+                    if (gear.Kind == ItemKind.ArmorMail || gear.Kind == ItemKind.ArmorGi || gear.Kind == ItemKind.ArmorRobe)
+                    {
+                        Armor = gear; RecalculateDerived(); return true;
+                    }
+                    return false;
+                case EquipmentSlot.Hat:
+                    if (gear.Kind == ItemKind.HatHelm || gear.Kind == ItemKind.HatHeadband
+                        || gear.Kind == ItemKind.HatWizard || gear.Kind == ItemKind.HatPriest)
+                    {
+                        Hat = gear; RecalculateDerived(); return true;
+                    }
+                    return false;
+                case EquipmentSlot.WeaponShield2:
+                    if (gear.Kind == ItemKind.Shield)
+                    {
+                        WeaponShield2 = gear; RecalculateDerived(); return true;
+                    }
+                    return false;
+                case EquipmentSlot.Accessory1:
+                    if (gear.Kind == ItemKind.Accessory) { Accessory1 = gear; RecalculateDerived(); return true; }
+                    return false;
+                case EquipmentSlot.Accessory2:
+                    if (gear.Kind == ItemKind.Accessory) { Accessory2 = gear; RecalculateDerived(); return true; }
+                    return false;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>Directly assigns equipment to two slots in a single recalculation (for slot-to-slot swaps).</summary>
+        public void ApplyEquipmentSwap(EquipmentSlot slotA, IItem? itemForA, EquipmentSlot slotB, IItem? itemForB)
+        {
+            SetSlotDirect(slotA, itemForA as IGear);
+            SetSlotDirect(slotB, itemForB as IGear);
+            RecalculateDerived();
+        }
+
+        /// <summary>Directly sets a slot without validation or recalculation (used by ApplyEquipmentSwap).</summary>
+        private void SetSlotDirect(EquipmentSlot slot, IGear? item)
+        {
+            switch (slot)
+            {
+                case EquipmentSlot.WeaponShield1: WeaponShield1 = item; break;
+                case EquipmentSlot.Armor: Armor = item; break;
+                case EquipmentSlot.Hat: Hat = item; break;
+                case EquipmentSlot.WeaponShield2: WeaponShield2 = item; break;
+                case EquipmentSlot.Accessory1: Accessory1 = item; break;
+                case EquipmentSlot.Accessory2: Accessory2 = item; break;
+            }
         }
 
         /// <summary>Gets total stats (base + job + equipment) clamped to maximums.</summary>
