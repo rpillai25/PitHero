@@ -331,7 +331,7 @@ namespace PitHero.UI
 
             // Green background on top of white border, behind hero layers
             var background = _previewEntity.AddComponent(new PrototypeSpriteRenderer(32, 46));
-            background.SetColor(Color.Green);
+            background.SetColor(Color.LightSkyBlue);
             background.SetLocalOffset(bgOffset);
             background.SetRenderLayer(998);
         }
@@ -351,7 +351,7 @@ namespace PitHero.UI
             var skinColor = GameConfig.SkinColors[_currentSkinIndex];
             var hairColor = GameConfig.HairColors[_currentHairColorIndex];
             var shirtColor = GameConfig.ShirtColors[_currentShirtIndex];
-            var offset = new Vector2(0, -GameConfig.TileSize / 2);
+            var offset = new Vector2(0, -GameConfig.TileSize / 2 - 2);
 
             // Body layer
             var bodyAnimator = _previewEntity.AddComponent(new HeroBodyAnimationComponent(skinColor));

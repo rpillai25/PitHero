@@ -55,7 +55,7 @@ namespace PitHero.ECS.Scenes
             const float gap = 10f;
             float totalWidth = windowWidth + gap + jobInfoWidth;
             float startX = (GameConfig.VirtualWidth - totalWidth) / 2f;
-            float previewX = startX + windowWidth - 210f;
+            float previewX = startX + windowWidth - 128f;
             float previewY = GameConfig.VirtualHeight * 0.48f;
 
             var previewEntity = CreateEntity("hero-preview");
