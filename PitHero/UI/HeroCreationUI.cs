@@ -22,6 +22,7 @@ namespace PitHero.UI
 
         // Current selections
         private string _currentName;
+        private int _currentJobIndex;
         private int _currentSkinIndex;
         private int _currentHairColorIndex;
         private int _currentHairstyleIndex;
@@ -29,10 +30,14 @@ namespace PitHero.UI
 
         // UI labels that update when selections change
         private Label _nameLabel;
+        private Label _jobLabel;
         private Label _hairstyleLabel;
         private Label _skinLabel;
         private Label _hairColorLabel;
         private Label _shirtLabel;
+
+        // Pre-allocated array of primary job names (AOT safe)
+        private static readonly string[] PrimaryJobNames = { "Knight", "Monk", "Mage", "Priest", "Archer", "Thief" };
 
         // Reusable list for component removal (pre-allocated to avoid GC)
         private readonly List<HeroAnimationComponent> _tempAnimComponents = new List<HeroAnimationComponent>(8);
@@ -55,6 +60,7 @@ namespace PitHero.UI
 
             // Randomize initial selections
             _currentName = NameGenerator.GenerateRandomName();
+            _currentJobIndex = Nez.Random.Range(0, PrimaryJobNames.Length);
             _currentSkinIndex = Nez.Random.Range(0, GameConfig.SkinColors.Count);
             _currentHairColorIndex = Nez.Random.Range(0, GameConfig.HairColors.Count);
             _currentHairstyleIndex = Nez.Random.Range(1, GameConfig.MaleHeroHairstyleCount + 1);
@@ -96,10 +102,10 @@ namespace PitHero.UI
         {
             var windowStyle = skin.Get<WindowStyle>();
             var window = new Window("Appearance", windowStyle);
-            window.SetSize(500f, 300f);
+            window.SetSize(500f, 340f);
             window.SetPosition(
                 (_stage.GetWidth() - 500f) / 2f,
-                (_stage.GetHeight() - 300f) / 2f
+                (_stage.GetHeight() - 340f) / 2f
             );
 
             var table = new Table();
@@ -116,11 +122,45 @@ namespace PitHero.UI
             rerollButton.OnClicked += (btn) =>
             {
                 _currentName = NameGenerator.GenerateRandomName();
+                _currentJobIndex = Nez.Random.Range(0, PrimaryJobNames.Length);
+                _currentSkinIndex = Nez.Random.Range(0, GameConfig.SkinColors.Count);
+                _currentHairColorIndex = Nez.Random.Range(0, GameConfig.HairColors.Count);
+                _currentHairstyleIndex = Nez.Random.Range(1, GameConfig.MaleHeroHairstyleCount + 1);
+                _currentShirtIndex = Nez.Random.Range(0, GameConfig.ShirtColors.Count);
                 _nameLabel.SetText(_currentName);
+                _jobLabel.SetText(PrimaryJobNames[_currentJobIndex]);
+                _hairstyleLabel.SetText("Hairstyle " + _currentHairstyleIndex);
+                _skinLabel.SetText("Skin " + (_currentSkinIndex + 1));
+                _hairColorLabel.SetText("Hair Color " + (_currentHairColorIndex + 1));
+                _shirtLabel.SetText("Shirt " + (_currentShirtIndex + 1));
+                RebuildPreviewAppearance();
             };
             table.Add(new Label("Name:", skin)).SetPadRight(10f);
             table.Add(_nameLabel).Width(labelWidth);
             table.Add(rerollButton).Width(80f).Height(arrowHeight);
+            table.Row();
+
+            // --- Job row ---
+            _jobLabel = new Label(PrimaryJobNames[_currentJobIndex], skin);
+            var jobLeft = new TextButton("<", skin);
+            var jobRight = new TextButton(">", skin);
+            jobLeft.OnClicked += (btn) =>
+            {
+                _currentJobIndex--;
+                if (_currentJobIndex < 0)
+                    _currentJobIndex = PrimaryJobNames.Length - 1;
+                _jobLabel.SetText(PrimaryJobNames[_currentJobIndex]);
+            };
+            jobRight.OnClicked += (btn) =>
+            {
+                _currentJobIndex++;
+                if (_currentJobIndex >= PrimaryJobNames.Length)
+                    _currentJobIndex = 0;
+                _jobLabel.SetText(PrimaryJobNames[_currentJobIndex]);
+            };
+            table.Add(jobLeft).Size(arrowWidth, arrowHeight);
+            table.Add(_jobLabel).Width(labelWidth);
+            table.Add(jobRight).Size(arrowWidth, arrowHeight);
             table.Row();
 
             // --- Hairstyle row ---
@@ -331,7 +371,8 @@ namespace PitHero.UI
                 GameConfig.SkinColors[_currentSkinIndex],
                 GameConfig.HairColors[_currentHairColorIndex],
                 _currentHairstyleIndex,
-                GameConfig.ShirtColors[_currentShirtIndex]
+                GameConfig.ShirtColors[_currentShirtIndex],
+                PrimaryJobNames[_currentJobIndex]
             );
 
             var designService = Core.Services.GetService<HeroDesignService>();

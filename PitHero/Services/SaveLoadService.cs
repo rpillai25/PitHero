@@ -412,7 +412,8 @@ namespace PitHero.Services
                     data.SkinColor,
                     data.HairColor,
                     data.HairstyleIndex,
-                    data.ShirtColor
+                    data.ShirtColor,
+                    data.JobName
                 );
                 designService.SetDesign(design);
             }
