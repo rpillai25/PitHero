@@ -845,6 +845,9 @@ namespace PitHero.AI
                                         // Show skill name above mercenary
                                         ShowMercenarySkillName(participant.MercenaryEntity, healSkill.Name);
 
+                                        // Show action icon on HUD
+                                        mercComponent.ActionQueueVisualization?.ShowAction(new QueuedAction(healSkill));
+
                                         var healTarget = mercDecision.Target;
                                         if (healTarget == null) healTarget = hero;
 
@@ -937,6 +940,9 @@ namespace PitHero.AI
 
                                         // Show skill name above mercenary
                                         ShowMercenarySkillName(participant.MercenaryEntity, atkSkill.Name);
+
+                                        // Show action icon on HUD
+                                        mercComponent.ActionQueueVisualization?.ShowAction(new QueuedAction(atkSkill));
 
                                         // Build target list based on skill target type
                                         var skillLiving = GetLivingMonsters(validMonsters);
@@ -1065,6 +1071,9 @@ namespace PitHero.AI
                                     var targetBattleStats = BattleStats.CalculateForMonster(targetEnemy);
 
                                     Debug.Log($"[AttackMonster] {mercenary.Name}'s turn - attacking {targetEnemy.Name}");
+
+                                    // Show action icon on HUD (weapon or unarmed)
+                                    mercComponent.ActionQueueVisualization?.ShowAction(new QueuedAction(mercenary.WeaponShield1));
 
                                     // Make mercenary face the target monster
                                     FaceTarget(participant.MercenaryEntity, paTarget.Transform.Position);

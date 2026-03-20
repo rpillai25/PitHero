@@ -25,17 +25,16 @@ namespace PitHero.ECS.Components
     }
 
     /// <summary>
-    /// Renders the action queue as sprites displayed to the right of the hero during battle.
-    /// Shows up to 5 actions vertically stacked from top to bottom.
-    /// Completed actions slide up and fade out over 0.5 seconds.
+    /// Renders the action queue as sprites displayed over the HUD head during battle.
+    /// For hero: shows up to 5 queued actions and animates completed ones floating up.
+    /// For mercenaries: shows the current action floating up when triggered via ShowAction().
     /// </summary>
     public class ActionQueueVisualizationComponent : RenderableComponent, IUpdatable
     {
         private const int SpriteSize = 32; // Size of each action sprite
         private const int SpriteSpacing = 2; // Spacing between sprites
-        private const int OffsetX = 40; // Distance from hero center to first sprite
-        private const float AnimationDuration = 0.5f; // Duration of slide + fade animation in seconds
-        private const float SlideDistance = SpriteSize + SpriteSpacing; // Distance to slide up (32 pixels)
+        private const float AnimationDuration = 1.0f; // Duration of slide + fade animation in seconds (increase to slow down, decrease to speed up)
+        private const float SlideDistance = SpriteSize + SpriteSpacing; // Distance to slide up (34 pixels)
 
         private HeroComponent _heroComponent;
         private object _itemsAtlas;
@@ -48,11 +47,25 @@ namespace PitHero.ECS.Components
         public override float Width => SpriteSize;
         public override float Height => SpriteSize * ActionQueue.MaxQueueSize + SpriteSpacing * (ActionQueue.MaxQueueSize - 1);
 
-        /// <summary>Initialize the component with hero reference.</summary>
+        /// <summary>Set the hero component to continuously monitor its action queue for automatic animation triggers.</summary>
+        public void SetHeroComponent(HeroComponent heroComponent)
+        {
+            _heroComponent = heroComponent;
+        }
+
+        /// <summary>Show a single action animation (used for mercenaries and external triggers).</summary>
+        public void ShowAction(QueuedAction action)
+        {
+            if (action != null)
+            {
+                _animatingActions.Add(new AnimatingAction(action));
+            }
+        }
+
+        /// <summary>Initialize the component.</summary>
         public override void OnAddedToEntity()
         {
             base.OnAddedToEntity();
-            _heroComponent = Entity.GetComponent<HeroComponent>();
             _lastQueueCount = 0;
             _lastFirstAction = null;
         }
@@ -69,25 +82,26 @@ namespace PitHero.ECS.Components
                 return;
             }
 
-            if (_heroComponent == null || _heroComponent.BattleActionQueue == null)
-                return;
-
-            var actions = _heroComponent.BattleActionQueue.GetAll();
-            int currentQueueCount = actions?.Length ?? 0;
-
-            // Detect when an action is completed (queue count decreased or first action changed)
-            if (_lastQueueCount > 0 && currentQueueCount < _lastQueueCount)
+            // Hero queue monitoring: detect when an action is dequeued
+            if (_heroComponent != null && _heroComponent.BattleActionQueue != null)
             {
-                // An action was completed - start animating it
-                if (_lastFirstAction != null)
-                {
-                    _animatingActions.Add(new AnimatingAction(_lastFirstAction));
-                }
-            }
+                var actions = _heroComponent.BattleActionQueue.GetAll();
+                int currentQueueCount = actions?.Length ?? 0;
 
-            // Update last state
-            _lastQueueCount = currentQueueCount;
-            _lastFirstAction = currentQueueCount > 0 ? actions[0] : null;
+                // Detect when an action is completed (queue count decreased)
+                if (_lastQueueCount > 0 && currentQueueCount < _lastQueueCount)
+                {
+                    // An action was completed - start animating it
+                    if (_lastFirstAction != null)
+                    {
+                        _animatingActions.Add(new AnimatingAction(_lastFirstAction));
+                    }
+                }
+
+                // Update last state
+                _lastQueueCount = currentQueueCount;
+                _lastFirstAction = currentQueueCount > 0 ? actions[0] : null;
+            }
 
             // Update all animating actions
             for (int i = _animatingActions.Count - 1; i >= 0; i--)
@@ -117,11 +131,6 @@ namespace PitHero.ECS.Components
             if (!PitHero.AI.HeroStateMachine.IsBattleInProgress)
                 return;
 
-            if (_heroComponent == null || _heroComponent.BattleActionQueue == null)
-                return;
-
-            var actions = _heroComponent.BattleActionQueue.GetAll();
-
             // Only load atlases if Core.Content is available and not already cached
             if (Core.Content != null)
             {
@@ -144,26 +153,29 @@ namespace PitHero.ECS.Components
             dynamic itemsAtlas = _itemsAtlas;
             dynamic skillsAtlas = _skillsAtlas;
 
-            // Get hero position
-            var heroPos = Entity.Transform.Position;
+            // Entity position is the head position on the HUD (screen space)
+            var pos = Entity.Transform.Position;
+            float startX = pos.X;
+            float startY = pos.Y;
 
-            // Calculate starting position (to the right of hero, starting from top)
-            float startX = heroPos.X + OffsetX;
-            float startY = heroPos.Y - (Height / 2f); // Center vertically around hero
-
-            // Render animating (completed) actions first
-            foreach (var animating in _animatingActions)
+            // Render animating (completed/triggered) actions first
+            for (int i = 0; i < _animatingActions.Count; i++)
             {
+                var animating = _animatingActions[i];
                 RenderAction(animating.Action, batcher, itemsAtlas, skillsAtlas, startX, startY, animating.YOffset, animating.ElapsedTime);
             }
 
-            // Render active queue actions
-            if (actions != null && actions.Length > 0)
+            // Render active queue actions (hero mode only)
+            if (_heroComponent != null && _heroComponent.BattleActionQueue != null)
             {
-                for (int i = 0; i < actions.Length; i++)
+                var actions = _heroComponent.BattleActionQueue.GetAll();
+                if (actions != null && actions.Length > 0)
                 {
-                    float yOffset = i * (SpriteSize + SpriteSpacing);
-                    RenderAction(actions[i], batcher, itemsAtlas, skillsAtlas, startX, startY, yOffset, -1f);
+                    for (int i = 0; i < actions.Length; i++)
+                    {
+                        float yOffset = i * (SpriteSize + SpriteSpacing);
+                        RenderAction(actions[i], batcher, itemsAtlas, skillsAtlas, startX, startY, yOffset, -1f);
+                    }
                 }
             }
         }
@@ -240,10 +252,10 @@ namespace PitHero.ECS.Components
             }
         }
 
-        /// <summary>Check if battle is in progress (for rendering).</summary>
+        /// <summary>Visible during battle (screen-space rendering ignores camera bounds).</summary>
         public override bool IsVisibleFromCamera(Camera camera)
         {
-            return PitHero.AI.HeroStateMachine.IsBattleInProgress && base.IsVisibleFromCamera(camera);
+            return PitHero.AI.HeroStateMachine.IsBattleInProgress;
         }
     }
 }

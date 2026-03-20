@@ -57,6 +57,9 @@ namespace PitHero.ECS.Components
     /// <summary>True if this mercenary is inside the pit</summary>
     public bool InsidePit { get; set; }
 
+    /// <summary>Reference to the screen-space action queue visualization for this mercenary</summary>
+    public ActionQueueVisualizationComponent ActionQueueVisualization { get; set; }
+
     public void Update()
     {
         // Future: Update mercenary behavior here

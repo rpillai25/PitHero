@@ -33,6 +33,9 @@ namespace PitHero.ECS.Scenes
         private GraphicalHUD _graphicalHUD; // Graphical HUD component for HP/MP/Level display
         private GraphicalHUD _mercenary1HUD; // Graphical HUD for mercenary #1
         private GraphicalHUD _mercenary2HUD; // Graphical HUD for mercenary #2
+        private ActionQueueVisualizationComponent _heroActionQueueViz; // Screen-space action queue viz for hero
+        private ActionQueueVisualizationComponent _merc1ActionQueueViz; // Screen-space action queue viz for mercenary #1
+        private ActionQueueVisualizationComponent _merc2ActionQueueViz; // Screen-space action queue viz for mercenary #2
         private MercenaryHireDialog _mercenaryHireDialog; // Dialog for hiring mercenaries
         private Entity _hoveredMercenary; // Currently hovered mercenary
         private Entity _mercenarySelectBoxEntity; // Entity for rendering SelectBox over hovered mercenary
@@ -56,6 +59,8 @@ namespace PitHero.ECS.Scenes
         private const float GraphicalHudBaseY = 4f; // Base Y position for graphical HUD
         private const float GraphicalHudHalfModeXOffset = 0f; // No additional X offset needed since Pit Lv is at bottom
         private const float GraphicalHudSpacing = 170f; // Spacing between HUD elements (hero to merc1, merc1 to merc2)
+        private const float HudHeadXOffset = 64f; // X offset to center viz over the HUD head sprite
+        private const float HudHeadYOffset = 30f; // Y offset for viz start position (32px below HUD head top)
 
         public BitmapFont HudFont; // legacy reference (normal)
 
@@ -567,10 +572,6 @@ namespace PitHero.ECS.Scenes
             heroBouncyText.SetRenderLayer(GameConfig.RenderLayerLowest);
             heroBouncyText.SetEnabled(false);
 
-            // Add action queue visualization component
-            var actionQueueViz = hero.AddComponent(new ActionQueueVisualizationComponent());
-            actionQueueViz.SetRenderLayer(GameConfig.RenderLayerLowest);
-
             hero.AddComponent(new Historian());
             hero.AddComponent(new HeroStateMachine());
 
@@ -838,6 +839,24 @@ namespace PitHero.ECS.Scenes
             _mercenary2HUD.SetRenderLayer(GameConfig.RenderLayerGraphicalHUD);
             _mercenary2HUD.SetEnabled(false); // Initially hidden until mercenary is hired
 
+            // Create screen-space action queue visualization entities positioned over HUD heads
+            var heroVizEntity = CreateEntity("hero-action-queue-viz");
+            heroVizEntity.SetPosition(GraphicalHudBaseX + HudHeadXOffset, GraphicalHudBaseY + HudHeadYOffset);
+            _heroActionQueueViz = heroVizEntity.AddComponent(new ActionQueueVisualizationComponent());
+            _heroActionQueueViz.SetRenderLayer(GameConfig.RenderLayerActionQueue);
+
+            var merc1VizEntity = CreateEntity("merc1-action-queue-viz");
+            merc1VizEntity.SetPosition(GraphicalHudBaseX + GraphicalHudSpacing + HudHeadXOffset, GraphicalHudBaseY + HudHeadYOffset);
+            _merc1ActionQueueViz = merc1VizEntity.AddComponent(new ActionQueueVisualizationComponent());
+            _merc1ActionQueueViz.SetRenderLayer(GameConfig.RenderLayerActionQueue);
+            _merc1ActionQueueViz.SetEnabled(false);
+
+            var merc2VizEntity = CreateEntity("merc2-action-queue-viz");
+            merc2VizEntity.SetPosition(GraphicalHudBaseX + GraphicalHudSpacing * 2 + HudHeadXOffset, GraphicalHudBaseY + HudHeadYOffset);
+            _merc2ActionQueueViz = merc2VizEntity.AddComponent(new ActionQueueVisualizationComponent());
+            _merc2ActionQueueViz.SetRenderLayer(GameConfig.RenderLayerActionQueue);
+            _merc2ActionQueueViz.SetEnabled(false);
+
             // Shortcut bar at bottom center
             _shortcutBar = new ShortcutBar();
             uiCanvas.Stage.AddElement(_shortcutBar);
@@ -945,8 +964,9 @@ namespace PitHero.ECS.Scenes
             var hero = FindEntity("hero");
             if (hero == null)
             {
-                // Hero doesn't exist - hide hero HUD
+                // Hero doesn't exist - hide hero HUD and action queue viz
                 _graphicalHUD.SetEnabled(false);
+                if (_heroActionQueueViz != null) _heroActionQueueViz.SetEnabled(false);
                 return;
             }
 
@@ -954,6 +974,7 @@ namespace PitHero.ECS.Scenes
             if (heroComponent?.LinkedHero == null)
             {
                 _graphicalHUD.SetEnabled(false);
+                if (_heroActionQueueViz != null) _heroActionQueueViz.SetEnabled(false);
                 return;
             }
 
@@ -961,6 +982,7 @@ namespace PitHero.ECS.Scenes
             if (hero.HasComponent<HeroDeathComponent>())
             {
                 _graphicalHUD.SetEnabled(false);
+                if (_heroActionQueueViz != null) _heroActionQueueViz.SetEnabled(false);
                 return;
             }
 
@@ -977,6 +999,13 @@ namespace PitHero.ECS.Scenes
                 linkedHero.Level
             );
 
+            // Wire up hero action queue visualization with hero component
+            if (_heroActionQueueViz != null)
+            {
+                _heroActionQueueViz.SetHeroComponent(heroComponent);
+                _heroActionQueueViz.SetEnabled(true);
+            }
+
             // Update mercenary HUDs
             UpdateMercenaryHUDs();
         }
@@ -989,9 +1018,11 @@ namespace PitHero.ECS.Scenes
             var mercenaryManager = Core.Services.GetService<MercenaryManager>();
             if (mercenaryManager == null)
             {
-                // No mercenary manager - hide all mercenary HUDs
+                // No mercenary manager - hide all mercenary HUDs and action queue vizs
                 if (_mercenary1HUD != null) _mercenary1HUD.SetEnabled(false);
                 if (_mercenary2HUD != null) _mercenary2HUD.SetEnabled(false);
+                if (_merc1ActionQueueViz != null) _merc1ActionQueueViz.SetEnabled(false);
+                if (_merc2ActionQueueViz != null) _merc2ActionQueueViz.SetEnabled(false);
                 return;
             }
 
@@ -1014,17 +1045,26 @@ namespace PitHero.ECS.Scenes
                         merc1Component.LinkedMercenary.MaxMP,
                         merc1Component.LinkedMercenary.Level
                     );
+
+                    // Wire up action queue viz for mercenary #1
+                    if (_merc1ActionQueueViz != null)
+                    {
+                        merc1Component.ActionQueueVisualization = _merc1ActionQueueViz;
+                        _merc1ActionQueueViz.SetEnabled(true);
+                    }
                 }
                 else
                 {
                     // Mercenary is dead or invalid
                     _mercenary1HUD.SetEnabled(false);
+                    if (_merc1ActionQueueViz != null) _merc1ActionQueueViz.SetEnabled(false);
                 }
             }
             else
             {
                 // No mercenary #1 hired
                 if (_mercenary1HUD != null) _mercenary1HUD.SetEnabled(false);
+                if (_merc1ActionQueueViz != null) _merc1ActionQueueViz.SetEnabled(false);
             }
 
             // Update mercenary #2 HUD
@@ -1044,17 +1084,26 @@ namespace PitHero.ECS.Scenes
                         merc2Component.LinkedMercenary.MaxMP,
                         merc2Component.LinkedMercenary.Level
                     );
+
+                    // Wire up action queue viz for mercenary #2
+                    if (_merc2ActionQueueViz != null)
+                    {
+                        merc2Component.ActionQueueVisualization = _merc2ActionQueueViz;
+                        _merc2ActionQueueViz.SetEnabled(true);
+                    }
                 }
                 else
                 {
                     // Mercenary is dead or invalid
                     _mercenary2HUD.SetEnabled(false);
+                    if (_merc2ActionQueueViz != null) _merc2ActionQueueViz.SetEnabled(false);
                 }
             }
             else
             {
                 // No mercenary #2 hired
                 if (_mercenary2HUD != null) _mercenary2HUD.SetEnabled(false);
+                if (_merc2ActionQueueViz != null) _merc2ActionQueueViz.SetEnabled(false);
             }
         }
 
