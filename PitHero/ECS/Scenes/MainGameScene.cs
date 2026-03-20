@@ -12,6 +12,7 @@ using PitHero.UI;
 using PitHero.Util;
 using RolePlayingFramework.AlliedMonsters;
 using RolePlayingFramework.Heroes;
+using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Jobs.Primary;
 using RolePlayingFramework.Stats;
 
@@ -545,7 +546,7 @@ namespace PitHero.ECS.Scenes
             if (!needsCrystal)
             {
                 // Initialize HeroCrystal for crystal-infused stats (normal spawn)
-                var heroJob = new Knight();
+                var heroJob = JobFactory.CreateJob(design.JobName);
                 var baseStats = new StatBlock(strength: 4, agility: 3, vitality: 5, magic: 1);
                 var heroCrystal = new HeroCrystal(design.Name, heroJob, 1, baseStats);
                 heroCrystal.EarnJP(550);

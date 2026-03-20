@@ -2,7 +2,7 @@ using Microsoft.Xna.Framework;
 
 namespace RolePlayingFramework.Heroes
 {
-    /// <summary>Immutable struct holding the hero's appearance choices</summary>
+    /// <summary>Immutable struct holding the hero's appearance and job choices</summary>
     public readonly struct HeroDesign
     {
         /// <summary>Hero name</summary>
@@ -20,14 +20,18 @@ namespace RolePlayingFramework.Heroes
         /// <summary>Shirt color</summary>
         public readonly Color ShirtColor;
 
-        /// <summary>Creates a new HeroDesign with the specified appearance choices</summary>
-        public HeroDesign(string name, Color skinColor, Color hairColor, int hairstyleIndex, Color shirtColor)
+        /// <summary>Starting job name (e.g. "Knight", "Mage")</summary>
+        public readonly string JobName;
+
+        /// <summary>Creates a new HeroDesign with the specified appearance and job choices</summary>
+        public HeroDesign(string name, Color skinColor, Color hairColor, int hairstyleIndex, Color shirtColor, string jobName = "Knight")
         {
             Name = name;
             SkinColor = skinColor;
             HairColor = hairColor;
             HairstyleIndex = hairstyleIndex;
             ShirtColor = shirtColor;
+            JobName = string.IsNullOrEmpty(jobName) ? "Knight" : jobName;
         }
     }
 }

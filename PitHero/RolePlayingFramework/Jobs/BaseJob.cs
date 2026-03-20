@@ -8,6 +8,8 @@ namespace RolePlayingFramework.Jobs
     public abstract class BaseJob : IJob
     {
         public string Name { get; }
+        public string Description { get; }
+        public string Role { get; }
         public StatBlock BaseBonus { get; }
         public StatBlock GrowthPerLevel { get; }
         public IReadOnlyList<ISkill> Skills => _skills;
@@ -15,9 +17,11 @@ namespace RolePlayingFramework.Jobs
         public JobType JobFlag { get; }
         private readonly List<ISkill> _skills;
 
-        protected BaseJob(string name, StatBlock baseBonus, StatBlock growthPerLevel, JobTier tier, JobType jobFlag = JobType.None)
+        protected BaseJob(string name, StatBlock baseBonus, StatBlock growthPerLevel, JobTier tier, JobType jobFlag = JobType.None, string description = "", string role = "")
         {
             Name = name;
+            Description = description;
+            Role = role;
             BaseBonus = baseBonus;
             GrowthPerLevel = growthPerLevel;
             Tier = tier;

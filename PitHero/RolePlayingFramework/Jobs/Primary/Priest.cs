@@ -21,7 +21,9 @@ namespace RolePlayingFramework.Jobs.Primary
             // Vit: 5 + (0.388 * 98) ≈ 43, Mag: 9 + (0.704 * 98) ≈ 78
             growthPerLevel: new StatBlock(strength: 0.337f, agility: 0.480f, vitality: 0.388f, magic: 0.704f),
             tier: JobTier.Primary,
-            jobFlag: JobType.Priest)
+            jobFlag: JobType.Priest,
+            description: "Support caster with healing and modest defenses.",
+            role: "Healing/support, high MP, moderate magic")
         { }
 
         protected override void DefineSkills(List<ISkill> list)

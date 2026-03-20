@@ -21,7 +21,9 @@ namespace RolePlayingFramework.Jobs.Primary
             // Vit: 7 + (0.520 * 98) ≈ 58, Mag: 4 + (0.337 * 98) ≈ 37
             growthPerLevel: new StatBlock(strength: 0.653f, agility: 0.561f, vitality: 0.520f, magic: 0.337f),
             tier: JobTier.Primary,
-            jobFlag: JobType.Monk)
+            jobFlag: JobType.Monk,
+            description: "Martial artist focused on endurance and counters.",
+            role: "Balanced fighter, moderate HP, good agility")
         { }
 
         protected override void DefineSkills(List<ISkill> list)
