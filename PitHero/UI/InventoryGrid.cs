@@ -36,6 +36,9 @@ namespace PitHero.UI
         private InventoryContextMenu _contextMenu;
         private Stage _stage; // Reference to stage for tooltip management
 
+        private static readonly Color MercenaryNameFontColor = new Color(71, 36, 7); // Default Brown for names
+        private static readonly Color HeroNameFontColor = new Color(0, 128, 255); // Brighter Blue for hero name
+
         // Mercenary references for equip slot groups
         private readonly Mercenary[] _mercenaryRefs = new Mercenary[MAX_MERCENARY_SLOTS];
         private BitmapFont _nameFont; // Font for drawing mercenary/hero names above equip slots
@@ -1103,7 +1106,7 @@ namespace PitHero.UI
                 var textSize = _nameFont.MeasureString(nameText);
                 var textX = centerX - textSize.X / 2f;
 
-                batcher.DrawString(_nameFont, nameText, new Vector2(textX, nameY), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
+                batcher.DrawString(_nameFont, nameText, new Vector2(textX, nameY), MercenaryNameFontColor, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
             }
 
             // Draw hero name at the same Y position, centered above hero equip columns (8-10)
@@ -1119,7 +1122,7 @@ namespace PitHero.UI
                 var heroTextSize = _nameFont.MeasureString(heroNameText);
                 var heroTextX = heroCenterX - heroTextSize.X / 2f;
 
-                batcher.DrawString(_nameFont, heroNameText, new Vector2(heroTextX, heroNameY), Color.White, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
+                batcher.DrawString(_nameFont, heroNameText, new Vector2(heroTextX, heroNameY), HeroNameFontColor, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
             }
         }
 
