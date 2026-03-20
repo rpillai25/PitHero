@@ -47,16 +47,15 @@ namespace PitHero.ECS.Scenes
             uiCanvas.IsFullScreen = true;
             uiCanvas.RenderLayer = 999;
 
-            // Compute preview entity position to appear inside the right side of the Appearance window
+            // Compute preview entity position to appear above the direction buttons in the Appearance window
             // Window layout: totalWidth = 560 + 10 + 350 = 920, startX = (1920 - 920) / 2 = 500
-            // Appearance window spans x=[500..1060], preview centered at roughly x=960
-            // Window y center = (360 - 340) / 2 + 340/2 = 180
+            // Controls table is ~290px wide; preview centered above the direction arrows to its right
             const float windowWidth = 560f;
             const float jobInfoWidth = 350f;
             const float gap = 10f;
             float totalWidth = windowWidth + gap + jobInfoWidth;
             float startX = (GameConfig.VirtualWidth - totalWidth) / 2f;
-            float previewX = startX + windowWidth - 80f;
+            float previewX = startX + windowWidth - 210f;
             float previewY = GameConfig.VirtualHeight * 0.48f;
 
             var previewEntity = CreateEntity("hero-preview");
