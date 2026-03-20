@@ -29,7 +29,6 @@ namespace PitHero.UI
         private Label _statsLabel;
 
         // Hero sprite preview
-        private Image _heroPreviewImage;
         private Table _heroPreviewContainer;
 
         // Skill grids (3 sections)
@@ -204,8 +203,8 @@ namespace PitHero.UI
             {
                 var actorsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas");
                 var heroDrawable = new HeroPreviewDrawable(actorsAtlas, skinColor, hairColor, shirtColor, hairstyleIndex);
-                _heroPreviewImage = new Image(heroDrawable, Scaling.Fit);
-                _heroPreviewContainer.Add(_heroPreviewImage).Size(32f, 46f);
+                var heroPreviewImage = new Image(heroDrawable, Scaling.Fit);
+                _heroPreviewContainer.Add(heroPreviewImage).Size(32f, 46f);
             }
             catch (System.Exception ex)
             {

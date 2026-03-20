@@ -1115,7 +1115,7 @@ namespace PitHero.UI
                 float heroCenterX = (heroLeftX + heroRightX) / 2f;
                 float heroNameY = 0f * (SLOT_SIZE + SLOT_PADDING) + Y_OFFSET;
 
-                var heroNameText = _heroComponent.LinkedHero.Name;
+                var heroNameText = _heroComponent.LinkedHero.Name ?? "Hero";
                 var heroTextSize = _nameFont.MeasureString(heroNameText);
                 var heroTextX = heroCenterX - heroTextSize.X / 2f;
 
