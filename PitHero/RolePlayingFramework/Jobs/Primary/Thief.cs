@@ -21,7 +21,9 @@ namespace RolePlayingFramework.Jobs.Primary
             // Vit: 5 + (0.388 * 98) ≈ 43, Mag: 4 + (0.286 * 98) ≈ 32
             growthPerLevel: new StatBlock(strength: 0.520f, agility: 0.735f, vitality: 0.388f, magic: 0.286f),
             tier: JobTier.Primary,
-            jobFlag: JobType.Thief)
+            jobFlag: JobType.Thief,
+            description: "Stealthy fighter with trap disarm abilities.",
+            role: "High agility, moderate damage, low defense")
         { }
 
         protected override void DefineSkills(List<ISkill> list)

@@ -21,7 +21,9 @@ namespace RolePlayingFramework.Jobs.Primary
             // Vit: 6 + (0.429 * 98) ≈ 48, Mag: 4 + (0.337 * 98) ≈ 37
             growthPerLevel: new StatBlock(strength: 0.561f, agility: 0.643f, vitality: 0.429f, magic: 0.337f),
             tier: JobTier.Primary,
-            jobFlag: JobType.Archer)
+            jobFlag: JobType.Archer,
+            description: "Long range specialist with enhanced sight distance.",
+            role: "Ranged attacker, balanced stats")
         { }
 
         protected override void DefineSkills(List<ISkill> list)

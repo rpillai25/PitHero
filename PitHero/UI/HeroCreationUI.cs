@@ -6,6 +6,9 @@ using Nez.UI;
 using PitHero.ECS.Components;
 using PitHero.ECS.Scenes;
 using RolePlayingFramework.Heroes;
+using RolePlayingFramework.Jobs;
+using RolePlayingFramework.Jobs.Primary;
+using RolePlayingFramework.Skills;
 using PitHero.Services;
 using PitHero.Util;
 
@@ -19,6 +22,7 @@ namespace PitHero.UI
         private Stage _stage;
         private Entity _previewEntity;
         private string _mapPath;
+        private Skin _skin;
 
         // Current selections
         private string _currentName;
@@ -39,12 +43,24 @@ namespace PitHero.UI
         // Pre-allocated array of primary job names (AOT safe)
         private static readonly string[] PrimaryJobNames = { "Knight", "Monk", "Mage", "Priest", "Archer", "Thief" };
 
+        // Pre-allocated job instances for info display (AOT safe)
+        private static readonly IJob[] PrimaryJobs = { new Knight(), new Monk(), new Mage(), new Priest(), new Archer(), new Thief() };
+
         // Reusable list for component removal (pre-allocated to avoid GC)
         private readonly List<HeroAnimationComponent> _tempAnimComponents = new List<HeroAnimationComponent>(8);
 
         // Direction cycling for preview
         private int _currentDirectionIndex;
         private static readonly Direction[] PreviewDirections = { Direction.Down, Direction.Left, Direction.Up, Direction.Right };
+
+        // Job Info window elements
+        private Table _jobInfoContentTable;
+        private SkillTooltip _skillTooltip;
+        private readonly List<JobSkillButton> _skillButtons = new List<JobSkillButton>(8);
+
+        // Font colors matching PitHeroSkin conventions
+        private static readonly Color BrownFontColor = new Color(71, 36, 7);
+        private static readonly Color DetailFontColor = new Color(37, 80, 112);
 
         /// <summary>Creates a new HeroCreationUI that will transition to MainGameScene with the given map path</summary>
         public HeroCreationUI(string mapPath)
@@ -66,10 +82,12 @@ namespace PitHero.UI
             _currentHairstyleIndex = Nez.Random.Range(1, GameConfig.MaleHeroHairstyleCount + 1);
             _currentShirtIndex = Nez.Random.Range(0, GameConfig.ShirtColors.Count);
 
-            var skin = PitHeroSkin.CreateSkin();
+            _skin = PitHeroSkin.CreateSkin();
 
-            CreateTitleLabel(skin);
-            CreateControlsWindow(skin);
+            CreateTitleLabel(_skin);
+            CreateControlsWindow(_skin);
+            CreateJobInfoWindow(_skin);
+            RefreshJobInfoWindow();
 
             // Build initial preview appearance
             SetupPreviewEntity();
@@ -97,16 +115,20 @@ namespace PitHero.UI
             _stage.AddElement(titleLabel);
         }
 
-        /// <summary>Creates the controls window on the right side with all appearance options</summary>
+        /// <summary>Creates the controls window on the left side with all appearance options</summary>
         private void CreateControlsWindow(Skin skin)
         {
             var windowStyle = skin.Get<WindowStyle>();
             var window = new Window("Appearance", windowStyle);
-            window.SetSize(500f, 340f);
-            window.SetPosition(
-                (_stage.GetWidth() - 500f) / 2f,
-                (_stage.GetHeight() - 340f) / 2f
-            );
+
+            const float windowWidth = 420f;
+            const float windowHeight = 340f;
+            const float gap = 10f;
+            float totalWidth = windowWidth + gap + 350f;
+            float startX = (_stage.GetWidth() - totalWidth) / 2f;
+
+            window.SetSize(windowWidth, windowHeight);
+            window.SetPosition(startX, (_stage.GetHeight() - windowHeight) / 2f);
 
             var table = new Table();
             table.Pad(10f);
@@ -134,6 +156,7 @@ namespace PitHero.UI
                 _hairColorLabel.SetText("Hair Color " + (_currentHairColorIndex + 1));
                 _shirtLabel.SetText("Shirt " + (_currentShirtIndex + 1));
                 RebuildPreviewAppearance();
+                RefreshJobInfoWindow();
             };
             table.Add(new Label("Name:", skin)).SetPadRight(10f);
             table.Add(_nameLabel).Width(labelWidth);
@@ -150,6 +173,7 @@ namespace PitHero.UI
                 if (_currentJobIndex < 0)
                     _currentJobIndex = PrimaryJobNames.Length - 1;
                 _jobLabel.SetText(PrimaryJobNames[_currentJobIndex]);
+                RefreshJobInfoWindow();
             };
             jobRight.OnClicked += (btn) =>
             {
@@ -157,6 +181,7 @@ namespace PitHero.UI
                 if (_currentJobIndex >= PrimaryJobNames.Length)
                     _currentJobIndex = 0;
                 _jobLabel.SetText(PrimaryJobNames[_currentJobIndex]);
+                RefreshJobInfoWindow();
             };
             table.Add(jobLeft).Size(arrowWidth, arrowHeight);
             table.Add(_jobLabel).Width(labelWidth);
@@ -274,12 +299,145 @@ namespace PitHero.UI
             directionButton.OnClicked += (btn) => CyclePreviewDirection();
 
             table.Row();
-            table.Add(createButton).Size(160f, 40f).SetPadTop(10f).SetPadRight(6f);
+            table.Add(createButton).Size(140f, 40f).SetPadTop(10f).SetPadRight(6f);
             table.Add(cancelButton).Size(100f, 40f).SetPadTop(10f).SetPadRight(6f);
-            table.Add(directionButton).Size(160f, 40f).SetPadTop(10f);
+            table.Add(directionButton).Size(140f, 40f).SetPadTop(10f);
 
             window.Add(table).Expand().Fill();
             _stage.AddElement(window);
+        }
+
+        /// <summary>Creates the Job Info window to the right of the Appearance window</summary>
+        private void CreateJobInfoWindow(Skin skin)
+        {
+            var windowStyle = skin.Get<WindowStyle>();
+            var jobInfoWindow = new Window("Job Info", windowStyle);
+
+            const float windowWidth = 420f;
+            const float jobInfoWidth = 350f;
+            const float windowHeight = 340f;
+            const float gap = 10f;
+            float totalWidth = windowWidth + gap + jobInfoWidth;
+            float startX = (_stage.GetWidth() - totalWidth) / 2f;
+
+            jobInfoWindow.SetSize(jobInfoWidth, windowHeight);
+            jobInfoWindow.SetPosition(startX + windowWidth + gap, (_stage.GetHeight() - windowHeight) / 2f);
+
+            _jobInfoContentTable = new Table();
+            _jobInfoContentTable.Pad(10f);
+            _jobInfoContentTable.Top().Left();
+            jobInfoWindow.Add(_jobInfoContentTable).Expand().Fill();
+
+            _stage.AddElement(jobInfoWindow);
+
+            // Create skill tooltip (initially hidden, added to stage on hover)
+            _skillTooltip = new SkillTooltip(jobInfoWindow, skin);
+        }
+
+        /// <summary>Refreshes the Job Info window with the currently selected job's data</summary>
+        private void RefreshJobInfoWindow()
+        {
+            _jobInfoContentTable.Clear();
+
+            // Remove old skill button references
+            for (int i = 0; i < _skillButtons.Count; i++)
+            {
+                _skillButtons[i].OnHover -= OnSkillHover;
+                _skillButtons[i].OnUnhover -= OnSkillUnhover;
+            }
+            _skillButtons.Clear();
+
+            // Hide tooltip if visible
+            _skillTooltip.GetContainer().Remove();
+
+            var job = PrimaryJobs[_currentJobIndex];
+
+            // Job Name
+            var nameLabel = new Label(job.Name, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = BrownFontColor });
+            _jobInfoContentTable.Add(nameLabel).Left();
+            _jobInfoContentTable.Row();
+
+            // Description (wrapped)
+            if (!string.IsNullOrEmpty(job.Description))
+            {
+                var descLabel = new Label(job.Description, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = DetailFontColor });
+                descLabel.SetWrap(true);
+                _jobInfoContentTable.Add(descLabel).Width(310f).Left().SetPadTop(5f);
+                _jobInfoContentTable.Row();
+            }
+
+            // Role
+            if (!string.IsNullOrEmpty(job.Role))
+            {
+                var roleLabel = new Label("Role: " + job.Role, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = BrownFontColor });
+                roleLabel.SetWrap(true);
+                _jobInfoContentTable.Add(roleLabel).Width(310f).Left().SetPadTop(5f);
+                _jobInfoContentTable.Row();
+            }
+
+            // Skills header
+            var skillsHeader = new Label("Skills:", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = BrownFontColor });
+            _jobInfoContentTable.Add(skillsHeader).Left().SetPadTop(10f);
+            _jobInfoContentTable.Row();
+
+            // Skills grid
+            var skillGrid = new Table();
+            var jobSkills = job.Skills;
+
+            if (jobSkills.Count == 0)
+            {
+                var noSkillsLabel = new Label("No job skills", _skin, "ph-default");
+                noSkillsLabel.SetColor(Color.Gray);
+                skillGrid.Add(noSkillsLabel).Center();
+            }
+            else
+            {
+                const int columns = 4;
+                int col = 0;
+
+                for (int i = 0; i < jobSkills.Count; i++)
+                {
+                    var skill = jobSkills[i];
+                    var btn = new JobSkillButton(skill);
+                    btn.OnHover += OnSkillHover;
+                    btn.OnUnhover += OnSkillUnhover;
+
+                    _skillButtons.Add(btn);
+                    skillGrid.Add(btn).Size(32f, 32f).Pad(2f);
+
+                    col++;
+                    if (col >= columns)
+                    {
+                        col = 0;
+                        skillGrid.Row();
+                    }
+                }
+            }
+
+            _jobInfoContentTable.Add(skillGrid).Left().SetPadTop(5f);
+            _jobInfoContentTable.Row();
+        }
+
+        /// <summary>Handles skill button hover to show tooltip</summary>
+        private void OnSkillHover(ISkill skill)
+        {
+            if (_stage == null) return;
+
+            _skillTooltip.ShowSkill(skill, false, null, false, 0, 0, showCostAndStatus: false);
+            if (_skillTooltip.GetContainer().GetParent() == null)
+            {
+                _stage.AddElement(_skillTooltip.GetContainer());
+            }
+
+            var mousePos = _stage.GetMousePosition();
+            _skillTooltip.PositionWithinBounds(mousePos, _stage);
+            _skillTooltip.GetContainer().ToFront();
+        }
+
+        /// <summary>Handles skill button unhover to hide tooltip</summary>
+        private void OnSkillUnhover()
+        {
+            _skillTooltip.GetContainer().Remove();
         }
 
         /// <summary>Adds ActorFacingComponent, white border, and green background to the preview entity</summary>
@@ -403,6 +561,75 @@ namespace PitHero.UI
         public void Update()
         {
             // Handle any per-frame updates if needed
+        }
+
+        /// <summary>Skill button for job info display with hover tooltip support</summary>
+        private class JobSkillButton : Element, IInputListener
+        {
+            private readonly ISkill _skill;
+            private SpriteDrawable _iconDrawable;
+            private SpriteDrawable _selectBoxDrawable;
+            private bool _isHovered;
+
+            public event System.Action<ISkill> OnHover;
+            public event System.Action OnUnhover;
+
+            public JobSkillButton(ISkill skill)
+            {
+                _skill = skill;
+
+                if (Core.Content != null)
+                {
+                    var skillsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/SkillsStencils.atlas");
+                    var iconSprite = skillsAtlas.GetSprite(skill.Id);
+
+                    var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+                    if (iconSprite == null)
+                        iconSprite = uiAtlas.GetSprite("SkillIcon1");
+
+                    _iconDrawable = new SpriteDrawable(iconSprite);
+
+                    var selectBoxSprite = uiAtlas.GetSprite("SelectBox");
+                    _selectBoxDrawable = new SpriteDrawable(selectBoxSprite);
+                }
+
+                SetSize(32f, 32f);
+                SetTouchable(Touchable.Enabled);
+            }
+
+            public override void Draw(Batcher batcher, float parentAlpha)
+            {
+                base.Draw(batcher, parentAlpha);
+
+                if (_iconDrawable != null)
+                    _iconDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+
+                if (_isHovered && _selectBoxDrawable != null)
+                    _selectBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+            }
+
+            #region IInputListener
+
+            void IInputListener.OnMouseEnter()
+            {
+                _isHovered = true;
+                OnHover?.Invoke(_skill);
+            }
+
+            void IInputListener.OnMouseExit()
+            {
+                _isHovered = false;
+                OnUnhover?.Invoke();
+            }
+
+            void IInputListener.OnMouseMoved(Vector2 mousePos) { }
+            bool IInputListener.OnLeftMousePressed(Vector2 mousePos) => true;
+            bool IInputListener.OnRightMousePressed(Vector2 mousePos) => false;
+            void IInputListener.OnLeftMouseUp(Vector2 mousePos) { }
+            void IInputListener.OnRightMouseUp(Vector2 mousePos) { }
+            bool IInputListener.OnMouseScrolled(int mouseWheelDelta) => false;
+
+            #endregion
         }
     }
 }

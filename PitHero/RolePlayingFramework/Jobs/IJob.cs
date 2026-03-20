@@ -10,6 +10,12 @@ namespace RolePlayingFramework.Jobs
         /// <summary>Display name of the job.</summary>
         string Name { get; }
 
+        /// <summary>Short description of the job's identity and specialty.</summary>
+        string Description { get; }
+
+        /// <summary>Brief summary of the job's combat role and stat profile.</summary>
+        string Role { get; }
+
         /// <summary>Base stat bonus applied at level 1.</summary>
         StatBlock BaseBonus { get; }
 

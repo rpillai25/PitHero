@@ -21,7 +21,9 @@ namespace RolePlayingFramework.Jobs.Primary
             // Vit: 9 + (0.704 * 98) ≈ 78, Mag: 3 + (0.255 * 98) ≈ 28
             growthPerLevel: new StatBlock(strength: 0.612f, agility: 0.378f, vitality: 0.704f, magic: 0.255f),
             tier: JobTier.Primary,
-            jobFlag: JobType.Knight)
+            jobFlag: JobType.Knight,
+            description: "Durable frontliner specializing in swords and heavy armor.",
+            role: "High HP/Defense tank")
         { }
 
         protected override void DefineSkills(List<ISkill> list)
