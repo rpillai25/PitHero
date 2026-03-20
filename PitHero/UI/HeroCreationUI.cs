@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Sprites;
 using Nez.UI;
+using PitHero.ECS.Components;
 using PitHero.ECS.Scenes;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Jobs;
@@ -19,6 +20,7 @@ namespace PitHero.UI
     public class HeroCreationUI
     {
         private Stage _stage;
+        private Entity _previewEntity;
         private string _mapPath;
         private Skin _skin;
 
@@ -44,9 +46,12 @@ namespace PitHero.UI
         // Pre-allocated job instances for info display (AOT safe)
         private static readonly IJob[] PrimaryJobs = { new Knight(), new Monk(), new Mage(), new Priest(), new Archer(), new Thief() };
 
-        // Hero preview (drawn inside the Appearance window)
-        private SpriteAtlas _actorsAtlas;
-        private Image _heroPreviewImage;
+        // Reusable list for component removal (pre-allocated to avoid GC)
+        private readonly List<HeroAnimationComponent> _tempAnimComponents = new List<HeroAnimationComponent>(8);
+
+        // Direction cycling for preview
+        private int _currentDirectionIndex;
+        private static readonly Direction[] PreviewDirections = { Direction.Down, Direction.Left, Direction.Up, Direction.Right };
 
         // Job Info window elements
         private Table _jobInfoContentTable;
@@ -57,10 +62,6 @@ namespace PitHero.UI
         private static readonly Color BrownFontColor = new Color(71, 36, 7);
         private static readonly Color DetailFontColor = new Color(37, 80, 112);
 
-        // Hero preview size (2x scale of 32×46 hero sprite frames)
-        private const float PreviewWidth = 64f;
-        private const float PreviewHeight = 92f;
-
         /// <summary>Creates a new HeroCreationUI that will transition to MainGameScene with the given map path</summary>
         public HeroCreationUI(string mapPath)
         {
@@ -68,9 +69,10 @@ namespace PitHero.UI
         }
 
         /// <summary>Initializes the UI layout and wires up controls</summary>
-        public void InitializeUI(Stage stage)
+        public void InitializeUI(Stage stage, Entity previewEntity)
         {
             _stage = stage;
+            _previewEntity = previewEntity;
 
             // Randomize initial selections
             _currentName = NameGenerator.GenerateRandomName();
@@ -82,17 +84,13 @@ namespace PitHero.UI
 
             _skin = PitHeroSkin.CreateSkin();
 
-            // Load atlas for hero preview
-            try { _actorsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas"); }
-            catch (System.Exception ex)
-            {
-                Debug.Warn("[HeroCreationUI] Failed to load Actors.atlas for hero preview: " + ex.Message);
-                _actorsAtlas = null;
-            }
-
             CreateControlsWindow(_skin);
             CreateJobInfoWindow(_skin);
             RefreshJobInfoWindow();
+
+            // Build initial animated preview
+            SetupPreviewEntity();
+            RebuildPreviewAppearance();
         }
 
         /// <summary>Creates the controls window with appearance options and hero preview</summary>
@@ -143,7 +141,7 @@ namespace PitHero.UI
                 _skinLabel.SetText("Skin " + (_currentSkinIndex + 1));
                 _hairColorLabel.SetText("Hair Color " + (_currentHairColorIndex + 1));
                 _shirtLabel.SetText("Shirt " + (_currentShirtIndex + 1));
-                RebuildPreviewImage();
+                RebuildPreviewAppearance();
                 RefreshJobInfoWindow();
             };
             controlsTable.Add(new Label("Name:", skin)).SetPadRight(10f);
@@ -186,7 +184,7 @@ namespace PitHero.UI
                 if (_currentHairstyleIndex < 1)
                     _currentHairstyleIndex = GameConfig.MaleHeroHairstyleCount;
                 _hairstyleLabel.SetText("Hairstyle " + _currentHairstyleIndex);
-                RebuildPreviewImage();
+                RebuildPreviewAppearance();
             };
             hairStyleRight.OnClicked += (btn) =>
             {
@@ -194,7 +192,7 @@ namespace PitHero.UI
                 if (_currentHairstyleIndex > GameConfig.MaleHeroHairstyleCount)
                     _currentHairstyleIndex = 1;
                 _hairstyleLabel.SetText("Hairstyle " + _currentHairstyleIndex);
-                RebuildPreviewImage();
+                RebuildPreviewAppearance();
             };
             controlsTable.Add(hairStyleLeft).Size(arrowWidth, arrowHeight);
             controlsTable.Add(_hairstyleLabel).Width(labelWidth);
@@ -211,7 +209,7 @@ namespace PitHero.UI
                 if (_currentSkinIndex < 0)
                     _currentSkinIndex = GameConfig.SkinColors.Count - 1;
                 _skinLabel.SetText("Skin " + (_currentSkinIndex + 1));
-                RebuildPreviewImage();
+                RebuildPreviewAppearance();
             };
             skinRight.OnClicked += (btn) =>
             {
@@ -219,7 +217,7 @@ namespace PitHero.UI
                 if (_currentSkinIndex >= GameConfig.SkinColors.Count)
                     _currentSkinIndex = 0;
                 _skinLabel.SetText("Skin " + (_currentSkinIndex + 1));
-                RebuildPreviewImage();
+                RebuildPreviewAppearance();
             };
             controlsTable.Add(skinLeft).Size(arrowWidth, arrowHeight);
             controlsTable.Add(_skinLabel).Width(labelWidth);
@@ -236,7 +234,7 @@ namespace PitHero.UI
                 if (_currentHairColorIndex < 0)
                     _currentHairColorIndex = GameConfig.HairColors.Count - 1;
                 _hairColorLabel.SetText("Hair Color " + (_currentHairColorIndex + 1));
-                RebuildPreviewImage();
+                RebuildPreviewAppearance();
             };
             hairColorRight.OnClicked += (btn) =>
             {
@@ -244,7 +242,7 @@ namespace PitHero.UI
                 if (_currentHairColorIndex >= GameConfig.HairColors.Count)
                     _currentHairColorIndex = 0;
                 _hairColorLabel.SetText("Hair Color " + (_currentHairColorIndex + 1));
-                RebuildPreviewImage();
+                RebuildPreviewAppearance();
             };
             controlsTable.Add(hairColorLeft).Size(arrowWidth, arrowHeight);
             controlsTable.Add(_hairColorLabel).Width(labelWidth);
@@ -261,7 +259,7 @@ namespace PitHero.UI
                 if (_currentShirtIndex < 0)
                     _currentShirtIndex = GameConfig.ShirtColors.Count - 1;
                 _shirtLabel.SetText("Shirt " + (_currentShirtIndex + 1));
-                RebuildPreviewImage();
+                RebuildPreviewAppearance();
             };
             shirtRight.OnClicked += (btn) =>
             {
@@ -269,7 +267,7 @@ namespace PitHero.UI
                 if (_currentShirtIndex >= GameConfig.ShirtColors.Count)
                     _currentShirtIndex = 0;
                 _shirtLabel.SetText("Shirt " + (_currentShirtIndex + 1));
-                RebuildPreviewImage();
+                RebuildPreviewAppearance();
             };
             controlsTable.Add(shirtLeft).Size(arrowWidth, arrowHeight);
             controlsTable.Add(_shirtLabel).Width(labelWidth);
@@ -278,24 +276,25 @@ namespace PitHero.UI
 
             topRow.Add(controlsTable).Top().Left();
 
-            // Right: hero preview with green background and white border
-            if (_actorsAtlas != null)
-            {
-                var previewContainer = new Table();
-                var borderBg = new PrimitiveDrawable(Color.White);
-                previewContainer.SetBackground(borderBg);
+            // Right: direction cycling buttons for the animated preview entity
+            // (The preview entity renders in scene space, positioned to appear inside this window)
+            var previewControlsTable = new Table();
+            previewControlsTable.Defaults().SetPadTop(2f);
 
-                var innerContainer = new Table();
-                var greenBg = new PrimitiveDrawable(Color.Green);
-                innerContainer.SetBackground(greenBg);
+            // Spacer to push buttons down to align below the preview entity
+            previewControlsTable.Add(new Container()).Height(100f);
+            previewControlsTable.Row();
 
-                var drawable = CreateHeroPreviewDrawable();
-                _heroPreviewImage = new Image(drawable, Scaling.Fit);
-                innerContainer.Add(_heroPreviewImage).Size(PreviewWidth, PreviewHeight).Pad(2f);
+            var dirButtonsTable = new Table();
+            var dirLeft = new TextButton("<", skin);
+            var dirRight = new TextButton(">", skin);
+            dirLeft.OnClicked += (btn) => CyclePreviewDirection(-1);
+            dirRight.OnClicked += (btn) => CyclePreviewDirection(1);
+            dirButtonsTable.Add(dirLeft).Size(30f, 24f).SetPadRight(4f);
+            dirButtonsTable.Add(dirRight).Size(30f, 24f);
+            previewControlsTable.Add(dirButtonsTable);
 
-                previewContainer.Add(innerContainer).Pad(2f);
-                topRow.Add(previewContainer).Center().SetPadLeft(20f);
-            }
+            topRow.Add(previewControlsTable).Center().SetPadLeft(20f);
 
             mainTable.Add(topRow).Expand().Fill();
             mainTable.Row();
@@ -317,20 +316,93 @@ namespace PitHero.UI
             _stage.AddElement(window);
         }
 
-        /// <summary>Creates a HeroPreviewDrawable from current appearance selections</summary>
-        private HeroPreviewDrawable CreateHeroPreviewDrawable()
+        /// <summary>Adds ActorFacingComponent, white border, and green background to the preview entity</summary>
+        private void SetupPreviewEntity()
         {
+            _previewEntity.AddComponent(new ActorFacingComponent());
+
+            var bgOffset = new Vector2(0, -GameConfig.TileSize / 2);
+
+            // White border (renders first = behind everything)
+            var border = _previewEntity.AddComponent(new PrototypeSpriteRenderer(36, 50));
+            border.SetColor(Color.White);
+            border.SetLocalOffset(bgOffset);
+            border.SetRenderLayer(16);
+
+            // Green background on top of white border, behind hero layers
+            var background = _previewEntity.AddComponent(new PrototypeSpriteRenderer(32, 46));
+            background.SetColor(Color.Green);
+            background.SetLocalOffset(bgOffset);
+            background.SetRenderLayer(15);
+        }
+
+        /// <summary>Removes all animation components and re-adds them with current appearance selections</summary>
+        private void RebuildPreviewAppearance()
+        {
+            // Remove all existing HeroAnimationComponent-derived components
+            _tempAnimComponents.Clear();
+            _previewEntity.GetComponents(_tempAnimComponents);
+            for (int i = 0; i < _tempAnimComponents.Count; i++)
+            {
+                _previewEntity.RemoveComponent(_tempAnimComponents[i]);
+            }
+            _tempAnimComponents.Clear();
+
             var skinColor = GameConfig.SkinColors[_currentSkinIndex];
             var hairColor = GameConfig.HairColors[_currentHairColorIndex];
             var shirtColor = GameConfig.ShirtColors[_currentShirtIndex];
-            return new HeroPreviewDrawable(_actorsAtlas, skinColor, hairColor, shirtColor, _currentHairstyleIndex);
+            var offset = new Vector2(0, -GameConfig.TileSize / 2);
+
+            // Body layer
+            var bodyAnimator = _previewEntity.AddComponent(new HeroBodyAnimationComponent(skinColor));
+            bodyAnimator.SetRenderLayer(GameConfig.RenderLayerHeroBody);
+            bodyAnimator.SetLocalOffset(offset);
+
+            // Hand2 layer
+            var hand2Animator = _previewEntity.AddComponent(new HeroHand2AnimationComponent(skinColor));
+            hand2Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand2);
+            hand2Animator.SetLocalOffset(offset);
+            hand2Animator.ComponentColor = skinColor;
+
+            // Pants layer
+            var pantsAnimator = _previewEntity.AddComponent(new HeroPantsAnimationComponent(Color.White));
+            pantsAnimator.SetRenderLayer(GameConfig.RenderLayerHeroPants);
+            pantsAnimator.SetLocalOffset(offset);
+
+            // Shirt layer
+            var shirtAnimator = _previewEntity.AddComponent(new HeroShirtAnimationComponent(shirtColor));
+            shirtAnimator.SetRenderLayer(GameConfig.RenderLayerHeroShirt);
+            shirtAnimator.SetLocalOffset(offset);
+
+            // Head layer
+            var headAnimator = _previewEntity.AddComponent(new HeroHeadAnimationComponent(skinColor));
+            headAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHead);
+            headAnimator.SetLocalOffset(offset);
+            headAnimator.ComponentColor = skinColor;
+
+            // Eyes layer
+            var eyesAnimator = _previewEntity.AddComponent(new HeroEyesAnimationComponent(Color.White));
+            eyesAnimator.SetRenderLayer(GameConfig.RenderLayerHeroEyes);
+            eyesAnimator.SetLocalOffset(offset);
+
+            // Hair layer
+            var hairAnimator = _previewEntity.AddComponent(new HeroHairAnimationComponent(hairColor, _currentHairstyleIndex));
+            hairAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHair);
+            hairAnimator.SetLocalOffset(offset);
+
+            // Hand1 layer
+            var hand1Animator = _previewEntity.AddComponent(new HeroHand1AnimationComponent(skinColor));
+            hand1Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand1);
+            hand1Animator.SetLocalOffset(offset);
+            hand1Animator.ComponentColor = skinColor;
         }
 
-        /// <summary>Rebuilds the hero preview image with the current appearance selections</summary>
-        private void RebuildPreviewImage()
+        /// <summary>Cycles the preview hero direction by the given step (-1 or +1)</summary>
+        private void CyclePreviewDirection(int step)
         {
-            if (_actorsAtlas == null || _heroPreviewImage == null) return;
-            _heroPreviewImage.SetDrawable(CreateHeroPreviewDrawable());
+            _currentDirectionIndex = (_currentDirectionIndex + step + PreviewDirections.Length) % PreviewDirections.Length;
+            var facing = _previewEntity?.GetComponent<ActorFacingComponent>();
+            facing?.SetFacing(PreviewDirections[_currentDirectionIndex]);
         }
 
         /// <summary>Creates the Job Info window to the right of the Appearance window</summary>

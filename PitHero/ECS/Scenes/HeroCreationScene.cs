@@ -34,7 +34,7 @@ namespace PitHero.ECS.Scenes
             SetupHeroCreationUI();
         }
 
-        /// <summary>Sets up the screen-space renderer, UI canvas, and HeroCreationUI</summary>
+        /// <summary>Sets up the screen-space renderer, UI canvas, preview entity, and HeroCreationUI</summary>
         private void SetupHeroCreationUI()
         {
             // Add ScreenSpaceRenderer for UI
@@ -47,9 +47,24 @@ namespace PitHero.ECS.Scenes
             uiCanvas.IsFullScreen = true;
             uiCanvas.RenderLayer = 999;
 
+            // Compute preview entity position to appear inside the right side of the Appearance window
+            // Window layout: totalWidth = 560 + 10 + 350 = 920, startX = (1920 - 920) / 2 = 500
+            // Appearance window spans x=[500..1060], preview centered at roughly x=960
+            // Window y center = (360 - 340) / 2 + 340/2 = 180
+            const float windowWidth = 560f;
+            const float jobInfoWidth = 350f;
+            const float gap = 10f;
+            float totalWidth = windowWidth + gap + jobInfoWidth;
+            float startX = (GameConfig.VirtualWidth - totalWidth) / 2f;
+            float previewX = startX + windowWidth - 80f;
+            float previewY = GameConfig.VirtualHeight * 0.48f;
+
+            var previewEntity = CreateEntity("hero-preview");
+            previewEntity.SetPosition(previewX, previewY);
+
             // Initialize the hero creation UI
             _heroCreationUI = new HeroCreationUI(_mapPath);
-            _heroCreationUI.InitializeUI(uiCanvas.Stage);
+            _heroCreationUI.InitializeUI(uiCanvas.Stage, previewEntity);
         }
 
         /// <summary>Updates the hero creation UI each frame</summary>
