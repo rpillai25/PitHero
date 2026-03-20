@@ -311,6 +311,10 @@ namespace PitHero.UI
 
         bool IInputListener.OnRightMousePressed(Vector2 mousePos)
         {
+            // Skip interaction for inactive mercenary equipment slots
+            if (_slotData.SlotType == InventorySlotType.MercenaryEquipment && _slotData.MercenaryRef == null)
+                return false;
+
             OnSlotRightClicked?.Invoke(this, mousePos);
             return true;
         }

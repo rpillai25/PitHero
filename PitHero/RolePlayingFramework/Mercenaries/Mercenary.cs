@@ -93,7 +93,7 @@ namespace RolePlayingFramework.Mercenaries
             {
                 return (gear.AllowedJobs & Job.JobFlag) != 0;
             }
-            return true;
+            return false;
         }
 
         /// <summary>Equips an item in the appropriate slot.</summary>

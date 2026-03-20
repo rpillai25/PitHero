@@ -43,7 +43,7 @@ namespace PitHero.UI
         public int MercenaryIndex { get; set; }
 
         /// <summary>Reference to the mercenary assigned to this slot (null when inactive).</summary>
-        public Mercenary MercenaryRef { get; set; }
+        public Mercenary? MercenaryRef { get; set; }
 
         public InventorySlotData(int x, int y, InventorySlotType slotType)
         {

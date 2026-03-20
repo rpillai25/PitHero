@@ -269,8 +269,9 @@ namespace PitHero.UI
                 {
                     _nameFont = Core.Content.LoadBitmapFont(GameConfig.FontPathHudSmall);
                 }
-                catch
+                catch (System.Exception ex)
                 {
+                    Debug.Log("Failed to load mercenary name font: " + ex.Message);
                     if (Graphics.Instance != null)
                         _nameFont = Graphics.Instance.BitmapFont;
                 }
@@ -923,7 +924,7 @@ namespace PitHero.UI
             }
 
             // Handle mercenary equipment swaps
-            if (aIsMercEquip && bIsMercEquip && a.SlotData.MercenaryRef == b.SlotData.MercenaryRef)
+            if (aIsMercEquip && bIsMercEquip && a.SlotData.MercenaryRef != null && a.SlotData.MercenaryRef == b.SlotData.MercenaryRef)
             {
                 // Same-mercenary equipment swap
                 a.SlotData.MercenaryRef?.ApplyEquipmentSwap(
@@ -1332,6 +1333,7 @@ namespace PitHero.UI
             // Mercenary equipment slot validation
             if (slotData.SlotType == InventorySlotType.MercenaryEquipment)
             {
+                if (item is not IGear) return false;
                 var merc = slotData.MercenaryRef;
                 if (merc == null) return false;
                 if (!merc.CanEquipItem(item)) return false;
