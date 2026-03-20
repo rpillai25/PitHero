@@ -57,6 +57,10 @@ namespace PitHero.UI
         private static readonly Color BrownFontColor = new Color(71, 36, 7);
         private static readonly Color DetailFontColor = new Color(37, 80, 112);
 
+        // Hero preview size (2x scale of 32×46 hero sprite frames)
+        private const float PreviewWidth = 64f;
+        private const float PreviewHeight = 92f;
+
         /// <summary>Creates a new HeroCreationUI that will transition to MainGameScene with the given map path</summary>
         public HeroCreationUI(string mapPath)
         {
@@ -80,7 +84,11 @@ namespace PitHero.UI
 
             // Load atlas for hero preview
             try { _actorsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Actors.atlas"); }
-            catch (System.Exception) { _actorsAtlas = null; }
+            catch (System.Exception ex)
+            {
+                Debug.Warn("[HeroCreationUI] Failed to load Actors.atlas for hero preview: " + ex.Message);
+                _actorsAtlas = null;
+            }
 
             CreateControlsWindow(_skin);
             CreateJobInfoWindow(_skin);
@@ -283,7 +291,7 @@ namespace PitHero.UI
 
                 var drawable = CreateHeroPreviewDrawable();
                 _heroPreviewImage = new Image(drawable, Scaling.Fit);
-                innerContainer.Add(_heroPreviewImage).Size(64f, 92f).Pad(2f);
+                innerContainer.Add(_heroPreviewImage).Size(PreviewWidth, PreviewHeight).Pad(2f);
 
                 previewContainer.Add(innerContainer).Pad(2f);
                 topRow.Add(previewContainer).Center().SetPadLeft(20f);
