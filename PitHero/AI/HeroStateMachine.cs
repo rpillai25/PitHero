@@ -186,6 +186,10 @@ namespace PitHero.AI
         {
             Debug.Log("[HeroStateMachine] Entering Idle state - planning next actions");
 
+            // Sync stop-adventuring costs before planning so the planner sees
+            // the correct costs on the first attempt (avoids an extra replan cycle)
+            UpdateStopAdventuringActionCosts();
+
             // Get a plan to run that will get us from our current state to our goal state
             var currentWorldState = GetWorldState();
             var goalState = GetGoalState();
@@ -234,6 +238,9 @@ namespace PitHero.AI
                 if (elapsedTimeInState > 1.0f) // Wait 1 second before retry
                 {
                     Debug.Log("[HeroStateMachine] Retrying action planning...");
+
+                    // Sync stop-adventuring costs before retrying
+                    UpdateStopAdventuringActionCosts();
 
                     var currentWorldState = GetWorldState();
                     var goalState = GetGoalState();
