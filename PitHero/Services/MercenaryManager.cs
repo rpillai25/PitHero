@@ -86,7 +86,7 @@ namespace PitHero.Services
 
         /// <summary>
         /// Calculates the spawn interval based on the number of unhired mercenaries.
-        /// Progressively increases from 5 seconds (1st merc) to 300 seconds (12th merc).
+        /// Progressively increases from 5 seconds (1st merc) to 300 seconds (9th merc).
         /// </summary>
         private float GetSpawnInterval()
         {
