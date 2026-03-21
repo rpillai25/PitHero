@@ -514,8 +514,10 @@ namespace PitHero.ECS.Components
         /// </summary>
         public override void SetGoalState(ref WorldState goalState)
         {
-            // HIGHEST PRIORITY: Player stopped adventuring — go to tavern
-            if (StoppedAdventure && !SeatedInTavern)
+            // HIGHEST PRIORITY: Player stopped adventuring — go to tavern and stay there.
+            // When SeatedInTavern is already true the goal is already satisfied, so the
+            // planner returns no actions and the hero stays idle until Continue is pressed.
+            if (StoppedAdventure)
             {
                 goalState.Set(GoapConstants.SeatedInTavern, true);
                 return;
