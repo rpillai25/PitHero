@@ -189,6 +189,16 @@ namespace PitHero.ECS.Components
         public bool HasArrivedAtStatueForCrystal { get; set; }
 
         /// <summary>
+        /// True when the player has pressed Stop Adventuring - hero should return to tavern
+        /// </summary>
+        public bool StoppedAdventure { get; set; }
+
+        /// <summary>
+        /// True when the hero (and mercenaries) are seated in the tavern after stopping adventure
+        /// </summary>
+        public bool SeatedInTavern { get; set; }
+
+        /// <summary>
         /// Returns true if all healing options are exhausted (items, skills, and inn)
         /// </summary>
         public bool AllHealingOptionsExhausted()
@@ -489,6 +499,14 @@ namespace PitHero.ECS.Components
             {
                 worldState.Set(GoapConstants.HasArrivedAtStatueForCrystal, true);
             }
+            if (StoppedAdventure)
+            {
+                worldState.Set(GoapConstants.StoppedAdventure, true);
+            }
+            if (SeatedInTavern)
+            {
+                worldState.Set(GoapConstants.SeatedInTavern, true);
+            }
         }
 
         /// <summary>
@@ -496,6 +514,13 @@ namespace PitHero.ECS.Components
         /// </summary>
         public override void SetGoalState(ref WorldState goalState)
         {
+            // HIGHEST PRIORITY: Player stopped adventuring — go to tavern
+            if (StoppedAdventure && !SeatedInTavern)
+            {
+                goalState.Set(GoapConstants.SeatedInTavern, true);
+                return;
+            }
+
             // HIGHEST PRIORITY: Hero needs a crystal — walk to statue for promotion ceremony
             if (NeedsCrystal)
             {

@@ -51,6 +51,17 @@ namespace PitHero
         public const int InnPaymentTileY = 3;
         public const int InnCostGold = 10; // Cost to sleep at inn
 
+        // Tavern seat configuration (for Stop Adventuring)
+        public const int TavernHeroSeatTileX = 93;
+        public const int TavernHeroSeatTileY = 6;
+        public const int TavernMercenary1SeatTileX = 92;
+        public const int TavernMercenary1SeatTileY = 7;
+        public const int TavernMercenary2SeatTileX = 94;
+        public const int TavernMercenary2SeatTileY = 7;
+
+        // Stop Adventuring button offset (pixels to the left of the FastF button group)
+        public const float StopAdventuringButtonOffsetX = 100f;
+
         // Fog of war movement speed configuration
         public const float HeroFogCooldownDuration = 1f; // Duration in seconds for fog cooldown after clearing fog
 
