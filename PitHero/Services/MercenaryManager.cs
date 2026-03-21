@@ -18,14 +18,14 @@ namespace PitHero.Services
     /// </summary>
     public class MercenaryManager
     {
-        private const int MaxMercenariesInTavern = 12;
+        private const int MaxMercenariesInTavern = 9;
         private const int MaxHiredMercenaries = 2;
 
         private static readonly Point[] TavernPositions = new Point[]
         {
-            new Point(97, 6), new Point(93, 6), new Point(97, 4), new Point(93, 4),
-            new Point(98, 7), new Point(98, 3), new Point(94, 7), new Point(94, 3),
-            new Point(96, 7), new Point(96, 3), new Point(92, 7), new Point(92, 3)
+            new Point(97, 6), new Point(97, 4), new Point(93, 4),
+            new Point(98, 7), new Point(98, 3), new Point(94, 3),
+            new Point(96, 7), new Point(96, 3), new Point(92, 3)
         };
 
         private static readonly Point SpawnPosition = new Point(104, 11);
@@ -86,7 +86,7 @@ namespace PitHero.Services
 
         /// <summary>
         /// Calculates the spawn interval based on the number of unhired mercenaries.
-        /// Progressively increases from 5 seconds (1st merc) to 300 seconds (12th merc).
+        /// Progressively increases from 5 seconds (1st merc) to 300 seconds (9th merc).
         /// </summary>
         private float GetSpawnInterval()
         {
@@ -95,7 +95,7 @@ namespace PitHero.Services
             // Calculate interval for the NEXT mercenary to spawn
             // If we have 0 mercenaries, the next one (1st) spawns in 5 seconds
             // If we have 1 mercenary, the next one (2nd) spawns in 32 seconds
-            // If we have 11 mercenaries, the next one (12th) spawns in 300 seconds
+            // If we have 8 mercenaries, the next one (9th) spawns in 300 seconds
             
             // Cap at max interval if we're at or above max capacity
             if (unhiredCount >= MaxMercenariesInTavern)
@@ -107,7 +107,7 @@ namespace PitHero.Services
             // Formula: linear interpolation from min to max based on unhired count
             // unhiredCount 0 (spawning 1st merc) -> 5 seconds
             // unhiredCount 1 (spawning 2nd merc) -> 32 seconds
-            // unhiredCount 11 (spawning 12th merc) -> 300 seconds
+            // unhiredCount 8 (spawning 9th merc) -> 300 seconds
             var t = unhiredCount / (float)(MaxMercenariesInTavern - 1); // 0 to 1 progression
             var interval = GameConfig.MercenaryMinSpawnIntervalSeconds + 
                           (t * (GameConfig.MercenaryMaxSpawnIntervalSeconds - GameConfig.MercenaryMinSpawnIntervalSeconds));

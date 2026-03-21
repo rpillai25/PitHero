@@ -42,7 +42,7 @@ namespace PitHero
         // Mercenary configuration
         public const float MercenaryMinSpawnIntervalSeconds = 5f; // First mercenary spawns after 5 seconds
         public const float BaseMonsterJoinChance = 0.10f;
-        public const float MercenaryMaxSpawnIntervalSeconds = 300f; // 12th mercenary spawns after 5 minutes (300 seconds)
+        public const float MercenaryMaxSpawnIntervalSeconds = 300f; // 9th mercenary spawns after 5 minutes (300 seconds)
 
         // Inn configuration
         public const int InnkeeperTileX = 69; // Innkeeper stands at (69, 3)
