@@ -88,6 +88,7 @@ namespace PitHero.UI
         private HeroUI _heroUI;
         private MonsterUI _monsterUI;
         private RecruitmentNotificationUI _recruitmentNotificationUI;
+        private StopAdventuringUI _stopAdventuringUI;
 
         /// <summary>Gets the HeroUI instance.</summary>
         public HeroUI HeroUI => _heroUI;
@@ -143,6 +144,9 @@ namespace PitHero.UI
 
             _recruitmentNotificationUI = new RecruitmentNotificationUI();
             _recruitmentNotificationUI.InitializeUI(_stage, skin);
+
+            _stopAdventuringUI = new StopAdventuringUI();
+            _stopAdventuringUI.InitializeUI(_stage);
 
             // Create settings window with TabPane (initially hidden)
             CreateSettingsWindow(skin);
@@ -670,6 +674,10 @@ namespace PitHero.UI
             float monsterX = heroX + heroW + GameConfig.UIButtonPadding;
             _monsterUI.SetPosition(monsterX, buttonY);
 
+            // Position Stop Adventuring button about 100px to the left of the FastF button
+            float stopX = fastFX - GameConfig.StopAdventuringButtonOffsetX;
+            _stopAdventuringUI.SetPosition(stopX, buttonY);
+
             if (_isVisible)
             {
                 const float padding = 4f;
@@ -819,6 +827,7 @@ namespace PitHero.UI
             _heroUI?.Update();
             _monsterUI?.Update();
             _recruitmentNotificationUI?.Update();
+            _stopAdventuringUI?.Update();
 
             // Update persistent size if window size changed externally (e.g., Shift+Mouse Wheel)
             if (!_isVisible) // Only update when settings are closed
@@ -831,6 +840,7 @@ namespace PitHero.UI
             if (_fastFUI != null && _fastFUI.ConsumeStyleChangedFlag()) needsReposition = true;
             if (_heroUI != null && _heroUI.ConsumeStyleChangedFlag()) needsReposition = true;
             if (_monsterUI != null && _monsterUI.ConsumeStyleChangedFlag()) needsReposition = true;
+            if (_stopAdventuringUI != null && _stopAdventuringUI.ConsumeStyleChangedFlag()) needsReposition = true;
 
             if (_stage.GetWidth() != _lastStageW || _stage.GetHeight() != _lastStageH)
                 needsReposition = true;

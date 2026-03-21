@@ -30,6 +30,10 @@
         public const string NeedsCrystal = "NeedsCrystal";
         public const string HasArrivedAtStatueForCrystal = "HasArrivedAtStatueForCrystal";
 
+        // Stop adventuring states
+        public const string StoppedAdventure = "StoppedAdventure";
+        public const string SeatedInTavern = "SeatedInTavern";
+
         // GOAP Actions (extended to include interactive entities)
         public const string JumpIntoPitAction = "JumpIntoPitAction";
         public const string WanderPitAction = "WanderPitAction";
@@ -51,5 +55,9 @@
 
         // Hero crystal promotion actions
         public const string WalkToStatueForCrystalAction = "WalkToStatueForCrystalAction";
+
+        // Stop adventuring actions
+        public const string JumpOutOfPitForStopAction = "JumpOutOfPitForStopAction";
+        public const string WalkToTavernForStopAction = "WalkToTavernForStopAction";
     }
 }
