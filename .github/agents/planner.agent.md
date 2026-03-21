@@ -3,7 +3,7 @@ name: Planner
 description: Researches features and creates detailed implementation plans for downstream agents.
 tools: ['read', 'search', 'todo', 'edit']
 model: ['Claude Opus 4.6']
-user-invokable: false
+user-invocable: false
 ---
 
 You are the **Planner** agent.
