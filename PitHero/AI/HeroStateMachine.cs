@@ -606,9 +606,8 @@ namespace PitHero.AI
                     return CalculatePitInsideEdgeLocation();
 
                 case GoapConstants.WalkToTavernForStopAction:
-                    // WalkToTavernForStopAction handles its own pathfinding internally via coroutine
-                    _targetLocationType = LocationType.None;
-                    return null;
+                    _targetLocationType = LocationType.TavernSeat;
+                    return CalculateTavernSeatLocation();
 
                 default:
                     _targetLocationType = LocationType.None;
@@ -849,6 +848,14 @@ namespace PitHero.AI
             // Return the payment tile position (67, 3) instead of bed position (73, 3)
             // This ensures hero walks to innkeeper first to pay before sleeping
             return new Point(GameConfig.InnPaymentTileX, GameConfig.InnPaymentTileY);
+        }
+
+        /// <summary>
+        /// Calculate tavern seat location for stop adventuring
+        /// </summary>
+        private Point? CalculateTavernSeatLocation()
+        {
+            return new Point(GameConfig.TavernHeroSeatTileX, GameConfig.TavernHeroSeatTileY);
         }
 
         /// <summary>

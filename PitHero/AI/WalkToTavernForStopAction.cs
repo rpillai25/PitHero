@@ -3,17 +3,16 @@ using Nez;
 using PitHero.ECS.Components;
 using PitHero.Services;
 using System.Collections;
-using System.Collections.Generic;
 
 namespace PitHero.AI
 {
     /// <summary>
-    /// Action that walks the hero to a designated tavern seat when the player stops adventuring.
-    /// Once the hero arrives, hired mercenaries are teleported to their designated seats.
+    /// Action that seats the hero and mercenaries at the tavern when the player stops adventuring.
+    /// GoTo state handles pathfinding to the tavern seat; this action handles arrival behavior only.
     /// </summary>
     public class WalkToTavernForStopAction : HeroActionBase
     {
-        private ICoroutine _walkCoroutine;
+        private ICoroutine _seatCoroutine;
         private bool _completed;
         private const float MercenaryProximityTiles = 3f;
 
@@ -27,11 +26,11 @@ namespace PitHero.AI
 
         public override bool ShouldNotOverride()
         {
-            return _walkCoroutine != null;
+            return _seatCoroutine != null;
         }
 
         /// <summary>
-        /// Execute the walk-to-tavern action
+        /// Execute the tavern seating action — hero is already at tavern seat via GoTo state
         /// </summary>
         public override bool Execute(HeroComponent hero)
         {
@@ -41,84 +40,25 @@ namespace PitHero.AI
             if (_completed)
             {
                 _completed = false;
-                _walkCoroutine = null;
+                _seatCoroutine = null;
                 return true;
             }
 
-            if (_walkCoroutine == null)
+            if (_seatCoroutine == null)
             {
-                _walkCoroutine = Core.StartCoroutine(WalkToTavernCoroutine(hero));
+                _seatCoroutine = Core.StartCoroutine(SeatPartyCoroutine(hero));
             }
 
             return false;
         }
 
         /// <summary>
-        /// Coroutine that walks the hero to the tavern seat and teleports mercenaries
+        /// Coroutine that faces the hero down and teleports mercenaries to their seats
         /// </summary>
-        private IEnumerator WalkToTavernCoroutine(HeroComponent hero)
+        private IEnumerator SeatPartyCoroutine(HeroComponent hero)
         {
             var heroEntity = hero.Entity;
-            var tileMover = heroEntity.GetComponent<TileByTileMover>();
-            var pathfinding = heroEntity.GetComponent<PathfindingActorComponent>();
             var facingComponent = heroEntity.GetComponent<ActorFacingComponent>();
-
-            if (tileMover == null || pathfinding == null)
-            {
-                Debug.Warn("[WalkToTavernForStop] Missing required components on hero entity");
-                hero.SeatedInTavern = true;
-                _completed = true;
-                yield break;
-            }
-
-            var heroSeatTile = new Point(GameConfig.TavernHeroSeatTileX, GameConfig.TavernHeroSeatTileY);
-
-            Debug.Log($"[WalkToTavernForStop] Hero walking to tavern seat at ({heroSeatTile.X},{heroSeatTile.Y})");
-
-            // Calculate path from current position to tavern seat
-            var currentTile = tileMover.GetCurrentTileCoordinates();
-            var path = pathfinding.CalculatePath(currentTile, heroSeatTile);
-
-            if (path != null && path.Count > 0)
-            {
-                // Walk along the path
-                for (int i = 0; i < path.Count; i++)
-                {
-                    var targetTile = path[i];
-                    var currentTilePos = new Point(
-                        (int)(heroEntity.Transform.Position.X / GameConfig.TileSize),
-                        (int)(heroEntity.Transform.Position.Y / GameConfig.TileSize)
-                    );
-
-                    var dx = targetTile.X - currentTilePos.X;
-                    var dy = targetTile.Y - currentTilePos.Y;
-
-                    Direction? direction = null;
-                    if (dx > 0) direction = Direction.Right;
-                    else if (dx < 0) direction = Direction.Left;
-                    else if (dy > 0) direction = Direction.Down;
-                    else if (dy < 0) direction = Direction.Up;
-
-                    if (direction.HasValue)
-                    {
-                        tileMover.StartMoving(direction.Value);
-
-                        while (tileMover.IsMoving)
-                        {
-                            yield return null;
-                        }
-                    }
-
-                    yield return Coroutine.WaitForSeconds(0.05f);
-                }
-            }
-            else
-            {
-                // No path found - teleport to tavern seat
-                Debug.Warn("[WalkToTavernForStop] No path to tavern seat, teleporting");
-                heroEntity.Transform.Position = TileToWorldPosition(heroSeatTile);
-                tileMover.SnapToTileGrid();
-            }
 
             // Hero faces down at the tavern seat
             if (facingComponent != null)

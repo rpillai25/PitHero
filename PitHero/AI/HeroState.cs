@@ -26,7 +26,8 @@ namespace PitHero.AI
         Inn,
         ItemShop,
         WeaponShop,
-        ArmorShop
+        ArmorShop,
+        TavernSeat
     }
 
 
