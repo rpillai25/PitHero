@@ -231,6 +231,16 @@ namespace PitHero.AI
 
         void Idle_Tick()
         {
+            // While hero is seated in tavern, periodically check for unseated mercenaries
+            // (e.g., newly hired mercs that need to be placed in their seats)
+            if (_hero.StoppedAdventure && _hero.SeatedInTavern)
+            {
+                if (elapsedTimeInState > 1.0f)
+                {
+                    WalkToTavernForStopAction.SeatUnseatedMercenaries();
+                }
+            }
+
             // If we don't have a plan, try planning again
             if (_actionPlan == null || _actionPlan.Count == 0)
             {

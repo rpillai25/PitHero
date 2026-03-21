@@ -158,21 +158,143 @@ namespace PitHero.AI
                     facing = Direction.Left;
                 }
 
-                mercEntity.Transform.Position = TileToWorldPosition(seatTile);
+                SeatMercenaryAtPosition(mercEntity, seatTile, facing, i + 1);
+            }
+        }
 
-                var mercTileMover = mercEntity.GetComponent<TileByTileMover>();
-                if (mercTileMover != null)
+        /// <summary>
+        /// Teleport a mercenary to a seat position, snap to grid, set facing, and disable following
+        /// </summary>
+        public static void SeatMercenaryAtPosition(Entity mercEntity, Point seatTile, Direction facing, int mercNumber)
+        {
+            mercEntity.Transform.Position = TileToWorldPosition(seatTile);
+
+            var mercTileMover = mercEntity.GetComponent<TileByTileMover>();
+            if (mercTileMover != null)
+            {
+                mercTileMover.SnapToTileGrid();
+            }
+
+            var mercFacing = mercEntity.GetComponent<ActorFacingComponent>();
+            if (mercFacing != null)
+            {
+                mercFacing.SetFacing(facing);
+            }
+
+            // Disable following so the mercenary stays at its seat
+            var followComponent = mercEntity.GetComponent<MercenaryFollowComponent>();
+            if (followComponent != null)
+            {
+                followComponent.Enabled = false;
+                followComponent.ResetPathfinding();
+            }
+
+            Debug.Log($"[WalkToTavernForStop] Mercenary {mercNumber} seated at ({seatTile.X},{seatTile.Y}) facing {facing}");
+        }
+
+        /// <summary>
+        /// Check if a mercenary entity is at its designated tavern seat
+        /// </summary>
+        public static bool IsMercenarySeated(Entity mercEntity, int mercIndex)
+        {
+            if (mercEntity == null) return true;
+
+            var pos = mercEntity.Transform.Position;
+            var currentTile = new Point(
+                (int)(pos.X / GameConfig.TileSize),
+                (int)(pos.Y / GameConfig.TileSize)
+            );
+
+            Point expectedSeat;
+            if (mercIndex == 0)
+                expectedSeat = new Point(GameConfig.TavernMercenary1SeatTileX, GameConfig.TavernMercenary1SeatTileY);
+            else
+                expectedSeat = new Point(GameConfig.TavernMercenary2SeatTileX, GameConfig.TavernMercenary2SeatTileY);
+
+            return currentTile.X == expectedSeat.X && currentTile.Y == expectedSeat.Y;
+        }
+
+        /// <summary>
+        /// Seat any hired mercenaries that are not at their designated seat and are close enough.
+        /// Returns true if any mercenary was newly seated.
+        /// </summary>
+        public static bool SeatUnseatedMercenaries()
+        {
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager == null) return false;
+
+            var hiredMercenaries = mercenaryManager.GetHiredMercenaries();
+            if (hiredMercenaries == null || hiredMercenaries.Count == 0) return false;
+
+            var heroTile = new Point(GameConfig.TavernHeroSeatTileX, GameConfig.TavernHeroSeatTileY);
+            bool seatedAny = false;
+
+            for (int i = 0; i < hiredMercenaries.Count && i < 2; i++)
+            {
+                var mercEntity = hiredMercenaries[i];
+                if (mercEntity == null) continue;
+
+                // Skip if already at designated seat
+                if (IsMercenarySeated(mercEntity, i)) continue;
+
+                // Check if close enough to teleport
+                var mercPos = mercEntity.Transform.Position;
+                var mercTile = new Point(
+                    (int)(mercPos.X / GameConfig.TileSize),
+                    (int)(mercPos.Y / GameConfig.TileSize)
+                );
+
+                float dist = Vector2.Distance(
+                    new Vector2(mercTile.X, mercTile.Y),
+                    new Vector2(heroTile.X, heroTile.Y)
+                );
+
+                if (dist <= MercenaryProximityTiles)
                 {
-                    mercTileMover.SnapToTileGrid();
-                }
+                    Point seatTile;
+                    Direction facing;
 
-                var mercFacing = mercEntity.GetComponent<ActorFacingComponent>();
-                if (mercFacing != null)
+                    if (i == 0)
+                    {
+                        seatTile = new Point(GameConfig.TavernMercenary1SeatTileX, GameConfig.TavernMercenary1SeatTileY);
+                        facing = Direction.Right;
+                    }
+                    else
+                    {
+                        seatTile = new Point(GameConfig.TavernMercenary2SeatTileX, GameConfig.TavernMercenary2SeatTileY);
+                        facing = Direction.Left;
+                    }
+
+                    SeatMercenaryAtPosition(mercEntity, seatTile, facing, i + 1);
+                    seatedAny = true;
+                }
+            }
+
+            return seatedAny;
+        }
+
+        /// <summary>
+        /// Re-enable MercenaryFollowComponent for all hired mercenaries (called when resuming adventuring)
+        /// </summary>
+        public static void ReenableMercenaryFollowing()
+        {
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager == null) return;
+
+            var hiredMercenaries = mercenaryManager.GetHiredMercenaries();
+            if (hiredMercenaries == null) return;
+
+            for (int i = 0; i < hiredMercenaries.Count; i++)
+            {
+                var mercEntity = hiredMercenaries[i];
+                if (mercEntity == null) continue;
+
+                var followComponent = mercEntity.GetComponent<MercenaryFollowComponent>();
+                if (followComponent != null)
                 {
-                    mercFacing.SetFacing(facing);
+                    followComponent.Enabled = true;
+                    Debug.Log($"[WalkToTavernForStop] Re-enabled following for mercenary {i + 1}");
                 }
-
-                Debug.Log($"[WalkToTavernForStop] Mercenary {i + 1} seated at ({seatTile.X},{seatTile.Y}) facing {facing}");
             }
         }
     }

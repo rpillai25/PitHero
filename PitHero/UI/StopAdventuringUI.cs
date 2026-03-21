@@ -125,6 +125,10 @@ namespace PitHero.UI
                 {
                     // Clear seated state so hero can resume
                     heroComponent.SeatedInTavern = false;
+
+                    // Re-enable mercenary following so they resume movement
+                    WalkToTavernForStopAction.ReenableMercenaryFollowing();
+
                     Debug.Log("[StopAdventuringUI] Player resumed adventuring");
                 }
             }
