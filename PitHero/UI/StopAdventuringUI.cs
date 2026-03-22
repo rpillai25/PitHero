@@ -186,6 +186,7 @@ namespace PitHero.UI
             }
 
             _button.SetStyle(style);
+            _button.SetHoverText(tooltip);
             _button.SetSize(
                 ((SpriteDrawable)style.ImageUp).Sprite.SourceRect.Width,
                 ((SpriteDrawable)style.ImageUp).Sprite.SourceRect.Height
