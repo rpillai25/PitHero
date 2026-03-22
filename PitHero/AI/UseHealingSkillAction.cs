@@ -272,8 +272,9 @@ namespace PitHero.AI
                 bestIsCasterHero = isCasterHero;
                 bestMPCost = skill.MPCost;
             }
-            // If we haven't found a perfect fit yet, keep track of any healing skill as fallback
-            else if (bestSkill == null && skill.HPRestoreAmount > 0)
+            // Partial heal fallback: pick the skill that heals the most (least negative waste)
+            else if (skill.HPRestoreAmount < hpNeeded &&
+                     (bestSkill == null || (bestWaste < 0 && waste > bestWaste) || (bestWaste < 0 && waste == bestWaste && skill.MPCost < bestMPCost)))
             {
                 bestCaster = caster;
                 bestSkill = skill;
