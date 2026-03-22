@@ -345,6 +345,7 @@ namespace PitHero.AI
 
             List<Entity> validMonsters = new List<Entity>();
             List<Entity> validMercenaries = new List<Entity>();
+            Entity turnIndicatorEntity = null;
             try
             {
                 // Get the hero's linked RPG hero
@@ -424,6 +425,10 @@ namespace PitHero.AI
                     }
                 }
 
+                // Create battle turn indicator entity
+                turnIndicatorEntity = Core.Scene.CreateEntity("battle-turn-indicator");
+                var turnIndicator = turnIndicatorEntity.AddComponent(new BattleTurnIndicatorComponent());
+
                 Debug.Log($"[AttackMonster] Multi-participant battle: {hero.Name} (Lv.{hero.Level}, HP {hero.CurrentHP}/{hero.MaxHP}) + {validMercenaries.Count} mercenaries vs {validMonsters.Count} monsters");
 
                 // Battle loop - continue until hero AND all mercenaries are dead, or all monsters are defeated
@@ -502,6 +507,14 @@ namespace PitHero.AI
 
                         // Wait while paused before each participant's turn
                         yield return WaitWhilePaused();
+
+                        // Show turn indicator above the active participant
+                        if (participant.Type == BattleParticipant.ParticipantType.Hero)
+                            turnIndicator.Show(heroComponent.Entity);
+                        else if (participant.Type == BattleParticipant.ParticipantType.Mercenary)
+                            turnIndicator.Show(participant.MercenaryEntity);
+                        else
+                            turnIndicator.Show(participant.MonsterEntity);
 
                         if (participant.Type == BattleParticipant.ParticipantType.Hero)
                         {
@@ -1310,6 +1323,12 @@ namespace PitHero.AI
                 // Always clear battle state
                 HeroStateMachine.IsBattleInProgress = false;
                 existingMultiParticipantBattleCoroutine = null;
+
+                // Destroy battle turn indicator entity
+                if (turnIndicatorEntity != null)
+                {
+                    turnIndicatorEntity.Destroy();
+                }
 
                 // Remove HP bar components from monsters
                 if (validMonsters != null)
