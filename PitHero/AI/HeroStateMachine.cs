@@ -27,6 +27,11 @@ namespace PitHero.AI
         private UseHealingItemAction _useHealingItemAction;
         private UseHealingSkillAction _useHealingSkillAction;
 
+        // References to stop adventuring actions for dynamic cost updates
+        private JumpOutOfPitForStopAction _jumpOutOfPitForStopAction;
+        private WalkToTavernForStopAction _walkToTavernForStopAction;
+        private bool _lastStoppedAdventure;
+
         // Healing priority tracking for replanning when priorities change
         private HeroHealPriority _lastHealPriority1;
         private HeroHealPriority _lastHealPriority2;
@@ -97,6 +102,13 @@ namespace PitHero.AI
             var walkToStatueForCrystal = new WalkToStatueForCrystalAction();
             _planner.AddAction(walkToStatueForCrystal);
 
+            // Add stop adventuring actions - store references for cost updates
+            _jumpOutOfPitForStopAction = new JumpOutOfPitForStopAction();
+            _planner.AddAction(_jumpOutOfPitForStopAction);
+
+            _walkToTavernForStopAction = new WalkToTavernForStopAction();
+            _planner.AddAction(_walkToTavernForStopAction);
+
             // Don't set initial state here - wait for OnAddedToEntity
         }
 
@@ -107,6 +119,9 @@ namespace PitHero.AI
 
             // Initialize healing action costs based on default priorities
             UpdateHealingActionCosts();
+
+            // Initialize stop adventuring action costs (high cost by default since not stopped)
+            UpdateStopAdventuringActionCosts();
 
             // Set initial state to Idle - when it enters Idle it will ask the ActionPlanner for a new plan
             InitialState = ActorState.Idle;
@@ -171,6 +186,10 @@ namespace PitHero.AI
         {
             Debug.Log("[HeroStateMachine] Entering Idle state - planning next actions");
 
+            // Sync stop-adventuring costs before planning so the planner sees
+            // the correct costs on the first attempt (avoids an extra replan cycle)
+            UpdateStopAdventuringActionCosts();
+
             // Get a plan to run that will get us from our current state to our goal state
             var currentWorldState = GetWorldState();
             var goalState = GetGoalState();
@@ -212,6 +231,16 @@ namespace PitHero.AI
 
         void Idle_Tick()
         {
+            // While hero is seated in tavern, periodically check for unseated mercenaries
+            // (e.g., newly hired mercs that need to be placed in their seats)
+            if (_hero.StoppedAdventure && _hero.SeatedInTavern)
+            {
+                if (elapsedTimeInState > 1.0f)
+                {
+                    WalkToTavernForStopAction.SeatUnseatedMercenaries();
+                }
+            }
+
             // If we don't have a plan, try planning again
             if (_actionPlan == null || _actionPlan.Count == 0)
             {
@@ -219,6 +248,9 @@ namespace PitHero.AI
                 if (elapsedTimeInState > 1.0f) // Wait 1 second before retry
                 {
                     Debug.Log("[HeroStateMachine] Retrying action planning...");
+
+                    // Sync stop-adventuring costs before retrying
+                    UpdateStopAdventuringActionCosts();
 
                     var currentWorldState = GetWorldState();
                     var goalState = GetGoalState();
@@ -318,6 +350,19 @@ namespace PitHero.AI
             if (HasHealingPrioritiesChanged())
             {
                 Debug.Log("[HeroStateMachine] Healing priorities changed during GoTo - cancelling current plan and replanning");
+                _actionPlan = null;
+                _currentAction = null;
+                _currentPath = null;
+                _pathIndex = 0;
+                CurrentState = ActorState.Idle;
+                return;
+            }
+
+            // Check if stop adventuring state has changed
+            if (HasStoppedAdventureChanged())
+            {
+                UpdateStopAdventuringActionCosts();
+                Debug.Log("[HeroStateMachine] StoppedAdventure changed during GoTo - cancelling current plan and replanning");
                 _actionPlan = null;
                 _currentAction = null;
                 _currentPath = null;
@@ -469,6 +514,17 @@ namespace PitHero.AI
                 return;
             }
 
+            // Check if stop adventuring state has changed
+            if (HasStoppedAdventureChanged() && _currentAction != null && !_currentAction.ShouldNotOverride())
+            {
+                UpdateStopAdventuringActionCosts();
+                Debug.Log("[HeroStateMachine] StoppedAdventure changed during PerformAction - cancelling current plan and replanning");
+                _actionPlan.Clear();
+                _currentAction = null;
+                CurrentState = ActorState.Idle;
+                return;
+            }
+
             if (_currentAction == null)
             {
                 Debug.Warn("[HeroStateMachine] PerformAction_Tick: No current action");
@@ -554,6 +610,14 @@ namespace PitHero.AI
                     // Healing happens in-place. No movement target required.
                     _targetLocationType = LocationType.None;
                     return null;
+
+                case GoapConstants.JumpOutOfPitForStopAction:
+                    _targetLocationType = LocationType.PitInsideEdge;
+                    return CalculatePitInsideEdgeLocation();
+
+                case GoapConstants.WalkToTavernForStopAction:
+                    _targetLocationType = LocationType.TavernSeat;
+                    return CalculateTavernSeatLocation();
 
                 default:
                     _targetLocationType = LocationType.None;
@@ -794,6 +858,14 @@ namespace PitHero.AI
             // Return the payment tile position (67, 3) instead of bed position (73, 3)
             // This ensures hero walks to innkeeper first to pay before sleeping
             return new Point(GameConfig.InnPaymentTileX, GameConfig.InnPaymentTileY);
+        }
+
+        /// <summary>
+        /// Calculate tavern seat location for stop adventuring
+        /// </summary>
+        private Point? CalculateTavernSeatLocation()
+        {
+            return new Point(GameConfig.TavernHeroSeatTileX, GameConfig.TavernHeroSeatTileY);
         }
 
         /// <summary>
@@ -1320,6 +1392,55 @@ namespace PitHero.AI
                         break;
                 }
             }
+        }
+
+        #endregion
+
+        #region Stop Adventuring Cost Management
+
+        /// <summary>
+        /// Check if the StoppedAdventure state has changed since the last plan
+        /// </summary>
+        private bool HasStoppedAdventureChanged()
+        {
+            if (_hero == null)
+                return false;
+
+            bool hasChanged = _hero.StoppedAdventure != _lastStoppedAdventure;
+
+            if (hasChanged)
+            {
+                Debug.Log($"[HeroStateMachine] StoppedAdventure changed from {_lastStoppedAdventure} to {_hero.StoppedAdventure} - triggering replan");
+            }
+
+            return hasChanged;
+        }
+
+        /// <summary>
+        /// Update stop adventuring action costs based on current StoppedAdventure state.
+        /// When StoppedAdventure is true, set costs very low (1) so planner picks them.
+        /// When false, set costs very high (99) so planner ignores them.
+        /// </summary>
+        public void UpdateStopAdventuringActionCosts()
+        {
+            if (_hero == null) return;
+
+            bool stopped = _hero.StoppedAdventure;
+            int cost = stopped ? 1 : 99;
+
+            if (_jumpOutOfPitForStopAction != null)
+            {
+                _jumpOutOfPitForStopAction.Cost = cost;
+                Debug.Log($"[HeroStateMachine] Set JumpOutOfPitForStopAction cost to {cost}");
+            }
+
+            if (_walkToTavernForStopAction != null)
+            {
+                _walkToTavernForStopAction.Cost = cost;
+                Debug.Log($"[HeroStateMachine] Set WalkToTavernForStopAction cost to {cost}");
+            }
+
+            _lastStoppedAdventure = stopped;
         }
 
         #endregion
