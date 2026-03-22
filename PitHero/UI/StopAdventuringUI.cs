@@ -133,8 +133,9 @@ namespace PitHero.UI
                 }
             }
 
-            // Force style update
-            _currentMode = ButtonMode.StopNormal; // Reset to force recalculation
+            // Force style update by setting _currentMode to the opposite of the desired state
+            // so UpdateButtonStyleIfNeeded() detects a mismatch and applies the new style
+            _currentMode = _isStoppedAdventuring ? ButtonMode.StopNormal : ButtonMode.ContinueNormal;
             _styleChanged = true;
         }
 
