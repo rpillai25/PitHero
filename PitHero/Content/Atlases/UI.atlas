@@ -94,9 +94,6 @@ UIHeroHighlight
 UIHeroInverse
 	235,452,32,32
 	0.5,0.5
-CharacterSelector
-	0,482,32,23
-	0.5,0.5
 UIGear
 	545,163,31,30
 	0.5,0.5
@@ -104,109 +101,112 @@ NinePatchTab_Active
 	129,224,24,24
 	0.5,0.5
 NinePatchTab_Hover
-	33,482,24,24
+	0,482,24,24
 	0.5,0.5
 NinePatchTab_Inactive
-	58,482,24,24
+	25,482,24,24
 	0.5,0.5
 SkillIcon1
-	83,482,24,24
+	50,482,24,24
 	0.5,0.5
 SkillIcon10
-	578,130,24,24
+	75,482,24,24
 	0.5,0.5
 SkillIcon2
-	711,0,24,24
+	100,482,24,24
 	0.5,0.5
 SkillIcon3
-	678,33,24,24
+	578,130,24,24
 	0.5,0.5
 SkillIcon4
-	613,98,24,24
+	711,0,24,24
 	0.5,0.5
 SkillIcon5
-	646,65,24,24
+	678,33,24,24
 	0.5,0.5
 SkillIcon6
-	453,259,24,24
+	613,98,24,24
 	0.5,0.5
 SkillIcon7
-	420,292,24,24
+	646,65,24,24
 	0.5,0.5
 SkillIcon8
-	387,325,24,24
+	453,259,24,24
 	0.5,0.5
 SkillIcon9
-	332,387,24,24
+	420,292,24,24
 	0.5,0.5
 UISortAlpha
-	268,452,24,24
+	387,325,24,24
 	0.5,0.5
 UISortAlphaHighlight
-	578,155,24,24
+	332,387,24,24
 	0.5,0.5
 UISortAlphaInverse
-	603,130,24,24
+	268,452,24,24
 	0.5,0.5
 UISortTime
-	646,90,24,24
+	578,155,24,24
 	0.5,0.5
 UISortTimeHighlight
-	703,33,24,24
+	603,130,24,24
 	0.5,0.5
 UISortTimeInverse
-	678,58,24,24
+	703,33,24,24
 	0.5,0.5
 UISortType
-	736,0,24,24
+	678,58,24,24
 	0.5,0.5
 UISortTypeHighlight
-	445,292,24,24
+	638,98,24,24
 	0.5,0.5
 UISortTypeInverse
-	420,317,24,24
+	736,0,24,24
+	0.5,0.5
+CharacterSelector
+	195,485,20,19
 	0.5,0.5
 UIRadioButton_Selected
-	108,482,18,18
+	216,485,18,18
 	0.5,0.5
 UIRadioButton_Unselected
-	195,485,18,18
+	235,485,18,18
 	0.5,0.5
 UIRadioButton_Unselected_Highlight
-	214,485,18,18
+	445,292,18,18
 	0.5,0.5
 UICheckbox_Checked
-	233,485,16,16
+	420,317,16,16
 	0.5,0.5
 UICheckbox_Unchecked
-	250,485,16,16
-	0.5,0.5
-UICheckbox_Unchecked_Highlight
 	387,350,16,16
 	0.5,0.5
+UICheckbox_Unchecked_Highlight
+	478,259,16,16
+	0.5,0.5
 UISliderKnob
-	127,493,14,14
+	125,493,14,14
 	0.5,0.5
 UISliderKnobDown
-	142,493,14,14
+	140,493,14,14
 	0.5,0.5
 UISliderKnobOver
-	157,493,14,14
+	155,493,14,14
 	0.5,0.5
 NinePatchButton_Down
-	172,493,12,12
+	170,493,12,12
 	0.5,0.5
 NinePatchButton_Over
-	478,259,12,12
-	0.5,0.5
-NinePatchButton_Up
 	545,194,12,12
 	0.5,0.5
+NinePatchButton_Up
+	254,485,12,12
+	0.5,0.5
 UISortOrderArrow
-	332,412,10,13
+	183,493,10,13
 	0.5,0.5
 NinePatchScroll
-	185,493,9,9
+	332,412,9,9
 	0.5,0.5
 NinePatchScrollKnob
 	357,387,9,9

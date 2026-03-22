@@ -13,7 +13,7 @@ namespace PitHero.ECS.Components
     public class CharacterSelectorComponent : Component, IUpdatable
     {
         private const string CHARACTER_SELECTOR_SPRITE = "CharacterSelector";
-        private const float COLOR_TWEEN_DURATION = 0.9f;
+        private const float COLOR_TWEEN_DURATION = 1.9f;
         private const int BOB_SPEED = 8;
         private const int BOB_AXIS_Y = 1;
 
