@@ -278,17 +278,6 @@ namespace PitHero.AI
             // 3. Use proper timing with Time.DeltaTime
         }
 
-        /// <summary>Shows the skill name as bouncy text above a mercenary entity.</summary>
-        private static void ShowMercenarySkillName(Entity mercenaryEntity, string skillName)
-        {
-            var bouncyText = mercenaryEntity.GetComponent<BouncyTextComponent>();
-            if (bouncyText != null)
-            {
-                bouncyText.Init(skillName, Color.Cyan);
-                bouncyText.SetEnabled(true);
-            }
-        }
-
         /// <summary>
         /// Check if two tile positions are adjacent (8-directional adjacency)
         /// </summary>
@@ -855,9 +844,6 @@ namespace PitHero.AI
                                     {
                                         mercenary.UseMP(healSkill.MPCost);
 
-                                        // Show skill name above mercenary
-                                        ShowMercenarySkillName(participant.MercenaryEntity, healSkill.Name);
-
                                         // Show action icon on HUD
                                         mercComponent.ActionQueueVisualization?.ShowAction(new QueuedAction(healSkill));
 
@@ -950,9 +936,6 @@ namespace PitHero.AI
                                     {
                                         mercenary.UseMP(atkSkill.MPCost);
                                         var skillDamageKind = atkSkill.Element != ElementType.Neutral ? DamageKind.Magical : DamageKind.Physical;
-
-                                        // Show skill name above mercenary
-                                        ShowMercenarySkillName(participant.MercenaryEntity, atkSkill.Name);
 
                                         // Show action icon on HUD
                                         mercComponent.ActionQueueVisualization?.ShowAction(new QueuedAction(atkSkill));
