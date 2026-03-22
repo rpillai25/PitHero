@@ -575,6 +575,7 @@ namespace PitHero.ECS.Scenes
 
             hero.AddComponent(new Historian());
             hero.AddComponent(new HeroStateMachine());
+            hero.AddComponent(new CharacterSelectorComponent());
 
             // Wait for pathfinding initialization then add obstacles
             Core.StartCoroutine(AddObstaclesAfterPathfindingReady(hero));
