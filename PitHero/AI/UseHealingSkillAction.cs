@@ -60,8 +60,7 @@ namespace PitHero.AI
             if (target == null)
             {
                 Debug.Log("[UseHealingSkillAction] No target with critical HP found");
-                hero.HealingSkillExhausted = true;
-                return true; // Action complete (failed, but complete)
+                return true; // Action complete — don't set exhausted, HP may drop later
             }
 
             // Get target stats
