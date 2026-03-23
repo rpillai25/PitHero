@@ -22,13 +22,13 @@ namespace PitHero.AI
 
         public UseHealingItemAction() : base(GoapConstants.UseHealingItemAction, 10)
         {
-            // Preconditions: HP OR MP is critical and we haven't exhausted healing items
-            // Note: We don't set HPCritical=true as precondition because this action
-            // can satisfy either HPCritical or MPCritical goals. The Validate() method
-            // ensures at least one of these conditions is true.
+            // No static preconditions for HPCritical/MPCritical because this action can satisfy
+            // either goal. The Validate() method dynamically checks:
+            // - At least one of HPCritical or MPCritical must be true
+            // - HealingItemExhausted must be false
+            // - Priority checks against other healing options
 
-            // Postconditions are set dynamically based on which goal we're satisfying
-            // Default to HP goal; Execute() will handle MP-only cases
+            // Inn restores both HP and MP to full, so set both postconditions
             SetPostcondition(GoapConstants.HPCritical, false);
             SetPostcondition(GoapConstants.MPCritical, false);
         }

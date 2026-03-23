@@ -233,6 +233,7 @@ namespace PitHero.ECS.Components
 
         /// <summary>
         /// Returns true if all MP recovery options are exhausted (items and inn).
+        /// Used by GOAP goal setting to determine when to skip the MPCritical goal.
         /// Note: Healing skills do NOT recover MP, so they are not included here.
         /// </summary>
         public bool AllMPRecoveryOptionsExhausted()
