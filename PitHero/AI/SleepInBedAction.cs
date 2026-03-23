@@ -25,9 +25,12 @@ namespace PitHero.AI
         public SleepInBedAction() : base(GoapConstants.SleepInBedAction, 5)
         {
             SetPrecondition(GoapConstants.OutsidePit, true);
-            SetPrecondition(GoapConstants.HPCritical, true);
+            // Note: No HPCritical precondition — this action can satisfy either HPCritical or MPCritical goals.
+            // The Validate() method ensures at least one of these conditions is true.
 
+            // Inn restores both HP and MP to full
             SetPostcondition(GoapConstants.HPCritical, false);
+            SetPostcondition(GoapConstants.MPCritical, false);
             
             _isSleeping = false;
             _hasReachedPaymentTile = false;
@@ -37,7 +40,9 @@ namespace PitHero.AI
         public override bool Validate()
         {
             var heroComponent = Game1.Scene.FindEntity("hero")?.GetComponent<HeroComponent>();
-            if (!heroComponent.HPCritical)
+            
+            // Must have either HPCritical or MPCritical
+            if (!heroComponent.HPCritical && !heroComponent.MPCritical)
             {
                 return false;
             }

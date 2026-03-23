@@ -22,18 +22,24 @@ namespace PitHero.AI
 
         public UseHealingItemAction() : base(GoapConstants.UseHealingItemAction, 10)
         {
-            // Preconditions: HP is critical and we haven't exhausted healing items
-            SetPrecondition(GoapConstants.HPCritical, true);
+            // Preconditions: HP OR MP is critical and we haven't exhausted healing items
+            // Note: We don't set HPCritical=true as precondition because this action
+            // can satisfy either HPCritical or MPCritical goals. The Validate() method
+            // ensures at least one of these conditions is true.
 
-            // Postcondition: HP is no longer critical
+            // Postconditions are set dynamically based on which goal we're satisfying
+            // Default to HP goal; Execute() will handle MP-only cases
             SetPostcondition(GoapConstants.HPCritical, false);
+            SetPostcondition(GoapConstants.MPCritical, false);
         }
 
         public override bool Validate()
         {
             var heroComponent = Game1.Scene.FindEntity("hero")?.GetComponent<HeroComponent>();
             var healPrioritiesInOrder = heroComponent?.GetHealPrioritiesInOrder();
-            if (!heroComponent.HPCritical)
+            
+            // Must have either HPCritical or MPCritical
+            if (!heroComponent.HPCritical && !heroComponent.MPCritical)
             {
                 return false;
             }

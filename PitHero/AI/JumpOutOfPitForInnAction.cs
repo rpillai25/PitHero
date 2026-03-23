@@ -21,10 +21,11 @@ namespace PitHero.AI
 
         public JumpOutOfPitForInnAction() : base(GoapConstants.JumpOutOfPitForInnAction, 2)
         {
-            // Preconditions: Hero must be inside pit, have critical HP, and not have exhausted inn option
-            // Gold check happens in Execute() so we can set InnExhausted flag dynamically
+            // Preconditions: Hero must be inside pit (need to jump out to reach inn)
+            // Note: No HPCritical precondition — this action can be used when either
+            // HPCritical or MPCritical is true. The Validate() method ensures at least
+            // one of these conditions is true.
             SetPrecondition(GoapConstants.InsidePit, true);
-            SetPrecondition(GoapConstants.HPCritical, true);
 
             // Postcondition: Hero is outside pit
             SetPostcondition(GoapConstants.OutsidePit, true);
@@ -47,7 +48,8 @@ namespace PitHero.AI
                 return false;
             }
 
-            if (!heroComponent.HPCritical)
+            // Must have either HPCritical or MPCritical to justify using the inn
+            if (!heroComponent.HPCritical && !heroComponent.MPCritical)
             {
                 return false;
             }
