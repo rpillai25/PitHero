@@ -5,6 +5,7 @@ using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.Util;
 using PitHero.Util.SoundEffectTypes;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -40,6 +41,7 @@ namespace PitHero.AI
         public override bool Validate()
         {
             var heroComponent = Game1.Scene.FindEntity("hero")?.GetComponent<HeroComponent>();
+            var healPrioritiesInOrder = heroComponent?.GetHealPrioritiesInOrder();
             
             // Must have either HPCritical or MPCritical
             if (!heroComponent.HPCritical && !heroComponent.MPCritical)
@@ -49,8 +51,31 @@ namespace PitHero.AI
             if (!heroComponent.HasEnoughInnGold)
             {
                 heroComponent.InnExhausted = true;
+                return false;
             }
-            return heroComponent.HasEnoughInnGold;
+
+            if (healPrioritiesInOrder != null)
+            {
+                int innPriority = Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.Inn);
+                int skillPriority = Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingSkill);
+                int itemPriority = Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingItem);
+
+                // Check if we should wait for a higher-priority option
+                // Note: HealingSkill can only address HPCritical, not MPCritical, so when only MP is low,
+                // we should NOT wait for HealingSkill even if it has higher priority
+                bool shouldWaitForSkill = innPriority > skillPriority && 
+                                          !heroComponent.HealingSkillExhausted &&
+                                          heroComponent.HPCritical; // Only wait if HP is critical (skill can help)
+                
+                bool shouldWaitForItem = innPriority > itemPriority && !heroComponent.HealingItemExhausted;
+
+                if (shouldWaitForSkill || shouldWaitForItem)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         public override bool ShouldNotOverride()

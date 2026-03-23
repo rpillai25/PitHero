@@ -4,6 +4,7 @@ using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.Util;
 using PitHero.Util.SoundEffectTypes;
+using System;
 using System.Collections;
 
 namespace PitHero.AI
@@ -54,7 +55,34 @@ namespace PitHero.AI
                 return false;
             }
 
-            return heroComponent.HasEnoughInnGold;
+            if (!heroComponent.HasEnoughInnGold)
+            {
+                return false;
+            }
+
+            // Check if we should wait for higher-priority healing options
+            var healPrioritiesInOrder = heroComponent.GetHealPrioritiesInOrder();
+            if (healPrioritiesInOrder != null)
+            {
+                int innPriority = Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.Inn);
+                int skillPriority = Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingSkill);
+                int itemPriority = Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingItem);
+
+                // Note: HealingSkill can only address HPCritical, not MPCritical, so when only MP is low,
+                // we should NOT wait for HealingSkill even if it has higher priority
+                bool shouldWaitForSkill = innPriority > skillPriority && 
+                                          !heroComponent.HealingSkillExhausted &&
+                                          heroComponent.HPCritical; // Only wait if HP is critical (skill can help)
+                
+                bool shouldWaitForItem = innPriority > itemPriority && !heroComponent.HealingItemExhausted;
+
+                if (shouldWaitForSkill || shouldWaitForItem)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         public override bool Execute(HeroComponent hero)

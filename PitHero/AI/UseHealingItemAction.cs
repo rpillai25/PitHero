@@ -46,13 +46,21 @@ namespace PitHero.AI
 
             if (healPrioritiesInOrder != null)
             {
-                //If healing item priority is lower then healing skill and inn, and healing skill is not exhausted and inn is not exhausted, then we cannot use healing item
-                if (Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingItem) >
-                    Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingSkill) &&
-                    !heroComponent.HealingSkillExhausted ||
-                    Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingItem) >
-                    Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.Inn) &&
-                    !heroComponent.InnExhausted)
+                int itemPriority = Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingItem);
+                int skillPriority = Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingSkill);
+                int innPriority = Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.Inn);
+
+                // Check if we should wait for a higher-priority option
+                // Note: HealingSkill can only address HPCritical, not MPCritical, so when only MP is low,
+                // we should NOT wait for HealingSkill even if it has higher priority
+                bool shouldWaitForSkill = itemPriority > skillPriority && 
+                                          !heroComponent.HealingSkillExhausted &&
+                                          heroComponent.HPCritical; // Only wait if HP is critical (skill can help)
+                
+                bool shouldWaitForInn = itemPriority > innPriority && 
+                                        !heroComponent.InnExhausted;
+
+                if (shouldWaitForSkill || shouldWaitForInn)
                 {
                     return false;
                 }
