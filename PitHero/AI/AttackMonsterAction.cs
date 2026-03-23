@@ -433,30 +433,38 @@ namespace PitHero.AI
                         var participant = participants[i];
                         if (participant.Type == BattleParticipant.ParticipantType.Hero)
                         {
-                            participant.TurnValue = CalculateTurnValue(hero.GetTotalStats().Agility);
-
-                            // Use AI to decide action when queue is empty
-                            if (!heroComponent.BattleActionQueue.HasActions())
+                            // Check if hero is still alive before calculating turn
+                            if (hero.CurrentHP > 0)
                             {
-                                var currentLivingMonsters = GetLivingMonsters(validMonsters);
-                                var decision = BattleTacticDecisionEngine.DecideHeroAction(heroComponent, currentLivingMonsters, validMercenaries);
+                                participant.TurnValue = CalculateTurnValue(hero.GetTotalStats().Agility);
 
-                                switch (decision.Kind)
+                                // Use AI to decide action when queue is empty
+                                if (!heroComponent.BattleActionQueue.HasActions())
                                 {
-                                    case BattleAction.ActionKind.UseAttackSkill:
-                                        heroComponent.BattleActionQueue.EnqueueSkill(decision.Skill);
-                                        break;
-                                    case BattleAction.ActionKind.UseHealingSkill:
-                                        heroComponent.BattleActionQueue.EnqueueSkill(decision.Skill, decision.Target, decision.TargetsHero);
-                                        break;
-                                    case BattleAction.ActionKind.UseConsumable:
-                                        heroComponent.BattleActionQueue.EnqueueItem(decision.Consumable, decision.BagIndex, decision.Target, decision.TargetsHero);
-                                        break;
-                                    case BattleAction.ActionKind.PhysicalAttack:
-                                    default:
-                                        heroComponent.BattleActionQueue.EnqueueAttack(hero.WeaponShield1);
-                                        break;
+                                    var currentLivingMonsters = GetLivingMonsters(validMonsters);
+                                    var decision = BattleTacticDecisionEngine.DecideHeroAction(heroComponent, currentLivingMonsters, validMercenaries);
+
+                                    switch (decision.Kind)
+                                    {
+                                        case BattleAction.ActionKind.UseAttackSkill:
+                                            heroComponent.BattleActionQueue.EnqueueSkill(decision.Skill);
+                                            break;
+                                        case BattleAction.ActionKind.UseHealingSkill:
+                                            heroComponent.BattleActionQueue.EnqueueSkill(decision.Skill, decision.Target, decision.TargetsHero);
+                                            break;
+                                        case BattleAction.ActionKind.UseConsumable:
+                                            heroComponent.BattleActionQueue.EnqueueItem(decision.Consumable, decision.BagIndex, decision.Target, decision.TargetsHero);
+                                            break;
+                                        case BattleAction.ActionKind.PhysicalAttack:
+                                        default:
+                                            heroComponent.BattleActionQueue.EnqueueAttack(hero.WeaponShield1);
+                                            break;
+                                    }
                                 }
+                            }
+                            else
+                            {
+                                participant.TurnValue = -1; // Mark as dead/invalid
                             }
                         }
                         else if (participant.Type == BattleParticipant.ParticipantType.Mercenary)
