@@ -387,6 +387,10 @@ namespace PitHero.AI
             
             if (consumed)
             {
+                // Reset HealingSkillExhausted so healing skills are re-evaluated next cycle
+                // (MP may have been restored, making previously exhausted skills viable again)
+                heroComponent.HealingSkillExhausted = false;
+
                 // Play restorative sound effect
                 SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
                 soundEffectManager.PlaySound(SoundEffectType.Restorative);
