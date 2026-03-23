@@ -59,8 +59,12 @@ namespace PitHero.AI
             var target = FindCriticalHPTarget(hero, out bool isTargetHero, out Entity targetEntity);
             if (target == null)
             {
-                Debug.Log("[UseHealingSkillAction] No target with critical HP found");
-                return true; // Action complete — don't set exhausted, HP may drop later
+                // HPCritical world state may be true due to low MP (not low HP).
+                // Mark exhausted so GOAP moves on to other actions (items, inn) that can help.
+                // Flag is cleared whenever MP is restored (item use, inn, UI shortcuts).
+                Debug.Log("[UseHealingSkillAction] No target with critical HP found — marking healing skill exhausted");
+                hero.HealingSkillExhausted = true;
+                return true;
             }
 
             // Get target stats
