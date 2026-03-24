@@ -34,7 +34,9 @@ namespace PitHero.AI
         public override bool Validate()
         {
             var heroComponent = Game1.Scene.FindEntity("hero")?.GetComponent<HeroComponent>();
-            var healPrioritiesInOrder = heroComponent?.GetHealPrioritiesInOrder();
+            if (heroComponent == null) return false;
+            
+            var healPrioritiesInOrder = heroComponent.GetHealPrioritiesInOrder();
             
             // Must have either HPCritical or MPCritical
             if (!heroComponent.HPCritical && !heroComponent.MPCritical)
