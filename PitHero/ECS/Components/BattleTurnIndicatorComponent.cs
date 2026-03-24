@@ -21,6 +21,7 @@ namespace PitHero.ECS.Components
         private ITween<Color> _colorTween;
         private Entity _targetEntity;
         private bool _isShowing;
+        private bool _isMonsterMode;
         private Vector2 _baseOffset = new Vector2(0, -48);
 
         public override void OnAddedToEntity()
@@ -54,20 +55,32 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Shows the selector above the given entity
+        /// Shows the selector above the given entity. Uses Red-to-Yellow tween for monsters,
+        /// Green-to-Blue tween for allies (hero/mercenary).
         /// </summary>
-        public void Show(Entity target)
+        public void Show(Entity target, bool isMonster = false)
         {
             if (_renderer == null || target == null) return;
 
             _targetEntity = target;
 
-            if (!_isShowing)
+            if (!_isShowing || _isMonsterMode != isMonster)
             {
+                _isMonsterMode = isMonster;
                 _isShowing = true;
                 _renderer.SetEnabled(true);
-                _renderer.SetColor(Color.Green);
-                _colorTween = _renderer.TweenColorTo(Color.Blue, COLOR_TWEEN_DURATION)
+
+                if (_colorTween != null)
+                {
+                    _colorTween.Stop();
+                    _colorTween = null;
+                }
+
+                var baseColor = isMonster ? Color.Red : Color.Green;
+                var targetColor = isMonster ? Color.Yellow : Color.Blue;
+
+                _renderer.SetColor(baseColor);
+                _colorTween = _renderer.TweenColorTo(targetColor, COLOR_TWEEN_DURATION)
                     .SetEaseType(EaseType.SineIn)
                     .SetLoops(LoopType.PingPong, -1);
                 _colorTween.Start();
