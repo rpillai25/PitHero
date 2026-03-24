@@ -55,7 +55,8 @@ namespace PitHero.ECS.Components
         public bool AdjacentToChest { get; set; }                    // True when chest exists in tile adjacent to hero
 
         /// <summary>
-        /// True when hero's HP or any hired mercenary's HP falls below HeroCriticalHPPercent
+        /// True when hero's HP or any hired mercenary's HP falls below HeroCriticalHPPercent.
+        /// Only checks HP — use MPCritical for MP checks.
         /// </summary>
         public bool HPCritical
         {
@@ -67,14 +68,6 @@ namespace PitHero.ECS.Components
                 float hpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
                 if (hpPercent < GameConfig.HeroCriticalHPPercent)
                     return true;
-
-                // Check hero's MP (low MP triggers healing actions so Inn or consumable can restore it)
-                if (LinkedHero.MaxMP > 0)
-                {
-                    float mpPercent = (float)LinkedHero.CurrentMP / LinkedHero.MaxMP;
-                    if (mpPercent < GameConfig.HeroCriticalMPPercent)
-                        return true;
-                }
 
                 // Check all hired mercenaries' HP
                 var mercenaryManager = Core.Services.GetService<MercenaryManager>();
@@ -90,14 +83,46 @@ namespace PitHero.ECS.Components
                             float mercHpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
                             if (mercHpPercent < GameConfig.HeroCriticalHPPercent)
                                 return true;
+                        }
+                    }
+                }
 
-                            // Check mercenary MP
-                            if (mercComp.LinkedMercenary.MaxMP > 0)
-                            {
-                                float mercMpPercent = (float)mercComp.LinkedMercenary.CurrentMP / mercComp.LinkedMercenary.MaxMP;
-                                if (mercMpPercent < GameConfig.HeroCriticalMPPercent)
-                                    return true;
-                            }
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// True when hero's MP or any hired mercenary's MP falls below HeroCriticalMPPercent.
+        /// Only checks MP — use HPCritical for HP checks.
+        /// </summary>
+        public bool MPCritical
+        {
+            get
+            {
+                // Check hero's MP
+                if (LinkedHero == null)
+                    return false;
+                if (LinkedHero.MaxMP > 0)
+                {
+                    float mpPercent = (float)LinkedHero.CurrentMP / LinkedHero.MaxMP;
+                    if (mpPercent < GameConfig.HeroCriticalMPPercent)
+                        return true;
+                }
+
+                // Check all hired mercenaries' MP
+                var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+                if (mercenaryManager != null)
+                {
+                    var hiredMercenaries = mercenaryManager.GetHiredMercenaries();
+                    for (int i = 0; i < hiredMercenaries.Count; i++)
+                    {
+                        var merc = hiredMercenaries[i];
+                        var mercComp = merc.GetComponent<MercenaryComponent>();
+                        if (mercComp?.LinkedMercenary != null && mercComp.LinkedMercenary.MaxMP > 0)
+                        {
+                            float mercMpPercent = (float)mercComp.LinkedMercenary.CurrentMP / mercComp.LinkedMercenary.MaxMP;
+                            if (mercMpPercent < GameConfig.HeroCriticalMPPercent)
+                                return true;
                         }
                     }
                 }
@@ -204,6 +229,16 @@ namespace PitHero.ECS.Components
         public bool AllHealingOptionsExhausted()
         {
             return HealingItemExhausted && HealingSkillExhausted && InnExhausted;
+        }
+
+        /// <summary>
+        /// Returns true if all MP recovery options are exhausted (items and inn).
+        /// Used by GOAP goal setting to determine when to skip the MPCritical goal.
+        /// Note: Healing skills do NOT recover MP, so they are not included here.
+        /// </summary>
+        public bool AllMPRecoveryOptionsExhausted()
+        {
+            return HealingItemExhausted && InnExhausted;
         }
 
         /// <summary>
@@ -479,6 +514,10 @@ namespace PitHero.ECS.Components
             {
                 worldState.Set(GoapConstants.HPCritical, true);
             }
+            if (MPCritical)
+            {
+                worldState.Set(GoapConstants.MPCritical, true);
+            }
             if (HealingItemExhausted)
             {
                 worldState.Set(GoapConstants.HealingItemExhausted, true);
@@ -537,6 +576,15 @@ namespace PitHero.ECS.Components
             {
                 goalState.Set(GoapConstants.HPCritical, false);
                 return; // Skip other goals when HP is critical
+            }
+
+            // HIGH PRIORITY: MP recovery - if MP is critical and recovery options exist (items or inn), make it a goal
+            // UseHealingItemAction and SleepInBedAction can handle MP recovery
+            // UseHealingSkillAction does NOT handle MP (it only heals HP)
+            if (MPCritical && !AllMPRecoveryOptionsExhausted())
+            {
+                goalState.Set(GoapConstants.MPCritical, false);
+                return; // Skip other goals when MP is critical
             }
 
             // Main goals for the hero - planner should always plan the optimal path to these goals.

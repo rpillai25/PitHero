@@ -22,31 +22,45 @@ namespace PitHero.AI
 
         public UseHealingItemAction() : base(GoapConstants.UseHealingItemAction, 10)
         {
-            // Preconditions: HP is critical and we haven't exhausted healing items
-            SetPrecondition(GoapConstants.HPCritical, true);
+            // No static preconditions for HPCritical/MPCritical because this action can satisfy
+            // either goal. The Validate() method dynamically checks:
+            // - At least one of HPCritical or MPCritical must be true
+            // - HealingItemExhausted must be false
+            // - Priority checks against other healing options
 
-            // Postcondition: HP is no longer critical
+            // Inn restores both HP and MP to full, so set both postconditions
             SetPostcondition(GoapConstants.HPCritical, false);
+            SetPostcondition(GoapConstants.MPCritical, false);
         }
 
         public override bool Validate()
         {
             var heroComponent = Game1.Scene.FindEntity("hero")?.GetComponent<HeroComponent>();
             var healPrioritiesInOrder = heroComponent?.GetHealPrioritiesInOrder();
-            if (!heroComponent.HPCritical)
+            
+            // Must have either HPCritical or MPCritical
+            if (!heroComponent.HPCritical && !heroComponent.MPCritical)
             {
                 return false;
             }
 
             if (healPrioritiesInOrder != null)
             {
-                //If healing item priority is lower then healing skill and inn, and healing skill is not exhausted and inn is not exhausted, then we cannot use healing item
-                if (Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingItem) >
-                    Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingSkill) &&
-                    !heroComponent.HealingSkillExhausted ||
-                    Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingItem) >
-                    Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.Inn) &&
-                    !heroComponent.InnExhausted)
+                int itemPriority = Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingItem);
+                int skillPriority = Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingSkill);
+                int innPriority = Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.Inn);
+
+                // Check if we should wait for a higher-priority option
+                // Note: HealingSkill can only address HPCritical, not MPCritical, so when only MP is low,
+                // we should NOT wait for HealingSkill even if it has higher priority
+                bool shouldWaitForSkill = itemPriority > skillPriority && 
+                                          !heroComponent.HealingSkillExhausted &&
+                                          heroComponent.HPCritical; // Only wait if HP is critical (skill can help)
+                
+                bool shouldWaitForInn = itemPriority > innPriority && 
+                                        !heroComponent.InnExhausted;
+
+                if (shouldWaitForSkill || shouldWaitForInn)
                 {
                     return false;
                 }
@@ -387,6 +401,10 @@ namespace PitHero.AI
             
             if (consumed)
             {
+                // Reset HealingSkillExhausted so healing skills are re-evaluated next cycle
+                // (MP may have been restored, making previously exhausted skills viable again)
+                heroComponent.HealingSkillExhausted = false;
+
                 // Play restorative sound effect
                 SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
                 soundEffectManager.PlaySound(SoundEffectType.Restorative);

@@ -10,8 +10,9 @@ using System.Collections.Generic;
 namespace PitHero.AI
 {
     /// <summary>
-    /// Action that uses a healing skill from all learned skills in the hero crystal to restore HP
-    /// Chooses the most efficient healing skill (least waste) for the target with critical HP (hero or mercenary)
+    /// Action that uses a healing skill from hero crystal or mercenary learned skills to restore HP
+    /// Searches hero skills, synergy skills, and all hired mercenaries' skills for the most efficient heal
+    /// The caster (hero or mercenary) spends their own MP; mercenaries do not use healing items
     /// </summary>
     public class UseHealingSkillAction : HeroActionBase
     {
@@ -34,13 +35,15 @@ namespace PitHero.AI
             }
             if (healPrioritiesInOrder != null)
             {
-                //If healing item priority is lower then healing skill and inn, and healing skill is not exhausted and inn is not exhausted, then we cannot use healing item
-                if (Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingSkill) >
-                    Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingItem) &&
-                    !heroComponent.HealingItemExhausted ||
-                    Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingSkill) >
-                    Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.Inn) &&
-                    !heroComponent.InnExhausted)
+                int skillPriority = Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingSkill);
+                int itemPriority = Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingItem);
+                int innPriority = Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.Inn);
+
+                // Check if we should wait for a higher-priority option
+                bool shouldWaitForItem = skillPriority > itemPriority && !heroComponent.HealingItemExhausted;
+                bool shouldWaitForInn = skillPriority > innPriority && !heroComponent.InnExhausted;
+
+                if (shouldWaitForItem || shouldWaitForInn)
                 {
                     return false;
                 }
@@ -55,39 +58,31 @@ namespace PitHero.AI
         public override bool Execute(HeroComponent hero)
         {
             // Find the target (hero or mercenary) with critical HP
-            var target = FindCriticalHPTarget(hero, out bool isHero, out Entity targetEntity);
+            var target = FindCriticalHPTarget(hero, out bool isTargetHero, out Entity targetEntity);
             if (target == null)
             {
+                // No target with critical HP — action completed without doing anything.
+                // HPCritical world state will be rechecked next GOAP cycle.
                 Debug.Log("[UseHealingSkillAction] No target with critical HP found");
-                hero.HealingSkillExhausted = true;
-                return true; // Action complete (failed, but complete)
+                return true;
             }
 
             // Get target stats
-            int currentHP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).CurrentHP : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentHP;
-            int maxHP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).MaxHP : ((RolePlayingFramework.Mercenaries.Mercenary)target).MaxHP;
-            int currentMP = isHero ? ((RolePlayingFramework.Heroes.Hero)target).CurrentMP : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentMP;
-            string targetName = isHero ? ((RolePlayingFramework.Heroes.Hero)target).Name : ((RolePlayingFramework.Mercenaries.Mercenary)target).Name;
+            int currentHP = isTargetHero ? ((RolePlayingFramework.Heroes.Hero)target).CurrentHP : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentHP;
+            int maxHP = isTargetHero ? ((RolePlayingFramework.Heroes.Hero)target).MaxHP : ((RolePlayingFramework.Mercenaries.Mercenary)target).MaxHP;
+            string targetName = isTargetHero ? ((RolePlayingFramework.Heroes.Hero)target).Name : ((RolePlayingFramework.Mercenaries.Mercenary)target).Name;
 
-            // Use all learned skills from hero crystal
-            ISkill healingSkill = FindMostEfficientHealingSkillFromCrystal(hero.LinkedHero, currentHP, maxHP, currentMP);
+            // Find the best healer (hero or any hired mercenary) with a healing skill
+            FindBestHealerAndSkill(hero, currentHP, maxHP, out object caster, out ISkill healingSkill, out bool isCasterHero);
             if (healingSkill == null)
             {
-                Debug.Log("[UseHealingSkillAction] No healing skills available in hero crystal");
+                Debug.Log("[UseHealingSkillAction] No healing skills available from hero or mercenaries");
                 hero.HealingSkillExhausted = true;
                 return true;
             }
 
-            // Check if target has enough MP to use the skill
-            if (currentMP < healingSkill.MPCost)
-            {
-                Debug.Log($"[UseHealingSkillAction] Not enough MP to use {healingSkill.Name}. Need {healingSkill.MPCost}, have {currentMP}");
-                hero.HealingSkillExhausted = true;
-                return true;
-            }
-
-            // Use the healing skill on the target
-            bool success = UseHealingSkillOnTarget(healingSkill, target, isHero);
+            // Use the healing skill (caster spends MP, target gets healed)
+            bool success = UseHealingSkillOnTarget(healingSkill, caster, isCasterHero, target, isTargetHero);
             if (!success)
             {
                 Debug.Warn("[UseHealingSkillAction] Failed to use healing skill");
@@ -95,7 +90,8 @@ namespace PitHero.AI
                 return true;
             }
 
-            Debug.Log($"[UseHealingSkillAction] Successfully used {healingSkill.Name} on {targetName}");
+            string casterName = isCasterHero ? hero.LinkedHero.Name : ((RolePlayingFramework.Mercenaries.Mercenary)caster).Name;
+            Debug.Log($"[UseHealingSkillAction] {casterName} used {healingSkill.Name} on {targetName}");
             return true; // Action complete
         }
 
@@ -154,162 +150,160 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Find the most efficient healing skill from all learned skills in the hero crystal
-        /// Returns the healing skill with the least waste (smallest amount over what's needed)
-        /// Also prefers skills with lower MP cost when healing amounts are equal
+        /// Find the best healer (hero or any hired mercenary) and their most efficient healing skill.
+        /// Searches hero learned skills, synergy skills, and all hired mercenaries' learned skills.
         /// </summary>
-        private ISkill FindMostEfficientHealingSkillFromCrystal(RolePlayingFramework.Heroes.Hero hero, int currentHP, int maxHP, int currentMP)
+        private void FindBestHealerAndSkill(HeroComponent heroComponent, int targetCurrentHP, int targetMaxHP,
+            out object bestCaster, out ISkill bestSkill, out bool bestIsCasterHero)
         {
-            if (hero == null)
-            {
-                Debug.Log("[UseHealingSkillAction] Hero is null, cannot find healing skills");
-                return null;
-            }
-
-            int hpNeeded = maxHP - currentHP;
-            ISkill bestSkill = null;
+            int hpNeeded = targetMaxHP - targetCurrentHP;
+            bestCaster = null;
+            bestSkill = null;
+            bestIsCasterHero = false;
             int bestWaste = int.MaxValue;
             int bestMPCost = int.MaxValue;
 
-            Debug.Log($"[UseHealingSkillAction] Searching for healing skill in hero crystal. HP needed: {hpNeeded}, MP available: {currentMP}");
+            Debug.Log($"[UseHealingSkillAction] Searching all healers for best skill. HP needed: {hpNeeded}");
 
-            // Search through all learned skills (both regular and synergy skills)
-            var learnedSkills = hero.LearnedSkills;
-            if (learnedSkills != null)
+            // Search hero's learned skills and synergy skills (using hero's MP)
+            if (heroComponent.LinkedHero != null)
             {
-                foreach (var skillEntry in learnedSkills)
+                int heroMP = heroComponent.LinkedHero.CurrentMP;
+
+                // Hero learned skills
+                var learnedSkills = heroComponent.LinkedHero.LearnedSkills;
+                if (learnedSkills != null)
                 {
-                    var skill = skillEntry.Value;
-                    if (skill == null || skill.HPRestoreAmount <= 0) continue;
-
-                    // Don't use battle-only skills outside of battle
-                    if (skill.BattleOnly) continue;
-
-                    // Skip if not enough MP
-                    if (currentMP < skill.MPCost) 
+                    foreach (var skillEntry in learnedSkills)
                     {
-                        Debug.Log($"[UseHealingSkillAction] {skill.Name} (not enough MP: need {skill.MPCost}, have {currentMP})");
-                        continue;
+                        EvaluateSkill(skillEntry.Value, hpNeeded, heroMP, heroComponent.LinkedHero, true,
+                            ref bestCaster, ref bestSkill, ref bestIsCasterHero, ref bestWaste, ref bestMPCost);
                     }
+                }
 
-                    Debug.Log($"[UseHealingSkillAction] Learned skill: {skill.Name} (heals {skill.HPRestoreAmount} HP, costs {skill.MPCost} MP)");
+                // Hero synergy skills
+                var activeSynergies = heroComponent.LinkedHero.ActiveSynergies;
+                if (activeSynergies != null)
+                {
+                    for (int i = 0; i < activeSynergies.Count; i++)
+                    {
+                        var synergy = activeSynergies[i];
+                        if (synergy?.Pattern?.UnlockedSkill == null) continue;
+                        if (!synergy.IsSkillUnlocked) continue;
 
-                    // Calculate waste
-                    int waste = skill.HPRestoreAmount - hpNeeded;
-                    
-                    // If this skill can heal the target and has less waste than our current best, use it
-                    if (skill.HPRestoreAmount >= hpNeeded && waste < bestWaste)
-                    {
-                        bestSkill = skill;
-                        bestWaste = waste;
-                        bestMPCost = skill.MPCost;
-                        Debug.Log($"[UseHealingSkillAction] New best skill: {skill.Name} (waste: {waste}, MP cost: {skill.MPCost})");
-                    }
-                    // If waste is equal, prefer the skill with lower MP cost
-                    else if (skill.HPRestoreAmount >= hpNeeded && waste == bestWaste && skill.MPCost < bestMPCost)
-                    {
-                        bestSkill = skill;
-                        bestMPCost = skill.MPCost;
-                        Debug.Log($"[UseHealingSkillAction] Better MP efficiency: {skill.Name} (MP cost: {skill.MPCost})");
-                    }
-                    else if (bestSkill == null && skill.HPRestoreAmount > 0)
-                    {
-                        // If we haven't found a perfect fit yet, keep track of any healing skill
-                        bestSkill = skill;
-                        bestWaste = waste;
-                        bestMPCost = skill.MPCost;
-                        Debug.Log($"[UseHealingSkillAction] Fallback skill: {skill.Name} (partial heal)");
+                        EvaluateSkill(synergy.Pattern.UnlockedSkill, hpNeeded, heroMP, heroComponent.LinkedHero, true,
+                            ref bestCaster, ref bestSkill, ref bestIsCasterHero, ref bestWaste, ref bestMPCost);
                     }
                 }
             }
 
-            // Also check synergy skills from active synergies
-            var activeSynergies = hero.ActiveSynergies;
-            if (activeSynergies != null)
+            // Search all hired mercenaries' learned skills (each uses their own MP)
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager != null)
             {
-                for (int i = 0; i < activeSynergies.Count; i++)
+                var hiredMercenaries = mercenaryManager.GetHiredMercenaries();
+                for (int i = 0; i < hiredMercenaries.Count; i++)
                 {
-                    var synergy = activeSynergies[i];
-                    if (synergy?.Pattern?.UnlockedSkill == null) continue;
-                    if (!synergy.IsSkillUnlocked) continue; // Skip if not unlocked yet
+                    var merc = hiredMercenaries[i];
+                    var mercComp = merc.GetComponent<MercenaryComponent>();
+                    if (mercComp?.LinkedMercenary == null) continue;
 
-                    var skill = synergy.Pattern.UnlockedSkill;
-                    if (skill.HPRestoreAmount <= 0) continue;
+                    var mercenary = mercComp.LinkedMercenary;
+                    int mercMP = mercenary.CurrentMP;
+                    var mercSkills = mercenary.LearnedSkills;
+                    if (mercSkills == null) continue;
 
-                    // Don't use battle-only skills outside of battle
-                    if (skill.BattleOnly) continue;
-
-                    // Skip if not enough MP
-                    if (currentMP < skill.MPCost) 
+                    foreach (var skillEntry in mercSkills)
                     {
-                        Debug.Log($"[UseHealingSkillAction] Synergy skill: {skill.Name} (not enough MP: need {skill.MPCost}, have {currentMP})");
-                        continue;
-                    }
-
-                    Debug.Log($"[UseHealingSkillAction] Synergy skill: {skill.Name} (heals {skill.HPRestoreAmount} HP, costs {skill.MPCost} MP)");
-
-                    // Calculate waste
-                    int waste = skill.HPRestoreAmount - hpNeeded;
-                    
-                    // If this skill can heal the target and has less waste than our current best, use it
-                    if (skill.HPRestoreAmount >= hpNeeded && waste < bestWaste)
-                    {
-                        bestSkill = skill;
-                        bestWaste = waste;
-                        bestMPCost = skill.MPCost;
-                        Debug.Log($"[UseHealingSkillAction] New best synergy skill: {skill.Name} (waste: {waste}, MP cost: {skill.MPCost})");
-                    }
-                    // If waste is equal, prefer the skill with lower MP cost
-                    else if (skill.HPRestoreAmount >= hpNeeded && waste == bestWaste && skill.MPCost < bestMPCost)
-                    {
-                        bestSkill = skill;
-                        bestMPCost = skill.MPCost;
-                        Debug.Log($"[UseHealingSkillAction] Better MP efficiency: {skill.Name} (MP cost: {skill.MPCost})");
-                    }
-                    else if (bestSkill == null && skill.HPRestoreAmount > 0)
-                    {
-                        // If we haven't found a perfect fit yet, keep track of any healing skill
-                        bestSkill = skill;
-                        bestWaste = waste;
-                        bestMPCost = skill.MPCost;
-                        Debug.Log($"[UseHealingSkillAction] Fallback synergy skill: {skill.Name} (partial heal)");
+                        EvaluateSkill(skillEntry.Value, hpNeeded, mercMP, mercenary, false,
+                            ref bestCaster, ref bestSkill, ref bestIsCasterHero, ref bestWaste, ref bestMPCost);
                     }
                 }
             }
 
             if (bestSkill != null)
             {
-                Debug.Log($"[UseHealingSkillAction] Selected healing skill from hero crystal: {bestSkill.Name}");
+                string casterName = bestIsCasterHero
+                    ? heroComponent.LinkedHero.Name
+                    : ((RolePlayingFramework.Mercenaries.Mercenary)bestCaster).Name;
+                Debug.Log($"[UseHealingSkillAction] Best healer: {casterName} with {bestSkill.Name} (waste: {bestWaste}, MP cost: {bestMPCost})");
             }
             else
             {
-                Debug.Log($"[UseHealingSkillAction] No healing skills found in hero crystal");
+                Debug.Log("[UseHealingSkillAction] No healing skills found from any healer");
             }
-
-            return bestSkill;
         }
 
         /// <summary>
-        /// Use the healing skill on the target (hero or mercenary)
+        /// Evaluate a single skill against the current best and update tracking if this skill is better.
+        /// Prefers least waste (smallest overheal), then lowest MP cost as tiebreaker.
         /// </summary>
-        private bool UseHealingSkillOnTarget(ISkill skill, object target, bool isHero)
+        private void EvaluateSkill(ISkill skill, int hpNeeded, int casterCurrentMP, object caster, bool isCasterHero,
+            ref object bestCaster, ref ISkill bestSkill, ref bool bestIsCasterHero, ref int bestWaste, ref int bestMPCost)
         {
-            if (skill == null || target == null) return false;
+            if (skill == null || skill.HPRestoreAmount <= 0) return;
 
-            int currentMP = 0;
-            int maxMP = 0;
-            string targetName = "";
-            bool mpSpent = false;
+            // Don't use battle-only skills outside of battle
+            if (skill.BattleOnly) return;
 
-            // Check MP cost and consume MP
-            if (isHero)
+            // Skip if caster doesn't have enough MP
+            if (casterCurrentMP < skill.MPCost)
             {
-                var hero = (RolePlayingFramework.Heroes.Hero)target;
-                currentMP = hero.CurrentMP;
-                maxMP = hero.MaxMP;
-                targetName = hero.Name;
+                string casterName = isCasterHero
+                    ? ((RolePlayingFramework.Heroes.Hero)caster).Name
+                    : ((RolePlayingFramework.Mercenaries.Mercenary)caster).Name;
+                Debug.Log($"[UseHealingSkillAction] {casterName}: {skill.Name} (not enough MP: need {skill.MPCost}, have {casterCurrentMP})");
+                return;
+            }
 
-                if (currentMP < skill.MPCost)
+            int waste = skill.HPRestoreAmount - hpNeeded;
+
+            // If this skill can fully heal and has less waste than current best, use it
+            if (skill.HPRestoreAmount >= hpNeeded && waste < bestWaste)
+            {
+                bestCaster = caster;
+                bestSkill = skill;
+                bestIsCasterHero = isCasterHero;
+                bestWaste = waste;
+                bestMPCost = skill.MPCost;
+            }
+            // If waste is equal, prefer the skill with lower MP cost
+            else if (skill.HPRestoreAmount >= hpNeeded && waste == bestWaste && skill.MPCost < bestMPCost)
+            {
+                bestCaster = caster;
+                bestSkill = skill;
+                bestIsCasterHero = isCasterHero;
+                bestMPCost = skill.MPCost;
+            }
+            // Partial heal fallback: pick the skill that heals the most (least negative waste)
+            else if (skill.HPRestoreAmount < hpNeeded &&
+                     (bestSkill == null || (bestWaste < 0 && waste > bestWaste) || (bestWaste < 0 && waste == bestWaste && skill.MPCost < bestMPCost)))
+            {
+                bestCaster = caster;
+                bestSkill = skill;
+                bestIsCasterHero = isCasterHero;
+                bestWaste = waste;
+                bestMPCost = skill.MPCost;
+            }
+        }
+
+        /// <summary>
+        /// Use the healing skill: caster spends their own MP, target gets healed
+        /// </summary>
+        private bool UseHealingSkillOnTarget(ISkill skill, object caster, bool isCasterHero, object target, bool isTargetHero)
+        {
+            if (skill == null || caster == null || target == null) return false;
+
+            // Spend caster's MP
+            string casterName;
+            bool mpSpent;
+
+            if (isCasterHero)
+            {
+                var hero = (RolePlayingFramework.Heroes.Hero)caster;
+                casterName = hero.Name;
+
+                if (hero.CurrentMP < skill.MPCost)
                 {
                     return false;
                 }
@@ -318,12 +312,10 @@ namespace PitHero.AI
             }
             else
             {
-                var mercenary = (RolePlayingFramework.Mercenaries.Mercenary)target;
-                currentMP = mercenary.CurrentMP;
-                maxMP = mercenary.MaxMP;
-                targetName = mercenary.Name;
+                var mercenary = (RolePlayingFramework.Mercenaries.Mercenary)caster;
+                casterName = mercenary.Name;
 
-                if (currentMP < skill.MPCost)
+                if (mercenary.CurrentMP < skill.MPCost)
                 {
                     return false;
                 }
@@ -336,32 +328,35 @@ namespace PitHero.AI
                 return false;
             }
 
-            // Restore HP
+            // Restore target's HP
             int healAmount = skill.HPRestoreAmount;
             bool healed = false;
+            string targetName;
             int currentHP = 0;
             int maxHP = 0;
 
-            if (isHero)
+            if (isTargetHero)
             {
                 var hero = (RolePlayingFramework.Heroes.Hero)target;
                 healed = hero.RestoreHP(healAmount);
+                targetName = hero.Name;
                 currentHP = hero.CurrentHP;
                 maxHP = hero.MaxHP;
-                currentMP = hero.CurrentMP;
             }
             else
             {
                 var mercenary = (RolePlayingFramework.Mercenaries.Mercenary)target;
                 healed = mercenary.RestoreHP(healAmount);
+                targetName = mercenary.Name;
                 currentHP = mercenary.CurrentHP;
                 maxHP = mercenary.MaxHP;
-                currentMP = mercenary.CurrentMP;
             }
 
             if (healed)
             {
-                Debug.Log($"[UseHealingSkillAction] Healed {targetName} for {healAmount} HP using {skill.Name}. Current HP: {currentHP}/{maxHP}, MP: {currentMP}/{maxMP}");
+                int casterMP = isCasterHero ? ((RolePlayingFramework.Heroes.Hero)caster).CurrentMP : ((RolePlayingFramework.Mercenaries.Mercenary)caster).CurrentMP;
+                int casterMaxMP = isCasterHero ? ((RolePlayingFramework.Heroes.Hero)caster).MaxMP : ((RolePlayingFramework.Mercenaries.Mercenary)caster).MaxMP;
+                Debug.Log($"[UseHealingSkillAction] {casterName} healed {targetName} for {healAmount} HP using {skill.Name}. Target HP: {currentHP}/{maxHP}, Caster MP: {casterMP}/{casterMaxMP}");
                 return true;
             }
 

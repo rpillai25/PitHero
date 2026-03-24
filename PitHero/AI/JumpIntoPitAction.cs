@@ -17,10 +17,11 @@ namespace PitHero.AI
 
         public JumpIntoPitAction() : base(GoapConstants.JumpIntoPitAction, 1)
         {
-            // Precondition: Hero and pit must be initialized, and HP must not be critical
+            // Precondition: Hero and pit must be initialized, and neither HP nor MP must be critical
             SetPrecondition(GoapConstants.HeroInitialized, true);
             SetPrecondition(GoapConstants.PitInitialized, true);
             SetPrecondition(GoapConstants.HPCritical, false);
+            SetPrecondition(GoapConstants.MPCritical, false);
 
             // Postcondition: Hero enters pit
             SetPostcondition(GoapConstants.InsidePit, true);
