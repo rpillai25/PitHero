@@ -58,7 +58,7 @@ namespace PitHero.AI
             // Emergency survival override: HP extremely low
             if (hpPercent < EmergencyHPThreshold)
             {
-                return SelectEmergencyPotion(bag, maxHP, maxMP, out bestItem, out bestIndex);
+                return SelectEmergencyPotion(bag, maxHP, out bestItem, out bestIndex);
             }
 
             // Weighted scoring system
@@ -120,7 +120,7 @@ namespace PitHero.AI
         /// Ignores MP, waste, and efficiency. Allows full potions regardless of deficit.
         /// </summary>
         private static bool SelectEmergencyPotion(
-            ItemBag bag, int maxHP, int maxMP,
+            ItemBag bag, int maxHP,
             out Consumable bestItem, out int bestIndex)
         {
             bestItem = null;
@@ -221,14 +221,9 @@ namespace PitHero.AI
                 int restoreAmount = isHP ? consumable.HPRestoreAmount : consumable.MPRestoreAmount;
                 if (restoreAmount == 0) continue;
 
-                // Full potions rule
-                if (!IsFullPotionJustified(consumable, isHP ? currentStat : maxStat, maxStat,
-                                            isHP ? maxStat : currentStat, isHP ? 0 : maxStat))
-                {
-                    // Use the proper check: pass actual current/max for HP and MP
-                    if (!IsFullPotionJustifiedSingle(restoreAmount, currentStat, maxStat))
-                        continue;
-                }
+                // Full potions rule: only use full potions when deficit is large enough
+                if (!IsFullPotionJustifiedSingle(restoreAmount, currentStat, maxStat))
+                    continue;
 
                 int effectiveAmount = GetEffectiveRestoreAmount(restoreAmount, maxStat);
                 if (effectiveAmount <= 0) continue;
@@ -298,12 +293,14 @@ namespace PitHero.AI
             int bestHPIndex = -1;
             int bestHPWaste = int.MaxValue;
             int bestHPPrice = int.MaxValue;
+            int bestHPPartialAmount = -1;
 
             // Find best MP-only potion
             Consumable bestMP = null;
             int bestMPIndex = -1;
             int bestMPWaste = int.MaxValue;
             int bestMPPrice = int.MaxValue;
+            int bestMPPartialAmount = -1;
 
             for (int i = 0; i < bag.Capacity; i++)
             {
@@ -343,7 +340,6 @@ namespace PitHero.AI
                 {
                     // HP-only candidate
                     int waste = System.Math.Max(0, hpAmount - missingHP);
-                    // For single-resource, prefer sufficient potions with least waste
                     if (hpAmount >= missingHP)
                     {
                         if (waste < bestHPWaste ||
@@ -355,13 +351,18 @@ namespace PitHero.AI
                             bestHPIndex = i;
                         }
                     }
-                    else if (bestHP == null)
+                    else
                     {
-                        // Fallback: largest partial
-                        bestHPWaste = waste;
-                        bestHPPrice = consumable.Price;
-                        bestHP = consumable;
-                        bestHPIndex = i;
+                        // Partial: track largest for fallback
+                        if (hpAmount > bestHPPartialAmount ||
+                            (hpAmount == bestHPPartialAmount && consumable.Price < bestHPPrice))
+                        {
+                            bestHPPartialAmount = hpAmount;
+                            bestHPWaste = waste;
+                            bestHPPrice = consumable.Price;
+                            bestHP = consumable;
+                            bestHPIndex = i;
+                        }
                     }
                 }
 
@@ -380,12 +381,18 @@ namespace PitHero.AI
                             bestMPIndex = i;
                         }
                     }
-                    else if (bestMP == null)
+                    else
                     {
-                        bestMPWaste = waste;
-                        bestMPPrice = consumable.Price;
-                        bestMP = consumable;
-                        bestMPIndex = i;
+                        // Partial: track largest for fallback
+                        if (mpAmount > bestMPPartialAmount ||
+                            (mpAmount == bestMPPartialAmount && consumable.Price < bestMPPrice))
+                        {
+                            bestMPPartialAmount = mpAmount;
+                            bestMPWaste = waste;
+                            bestMPPrice = consumable.Price;
+                            bestMP = consumable;
+                            bestMPIndex = i;
+                        }
                     }
                 }
             }

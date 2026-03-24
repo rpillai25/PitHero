@@ -16,3 +16,4 @@ fnalibs.tar.bz2
 FNA
 PitHero.Tests/TestResults/
 test_output.txt
+*.log
