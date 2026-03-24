@@ -53,7 +53,6 @@ namespace PitHero.AI
         private const float DefensiveHealThreshold = 0.6f;
         private const float StrategicMPThreshold = 0.2f;
         private const float DefensiveMPThreshold = 0.3f;
-        private const int FullRestoreWastePenalty = 999999;
 
         // Pre-allocated buffers reused each call (single-threaded game)
         private static readonly List<ISkill> _attackSkillBuffer = new List<ISkill>(32);
@@ -150,23 +149,13 @@ namespace PitHero.AI
         {
             CollectHeroSkills(hero, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
-            // 1. Heal check (40% threshold)
+            // 1. Heal/restore check (HP < 40% OR MP < 20%)
             BattleAction healAction;
             if (TryHeroHealAction(heroComponent, hero, livingMercenaries,
-                    GameConfig.HeroCriticalHPPercent, _healSkillBuffer, out healAction))
+                    GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
 
-            // 2. MP restore check (20%)
-            if (ShouldRestoreMP(hero.CurrentMP, hero.MaxMP, StrategicMPThreshold))
-            {
-                int mpNeeded = hero.MaxMP - hero.CurrentMP;
-                Consumable mpItem;
-                int mpIdx;
-                if (FindBestMPConsumable(heroComponent.Bag, mpNeeded, out mpItem, out mpIdx))
-                    return CreateConsumableAction(mpItem, mpIdx, hero, true);
-            }
-
-            // 3. Attack (prefer elemental advantage, then lowest MP cost)
+            // 2. Attack (prefer elemental advantage, then lowest MP cost)
             var aoeResult = TryAoESkill(_attackSkillBuffer, hero.CurrentMP, livingMonsters);
             if (aoeResult.Skill != null)
                 return CreateAttackSkillAction(aoeResult.Skill, aoeResult.TargetEntity);
@@ -186,28 +175,18 @@ namespace PitHero.AI
         {
             CollectHeroSkills(hero, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
-            // 1. Heal check (60% threshold)
+            // 1. Heal/restore check (HP < 60% OR MP < 30%)
             BattleAction healAction;
             if (TryHeroHealAction(heroComponent, hero, livingMercenaries,
-                    DefensiveHealThreshold, _healSkillBuffer, out healAction))
+                    DefensiveHealThreshold, DefensiveMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
 
-            // 2. MP restore check (30%)
-            if (ShouldRestoreMP(hero.CurrentMP, hero.MaxMP, DefensiveMPThreshold))
-            {
-                int mpNeeded = hero.MaxMP - hero.CurrentMP;
-                Consumable mpItem;
-                int mpIdx;
-                if (FindBestMPConsumable(heroComponent.Bag, mpNeeded, out mpItem, out mpIdx))
-                    return CreateConsumableAction(mpItem, mpIdx, hero, true);
-            }
-
-            // 3. Apply buff if available
+            // 2. Apply buff if available
             var buffSkill = FindBestBuffSkill(_buffSkillBuffer, hero.CurrentMP);
             if (buffSkill != null)
                 return CreateHealingSkillAction(buffSkill, hero, true);
 
-            // 4. Attack (still attack even if not all allies are at 60% — nothing else to do)
+            // 3. Attack (still attack even if not all allies are at 60% — nothing else to do)
             var aoeResult = TryAoESkill(_attackSkillBuffer, hero.CurrentMP, livingMonsters);
             if (aoeResult.Skill != null)
                 return CreateAttackSkillAction(aoeResult.Skill, aoeResult.TargetEntity);
@@ -249,24 +228,13 @@ namespace PitHero.AI
         {
             CollectMercenarySkills(merc, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
-            // 1. Heal check (40% threshold) — skills are unrestricted
+            // 1. Heal/restore check (HP < 40% OR MP < 20%) — skills are unrestricted
             BattleAction healAction;
             if (TryMercHealAction(merc, heroComponent, livingMercenaries, mercComponent,
-                    GameConfig.HeroCriticalHPPercent, _healSkillBuffer, out healAction))
+                    GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
 
-            // 2. MP restore (20%) — consumable restrictions apply
-            if (ShouldRestoreMP(merc.CurrentMP, merc.MaxMP, StrategicMPThreshold) &&
-                heroComponent.MercenariesCanUseConsumables)
-            {
-                int mpNeeded = merc.MaxMP - merc.CurrentMP;
-                Consumable mpItem;
-                int mpIdx;
-                if (FindBestMPConsumable(heroComponent.Bag, mpNeeded, out mpItem, out mpIdx))
-                    return CreateConsumableAction(mpItem, mpIdx, merc, false);
-            }
-
-            // 3. Attack
+            // 2. Attack
             return MercAttack(merc, livingMonsters);
         }
 
@@ -277,29 +245,18 @@ namespace PitHero.AI
         {
             CollectMercenarySkills(merc, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
-            // 1. Heal check (60%)
+            // 1. Heal/restore check (HP < 60% OR MP < 30%)
             BattleAction healAction;
             if (TryMercHealAction(merc, heroComponent, livingMercenaries, mercComponent,
-                    DefensiveHealThreshold, _healSkillBuffer, out healAction))
+                    DefensiveHealThreshold, DefensiveMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
 
-            // 2. MP restore (30%)
-            if (ShouldRestoreMP(merc.CurrentMP, merc.MaxMP, DefensiveMPThreshold) &&
-                heroComponent.MercenariesCanUseConsumables)
-            {
-                int mpNeeded = merc.MaxMP - merc.CurrentMP;
-                Consumable mpItem;
-                int mpIdx;
-                if (FindBestMPConsumable(heroComponent.Bag, mpNeeded, out mpItem, out mpIdx))
-                    return CreateConsumableAction(mpItem, mpIdx, merc, false);
-            }
-
-            // 3. Buff
+            // 2. Buff
             var buffSkill = FindBestBuffSkill(_buffSkillBuffer, merc.CurrentMP);
             if (buffSkill != null)
                 return CreateHealingSkillAction(buffSkill, merc, false);
 
-            // 4. Attack
+            // 3. Attack
             return MercAttack(merc, livingMonsters);
         }
 
@@ -324,11 +281,12 @@ namespace PitHero.AI
 
         /// <summary>
         /// Attempts to produce a heal action for the hero using the heal priority order.
+        /// Uses PotionSelectionEngine battle rules for consumable selection with unified HP/MP scoring.
         /// Returns true and sets healAction if healing was decided.
         /// </summary>
         private static bool TryHeroHealAction(
             HeroComponent heroComponent, Hero hero, List<Entity> livingMercenaries,
-            float threshold, List<ISkill> healSkills, out BattleAction healAction)
+            float hpThreshold, float mpThreshold, List<ISkill> healSkills, out BattleAction healAction)
         {
             healAction = default;
 
@@ -336,8 +294,11 @@ namespace PitHero.AI
             bool targetIsHero;
             int targetCurrentHP;
             int targetMaxHP;
-            if (!GetHealTarget(hero, livingMercenaries, threshold,
-                    out healTarget, out targetIsHero, out targetCurrentHP, out targetMaxHP))
+            int targetCurrentMP;
+            int targetMaxMP;
+            if (!GetHealTarget(hero, livingMercenaries, hpThreshold, mpThreshold,
+                    out healTarget, out targetIsHero, out targetCurrentHP, out targetMaxHP,
+                    out targetCurrentMP, out targetMaxMP))
                 return false;
 
             var priorities = heroComponent.GetHealPrioritiesInOrder();
@@ -353,12 +314,13 @@ namespace PitHero.AI
                         if (heroComponent.HealingItemExhausted) continue;
                         // Check consumable targeting permission
                         if (!targetIsHero && !heroComponent.UseConsumablesOnMercenaries) continue;
-                        int hpNeeded = targetMaxHP - targetCurrentHP;
-                        Consumable hpItem;
-                        int hpIdx;
-                        if (FindBestHPConsumable(heroComponent.Bag, hpNeeded, out hpItem, out hpIdx))
+                        Consumable bestItem;
+                        int bestIdx;
+                        if (PotionSelectionEngine.SelectBattlePotion(heroComponent.Bag,
+                            targetCurrentHP, targetMaxHP, targetCurrentMP, targetMaxMP,
+                            out bestItem, out bestIdx))
                         {
-                            healAction = CreateConsumableAction(hpItem, hpIdx, healTarget, targetIsHero);
+                            healAction = CreateConsumableAction(bestItem, bestIdx, healTarget, targetIsHero);
                             return true;
                         }
                         continue;
@@ -382,10 +344,11 @@ namespace PitHero.AI
         /// <summary>
         /// Attempts to produce a heal action for a mercenary.
         /// Healing skills are unrestricted; consumable use respects settings.
+        /// Uses PotionSelectionEngine battle rules for unified HP/MP potion scoring.
         /// </summary>
         private static bool TryMercHealAction(
             Mercenary merc, HeroComponent heroComponent, List<Entity> livingMercenaries,
-            MercenaryComponent selfComp, float threshold, List<ISkill> healSkills,
+            MercenaryComponent selfComp, float hpThreshold, float mpThreshold, List<ISkill> healSkills,
             out BattleAction healAction)
         {
             healAction = default;
@@ -395,8 +358,11 @@ namespace PitHero.AI
             bool targetIsHero;
             int targetCurrentHP;
             int targetMaxHP;
-            if (!GetHealTarget(hero, livingMercenaries, threshold,
-                    out healTarget, out targetIsHero, out targetCurrentHP, out targetMaxHP))
+            int targetCurrentMP;
+            int targetMaxMP;
+            if (!GetHealTarget(hero, livingMercenaries, hpThreshold, mpThreshold,
+                    out healTarget, out targetIsHero, out targetCurrentHP, out targetMaxHP,
+                    out targetCurrentMP, out targetMaxMP))
                 return false;
 
             // 1. Try healing skill (no restrictions for mercenaries)
@@ -418,12 +384,13 @@ namespace PitHero.AI
 
             if (canUseConsumable)
             {
-                int hpNeeded = targetMaxHP - targetCurrentHP;
-                Consumable hpItem;
-                int hpIdx;
-                if (FindBestHPConsumable(heroComponent.Bag, hpNeeded, out hpItem, out hpIdx))
+                Consumable bestItem;
+                int bestIdx;
+                if (PotionSelectionEngine.SelectBattlePotion(heroComponent.Bag,
+                    targetCurrentHP, targetMaxHP, targetCurrentMP, targetMaxMP,
+                    out bestItem, out bestIdx))
                 {
-                    healAction = CreateConsumableAction(hpItem, hpIdx, healTarget, targetIsHero);
+                    healAction = CreateConsumableAction(bestItem, bestIdx, healTarget, targetIsHero);
                     return true;
                 }
             }
@@ -432,30 +399,40 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Finds the ally (hero or mercenary) most in need of healing below the given threshold.
-        /// Returns true if a target was found.
+        /// Finds the ally (hero or mercenary) most in need of healing or MP restoration
+        /// below the given thresholds. Returns true if a target was found.
         /// </summary>
         private static bool GetHealTarget(
-            Hero hero, List<Entity> livingMercenaries, float threshold,
-            out object target, out bool isHero, out int currentHP, out int maxHP)
+            Hero hero, List<Entity> livingMercenaries, float hpThreshold, float mpThreshold,
+            out object target, out bool isHero, out int currentHP, out int maxHP,
+            out int currentMP, out int maxMP)
         {
             target = null;
             isHero = false;
             currentHP = 0;
             maxHP = 0;
+            currentMP = 0;
+            maxMP = 0;
             float lowestPercent = 1f;
 
             // Check hero
             if (hero != null && hero.MaxHP > 0)
             {
-                float heroPercent = (float)hero.CurrentHP / hero.MaxHP;
-                if (heroPercent < threshold && heroPercent < lowestPercent)
+                float heroHPPercent = (float)hero.CurrentHP / hero.MaxHP;
+                float heroMPPercent = hero.MaxMP > 0 ? (float)hero.CurrentMP / hero.MaxMP : 1f;
+                bool hpCritical = heroHPPercent < hpThreshold;
+                bool mpCritical = heroMPPercent < mpThreshold;
+                float minPercent = System.Math.Min(heroHPPercent, heroMPPercent);
+
+                if ((hpCritical || mpCritical) && minPercent < lowestPercent)
                 {
                     target = hero;
                     isHero = true;
                     currentHP = hero.CurrentHP;
                     maxHP = hero.MaxHP;
-                    lowestPercent = heroPercent;
+                    currentMP = hero.CurrentMP;
+                    maxMP = hero.MaxMP;
+                    lowestPercent = minPercent;
                 }
             }
 
@@ -469,33 +446,26 @@ namespace PitHero.AI
                     var merc = mercComp.LinkedMercenary;
                     if (merc == null || merc.MaxHP <= 0) continue;
 
-                    float mercPercent = (float)merc.CurrentHP / merc.MaxHP;
-                    if (mercPercent < threshold && mercPercent < lowestPercent)
+                    float mercHPPercent = (float)merc.CurrentHP / merc.MaxHP;
+                    float mercMPPercent = merc.MaxMP > 0 ? (float)merc.CurrentMP / merc.MaxMP : 1f;
+                    bool hpCritical = mercHPPercent < hpThreshold;
+                    bool mpCritical = mercMPPercent < mpThreshold;
+                    float minPercent = System.Math.Min(mercHPPercent, mercMPPercent);
+
+                    if ((hpCritical || mpCritical) && minPercent < lowestPercent)
                     {
                         target = merc;
                         isHero = false;
                         currentHP = merc.CurrentHP;
                         maxHP = merc.MaxHP;
-                        lowestPercent = mercPercent;
+                        currentMP = merc.CurrentMP;
+                        maxMP = merc.MaxMP;
+                        lowestPercent = minPercent;
                     }
                 }
             }
 
             return target != null;
-        }
-
-        /// <summary>Determines if a character needs healing based on HP percent and threshold.</summary>
-        private static bool ShouldHeal(int currentHP, int maxHP, float threshold)
-        {
-            if (maxHP <= 0) return false;
-            return (float)currentHP / maxHP < threshold;
-        }
-
-        /// <summary>Determines if MP restoration is needed based on current MP percent and threshold.</summary>
-        private static bool ShouldRestoreMP(int currentMP, int maxMP, float threshold)
-        {
-            if (maxMP <= 0) return false;
-            return (float)currentMP / maxMP < threshold;
         }
 
         // ====================================================================
@@ -673,98 +643,6 @@ namespace PitHero.AI
                     return skill;
             }
             return null;
-        }
-
-        // ====================================================================
-        // CONSUMABLE SELECTION
-        // ====================================================================
-
-        /// <summary>
-        /// Finds the most efficient HP-restoring consumable from the bag.
-        /// Minimizes waste (restore amount - HP needed). Full-heal potions (-1) are saved for emergencies.
-        /// </summary>
-        private static bool FindBestHPConsumable(
-            ItemBag bag, int hpNeeded,
-            out Consumable bestItem, out int bestIndex)
-        {
-            bestItem = null;
-            bestIndex = -1;
-            int bestWaste = int.MaxValue;
-
-            if (bag == null || hpNeeded <= 0) return false;
-
-            for (int i = 0; i < bag.Capacity; i++)
-            {
-                var item = bag.GetSlotItem(i);
-                var consumable = item as Consumable;
-                if (consumable == null) continue;
-                if (consumable.StackCount <= 0) continue;
-                if (consumable.HPRestoreAmount == 0) continue;
-
-                int waste;
-                if (consumable.HPRestoreAmount == -1)
-                {
-                    // Full heal: penalise to save for emergencies
-                    waste = FullRestoreWastePenalty;
-                }
-                else
-                {
-                    waste = System.Math.Abs(consumable.HPRestoreAmount - hpNeeded);
-                }
-
-                if (waste < bestWaste)
-                {
-                    bestWaste = waste;
-                    bestItem = consumable;
-                    bestIndex = i;
-                }
-            }
-
-            return bestItem != null;
-        }
-
-        /// <summary>
-        /// Finds the most efficient MP-restoring consumable from the bag.
-        /// Same logic as HP consumable selection but applied to MP values.
-        /// </summary>
-        private static bool FindBestMPConsumable(
-            ItemBag bag, int mpNeeded,
-            out Consumable bestItem, out int bestIndex)
-        {
-            bestItem = null;
-            bestIndex = -1;
-            int bestWaste = int.MaxValue;
-
-            if (bag == null || mpNeeded <= 0) return false;
-
-            for (int i = 0; i < bag.Capacity; i++)
-            {
-                var item = bag.GetSlotItem(i);
-                var consumable = item as Consumable;
-                if (consumable == null) continue;
-                if (consumable.StackCount <= 0) continue;
-                if (consumable.MPRestoreAmount == 0) continue;
-
-                int waste;
-                if (consumable.MPRestoreAmount == -1)
-                {
-                    // Full restore: penalise to save for emergencies
-                    waste = FullRestoreWastePenalty;
-                }
-                else
-                {
-                    waste = System.Math.Abs(consumable.MPRestoreAmount - mpNeeded);
-                }
-
-                if (waste < bestWaste)
-                {
-                    bestWaste = waste;
-                    bestItem = consumable;
-                    bestIndex = i;
-                }
-            }
-
-            return bestItem != null;
         }
 
         // ====================================================================
