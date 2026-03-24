@@ -7,18 +7,17 @@ namespace PitHero.UI
 {
     /// <summary>
     /// UI for Stop/Continue Adventuring toggle button.
-    /// Uses FastForward sprite for Stop Adventuring and Settings (Gear) sprite for Continue Adventuring.
     /// </summary>
     public class StopAdventuringUI
     {
         private Stage _stage;
         private HoverableImageButton _button;
 
-        // Stop Adventuring styles (uses FastForward sprites)
+        // Stop Adventuring styles
         private ImageButtonStyle _stopNormalStyle;
         private ImageButtonStyle _stopHalfStyle;
 
-        // Continue Adventuring styles (uses Gear sprites)
+        // Continue Adventuring styles
         private ImageButtonStyle _continueNormalStyle;
         private ImageButtonStyle _continueHalfStyle;
 
