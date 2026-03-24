@@ -36,14 +36,13 @@ namespace PitHero.UI
 
         private void CreateMonsterButton(Skin skin)
         {
-            // TODO: Replace UIHero sprites with dedicated UIMonster sprites once art is available
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
-            var sprite       = uiAtlas.GetSprite("UIHero");
-            var sprite2x     = uiAtlas.GetSprite("UIHero2x");
-            var highlight    = uiAtlas.GetSprite("UIHeroHighlight");
-            var highlight2x  = uiAtlas.GetSprite("UIHeroHighlight2x");
-            var inverse      = uiAtlas.GetSprite("UIHeroInverse");
-            var inverse2x    = uiAtlas.GetSprite("UIHeroInverse2x");
+            var sprite       = uiAtlas.GetSprite("UIMonster");
+            var sprite2x     = uiAtlas.GetSprite("UIMonster2x");
+            var highlight    = uiAtlas.GetSprite("UIMonsterHighlight");
+            var highlight2x  = uiAtlas.GetSprite("UIMonsterHighlight2x");
+            var inverse      = uiAtlas.GetSprite("UIMonsterInverse");
+            var inverse2x    = uiAtlas.GetSprite("UIMonsterInverse2x");
 
             _monsterNormalStyle = new ImageButtonStyle
             {
