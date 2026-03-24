@@ -342,18 +342,21 @@ namespace PitHero.AI
                     int waste = System.Math.Max(0, hpAmount - missingHP);
                     if (hpAmount >= missingHP)
                     {
-                        if (waste < bestHPWaste ||
+                        // Sufficient: covers the full deficit — always better than any partial
+                        if (bestHP == null || bestHPPartialAmount >= 0 ||
+                            waste < bestHPWaste ||
                             (waste == bestHPWaste && consumable.Price < bestHPPrice))
                         {
                             bestHPWaste = waste;
                             bestHPPrice = consumable.Price;
                             bestHP = consumable;
                             bestHPIndex = i;
+                            bestHPPartialAmount = -1; // Mark as sufficient (no longer partial)
                         }
                     }
-                    else
+                    else if (bestHPPartialAmount >= 0 || bestHP == null)
                     {
-                        // Partial: track largest for fallback
+                        // Partial: track largest for fallback (only if no sufficient found yet)
                         if (hpAmount > bestHPPartialAmount ||
                             (hpAmount == bestHPPartialAmount && consumable.Price < bestHPPrice))
                         {
@@ -372,18 +375,21 @@ namespace PitHero.AI
                     int waste = System.Math.Max(0, mpAmount - missingMP);
                     if (mpAmount >= missingMP)
                     {
-                        if (waste < bestMPWaste ||
+                        // Sufficient: covers the full deficit — always better than any partial
+                        if (bestMP == null || bestMPPartialAmount >= 0 ||
+                            waste < bestMPWaste ||
                             (waste == bestMPWaste && consumable.Price < bestMPPrice))
                         {
                             bestMPWaste = waste;
                             bestMPPrice = consumable.Price;
                             bestMP = consumable;
                             bestMPIndex = i;
+                            bestMPPartialAmount = -1; // Mark as sufficient
                         }
                     }
-                    else
+                    else if (bestMPPartialAmount >= 0 || bestMP == null)
                     {
-                        // Partial: track largest for fallback
+                        // Partial: track largest for fallback (only if no sufficient found yet)
                         if (mpAmount > bestMPPartialAmount ||
                             (mpAmount == bestMPPartialAmount && consumable.Price < bestMPPrice))
                         {
