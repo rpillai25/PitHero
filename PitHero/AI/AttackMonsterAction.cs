@@ -511,7 +511,7 @@ namespace PitHero.AI
                         else if (participant.Type == BattleParticipant.ParticipantType.Mercenary)
                             turnIndicator.Show(participant.MercenaryEntity);
                         else
-                            turnIndicator.Show(participant.MonsterEntity);
+                            turnIndicator.Show(participant.MonsterEntity, true);
 
                         if (participant.Type == BattleParticipant.ParticipantType.Hero)
                         {
