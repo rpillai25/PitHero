@@ -83,19 +83,19 @@ UIContinue
 	32,224,30,30
 	0.5,0.5
 UIContinue2x
-	63,224,30,30
+	416,238,60,60
 	0.5,0.5
 UIContinueHighlight
 	94,224,30,30
 	0.5,0.5
 UIContinueHighlight2x
-	125,224,30,30
+	109,295,60,60
 	0.5,0.5
 UIContinueInverse
 	479,61,30,30
 	0.5,0.5
 UIContinueInverse2x
-	413,131,30,30
+	169,295,60,60
 	0.5,0.5
 UIMonster
 	355,187,30,30
@@ -110,19 +110,19 @@ UIStop
 	446,127,30,30
 	0.5,0.5
 UIStop2x
-	386,187,30,30
+	165,235,60,60
 	0.5,0.5
 UIStopHighlight
 	479,123,30,30
 	0.5,0.5
 UIStopHighlight2x
-	386,218,30,30
+	225,235,60,60
 	0.5,0.5
 UIStopInverse
 	444,158,30,30
 	0.5,0.5
 UIStopInverse2x
-	477,154,30,30
+	338,248,60,60
 	0.5,0.5
 NinePatchTab_Active
 	289,228,24,24
