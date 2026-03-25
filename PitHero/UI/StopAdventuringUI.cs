@@ -7,18 +7,17 @@ namespace PitHero.UI
 {
     /// <summary>
     /// UI for Stop/Continue Adventuring toggle button.
-    /// Uses FastForward sprite for Stop Adventuring and Settings (Gear) sprite for Continue Adventuring.
     /// </summary>
     public class StopAdventuringUI
     {
         private Stage _stage;
         private HoverableImageButton _button;
 
-        // Stop Adventuring styles (uses FastForward sprites)
+        // Stop Adventuring styles
         private ImageButtonStyle _stopNormalStyle;
         private ImageButtonStyle _stopHalfStyle;
 
-        // Continue Adventuring styles (uses Gear sprites)
+        // Continue Adventuring styles
         private ImageButtonStyle _continueNormalStyle;
         private ImageButtonStyle _continueHalfStyle;
 
@@ -50,52 +49,52 @@ namespace PitHero.UI
         {
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
 
-            // Stop Adventuring sprites (same as FastForward)
-            var fastFSprite = uiAtlas.GetSprite("UIFastF");
-            var fastFSprite2x = uiAtlas.GetSprite("UIFastF2x");
-            var fastFHighlight = uiAtlas.GetSprite("UIFastFHighlight");
-            var fastFHighlight2x = uiAtlas.GetSprite("UIFastFHighlight2x");
-            var fastFInverse = uiAtlas.GetSprite("UIFastFInverse");
-            var fastFInverse2x = uiAtlas.GetSprite("UIFastFInverse2x");
+            // Stop Adventuring sprites
+            var stopSprite = uiAtlas.GetSprite("UIStop");
+            var stopSprite2x = uiAtlas.GetSprite("UIStop2x");
+            var stopHighlight = uiAtlas.GetSprite("UIStopHighlight");
+            var stopHighlight2x = uiAtlas.GetSprite("UIStopHighlight2x");
+            var stopInverse = uiAtlas.GetSprite("UIStopInverse");
+            var stopInverse2x = uiAtlas.GetSprite("UIStopInverse2x");
 
-            // Continue Adventuring sprites (same as Gear/Settings)
-            var gearSprite = uiAtlas.GetSprite("UIGear");
-            var gearSprite2x = uiAtlas.GetSprite("UIGear2x");
-            var gearHighlight = uiAtlas.GetSprite("UIGearHighlight");
-            var gearHighlight2x = uiAtlas.GetSprite("UIGearHighlight2x");
-            var gearInverse = uiAtlas.GetSprite("UIGearInverse");
-            var gearInverse2x = uiAtlas.GetSprite("UIGearInverse2x");
+            // Continue Adventuring sprites
+            var continueSprite = uiAtlas.GetSprite("UIContinue");
+            var continueSprite2x = uiAtlas.GetSprite("UIContinue2x");
+            var continueHighlight = uiAtlas.GetSprite("UIContinueHighlight");
+            var continueHighlight2x = uiAtlas.GetSprite("UIContinueHighlight2x");
+            var continueInverse = uiAtlas.GetSprite("UIContinueInverse");
+            var continueInverse2x = uiAtlas.GetSprite("UIContinueInverse2x");
 
             _stopNormalStyle = new ImageButtonStyle
             {
-                ImageUp = new SpriteDrawable(fastFSprite),
-                ImageDown = new SpriteDrawable(fastFInverse),
-                ImageOver = new SpriteDrawable(fastFHighlight)
+                ImageUp = new SpriteDrawable(stopSprite),
+                ImageDown = new SpriteDrawable(stopInverse),
+                ImageOver = new SpriteDrawable(stopHighlight)
             };
 
             _stopHalfStyle = new ImageButtonStyle
             {
-                ImageUp = new SpriteDrawable(fastFSprite2x),
-                ImageDown = new SpriteDrawable(fastFInverse2x),
-                ImageOver = new SpriteDrawable(fastFHighlight2x)
+                ImageUp = new SpriteDrawable(stopSprite2x),
+                ImageDown = new SpriteDrawable(stopInverse2x),
+                ImageOver = new SpriteDrawable(stopHighlight2x)
             };
 
             _continueNormalStyle = new ImageButtonStyle
             {
-                ImageUp = new SpriteDrawable(gearSprite),
-                ImageDown = new SpriteDrawable(gearInverse),
-                ImageOver = new SpriteDrawable(gearHighlight)
+                ImageUp = new SpriteDrawable(continueSprite),
+                ImageDown = new SpriteDrawable(continueInverse),
+                ImageOver = new SpriteDrawable(continueHighlight)
             };
 
             _continueHalfStyle = new ImageButtonStyle
             {
-                ImageUp = new SpriteDrawable(gearSprite2x),
-                ImageDown = new SpriteDrawable(gearInverse2x),
-                ImageOver = new SpriteDrawable(gearHighlight2x)
+                ImageUp = new SpriteDrawable(continueSprite2x),
+                ImageDown = new SpriteDrawable(continueInverse2x),
+                ImageOver = new SpriteDrawable(continueHighlight2x)
             };
 
             _button = new HoverableImageButton(_stopNormalStyle, "Stop Adventuring");
-            _button.SetSize(fastFSprite.SourceRect.Width, fastFSprite.SourceRect.Height);
+            _button.SetSize(stopSprite.SourceRect.Width, stopSprite.SourceRect.Height);
 
             _button.OnClicked += (button) => ToggleAdventuring();
         }

@@ -8,7 +8,6 @@ namespace PitHero.UI
     public class MonsterUI
     {
         private Stage _stage;
-        // TODO: Replace UIHero sprites with dedicated UIMonster sprites once art is available
         private HoverableImageButton _monsterButton;
         private Window _monsterWindow;
         private bool _windowVisible = false;
@@ -18,6 +17,9 @@ namespace PitHero.UI
         private Table _monsterListTable;
         private ScrollPane _scrollPane;
         private Skin _skin;
+
+        private enum MonsterMode { Normal, Half }
+        private MonsterMode _currentMonsterMode = MonsterMode.Normal;
 
         private const float SpriteSize = 32f;
 
@@ -36,14 +38,13 @@ namespace PitHero.UI
 
         private void CreateMonsterButton(Skin skin)
         {
-            // TODO: Replace UIHero sprites with dedicated UIMonster sprites once art is available
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
-            var sprite       = uiAtlas.GetSprite("UIHero");
-            var sprite2x     = uiAtlas.GetSprite("UIHero2x");
-            var highlight    = uiAtlas.GetSprite("UIHeroHighlight");
-            var highlight2x  = uiAtlas.GetSprite("UIHeroHighlight2x");
-            var inverse      = uiAtlas.GetSprite("UIHeroInverse");
-            var inverse2x    = uiAtlas.GetSprite("UIHeroInverse2x");
+            var sprite       = uiAtlas.GetSprite("UIMonster");
+            var sprite2x     = uiAtlas.GetSprite("UIMonster2x");
+            var highlight    = uiAtlas.GetSprite("UIMonsterHighlight");
+            var highlight2x  = uiAtlas.GetSprite("UIMonsterHighlight2x");
+            var inverse      = uiAtlas.GetSprite("UIMonsterInverse");
+            var inverse2x    = uiAtlas.GetSprite("UIMonsterInverse2x");
 
             _monsterNormalStyle = new ImageButtonStyle
             {
@@ -255,9 +256,42 @@ namespace PitHero.UI
             return false;
         }
 
+        /// <summary>Switches the monster button between normal and half-height styles.</summary>
+        public void UpdateButtonStyleIfNeeded()
+        {
+            MonsterMode desired;
+            if (WindowManager.IsHalfHeightMode())
+                desired = MonsterMode.Half;
+            else
+                desired = MonsterMode.Normal;
+
+            if (desired == _currentMonsterMode)
+                return;
+
+            switch (desired)
+            {
+                case MonsterMode.Normal:
+                    _monsterButton.SetStyle(_monsterNormalStyle);
+                    _monsterButton.SetSize(
+                        ((SpriteDrawable)_monsterNormalStyle.ImageUp).Sprite.SourceRect.Width,
+                        ((SpriteDrawable)_monsterNormalStyle.ImageUp).Sprite.SourceRect.Height);
+                    break;
+                case MonsterMode.Half:
+                    _monsterButton.SetStyle(_monsterHalfStyle);
+                    _monsterButton.SetSize(
+                        ((SpriteDrawable)_monsterHalfStyle.ImageUp).Sprite.SourceRect.Width,
+                        ((SpriteDrawable)_monsterHalfStyle.ImageUp).Sprite.SourceRect.Height);
+                    break;
+            }
+
+            _currentMonsterMode = desired;
+            _styleChanged = true;
+        }
+
         /// <summary>Updates the monster UI each frame.</summary>
         public void Update()
         {
+            UpdateButtonStyleIfNeeded();
             if (_windowVisible) PositionWindow();
         }
     }
