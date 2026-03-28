@@ -928,8 +928,9 @@ namespace PitHero.ECS.Components
                 return; // Skip other goals when HP is critical
             }
 
-            // HIGH PRIORITY: HP danger zone - if HP is in the danger zone and healing options exist
-            if (HPDanger && !AllHealingOptionsExhausted())
+            // HIGH PRIORITY: HP danger zone - if HP is in the danger zone and item/inn healing exists
+            // Note: UseHealingSkillAction requires HPCritical (not HPDanger), so only items and inn can satisfy this goal
+            if (HPDanger && (!HealingItemExhausted || !InnExhausted))
             {
                 goalState.Set(GoapConstants.HPDanger, false);
                 return; // Skip other goals when HP is in danger
