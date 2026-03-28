@@ -49,8 +49,8 @@ namespace PitHero.AI
                 return false;
             }
 
-            // Must have either HPCritical or MPCritical to justify using the inn
-            if (!heroComponent.HPCritical && !heroComponent.MPCritical)
+            // Must have either HPCritical, HPDanger, or MPCritical to justify using the inn
+            if (!heroComponent.HPCritical && !heroComponent.HPDanger && !heroComponent.MPCritical)
             {
                 return false;
             }
@@ -68,11 +68,11 @@ namespace PitHero.AI
                 int skillPriority = Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingSkill);
                 int itemPriority = Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingItem);
 
-                // Note: HealingSkill can only address HPCritical, not MPCritical, so when only MP is low,
+                // Note: HealingSkill can only address HPCritical/HPDanger, not MPCritical, so when only MP is low,
                 // we should NOT wait for HealingSkill even if it has higher priority
                 bool shouldWaitForSkill = innPriority > skillPriority && 
                                           !heroComponent.HealingSkillExhausted &&
-                                          heroComponent.HPCritical; // Only wait if HP is critical (skill can help)
+                                          (heroComponent.HPCritical || heroComponent.HPDanger); // Only wait if HP needs healing
                 
                 bool shouldWaitForItem = innPriority > itemPriority && !heroComponent.HealingItemExhausted;
 

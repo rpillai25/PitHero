@@ -139,6 +139,9 @@ namespace PitHero.Services
             heroComponent.NeedsCrystal = false;
             heroComponent.HasArrivedAtStatueForCrystal = false;
 
+            // Reset damage tracking for the new hero (new crystal = new character = no damage history)
+            heroComponent.DamageTracker.Reset();
+
             // Re-enable movement and AI
             if (tileMover != null)
                 tileMover.SetEnabled(true);

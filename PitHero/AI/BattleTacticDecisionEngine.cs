@@ -142,17 +142,19 @@ namespace PitHero.AI
             return CreatePhysicalAttack(FindBestMonsterTarget(livingMonsters, weaponElement));
         }
 
-        /// <summary>Strategic: heal at 40%, restore MP at 20%, efficient attacks.</summary>
+        /// <summary>Strategic: heal at expected damage threshold (HPCritical), restore MP at 20%, efficient attacks.</summary>
         private static BattleAction DecideStrategic(
             HeroComponent heroComponent, Hero hero,
             List<Entity> livingMonsters, List<Entity> livingMercenaries)
         {
             CollectHeroSkills(hero, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
-            // 1. Heal/restore check (HP < 40% OR MP < 20%)
+            // 1. Heal/restore check (HP <= ExpectedDamage OR fallback to 40%, MP < 20%)
+            int expectedDamage = heroComponent.DamageTracker.GetExpectedDamageInBattle();
             BattleAction healAction;
             if (TryHeroHealAction(heroComponent, hero, livingMercenaries,
-                    GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
+                    GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction,
+                    expectedDamage > 0 ? expectedDamage : 0))
                 return healAction;
 
             // 2. Attack (prefer elemental advantage, then lowest MP cost)
@@ -168,17 +170,22 @@ namespace PitHero.AI
             return CreatePhysicalAttack(FindBestMonsterTarget(livingMonsters, weaponElement));
         }
 
-        /// <summary>Defensive: heal at 60%, restore MP at 30%, buff, then attack only when safe.</summary>
+        /// <summary>Defensive: heal at expected damage * 1.5 threshold (HPDanger), restore MP at 30%, buff, then attack only when safe.</summary>
         private static BattleAction DecideDefensive(
             HeroComponent heroComponent, Hero hero,
             List<Entity> livingMonsters, List<Entity> livingMercenaries)
         {
             CollectHeroSkills(hero, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
-            // 1. Heal/restore check (HP < 60% OR MP < 30%)
+            // 1. Heal/restore check (HP <= ExpectedDamage * 1.5 OR fallback to 60%, MP < 30%)
+            int expectedDamage = heroComponent.DamageTracker.GetExpectedDamageInBattle();
+            int dangerThreshold = expectedDamage > 0
+                ? (int)(expectedDamage * GameConfig.HPDangerMultiplier)
+                : 0;
             BattleAction healAction;
             if (TryHeroHealAction(heroComponent, hero, livingMercenaries,
-                    DefensiveHealThreshold, DefensiveMPThreshold, _healSkillBuffer, out healAction))
+                    DefensiveHealThreshold, DefensiveMPThreshold, _healSkillBuffer, out healAction,
+                    dangerThreshold))
                 return healAction;
 
             // 2. Apply buff if available
@@ -221,34 +228,41 @@ namespace PitHero.AI
             return CreatePhysicalAttack(FindBestMonsterTarget(livingMonsters, weaponElement));
         }
 
-        /// <summary>Strategic tactic for mercenary: heal, then efficient attack.</summary>
+        /// <summary>Strategic tactic for mercenary: heal at expected damage threshold, then efficient attack.</summary>
         private static BattleAction DecideMercStrategic(
             Mercenary merc, MercenaryComponent mercComponent, HeroComponent heroComponent,
             List<Entity> livingMonsters, List<Entity> livingMercenaries)
         {
             CollectMercenarySkills(merc, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
-            // 1. Heal/restore check (HP < 40% OR MP < 20%) — skills are unrestricted
+            // 1. Heal/restore check (HP <= ExpectedDamage OR fallback to 40%, MP < 20%)
+            int expectedDamage = heroComponent.DamageTracker.GetExpectedDamageInBattle();
             BattleAction healAction;
             if (TryMercHealAction(merc, heroComponent, livingMercenaries, mercComponent,
-                    GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
+                    GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction,
+                    expectedDamage > 0 ? expectedDamage : 0))
                 return healAction;
 
             // 2. Attack
             return MercAttack(merc, livingMonsters);
         }
 
-        /// <summary>Defensive tactic for mercenary: heal at 60%, buff, then attack.</summary>
+        /// <summary>Defensive tactic for mercenary: heal at expected damage * 1.5 threshold, buff, then attack.</summary>
         private static BattleAction DecideMercDefensive(
             Mercenary merc, MercenaryComponent mercComponent, HeroComponent heroComponent,
             List<Entity> livingMonsters, List<Entity> livingMercenaries)
         {
             CollectMercenarySkills(merc, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
-            // 1. Heal/restore check (HP < 60% OR MP < 30%)
+            // 1. Heal/restore check (HP <= ExpectedDamage * 1.5 OR fallback to 60%, MP < 30%)
+            int expectedDamage = heroComponent.DamageTracker.GetExpectedDamageInBattle();
+            int dangerThreshold = expectedDamage > 0
+                ? (int)(expectedDamage * GameConfig.HPDangerMultiplier)
+                : 0;
             BattleAction healAction;
             if (TryMercHealAction(merc, heroComponent, livingMercenaries, mercComponent,
-                    DefensiveHealThreshold, DefensiveMPThreshold, _healSkillBuffer, out healAction))
+                    DefensiveHealThreshold, DefensiveMPThreshold, _healSkillBuffer, out healAction,
+                    dangerThreshold))
                 return healAction;
 
             // 2. Buff
@@ -286,7 +300,8 @@ namespace PitHero.AI
         /// </summary>
         private static bool TryHeroHealAction(
             HeroComponent heroComponent, Hero hero, List<Entity> livingMercenaries,
-            float hpThreshold, float mpThreshold, List<ISkill> healSkills, out BattleAction healAction)
+            float hpThreshold, float mpThreshold, List<ISkill> healSkills, out BattleAction healAction,
+            int hpAbsoluteThreshold = 0)
         {
             healAction = default;
 
@@ -298,7 +313,7 @@ namespace PitHero.AI
             int targetMaxMP;
             if (!GetHealTarget(hero, livingMercenaries, hpThreshold, mpThreshold,
                     out healTarget, out targetIsHero, out targetCurrentHP, out targetMaxHP,
-                    out targetCurrentMP, out targetMaxMP))
+                    out targetCurrentMP, out targetMaxMP, hpAbsoluteThreshold))
                 return false;
 
             var priorities = heroComponent.GetHealPrioritiesInOrder();
@@ -349,7 +364,7 @@ namespace PitHero.AI
         private static bool TryMercHealAction(
             Mercenary merc, HeroComponent heroComponent, List<Entity> livingMercenaries,
             MercenaryComponent selfComp, float hpThreshold, float mpThreshold, List<ISkill> healSkills,
-            out BattleAction healAction)
+            out BattleAction healAction, int hpAbsoluteThreshold = 0)
         {
             healAction = default;
             var hero = heroComponent.LinkedHero;
@@ -362,7 +377,7 @@ namespace PitHero.AI
             int targetMaxMP;
             if (!GetHealTarget(hero, livingMercenaries, hpThreshold, mpThreshold,
                     out healTarget, out targetIsHero, out targetCurrentHP, out targetMaxHP,
-                    out targetCurrentMP, out targetMaxMP))
+                    out targetCurrentMP, out targetMaxMP, hpAbsoluteThreshold))
                 return false;
 
             // 1. Try healing skill (no restrictions for mercenaries)
@@ -401,11 +416,12 @@ namespace PitHero.AI
         /// <summary>
         /// Finds the ally (hero or mercenary) most in need of healing or MP restoration
         /// below the given thresholds. Returns true if a target was found.
+        /// When hpAbsoluteThreshold > 0, uses absolute HP threshold instead of percentage.
         /// </summary>
         private static bool GetHealTarget(
             Hero hero, List<Entity> livingMercenaries, float hpThreshold, float mpThreshold,
             out object target, out bool isHero, out int currentHP, out int maxHP,
-            out int currentMP, out int maxMP)
+            out int currentMP, out int maxMP, int hpAbsoluteThreshold = 0)
         {
             target = null;
             isHero = false;
@@ -420,7 +436,9 @@ namespace PitHero.AI
             {
                 float heroHPPercent = (float)hero.CurrentHP / hero.MaxHP;
                 float heroMPPercent = hero.MaxMP > 0 ? (float)hero.CurrentMP / hero.MaxMP : 1f;
-                bool hpCritical = heroHPPercent < hpThreshold;
+                bool hpCritical = hpAbsoluteThreshold > 0
+                    ? hero.CurrentHP <= hpAbsoluteThreshold
+                    : heroHPPercent < hpThreshold;
                 bool mpCritical = heroMPPercent < mpThreshold;
                 float minPercent = System.Math.Min(heroHPPercent, heroMPPercent);
 
@@ -448,7 +466,9 @@ namespace PitHero.AI
 
                     float mercHPPercent = (float)merc.CurrentHP / merc.MaxHP;
                     float mercMPPercent = merc.MaxMP > 0 ? (float)merc.CurrentMP / merc.MaxMP : 1f;
-                    bool hpCritical = mercHPPercent < hpThreshold;
+                    bool hpCritical = hpAbsoluteThreshold > 0
+                        ? merc.CurrentHP <= hpAbsoluteThreshold
+                        : mercHPPercent < hpThreshold;
                     bool mpCritical = mercMPPercent < mpThreshold;
                     float minPercent = System.Math.Min(mercHPPercent, mercMPPercent);
 

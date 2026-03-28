@@ -21,8 +21,9 @@ namespace PitHero.AI
             // Preconditions: HP is critical and we haven't exhausted healing skills
             SetPrecondition(GoapConstants.HPCritical, true);
 
-            // Postcondition: HP is no longer critical
+            // Postcondition: HP is no longer critical or in danger
             SetPostcondition(GoapConstants.HPCritical, false);
+            SetPostcondition(GoapConstants.HPDanger, false);
         }
 
         public override bool Validate()
