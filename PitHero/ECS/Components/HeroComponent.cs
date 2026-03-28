@@ -273,22 +273,14 @@ namespace PitHero.ECS.Components
         public bool ReplenishPending { get; set; }
 
         /// <summary>
-        /// Whether the Replenish button should trigger HP recovery. Configured in Behavior tab.
-        /// </summary>
-        public bool ReplenishHP { get; set; } = true;
-
-        /// <summary>
-        /// Whether the Replenish button should trigger MP recovery. Configured in Behavior tab.
-        /// </summary>
-        public bool ReplenishMP { get; set; } = true;
-
-        /// <summary>
-        /// HP replenish threshold as a fraction (0.01–1.0). Characters below this are flagged for healing.
+        /// HP replenish threshold as a fraction (0.0–1.0). Characters below this are flagged for healing.
+        /// A threshold of 0 effectively disables HP replenish.
         /// </summary>
         public float ReplenishHPThreshold { get; set; } = GameConfig.ReplenishThresholdDefault;
 
         /// <summary>
-        /// MP replenish threshold as a fraction (0.01–1.0). Characters below this are flagged for healing.
+        /// MP replenish threshold as a fraction (0.0–1.0). Characters below this are flagged for healing.
+        /// A threshold of 0 effectively disables MP replenish.
         /// </summary>
         public float ReplenishMPThreshold { get; set; } = GameConfig.ReplenishThresholdDefault;
 
@@ -303,19 +295,16 @@ namespace PitHero.ECS.Components
 
             bool anyOverrideSet = false;
 
-            // Check hero HP (only if Replenish HP is enabled)
-            if (ReplenishHP)
+            // Check hero HP (threshold of 0 effectively disables)
+            float heroHpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
+            if (heroHpPercent < ReplenishHPThreshold)
             {
-                float heroHpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
-                if (heroHpPercent < ReplenishHPThreshold)
-                {
-                    _replenishHPOverrideHero = true;
-                    anyOverrideSet = true;
-                }
+                _replenishHPOverrideHero = true;
+                anyOverrideSet = true;
             }
 
-            // Check hero MP (only if Replenish MP is enabled)
-            if (ReplenishMP && LinkedHero.MaxMP > 0)
+            // Check hero MP (threshold of 0 effectively disables)
+            if (LinkedHero.MaxMP > 0)
             {
                 float heroMpPercent = (float)LinkedHero.CurrentMP / LinkedHero.MaxMP;
                 if (heroMpPercent < ReplenishMPThreshold)
@@ -336,17 +325,14 @@ namespace PitHero.ECS.Components
                     var mercComp = merc.GetComponent<MercenaryComponent>();
                     if (mercComp?.LinkedMercenary != null)
                     {
-                        if (ReplenishHP)
+                        float mercHpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
+                        if (mercHpPercent < ReplenishHPThreshold)
                         {
-                            float mercHpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
-                            if (mercHpPercent < ReplenishHPThreshold)
-                            {
-                                _replenishHPOverrideMercEntityIds.Add(merc.Id);
-                                anyOverrideSet = true;
-                            }
+                            _replenishHPOverrideMercEntityIds.Add(merc.Id);
+                            anyOverrideSet = true;
                         }
 
-                        if (ReplenishMP && mercComp.LinkedMercenary.MaxMP > 0)
+                        if (mercComp.LinkedMercenary.MaxMP > 0)
                         {
                             float mercMpPercent = (float)mercComp.LinkedMercenary.CurrentMP / mercComp.LinkedMercenary.MaxMP;
                             if (mercMpPercent < ReplenishMPThreshold)
