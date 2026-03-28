@@ -1216,23 +1216,41 @@ Slime_WalkDown_1
 Slime_WalkDown_2
 	231,969,32,28
 	0.5,0.5
-Slime_WalkRight_1
+Slime_WalkDown_3
 	594,611,32,28
 	0.5,0.5
-Slime_WalkRight_2
+Slime_WalkDown_4
 	363,846,32,28
 	0.5,0.5
-Slime_WalkUp_1
+Slime_WalkRight_1
 	693,517,32,28
 	0.5,0.5
-Slime_WalkUp_2
+Slime_WalkRight_2
 	462,752,32,28
+	0.5,0.5
+Slime_WalkRight_3
+	528,691,32,28
+	0.5,0.5
+Slime_WalkRight_4
+	561,658,32,28
+	0.5,0.5
+Slime_WalkUp_1
+	297,926,32,28
+	0.5,0.5
+Slime_WalkUp_2
+	330,893,32,28
+	0.5,0.5
+Slime_WalkUp_3
+	627,597,32,28
+	0.5,0.5
+Slime_WalkUp_4
+	660,564,32,28
 	0.5,0.5
 HeroShadow
 	356,129,27,5
 	0.5,0.5
 PlaceholderMonster
-	528,691,24,24
+	264,961,24,24
 	0.5,0.5
 
 MaleHeroArmJumpRight
@@ -1396,13 +1414,13 @@ Props
 	7
 SlimeWalkDown
 	10
-	404,405
+	404,405,406,407
 SlimeWalkRight
 	10
-	406,407
+	408,409,410,411
 SlimeWalkUp
 	10
-	408,409
+	412,413,414,415
 Things
 	10
 	398,399,400,401,402,403
