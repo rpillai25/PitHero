@@ -557,7 +557,7 @@ namespace PitHero.UI
             mpSliderTable.Add(_replenishMPSlider).Width(180);
             buttonsTable.Add(mpSliderTable).Left();
 
-            buttonsTab.Add(buttonsTable).Expand().Fill().Top().Left();
+            buttonsTab.Add(buttonsTable).Expand().Top().Left();
         }
 
         /// <summary>
