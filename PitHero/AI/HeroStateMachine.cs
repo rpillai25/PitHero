@@ -186,6 +186,9 @@ namespace PitHero.AI
         {
             Debug.Log("[HeroStateMachine] Entering Idle state - planning next actions");
 
+            // Clear any pending replenish flag since we are about to re-plan
+            _hero.ReplenishPending = false;
+
             // Sync stop-adventuring costs before planning so the planner sees
             // the correct costs on the first attempt (avoids an extra replan cycle)
             UpdateStopAdventuringActionCosts();
@@ -244,8 +247,13 @@ namespace PitHero.AI
             // If we don't have a plan, try planning again
             if (_actionPlan == null || _actionPlan.Count == 0)
             {
-                // Only retry every few updates to avoid excessive planning
-                if (elapsedTimeInState > 1.0f) // Wait 1 second before retry
+                // Replenish pressed while Idle — immediately re-plan instead of waiting
+                bool replenishTriggered = _hero.ReplenishPending;
+                if (replenishTriggered)
+                    _hero.ReplenishPending = false;
+
+                // Only retry every few updates to avoid excessive planning (unless replenish was just pressed)
+                if (replenishTriggered || elapsedTimeInState > 1.0f) // Wait 1 second before retry
                 {
                     Debug.Log("[HeroStateMachine] Retrying action planning...");
 
@@ -363,6 +371,19 @@ namespace PitHero.AI
             {
                 UpdateStopAdventuringActionCosts();
                 Debug.Log("[HeroStateMachine] StoppedAdventure changed during GoTo - cancelling current plan and replanning");
+                _actionPlan = null;
+                _currentAction = null;
+                _currentPath = null;
+                _pathIndex = 0;
+                CurrentState = ActorState.Idle;
+                return;
+            }
+
+            // Check if Replenish was pressed — interrupt current plan so healing starts immediately
+            if (_hero.ReplenishPending)
+            {
+                _hero.ReplenishPending = false;
+                Debug.Log("[HeroStateMachine] Replenish activated during GoTo - cancelling current plan and replanning for healing");
                 _actionPlan = null;
                 _currentAction = null;
                 _currentPath = null;
@@ -519,6 +540,17 @@ namespace PitHero.AI
             {
                 UpdateStopAdventuringActionCosts();
                 Debug.Log("[HeroStateMachine] StoppedAdventure changed during PerformAction - cancelling current plan and replanning");
+                _actionPlan.Clear();
+                _currentAction = null;
+                CurrentState = ActorState.Idle;
+                return;
+            }
+
+            // Check if Replenish was pressed — interrupt current action so healing starts immediately
+            if (_hero.ReplenishPending && _currentAction != null && !_currentAction.ShouldNotOverride())
+            {
+                _hero.ReplenishPending = false;
+                Debug.Log("[HeroStateMachine] Replenish activated during PerformAction - cancelling current plan and replanning for healing");
                 _actionPlan.Clear();
                 _currentAction = null;
                 CurrentState = ActorState.Idle;

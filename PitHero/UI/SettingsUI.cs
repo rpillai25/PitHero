@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Systems;
 using Nez.UI;
+using PitHero.ECS.Components;
 using PitHero.ECS.Scenes;
 using PitHero.Services;
 using System;
@@ -23,6 +24,7 @@ namespace PitHero.UI
         private TabPane _tabPane;
         private Tab _windowTab;
         private Tab _sessionTab;
+        private Tab _buttonsTab;
 
         // Window positioning controls
         private EnhancedSlider _yOffsetSlider;
@@ -49,6 +51,12 @@ namespace PitHero.UI
         private TextButton _quitToTitleButton;
         private TextButton _exitButton;
         private SaveLoadUI _saveLoadUI;
+
+        // Buttons tab controls (Replenish thresholds)
+        private EnhancedSlider _replenishHPSlider;
+        private EnhancedSlider _replenishMPSlider;
+        private Label _replenishHPThresholdLabel;
+        private Label _replenishMPThresholdLabel;
 
         // Confirmation dialogs
         private Window _exitConfirmationDialog;
@@ -89,6 +97,7 @@ namespace PitHero.UI
         private MonsterUI _monsterUI;
         private RecruitmentNotificationUI _recruitmentNotificationUI;
         private StopAdventuringUI _stopAdventuringUI;
+        private ReplenishUI _replenishUI;
 
         /// <summary>Gets the HeroUI instance.</summary>
         public HeroUI HeroUI => _heroUI;
@@ -147,6 +156,9 @@ namespace PitHero.UI
 
             _stopAdventuringUI = new StopAdventuringUI();
             _stopAdventuringUI.InitializeUI(_stage);
+
+            _replenishUI = new ReplenishUI();
+            _replenishUI.InitializeUI(_stage);
 
             // Create settings window with TabPane (initially hidden)
             CreateSettingsWindow(skin);
@@ -237,14 +249,17 @@ namespace PitHero.UI
             var tabStyle = CreateTabStyle(skin);
             _windowTab = new Tab("Window", tabStyle);
             _sessionTab = new Tab("Session", tabStyle);
+            _buttonsTab = new Tab("Buttons", tabStyle);
 
             // Add content to tabs
             PopulateWindowTab(_windowTab, skin);
             PopulateSessionTab(_sessionTab, skin);
+            PopulateButtonsTab(_buttonsTab, skin);
 
             // Add tabs to TabPane
             _tabPane.AddTab(_windowTab);
             _tabPane.AddTab(_sessionTab);
+            _tabPane.AddTab(_buttonsTab);
 
             // Add TabPane to settings window
             _settingsWindow.Add(_tabPane).Expand().Fill().Pad(0); // No cell padding - tabs flush with window edges
@@ -492,6 +507,68 @@ namespace PitHero.UI
             sessionTab.Add(sessionTable).Expand().Fill().Top().Left();
         }
 
+        /// <summary>
+        /// Populates the Buttons tab with Replenish threshold sliders
+        /// </summary>
+        private void PopulateButtonsTab(Tab buttonsTab, Skin skin)
+        {
+            var buttonsTable = new Table();
+            buttonsTable.Pad(20);
+
+            // Replenish section
+            var replenishLabel = new Label("Replenish", skin, "ph-default");
+            buttonsTable.Add(replenishLabel).Left().SetPadBottom(10f);
+            buttonsTable.Row();
+
+            // HP Threshold slider row
+            var hpSliderTable = new Table();
+            _replenishHPThresholdLabel = new Label("HP Threshold: 90%", skin, "ph-default");
+            hpSliderTable.Add(_replenishHPThresholdLabel).SetPadRight(8);
+            _replenishHPSlider = new EnhancedSlider(0, 100, 1, false, skin, null, false);
+            _replenishHPSlider.SetValueAndCommit(90);
+            _replenishHPSlider.OnChanged += (value) =>
+            {
+                _replenishHPThresholdLabel.SetText($"HP Threshold: {(int)value}%");
+            };
+            _replenishHPSlider.OnValueCommitted += (value) =>
+            {
+                var heroComp = GetHeroComponent();
+                if (heroComp != null) heroComp.ReplenishHPThreshold = (int)value / 100f;
+            };
+            hpSliderTable.Add(_replenishHPSlider).Width(180);
+            buttonsTable.Add(hpSliderTable).Left().SetPadBottom(8);
+            buttonsTable.Row();
+
+            // MP Threshold slider row
+            var mpSliderTable = new Table();
+            _replenishMPThresholdLabel = new Label("MP Threshold: 90%", skin, "ph-default");
+            mpSliderTable.Add(_replenishMPThresholdLabel).SetPadRight(8);
+            _replenishMPSlider = new EnhancedSlider(0, 100, 1, false, skin, null, false);
+            _replenishMPSlider.SetValueAndCommit(90);
+            _replenishMPSlider.OnChanged += (value) =>
+            {
+                _replenishMPThresholdLabel.SetText($"MP Threshold: {(int)value}%");
+            };
+            _replenishMPSlider.OnValueCommitted += (value) =>
+            {
+                var heroComp = GetHeroComponent();
+                if (heroComp != null) heroComp.ReplenishMPThreshold = (int)value / 100f;
+            };
+            mpSliderTable.Add(_replenishMPSlider).Width(180);
+            buttonsTable.Add(mpSliderTable).Left();
+
+            buttonsTab.Add(buttonsTable).Expand().Top().Left();
+        }
+
+        /// <summary>
+        /// Gets the HeroComponent from the hero entity
+        /// </summary>
+        private HeroComponent GetHeroComponent()
+        {
+            var heroEntity = Core.Scene?.FindEntity("hero");
+            return heroEntity?.GetComponent<HeroComponent>();
+        }
+
         /// <summary>Shows the save/load UI in the specified mode.</summary>
         private void ShowSaveLoadUI(SaveLoadUI.Mode mode)
         {
@@ -650,33 +727,39 @@ namespace PitHero.UI
             float fastFW   = _fastFUI.GetWidth();
             float heroW    = _heroUI.GetWidth();
             float monsterW = _monsterUI.GetWidth();
+            float stopW    = _stopAdventuringUI.GetWidth();
+            float replenishW = _replenishUI.GetWidth();
 
-            // Calculate total width needed for all four buttons with padding
-            float totalWidth = fastFW + gearW + heroW + monsterW + (3 * GameConfig.UIButtonPadding);
+            // Calculate total width needed for all six buttons with padding
+            float totalWidth = replenishW + stopW + fastFW + gearW + heroW + monsterW + (5 * GameConfig.UIButtonPadding);
 
             // Center all buttons as a group
             float startX = (stageW - totalWidth) * 0.5f;
             float buttonY = 2f;
 
-            // Position FastF button to the left
-            float fastFX = startX;
+            // Position Replenish button leftmost
+            float replenishX = startX;
+            _replenishUI.SetPosition(replenishX, buttonY);
+
+            // Position Stop Adventuring button directly to the right of Replenish
+            float stopX = replenishX + replenishW + GameConfig.UIButtonPadding;
+            _stopAdventuringUI.SetPosition(stopX, buttonY);
+
+            // Position FastF button directly to the right of Stop
+            float fastFX = stopX + stopW + GameConfig.UIButtonPadding;
             _fastFUI.SetPosition(fastFX, buttonY);
 
-            // Position gear button second
+            // Position gear button
             float gearX = fastFX + fastFW + GameConfig.UIButtonPadding;
             _gearButton.SetPosition(gearX, buttonY);
 
-            // Position hero button third
+            // Position hero button
             float heroX = gearX + gearW + GameConfig.UIButtonPadding;
             _heroUI.SetPosition(heroX, buttonY);
 
             // Position monster button to the right of hero
             float monsterX = heroX + heroW + GameConfig.UIButtonPadding;
             _monsterUI.SetPosition(monsterX, buttonY);
-
-            // Position Stop Adventuring button about 100px to the left of the FastF button
-            float stopX = fastFX - GameConfig.StopAdventuringButtonOffsetX;
-            _stopAdventuringUI.SetPosition(stopX, buttonY);
 
             if (_isVisible)
             {
@@ -828,6 +911,7 @@ namespace PitHero.UI
             _monsterUI?.Update();
             _recruitmentNotificationUI?.Update();
             _stopAdventuringUI?.Update();
+            _replenishUI?.Update();
 
             // Update persistent size if window size changed externally (e.g., Shift+Mouse Wheel)
             if (!_isVisible) // Only update when settings are closed
@@ -841,6 +925,7 @@ namespace PitHero.UI
             if (_heroUI != null && _heroUI.ConsumeStyleChangedFlag()) needsReposition = true;
             if (_monsterUI != null && _monsterUI.ConsumeStyleChangedFlag()) needsReposition = true;
             if (_stopAdventuringUI != null && _stopAdventuringUI.ConsumeStyleChangedFlag()) needsReposition = true;
+            if (_replenishUI != null && _replenishUI.ConsumeStyleChangedFlag()) needsReposition = true;
 
             if (_stage.GetWidth() != _lastStageW || _stage.GetHeight() != _lastStageH)
                 needsReposition = true;

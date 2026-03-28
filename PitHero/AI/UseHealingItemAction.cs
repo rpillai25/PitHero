@@ -136,8 +136,8 @@ namespace PitHero.AI
                 float mpPercent = hero.MaxMP > 0 ? (float)hero.CurrentMP / hero.MaxMP : 1f;
                 float minPercent = System.Math.Min(hpPercent, mpPercent);
 
-                bool hpCritical = hpPercent < GameConfig.HeroCriticalHPPercent;
-                bool mpCritical = mpPercent < GameConfig.HeroCriticalMPPercent;
+                bool hpCritical = heroComponent.IsHeroHPCritical();
+                bool mpCritical = heroComponent.IsHeroMPCritical();
 
                 if ((hpCritical || mpCritical) && minPercent < lowestPercent)
                 {
@@ -164,8 +164,8 @@ namespace PitHero.AI
                         float mpPercent = mercenary.MaxMP > 0 ? (float)mercenary.CurrentMP / mercenary.MaxMP : 1f;
                         float minPercent = System.Math.Min(hpPercent, mpPercent);
 
-                        bool hpCritical = hpPercent < GameConfig.HeroCriticalHPPercent;
-                        bool mpCritical = mpPercent < GameConfig.HeroCriticalMPPercent;
+                        bool hpCritical = heroComponent.IsMercenaryHPCritical(merc, mercComp);
+                        bool mpCritical = heroComponent.IsMercenaryMPCritical(merc, mercComp);
 
                         if ((hpCritical || mpCritical) && minPercent < lowestPercent)
                         {

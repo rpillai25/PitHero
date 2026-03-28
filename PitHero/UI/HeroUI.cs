@@ -539,7 +539,7 @@ namespace PitHero.UI
 
             // Pit Priority section (extra top padding to clear tab buttons)
             var pitPriorityLabel = new Label("Pit Priority", skin, "ph-default");
-            container.Add(pitPriorityLabel).SetAlign(Align.Left).SetPadTop(72f).SetPadBottom(5f);
+            container.Add(pitPriorityLabel).SetAlign(Align.Left).SetPadTop(90f).SetPadBottom(5f);
             container.Row();
 
             InitializePriorityItems();
@@ -644,7 +644,8 @@ namespace PitHero.UI
                 var heroComp = GetHeroComponent();
                 if (heroComp != null) heroComp.MercenariesCanUseConsumables = isChecked;
             };
-            container.Add(_mercsCanUseConsumablesCheckBox).Left();
+            container.Add(_mercsCanUseConsumablesCheckBox).Left().SetPadBottom(15);
+            container.Row();
 
             // Wrap in scroll pane so all content is accessible
             var scrollPane = new ScrollPane(container, skin, "ph-default");
