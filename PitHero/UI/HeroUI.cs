@@ -70,6 +70,10 @@ namespace PitHero.UI
         // Replenish option controls
         private CheckBox _replenishHPCheckBox;
         private CheckBox _replenishMPCheckBox;
+        private EnhancedSlider _replenishHPSlider;
+        private EnhancedSlider _replenishMPSlider;
+        private Label _replenishHPThresholdLabel;
+        private Label _replenishMPThresholdLabel;
 
         // Hero Crystal tab component
         private HeroCrystalTab _heroCrystalTab;
@@ -543,7 +547,7 @@ namespace PitHero.UI
 
             // Pit Priority section (extra top padding to clear tab buttons)
             var pitPriorityLabel = new Label("Pit Priority", skin, "ph-default");
-            container.Add(pitPriorityLabel).SetAlign(Align.Left).SetPadTop(154f).SetPadBottom(5f);
+            container.Add(pitPriorityLabel).SetAlign(Align.Left).SetPadTop(210f).SetPadBottom(5f);
             container.Row();
 
             InitializePriorityItems();
@@ -656,24 +660,68 @@ namespace PitHero.UI
             container.Add(replenishLabel).SetAlign(Align.Left).SetPadBottom(5f);
             container.Row();
 
+            // Replenish HP checkbox
             _replenishHPCheckBox = new CheckBox("Replenish HP", skin, "ph-default");
             _replenishHPCheckBox.IsChecked = true;
             _replenishHPCheckBox.OnChanged += (isChecked) =>
             {
                 var heroComp = GetHeroComponent();
                 if (heroComp != null) heroComp.ReplenishHP = isChecked;
+                _replenishHPSlider.Disabled = !isChecked;
+                _replenishHPSlider.SetTouchable(isChecked ? Touchable.Enabled : Touchable.Disabled);
             };
-            container.Add(_replenishHPCheckBox).Left().SetPadBottom(8);
+            container.Add(_replenishHPCheckBox).Left().SetPadBottom(4);
             container.Row();
 
+            // HP Threshold slider row
+            var hpSliderTable = new Table();
+            _replenishHPThresholdLabel = new Label("HP Threshold: 90%", skin, "ph-default");
+            hpSliderTable.Add(_replenishHPThresholdLabel).SetPadRight(8);
+            _replenishHPSlider = new EnhancedSlider(1, 100, 1, false, skin, null, false);
+            _replenishHPSlider.SetValueAndCommit(90);
+            _replenishHPSlider.OnChanged += (value) =>
+            {
+                _replenishHPThresholdLabel.SetText($"HP Threshold: {(int)value}%");
+            };
+            _replenishHPSlider.OnValueCommitted += (value) =>
+            {
+                var heroComp = GetHeroComponent();
+                if (heroComp != null) heroComp.ReplenishHPThreshold = (int)value / 100f;
+            };
+            hpSliderTable.Add(_replenishHPSlider).Width(180);
+            container.Add(hpSliderTable).Left().SetPadBottom(10);
+            container.Row();
+
+            // Replenish MP checkbox
             _replenishMPCheckBox = new CheckBox("Replenish MP", skin, "ph-default");
             _replenishMPCheckBox.IsChecked = true;
             _replenishMPCheckBox.OnChanged += (isChecked) =>
             {
                 var heroComp = GetHeroComponent();
                 if (heroComp != null) heroComp.ReplenishMP = isChecked;
+                _replenishMPSlider.Disabled = !isChecked;
+                _replenishMPSlider.SetTouchable(isChecked ? Touchable.Enabled : Touchable.Disabled);
             };
-            container.Add(_replenishMPCheckBox).Left();
+            container.Add(_replenishMPCheckBox).Left().SetPadBottom(4);
+            container.Row();
+
+            // MP Threshold slider row
+            var mpSliderTable = new Table();
+            _replenishMPThresholdLabel = new Label("MP Threshold: 90%", skin, "ph-default");
+            mpSliderTable.Add(_replenishMPThresholdLabel).SetPadRight(8);
+            _replenishMPSlider = new EnhancedSlider(1, 100, 1, false, skin, null, false);
+            _replenishMPSlider.SetValueAndCommit(90);
+            _replenishMPSlider.OnChanged += (value) =>
+            {
+                _replenishMPThresholdLabel.SetText($"MP Threshold: {(int)value}%");
+            };
+            _replenishMPSlider.OnValueCommitted += (value) =>
+            {
+                var heroComp = GetHeroComponent();
+                if (heroComp != null) heroComp.ReplenishMPThreshold = (int)value / 100f;
+            };
+            mpSliderTable.Add(_replenishMPSlider).Width(180);
+            container.Add(mpSliderTable).Left();
 
             // Wrap in scroll pane so all content is accessible
             var scrollPane = new ScrollPane(container, skin, "ph-default");

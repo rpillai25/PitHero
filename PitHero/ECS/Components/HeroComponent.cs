@@ -72,7 +72,7 @@ namespace PitHero.ECS.Components
                 // Replenish override check for hero
                 if (_replenishHPOverrideHero)
                 {
-                    if (hpPercent < GameConfig.ReplenishThreshold)
+                    if (hpPercent < ReplenishHPThreshold)
                         return true;
                     else
                         _replenishHPOverrideHero = false;
@@ -96,7 +96,7 @@ namespace PitHero.ECS.Components
                             // Replenish override check for this mercenary
                             if (_replenishHPOverrideMercEntityIds.Contains(merc.Id))
                             {
-                                if (mercHpPercent < GameConfig.ReplenishThreshold)
+                                if (mercHpPercent < ReplenishHPThreshold)
                                     return true;
                                 else
                                     _replenishHPOverrideMercEntityIds.Remove(merc.Id);
@@ -129,7 +129,7 @@ namespace PitHero.ECS.Components
                     // Replenish override check for hero
                     if (_replenishMPOverrideHero)
                     {
-                        if (mpPercent < GameConfig.ReplenishThreshold)
+                        if (mpPercent < ReplenishMPThreshold)
                             return true;
                         else
                             _replenishMPOverrideHero = false;
@@ -154,7 +154,7 @@ namespace PitHero.ECS.Components
                             // Replenish override check for this mercenary
                             if (_replenishMPOverrideMercEntityIds.Contains(merc.Id))
                             {
-                                if (mercMpPercent < GameConfig.ReplenishThreshold)
+                                if (mercMpPercent < ReplenishMPThreshold)
                                     return true;
                                 else
                                     _replenishMPOverrideMercEntityIds.Remove(merc.Id);
@@ -276,8 +276,18 @@ namespace PitHero.ECS.Components
         public bool ReplenishMP { get; set; } = true;
 
         /// <summary>
+        /// HP replenish threshold as a fraction (0.01–1.0). Characters below this are flagged for healing.
+        /// </summary>
+        public float ReplenishHPThreshold { get; set; } = GameConfig.ReplenishThresholdDefault;
+
+        /// <summary>
+        /// MP replenish threshold as a fraction (0.01–1.0). Characters below this are flagged for healing.
+        /// </summary>
+        public float ReplenishMPThreshold { get; set; } = GameConfig.ReplenishThresholdDefault;
+
+        /// <summary>
         /// Activates smart replenish for the party. Sets critical HP/MP overrides
-        /// for any character below 90% HP or 90% MP so the GOAP planner will trigger healing.
+        /// for any character below the configured threshold so the GOAP planner will trigger healing.
         /// </summary>
         public void ActivateReplenish()
         {
@@ -288,7 +298,7 @@ namespace PitHero.ECS.Components
             if (ReplenishHP)
             {
                 float heroHpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
-                if (heroHpPercent < GameConfig.ReplenishThreshold)
+                if (heroHpPercent < ReplenishHPThreshold)
                     _replenishHPOverrideHero = true;
             }
 
@@ -296,7 +306,7 @@ namespace PitHero.ECS.Components
             if (ReplenishMP && LinkedHero.MaxMP > 0)
             {
                 float heroMpPercent = (float)LinkedHero.CurrentMP / LinkedHero.MaxMP;
-                if (heroMpPercent < GameConfig.ReplenishThreshold)
+                if (heroMpPercent < ReplenishMPThreshold)
                     _replenishMPOverrideHero = true;
             }
 
@@ -314,14 +324,14 @@ namespace PitHero.ECS.Components
                         if (ReplenishHP)
                         {
                             float mercHpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
-                            if (mercHpPercent < GameConfig.ReplenishThreshold)
+                            if (mercHpPercent < ReplenishHPThreshold)
                                 _replenishHPOverrideMercEntityIds.Add(merc.Id);
                         }
 
                         if (ReplenishMP && mercComp.LinkedMercenary.MaxMP > 0)
                         {
                             float mercMpPercent = (float)mercComp.LinkedMercenary.CurrentMP / mercComp.LinkedMercenary.MaxMP;
-                            if (mercMpPercent < GameConfig.ReplenishThreshold)
+                            if (mercMpPercent < ReplenishMPThreshold)
                                 _replenishMPOverrideMercEntityIds.Add(merc.Id);
                         }
                     }
@@ -345,7 +355,7 @@ namespace PitHero.ECS.Components
             float hpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
             if (hpPercent < GameConfig.HeroCriticalHPPercent)
                 return true;
-            if (_replenishHPOverrideHero && hpPercent < GameConfig.ReplenishThreshold)
+            if (_replenishHPOverrideHero && hpPercent < ReplenishHPThreshold)
                 return true;
             return false;
         }
@@ -361,7 +371,7 @@ namespace PitHero.ECS.Components
             float mpPercent = (float)LinkedHero.CurrentMP / LinkedHero.MaxMP;
             if (mpPercent < GameConfig.HeroCriticalMPPercent)
                 return true;
-            if (_replenishMPOverrideHero && mpPercent < GameConfig.ReplenishThreshold)
+            if (_replenishMPOverrideHero && mpPercent < ReplenishMPThreshold)
                 return true;
             return false;
         }
@@ -377,7 +387,7 @@ namespace PitHero.ECS.Components
             float hpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
             if (hpPercent < GameConfig.HeroCriticalHPPercent)
                 return true;
-            if (_replenishHPOverrideMercEntityIds.Contains(mercEntity.Id) && hpPercent < GameConfig.ReplenishThreshold)
+            if (_replenishHPOverrideMercEntityIds.Contains(mercEntity.Id) && hpPercent < ReplenishHPThreshold)
                 return true;
             return false;
         }
@@ -393,7 +403,7 @@ namespace PitHero.ECS.Components
             float mpPercent = (float)mercComp.LinkedMercenary.CurrentMP / mercComp.LinkedMercenary.MaxMP;
             if (mpPercent < GameConfig.HeroCriticalMPPercent)
                 return true;
-            if (_replenishMPOverrideMercEntityIds.Contains(mercEntity.Id) && mpPercent < GameConfig.ReplenishThreshold)
+            if (_replenishMPOverrideMercEntityIds.Contains(mercEntity.Id) && mpPercent < ReplenishMPThreshold)
                 return true;
             return false;
         }
