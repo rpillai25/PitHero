@@ -24,6 +24,7 @@ namespace PitHero
         public const int HeroHeight = 32;
         public const float HeroCriticalHPPercent = 0.4f;
         public const float HeroCriticalMPPercent = 0.5f;
+        public const float ReplenishThreshold = 0.9f;
         public const int MaleHeroHairstyleCount = 5; // Number of available hairstyles for male heroes
 
         // Action Configuration
@@ -58,9 +59,6 @@ namespace PitHero
         public const int TavernMercenary1SeatTileY = 7;
         public const int TavernMercenary2SeatTileX = 94;
         public const int TavernMercenary2SeatTileY = 7;
-
-        // Stop Adventuring button offset (pixels to the left of the FastF button group)
-        public const float StopAdventuringButtonOffsetX = 100f;
 
         // Fog of war movement speed configuration
         public const float HeroFogCooldownDuration = 1f; // Duration in seconds for fog cooldown after clearing fog

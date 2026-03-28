@@ -69,6 +69,15 @@ namespace PitHero.ECS.Components
                 if (hpPercent < GameConfig.HeroCriticalHPPercent)
                     return true;
 
+                // Replenish override check for hero
+                if (_replenishHPOverrideHero)
+                {
+                    if (hpPercent < GameConfig.ReplenishThreshold)
+                        return true;
+                    else
+                        _replenishHPOverrideHero = false;
+                }
+
                 // Check all hired mercenaries' HP
                 var mercenaryManager = Core.Services.GetService<MercenaryManager>();
                 if (mercenaryManager != null)
@@ -83,6 +92,15 @@ namespace PitHero.ECS.Components
                             float mercHpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
                             if (mercHpPercent < GameConfig.HeroCriticalHPPercent)
                                 return true;
+
+                            // Replenish override check for this mercenary
+                            if (_replenishHPOverrideMercEntityIds.Contains(merc.Id))
+                            {
+                                if (mercHpPercent < GameConfig.ReplenishThreshold)
+                                    return true;
+                                else
+                                    _replenishHPOverrideMercEntityIds.Remove(merc.Id);
+                            }
                         }
                     }
                 }
@@ -107,6 +125,15 @@ namespace PitHero.ECS.Components
                     float mpPercent = (float)LinkedHero.CurrentMP / LinkedHero.MaxMP;
                     if (mpPercent < GameConfig.HeroCriticalMPPercent)
                         return true;
+
+                    // Replenish override check for hero
+                    if (_replenishMPOverrideHero)
+                    {
+                        if (mpPercent < GameConfig.ReplenishThreshold)
+                            return true;
+                        else
+                            _replenishMPOverrideHero = false;
+                    }
                 }
 
                 // Check all hired mercenaries' MP
@@ -123,6 +150,15 @@ namespace PitHero.ECS.Components
                             float mercMpPercent = (float)mercComp.LinkedMercenary.CurrentMP / mercComp.LinkedMercenary.MaxMP;
                             if (mercMpPercent < GameConfig.HeroCriticalMPPercent)
                                 return true;
+
+                            // Replenish override check for this mercenary
+                            if (_replenishMPOverrideMercEntityIds.Contains(merc.Id))
+                            {
+                                if (mercMpPercent < GameConfig.ReplenishThreshold)
+                                    return true;
+                                else
+                                    _replenishMPOverrideMercEntityIds.Remove(merc.Id);
+                            }
                         }
                     }
                 }
@@ -222,6 +258,65 @@ namespace PitHero.ECS.Components
         /// True when the hero (and mercenaries) are seated in the tavern after stopping adventure
         /// </summary>
         public bool SeatedInTavern { get; set; }
+
+        // Replenish override tracking - per-character flags set when Replenish button is pressed
+        private bool _replenishHPOverrideHero;
+        private bool _replenishMPOverrideHero;
+        private readonly HashSet<uint> _replenishHPOverrideMercEntityIds = new HashSet<uint>(4);
+        private readonly HashSet<uint> _replenishMPOverrideMercEntityIds = new HashSet<uint>(4);
+
+        /// <summary>
+        /// Activates smart replenish for the party. Sets critical HP/MP overrides
+        /// for any character below 90% HP or 90% MP so the GOAP planner will trigger healing.
+        /// </summary>
+        public void ActivateReplenish()
+        {
+            if (LinkedHero == null)
+                return;
+
+            // Check hero HP
+            float heroHpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
+            if (heroHpPercent < GameConfig.ReplenishThreshold)
+                _replenishHPOverrideHero = true;
+
+            // Check hero MP
+            if (LinkedHero.MaxMP > 0)
+            {
+                float heroMpPercent = (float)LinkedHero.CurrentMP / LinkedHero.MaxMP;
+                if (heroMpPercent < GameConfig.ReplenishThreshold)
+                    _replenishMPOverrideHero = true;
+            }
+
+            // Check mercenaries
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager != null)
+            {
+                var hiredMercenaries = mercenaryManager.GetHiredMercenaries();
+                for (int i = 0; i < hiredMercenaries.Count; i++)
+                {
+                    var merc = hiredMercenaries[i];
+                    var mercComp = merc.GetComponent<MercenaryComponent>();
+                    if (mercComp?.LinkedMercenary != null)
+                    {
+                        float mercHpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
+                        if (mercHpPercent < GameConfig.ReplenishThreshold)
+                            _replenishHPOverrideMercEntityIds.Add(merc.Id);
+
+                        if (mercComp.LinkedMercenary.MaxMP > 0)
+                        {
+                            float mercMpPercent = (float)mercComp.LinkedMercenary.CurrentMP / mercComp.LinkedMercenary.MaxMP;
+                            if (mercMpPercent < GameConfig.ReplenishThreshold)
+                                _replenishMPOverrideMercEntityIds.Add(merc.Id);
+                        }
+                    }
+                }
+            }
+
+            // Reset exhausted flags so GOAP will re-evaluate healing options
+            HealingItemExhausted = false;
+            HealingSkillExhausted = false;
+            InnExhausted = false;
+        }
 
         /// <summary>
         /// Returns true if all healing options are exhausted (items, skills, and inn)
