@@ -67,6 +67,10 @@ namespace PitHero.UI
         private CheckBox _useConsumablesOnMercsCheckBox;
         private CheckBox _mercsCanUseConsumablesCheckBox;
 
+        // Replenish option controls
+        private CheckBox _replenishHPCheckBox;
+        private CheckBox _replenishMPCheckBox;
+
         // Hero Crystal tab component
         private HeroCrystalTab _heroCrystalTab;
 
@@ -644,7 +648,32 @@ namespace PitHero.UI
                 var heroComp = GetHeroComponent();
                 if (heroComp != null) heroComp.MercenariesCanUseConsumables = isChecked;
             };
-            container.Add(_mercsCanUseConsumablesCheckBox).Left();
+            container.Add(_mercsCanUseConsumablesCheckBox).Left().SetPadBottom(15);
+            container.Row();
+
+            // Replenish Options section
+            var replenishLabel = new Label("Replenish Options", skin, "ph-default");
+            container.Add(replenishLabel).SetAlign(Align.Left).SetPadBottom(5f);
+            container.Row();
+
+            _replenishHPCheckBox = new CheckBox("Replenish HP", skin, "ph-default");
+            _replenishHPCheckBox.IsChecked = true;
+            _replenishHPCheckBox.OnChanged += (isChecked) =>
+            {
+                var heroComp = GetHeroComponent();
+                if (heroComp != null) heroComp.ReplenishHP = isChecked;
+            };
+            container.Add(_replenishHPCheckBox).Left().SetPadBottom(8);
+            container.Row();
+
+            _replenishMPCheckBox = new CheckBox("Replenish MP", skin, "ph-default");
+            _replenishMPCheckBox.IsChecked = true;
+            _replenishMPCheckBox.OnChanged += (isChecked) =>
+            {
+                var heroComp = GetHeroComponent();
+                if (heroComp != null) heroComp.ReplenishMP = isChecked;
+            };
+            container.Add(_replenishMPCheckBox).Left();
 
             // Wrap in scroll pane so all content is accessible
             var scrollPane = new ScrollPane(container, skin, "ph-default");

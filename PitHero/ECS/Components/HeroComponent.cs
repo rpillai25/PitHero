@@ -266,6 +266,16 @@ namespace PitHero.ECS.Components
         private readonly HashSet<uint> _replenishMPOverrideMercEntityIds = new HashSet<uint>(4);
 
         /// <summary>
+        /// Whether the Replenish button should trigger HP recovery. Configured in Behavior tab.
+        /// </summary>
+        public bool ReplenishHP { get; set; } = true;
+
+        /// <summary>
+        /// Whether the Replenish button should trigger MP recovery. Configured in Behavior tab.
+        /// </summary>
+        public bool ReplenishMP { get; set; } = true;
+
+        /// <summary>
         /// Activates smart replenish for the party. Sets critical HP/MP overrides
         /// for any character below 90% HP or 90% MP so the GOAP planner will trigger healing.
         /// </summary>
@@ -274,13 +284,16 @@ namespace PitHero.ECS.Components
             if (LinkedHero == null)
                 return;
 
-            // Check hero HP
-            float heroHpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
-            if (heroHpPercent < GameConfig.ReplenishThreshold)
-                _replenishHPOverrideHero = true;
+            // Check hero HP (only if Replenish HP is enabled)
+            if (ReplenishHP)
+            {
+                float heroHpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
+                if (heroHpPercent < GameConfig.ReplenishThreshold)
+                    _replenishHPOverrideHero = true;
+            }
 
-            // Check hero MP
-            if (LinkedHero.MaxMP > 0)
+            // Check hero MP (only if Replenish MP is enabled)
+            if (ReplenishMP && LinkedHero.MaxMP > 0)
             {
                 float heroMpPercent = (float)LinkedHero.CurrentMP / LinkedHero.MaxMP;
                 if (heroMpPercent < GameConfig.ReplenishThreshold)
@@ -298,11 +311,14 @@ namespace PitHero.ECS.Components
                     var mercComp = merc.GetComponent<MercenaryComponent>();
                     if (mercComp?.LinkedMercenary != null)
                     {
-                        float mercHpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
-                        if (mercHpPercent < GameConfig.ReplenishThreshold)
-                            _replenishHPOverrideMercEntityIds.Add(merc.Id);
+                        if (ReplenishHP)
+                        {
+                            float mercHpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
+                            if (mercHpPercent < GameConfig.ReplenishThreshold)
+                                _replenishHPOverrideMercEntityIds.Add(merc.Id);
+                        }
 
-                        if (mercComp.LinkedMercenary.MaxMP > 0)
+                        if (ReplenishMP && mercComp.LinkedMercenary.MaxMP > 0)
                         {
                             float mercMpPercent = (float)mercComp.LinkedMercenary.CurrentMP / mercComp.LinkedMercenary.MaxMP;
                             if (mercMpPercent < GameConfig.ReplenishThreshold)
