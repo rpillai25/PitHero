@@ -266,6 +266,13 @@ namespace PitHero.ECS.Components
         private readonly HashSet<uint> _replenishMPOverrideMercEntityIds = new HashSet<uint>(4);
 
         /// <summary>
+        /// Set true when ActivateReplenish() sets any override flags.
+        /// Checked by HeroStateMachine to interrupt the current plan and re-plan immediately.
+        /// Cleared by HeroStateMachine after re-planning.
+        /// </summary>
+        public bool ReplenishPending { get; set; }
+
+        /// <summary>
         /// Whether the Replenish button should trigger HP recovery. Configured in Behavior tab.
         /// </summary>
         public bool ReplenishHP { get; set; } = true;
@@ -294,12 +301,17 @@ namespace PitHero.ECS.Components
             if (LinkedHero == null)
                 return;
 
+            bool anyOverrideSet = false;
+
             // Check hero HP (only if Replenish HP is enabled)
             if (ReplenishHP)
             {
                 float heroHpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
                 if (heroHpPercent < ReplenishHPThreshold)
+                {
                     _replenishHPOverrideHero = true;
+                    anyOverrideSet = true;
+                }
             }
 
             // Check hero MP (only if Replenish MP is enabled)
@@ -307,7 +319,10 @@ namespace PitHero.ECS.Components
             {
                 float heroMpPercent = (float)LinkedHero.CurrentMP / LinkedHero.MaxMP;
                 if (heroMpPercent < ReplenishMPThreshold)
+                {
                     _replenishMPOverrideHero = true;
+                    anyOverrideSet = true;
+                }
             }
 
             // Check mercenaries
@@ -325,14 +340,20 @@ namespace PitHero.ECS.Components
                         {
                             float mercHpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
                             if (mercHpPercent < ReplenishHPThreshold)
+                            {
                                 _replenishHPOverrideMercEntityIds.Add(merc.Id);
+                                anyOverrideSet = true;
+                            }
                         }
 
                         if (ReplenishMP && mercComp.LinkedMercenary.MaxMP > 0)
                         {
                             float mercMpPercent = (float)mercComp.LinkedMercenary.CurrentMP / mercComp.LinkedMercenary.MaxMP;
                             if (mercMpPercent < ReplenishMPThreshold)
+                            {
                                 _replenishMPOverrideMercEntityIds.Add(merc.Id);
+                                anyOverrideSet = true;
+                            }
                         }
                     }
                 }
@@ -342,6 +363,10 @@ namespace PitHero.ECS.Components
             HealingItemExhausted = false;
             HealingSkillExhausted = false;
             InnExhausted = false;
+
+            // Signal state machine to interrupt current plan and re-plan immediately
+            if (anyOverrideSet)
+                ReplenishPending = true;
         }
 
         /// <summary>
