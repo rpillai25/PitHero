@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Systems;
 using Nez.UI;
+using PitHero.ECS.Components;
 using PitHero.ECS.Scenes;
 using PitHero.Services;
 using System;
@@ -23,6 +24,7 @@ namespace PitHero.UI
         private TabPane _tabPane;
         private Tab _windowTab;
         private Tab _sessionTab;
+        private Tab _buttonsTab;
 
         // Window positioning controls
         private EnhancedSlider _yOffsetSlider;
@@ -49,6 +51,12 @@ namespace PitHero.UI
         private TextButton _quitToTitleButton;
         private TextButton _exitButton;
         private SaveLoadUI _saveLoadUI;
+
+        // Buttons tab controls (Replenish thresholds)
+        private EnhancedSlider _replenishHPSlider;
+        private EnhancedSlider _replenishMPSlider;
+        private Label _replenishHPThresholdLabel;
+        private Label _replenishMPThresholdLabel;
 
         // Confirmation dialogs
         private Window _exitConfirmationDialog;
@@ -241,14 +249,17 @@ namespace PitHero.UI
             var tabStyle = CreateTabStyle(skin);
             _windowTab = new Tab("Window", tabStyle);
             _sessionTab = new Tab("Session", tabStyle);
+            _buttonsTab = new Tab("Buttons", tabStyle);
 
             // Add content to tabs
             PopulateWindowTab(_windowTab, skin);
             PopulateSessionTab(_sessionTab, skin);
+            PopulateButtonsTab(_buttonsTab, skin);
 
             // Add tabs to TabPane
             _tabPane.AddTab(_windowTab);
             _tabPane.AddTab(_sessionTab);
+            _tabPane.AddTab(_buttonsTab);
 
             // Add TabPane to settings window
             _settingsWindow.Add(_tabPane).Expand().Fill().Pad(0); // No cell padding - tabs flush with window edges
@@ -494,6 +505,68 @@ namespace PitHero.UI
 
             // Add content table to the tab
             sessionTab.Add(sessionTable).Expand().Fill().Top().Left();
+        }
+
+        /// <summary>
+        /// Populates the Buttons tab with Replenish threshold sliders
+        /// </summary>
+        private void PopulateButtonsTab(Tab buttonsTab, Skin skin)
+        {
+            var buttonsTable = new Table();
+            buttonsTable.Pad(20);
+
+            // Replenish when Below Thresholds section
+            var replenishLabel = new Label("Replenish when Below Thresholds", skin, "ph-default");
+            buttonsTable.Add(replenishLabel).Left().SetPadBottom(10f);
+            buttonsTable.Row();
+
+            // HP Threshold slider row
+            var hpSliderTable = new Table();
+            _replenishHPThresholdLabel = new Label("HP Threshold: 90%", skin, "ph-default");
+            hpSliderTable.Add(_replenishHPThresholdLabel).SetPadRight(8);
+            _replenishHPSlider = new EnhancedSlider(0, 100, 1, false, skin, null, false);
+            _replenishHPSlider.SetValueAndCommit(90);
+            _replenishHPSlider.OnChanged += (value) =>
+            {
+                _replenishHPThresholdLabel.SetText($"HP Threshold: {(int)value}%");
+            };
+            _replenishHPSlider.OnValueCommitted += (value) =>
+            {
+                var heroComp = GetHeroComponent();
+                if (heroComp != null) heroComp.ReplenishHPThreshold = (int)value / 100f;
+            };
+            hpSliderTable.Add(_replenishHPSlider).Width(180);
+            buttonsTable.Add(hpSliderTable).Left().SetPadBottom(8);
+            buttonsTable.Row();
+
+            // MP Threshold slider row
+            var mpSliderTable = new Table();
+            _replenishMPThresholdLabel = new Label("MP Threshold: 90%", skin, "ph-default");
+            mpSliderTable.Add(_replenishMPThresholdLabel).SetPadRight(8);
+            _replenishMPSlider = new EnhancedSlider(0, 100, 1, false, skin, null, false);
+            _replenishMPSlider.SetValueAndCommit(90);
+            _replenishMPSlider.OnChanged += (value) =>
+            {
+                _replenishMPThresholdLabel.SetText($"MP Threshold: {(int)value}%");
+            };
+            _replenishMPSlider.OnValueCommitted += (value) =>
+            {
+                var heroComp = GetHeroComponent();
+                if (heroComp != null) heroComp.ReplenishMPThreshold = (int)value / 100f;
+            };
+            mpSliderTable.Add(_replenishMPSlider).Width(180);
+            buttonsTable.Add(mpSliderTable).Left();
+
+            buttonsTab.Add(buttonsTable).Expand().Fill().Top().Left();
+        }
+
+        /// <summary>
+        /// Gets the HeroComponent from the hero entity
+        /// </summary>
+        private HeroComponent GetHeroComponent()
+        {
+            var heroEntity = Core.Scene?.FindEntity("hero");
+            return heroEntity?.GetComponent<HeroComponent>();
         }
 
         /// <summary>Shows the save/load UI in the specified mode.</summary>
