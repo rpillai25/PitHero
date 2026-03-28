@@ -52,6 +52,9 @@ namespace PitHero.AI
         // Enemy movement tracking
         private bool _heroWasMovingLastFrame;
 
+        // Stuck detection: time spent in GoTo state without making path progress
+        private float _goToStuckTimer;
+
         // Battle state tracking
         public static bool IsBattleInProgress { get; set; } = false;
 
@@ -295,6 +298,7 @@ namespace PitHero.AI
         void GoTo_Enter()
         {
             Debug.Log("[HeroStateMachine] Entering GoTo state");
+            _goToStuckTimer = 0f;
 
             if (_actionPlan == null || _actionPlan.Count == 0)
             {
@@ -410,13 +414,18 @@ namespace PitHero.AI
             if (tileMover.IsMoving)
             {
                 _heroWasMovingLastFrame = true;
+                _goToStuckTimer = 0f; // Reset stuck timer while actively moving
                 return;
             }
+
+            // Accumulate stuck timer when not actively moving between tiles
+            _goToStuckTimer += Time.DeltaTime;
 
             // Check if hero just finished moving (transition from moving to not moving)
             if (_heroWasMovingLastFrame && !tileMover.IsMoving)
             {
                 _heroWasMovingLastFrame = false;
+                _goToStuckTimer = 0f; // Reset stuck timer on successful step completion
 
                 // Check for adjacent monsters after reaching a new tile
                 var currentTile = tileMover.GetCurrentTileCoordinates();
@@ -432,6 +441,16 @@ namespace PitHero.AI
 
                 // Hero just completed a tile movement, trigger enemy movement
                 TriggerEnemyMovement();
+            }
+
+            // Stuck detection: if hero has been unable to make progress for too long, warp to target
+            if (_goToStuckTimer >= GameConfig.MovementStuckTimeoutSeconds)
+            {
+                Debug.Warn($"[HeroStateMachine] GoTo stuck for {_goToStuckTimer:F1}s, warping hero to target ({_targetTile.X},{_targetTile.Y})");
+                tileMover.WarpToTile(_targetTile);
+                _goToStuckTimer = 0f;
+                CurrentState = ActorState.PerformAction;
+                return;
             }
 
             // If we consumed the path, only proceed if we truly arrived at the target tile
@@ -465,6 +484,7 @@ namespace PitHero.AI
                 {
                     // Advance to the next path index; we will wait for IsMoving to clear before starting another step
                     _pathIndex++;
+                    _goToStuckTimer = 0f; // Reset stuck timer on successful movement start
                 }
                 else
                 {

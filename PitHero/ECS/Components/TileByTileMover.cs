@@ -134,6 +134,13 @@ namespace PitHero.ECS.Components
                 Entity.Transform.Position = _moveTargetPosition;
                 CompleteMove();
             }
+            else if (_moveElapsed > GameConfig.MovementStuckTimeoutSeconds)
+            {
+                // Safety timeout: force-complete if a single tile move has stalled for too long
+                Debug.Warn($"[TileByTileMover] Movement stuck for {_moveElapsed:F1}s (expected {_moveDuration:F1}s), force-completing to ({_moveTargetPosition.X},{_moveTargetPosition.Y})");
+                Entity.Transform.Position = _moveTargetPosition;
+                CompleteMove();
+            }
             else
             {
                 // Interpolate smoothly between start and target
@@ -178,6 +185,40 @@ namespace PitHero.ECS.Components
         public void UpdateTriggersAfterTeleport()
         {
             _triggerHelper?.Update();
+        }
+
+        /// <summary>
+        /// Immediately warp entity to the specified tile, stopping any in-progress movement.
+        /// Updates triggers and clears fog for heroes.
+        /// </summary>
+        public void WarpToTile(Point tile)
+        {
+            // Stop any in-progress movement
+            IsMoving = false;
+            CurrentDirection = null;
+
+            // Calculate world position for the tile center
+            var colliderCenterOffset = new Vector2(GameConfig.HeroWidth / 2f, GameConfig.HeroHeight / 2f);
+            Entity.Transform.Position = new Vector2(tile.X * _tileSize, tile.Y * _tileSize) + colliderCenterOffset;
+
+            SnapToTileGrid();
+
+            // Update triggers at new position
+            _triggerHelper?.Update();
+
+            // Clear fog around the tile for heroes
+            var tms = Core.Services.GetService<TiledMapService>();
+            var heroComponent = Entity.GetComponent<HeroComponent>();
+            if (tms != null && heroComponent != null)
+            {
+                bool fogCleared = tms.ClearFogOfWarAroundTile(tile.X, tile.Y, heroComponent);
+                if (fogCleared)
+                {
+                    heroComponent.TriggerFogCooldown();
+                }
+            }
+
+            Debug.Warn($"[TileByTileMover] Warped to tile ({tile.X},{tile.Y}) at world position ({Entity.Transform.Position.X},{Entity.Transform.Position.Y})");
         }
 
         /// <summary>

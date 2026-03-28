@@ -107,6 +107,9 @@ namespace PitHero
         // Pit collider padding (pixels around tile boundaries)
         public const int PitColliderPadding = 4;
 
+        // Stuck detection: if hero/mercenary makes no movement progress for this many seconds, warp to destination
+        public const float MovementStuckTimeoutSeconds = 5f;
+
         // Jump movement configuration
         public const float JumpMovementSpeed = 4.0f; // tiles per second for pit jumping (faster than normal movement)
 
