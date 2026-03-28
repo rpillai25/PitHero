@@ -515,8 +515,8 @@ namespace PitHero.UI
             var buttonsTable = new Table();
             buttonsTable.Pad(20);
 
-            // Replenish when Below Thresholds section
-            var replenishLabel = new Label("Replenish when Below Thresholds", skin, "ph-default");
+            // Replenish section
+            var replenishLabel = new Label("Replenish", skin, "ph-default");
             buttonsTable.Add(replenishLabel).Left().SetPadBottom(10f);
             buttonsTable.Row();
 
