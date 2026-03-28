@@ -319,6 +319,70 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
+        /// Returns true if the hero's HP is below the effective critical threshold,
+        /// considering both the normal threshold and any active replenish override.
+        /// </summary>
+        public bool IsHeroHPCritical()
+        {
+            if (LinkedHero == null)
+                return false;
+            float hpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
+            if (hpPercent < GameConfig.HeroCriticalHPPercent)
+                return true;
+            if (_replenishHPOverrideHero && hpPercent < GameConfig.ReplenishThreshold)
+                return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Returns true if the hero's MP is below the effective critical threshold,
+        /// considering both the normal threshold and any active replenish override.
+        /// </summary>
+        public bool IsHeroMPCritical()
+        {
+            if (LinkedHero == null || LinkedHero.MaxMP <= 0)
+                return false;
+            float mpPercent = (float)LinkedHero.CurrentMP / LinkedHero.MaxMP;
+            if (mpPercent < GameConfig.HeroCriticalMPPercent)
+                return true;
+            if (_replenishMPOverrideHero && mpPercent < GameConfig.ReplenishThreshold)
+                return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Returns true if a mercenary's HP is below the effective critical threshold,
+        /// considering both the normal threshold and any active replenish override.
+        /// </summary>
+        public bool IsMercenaryHPCritical(Entity mercEntity, MercenaryComponent mercComp)
+        {
+            if (mercComp?.LinkedMercenary == null)
+                return false;
+            float hpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
+            if (hpPercent < GameConfig.HeroCriticalHPPercent)
+                return true;
+            if (_replenishHPOverrideMercEntityIds.Contains(mercEntity.Id) && hpPercent < GameConfig.ReplenishThreshold)
+                return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Returns true if a mercenary's MP is below the effective critical threshold,
+        /// considering both the normal threshold and any active replenish override.
+        /// </summary>
+        public bool IsMercenaryMPCritical(Entity mercEntity, MercenaryComponent mercComp)
+        {
+            if (mercComp?.LinkedMercenary == null || mercComp.LinkedMercenary.MaxMP <= 0)
+                return false;
+            float mpPercent = (float)mercComp.LinkedMercenary.CurrentMP / mercComp.LinkedMercenary.MaxMP;
+            if (mpPercent < GameConfig.HeroCriticalMPPercent)
+                return true;
+            if (_replenishMPOverrideMercEntityIds.Contains(mercEntity.Id) && mpPercent < GameConfig.ReplenishThreshold)
+                return true;
+            return false;
+        }
+
+        /// <summary>
         /// Returns true if all healing options are exhausted (items, skills, and inn)
         /// </summary>
         public bool AllHealingOptionsExhausted()

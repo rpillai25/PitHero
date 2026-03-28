@@ -114,14 +114,10 @@ namespace PitHero.AI
             targetEntity = null;
 
             // Check hero first
-            if (heroComponent.LinkedHero != null)
+            if (heroComponent.LinkedHero != null && heroComponent.IsHeroHPCritical())
             {
-                float hpPercent = (float)heroComponent.LinkedHero.CurrentHP / heroComponent.LinkedHero.MaxHP;
-                if (hpPercent < GameConfig.HeroCriticalHPPercent)
-                {
-                    targetEntity = heroComponent.Entity;
-                    return heroComponent.LinkedHero;
-                }
+                targetEntity = heroComponent.Entity;
+                return heroComponent.LinkedHero;
             }
 
             // Check mercenaries
@@ -133,15 +129,11 @@ namespace PitHero.AI
                 {
                     var merc = hiredMercenaries[i];
                     var mercComp = merc.GetComponent<MercenaryComponent>();
-                    if (mercComp?.LinkedMercenary != null)
+                    if (mercComp?.LinkedMercenary != null && heroComponent.IsMercenaryHPCritical(merc, mercComp))
                     {
-                        float mercHpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
-                        if (mercHpPercent < GameConfig.HeroCriticalHPPercent)
-                        {
-                            isHero = false;
-                            targetEntity = merc;
-                            return mercComp.LinkedMercenary;
-                        }
+                        isHero = false;
+                        targetEntity = merc;
+                        return mercComp.LinkedMercenary;
                     }
                 }
             }
