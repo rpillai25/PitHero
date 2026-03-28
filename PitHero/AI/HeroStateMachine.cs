@@ -298,6 +298,7 @@ namespace PitHero.AI
         void GoTo_Enter()
         {
             Debug.Log("[HeroStateMachine] Entering GoTo state");
+            _goToStuckTimer = 0f;
 
             if (_actionPlan == null || _actionPlan.Count == 0)
             {
@@ -353,7 +354,6 @@ namespace PitHero.AI
             }
 
             Debug.Log($"[HeroStateMachine] GoTo_Enter: Found path with {_currentPath.Count} steps to ({_targetTile.X},{_targetTile.Y})");
-            _goToStuckTimer = 0f;
         }
 
         void GoTo_Tick()
