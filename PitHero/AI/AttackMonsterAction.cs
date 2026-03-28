@@ -331,6 +331,7 @@ namespace PitHero.AI
 
             // Set battle in progress to prevent movement
             HeroStateMachine.IsBattleInProgress = true;
+            heroComponent.DamageTracker.OnBattleStart();
 
             List<Entity> validMonsters = new List<Entity>();
             List<Entity> validMercenaries = new List<Entity>();
@@ -1189,6 +1190,7 @@ namespace PitHero.AI
                                     soundEffectManager?.PlaySound(SoundEffectType.TakeDamage);
 
                                     bool heroDied = hero.TakeDamage(enemyAttackResult.Damage * DEBUG_DAMAGE_MULT);
+                                    heroComponent.DamageTracker.RecordDamage(enemyAttackResult.Damage * DEBUG_DAMAGE_MULT);
                                     Debug.Log($"[AttackMonster] {enemy.Name} deals {enemyAttackResult.Damage} damage to {hero.Name}. Hero HP: {hero.CurrentHP}/{hero.MaxHP}");
 
                                     // Display damage on hero
@@ -1244,6 +1246,7 @@ namespace PitHero.AI
                                     soundEffectManager?.PlaySound(SoundEffectType.TakeDamage);
 
                                     bool mercDied = targetMercenary.TakeDamage(enemyAttackResult.Damage * DEBUG_DAMAGE_MULT);
+                                    heroComponent.DamageTracker.RecordDamage(enemyAttackResult.Damage * DEBUG_DAMAGE_MULT);
                                     Debug.Log($"[AttackMonster] {enemy.Name} deals {enemyAttackResult.Damage} damage to {targetMercenary.Name}. Mercenary HP: {targetMercenary.CurrentHP}/{targetMercenary.MaxHP}");
 
                                     // Display damage on mercenary
@@ -1311,6 +1314,9 @@ namespace PitHero.AI
             }
             finally
             {
+                // Record battle end for damage tracking before clearing battle state
+                heroComponent.DamageTracker.OnBattleEnd();
+
                 // Always clear battle state
                 HeroStateMachine.IsBattleInProgress = false;
                 existingMultiParticipantBattleCoroutine = null;

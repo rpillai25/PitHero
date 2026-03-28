@@ -22,9 +22,15 @@ namespace PitHero
         // Hero Configuration
         public const int HeroWidth = 32;
         public const int HeroHeight = 32;
-        public const float HeroCriticalHPPercent = 0.4f;
+        public const float HeroCriticalHPPercent = 0.4f; // Fallback when no damage history exists
         public const float HeroCriticalMPPercent = 0.5f;
         public const float ReplenishThresholdDefault = 0.9f;
+
+        // DamageTracker configuration
+        public const int DamageTrackerSampleSize = 5;
+        public const float DamageTrackerDecayWeight = 0.7f;
+        public const float DamageTrackerNewWeight = 0.3f;
+        public const float HPDangerMultiplier = 1.5f;
         public const int MaleHeroHairstyleCount = 5; // Number of available hairstyles for male heroes
 
         // Action Configuration

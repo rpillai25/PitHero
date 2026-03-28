@@ -13,6 +13,7 @@
         public const string AdjacentToMonster = "AdjacentToMonster";
         public const string AdjacentToChest = "AdjacentToChest";
         public const string HPCritical = "HPCritical";
+        public const string HPDanger = "HPDanger";
         public const string MPCritical = "MPCritical";
         public const string HealingItemExhausted = "HealingItemExhausted";
         public const string HealingSkillExhausted = "HealingSkillExhausted";

@@ -28,6 +28,7 @@ namespace PitHero.AI
 
             // Inn restores both HP and MP to full, so set both postconditions
             SetPostcondition(GoapConstants.HPCritical, false);
+            SetPostcondition(GoapConstants.HPDanger, false);
             SetPostcondition(GoapConstants.MPCritical, false);
         }
 
@@ -38,8 +39,8 @@ namespace PitHero.AI
             
             var healPrioritiesInOrder = heroComponent.GetHealPrioritiesInOrder();
             
-            // Must have either HPCritical or MPCritical
-            if (!heroComponent.HPCritical && !heroComponent.MPCritical)
+            // Must have either HPCritical, HPDanger, or MPCritical
+            if (!heroComponent.HPCritical && !heroComponent.HPDanger && !heroComponent.MPCritical)
             {
                 return false;
             }
@@ -51,11 +52,11 @@ namespace PitHero.AI
                 int innPriority = Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.Inn);
 
                 // Check if we should wait for a higher-priority option
-                // Note: HealingSkill can only address HPCritical, not MPCritical, so when only MP is low,
+                // Note: HealingSkill can only address HPCritical/HPDanger, not MPCritical, so when only MP is low,
                 // we should NOT wait for HealingSkill even if it has higher priority
                 bool shouldWaitForSkill = itemPriority > skillPriority && 
                                           !heroComponent.HealingSkillExhausted &&
-                                          heroComponent.HPCritical; // Only wait if HP is critical (skill can help)
+                                          (heroComponent.HPCritical || heroComponent.HPDanger); // Only wait if HP needs healing
                 
                 bool shouldWaitForInn = itemPriority > innPriority && 
                                         !heroComponent.InnExhausted;

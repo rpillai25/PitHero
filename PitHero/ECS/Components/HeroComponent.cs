@@ -5,6 +5,7 @@ using Nez.Tiled;
 using PitHero.AI;
 using PitHero.Services;
 using PitHero.Util;
+using RolePlayingFramework.Combat;
 using RolePlayingFramework.Equipment;
 using System;
 using System.Collections.Generic;
@@ -55,7 +56,8 @@ namespace PitHero.ECS.Components
         public bool AdjacentToChest { get; set; }                    // True when chest exists in tile adjacent to hero
 
         /// <summary>
-        /// True when hero's HP or any hired mercenary's HP falls below HeroCriticalHPPercent.
+        /// True when hero's HP or any hired mercenary's HP is at or below expected damage.
+        /// Uses DamageTracker when damage history exists, falls back to HeroCriticalHPPercent.
         /// Only checks HP — use MPCritical for MP checks.
         /// </summary>
         public bool HPCritical
@@ -65,18 +67,9 @@ namespace PitHero.ECS.Components
                 // Check hero's HP
                 if (LinkedHero == null)
                     return false;
-                float hpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
-                if (hpPercent < GameConfig.HeroCriticalHPPercent)
-                    return true;
 
-                // Replenish override check for hero
-                if (_replenishHPOverrideHero)
-                {
-                    if (hpPercent < ReplenishHPThreshold)
-                        return true;
-                    else
-                        _replenishHPOverrideHero = false;
-                }
+                if (IsHeroHPCritical())
+                    return true;
 
                 // Check all hired mercenaries' HP
                 var mercenaryManager = Core.Services.GetService<MercenaryManager>();
@@ -87,21 +80,44 @@ namespace PitHero.ECS.Components
                     {
                         var merc = hiredMercenaries[i];
                         var mercComp = merc.GetComponent<MercenaryComponent>();
-                        if (mercComp?.LinkedMercenary != null)
-                        {
-                            float mercHpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
-                            if (mercHpPercent < GameConfig.HeroCriticalHPPercent)
-                                return true;
+                        if (IsMercenaryHPCritical(merc, mercComp))
+                            return true;
+                    }
+                }
 
-                            // Replenish override check for this mercenary
-                            if (_replenishHPOverrideMercEntityIds.Contains(merc.Id))
-                            {
-                                if (mercHpPercent < ReplenishHPThreshold)
-                                    return true;
-                                else
-                                    _replenishHPOverrideMercEntityIds.Remove(merc.Id);
-                            }
-                        }
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// True when hero's HP or any hired mercenary's HP is in the danger zone
+        /// (at or below expected damage * 1.5) but NOT already HPCritical.
+        /// Uses DamageTracker when damage history exists.
+        /// </summary>
+        public bool HPDanger
+        {
+            get
+            {
+                if (LinkedHero == null)
+                    return false;
+
+                // No danger zone when there's no damage history
+                if (_damageTracker.MaxDamageTaken == 0)
+                    return false;
+
+                if (IsHeroHPDanger())
+                    return true;
+
+                var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+                if (mercenaryManager != null)
+                {
+                    var hiredMercenaries = mercenaryManager.GetHiredMercenaries();
+                    for (int i = 0; i < hiredMercenaries.Count; i++)
+                    {
+                        var merc = hiredMercenaries[i];
+                        var mercComp = merc.GetComponent<MercenaryComponent>();
+                        if (IsMercenaryHPDanger(merc, mercComp))
+                            return true;
                     }
                 }
 
@@ -259,6 +275,14 @@ namespace PitHero.ECS.Components
         /// </summary>
         public bool SeatedInTavern { get; set; }
 
+        // Damage tracking for dynamic HP evaluation
+        private readonly DamageTracker _damageTracker = new DamageTracker(GameConfig.DamageTrackerSampleSize);
+
+        /// <summary>
+        /// Tracks max and recent damage per party for dynamic HP critical/danger evaluation.
+        /// </summary>
+        public DamageTracker DamageTracker => _damageTracker;
+
         // Replenish override tracking - per-character flags set when Replenish button is pressed
         private bool _replenishHPOverrideHero;
         private bool _replenishMPOverrideHero;
@@ -356,19 +380,72 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Returns true if the hero's HP is below the effective critical threshold,
-        /// considering both the normal threshold and any active replenish override.
+        /// Returns the expected damage based on DamageTracker and battle state.
+        /// Returns 0 when no damage history exists.
+        /// </summary>
+        private int GetExpectedDamage()
+        {
+            if (_damageTracker.MaxDamageTaken == 0)
+                return 0;
+
+            if (HeroStateMachine.IsBattleInProgress)
+                return _damageTracker.GetExpectedDamageInBattle();
+
+            return _damageTracker.GetExpectedDamageOutOfBattle();
+        }
+
+        /// <summary>
+        /// Returns true if the hero's HP is below the effective critical threshold.
+        /// Uses DamageTracker when damage history exists, falls back to HeroCriticalHPPercent.
+        /// Also considers active replenish overrides.
         /// </summary>
         public bool IsHeroHPCritical()
         {
             if (LinkedHero == null)
                 return false;
-            float hpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
-            if (hpPercent < GameConfig.HeroCriticalHPPercent)
-                return true;
-            if (_replenishHPOverrideHero && hpPercent < ReplenishHPThreshold)
-                return true;
+
+            int expectedDamage = GetExpectedDamage();
+            if (expectedDamage > 0)
+            {
+                if (LinkedHero.CurrentHP <= expectedDamage)
+                    return true;
+            }
+            else
+            {
+                // Fallback: no damage history
+                float hpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
+                if (hpPercent < GameConfig.HeroCriticalHPPercent)
+                    return true;
+            }
+
+            // Replenish override check for hero
+            if (_replenishHPOverrideHero)
+            {
+                float hpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
+                if (hpPercent < ReplenishHPThreshold)
+                    return true;
+                else
+                    _replenishHPOverrideHero = false;
+            }
+
             return false;
+        }
+
+        /// <summary>
+        /// Returns true if the hero's HP is in the danger zone (at or below expected damage * 1.5)
+        /// but NOT already at the critical threshold.
+        /// </summary>
+        public bool IsHeroHPDanger()
+        {
+            if (LinkedHero == null)
+                return false;
+
+            int expectedDamage = GetExpectedDamage();
+            if (expectedDamage <= 0)
+                return false;
+
+            int dangerThreshold = (int)(expectedDamage * GameConfig.HPDangerMultiplier);
+            return LinkedHero.CurrentHP <= dangerThreshold && !IsHeroHPCriticalCore();
         }
 
         /// <summary>
@@ -388,19 +465,58 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Returns true if a mercenary's HP is below the effective critical threshold,
-        /// considering both the normal threshold and any active replenish override.
+        /// Returns true if a mercenary's HP is below the effective critical threshold.
+        /// Uses DamageTracker when damage history exists, falls back to HeroCriticalHPPercent.
+        /// Also considers active replenish overrides.
         /// </summary>
         public bool IsMercenaryHPCritical(Entity mercEntity, MercenaryComponent mercComp)
         {
             if (mercComp?.LinkedMercenary == null)
                 return false;
-            float hpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
-            if (hpPercent < GameConfig.HeroCriticalHPPercent)
-                return true;
-            if (_replenishHPOverrideMercEntityIds.Contains(mercEntity.Id) && hpPercent < ReplenishHPThreshold)
-                return true;
+
+            int expectedDamage = GetExpectedDamage();
+            if (expectedDamage > 0)
+            {
+                if (mercComp.LinkedMercenary.CurrentHP <= expectedDamage)
+                    return true;
+            }
+            else
+            {
+                // Fallback: no damage history
+                float hpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
+                if (hpPercent < GameConfig.HeroCriticalHPPercent)
+                    return true;
+            }
+
+            // Replenish override check for this mercenary
+            if (_replenishHPOverrideMercEntityIds.Contains(mercEntity.Id))
+            {
+                float hpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
+                if (hpPercent < ReplenishHPThreshold)
+                    return true;
+                else
+                    _replenishHPOverrideMercEntityIds.Remove(mercEntity.Id);
+            }
+
             return false;
+        }
+
+        /// <summary>
+        /// Returns true if a mercenary's HP is in the danger zone (at or below expected damage * 1.5)
+        /// but NOT already at the critical threshold.
+        /// </summary>
+        public bool IsMercenaryHPDanger(Entity mercEntity, MercenaryComponent mercComp)
+        {
+            if (mercComp?.LinkedMercenary == null)
+                return false;
+
+            int expectedDamage = GetExpectedDamage();
+            if (expectedDamage <= 0)
+                return false;
+
+            int dangerThreshold = (int)(expectedDamage * GameConfig.HPDangerMultiplier);
+            return mercComp.LinkedMercenary.CurrentHP <= dangerThreshold &&
+                   !IsMercenaryHPCriticalCore(mercComp);
         }
 
         /// <summary>
@@ -435,6 +551,40 @@ namespace PitHero.ECS.Components
         public bool AllMPRecoveryOptionsExhausted()
         {
             return HealingItemExhausted && InnExhausted;
+        }
+
+        /// <summary>
+        /// Core HP critical check for the hero (damage-based only, no replenish overrides).
+        /// Used internally by HPDanger to avoid circular dependency.
+        /// </summary>
+        private bool IsHeroHPCriticalCore()
+        {
+            if (LinkedHero == null)
+                return false;
+
+            int expectedDamage = GetExpectedDamage();
+            if (expectedDamage > 0)
+                return LinkedHero.CurrentHP <= expectedDamage;
+
+            float hpPercent = (float)LinkedHero.CurrentHP / LinkedHero.MaxHP;
+            return hpPercent < GameConfig.HeroCriticalHPPercent;
+        }
+
+        /// <summary>
+        /// Core HP critical check for a mercenary (damage-based only, no replenish overrides).
+        /// Used internally by HPDanger to avoid circular dependency.
+        /// </summary>
+        private bool IsMercenaryHPCriticalCore(MercenaryComponent mercComp)
+        {
+            if (mercComp?.LinkedMercenary == null)
+                return false;
+
+            int expectedDamage = GetExpectedDamage();
+            if (expectedDamage > 0)
+                return mercComp.LinkedMercenary.CurrentHP <= expectedDamage;
+
+            float hpPercent = (float)mercComp.LinkedMercenary.CurrentHP / mercComp.LinkedMercenary.MaxHP;
+            return hpPercent < GameConfig.HeroCriticalHPPercent;
         }
 
         /// <summary>
@@ -710,6 +860,10 @@ namespace PitHero.ECS.Components
             {
                 worldState.Set(GoapConstants.HPCritical, true);
             }
+            if (HPDanger)
+            {
+                worldState.Set(GoapConstants.HPDanger, true);
+            }
             if (MPCritical)
             {
                 worldState.Set(GoapConstants.MPCritical, true);
@@ -772,6 +926,13 @@ namespace PitHero.ECS.Components
             {
                 goalState.Set(GoapConstants.HPCritical, false);
                 return; // Skip other goals when HP is critical
+            }
+
+            // HIGH PRIORITY: HP danger zone - if HP is in the danger zone and healing options exist
+            if (HPDanger && !AllHealingOptionsExhausted())
+            {
+                goalState.Set(GoapConstants.HPDanger, false);
+                return; // Skip other goals when HP is in danger
             }
 
             // HIGH PRIORITY: MP recovery - if MP is critical and recovery options exist (items or inn), make it a goal
