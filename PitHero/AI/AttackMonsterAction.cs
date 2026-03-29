@@ -1237,6 +1237,12 @@ namespace PitHero.AI
                                         yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
                                     }
 
+                                    // If hero is alive and needs emergency heal, check if any mercenary healer can respond
+                                    if (!heroDied && heroComponent.IsHeroHPCritical())
+                                    {
+                                        yield return TryEmergencyReactiveHeal(heroComponent, validMercenaries, hero, true);
+                                    }
+
                                     if (heroDied)
                                     {
                                         Debug.Log($"[AttackMonster] {hero.Name} died! Battle continues with mercenaries.");
@@ -1294,6 +1300,12 @@ namespace PitHero.AI
                                         mercBouncyDigit.Init(enemyAttackResult.Damage, BouncyDigitComponent.HeroDigitColor, false);
                                         mercBouncyDigit.SetEnabled(true);
                                         yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+                                    }
+
+                                    // If mercenary is alive and needs emergency heal, check if any healer can respond
+                                    if (!mercDied && heroComponent.IsMercenaryHPCritical(targetEntity, targetMercComp))
+                                    {
+                                        yield return TryEmergencyReactiveHeal(heroComponent, validMercenaries, targetMercenary, false);
                                     }
 
                                     if (mercDied)
@@ -1579,6 +1591,127 @@ namespace PitHero.AI
                 var mComp = mercenaries[mi].GetComponent<MercenaryComponent>();
                 if (mComp?.LinkedMercenary != null)
                     mComp.LinkedMercenary.AddExperience(xpAmount);
+            }
+        }
+
+        /// <summary>
+        /// Attempts an emergency reactive heal from any healer mercenary when burst damage occurs.
+        /// This allows healers to respond to urgent damage even if they've already acted this round.
+        /// Returns an IEnumerator to yield during the heal animation.
+        /// </summary>
+        private System.Collections.IEnumerator TryEmergencyReactiveHeal(
+            HeroComponent heroComponent,
+            List<Entity> validMercenaries,
+            object damagedTarget,
+            bool targetIsHero)
+        {
+            // Check if target is in critical condition (either burst damage or HP threshold)
+            bool needsEmergencyHeal = false;
+            Entity targetEntity = null;
+            int targetCurrentHP = 0;
+            int targetMaxHP = 0;
+
+            if (targetIsHero)
+            {
+                var hero = heroComponent.LinkedHero;
+                if (hero != null && hero.CurrentHP > 0)
+                {
+                    needsEmergencyHeal = heroComponent.IsHeroHPCritical();
+                    targetEntity = heroComponent.Entity;
+                    targetCurrentHP = hero.CurrentHP;
+                    targetMaxHP = hero.MaxHP;
+                }
+            }
+            else if (damagedTarget is Mercenary damagedMerc)
+            {
+                // Find the mercenary entity
+                for (int i = 0; i < validMercenaries.Count; i++)
+                {
+                    var mercComp = validMercenaries[i].GetComponent<MercenaryComponent>();
+                    if (mercComp?.LinkedMercenary == damagedMerc && damagedMerc.CurrentHP > 0)
+                    {
+                        needsEmergencyHeal = heroComponent.IsMercenaryHPCritical(validMercenaries[i], mercComp);
+                        targetEntity = validMercenaries[i];
+                        targetCurrentHP = damagedMerc.CurrentHP;
+                        targetMaxHP = damagedMerc.MaxHP;
+                        break;
+                    }
+                }
+            }
+
+            if (!needsEmergencyHeal || targetEntity == null)
+                yield break;
+
+            Debug.Log($"[AttackMonster] Emergency heal check: target needs healing");
+
+            // Check each mercenary for healing capability
+            for (int i = 0; i < validMercenaries.Count; i++)
+            {
+                var healerEntity = validMercenaries[i];
+                var healerMercComp = healerEntity.GetComponent<MercenaryComponent>();
+                if (healerMercComp?.LinkedMercenary == null) continue;
+                
+                var healer = healerMercComp.LinkedMercenary;
+                if (healer.CurrentHP <= 0) continue; // Dead healers can't heal
+                if (healer == damagedTarget) continue; // Can't heal self in emergency (will be handled by their turn)
+
+                // Check if this mercenary has a healing skill they can use
+                var enumerator = healer.LearnedSkills.GetEnumerator();
+                ISkill bestHealSkill = null;
+                while (enumerator.MoveNext())
+                {
+                    var skill = enumerator.Current.Value;
+                    if (skill.Kind == SkillKind.Active && 
+                        skill.HPRestoreAmount > 0 && 
+                        healer.CurrentMP >= skill.MPCost)
+                    {
+                        if (bestHealSkill == null || skill.HPRestoreAmount > bestHealSkill.HPRestoreAmount)
+                        {
+                            bestHealSkill = skill;
+                        }
+                    }
+                }
+
+                if (bestHealSkill != null)
+                {
+                    Debug.Log($"[AttackMonster] {healer.Name} performs emergency reactive heal using {bestHealSkill.Name}!");
+
+                    // Use MP
+                    healer.UseMP(bestHealSkill.MPCost);
+
+                    // Show action icon on HUD
+                    healerMercComp.ActionQueueVisualization?.ShowAction(new QueuedAction(bestHealSkill));
+
+                    // Apply heal
+                    bool healed = false;
+                    if (targetIsHero)
+                    {
+                        healed = heroComponent.LinkedHero.RestoreHP(bestHealSkill.HPRestoreAmount);
+                    }
+                    else if (damagedTarget is Mercenary healedMerc)
+                    {
+                        healed = healedMerc.RestoreHP(bestHealSkill.HPRestoreAmount);
+                    }
+
+                    if (healed)
+                    {
+                        // Play heal sound
+                        SoundEffectManager sfx = Core.GetGlobalManager<SoundEffectManager>();
+                        sfx?.PlaySound(SoundEffectType.Restorative);
+
+                        // Show healing digit
+                        var digit = targetEntity.GetComponent<BouncyDigitComponent>();
+                        if (digit != null)
+                        {
+                            digit.Init(bestHealSkill.HPRestoreAmount, Color.Green, false);
+                            digit.SetEnabled(true);
+                            yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+                        }
+                    }
+
+                    // Only one healer responds per emergency
+                    yield break;
+                }
             }
         }
 
