@@ -68,11 +68,12 @@ namespace PitHero.AI
                 int skillPriority = Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingSkill);
                 int itemPriority = Array.IndexOf(healPrioritiesInOrder, HeroHealPriority.HealingItem);
 
-                // Note: HealingSkill can only address HPCritical/HPDanger, not MPCritical, so when only MP is low,
-                // we should NOT wait for HealingSkill even if it has higher priority
+                // Note: HealingSkill can only address HPCritical, not HPDanger or MPCritical.
+                // UseHealingSkillAction requires HPCritical==1 precondition, so it can NEVER satisfy HPDanger.
+                // Only wait for skill when HPCritical is true.
                 bool shouldWaitForSkill = innPriority > skillPriority && 
                                           !heroComponent.HealingSkillExhausted &&
-                                          (heroComponent.HPCritical || heroComponent.HPDanger); // Only wait if HP needs healing
+                                          heroComponent.HPCritical; // Only wait if HPCritical (skill can't help with HPDanger)
                 
                 bool shouldWaitForItem = innPriority > itemPriority && !heroComponent.HealingItemExhausted;
 

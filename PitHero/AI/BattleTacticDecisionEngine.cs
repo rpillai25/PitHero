@@ -416,7 +416,9 @@ namespace PitHero.AI
         /// <summary>
         /// Finds the ally (hero or mercenary) most in need of healing or MP restoration
         /// below the given thresholds. Returns true if a target was found.
-        /// When hpAbsoluteThreshold > 0, uses absolute HP threshold instead of percentage.
+        /// When hpAbsoluteThreshold > 0, uses whichever is more protective: the absolute HP
+        /// threshold OR the percentage threshold. This ensures the percentage safety net
+        /// still applies even when damage history exists.
         /// </summary>
         private static bool GetHealTarget(
             Hero hero, List<Entity> livingMercenaries, float hpThreshold, float mpThreshold,
@@ -436,9 +438,9 @@ namespace PitHero.AI
             {
                 float heroHPPercent = (float)hero.CurrentHP / hero.MaxHP;
                 float heroMPPercent = hero.MaxMP > 0 ? (float)hero.CurrentMP / hero.MaxMP : 1f;
-                bool hpCritical = hpAbsoluteThreshold > 0
-                    ? hero.CurrentHP <= hpAbsoluteThreshold
-                    : heroHPPercent < hpThreshold;
+                // Use whichever is more protective: absolute threshold OR percentage threshold
+                bool hpCritical = (hpAbsoluteThreshold > 0 && hero.CurrentHP <= hpAbsoluteThreshold)
+                    || heroHPPercent < hpThreshold;
                 bool mpCritical = heroMPPercent < mpThreshold;
                 float minPercent = System.Math.Min(heroHPPercent, heroMPPercent);
 
@@ -466,9 +468,9 @@ namespace PitHero.AI
 
                     float mercHPPercent = (float)merc.CurrentHP / merc.MaxHP;
                     float mercMPPercent = merc.MaxMP > 0 ? (float)merc.CurrentMP / merc.MaxMP : 1f;
-                    bool hpCritical = hpAbsoluteThreshold > 0
-                        ? merc.CurrentHP <= hpAbsoluteThreshold
-                        : mercHPPercent < hpThreshold;
+                    // Use whichever is more protective: absolute threshold OR percentage threshold
+                    bool hpCritical = (hpAbsoluteThreshold > 0 && merc.CurrentHP <= hpAbsoluteThreshold)
+                        || mercHPPercent < hpThreshold;
                     bool mpCritical = mercMPPercent < mpThreshold;
                     float minPercent = System.Math.Min(mercHPPercent, mercMPPercent);
 
