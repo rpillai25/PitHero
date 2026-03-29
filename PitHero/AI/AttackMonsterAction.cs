@@ -518,6 +518,39 @@ namespace PitHero.AI
                             // Check if there's a queued action
                             var queuedAction = heroComponent.BattleActionQueue.Dequeue();
 
+                            // Re-evaluate if healing is urgently needed since damage may have occurred since the action was queued
+                            // This catches the scenario where a monster attacks AFTER the hero's action was decided at round start
+                            // We only override non-healing actions (Attack or attack-type UseSkill)
+                            bool isQueuedOffensiveAction = queuedAction != null && 
+                                (queuedAction.ActionType == QueuedActionType.Attack ||
+                                 (queuedAction.ActionType == QueuedActionType.UseSkill && 
+                                  queuedAction.Skill != null && queuedAction.Skill.HPRestoreAmount <= 0));
+                            
+                            if (isQueuedOffensiveAction)
+                            {
+                                var currentLivingMonsters = GetLivingMonsters(validMonsters);
+                                var reEvaluatedDecision = BattleTacticDecisionEngine.DecideHeroAction(heroComponent, currentLivingMonsters, validMercenaries);
+                                if (reEvaluatedDecision.Kind == BattleAction.ActionKind.UseHealingSkill ||
+                                    reEvaluatedDecision.Kind == BattleAction.ActionKind.UseConsumable)
+                                {
+                                    Debug.Log($"[AttackMonster] Hero re-evaluated: overriding queued offensive action with {reEvaluatedDecision.Kind} (healing needed since action was queued)");
+                                    // Override the queued action with the re-evaluated healing action
+                                    switch (reEvaluatedDecision.Kind)
+                                    {
+                                        case BattleAction.ActionKind.UseHealingSkill:
+                                            queuedAction = new QueuedAction(reEvaluatedDecision.Skill);
+                                            queuedAction.Target = reEvaluatedDecision.Target;
+                                            queuedAction.TargetsHero = reEvaluatedDecision.TargetsHero;
+                                            break;
+                                        case BattleAction.ActionKind.UseConsumable:
+                                            queuedAction = new QueuedAction(reEvaluatedDecision.Consumable, reEvaluatedDecision.BagIndex);
+                                            queuedAction.Target = reEvaluatedDecision.Target;
+                                            queuedAction.TargetsHero = reEvaluatedDecision.TargetsHero;
+                                            break;
+                                    }
+                                }
+                            }
+
                             if (queuedAction != null)
                             {
                                 // Execute the queued action
