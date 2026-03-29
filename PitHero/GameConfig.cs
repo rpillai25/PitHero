@@ -30,7 +30,7 @@ namespace PitHero
         /// update frame, the burst-critical flag is triggered. Note: unlike HeroCriticalHPPercent (const),
         /// these are static to allow runtime tuning.
         /// </summary>
-        public static float BurstDamageThresholdPercent = 0.30f; // 30% of MaxHP lost in one frame triggers burst flag
+        public static float BurstDamageThresholdPercent = 0.20f; // 20% of MaxHP lost in one frame triggers burst flag
 
         /// <summary>
         /// Burst damage recovery threshold. Once the burst-critical flag is set, it clears when HP recovers
