@@ -460,7 +460,7 @@ namespace PitHero.ECS.Components
             if (LinkedHero == null || LinkedHero.MaxHP <= 0)
                 return;
             float burstThreshold = LinkedHero.MaxHP * GameConfig.BurstDamageThresholdPercent;
-            if ((float)damage >= burstThreshold)
+            if (damage >= burstThreshold)
                 _heroBurstDamageTriggered = true;
         }
 
@@ -477,7 +477,7 @@ namespace PitHero.ECS.Components
             if (mercComp?.LinkedMercenary == null || mercComp.LinkedMercenary.MaxHP <= 0)
                 return;
             float burstThreshold = mercComp.LinkedMercenary.MaxHP * GameConfig.BurstDamageThresholdPercent;
-            if ((float)damage >= burstThreshold)
+            if (damage >= burstThreshold)
                 _burstDamageMercEntityIds.Add(mercEntity.Id);
         }
 
