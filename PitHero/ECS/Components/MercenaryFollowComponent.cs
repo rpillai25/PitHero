@@ -19,6 +19,10 @@ namespace PitHero.ECS.Components
         private int _pathIndex;
         private Point _lastTargetTile;
 
+        // Stuck detection
+        private float _stuckTimer;
+        private Point _lastStuckCheckTile;
+
         public override void OnAddedToEntity()
         {
             _tileMover = Entity.GetComponent<TileByTileMover>();
@@ -27,6 +31,8 @@ namespace PitHero.ECS.Components
             _currentPath = null;
             _pathIndex = 0;
             _lastTargetTile = new Point(-1, -1);
+            _stuckTimer = 0f;
+            _lastStuckCheckTile = new Point(-1, -1);
         }
 
         public void Update()
@@ -68,11 +74,23 @@ namespace PitHero.ECS.Components
             if (_tileMover != null && _tileMover.IsMoving)
             {
                 // Debug.Log($"[MercenaryFollowComponent] {Entity.Name} already moving");
+                _stuckTimer = 0f; // Reset stuck timer while actively moving
                 return;
             }
 
             var myTile = GetCurrentTile();
             // Debug.Log($"[MercenaryFollowComponent] {Entity.Name} at tile ({myTile.X},{myTile.Y})");
+
+            // Track stuck detection: accumulate time at the same tile
+            if (myTile == _lastStuckCheckTile)
+            {
+                _stuckTimer += Time.DeltaTime;
+            }
+            else
+            {
+                _stuckTimer = 0f;
+                _lastStuckCheckTile = myTile;
+            }
 
             if (_tileMover != null && _tileMover.Enabled && _mercComponent.LastTilePosition != myTile)
             {
@@ -99,6 +117,20 @@ namespace PitHero.ECS.Components
             {
                 // Debug.Log($"[MercenaryFollowComponent] {Entity.Name} adjacent to target, stopping to avoid overlap");
                 _currentPath = null;
+                _stuckTimer = 0f;
+                return;
+            }
+
+            // Stuck detection: if mercenary has been at the same tile too long while needing to move, warp near target
+            if (_stuckTimer >= GameConfig.MovementStuckTimeoutSeconds && _tileMover != null)
+            {
+                Debug.Warn($"[MercenaryFollowComponent] {Entity.Name} stuck at ({myTile.X},{myTile.Y}) for {_stuckTimer:F1}s, warping near target ({targetTile.X},{targetTile.Y})");
+                _tileMover.WarpToTile(targetTile);
+                _currentPath = null;
+                _pathIndex = 0;
+                _stuckTimer = 0f;
+                _lastStuckCheckTile = targetTile;
+                _mercComponent.LastTilePosition = targetTile;
                 return;
             }
 
@@ -224,6 +256,8 @@ namespace PitHero.ECS.Components
             _currentPath = null;
             _pathIndex = 0;
             _lastTargetTile = new Point(-1, -1);
+            _stuckTimer = 0f;
+            _lastStuckCheckTile = new Point(-1, -1);
             Debug.Log($"[MercenaryFollow] Pathfinding state reset for {Entity.Name}");
         }
     }
