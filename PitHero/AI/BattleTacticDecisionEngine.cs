@@ -296,7 +296,7 @@ namespace PitHero.AI
             int targetMaxHP;
             int targetCurrentMP;
             int targetMaxMP;
-            if (!GetHealTarget(hero, livingMercenaries, hpThreshold, mpThreshold,
+            if (!GetHealTarget(hero, heroComponent, livingMercenaries, hpThreshold, mpThreshold,
                     out healTarget, out targetIsHero, out targetCurrentHP, out targetMaxHP,
                     out targetCurrentMP, out targetMaxMP))
                 return false;
@@ -360,7 +360,7 @@ namespace PitHero.AI
             int targetMaxHP;
             int targetCurrentMP;
             int targetMaxMP;
-            if (!GetHealTarget(hero, livingMercenaries, hpThreshold, mpThreshold,
+            if (!GetHealTarget(hero, heroComponent, livingMercenaries, hpThreshold, mpThreshold,
                     out healTarget, out targetIsHero, out targetCurrentHP, out targetMaxHP,
                     out targetCurrentMP, out targetMaxMP))
                 return false;
@@ -400,10 +400,13 @@ namespace PitHero.AI
 
         /// <summary>
         /// Finds the ally (hero or mercenary) most in need of healing or MP restoration
-        /// below the given thresholds. Returns true if a target was found.
+        /// below the given thresholds. Also considers active burst damage flags via heroComponent
+        /// so that a burst-damaged character triggers healing even if HP is above the raw threshold.
+        /// Returns true if a target was found.
         /// </summary>
         private static bool GetHealTarget(
-            Hero hero, List<Entity> livingMercenaries, float hpThreshold, float mpThreshold,
+            Hero hero, HeroComponent heroComponent, List<Entity> livingMercenaries,
+            float hpThreshold, float mpThreshold,
             out object target, out bool isHero, out int currentHP, out int maxHP,
             out int currentMP, out int maxMP)
         {
@@ -415,12 +418,12 @@ namespace PitHero.AI
             maxMP = 0;
             float lowestPercent = 1f;
 
-            // Check hero
+            // Check hero — burst damage flag is included via IsHeroHPCritical()
             if (hero != null && hero.MaxHP > 0)
             {
                 float heroHPPercent = (float)hero.CurrentHP / hero.MaxHP;
                 float heroMPPercent = hero.MaxMP > 0 ? (float)hero.CurrentMP / hero.MaxMP : 1f;
-                bool hpCritical = heroHPPercent < hpThreshold;
+                bool hpCritical = heroHPPercent < hpThreshold || heroComponent.IsHeroHPCritical();
                 bool mpCritical = heroMPPercent < mpThreshold;
                 float minPercent = System.Math.Min(heroHPPercent, heroMPPercent);
 
@@ -436,19 +439,20 @@ namespace PitHero.AI
                 }
             }
 
-            // Check mercenaries
+            // Check mercenaries — burst damage flag is included via IsMercenaryHPCritical()
             if (livingMercenaries != null)
             {
                 for (int i = 0; i < livingMercenaries.Count; i++)
                 {
-                    var mercComp = livingMercenaries[i].GetComponent<MercenaryComponent>();
+                    var mercEntity = livingMercenaries[i];
+                    var mercComp = mercEntity.GetComponent<MercenaryComponent>();
                     if (mercComp == null) continue;
                     var merc = mercComp.LinkedMercenary;
                     if (merc == null || merc.MaxHP <= 0) continue;
 
                     float mercHPPercent = (float)merc.CurrentHP / merc.MaxHP;
                     float mercMPPercent = merc.MaxMP > 0 ? (float)merc.CurrentMP / merc.MaxMP : 1f;
-                    bool hpCritical = mercHPPercent < hpThreshold;
+                    bool hpCritical = mercHPPercent < hpThreshold || heroComponent.IsMercenaryHPCritical(mercEntity, mercComp);
                     bool mpCritical = mercMPPercent < mpThreshold;
                     float minPercent = System.Math.Min(mercHPPercent, mercMPPercent);
 
