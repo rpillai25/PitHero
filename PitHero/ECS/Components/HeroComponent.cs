@@ -688,7 +688,8 @@ namespace PitHero.ECS.Components
             if (mercenaryManagerForBurst != null)
             {
                 var hiredMercs = mercenaryManagerForBurst.GetHiredMercenaries();
-                for (int i = 0; i < hiredMercs.Count; i++)
+                int hiredMercCount = hiredMercs.Count;
+                for (int i = 0; i < hiredMercCount; i++)
                 {
                     var merc = hiredMercs[i];
                     var mercComp = merc.GetComponent<MercenaryComponent>();
