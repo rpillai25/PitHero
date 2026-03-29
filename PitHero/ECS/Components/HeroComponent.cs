@@ -81,7 +81,7 @@ namespace PitHero.ECS.Components
                 // Burst critical check for hero (independent of replenish override)
                 if (_heroBurstDamageTriggered)
                 {
-                    if (hpPercent >= GameConfig.BurstDamageRecoveryPercent)
+                    if (hpPercent >= GetBurstDamageRecovery())
                         _heroBurstDamageTriggered = false;
                     else
                         return true;
@@ -114,7 +114,7 @@ namespace PitHero.ECS.Components
                             // Burst critical check for this mercenary
                             if (_burstDamageMercEntityIds.Contains(merc.Id))
                             {
-                                if (mercHpPercent >= GameConfig.BurstDamageRecoveryPercent)
+                                if (mercHpPercent >= GetBurstDamageRecovery())
                                     _burstDamageMercEntityIds.Remove(merc.Id);
                                 else
                                     return true;
@@ -234,6 +234,28 @@ namespace PitHero.ECS.Components
 
         /// <summary>Current battle tactic for AI decision-making</summary>
         public BattleTactic CurrentBattleTactic { get; set; } = BattleTactic.Strategic;
+
+        /// <summary>
+        /// Gets the burst damage threshold percent based on the current battle tactic.
+        /// Defensive tactic uses a lower threshold (more sensitive to damage).
+        /// </summary>
+        public float GetBurstDamageThreshold()
+        {
+            return CurrentBattleTactic == BattleTactic.Defensive
+                ? GameConfig.BurstDamageThresholdPercentDefensive
+                : GameConfig.BurstDamageThresholdPercent;
+        }
+
+        /// <summary>
+        /// Gets the burst damage recovery percent based on the current battle tactic.
+        /// Defensive tactic requires higher HP recovery before clearing the burst flag.
+        /// </summary>
+        public float GetBurstDamageRecovery()
+        {
+            return CurrentBattleTactic == BattleTactic.Defensive
+                ? GameConfig.BurstDamageRecoveryPercentDefensive
+                : GameConfig.BurstDamageRecoveryPercent;
+        }
 
         /// <summary>If true, consumable items can be used on mercenaries during battle</summary>
         public bool UseConsumablesOnMercenaries { get; set; } = true;
@@ -393,7 +415,7 @@ namespace PitHero.ECS.Components
             if (_replenishHPOverrideHero && hpPercent < ReplenishHPThreshold)
                 return true;
             // Burst flag check (read-only; clearing is authoritative in HPCritical getter and Update())
-            if (_heroBurstDamageTriggered && hpPercent < GameConfig.BurstDamageRecoveryPercent)
+            if (_heroBurstDamageTriggered && hpPercent < GetBurstDamageRecovery())
                 return true;
             return false;
         }
@@ -428,7 +450,7 @@ namespace PitHero.ECS.Components
             if (_replenishHPOverrideMercEntityIds.Contains(mercEntity.Id) && hpPercent < ReplenishHPThreshold)
                 return true;
             // Burst flag check for mercenary
-            if (_burstDamageMercEntityIds.Contains(mercEntity.Id) && hpPercent < GameConfig.BurstDamageRecoveryPercent)
+            if (_burstDamageMercEntityIds.Contains(mercEntity.Id) && hpPercent < GetBurstDamageRecovery())
                 return true;
             return false;
         }
@@ -459,7 +481,7 @@ namespace PitHero.ECS.Components
         {
             if (LinkedHero == null || LinkedHero.MaxHP <= 0)
                 return;
-            float burstThreshold = LinkedHero.MaxHP * GameConfig.BurstDamageThresholdPercent;
+            float burstThreshold = LinkedHero.MaxHP * GetBurstDamageThreshold();
             if (damage >= burstThreshold)
                 _heroBurstDamageTriggered = true;
         }
@@ -476,7 +498,7 @@ namespace PitHero.ECS.Components
         {
             if (mercComp?.LinkedMercenary == null || mercComp.LinkedMercenary.MaxHP <= 0)
                 return;
-            float burstThreshold = mercComp.LinkedMercenary.MaxHP * GameConfig.BurstDamageThresholdPercent;
+            float burstThreshold = mercComp.LinkedMercenary.MaxHP * GetBurstDamageThreshold();
             if (damage >= burstThreshold)
                 _burstDamageMercEntityIds.Add(mercEntity.Id);
         }
@@ -707,7 +729,7 @@ namespace PitHero.ECS.Components
                     int heroDamage = _lastKnownHeroHP - currentHeroHP;
                     if (heroDamage > 0)
                     {
-                        float burstThreshold = LinkedHero.MaxHP * GameConfig.BurstDamageThresholdPercent;
+                        float burstThreshold = LinkedHero.MaxHP * GetBurstDamageThreshold();
                         if ((float)heroDamage >= burstThreshold)
                             _heroBurstDamageTriggered = true;
                     }
@@ -739,7 +761,7 @@ namespace PitHero.ECS.Components
                         int mercDamage = _lastKnownMercHP[merc.Id] - currentMercHP;
                         if (mercDamage > 0)
                         {
-                            float burstThreshold = mercComp.LinkedMercenary.MaxHP * GameConfig.BurstDamageThresholdPercent;
+                            float burstThreshold = mercComp.LinkedMercenary.MaxHP * GetBurstDamageThreshold();
                             if ((float)mercDamage >= burstThreshold)
                                 _burstDamageMercEntityIds.Add(merc.Id);
                         }
