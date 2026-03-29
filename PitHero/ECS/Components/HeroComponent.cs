@@ -450,6 +450,38 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
+        /// Registers burst damage for the hero during battle.
+        /// Call this immediately after applying damage within the battle loop
+        /// so the burst flag is set before the next heal decision.
+        /// </summary>
+        /// <param name="damage">Amount of damage taken this hit.</param>
+        public void RegisterHeroBurstDamage(int damage)
+        {
+            if (LinkedHero == null || LinkedHero.MaxHP <= 0)
+                return;
+            float burstThreshold = LinkedHero.MaxHP * GameConfig.BurstDamageThresholdPercent;
+            if ((float)damage >= burstThreshold)
+                _heroBurstDamageTriggered = true;
+        }
+
+        /// <summary>
+        /// Registers burst damage for a mercenary during battle.
+        /// Call this immediately after applying damage within the battle loop
+        /// so the burst flag is set before the next heal decision.
+        /// </summary>
+        /// <param name="mercEntity">The mercenary entity that took damage.</param>
+        /// <param name="mercComp">The mercenary component.</param>
+        /// <param name="damage">Amount of damage taken this hit.</param>
+        public void RegisterMercenaryBurstDamage(Entity mercEntity, MercenaryComponent mercComp, int damage)
+        {
+            if (mercComp?.LinkedMercenary == null || mercComp.LinkedMercenary.MaxHP <= 0)
+                return;
+            float burstThreshold = mercComp.LinkedMercenary.MaxHP * GameConfig.BurstDamageThresholdPercent;
+            if ((float)damage >= burstThreshold)
+                _burstDamageMercEntityIds.Add(mercEntity.Id);
+        }
+
+        /// <summary>
         /// Returns true if all healing options are exhausted (items, skills, and inn)
         /// </summary>
         public bool AllHealingOptionsExhausted()

@@ -12,9 +12,9 @@ namespace PitHero.Tests
     public class BurstDamageCriticalHPTests
     {
         [TestMethod]
-        public void BurstDamageThresholdPercent_DefaultIs30Percent()
+        public void BurstDamageThresholdPercent_DefaultIs20Percent()
         {
-            Assert.AreEqual(0.30f, GameConfig.BurstDamageThresholdPercent);
+            Assert.AreEqual(0.20f, GameConfig.BurstDamageThresholdPercent);
         }
 
         [TestMethod]

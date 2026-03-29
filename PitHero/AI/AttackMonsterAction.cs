@@ -1188,8 +1188,12 @@ namespace PitHero.AI
                                     SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
                                     soundEffectManager?.PlaySound(SoundEffectType.TakeDamage);
 
-                                    bool heroDied = hero.TakeDamage(enemyAttackResult.Damage * DEBUG_DAMAGE_MULT);
+                                    int actualDamage = enemyAttackResult.Damage * DEBUG_DAMAGE_MULT;
+                                    bool heroDied = hero.TakeDamage(actualDamage);
                                     Debug.Log($"[AttackMonster] {enemy.Name} deals {enemyAttackResult.Damage} damage to {hero.Name}. Hero HP: {hero.CurrentHP}/{hero.MaxHP}");
+
+                                    // Register burst damage immediately so next heal decision sees it
+                                    heroComponent.RegisterHeroBurstDamage(actualDamage);
 
                                     // Display damage on hero
                                     var heroBouncyDigit = heroComponent.Entity.GetComponent<BouncyDigitComponent>();
@@ -1243,8 +1247,12 @@ namespace PitHero.AI
                                     SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
                                     soundEffectManager?.PlaySound(SoundEffectType.TakeDamage);
 
-                                    bool mercDied = targetMercenary.TakeDamage(enemyAttackResult.Damage * DEBUG_DAMAGE_MULT);
+                                    int actualDamage = enemyAttackResult.Damage * DEBUG_DAMAGE_MULT;
+                                    bool mercDied = targetMercenary.TakeDamage(actualDamage);
                                     Debug.Log($"[AttackMonster] {enemy.Name} deals {enemyAttackResult.Damage} damage to {targetMercenary.Name}. Mercenary HP: {targetMercenary.CurrentHP}/{targetMercenary.MaxHP}");
+
+                                    // Register burst damage immediately so next heal decision sees it
+                                    heroComponent.RegisterMercenaryBurstDamage(targetEntity, targetMercComp, actualDamage);
 
                                     // Display damage on mercenary
                                     var mercBouncyDigit = targetEntity.GetComponent<BouncyDigitComponent>();
