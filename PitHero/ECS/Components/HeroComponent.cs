@@ -78,6 +78,15 @@ namespace PitHero.ECS.Components
                         _replenishHPOverrideHero = false;
                 }
 
+                // Burst critical check for hero (independent of replenish override)
+                if (_heroBurstDamageTriggered)
+                {
+                    if (hpPercent >= GameConfig.BurstDamageRecoveryPercent)
+                        _heroBurstDamageTriggered = false;
+                    else
+                        return true;
+                }
+
                 // Check all hired mercenaries' HP
                 var mercenaryManager = Core.Services.GetService<MercenaryManager>();
                 if (mercenaryManager != null)
@@ -100,6 +109,15 @@ namespace PitHero.ECS.Components
                                     return true;
                                 else
                                     _replenishHPOverrideMercEntityIds.Remove(merc.Id);
+                            }
+
+                            // Burst critical check for this mercenary
+                            if (_burstDamageMercEntityIds.Contains(merc.Id))
+                            {
+                                if (mercHpPercent >= GameConfig.BurstDamageRecoveryPercent)
+                                    _burstDamageMercEntityIds.Remove(merc.Id);
+                                else
+                                    return true;
                             }
                         }
                     }
@@ -265,6 +283,12 @@ namespace PitHero.ECS.Components
         private readonly HashSet<uint> _replenishHPOverrideMercEntityIds = new HashSet<uint>(4);
         private readonly HashSet<uint> _replenishMPOverrideMercEntityIds = new HashSet<uint>(4);
 
+        // --- Burst damage tracking (independent of replenish override) ---
+        private int _lastKnownHeroHP = -1;  // -1 sentinel = not yet seeded; avoids false burst on first frame
+        private bool _heroBurstDamageTriggered;
+        private readonly Dictionary<uint, int> _lastKnownMercHP = new Dictionary<uint, int>(4);
+        private readonly HashSet<uint> _burstDamageMercEntityIds = new HashSet<uint>(4);
+
         /// <summary>
         /// Set true when ActivateReplenish() sets any override flags.
         /// Checked by HeroStateMachine to interrupt the current plan and re-plan immediately.
@@ -368,6 +392,9 @@ namespace PitHero.ECS.Components
                 return true;
             if (_replenishHPOverrideHero && hpPercent < ReplenishHPThreshold)
                 return true;
+            // Burst flag check (read-only; clearing is authoritative in HPCritical getter and Update())
+            if (_heroBurstDamageTriggered && hpPercent < GameConfig.BurstDamageRecoveryPercent)
+                return true;
             return false;
         }
 
@@ -399,6 +426,9 @@ namespace PitHero.ECS.Components
             if (hpPercent < GameConfig.HeroCriticalHPPercent)
                 return true;
             if (_replenishHPOverrideMercEntityIds.Contains(mercEntity.Id) && hpPercent < ReplenishHPThreshold)
+                return true;
+            // Burst flag check for mercenary
+            if (_burstDamageMercEntityIds.Contains(mercEntity.Id) && hpPercent < GameConfig.BurstDamageRecoveryPercent)
                 return true;
             return false;
         }
@@ -551,6 +581,12 @@ namespace PitHero.ECS.Components
 
             // Ensure initial movement speed matches starting pit state (outside by default)
             ApplyMovementSpeedForPitState();
+
+            // Reset burst damage tracking
+            _lastKnownHeroHP = -1;
+            _heroBurstDamageTriggered = false;
+            _lastKnownMercHP.Clear();
+            _burstDamageMercEntityIds.Clear();
         }
 
         /// <summary>
@@ -623,6 +659,60 @@ namespace PitHero.ECS.Components
             {
                 LastTilePosition = _currentTile;
                 _currentTile = currentTile;
+            }
+
+            // --- Hero burst damage detection ---
+            if (LinkedHero != null)
+            {
+                int currentHeroHP = LinkedHero.CurrentHP;
+                if (_lastKnownHeroHP < 0)
+                {
+                    // First frame after LinkedHero is available — seed without triggering burst
+                    _lastKnownHeroHP = currentHeroHP;
+                }
+                else
+                {
+                    int heroDamage = _lastKnownHeroHP - currentHeroHP;
+                    if (heroDamage > 0)
+                    {
+                        float burstThreshold = LinkedHero.MaxHP * GameConfig.BurstDamageThresholdPercent;
+                        if ((float)heroDamage >= burstThreshold)
+                            _heroBurstDamageTriggered = true;
+                    }
+                    _lastKnownHeroHP = currentHeroHP;
+                }
+            }
+
+            // --- Mercenary burst damage detection ---
+            var mercenaryManagerForBurst = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManagerForBurst != null)
+            {
+                var hiredMercs = mercenaryManagerForBurst.GetHiredMercenaries();
+                for (int i = 0; i < hiredMercs.Count; i++)
+                {
+                    var merc = hiredMercs[i];
+                    var mercComp = merc.GetComponent<MercenaryComponent>();
+                    if (mercComp?.LinkedMercenary == null)
+                        continue;
+
+                    int currentMercHP = mercComp.LinkedMercenary.CurrentHP;
+                    if (!_lastKnownMercHP.ContainsKey(merc.Id))
+                    {
+                        // First frame this merc is seen — seed without triggering burst
+                        _lastKnownMercHP[merc.Id] = currentMercHP;
+                    }
+                    else
+                    {
+                        int mercDamage = _lastKnownMercHP[merc.Id] - currentMercHP;
+                        if (mercDamage > 0)
+                        {
+                            float burstThreshold = mercComp.LinkedMercenary.MaxHP * GameConfig.BurstDamageThresholdPercent;
+                            if ((float)mercDamage >= burstThreshold)
+                                _burstDamageMercEntityIds.Add(merc.Id);
+                        }
+                        _lastKnownMercHP[merc.Id] = currentMercHP;
+                    }
+                }
             }
         }
 

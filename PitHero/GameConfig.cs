@@ -24,6 +24,19 @@ namespace PitHero
         public const int HeroHeight = 32;
         public const float HeroCriticalHPPercent = 0.4f;
         public const float HeroCriticalMPPercent = 0.5f;
+
+        /// <summary>
+        /// Burst damage detection threshold. If a character loses this fraction of their max HP in a single
+        /// update frame, the burst-critical flag is triggered. Note: unlike HeroCriticalHPPercent (const),
+        /// these are static to allow runtime tuning.
+        /// </summary>
+        public static float BurstDamageThresholdPercent = 0.30f; // 30% of MaxHP lost in one frame triggers burst flag
+
+        /// <summary>
+        /// Burst damage recovery threshold. Once the burst-critical flag is set, it clears when HP recovers
+        /// to or above this fraction of max HP.
+        /// </summary>
+        public static float BurstDamageRecoveryPercent = 0.60f; // Burst flag clears once HP recovers to 60% of MaxHP
         public const float ReplenishThresholdDefault = 0.9f;
         public const int MaleHeroHairstyleCount = 5; // Number of available hairstyles for male heroes
 
