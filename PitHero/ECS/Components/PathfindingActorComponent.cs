@@ -57,19 +57,6 @@ namespace PitHero.ECS.Components
             _isPathfindingInitialized = true;
 
             Debug.Log($"[PathfindingActor] Initialized pathfinding for {Entity.Name} with {_astarGraph.Walls.Count} walls from collision layer");
-            Debug.Log($"[PathfindingActor] Map dimensions: {collisionLayer.Width}x{collisionLayer.Height}");
-
-            // Log some sample wall positions for debugging
-            int wallCount = 0;
-            foreach (var wall in _astarGraph.Walls)
-            {
-                if (wallCount < 10) // Log first 10 walls
-                {
-                    Debug.Log($"[PathfindingActor] Wall at ({wall.X},{wall.Y})");
-                }
-                wallCount++;
-                if (wallCount >= 10) break;
-            }
         }
 
         /// <summary>
@@ -97,7 +84,6 @@ namespace PitHero.ECS.Components
             _isPathfindingInitialized = true;
 
             Debug.Log($"[PathfindingActor] Refreshed pathfinding for {Entity.Name} with {_astarGraph.Walls.Count} walls from collision layer");
-            Debug.Log($"[PathfindingActor] Updated map dimensions: {collisionLayer.Width}x{collisionLayer.Height}");
         }
 
         /// <summary>
@@ -112,7 +98,6 @@ namespace PitHero.ECS.Components
             }
 
             _astarGraph.Walls.Add(tilePosition);
-            Debug.Log($"[PathfindingActor] Added wall at ({tilePosition.X},{tilePosition.Y}) to {Entity.Name} pathfinding graph");
         }
 
         /// <summary>
@@ -127,7 +112,6 @@ namespace PitHero.ECS.Components
             }
 
             _astarGraph.Walls.Remove(tilePosition);
-            Debug.Log($"[PathfindingActor] Removed wall at ({tilePosition.X},{tilePosition.Y}) from {Entity.Name} pathfinding graph");
         }
 
         /// <summary>
@@ -150,12 +134,10 @@ namespace PitHero.ECS.Components
                     return null;
                 }
 
-                Debug.Log($"[PathfindingActor] Calculating path for {Entity.Name} from ({start.X},{start.Y}) to ({target.X},{target.Y})");
                 var path = _astarGraph.Search(start, target);
 
                 if (path != null && path.Count > 0)
                 {
-                    Debug.Log($"[PathfindingActor] Found path for {Entity.Name} with {path.Count} steps");
                     // Remove the first point if it's the current position
                     if (path.Count > 0 && path[0].X == start.X && path[0].Y == start.Y)
                     {

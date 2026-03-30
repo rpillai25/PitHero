@@ -18,7 +18,6 @@ namespace PitHero.ECS.Components
                 return;
             _facing = direction;
             _dirty = true;
-            Debug.Log($"[ActorFacingComponent] Facing updated to {_facing}");
         }
 
         /// <summary>Consume dirty flag (returns true if a change occurred since last consume).</summary>

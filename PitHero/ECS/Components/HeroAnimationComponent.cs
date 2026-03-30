@@ -111,7 +111,6 @@ namespace PitHero.ECS.Components
             if (Animations != null && Animations.ContainsKey(animationName))
             {
                 Play(animationName, LoopMode.Loop);
-                Debug.Log($"[HeroAnimationComponent] Switched to animation: {animationName} for direction: {direction}");
             }
             else
             {

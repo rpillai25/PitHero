@@ -91,7 +91,6 @@ namespace PitHero.ECS.Components
             var distancePixels = motion.Length();
             _moveDuration = MovementSpeed > 0f ? distancePixels / MovementSpeed : 0f;
 
-            Debug.Log($"[TileByTileMover] Started moving {direction} from {_moveStartPosition.X},{_moveStartPosition.Y} to {_moveTargetPosition.X},{_moveTargetPosition.Y} with duration {_moveDuration}");
             return true;
         }
 
@@ -105,7 +104,6 @@ namespace PitHero.ECS.Components
                 IsMoving = false;
                 CurrentDirection = null;
                 SnapToTileGrid();
-                Debug.Log($"[TileByTileMover] Movement stopped at {Entity.Transform.Position.X},{Entity.Transform.Position.Y}");
             }
         }
 
@@ -175,8 +173,6 @@ namespace PitHero.ECS.Components
 
             IsMoving = false;
             CurrentDirection = null;
-
-            Debug.Log($"[TileByTileMover] Movement completed at {Entity.Transform.Position.X},{Entity.Transform.Position.Y}");
         }
 
         /// <summary>
@@ -238,7 +234,6 @@ namespace PitHero.ECS.Components
             {
                 var targetPos = Entity.Transform.Position + motion;
                 var targetTile = new Point((int)(targetPos.X / _tileSize), (int)(targetPos.Y / _tileSize));
-                Debug.Log($"[TileByTileMover] Movement to tile ({targetTile.X},{targetTile.Y}) blocked by collision with {collisionResult.Collider?.Entity.Name ?? "unknown"}");
 
                 // Safety net: if physics reports a collision with the tilemap but the Collision layer
                 // has no tile at the target location, allow the move (stale collider or edge-touch fallback)
@@ -251,7 +246,6 @@ namespace PitHero.ECS.Components
                         var tile = collisionLayer.GetTile(targetTile.X, targetTile.Y);
                         if (tile == null)
                         {
-                            Debug.Log($"[TileByTileMover] Overriding tilemap collision at ({targetTile.X},{targetTile.Y}) due to empty Collision tile");
                             return true;
                         }
                     }
@@ -309,8 +303,6 @@ namespace PitHero.ECS.Components
             // Position entity so collider aligns with tile boundaries
             var tileCorner = new Vector2(tileX * _tileSize, tileY * _tileSize);
             Entity.Transform.Position = tileCorner + colliderCenterOffset;
-
-            Debug.Log($"[TileByTileMover] Snapped to tile grid: ({tileX},{tileY}) at world position ({Entity.Transform.Position.X},{Entity.Transform.Position.Y})");
         }
 
         /// <summary>

@@ -73,25 +73,13 @@ namespace PitHero.AI
 
         private void Idle_Enter()
         {
-            Debug.Log($"[MercenaryStateMachine] {Entity.Name} entering Idle state - planning actions");
-
-            // Debug current state before planning
-            var currentTile = GetCurrentTile();
-            var atPitEdge = IsAtPitEdge();
-            var mercInPit = IsMercenaryInsidePit();
-            var targetInPit = IsTargetInsidePit();
-            Debug.Log($"[MercenaryStateMachine] {Entity.Name} current state: tile=({currentTile.X},{currentTile.Y}), atPitEdge={atPitEdge}, mercInPit={mercInPit}, targetInPit={targetInPit}");
-
             _actionPlan = _planner.Plan(GetCurrentState(), GetGoalState());
 
             if (_actionPlan != null && _actionPlan.Count > 0)
             {
-                Debug.Log($"[MercenaryStateMachine] {Entity.Name} got action plan with {_actionPlan.Count} actions: {string.Join(" -> ", _actionPlan)}");
-                
                 // Store the expected world state when this plan was created
                 _expectedMercInPit = IsMercenaryInsidePit();
                 _expectedTargetInPit = IsTargetInsidePit();
-                Debug.Log($"[MercenaryStateMachine] {Entity.Name} plan expects: merc in pit={_expectedMercInPit}, target in pit={_expectedTargetInPit}");
 
                 CurrentState = ActorState.PerformAction;
             }
@@ -124,17 +112,12 @@ namespace PitHero.AI
                 Debug.Warn($"[MercenaryStateMachine] {Entity.Name} action is not MercenaryActionBase");
                 CurrentState = ActorState.Idle;
             }
-            else
-            {
-                Debug.Log($"[MercenaryStateMachine] {Entity.Name} starting action: {_currentAction.Name}");
-            }
         }
 
         private void PerformAction_Tick()
         {
             if (_currentAction == null)
             {
-                Debug.Log($"[MercenaryStateMachine] {Entity.Name} no current action, returning to Idle");
                 CurrentState = ActorState.Idle;
                 return;
             }
@@ -154,17 +137,14 @@ namespace PitHero.AI
 
             if (isComplete)
             {
-                Debug.Log($"[MercenaryStateMachine] {Entity.Name} action {_currentAction.Name} completed");
                 _currentAction = null;
 
                 if (_actionPlan == null || _actionPlan.Count == 0)
                 {
-                    Debug.Log($"[MercenaryStateMachine] {Entity.Name} action complete, no more actions, returning to Idle");
                     CurrentState = ActorState.Idle;
                 }
                 else
                 {
-                    Debug.Log($"[MercenaryStateMachine] {Entity.Name} action complete, moving to next action");
                     CurrentState = ActorState.PerformAction;
                 }
             }
@@ -172,14 +152,11 @@ namespace PitHero.AI
 
         private void PerformAction_Exit()
         {
-            Debug.Log($"[MercenaryStateMachine] {Entity.Name} exiting PerformAction state");
-
             // Snap to tile grid for precision before transitioning to next state
             var tileMover = Entity.GetComponent<TileByTileMover>();
             if (tileMover != null)
             {
                 tileMover.SnapToTileGrid();
-                Debug.Log($"[MercenaryStateMachine] {Entity.Name} snapped to tile grid at ({GetCurrentTile().X},{GetCurrentTile().Y})");
             }
         }
 

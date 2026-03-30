@@ -187,8 +187,6 @@ namespace PitHero.AI
 
         void Idle_Enter()
         {
-            Debug.Log("[HeroStateMachine] Entering Idle state - planning next actions");
-
             // Clear any pending replenish flag since we are about to re-plan
             _hero.ReplenishPending = false;
 
@@ -200,25 +198,10 @@ namespace PitHero.AI
             var currentWorldState = GetWorldState();
             var goalState = GetGoalState();
 
-            // Add comprehensive debug logging for world state and goal state
-            LogWorldStateDetails(currentWorldState, "Current World State");
-            LogWorldStateDetails(goalState, "Goal State");
-
-            // DEBUG: Log healing action costs before planning
-            Debug.Log($"[HeroStateMachine] Action costs before planning:");
-            Debug.Log($"[HeroStateMachine]   UseHealingItemAction cost: {_useHealingItemAction?.Cost ?? -1}");
-            Debug.Log($"[HeroStateMachine]   UseHealingSkillAction cost: {_useHealingSkillAction?.Cost ?? -1}");
-            Debug.Log($"[HeroStateMachine]   SleepInBedAction cost: {_sleepInBedAction?.Cost ?? -1}");
-
-            // CRITICAL DEBUG: Log what states we expect to see
-            Debug.Log($"[HeroStateMachine] *** CRITICAL GOAP CHECK *** About to call GOAP planner");
-
             _actionPlan = _planner.Plan(currentWorldState, goalState);
 
             if (_actionPlan != null && _actionPlan.Count > 0)
             {
-                Debug.Log($"[HeroStateMachine] Got an action plan with {_actionPlan.Count} actions: {string.Join(" -> ", _actionPlan)}");
-                
                 // Track current healing priorities so we can detect changes
                 _lastHealPriority1 = _hero.HealPriority1;
                 _lastHealPriority2 = _hero.HealPriority2;
@@ -258,27 +241,16 @@ namespace PitHero.AI
                 // Only retry every few updates to avoid excessive planning (unless replenish was just pressed)
                 if (replenishTriggered || elapsedTimeInState > 1.0f) // Wait 1 second before retry
                 {
-                    Debug.Log("[HeroStateMachine] Retrying action planning...");
-
                     // Sync stop-adventuring costs before retrying
                     UpdateStopAdventuringActionCosts();
 
                     var currentWorldState = GetWorldState();
                     var goalState = GetGoalState();
 
-                    // Add comprehensive debug logging for world state and goal state
-                    LogWorldStateDetails(currentWorldState, "Retry Current World State");
-                    LogWorldStateDetails(goalState, "Retry Goal State");
-
-                    // CRITICAL DEBUG: Log retry attempt
-                    Debug.Log($"[HeroStateMachine] *** CRITICAL RETRY CHECK *** About to retry GOAP planner");
-
                     _actionPlan = _planner.Plan(currentWorldState, goalState);
 
                     if (_actionPlan != null && _actionPlan.Count > 0)
                     {
-                        Debug.Log($"[HeroStateMachine] Got an action plan with {_actionPlan.Count} actions: {string.Join(" -> ", _actionPlan)}");
-                        
                         // Track current healing priorities so we can detect changes
                         _lastHealPriority1 = _hero.HealPriority1;
                         _lastHealPriority2 = _hero.HealPriority2;
@@ -297,7 +269,6 @@ namespace PitHero.AI
 
         void GoTo_Enter()
         {
-            Debug.Log("[HeroStateMachine] Entering GoTo state");
             _goToStuckTimer = 0f;
 
             if (_actionPlan == null || _actionPlan.Count == 0)
@@ -309,7 +280,6 @@ namespace PitHero.AI
 
             // Peek the next action from the action plan
             var nextAction = _actionPlan.Peek();
-            Debug.Log($"[HeroStateMachine] GoTo_Enter: Planning movement for action {nextAction.Name}");
 
             // Select location based on action name
             Point? targetLocation = CalculateTargetLocation(nextAction.Name);
@@ -321,7 +291,6 @@ namespace PitHero.AI
             }
 
             _targetTile = targetLocation.Value;
-            Debug.Log($"[HeroStateMachine] GoTo_Enter: Target location calculated as ({_targetTile.X},{_targetTile.Y})");
 
             // Get current tile position
             var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
@@ -329,16 +298,12 @@ namespace PitHero.AI
                 new Point((int)(_hero.Entity.Transform.Position.X / GameConfig.TileSize),
                          (int)(_hero.Entity.Transform.Position.Y / GameConfig.TileSize));
 
-            Debug.Log($"[HeroStateMachine] GoTo_Enter: Current position ({currentTile.X},{currentTile.Y})");
-
             // Calculate AStar path
             _currentPath = _hero.CalculatePath(currentTile, _targetTile);
             _pathIndex = 0;
 
             if (_currentPath == null || _currentPath.Count == 0)
             {
-                Debug.Log($"[HeroStateMachine] GoTo_Enter: No path needed or found to target ({_targetTile.X},{_targetTile.Y})");
-
                 // If this was for a WanderPitAction and pathfinding failed, track the failed target
                 if (_actionPlan.Count > 0 && _actionPlan.Peek().Name == GoapConstants.WanderPitAction)
                 {
@@ -348,12 +313,9 @@ namespace PitHero.AI
                     return;
                 }
 
-                Debug.Log("[HeroStateMachine] GoTo_Enter: Proceeding to action");
                 CurrentState = ActorState.PerformAction;
                 return;
             }
-
-            Debug.Log($"[HeroStateMachine] GoTo_Enter: Found path with {_currentPath.Count} steps to ({_targetTile.X},{_targetTile.Y})");
         }
 
         void GoTo_Tick()
@@ -459,13 +421,11 @@ namespace PitHero.AI
                 var currentTile = tileMover.GetCurrentTileCoordinates();
                 if (currentTile.X == _targetTile.X && currentTile.Y == _targetTile.Y)
                 {
-                    Debug.Log("[HeroStateMachine] GoTo_Tick: Arrived at target, transitioning to PerformAction");
                     CurrentState = ActorState.PerformAction;
                 }
                 else
                 {
                     // Recalculate a short corrective path to the target
-                    Debug.Log($"[HeroStateMachine] GoTo_Tick: Path consumed but not at target. Recalculating from ({currentTile.X},{currentTile.Y}) to ({_targetTile.X},{_targetTile.Y})");
                     _currentPath = _hero.CalculatePath(currentTile, _targetTile);
                     _pathIndex = 0;
                 }
@@ -479,7 +439,6 @@ namespace PitHero.AI
             var direction = CalculateDirection(curTile, nextTile);
             if (direction.HasValue)
             {
-                Debug.Log($"[HeroStateMachine] GoTo_Tick: Moving {direction.Value} to tile ({nextTile.X},{nextTile.Y}) [step {_pathIndex + 1}/{_currentPath.Count}]");
                 if (tileMover.StartMoving(direction.Value))
                 {
                     // Advance to the next path index; we will wait for IsMoving to clear before starting another step
@@ -503,8 +462,6 @@ namespace PitHero.AI
 
         void GoTo_Exit()
         {
-            Debug.Log("[HeroStateMachine] Exiting GoTo state");
-
             // Snap to tile grid for precision
             var tileMover = _hero.Entity.GetComponent<TileByTileMover>();
             if (tileMover != null)
@@ -519,8 +476,6 @@ namespace PitHero.AI
 
         void PerformAction_Enter()
         {
-            Debug.Log("[HeroStateMachine] Entering PerformAction state");
-
             if (_actionPlan == null || _actionPlan.Count == 0)
             {
                 Debug.Warn("[HeroStateMachine] PerformAction_Enter: No action plan available");
@@ -533,7 +488,6 @@ namespace PitHero.AI
             if (action is HeroActionBase heroAction)
             {
                 _currentAction = heroAction;
-                Debug.Log($"[HeroStateMachine] Starting execution of action: {action.Name}");
             }
             else
             {
@@ -589,8 +543,6 @@ namespace PitHero.AI
 
             if (actionComplete)
             {
-                Debug.Log($"[HeroStateMachine] Action {_currentAction.Name} completed");
-
                 // Remove the completed action from the plan
                 if (_actionPlan != null && _actionPlan.Count > 0)
                     _actionPlan.Pop();
@@ -604,7 +556,6 @@ namespace PitHero.AI
                 }
                 else
                 {
-                    Debug.Log("[HeroStateMachine] Action plan completed, returning to Idle");
                     CurrentState = ActorState.Idle;
                 }
             }
@@ -612,7 +563,6 @@ namespace PitHero.AI
 
         void PerformAction_Exit()
         {
-            Debug.Log("[HeroStateMachine] Exiting PerformAction state");
             // _currentAction is kept for potential cleanup in next state
         }
 
@@ -731,7 +681,6 @@ namespace PitHero.AI
                 pitMinY = GameConfig.PitRectY + 1;
                 pitMaxX = pitWidthManager.CurrentPitRightEdge - 2;
                 pitMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2;
-                Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Using dynamic pit bounds: explorable area ({pitMinX},{pitMinY}) to ({pitMaxX},{pitMaxY}), pit right edge={pitWidthManager.CurrentPitRightEdge}");
             }
             else
             {
@@ -739,24 +688,7 @@ namespace PitHero.AI
                 pitMinY = GameConfig.PitRectY + 1;
                 pitMaxX = GameConfig.PitRectX + GameConfig.PitRectWidth - 2;
                 pitMaxY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2;
-                Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Using default pit bounds: explorable area ({pitMinX},{pitMinY}) to ({pitMaxX},{pitMaxY})");
             }
-
-            // Count fog tiles for debugging (minimal version)
-            int fogTileCount = 0;
-            for (int x = pitMinX; x <= pitMaxX; x++)
-            {
-                for (int y = pitMinY; y <= pitMaxY; y++)
-                {
-                    if (x < 0 || y < 0 || x >= fogLayer.Width || y >= fogLayer.Height)
-                        continue;
-                    var tile = fogLayer.GetTile(x, y);
-                    if (tile != null)
-                        fogTileCount++;
-                }
-            }
-
-            Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Found {fogTileCount} fog tiles in pit area");
 
             // Validate or set the committed wander target to avoid oscillation
             if (_currentWanderTarget.HasValue)
@@ -772,7 +704,6 @@ namespace PitHero.AI
 
                 if (!inBounds || !inMapBounds || !stillFog || _failedWanderTargets.Contains(tgt) || !passable)
                 {
-                    Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Clearing committed wander target ({tgt.X},{tgt.Y})");
                     _currentWanderTarget = null;
                 }
             }
@@ -784,23 +715,18 @@ namespace PitHero.AI
                 if (priorityTarget.HasValue)
                 {
                     _currentWanderTarget = priorityTarget.Value;
-                    Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Committing new priority-based wander target at ({_currentWanderTarget.Value.X},{_currentWanderTarget.Value.Y})");
                 }
                 else
                 {
-                    Debug.Log("[HeroStateMachine] CalculatePitWanderPointLocation: No priority targets or unknown tiles found in pit area");
-
                     if (_failedWanderTargets.Count > 0)
                     {
-                        Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Clearing {_failedWanderTargets.Count} failed targets to retry exploration");
                         _failedWanderTargets.Clear();
                         return null; // trigger re-plan
                     }
 
-                    Debug.Log("[HeroStateMachine] CalculatePitWanderPointLocation: Pit exploration complete, updating ExploredPit based on priorities");
+                    Debug.Log("[HeroStateMachine] Pit exploration complete, updating ExploredPit based on priorities");
                     _hero.UpdateExploredPitBasedOnPriorities();
 
-                    Debug.Log("[HeroStateMachine] CalculatePitWanderPointLocation: Transitioning to PerformAction for final WanderPitAction execution");
                     CurrentState = ActorState.PerformAction;
                     return null;
                 }
@@ -808,7 +734,6 @@ namespace PitHero.AI
 
             // At this point we have a committed wander target
             var targetFog = _currentWanderTarget.Value;
-            Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Using committed wander target ({targetFog.X},{targetFog.Y})");
 
             // If hero is adjacent to any fog tile, prefer the adjacent fog that minimizes Manhattan distance to the committed target
             Point bestAdj = heroTile;
@@ -851,7 +776,6 @@ namespace PitHero.AI
 
             if (foundAdjFog)
             {
-                Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: Adjacent fog chosen at ({bestAdj.X},{bestAdj.Y}), mdist to target={bestAdjDist}");
                 return bestAdj;
             }
 
@@ -860,12 +784,11 @@ namespace PitHero.AI
             if (pathToFog != null && pathToFog.Count > 0)
             {
                 var firstStep = pathToFog[0];
-                Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: No adjacent fog; taking first A* step toward committed target at ({firstStep.X},{firstStep.Y})");
                 return firstStep;
             }
 
             // If we failed to path to the committed target, mark it failed and clear the commitment
-            Debug.Log($"[HeroStateMachine] CalculatePitWanderPointLocation: No path to committed target; marking failed and clearing commitment for ({targetFog.X},{targetFog.Y})");
+            Debug.Log($"[HeroStateMachine] No path to wander target ({targetFog.X},{targetFog.Y}), marking failed");
             AddFailedWanderTarget(targetFog);
             _currentWanderTarget = null;
             return null;
@@ -926,7 +849,6 @@ namespace PitHero.AI
         private void AddFailedWanderTarget(Point target)
         {
             _failedWanderTargets.Add(target);
-            Debug.Log($"[HeroStateMachine] Added failed wander target ({target.X},{target.Y}), total failed targets: {_failedWanderTargets.Count}");
         }
 
         /// <summary>
@@ -990,18 +912,14 @@ namespace PitHero.AI
             // Don't move enemies during battle
             if (IsBattleInProgress)
             {
-                Debug.Log("[HeroStateMachine] Battle in progress, skipping enemy movement");
                 return;
             }
 
             // Only move enemies when hero is inside the pit
             if (!_hero.InsidePit)
             {
-                Debug.Log("[HeroStateMachine] Hero not inside pit, skipping enemy movement");
                 return;
             }
-
-            Debug.Log("[HeroStateMachine] Hero completed tile movement, checking enemy movement cooldowns");
 
             // Find all enemy entities
             var enemies = Entity.Scene.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
@@ -1015,15 +933,10 @@ namespace PitHero.AI
                 enemyComponent.MoveCounter++;
                 if (enemyComponent.MoveCounter >= enemyComponent.MoveCooldown)
                 {
-                    Debug.Log($"[HeroStateMachine] Enemy move cooldown reached ({enemyComponent.MoveCounter}/{enemyComponent.MoveCooldown}), moving enemy");
                     // Reset cooldown
                     enemyComponent.ResetMoveCooldown();
                     // Start a coroutine to move this enemy
                     Core.StartCoroutine(MoveEnemyRandomly(enemy, enemyComponent));
-                }
-                else
-                {
-                    Debug.Log($"[HeroStateMachine] Enemy move counter: {enemyComponent.MoveCounter}/{enemyComponent.MoveCooldown}");
                 }
             }
         }
