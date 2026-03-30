@@ -78,7 +78,7 @@ namespace PitHero.AI
             switch (heroComponent.CurrentBattleTactic)
             {
                 case BattleTactic.Blitz:
-                    return DecideBlitz(heroComponent, hero, livingMonsters);
+                    return DecideBlitz(heroComponent, hero, livingMonsters, livingMercenaries);
 
                 case BattleTactic.Defensive:
                     return DecideDefensive(heroComponent, hero, livingMonsters, livingMercenaries);
@@ -106,7 +106,7 @@ namespace PitHero.AI
             switch (heroComponent.CurrentBattleTactic)
             {
                 case BattleTactic.Blitz:
-                    return DecideMercBlitz(merc, heroComponent, livingMonsters);
+                    return DecideMercBlitz(merc, mercComponent, heroComponent, livingMonsters, livingMercenaries);
 
                 case BattleTactic.Defensive:
                     return DecideMercDefensive(merc, mercComponent, heroComponent, livingMonsters, livingMercenaries);
@@ -121,11 +121,17 @@ namespace PitHero.AI
         // HERO TACTIC IMPLEMENTATIONS
         // ====================================================================
 
-        /// <summary>Blitz: all-out attack, never heal, prioritize elemental weaknesses.</summary>
+        /// <summary>Blitz: aggressive attacks but perform heal/restore like Strategic; prefer high-MP attacks.</summary>
         private static BattleAction DecideBlitz(
-            HeroComponent heroComponent, Hero hero, List<Entity> livingMonsters)
+            HeroComponent heroComponent, Hero hero, List<Entity> livingMonsters, List<Entity> livingMercenaries)
         {
             CollectHeroSkills(hero, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
+
+            // 1. Heal/restore check (use same thresholds as Strategic)
+            BattleAction healAction;
+            if (TryHeroHealAction(heroComponent, hero, livingMercenaries,
+                    GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
+                return healAction;
 
             // AoE check first
             var aoeResult = TryAoESkill(_attackSkillBuffer, hero.CurrentMP, livingMonsters);
@@ -203,11 +209,17 @@ namespace PitHero.AI
         // MERCENARY TACTIC IMPLEMENTATIONS
         // ====================================================================
 
-        /// <summary>Blitz tactic for mercenary: all-out attack.</summary>
+        /// <summary>Blitz tactic for mercenary: aggressive attacks but perform heal/restore like Strategic.</summary>
         private static BattleAction DecideMercBlitz(
-            Mercenary merc, HeroComponent heroComponent, List<Entity> livingMonsters)
+            Mercenary merc, MercenaryComponent mercComponent, HeroComponent heroComponent, List<Entity> livingMonsters, List<Entity> livingMercenaries)
         {
             CollectMercenarySkills(merc, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
+
+            // 1. Heal/restore check (use same thresholds as Strategic)
+            BattleAction healAction;
+            if (TryMercHealAction(merc, heroComponent, livingMercenaries, mercComponent,
+                    GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
+                return healAction;
 
             var aoeResult = TryAoESkill(_attackSkillBuffer, merc.CurrentMP, livingMonsters);
             if (aoeResult.Skill != null)
@@ -296,7 +308,7 @@ namespace PitHero.AI
             int targetMaxHP;
             int targetCurrentMP;
             int targetMaxMP;
-            if (!GetHealTarget(hero, livingMercenaries, hpThreshold, mpThreshold,
+            if (!GetHealTarget(hero, heroComponent, livingMercenaries, hpThreshold, mpThreshold,
                     out healTarget, out targetIsHero, out targetCurrentHP, out targetMaxHP,
                     out targetCurrentMP, out targetMaxMP))
                 return false;
@@ -360,7 +372,7 @@ namespace PitHero.AI
             int targetMaxHP;
             int targetCurrentMP;
             int targetMaxMP;
-            if (!GetHealTarget(hero, livingMercenaries, hpThreshold, mpThreshold,
+            if (!GetHealTarget(hero, heroComponent, livingMercenaries, hpThreshold, mpThreshold,
                     out healTarget, out targetIsHero, out targetCurrentHP, out targetMaxHP,
                     out targetCurrentMP, out targetMaxMP))
                 return false;
@@ -400,10 +412,13 @@ namespace PitHero.AI
 
         /// <summary>
         /// Finds the ally (hero or mercenary) most in need of healing or MP restoration
-        /// below the given thresholds. Returns true if a target was found.
+        /// below the given thresholds. Also considers active burst damage flags via heroComponent
+        /// so that a burst-damaged character triggers healing even if HP is above the raw threshold.
+        /// Returns true if a target was found.
         /// </summary>
         private static bool GetHealTarget(
-            Hero hero, List<Entity> livingMercenaries, float hpThreshold, float mpThreshold,
+            Hero hero, HeroComponent heroComponent, List<Entity> livingMercenaries,
+            float hpThreshold, float mpThreshold,
             out object target, out bool isHero, out int currentHP, out int maxHP,
             out int currentMP, out int maxMP)
         {
@@ -415,12 +430,12 @@ namespace PitHero.AI
             maxMP = 0;
             float lowestPercent = 1f;
 
-            // Check hero
+            // Check hero — burst damage flag is included via IsHeroHPCritical()
             if (hero != null && hero.MaxHP > 0)
             {
                 float heroHPPercent = (float)hero.CurrentHP / hero.MaxHP;
                 float heroMPPercent = hero.MaxMP > 0 ? (float)hero.CurrentMP / hero.MaxMP : 1f;
-                bool hpCritical = heroHPPercent < hpThreshold;
+                bool hpCritical = heroHPPercent < hpThreshold || heroComponent.IsHeroHPCritical();
                 bool mpCritical = heroMPPercent < mpThreshold;
                 float minPercent = System.Math.Min(heroHPPercent, heroMPPercent);
 
@@ -436,19 +451,20 @@ namespace PitHero.AI
                 }
             }
 
-            // Check mercenaries
+            // Check mercenaries — burst damage flag is included via IsMercenaryHPCritical()
             if (livingMercenaries != null)
             {
                 for (int i = 0; i < livingMercenaries.Count; i++)
                 {
-                    var mercComp = livingMercenaries[i].GetComponent<MercenaryComponent>();
+                    var mercEntity = livingMercenaries[i];
+                    var mercComp = mercEntity.GetComponent<MercenaryComponent>();
                     if (mercComp == null) continue;
                     var merc = mercComp.LinkedMercenary;
                     if (merc == null || merc.MaxHP <= 0) continue;
 
                     float mercHPPercent = (float)merc.CurrentHP / merc.MaxHP;
                     float mercMPPercent = merc.MaxMP > 0 ? (float)merc.CurrentMP / merc.MaxMP : 1f;
-                    bool hpCritical = mercHPPercent < hpThreshold;
+                    bool hpCritical = mercHPPercent < hpThreshold || heroComponent.IsMercenaryHPCritical(mercEntity, mercComp);
                     bool mpCritical = mercMPPercent < mpThreshold;
                     float minPercent = System.Math.Min(mercHPPercent, mercMPPercent);
 

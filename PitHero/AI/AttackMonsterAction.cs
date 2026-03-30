@@ -214,6 +214,30 @@ namespace PitHero.AI
         }
 
         /// <summary>
+        /// Checks if there are any valid allies (hero or mercenaries) still alive AND in the pit.
+        /// Battle should end when all allies have died or left the pit.
+        /// </summary>
+        private bool HasValidAlliesInPit(Hero hero, HeroComponent heroComponent, List<Entity> validMercenaries)
+        {
+            // Hero is valid if alive AND in the pit
+            if (hero.CurrentHP > 0 && heroComponent.Entity != null && !heroComponent.Entity.IsDestroyed && heroComponent.InsidePit)
+                return true;
+
+            // Check mercenaries - must be alive AND in the pit
+            for (int i = 0; i < validMercenaries.Count; i++)
+            {
+                var mercEntity = validMercenaries[i];
+                if (mercEntity == null || mercEntity.IsDestroyed) continue;
+                
+                var mercComp = mercEntity.GetComponent<MercenaryComponent>();
+                if (mercComp?.LinkedMercenary != null && mercComp.LinkedMercenary.CurrentHP > 0 && mercComp.InsidePit)
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Find the entity associated with a healing/buff target (hero or mercenary)
         /// </summary>
         private Entity FindTargetEntity(object target, bool targetsHero, HeroComponent heroComponent, List<Entity> validMercenaries)
@@ -420,8 +444,8 @@ namespace PitHero.AI
 
                 Debug.Log($"[AttackMonster] Multi-participant battle: {hero.Name} (Lv.{hero.Level}, HP {hero.CurrentHP}/{hero.MaxHP}) + {validMercenaries.Count} mercenaries vs {validMonsters.Count} monsters");
 
-                // Battle loop - continue until hero AND all mercenaries are dead, or all monsters are defeated
-                while ((hero.CurrentHP > 0 || validMercenaries.Any(m => m.GetComponent<MercenaryComponent>()?.LinkedMercenary?.CurrentHP > 0)) 
+                // Battle loop - continue until hero AND all mercenaries are dead/left the pit, or all monsters are defeated
+                while (HasValidAlliesInPit(hero, heroComponent, validMercenaries) 
                        && validMonsters.Any(m => m.GetComponent<EnemyComponent>()?.Enemy.CurrentHP > 0))
                 {
                     // Wait while paused before starting each round
@@ -517,6 +541,39 @@ namespace PitHero.AI
                         {
                             // Check if there's a queued action
                             var queuedAction = heroComponent.BattleActionQueue.Dequeue();
+
+                            // Re-evaluate if healing is urgently needed since damage may have occurred since the action was queued
+                            // This catches the scenario where a monster attacks AFTER the hero's action was decided at round start
+                            // We only override non-healing actions (Attack or attack-type UseSkill)
+                            bool isQueuedOffensiveAction = queuedAction != null && 
+                                (queuedAction.ActionType == QueuedActionType.Attack ||
+                                 (queuedAction.ActionType == QueuedActionType.UseSkill && 
+                                  queuedAction.Skill != null && queuedAction.Skill.HPRestoreAmount <= 0));
+                            
+                            if (isQueuedOffensiveAction)
+                            {
+                                var currentLivingMonsters = GetLivingMonsters(validMonsters);
+                                var reEvaluatedDecision = BattleTacticDecisionEngine.DecideHeroAction(heroComponent, currentLivingMonsters, validMercenaries);
+                                if (reEvaluatedDecision.Kind == BattleAction.ActionKind.UseHealingSkill ||
+                                    reEvaluatedDecision.Kind == BattleAction.ActionKind.UseConsumable)
+                                {
+                                    Debug.Log($"[AttackMonster] Hero re-evaluated: overriding queued offensive action with {reEvaluatedDecision.Kind} (healing needed since action was queued)");
+                                    // Override the queued action with the re-evaluated healing action
+                                    switch (reEvaluatedDecision.Kind)
+                                    {
+                                        case BattleAction.ActionKind.UseHealingSkill:
+                                            queuedAction = new QueuedAction(reEvaluatedDecision.Skill);
+                                            queuedAction.Target = reEvaluatedDecision.Target;
+                                            queuedAction.TargetsHero = reEvaluatedDecision.TargetsHero;
+                                            break;
+                                        case BattleAction.ActionKind.UseConsumable:
+                                            queuedAction = new QueuedAction(reEvaluatedDecision.Consumable, reEvaluatedDecision.BagIndex);
+                                            queuedAction.Target = reEvaluatedDecision.Target;
+                                            queuedAction.TargetsHero = reEvaluatedDecision.TargetsHero;
+                                            break;
+                                    }
+                                }
+                            }
 
                             if (queuedAction != null)
                             {
@@ -1157,23 +1214,39 @@ namespace PitHero.AI
                             // Pick a random target from hero and living mercenaries
                             var possibleTargets = new List<(Entity entity, bool isHero)>();
                             
-                            if (hero.CurrentHP > 0)
+                            // Only add hero if alive AND still in the pit (not respawned outside)
+                            if (hero.CurrentHP > 0 && heroComponent.Entity != null && heroComponent.InsidePit)
                                 possibleTargets.Add((heroComponent.Entity, true));
 
                             foreach (var mercEntity in validMercenaries)
                             {
+                                // Check entity is still valid (not destroyed)
+                                if (mercEntity == null || mercEntity.IsDestroyed) continue;
+                                
                                 var mercComp = mercEntity.GetComponent<MercenaryComponent>();
-                                if (mercComp?.LinkedMercenary != null && mercComp.LinkedMercenary.CurrentHP > 0)
+                                // Only add mercenary if alive AND still in the pit (hasn't jumped out after hero death)
+                                if (mercComp?.LinkedMercenary != null && mercComp.LinkedMercenary.CurrentHP > 0 && mercComp.InsidePit)
                                 {
                                     possibleTargets.Add((mercEntity, false));
                                 }
                             }
 
-                            if (possibleTargets.Count == 0) continue; // No valid targets
+                            if (possibleTargets.Count == 0) 
+                            {
+                                Debug.Log($"[AttackMonster] {enemy.Name} has no valid targets in the pit - skipping turn");
+                                continue; // No valid targets
+                            }
 
                             var targetChoice = possibleTargets[Nez.Random.Range(0, possibleTargets.Count)];
                             var targetEntity = targetChoice.entity;
                             var targetIsHero = targetChoice.isHero;
+
+                            // Make sure target entity is still valid before facing it
+                            if (targetEntity == null || targetEntity.IsDestroyed)
+                            {
+                                Debug.Log($"[AttackMonster] {enemy.Name}'s target entity was destroyed - skipping turn");
+                                continue;
+                            }
 
                             // Make monster face the target when attacking
                             FaceTarget(participant.MonsterEntity, targetEntity.Transform.Position);
@@ -1188,8 +1261,12 @@ namespace PitHero.AI
                                     SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
                                     soundEffectManager?.PlaySound(SoundEffectType.TakeDamage);
 
-                                    bool heroDied = hero.TakeDamage(enemyAttackResult.Damage * DEBUG_DAMAGE_MULT);
+                                    int actualDamage = enemyAttackResult.Damage * DEBUG_DAMAGE_MULT;
+                                    bool heroDied = hero.TakeDamage(actualDamage);
                                     Debug.Log($"[AttackMonster] {enemy.Name} deals {enemyAttackResult.Damage} damage to {hero.Name}. Hero HP: {hero.CurrentHP}/{hero.MaxHP}");
+
+                                    // Register burst damage immediately so next heal decision sees it
+                                    heroComponent.RegisterHeroBurstDamage(actualDamage);
 
                                     // Display damage on hero
                                     var heroBouncyDigit = heroComponent.Entity.GetComponent<BouncyDigitComponent>();
@@ -1232,6 +1309,12 @@ namespace PitHero.AI
                             else // Target is mercenary
                             {
                                 var targetMercComp = targetEntity.GetComponent<MercenaryComponent>();
+                                // Safety check in case the entity was destroyed or component removed between selection and attack
+                                if (targetMercComp?.LinkedMercenary == null)
+                                {
+                                    Debug.Log($"[AttackMonster] {enemy.Name}'s target mercenary no longer valid - skipping attack");
+                                    continue;
+                                }
                                 var targetMercenary = targetMercComp.LinkedMercenary;
                                 var targetMercBattleStats = BattleStats.CalculateForMercenary(targetMercenary);
 
@@ -1243,8 +1326,12 @@ namespace PitHero.AI
                                     SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
                                     soundEffectManager?.PlaySound(SoundEffectType.TakeDamage);
 
-                                    bool mercDied = targetMercenary.TakeDamage(enemyAttackResult.Damage * DEBUG_DAMAGE_MULT);
+                                    int actualDamage = enemyAttackResult.Damage * DEBUG_DAMAGE_MULT;
+                                    bool mercDied = targetMercenary.TakeDamage(actualDamage);
                                     Debug.Log($"[AttackMonster] {enemy.Name} deals {enemyAttackResult.Damage} damage to {targetMercenary.Name}. Mercenary HP: {targetMercenary.CurrentHP}/{targetMercenary.MaxHP}");
+
+                                    // Register burst damage immediately so next heal decision sees it
+                                    heroComponent.RegisterMercenaryBurstDamage(targetEntity, targetMercComp, actualDamage);
 
                                     // Display damage on mercenary
                                     var mercBouncyDigit = targetEntity.GetComponent<BouncyDigitComponent>();
@@ -1286,13 +1373,13 @@ namespace PitHero.AI
                         // Wait between each participant's turn (respecting pause)
                         yield return WaitForSecondsRespectingPause(GameConfig.BattleTurnWait);
 
-                        // Break if hero AND all mercenaries are dead, or all monsters are dead
-                        bool allAlliesDead = hero.CurrentHP <= 0 && !validMercenaries.Any(m => m.GetComponent<MercenaryComponent>()?.LinkedMercenary?.CurrentHP > 0);
+                        // Break if no allies are left in the pit (dead or left) or all monsters are dead
+                        bool noAlliesInPit = !HasValidAlliesInPit(hero, heroComponent, validMercenaries);
                         bool allMonstersDead = validMonsters.All(m => m.GetComponent<EnemyComponent>()?.Enemy.CurrentHP <= 0);
                         
-                        if (allAlliesDead || allMonstersDead)
+                        if (noAlliesInPit || allMonstersDead)
                         {
-                            Debug.Log($"[AttackMonster] Battle ending - AllAlliesDead: {allAlliesDead}, AllMonstersDead: {allMonstersDead}");
+                            Debug.Log($"[AttackMonster] Battle ending - NoAlliesInPit: {noAlliesInPit}, AllMonstersDead: {allMonstersDead}");
                             break;
                         }
                     }

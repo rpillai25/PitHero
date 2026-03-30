@@ -24,6 +24,32 @@ namespace PitHero
         public const int HeroHeight = 32;
         public const float HeroCriticalHPPercent = 0.4f;
         public const float HeroCriticalMPPercent = 0.5f;
+
+        // --- Burst damage thresholds for Strategic/Blitz tactics ---
+        /// <summary>
+        /// Burst damage detection threshold for Strategic and Blitz tactics. If a character loses this fraction
+        /// of their max HP in a single hit, the burst-critical flag is triggered.
+        /// </summary>
+        public static float BurstDamageThresholdPercent = 0.20f; // 20% of MaxHP lost triggers burst flag
+
+        /// <summary>
+        /// Burst damage recovery threshold for Strategic and Blitz tactics. Once the burst-critical flag is set,
+        /// it clears when HP recovers to or above this fraction of max HP.
+        /// </summary>
+        public static float BurstDamageRecoveryPercent = 0.60f; // Burst flag clears once HP recovers to 60% of MaxHP
+
+        // --- Burst damage thresholds for Defensive tactic (more careful) ---
+        /// <summary>
+        /// Burst damage detection threshold for Defensive tactic. Lower threshold means smaller hits trigger
+        /// the burst flag, making the AI more cautious.
+        /// </summary>
+        public static float BurstDamageThresholdPercentDefensive = 0.15f; // 15% of MaxHP lost triggers burst flag
+
+        /// <summary>
+        /// Burst damage recovery threshold for Defensive tactic. Higher recovery requirement means characters
+        /// must heal more before the burst flag clears, keeping them safer.
+        /// </summary>
+        public static float BurstDamageRecoveryPercentDefensive = 0.80f; // Burst flag clears once HP recovers to 80% of MaxHP
         public const float ReplenishThresholdDefault = 0.9f;
         public const int MaleHeroHairstyleCount = 5; // Number of available hairstyles for male heroes
 
