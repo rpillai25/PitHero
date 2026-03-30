@@ -78,7 +78,7 @@ namespace PitHero.AI
             switch (heroComponent.CurrentBattleTactic)
             {
                 case BattleTactic.Blitz:
-                    return DecideBlitz(heroComponent, hero, livingMonsters);
+                    return DecideBlitz(heroComponent, hero, livingMonsters, livingMercenaries);
 
                 case BattleTactic.Defensive:
                     return DecideDefensive(heroComponent, hero, livingMonsters, livingMercenaries);
@@ -106,7 +106,7 @@ namespace PitHero.AI
             switch (heroComponent.CurrentBattleTactic)
             {
                 case BattleTactic.Blitz:
-                    return DecideMercBlitz(merc, heroComponent, livingMonsters);
+                    return DecideMercBlitz(merc, mercComponent, heroComponent, livingMonsters, livingMercenaries);
 
                 case BattleTactic.Defensive:
                     return DecideMercDefensive(merc, mercComponent, heroComponent, livingMonsters, livingMercenaries);
@@ -121,11 +121,17 @@ namespace PitHero.AI
         // HERO TACTIC IMPLEMENTATIONS
         // ====================================================================
 
-        /// <summary>Blitz: all-out attack, never heal, prioritize elemental weaknesses.</summary>
+        /// <summary>Blitz: aggressive attacks but perform heal/restore like Strategic; prefer high-MP attacks.</summary>
         private static BattleAction DecideBlitz(
-            HeroComponent heroComponent, Hero hero, List<Entity> livingMonsters)
+            HeroComponent heroComponent, Hero hero, List<Entity> livingMonsters, List<Entity> livingMercenaries)
         {
             CollectHeroSkills(hero, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
+
+            // 1. Heal/restore check (use same thresholds as Strategic)
+            BattleAction healAction;
+            if (TryHeroHealAction(heroComponent, hero, livingMercenaries,
+                    GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
+                return healAction;
 
             // AoE check first
             var aoeResult = TryAoESkill(_attackSkillBuffer, hero.CurrentMP, livingMonsters);
@@ -203,11 +209,17 @@ namespace PitHero.AI
         // MERCENARY TACTIC IMPLEMENTATIONS
         // ====================================================================
 
-        /// <summary>Blitz tactic for mercenary: all-out attack.</summary>
+        /// <summary>Blitz tactic for mercenary: aggressive attacks but perform heal/restore like Strategic.</summary>
         private static BattleAction DecideMercBlitz(
-            Mercenary merc, HeroComponent heroComponent, List<Entity> livingMonsters)
+            Mercenary merc, MercenaryComponent mercComponent, HeroComponent heroComponent, List<Entity> livingMonsters, List<Entity> livingMercenaries)
         {
             CollectMercenarySkills(merc, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
+
+            // 1. Heal/restore check (use same thresholds as Strategic)
+            BattleAction healAction;
+            if (TryMercHealAction(merc, heroComponent, livingMercenaries, mercComponent,
+                    GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
+                return healAction;
 
             var aoeResult = TryAoESkill(_attackSkillBuffer, merc.CurrentMP, livingMonsters);
             if (aoeResult.Skill != null)
