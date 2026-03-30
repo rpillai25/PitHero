@@ -42,19 +42,16 @@ namespace PitHero.ECS.Components
             // Early return if component is disabled (e.g., during sleep)
             if (!Enabled)
             {
-                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} component disabled, skipping update");
                 return;
             }
 
             if (_mercComponent == null || !_mercComponent.IsHired)
             {
-                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} early return: merc={_mercComponent != null}, hired={_mercComponent?.IsHired}");
                 return;
             }
 
             if (_mercComponent.FollowTarget == null)
             {
-                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} no follow target");
                 return;
             }
 
@@ -67,7 +64,6 @@ namespace PitHero.ECS.Components
 
             if (_pathfinding == null || !_pathfinding.IsPathfindingInitialized)
             {
-                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} pathfinding not initialized");
                 return;
             }
 
@@ -139,8 +135,6 @@ namespace PitHero.ECS.Components
             
             if (needsNewPath)
             {
-                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} recalculating path (target moved: {targetTile != _lastTargetTile}, no path: {_currentPath == null || _currentPath.Count == 0})");
-                
                 // Ensure pathfinding graph is up to date (safety check)
                 if (_pathfinding.PathfindingGraph?.Walls == null)
                 {
@@ -154,10 +148,8 @@ namespace PitHero.ECS.Components
 
                 if (_currentPath == null || _currentPath.Count == 0)
                 {
-                    Debug.Log($"[MercenaryFollowComponent] {Entity.Name} no path found to target from ({myTile.X},{myTile.Y}) to ({targetTile.X},{targetTile.Y})");
                     return;
                 }
-                Debug.Log($"[MercenaryFollowComponent] {Entity.Name} found path with {_currentPath.Count} steps from ({myTile.X},{myTile.Y}) to ({targetTile.X},{targetTile.Y})");
             }
 
             if (_currentPath != null && _pathIndex < _currentPath.Count)
@@ -258,7 +250,6 @@ namespace PitHero.ECS.Components
             _lastTargetTile = new Point(-1, -1);
             _stuckTimer = 0f;
             _lastStuckCheckTile = new Point(-1, -1);
-            Debug.Log($"[MercenaryFollow] Pathfinding state reset for {Entity.Name}");
         }
     }
 }
