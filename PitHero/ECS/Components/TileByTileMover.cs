@@ -232,6 +232,9 @@ namespace PitHero.ECS.Components
 
             if (isBlocked)
             {
+                var targetPos = Entity.Transform.Position + motion;
+                var targetTile = new Point((int)(targetPos.X / _tileSize), (int)(targetPos.Y / _tileSize));
+
                 // Safety net: if physics reports a collision with the tilemap but the Collision layer
                 // has no tile at the target location, allow the move (stale collider or edge-touch fallback)
                 if (collisionResult.Collider?.Entity != null && collisionResult.Collider.Entity.Name == "tilemap")
