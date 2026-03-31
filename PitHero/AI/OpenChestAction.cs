@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
+using PitHero.Services;
 using PitHero.Util;
 using PitHero.Util.SoundEffectTypes;
 using RolePlayingFramework.Equipment;
@@ -269,6 +270,9 @@ namespace PitHero.AI
                     Debug.Log($"[OpenChest] Reset HealingItemExhausted flag (picked up {containedItem.Name})");
                 }
 
+                // Try to auto-equip if gear item
+                TryAutoEquipFromChest(hero, containedItem);
+
                 // Clear the item from the treasure chest
                 treasureComponent.ContainedItem = null;
             }
@@ -311,6 +315,47 @@ namespace PitHero.AI
                     return true;
             }
             return false;
+        }
+
+        /// <summary>Attempts to auto-equip gear on hero and mercenaries.</summary>
+        private void TryAutoEquipFromChest(HeroComponent heroComp, IItem item)
+        {
+            if (!(item is IGear gear))
+                return;
+
+            if (heroComp.LinkedHero == null)
+                return;
+
+            if (heroComp.AutoEquipHero)
+            {
+                if (GearAutoEquipService.TryAutoEquipOnHero(heroComp.LinkedHero, heroComp.Bag, gear))
+                {
+                    Debug.Log($"[OpenChest] Auto-equipped {gear.Name} on hero");
+                    return;
+                }
+            }
+
+            if (!heroComp.AutoEquipMercenaries)
+                return;
+
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager == null)
+                return;
+
+            var hiredMercenaries = mercenaryManager.GetHiredMercenaries();
+            for (int i = 0; i < hiredMercenaries.Count; i++)
+            {
+                var mercEntity = hiredMercenaries[i];
+                var mercComp = mercEntity.GetComponent<MercenaryComponent>();
+                if (mercComp?.LinkedMercenary != null)
+                {
+                    if (GearAutoEquipService.TryAutoEquipOnMercenary(mercComp.LinkedMercenary, heroComp.Bag, gear))
+                    {
+                        Debug.Log($"[OpenChest] Auto-equipped {gear.Name} on mercenary {mercComp.LinkedMercenary.Name}");
+                        return;
+                    }
+                }
+            }
         }
     }
 }
