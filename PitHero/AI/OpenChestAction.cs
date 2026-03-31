@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.AI.Interfaces;
@@ -303,7 +304,7 @@ namespace PitHero.AI
             }
         }
 
-        /// <summary>Attempts to auto-equip gear on hero and mercenaries.</summary>
+        /// <summary>Attempts to auto-equip gear on hero and mercenaries, then cascades any displaced gear as hand-me-downs.</summary>
         private void TryAutoEquipFromChest(HeroComponent heroComp, IItem item)
         {
             if (!(item is IGear gear))
@@ -312,34 +313,56 @@ namespace PitHero.AI
             if (heroComp.LinkedHero == null)
                 return;
 
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            List<Entity> hiredMercenaries = heroComp.AutoEquipMercenaries ? mercenaryManager?.GetHiredMercenaries() : null;
+
             if (heroComp.AutoEquipHero)
             {
-                if (GearAutoEquipService.TryAutoEquipOnHero(heroComp.LinkedHero, heroComp.Bag, gear))
+                if (GearAutoEquipService.TryAutoEquipOnHero(heroComp.LinkedHero, heroComp.Bag, gear, out IGear heroDisplaced))
                 {
                     Debug.Log($"[OpenChest] Auto-equipped {gear.Name} on hero");
+                    if (heroDisplaced != null && hiredMercenaries != null)
+                        TryHandMeDownToMercs(heroComp, hiredMercenaries, heroDisplaced, 0);
                     return;
                 }
             }
 
-            if (!heroComp.AutoEquipMercenaries)
+            if (hiredMercenaries == null)
                 return;
 
-            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
-            if (mercenaryManager == null)
-                return;
-
-            var hiredMercenaries = mercenaryManager.GetHiredMercenaries();
             for (int i = 0; i < hiredMercenaries.Count; i++)
             {
                 var mercEntity = hiredMercenaries[i];
                 var mercComp = mercEntity.GetComponent<MercenaryComponent>();
-                if (mercComp?.LinkedMercenary != null)
+                if (mercComp?.LinkedMercenary == null) continue;
+
+                if (GearAutoEquipService.TryAutoEquipOnMercenary(mercComp.LinkedMercenary, heroComp.Bag, gear, out IGear mercDisplaced))
                 {
-                    if (GearAutoEquipService.TryAutoEquipOnMercenary(mercComp.LinkedMercenary, heroComp.Bag, gear))
-                    {
-                        Debug.Log($"[OpenChest] Auto-equipped {gear.Name} on mercenary {mercComp.LinkedMercenary.Name}");
-                        return;
-                    }
+                    Debug.Log($"[OpenChest] Auto-equipped {gear.Name} on mercenary {mercComp.LinkedMercenary.Name}");
+                    if (mercDisplaced != null)
+                        TryHandMeDownToMercs(heroComp, hiredMercenaries, mercDisplaced, i + 1);
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Offers a displaced piece of gear to mercenaries starting at the given index.
+        /// If a mercenary equips it and displaces their own gear, that gear is recursively offered to subsequent mercenaries.
+        /// </summary>
+        private void TryHandMeDownToMercs(HeroComponent heroComp, List<Entity> hiredMercenaries, IGear displacedGear, int startIndex)
+        {
+            for (int i = startIndex; i < hiredMercenaries.Count; i++)
+            {
+                var mercComp = hiredMercenaries[i].GetComponent<MercenaryComponent>();
+                if (mercComp?.LinkedMercenary == null) continue;
+
+                if (GearAutoEquipService.TryAutoEquipOnMercenary(mercComp.LinkedMercenary, heroComp.Bag, displacedGear, out IGear chainDisplaced))
+                {
+                    Debug.Log($"[OpenChest] Hand-me-down: {displacedGear.Name} auto-equipped on {mercComp.LinkedMercenary.Name}");
+                    if (chainDisplaced != null)
+                        TryHandMeDownToMercs(heroComp, hiredMercenaries, chainDisplaced, i + 1);
+                    return;
                 }
             }
         }

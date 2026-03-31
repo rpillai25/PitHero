@@ -151,12 +151,13 @@ namespace PitHero.Tests
             var weapon = new Gear("Sword", ItemKind.WeaponSword, ItemRarity.Normal, "Test", 100, stats, atk: 5);
             bag.TryAdd(weapon);
 
-            var result = GearAutoEquipService.TryAutoEquipOnHero(hero, bag, weapon);
+            var result = GearAutoEquipService.TryAutoEquipOnHero(hero, bag, weapon, out IGear displaced);
 
             Assert.IsTrue(result);
             Assert.IsNotNull(hero.WeaponShield1);
             Assert.AreEqual("Sword", ((IGear)hero.WeaponShield1).Name);
             Assert.AreEqual(0, bag.Count);
+            Assert.IsNull(displaced);
         }
 
         [TestMethod]
@@ -173,12 +174,14 @@ namespace PitHero.Tests
             hero.SetEquipmentSlot(EquipmentSlot.WeaponShield1, weakWeapon);
             bag.TryAdd(strongWeapon);
 
-            var result = GearAutoEquipService.TryAutoEquipOnHero(hero, bag, strongWeapon);
+            var result = GearAutoEquipService.TryAutoEquipOnHero(hero, bag, strongWeapon, out IGear displaced);
 
             Assert.IsTrue(result);
             Assert.AreEqual("StrongSword", ((IGear)hero.WeaponShield1).Name);
             Assert.AreEqual(1, bag.Count);
             Assert.AreEqual("WeakSword", bag.Items[0].Name);
+            Assert.IsNotNull(displaced);
+            Assert.AreEqual("WeakSword", displaced.Name);
         }
 
         [TestMethod]
@@ -195,11 +198,12 @@ namespace PitHero.Tests
             hero.SetEquipmentSlot(EquipmentSlot.WeaponShield1, strongWeapon);
             bag.TryAdd(weakWeapon);
 
-            var result = GearAutoEquipService.TryAutoEquipOnHero(hero, bag, weakWeapon);
+            var result = GearAutoEquipService.TryAutoEquipOnHero(hero, bag, weakWeapon, out IGear displaced);
 
             Assert.IsFalse(result);
             Assert.AreEqual("StrongSword", ((IGear)hero.WeaponShield1).Name);
             Assert.AreEqual(1, bag.Count);
+            Assert.IsNull(displaced);
         }
 
         [TestMethod]
@@ -211,12 +215,13 @@ namespace PitHero.Tests
             var accessory = new Gear("Ring", ItemKind.Accessory, ItemRarity.Normal, "Test", 100, stats);
             bag.TryAdd(accessory);
 
-            var result = GearAutoEquipService.TryAutoEquipOnHero(hero, bag, accessory);
+            var result = GearAutoEquipService.TryAutoEquipOnHero(hero, bag, accessory, out IGear displaced);
 
             Assert.IsTrue(result);
             Assert.IsNotNull(hero.Accessory1);
             Assert.AreEqual("Ring", ((IGear)hero.Accessory1).Name);
             Assert.AreEqual(0, bag.Count);
+            Assert.IsNull(displaced);
         }
 
         [TestMethod]
@@ -233,10 +238,11 @@ namespace PitHero.Tests
             hero.SetEquipmentSlot(EquipmentSlot.Accessory2, accessory2);
             bag.TryAdd(accessory3);
 
-            var result = GearAutoEquipService.TryAutoEquipOnHero(hero, bag, accessory3);
+            var result = GearAutoEquipService.TryAutoEquipOnHero(hero, bag, accessory3, out IGear displaced);
 
             Assert.IsFalse(result);
             Assert.AreEqual(1, bag.Count);
+            Assert.IsNull(displaced);
         }
 
         [TestMethod]
@@ -251,12 +257,27 @@ namespace PitHero.Tests
             hero.SetEquipmentSlot(EquipmentSlot.Accessory1, accessory1);
             bag.TryAdd(accessory2);
 
-            var result = GearAutoEquipService.TryAutoEquipOnHero(hero, bag, accessory2);
+            var result = GearAutoEquipService.TryAutoEquipOnHero(hero, bag, accessory2, out IGear displaced);
 
             Assert.IsTrue(result);
             Assert.IsNotNull(hero.Accessory2);
             Assert.AreEqual("Ring2", ((IGear)hero.Accessory2).Name);
             Assert.AreEqual(0, bag.Count);
+            Assert.IsNull(displaced);
+        }
+
+        [TestMethod]
+        public void TryAutoEquipOnHero_EmptySlot_DisplacedGearIsNull()
+        {
+            var hero = CreateTestHero();
+            var bag = new ItemBag("Test", 10);
+            var stats = new StatBlock(3, 3, 3, 3);
+            var weapon = new Gear("Sword", ItemKind.WeaponSword, ItemRarity.Normal, "Test", 100, stats, atk: 8);
+            bag.TryAdd(weapon);
+
+            GearAutoEquipService.TryAutoEquipOnHero(hero, bag, weapon, out IGear displaced);
+
+            Assert.IsNull(displaced);
         }
 
         #endregion

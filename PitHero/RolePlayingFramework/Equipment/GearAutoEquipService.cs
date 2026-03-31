@@ -119,9 +119,14 @@ namespace RolePlayingFramework.Equipment
             return newResistanceScore > existingResistanceScore;
         }
 
-        /// <summary>Attempts to auto-equip gear on the hero. Returns true if equipped.</summary>
-        public static bool TryAutoEquipOnHero(Hero hero, ItemBag bag, IGear gear)
+        /// <summary>
+        /// Attempts to auto-equip gear on the hero. Returns true if equipped.
+        /// When an existing piece of gear is displaced by a better one, it is output via displacedGear for hand-me-down processing.
+        /// </summary>
+        public static bool TryAutoEquipOnHero(Hero hero, ItemBag bag, IGear gear, out IGear displacedGear)
         {
+            displacedGear = null;
+
             if (hero == null || bag == null || gear == null)
                 return false;
 
@@ -173,6 +178,7 @@ namespace RolePlayingFramework.Equipment
                 {
                     bag.Remove(gear);
                     bag.TryAdd(currentGear);
+                    displacedGear = currentGear;
                     Debug.Log($"[GearAutoEquip] Swapped {currentGear.Name} with {gear.Name} in hero's {slot} slot");
                     return true;
                 }
@@ -181,9 +187,15 @@ namespace RolePlayingFramework.Equipment
             return false;
         }
 
-        /// <summary>Attempts to auto-equip gear on a mercenary. Returns true if equipped.</summary>
-        public static bool TryAutoEquipOnMercenary(Mercenary merc, ItemBag heroBag, IGear gear)
+        /// <summary>
+        /// Attempts to auto-equip gear on a mercenary. Returns true if equipped.
+        /// Displaced gear is returned to the hero's bag.
+        /// When an existing piece of gear is displaced by a better one, it is output via displacedGear for hand-me-down processing.
+        /// </summary>
+        public static bool TryAutoEquipOnMercenary(Mercenary merc, ItemBag heroBag, IGear gear, out IGear displacedGear)
         {
+            displacedGear = null;
+
             if (merc == null || heroBag == null || gear == null)
                 return false;
 
@@ -235,6 +247,7 @@ namespace RolePlayingFramework.Equipment
                 {
                     heroBag.Remove(gear);
                     heroBag.TryAdd(currentGear);
+                    displacedGear = currentGear;
                     Debug.Log($"[GearAutoEquip] Swapped {currentGear.Name} with {gear.Name} in {merc.Name}'s {slot} slot");
                     return true;
                 }
