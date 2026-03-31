@@ -303,20 +303,6 @@ namespace PitHero.AI
             }
         }
 
-        /// <summary>
-        /// Returns true if the bag currently contains the provided item instance
-        /// </summary>
-        private bool BagContains(RolePlayingFramework.Inventory.ItemBag bag, IItem item)
-        {
-            var items = bag.Items;
-            for (int i = 0; i < items.Count; i++)
-            {
-                if (items[i] == item)
-                    return true;
-            }
-            return false;
-        }
-
         /// <summary>Attempts to auto-equip gear on hero and mercenaries.</summary>
         private void TryAutoEquipFromChest(HeroComponent heroComp, IItem item)
         {

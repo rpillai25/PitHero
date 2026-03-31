@@ -48,6 +48,7 @@ namespace RolePlayingFramework.Equipment
                     return true;
 
                 case ItemKind.Accessory:
+                    // Accessory callers handle both slots directly; the returned slot value is intentionally unused for accessories.
                     slot = EquipmentSlot.Accessory1;
                     return true;
 
@@ -96,8 +97,6 @@ namespace RolePlayingFramework.Equipment
                 score += lightRes;
             if (resistances.TryGetValue(ElementType.Dark, out float darkRes) && darkRes > 0)
                 score += darkRes;
-            if (resistances.TryGetValue(ElementType.Neutral, out float neutralRes) && neutralRes > 0)
-                score += neutralRes;
 
             return score;
         }
@@ -172,8 +171,8 @@ namespace RolePlayingFramework.Equipment
             {
                 if (hero.SetEquipmentSlot(slot, gear))
                 {
-                    bag.TryAdd(currentGear);
                     bag.Remove(gear);
+                    bag.TryAdd(currentGear);
                     Debug.Log($"[GearAutoEquip] Swapped {currentGear.Name} with {gear.Name} in hero's {slot} slot");
                     return true;
                 }
@@ -234,8 +233,8 @@ namespace RolePlayingFramework.Equipment
             {
                 if (merc.SetEquipmentSlot(slot, gear))
                 {
-                    heroBag.TryAdd(currentGear);
                     heroBag.Remove(gear);
+                    heroBag.TryAdd(currentGear);
                     Debug.Log($"[GearAutoEquip] Swapped {currentGear.Name} with {gear.Name} in {merc.Name}'s {slot} slot");
                     return true;
                 }
