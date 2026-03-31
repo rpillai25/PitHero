@@ -7,6 +7,7 @@ using PitHero.Services;
 using PitHero.Util;
 using PitHero.Util.SoundEffectTypes;
 using RolePlayingFramework.Combat;
+using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Mercenaries;
 using RolePlayingFramework.Skills;
@@ -353,7 +354,6 @@ namespace PitHero.AI
         {
             Debug.Log("[AttackMonster] Starting multi-participant battle sequence");
 
-            // Set battle in progress to prevent movement
             HeroStateMachine.IsBattleInProgress = true;
 
             List<Entity> validMonsters = new List<Entity>();
@@ -361,7 +361,6 @@ namespace PitHero.AI
             Entity turnIndicatorEntity = null;
             try
             {
-                // Get the hero's linked RPG hero
                 if (heroComponent.LinkedHero == null)
                 {
                     Debug.Warn("[AttackMonster] Hero has no LinkedHero, cannot start battle");
@@ -370,20 +369,16 @@ namespace PitHero.AI
 
                 var hero = heroComponent.LinkedHero;
                 var attackResolver = new EnhancedAttackResolver();
-
-                // Calculate hero's battle stats once for the entire battle
                 var heroBattleStats = BattleStats.CalculateForHero(hero);
 
-                // Create list of battle participants
+                // Build participant list
                 var participants = new List<BattleParticipant>();
                 participants.Add(new BattleParticipant(heroComponent));
 
-                // Find all hired mercenaries who are in the pit
                 var mercenariesInPit = FindMercenariesInPit();
-
-                // Add mercenary participants
-                foreach (var mercEntity in mercenariesInPit)
+                for (int i = 0; i < mercenariesInPit.Count; i++)
                 {
+                    var mercEntity = mercenariesInPit[i];
                     var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
                     if (mercComponent?.LinkedMercenary != null)
                     {
@@ -393,9 +388,9 @@ namespace PitHero.AI
                     }
                 }
 
-                // Add all monster participants and validate they have EnemyComponents
-                foreach (var monsterEntity in monsterEntities)
+                for (int i = 0; i < monsterEntities.Count; i++)
                 {
+                    var monsterEntity = monsterEntities[i];
                     var enemyComponent = monsterEntity.GetComponent<EnemyComponent>();
                     if (enemyComponent?.Enemy != null)
                     {
@@ -415,15 +410,13 @@ namespace PitHero.AI
                     yield break;
                 }
 
-                // Add HP bar components to monsters
-                foreach (var monsterEntity in validMonsters)
-                {
-                    monsterEntity.AddComponent(new MonsterHPBarComponent());
-                }
+                // Set up battle UI
+                for (int i = 0; i < validMonsters.Count; i++)
+                    validMonsters[i].AddComponent(new MonsterHPBarComponent());
 
-                // Add bouncy digit and text components to mercenaries for damage display
-                foreach (var mercEntity in validMercenaries)
+                for (int i = 0; i < validMercenaries.Count; i++)
                 {
+                    var mercEntity = validMercenaries[i];
                     if (!mercEntity.HasComponent<BouncyDigitComponent>())
                     {
                         var bouncyDigit = mercEntity.AddComponent<BouncyDigitComponent>();
@@ -438,98 +431,40 @@ namespace PitHero.AI
                     }
                 }
 
-                // Create battle turn indicator entity
                 turnIndicatorEntity = Core.Scene.CreateEntity("battle-turn-indicator");
                 var turnIndicator = turnIndicatorEntity.AddComponent(new BattleTurnIndicatorComponent());
 
                 Debug.Log($"[AttackMonster] Multi-participant battle: {hero.Name} (Lv.{hero.Level}, HP {hero.CurrentHP}/{hero.MaxHP}) + {validMercenaries.Count} mercenaries vs {validMonsters.Count} monsters");
 
-                // Battle loop - continue until hero AND all mercenaries are dead/left the pit, or all monsters are defeated
-                while (HasValidAlliesInPit(hero, heroComponent, validMercenaries) 
+                // Battle loop
+                while (HasValidAlliesInPit(hero, heroComponent, validMercenaries)
                        && validMonsters.Any(m => m.GetComponent<EnemyComponent>()?.Enemy.CurrentHP > 0))
                 {
-                    // Wait while paused before starting each round
                     yield return WaitWhilePaused();
 
-                    // Calculate turn values for all participants at start of each round
-                    for (int i = 0; i < participants.Count; i++)
-                    {
-                        var participant = participants[i];
-                        if (participant.Type == BattleParticipant.ParticipantType.Hero)
-                        {
-                            // Check if hero is still alive before calculating turn
-                            if (hero.CurrentHP > 0)
-                            {
-                                participant.TurnValue = CalculateTurnValue(hero.GetTotalStats().Agility);
-
-                                // Use AI to decide action when queue is empty
-                                if (!heroComponent.BattleActionQueue.HasActions())
-                                {
-                                    var currentLivingMonsters = GetLivingMonsters(validMonsters);
-                                    var decision = BattleTacticDecisionEngine.DecideHeroAction(heroComponent, currentLivingMonsters, validMercenaries);
-
-                                    switch (decision.Kind)
-                                    {
-                                        case BattleAction.ActionKind.UseAttackSkill:
-                                            heroComponent.BattleActionQueue.EnqueueSkill(decision.Skill);
-                                            break;
-                                        case BattleAction.ActionKind.UseHealingSkill:
-                                            heroComponent.BattleActionQueue.EnqueueSkill(decision.Skill, decision.Target, decision.TargetsHero);
-                                            break;
-                                        case BattleAction.ActionKind.UseConsumable:
-                                            heroComponent.BattleActionQueue.EnqueueItem(decision.Consumable, decision.BagIndex, decision.Target, decision.TargetsHero);
-                                            break;
-                                        case BattleAction.ActionKind.PhysicalAttack:
-                                        default:
-                                            heroComponent.BattleActionQueue.EnqueueAttack(hero.WeaponShield1);
-                                            break;
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                participant.TurnValue = -1; // Mark as dead/invalid
-                            }
-                        }
-                        else if (participant.Type == BattleParticipant.ParticipantType.Mercenary)
-                        {
-                            var mercComponent = participant.MercenaryEntity.GetComponent<MercenaryComponent>();
-                            if (mercComponent?.LinkedMercenary != null && mercComponent.LinkedMercenary.CurrentHP > 0)
-                            {
-                                participant.TurnValue = CalculateTurnValue(mercComponent.LinkedMercenary.GetTotalStats().Agility);
-                            }
-                            else
-                            {
-                                participant.TurnValue = -1; // Mark as dead/invalid
-                            }
-                        }
-                        else // Monster
-                        {
-                            var enemyComponent = participant.MonsterEntity.GetComponent<EnemyComponent>();
-                            if (enemyComponent?.Enemy != null && enemyComponent.Enemy.CurrentHP > 0)
-                            {
-                                participant.TurnValue = CalculateTurnValue(enemyComponent.Enemy.Stats.Agility);
-                            }
-                            else
-                            {
-                                participant.TurnValue = -1; // Mark as dead/invalid
-                            }
-                        }
-                        participants[i] = participant;
-                    }
-
-                    // Sort participants by turn value (highest first)
+                    CalculateAllTurnValues(participants, hero, heroComponent, validMonsters, validMercenaries);
                     participants.Sort((a, b) => b.TurnValue.CompareTo(a.TurnValue));
 
-                    // Execute turns in order
-                    foreach (var participant in participants)
+                    for (int ti = 0; ti < participants.Count; ti++)
                     {
-                        if (participant.TurnValue < 0) continue; // Skip dead/invalid participants
+                        var participant = participants[ti];
+                        if (participant.TurnValue < 0) continue;
 
-                        // Wait while paused before each participant's turn
+                        // Skip mid-round deaths without incurring a turn wait
+                        if (participant.Type == BattleParticipant.ParticipantType.Mercenary)
+                        {
+                            var mc = participant.MercenaryEntity.GetComponent<MercenaryComponent>();
+                            if (mc?.LinkedMercenary == null || mc.LinkedMercenary.CurrentHP <= 0) continue;
+                        }
+                        else if (participant.Type == BattleParticipant.ParticipantType.Monster)
+                        {
+                            var ec = participant.MonsterEntity.GetComponent<EnemyComponent>();
+                            if (ec?.Enemy == null || ec.Enemy.CurrentHP <= 0) continue;
+                        }
+
                         yield return WaitWhilePaused();
 
-                        // Show turn indicator above the active participant
+                        // Show turn indicator
                         if (participant.Type == BattleParticipant.ParticipantType.Hero)
                             turnIndicator.Show(heroComponent.Entity);
                         else if (participant.Type == BattleParticipant.ParticipantType.Mercenary)
@@ -537,846 +472,18 @@ namespace PitHero.AI
                         else
                             turnIndicator.Show(participant.MonsterEntity, true);
 
+                        // Execute participant's turn
                         if (participant.Type == BattleParticipant.ParticipantType.Hero)
-                        {
-                            // Check if there's a queued action
-                            var queuedAction = heroComponent.BattleActionQueue.Dequeue();
-
-                            // Re-evaluate if healing is urgently needed since damage may have occurred since the action was queued
-                            // This catches the scenario where a monster attacks AFTER the hero's action was decided at round start
-                            // We only override non-healing actions (Attack or attack-type UseSkill)
-                            bool isQueuedOffensiveAction = queuedAction != null && 
-                                (queuedAction.ActionType == QueuedActionType.Attack ||
-                                 (queuedAction.ActionType == QueuedActionType.UseSkill && 
-                                  queuedAction.Skill != null && queuedAction.Skill.HPRestoreAmount <= 0));
-                            
-                            if (isQueuedOffensiveAction)
-                            {
-                                var currentLivingMonsters = GetLivingMonsters(validMonsters);
-                                var reEvaluatedDecision = BattleTacticDecisionEngine.DecideHeroAction(heroComponent, currentLivingMonsters, validMercenaries);
-                                if (reEvaluatedDecision.Kind == BattleAction.ActionKind.UseHealingSkill ||
-                                    reEvaluatedDecision.Kind == BattleAction.ActionKind.UseConsumable)
-                                {
-                                    Debug.Log($"[AttackMonster] Hero re-evaluated: overriding queued offensive action with {reEvaluatedDecision.Kind} (healing needed since action was queued)");
-                                    // Override the queued action with the re-evaluated healing action
-                                    switch (reEvaluatedDecision.Kind)
-                                    {
-                                        case BattleAction.ActionKind.UseHealingSkill:
-                                            queuedAction = new QueuedAction(reEvaluatedDecision.Skill);
-                                            queuedAction.Target = reEvaluatedDecision.Target;
-                                            queuedAction.TargetsHero = reEvaluatedDecision.TargetsHero;
-                                            break;
-                                        case BattleAction.ActionKind.UseConsumable:
-                                            queuedAction = new QueuedAction(reEvaluatedDecision.Consumable, reEvaluatedDecision.BagIndex);
-                                            queuedAction.Target = reEvaluatedDecision.Target;
-                                            queuedAction.TargetsHero = reEvaluatedDecision.TargetsHero;
-                                            break;
-                                    }
-                                }
-                            }
-
-                            if (queuedAction != null)
-                            {
-                                // Execute the queued action
-                                Debug.Log($"[AttackMonster] Hero's turn - executing queued action: {queuedAction.ActionType}");
-
-                                if (queuedAction.ActionType == QueuedActionType.UseItem)
-                                {
-                                    var consumable = queuedAction.Consumable;
-                                    var consumeTarget = queuedAction.Target ?? hero;
-                                    Debug.Log($"[AttackMonster] Using queued item: {consumable.Name}");
-
-                                    // Track HP before for healing display
-                                    int hpBeforeItem = 0;
-                                    if (consumeTarget is Hero heroPreItem)
-                                        hpBeforeItem = heroPreItem.CurrentHP;
-                                    else if (consumeTarget is Mercenary mercPreItem)
-                                        hpBeforeItem = mercPreItem.CurrentHP;
-
-                                    if (consumable.Consume(consumeTarget))
-                                    {
-                                        heroComponent.Bag.ConsumeFromStack(queuedAction.BagIndex);
-                                        Debug.Log($"[AttackMonster] Successfully used {consumable.Name}");
-                                        PitHero.UI.InventorySelectionManager.OnInventoryChanged?.Invoke();
-
-                                        // Show healing effect if HP was restored
-                                        int hpAfterItem = 0;
-                                        if (consumeTarget is Hero heroPostItem)
-                                            hpAfterItem = heroPostItem.CurrentHP;
-                                        else if (consumeTarget is Mercenary mercPostItem)
-                                            hpAfterItem = mercPostItem.CurrentHP;
-
-                                        int itemHealAmount = hpAfterItem - hpBeforeItem;
-                                        if (itemHealAmount > 0)
-                                        {
-                                            var itemTargetEntity = FindTargetEntity(consumeTarget, queuedAction.TargetsHero, heroComponent, validMercenaries);
-                                            SoundEffectManager itemSfx = Core.GetGlobalManager<SoundEffectManager>();
-                                            itemSfx?.PlaySound(SoundEffectType.Restorative);
-
-                                            var itemDigit = itemTargetEntity?.GetComponent<BouncyDigitComponent>();
-                                            if (itemDigit != null)
-                                            {
-                                                itemDigit.Init(itemHealAmount, Color.Green, false);
-                                                itemDigit.SetEnabled(true);
-                                                yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        Debug.Log($"[AttackMonster] Failed to use {consumable.Name}");
-                                    }
-                                }
-                                else if (queuedAction.ActionType == QueuedActionType.UseSkill)
-                                {
-                                    // Use the queued skill
-                                    var skill = queuedAction.Skill;
-                                    Debug.Log($"[AttackMonster] Using queued skill: {skill.Name}");
-
-                                    // Check if hero has enough MP
-                                    if (hero.CurrentMP >= skill.MPCost)
-                                    {
-                                        // Check if this is a healing/buff skill (targets allies)
-                                        if (skill.HPRestoreAmount > 0 || skill.MPRestoreAmount > 0 ||
-                                            skill.TargetType == SkillTargetType.Self ||
-                                            skill.TargetType == SkillTargetType.SingleAlly ||
-                                            skill.TargetType == SkillTargetType.AllAllies)
-                                        {
-                                            hero.SpendMP(skill.MPCost);
-                                            var healTarget = queuedAction.Target ?? hero;
-
-                                            if (skill.HPRestoreAmount > 0)
-                                            {
-                                                bool healed = false;
-                                                if (healTarget is Hero hpHero)
-                                                    healed = hpHero.RestoreHP(skill.HPRestoreAmount);
-                                                else if (healTarget is Mercenary hpMerc)
-                                                    healed = hpMerc.RestoreHP(skill.HPRestoreAmount);
-
-                                                if (healed)
-                                                {
-                                                    var hEntity = FindTargetEntity(healTarget, queuedAction.TargetsHero, heroComponent, validMercenaries);
-                                                    SoundEffectManager hSfx = Core.GetGlobalManager<SoundEffectManager>();
-                                                    hSfx?.PlaySound(SoundEffectType.Restorative);
-
-                                                    var hDigit = hEntity?.GetComponent<BouncyDigitComponent>();
-                                                    if (hDigit != null)
-                                                    {
-                                                        hDigit.Init(skill.HPRestoreAmount, Color.Green, false);
-                                                        hDigit.SetEnabled(true);
-                                                        yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
-                                                    }
-                                                }
-                                            }
-
-                                            if (skill.MPRestoreAmount > 0)
-                                            {
-                                                if (healTarget is Hero mpHero)
-                                                    mpHero.RestoreMP(skill.MPRestoreAmount);
-                                                else if (healTarget is Mercenary mpMerc)
-                                                    mpMerc.RestoreMP(skill.MPRestoreAmount);
-                                            }
-
-                                            Debug.Log($"[AttackMonster] Used healing skill {skill.Name}");
-                                        }
-                                        else
-                                        {
-                                        // Attack skill - get living monsters as targets
-                                        var livingMonsters = GetLivingMonsters(validMonsters);
-
-                                        if (livingMonsters.Count == 0) break; // All monsters dead
-
-                                        // Store HP before skill execution to calculate damage dealt
-                                        var monsterHPBefore = new Dictionary<RolePlayingFramework.Enemies.IEnemy, int>();
-                                        for (int i = 0; i < livingMonsters.Count; i++)
-                                        {
-                                            var enemyComp = livingMonsters[i].GetComponent<EnemyComponent>();
-                                            if (enemyComp?.Enemy != null)
-                                                monsterHPBefore[enemyComp.Enemy] = enemyComp.Enemy.CurrentHP;
-                                        }
-
-                                        // Cache components to avoid repeated lookups
-                                        var primaryTarget = livingMonsters[0].GetComponent<EnemyComponent>()?.Enemy;
-                                        var surroundingTargets = new List<RolePlayingFramework.Enemies.IEnemy>();
-                                        for (int i = 1; i < livingMonsters.Count; i++)
-                                        {
-                                            var enemyComp = livingMonsters[i].GetComponent<EnemyComponent>();
-                                            if (enemyComp?.Enemy != null)
-                                                surroundingTargets.Add(enemyComp.Enemy);
-                                        }
-
-                                        // Execute the skill
-                                        skill.Execute(hero, primaryTarget, surroundingTargets, attackResolver);
-                                        hero.SpendMP(skill.MPCost);
-                                        Debug.Log($"[AttackMonster] Successfully used {skill.Name}, consumed {skill.MPCost} MP");
-
-                                        // Display damage and handle deaths for all affected monsters
-                                        for (int i = livingMonsters.Count - 1; i >= 0; i--)
-                                        {
-                                            var monsterEntity = livingMonsters[i];
-                                            var enemyComp = monsterEntity.GetComponent<EnemyComponent>();
-                                            if (enemyComp?.Enemy == null) continue;
-
-                                            var enemy = enemyComp.Enemy;
-
-                                            // Calculate damage dealt
-                                            if (monsterHPBefore.TryGetValue(enemy, out int hpBefore))
-                                            {
-                                                int damage = hpBefore - enemy.CurrentHP;
-                                                if (damage > 0)
-                                                {
-                                                    Debug.Log($"[AttackMonster] {skill.Name} dealt {damage} damage to {enemy.Name}. Enemy HP: {enemy.CurrentHP}/{enemy.MaxHP}");
-
-                                                    // Display damage on enemy
-                                                    var enemyBouncyDigit = monsterEntity.GetComponent<BouncyDigitComponent>();
-                                                    if (enemyBouncyDigit != null)
-                                                    {
-                                                        enemyBouncyDigit.Init(damage, BouncyDigitComponent.EnemyDigitColor, false);
-                                                        enemyBouncyDigit.SetEnabled(true);
-                                                    }
-
-                                                    // Check if enemy died
-                                                    if (enemy.CurrentHP <= 0)
-                                                    {
-                                                        Debug.Log($"[AttackMonster] {enemy.Name} defeated by {skill.Name}! Starting fade out");
-                                                        hero.AddExperience(enemy.ExperienceYield);
-                                                        hero.EarnJP(enemy.JPYield);
-                                                        hero.EarnSynergyPointsWithAcceleration(enemy.SPYield);
-
-                                                        AwardMercenaryExperience(validMercenaries, enemy.ExperienceYield);
-
-                                                        // Add gold to global Funds
-                                                        var gameState = Nez.Core.Services.GetService<PitHero.Services.GameStateService>();
-                                                        if (gameState != null)
-                                                        {
-                                                            gameState.Funds += enemy.GoldYield;
-
-                                                            if (enemy.GoldYield > 0)
-                                                            {
-                                                                heroComponent.InnExhausted = false;
-                                                            }
-                                                        }
-
-                                                        Debug.Log($"[AttackMonster] Earned {enemy.ExperienceYield} XP, {enemy.JPYield} JP, {enemy.SPYield} SP, {enemy.GoldYield} Gold");
-
-                                                        // Try to recruit the defeated monster
-                                                        var alliedMonsterMgr = Core.Services.GetService<PitHero.Services.AlliedMonsterManager>();
-                                                        if (alliedMonsterMgr != null)
-                                                        {
-                                                            var recruited = alliedMonsterMgr.TryRecruit(enemy);
-                                                            if (recruited != null)
-                                                                Debug.Log($"[AttackMonster] {enemy.Name} recruited as '{recruited.Name}'");
-                                                        }
-
-                                                        validMonsters.Remove(monsterEntity);
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        // Wait for damage display
-                                        yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
-
-                                        // Fade out and destroy all dead monsters
-                                        var deadMonsters = livingMonsters.Where(m => m.GetComponent<EnemyComponent>()?.Enemy?.CurrentHP <= 0).ToList();
-                                        foreach (var deadMonster in deadMonsters)
-                                        {
-                                            yield return FadeOutAndDestroyMonster(deadMonster);
-                                        }
-                                        } // end attack skill else
-                                    }
-                                    else
-                                    {
-                                        Debug.Log($"[AttackMonster] Not enough MP to use {skill.Name} (need {skill.MPCost}, have {hero.CurrentMP})");
-                                    }
-                                }
-                                else if (queuedAction.ActionType == QueuedActionType.Attack)
-                                {
-                                    // Execute queued attack
-                                    var livingMonsters = GetLivingMonsters(validMonsters);
-                                    if (livingMonsters.Count == 0) break; // All monsters dead
-
-                                    var targetMonster = livingMonsters[Nez.Random.Range(0, livingMonsters.Count)];
-                                    var targetEnemy = targetMonster.GetComponent<EnemyComponent>().Enemy;
-                                    var targetBattleStats = BattleStats.CalculateForMonster(targetEnemy);
-
-                                    Debug.Log($"[AttackMonster] Hero's turn - attacking {targetEnemy.Name}");
-                                    var heroAttackResult = attackResolver.Resolve(heroBattleStats, targetBattleStats, DamageKind.Physical);
-
-                                    // Play punch sound effect for unarmed attacks
-                                    if (queuedAction.WeaponItem == null)
-                                    {
-                                        SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
-                                        soundEffectManager?.PlaySound(SoundEffectType.Punch);
-                                    }
-
-                                    if (heroAttackResult.Hit)
-                                    {
-                                        bool enemyDied = targetEnemy.TakeDamage(heroAttackResult.Damage);
-                                        Debug.Log($"[AttackMonster] Hero deals {heroAttackResult.Damage} damage to {targetEnemy.Name}. Enemy HP: {targetEnemy.CurrentHP}/{targetEnemy.MaxHP}");
-
-                                        // Display damage on enemy
-                                        var enemyBouncyDigit = targetMonster.GetComponent<BouncyDigitComponent>();
-                                        if (enemyBouncyDigit != null)
-                                        {
-                                            enemyBouncyDigit.Init(heroAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor, false);
-                                            enemyBouncyDigit.SetEnabled(true);
-                                            yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
-                                        }
-
-                                        if (enemyDied)
-                                        {
-                                            Debug.Log($"[AttackMonster] {targetEnemy.Name} defeated! Starting fade out");
-                                            hero.AddExperience(targetEnemy.ExperienceYield);
-                                            hero.EarnJP(targetEnemy.JPYield);
-                                            hero.EarnSynergyPointsWithAcceleration(targetEnemy.SPYield);
-
-                                            AwardMercenaryExperience(validMercenaries, targetEnemy.ExperienceYield);
-                                            
-                                            // Add gold to global Funds
-                                            var gameState = Nez.Core.Services.GetService<PitHero.Services.GameStateService>();
-                                            if (gameState != null)
-                                            {
-                                                gameState.Funds += targetEnemy.GoldYield;
-                                                
-                                                // Reset InnExhausted flag when hero gains any gold
-                                                if (targetEnemy.GoldYield > 0)
-                                                {
-                                                    heroComponent.InnExhausted = false;
-                                                }
-                                                
-                                                Debug.Log($"[AttackMonster] Earned {targetEnemy.ExperienceYield} XP, {targetEnemy.JPYield} JP, {targetEnemy.SPYield} SP, {targetEnemy.GoldYield} Gold (Total: {gameState.Funds})");
-                                            }
-                                            else
-                                            {
-                                                Debug.Log($"[AttackMonster] Earned {targetEnemy.ExperienceYield} XP, {targetEnemy.JPYield} JP, {targetEnemy.SPYield} SP, {targetEnemy.GoldYield} Gold");
-                                            }
-                                            
-                                            // Try to recruit the defeated monster
-                                            var alliedMonsterMgr = Core.Services.GetService<PitHero.Services.AlliedMonsterManager>();
-                                            if (alliedMonsterMgr != null)
-                                            {
-                                                var recruited = alliedMonsterMgr.TryRecruit(targetEnemy);
-                                                if (recruited != null)
-                                                    Debug.Log($"[AttackMonster] {targetEnemy.Name} recruited as '{recruited.Name}'");
-                                            }
-                                            
-                                            validMonsters.Remove(targetMonster);
-                                            // Start fade coroutine (wait for completion so removal timing stays consistent)
-                                            yield return FadeOutAndDestroyMonster(targetMonster);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        Debug.Log($"[AttackMonster] Hero missed {targetEnemy.Name}!");
-
-                                        // Display "Miss" on enemy
-                                        var enemyBouncyText = targetMonster.GetComponent<BouncyTextComponent>();
-                                        if (enemyBouncyText != null)
-                                        {
-                                            enemyBouncyText.Init("Miss", BouncyTextComponent.EnemyMissColor);
-                                            enemyBouncyText.SetEnabled(true);
-                                            yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
-                                        }
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                // No queued action - this shouldn't happen anymore since we auto-queue attacks
-                                Debug.Warn("[AttackMonster] Hero turn but no queued action (unexpected)");
-                            }
-                        }
+                            yield return ExecuteHeroTurn(heroComponent, hero, validMonsters, validMercenaries, heroBattleStats, attackResolver);
                         else if (participant.Type == BattleParticipant.ParticipantType.Mercenary)
-                        {
-                            var mercComponent = participant.MercenaryEntity.GetComponent<MercenaryComponent>();
-                            if (mercComponent?.LinkedMercenary == null || mercComponent.LinkedMercenary.CurrentHP <= 0) continue;
+                            yield return ExecuteMercenaryTurn(participant, heroComponent, hero, validMonsters, validMercenaries, attackResolver);
+                        else
+                            yield return ExecuteMonsterTurn(participant, heroComponent, hero, heroBattleStats, validMercenaries, attackResolver);
 
-                            var mercenary = mercComponent.LinkedMercenary;
-                            var mercBattleStats = BattleStats.CalculateForMercenary(mercenary);
-
-                            var livingMonsters = GetLivingMonsters(validMonsters);
-                            if (livingMonsters.Count == 0) break;
-
-                            var mercDecision = BattleTacticDecisionEngine.DecideMercenaryAction(mercComponent, heroComponent, livingMonsters, validMercenaries);
-
-                            switch (mercDecision.Kind)
-                            {
-                                case BattleAction.ActionKind.UseHealingSkill:
-                                {
-                                    var healSkill = mercDecision.Skill;
-                                    if (mercenary.CurrentMP >= healSkill.MPCost)
-                                    {
-                                        mercenary.UseMP(healSkill.MPCost);
-
-                                        // Show action icon on HUD
-                                        mercComponent.ActionQueueVisualization?.ShowAction(new QueuedAction(healSkill));
-
-                                        var healTarget = mercDecision.Target;
-                                        if (healTarget == null) healTarget = hero;
-
-                                        if (healSkill.HPRestoreAmount > 0)
-                                        {
-                                            bool healed = false;
-                                            if (healTarget is Hero mhHero)
-                                                healed = mhHero.RestoreHP(healSkill.HPRestoreAmount);
-                                            else if (healTarget is Mercenary mhMerc)
-                                                healed = mhMerc.RestoreHP(healSkill.HPRestoreAmount);
-
-                                            if (healed)
-                                            {
-                                                var mhEntity = FindTargetEntity(healTarget, mercDecision.TargetsHero, heroComponent, validMercenaries);
-                                                SoundEffectManager mhSfx = Core.GetGlobalManager<SoundEffectManager>();
-                                                mhSfx?.PlaySound(SoundEffectType.Restorative);
-
-                                                var mhDigit = mhEntity?.GetComponent<BouncyDigitComponent>();
-                                                if (mhDigit != null)
-                                                {
-                                                    mhDigit.Init(healSkill.HPRestoreAmount, Color.Green, false);
-                                                    mhDigit.SetEnabled(true);
-                                                    yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
-                                                }
-                                            }
-                                        }
-
-                                        if (healSkill.MPRestoreAmount > 0)
-                                        {
-                                            if (healTarget is Hero mpRestoreHero)
-                                                mpRestoreHero.RestoreMP(healSkill.MPRestoreAmount);
-                                            else if (healTarget is Mercenary mpRestoreMerc)
-                                                mpRestoreMerc.RestoreMP(healSkill.MPRestoreAmount);
-                                        }
-
-                                        Debug.Log($"[AttackMonster] {mercenary.Name} used {healSkill.Name}");
-                                    }
-                                    break;
-                                }
-
-                                case BattleAction.ActionKind.UseConsumable:
-                                {
-                                    var mcConsumable = mercDecision.Consumable;
-                                    var mcTarget = mercDecision.Target ?? hero;
-
-                                    int mcHpBefore = 0;
-                                    if (mcTarget is Hero mcPreHero)
-                                        mcHpBefore = mcPreHero.CurrentHP;
-                                    else if (mcTarget is Mercenary mcPreMerc)
-                                        mcHpBefore = mcPreMerc.CurrentHP;
-
-                                    if (mcConsumable.Consume(mcTarget))
-                                    {
-                                        heroComponent.Bag.ConsumeFromStack(mercDecision.BagIndex);
-                                        Debug.Log($"[AttackMonster] {mercenary.Name} used {mcConsumable.Name}");
-                                        PitHero.UI.InventorySelectionManager.OnInventoryChanged?.Invoke();
-
-                                        int mcHpAfter = 0;
-                                        if (mcTarget is Hero mcPostHero)
-                                            mcHpAfter = mcPostHero.CurrentHP;
-                                        else if (mcTarget is Mercenary mcPostMerc)
-                                            mcHpAfter = mcPostMerc.CurrentHP;
-
-                                        int mcHealAmt = mcHpAfter - mcHpBefore;
-                                        if (mcHealAmt > 0)
-                                        {
-                                            var mcHealEntity = FindTargetEntity(mcTarget, mercDecision.TargetsHero, heroComponent, validMercenaries);
-                                            SoundEffectManager mcSfx = Core.GetGlobalManager<SoundEffectManager>();
-                                            mcSfx?.PlaySound(SoundEffectType.Restorative);
-
-                                            var mcDigit = mcHealEntity?.GetComponent<BouncyDigitComponent>();
-                                            if (mcDigit != null)
-                                            {
-                                                mcDigit.Init(mcHealAmt, Color.Green, false);
-                                                mcDigit.SetEnabled(true);
-                                                yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
-                                            }
-                                        }
-                                    }
-                                    break;
-                                }
-
-                                case BattleAction.ActionKind.UseAttackSkill:
-                                {
-                                    var atkSkill = mercDecision.Skill;
-                                    if (mercenary.CurrentMP >= atkSkill.MPCost)
-                                    {
-                                        mercenary.UseMP(atkSkill.MPCost);
-                                        var skillDamageKind = atkSkill.Element != ElementType.Neutral ? DamageKind.Magical : DamageKind.Physical;
-
-                                        // Show action icon on HUD
-                                        mercComponent.ActionQueueVisualization?.ShowAction(new QueuedAction(atkSkill));
-
-                                        // Build target list based on skill target type
-                                        var skillLiving = GetLivingMonsters(validMonsters);
-                                        if (skillLiving.Count == 0) break;
-
-                                        bool isAoE = atkSkill.TargetType == SkillTargetType.SurroundingEnemies;
-                                        int startIndex = 0;
-                                        int endIndex = isAoE ? skillLiving.Count : 1;
-
-                                        // For single target, pick the decision target or random
-                                        if (!isAoE && mercDecision.TargetEntity != null)
-                                        {
-                                            int found = -1;
-                                            for (int si = 0; si < skillLiving.Count; si++)
-                                            {
-                                                if (skillLiving[si] == mercDecision.TargetEntity)
-                                                {
-                                                    found = si;
-                                                    break;
-                                                }
-                                            }
-                                            if (found >= 0)
-                                            {
-                                                startIndex = found;
-                                                endIndex = found + 1;
-                                            }
-                                        }
-
-                                        for (int si = startIndex; si < endIndex && si < skillLiving.Count; si++)
-                                        {
-                                            var sMonsterEntity = skillLiving[si];
-                                            var sEnemyComp = sMonsterEntity.GetComponent<EnemyComponent>();
-                                            if (sEnemyComp?.Enemy == null || sEnemyComp.Enemy.CurrentHP <= 0) continue;
-
-                                            var sEnemy = sEnemyComp.Enemy;
-                                            var sTargetStats = BattleStats.CalculateForMonster(sEnemy);
-                                            var sResult = attackResolver.Resolve(mercBattleStats, sTargetStats, skillDamageKind);
-
-                                            FaceTarget(participant.MercenaryEntity, sMonsterEntity.Transform.Position);
-
-                                            if (sResult.Hit)
-                                            {
-                                                bool sEnemyDied = sEnemy.TakeDamage(sResult.Damage);
-                                                Debug.Log($"[AttackMonster] {mercenary.Name}'s {atkSkill.Name} dealt {sResult.Damage} to {sEnemy.Name}. HP: {sEnemy.CurrentHP}/{sEnemy.MaxHP}");
-
-                                                var sDigit = sMonsterEntity.GetComponent<BouncyDigitComponent>();
-                                                if (sDigit != null)
-                                                {
-                                                    sDigit.Init(sResult.Damage, BouncyDigitComponent.EnemyDigitColor, false);
-                                                    sDigit.SetEnabled(true);
-                                                }
-
-                                                if (sEnemyDied)
-                                                {
-                                                    Debug.Log($"[AttackMonster] {sEnemy.Name} defeated by {mercenary.Name}'s {atkSkill.Name}!");
-
-                                                    // Award XP to hero and all mercenaries
-                                                    hero.AddExperience(sEnemy.ExperienceYield);
-                                                    hero.EarnJP(sEnemy.JPYield);
-                                                    hero.EarnSynergyPointsWithAcceleration(sEnemy.SPYield);
-                                                    AwardMercenaryExperience(validMercenaries, sEnemy.ExperienceYield);
-
-                                                    var sGameState = Nez.Core.Services.GetService<PitHero.Services.GameStateService>();
-                                                    if (sGameState != null)
-                                                    {
-                                                        sGameState.Funds += sEnemy.GoldYield;
-                                                        Debug.Log($"[AttackMonster] Earned {sEnemy.GoldYield} Gold (Total: {sGameState.Funds})");
-                                                    }
-
-                                                    var sAllyMgr = Core.Services.GetService<PitHero.Services.AlliedMonsterManager>();
-                                                    if (sAllyMgr != null)
-                                                    {
-                                                        var sRecruited = sAllyMgr.TryRecruit(sEnemy);
-                                                        if (sRecruited != null)
-                                                            Debug.Log($"[AttackMonster] {sEnemy.Name} recruited as '{sRecruited.Name}'");
-                                                    }
-
-                                                    validMonsters.Remove(sMonsterEntity);
-                                                }
-                                            }
-                                            else
-                                            {
-                                                Debug.Log($"[AttackMonster] {mercenary.Name}'s {atkSkill.Name} missed {sEnemy.Name}!");
-                                                var sMissText = sMonsterEntity.GetComponent<BouncyTextComponent>();
-                                                if (sMissText != null)
-                                                {
-                                                    sMissText.Init("Miss", BouncyTextComponent.EnemyMissColor);
-                                                    sMissText.SetEnabled(true);
-                                                }
-                                            }
-                                        }
-
-                                        yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
-
-                                        // Fade out dead monsters
-                                        for (int di = skillLiving.Count - 1; di >= 0; di--)
-                                        {
-                                            var dEntity = skillLiving[di];
-                                            var dComp = dEntity.GetComponent<EnemyComponent>();
-                                            if (dComp?.Enemy != null && dComp.Enemy.CurrentHP <= 0)
-                                            {
-                                                yield return FadeOutAndDestroyMonster(dEntity);
-                                            }
-                                        }
-                                    }
-                                    else
-                                    {
-                                        Debug.Log($"[AttackMonster] {mercenary.Name} not enough MP for {atkSkill.Name}");
-                                    }
-                                    break;
-                                }
-
-                                case BattleAction.ActionKind.PhysicalAttack:
-                                default:
-                                {
-                                    // Physical attack - use target from decision or pick random
-                                    var paTarget = mercDecision.TargetEntity;
-                                    if (paTarget == null || paTarget.GetComponent<EnemyComponent>()?.Enemy?.CurrentHP <= 0)
-                                    {
-                                        var paLiving = GetLivingMonsters(validMonsters);
-                                        if (paLiving.Count == 0) break;
-                                        paTarget = paLiving[Nez.Random.Range(0, paLiving.Count)];
-                                    }
-
-                                    var targetEnemy = paTarget.GetComponent<EnemyComponent>().Enemy;
-                                    var targetBattleStats = BattleStats.CalculateForMonster(targetEnemy);
-
-                                    Debug.Log($"[AttackMonster] {mercenary.Name}'s turn - attacking {targetEnemy.Name}");
-
-                                    // Show action icon on HUD (weapon or unarmed)
-                                    mercComponent.ActionQueueVisualization?.ShowAction(new QueuedAction(mercenary.WeaponShield1));
-
-                                    // Make mercenary face the target monster
-                                    FaceTarget(participant.MercenaryEntity, paTarget.Transform.Position);
-
-                                    var mercAttackResult = attackResolver.Resolve(mercBattleStats, targetBattleStats, DamageKind.Physical);
-
-                                    // Play punch sound effect
-                                    SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
-                                    soundEffectManager?.PlaySound(SoundEffectType.Punch);
-
-                                    if (mercAttackResult.Hit)
-                                    {
-                                        bool enemyDied = targetEnemy.TakeDamage(mercAttackResult.Damage);
-                                        Debug.Log($"[AttackMonster] {mercenary.Name} deals {mercAttackResult.Damage} damage to {targetEnemy.Name}. Enemy HP: {targetEnemy.CurrentHP}/{targetEnemy.MaxHP}");
-
-                                        var enemyBouncyDigit = paTarget.GetComponent<BouncyDigitComponent>();
-                                        if (enemyBouncyDigit != null)
-                                        {
-                                            enemyBouncyDigit.Init(mercAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor, false);
-                                            enemyBouncyDigit.SetEnabled(true);
-                                            yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
-                                        }
-
-                                        if (enemyDied)
-                                        {
-                                            Debug.Log($"[AttackMonster] {targetEnemy.Name} defeated by {mercenary.Name}! Starting fade out");
-
-                                            // Award XP to hero and all mercenaries
-                                            hero.AddExperience(targetEnemy.ExperienceYield);
-                                            hero.EarnJP(targetEnemy.JPYield);
-                                            hero.EarnSynergyPointsWithAcceleration(targetEnemy.SPYield);
-                                            AwardMercenaryExperience(validMercenaries, targetEnemy.ExperienceYield);
-                                            
-                                            var gameState = Nez.Core.Services.GetService<PitHero.Services.GameStateService>();
-                                            if (gameState != null)
-                                            {
-                                                gameState.Funds += targetEnemy.GoldYield;
-                                                Debug.Log($"[AttackMonster] Earned {targetEnemy.GoldYield} Gold (Total: {gameState.Funds})");
-                                            }
-
-                                            var alliedMonsterMgr = Core.Services.GetService<PitHero.Services.AlliedMonsterManager>();
-                                            if (alliedMonsterMgr != null)
-                                            {
-                                                var recruited = alliedMonsterMgr.TryRecruit(targetEnemy);
-                                                if (recruited != null)
-                                                    Debug.Log($"[AttackMonster] {targetEnemy.Name} recruited as '{recruited.Name}'");
-                                            }
-                                            
-                                            validMonsters.Remove(paTarget);
-                                            yield return FadeOutAndDestroyMonster(paTarget);
-                                        }
-                                    }
-                                    else
-                                    {
-                                        Debug.Log($"[AttackMonster] {mercenary.Name} missed {targetEnemy.Name}!");
-
-                                        var enemyBouncyText = paTarget.GetComponent<BouncyTextComponent>();
-                                        if (enemyBouncyText != null)
-                                        {
-                                            enemyBouncyText.Init("Miss", BouncyTextComponent.EnemyMissColor);
-                                            enemyBouncyText.SetEnabled(true);
-                                            yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
-                                        }
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                        else // Monster's turn
-                        {
-                            var enemyComponent = participant.MonsterEntity.GetComponent<EnemyComponent>();
-                            if (enemyComponent?.Enemy == null || enemyComponent.Enemy.CurrentHP <= 0) continue;
-
-                            var enemy = enemyComponent.Enemy;
-                            var enemyBattleStats = BattleStats.CalculateForMonster(enemy);
-
-                            // Pick a random target from hero and living mercenaries
-                            var possibleTargets = new List<(Entity entity, bool isHero)>();
-                            
-                            // Only add hero if alive AND still in the pit (not respawned outside)
-                            if (hero.CurrentHP > 0 && heroComponent.Entity != null && heroComponent.InsidePit)
-                                possibleTargets.Add((heroComponent.Entity, true));
-
-                            foreach (var mercEntity in validMercenaries)
-                            {
-                                // Check entity is still valid (not destroyed)
-                                if (mercEntity == null || mercEntity.IsDestroyed) continue;
-                                
-                                var mercComp = mercEntity.GetComponent<MercenaryComponent>();
-                                // Only add mercenary if alive AND still in the pit (hasn't jumped out after hero death)
-                                if (mercComp?.LinkedMercenary != null && mercComp.LinkedMercenary.CurrentHP > 0 && mercComp.InsidePit)
-                                {
-                                    possibleTargets.Add((mercEntity, false));
-                                }
-                            }
-
-                            if (possibleTargets.Count == 0) 
-                            {
-                                Debug.Log($"[AttackMonster] {enemy.Name} has no valid targets in the pit - skipping turn");
-                                continue; // No valid targets
-                            }
-
-                            var targetChoice = possibleTargets[Nez.Random.Range(0, possibleTargets.Count)];
-                            var targetEntity = targetChoice.entity;
-                            var targetIsHero = targetChoice.isHero;
-
-                            // Make sure target entity is still valid before facing it
-                            if (targetEntity == null || targetEntity.IsDestroyed)
-                            {
-                                Debug.Log($"[AttackMonster] {enemy.Name}'s target entity was destroyed - skipping turn");
-                                continue;
-                            }
-
-                            // Make monster face the target when attacking
-                            FaceTarget(participant.MonsterEntity, targetEntity.Transform.Position);
-
-                            if (targetIsHero)
-                            {
-                                Debug.Log($"[AttackMonster] {enemy.Name}'s turn - attacking {hero.Name}");
-                                var enemyAttackResult = attackResolver.Resolve(enemyBattleStats, heroBattleStats, enemy.AttackKind);
-                                
-                                if (enemyAttackResult.Hit)
-                                {
-                                    SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
-                                    soundEffectManager?.PlaySound(SoundEffectType.TakeDamage);
-
-                                    int actualDamage = enemyAttackResult.Damage * DEBUG_DAMAGE_MULT;
-                                    bool heroDied = hero.TakeDamage(actualDamage);
-                                    Debug.Log($"[AttackMonster] {enemy.Name} deals {enemyAttackResult.Damage} damage to {hero.Name}. Hero HP: {hero.CurrentHP}/{hero.MaxHP}");
-
-                                    // Register burst damage immediately so next heal decision sees it
-                                    heroComponent.RegisterHeroBurstDamage(actualDamage);
-
-                                    // Display damage on hero
-                                    var heroBouncyDigit = heroComponent.Entity.GetComponent<BouncyDigitComponent>();
-                                    if (heroBouncyDigit != null)
-                                    {
-                                        heroBouncyDigit.Init(enemyAttackResult.Damage, BouncyDigitComponent.HeroDigitColor, false);
-                                        heroBouncyDigit.SetEnabled(true);
-                                        yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
-                                    }
-
-                                    if (heroDied)
-                                    {
-                                        Debug.Log($"[AttackMonster] {hero.Name} died! Battle continues with mercenaries.");
-
-                                        // Start the hero death animation (but don't break - let mercenaries continue fighting)
-                                        var deathComponent = heroComponent.Entity.GetComponent<HeroDeathComponent>();
-                                        if (deathComponent == null)
-                                        {
-                                            deathComponent = heroComponent.Entity.AddComponent(new HeroDeathComponent());
-                                        }
-                                        deathComponent.StartDeathAnimation();
-
-                                        // Don't break - mercenaries will continue the battle
-                                    }
-                                }
-                                else
-                                {
-                                    Debug.Log($"[AttackMonster] {enemy.Name} missed {hero.Name}!");
-
-                                    // Display "Miss" on hero
-                                    var heroBouncyText = heroComponent.Entity.GetComponent<BouncyTextComponent>();
-                                    if (heroBouncyText != null)
-                                    {
-                                        heroBouncyText.Init("Miss", BouncyTextComponent.HeroMissColor);
-                                        heroBouncyText.SetEnabled(true);
-                                        yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
-                                    }
-                                }
-                            }
-                            else // Target is mercenary
-                            {
-                                var targetMercComp = targetEntity.GetComponent<MercenaryComponent>();
-                                // Safety check in case the entity was destroyed or component removed between selection and attack
-                                if (targetMercComp?.LinkedMercenary == null)
-                                {
-                                    Debug.Log($"[AttackMonster] {enemy.Name}'s target mercenary no longer valid - skipping attack");
-                                    continue;
-                                }
-                                var targetMercenary = targetMercComp.LinkedMercenary;
-                                var targetMercBattleStats = BattleStats.CalculateForMercenary(targetMercenary);
-
-                                Debug.Log($"[AttackMonster] {enemy.Name}'s turn - attacking {targetMercenary.Name}");
-                                var enemyAttackResult = attackResolver.Resolve(enemyBattleStats, targetMercBattleStats, enemy.AttackKind);
-
-                                if (enemyAttackResult.Hit)
-                                {
-                                    SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
-                                    soundEffectManager?.PlaySound(SoundEffectType.TakeDamage);
-
-                                    int actualDamage = enemyAttackResult.Damage * DEBUG_DAMAGE_MULT;
-                                    bool mercDied = targetMercenary.TakeDamage(actualDamage);
-                                    Debug.Log($"[AttackMonster] {enemy.Name} deals {enemyAttackResult.Damage} damage to {targetMercenary.Name}. Mercenary HP: {targetMercenary.CurrentHP}/{targetMercenary.MaxHP}");
-
-                                    // Register burst damage immediately so next heal decision sees it
-                                    heroComponent.RegisterMercenaryBurstDamage(targetEntity, targetMercComp, actualDamage);
-
-                                    // Display damage on mercenary
-                                    var mercBouncyDigit = targetEntity.GetComponent<BouncyDigitComponent>();
-                                    if (mercBouncyDigit != null)
-                                    {
-                                        mercBouncyDigit.Init(enemyAttackResult.Damage, BouncyDigitComponent.HeroDigitColor, false);
-                                        mercBouncyDigit.SetEnabled(true);
-                                        yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
-                                    }
-
-                                    if (mercDied)
-                                    {
-                                        Debug.Log($"[AttackMonster] {targetMercenary.Name} died! Starting fade out");
-                                        
-                                        // Handle mercenary death and follower reassignment
-                                        HandleMercenaryDeath(targetEntity, heroComponent, validMercenaries);
-                                        validMercenaries.Remove(targetEntity);
-                                        
-                                        // Fade out and destroy the mercenary
-                                        yield return FadeOutAndDestroyMercenary(targetEntity);
-                                    }
-                                }
-                                else
-                                {
-                                    Debug.Log($"[AttackMonster] {enemy.Name} missed {targetMercenary.Name}!");
-
-                                    // Display "Miss" on mercenary
-                                    var mercBouncyText = targetEntity.GetComponent<BouncyTextComponent>();
-                                    if (mercBouncyText != null)
-                                    {
-                                        mercBouncyText.Init("Miss", BouncyTextComponent.HeroMissColor);
-                                        mercBouncyText.SetEnabled(true);
-                                        yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
-                                    }
-                                }
-                            }
-                        }
-
-                        // Wait between each participant's turn (respecting pause)
                         yield return WaitForSecondsRespectingPause(GameConfig.BattleTurnWait);
 
-                        // Break if no allies are left in the pit (dead or left) or all monsters are dead
                         bool noAlliesInPit = !HasValidAlliesInPit(hero, heroComponent, validMercenaries);
                         bool allMonstersDead = validMonsters.All(m => m.GetComponent<EnemyComponent>()?.Enemy.CurrentHP <= 0);
-                        
                         if (noAlliesInPit || allMonstersDead)
                         {
                             Debug.Log($"[AttackMonster] Battle ending - NoAlliesInPit: {noAlliesInPit}, AllMonstersDead: {allMonstersDead}");
@@ -1384,63 +491,811 @@ namespace PitHero.AI
                         }
                     }
 
-                    // Wait between rounds (respecting pause)
                     yield return WaitForSecondsRespectingPause(GameConfig.BattleTurnWait);
                 }
 
-                // Recalculate monster adjacency after battle (only if hero entity still exists)
                 if (heroComponent.Entity != null)
-                {
                     heroComponent.AdjacentToMonster = heroComponent.CheckAdjacentToMonster();
-                }
 
                 Debug.Log("[AttackMonster] Multi-participant battle sequence completed");
             }
             finally
             {
-                // Always clear battle state
                 HeroStateMachine.IsBattleInProgress = false;
                 existingMultiParticipantBattleCoroutine = null;
 
-                // Destroy battle turn indicator entity
                 if (turnIndicatorEntity != null)
-                {
                     turnIndicatorEntity.Destroy();
-                }
 
-                // Remove HP bar components from monsters
                 if (validMonsters != null)
                 {
-                    foreach (var monsterEntity in validMonsters)
+                    for (int i = 0; i < validMonsters.Count; i++)
                     {
-                        var hpBar = monsterEntity.GetComponent<MonsterHPBarComponent>();
+                        var hpBar = validMonsters[i].GetComponent<MonsterHPBarComponent>();
                         if (hpBar != null)
-                        {
-                            monsterEntity.RemoveComponent(hpBar);
-                        }
+                            validMonsters[i].RemoveComponent(hpBar);
                     }
                 }
 
-                // Remove bouncy components from mercenaries
                 if (validMercenaries != null)
                 {
-                    foreach (var mercEntity in validMercenaries)
+                    for (int i = 0; i < validMercenaries.Count; i++)
                     {
+                        var mercEntity = validMercenaries[i];
                         var bouncyDigit = mercEntity.GetComponent<BouncyDigitComponent>();
-                        if (bouncyDigit != null)
-                        {
-                            mercEntity.RemoveComponent(bouncyDigit);
-                        }
-
+                        if (bouncyDigit != null) mercEntity.RemoveComponent(bouncyDigit);
                         var bouncyText = mercEntity.GetComponent<BouncyTextComponent>();
-                        if (bouncyText != null)
-                        {
-                            mercEntity.RemoveComponent(bouncyText);
-                        }
+                        if (bouncyText != null) mercEntity.RemoveComponent(bouncyText);
                     }
                 }
             }
         }
+
+        // ─── Turn value calculation ───────────────────────────────────────────────
+
+        /// <summary>
+        /// Calculates turn values for all participants at the start of a round and
+        /// queues the hero's action when no action is already queued.
+        /// </summary>
+        private void CalculateAllTurnValues(List<BattleParticipant> participants, Hero hero, HeroComponent heroComponent, List<Entity> validMonsters, List<Entity> validMercenaries)
+        {
+            for (int i = 0; i < participants.Count; i++)
+            {
+                var participant = participants[i];
+                if (participant.Type == BattleParticipant.ParticipantType.Hero)
+                {
+                    if (hero.CurrentHP > 0)
+                    {
+                        participant.TurnValue = CalculateTurnValue(hero.GetTotalStats().Agility);
+                        QueueHeroActionForRound(heroComponent, hero, validMonsters, validMercenaries);
+                    }
+                    else
+                    {
+                        participant.TurnValue = -1;
+                    }
+                }
+                else if (participant.Type == BattleParticipant.ParticipantType.Mercenary)
+                {
+                    var mercComponent = participant.MercenaryEntity.GetComponent<MercenaryComponent>();
+                    if (mercComponent?.LinkedMercenary != null && mercComponent.LinkedMercenary.CurrentHP > 0)
+                        participant.TurnValue = CalculateTurnValue(mercComponent.LinkedMercenary.GetTotalStats().Agility);
+                    else
+                        participant.TurnValue = -1;
+                }
+                else // Monster
+                {
+                    var enemyComponent = participant.MonsterEntity.GetComponent<EnemyComponent>();
+                    if (enemyComponent?.Enemy != null && enemyComponent.Enemy.CurrentHP > 0)
+                        participant.TurnValue = CalculateTurnValue(enemyComponent.Enemy.Stats.Agility);
+                    else
+                        participant.TurnValue = -1;
+                }
+                participants[i] = participant;
+            }
+        }
+
+        /// <summary>
+        /// Decides and queues the hero's action for this round when the queue is empty.
+        /// </summary>
+        private void QueueHeroActionForRound(HeroComponent heroComponent, Hero hero, List<Entity> validMonsters, List<Entity> validMercenaries)
+        {
+            if (heroComponent.BattleActionQueue.HasActions()) return;
+
+            var currentLivingMonsters = GetLivingMonsters(validMonsters);
+            var decision = BattleTacticDecisionEngine.DecideHeroAction(heroComponent, currentLivingMonsters, validMercenaries);
+
+            switch (decision.Kind)
+            {
+                case BattleAction.ActionKind.UseAttackSkill:
+                    heroComponent.BattleActionQueue.EnqueueSkill(decision.Skill);
+                    break;
+                case BattleAction.ActionKind.UseHealingSkill:
+                    heroComponent.BattleActionQueue.EnqueueSkill(decision.Skill, decision.Target, decision.TargetsHero);
+                    break;
+                case BattleAction.ActionKind.UseConsumable:
+                    heroComponent.BattleActionQueue.EnqueueItem(decision.Consumable, decision.BagIndex, decision.Target, decision.TargetsHero);
+                    break;
+                case BattleAction.ActionKind.PhysicalAttack:
+                default:
+                    heroComponent.BattleActionQueue.EnqueueAttack(hero.WeaponShield1);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Re-evaluates the hero's queued offensive action during their turn.
+        /// If healing is now urgently needed (burst damage occurred since round start),
+        /// overrides the queued attack with a healing action.
+        /// </summary>
+        private QueuedAction ReEvaluateHeroQueuedAction(QueuedAction queuedAction, HeroComponent heroComponent, List<Entity> validMonsters, List<Entity> validMercenaries)
+        {
+            bool isQueuedOffensiveAction = queuedAction != null &&
+                (queuedAction.ActionType == QueuedActionType.Attack ||
+                 (queuedAction.ActionType == QueuedActionType.UseSkill &&
+                  queuedAction.Skill != null && queuedAction.Skill.HPRestoreAmount <= 0));
+
+            if (!isQueuedOffensiveAction) return queuedAction;
+
+            var currentLivingMonsters = GetLivingMonsters(validMonsters);
+            var reEvaluatedDecision = BattleTacticDecisionEngine.DecideHeroAction(heroComponent, currentLivingMonsters, validMercenaries);
+
+            if (reEvaluatedDecision.Kind == BattleAction.ActionKind.UseHealingSkill ||
+                reEvaluatedDecision.Kind == BattleAction.ActionKind.UseConsumable)
+            {
+                Debug.Log($"[AttackMonster] Hero re-evaluated: overriding queued offensive action with {reEvaluatedDecision.Kind} (healing needed since action was queued)");
+                switch (reEvaluatedDecision.Kind)
+                {
+                    case BattleAction.ActionKind.UseHealingSkill:
+                    {
+                        var newAction = new QueuedAction(reEvaluatedDecision.Skill);
+                        newAction.Target = reEvaluatedDecision.Target;
+                        newAction.TargetsHero = reEvaluatedDecision.TargetsHero;
+                        return newAction;
+                    }
+                    case BattleAction.ActionKind.UseConsumable:
+                    {
+                        var newAction = new QueuedAction(reEvaluatedDecision.Consumable, reEvaluatedDecision.BagIndex);
+                        newAction.Target = reEvaluatedDecision.Target;
+                        newAction.TargetsHero = reEvaluatedDecision.TargetsHero;
+                        return newAction;
+                    }
+                }
+            }
+
+            return queuedAction;
+        }
+
+        // ─── Shared display helpers ───────────────────────────────────────────────
+
+        /// <summary>
+        /// Displays a damage number on an entity and waits for the bounce animation.
+        /// </summary>
+        private System.Collections.IEnumerator ShowDamageDigitOnEntity(Entity entity, int damage, Color digitColor)
+        {
+            var bouncyDigit = entity?.GetComponent<BouncyDigitComponent>();
+            if (bouncyDigit != null)
+            {
+                bouncyDigit.Init(damage, digitColor, false);
+                bouncyDigit.SetEnabled(true);
+                yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+            }
+        }
+
+        /// <summary>
+        /// Displays a "Miss" text on an entity and waits for the bounce animation.
+        /// </summary>
+        private System.Collections.IEnumerator ShowMissTextOnEntity(Entity entity, Color textColor)
+        {
+            var bouncyText = entity?.GetComponent<BouncyTextComponent>();
+            if (bouncyText != null)
+            {
+                bouncyText.Init("Miss", textColor);
+                bouncyText.SetEnabled(true);
+                yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+            }
+        }
+
+        /// <summary>
+        /// Displays a green heal number on an entity and waits for the bounce animation.
+        /// </summary>
+        private System.Collections.IEnumerator ShowHealDigitOnEntity(Entity entity, int amount)
+        {
+            var bouncyDigit = entity?.GetComponent<BouncyDigitComponent>();
+            if (bouncyDigit != null)
+            {
+                bouncyDigit.Init(amount, Color.Green, false);
+                bouncyDigit.SetEnabled(true);
+                yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+            }
+        }
+
+        // ─── Shared action application helpers ───────────────────────────────────
+
+        /// <summary>
+        /// Applies a healing skill's HP/MP restore effects and displays the heal digit.
+        /// The caller is responsible for spending MP before calling this method.
+        /// </summary>
+        private System.Collections.IEnumerator ApplyHealingSkillEffectsAndDisplay(ISkill skill, object healTarget, bool targetsHero, HeroComponent heroComponent, List<Entity> validMercenaries)
+        {
+            if (skill.HPRestoreAmount > 0)
+            {
+                bool healed = false;
+                if (healTarget is Hero hpHero)
+                    healed = hpHero.RestoreHP(skill.HPRestoreAmount);
+                else if (healTarget is Mercenary hpMerc)
+                    healed = hpMerc.RestoreHP(skill.HPRestoreAmount);
+
+                if (healed)
+                {
+                    var targetEntity = FindTargetEntity(healTarget, targetsHero, heroComponent, validMercenaries);
+                    SoundEffectManager sfx = Core.GetGlobalManager<SoundEffectManager>();
+                    sfx?.PlaySound(SoundEffectType.Restorative);
+                    yield return ShowHealDigitOnEntity(targetEntity, skill.HPRestoreAmount);
+                }
+            }
+
+            if (skill.MPRestoreAmount > 0)
+            {
+                if (healTarget is Hero mpHero)
+                    mpHero.RestoreMP(skill.MPRestoreAmount);
+                else if (healTarget is Mercenary mpMerc)
+                    mpMerc.RestoreMP(skill.MPRestoreAmount);
+            }
+        }
+
+        /// <summary>
+        /// Consumes an item from the hero's bag, applies its effects to the target,
+        /// and displays a heal digit if HP was restored.
+        /// </summary>
+        private System.Collections.IEnumerator ApplyItemAndDisplay(Consumable consumable, int bagIndex, object target, bool targetsHero, HeroComponent heroComponent, List<Entity> validMercenaries)
+        {
+            int hpBefore = 0;
+            if (target is Hero preHero) hpBefore = preHero.CurrentHP;
+            else if (target is Mercenary preMerc) hpBefore = preMerc.CurrentHP;
+
+            if (consumable.Consume(target))
+            {
+                heroComponent.Bag.ConsumeFromStack(bagIndex);
+                Debug.Log($"[AttackMonster] Successfully used {consumable.Name}");
+                PitHero.UI.InventorySelectionManager.OnInventoryChanged?.Invoke();
+
+                int hpAfter = 0;
+                if (target is Hero postHero) hpAfter = postHero.CurrentHP;
+                else if (target is Mercenary postMerc) hpAfter = postMerc.CurrentHP;
+
+                int healAmount = hpAfter - hpBefore;
+                if (healAmount > 0)
+                {
+                    var targetEntity = FindTargetEntity(target, targetsHero, heroComponent, validMercenaries);
+                    SoundEffectManager sfx = Core.GetGlobalManager<SoundEffectManager>();
+                    sfx?.PlaySound(SoundEffectType.Restorative);
+                    yield return ShowHealDigitOnEntity(targetEntity, healAmount);
+                }
+            }
+            else
+            {
+                Debug.Log($"[AttackMonster] Failed to use {consumable.Name}");
+            }
+        }
+
+        /// <summary>
+        /// Fades out and destroys all monsters in the list whose HP has reached zero.
+        /// </summary>
+        private System.Collections.IEnumerator FadeOutDeadMonsters(List<Entity> monsters)
+        {
+            for (int i = monsters.Count - 1; i >= 0; i--)
+            {
+                var entity = monsters[i];
+                var comp = entity.GetComponent<EnemyComponent>();
+                if (comp?.Enemy != null && comp.Enemy.CurrentHP <= 0)
+                    yield return FadeOutAndDestroyMonster(entity);
+            }
+        }
+
+        // ─── Reward awarding ──────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Awards XP, JP, SP, and gold to the party when an enemy is defeated,
+        /// and attempts to recruit the defeated enemy as an allied monster.
+        /// Pass heroComponent to also reset the InnExhausted flag on a hero kill.
+        /// </summary>
+        private void AwardEnemyDeathRewards(Hero hero, RolePlayingFramework.Enemies.IEnemy enemy, HeroComponent heroComponent, List<Entity> validMercenaries)
+        {
+            hero.AddExperience(enemy.ExperienceYield);
+            hero.EarnJP(enemy.JPYield);
+            hero.EarnSynergyPointsWithAcceleration(enemy.SPYield);
+            AwardMercenaryExperience(validMercenaries, enemy.ExperienceYield);
+
+            var gameState = Nez.Core.Services.GetService<PitHero.Services.GameStateService>();
+            if (gameState != null)
+            {
+                gameState.Funds += enemy.GoldYield;
+                if (heroComponent != null && enemy.GoldYield > 0)
+                    heroComponent.InnExhausted = false;
+                Debug.Log($"[AttackMonster] Earned {enemy.ExperienceYield} XP, {enemy.JPYield} JP, {enemy.SPYield} SP, {enemy.GoldYield} Gold");
+            }
+            else
+            {
+                Debug.Log($"[AttackMonster] Earned {enemy.ExperienceYield} XP, {enemy.JPYield} JP, {enemy.SPYield} SP, {enemy.GoldYield} Gold");
+            }
+
+            var alliedMonsterMgr = Core.Services.GetService<PitHero.Services.AlliedMonsterManager>();
+            if (alliedMonsterMgr != null)
+            {
+                var recruited = alliedMonsterMgr.TryRecruit(enemy);
+                if (recruited != null)
+                    Debug.Log($"[AttackMonster] {enemy.Name} recruited as '{recruited.Name}'");
+            }
+        }
+
+        // ─── Hero turn ────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Executes the hero's turn: dequeues and re-evaluates their queued action,
+        /// then dispatches to the appropriate action handler.
+        /// </summary>
+        private System.Collections.IEnumerator ExecuteHeroTurn(HeroComponent heroComponent, Hero hero, List<Entity> validMonsters, List<Entity> validMercenaries, BattleStats heroBattleStats, EnhancedAttackResolver attackResolver)
+        {
+            var queuedAction = heroComponent.BattleActionQueue.Dequeue();
+            queuedAction = ReEvaluateHeroQueuedAction(queuedAction, heroComponent, validMonsters, validMercenaries);
+
+            if (queuedAction == null)
+            {
+                Debug.Warn("[AttackMonster] Hero turn but no queued action (unexpected)");
+                yield break;
+            }
+
+            Debug.Log($"[AttackMonster] Hero's turn - executing queued action: {queuedAction.ActionType}");
+
+            if (queuedAction.ActionType == QueuedActionType.UseItem)
+            {
+                var consumeTarget = queuedAction.Target ?? hero;
+                Debug.Log($"[AttackMonster] Using queued item: {queuedAction.Consumable.Name}");
+                yield return ApplyItemAndDisplay(queuedAction.Consumable, queuedAction.BagIndex, consumeTarget, queuedAction.TargetsHero, heroComponent, validMercenaries);
+            }
+            else if (queuedAction.ActionType == QueuedActionType.UseSkill)
+            {
+                var skill = queuedAction.Skill;
+                Debug.Log($"[AttackMonster] Using queued skill: {skill.Name}");
+
+                if (hero.CurrentMP >= skill.MPCost)
+                {
+                    bool isHealingSkill = skill.HPRestoreAmount > 0 || skill.MPRestoreAmount > 0 ||
+                        skill.TargetType == SkillTargetType.Self ||
+                        skill.TargetType == SkillTargetType.SingleAlly ||
+                        skill.TargetType == SkillTargetType.AllAllies;
+
+                    if (isHealingSkill)
+                    {
+                        hero.SpendMP(skill.MPCost);
+                        var healTarget = queuedAction.Target ?? hero;
+                        yield return ApplyHealingSkillEffectsAndDisplay(skill, healTarget, queuedAction.TargetsHero, heroComponent, validMercenaries);
+                        Debug.Log($"[AttackMonster] Used healing skill {skill.Name}");
+                    }
+                    else
+                    {
+                        yield return ExecuteHeroAttackSkill(skill, hero, heroComponent, validMonsters, validMercenaries, attackResolver);
+                    }
+                }
+                else
+                {
+                    Debug.Log($"[AttackMonster] Not enough MP to use {skill.Name} (need {skill.MPCost}, have {hero.CurrentMP})");
+                }
+            }
+            else if (queuedAction.ActionType == QueuedActionType.Attack)
+            {
+                yield return ExecuteHeroPhysicalAttack(queuedAction, hero, heroComponent, validMonsters, validMercenaries, heroBattleStats, attackResolver);
+            }
+        }
+
+        /// <summary>
+        /// Executes the hero's attack skill against living monsters.
+        /// </summary>
+        private System.Collections.IEnumerator ExecuteHeroAttackSkill(ISkill skill, Hero hero, HeroComponent heroComponent, List<Entity> validMonsters, List<Entity> validMercenaries, EnhancedAttackResolver attackResolver)
+        {
+            var livingMonsters = GetLivingMonsters(validMonsters);
+            if (livingMonsters.Count == 0) yield break;
+
+            // Snapshot HP before the skill executes so we can calculate per-monster damage
+            var monsterHPBefore = new Dictionary<RolePlayingFramework.Enemies.IEnemy, int>();
+            for (int i = 0; i < livingMonsters.Count; i++)
+            {
+                var enemyComp = livingMonsters[i].GetComponent<EnemyComponent>();
+                if (enemyComp?.Enemy != null)
+                    monsterHPBefore[enemyComp.Enemy] = enemyComp.Enemy.CurrentHP;
+            }
+
+            var primaryTarget = livingMonsters[0].GetComponent<EnemyComponent>()?.Enemy;
+            var surroundingTargets = new List<RolePlayingFramework.Enemies.IEnemy>();
+            for (int i = 1; i < livingMonsters.Count; i++)
+            {
+                var enemyComp = livingMonsters[i].GetComponent<EnemyComponent>();
+                if (enemyComp?.Enemy != null)
+                    surroundingTargets.Add(enemyComp.Enemy);
+            }
+
+            skill.Execute(hero, primaryTarget, surroundingTargets, attackResolver);
+            hero.SpendMP(skill.MPCost);
+            Debug.Log($"[AttackMonster] Successfully used {skill.Name}, consumed {skill.MPCost} MP");
+
+            // Display damage and handle deaths for all affected monsters
+            for (int i = livingMonsters.Count - 1; i >= 0; i--)
+            {
+                var monsterEntity = livingMonsters[i];
+                var enemyComp = monsterEntity.GetComponent<EnemyComponent>();
+                if (enemyComp?.Enemy == null) continue;
+
+                var enemy = enemyComp.Enemy;
+                if (!monsterHPBefore.TryGetValue(enemy, out int hpBefore)) continue;
+
+                int damage = hpBefore - enemy.CurrentHP;
+                if (damage <= 0) continue;
+
+                Debug.Log($"[AttackMonster] {skill.Name} dealt {damage} damage to {enemy.Name}. Enemy HP: {enemy.CurrentHP}/{enemy.MaxHP}");
+
+                var enemyBouncyDigit = monsterEntity.GetComponent<BouncyDigitComponent>();
+                if (enemyBouncyDigit != null)
+                {
+                    enemyBouncyDigit.Init(damage, BouncyDigitComponent.EnemyDigitColor, false);
+                    enemyBouncyDigit.SetEnabled(true);
+                }
+
+                if (enemy.CurrentHP <= 0)
+                {
+                    Debug.Log($"[AttackMonster] {enemy.Name} defeated by {skill.Name}!");
+                    AwardEnemyDeathRewards(hero, enemy, heroComponent, validMercenaries);
+                    validMonsters.Remove(monsterEntity);
+                }
+            }
+
+            yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+            yield return FadeOutDeadMonsters(livingMonsters);
+        }
+
+        /// <summary>
+        /// Executes the hero's physical attack against a random living monster.
+        /// </summary>
+        private System.Collections.IEnumerator ExecuteHeroPhysicalAttack(QueuedAction queuedAction, Hero hero, HeroComponent heroComponent, List<Entity> validMonsters, List<Entity> validMercenaries, BattleStats heroBattleStats, EnhancedAttackResolver attackResolver)
+        {
+            var livingMonsters = GetLivingMonsters(validMonsters);
+            if (livingMonsters.Count == 0) yield break;
+
+            var targetMonster = livingMonsters[Nez.Random.Range(0, livingMonsters.Count)];
+            var targetEnemy = targetMonster.GetComponent<EnemyComponent>().Enemy;
+            var targetBattleStats = BattleStats.CalculateForMonster(targetEnemy);
+
+            Debug.Log($"[AttackMonster] Hero's turn - attacking {targetEnemy.Name}");
+            var heroAttackResult = attackResolver.Resolve(heroBattleStats, targetBattleStats, DamageKind.Physical);
+
+            if (queuedAction.WeaponItem == null)
+            {
+                SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
+                soundEffectManager?.PlaySound(SoundEffectType.Punch);
+            }
+
+            if (heroAttackResult.Hit)
+            {
+                bool enemyDied = targetEnemy.TakeDamage(heroAttackResult.Damage);
+                Debug.Log($"[AttackMonster] Hero deals {heroAttackResult.Damage} damage to {targetEnemy.Name}. Enemy HP: {targetEnemy.CurrentHP}/{targetEnemy.MaxHP}");
+
+                yield return ShowDamageDigitOnEntity(targetMonster, heroAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor);
+
+                if (enemyDied)
+                {
+                    Debug.Log($"[AttackMonster] {targetEnemy.Name} defeated! Starting fade out");
+                    AwardEnemyDeathRewards(hero, targetEnemy, heroComponent, validMercenaries);
+                    validMonsters.Remove(targetMonster);
+                    yield return FadeOutAndDestroyMonster(targetMonster);
+                }
+            }
+            else
+            {
+                Debug.Log($"[AttackMonster] Hero missed {targetEnemy.Name}!");
+                yield return ShowMissTextOnEntity(targetMonster, BouncyTextComponent.EnemyMissColor);
+            }
+        }
+
+        // ─── Mercenary turn ───────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Executes a mercenary's turn: decides their action and dispatches to the
+        /// appropriate handler.
+        /// </summary>
+        private System.Collections.IEnumerator ExecuteMercenaryTurn(BattleParticipant participant, HeroComponent heroComponent, Hero hero, List<Entity> validMonsters, List<Entity> validMercenaries, EnhancedAttackResolver attackResolver)
+        {
+            var mercComponent = participant.MercenaryEntity.GetComponent<MercenaryComponent>();
+            if (mercComponent?.LinkedMercenary == null || mercComponent.LinkedMercenary.CurrentHP <= 0) yield break;
+
+            var mercenary = mercComponent.LinkedMercenary;
+            var mercBattleStats = BattleStats.CalculateForMercenary(mercenary);
+
+            var livingMonsters = GetLivingMonsters(validMonsters);
+            if (livingMonsters.Count == 0) yield break;
+
+            var mercDecision = BattleTacticDecisionEngine.DecideMercenaryAction(mercComponent, heroComponent, livingMonsters, validMercenaries);
+
+            switch (mercDecision.Kind)
+            {
+                case BattleAction.ActionKind.UseHealingSkill:
+                {
+                    var healSkill = mercDecision.Skill;
+                    if (mercenary.CurrentMP >= healSkill.MPCost)
+                    {
+                        mercenary.UseMP(healSkill.MPCost);
+                        mercComponent.ActionQueueVisualization?.ShowAction(new QueuedAction(healSkill));
+                        var healTarget = mercDecision.Target ?? hero;
+                        yield return ApplyHealingSkillEffectsAndDisplay(healSkill, healTarget, mercDecision.TargetsHero, heroComponent, validMercenaries);
+                        Debug.Log($"[AttackMonster] {mercenary.Name} used {healSkill.Name}");
+                    }
+                    break;
+                }
+
+                case BattleAction.ActionKind.UseConsumable:
+                {
+                    var mcTarget = mercDecision.Target ?? hero;
+                    yield return ApplyItemAndDisplay(mercDecision.Consumable, mercDecision.BagIndex, mcTarget, mercDecision.TargetsHero, heroComponent, validMercenaries);
+                    break;
+                }
+
+                case BattleAction.ActionKind.UseAttackSkill:
+                {
+                    yield return ExecuteMercenaryAttackSkill(mercDecision, mercenary, mercComponent, mercBattleStats, participant, validMonsters, validMercenaries, hero, heroComponent, attackResolver);
+                    break;
+                }
+
+                case BattleAction.ActionKind.PhysicalAttack:
+                default:
+                {
+                    yield return ExecuteMercenaryPhysicalAttack(mercDecision, mercenary, mercComponent, mercBattleStats, participant, validMonsters, validMercenaries, hero, heroComponent, attackResolver);
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Executes a mercenary's attack skill against living monsters.
+        /// </summary>
+        private System.Collections.IEnumerator ExecuteMercenaryAttackSkill(BattleAction decision, Mercenary mercenary, MercenaryComponent mercComponent, BattleStats mercBattleStats, BattleParticipant participant, List<Entity> validMonsters, List<Entity> validMercenaries, Hero hero, HeroComponent heroComponent, EnhancedAttackResolver attackResolver)
+        {
+            var atkSkill = decision.Skill;
+            if (mercenary.CurrentMP < atkSkill.MPCost)
+            {
+                Debug.Log($"[AttackMonster] {mercenary.Name} not enough MP for {atkSkill.Name}");
+                yield break;
+            }
+
+            mercenary.UseMP(atkSkill.MPCost);
+            mercComponent.ActionQueueVisualization?.ShowAction(new QueuedAction(atkSkill));
+
+            var skillDamageKind = atkSkill.Element != ElementType.Neutral ? DamageKind.Magical : DamageKind.Physical;
+            var skillLiving = GetLivingMonsters(validMonsters);
+            if (skillLiving.Count == 0) yield break;
+
+            bool isAoE = atkSkill.TargetType == SkillTargetType.SurroundingEnemies;
+            int startIndex = 0;
+            int endIndex = isAoE ? skillLiving.Count : 1;
+
+            if (!isAoE && decision.TargetEntity != null)
+            {
+                for (int si = 0; si < skillLiving.Count; si++)
+                {
+                    if (skillLiving[si] == decision.TargetEntity)
+                    {
+                        startIndex = si;
+                        endIndex = si + 1;
+                        break;
+                    }
+                }
+            }
+
+            for (int si = startIndex; si < endIndex && si < skillLiving.Count; si++)
+            {
+                var sMonsterEntity = skillLiving[si];
+                var sEnemyComp = sMonsterEntity.GetComponent<EnemyComponent>();
+                if (sEnemyComp?.Enemy == null || sEnemyComp.Enemy.CurrentHP <= 0) continue;
+
+                var sEnemy = sEnemyComp.Enemy;
+                var sTargetStats = BattleStats.CalculateForMonster(sEnemy);
+                var sResult = attackResolver.Resolve(mercBattleStats, sTargetStats, skillDamageKind);
+
+                FaceTarget(participant.MercenaryEntity, sMonsterEntity.Transform.Position);
+
+                if (sResult.Hit)
+                {
+                    bool sEnemyDied = sEnemy.TakeDamage(sResult.Damage);
+                    Debug.Log($"[AttackMonster] {mercenary.Name}'s {atkSkill.Name} dealt {sResult.Damage} to {sEnemy.Name}. HP: {sEnemy.CurrentHP}/{sEnemy.MaxHP}");
+
+                    var sDigit = sMonsterEntity.GetComponent<BouncyDigitComponent>();
+                    if (sDigit != null)
+                    {
+                        sDigit.Init(sResult.Damage, BouncyDigitComponent.EnemyDigitColor, false);
+                        sDigit.SetEnabled(true);
+                    }
+
+                    if (sEnemyDied)
+                    {
+                        Debug.Log($"[AttackMonster] {sEnemy.Name} defeated by {mercenary.Name}'s {atkSkill.Name}!");
+                        AwardEnemyDeathRewards(hero, sEnemy, null, validMercenaries);
+                        validMonsters.Remove(sMonsterEntity);
+                    }
+                }
+                else
+                {
+                    Debug.Log($"[AttackMonster] {mercenary.Name}'s {atkSkill.Name} missed {sEnemy.Name}!");
+                    var sMissText = sMonsterEntity.GetComponent<BouncyTextComponent>();
+                    if (sMissText != null)
+                    {
+                        sMissText.Init("Miss", BouncyTextComponent.EnemyMissColor);
+                        sMissText.SetEnabled(true);
+                    }
+                }
+            }
+
+            yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+            yield return FadeOutDeadMonsters(skillLiving);
+        }
+
+        /// <summary>
+        /// Executes a mercenary's physical attack against a target monster.
+        /// </summary>
+        private System.Collections.IEnumerator ExecuteMercenaryPhysicalAttack(BattleAction decision, Mercenary mercenary, MercenaryComponent mercComponent, BattleStats mercBattleStats, BattleParticipant participant, List<Entity> validMonsters, List<Entity> validMercenaries, Hero hero, HeroComponent heroComponent, EnhancedAttackResolver attackResolver)
+        {
+            var paTarget = decision.TargetEntity;
+            if (paTarget == null || paTarget.GetComponent<EnemyComponent>()?.Enemy?.CurrentHP <= 0)
+            {
+                var paLiving = GetLivingMonsters(validMonsters);
+                if (paLiving.Count == 0) yield break;
+                paTarget = paLiving[Nez.Random.Range(0, paLiving.Count)];
+            }
+
+            var targetEnemy = paTarget.GetComponent<EnemyComponent>().Enemy;
+            var targetBattleStats = BattleStats.CalculateForMonster(targetEnemy);
+
+            Debug.Log($"[AttackMonster] {mercenary.Name}'s turn - attacking {targetEnemy.Name}");
+            mercComponent.ActionQueueVisualization?.ShowAction(new QueuedAction(mercenary.WeaponShield1));
+            FaceTarget(participant.MercenaryEntity, paTarget.Transform.Position);
+
+            var mercAttackResult = attackResolver.Resolve(mercBattleStats, targetBattleStats, DamageKind.Physical);
+
+            SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
+            soundEffectManager?.PlaySound(SoundEffectType.Punch);
+
+            if (mercAttackResult.Hit)
+            {
+                bool enemyDied = targetEnemy.TakeDamage(mercAttackResult.Damage);
+                Debug.Log($"[AttackMonster] {mercenary.Name} deals {mercAttackResult.Damage} damage to {targetEnemy.Name}. Enemy HP: {targetEnemy.CurrentHP}/{targetEnemy.MaxHP}");
+
+                yield return ShowDamageDigitOnEntity(paTarget, mercAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor);
+
+                if (enemyDied)
+                {
+                    Debug.Log($"[AttackMonster] {targetEnemy.Name} defeated by {mercenary.Name}! Starting fade out");
+                    AwardEnemyDeathRewards(hero, targetEnemy, null, validMercenaries);
+                    validMonsters.Remove(paTarget);
+                    yield return FadeOutAndDestroyMonster(paTarget);
+                }
+            }
+            else
+            {
+                Debug.Log($"[AttackMonster] {mercenary.Name} missed {targetEnemy.Name}!");
+                yield return ShowMissTextOnEntity(paTarget, BouncyTextComponent.EnemyMissColor);
+            }
+        }
+
+        // ─── Monster turn ─────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Executes a monster's turn: selects a random valid ally target and attacks.
+        /// </summary>
+        private System.Collections.IEnumerator ExecuteMonsterTurn(BattleParticipant participant, HeroComponent heroComponent, Hero hero, BattleStats heroBattleStats, List<Entity> validMercenaries, EnhancedAttackResolver attackResolver)
+        {
+            var enemyComponent = participant.MonsterEntity.GetComponent<EnemyComponent>();
+            if (enemyComponent?.Enemy == null || enemyComponent.Enemy.CurrentHP <= 0) yield break;
+
+            var enemy = enemyComponent.Enemy;
+            var enemyBattleStats = BattleStats.CalculateForMonster(enemy);
+
+            // Build the list of valid targets (alive and still in the pit)
+            var possibleTargets = new List<(Entity entity, bool isHero)>();
+
+            if (hero.CurrentHP > 0 && heroComponent.Entity != null && heroComponent.InsidePit)
+                possibleTargets.Add((heroComponent.Entity, true));
+
+            for (int i = 0; i < validMercenaries.Count; i++)
+            {
+                var mercEntity = validMercenaries[i];
+                if (mercEntity == null || mercEntity.IsDestroyed) continue;
+                var mercComp = mercEntity.GetComponent<MercenaryComponent>();
+                if (mercComp?.LinkedMercenary != null && mercComp.LinkedMercenary.CurrentHP > 0 && mercComp.InsidePit)
+                    possibleTargets.Add((mercEntity, false));
+            }
+
+            if (possibleTargets.Count == 0)
+            {
+                Debug.Log($"[AttackMonster] {enemy.Name} has no valid targets in the pit - skipping turn");
+                yield break;
+            }
+
+            var targetChoice = possibleTargets[Nez.Random.Range(0, possibleTargets.Count)];
+            var targetEntity = targetChoice.entity;
+
+            if (targetEntity == null || targetEntity.IsDestroyed)
+            {
+                Debug.Log($"[AttackMonster] {enemy.Name}'s target entity was destroyed - skipping turn");
+                yield break;
+            }
+
+            FaceTarget(participant.MonsterEntity, targetEntity.Transform.Position);
+
+            if (targetChoice.isHero)
+                yield return ExecuteMonsterAttackHero(enemy, enemyBattleStats, heroComponent, hero, heroBattleStats, attackResolver);
+            else
+                yield return ExecuteMonsterAttackMercenary(enemy, enemyBattleStats, targetEntity, heroComponent, validMercenaries, attackResolver);
+        }
+
+        /// <summary>
+        /// Executes a monster's attack against the hero.
+        /// </summary>
+        private System.Collections.IEnumerator ExecuteMonsterAttackHero(RolePlayingFramework.Enemies.IEnemy enemy, BattleStats enemyBattleStats, HeroComponent heroComponent, Hero hero, BattleStats heroBattleStats, EnhancedAttackResolver attackResolver)
+        {
+            Debug.Log($"[AttackMonster] {enemy.Name}'s turn - attacking {hero.Name}");
+            var enemyAttackResult = attackResolver.Resolve(enemyBattleStats, heroBattleStats, enemy.AttackKind);
+
+            if (enemyAttackResult.Hit)
+            {
+                SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
+                soundEffectManager?.PlaySound(SoundEffectType.TakeDamage);
+
+                int actualDamage = enemyAttackResult.Damage * DEBUG_DAMAGE_MULT;
+                bool heroDied = hero.TakeDamage(actualDamage);
+                Debug.Log($"[AttackMonster] {enemy.Name} deals {enemyAttackResult.Damage} damage to {hero.Name}. Hero HP: {hero.CurrentHP}/{hero.MaxHP}");
+
+                heroComponent.RegisterHeroBurstDamage(actualDamage);
+
+                yield return ShowDamageDigitOnEntity(heroComponent.Entity, enemyAttackResult.Damage, BouncyDigitComponent.HeroDigitColor);
+
+                if (heroDied)
+                {
+                    Debug.Log($"[AttackMonster] {hero.Name} died! Battle continues with mercenaries.");
+                    var deathComponent = heroComponent.Entity.GetComponent<HeroDeathComponent>();
+                    if (deathComponent == null)
+                        deathComponent = heroComponent.Entity.AddComponent(new HeroDeathComponent());
+                    deathComponent.StartDeathAnimation();
+                }
+            }
+            else
+            {
+                Debug.Log($"[AttackMonster] {enemy.Name} missed {hero.Name}!");
+                yield return ShowMissTextOnEntity(heroComponent.Entity, BouncyTextComponent.HeroMissColor);
+            }
+        }
+
+        /// <summary>
+        /// Executes a monster's attack against a mercenary.
+        /// </summary>
+        private System.Collections.IEnumerator ExecuteMonsterAttackMercenary(RolePlayingFramework.Enemies.IEnemy enemy, BattleStats enemyBattleStats, Entity targetEntity, HeroComponent heroComponent, List<Entity> validMercenaries, EnhancedAttackResolver attackResolver)
+        {
+            var targetMercComp = targetEntity.GetComponent<MercenaryComponent>();
+            if (targetMercComp?.LinkedMercenary == null)
+            {
+                Debug.Log($"[AttackMonster] {enemy.Name}'s target mercenary no longer valid - skipping attack");
+                yield break;
+            }
+
+            var targetMercenary = targetMercComp.LinkedMercenary;
+            var targetMercBattleStats = BattleStats.CalculateForMercenary(targetMercenary);
+
+            Debug.Log($"[AttackMonster] {enemy.Name}'s turn - attacking {targetMercenary.Name}");
+            var enemyAttackResult = attackResolver.Resolve(enemyBattleStats, targetMercBattleStats, enemy.AttackKind);
+
+            if (enemyAttackResult.Hit)
+            {
+                SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
+                soundEffectManager?.PlaySound(SoundEffectType.TakeDamage);
+
+                int actualDamage = enemyAttackResult.Damage * DEBUG_DAMAGE_MULT;
+                bool mercDied = targetMercenary.TakeDamage(actualDamage);
+                Debug.Log($"[AttackMonster] {enemy.Name} deals {enemyAttackResult.Damage} damage to {targetMercenary.Name}. Mercenary HP: {targetMercenary.CurrentHP}/{targetMercenary.MaxHP}");
+
+                heroComponent.RegisterMercenaryBurstDamage(targetEntity, targetMercComp, actualDamage);
+
+                yield return ShowDamageDigitOnEntity(targetEntity, enemyAttackResult.Damage, BouncyDigitComponent.HeroDigitColor);
+
+                if (mercDied)
+                {
+                    Debug.Log($"[AttackMonster] {targetMercenary.Name} died! Starting fade out");
+                    HandleMercenaryDeath(targetEntity, heroComponent, validMercenaries);
+                    validMercenaries.Remove(targetEntity);
+                    yield return FadeOutAndDestroyMercenary(targetEntity);
+                }
+            }
+            else
+            {
+                Debug.Log($"[AttackMonster] {enemy.Name} missed {targetMercenary.Name}!");
+                yield return ShowMissTextOnEntity(targetEntity, BouncyTextComponent.HeroMissColor);
+            }
+        }
+
 
         /// <summary>
         /// Handle mercenary death by removing them permanently and reassigning followers if needed
