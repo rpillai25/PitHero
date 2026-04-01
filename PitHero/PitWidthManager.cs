@@ -25,6 +25,17 @@ namespace PitHero
         private int _groundTileIndex; // Ground tile recorded from (19,1)
         private int _regenTileIndex; // Regen tile recorded from "map center" (33, 6)
 
+        // Snapshot of original Base and Collision tiles for the extension region (x=13..33, y=1..11)
+        // Key encoding: x * 100 + y.  Used to restore the original map when the pit shrinks.
+        private Dictionary<int, int> _originalBaseTilesSnapshot;
+        private Dictionary<int, int> _originalCollisionTilesSnapshot;
+
+        // Bounds of the snapshotted region
+        private const int SnapshotMinX = 13;
+        private const int SnapshotMaxX = 33;
+        private const int SnapshotMinY = 1;
+        private const int SnapshotMaxY = 11;
+
         // Track current pit state
         private int _currentPitLevel = 1;
         private int _currentPitRightEdge; // The rightmost x coordinate of the current pit
@@ -99,6 +110,11 @@ namespace PitHero
             _baseInnerFloor = new Dictionary<int, int>();
             _collisionInnerFloor = new Dictionary<int, int>();
 
+            // Pre-allocate snapshot dictionaries for the extension region
+            int snapshotCapacity = (SnapshotMaxX - SnapshotMinX + 1) * (SnapshotMaxY - SnapshotMinY + 1);
+            _originalBaseTilesSnapshot = new Dictionary<int, int>(snapshotCapacity);
+            _originalCollisionTilesSnapshot = new Dictionary<int, int>(snapshotCapacity);
+
             // Get layer references
             var baseLayer = _tiledMapService.CurrentMap.GetLayer("Base");
             var collisionLayer = _tiledMapService.CurrentMap.GetLayer("Collision");
@@ -147,6 +163,22 @@ namespace PitHero
 
             // Set initial pit right edge (default pit goes from x=1 to x=12, so rightmost is 12)
             _currentPitRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth;
+
+            // Snapshot the original Base and Collision tiles for the extension region (x=13..33).
+            // This is used to restore the map when the pit shrinks back, so non-pit area tiles
+            // (town buildings, terrain, etc.) are not overwritten with a uniform ground tile.
+            for (int x = SnapshotMinX; x <= SnapshotMaxX; x++)
+            {
+                for (int y = SnapshotMinY; y <= SnapshotMaxY; y++)
+                {
+                    int key = x * 100 + y;
+                    var baseTile = baseLayer.GetTile(x, y);
+                    _originalBaseTilesSnapshot[key] = baseTile?.Gid ?? 0;
+                    var colTile = collisionLayer.GetTile(x, y);
+                    _originalCollisionTilesSnapshot[key] = colTile?.Gid ?? 0;
+                }
+            }
+            Debug.Log($"[PitWidthManager] Snapshotted {_originalBaseTilesSnapshot.Count} original Base tiles and {_originalCollisionTilesSnapshot.Count} original Collision tiles for extension region");
 
             _isInitialized = true;
             Debug.Log($"[PitWidthManager] Initialization complete. Current pit right edge: {_currentPitRightEdge}");
@@ -236,14 +268,29 @@ namespace PitHero
             {
                 for (int y = 1; y <= 11; y++)
                 {
-                    // Set Base layer to ground tile
-                    if (_groundTileIndex != 0)
+                    // Restore Base layer to its original map tile (not a uniform ground tile)
+                    if (x >= SnapshotMinX && x <= SnapshotMaxX && y >= SnapshotMinY && y <= SnapshotMaxY)
                     {
-                        _tiledMapService.SetTile("Base", x, y, _groundTileIndex);
-                    }
+                        int key = x * 100 + y;
+                        int originalGid = _originalBaseTilesSnapshot.ContainsKey(key) ? _originalBaseTilesSnapshot[key] : _groundTileIndex;
+                        if (originalGid != 0)
+                            _tiledMapService.SetTile("Base", x, y, originalGid);
+                        else
+                            _tiledMapService.RemoveTile("Base", x, y);
 
-                    // Remove Collision layer tiles
-                    _tiledMapService.RemoveTile("Collision", x, y);
+                        int originalColGid = _originalCollisionTilesSnapshot.ContainsKey(key) ? _originalCollisionTilesSnapshot[key] : 0;
+                        if (originalColGid != 0)
+                            _tiledMapService.SetTile("Collision", x, y, originalColGid);
+                        else
+                            _tiledMapService.RemoveTile("Collision", x, y);
+                    }
+                    else
+                    {
+                        // Outside snapshot bounds — use the uniform ground tile fallback
+                        if (_groundTileIndex != 0)
+                            _tiledMapService.SetTile("Base", x, y, _groundTileIndex);
+                        _tiledMapService.RemoveTile("Collision", x, y);
+                    }
 
                     // Remove FogOfWar layer tiles
                     _tiledMapService.RemoveTile("FogOfWar", x, y);
