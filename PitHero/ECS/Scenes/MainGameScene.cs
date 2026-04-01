@@ -658,10 +658,10 @@ namespace PitHero.ECS.Scenes
         /// </summary>
         private void ResetPitToLevelOne()
         {
-            var pitManager = Core.Services.GetService<IPitWidthManager>();
+            var pitManager = Core.Services.GetService<PitWidthManager>();
             if (pitManager == null)
             {
-                Debug.Warn("[MainGameScene] IPitWidthManager service not found — cannot reset pit.");
+                Debug.Warn("[MainGameScene] PitWidthManager service not found — cannot reset pit.");
                 return;
             }
 
