@@ -67,6 +67,10 @@ namespace PitHero.UI
         private CheckBox _useConsumablesOnMercsCheckBox;
         private CheckBox _mercsCanUseConsumablesCheckBox;
 
+        // Auto-equip option controls
+        private CheckBox _autoEquipHeroCheckBox;
+        private CheckBox _autoEquipMercsCheckBox;
+
         // Hero Crystal tab component
         private HeroCrystalTab _heroCrystalTab;
 
@@ -647,6 +651,31 @@ namespace PitHero.UI
             container.Add(_mercsCanUseConsumablesCheckBox).Left().SetPadBottom(15);
             container.Row();
 
+            // Auto Equip Options section
+            var autoEquipLabel = new Label("Auto Equip Options", skin, "ph-default");
+            container.Add(autoEquipLabel).SetAlign(Align.Left).SetPadBottom(5f);
+            container.Row();
+
+            _autoEquipHeroCheckBox = new CheckBox("Auto Equip Hero", skin, "ph-default");
+            _autoEquipHeroCheckBox.IsChecked = true;
+            _autoEquipHeroCheckBox.OnChanged += (isChecked) =>
+            {
+                var heroComp = GetHeroComponent();
+                if (heroComp != null) heroComp.AutoEquipHero = isChecked;
+            };
+            container.Add(_autoEquipHeroCheckBox).Left().SetPadBottom(8);
+            container.Row();
+
+            _autoEquipMercsCheckBox = new CheckBox("Auto Equip Mercenaries", skin, "ph-default");
+            _autoEquipMercsCheckBox.IsChecked = true;
+            _autoEquipMercsCheckBox.OnChanged += (isChecked) =>
+            {
+                var heroComp = GetHeroComponent();
+                if (heroComp != null) heroComp.AutoEquipMercenaries = isChecked;
+            };
+            container.Add(_autoEquipMercsCheckBox).Left().SetPadBottom(15);
+            container.Row();
+
             // Wrap in scroll pane so all content is accessible
             var scrollPane = new ScrollPane(container, skin, "ph-default");
             scrollPane.SetScrollingDisabled(true, false);
@@ -945,6 +974,10 @@ namespace PitHero.UI
             // Refresh consumable option checkboxes
             _useConsumablesOnMercsCheckBox.IsChecked = heroComp.UseConsumablesOnMercenaries;
             _mercsCanUseConsumablesCheckBox.IsChecked = heroComp.MercenariesCanUseConsumables;
+
+            // Refresh auto-equip option checkboxes
+            _autoEquipHeroCheckBox.IsChecked = heroComp.AutoEquipHero;
+            _autoEquipMercsCheckBox.IsChecked = heroComp.AutoEquipMercenaries;
         }
 
         private void UpdateHeroPriorities()

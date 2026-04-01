@@ -263,6 +263,12 @@ namespace PitHero.ECS.Components
         /// <summary>If true, mercenaries are allowed to use consumable items from the shared inventory</summary>
         public bool MercenariesCanUseConsumables { get; set; } = true;
 
+        /// <summary>When true, newly found gear is automatically equipped on the hero if it is better.</summary>
+        public bool AutoEquipHero { get; set; } = true;
+
+        /// <summary>When true, newly found gear is automatically equipped on mercenaries if it is better and the hero doesn't need it.</summary>
+        public bool AutoEquipMercenaries { get; set; } = true;
+
         /// <summary>
         /// True when no more healing items are available on the shortcut bar
         /// </summary>
