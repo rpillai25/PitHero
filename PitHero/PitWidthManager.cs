@@ -30,8 +30,12 @@ namespace PitHero
         private Dictionary<int, int> _originalBaseTilesSnapshot;
         private Dictionary<int, int> _originalCollisionTilesSnapshot;
 
-        // Bounds of the snapshotted region
-        private const int SnapshotMinX = 13;
+        // Bounds of the snapshotted region.
+        // SnapshotMinX = 12: ClearTilesFromXToEnd(newRightEdge) loops from startX-1, and for
+        // level 1 the minimum startX is 13, so the clear starts at x=12.  The snapshot must
+        // cover x=12 (the inner-wall column) so it can be restored from the TMX data rather
+        // than getting a uniform ground tile.
+        private const int SnapshotMinX = 12;
         private const int SnapshotMaxX = 33;
         private const int SnapshotMinY = 1;
         private const int SnapshotMaxY = 11;
@@ -334,7 +338,11 @@ namespace PitHero
 
             if (innerFloorTilesToExtend <= 0)
             {
-                Debug.Log("[PitWidthManager] No extension needed for current level");
+                // No extension tiles — reset right edge to the base (level 1-9) pit boundary
+                // and update collider bounds so the scene reflects the correct pit width.
+                _currentPitRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth;
+                Debug.Log($"[PitWidthManager] No extension needed for current level. Reset right edge to {_currentPitRightEdge}");
+                UpdatePitColliderBounds();
                 RegeneratePitContent();
                 return;
             }
