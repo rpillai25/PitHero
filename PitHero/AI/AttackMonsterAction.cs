@@ -451,10 +451,14 @@ namespace PitHero.AI
                         if (participant.TurnValue < 0) continue;
 
                         // Skip mid-round deaths without incurring a turn wait
-                        if (participant.Type == BattleParticipant.ParticipantType.Mercenary)
+                        if (participant.Type == BattleParticipant.ParticipantType.Hero)
+                        {
+                            if (!heroComponent.InsidePit) continue;
+                        }
+                        else if (participant.Type == BattleParticipant.ParticipantType.Mercenary)
                         {
                             var mc = participant.MercenaryEntity.GetComponent<MercenaryComponent>();
-                            if (mc?.LinkedMercenary == null || mc.LinkedMercenary.CurrentHP <= 0) continue;
+                            if (mc?.LinkedMercenary == null || mc.LinkedMercenary.CurrentHP <= 0 || !mc.InsidePit) continue;
                         }
                         else if (participant.Type == BattleParticipant.ParticipantType.Monster)
                         {
@@ -816,6 +820,9 @@ namespace PitHero.AI
         /// </summary>
         private System.Collections.IEnumerator ExecuteHeroTurn(HeroComponent heroComponent, Hero hero, List<Entity> validMonsters, List<Entity> validMercenaries, BattleStats heroBattleStats, EnhancedAttackResolver attackResolver)
         {
+            if (!heroComponent.InsidePit)
+                yield break;
+
             var queuedAction = heroComponent.BattleActionQueue.Dequeue();
             queuedAction = ReEvaluateHeroQueuedAction(queuedAction, heroComponent, validMonsters, validMercenaries);
 
@@ -985,6 +992,7 @@ namespace PitHero.AI
         {
             var mercComponent = participant.MercenaryEntity.GetComponent<MercenaryComponent>();
             if (mercComponent?.LinkedMercenary == null || mercComponent.LinkedMercenary.CurrentHP <= 0) yield break;
+            if (!mercComponent.InsidePit) yield break;
 
             var mercenary = mercComponent.LinkedMercenary;
             var mercBattleStats = BattleStats.CalculateForMercenary(mercenary);
