@@ -6,6 +6,7 @@ using Nez.Sprites;
 using Nez.Tiled;
 using Nez.UI; // Added for Label
 using PitHero.AI;
+using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.UI;
@@ -619,7 +620,53 @@ namespace PitHero.ECS.Scenes
                 }
             }
 
+            Core.StartCoroutine(WaitForAllMercenariesToExitPitThenReset());
+
             Debug.Log("[MainGameScene] Hero respawned at tile (34, 6) — awaiting crystal ceremony");
+        }
+
+        /// <summary>
+        /// Waits until all hired mercenaries have exited the pit (or a safety timeout elapses),
+        /// then resets the pit back to level 1.
+        /// </summary>
+        private System.Collections.IEnumerator WaitForAllMercenariesToExitPitThenReset()
+        {
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager == null)
+            {
+                ResetPitToLevelOne();
+                yield break;
+            }
+
+            float elapsed = 0f;
+            while (elapsed < GameConfig.MercenaryExitPitTimeoutSeconds)
+            {
+                if (mercenaryManager.AreAllHiredMercenariesOutOfPit())
+                    break;
+                elapsed += Time.DeltaTime;
+                yield return null;
+            }
+
+            if (elapsed >= GameConfig.MercenaryExitPitTimeoutSeconds)
+                Debug.Warn("[MainGameScene] Timed out waiting for mercenaries to exit pit — resetting anyway.");
+
+            ResetPitToLevelOne();
+        }
+
+        /// <summary>
+        /// Resets the pit level back to 1, shrinking its width and regenerating level-1 content.
+        /// </summary>
+        private void ResetPitToLevelOne()
+        {
+            var pitManager = Core.Services.GetService<PitWidthManager>();
+            if (pitManager == null)
+            {
+                Debug.Warn("[MainGameScene] PitWidthManager service not found — cannot reset pit.");
+                return;
+            }
+
+            Debug.Log($"[MainGameScene] Resetting pit from level {pitManager.CurrentPitLevel} to level 1 after hero death.");
+            pitManager.SetPitLevel(1);
         }
 
         /// <summary>

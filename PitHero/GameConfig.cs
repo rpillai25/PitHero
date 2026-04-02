@@ -136,6 +136,11 @@ namespace PitHero
         // Stuck detection: if hero/mercenary makes no movement progress for this many seconds, warp to destination
         public const float MovementStuckTimeoutSeconds = 5f;
 
+        /// <summary>
+        /// Safety timeout (seconds) waiting for all mercenaries to exit the pit before resetting it on hero death.
+        /// </summary>
+        public const float MercenaryExitPitTimeoutSeconds = 30f;
+
         // Jump movement configuration
         public const float JumpMovementSpeed = 4.0f; // tiles per second for pit jumping (faster than normal movement)
 

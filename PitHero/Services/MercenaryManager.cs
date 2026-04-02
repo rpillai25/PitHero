@@ -811,6 +811,21 @@ namespace PitHero.Services
             }).ToList();
         }
 
+        /// <summary>
+        /// Returns true when every hired mercenary has exited the pit (or there are none hired).
+        /// </summary>
+        public bool AreAllHiredMercenariesOutOfPit()
+        {
+            var hired = GetHiredMercenaries();
+            for (int i = 0; i < hired.Count; i++)
+            {
+                var merc = hired[i].GetComponent<MercenaryComponent>();
+                if (merc != null && merc.InsidePit)
+                    return false;
+            }
+            return true;
+        }
+
         /// <summary>Gets all mercenary entities (hired and unhired)</summary>
         public List<Entity> GetAllMercenaries()
         {
