@@ -109,13 +109,12 @@ namespace RolePlayingFramework.Mercenaries
                 case ItemKind.WeaponStaff:
                 case ItemKind.WeaponRod:
                 case ItemKind.WeaponHammer:
+                    if (WeaponShield1 != null) return false;
+                    WeaponShield1 = item;
+                    break;
                 case ItemKind.Shield:
-                    if (WeaponShield1 == null)
-                        WeaponShield1 = item;
-                    else if (WeaponShield2 == null)
-                        WeaponShield2 = item;
-                    else
-                        return false;
+                    if (WeaponShield2 != null) return false;
+                    WeaponShield2 = item;
                     break;
                 case ItemKind.ArmorMail:
                 case ItemKind.ArmorGi:

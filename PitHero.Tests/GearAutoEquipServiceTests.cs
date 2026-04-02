@@ -294,4 +294,43 @@ namespace PitHero.Tests
 
         #endregion
     }
+
+    /// <summary>Regression tests for Mercenary.Equip() shield slot assignment.</summary>
+    [TestClass]
+    public class MercenaryEquipShieldRegressionTests
+    {
+        [TestMethod]
+        public void Equip_ShieldWithNoWeapon_GoesToWeaponShield2()
+        {
+            var merc = new Mercenary("TestMerc", new Knight(), 1, new StatBlock(4, 3, 5, 1));
+            var stats = new StatBlock(0, 0, 0, 0);
+            var shield = new Gear("TestShield", ItemKind.Shield, ItemRarity.Normal, "Test", 100, stats, def: 5);
+
+            var result = merc.Equip(shield);
+
+            Assert.IsTrue(result);
+            Assert.IsNull(merc.WeaponShield1, "Shield must NOT go to WeaponShield1 (weapon slot).");
+            Assert.IsNotNull(merc.WeaponShield2, "Shield must go to WeaponShield2 (shield slot).");
+            Assert.AreEqual("TestShield", ((IGear)merc.WeaponShield2).Name);
+        }
+
+        [TestMethod]
+        public void Equip_WeaponThenShield_WeaponInSlot1AndShieldInSlot2()
+        {
+            var merc = new Mercenary("TestMerc", new Knight(), 1, new StatBlock(4, 3, 5, 1));
+            var stats = new StatBlock(0, 0, 0, 0);
+            var sword = new Gear("TestSword", ItemKind.WeaponSword, ItemRarity.Normal, "Test", 100, stats, atk: 8);
+            var shield = new Gear("TestShield", ItemKind.Shield, ItemRarity.Normal, "Test", 100, stats, def: 5);
+
+            var weaponResult = merc.Equip(sword);
+            var shieldResult = merc.Equip(shield);
+
+            Assert.IsTrue(weaponResult);
+            Assert.IsTrue(shieldResult);
+            Assert.IsNotNull(merc.WeaponShield1, "Weapon must be in WeaponShield1.");
+            Assert.AreEqual("TestSword", ((IGear)merc.WeaponShield1).Name);
+            Assert.IsNotNull(merc.WeaponShield2, "Shield must be in WeaponShield2.");
+            Assert.AreEqual("TestShield", ((IGear)merc.WeaponShield2).Name);
+        }
+    }
 }
