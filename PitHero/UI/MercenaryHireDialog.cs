@@ -27,10 +27,12 @@ namespace PitHero.UI
         private TextTooltip _hireTooltip;
         private Entity _mercenaryEntity;
         private bool _isVisible;
+        private TextService _textService;
 
         public MercenaryHireDialog()
         {
             var skin = PitHeroSkin.CreateSkin();
+            _textService = Core.Services.GetService<TextService>();
 
             // Use the same window background as PitHeroSkin WindowStyle
             var windowStyle = skin.Get<WindowStyle>("ph-default");
@@ -46,42 +48,42 @@ namespace PitHero.UI
                 FontScaleX = defaultLabelStyle.FontScaleX,
                 FontScaleY = defaultLabelStyle.FontScaleY
             };
-            _nameLabel = new Label("Mercenary Name", nameLabelStyle);
+            _nameLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.MercenaryNameLabel), nameLabelStyle);
             Add(_nameLabel).SetColspan(2).Center();
             Row().SetPadTop(5f);
 
             // Job
-            _jobLabel = new Label("Job: Knight", skin);
+            _jobLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.MercenaryJobLevelLabel), skin);
             Add(_jobLabel).SetColspan(2).Left();
             Row().SetPadTop(10f);
 
             // HP
-            _hpLabel = new Label("HP: 100", skin);
+            _hpLabel = new Label(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.MercenaryHpLabel), 100), skin);
             Add(_hpLabel).SetColspan(2).Left();
             Row().SetPadTop(5f);
 
             // MP
-            _mpLabel = new Label("MP: 50", skin);
+            _mpLabel = new Label(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.MercenaryMpLabel), 50), skin);
             Add(_mpLabel).SetColspan(2).Left();
             Row().SetPadTop(5f);
 
             // STR
-            _strLabel = new Label("STR: 10", skin);
+            _strLabel = new Label(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.MercenaryStrLabel), 10), skin);
             Add(_strLabel).SetColspan(2).Left();
             Row().SetPadTop(5f);
 
             // AGI
-            _agiLabel = new Label("AGI: 10", skin);
+            _agiLabel = new Label(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.MercenaryAgiLabel), 10), skin);
             Add(_agiLabel).SetColspan(2).Left();
             Row().SetPadTop(5f);
 
             // VIT
-            _vitLabel = new Label("VIT: 10", skin);
+            _vitLabel = new Label(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.MercenaryVitLabel), 10), skin);
             Add(_vitLabel).SetColspan(2).Left();
             Row().SetPadTop(5f);
 
             // MAG
-            _magLabel = new Label("MAG: 10", skin);
+            _magLabel = new Label(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.MercenaryMagLabel), 10), skin);
             Add(_magLabel).SetColspan(2).Left();
             Row().SetPadTop(5f);
 
@@ -91,7 +93,7 @@ namespace PitHero.UI
                 Font = defaultLabelStyle.Font,
                 FontColor = new Color(184, 138, 13)
             };
-            _costLabel = new Label("Cost: 0 gold", costLabelStyle);
+            _costLabel = new Label(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.MercenaryCostLabel), 0), costLabelStyle);
             Add(_costLabel).SetColspan(2).Left();
             Row().SetPadTop(15f);
 
@@ -110,11 +112,11 @@ namespace PitHero.UI
                 PressedOffsetY = baseStyle.PressedOffsetY
             };
 
-            _hireButton = new TextButton("Hire", _hireButtonStyle);
+            _hireButton = new TextButton(_textService.DisplayText(DialogueType.UI, TextKey.ButtonHire), _hireButtonStyle);
             _hireButton.OnClicked += OnHireClicked;
             Add(_hireButton).SetPadRight(10f).SetMinWidth(80f).SetMinHeight(30f);
 
-            _cancelButton = new TextButton("Cancel", skin, "ph-default");
+            _cancelButton = new TextButton(_textService.DisplayText(DialogueType.UI, TextKey.ButtonCancel), skin, "ph-default");
             _cancelButton.OnClicked += OnCancelClicked;
             Add(_cancelButton).SetMinWidth(80f).SetMinHeight(30f);
 
@@ -134,17 +136,17 @@ namespace PitHero.UI
             var maxMP = 10 + (stats.Magic * 3);
 
             _nameLabel.SetText(merc.Name);
-            _jobLabel.SetText($"Job: {merc.Job.Name}  Lv: {merc.Level}");
-            _hpLabel.SetText($"HP: {maxHP}");
-            _mpLabel.SetText($"MP: {maxMP}");
-            _strLabel.SetText($"STR: {stats.Strength}");
-            _agiLabel.SetText($"AGI: {stats.Agility}");
-            _vitLabel.SetText($"VIT: {stats.Vitality}");
-            _magLabel.SetText($"MAG: {stats.Magic}");
+            _jobLabel.SetText(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.MercenaryJobLevelLabel), merc.Job.Name, merc.Level));
+            _hpLabel.SetText(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.MercenaryHpLabel), maxHP));
+            _mpLabel.SetText(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.MercenaryMpLabel), maxMP));
+            _strLabel.SetText(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.MercenaryStrLabel), stats.Strength));
+            _agiLabel.SetText(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.MercenaryAgiLabel), stats.Agility));
+            _vitLabel.SetText(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.MercenaryVitLabel), stats.Vitality));
+            _magLabel.SetText(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.MercenaryMagLabel), stats.Magic));
 
             // Display hire cost and check affordability
             var hireCost = BalanceConfig.CalculateMercenaryHireCost(merc.Level);
-            _costLabel.SetText($"Cost: {hireCost} gold");
+            _costLabel.SetText(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.MercenaryCostLabel), hireCost));
 
             var gameState = Core.Services.GetService<GameStateService>();
             var canAfford = gameState != null && gameState.Funds >= hireCost;

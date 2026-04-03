@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
+using PitHero.Services;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Skills;
 using RolePlayingFramework.Synergies;
@@ -13,6 +14,7 @@ namespace PitHero.UI
     {
         private Window _container;
         private Table _contentTable;
+        private TextService _textService;
 
         // Brown font color matching PitHeroSkin default
         private static readonly Color BrownFontColor = new Color(71, 36, 7);
@@ -24,6 +26,7 @@ namespace PitHero.UI
 
         public SkillTooltip(Element target, Skin skin)
         {
+            _textService = Core.Services.GetService<TextService>();
             _container = new Window("", skin);
             _container.SetMovable(false);
             _container.SetResizable(false);
@@ -71,14 +74,14 @@ namespace PitHero.UI
                 if (isLearned)
                 {
                     // Already learned synergy skill
-                    var learnedLabel = new Label("(Learned)", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = SynergyGreen });
+                    var learnedLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.SkillLearned), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = SynergyGreen });
                     _contentTable.Add(learnedLabel).Left();
                     _contentTable.Row();
                 }
                 else
                 {
                     // Show synergy progress
-                    var progressText = $"Progress: {synergyCurrentPoints} / {synergyRequiredPoints} SP";
+                    var progressText = string.Format(_textService.DisplayText(DialogueType.UI, TextKey.SkillProgress), synergyCurrentPoints, synergyRequiredPoints);
                     var progressColor = synergyCurrentPoints >= synergyRequiredPoints ? Color.Green : Color.Cyan;
                     var progressLabel = new Label(progressText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = progressColor });
                     _contentTable.Add(progressLabel).Left();
@@ -88,7 +91,7 @@ namespace PitHero.UI
             else if (showCostAndStatus)
             {
                 // Regular JP cost for job skills
-                var costText = $"Cost: {skill.JPCost} JP";
+                var costText = string.Format(_textService.DisplayText(DialogueType.UI, TextKey.SkillJpCost), skill.JPCost);
                 var costLabel = new Label(costText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Detail1FontColor });
                 _contentTable.Add(costLabel).Left();
                 _contentTable.Row();
@@ -96,7 +99,7 @@ namespace PitHero.UI
                 // Status
                 if (isLearned)
                 {
-                    var learnedLabel = new Label("(Learned)", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Green });
+                    var learnedLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.SkillLearned), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Green });
                     _contentTable.Add(learnedLabel).Left();
                     _contentTable.Row();
                 }
@@ -104,7 +107,7 @@ namespace PitHero.UI
                 {
                     if (hero.GetCurrentJP() < skill.JPCost)
                     {
-                        var insufficientJPLabel = new Label("(Insufficient JP)", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Red });
+                        var insufficientJPLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.SkillInsufficientJp), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Red });
                         _contentTable.Add(insufficientJPLabel).Left();
                         _contentTable.Row();
                     }
@@ -125,7 +128,7 @@ namespace PitHero.UI
             _contentTable.Row();
 
             // Instance count and multiplier
-            var instanceText = $"Active: {instanceCount}x (Multiplier: {multiplier:F2}x)";
+            var instanceText = string.Format(_textService.DisplayText(DialogueType.UI, TextKey.SkillActiveMultiplier), instanceCount, multiplier);
             var instanceLabel = new Label(SanitizeText(instanceText), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = SynergyGreen });
             _contentTable.Add(instanceLabel).Left();
             _contentTable.Row();
@@ -143,7 +146,7 @@ namespace PitHero.UI
             var effects = pattern.Effects;
             if (effects.Count > 0)
             {
-                var effectsLabel = new Label("Effects:", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = SynergyYellow });
+                var effectsLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.SkillEffectsLabel), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = SynergyYellow });
                 _contentTable.Add(effectsLabel).Left().SetPadTop(5f);
                 _contentTable.Row();
 
@@ -161,7 +164,7 @@ namespace PitHero.UI
             }
 
             // Note about temporary nature
-            var noteLabel = new Label("(Active only while pattern is formed)", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = SynergyOrange });
+            var noteLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.SkillActivePatternNote), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = SynergyOrange });
             _contentTable.Add(noteLabel).Left().SetPadTop(5f);
             _contentTable.Row();
 

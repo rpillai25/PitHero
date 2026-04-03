@@ -16,10 +16,12 @@ namespace PitHero.UI
         private Table _mainMenuTable;
         private Window _quitConfirmationDialog;
         private SaveLoadUI _saveLoadUI;
+        private TextService _textService;
 
         public void InitializeUI(Stage stage)
         {
             _stage = stage;
+            _textService = Core.Services.GetService<TextService>();
 
             var skin = PitHeroSkin.CreateSkin();
 
@@ -49,9 +51,9 @@ namespace PitHero.UI
             _mainMenuTable.SetFillParent(true);
 
             // Create buttons
-            var newButton = new TextButton("New", skin);
-            var loadButton = new TextButton("Load", skin);
-            var quitButton = new TextButton("Quit", skin);
+            var newButton = new TextButton(_textService.DisplayText(DialogueType.UI, TextKey.ButtonNew), skin);
+            var loadButton = new TextButton(_textService.DisplayText(DialogueType.UI, TextKey.ButtonLoad), skin);
+            var quitButton = new TextButton(_textService.DisplayText(DialogueType.UI, TextKey.ButtonQuit), skin);
 
             // Set button sizes
             const float buttonWidth = 200f;
@@ -79,20 +81,20 @@ namespace PitHero.UI
         private void CreateQuitConfirmationDialog(Skin skin)
         {
             var windowStyle = skin.Get<WindowStyle>();
-            _quitConfirmationDialog = new Window("Really Quit?", windowStyle);
+            _quitConfirmationDialog = new Window(_textService.DisplayText(DialogueType.UI, TextKey.DialogReallyQuit), windowStyle);
             _quitConfirmationDialog.SetSize(300, 150);
 
             var dialogTable = new Table();
             dialogTable.Pad(20);
 
             // Message
-            dialogTable.Add(new Label("Are you sure you want to quit?", skin)).SetPadBottom(20);
+            dialogTable.Add(new Label(_textService.DisplayText(DialogueType.UI, TextKey.ConfirmQuitMessage), skin)).SetPadBottom(20);
             dialogTable.Row();
 
             // Button row
             var buttonTable = new Table();
 
-            var yesButton = new TextButton("Yes", skin);
+            var yesButton = new TextButton(_textService.DisplayText(DialogueType.UI, TextKey.ButtonYes), skin);
             yesButton.OnClicked += (button) =>
             {
                 HideQuitConfirmation();
@@ -100,7 +102,7 @@ namespace PitHero.UI
             };
             buttonTable.Add(yesButton).Width(80).Height(24).SetPadRight(10);
 
-            var noButton = new TextButton("No", skin);
+            var noButton = new TextButton(_textService.DisplayText(DialogueType.UI, TextKey.ButtonNo), skin);
             noButton.OnClicked += (button) => HideQuitConfirmation();
             buttonTable.Add(noButton).Width(80).Height(24);;
 

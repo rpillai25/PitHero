@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Textures;
 using Nez.UI;
+using PitHero.Services;
 using RolePlayingFramework.Mercenaries;
 using RolePlayingFramework.Skills;
 using System.Collections.Generic;
@@ -16,6 +17,7 @@ namespace PitHero.UI
         private Table _mainContainer;
         private Stage _stage;
         private Skin _skin;
+        private TextService _textService;
 
         // Per-mercenary display containers (up to 2)
         private readonly Table[] _mercRows = new Table[2];
@@ -42,6 +44,7 @@ namespace PitHero.UI
         {
             _stage = stage;
             _skin = skin;
+            _textService = Core.Services.GetService<TextService>();
             _mainContainer = new Table();
             _mainContainer.SetFillParent(false);
 
@@ -85,7 +88,8 @@ namespace PitHero.UI
             row.Clear();
 
             // No-merc placeholder label (shown when no mercenary is assigned)
-            _noMercLabels[index] = new Label(index == 0 ? "No mercenaries hired" : "", skin, "ph-default");
+            string noMercText = index == 0 ? _textService.DisplayText(DialogueType.UI, TextKey.MercenaryNoMercenariesHired) : "";
+            _noMercLabels[index] = new Label(noMercText, skin, "ph-default");
             _noMercLabels[index].SetColor(Color.Gray);
 
             // Labels
@@ -121,7 +125,7 @@ namespace PitHero.UI
             row.Row();
 
             // Row: "Job Skills" label
-            var skillsSectionLabel = new Label("Job Skills", skin, "ph-default");
+            var skillsSectionLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.LabelJobSkills), skin, "ph-default");
             row.Add(skillsSectionLabel).Left().SetPadTop(4f);
             row.Row();
 
@@ -164,12 +168,12 @@ namespace PitHero.UI
                 _mercRows[m].SetVisible(true);
 
                 // Update info labels
-                _nameLabels[m].SetText($"Name: {merc.Name}");
-                _levelLabels[m].SetText($"Level: {merc.Level}");
-                _jobLabels[m].SetText($"Job: {merc.Job.Name}");
+                _nameLabels[m].SetText(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.MercenaryNameLabel), merc.Name));
+                _levelLabels[m].SetText(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.HeroLevelLabel), merc.Level));
+                _jobLabels[m].SetText(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.HeroJobLabel), merc.Job.Name));
 
                 var stats = merc.GetTotalStats();
-                _statsLabels[m].SetText($"STR:{stats.Strength} AGI:{stats.Agility} VIT:{stats.Vitality} MAG:{stats.Magic}");
+                _statsLabels[m].SetText(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.HeroStatsLabel), stats.Strength, stats.Agility, stats.Vitality, stats.Magic));
 
                 // Update sprite preview
                 if (appearances != null && m < appearances.Count)
@@ -201,7 +205,7 @@ namespace PitHero.UI
 
             if (jobSkills.Count == 0)
             {
-                var noSkillsLabel = new Label("No job skills", _skin, "ph-default");
+                var noSkillsLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.MercenaryNoJobSkills), _skin, "ph-default");
                 noSkillsLabel.SetColor(Color.Gray);
                 grid.Add(noSkillsLabel).Center();
                 return;

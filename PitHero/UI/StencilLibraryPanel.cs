@@ -25,6 +25,7 @@ namespace PitHero.UI
         private TextButton _activateButton;
         private TextButton _closeButton;
         private SynergyPattern _selectedPattern;
+        private TextService _textService;
 
         public event System.Action<SynergyPattern> OnStencilActivated;
 
@@ -32,6 +33,7 @@ namespace PitHero.UI
         {
             _slots = new StencilSlot[TOTAL_SLOTS];
             _allPatterns = new List<SynergyPattern>();
+            _textService = Core.Services.GetService<TextService>();
 
             SetSize(450f, 500f); // Increased size to accommodate scroll pane and details
             SetMovable(true);
@@ -51,7 +53,7 @@ namespace PitHero.UI
             contentTable.Pad(0f); // Remove content table padding
 
             // Add title label at the top (centered)
-            var titleLabel = new Label("Synergy Stencils", skin);
+            var titleLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.StencilSynergyStencils), skin);
             titleLabel.SetAlignment(Nez.UI.Align.Center);
             contentTable.Add(titleLabel).Pad(0f, 0f, 5f, 0f).Top().Center();
             contentTable.Row();
@@ -79,15 +81,15 @@ namespace PitHero.UI
             detailsTable.Pad(10f);
             detailsTable.SetBackground(skin.Get<WindowStyle>().Background); // Add background for visibility
 
-            _detailsLabel = new Label("Select a stencil to view details", skin);
+            _detailsLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.StencilSelectPrompt), skin);
             _detailsLabel.SetWrap(true);
             detailsTable.Add(_detailsLabel).Pad(20f, 0, 0, 0).Width(380f).Top().Left();
             detailsTable.Row();
 
-            _activateButton = new TextButton("Activate Stencil", skin);
+            _activateButton = new TextButton(_textService.DisplayText(DialogueType.UI, TextKey.ButtonActivateStencil), skin);
             _activateButton.SetTouchable(Touchable.Disabled);
             _activateButton.OnClicked += HandleActivateClicked;
-            _closeButton = new TextButton("Close", skin);
+            _closeButton = new TextButton(_textService.DisplayText(DialogueType.UI, TextKey.ButtonClose), skin);
             _closeButton.OnClicked += HandleCloseClicked;
 
             var buttonsTable = new Table();
@@ -174,7 +176,7 @@ namespace PitHero.UI
         {
             if (_selectedPattern == null)
             {
-                _detailsLabel.SetText("Select a stencil to view details");
+                _detailsLabel.SetText(_textService.DisplayText(DialogueType.UI, TextKey.StencilSelectPrompt));
                 _activateButton.SetTouchable(Touchable.Disabled);
                 return;
             }
