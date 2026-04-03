@@ -12,6 +12,7 @@ namespace PitHero.UI
     {
         private Stage _stage;
         private HoverableImageButton _button;
+        private TextService _textService;
 
         private ImageButtonStyle _normalStyle;
         private ImageButtonStyle _halfStyle;
@@ -23,6 +24,7 @@ namespace PitHero.UI
 
         public ReplenishUI()
         {
+            _textService = Core.Services.GetService<TextService>();
         }
 
         /// <summary>
@@ -65,7 +67,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(highlight2x)
             };
 
-            _button = new HoverableImageButton(_normalStyle, "Replenish");
+            _button = new HoverableImageButton(_normalStyle, _textService.DisplayText(DialogueType.UI, TextKey.ButtonReplenish));
             _button.SetSize(sprite.SourceRect.Width, sprite.SourceRect.Height);
 
             _button.OnClicked += (button) => OnReplenishClicked();
@@ -99,7 +101,7 @@ namespace PitHero.UI
             ImageButtonStyle style = desired == ButtonMode.Half ? _halfStyle : _normalStyle;
 
             _button.SetStyle(style);
-            _button.SetHoverText("Replenish");
+            _button.SetHoverText(_textService.DisplayText(DialogueType.UI, TextKey.ButtonReplenish));
             _button.SetSize(
                 ((SpriteDrawable)style.ImageUp).Sprite.SourceRect.Width,
                 ((SpriteDrawable)style.ImageUp).Sprite.SourceRect.Height

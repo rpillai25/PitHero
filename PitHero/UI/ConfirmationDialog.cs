@@ -1,4 +1,6 @@
+using Nez;
 using Nez.UI;
+using PitHero.Services;
 
 namespace PitHero.UI
 {
@@ -7,6 +9,8 @@ namespace PitHero.UI
     {
         public ConfirmationDialog(string title, string message, Skin skin, System.Action onYes, System.Action onNo = null) : base(title, skin)
         {
+            var textService = Core.Services.GetService<TextService>();
+            
             SetSize(350, 180);
             SetMovable(false);
             // SetModal(true); // Not available in this version of Nez
@@ -23,7 +27,7 @@ namespace PitHero.UI
             // Button row
             var buttonTable = new Table();
 
-            var yesButton = new TextButton("Yes", skin);
+            var yesButton = new TextButton(textService.DisplayText(DialogueType.UI, TextKey.ButtonYes), skin, "ph-default");
             yesButton.OnClicked += (button) =>
             {
                 onYes?.Invoke();
@@ -31,7 +35,7 @@ namespace PitHero.UI
             };
             buttonTable.Add(yesButton).Width(80).SetPadRight(10);
 
-            var noButton = new TextButton("No", skin);
+            var noButton = new TextButton(textService.DisplayText(DialogueType.UI, TextKey.ButtonNo), skin, "ph-default");
             noButton.OnClicked += (button) =>
             {
                 onNo?.Invoke();

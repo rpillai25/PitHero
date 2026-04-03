@@ -5,6 +5,7 @@ using Nez.BitmapFonts;
 using Nez.Sprites;
 using Nez.Textures;
 using PitHero.ECS.Components;
+using PitHero.Services;
 
 namespace PitHero.UI
 {
@@ -18,6 +19,7 @@ namespace PitHero.UI
         private Sprite _hpUnitSprite;
         private Sprite _mpUnitSprite;
         private BitmapFont _hudFont;
+        private TextService _textService;
         
         private Entity _heroEntity;
         private bool _isMercenary;
@@ -76,6 +78,9 @@ namespace PitHero.UI
 
             // Load HUD font (normal size only)
             _hudFont = Core.Content.LoadBitmapFont(GameConfig.FontPathHud);
+            
+            // Get TextService
+            _textService = Core.Services.GetService<TextService>();
         }
 
         /// <summary>
@@ -140,7 +145,7 @@ namespace PitHero.UI
             RenderHeroSprites(batcher, position, levelTextXOffset-7, levelTextYOffset-15);
             
             // Render level text on top of hero sprites
-            RenderText(batcher, position, "Lv "+_level.ToString(), levelTextXOffset-10, levelTextYOffset+14);
+            RenderText(batcher, position, _textService.DisplayText(DialogueType.UI, TextKey.HudLevelPrefix)+_level.ToString(), levelTextXOffset-10, levelTextYOffset+14);
         }
 
         /// <summary>

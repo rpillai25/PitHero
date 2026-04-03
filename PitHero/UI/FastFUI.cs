@@ -1,5 +1,6 @@
 using Nez;
 using Nez.UI;
+using PitHero.Services;
 
 namespace PitHero.UI
 {
@@ -10,6 +11,7 @@ namespace PitHero.UI
     {
         private Stage _stage;
         private HoverableImageButton _fastFButton;
+        private TextService _textService;
 
         private ImageButtonStyle _fastFNormalStyle;
         private ImageButtonStyle _fastFHalfStyle;
@@ -26,6 +28,7 @@ namespace PitHero.UI
 
         public FastFUI()
         {
+            _textService = Core.Services.GetService<TextService>();
         }
 
         /// <summary>
@@ -85,7 +88,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(fastFHighlight2x)
             };
 
-            _fastFButton = new HoverableImageButton(_fastFNormalStyle, "Fast Forward");
+            _fastFButton = new HoverableImageButton(_fastFNormalStyle, _textService.DisplayText(DialogueType.UI, TextKey.ButtonFastForward));
             // Explicitly size to the image
             _fastFButton.SetSize(fastFSprite.SourceRect.Width, fastFSprite.SourceRect.Height);
 

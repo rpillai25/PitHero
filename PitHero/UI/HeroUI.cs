@@ -47,6 +47,9 @@ namespace PitHero.UI
 
         // Tooltip for hovering over items
         private ItemCardTooltip _itemTooltip;
+        
+        // Text service for localization
+        private TextService _textService;
 
         // Tooltip for showing equip preview comparison
         private EquipPreviewTooltip _equipPreviewTooltip;
@@ -220,10 +223,10 @@ namespace PitHero.UI
             var tabWindowStyle = skin.Get<TabWindowStyle>(); // Use skin's tab window style
             _tabPane = new TabPane(tabWindowStyle);
             var tabStyle = CreateTabStyle(skin);
-            _inventoryTab = new Tab("Inventory", tabStyle);
-            _prioritiesTab = new Tab("Behavior", tabStyle);
-            _crystalTab = new Tab("Hero Info", tabStyle);
-            _mercenariesTab = new Tab("Mercenaries", tabStyle);
+            _inventoryTab = new Tab(_textService.DisplayText(DialogueType.UI, TextKey.TabInventory), tabStyle);
+            _prioritiesTab = new Tab(_textService.DisplayText(DialogueType.UI, TextKey.TabBehavior), tabStyle);
+            _crystalTab = new Tab(_textService.DisplayText(DialogueType.UI, TextKey.TabHeroInfo), tabStyle);
+            _mercenariesTab = new Tab(_textService.DisplayText(DialogueType.UI, TextKey.TabMercenaries), tabStyle);
             PopulateInventoryTab(_inventoryTab, skin);
             PopulatePrioritiesTab(_prioritiesTab, skin);
             PopulateCrystalTab(_crystalTab, skin);

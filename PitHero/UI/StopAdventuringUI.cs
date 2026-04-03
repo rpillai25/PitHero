@@ -2,6 +2,7 @@ using Nez;
 using Nez.UI;
 using PitHero.AI;
 using PitHero.ECS.Components;
+using PitHero.Services;
 
 namespace PitHero.UI
 {
@@ -12,6 +13,7 @@ namespace PitHero.UI
     {
         private Stage _stage;
         private HoverableImageButton _button;
+        private TextService _textService;
 
         // Stop Adventuring styles
         private ImageButtonStyle _stopNormalStyle;
@@ -30,6 +32,7 @@ namespace PitHero.UI
 
         public StopAdventuringUI()
         {
+            _textService = Core.Services.GetService<TextService>();
         }
 
         /// <summary>
@@ -94,7 +97,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(continueHighlight2x)
             };
 
-            _button = new HoverableImageButton(_stopNormalStyle, "Stop Adventuring");
+            _button = new HoverableImageButton(_stopNormalStyle, _textService.DisplayText(DialogueType.UI, TextKey.ButtonStopAdventuring));
             _button.SetSize(stopSprite.SourceRect.Width, stopSprite.SourceRect.Height);
 
             _button.OnClicked += (button) => ToggleAdventuring();
@@ -166,23 +169,23 @@ namespace PitHero.UI
             {
                 case ButtonMode.StopNormal:
                     style = _stopNormalStyle;
-                    tooltip = "Stop Adventuring";
+                    tooltip = _textService.DisplayText(DialogueType.UI, TextKey.ButtonStopAdventuring);
                     break;
                 case ButtonMode.StopHalf:
                     style = _stopHalfStyle;
-                    tooltip = "Stop Adventuring";
+                    tooltip = _textService.DisplayText(DialogueType.UI, TextKey.ButtonStopAdventuring);
                     break;
                 case ButtonMode.ContinueNormal:
                     style = _continueNormalStyle;
-                    tooltip = "Continue Adventuring";
+                    tooltip = _textService.DisplayText(DialogueType.UI, TextKey.ButtonContinueAdventuring);
                     break;
                 case ButtonMode.ContinueHalf:
                     style = _continueHalfStyle;
-                    tooltip = "Continue Adventuring";
+                    tooltip = _textService.DisplayText(DialogueType.UI, TextKey.ButtonContinueAdventuring);
                     break;
                 default:
                     style = _stopNormalStyle;
-                    tooltip = "Stop Adventuring";
+                    tooltip = _textService.DisplayText(DialogueType.UI, TextKey.ButtonStopAdventuring);
                     break;
             }
 

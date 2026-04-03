@@ -17,6 +17,7 @@ namespace PitHero.UI
         private Table _monsterListTable;
         private ScrollPane _scrollPane;
         private Skin _skin;
+        private TextService _textService;
 
         private enum MonsterMode { Normal, Half }
         private MonsterMode _currentMonsterMode = MonsterMode.Normal;
@@ -25,6 +26,11 @@ namespace PitHero.UI
 
         /// <summary>Whether the monster window is currently visible.</summary>
         public bool IsWindowVisible => _windowVisible;
+        
+        public MonsterUI()
+        {
+            _textService = Core.Services.GetService<TextService>();
+        }
 
         /// <summary>Initializes the monster UI and adds the button to the stage.</summary>
         public void InitializeUI(Stage stage)
@@ -59,7 +65,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(highlight2x)
             };
 
-            _monsterButton = new HoverableImageButton(_monsterNormalStyle, "Monsters");
+            _monsterButton = new HoverableImageButton(_monsterNormalStyle, _textService.DisplayText(DialogueType.UI, TextKey.WindowMonsters));
             _monsterButton.SetSize(sprite.SourceRect.Width, sprite.SourceRect.Height);
             _monsterButton.OnClicked += (button) => HandleMonsterButtonClick();
         }
@@ -86,7 +92,7 @@ namespace PitHero.UI
 
         private void CreateMonsterWindow(Skin skin)
         {
-            _monsterWindow = new Window("Monsters", skin);
+            _monsterWindow = new Window(_textService.DisplayText(DialogueType.UI, TextKey.WindowMonsters), skin);
             _monsterWindow.SetSize(380f, 280f);
 
             _monsterListTable = new Table();
