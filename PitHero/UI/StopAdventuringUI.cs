@@ -26,6 +26,7 @@ namespace PitHero.UI
 
         private bool _isStoppedAdventuring = false;
         private bool _styleChanged = false;
+        private bool _isHiddenForPromotion = false;
 
         public StopAdventuringUI()
         {
@@ -209,6 +210,8 @@ namespace PitHero.UI
         /// </summary>
         public float GetWidth()
         {
+            if (_isHiddenForPromotion)
+                return 0f;
             return _button?.GetWidth() ?? 0f;
         }
 
@@ -217,6 +220,8 @@ namespace PitHero.UI
         /// </summary>
         public float GetHeight()
         {
+            if (_isHiddenForPromotion)
+                return 0f;
             return _button?.GetHeight() ?? 0f;
         }
 
@@ -234,10 +239,51 @@ namespace PitHero.UI
         }
 
         /// <summary>
+        /// Applies button visibility based on whether the hero promotion is in progress.
+        /// Also sets _styleChanged so SettingsUI triggers a layout reflow (GetWidth/GetHeight return 0 while hidden).
+        /// </summary>
+        private void ApplyPromotionVisibility(bool hidden)
+        {
+            if (hidden)
+            {
+                _button.SetVisible(false);
+                _button.SetTouchable(Touchable.Disabled);
+            }
+            else
+            {
+                _button.SetVisible(true);
+                _button.SetTouchable(Touchable.Enabled);
+            }
+            _styleChanged = true; // Triggers SettingsUI layout reflow via ConsumeStyleChangedFlag
+        }
+
+        /// <summary>
+        /// Checks if the hero is pending crystal promotion and hides/shows the button accordingly.
+        /// Skips entity lookup entirely when the button is not yet initialized or state is unchanged.
+        /// When scene or hero is absent, shouldHide defaults to false (button shown).
+        /// </summary>
+        private void UpdatePromotionVisibilityIfNeeded()
+        {
+            if (_button == null || Core.Scene == null)
+                return;
+
+            var heroEntity = Core.Scene.FindEntity("hero");
+            var heroComponent = heroEntity?.GetComponent<HeroComponent>();
+            bool shouldHide = heroComponent != null && heroComponent.NeedsCrystal;
+
+            if (shouldHide == _isHiddenForPromotion)
+                return;
+
+            _isHiddenForPromotion = shouldHide;
+            ApplyPromotionVisibility(shouldHide);
+        }
+
+        /// <summary>
         /// Update method called each frame
         /// </summary>
         public void Update()
         {
+            UpdatePromotionVisibilityIfNeeded();
             UpdateButtonStyleIfNeeded();
         }
     }
