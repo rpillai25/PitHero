@@ -163,6 +163,9 @@ namespace PitHero.UI
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateShadowMaster());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateArcaneProtector());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateElementalChampion());
+            
+            // Get TextService
+            _textService = Core.Services.GetService<TextService>();
         }
 
         /// <summary>Initializes the Hero button and adds it to the stage</summary>
