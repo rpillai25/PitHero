@@ -24,7 +24,27 @@ namespace PitHero.UI
 
         public ReplenishUI()
         {
-            _textService = Core.Services.GetService<TextService>();
+        }
+
+        /// <summary>
+        /// Safely retrieves TextService. Returns null if Core is not initialized (e.g., in unit tests).
+        /// </summary>
+        private TextService GetTextService()
+        {
+            if (_textService == null && Core.Services != null)
+            {
+                _textService = Core.Services.GetService<TextService>();
+            }
+            return _textService;
+        }
+
+        /// <summary>
+        /// Gets localized text or falls back to key name if TextService unavailable.
+        /// </summary>
+        private string GetText(DialogueType type, TextKey key)
+        {
+            var service = GetTextService();
+            return service?.DisplayText(type, key) ?? key.ToString();
         }
 
         /// <summary>
@@ -67,7 +87,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(highlight2x)
             };
 
-            _button = new HoverableImageButton(_normalStyle, _textService.DisplayText(DialogueType.UI, TextKey.ButtonReplenish));
+            _button = new HoverableImageButton(_normalStyle, GetText(DialogueType.UI, TextKey.ButtonReplenish));
             _button.SetSize(sprite.SourceRect.Width, sprite.SourceRect.Height);
 
             _button.OnClicked += (button) => OnReplenishClicked();
@@ -101,7 +121,7 @@ namespace PitHero.UI
             ImageButtonStyle style = desired == ButtonMode.Half ? _halfStyle : _normalStyle;
 
             _button.SetStyle(style);
-            _button.SetHoverText(_textService.DisplayText(DialogueType.UI, TextKey.ButtonReplenish));
+            _button.SetHoverText(GetText(DialogueType.UI, TextKey.ButtonReplenish));
             _button.SetSize(
                 ((SpriteDrawable)style.ImageUp).Sprite.SourceRect.Width,
                 ((SpriteDrawable)style.ImageUp).Sprite.SourceRect.Height

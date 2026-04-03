@@ -28,7 +28,27 @@ namespace PitHero.UI
 
         public FastFUI()
         {
-            _textService = Core.Services.GetService<TextService>();
+        }
+
+        /// <summary>
+        /// Safely retrieves TextService. Returns null if Core is not initialized (e.g., in unit tests).
+        /// </summary>
+        private TextService GetTextService()
+        {
+            if (_textService == null && Core.Services != null)
+            {
+                _textService = Core.Services.GetService<TextService>();
+            }
+            return _textService;
+        }
+
+        /// <summary>
+        /// Gets localized text or falls back to key name if TextService unavailable.
+        /// </summary>
+        private string GetText(DialogueType type, TextKey key)
+        {
+            var service = GetTextService();
+            return service?.DisplayText(type, key) ?? key.ToString();
         }
 
         /// <summary>
@@ -88,7 +108,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(fastFHighlight2x)
             };
 
-            _fastFButton = new HoverableImageButton(_fastFNormalStyle, _textService.DisplayText(DialogueType.UI, TextKey.ButtonFastForward));
+            _fastFButton = new HoverableImageButton(_fastFNormalStyle, GetText(DialogueType.UI, TextKey.ButtonFastForward));
             // Explicitly size to the image
             _fastFButton.SetSize(fastFSprite.SourceRect.Width, fastFSprite.SourceRect.Height);
 

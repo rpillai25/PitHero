@@ -64,6 +64,26 @@ namespace PitHero.UI
             // Set render layer to UI
             SetRenderLayer(GameConfig.RenderLayerUI);
         }
+        /// <summary>
+        /// Safely retrieves TextService. Returns null if Core is not initialized (e.g., in unit tests).
+        /// </summary>
+        private TextService GetTextService()
+        {
+            if (_textService == null && Core.Services != null)
+            {
+                _textService = Core.Services.GetService<TextService>();
+            }
+            return _textService;
+        }
+
+        /// <summary>
+        /// Gets localized text or falls back to key name if TextService unavailable.
+        /// </summary>
+        private string GetText(DialogueType type, TextKey key)
+        {
+            var service = GetTextService();
+            return service?.DisplayText(type, key) ?? key.ToString();
+        }
 
         public override void OnAddedToEntity()
         {
@@ -80,7 +100,6 @@ namespace PitHero.UI
             _hudFont = Core.Content.LoadBitmapFont(GameConfig.FontPathHud);
             
             // Get TextService
-            _textService = Core.Services.GetService<TextService>();
         }
 
         /// <summary>
@@ -145,7 +164,7 @@ namespace PitHero.UI
             RenderHeroSprites(batcher, position, levelTextXOffset-7, levelTextYOffset-15);
             
             // Render level text on top of hero sprites
-            RenderText(batcher, position, _textService.DisplayText(DialogueType.UI, TextKey.HudLevelPrefix)+_level.ToString(), levelTextXOffset-10, levelTextYOffset+14);
+            RenderText(batcher, position, GetText(DialogueType.UI, TextKey.HudLevelPrefix)+_level.ToString(), levelTextXOffset-10, levelTextYOffset+14);
         }
 
         /// <summary>

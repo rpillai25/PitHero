@@ -58,7 +58,6 @@ namespace PitHero.UI
         public Table CreateContent(Skin skin, Stage stage)
         {
             _stage = stage;
-            _textService = Core.Services.GetService<TextService>();
             _mainContainer = new Table();
             _mainContainer.SetFillParent(false);
 
@@ -81,6 +80,26 @@ namespace PitHero.UI
 
             return _mainContainer;
         }
+        /// <summary>
+        /// Safely retrieves TextService. Returns null if Core is not initialized (e.g., in unit tests).
+        /// </summary>
+        private TextService GetTextService()
+        {
+            if (_textService == null && Core.Services != null)
+            {
+                _textService = Core.Services.GetService<TextService>();
+            }
+            return _textService;
+        }
+
+        /// <summary>
+        /// Gets localized text or falls back to key name if TextService unavailable.
+        /// </summary>
+        private string GetText(DialogueType type, TextKey key)
+        {
+            var service = GetTextService();
+            return service?.DisplayText(type, key) ?? key.ToString();
+        }
 
         private Table CreateInfoSection(Skin skin)
         {
@@ -88,19 +107,19 @@ namespace PitHero.UI
 
             // Left column: Name, Job and Level info
             var leftCol = new Table();
-            _heroNameLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.HeroNameLabel), skin, "ph-default");
+            _heroNameLabel = new Label(GetText(DialogueType.UI, TextKey.HeroNameLabel), skin, "ph-default");
             leftCol.Add(_heroNameLabel).Left();
             leftCol.Row();
 
-            _jobNameLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.HeroJobLabel), skin, "ph-default");
+            _jobNameLabel = new Label(GetText(DialogueType.UI, TextKey.HeroJobLabel), skin, "ph-default");
             leftCol.Add(_jobNameLabel).Left();
             leftCol.Row();
 
-            _levelLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.HeroLevelLabel), skin, "ph-default");
+            _levelLabel = new Label(GetText(DialogueType.UI, TextKey.HeroLevelLabel), skin, "ph-default");
             leftCol.Add(_levelLabel).Left();
             leftCol.Row();
 
-            _jobLevelLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.HeroJobLevelLabel), skin, "ph-default");
+            _jobLevelLabel = new Label(GetText(DialogueType.UI, TextKey.HeroJobLevelLabel), skin, "ph-default");
             leftCol.Add(_jobLevelLabel).Left();
 
             // Middle column: Hero sprite preview
@@ -108,15 +127,15 @@ namespace PitHero.UI
 
             // Right column: JP info and stats
             var rightCol = new Table();
-            _currentJPLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.HeroCurrentJpLabel), skin, "ph-default");
+            _currentJPLabel = new Label(GetText(DialogueType.UI, TextKey.HeroCurrentJpLabel), skin, "ph-default");
             rightCol.Add(_currentJPLabel).Left();
             rightCol.Row();
 
-            _totalJPLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.HeroTotalJpLabel), skin, "ph-default");
+            _totalJPLabel = new Label(GetText(DialogueType.UI, TextKey.HeroTotalJpLabel), skin, "ph-default");
             rightCol.Add(_totalJPLabel).Left();
             rightCol.Row();
 
-            _statsLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.HeroStatsLabel), skin, "ph-default");
+            _statsLabel = new Label(GetText(DialogueType.UI, TextKey.HeroStatsLabel), skin, "ph-default");
             rightCol.Add(_statsLabel).Left();
 
             infoTable.Add(leftCol).Left().Expand().Pad(5f);
@@ -131,7 +150,7 @@ namespace PitHero.UI
             var containerTable = new Table();
 
             // Section 1: Job Skills
-            var jobSkillsLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.LabelJobSkills), skin, "ph-default");
+            var jobSkillsLabel = new Label(GetText(DialogueType.UI, TextKey.LabelJobSkills), skin, "ph-default");
             containerTable.Add(jobSkillsLabel).Left().Pad(5f);
             containerTable.Row();
 
@@ -141,7 +160,7 @@ namespace PitHero.UI
             containerTable.Row();
 
             // Section 2: Synergy Skills
-            var synergySkillsLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.LabelSynergySkills), skin, "ph-default");
+            var synergySkillsLabel = new Label(GetText(DialogueType.UI, TextKey.LabelSynergySkills), skin, "ph-default");
             containerTable.Add(synergySkillsLabel).Left().Pad(5f).SetPadTop(10f);
             containerTable.Row();
 
@@ -151,7 +170,7 @@ namespace PitHero.UI
             containerTable.Row();
 
             // Section 3: Synergy Effects
-            var synergyEffectsLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.LabelSynergyEffects), skin, "ph-default");
+            var synergyEffectsLabel = new Label(GetText(DialogueType.UI, TextKey.LabelSynergyEffects), skin, "ph-default");
             containerTable.Add(synergyEffectsLabel).Left().Pad(5f).SetPadTop(10f);
             containerTable.Row();
 
@@ -181,15 +200,15 @@ namespace PitHero.UI
             var hero = _heroComponent.LinkedHero;
 
             // Update info labels
-            _heroNameLabel.SetText(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.HeroNameLabel), hero.Name));
-            _jobNameLabel.SetText(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.HeroJobLabel), hero.Job.Name));
-            _levelLabel.SetText(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.HeroLevelLabel), hero.Level));
-            _jobLevelLabel.SetText(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.HeroJobLevelLabel), hero.GetJobLevel()));
-            _currentJPLabel.SetText(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.HeroCurrentJpLabel), hero.GetCurrentJP()));
-            _totalJPLabel.SetText(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.HeroTotalJpLabel), hero.GetTotalJP()));
+            _heroNameLabel.SetText(string.Format(GetText(DialogueType.UI, TextKey.HeroNameLabel), hero.Name));
+            _jobNameLabel.SetText(string.Format(GetText(DialogueType.UI, TextKey.HeroJobLabel), hero.Job.Name));
+            _levelLabel.SetText(string.Format(GetText(DialogueType.UI, TextKey.HeroLevelLabel), hero.Level));
+            _jobLevelLabel.SetText(string.Format(GetText(DialogueType.UI, TextKey.HeroJobLevelLabel), hero.GetJobLevel()));
+            _currentJPLabel.SetText(string.Format(GetText(DialogueType.UI, TextKey.HeroCurrentJpLabel), hero.GetCurrentJP()));
+            _totalJPLabel.SetText(string.Format(GetText(DialogueType.UI, TextKey.HeroTotalJpLabel), hero.GetTotalJP()));
 
             var stats = hero.GetTotalStats();
-            _statsLabel.SetText(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.HeroStatsLabel), stats.Strength, stats.Agility, stats.Vitality, stats.Magic));
+            _statsLabel.SetText(string.Format(GetText(DialogueType.UI, TextKey.HeroStatsLabel), stats.Strength, stats.Agility, stats.Vitality, stats.Magic));
 
             // Rebuild skill grid
             RebuildSkillGrid(hero);
@@ -226,7 +245,7 @@ namespace PitHero.UI
             var crystal = hero.BoundCrystal;
             if (crystal == null)
             {
-                var noCrystalLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.HeroNoCrystalBound), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
+                var noCrystalLabel = new Label(GetText(DialogueType.UI, TextKey.HeroNoCrystalBound), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
                 _jobSkillsGridContainer.Add(noCrystalLabel).Center();
                 return;
             }
@@ -247,7 +266,7 @@ namespace PitHero.UI
 
             if (jobSkills.Count == 0)
             {
-                var noSkillsLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.HeroNoJobSkillsAvailable), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
+                var noSkillsLabel = new Label(GetText(DialogueType.UI, TextKey.HeroNoJobSkillsAvailable), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
                 _jobSkillsGridContainer.Add(noSkillsLabel).Center();
                 return;
             }
@@ -320,7 +339,7 @@ namespace PitHero.UI
 
             if (synergySkills.Count == 0)
             {
-                var noSkillsLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.HeroNoSynergySkillsDiscovered), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
+                var noSkillsLabel = new Label(GetText(DialogueType.UI, TextKey.HeroNoSynergySkillsDiscovered), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
                 _synergySkillsGridContainer.Add(noSkillsLabel).Center();
                 return;
             }
@@ -360,7 +379,7 @@ namespace PitHero.UI
 
             if (activeSynergyGroups.Count == 0)
             {
-                var noEffectsLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.HeroNoActiveSynergyEffects), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
+                var noEffectsLabel = new Label(GetText(DialogueType.UI, TextKey.HeroNoActiveSynergyEffects), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
                 _synergyEffectsGridContainer.Add(noEffectsLabel).Center();
                 return;
             }

@@ -21,7 +21,6 @@ namespace PitHero.UI
 
         public ItemCard(Skin skin) : base("", skin)
         {
-            _textService = Core.Services.GetService<TextService>();
             SetMovable(false);
             SetResizable(false);
             SetKeepWithinStage(false);
@@ -31,6 +30,27 @@ namespace PitHero.UI
 
             SetWidth(CARD_WIDTH);
             SetVisible(false);
+        }
+
+        /// <summary>
+        /// Safely retrieves TextService. Returns null if Core is not initialized (e.g., in unit tests).
+        /// </summary>
+        private TextService GetTextService()
+        {
+            if (_textService == null && Core.Services != null)
+            {
+                _textService = Core.Services.GetService<TextService>();
+            }
+            return _textService;
+        }
+
+        /// <summary>
+        /// Gets localized text or falls back to key name if TextService unavailable.
+        /// </summary>
+        private string GetText(DialogueType type, TextKey key)
+        {
+            var service = GetTextService();
+            return service?.DisplayText(type, key) ?? key.ToString();
         }
 
         /// <summary>Shows the card with the specified item.</summary>
@@ -99,7 +119,7 @@ namespace PitHero.UI
             // Show allowed jobs for gear items
             if (_item is IGear gearItem && gearItem.AllowedJobs != JobType.All)
             {
-                var jobsText = _textService.DisplayText(DialogueType.UI, TextKey.ItemClassesPrefix) + ItemDisplayHelper.FormatAllowedJobs(gearItem.AllowedJobs);
+                var jobsText = GetText(DialogueType.UI, TextKey.ItemClassesPrefix) + ItemDisplayHelper.FormatAllowedJobs(gearItem.AllowedJobs);
                 var jobsLabel = new Label(jobsText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = JobsTextColor });
                 _contentTable.Add(jobsLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                 _contentTable.Row();
@@ -107,7 +127,7 @@ namespace PitHero.UI
 
             // Sell Price (always shown)
             var sellPrice = _item.GetSellPrice();
-            var priceLabel = new Label(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.ItemSellPrice), sellPrice), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
+            var priceLabel = new Label(string.Format(GetText(DialogueType.UI, TextKey.ItemSellPrice), sellPrice), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
             _contentTable.Add(priceLabel).Left();
             _contentTable.Row();
         }
@@ -120,26 +140,26 @@ namespace PitHero.UI
             {
                 if (consumable.HPRestoreAmount > 0)
                 {
-                    var hpLabel = new Label(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.ItemRestoresHp), consumable.HPRestoreAmount), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
+                    var hpLabel = new Label(string.Format(GetText(DialogueType.UI, TextKey.ItemRestoresHp), consumable.HPRestoreAmount), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
                     _contentTable.Add(hpLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                 }
                 else if (consumable.HPRestoreAmount < 0)
                 {
-                    var hpLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.ItemFullyRestoresHp), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
+                    var hpLabel = new Label(GetText(DialogueType.UI, TextKey.ItemFullyRestoresHp), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
                     _contentTable.Add(hpLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                 }
 
                 if (consumable.MPRestoreAmount > 0)
                 {
-                    var apLabel = new Label(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.ItemRestoresMp), consumable.MPRestoreAmount), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
+                    var apLabel = new Label(string.Format(GetText(DialogueType.UI, TextKey.ItemRestoresMp), consumable.MPRestoreAmount), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
                     _contentTable.Add(apLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                 }
                 else if (consumable.MPRestoreAmount < 0)
                 {
-                    var apLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.ItemFullyRestoresMp), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
+                    var apLabel = new Label(GetText(DialogueType.UI, TextKey.ItemFullyRestoresMp), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
                     _contentTable.Add(apLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                 }
@@ -152,25 +172,25 @@ namespace PitHero.UI
                 var stats = gear.StatBonus;
                 if (stats.Strength > 0)
                 {
-                    var strLabel = new Label(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.StatBonusStrength), stats.Strength), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
+                    var strLabel = new Label(string.Format(GetText(DialogueType.UI, TextKey.StatBonusStrength), stats.Strength), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
                     _contentTable.Add(strLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                 }
                 if (stats.Agility > 0)
                 {
-                    var agiLabel = new Label(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.StatBonusAgility), stats.Agility), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
+                    var agiLabel = new Label(string.Format(GetText(DialogueType.UI, TextKey.StatBonusAgility), stats.Agility), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
                     _contentTable.Add(agiLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                 }
                 if (stats.Vitality > 0)
                 {
-                    var vitLabel = new Label(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.StatBonusVitality), stats.Vitality), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
+                    var vitLabel = new Label(string.Format(GetText(DialogueType.UI, TextKey.StatBonusVitality), stats.Vitality), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
                     _contentTable.Add(vitLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                 }
                 if (stats.Magic > 0)
                 {
-                    var magLabel = new Label(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.StatBonusMagic), stats.Magic), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
+                    var magLabel = new Label(string.Format(GetText(DialogueType.UI, TextKey.StatBonusMagic), stats.Magic), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
                     _contentTable.Add(magLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                 }
@@ -178,25 +198,25 @@ namespace PitHero.UI
                 // Flat bonuses
                 if (gear.AttackBonus != 0)
                 {
-                    var atkLabel = new Label(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.StatBonusAttack), gear.AttackBonus), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
+                    var atkLabel = new Label(string.Format(GetText(DialogueType.UI, TextKey.StatBonusAttack), gear.AttackBonus), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
                     _contentTable.Add(atkLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                 }
                 if (gear.DefenseBonus != 0)
                 {
-                    var defLabel = new Label(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.StatBonusDefense), gear.DefenseBonus), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
+                    var defLabel = new Label(string.Format(GetText(DialogueType.UI, TextKey.StatBonusDefense), gear.DefenseBonus), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
                     _contentTable.Add(defLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                 }
                 if (gear.HPBonus != 0)
                 {
-                    var hpLabel = new Label(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.StatBonusHp), gear.HPBonus), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
+                    var hpLabel = new Label(string.Format(GetText(DialogueType.UI, TextKey.StatBonusHp), gear.HPBonus), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
                     _contentTable.Add(hpLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                 }
                 if (gear.MPBonus != 0)
                 {
-                    var apLabel = new Label(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.StatBonusMp), gear.MPBonus), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
+                    var apLabel = new Label(string.Format(GetText(DialogueType.UI, TextKey.StatBonusMp), gear.MPBonus), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
                     _contentTable.Add(apLabel).Left().Pad(0, 0, LINE_SPACING, 0);
                     _contentTable.Row();
                 }

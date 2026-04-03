@@ -18,6 +18,26 @@ namespace PitHero.UI
             Save,
             Load
         }
+        /// <summary>
+        /// Safely retrieves TextService. Returns null if Core is not initialized (e.g., in unit tests).
+        /// </summary>
+        private TextService GetTextService()
+        {
+            if (_textService == null && Core.Services != null)
+            {
+                _textService = Core.Services.GetService<TextService>();
+            }
+            return _textService;
+        }
+
+        /// <summary>
+        /// Gets localized text or falls back to key name if TextService unavailable.
+        /// </summary>
+        private string GetText(DialogueType type, TextKey key)
+        {
+            var service = GetTextService();
+            return service?.DisplayText(type, key) ?? key.ToString();
+        }
 
         private const float WindowWidth = 500f;
         private const float WindowHeight = 300f;
@@ -45,8 +65,6 @@ namespace PitHero.UI
             _currentMode = mode;
             _onClose = onClose;
             _skin = PitHeroSkin.CreateSkin();
-            _textService = Core.Services.GetService<TextService>();
-
             BuildWindow();
         }
 
@@ -69,8 +87,8 @@ namespace PitHero.UI
         {
             var windowStyle = _skin.Get<WindowStyle>("ph-default");
             string title = _currentMode == Mode.Save 
-                ? _textService.DisplayText(DialogueType.UI, TextKey.WindowSaveGame) 
-                : _textService.DisplayText(DialogueType.UI, TextKey.WindowLoadGame);
+                ? GetText(DialogueType.UI, TextKey.WindowSaveGame) 
+                : GetText(DialogueType.UI, TextKey.WindowLoadGame);
             _window = new Window(title, windowStyle);
             _window.SetSize(WindowWidth, WindowHeight);
             _window.SetMovable(false);
@@ -109,7 +127,7 @@ namespace PitHero.UI
             contentTable.Row();
 
             // Close button at the bottom
-            var closeButton = new TextButton(_textService.DisplayText(DialogueType.UI, TextKey.ButtonClose), _skin, "ph-default");
+            var closeButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonClose), _skin, "ph-default");
             closeButton.OnClicked += (button) => Hide();
             contentTable.Add(closeButton).SetMinWidth(80f).Height(28f);
 
@@ -145,18 +163,18 @@ namespace PitHero.UI
 
                 // Middle column: hero name and level
                 var infoTable = new Table();
-                var nameLabel = new Label(preview.HeroName ?? _textService.DisplayText(DialogueType.UI, TextKey.SaveLoadUnknown), _skin, "ph-default");
+                var nameLabel = new Label(preview.HeroName ?? GetText(DialogueType.UI, TextKey.SaveLoadUnknown), _skin, "ph-default");
                 infoTable.Add(nameLabel).Left();
                 infoTable.Row();
 
-                var levelLabel = new Label(string.Format(_textService.DisplayText(DialogueType.UI, TextKey.SaveLoadLevelLabel), preview.Level), _skin, "ph-default");
+                var levelLabel = new Label(string.Format(GetText(DialogueType.UI, TextKey.SaveLoadLevelLabel), preview.Level), _skin, "ph-default");
                 infoTable.Add(levelLabel).Left();
 
                 rowTable.Add(infoTable).Expand().Left().SetPadLeft(8f);
 
                 // Right column: time header and formatted time
                 var timeTable = new Table();
-                var timeHeaderLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.SaveLoadTimeHeader), _skin, "ph-default");
+                var timeHeaderLabel = new Label(GetText(DialogueType.UI, TextKey.SaveLoadTimeHeader), _skin, "ph-default");
                 // Create a unique style so color doesn't bleed to other labels
                 var timeHeaderStyle = new LabelStyle
                 {
@@ -176,7 +194,7 @@ namespace PitHero.UI
             }
             else
             {
-                var emptyLabel = new Label(_textService.DisplayText(DialogueType.UI, TextKey.SaveLoadEmptySlot), _skin, "ph-default");
+                var emptyLabel = new Label(GetText(DialogueType.UI, TextKey.SaveLoadEmptySlot), _skin, "ph-default");
                 rowTable.Add(emptyLabel).Expand().Center();
             }
 
@@ -214,15 +232,15 @@ namespace PitHero.UI
 
             if (_currentMode == Mode.Save)
             {
-                title = _textService.DisplayText(DialogueType.UI, TextKey.DialogConfirmSave);
-                message = string.Format(_textService.DisplayText(DialogueType.UI, TextKey.ConfirmOverwriteSaveSlot), slotIndex + 1);
-                confirmText = _textService.DisplayText(DialogueType.UI, TextKey.ButtonSave);
+                title = GetText(DialogueType.UI, TextKey.DialogConfirmSave);
+                message = string.Format(GetText(DialogueType.UI, TextKey.ConfirmOverwriteSaveSlot), slotIndex + 1);
+                confirmText = GetText(DialogueType.UI, TextKey.ButtonSave);
             }
             else
             {
-                title = _textService.DisplayText(DialogueType.UI, TextKey.DialogConfirmLoad);
-                message = string.Format(_textService.DisplayText(DialogueType.UI, TextKey.ConfirmLoadSaveSlot), slotIndex + 1);
-                confirmText = _textService.DisplayText(DialogueType.UI, TextKey.ButtonLoad);
+                title = GetText(DialogueType.UI, TextKey.DialogConfirmLoad);
+                message = string.Format(GetText(DialogueType.UI, TextKey.ConfirmLoadSaveSlot), slotIndex + 1);
+                confirmText = GetText(DialogueType.UI, TextKey.ButtonLoad);
             }
 
             var windowStyle = _skin.Get<WindowStyle>("ph-default");
@@ -253,7 +271,7 @@ namespace PitHero.UI
             };
             buttonTable.Add(confirmButton).SetMinWidth(80f).Height(24f).SetPadRight(10f);
 
-            var cancelButton = new TextButton(_textService.DisplayText(DialogueType.UI, TextKey.ButtonCancel), _skin, "ph-default");
+            var cancelButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonCancel), _skin, "ph-default");
             cancelButton.OnClicked += (button) => HideConfirmDialog();
             buttonTable.Add(cancelButton).SetMinWidth(80f).Height(24f);
 

@@ -163,9 +163,27 @@ namespace PitHero.UI
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateShadowMaster());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateArcaneProtector());
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateElementalChampion());
-            
-            // Get TextService
-            _textService = Core.Services.GetService<TextService>();
+        }
+
+        /// <summary>
+        /// Safely retrieves TextService. Returns null if Core is not initialized (e.g., in unit tests).
+        /// </summary>
+        private TextService GetTextService()
+        {
+            if (_textService == null && Core.Services != null)
+            {
+                _textService = Core.Services.GetService<TextService>();
+            }
+            return _textService;
+        }
+
+        /// <summary>
+        /// Gets localized text or falls back to key name if TextService unavailable.
+        /// </summary>
+        private string GetText(DialogueType type, TextKey key)
+        {
+            var service = GetTextService();
+            return service?.DisplayText(type, key) ?? key.ToString();
         }
 
         /// <summary>Initializes the Hero button and adds it to the stage</summary>
@@ -226,10 +244,10 @@ namespace PitHero.UI
             var tabWindowStyle = skin.Get<TabWindowStyle>(); // Use skin's tab window style
             _tabPane = new TabPane(tabWindowStyle);
             var tabStyle = CreateTabStyle(skin);
-            _inventoryTab = new Tab(_textService.DisplayText(DialogueType.UI, TextKey.TabInventory), tabStyle);
-            _prioritiesTab = new Tab(_textService.DisplayText(DialogueType.UI, TextKey.TabBehavior), tabStyle);
-            _crystalTab = new Tab(_textService.DisplayText(DialogueType.UI, TextKey.TabHeroInfo), tabStyle);
-            _mercenariesTab = new Tab(_textService.DisplayText(DialogueType.UI, TextKey.TabMercenaries), tabStyle);
+            _inventoryTab = new Tab(GetText(DialogueType.UI, TextKey.TabInventory), tabStyle);
+            _prioritiesTab = new Tab(GetText(DialogueType.UI, TextKey.TabBehavior), tabStyle);
+            _crystalTab = new Tab(GetText(DialogueType.UI, TextKey.TabHeroInfo), tabStyle);
+            _mercenariesTab = new Tab(GetText(DialogueType.UI, TextKey.TabMercenaries), tabStyle);
             PopulateInventoryTab(_inventoryTab, skin);
             PopulatePrioritiesTab(_prioritiesTab, skin);
             PopulateCrystalTab(_crystalTab, skin);

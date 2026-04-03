@@ -21,13 +21,31 @@ namespace PitHero.UI
         public void InitializeUI(Stage stage)
         {
             _stage = stage;
-            _textService = Core.Services.GetService<TextService>();
-
             var skin = PitHeroSkin.CreateSkin();
 
             CreateTitleLogo();
             CreateMainMenu(skin);
             CreateQuitConfirmationDialog(skin);
+        }
+        /// <summary>
+        /// Safely retrieves TextService. Returns null if Core is not initialized (e.g., in unit tests).
+        /// </summary>
+        private TextService GetTextService()
+        {
+            if (_textService == null && Core.Services != null)
+            {
+                _textService = Core.Services.GetService<TextService>();
+            }
+            return _textService;
+        }
+
+        /// <summary>
+        /// Gets localized text or falls back to key name if TextService unavailable.
+        /// </summary>
+        private string GetText(DialogueType type, TextKey key)
+        {
+            var service = GetTextService();
+            return service?.DisplayText(type, key) ?? key.ToString();
         }
 
         private void CreateTitleLogo()
@@ -51,9 +69,9 @@ namespace PitHero.UI
             _mainMenuTable.SetFillParent(true);
 
             // Create buttons
-            var newButton = new TextButton(_textService.DisplayText(DialogueType.UI, TextKey.ButtonNew), skin);
-            var loadButton = new TextButton(_textService.DisplayText(DialogueType.UI, TextKey.ButtonLoad), skin);
-            var quitButton = new TextButton(_textService.DisplayText(DialogueType.UI, TextKey.ButtonQuit), skin);
+            var newButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonNew), skin);
+            var loadButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonLoad), skin);
+            var quitButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonQuit), skin);
 
             // Set button sizes
             const float buttonWidth = 200f;
@@ -81,20 +99,20 @@ namespace PitHero.UI
         private void CreateQuitConfirmationDialog(Skin skin)
         {
             var windowStyle = skin.Get<WindowStyle>();
-            _quitConfirmationDialog = new Window(_textService.DisplayText(DialogueType.UI, TextKey.DialogReallyQuit), windowStyle);
+            _quitConfirmationDialog = new Window(GetText(DialogueType.UI, TextKey.DialogReallyQuit), windowStyle);
             _quitConfirmationDialog.SetSize(300, 150);
 
             var dialogTable = new Table();
             dialogTable.Pad(20);
 
             // Message
-            dialogTable.Add(new Label(_textService.DisplayText(DialogueType.UI, TextKey.ConfirmQuitMessage), skin)).SetPadBottom(20);
+            dialogTable.Add(new Label(GetText(DialogueType.UI, TextKey.ConfirmQuitMessage), skin)).SetPadBottom(20);
             dialogTable.Row();
 
             // Button row
             var buttonTable = new Table();
 
-            var yesButton = new TextButton(_textService.DisplayText(DialogueType.UI, TextKey.ButtonYes), skin);
+            var yesButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonYes), skin);
             yesButton.OnClicked += (button) =>
             {
                 HideQuitConfirmation();
@@ -102,7 +120,7 @@ namespace PitHero.UI
             };
             buttonTable.Add(yesButton).Width(80).Height(24).SetPadRight(10);
 
-            var noButton = new TextButton(_textService.DisplayText(DialogueType.UI, TextKey.ButtonNo), skin);
+            var noButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonNo), skin);
             noButton.OnClicked += (button) => HideQuitConfirmation();
             buttonTable.Add(noButton).Width(80).Height(24);;
 

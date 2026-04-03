@@ -29,7 +29,27 @@ namespace PitHero.UI
         
         public MonsterUI()
         {
-            _textService = Core.Services.GetService<TextService>();
+        }
+
+        /// <summary>
+        /// Safely retrieves TextService. Returns null if Core is not initialized (e.g., in unit tests).
+        /// </summary>
+        private TextService GetTextService()
+        {
+            if (_textService == null && Core.Services != null)
+            {
+                _textService = Core.Services.GetService<TextService>();
+            }
+            return _textService;
+        }
+
+        /// <summary>
+        /// Gets localized text or falls back to key name if TextService unavailable.
+        /// </summary>
+        private string GetText(DialogueType type, TextKey key)
+        {
+            var service = GetTextService();
+            return service?.DisplayText(type, key) ?? key.ToString();
         }
 
         /// <summary>Initializes the monster UI and adds the button to the stage.</summary>
@@ -65,7 +85,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(highlight2x)
             };
 
-            _monsterButton = new HoverableImageButton(_monsterNormalStyle, _textService.DisplayText(DialogueType.UI, TextKey.WindowMonsters));
+            _monsterButton = new HoverableImageButton(_monsterNormalStyle, GetText(DialogueType.UI, TextKey.WindowMonsters));
             _monsterButton.SetSize(sprite.SourceRect.Width, sprite.SourceRect.Height);
             _monsterButton.OnClicked += (button) => HandleMonsterButtonClick();
         }
@@ -92,7 +112,7 @@ namespace PitHero.UI
 
         private void CreateMonsterWindow(Skin skin)
         {
-            _monsterWindow = new Window(_textService.DisplayText(DialogueType.UI, TextKey.WindowMonsters), skin);
+            _monsterWindow = new Window(GetText(DialogueType.UI, TextKey.WindowMonsters), skin);
             _monsterWindow.SetSize(380f, 280f);
 
             _monsterListTable = new Table();
