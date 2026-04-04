@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Spears
 {
@@ -14,7 +15,7 @@ namespace RolePlayingFramework.Equipment.Spears
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "CavePike",
+                InventoryTextKey.Inv_CavePike_Name,
                 ItemKind.WeaponSword,
                 Rarity,
                 "Long spear designed for cave defense.",

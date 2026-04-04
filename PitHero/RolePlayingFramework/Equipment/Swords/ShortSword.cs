@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Swords
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Swords
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "ShortSword",
+                InventoryTextKey.Inv_ShortSword_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                $"Basic sword for beginners.",
+                InventoryTextKey.Inv_ShortSword_Desc,
                 100,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

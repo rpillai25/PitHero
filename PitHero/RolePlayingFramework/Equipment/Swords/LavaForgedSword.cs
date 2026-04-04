@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Swords
 {
@@ -14,7 +15,7 @@ namespace RolePlayingFramework.Equipment.Swords
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "LavaForgedSword",
+                InventoryTextKey.Inv_LavaForgedSword_Name,
                 ItemKind.WeaponSword,
                 Rarity,
                 "Blade tempered in underground magma.",

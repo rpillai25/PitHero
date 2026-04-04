@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Staves
 {
@@ -14,7 +15,7 @@ namespace RolePlayingFramework.Equipment.Staves
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "TorchStaff",
+                InventoryTextKey.Inv_TorchStaff_Name,
                 ItemKind.WeaponStaff,
                 Rarity,
                 "Staff with burning crystal tip.",

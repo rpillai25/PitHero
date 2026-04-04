@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Helms
 {
@@ -14,7 +15,7 @@ namespace RolePlayingFramework.Equipment.Helms
         {
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "PitLordsCrown",
+                InventoryTextKey.Inv_PitLordsCrown_Name,
                 ItemKind.HatHelm,
                 Rarity,
                 "Legendary crown of the cave master.",

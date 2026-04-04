@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Hammers
 {
@@ -14,7 +15,7 @@ namespace RolePlayingFramework.Equipment.Hammers
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "Mallet",
+                InventoryTextKey.Inv_Mallet_Name,
                 ItemKind.WeaponHammer,
                 Rarity,
                 "Simple wooden mallet.",

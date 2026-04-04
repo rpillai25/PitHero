@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Axes
 {
@@ -14,7 +15,7 @@ namespace RolePlayingFramework.Equipment.Axes
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "ShadowSplitter",
+                InventoryTextKey.Inv_ShadowSplitter_Name,
                 ItemKind.WeaponSword,
                 Rarity,
                 "Black-bladed axe that cleaves through darkness.",

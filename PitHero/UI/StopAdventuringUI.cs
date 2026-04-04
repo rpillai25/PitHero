@@ -49,7 +49,7 @@ namespace PitHero.UI
         /// <summary>
         /// Gets localized text or falls back to key name if TextService unavailable.
         /// </summary>
-        private string GetText(DialogueType type, TextKey key)
+        private string GetText(TextType type, string key)
         {
             var service = GetTextService();
             return service?.DisplayText(type, key) ?? key.ToString();
@@ -117,7 +117,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(continueHighlight2x)
             };
 
-            _button = new HoverableImageButton(_stopNormalStyle, GetText(DialogueType.UI, TextKey.ButtonStopAdventuring));
+            _button = new HoverableImageButton(_stopNormalStyle, GetText(TextType.UI, UITextKey.ButtonStopAdventuring));
             _button.SetSize(stopSprite.SourceRect.Width, stopSprite.SourceRect.Height);
 
             _button.OnClicked += (button) => ToggleAdventuring();
@@ -189,23 +189,23 @@ namespace PitHero.UI
             {
                 case ButtonMode.StopNormal:
                     style = _stopNormalStyle;
-                    tooltip = GetText(DialogueType.UI, TextKey.ButtonStopAdventuring);
+                    tooltip = GetText(TextType.UI, UITextKey.ButtonStopAdventuring);
                     break;
                 case ButtonMode.StopHalf:
                     style = _stopHalfStyle;
-                    tooltip = GetText(DialogueType.UI, TextKey.ButtonStopAdventuring);
+                    tooltip = GetText(TextType.UI, UITextKey.ButtonStopAdventuring);
                     break;
                 case ButtonMode.ContinueNormal:
                     style = _continueNormalStyle;
-                    tooltip = GetText(DialogueType.UI, TextKey.ButtonContinueAdventuring);
+                    tooltip = GetText(TextType.UI, UITextKey.ButtonContinueAdventuring);
                     break;
                 case ButtonMode.ContinueHalf:
                     style = _continueHalfStyle;
-                    tooltip = GetText(DialogueType.UI, TextKey.ButtonContinueAdventuring);
+                    tooltip = GetText(TextType.UI, UITextKey.ButtonContinueAdventuring);
                     break;
                 default:
                     style = _stopNormalStyle;
-                    tooltip = GetText(DialogueType.UI, TextKey.ButtonStopAdventuring);
+                    tooltip = GetText(TextType.UI, UITextKey.ButtonStopAdventuring);
                     break;
             }
 

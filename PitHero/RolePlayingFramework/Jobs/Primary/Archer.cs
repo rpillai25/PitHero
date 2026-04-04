@@ -1,6 +1,7 @@
 using RolePlayingFramework.Skills;
 using RolePlayingFramework.Stats;
 using System.Collections.Generic;
+using PitHero;
 
 namespace RolePlayingFramework.Jobs.Primary
 {
@@ -12,7 +13,7 @@ namespace RolePlayingFramework.Jobs.Primary
     public sealed class Archer : BaseJob
     {
         public Archer() : base(
-            name: "Archer",
+            name: JobTextKey.Job_Archer_Name,
             // BaseBonus provides balanced physical stats
             // Target: Good Agility for ranged attacks, balanced other stats
             baseBonus: new StatBlock(strength: 7, agility: 9, vitality: 6, magic: 4),
@@ -22,8 +23,8 @@ namespace RolePlayingFramework.Jobs.Primary
             growthPerLevel: new StatBlock(strength: 0.561f, agility: 0.643f, vitality: 0.429f, magic: 0.337f),
             tier: JobTier.Primary,
             jobFlag: JobType.Archer,
-            description: "Long range specialist with enhanced sight distance.",
-            role: "Ranged attacker, balanced stats")
+            description: JobTextKey.Job_Archer_Desc,
+            role: JobTextKey.Job_Archer_Role)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

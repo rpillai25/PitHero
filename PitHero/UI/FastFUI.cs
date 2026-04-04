@@ -45,7 +45,7 @@ namespace PitHero.UI
         /// <summary>
         /// Gets localized text or falls back to key name if TextService unavailable.
         /// </summary>
-        private string GetText(DialogueType type, TextKey key)
+        private string GetText(TextType type, string key)
         {
             var service = GetTextService();
             return service?.DisplayText(type, key) ?? key.ToString();
@@ -108,7 +108,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(fastFHighlight2x)
             };
 
-            _fastFButton = new HoverableImageButton(_fastFNormalStyle, GetText(DialogueType.UI, TextKey.ButtonFastForward));
+            _fastFButton = new HoverableImageButton(_fastFNormalStyle, GetText(TextType.UI, UITextKey.ButtonFastForward));
             // Explicitly size to the image
             _fastFButton.SetSize(fastFSprite.SourceRect.Width, fastFSprite.SourceRect.Height);
 

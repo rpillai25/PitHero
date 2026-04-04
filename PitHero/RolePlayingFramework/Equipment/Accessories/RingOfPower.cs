@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Accessories
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Accessories
         {
             int statBonus = BalanceConfig.CalculateEquipmentStatBonus(PitLevel, Rarity);
             return new Gear(
-                "RingOfPower",
+                InventoryTextKey.Inv_RingOfPower_Name,
                 ItemKind.Accessory,
                 Rarity,
-                $"Gives a boost to strength.",
+                InventoryTextKey.Inv_RingOfPower_Desc,
                 150,
                 new StatBlock(statBonus, 0, 0, 0),
                 elementalProps: new ElementalProperties(ElementType.Neutral));

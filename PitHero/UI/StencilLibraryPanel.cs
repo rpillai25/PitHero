@@ -54,7 +54,7 @@ namespace PitHero.UI
         /// <summary>
         /// Gets localized text or falls back to key name if TextService unavailable.
         /// </summary>
-        private string GetText(DialogueType type, TextKey key)
+        private string GetText(TextType type, string key)
         {
             var service = GetTextService();
             return service?.DisplayText(type, key) ?? key.ToString();
@@ -71,7 +71,7 @@ namespace PitHero.UI
             contentTable.Pad(0f); // Remove content table padding
 
             // Add title label at the top (centered)
-            var titleLabel = new Label(GetText(DialogueType.UI, TextKey.StencilSynergyStencils), skin);
+            var titleLabel = new Label(GetText(TextType.UI, UITextKey.StencilSynergyStencils), skin);
             titleLabel.SetAlignment(Nez.UI.Align.Center);
             contentTable.Add(titleLabel).Pad(0f, 0f, 5f, 0f).Top().Center();
             contentTable.Row();
@@ -99,15 +99,15 @@ namespace PitHero.UI
             detailsTable.Pad(10f);
             detailsTable.SetBackground(skin.Get<WindowStyle>().Background); // Add background for visibility
 
-            _detailsLabel = new Label(GetText(DialogueType.UI, TextKey.StencilSelectPrompt), skin);
+            _detailsLabel = new Label(GetText(TextType.UI, UITextKey.StencilSelectPrompt), skin);
             _detailsLabel.SetWrap(true);
             detailsTable.Add(_detailsLabel).Pad(20f, 0, 0, 0).Width(380f).Top().Left();
             detailsTable.Row();
 
-            _activateButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonActivateStencil), skin);
+            _activateButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonActivateStencil), skin);
             _activateButton.SetTouchable(Touchable.Disabled);
             _activateButton.OnClicked += HandleActivateClicked;
-            _closeButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonClose), skin);
+            _closeButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonClose), skin);
             _closeButton.OnClicked += HandleCloseClicked;
 
             var buttonsTable = new Table();
@@ -194,7 +194,7 @@ namespace PitHero.UI
         {
             if (_selectedPattern == null)
             {
-                _detailsLabel.SetText(GetText(DialogueType.UI, TextKey.StencilSelectPrompt));
+                _detailsLabel.SetText(GetText(TextType.UI, UITextKey.StencilSelectPrompt));
                 _activateButton.SetTouchable(Touchable.Disabled);
                 return;
             }

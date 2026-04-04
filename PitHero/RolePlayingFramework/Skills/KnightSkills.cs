@@ -2,13 +2,14 @@ using RolePlayingFramework.Combat;
 using RolePlayingFramework.Enemies;
 using RolePlayingFramework.Heroes;
 using System.Collections.Generic;
+using PitHero;
 
 namespace RolePlayingFramework.Skills
 {
     // Active
     public sealed class SpinSlashSkill : BaseSkill
     {
-        public SpinSlashSkill() : base("knight.spin_slash", "Spin Slash", "Attack all surrounding enemies with a spinning blade strike dealing 80% damage.", SkillKind.Active, SkillTargetType.SurroundingEnemies, 4, 120, ElementType.Neutral) { }
+        public SpinSlashSkill() : base("knight.spin_slash", SkillTextKey.Skill_Knight_SpinSlash_Name, SkillTextKey.Skill_Knight_SpinSlash_Desc, SkillKind.Active, SkillTargetType.SurroundingEnemies, 4, 120, ElementType.Neutral) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             // Calculate battle stats for the hero
@@ -83,7 +84,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class HeavyStrikeSkill : BaseSkill
     {
-        public HeavyStrikeSkill() : base("knight.heavy_strike", "Heavy Strike", "A powerful overhead strike that deals bonus damage based on Strength.", SkillKind.Active, SkillTargetType.SingleEnemy, 5, 180, ElementType.Neutral) { }
+        public HeavyStrikeSkill() : base("knight.heavy_strike", SkillTextKey.Skill_Knight_HeavyStrike_Name, SkillTextKey.Skill_Knight_HeavyStrike_Desc, SkillKind.Active, SkillTargetType.SingleEnemy, 5, 180, ElementType.Neutral) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             if (primary == null) return "HeavyStrike";
@@ -120,7 +121,7 @@ namespace RolePlayingFramework.Skills
     // Passives
     public sealed class LightArmorPassive : BaseSkill
     {
-        public LightArmorPassive() : base("knight.light_armor", "Light Armor", "Allows equipping robes in addition to heavy armor.", SkillKind.Passive, SkillTargetType.Self, 0, 50, ElementType.Neutral) { }
+        public LightArmorPassive() : base("knight.light_armor", SkillTextKey.Skill_Knight_LightArmor_Name, SkillTextKey.Skill_Knight_LightArmor_Desc, SkillKind.Passive, SkillTargetType.Self, 0, 50, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.AddExtraEquipPermission(Equipment.ItemKind.ArmorRobe); // allow robes
@@ -129,7 +130,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class HeavyArmorPassive : BaseSkill
     {
-        public HeavyArmorPassive() : base("knight.heavy_armor", "Heavy Armor", "Provides +2 passive defense bonus when wearing heavy armor.", SkillKind.Passive, SkillTargetType.Self, 0, 100, ElementType.Neutral) { }
+        public HeavyArmorPassive() : base("knight.heavy_armor", SkillTextKey.Skill_Knight_HeavyArmor_Name, SkillTextKey.Skill_Knight_HeavyArmor_Desc, SkillKind.Passive, SkillTargetType.Self, 0, 100, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             hero.PassiveDefenseBonus += 2; // flat defense bonus applied in orchestrator damage step

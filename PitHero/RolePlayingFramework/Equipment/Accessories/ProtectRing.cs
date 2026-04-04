@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Accessories
 {
@@ -15,10 +16,10 @@ namespace RolePlayingFramework.Equipment.Accessories
             int statBonus = BalanceConfig.CalculateEquipmentStatBonus(PitLevel, Rarity);
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "ProtectRing",
+                InventoryTextKey.Inv_ProtectRing_Name,
                 ItemKind.Accessory,
                 Rarity,
-                $"Wear this for more protection\nfrom physical attacks.",
+                InventoryTextKey.Inv_ProtectRing_Desc,
                 120,
                 new StatBlock(0, 0, statBonus, 0),
                 def: defenseBonus,

@@ -46,7 +46,7 @@ namespace PitHero.UI
         /// <summary>
         /// Gets localized text or falls back to key name if TextService unavailable.
         /// </summary>
-        private string GetText(DialogueType type, TextKey key)
+        private string GetText(TextType type, string key)
         {
             var service = GetTextService();
             return service?.DisplayText(type, key) ?? key.ToString();
@@ -85,7 +85,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(highlight2x)
             };
 
-            _monsterButton = new HoverableImageButton(_monsterNormalStyle, GetText(DialogueType.UI, TextKey.WindowMonsters));
+            _monsterButton = new HoverableImageButton(_monsterNormalStyle, GetText(TextType.UI, UITextKey.WindowMonsters));
             _monsterButton.SetSize(sprite.SourceRect.Width, sprite.SourceRect.Height);
             _monsterButton.OnClicked += (button) => HandleMonsterButtonClick();
         }
@@ -112,7 +112,7 @@ namespace PitHero.UI
 
         private void CreateMonsterWindow(Skin skin)
         {
-            _monsterWindow = new Window(GetText(DialogueType.UI, TextKey.WindowMonsters), skin);
+            _monsterWindow = new Window(GetText(TextType.UI, UITextKey.WindowMonsters), skin);
             _monsterWindow.SetSize(380f, 280f);
 
             _monsterListTable = new Table();

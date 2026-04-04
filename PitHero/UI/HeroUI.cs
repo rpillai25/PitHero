@@ -180,7 +180,7 @@ namespace PitHero.UI
         /// <summary>
         /// Gets localized text or falls back to key name if TextService unavailable.
         /// </summary>
-        private string GetText(DialogueType type, TextKey key)
+        private string GetText(TextType type, string key)
         {
             var service = GetTextService();
             return service?.DisplayText(type, key) ?? key.ToString();
@@ -244,10 +244,10 @@ namespace PitHero.UI
             var tabWindowStyle = skin.Get<TabWindowStyle>(); // Use skin's tab window style
             _tabPane = new TabPane(tabWindowStyle);
             var tabStyle = CreateTabStyle(skin);
-            _inventoryTab = new Tab(GetText(DialogueType.UI, TextKey.TabInventory), tabStyle);
-            _prioritiesTab = new Tab(GetText(DialogueType.UI, TextKey.TabBehavior), tabStyle);
-            _crystalTab = new Tab(GetText(DialogueType.UI, TextKey.TabHeroInfo), tabStyle);
-            _mercenariesTab = new Tab(GetText(DialogueType.UI, TextKey.TabMercenaries), tabStyle);
+            _inventoryTab = new Tab(GetText(TextType.UI, UITextKey.TabInventory), tabStyle);
+            _prioritiesTab = new Tab(GetText(TextType.UI, UITextKey.TabBehavior), tabStyle);
+            _crystalTab = new Tab(GetText(TextType.UI, UITextKey.TabHeroInfo), tabStyle);
+            _mercenariesTab = new Tab(GetText(TextType.UI, UITextKey.TabMercenaries), tabStyle);
             PopulateInventoryTab(_inventoryTab, skin);
             PopulatePrioritiesTab(_prioritiesTab, skin);
             PopulateCrystalTab(_crystalTab, skin);

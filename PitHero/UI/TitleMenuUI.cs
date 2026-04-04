@@ -42,7 +42,7 @@ namespace PitHero.UI
         /// <summary>
         /// Gets localized text or falls back to key name if TextService unavailable.
         /// </summary>
-        private string GetText(DialogueType type, TextKey key)
+        private string GetText(TextType type, string key)
         {
             var service = GetTextService();
             return service?.DisplayText(type, key) ?? key.ToString();
@@ -69,9 +69,9 @@ namespace PitHero.UI
             _mainMenuTable.SetFillParent(true);
 
             // Create buttons
-            var newButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonNew), skin);
-            var loadButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonLoad), skin);
-            var quitButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonQuit), skin);
+            var newButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonNew), skin);
+            var loadButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonLoad), skin);
+            var quitButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonQuit), skin);
 
             // Set button sizes
             const float buttonWidth = 200f;
@@ -99,20 +99,20 @@ namespace PitHero.UI
         private void CreateQuitConfirmationDialog(Skin skin)
         {
             var windowStyle = skin.Get<WindowStyle>();
-            _quitConfirmationDialog = new Window(GetText(DialogueType.UI, TextKey.DialogReallyQuit), windowStyle);
+            _quitConfirmationDialog = new Window(GetText(TextType.UI, UITextKey.DialogReallyQuit), windowStyle);
             _quitConfirmationDialog.SetSize(300, 150);
 
             var dialogTable = new Table();
             dialogTable.Pad(20);
 
             // Message
-            dialogTable.Add(new Label(GetText(DialogueType.UI, TextKey.ConfirmQuitMessage), skin)).SetPadBottom(20);
+            dialogTable.Add(new Label(GetText(TextType.UI, UITextKey.ConfirmQuitMessage), skin)).SetPadBottom(20);
             dialogTable.Row();
 
             // Button row
             var buttonTable = new Table();
 
-            var yesButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonYes), skin);
+            var yesButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonYes), skin);
             yesButton.OnClicked += (button) =>
             {
                 HideQuitConfirmation();
@@ -120,7 +120,7 @@ namespace PitHero.UI
             };
             buttonTable.Add(yesButton).Width(80).Height(24).SetPadRight(10);
 
-            var noButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonNo), skin);
+            var noButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonNo), skin);
             noButton.OnClicked += (button) => HideQuitConfirmation();
             buttonTable.Add(noButton).Width(80).Height(24);;
 

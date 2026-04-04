@@ -1,6 +1,7 @@
 using RolePlayingFramework.Skills;
 using RolePlayingFramework.Stats;
 using System.Collections.Generic;
+using PitHero;
 
 namespace RolePlayingFramework.Jobs.Primary
 {
@@ -12,7 +13,7 @@ namespace RolePlayingFramework.Jobs.Primary
     public sealed class Mage : BaseJob
     {
         public Mage() : base(
-            name: "Mage",
+            name: JobTextKey.Job_Mage_Name,
             // BaseBonus emphasizes Magic
             // Target: Very high Magic, low physical stats
             baseBonus: new StatBlock(strength: 4, agility: 6, vitality: 4, magic: 11),
@@ -22,8 +23,8 @@ namespace RolePlayingFramework.Jobs.Primary
             growthPerLevel: new StatBlock(strength: 0.296f, agility: 0.429f, vitality: 0.296f, magic: 0.786f),
             tier: JobTier.Primary,
             jobFlag: JobType.Mage,
-            description: "Glass cannon caster with strong magic and utility.",
-            role: "High magic, high MP, low physical")
+            description: JobTextKey.Job_Mage_Desc,
+            role: JobTextKey.Job_Mage_Role)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

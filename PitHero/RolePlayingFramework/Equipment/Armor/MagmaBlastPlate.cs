@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Armor
 {
@@ -14,7 +15,7 @@ public static class MagmaBlastPlate
         {
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "MagmaBlastPlate",
+                InventoryTextKey.Inv_MagmaBlastPlate_Name,
                 ItemKind.ArmorMail,
                 Rarity,
                 "Ultimate fire-resistant armor.",

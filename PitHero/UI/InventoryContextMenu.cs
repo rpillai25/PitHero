@@ -63,7 +63,7 @@ namespace PitHero.UI
             table.Add(_useButton).Width(100).Height(25);
             table.Row();
 
-            _discardButton = new ResettableTextButton(_textService.DisplayText(DialogueType.UI, TextKey.DialogReallyDiscard), _skin);
+            _discardButton = new ResettableTextButton(_textService.DisplayText(TextType.UI, UITextKey.DialogReallyDiscard), _skin);
             _discardButton.OnClicked += (btn) =>
             {
                 Hide();
@@ -72,7 +72,7 @@ namespace PitHero.UI
             table.Add(_discardButton).Width(100).Height(25).SetPadTop(5);
             table.Row();
 
-            _cancelButton = new ResettableTextButton(_textService.DisplayText(DialogueType.UI, TextKey.ButtonCancel), _skin);
+            _cancelButton = new ResettableTextButton(_textService.DisplayText(TextType.UI, UITextKey.ButtonCancel), _skin);
             _cancelButton.OnClicked += (btn) => Hide();
             table.Add(_cancelButton).Width(100).Height(25).SetPadTop(5);
 
@@ -85,21 +85,21 @@ namespace PitHero.UI
         private void CreateConfirmDialog()
         {
             var windowStyle = _skin.Get<WindowStyle>();
-            _confirmDialog = new Window(_textService.DisplayText(DialogueType.UI, TextKey.DialogReallyDiscard), windowStyle);
+            _confirmDialog = new Window(_textService.DisplayText(TextType.UI, UITextKey.DialogReallyDiscard), windowStyle);
             _confirmDialog.SetSize(250, 120);
             var table = new Table();
             table.Pad(10);
-            table.Add(new Label(_textService.DisplayText(DialogueType.UI, TextKey.ConfirmDiscardMessage), _skin)).SetPadBottom(10);
+            table.Add(new Label(_textService.DisplayText(TextType.UI, UITextKey.ConfirmDiscardMessage), _skin)).SetPadBottom(10);
             table.Row();
             var buttonTable = new Table();
-            var yesButton = new TextButton(_textService.DisplayText(DialogueType.UI, TextKey.ButtonYes), _skin);
+            var yesButton = new TextButton(_textService.DisplayText(TextType.UI, UITextKey.ButtonYes), _skin);
             yesButton.OnClicked += (btn) =>
             {
                 HideDiscardConfirmation();
                 OnDiscardItem?.Invoke(_currentItem, _currentBagIndex);
             };
             buttonTable.Add(yesButton).Width(60);
-            var noButton = new TextButton(_textService.DisplayText(DialogueType.UI, TextKey.ButtonNo), _skin);
+            var noButton = new TextButton(_textService.DisplayText(TextType.UI, UITextKey.ButtonNo), _skin);
             noButton.OnClicked += (btn) => HideDiscardConfirmation();
             buttonTable.Add(noButton).Width(60).SetPadLeft(10);
             table.Add(buttonTable);

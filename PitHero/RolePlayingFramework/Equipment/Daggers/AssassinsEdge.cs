@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Daggers
 {
@@ -14,7 +15,7 @@ namespace RolePlayingFramework.Equipment.Daggers
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "AssassinsEdge",
+                InventoryTextKey.Inv_AssassinsEdge_Name,
                 ItemKind.WeaponKnife,
                 Rarity,
                 "Perfectly balanced killing blade.",

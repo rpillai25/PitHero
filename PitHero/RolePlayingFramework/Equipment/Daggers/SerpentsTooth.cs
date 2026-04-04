@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Daggers
 {
@@ -14,7 +15,7 @@ namespace RolePlayingFramework.Equipment.Daggers
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "SerpentsTooth",
+                InventoryTextKey.Inv_SerpentsTooth_Name,
                 ItemKind.WeaponKnife,
                 Rarity,
                 "Curved dagger shaped like a snake fang.",

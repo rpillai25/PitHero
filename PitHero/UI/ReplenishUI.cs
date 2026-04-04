@@ -41,7 +41,7 @@ namespace PitHero.UI
         /// <summary>
         /// Gets localized text or falls back to key name if TextService unavailable.
         /// </summary>
-        private string GetText(DialogueType type, TextKey key)
+        private string GetText(TextType type, string key)
         {
             var service = GetTextService();
             return service?.DisplayText(type, key) ?? key.ToString();
@@ -87,7 +87,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(highlight2x)
             };
 
-            _button = new HoverableImageButton(_normalStyle, GetText(DialogueType.UI, TextKey.ButtonReplenish));
+            _button = new HoverableImageButton(_normalStyle, GetText(TextType.UI, UITextKey.ButtonReplenish));
             _button.SetSize(sprite.SourceRect.Width, sprite.SourceRect.Height);
 
             _button.OnClicked += (button) => OnReplenishClicked();
@@ -121,7 +121,7 @@ namespace PitHero.UI
             ImageButtonStyle style = desired == ButtonMode.Half ? _halfStyle : _normalStyle;
 
             _button.SetStyle(style);
-            _button.SetHoverText(GetText(DialogueType.UI, TextKey.ButtonReplenish));
+            _button.SetHoverText(GetText(TextType.UI, UITextKey.ButtonReplenish));
             _button.SetSize(
                 ((SpriteDrawable)style.ImageUp).Sprite.SourceRect.Width,
                 ((SpriteDrawable)style.ImageUp).Sprite.SourceRect.Height

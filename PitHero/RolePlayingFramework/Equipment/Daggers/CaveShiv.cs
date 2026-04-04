@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Daggers
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Daggers
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "CaveShiv",
+                InventoryTextKey.Inv_CaveShiv_Name,
                 ItemKind.WeaponKnife,
                 Rarity,
-                $"Crude knife made from cave debris.",
+                InventoryTextKey.Inv_CaveShiv_Desc,
                 125,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

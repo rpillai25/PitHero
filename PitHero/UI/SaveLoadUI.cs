@@ -33,7 +33,7 @@ namespace PitHero.UI
         /// <summary>
         /// Gets localized text or falls back to key name if TextService unavailable.
         /// </summary>
-        private string GetText(DialogueType type, TextKey key)
+        private string GetText(TextType type, string key)
         {
             var service = GetTextService();
             return service?.DisplayText(type, key) ?? key.ToString();
@@ -87,8 +87,8 @@ namespace PitHero.UI
         {
             var windowStyle = _skin.Get<WindowStyle>("ph-default");
             string title = _currentMode == Mode.Save 
-                ? GetText(DialogueType.UI, TextKey.WindowSaveGame) 
-                : GetText(DialogueType.UI, TextKey.WindowLoadGame);
+                ? GetText(TextType.UI, UITextKey.WindowSaveGame) 
+                : GetText(TextType.UI, UITextKey.WindowLoadGame);
             _window = new Window(title, windowStyle);
             _window.SetSize(WindowWidth, WindowHeight);
             _window.SetMovable(false);
@@ -127,7 +127,7 @@ namespace PitHero.UI
             contentTable.Row();
 
             // Close button at the bottom
-            var closeButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonClose), _skin, "ph-default");
+            var closeButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonClose), _skin, "ph-default");
             closeButton.OnClicked += (button) => Hide();
             contentTable.Add(closeButton).SetMinWidth(80f).Height(28f);
 
@@ -163,18 +163,18 @@ namespace PitHero.UI
 
                 // Middle column: hero name and level
                 var infoTable = new Table();
-                var nameLabel = new Label(preview.HeroName ?? GetText(DialogueType.UI, TextKey.SaveLoadUnknown), _skin, "ph-default");
+                var nameLabel = new Label(preview.HeroName ?? GetText(TextType.UI, UITextKey.SaveLoadUnknown), _skin, "ph-default");
                 infoTable.Add(nameLabel).Left();
                 infoTable.Row();
 
-                var levelLabel = new Label(string.Format(GetText(DialogueType.UI, TextKey.SaveLoadLevelLabel), preview.Level), _skin, "ph-default");
+                var levelLabel = new Label(string.Format(GetText(TextType.UI, UITextKey.SaveLoadLevelLabel), preview.Level), _skin, "ph-default");
                 infoTable.Add(levelLabel).Left();
 
                 rowTable.Add(infoTable).Expand().Left().SetPadLeft(8f);
 
                 // Right column: time header and formatted time
                 var timeTable = new Table();
-                var timeHeaderLabel = new Label(GetText(DialogueType.UI, TextKey.SaveLoadTimeHeader), _skin, "ph-default");
+                var timeHeaderLabel = new Label(GetText(TextType.UI, UITextKey.SaveLoadTimeHeader), _skin, "ph-default");
                 // Create a unique style so color doesn't bleed to other labels
                 var timeHeaderStyle = new LabelStyle
                 {
@@ -194,7 +194,7 @@ namespace PitHero.UI
             }
             else
             {
-                var emptyLabel = new Label(GetText(DialogueType.UI, TextKey.SaveLoadEmptySlot), _skin, "ph-default");
+                var emptyLabel = new Label(GetText(TextType.UI, UITextKey.SaveLoadEmptySlot), _skin, "ph-default");
                 rowTable.Add(emptyLabel).Expand().Center();
             }
 
@@ -232,15 +232,15 @@ namespace PitHero.UI
 
             if (_currentMode == Mode.Save)
             {
-                title = GetText(DialogueType.UI, TextKey.DialogConfirmSave);
-                message = string.Format(GetText(DialogueType.UI, TextKey.ConfirmOverwriteSaveSlot), slotIndex + 1);
-                confirmText = GetText(DialogueType.UI, TextKey.ButtonSave);
+                title = GetText(TextType.UI, UITextKey.DialogConfirmSave);
+                message = string.Format(GetText(TextType.UI, UITextKey.ConfirmOverwriteSaveSlot), slotIndex + 1);
+                confirmText = GetText(TextType.UI, UITextKey.ButtonSave);
             }
             else
             {
-                title = GetText(DialogueType.UI, TextKey.DialogConfirmLoad);
-                message = string.Format(GetText(DialogueType.UI, TextKey.ConfirmLoadSaveSlot), slotIndex + 1);
-                confirmText = GetText(DialogueType.UI, TextKey.ButtonLoad);
+                title = GetText(TextType.UI, UITextKey.DialogConfirmLoad);
+                message = string.Format(GetText(TextType.UI, UITextKey.ConfirmLoadSaveSlot), slotIndex + 1);
+                confirmText = GetText(TextType.UI, UITextKey.ButtonLoad);
             }
 
             var windowStyle = _skin.Get<WindowStyle>("ph-default");
@@ -271,7 +271,7 @@ namespace PitHero.UI
             };
             buttonTable.Add(confirmButton).SetMinWidth(80f).Height(24f).SetPadRight(10f);
 
-            var cancelButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonCancel), _skin, "ph-default");
+            var cancelButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonCancel), _skin, "ph-default");
             cancelButton.OnClicked += (button) => HideConfirmDialog();
             buttonTable.Add(cancelButton).SetMinWidth(80f).Height(24f);
 

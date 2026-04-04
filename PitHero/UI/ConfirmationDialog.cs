@@ -27,7 +27,7 @@ namespace PitHero.UI
             // Button row
             var buttonTable = new Table();
 
-            var yesButton = new TextButton(textService.DisplayText(DialogueType.UI, TextKey.ButtonYes), skin, "ph-default");
+            var yesButton = new TextButton(textService.DisplayText(TextType.UI, UITextKey.ButtonYes), skin, "ph-default");
             yesButton.OnClicked += (button) =>
             {
                 onYes?.Invoke();
@@ -35,7 +35,7 @@ namespace PitHero.UI
             };
             buttonTable.Add(yesButton).Width(80).SetPadRight(10);
 
-            var noButton = new TextButton(textService.DisplayText(DialogueType.UI, TextKey.ButtonNo), skin, "ph-default");
+            var noButton = new TextButton(textService.DisplayText(TextType.UI, UITextKey.ButtonNo), skin, "ph-default");
             noButton.OnClicked += (button) =>
             {
                 onNo?.Invoke();

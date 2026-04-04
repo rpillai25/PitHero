@@ -69,7 +69,7 @@ namespace PitHero.UI
             bool hasAnyChanges = false;
 
             // Title
-            var titleText = _textService.DisplayText(DialogueType.UI, TextKey.EquipPreviewChanges);
+            var titleText = _textService.DisplayText(TextType.UI, UITextKey.EquipPreviewChanges);
             var titleLabel = new Label(titleText, new LabelStyle { Font = font, FontColor = BrownFontColor });
             _contentTable.Add(titleLabel).Left().Pad(0, 0, LINE_SPACING, 0);
             _contentTable.Row();
@@ -84,7 +84,7 @@ namespace PitHero.UI
             if (strengthDiff != 0)
             {
                 hasAnyChanges = true;
-                var text = string.Format(_textService.DisplayText(DialogueType.UI, TextKey.StatDiffStrength), strengthDiff > 0 ? "+" + strengthDiff : strengthDiff.ToString());
+                var text = string.Format(_textService.DisplayText(TextType.UI, UITextKey.StatDiffStrength), strengthDiff > 0 ? "+" + strengthDiff : strengthDiff.ToString());
                 var color = strengthDiff > 0 ? Color.Green : Color.Red;
                 var label = new Label(text, new LabelStyle { Font = font, FontColor = color });
                 _contentTable.Add(label).Left().Pad(0, 0, LINE_SPACING, 0);
@@ -97,7 +97,7 @@ namespace PitHero.UI
             if (agilityDiff != 0)
             {
                 hasAnyChanges = true;
-                var text = string.Format(_textService.DisplayText(DialogueType.UI, TextKey.StatDiffAgility), agilityDiff > 0 ? "+" + agilityDiff : agilityDiff.ToString());
+                var text = string.Format(_textService.DisplayText(TextType.UI, UITextKey.StatDiffAgility), agilityDiff > 0 ? "+" + agilityDiff : agilityDiff.ToString());
                 var color = agilityDiff > 0 ? Color.Green : Color.Red;
                 var label = new Label(text, new LabelStyle { Font = font, FontColor = color });
                 _contentTable.Add(label).Left().Pad(0, 0, LINE_SPACING, 0);
@@ -110,7 +110,7 @@ namespace PitHero.UI
             if (vitalityDiff != 0)
             {
                 hasAnyChanges = true;
-                var text = string.Format(_textService.DisplayText(DialogueType.UI, TextKey.StatDiffVitality), vitalityDiff > 0 ? "+" + vitalityDiff : vitalityDiff.ToString());
+                var text = string.Format(_textService.DisplayText(TextType.UI, UITextKey.StatDiffVitality), vitalityDiff > 0 ? "+" + vitalityDiff : vitalityDiff.ToString());
                 var color = vitalityDiff > 0 ? Color.Green : Color.Red;
                 var label = new Label(text, new LabelStyle { Font = font, FontColor = color });
                 _contentTable.Add(label).Left().Pad(0, 0, LINE_SPACING, 0);
@@ -123,7 +123,7 @@ namespace PitHero.UI
             if (magicDiff != 0)
             {
                 hasAnyChanges = true;
-                var text = string.Format(_textService.DisplayText(DialogueType.UI, TextKey.StatDiffMagic), magicDiff > 0 ? "+" + magicDiff : magicDiff.ToString());
+                var text = string.Format(_textService.DisplayText(TextType.UI, UITextKey.StatDiffMagic), magicDiff > 0 ? "+" + magicDiff : magicDiff.ToString());
                 var color = magicDiff > 0 ? Color.Green : Color.Red;
                 var label = new Label(text, new LabelStyle { Font = font, FontColor = color });
                 _contentTable.Add(label).Left().Pad(0, 0, LINE_SPACING, 0);
@@ -137,7 +137,7 @@ namespace PitHero.UI
             if (attackDiff != 0)
             {
                 hasAnyChanges = true;
-                var text = string.Format(_textService.DisplayText(DialogueType.UI, TextKey.StatDiffAttack), attackDiff > 0 ? "+" + attackDiff : attackDiff.ToString());
+                var text = string.Format(_textService.DisplayText(TextType.UI, UITextKey.StatDiffAttack), attackDiff > 0 ? "+" + attackDiff : attackDiff.ToString());
                 var color = attackDiff > 0 ? Color.Green : Color.Red;
                 var label = new Label(text, new LabelStyle { Font = font, FontColor = color });
                 _contentTable.Add(label).Left().Pad(0, 0, LINE_SPACING, 0);
@@ -150,7 +150,7 @@ namespace PitHero.UI
             if (defenseDiff != 0)
             {
                 hasAnyChanges = true;
-                var text = string.Format(_textService.DisplayText(DialogueType.UI, TextKey.StatDiffDefense), defenseDiff > 0 ? "+" + defenseDiff : defenseDiff.ToString());
+                var text = string.Format(_textService.DisplayText(TextType.UI, UITextKey.StatDiffDefense), defenseDiff > 0 ? "+" + defenseDiff : defenseDiff.ToString());
                 var color = defenseDiff > 0 ? Color.Green : Color.Red;
                 var label = new Label(text, new LabelStyle { Font = font, FontColor = color });
                 _contentTable.Add(label).Left().Pad(0, 0, LINE_SPACING, 0);
@@ -163,7 +163,7 @@ namespace PitHero.UI
             if (hpDiff != 0)
             {
                 hasAnyChanges = true;
-                var text = string.Format(_textService.DisplayText(DialogueType.UI, TextKey.StatDiffHp), hpDiff > 0 ? "+" + hpDiff : hpDiff.ToString());
+                var text = string.Format(_textService.DisplayText(TextType.UI, UITextKey.StatDiffHp), hpDiff > 0 ? "+" + hpDiff : hpDiff.ToString());
                 var color = hpDiff > 0 ? Color.Green : Color.Red;
                 var label = new Label(text, new LabelStyle { Font = font, FontColor = color });
                 _contentTable.Add(label).Left().Pad(0, 0, LINE_SPACING, 0);
@@ -176,7 +176,7 @@ namespace PitHero.UI
             if (apDiff != 0)
             {
                 hasAnyChanges = true;
-                var text = string.Format(_textService.DisplayText(DialogueType.UI, TextKey.StatDiffMp), apDiff > 0 ? "+" + apDiff : apDiff.ToString());
+                var text = string.Format(_textService.DisplayText(TextType.UI, UITextKey.StatDiffMp), apDiff > 0 ? "+" + apDiff : apDiff.ToString());
                 var color = apDiff > 0 ? Color.Green : Color.Red;
                 var label = new Label(text, new LabelStyle { Font = font, FontColor = color });
                 _contentTable.Add(label).Left().Pad(0, 0, LINE_SPACING, 0);

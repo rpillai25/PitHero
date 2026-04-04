@@ -186,7 +186,7 @@ namespace PitHero.UI
         /// <summary>
         /// Gets localized text or falls back to key name if TextService unavailable.
         /// </summary>
-        private string GetText(DialogueType type, TextKey key)
+        private string GetText(TextType type, string key)
         {
             var service = GetTextService();
             return service?.DisplayText(type, key) ?? key.ToString();
@@ -268,9 +268,9 @@ namespace PitHero.UI
 
             // Create tabs with content
             var tabStyle = CreateTabStyle(skin);
-            _windowTab = new Tab(GetText(DialogueType.UI, TextKey.TabWindow), tabStyle);
-            _sessionTab = new Tab(GetText(DialogueType.UI, TextKey.TabSession), tabStyle);
-            _buttonsTab = new Tab(GetText(DialogueType.UI, TextKey.TabButtons), tabStyle);
+            _windowTab = new Tab(GetText(TextType.UI, UITextKey.TabWindow), tabStyle);
+            _sessionTab = new Tab(GetText(TextType.UI, UITextKey.TabSession), tabStyle);
+            _buttonsTab = new Tab(GetText(TextType.UI, UITextKey.TabButtons), tabStyle);
 
             // Add content to tabs
             PopulateWindowTab(_windowTab, skin);
@@ -312,7 +312,7 @@ namespace PitHero.UI
             var scrollContent = new Table();
 
             // Always On Top checkbox
-            _alwaysOnTopCheckBox = new CheckBox(GetText(DialogueType.UI, TextKey.SettingsAlwaysOnTop), skin, "ph-default");
+            _alwaysOnTopCheckBox = new CheckBox(GetText(TextType.UI, UITextKey.SettingsAlwaysOnTop), skin, "ph-default");
             _alwaysOnTopCheckBox.IsChecked = _alwaysOnTop;
             _alwaysOnTopCheckBox.OnChanged += (isChecked) =>
             {
@@ -323,7 +323,7 @@ namespace PitHero.UI
             scrollContent.Row();
 
             // Auto-scroll to Hero checkbox
-            _autoScrollToHeroCheckBox = new CheckBox(GetText(DialogueType.UI, TextKey.SettingsAutoScrollToHero), skin, "ph-default");
+            _autoScrollToHeroCheckBox = new CheckBox(GetText(TextType.UI, UITextKey.SettingsAutoScrollToHero), skin, "ph-default");
             _autoScrollToHeroCheckBox.IsChecked = UIWindowManager.AutoScrollToHeroEnabled;
             _autoScrollToHeroCheckBox.OnChanged += (isChecked) =>
             {
@@ -333,7 +333,7 @@ namespace PitHero.UI
             scrollContent.Row();
 
             // Swap Monitor button
-            _swapMonitorButton = new TextButton(GetText(DialogueType.UI, TextKey.SettingsSwapMonitor), skin, "ph-default");
+            _swapMonitorButton = new TextButton(GetText(TextType.UI, UITextKey.SettingsSwapMonitor), skin, "ph-default");
             _swapMonitorButton.OnClicked += (button) =>
             {
                 WindowManager.SwapToNextMonitor(_game);
@@ -344,7 +344,7 @@ namespace PitHero.UI
             scrollContent.Row();
 
             // Y Offset slider (left-aligned label)
-            _yOffsetLabel = new Label(string.Format(GetText(DialogueType.UI, TextKey.SettingsYOffset), 0), skin, "ph-default");
+            _yOffsetLabel = new Label(string.Format(GetText(TextType.UI, UITextKey.SettingsYOffset), 0), skin, "ph-default");
             scrollContent.Add(_yOffsetLabel).Left().SetPadBottom(10);
             scrollContent.Row();
 
@@ -359,7 +359,7 @@ namespace PitHero.UI
             // Update label during dragging (immediate feedback)
             _yOffsetSlider.OnChanged += (value) =>
             {
-                _yOffsetLabel.SetText(string.Format(GetText(DialogueType.UI, TextKey.SettingsYOffset), (int)value));
+                _yOffsetLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsYOffset), (int)value));
             };
 
             // Apply window position when value is committed (mouse released)
@@ -372,11 +372,11 @@ namespace PitHero.UI
             yOffsetTable.Add(_yOffsetSlider).Width(240).SetPadRight(10);
 
             // Reset Y Offset button
-            var resetYOffsetButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonReset), skin, "ph-default");
+            var resetYOffsetButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonReset), skin, "ph-default");
             resetYOffsetButton.OnClicked += (button) =>
             {
                 _yOffsetSlider.SetValueAndCommit(0);
-                _yOffsetLabel.SetText(string.Format(GetText(DialogueType.UI, TextKey.SettingsYOffset), 0));
+                _yOffsetLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsYOffset), 0));
             };
             yOffsetTable.Add(resetYOffsetButton).Width(50).Height(16f);
 
@@ -384,7 +384,7 @@ namespace PitHero.UI
             scrollContent.Row();
 
             // Zoom level slider with reset button (left-aligned label)
-            _zoomLabel = new Label(string.Format(GetText(DialogueType.UI, TextKey.SettingsZoom), GameConfig.CameraDefaultZoom.ToString("F2")), skin, "ph-default");
+            _zoomLabel = new Label(string.Format(GetText(TextType.UI, UITextKey.SettingsZoom), GameConfig.CameraDefaultZoom.ToString("F2")), skin, "ph-default");
             scrollContent.Add(_zoomLabel).Left().SetPadBottom(10);
             scrollContent.Row();
 
@@ -398,7 +398,7 @@ namespace PitHero.UI
             // Update label and camera zoom immediately
             _zoomSlider.OnChanged += (value) =>
             {
-                _zoomLabel.SetText(string.Format(GetText(DialogueType.UI, TextKey.SettingsZoom), value.ToString("F2")));
+                _zoomLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsZoom), value.ToString("F2")));
             };
 
             _zoomSlider.OnValueCommitted += (value) =>
@@ -409,11 +409,11 @@ namespace PitHero.UI
             zoomTable.Add(_zoomSlider).Width(240).SetPadRight(10);
 
             // Reset zoom button
-            _resetZoomButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonReset), skin, "ph-default");
+            _resetZoomButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonReset), skin, "ph-default");
             _resetZoomButton.OnClicked += (button) =>
             {
                 _zoomSlider.SetValueAndCommit(GameConfig.CameraDefaultZoom);
-                _zoomLabel.SetText(string.Format(GetText(DialogueType.UI, TextKey.SettingsZoom), GameConfig.CameraDefaultZoom.ToString("F2")));
+                _zoomLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsZoom), GameConfig.CameraDefaultZoom.ToString("F2")));
                 ApplyCameraZoom(GameConfig.CameraDefaultZoom);
             };
 
@@ -422,7 +422,7 @@ namespace PitHero.UI
             scrollContent.Row();
 
             // Window Size radio buttons
-            var windowSizeLabel = new Label(GetText(DialogueType.UI, TextKey.SettingsWindowSize), skin, "ph-default");
+            var windowSizeLabel = new Label(GetText(TextType.UI, UITextKey.SettingsWindowSize), skin, "ph-default");
             scrollContent.Add(windowSizeLabel).Left().SetPadBottom(10);
             scrollContent.Row();
 
@@ -430,8 +430,8 @@ namespace PitHero.UI
             _windowSizeButtonGroup = new ButtonGroup();
 
             // Create radio buttons using CheckBox with "ph-default" style
-            _normalSizeButton = new CheckBox(GetText(DialogueType.UI, TextKey.SettingsWindowSizeNormal), skin, "ph-default");
-            _halfSizeButton = new CheckBox(GetText(DialogueType.UI, TextKey.SettingsWindowSizeHalf), skin, "ph-default");
+            _normalSizeButton = new CheckBox(GetText(TextType.UI, UITextKey.SettingsWindowSizeNormal), skin, "ph-default");
+            _halfSizeButton = new CheckBox(GetText(TextType.UI, UITextKey.SettingsWindowSizeHalf), skin, "ph-default");
 
             // Add buttons to ButtonGroup
             _windowSizeButtonGroup.Add(_normalSizeButton);
@@ -469,17 +469,17 @@ namespace PitHero.UI
             scrollContent.Row();
 
             // Dock buttons
-            _dockTopButton = new TextButton(GetText(DialogueType.UI, TextKey.SettingsDockTop), skin, "ph-default");
+            _dockTopButton = new TextButton(GetText(TextType.UI, UITextKey.SettingsDockTop), skin, "ph-default");
             _dockTopButton.OnClicked += (button) => DockTop();
             scrollContent.Add(_dockTopButton).Width(100f).Height(24f).SetPadBottom(10);
             scrollContent.Row();
 
-            _dockBottomButton = new TextButton(GetText(DialogueType.UI, TextKey.SettingsDockBottom), skin, "ph-default");
+            _dockBottomButton = new TextButton(GetText(TextType.UI, UITextKey.SettingsDockBottom), skin, "ph-default");
             _dockBottomButton.OnClicked += (button) => DockBottom();
             scrollContent.Add(_dockBottomButton).Width(100f).Height(24f).SetPadBottom(10);
             scrollContent.Row();
 
-            _dockCenterButton = new TextButton(GetText(DialogueType.UI, TextKey.SettingsDockCenter), skin, "ph-default");
+            _dockCenterButton = new TextButton(GetText(TextType.UI, UITextKey.SettingsDockCenter), skin, "ph-default");
             _dockCenterButton.OnClicked += (button) => DockCenter();
             scrollContent.Add(_dockCenterButton).Width(100f).Height(24f);
 
@@ -501,11 +501,11 @@ namespace PitHero.UI
             sessionTable.Pad(20);
 
             // Session label
-            sessionTable.Add(new Label(GetText(DialogueType.UI, TextKey.SettingsGameSession), skin, "ph-default")).Left().SetPadBottom(20);
+            sessionTable.Add(new Label(GetText(TextType.UI, UITextKey.SettingsGameSession), skin, "ph-default")).Left().SetPadBottom(20);
             sessionTable.Row();
 
             // Save button
-            _saveButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonSave), skin, "ph-default");
+            _saveButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonSave), skin, "ph-default");
             _saveButton.OnClicked += (button) =>
             {
                 ShowSaveLoadUI(SaveLoadUI.Mode.Save);
@@ -514,13 +514,13 @@ namespace PitHero.UI
             sessionTable.Row();
 
             // Quit to Title button
-            _quitToTitleButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonQuitToTitle), skin, "ph-default");
+            _quitToTitleButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonQuitToTitle), skin, "ph-default");
             _quitToTitleButton.OnClicked += (button) => ShowQuitToTitleConfirmation();
             sessionTable.Add(_quitToTitleButton).SetMinWidth(64f).Height(24f).SetPadBottom(15);
             sessionTable.Row();
 
             // Exit button
-            _exitButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonExit), skin, "ph-default");
+            _exitButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonExit), skin, "ph-default");
             _exitButton.OnClicked += (button) => ShowExitConfirmation();
             sessionTable.Add(_exitButton).SetMinWidth(64f).Height(24f);
 
@@ -537,19 +537,19 @@ namespace PitHero.UI
             buttonsTable.Pad(20);
 
             // Replenish section
-            var replenishLabel = new Label(GetText(DialogueType.UI, TextKey.SettingsReplenishLabel), skin, "ph-default");
+            var replenishLabel = new Label(GetText(TextType.UI, UITextKey.SettingsReplenishLabel), skin, "ph-default");
             buttonsTable.Add(replenishLabel).Left().SetPadBottom(10f);
             buttonsTable.Row();
 
             // HP Threshold slider row
             var hpSliderTable = new Table();
-            _replenishHPThresholdLabel = new Label(string.Format(GetText(DialogueType.UI, TextKey.SettingsHpThreshold), 90), skin, "ph-default");
+            _replenishHPThresholdLabel = new Label(string.Format(GetText(TextType.UI, UITextKey.SettingsHpThreshold), 90), skin, "ph-default");
             hpSliderTable.Add(_replenishHPThresholdLabel).SetPadRight(8);
             _replenishHPSlider = new EnhancedSlider(0, 100, 1, false, skin, null, false);
             _replenishHPSlider.SetValueAndCommit(90);
             _replenishHPSlider.OnChanged += (value) =>
             {
-                _replenishHPThresholdLabel.SetText(string.Format(GetText(DialogueType.UI, TextKey.SettingsHpThreshold), (int)value));
+                _replenishHPThresholdLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsHpThreshold), (int)value));
             };
             _replenishHPSlider.OnValueCommitted += (value) =>
             {
@@ -562,13 +562,13 @@ namespace PitHero.UI
 
             // MP Threshold slider row
             var mpSliderTable = new Table();
-            _replenishMPThresholdLabel = new Label(string.Format(GetText(DialogueType.UI, TextKey.SettingsMpThreshold), 90), skin, "ph-default");
+            _replenishMPThresholdLabel = new Label(string.Format(GetText(TextType.UI, UITextKey.SettingsMpThreshold), 90), skin, "ph-default");
             mpSliderTable.Add(_replenishMPThresholdLabel).SetPadRight(8);
             _replenishMPSlider = new EnhancedSlider(0, 100, 1, false, skin, null, false);
             _replenishMPSlider.SetValueAndCommit(90);
             _replenishMPSlider.OnChanged += (value) =>
             {
-                _replenishMPThresholdLabel.SetText(string.Format(GetText(DialogueType.UI, TextKey.SettingsMpThreshold), (int)value));
+                _replenishMPThresholdLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsMpThreshold), (int)value));
             };
             _replenishMPSlider.OnValueCommitted += (value) =>
             {
@@ -614,12 +614,12 @@ namespace PitHero.UI
             var exitDialogTable = new Table();
             exitDialogTable.Pad(20);
 
-            exitDialogTable.Add(new Label(GetText(DialogueType.UI, TextKey.ConfirmExitMessage), skin, "ph-default")).SetPadBottom(20);
+            exitDialogTable.Add(new Label(GetText(TextType.UI, UITextKey.ConfirmExitMessage), skin, "ph-default")).SetPadBottom(20);
             exitDialogTable.Row();
 
             var exitButtonTable = new Table();
 
-            var exitYesButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonYes), skin, "ph-default");
+            var exitYesButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonYes), skin, "ph-default");
             exitYesButton.OnClicked += (button) =>
             {
                 HideConfirmationDialog(_exitConfirmationDialog);
@@ -627,7 +627,7 @@ namespace PitHero.UI
             };
             exitButtonTable.Add(exitYesButton).Width(80).Height(24).SetPadRight(10);
 
-            var exitNoButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonNo), skin, "ph-default");
+            var exitNoButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonNo), skin, "ph-default");
             exitNoButton.OnClicked += (button) => HideConfirmationDialog(_exitConfirmationDialog);
             exitButtonTable.Add(exitNoButton).Width(80).Height(24);
 
@@ -648,12 +648,12 @@ namespace PitHero.UI
             var quitToTitleDialogTable = new Table();
             quitToTitleDialogTable.Pad(20);
 
-            quitToTitleDialogTable.Add(new Label(GetText(DialogueType.UI, TextKey.ConfirmQuitToTitleMessage), skin, "ph-default")).SetPadBottom(20);
+            quitToTitleDialogTable.Add(new Label(GetText(TextType.UI, UITextKey.ConfirmQuitToTitleMessage), skin, "ph-default")).SetPadBottom(20);
             quitToTitleDialogTable.Row();
 
             var quitToTitleButtonTable = new Table();
 
-            var quitToTitleYesButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonYes), skin, "ph-default");
+            var quitToTitleYesButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonYes), skin, "ph-default");
             quitToTitleYesButton.OnClicked += (button) =>
             {
                 HideConfirmationDialog(_quitToTitleConfirmationDialog);
@@ -666,7 +666,7 @@ namespace PitHero.UI
             };
             quitToTitleButtonTable.Add(quitToTitleYesButton).Width(80).Height(24).SetPadRight(10);
 
-            var quitToTitleNoButton = new TextButton(GetText(DialogueType.UI, TextKey.ButtonNo), skin, "ph-default");
+            var quitToTitleNoButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonNo), skin, "ph-default");
             quitToTitleNoButton.OnClicked += (button) => HideConfirmationDialog(_quitToTitleConfirmationDialog);
             quitToTitleButtonTable.Add(quitToTitleNoButton).Width(80).Height(24);
 
@@ -975,7 +975,7 @@ namespace PitHero.UI
             _currentYOffset = 0;
             UpdateSliderRange(0, 200);
             _yOffsetSlider.SetValueAndCommit(0);
-            _yOffsetLabel.SetText(string.Format(GetText(DialogueType.UI, TextKey.SettingsYOffset), 0));
+            _yOffsetLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsYOffset), 0));
             ApplyCurrentWindowPosition();
         }
 
@@ -987,7 +987,7 @@ namespace PitHero.UI
             _currentYOffset = 0;
             UpdateSliderRange(-200, 0);
             _yOffsetSlider.SetValueAndCommit(0);
-            _yOffsetLabel.SetText(string.Format(GetText(DialogueType.UI, TextKey.SettingsYOffset), 0));
+            _yOffsetLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsYOffset), 0));
             ApplyCurrentWindowPosition();
         }
 
@@ -999,7 +999,7 @@ namespace PitHero.UI
             _currentYOffset = 0;
             UpdateSliderRange(-200, 200);
             _yOffsetSlider.SetValueAndCommit(0);
-            _yOffsetLabel.SetText(string.Format(GetText(DialogueType.UI, TextKey.SettingsYOffset), 0));
+            _yOffsetLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsYOffset), 0));
             ApplyCurrentWindowPosition();
         }
 
@@ -1113,7 +1113,7 @@ namespace PitHero.UI
             {
                 var currentZoom = currentScene.Camera.RawZoom;
                 _zoomSlider.SetValueAndCommit(currentZoom);
-                _zoomLabel.SetText(string.Format(GetText(DialogueType.UI, TextKey.SettingsZoom), currentZoom.ToString("F2")));
+                _zoomLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsZoom), currentZoom.ToString("F2")));
                 Debug.Log($"[SettingsUI] Updated zoom slider to current camera zoom: {currentZoom:F2}x");
             }
         }

@@ -1,6 +1,7 @@
 using RolePlayingFramework.Skills;
 using RolePlayingFramework.Stats;
 using System.Collections.Generic;
+using PitHero;
 
 namespace RolePlayingFramework.Jobs.Primary
 {
@@ -12,7 +13,7 @@ namespace RolePlayingFramework.Jobs.Primary
     public sealed class Priest : BaseJob
     {
         public Priest() : base(
-            name: "Priest",
+            name: JobTextKey.Job_Priest_Name,
             // BaseBonus emphasizes Magic for healing
             // Target: High Magic for MP and healing, moderate defensive stats
             baseBonus: new StatBlock(strength: 5, agility: 6, vitality: 5, magic: 9),
@@ -22,8 +23,8 @@ namespace RolePlayingFramework.Jobs.Primary
             growthPerLevel: new StatBlock(strength: 0.337f, agility: 0.480f, vitality: 0.388f, magic: 0.704f),
             tier: JobTier.Primary,
             jobFlag: JobType.Priest,
-            description: "Support caster with healing and modest defenses.",
-            role: "Healing/support, high MP, moderate magic")
+            description: JobTextKey.Job_Priest_Desc,
+            role: JobTextKey.Job_Priest_Role)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

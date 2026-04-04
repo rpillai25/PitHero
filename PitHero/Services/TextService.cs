@@ -13,7 +13,7 @@ namespace PitHero.Services
     {
         private const string DefaultLanguage = "en-us";
         private readonly string _language;
-        private readonly Dictionary<DialogueType, Dictionary<TextKey, string>> _dictionaries;
+        private readonly Dictionary<TextType, Dictionary<string, string>> _dictionaries;
 
         /// <summary>
         /// Initializes the TextService with the default language (en-us).
@@ -27,7 +27,7 @@ namespace PitHero.Services
         public TextService(string language)
         {
             _language = language;
-            _dictionaries = new Dictionary<DialogueType, Dictionary<TextKey, string>>();
+            _dictionaries = new Dictionary<TextType, Dictionary<string, string>>();
             LoadAll();
         }
 
@@ -36,19 +36,23 @@ namespace PitHero.Services
         /// </summary>
         private void LoadAll()
         {
-            LoadFile(DialogueType.UI, "UI.txt");
+            LoadFile(TextType.UI, "UI.txt");
+            LoadFile(TextType.Inventory, "Inventory.txt");
+            LoadFile(TextType.Skill, "Skill.txt");
+            LoadFile(TextType.Job, "Job.txt");
+            LoadFile(TextType.Monster, "Monster.txt");
         }
 
         /// <summary>
-        /// Loads a single localization file into the specified dialogue type dictionary.
+        /// Loads a single localization file into the specified text type dictionary.
         /// </summary>
-        /// <param name="dialogueType">The dialogue type to load the file into.</param>
+        /// <param name="textType">The text type to load the file into.</param>
         /// <param name="fileName">The name of the localization file.</param>
-        private void LoadFile(DialogueType dialogueType, string fileName)
+        private void LoadFile(TextType textType, string fileName)
         {
             string path = $"Content/Localization/{_language}/{fileName}";
-            var dict = new Dictionary<TextKey, string>();
-            _dictionaries[dialogueType] = dict;
+            var dict = new Dictionary<string, string>();
+            _dictionaries[textType] = dict;
 
             try
             {
@@ -73,14 +77,7 @@ namespace PitHero.Services
                         string keyStr = line.Substring(0, separatorIndex).Trim();
                         string value = line.Substring(separatorIndex + 1);
 
-                        if (Enum.TryParse<TextKey>(keyStr, out TextKey key))
-                        {
-                            dict[key] = value;
-                        }
-                        else
-                        {
-                            Nez.Debug.Log($"[TextService] Unknown key '{keyStr}' in {fileName} line {lineNumber}");
-                        }
+                        dict[keyStr] = value;
                     }
                 }
                 Nez.Debug.Log($"[TextService] Loaded {dict.Count} entries from {path}");
@@ -92,21 +89,21 @@ namespace PitHero.Services
         }
 
         /// <summary>
-        /// Returns the localized text for the given dialogue type and key.
+        /// Returns the localized text for the given text type and key.
         /// Falls back to the key name if no entry is found.
         /// </summary>
-        /// <param name="dialogueType">The dialogue type (e.g. UI).</param>
+        /// <param name="textType">The text type (e.g. UI, Inventory).</param>
         /// <param name="key">The text key to look up.</param>
         /// <returns>The localized string, or the key name as fallback.</returns>
-        public string DisplayText(DialogueType dialogueType, TextKey key)
+        public string DisplayText(TextType textType, string key)
         {
-            if (_dictionaries.TryGetValue(dialogueType, out var dict) &&
+            if (_dictionaries.TryGetValue(textType, out var dict) &&
                 dict.TryGetValue(key, out string value))
             {
                 return value;
             }
-            Nez.Debug.Log($"[TextService] Missing key {key} for {dialogueType}");
-            return key.ToString();
+            Nez.Debug.Log($"[TextService] Missing key {key} for {textType}");
+            return key;
         }
     }
 }

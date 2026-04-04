@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Rods
 {
@@ -14,7 +15,7 @@ namespace RolePlayingFramework.Equipment.Rods
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "EmberRod",
+                InventoryTextKey.Inv_EmberRod_Name,
                 ItemKind.WeaponRod,
                 Rarity,
                 "Staff topped with ever-burning ember.",
