@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_GranitePlate_Name,
                 ItemKind.ArmorMail,
                 Rarity,
-                "Ultra-dense stone armor.",
+                InventoryTextKey.Inv_GranitePlate_Desc,
                 850,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

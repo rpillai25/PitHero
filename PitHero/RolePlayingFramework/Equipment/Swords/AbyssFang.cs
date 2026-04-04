@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Swords
                 InventoryTextKey.Inv_AbyssFang_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Pitch-black blade from the void.",
+                InventoryTextKey.Inv_AbyssFang_Desc,
                 675,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

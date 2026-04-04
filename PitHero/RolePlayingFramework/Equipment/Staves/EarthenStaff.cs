@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Staves
                 InventoryTextKey.Inv_EarthenStaff_Name,
                 ItemKind.WeaponStaff,
                 Rarity,
-                "Staff embedded with earth crystals.",
+                InventoryTextKey.Inv_EarthenStaff_Desc,
                 400,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Axes
                 InventoryTextKey.Inv_FlameHatchet_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Axe head that glows red when swung.",
+                InventoryTextKey.Inv_FlameHatchet_Desc,
                 275,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

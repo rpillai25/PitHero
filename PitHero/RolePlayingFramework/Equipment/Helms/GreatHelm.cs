@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_GreatHelm_Name,
                 ItemKind.HatHelm,
                 Rarity,
-                "Fully enclosed helmet.",
+                InventoryTextKey.Inv_GreatHelm_Desc,
                 600,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

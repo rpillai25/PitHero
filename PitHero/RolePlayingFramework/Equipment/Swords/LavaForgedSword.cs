@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Swords
                 InventoryTextKey.Inv_LavaForgedSword_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Blade tempered in underground magma.",
+                InventoryTextKey.Inv_LavaForgedSword_Desc,
                 575,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

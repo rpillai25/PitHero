@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 InventoryTextKey.Inv_SteelShield_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Quality steel shield.",
+                InventoryTextKey.Inv_SteelShield_Desc,
                 400,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

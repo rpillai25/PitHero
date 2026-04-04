@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_PitLordsCrown_Name,
                 ItemKind.HatHelm,
                 Rarity,
-                "Legendary crown of the cave master.",
+                InventoryTextKey.Inv_PitLordsCrown_Desc,
                 1100,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

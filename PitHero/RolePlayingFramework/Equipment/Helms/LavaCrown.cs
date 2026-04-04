@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_LavaCrown_Name,
                 ItemKind.HatHelm,
                 Rarity,
-                "Magma-forged royal helmet.",
+                InventoryTextKey.Inv_LavaCrown_Desc,
                 700,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

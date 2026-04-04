@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Swords
                 InventoryTextKey.Inv_VoidCutter_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Dark blade that seems to drink in light.",
+                InventoryTextKey.Inv_VoidCutter_Desc,
                 475,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

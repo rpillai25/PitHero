@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_WingedHelm_Name,
                 ItemKind.HatHelm,
                 Rarity,
-                "Helmet with decorative wings.",
+                InventoryTextKey.Inv_WingedHelm_Desc,
                 800,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

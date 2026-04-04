@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Spears
                 InventoryTextKey.Inv_CavePike_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Long spear designed for cave defense.",
+                InventoryTextKey.Inv_CavePike_Desc,
                 400,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

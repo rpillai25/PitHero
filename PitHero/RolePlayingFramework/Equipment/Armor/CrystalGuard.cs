@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_CrystalGuard_Name,
                 ItemKind.ArmorMail,
                 Rarity,
-                "Armor embedded with protective crystals.",
+                InventoryTextKey.Inv_CrystalGuard_Desc,
                 650,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

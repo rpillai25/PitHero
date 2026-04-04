@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_PaddedArmor_Name,
                 ItemKind.ArmorGi,
                 Rarity,
-                "Quilted protective layers.",
+                InventoryTextKey.Inv_PaddedArmor_Desc,
                 120,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

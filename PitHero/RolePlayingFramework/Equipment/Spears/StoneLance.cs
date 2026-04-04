@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Spears
                 InventoryTextKey.Inv_StoneLance_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Stone-tipped thrusting weapon.",
+                InventoryTextKey.Inv_StoneLance_Desc,
                 175,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

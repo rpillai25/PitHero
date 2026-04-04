@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Daggers
                 InventoryTextKey.Inv_SilentFang_Name,
                 ItemKind.WeaponKnife,
                 Rarity,
-                "Slim blade for stealth attacks.",
+                InventoryTextKey.Inv_SilentFang_Desc,
                 225,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

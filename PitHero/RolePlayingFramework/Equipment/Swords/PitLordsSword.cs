@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Swords
                 InventoryTextKey.Inv_PitLordsSword_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Massive sword wielded by the cave's master.",
+                InventoryTextKey.Inv_PitLordsSword_Desc,
                 750,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

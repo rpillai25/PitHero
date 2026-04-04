@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 InventoryTextKey.Inv_MagmaWall_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Molten-core defensive barrier.",
+                InventoryTextKey.Inv_MagmaWall_Desc,
                 1050,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

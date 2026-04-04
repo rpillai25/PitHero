@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_InfernoCrown_Name,
                 ItemKind.HatHelm,
                 Rarity,
-                "Crown with eternal flames.",
+                InventoryTextKey.Inv_InfernoCrown_Desc,
                 900,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Spears
                 InventoryTextKey.Inv_WoodenSpear_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Simple wooden shaft with sharpened tip.",
+                InventoryTextKey.Inv_WoodenSpear_Desc,
                 75,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Axes
                 InventoryTextKey.Inv_CrystalCleaver_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Axe with crystalline blade edge.",
+                InventoryTextKey.Inv_CrystalCleaver_Desc,
                 450,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

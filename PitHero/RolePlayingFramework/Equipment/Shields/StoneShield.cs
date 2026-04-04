@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 InventoryTextKey.Inv_StoneShield_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Shield carved from solid stone.",
+                InventoryTextKey.Inv_StoneShield_Desc,
                 200,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

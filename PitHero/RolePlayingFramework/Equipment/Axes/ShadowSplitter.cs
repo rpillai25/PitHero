@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Axes
                 InventoryTextKey.Inv_ShadowSplitter_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Black-bladed axe that cleaves through darkness.",
+                InventoryTextKey.Inv_ShadowSplitter_Desc,
                 525,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

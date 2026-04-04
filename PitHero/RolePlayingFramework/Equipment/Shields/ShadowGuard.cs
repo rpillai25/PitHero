@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 InventoryTextKey.Inv_ShadowGuard_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Dark shield that bends shadows.",
+                InventoryTextKey.Inv_ShadowGuard_Desc,
                 550,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

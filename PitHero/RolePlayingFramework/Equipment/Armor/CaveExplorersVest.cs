@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_CaveExplorersVest_Name,
                 ItemKind.ArmorGi,
                 Rarity,
-                "Practical armor for cave navigation.",
+                InventoryTextKey.Inv_CaveExplorersVest_Desc,
                 210,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

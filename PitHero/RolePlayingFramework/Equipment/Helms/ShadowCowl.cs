@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_ShadowCowl_Name,
                 ItemKind.HatHeadband,
                 Rarity,
-                "Dark hood that obscures features.",
+                InventoryTextKey.Inv_ShadowCowl_Desc,
                 550,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_SteelCuirass_Name,
                 ItemKind.ArmorMail,
                 Rarity,
-                "Quality steel chest armor.",
+                InventoryTextKey.Inv_SteelCuirass_Desc,
                 800,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

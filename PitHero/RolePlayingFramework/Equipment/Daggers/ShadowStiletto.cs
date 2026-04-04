@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Daggers
                 InventoryTextKey.Inv_ShadowStiletto_Name,
                 ItemKind.WeaponKnife,
                 Rarity,
-                "Thin piercing blade that vanishes in shadows.",
+                InventoryTextKey.Inv_ShadowStiletto_Desc,
                 550,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

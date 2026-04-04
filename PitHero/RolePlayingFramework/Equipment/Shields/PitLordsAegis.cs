@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 InventoryTextKey.Inv_PitLordsAegis_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Legendary shield of the cave master.",
+                InventoryTextKey.Inv_PitLordsAegis_Desc,
                 1100,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

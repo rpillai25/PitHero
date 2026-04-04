@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 InventoryTextKey.Inv_HeaterShield_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Classic triangular shield.",
+                InventoryTextKey.Inv_HeaterShield_Desc,
                 800,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

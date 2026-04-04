@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Swords
                 InventoryTextKey.Inv_QuartzSaber_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Crystalline blade that resonates when struck.",
+                InventoryTextKey.Inv_QuartzSaber_Desc,
                 625,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

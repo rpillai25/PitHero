@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 InventoryTextKey.Inv_AbyssWall_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Shield from the void.",
+                InventoryTextKey.Inv_AbyssWall_Desc,
                 950,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

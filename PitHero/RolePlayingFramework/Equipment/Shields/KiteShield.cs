@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 InventoryTextKey.Inv_KiteShield_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Tall triangular shield.",
+                InventoryTextKey.Inv_KiteShield_Desc,
                 250,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

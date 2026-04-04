@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_StonePlate_Name,
                 ItemKind.ArmorMail,
                 Rarity,
-                "Carved stone armor pieces.",
+                InventoryTextKey.Inv_StonePlate_Desc,
                 450,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

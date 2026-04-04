@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_MagmaHelm_Name,
                 ItemKind.HatHelm,
                 Rarity,
-                "Molten-core protective helmet.",
+                InventoryTextKey.Inv_MagmaHelm_Desc,
                 1050,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

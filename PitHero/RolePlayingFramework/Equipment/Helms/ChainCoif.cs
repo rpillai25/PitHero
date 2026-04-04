@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_ChainCoif_Name,
                 ItemKind.HatHelm,
                 Rarity,
-                "Chainmail head covering.",
+                InventoryTextKey.Inv_ChainCoif_Desc,
                 175,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

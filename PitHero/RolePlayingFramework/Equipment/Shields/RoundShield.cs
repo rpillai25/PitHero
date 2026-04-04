@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 InventoryTextKey.Inv_RoundShield_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Standard circular shield.",
+                InventoryTextKey.Inv_RoundShield_Desc,
                 150,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

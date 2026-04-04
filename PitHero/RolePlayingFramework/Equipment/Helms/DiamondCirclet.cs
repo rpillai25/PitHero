@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_DiamondCirclet_Name,
                 ItemKind.HatHeadband,
                 Rarity,
-                "Headpiece with diamond reinforcement.",
+                InventoryTextKey.Inv_DiamondCirclet_Desc,
                 1000,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

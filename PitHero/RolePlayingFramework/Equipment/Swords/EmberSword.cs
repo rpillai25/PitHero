@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Swords
                 InventoryTextKey.Inv_EmberSword_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Blade that glows with inner heat.",
+                InventoryTextKey.Inv_EmberSword_Desc,
                 450,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

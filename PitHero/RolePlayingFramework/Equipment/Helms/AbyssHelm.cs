@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_AbyssHelm_Name,
                 ItemKind.HatHelm,
                 Rarity,
-                "Helmet from the deepest void.",
+                InventoryTextKey.Inv_AbyssHelm_Desc,
                 950,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

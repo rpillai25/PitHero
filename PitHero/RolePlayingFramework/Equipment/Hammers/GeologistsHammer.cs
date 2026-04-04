@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Hammers
                 InventoryTextKey.Inv_GeologistsHammer_Name,
                 ItemKind.WeaponHammer,
                 Rarity,
-                "Precision hammer for breaking minerals.",
+                InventoryTextKey.Inv_GeologistsHammer_Desc,
                 425,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

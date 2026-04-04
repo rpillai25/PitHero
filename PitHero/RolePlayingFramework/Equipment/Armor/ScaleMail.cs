@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_ScaleMail_Name,
                 ItemKind.ArmorMail,
                 Rarity,
-                "Overlapping metal scales.",
+                InventoryTextKey.Inv_ScaleMail_Desc,
                 270,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

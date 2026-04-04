@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Spears
                 InventoryTextKey.Inv_FlameLance_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Spear with burning tip.",
+                InventoryTextKey.Inv_FlameLance_Desc,
                 500,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

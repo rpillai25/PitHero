@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_CaveExplorersHood_Name,
                 ItemKind.HatHeadband,
                 Rarity,
-                "Practical hood for cave exploration.",
+                InventoryTextKey.Inv_CaveExplorersHood_Desc,
                 200,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

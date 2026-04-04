@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Spears
                 InventoryTextKey.Inv_InfernalPike_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Spear wreathed in eternal flames.",
+                InventoryTextKey.Inv_InfernalPike_Desc,
                 700,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

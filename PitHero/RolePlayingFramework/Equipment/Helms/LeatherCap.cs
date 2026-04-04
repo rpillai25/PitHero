@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_LeatherCap_Name,
                 ItemKind.HatHeadband,
                 Rarity,
-                "Basic leather headwear.",
+                InventoryTextKey.Inv_LeatherCap_Desc,
                 60,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

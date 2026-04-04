@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_HideVest_Name,
                 ItemKind.ArmorGi,
                 Rarity,
-                "Animal hide chest protection.",
+                InventoryTextKey.Inv_HideVest_Desc,
                 90,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

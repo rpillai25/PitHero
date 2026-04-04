@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_EmberguardMail_Name,
                 ItemKind.ArmorMail,
                 Rarity,
-                "Heat-resistant mail armor.",
+                InventoryTextKey.Inv_EmberguardMail_Desc,
                 500,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Axes
                 InventoryTextKey.Inv_VolcanicAxe_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Axe forged in volcanic heat.",
+                InventoryTextKey.Inv_VolcanicAxe_Desc,
                 625,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

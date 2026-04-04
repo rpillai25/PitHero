@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Hammers
                 InventoryTextKey.Inv_QuakeHammer_Name,
                 ItemKind.WeaponHammer,
                 Rarity,
-                "Massive hammer that shakes the ground.",
+                InventoryTextKey.Inv_QuakeHammer_Desc,
                 575,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

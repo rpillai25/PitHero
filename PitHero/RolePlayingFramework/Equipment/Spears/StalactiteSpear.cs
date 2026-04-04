@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Spears
                 InventoryTextKey.Inv_StalactiteSpear_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Spear crafted from a massive cave formation.",
+                InventoryTextKey.Inv_StalactiteSpear_Desc,
                 600,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

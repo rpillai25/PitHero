@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Daggers
                 InventoryTextKey.Inv_SerpentsTooth_Name,
                 ItemKind.WeaponKnife,
                 Rarity,
-                "Curved dagger shaped like a snake fang.",
+                InventoryTextKey.Inv_SerpentsTooth_Desc,
                 425,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

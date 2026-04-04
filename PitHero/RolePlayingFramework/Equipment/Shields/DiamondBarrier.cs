@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 InventoryTextKey.Inv_DiamondBarrier_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Ultra-hard diamond shield.",
+                InventoryTextKey.Inv_DiamondBarrier_Desc,
                 1000,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

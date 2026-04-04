@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_VoidMask_Name,
                 ItemKind.HatHelm,
                 Rarity,
-                "Featureless dark mask.",
+                InventoryTextKey.Inv_VoidMask_Desc,
                 750,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

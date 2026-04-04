@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_StuddedLeather_Name,
                 ItemKind.ArmorGi,
                 Rarity,
-                "Leather reinforced with metal studs.",
+                InventoryTextKey.Inv_StuddedLeather_Desc,
                 180,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 InventoryTextKey.Inv_CrystalBarrier_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Translucent crystal shield.",
+                InventoryTextKey.Inv_CrystalBarrier_Desc,
                 650,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

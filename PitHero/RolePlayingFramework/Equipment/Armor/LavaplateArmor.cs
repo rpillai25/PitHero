@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_LavaplateArmor_Name,
                 ItemKind.ArmorMail,
                 Rarity,
-                "Magma-forged heavy armor.",
+                InventoryTextKey.Inv_LavaplateArmor_Desc,
                 700,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

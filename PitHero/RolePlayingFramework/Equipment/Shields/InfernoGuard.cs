@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 InventoryTextKey.Inv_InfernoGuard_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Shield wreathed in flames.",
+                InventoryTextKey.Inv_InfernoGuard_Desc,
                 900,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Hammers
                 InventoryTextKey.Inv_MagmaMaul_Name,
                 ItemKind.WeaponHammer,
                 Rarity,
-                "Molten-core war hammer.",
+                InventoryTextKey.Inv_MagmaMaul_Desc,
                 750,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

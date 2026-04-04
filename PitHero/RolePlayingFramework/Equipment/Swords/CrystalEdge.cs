@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Swords
                 InventoryTextKey.Inv_CrystalEdge_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Blade with embedded crystal formations.",
+                InventoryTextKey.Inv_CrystalEdge_Desc,
                 400,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

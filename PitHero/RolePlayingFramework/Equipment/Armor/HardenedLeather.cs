@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_HardenedLeather_Name,
                 ItemKind.ArmorGi,
                 Rarity,
-                "Treated leather with increased durability.",
+                InventoryTextKey.Inv_HardenedLeather_Desc,
                 240,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

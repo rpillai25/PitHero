@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Swords
                 InventoryTextKey.Inv_MagmaBlade_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Red-hot blade that never cools.",
+                InventoryTextKey.Inv_MagmaBlade_Desc,
                 725,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

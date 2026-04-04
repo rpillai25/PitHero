@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 InventoryTextKey.Inv_ReinforcedBuckler_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Small metal-rimmed shield.",
+                InventoryTextKey.Inv_ReinforcedBuckler_Desc,
                 125,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

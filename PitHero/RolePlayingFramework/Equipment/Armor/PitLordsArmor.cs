@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_PitLordsArmor_Name,
                 ItemKind.ArmorMail,
                 Rarity,
-                "Legendary armor of the cave master.",
+                InventoryTextKey.Inv_PitLordsArmor_Desc,
                 1100,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

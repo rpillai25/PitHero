@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Hammers
                 InventoryTextKey.Inv_Mallet_Name,
                 ItemKind.WeaponHammer,
                 Rarity,
-                "Simple wooden mallet.",
+                InventoryTextKey.Inv_Mallet_Desc,
                 100,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

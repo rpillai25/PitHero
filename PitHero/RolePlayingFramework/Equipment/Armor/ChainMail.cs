@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_ChainMail_Name,
                 ItemKind.ArmorMail,
                 Rarity,
-                "Interlocking metal rings.",
+                InventoryTextKey.Inv_ChainMail_Desc,
                 300,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

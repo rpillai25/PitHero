@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_Voidmail_Name,
                 ItemKind.ArmorMail,
                 Rarity,
-                "Pitch-black armor that absorbs light.",
+                InventoryTextKey.Inv_Voidmail_Desc,
                 750,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

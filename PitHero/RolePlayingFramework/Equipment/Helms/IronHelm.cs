@@ -19,7 +19,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_IronHelm_Name,
                 ItemKind.HatHelm,
                 Rarity,
-                "Helm providing decent defense\nand earth resistance.",
+                InventoryTextKey.Inv_IronHelm_Desc,
                 135,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

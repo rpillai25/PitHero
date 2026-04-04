@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 InventoryTextKey.Inv_TowerShield_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Massive full-body shield.",
+                InventoryTextKey.Inv_TowerShield_Desc,
                 600,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_BurlapTunic_Name,
                 ItemKind.ArmorRobe,
                 Rarity,
-                "Rough woven fabric armor.",
+                InventoryTextKey.Inv_BurlapTunic_Desc,
                 60,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

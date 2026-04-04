@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Swords
                 InventoryTextKey.Inv_UndergroundRapier_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Lightweight piercing blade for swift strikes.",
+                InventoryTextKey.Inv_UndergroundRapier_Desc,
                 425,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

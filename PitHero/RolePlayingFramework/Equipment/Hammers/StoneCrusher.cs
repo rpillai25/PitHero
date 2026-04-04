@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Hammers
                 InventoryTextKey.Inv_StoneCrusher_Name,
                 ItemKind.WeaponHammer,
                 Rarity,
-                "Heavy stone-headed hammer.",
+                InventoryTextKey.Inv_StoneCrusher_Desc,
                 200,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

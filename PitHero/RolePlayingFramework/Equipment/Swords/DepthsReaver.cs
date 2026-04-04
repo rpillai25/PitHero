@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Swords
                 InventoryTextKey.Inv_DepthsReaver_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Ancient blade from the deepest caves.",
+                InventoryTextKey.Inv_DepthsReaver_Desc,
                 600,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Axes
                 InventoryTextKey.Inv_ObsidianCleaver_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Razor-sharp volcanic glass axe.",
+                InventoryTextKey.Inv_ObsidianCleaver_Desc,
                 725,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

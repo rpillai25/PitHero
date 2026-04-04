@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_SteelHelm_Name,
                 ItemKind.HatHelm,
                 Rarity,
-                "Quality steel helmet.",
+                InventoryTextKey.Inv_SteelHelm_Desc,
                 400,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

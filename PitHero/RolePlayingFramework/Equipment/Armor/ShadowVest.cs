@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_ShadowVest_Name,
                 ItemKind.ArmorGi,
                 Rarity,
-                "Dark leather that blends into shadows.",
+                InventoryTextKey.Inv_ShadowVest_Desc,
                 550,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

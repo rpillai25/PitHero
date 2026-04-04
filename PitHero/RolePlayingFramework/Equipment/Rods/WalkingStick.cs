@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Rods
                 InventoryTextKey.Inv_WalkingStick_Name,
                 ItemKind.WeaponRod,
                 Rarity,
-                "Simple wooden rod.",
+                InventoryTextKey.Inv_WalkingStick_Desc,
                 75,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

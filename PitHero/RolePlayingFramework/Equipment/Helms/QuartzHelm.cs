@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_QuartzHelm_Name,
                 ItemKind.HatHelm,
                 Rarity,
-                "Translucent crystal helmet.",
+                InventoryTextKey.Inv_QuartzHelm_Desc,
                 850,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

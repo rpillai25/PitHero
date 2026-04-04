@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 InventoryTextKey.Inv_VoidBarrier_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Shield that consumes attacks.",
+                InventoryTextKey.Inv_VoidBarrier_Desc,
                 750,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

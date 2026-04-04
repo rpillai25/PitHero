@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Swords
                 InventoryTextKey.Inv_DiamondEdge_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Blade reinforced with diamond shards.",
+                InventoryTextKey.Inv_DiamondEdge_Desc,
                 700,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

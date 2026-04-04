@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_ReinforcedCap_Name,
                 ItemKind.HatHelm,
                 Rarity,
-                "Leather with metal reinforcement.",
+                InventoryTextKey.Inv_ReinforcedCap_Desc,
                 225,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

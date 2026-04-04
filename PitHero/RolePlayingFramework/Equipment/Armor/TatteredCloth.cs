@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_TatteredCloth_Name,
                 ItemKind.ArmorRobe,
                 Rarity,
-                "Worn cloth garments.",
+                InventoryTextKey.Inv_TatteredCloth_Desc,
                 40,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

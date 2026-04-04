@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_HideHood_Name,
                 ItemKind.HatHeadband,
                 Rarity,
-                "Animal hide hood.",
+                InventoryTextKey.Inv_HideHood_Desc,
                 90,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

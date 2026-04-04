@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 InventoryTextKey.Inv_EmberShield_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Shield with glowing ember core.",
+                InventoryTextKey.Inv_EmberShield_Desc,
                 500,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_VolcanicArmor_Name,
                 ItemKind.ArmorMail,
                 Rarity,
-                "Armor tempered in volcanic heat.",
+                InventoryTextKey.Inv_VolcanicArmor_Desc,
                 900,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

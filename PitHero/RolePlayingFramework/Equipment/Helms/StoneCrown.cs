@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_StoneCrown_Name,
                 ItemKind.HatHelm,
                 Rarity,
-                "Carved stone headpiece.",
+                InventoryTextKey.Inv_StoneCrown_Desc,
                 450,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

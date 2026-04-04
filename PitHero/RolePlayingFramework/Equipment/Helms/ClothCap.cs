@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_ClothCap_Name,
                 ItemKind.HatHeadband,
                 Rarity,
-                "Simple fabric head covering.",
+                InventoryTextKey.Inv_ClothCap_Desc,
                 40,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

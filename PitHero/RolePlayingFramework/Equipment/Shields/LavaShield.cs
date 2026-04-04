@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 InventoryTextKey.Inv_LavaShield_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Heat-resistant volcanic shield.",
+                InventoryTextKey.Inv_LavaShield_Desc,
                 700,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

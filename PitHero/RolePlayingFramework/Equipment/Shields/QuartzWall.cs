@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 InventoryTextKey.Inv_QuartzWall_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Shield made of massive quartz crystal.",
+                InventoryTextKey.Inv_QuartzWall_Desc,
                 850,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

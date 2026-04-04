@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_ReinforcedPlate_Name,
                 ItemKind.ArmorMail,
                 Rarity,
-                "Heavy reinforced metal plates.",
+                InventoryTextKey.Inv_ReinforcedPlate_Desc,
                 600,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_AbyssPlate_Name,
                 ItemKind.ArmorMail,
                 Rarity,
-                "Armor from the deepest caves.",
+                InventoryTextKey.Inv_AbyssPlate_Desc,
                 950,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

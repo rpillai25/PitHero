@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_PaddedCoif_Name,
                 ItemKind.HatHeadband,
                 Rarity,
-                "Quilted head protection.",
+                InventoryTextKey.Inv_PaddedCoif_Desc,
                 120,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

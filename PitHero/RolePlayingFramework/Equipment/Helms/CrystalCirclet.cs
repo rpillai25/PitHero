@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Helms
                 InventoryTextKey.Inv_CrystalCirclet_Name,
                 ItemKind.HatHeadband,
                 Rarity,
-                "Headband with protective crystals.",
+                InventoryTextKey.Inv_CrystalCirclet_Desc,
                 650,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

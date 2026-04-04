@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Swords
                 InventoryTextKey.Inv_GloomBlade_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Cursed blade from deep caverns.",
+                InventoryTextKey.Inv_GloomBlade_Desc,
                 550,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

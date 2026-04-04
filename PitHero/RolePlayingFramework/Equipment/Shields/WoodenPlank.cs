@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 InventoryTextKey.Inv_WoodenPlank_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Simple wooden board.",
+                InventoryTextKey.Inv_WoodenPlank_Desc,
                 50,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

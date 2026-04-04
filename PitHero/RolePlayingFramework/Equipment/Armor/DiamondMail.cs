@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Armor
                 InventoryTextKey.Inv_DiamondMail_Name,
                 ItemKind.ArmorMail,
                 Rarity,
-                "Armor reinforced with diamond.",
+                InventoryTextKey.Inv_DiamondMail_Desc,
                 1000,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

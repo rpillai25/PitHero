@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Swords
                 InventoryTextKey.Inv_StalagmiteSword_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Blade shaped like a cave formation.",
+                InventoryTextKey.Inv_StalagmiteSword_Desc,
                 525,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

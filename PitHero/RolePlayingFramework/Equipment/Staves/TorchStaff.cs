@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Staves
                 InventoryTextKey.Inv_TorchStaff_Name,
                 ItemKind.WeaponStaff,
                 Rarity,
-                "Staff with burning crystal tip.",
+                InventoryTextKey.Inv_TorchStaff_Desc,
                 175,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

@@ -18,7 +18,7 @@ public static class MagmaBlastPlate
                 InventoryTextKey.Inv_MagmaBlastPlate_Name,
                 ItemKind.ArmorMail,
                 Rarity,
-                "Ultimate fire-resistant armor.",
+                InventoryTextKey.Inv_MagmaBlastPlate_Desc,
                 1050,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

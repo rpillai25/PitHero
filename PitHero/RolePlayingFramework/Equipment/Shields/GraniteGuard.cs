@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Equipment.Shields
                 InventoryTextKey.Inv_GraniteGuard_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Heavy stone shield.",
+                InventoryTextKey.Inv_GraniteGuard_Desc,
                 450,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,
