@@ -119,10 +119,6 @@ namespace PitHero
         public const string Inv_IronHelm_Desc = "Inv_IronHelm_Desc";
         public const string Inv_IronShield_Name = "Inv_IronShield_Name";
         public const string Inv_IronShield_Desc = "Inv_IronShield_Desc";
-        public const string Inv_ItemDisplayHelper_Name = "Inv_ItemDisplayHelper_Name";
-        public const string Inv_ItemDisplayHelper_Desc = "Inv_ItemDisplayHelper_Desc";
-        public const string Inv_ItemRegistry_Name = "Inv_ItemRegistry_Name";
-        public const string Inv_ItemRegistry_Desc = "Inv_ItemRegistry_Desc";
         public const string Inv_KiteShield_Name = "Inv_KiteShield_Name";
         public const string Inv_KiteShield_Desc = "Inv_KiteShield_Desc";
         public const string Inv_LavaCrown_Name = "Inv_LavaCrown_Name";
@@ -183,8 +179,6 @@ namespace PitHero
         public const string Inv_PitLordsCrown_Desc = "Inv_PitLordsCrown_Desc";
         public const string Inv_PitLordsSword_Name = "Inv_PitLordsSword_Name";
         public const string Inv_PitLordsSword_Desc = "Inv_PitLordsSword_Desc";
-        public const string Inv_PotionItems_Name = "Inv_PotionItems_Name";
-        public const string Inv_PotionItems_Desc = "Inv_PotionItems_Desc";
         public const string Inv_ProtectRing_Name = "Inv_ProtectRing_Name";
         public const string Inv_ProtectRing_Desc = "Inv_ProtectRing_Desc";
         public const string Inv_QuakeHammer_Name = "Inv_QuakeHammer_Name";
