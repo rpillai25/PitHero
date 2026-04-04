@@ -3,6 +3,7 @@ using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace PitHero.Tests
 {
@@ -22,7 +23,7 @@ namespace PitHero.Tests
             int expectedAttack = BalanceConfig.CalculateEquipmentAttackBonus(1, ItemRarity.Normal);
             
             Assert.IsNotNull(item);
-            Assert.AreEqual("RustyBlade", item.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_RustyBlade_Name, item.Name);
             Assert.AreEqual(ItemKind.WeaponSword, item.Kind);
             Assert.AreEqual(ItemRarity.Normal, item.Rarity);
             Assert.AreEqual(expectedAttack, item.AttackBonus, "Attack bonus should match BalanceConfig formula");
@@ -37,7 +38,7 @@ namespace PitHero.Tests
             int expectedDefense = BalanceConfig.CalculateEquipmentDefenseBonus(1, ItemRarity.Normal);
             
             Assert.IsNotNull(item);
-            Assert.AreEqual("TatteredCloth", item.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_TatteredCloth_Name, item.Name);
             Assert.AreEqual(ItemKind.ArmorRobe, item.Kind);
             Assert.AreEqual(ItemRarity.Normal, item.Rarity);
             Assert.AreEqual(expectedDefense, item.DefenseBonus, "Defense bonus should match BalanceConfig formula");
@@ -51,7 +52,7 @@ namespace PitHero.Tests
             int expectedDefense = BalanceConfig.CalculateEquipmentDefenseBonus(1, ItemRarity.Normal);
             
             Assert.IsNotNull(item);
-            Assert.AreEqual("WoodenPlank", item.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_WoodenPlank_Name, item.Name);
             Assert.AreEqual(ItemKind.Shield, item.Kind);
             Assert.AreEqual(expectedDefense, item.DefenseBonus);
         }
@@ -63,7 +64,7 @@ namespace PitHero.Tests
             int expectedDefense = BalanceConfig.CalculateEquipmentDefenseBonus(1, ItemRarity.Normal);
             
             Assert.IsNotNull(item);
-            Assert.AreEqual("ClothCap", item.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_ClothCap_Name, item.Name);
             Assert.AreEqual(ItemKind.HatHeadband, item.Kind);
             Assert.AreEqual(expectedDefense, item.DefenseBonus);
         }
@@ -162,7 +163,7 @@ namespace PitHero.Tests
             int expectedAttack = BalanceConfig.CalculateEquipmentAttackBonus(25, ItemRarity.Uncommon);
             
             Assert.IsNotNull(item);
-            Assert.AreEqual("PitLordsSword", item.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_PitLordsSword_Name, item.Name);
             Assert.AreEqual(ItemKind.WeaponSword, item.Kind);
             Assert.AreEqual(ItemRarity.Uncommon, item.Rarity);
             Assert.AreEqual(expectedAttack, item.AttackBonus, "Should match BalanceConfig formula: (1 + 25/2) * 1.5 = 20");
@@ -218,7 +219,7 @@ namespace PitHero.Tests
             int expectedAttack = BalanceConfig.CalculateEquipmentAttackBonus(2, ItemRarity.Normal);
             
             Assert.IsNotNull(item);
-            Assert.AreEqual("WoodenSpear", item.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_WoodenSpear_Name, item.Name);
             Assert.AreEqual(ItemKind.WeaponSword, item.Kind); // Spears use WeaponSword
             Assert.AreEqual(expectedAttack, item.AttackBonus);
             Assert.AreEqual(75, item.Price);
@@ -267,7 +268,7 @@ namespace PitHero.Tests
             int expectedAttack = BalanceConfig.CalculateEquipmentAttackBonus(2, ItemRarity.Normal);
             
             Assert.IsNotNull(item);
-            Assert.AreEqual(ItemKind.WeaponStaff, item.Kind); // Staves use WeaponStaff
+            Assert.AreEqual(ItemKind.WeaponRod, item.Kind); // WalkingStick uses WeaponRod
             Assert.AreEqual(expectedAttack, item.AttackBonus);
         }
 

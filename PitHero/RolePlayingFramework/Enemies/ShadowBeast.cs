@@ -26,7 +26,7 @@ namespace RolePlayingFramework.Enemies
 
         public ShadowBeast(int level = 16)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Shadow Beast");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_ShadowBeast);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - FastFragile archetype

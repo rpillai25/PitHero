@@ -26,7 +26,7 @@ namespace RolePlayingFramework.Enemies
 
         public StoneGuardian(int level = 7)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Stone Guardian");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_StoneGuardian);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - Tank archetype

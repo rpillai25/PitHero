@@ -1,3 +1,4 @@
+using PitHero;
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Stats;
@@ -129,38 +130,38 @@ namespace PitHero.Config
             var levels = new string[CaveEndLevel + 1][];
 
             // Pool 1 (Pit 1-5): Early Cave
-            levels[1] = new[] { "Slime", "Bat", "Rat", "Cave Mushroom", "Stone Beetle" };
-            levels[2] = new[] { "Slime", "Bat", "Rat", "Cave Mushroom", "Stone Beetle" };
-            levels[3] = new[] { "Slime", "Bat", "Rat", "Cave Mushroom", "Stone Beetle" };
-            levels[4] = new[] { "Slime", "Bat", "Rat", "Cave Mushroom", "Stone Beetle" };
+            levels[1] = new[] { MonsterTextKey.Monster_Slime, MonsterTextKey.Monster_Bat, MonsterTextKey.Monster_Rat, MonsterTextKey.Monster_CaveMushroom, MonsterTextKey.Monster_StoneBeetle };
+            levels[2] = new[] { MonsterTextKey.Monster_Slime, MonsterTextKey.Monster_Bat, MonsterTextKey.Monster_Rat, MonsterTextKey.Monster_CaveMushroom, MonsterTextKey.Monster_StoneBeetle };
+            levels[3] = new[] { MonsterTextKey.Monster_Slime, MonsterTextKey.Monster_Bat, MonsterTextKey.Monster_Rat, MonsterTextKey.Monster_CaveMushroom, MonsterTextKey.Monster_StoneBeetle };
+            levels[4] = new[] { MonsterTextKey.Monster_Slime, MonsterTextKey.Monster_Bat, MonsterTextKey.Monster_Rat, MonsterTextKey.Monster_CaveMushroom, MonsterTextKey.Monster_StoneBeetle };
             levels[5] = System.Array.Empty<string>(); // Stone Guardian boss
 
             // Pool 2 (Pit 6-10): Mid Cave
-            levels[6] = new[] { "Slime", "Bat", "Rat", "Cave Mushroom", "Stone Beetle", "Goblin", "Spider", "Snake", "Shadow Imp", "Tunnel Worm" };
-            levels[7] = new[] { "Slime", "Bat", "Rat", "Cave Mushroom", "Stone Beetle", "Goblin", "Spider", "Snake", "Shadow Imp", "Tunnel Worm" };
-            levels[8] = new[] { "Slime", "Bat", "Rat", "Cave Mushroom", "Stone Beetle", "Goblin", "Spider", "Snake", "Shadow Imp", "Tunnel Worm" };
-            levels[9] = new[] { "Slime", "Bat", "Rat", "Cave Mushroom", "Stone Beetle", "Goblin", "Spider", "Snake", "Shadow Imp", "Fire Lizard" };
+            levels[6] = new[] { MonsterTextKey.Monster_Slime, MonsterTextKey.Monster_Bat, MonsterTextKey.Monster_Rat, MonsterTextKey.Monster_CaveMushroom, MonsterTextKey.Monster_StoneBeetle, MonsterTextKey.Monster_Goblin, MonsterTextKey.Monster_Spider, MonsterTextKey.Monster_Snake, MonsterTextKey.Monster_ShadowImp, MonsterTextKey.Monster_TunnelWorm };
+            levels[7] = new[] { MonsterTextKey.Monster_Slime, MonsterTextKey.Monster_Bat, MonsterTextKey.Monster_Rat, MonsterTextKey.Monster_CaveMushroom, MonsterTextKey.Monster_StoneBeetle, MonsterTextKey.Monster_Goblin, MonsterTextKey.Monster_Spider, MonsterTextKey.Monster_Snake, MonsterTextKey.Monster_ShadowImp, MonsterTextKey.Monster_TunnelWorm };
+            levels[8] = new[] { MonsterTextKey.Monster_Slime, MonsterTextKey.Monster_Bat, MonsterTextKey.Monster_Rat, MonsterTextKey.Monster_CaveMushroom, MonsterTextKey.Monster_StoneBeetle, MonsterTextKey.Monster_Goblin, MonsterTextKey.Monster_Spider, MonsterTextKey.Monster_Snake, MonsterTextKey.Monster_ShadowImp, MonsterTextKey.Monster_TunnelWorm };
+            levels[9] = new[] { MonsterTextKey.Monster_Slime, MonsterTextKey.Monster_Bat, MonsterTextKey.Monster_Rat, MonsterTextKey.Monster_CaveMushroom, MonsterTextKey.Monster_StoneBeetle, MonsterTextKey.Monster_Goblin, MonsterTextKey.Monster_Spider, MonsterTextKey.Monster_Snake, MonsterTextKey.Monster_ShadowImp, MonsterTextKey.Monster_FireLizard };
             levels[10] = System.Array.Empty<string>(); // Pit Lord boss
 
             // Pool 3 (Pit 11-15): Deep Cave
-            levels[11] = new[] { "Goblin", "Spider", "Snake", "Tunnel Worm", "Fire Lizard", "Skeleton", "Orc", "Wraith", "Magma Ooze", "Crystal Golem" };
-            levels[12] = new[] { "Goblin", "Spider", "Snake", "Tunnel Worm", "Fire Lizard", "Skeleton", "Orc", "Wraith", "Magma Ooze", "Crystal Golem" };
-            levels[13] = new[] { "Goblin", "Spider", "Snake", "Tunnel Worm", "Fire Lizard", "Skeleton", "Orc", "Wraith", "Cave Troll", "Ghost Miner" };
-            levels[14] = new[] { "Goblin", "Spider", "Snake", "Tunnel Worm", "Fire Lizard", "Skeleton", "Orc", "Wraith", "Cave Troll", "Ghost Miner" };
+            levels[11] = new[] { MonsterTextKey.Monster_Goblin, MonsterTextKey.Monster_Spider, MonsterTextKey.Monster_Snake, MonsterTextKey.Monster_TunnelWorm, MonsterTextKey.Monster_FireLizard, MonsterTextKey.Monster_Skeleton, MonsterTextKey.Monster_Orc, MonsterTextKey.Monster_Wraith, MonsterTextKey.Monster_MagmaOoze, MonsterTextKey.Monster_CrystalGolem };
+            levels[12] = new[] { MonsterTextKey.Monster_Goblin, MonsterTextKey.Monster_Spider, MonsterTextKey.Monster_Snake, MonsterTextKey.Monster_TunnelWorm, MonsterTextKey.Monster_FireLizard, MonsterTextKey.Monster_Skeleton, MonsterTextKey.Monster_Orc, MonsterTextKey.Monster_Wraith, MonsterTextKey.Monster_MagmaOoze, MonsterTextKey.Monster_CrystalGolem };
+            levels[13] = new[] { MonsterTextKey.Monster_Goblin, MonsterTextKey.Monster_Spider, MonsterTextKey.Monster_Snake, MonsterTextKey.Monster_TunnelWorm, MonsterTextKey.Monster_FireLizard, MonsterTextKey.Monster_Skeleton, MonsterTextKey.Monster_Orc, MonsterTextKey.Monster_Wraith, MonsterTextKey.Monster_CaveTroll, MonsterTextKey.Monster_GhostMiner };
+            levels[14] = new[] { MonsterTextKey.Monster_Goblin, MonsterTextKey.Monster_Spider, MonsterTextKey.Monster_Snake, MonsterTextKey.Monster_TunnelWorm, MonsterTextKey.Monster_FireLizard, MonsterTextKey.Monster_Skeleton, MonsterTextKey.Monster_Orc, MonsterTextKey.Monster_Wraith, MonsterTextKey.Monster_CaveTroll, MonsterTextKey.Monster_GhostMiner };
             levels[15] = System.Array.Empty<string>(); // Earth Elemental boss
 
             // Pool 4 (Pit 16-20): Ancient Cave
-            levels[16] = new[] { "Skeleton", "Orc", "Wraith", "Magma Ooze", "Crystal Golem", "Cave Troll", "Ghost Miner", "Shadow Beast", "Lava Drake", "Stone Wyrm" };
-            levels[17] = new[] { "Skeleton", "Orc", "Wraith", "Magma Ooze", "Crystal Golem", "Cave Troll", "Ghost Miner", "Shadow Beast", "Lava Drake", "Stone Wyrm" };
-            levels[18] = new[] { "Skeleton", "Orc", "Wraith", "Magma Ooze", "Crystal Golem", "Cave Troll", "Ghost Miner", "Shadow Beast", "Lava Drake", "Stone Wyrm" };
-            levels[19] = new[] { "Skeleton", "Orc", "Wraith", "Magma Ooze", "Crystal Golem", "Cave Troll", "Ghost Miner", "Shadow Beast", "Lava Drake", "Stone Wyrm" };
+            levels[16] = new[] { MonsterTextKey.Monster_Skeleton, MonsterTextKey.Monster_Orc, MonsterTextKey.Monster_Wraith, MonsterTextKey.Monster_MagmaOoze, MonsterTextKey.Monster_CrystalGolem, MonsterTextKey.Monster_CaveTroll, MonsterTextKey.Monster_GhostMiner, MonsterTextKey.Monster_ShadowBeast, MonsterTextKey.Monster_LavaDrake, MonsterTextKey.Monster_StoneWyrm };
+            levels[17] = new[] { MonsterTextKey.Monster_Skeleton, MonsterTextKey.Monster_Orc, MonsterTextKey.Monster_Wraith, MonsterTextKey.Monster_MagmaOoze, MonsterTextKey.Monster_CrystalGolem, MonsterTextKey.Monster_CaveTroll, MonsterTextKey.Monster_GhostMiner, MonsterTextKey.Monster_ShadowBeast, MonsterTextKey.Monster_LavaDrake, MonsterTextKey.Monster_StoneWyrm };
+            levels[18] = new[] { MonsterTextKey.Monster_Skeleton, MonsterTextKey.Monster_Orc, MonsterTextKey.Monster_Wraith, MonsterTextKey.Monster_MagmaOoze, MonsterTextKey.Monster_CrystalGolem, MonsterTextKey.Monster_CaveTroll, MonsterTextKey.Monster_GhostMiner, MonsterTextKey.Monster_ShadowBeast, MonsterTextKey.Monster_LavaDrake, MonsterTextKey.Monster_StoneWyrm };
+            levels[19] = new[] { MonsterTextKey.Monster_Skeleton, MonsterTextKey.Monster_Orc, MonsterTextKey.Monster_Wraith, MonsterTextKey.Monster_MagmaOoze, MonsterTextKey.Monster_CrystalGolem, MonsterTextKey.Monster_CaveTroll, MonsterTextKey.Monster_GhostMiner, MonsterTextKey.Monster_ShadowBeast, MonsterTextKey.Monster_LavaDrake, MonsterTextKey.Monster_StoneWyrm };
             levels[20] = System.Array.Empty<string>(); // Molten Titan boss
 
             // Pool 5 (Pit 21-25): Abyssal Cave
-            levels[21] = new[] { "Skeleton", "Orc", "Wraith", "Crystal Golem", "Cave Troll", "Ghost Miner", "Shadow Beast", "Lava Drake", "Stone Wyrm", "Magma Ooze" };
-            levels[22] = new[] { "Skeleton", "Orc", "Wraith", "Crystal Golem", "Cave Troll", "Ghost Miner", "Shadow Beast", "Lava Drake", "Stone Wyrm", "Magma Ooze" };
-            levels[23] = new[] { "Skeleton", "Orc", "Wraith", "Crystal Golem", "Cave Troll", "Ghost Miner", "Shadow Beast", "Lava Drake", "Stone Wyrm", "Magma Ooze" };
-            levels[24] = new[] { "Skeleton", "Orc", "Wraith", "Crystal Golem", "Cave Troll", "Ghost Miner", "Shadow Beast", "Lava Drake", "Stone Wyrm", "Magma Ooze" };
+            levels[21] = new[] { MonsterTextKey.Monster_Skeleton, MonsterTextKey.Monster_Orc, MonsterTextKey.Monster_Wraith, MonsterTextKey.Monster_CrystalGolem, MonsterTextKey.Monster_CaveTroll, MonsterTextKey.Monster_GhostMiner, MonsterTextKey.Monster_ShadowBeast, MonsterTextKey.Monster_LavaDrake, MonsterTextKey.Monster_StoneWyrm, MonsterTextKey.Monster_MagmaOoze };
+            levels[22] = new[] { MonsterTextKey.Monster_Skeleton, MonsterTextKey.Monster_Orc, MonsterTextKey.Monster_Wraith, MonsterTextKey.Monster_CrystalGolem, MonsterTextKey.Monster_CaveTroll, MonsterTextKey.Monster_GhostMiner, MonsterTextKey.Monster_ShadowBeast, MonsterTextKey.Monster_LavaDrake, MonsterTextKey.Monster_StoneWyrm, MonsterTextKey.Monster_MagmaOoze };
+            levels[23] = new[] { MonsterTextKey.Monster_Skeleton, MonsterTextKey.Monster_Orc, MonsterTextKey.Monster_Wraith, MonsterTextKey.Monster_CrystalGolem, MonsterTextKey.Monster_CaveTroll, MonsterTextKey.Monster_GhostMiner, MonsterTextKey.Monster_ShadowBeast, MonsterTextKey.Monster_LavaDrake, MonsterTextKey.Monster_StoneWyrm, MonsterTextKey.Monster_MagmaOoze };
+            levels[24] = new[] { MonsterTextKey.Monster_Skeleton, MonsterTextKey.Monster_Orc, MonsterTextKey.Monster_Wraith, MonsterTextKey.Monster_CrystalGolem, MonsterTextKey.Monster_CaveTroll, MonsterTextKey.Monster_GhostMiner, MonsterTextKey.Monster_ShadowBeast, MonsterTextKey.Monster_LavaDrake, MonsterTextKey.Monster_StoneWyrm, MonsterTextKey.Monster_MagmaOoze };
             levels[25] = System.Array.Empty<string>(); // Ancient Wyrm big boss
 
             return levels;

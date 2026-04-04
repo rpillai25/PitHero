@@ -26,7 +26,7 @@ namespace RolePlayingFramework.Enemies
 
         public GhostMiner(int level = 14)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Ghost Miner");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_GhostMiner);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - MagicUser archetype

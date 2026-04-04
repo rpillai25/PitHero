@@ -26,7 +26,7 @@ namespace RolePlayingFramework.Enemies
 
         public MoltenTitan(int level = 22)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Molten Titan");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_MoltenTitan);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - Tank archetype

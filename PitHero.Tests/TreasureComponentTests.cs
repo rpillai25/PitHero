@@ -4,6 +4,7 @@ using PitHero.ECS.Components;
 using RolePlayingFramework.Equipment;
 using System.Collections.Generic;
 using System.Linq;
+using PitHero;
 
 namespace PitHero.Tests
 {
@@ -195,23 +196,23 @@ namespace PitHero.Tests
             // Test each treasure level creates the correct item
             var level1Item = TreasureComponent.GenerateItemForTreasureLevel(1);
             Assert.AreEqual(ItemRarity.Normal, level1Item.Rarity);
-            Assert.IsTrue(level1Item.Name.EndsWith("Potion"), $"Level 1 item should be a potion, but got {level1Item.Name}");
+            Assert.IsTrue(level1Item.Name.Contains("Potion"), $"Level 1 item should be a potion, but got {level1Item.Name}");
 
             var level2Item = TreasureComponent.GenerateItemForTreasureLevel(2);
             Assert.AreEqual(ItemRarity.Normal, level2Item.Rarity);
-            Assert.IsTrue(level2Item.Name.EndsWith("Potion"), $"Level 2 item should be a potion, but got {level2Item.Name}");
+            Assert.IsTrue(level2Item.Name.Contains("Potion"), $"Level 2 item should be a potion, but got {level2Item.Name}");
 
             var level3Item = TreasureComponent.GenerateItemForTreasureLevel(3);
             Assert.AreEqual(ItemRarity.Rare, level3Item.Rarity);
-            Assert.IsTrue(level3Item.Name.StartsWith("Mid") && level3Item.Name.EndsWith("Potion"), $"Level 3 item should be a Mid potion, but got {level3Item.Name}");
+            Assert.IsTrue(level3Item.Name.Contains("Mid") && level3Item.Name.Contains("Potion"), $"Level 3 item should be a Mid potion, but got {level3Item.Name}");
 
             var level4Item = TreasureComponent.GenerateItemForTreasureLevel(4);
             Assert.AreEqual(ItemRarity.Epic, level4Item.Rarity);
-            Assert.IsTrue(level4Item.Name.StartsWith("Full") && level4Item.Name.EndsWith("Potion"), $"Level 4 item should be a Full potion, but got {level4Item.Name}");
+            Assert.IsTrue(level4Item.Name.Contains("Full") && level4Item.Name.Contains("Potion"), $"Level 4 item should be a Full potion, but got {level4Item.Name}");
 
             var level5Item = TreasureComponent.GenerateItemForTreasureLevel(5);
             Assert.AreEqual(ItemRarity.Epic, level5Item.Rarity);
-            Assert.IsTrue(level5Item.Name.StartsWith("Full") && level5Item.Name.EndsWith("Potion"), $"Level 5 item should be a Full potion, but got {level5Item.Name}");
+            Assert.IsTrue(level5Item.Name.Contains("Full") && level5Item.Name.Contains("Potion"), $"Level 5 item should be a Full potion, but got {level5Item.Name}");
         }
 
         [TestMethod]
@@ -224,7 +225,7 @@ namespace PitHero.Tests
             
             component.ContainedItem = testItem;
             Assert.IsNotNull(component.ContainedItem);
-            Assert.AreEqual("HPPotion", component.ContainedItem.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_HPPotion_Name, component.ContainedItem.Name);
             Assert.AreEqual(ItemRarity.Normal, component.ContainedItem.Rarity);
         }
 

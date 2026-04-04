@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace PitHero.Tests
 {
@@ -14,14 +15,14 @@ namespace PitHero.Tests
             var sword = GearItems.ShortSword();
             
             Assert.IsNotNull(sword);
-            Assert.AreEqual("ShortSword", sword.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_ShortSword_Name, sword.Name);
             Assert.AreEqual(ItemKind.WeaponSword, sword.Kind);
             Assert.AreEqual(ItemRarity.Normal, sword.Rarity);
             
             // Verify attack bonus matches BalanceConfig calculation for Pit 5, Normal rarity
             int expectedAttack = BalanceConfig.CalculateEquipmentAttackBonus(5, ItemRarity.Normal);
             Assert.AreEqual(expectedAttack, sword.AttackBonus);
-            Assert.AreEqual("Basic sword for beginners.", sword.Description);
+            Assert.AreEqual(InventoryTextKey.Inv_ShortSword_Desc, sword.Description);
             Assert.AreEqual(0, sword.DefenseBonus);
             Assert.AreEqual(0, sword.HPBonus);
             Assert.AreEqual(0, sword.MPBonus);
@@ -33,14 +34,14 @@ namespace PitHero.Tests
             var sword = GearItems.LongSword();
             
             Assert.IsNotNull(sword);
-            Assert.AreEqual("LongSword", sword.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_LongSword_Name, sword.Name);
             Assert.AreEqual(ItemKind.WeaponSword, sword.Kind);
             Assert.AreEqual(ItemRarity.Normal, sword.Rarity);
             
             // Verify attack bonus matches BalanceConfig calculation for Pit 15, Normal rarity
             int expectedAttack = BalanceConfig.CalculateEquipmentAttackBonus(15, ItemRarity.Normal);
             Assert.AreEqual(expectedAttack, sword.AttackBonus);
-            Assert.AreEqual("Longer sword for seasoned warriors.", sword.Description);
+            Assert.AreEqual(InventoryTextKey.Inv_LongSword_Desc, sword.Description);
             Assert.AreEqual(0, sword.DefenseBonus);
         }
 
@@ -50,14 +51,14 @@ namespace PitHero.Tests
             var shield = GearItems.WoodenShield();
             
             Assert.IsNotNull(shield);
-            Assert.AreEqual("WoodenShield", shield.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_WoodenShield_Name, shield.Name);
             Assert.AreEqual(ItemKind.Shield, shield.Kind);
             Assert.AreEqual(ItemRarity.Normal, shield.Rarity);
             
             // Verify defense bonus matches BalanceConfig calculation for Pit 5, Normal rarity
             int expectedDefense = BalanceConfig.CalculateEquipmentDefenseBonus(5, ItemRarity.Normal);
             Assert.AreEqual(expectedDefense, shield.DefenseBonus);
-            Assert.AreEqual("No adventurer should be without one.", shield.Description);
+            Assert.AreEqual(InventoryTextKey.Inv_WoodenShield_Desc, shield.Description);
             Assert.AreEqual(0, shield.AttackBonus);
             Assert.AreEqual(0, shield.HPBonus);
             Assert.AreEqual(0, shield.MPBonus);
@@ -69,7 +70,7 @@ namespace PitHero.Tests
             var shield = GearItems.IronShield();
             
             Assert.IsNotNull(shield);
-            Assert.AreEqual("IronShield", shield.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_IronShield_Name, shield.Name);
             Assert.AreEqual(ItemKind.Shield, shield.Kind);
             Assert.AreEqual(ItemRarity.Normal, shield.Rarity);
             
@@ -85,14 +86,14 @@ namespace PitHero.Tests
             var helm = GearItems.SquireHelm();
             
             Assert.IsNotNull(helm);
-            Assert.AreEqual("SquireHelm", helm.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_SquireHelm_Name, helm.Name);
             Assert.AreEqual(ItemKind.HatHelm, helm.Kind);
             Assert.AreEqual(ItemRarity.Normal, helm.Rarity);
             
             // Verify defense bonus matches BalanceConfig calculation for Pit 5, Normal rarity
             int expectedDefense = BalanceConfig.CalculateEquipmentDefenseBonus(5, ItemRarity.Normal);
             Assert.AreEqual(expectedDefense, helm.DefenseBonus);
-            Assert.AreEqual("Helm used by novices.", helm.Description);
+            Assert.AreEqual(InventoryTextKey.Inv_SquireHelm_Desc, helm.Description);
             Assert.AreEqual(0, helm.AttackBonus);
             Assert.AreEqual(0, helm.HPBonus);
             Assert.AreEqual(0, helm.MPBonus);
@@ -104,7 +105,7 @@ namespace PitHero.Tests
             var helm = GearItems.IronHelm();
             
             Assert.IsNotNull(helm);
-            Assert.AreEqual("IronHelm", helm.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_IronHelm_Name, helm.Name);
             Assert.AreEqual(ItemKind.HatHelm, helm.Kind);
             Assert.AreEqual(ItemRarity.Normal, helm.Rarity);
             
@@ -120,14 +121,14 @@ namespace PitHero.Tests
             var armor = GearItems.LeatherArmor();
             
             Assert.IsNotNull(armor);
-            Assert.AreEqual("LeatherArmor", armor.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_LeatherArmor_Name, armor.Name);
             Assert.AreEqual(ItemKind.ArmorMail, armor.Kind);
             Assert.AreEqual(ItemRarity.Normal, armor.Rarity);
             
             // Verify defense bonus matches BalanceConfig calculation for Pit 5, Normal rarity
             int expectedDefense = BalanceConfig.CalculateEquipmentDefenseBonus(5, ItemRarity.Normal);
             Assert.AreEqual(expectedDefense, armor.DefenseBonus);
-            Assert.AreEqual("Basic armor for adventurers.", armor.Description);
+            Assert.AreEqual(InventoryTextKey.Inv_LeatherArmor_Desc, armor.Description);
             Assert.AreEqual(0, armor.AttackBonus);
             Assert.AreEqual(0, armor.HPBonus);
             Assert.AreEqual(0, armor.MPBonus);
@@ -139,7 +140,7 @@ namespace PitHero.Tests
             var armor = GearItems.IronArmor();
             
             Assert.IsNotNull(armor);
-            Assert.AreEqual("IronArmor", armor.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_IronArmor_Name, armor.Name);
             Assert.AreEqual(ItemKind.ArmorMail, armor.Kind);
             Assert.AreEqual(ItemRarity.Normal, armor.Rarity);
             
@@ -155,14 +156,14 @@ namespace PitHero.Tests
             var ring = GearItems.RingOfPower();
             
             Assert.IsNotNull(ring);
-            Assert.AreEqual("RingOfPower", ring.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_RingOfPower_Name, ring.Name);
             Assert.AreEqual(ItemKind.Accessory, ring.Kind);
             Assert.AreEqual(ItemRarity.Uncommon, ring.Rarity);
             
             // Verify stat bonus matches BalanceConfig calculation for Pit 15, Uncommon rarity
             int expectedStat = BalanceConfig.CalculateEquipmentStatBonus(15, ItemRarity.Uncommon);
             Assert.AreEqual(expectedStat, ring.StatBonus.Strength);
-            Assert.AreEqual("Gives a boost to strength.", ring.Description);
+            Assert.AreEqual(InventoryTextKey.Inv_RingOfPower_Desc, ring.Description);
             Assert.AreEqual(0, ring.StatBonus.Agility);
             Assert.AreEqual(0, ring.StatBonus.Vitality);
             Assert.AreEqual(0, ring.StatBonus.Magic);
@@ -178,7 +179,7 @@ namespace PitHero.Tests
             var necklace = GearItems.NecklaceOfHealth();
             
             Assert.IsNotNull(necklace);
-            Assert.AreEqual("NecklaceOfHealth", necklace.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_NecklaceOfHealth_Name, necklace.Name);
             Assert.AreEqual(ItemKind.Accessory, necklace.Kind);
             Assert.AreEqual(ItemRarity.Rare, necklace.Rarity);
             
@@ -187,7 +188,7 @@ namespace PitHero.Tests
             int expectedHP = expectedStat * 5;
             Assert.AreEqual(expectedStat, necklace.StatBonus.Vitality);
             Assert.AreEqual(expectedHP, necklace.HPBonus);
-            Assert.AreEqual("Adventurers wear this to for longevity.", necklace.Description);
+            Assert.AreEqual(InventoryTextKey.Inv_NecklaceOfHealth_Desc, necklace.Description);
             Assert.AreEqual(0, necklace.StatBonus.Strength);
             Assert.AreEqual(0, necklace.StatBonus.Agility);
             Assert.AreEqual(0, necklace.StatBonus.Magic);
@@ -202,7 +203,7 @@ namespace PitHero.Tests
             var ring = GearItems.ProtectRing();
             
             Assert.IsNotNull(ring);
-            Assert.AreEqual("ProtectRing", ring.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_ProtectRing_Name, ring.Name);
             Assert.AreEqual(ItemKind.Accessory, ring.Kind);
             Assert.AreEqual(ItemRarity.Normal, ring.Rarity);
             
@@ -211,7 +212,7 @@ namespace PitHero.Tests
             int expectedStat = BalanceConfig.CalculateEquipmentStatBonus(12, ItemRarity.Normal);
             Assert.AreEqual(expectedDefense, ring.DefenseBonus);
             Assert.AreEqual(expectedStat, ring.StatBonus.Vitality);
-            Assert.AreEqual("Wear this for more protection\nfrom physical attacks.", ring.Description);
+            Assert.AreEqual(InventoryTextKey.Inv_ProtectRing_Desc, ring.Description);
             Assert.AreEqual(0, ring.AttackBonus);
             Assert.AreEqual(0, ring.HPBonus);
             Assert.AreEqual(0, ring.MPBonus);
@@ -223,7 +224,7 @@ namespace PitHero.Tests
             var chain = GearItems.MagicChain();
             
             Assert.IsNotNull(chain);
-            Assert.AreEqual("MagicChain", chain.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_MagicChain_Name, chain.Name);
             Assert.AreEqual(ItemKind.Accessory, chain.Kind);
             Assert.AreEqual(ItemRarity.Uncommon, chain.Rarity);
             
@@ -232,7 +233,7 @@ namespace PitHero.Tests
             int expectedMP = expectedStat * 3;
             Assert.AreEqual(expectedStat, chain.StatBonus.Magic);
             Assert.AreEqual(expectedMP, chain.MPBonus);
-            Assert.AreEqual("Mages wear this to enhance their spells.", chain.Description);
+            Assert.AreEqual(InventoryTextKey.Inv_MagicChain_Desc, chain.Description);
             Assert.AreEqual(0, chain.StatBonus.Strength);
             Assert.AreEqual(0, chain.StatBonus.Agility);
             Assert.AreEqual(0, chain.StatBonus.Vitality);

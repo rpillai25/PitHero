@@ -1,3 +1,4 @@
+using PitHero;
 using System.Collections.Generic;
 
 namespace PitHero.Config
@@ -14,48 +15,48 @@ namespace PitHero.Config
         private static readonly Dictionary<string, int> EnemyLevels = new()
         {
             // Level 1 enemies (spawn in Pit Level 1-3)
-            ["Slime"] = 1,
-            ["Bat"] = 1,
-            ["Rat"] = 1,
+            [MonsterTextKey.Monster_Slime] = 1,
+            [MonsterTextKey.Monster_Bat] = 1,
+            [MonsterTextKey.Monster_Rat] = 1,
 
             // Level 2-4 enemies (early cave)
-            ["Cave Mushroom"] = 2,
-            ["Stone Beetle"] = 4,
+            [MonsterTextKey.Monster_CaveMushroom] = 2,
+            [MonsterTextKey.Monster_StoneBeetle] = 4,
 
             // Level 3 enemies (spawn in Pit Level 4-6)
-            ["Goblin"] = 3,
-            ["Spider"] = 3,
-            ["Snake"] = 3,
+            [MonsterTextKey.Monster_Goblin] = 3,
+            [MonsterTextKey.Monster_Spider] = 3,
+            [MonsterTextKey.Monster_Snake] = 3,
 
             // Level 6 enemies (spawn in Pit Level 7-8)
-            ["Skeleton"] = 6,
-            ["Orc"] = 6,
-            ["Wraith"] = 6,
+            [MonsterTextKey.Monster_Skeleton] = 6,
+            [MonsterTextKey.Monster_Orc] = 6,
+            [MonsterTextKey.Monster_Wraith] = 6,
 
             // Level 7-9 enemies (mid cave)
-            ["Shadow Imp"] = 7,
-            ["Tunnel Worm"] = 8,
-            ["Fire Lizard"] = 9,
+            [MonsterTextKey.Monster_ShadowImp] = 7,
+            [MonsterTextKey.Monster_TunnelWorm] = 8,
+            [MonsterTextKey.Monster_FireLizard] = 9,
 
             // Boss (spawn in Pit Level 9)
-            ["Pit Lord"] = 10,
+            [MonsterTextKey.Monster_PitLord] = 10,
 
             // Level 11-14 enemies (deep cave)
-            ["Magma Ooze"] = 11,
-            ["Crystal Golem"] = 12,
-            ["Cave Troll"] = 13,
-            ["Ghost Miner"] = 14,
+            [MonsterTextKey.Monster_MagmaOoze] = 11,
+            [MonsterTextKey.Monster_CrystalGolem] = 12,
+            [MonsterTextKey.Monster_CaveTroll] = 13,
+            [MonsterTextKey.Monster_GhostMiner] = 14,
 
             // Level 16-18 enemies (ancient cave)
-            ["Shadow Beast"] = 16,
-            ["Lava Drake"] = 17,
-            ["Stone Wyrm"] = 18,
+            [MonsterTextKey.Monster_ShadowBeast] = 16,
+            [MonsterTextKey.Monster_LavaDrake] = 17,
+            [MonsterTextKey.Monster_StoneWyrm] = 18,
 
             // Boss enemies (Cave Biome)
-            ["Stone Guardian"] = 7,
-            ["Earth Elemental"] = 17,
-            ["Molten Titan"] = 22,
-            ["Ancient Wyrm"] = 27,
+            [MonsterTextKey.Monster_StoneGuardian] = 7,
+            [MonsterTextKey.Monster_EarthElemental] = 17,
+            [MonsterTextKey.Monster_MoltenTitan] = 22,
+            [MonsterTextKey.Monster_AncientWyrm] = 27,
         };
 
         /// <summary>

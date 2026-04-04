@@ -27,7 +27,7 @@ namespace RolePlayingFramework.Enemies
         public Wraith(int level = 6)
         {
             // Always use the preset level for Wraiths regardless of requested level
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Wraith");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_Wraith);
             Level = presetLevel;
 
             // Use BalanceConfig for stats

@@ -26,7 +26,7 @@ namespace RolePlayingFramework.Enemies
 
         public CrystalGolem(int level = 12)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Crystal Golem");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_CrystalGolem);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - Tank archetype

@@ -26,7 +26,7 @@ namespace RolePlayingFramework.Enemies
 
         public FireLizard(int level = 9)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Fire Lizard");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_FireLizard);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - Balanced archetype

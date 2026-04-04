@@ -26,7 +26,7 @@ namespace RolePlayingFramework.Enemies
 
         public TunnelWorm(int level = 8)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Tunnel Worm");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_TunnelWorm);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - Balanced archetype

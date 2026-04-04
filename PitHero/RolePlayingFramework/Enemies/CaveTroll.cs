@@ -26,7 +26,7 @@ namespace RolePlayingFramework.Enemies
 
         public CaveTroll(int level = 13)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Cave Troll");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_CaveTroll);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - Tank archetype

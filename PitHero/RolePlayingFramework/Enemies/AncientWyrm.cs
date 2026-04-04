@@ -26,7 +26,7 @@ namespace RolePlayingFramework.Enemies
 
         public AncientWyrm(int level = 27)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Ancient Wyrm");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_AncientWyrm);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - Tank archetype

@@ -3,6 +3,7 @@ using PitHero.ECS.Components;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Stats;
 using RolePlayingFramework.Inventory;
+using PitHero;
 
 namespace PitHero.Tests
 {
@@ -23,7 +24,7 @@ namespace PitHero.Tests
                         Assert.AreEqual(ItemRarity.Normal, item.Rarity);
                         Assert.IsTrue(item is Consumable);
                         var normalPotion = (Consumable)item;
-                        Assert.IsTrue(normalPotion.Name.EndsWith("Potion") && !normalPotion.Name.StartsWith("Mid") && !normalPotion.Name.StartsWith("Full"));
+                        Assert.IsTrue(normalPotion.Name.Contains("Potion") && !normalPotion.Name.Contains("Mid") && !normalPotion.Name.StartsWith("Full"));
                         break;
                         
                     case 2: // No Uncommon consumables exist, falls back to Normal potions
@@ -35,14 +36,14 @@ namespace PitHero.Tests
                         Assert.AreEqual(ItemRarity.Rare, item.Rarity);
                         Assert.IsTrue(item is Consumable);
                         var midPotion = (Consumable)item;
-                        Assert.IsTrue(midPotion.Name.StartsWith("Mid") && midPotion.Name.EndsWith("Potion"));
+                        Assert.IsTrue(midPotion.Name.Contains("Mid") && midPotion.Name.Contains("Potion"));
                         break;
                         
                     case 4: // Full potions
                         Assert.AreEqual(ItemRarity.Epic, item.Rarity);
                         Assert.IsTrue(item is Consumable);
                         var fullPotion = (Consumable)item;
-                        Assert.IsTrue(fullPotion.Name.StartsWith("Full") && fullPotion.Name.EndsWith("Potion"));
+                        Assert.IsTrue(fullPotion.Name.Contains("Full") && fullPotion.Name.Contains("Potion"));
                         break;
                         
                     case 5: // No Legendary consumables exist, falls back to Full potions
@@ -105,17 +106,17 @@ namespace PitHero.Tests
 
             // Test that consumables have correct properties when retrieved from bag
             var retrievedHPPotion = (Consumable)bag.Items[0];
-            Assert.AreEqual("HPPotion", retrievedHPPotion.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_HPPotion_Name, retrievedHPPotion.Name);
             Assert.AreEqual(100, retrievedHPPotion.HPRestoreAmount);
             Assert.AreEqual(ItemRarity.Normal, retrievedHPPotion.Rarity);
 
             var retrievedMidMPPotion = (Consumable)bag.Items[1];
-            Assert.AreEqual("MidMPPotion", retrievedMidMPPotion.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_MidMPPotion_Name, retrievedMidMPPotion.Name);
             Assert.AreEqual(500, retrievedMidMPPotion.MPRestoreAmount);
             Assert.AreEqual(ItemRarity.Rare, retrievedMidMPPotion.Rarity);
 
             var retrievedFullMixPotion = (Consumable)bag.Items[2];
-            Assert.AreEqual("FullMixPotion", retrievedFullMixPotion.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_FullMixPotion_Name, retrievedFullMixPotion.Name);
             Assert.AreEqual(-1, retrievedFullMixPotion.HPRestoreAmount);
             Assert.AreEqual(-1, retrievedFullMixPotion.MPRestoreAmount);
             Assert.AreEqual(ItemRarity.Epic, retrievedFullMixPotion.Rarity);
@@ -140,9 +141,9 @@ namespace PitHero.Tests
 
             var expectedNames = new[]
             {
-                "HPPotion", "MPPotion", "MixPotion",
-                "MidHPPotion", "MidMPPotion", "MidMixPotion",
-                "FullHPPotion", "FullMPPotion", "FullMixPotion"
+                InventoryTextKey.Inv_HPPotion_Name, InventoryTextKey.Inv_MPPotion_Name, InventoryTextKey.Inv_MixPotion_Name,
+                InventoryTextKey.Inv_MidHPPotion_Name, InventoryTextKey.Inv_MidMPPotion_Name, InventoryTextKey.Inv_MidMixPotion_Name,
+                InventoryTextKey.Inv_FullHPPotion_Name, InventoryTextKey.Inv_FullMPPotion_Name, InventoryTextKey.Inv_FullMixPotion_Name
             };
 
             CollectionAssert.AreEqual(expectedNames, potionNames);
@@ -150,7 +151,7 @@ namespace PitHero.Tests
             // Also verify that all potions are marked as consumables
             foreach (var potionName in potionNames)
             {
-                Assert.IsTrue(potionName.EndsWith("Potion"), $"Potion name {potionName} should end with 'Potion'");
+                Assert.IsTrue(potionName.Contains("Potion"), $"Potion name {potionName} should end with 'Potion'");
             }
         }
     }

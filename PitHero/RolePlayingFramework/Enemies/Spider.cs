@@ -27,7 +27,7 @@ namespace RolePlayingFramework.Enemies
         public Spider(int level = 3)
         {
             // Always use the preset level for Spiders regardless of requested level
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Spider");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_Spider);
             Level = presetLevel;
 
             // Use BalanceConfig for stats

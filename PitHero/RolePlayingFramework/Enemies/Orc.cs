@@ -27,7 +27,7 @@ namespace RolePlayingFramework.Enemies
         public Orc(int level = 6)
         {
             // Always use the preset level for Orcs regardless of requested level
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Orc");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_Orc);
             Level = presetLevel;
 
             // Use BalanceConfig for stats

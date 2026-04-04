@@ -26,7 +26,7 @@ namespace RolePlayingFramework.Enemies
 
         public StoneBeetle(int level = 4)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Stone Beetle");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_StoneBeetle);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - Tank archetype

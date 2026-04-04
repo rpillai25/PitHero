@@ -26,7 +26,7 @@ namespace RolePlayingFramework.Enemies
 
         public StoneWyrm(int level = 18)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Stone Wyrm");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_StoneWyrm);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - Tank archetype

@@ -26,7 +26,7 @@ namespace RolePlayingFramework.Enemies
 
         public CaveMushroom(int level = 2)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Cave Mushroom");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_CaveMushroom);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - Balanced archetype

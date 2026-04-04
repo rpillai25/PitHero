@@ -27,7 +27,7 @@ namespace RolePlayingFramework.Enemies
         public PitLord(int level = 10)
         {
             // Always use the preset level for Pit Lords regardless of requested level
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Pit Lord");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_PitLord);
             Level = presetLevel;
 
             // Use BalanceConfig for stats

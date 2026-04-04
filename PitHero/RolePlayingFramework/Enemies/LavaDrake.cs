@@ -26,7 +26,7 @@ namespace RolePlayingFramework.Enemies
 
         public LavaDrake(int level = 17)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Lava Drake");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_LavaDrake);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - MagicUser archetype

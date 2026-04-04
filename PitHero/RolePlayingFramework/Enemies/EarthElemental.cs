@@ -26,7 +26,7 @@ namespace RolePlayingFramework.Enemies
 
         public EarthElemental(int level = 17)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Earth Elemental");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_EarthElemental);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - Tank archetype

@@ -26,7 +26,7 @@ namespace RolePlayingFramework.Enemies
 
         public ShadowImp(int level = 7)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Shadow Imp");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_ShadowImp);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - FastFragile archetype

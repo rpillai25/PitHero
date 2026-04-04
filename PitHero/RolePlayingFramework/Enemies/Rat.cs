@@ -27,7 +27,7 @@ namespace RolePlayingFramework.Enemies
         public Rat(int level = 1)
         {
             // Always use the preset level for Rats regardless of requested level
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Rat");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_Rat);
             Level = presetLevel;
 
             // Use BalanceConfig for stats

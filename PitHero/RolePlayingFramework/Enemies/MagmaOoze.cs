@@ -26,7 +26,7 @@ namespace RolePlayingFramework.Enemies
 
         public MagmaOoze(int level = 11)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Magma Ooze");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_MagmaOoze);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - Balanced archetype

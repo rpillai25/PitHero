@@ -27,7 +27,7 @@ namespace RolePlayingFramework.Enemies
         public Snake(int level = 3)
         {
             // Always use the preset level for Snakes regardless of requested level
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Snake");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_Snake);
             Level = presetLevel;
 
             // Use BalanceConfig for stats

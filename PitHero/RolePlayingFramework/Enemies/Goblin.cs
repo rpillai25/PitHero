@@ -27,7 +27,7 @@ namespace RolePlayingFramework.Enemies
         public Goblin(int level = 3)
         {
             // Always use the preset level for Goblins regardless of requested level
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Goblin");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_Goblin);
             Level = presetLevel;
 
             // Use BalanceConfig for stats

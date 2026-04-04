@@ -27,7 +27,7 @@ namespace RolePlayingFramework.Enemies
         public Bat(int level = 1)
         {
             // Always use the preset level for Bats regardless of requested level
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Bat");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_Bat);
             Level = presetLevel;
 
             // Use BalanceConfig for stats

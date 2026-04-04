@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PitHero.Config;
 using RolePlayingFramework.Equipment;
+using PitHero;
 
 namespace PitHero.Tests
 {
@@ -79,9 +80,9 @@ namespace PitHero.Tests
 
             Assert.IsTrue(level4Pool.Length > 0);
             Assert.AreEqual(0, level5Pool.Length);
-            Assert.IsTrue(ContainsEnemy(level4Pool, "Slime"));
-            Assert.IsTrue(ContainsEnemy(level4Pool, "Bat"));
-            Assert.IsTrue(ContainsEnemy(level4Pool, "Rat"));
+            Assert.IsTrue(ContainsEnemy(level4Pool, MonsterTextKey.Monster_Slime));
+            Assert.IsTrue(ContainsEnemy(level4Pool, MonsterTextKey.Monster_Bat));
+            Assert.IsTrue(ContainsEnemy(level4Pool, MonsterTextKey.Monster_Rat));
         }
 
         /// <summary>
@@ -98,12 +99,12 @@ namespace PitHero.Tests
 
             Assert.AreEqual(0, level5Pool.Length);
             Assert.IsTrue(level6Pool.Length > 0);
-            Assert.IsTrue(ContainsEnemy(level6Pool, "Slime"));
-            Assert.IsTrue(ContainsEnemy(level6Pool, "Bat"));
-            Assert.IsTrue(ContainsEnemy(level6Pool, "Rat"));
-            Assert.IsTrue(ContainsEnemy(level6Pool, "Goblin"));
-            Assert.IsTrue(ContainsEnemy(level6Pool, "Spider"));
-            Assert.IsTrue(ContainsEnemy(level6Pool, "Snake"));
+            Assert.IsTrue(ContainsEnemy(level6Pool, MonsterTextKey.Monster_Slime));
+            Assert.IsTrue(ContainsEnemy(level6Pool, MonsterTextKey.Monster_Bat));
+            Assert.IsTrue(ContainsEnemy(level6Pool, MonsterTextKey.Monster_Rat));
+            Assert.IsTrue(ContainsEnemy(level6Pool, MonsterTextKey.Monster_Goblin));
+            Assert.IsTrue(ContainsEnemy(level6Pool, MonsterTextKey.Monster_Spider));
+            Assert.IsTrue(ContainsEnemy(level6Pool, MonsterTextKey.Monster_Snake));
         }
 
         /// <summary>

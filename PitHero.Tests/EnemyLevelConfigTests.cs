@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PitHero.Config;
+using PitHero;
 
 namespace PitHero.Tests
 {
@@ -10,7 +11,7 @@ namespace PitHero.Tests
         public void GetPresetLevel_Slime_ReturnsLevelOne()
         {
             // Arrange & Act
-            var level = EnemyLevelConfig.GetPresetLevel("Slime");
+            var level = EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_Slime);
 
             // Assert
             Assert.AreEqual(1, level);
@@ -30,7 +31,7 @@ namespace PitHero.Tests
         public void HasPresetLevel_Slime_ReturnsTrue()
         {
             // Arrange & Act
-            var hasPreset = EnemyLevelConfig.HasPresetLevel("Slime");
+            var hasPreset = EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_Slime);
 
             // Assert
             Assert.IsTrue(hasPreset);
@@ -53,8 +54,8 @@ namespace PitHero.Tests
             var allLevels = EnemyLevelConfig.GetAllEnemyLevels();
 
             // Assert
-            Assert.IsTrue(allLevels.ContainsKey("Slime"));
-            Assert.AreEqual(1, allLevels["Slime"]);
+            Assert.IsTrue(allLevels.ContainsKey(MonsterTextKey.Monster_Slime));
+            Assert.AreEqual(1, allLevels[MonsterTextKey.Monster_Slime]);
         }
 
         [TestMethod]

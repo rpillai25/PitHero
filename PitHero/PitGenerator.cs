@@ -9,6 +9,7 @@ using PitHero.Util;
 using RolePlayingFramework.Enemies;
 using System;
 using System.Collections.Generic;
+using PitHero;
 
 namespace PitHero
 {
@@ -177,31 +178,31 @@ namespace PitHero
 
             return enemyName switch
             {
-                "Slime" => (new Slime(clampedLevel), Color.LightGreen),
-                "Bat" => (new Bat(clampedLevel), Color.Purple),
-                "Rat" => (new Rat(clampedLevel), Color.Brown),
-                "Cave Mushroom" => (new CaveMushroom(clampedLevel), Color.SaddleBrown),
-                "Stone Beetle" => (new StoneBeetle(clampedLevel), Color.Gray),
-                "Goblin" => (new Goblin(clampedLevel), Color.Green),
-                "Spider" => (new Spider(clampedLevel), Color.DarkGray),
-                "Snake" => (new Snake(clampedLevel), Color.Yellow),
-                "Shadow Imp" => (new ShadowImp(clampedLevel), Color.DarkMagenta),
-                "Tunnel Worm" => (new TunnelWorm(clampedLevel), Color.Pink),
-                "Fire Lizard" => (new FireLizard(clampedLevel), Color.Orange),
-                "Skeleton" => (new Skeleton(clampedLevel), Color.White),
-                "Orc" => (new Orc(clampedLevel), Color.DarkGreen),
-                "Wraith" => (new Wraith(clampedLevel), Color.Blue),
-                "Magma Ooze" => (new MagmaOoze(clampedLevel), Color.OrangeRed),
-                "Crystal Golem" => (new CrystalGolem(clampedLevel), Color.Cyan),
-                "Cave Troll" => (new CaveTroll(clampedLevel), Color.DarkGray),
-                "Ghost Miner" => (new GhostMiner(clampedLevel), Color.LightBlue),
-                "Shadow Beast" => (new ShadowBeast(clampedLevel), Color.Black),
-                "Lava Drake" => (new LavaDrake(clampedLevel), Color.Red),
-                "Stone Wyrm" => (new StoneWyrm(clampedLevel), Color.SlateGray),
-                "Stone Guardian" => (new StoneGuardian(clampedLevel), Color.DarkGray),
-                "Earth Elemental" => (new EarthElemental(clampedLevel), Color.Brown),
-                "Molten Titan" => (new MoltenTitan(clampedLevel), Color.DarkRed),
-                "Ancient Wyrm" => (new AncientWyrm(clampedLevel), Color.DarkRed),
+                MonsterTextKey.Monster_Slime => (new Slime(clampedLevel), Color.LightGreen),
+                MonsterTextKey.Monster_Bat => (new Bat(clampedLevel), Color.Purple),
+                MonsterTextKey.Monster_Rat => (new Rat(clampedLevel), Color.Brown),
+                MonsterTextKey.Monster_CaveMushroom => (new CaveMushroom(clampedLevel), Color.SaddleBrown),
+                MonsterTextKey.Monster_StoneBeetle => (new StoneBeetle(clampedLevel), Color.Gray),
+                MonsterTextKey.Monster_Goblin => (new Goblin(clampedLevel), Color.Green),
+                MonsterTextKey.Monster_Spider => (new Spider(clampedLevel), Color.DarkGray),
+                MonsterTextKey.Monster_Snake => (new Snake(clampedLevel), Color.Yellow),
+                MonsterTextKey.Monster_ShadowImp => (new ShadowImp(clampedLevel), Color.DarkMagenta),
+                MonsterTextKey.Monster_TunnelWorm => (new TunnelWorm(clampedLevel), Color.Pink),
+                MonsterTextKey.Monster_FireLizard => (new FireLizard(clampedLevel), Color.Orange),
+                MonsterTextKey.Monster_Skeleton => (new Skeleton(clampedLevel), Color.White),
+                MonsterTextKey.Monster_Orc => (new Orc(clampedLevel), Color.DarkGreen),
+                MonsterTextKey.Monster_Wraith => (new Wraith(clampedLevel), Color.Blue),
+                MonsterTextKey.Monster_MagmaOoze => (new MagmaOoze(clampedLevel), Color.OrangeRed),
+                MonsterTextKey.Monster_CrystalGolem => (new CrystalGolem(clampedLevel), Color.Cyan),
+                MonsterTextKey.Monster_CaveTroll => (new CaveTroll(clampedLevel), Color.DarkGray),
+                MonsterTextKey.Monster_GhostMiner => (new GhostMiner(clampedLevel), Color.LightBlue),
+                MonsterTextKey.Monster_ShadowBeast => (new ShadowBeast(clampedLevel), Color.Black),
+                MonsterTextKey.Monster_LavaDrake => (new LavaDrake(clampedLevel), Color.Red),
+                MonsterTextKey.Monster_StoneWyrm => (new StoneWyrm(clampedLevel), Color.SlateGray),
+                MonsterTextKey.Monster_StoneGuardian => (new StoneGuardian(clampedLevel), Color.DarkGray),
+                MonsterTextKey.Monster_EarthElemental => (new EarthElemental(clampedLevel), Color.Brown),
+                MonsterTextKey.Monster_MoltenTitan => (new MoltenTitan(clampedLevel), Color.DarkRed),
+                MonsterTextKey.Monster_AncientWyrm => (new AncientWyrm(clampedLevel), Color.DarkRed),
                 _ => (new Slime(clampedLevel), Color.LightGreen)
             };
         }
