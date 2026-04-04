@@ -1,7 +1,7 @@
+using PitHero;
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
-using PitHero;
 
 namespace RolePlayingFramework.Equipment.Daggers
 {

@@ -24,7 +24,10 @@ namespace PitHero.Tests
                         Assert.AreEqual(ItemRarity.Normal, item.Rarity);
                         Assert.IsTrue(item is Consumable);
                         var normalPotion = (Consumable)item;
-                        Assert.IsTrue(normalPotion.Name.Contains("Potion") && !normalPotion.Name.Contains("Mid") && !normalPotion.Name.StartsWith("Full"));
+                        bool isNormalPotion = normalPotion.Name == InventoryTextKey.Inv_HPPotion_Name
+                            || normalPotion.Name == InventoryTextKey.Inv_MPPotion_Name
+                            || normalPotion.Name == InventoryTextKey.Inv_MixPotion_Name;
+                        Assert.IsTrue(isNormalPotion, $"Expected a normal potion but got {normalPotion.Name}");
                         break;
                         
                     case 2: // No Uncommon consumables exist, falls back to Normal potions
@@ -36,14 +39,20 @@ namespace PitHero.Tests
                         Assert.AreEqual(ItemRarity.Rare, item.Rarity);
                         Assert.IsTrue(item is Consumable);
                         var midPotion = (Consumable)item;
-                        Assert.IsTrue(midPotion.Name.Contains("Mid") && midPotion.Name.Contains("Potion"));
+                        bool isMidPotion = midPotion.Name == InventoryTextKey.Inv_MidHPPotion_Name
+                            || midPotion.Name == InventoryTextKey.Inv_MidMPPotion_Name
+                            || midPotion.Name == InventoryTextKey.Inv_MidMixPotion_Name;
+                        Assert.IsTrue(isMidPotion, $"Expected a mid potion but got {midPotion.Name}");
                         break;
                         
                     case 4: // Full potions
                         Assert.AreEqual(ItemRarity.Epic, item.Rarity);
                         Assert.IsTrue(item is Consumable);
                         var fullPotion = (Consumable)item;
-                        Assert.IsTrue(fullPotion.Name.Contains("Full") && fullPotion.Name.Contains("Potion"));
+                        bool isFullPotion = fullPotion.Name == InventoryTextKey.Inv_FullHPPotion_Name
+                            || fullPotion.Name == InventoryTextKey.Inv_FullMPPotion_Name
+                            || fullPotion.Name == InventoryTextKey.Inv_FullMixPotion_Name;
+                        Assert.IsTrue(isFullPotion, $"Expected a full potion but got {fullPotion.Name}");
                         break;
                         
                     case 5: // No Legendary consumables exist, falls back to Full potions
