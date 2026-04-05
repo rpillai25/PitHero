@@ -45,6 +45,10 @@ PitHero is a horizontal RPG strip game built with C# using **FNA + Nez** (not Mo
 - Hero has a collider with `PhysicsLayer = GameConfig.PhysicsHeroWorldLayer`
 - Hero collider collides with TileMap (`GameConfig.PhysicsTileMapLayer`)
 
+### Localization Rules
+- All displayed text must be stored in a localization file (e.g. `Content/Localization/en-US/UI.txt`) and accessed via TextService for display
+- Never hardcode display strings in code anywhere in the game (except for debug logs)
+
 ### Nez Framework Compliance
 - NEVER use SetFontScale() for any UI element.  If I want to scale a font, I will create a larger font.
 - Game1 should inherit from `Nez.Core` (do not override Draw() or Update() methods)
