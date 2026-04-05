@@ -12,11 +12,17 @@ namespace RolePlayingFramework.Jobs
         {
             switch (jobName)
             {
+                case "Knight":
                 case JobTextKey.Job_Knight_Name: return new Knight();
+                case "Mage":
                 case JobTextKey.Job_Mage_Name: return new Mage();
+                case "Monk":
                 case JobTextKey.Job_Monk_Name: return new Monk();
+                case "Priest":
                 case JobTextKey.Job_Priest_Name: return new Priest();
+                case "Archer":
                 case JobTextKey.Job_Archer_Name: return new Archer();
+                case "Thief":
                 case JobTextKey.Job_Thief_Name: return new Thief();
                 default: return new Knight();
             }
