@@ -37,8 +37,8 @@ namespace PitHero
         public const string Skill_Monk_Roundhouse_Desc = "Skill_Monk_Roundhouse_Desc";
         public const string Skill_Priest_CalmSpirit_Name = "Skill_Priest_CalmSpirit_Name";
         public const string Skill_Priest_CalmSpirit_Desc = "Skill_Priest_CalmSpirit_Desc";
-        public const string Skill_Priest_Defup_Name = "Skill_Priest_Defup_Name";
-        public const string Skill_Priest_Defup_Desc = "Skill_Priest_Defup_Desc";
+        public const string Skill_Priest_DefenseUp_Name = "Skill_Priest_DefenseUp_Name";
+        public const string Skill_Priest_DefenseUp_Desc = "Skill_Priest_DefenseUp_Desc";
         public const string Skill_Priest_Heal_Name = "Skill_Priest_Heal_Name";
         public const string Skill_Priest_Heal_Desc = "Skill_Priest_Heal_Desc";
         public const string Skill_Priest_Mender_Name = "Skill_Priest_Mender_Name";

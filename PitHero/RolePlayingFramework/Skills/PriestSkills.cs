@@ -18,7 +18,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class DefenseUpSkill : BaseSkill
     {
-        public DefenseUpSkill() : base("priest.defup", SkillTextKey.Skill_Priest_Defup_Name, SkillTextKey.Skill_Priest_Defup_Desc, SkillKind.Active, SkillTargetType.Self, 4, 160, ElementType.Neutral) { }
+        public DefenseUpSkill() : base("priest.defup", SkillTextKey.Skill_Priest_DefenseUp_Name, SkillTextKey.Skill_Priest_DefenseUp_Desc, SkillKind.Active, SkillTargetType.Self, 4, 160, ElementType.Neutral) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             hero.PassiveDefenseBonus += 1; // temporary simple stackable buff
