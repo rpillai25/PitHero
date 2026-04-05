@@ -138,6 +138,24 @@ namespace RolePlayingFramework.Balance
         /// </summary>
         public const float CaveConsumableDropRate = 0.6f;
 
+        /// <summary>Drop weight multiplier for gear matching the hero's job class.</summary>
+        public const int LootWeightHeroJob = 4;
+
+        /// <summary>Drop weight multiplier for gear matching any hired mercenary's job class.</summary>
+        public const int LootWeightMercJob = 2;
+
+        /// <summary>
+        /// Drop weight multiplier for gear that no active party member can equip.
+        /// Kept > 0 so non-party gear can still appear occasionally.
+        /// </summary>
+        public const int LootWeightNoPartyJob = 1;
+
+        /// <summary>
+        /// Drop weight for gear equippable by all jobs (Shields, Accessories).
+        /// Treated as neutral — same as a merc match.
+        /// </summary>
+        public const int LootWeightAllJobs = 2;
+
         #endregion
 
         #region Rarity Multipliers

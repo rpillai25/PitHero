@@ -3,9 +3,25 @@ using Nez.Sprites;
 using PitHero.Config;
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Jobs;
 
 namespace PitHero.ECS.Components
 {
+    /// <summary>Captures the active party's job composition for biased loot drops.</summary>
+    public struct LootJobContext
+    {
+        /// <summary>The hero's job flag (highest priority).</summary>
+        public JobType HeroJob;
+
+        /// <summary>Bitwise OR of all hired mercenary job flags.</summary>
+        public JobType MercJobs;
+
+        /// <summary>True when no party context is available (default behavior / flat random).</summary>
+        public bool IsEmpty => HeroJob == JobType.None && MercJobs == JobType.None;
+
+        public static LootJobContext Empty => default;
+    }
+
     /// <summary>
     /// Component that manages treasure chest state and appearance
     /// </summary>
@@ -162,7 +178,7 @@ namespace PitHero.ECS.Components
         /// Generate cave biome loot for the given treasure level.
         /// Rolls consumable vs equipment first using CaveConsumableDropRate (60/40 split).
         /// </summary>
-        public static IItem GenerateCaveItemForTreasureLevel(int treasureLevel)
+        public static IItem GenerateCaveItemForTreasureLevel(int treasureLevel, LootJobContext ctx = default)
         {
             bool isConsumable = Nez.Random.NextFloat() < BalanceConfig.CaveConsumableDropRate;
 
@@ -171,7 +187,7 @@ namespace PitHero.ECS.Components
                 return treasureLevel switch
                 {
                     1 => GenerateNormalPotion(),
-                    2 => GenerateCaveUncommonEquipment(),
+                    2 => GenerateCaveUncommonEquipment(ctx),
                     3 => GenerateMidPotion(),
                     _ => GenerateItemForTreasureLevel(treasureLevel)
                 };
@@ -179,8 +195,8 @@ namespace PitHero.ECS.Components
 
             return treasureLevel switch
             {
-                1 => GenerateCaveCommonEquipment(),
-                2 => GenerateCaveUncommonEquipment(),
+                1 => GenerateCaveCommonEquipment(ctx),
+                2 => GenerateCaveUncommonEquipment(ctx),
                 3 => GearItems.NecklaceOfHealth(),
                 _ => GenerateItemForTreasureLevel(treasureLevel)
             };
@@ -234,10 +250,199 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Generate cave common equipment from all Normal-rarity cave gear items (56 items).
         /// </summary>
-        private static IItem GenerateCaveCommonEquipment()
+        private static readonly ItemKind[] _commonPoolKinds = new ItemKind[]
         {
-            int random = Nez.Random.NextInt(56);
-            switch (random)
+            ItemKind.WeaponSword,    // 0:  RustyBlade
+            ItemKind.WeaponSword,    // 1:  ShortSword
+            ItemKind.WeaponSword,    // 2:  CavernCutter
+            ItemKind.WeaponSword,    // 3:  CaveStalkersBlade
+            ItemKind.WeaponSword,    // 4:  GraniteBlade
+            ItemKind.WeaponSword,    // 5:  LongSword
+            ItemKind.WeaponSword,    // 6:  MinersPickSword
+            ItemKind.WeaponSword,    // 7:  ShadowFang
+            ItemKind.WeaponSword,    // 8:  SpelunkersSaber
+            ItemKind.WeaponSword,    // 9:  StoneSword
+            ItemKind.WeaponSword,    // 10: TorchBlade
+            ItemKind.WeaponSword,    // 11: FlameHatchet
+            ItemKind.WeaponSword,    // 12: MinersAxe
+            ItemKind.WeaponSword,    // 13: StoneHatchet
+            ItemKind.WeaponSword,    // 14: WoodcuttersAxe
+            ItemKind.WeaponKnife,    // 15: CaveShiv
+            ItemKind.WeaponKnife,    // 16: RustyDagger
+            ItemKind.WeaponKnife,    // 17: SilentFang
+            ItemKind.WeaponSword,    // 18: StoneLance
+            ItemKind.WeaponSword,    // 19: WoodenSpear
+            ItemKind.WeaponHammer,   // 20: Mallet
+            ItemKind.WeaponHammer,   // 21: StoneCrusher
+            ItemKind.WeaponStaff,    // 22: TorchStaff
+            ItemKind.WeaponRod,      // 23: WalkingStick
+            ItemKind.ArmorRobe,      // 24: BurlapTunic
+            ItemKind.ArmorGi,        // 25: CaveExplorersVest
+            ItemKind.ArmorMail,      // 26: ChainShirt
+            ItemKind.ArmorGi,        // 27: HardenedLeather
+            ItemKind.ArmorGi,        // 28: HideVest
+            ItemKind.ArmorMail,      // 29: IronArmor
+            ItemKind.ArmorMail,      // 30: LeatherArmor
+            ItemKind.ArmorGi,        // 31: PaddedArmor
+            ItemKind.ArmorMail,      // 32: ScaleMail
+            ItemKind.ArmorGi,        // 33: StuddedLeather
+            ItemKind.ArmorRobe,      // 34: TatteredCloth
+            ItemKind.Shield,         // 35: CaveGuard
+            ItemKind.Shield,         // 36: HideShield
+            ItemKind.Shield,         // 37: IronBuckler
+            ItemKind.Shield,         // 38: IronShield
+            ItemKind.Shield,         // 39: KiteShield
+            ItemKind.Shield,         // 40: ReinforcedBuckler
+            ItemKind.Shield,         // 41: RoundShield
+            ItemKind.Shield,         // 42: StoneShield
+            ItemKind.Shield,         // 43: WoodenPlank
+            ItemKind.Shield,         // 44: WoodenShield
+            ItemKind.HatHelm,        // 45: Bascinet
+            ItemKind.HatHeadband,    // 46: CaveExplorersHood
+            ItemKind.HatHelm,        // 47: ChainCoif
+            ItemKind.HatHeadband,    // 48: ClothCap
+            ItemKind.HatHeadband,    // 49: HideHood
+            ItemKind.HatHelm,        // 50: IronHelm
+            ItemKind.HatHeadband,    // 51: LeatherCap
+            ItemKind.HatHeadband,    // 52: PaddedCoif
+            ItemKind.HatHelm,        // 53: ReinforcedCap
+            ItemKind.HatHelm,        // 54: SquireHelm
+            ItemKind.Accessory,      // 55: ProtectRing
+        };
+
+        /// <summary>
+        /// Generate cave uncommon equipment from all Uncommon-rarity cave gear items (77 items).
+        /// </summary>
+        private static readonly ItemKind[] _uncommonPoolKinds = new ItemKind[]
+        {
+            ItemKind.WeaponSword,    // 0:  AbyssFang
+            ItemKind.WeaponSword,    // 1:  CrystalEdge
+            ItemKind.WeaponSword,    // 2:  DepthsReaver
+            ItemKind.WeaponSword,    // 3:  DiamondEdge
+            ItemKind.WeaponSword,    // 4:  EmberSword
+            ItemKind.WeaponSword,    // 5:  GloomBlade
+            ItemKind.WeaponSword,    // 6:  InfernoEdge
+            ItemKind.WeaponSword,    // 7:  LavaForgedSword
+            ItemKind.WeaponSword,    // 8:  MagmaBlade
+            ItemKind.WeaponSword,    // 9:  PitLordsSword
+            ItemKind.WeaponSword,    // 10: QuartzSaber
+            ItemKind.WeaponSword,    // 11: StalagmiteSword
+            ItemKind.WeaponSword,    // 12: UndergroundRapier
+            ItemKind.WeaponSword,    // 13: VoidCutter
+            ItemKind.WeaponSword,    // 14: CrystalCleaver
+            ItemKind.WeaponSword,    // 15: ObsidianCleaver
+            ItemKind.WeaponSword,    // 16: ShadowSplitter
+            ItemKind.WeaponSword,    // 17: VolcanicAxe
+            ItemKind.WeaponKnife,    // 18: AssassinsEdge
+            ItemKind.WeaponKnife,    // 19: SerpentsTooth
+            ItemKind.WeaponKnife,    // 20: ShadowStiletto
+            ItemKind.WeaponSword,    // 21: CavePike
+            ItemKind.WeaponSword,    // 22: FlameLance
+            ItemKind.WeaponSword,    // 23: InfernalPike
+            ItemKind.WeaponSword,    // 24: StalactiteSpear
+            ItemKind.WeaponHammer,   // 25: GeologistsHammer
+            ItemKind.WeaponHammer,   // 26: MagmaMaul
+            ItemKind.WeaponHammer,   // 27: QuakeHammer
+            ItemKind.WeaponStaff,    // 28: EarthenStaff
+            ItemKind.WeaponRod,      // 29: EmberRod
+            ItemKind.WeaponStaff,    // 30: ShadowwoodStaff
+            ItemKind.ArmorMail,      // 31: AbyssPlate
+            ItemKind.ArmorMail,      // 32: CrystalGuard
+            ItemKind.ArmorMail,      // 33: DiamondMail
+            ItemKind.ArmorMail,      // 34: EmberguardMail
+            ItemKind.ArmorMail,      // 35: GranitePlate
+            ItemKind.ArmorMail,      // 36: LavaplateArmor
+            ItemKind.ArmorMail,      // 37: MagmaBlastPlate
+            ItemKind.ArmorMail,      // 38: PitLordsArmor
+            ItemKind.ArmorMail,      // 39: ReinforcedPlate
+            ItemKind.ArmorGi,        // 40: ShadowVest
+            ItemKind.ArmorMail,      // 41: SteelCuirass
+            ItemKind.ArmorMail,      // 42: StonePlate
+            ItemKind.ArmorMail,      // 43: Voidmail
+            ItemKind.ArmorMail,      // 44: VolcanicArmor
+            ItemKind.Shield,         // 45: AbyssWall
+            ItemKind.Shield,         // 46: CrystalBarrier
+            ItemKind.Shield,         // 47: DiamondBarrier
+            ItemKind.Shield,         // 48: EmberShield
+            ItemKind.Shield,         // 49: GraniteGuard
+            ItemKind.Shield,         // 50: HeaterShield
+            ItemKind.Shield,         // 51: InfernoGuard
+            ItemKind.Shield,         // 52: LavaShield
+            ItemKind.Shield,         // 53: MagmaWall
+            ItemKind.Shield,         // 54: PitLordsAegis
+            ItemKind.Shield,         // 55: QuartzWall
+            ItemKind.Shield,         // 56: ShadowGuard
+            ItemKind.Shield,         // 57: SteelShield
+            ItemKind.Shield,         // 58: TowerShield
+            ItemKind.Shield,         // 59: VoidBarrier
+            ItemKind.HatHelm,        // 60: AbyssHelm
+            ItemKind.HatHeadband,    // 61: CrystalCirclet
+            ItemKind.HatHeadband,    // 62: DiamondCirclet
+            ItemKind.HatHelm,        // 63: EmberHelm
+            ItemKind.HatHelm,        // 64: GreatHelm
+            ItemKind.HatHelm,        // 65: InfernoCrown
+            ItemKind.HatHelm,        // 66: LavaCrown
+            ItemKind.HatHelm,        // 67: MagmaHelm
+            ItemKind.HatHelm,        // 68: PitLordsCrown
+            ItemKind.HatHelm,        // 69: QuartzHelm
+            ItemKind.HatHeadband,    // 70: ShadowCowl
+            ItemKind.HatHelm,        // 71: SteelHelm
+            ItemKind.HatHelm,        // 72: StoneCrown
+            ItemKind.HatHelm,        // 73: VoidMask
+            ItemKind.HatHelm,        // 74: WingedHelm
+            ItemKind.Accessory,      // 75: MagicChain
+            ItemKind.Accessory,      // 76: RingOfPower
+        };
+
+        /// <summary>
+        /// Selects a weighted pool index biased toward gear usable by the active party.
+        /// Falls back to flat random when no party context is available.
+        /// </summary>
+        private static int SelectWeightedPoolIndex(ItemKind[] poolKinds, LootJobContext ctx)
+        {
+            if (ctx.IsEmpty)
+                return Nez.Random.NextInt(poolKinds.Length);
+
+            int totalWeight = 0;
+            var weights = new int[poolKinds.Length];
+
+            for (int i = 0; i < poolKinds.Length; i++)
+            {
+                JobType allowed = Gear.GetDefaultAllowedJobs(poolKinds[i]);
+                int weight;
+
+                if (allowed == JobType.All)
+                    weight = BalanceConfig.LootWeightAllJobs;
+                else if ((allowed & ctx.HeroJob) != 0)
+                    weight = BalanceConfig.LootWeightHeroJob;
+                else if ((allowed & ctx.MercJobs) != 0)
+                    weight = BalanceConfig.LootWeightMercJob;
+                else
+                    weight = BalanceConfig.LootWeightNoPartyJob;
+
+                weights[i] = weight;
+                totalWeight += weight;
+            }
+
+            int roll = Nez.Random.NextInt(totalWeight);
+            int cumulative = 0;
+            for (int i = 0; i < weights.Length; i++)
+            {
+                cumulative += weights[i];
+                if (roll < cumulative)
+                    return i;
+            }
+
+            return poolKinds.Length - 1;
+        }
+
+        /// <summary>
+        /// Generate cave common equipment from all Normal-rarity cave gear items (56 items).
+        /// </summary>
+        private static IItem GenerateCaveCommonEquipment(LootJobContext ctx = default)
+        {
+            int index = SelectWeightedPoolIndex(_commonPoolKinds, ctx);
+            switch (index)
             {
                 // Swords (Normal) — 0..10
                 case 0:  return GearItems.RustyBlade();
@@ -311,10 +516,10 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Generate cave uncommon equipment from all Uncommon-rarity cave gear items (77 items).
         /// </summary>
-        private static IItem GenerateCaveUncommonEquipment()
+        private static IItem GenerateCaveUncommonEquipment(LootJobContext ctx = default)
         {
-            int random = Nez.Random.NextInt(77);
-            switch (random)
+            int index = SelectWeightedPoolIndex(_uncommonPoolKinds, ctx);
+            switch (index)
             {
                 // Swords (Uncommon) — 0..13
                 case 0:  return GearItems.AbyssFang();
@@ -458,12 +663,12 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Initialize this treasure chest for a specific pit level
         /// </summary>
-        public void InitializeForPitLevel(int pitLevel)
+        public void InitializeForPitLevel(int pitLevel, LootJobContext jobContext = default)
         {
             Level = DetermineTreasureLevel(pitLevel);
             if (CaveBiomeConfig.IsCaveLevel(pitLevel))
             {
-                ContainedItem = GenerateCaveItemForTreasureLevel(Level);
+                ContainedItem = GenerateCaveItemForTreasureLevel(Level, jobContext);
                 return;
             }
 
