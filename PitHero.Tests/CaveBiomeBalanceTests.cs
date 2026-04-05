@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PitHero.Config;
+using RolePlayingFramework.Enemies;
 using PitHero.VirtualGame;
 using RolePlayingFramework.Balance;
 using System;
@@ -314,14 +315,23 @@ namespace PitHero.Tests
 
                 _context.PitGenerator.RegenerateForLevel(level);
 
-                string[] expectedPool = CaveBiomeConfig.GetEnemyPoolForLevel(level);
+                EnemyId[] expectedPool = CaveBiomeConfig.GetEnemyPoolForLevel(level);
                 var actualMonsters = new HashSet<string>(_world.LastGeneratedMonsterTypes);
 
                 // All actual monsters must be in expected pool
                 bool hasError = false;
                 foreach (string monster in actualMonsters)
                 {
-                    if (!expectedPool.Contains(monster))
+                    bool inPool = false;
+                    for (int pi = 0; pi < expectedPool.Length; pi++)
+                    {
+                        if (expectedPool[pi].ToString() == monster)
+                        {
+                            inPool = true;
+                            break;
+                        }
+                    }
+                    if (!inPool)
                     {
                         _balanceReport.AppendLine($"✗ Level {level}: Unexpected monster '{monster}' not in pool");
                         hasError = true;
@@ -529,7 +539,7 @@ namespace PitHero.Tests
             public List<int> TreasureLevels { get; set; } = new List<int>();
             public List<string> EquipmentTypes { get; set; } = new List<string>();
             public bool IsBossFloor { get; set; }
-            public string[] ExpectedPool { get; set; } = System.Array.Empty<string>();
+            public EnemyId[] ExpectedPool { get; set; } = System.Array.Empty<EnemyId>();
             public int ScaledEnemyLevel { get; set; }
         }
 

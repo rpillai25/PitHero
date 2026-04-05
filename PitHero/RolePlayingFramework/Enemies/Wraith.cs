@@ -11,6 +11,7 @@ namespace RolePlayingFramework.Enemies
         private int _hp;
 
         public string Name => MonsterTextKey.Monster_Wraith;
+        public EnemyId EnemyId => EnemyId.Wraith;
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
@@ -27,7 +28,7 @@ namespace RolePlayingFramework.Enemies
         public Wraith(int level = 6)
         {
             // Always use the preset level for Wraiths regardless of requested level
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_Wraith);
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.Wraith);
             Level = presetLevel;
 
             // Use BalanceConfig for stats

@@ -1,7 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RolePlayingFramework.Enemies;
 using PitHero.Config;
-using PitHero;
 
 namespace PitHero.Tests
 {
@@ -31,7 +30,7 @@ namespace PitHero.Tests
         public void SlimeEnemy_UsesPresetLevel_WhenRequestedLevelIsInvalid()
         {
             // Arrange
-            var presetLevel = EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_Slime);
+            var presetLevel = EnemyLevelConfig.GetPresetLevel(EnemyId.Slime);
 
             // Act
             var slime = new Slime(0);
@@ -44,7 +43,7 @@ namespace PitHero.Tests
         public void SlimeEnemy_StatsConsistentAtPresetLevel()
         {
             // Arrange
-            var presetLevel = EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_Slime);
+            var presetLevel = EnemyLevelConfig.GetPresetLevel(EnemyId.Slime);
 
             // Act - Create multiple slimes at preset level
             var slime1 = new Slime(presetLevel);
@@ -63,7 +62,7 @@ namespace PitHero.Tests
         public void EnemyLevelConfig_SlimeLevel_IsAlwaysOne()
         {
             // Arrange & Act
-            var slimeLevel = EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_Slime);
+            var slimeLevel = EnemyLevelConfig.GetPresetLevel(EnemyId.Slime);
 
             // Assert
             Assert.AreEqual(1, slimeLevel, "Slimes should always be level 1 according to the design requirements");

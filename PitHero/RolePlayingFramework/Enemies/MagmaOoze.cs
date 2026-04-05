@@ -11,6 +11,7 @@ namespace RolePlayingFramework.Enemies
         private int _hp;
 
         public string Name => MonsterTextKey.Monster_MagmaOoze;
+        public EnemyId EnemyId => EnemyId.MagmaOoze;
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Magical;
@@ -26,7 +27,7 @@ namespace RolePlayingFramework.Enemies
 
         public MagmaOoze(int level = 11)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_MagmaOoze);
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.MagmaOoze);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - Balanced archetype

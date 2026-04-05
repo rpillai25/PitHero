@@ -11,6 +11,7 @@ namespace RolePlayingFramework.Enemies
         private int _hp;
 
         public string Name => MonsterTextKey.Monster_Goblin;
+        public EnemyId EnemyId => EnemyId.Goblin;
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
@@ -27,7 +28,7 @@ namespace RolePlayingFramework.Enemies
         public Goblin(int level = 3)
         {
             // Always use the preset level for Goblins regardless of requested level
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_Goblin);
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.Goblin);
             Level = presetLevel;
 
             // Use BalanceConfig for stats

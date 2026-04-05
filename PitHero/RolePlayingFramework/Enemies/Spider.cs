@@ -11,6 +11,7 @@ namespace RolePlayingFramework.Enemies
         private int _hp;
 
         public string Name => MonsterTextKey.Monster_Spider;
+        public EnemyId EnemyId => EnemyId.Spider;
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
@@ -27,7 +28,7 @@ namespace RolePlayingFramework.Enemies
         public Spider(int level = 3)
         {
             // Always use the preset level for Spiders regardless of requested level
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_Spider);
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.Spider);
             Level = presetLevel;
 
             // Use BalanceConfig for stats

@@ -6,6 +6,9 @@ namespace RolePlayingFramework.Enemies
     /// <summary>Defines an enemy with stats and a basic attack kind.</summary>
     public interface IEnemy
     {
+        /// <summary>Strongly-typed identifier for this enemy type.</summary>
+        EnemyId EnemyId { get; }
+
         /// <summary>Enemy display name.</summary>
         string Name { get; }
 

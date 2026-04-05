@@ -11,6 +11,7 @@ namespace RolePlayingFramework.Enemies
         private int _hp;
 
         public string Name => MonsterTextKey.Monster_PitLord;
+        public EnemyId EnemyId => EnemyId.PitLord;
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
@@ -27,7 +28,7 @@ namespace RolePlayingFramework.Enemies
         public PitLord(int level = 10)
         {
             // Always use the preset level for Pit Lords regardless of requested level
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_PitLord);
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.PitLord);
             Level = presetLevel;
 
             // Use BalanceConfig for stats

@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using PitHero.AI.Interfaces;
 using PitHero.Config;
 using PitHero.ECS.Components;
+using RolePlayingFramework.Enemies;
 using System;
 using System.Collections.Generic;
 
@@ -152,14 +153,14 @@ namespace PitHero.VirtualGame
             // Generate monsters from Cave Biome pool if in cave range
             if (CaveBiomeConfig.IsCaveLevel(level) && !isCaveBossFloor)
             {
-                string[] enemyPool = CaveBiomeConfig.GetEnemyPoolForLevel(level);
+                EnemyId[] enemyPool = CaveBiomeConfig.GetEnemyPoolForLevel(level);
                 for (int i = 0; i < monsterCount; i++)
                 {
                     var pos = GetRandomPosition(minX, minY, maxX, maxY, usedPositions, random);
                     if (pos.HasValue)
                     {
                         usedPositions.Add(pos.Value);
-                        string monsterType = enemyPool.Length > 0 ? enemyPool[random.Next(enemyPool.Length)] : "GenericMonster";
+                        string monsterType = enemyPool.Length > 0 ? enemyPool[random.Next(enemyPool.Length)].ToString() : "GenericMonster";
                         _worldState.AddMonster(pos.Value, monsterType);
                     }
                 }

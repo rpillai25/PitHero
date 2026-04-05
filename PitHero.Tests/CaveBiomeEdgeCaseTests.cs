@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PitHero.Config;
 using RolePlayingFramework.Equipment;
 using PitHero;
+using RolePlayingFramework.Enemies;
 
 namespace PitHero.Tests
 {
@@ -75,14 +76,14 @@ namespace PitHero.Tests
             Assert.IsFalse(CaveBiomeConfig.IsBossFloor(4));
             Assert.IsTrue(CaveBiomeConfig.IsBossFloor(5));
 
-            string[] level4Pool = CaveBiomeConfig.GetEnemyPoolForLevel(4);
-            string[] level5Pool = CaveBiomeConfig.GetEnemyPoolForLevel(5);
+            EnemyId[] level4Pool = CaveBiomeConfig.GetEnemyPoolForLevel(4);
+            EnemyId[] level5Pool = CaveBiomeConfig.GetEnemyPoolForLevel(5);
 
             Assert.IsTrue(level4Pool.Length > 0);
             Assert.AreEqual(0, level5Pool.Length);
-            Assert.IsTrue(ContainsEnemy(level4Pool, MonsterTextKey.Monster_Slime));
-            Assert.IsTrue(ContainsEnemy(level4Pool, MonsterTextKey.Monster_Bat));
-            Assert.IsTrue(ContainsEnemy(level4Pool, MonsterTextKey.Monster_Rat));
+            Assert.IsTrue(ContainsEnemy(level4Pool, EnemyId.Slime));
+            Assert.IsTrue(ContainsEnemy(level4Pool, EnemyId.Bat));
+            Assert.IsTrue(ContainsEnemy(level4Pool, EnemyId.Rat));
         }
 
         /// <summary>
@@ -94,17 +95,17 @@ namespace PitHero.Tests
             Assert.IsTrue(CaveBiomeConfig.IsBossFloor(5));
             Assert.IsFalse(CaveBiomeConfig.IsBossFloor(6));
 
-            string[] level5Pool = CaveBiomeConfig.GetEnemyPoolForLevel(5);
-            string[] level6Pool = CaveBiomeConfig.GetEnemyPoolForLevel(6);
+            EnemyId[] level5Pool = CaveBiomeConfig.GetEnemyPoolForLevel(5);
+            EnemyId[] level6Pool = CaveBiomeConfig.GetEnemyPoolForLevel(6);
 
             Assert.AreEqual(0, level5Pool.Length);
             Assert.IsTrue(level6Pool.Length > 0);
-            Assert.IsTrue(ContainsEnemy(level6Pool, MonsterTextKey.Monster_Slime));
-            Assert.IsTrue(ContainsEnemy(level6Pool, MonsterTextKey.Monster_Bat));
-            Assert.IsTrue(ContainsEnemy(level6Pool, MonsterTextKey.Monster_Rat));
-            Assert.IsTrue(ContainsEnemy(level6Pool, MonsterTextKey.Monster_Goblin));
-            Assert.IsTrue(ContainsEnemy(level6Pool, MonsterTextKey.Monster_Spider));
-            Assert.IsTrue(ContainsEnemy(level6Pool, MonsterTextKey.Monster_Snake));
+            Assert.IsTrue(ContainsEnemy(level6Pool, EnemyId.Slime));
+            Assert.IsTrue(ContainsEnemy(level6Pool, EnemyId.Bat));
+            Assert.IsTrue(ContainsEnemy(level6Pool, EnemyId.Rat));
+            Assert.IsTrue(ContainsEnemy(level6Pool, EnemyId.Goblin));
+            Assert.IsTrue(ContainsEnemy(level6Pool, EnemyId.Spider));
+            Assert.IsTrue(ContainsEnemy(level6Pool, EnemyId.Snake));
         }
 
         /// <summary>
@@ -117,7 +118,7 @@ namespace PitHero.Tests
 
             for (int i = 0; i < levels.Length; i++)
             {
-                string[] pool = CaveBiomeConfig.GetEnemyPoolForLevel(levels[i]);
+                EnemyId[] pool = CaveBiomeConfig.GetEnemyPoolForLevel(levels[i]);
                 Assert.AreEqual(0, pool.Length, $"Out-of-range level {levels[i]} should return empty enemy pool");
             }
         }
@@ -154,11 +155,11 @@ namespace PitHero.Tests
         /// <summary>
         /// Returns true if the enemy exists in the provided pool.
         /// </summary>
-        private static bool ContainsEnemy(string[] pool, string enemyName)
+        private static bool ContainsEnemy(EnemyId[] pool, EnemyId enemyId)
         {
             for (int i = 0; i < pool.Length; i++)
             {
-                if (pool[i] == enemyName)
+                if (pool[i] == enemyId)
                 {
                     return true;
                 }

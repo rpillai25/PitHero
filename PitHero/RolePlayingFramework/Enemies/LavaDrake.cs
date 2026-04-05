@@ -11,6 +11,7 @@ namespace RolePlayingFramework.Enemies
         private int _hp;
 
         public string Name => MonsterTextKey.Monster_LavaDrake;
+        public EnemyId EnemyId => EnemyId.LavaDrake;
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Magical;
@@ -26,7 +27,7 @@ namespace RolePlayingFramework.Enemies
 
         public LavaDrake(int level = 17)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_LavaDrake);
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.LavaDrake);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - MagicUser archetype

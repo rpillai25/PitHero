@@ -11,6 +11,7 @@ namespace RolePlayingFramework.Enemies
         private int _hp;
 
         public string Name => MonsterTextKey.Monster_Rat;
+        public EnemyId EnemyId => EnemyId.Rat;
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
@@ -27,7 +28,7 @@ namespace RolePlayingFramework.Enemies
         public Rat(int level = 1)
         {
             // Always use the preset level for Rats regardless of requested level
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(MonsterTextKey.Monster_Rat);
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.Rat);
             Level = presetLevel;
 
             // Use BalanceConfig for stats

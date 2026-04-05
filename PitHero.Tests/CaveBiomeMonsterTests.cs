@@ -120,22 +120,22 @@ namespace PitHero.Tests
         public void CaveBiomeMonsters_InEnemyLevelConfig()
         {
             // Assert - All new monsters should be in the config
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_CaveMushroom));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_StoneBeetle));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_ShadowImp));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_TunnelWorm));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_FireLizard));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_MagmaOoze));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_CrystalGolem));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_CaveTroll));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_GhostMiner));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_ShadowBeast));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_LavaDrake));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_StoneWyrm));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_StoneGuardian));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_EarthElemental));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_MoltenTitan));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_AncientWyrm));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.CaveMushroom));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.StoneBeetle));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.ShadowImp));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.TunnelWorm));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.FireLizard));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.MagmaOoze));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.CrystalGolem));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.CaveTroll));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.GhostMiner));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.ShadowBeast));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.LavaDrake));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.StoneWyrm));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.StoneGuardian));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.EarthElemental));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.MoltenTitan));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.AncientWyrm));
         }
 
         [TestMethod]

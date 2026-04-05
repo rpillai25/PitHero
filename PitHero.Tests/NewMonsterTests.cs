@@ -130,16 +130,16 @@ namespace PitHero.Tests
         public void EnemyLevelConfig_ContainsAllMonsters()
         {
             // Assert - All monsters should be in the config
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_Slime));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_Bat));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_Rat));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_Goblin));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_Spider));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_Snake));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_Skeleton));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_Orc));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_Wraith));
-            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(MonsterTextKey.Monster_PitLord));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.Slime));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.Bat));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.Rat));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.Goblin));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.Spider));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.Snake));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.Skeleton));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.Orc));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.Wraith));
+            Assert.IsTrue(EnemyLevelConfig.HasPresetLevel(EnemyId.PitLord));
         }
     }
 }
