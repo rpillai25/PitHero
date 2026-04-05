@@ -67,7 +67,7 @@ namespace PitHero.Services
                         if (string.IsNullOrWhiteSpace(line) || line.StartsWith("#"))
                             continue;
 
-                        int separatorIndex = line.IndexOf('=');
+                        int separatorIndex = line.IndexOf(',');
                         if (separatorIndex < 1)
                         {
                             Nez.Debug.Log($"[TextService] Invalid line {lineNumber} in {fileName}: '{line}'");
