@@ -7,6 +7,7 @@ using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.Util;
 using RolePlayingFramework.Enemies;
+using RolePlayingFramework.Jobs;
 using System;
 using System.Collections.Generic;
 
@@ -772,7 +773,8 @@ namespace PitHero
                     int currentPitLevel = pitWidthManager?.CurrentPitLevel ?? 1;
 
                     var treasureComponent = entity.AddComponent(new TreasureComponent());
-                    treasureComponent.InitializeForPitLevel(currentPitLevel);
+                    var lootCtx = BuildLootJobContext();
+                    treasureComponent.InitializeForPitLevel(currentPitLevel, lootCtx);
 
                     var collider = entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
                     collider.IsTrigger = true;
@@ -1025,6 +1027,34 @@ namespace PitHero
             }
 
             return new Point(-1, -1);
+        }
+
+        /// <summary>
+        /// Builds a <see cref="LootJobContext"/> from the current hero and hired mercenaries.
+        /// Returns an empty context when no hero is present.
+        /// </summary>
+        private LootJobContext BuildLootJobContext()
+        {
+            var heroComp = Core.Scene?.FindComponentOfType<HeroComponent>();
+            if (heroComp?.LinkedHero == null)
+                return LootJobContext.Empty;
+
+            var ctx = new LootJobContext();
+            ctx.HeroJob = heroComp.LinkedHero.Job.JobFlag;
+
+            var mercManager = Core.Services?.GetService<MercenaryManager>();
+            if (mercManager != null)
+            {
+                var hiredMercs = mercManager.GetHiredMercenaries();
+                for (int i = 0; i < hiredMercs.Count; i++)
+                {
+                    var merc = hiredMercs[i].GetComponent<MercenaryComponent>()?.LinkedMercenary;
+                    if (merc != null)
+                        ctx.MercJobs |= merc.Job.JobFlag;
+                }
+            }
+
+            return ctx;
         }
     }
 }
