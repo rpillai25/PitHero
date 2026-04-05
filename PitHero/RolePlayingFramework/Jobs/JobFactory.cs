@@ -12,6 +12,8 @@ namespace RolePlayingFramework.Jobs
         {
             switch (jobName)
             {
+                // Legacy display name cases (kept for backward compat with saved games and HeroCreationUI)
+                // TODO: Update callers to pass JobTextKey constants, then remove these display-name cases
                 case "Knight":
                 case JobTextKey.Job_Knight_Name: return new Knight();
                 case "Mage":
