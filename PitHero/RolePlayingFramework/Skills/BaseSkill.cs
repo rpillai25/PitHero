@@ -13,10 +13,18 @@ namespace RolePlayingFramework.Skills
     {
         private readonly string _nameKey;
         private readonly string _descKey;
+        private TextService _textService;
+
+        private TextService GetTextService()
+        {
+            if (_textService == null)
+                _textService = Core.Services?.GetService<TextService>();
+            return _textService;
+        }
 
         public string Id { get; }
-        public string Name => Core.Services.GetService<TextService>()?.DisplayText(TextType.Skill, _nameKey) ?? _nameKey;
-        public string Description => Core.Services.GetService<TextService>()?.DisplayText(TextType.Skill, _descKey) ?? _descKey;
+        public string Name => GetTextService()?.DisplayText(TextType.Skill, _nameKey) ?? _nameKey;
+        public string Description => GetTextService()?.DisplayText(TextType.Skill, _descKey) ?? _descKey;
         public SkillKind Kind { get; }
         public SkillTargetType TargetType { get; }
         public int MPCost { get; }

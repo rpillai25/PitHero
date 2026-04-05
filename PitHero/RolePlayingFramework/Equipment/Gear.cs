@@ -46,25 +46,24 @@ namespace RolePlayingFramework.Equipment
     {
         private readonly string _nameKey;
         private readonly string _descKey;
+        private readonly string _spriteName;
+        private TextService _textService;
 
-        public string Name => Core.Services.GetService<TextService>()?.DisplayText(TextType.Inventory, _nameKey) ?? _nameKey;
+        private TextService GetTextService()
+        {
+            if (_textService == null)
+                _textService = Core.Services?.GetService<TextService>();
+            return _textService;
+        }
+
+        public string Name => GetTextService()?.DisplayText(TextType.Inventory, _nameKey) ?? _nameKey;
 
         /// <summary>Sprite name used to look up the item's sprite in the Items atlas. Derived from the item class name.</summary>
-        public string SpriteName
-        {
-            get
-            {
-                const string prefix = "Inv_";
-                const string suffix = "_Name";
-                if (_nameKey.StartsWith(prefix) && _nameKey.EndsWith(suffix))
-                    return _nameKey.Substring(prefix.Length, _nameKey.Length - prefix.Length - suffix.Length);
-                return _nameKey;
-            }
-        }
+        public string SpriteName => _spriteName;
 
         public ItemKind Kind { get; }
         public ItemRarity Rarity { get; }
-        public string Description => Core.Services.GetService<TextService>()?.DisplayText(TextType.Inventory, _descKey) ?? _descKey;
+        public string Description => GetTextService()?.DisplayText(TextType.Inventory, _descKey) ?? _descKey;
         public int Price { get; }
         public StatBlock StatBonus { get; }
         public int AttackBonus { get; }
@@ -93,6 +92,11 @@ namespace RolePlayingFramework.Equipment
         {
             _nameKey = name;
             _descKey = description;
+            const string prefix = "Inv_";
+            const string suffix = "_Name";
+            _spriteName = (name.StartsWith(prefix) && name.EndsWith(suffix))
+                ? name.Substring(prefix.Length, name.Length - prefix.Length - suffix.Length)
+                : name;
             Kind = kind;
             Rarity = rarity;
             Price = price;

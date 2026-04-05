@@ -7,10 +7,18 @@ namespace RolePlayingFramework.Equipment
     /// <summary>Abstract base consumable with one-time effect.</summary>
     public abstract class Consumable : IItem
     {
-        private string _nameKey;
+        private readonly string _nameKey;
         private string _descKey;
+        private TextService _textService;
 
-        public string Name => Core.Services.GetService<TextService>()?.DisplayText(TextType.Inventory, _nameKey) ?? _nameKey;
+        private TextService GetTextService()
+        {
+            if (_textService == null)
+                _textService = Core.Services?.GetService<TextService>();
+            return _textService;
+        }
+
+        public string Name => GetTextService()?.DisplayText(TextType.Inventory, _nameKey) ?? _nameKey;
 
         /// <summary>Sprite name used to look up the item's sprite in the Items atlas. Returns the concrete class name.</summary>
         public string SpriteName => GetType().Name;
@@ -19,7 +27,7 @@ namespace RolePlayingFramework.Equipment
         public ItemRarity Rarity { get; }
         public string Description
         {
-            get => Core.Services.GetService<TextService>()?.DisplayText(TextType.Inventory, _descKey) ?? _descKey;
+            get => GetTextService()?.DisplayText(TextType.Inventory, _descKey) ?? _descKey;
             protected set => _descKey = value;
         }
         public int Price { get; protected set; }

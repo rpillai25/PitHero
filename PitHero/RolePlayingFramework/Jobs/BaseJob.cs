@@ -13,10 +13,18 @@ namespace RolePlayingFramework.Jobs
         private readonly string _nameKey;
         private readonly string _descKey;
         private readonly string _roleKey;
+        private TextService _textService;
 
-        public string Name => Core.Services.GetService<TextService>()?.DisplayText(TextType.Job, _nameKey) ?? _nameKey;
-        public string Description => Core.Services.GetService<TextService>()?.DisplayText(TextType.Job, _descKey) ?? _descKey;
-        public string Role => Core.Services.GetService<TextService>()?.DisplayText(TextType.Job, _roleKey) ?? _roleKey;
+        private TextService GetTextService()
+        {
+            if (_textService == null)
+                _textService = Core.Services?.GetService<TextService>();
+            return _textService;
+        }
+
+        public string Name => GetTextService()?.DisplayText(TextType.Job, _nameKey) ?? _nameKey;
+        public string Description => GetTextService()?.DisplayText(TextType.Job, _descKey) ?? _descKey;
+        public string Role => GetTextService()?.DisplayText(TextType.Job, _roleKey) ?? _roleKey;
         public StatBlock BaseBonus { get; }
         public StatBlock GrowthPerLevel { get; }
         public IReadOnlyList<ISkill> Skills => _skills;
