@@ -17,6 +17,7 @@ namespace PitHero.Tests
             private int _hp = 100;
 
             public string Name { get; }
+            public EnemyId EnemyId => EnemyId.Slime;
             public int Level => 1;
             public StatBlock Stats => new StatBlock(5, 5, 5, 5);
             public DamageKind AttackKind => DamageKind.Physical;
