@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Inventory;
+using PitHero;
 
 namespace PitHero.Tests
 {
@@ -28,7 +29,7 @@ namespace PitHero.Tests
             Assert.IsInstanceOfType(firstItem, typeof(Consumable));
             var consumable = (Consumable)firstItem;
             Assert.AreEqual(10, consumable.StackCount);
-            Assert.AreEqual("HPPotion", consumable.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_HPPotion_Name, consumable.Name);
         }
 
         [TestMethod]
@@ -77,15 +78,15 @@ namespace PitHero.Tests
             Assert.AreEqual(3, bag.Count);
             
             var hpStack = bag.GetSlotItem(0) as Consumable;
-            Assert.AreEqual("HPPotion", hpStack.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_HPPotion_Name, hpStack.Name);
             Assert.AreEqual(5, hpStack.StackCount);
             
             var apStack = bag.GetSlotItem(1) as Consumable;
-            Assert.AreEqual("MPPotion", apStack.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_MPPotion_Name, apStack.Name);
             Assert.AreEqual(3, apStack.StackCount);
             
             var mixStack = bag.GetSlotItem(2) as Consumable;
-            Assert.AreEqual("MixPotion", mixStack.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_MixPotion_Name, mixStack.Name);
             Assert.AreEqual(2, mixStack.StackCount);
         }
 

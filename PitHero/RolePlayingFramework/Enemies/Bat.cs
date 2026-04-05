@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Enemies
 {
@@ -9,7 +10,8 @@ namespace RolePlayingFramework.Enemies
     {
         private int _hp;
 
-        public string Name => "Bat";
+        public string Name => MonsterTextKey.Monster_Bat;
+        public EnemyId EnemyId => EnemyId.Bat;
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
@@ -26,7 +28,7 @@ namespace RolePlayingFramework.Enemies
         public Bat(int level = 1)
         {
             // Always use the preset level for Bats regardless of requested level
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Bat");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.Bat);
             Level = presetLevel;
 
             // Use BalanceConfig for stats

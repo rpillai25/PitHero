@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Enemies
 {
@@ -9,7 +10,8 @@ namespace RolePlayingFramework.Enemies
     {
         private int _hp;
 
-        public string Name => "Crystal Golem";
+        public string Name => MonsterTextKey.Monster_CrystalGolem;
+        public EnemyId EnemyId => EnemyId.CrystalGolem;
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
@@ -25,7 +27,7 @@ namespace RolePlayingFramework.Enemies
 
         public CrystalGolem(int level = 12)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Crystal Golem");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.CrystalGolem);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - Tank archetype

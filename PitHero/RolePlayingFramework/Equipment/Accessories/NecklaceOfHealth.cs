@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Accessories
 {
@@ -16,10 +17,10 @@ namespace RolePlayingFramework.Equipment.Accessories
             // HP bonus scales with stat bonus for vitality-focused items
             int hpBonus = statBonus * 5;
             return new Gear(
-                "NecklaceOfHealth",
+                InventoryTextKey.Inv_NecklaceOfHealth_Name,
                 ItemKind.Accessory,
                 Rarity,
-                $"Adventurers wear this to for longevity.",
+                InventoryTextKey.Inv_NecklaceOfHealth_Desc,
                 150,
                 new StatBlock(0, 0, statBonus, 0),
                 hp: hpBonus,

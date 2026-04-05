@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Armor
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Armor
         {
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "PitLordsArmor",
+                InventoryTextKey.Inv_PitLordsArmor_Name,
                 ItemKind.ArmorMail,
                 Rarity,
-                "Legendary armor of the cave master.",
+                InventoryTextKey.Inv_PitLordsArmor_Desc,
                 1100,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

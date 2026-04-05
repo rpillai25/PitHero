@@ -1,3 +1,6 @@
+using Nez;
+using PitHero;
+using PitHero.Services;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Enemies;
 using RolePlayingFramework.Heroes;
@@ -8,9 +11,20 @@ namespace RolePlayingFramework.Skills
     /// <summary>Base skill with default passive/active behavior.</summary>
     public abstract class BaseSkill : ISkill
     {
+        private readonly string _nameKey;
+        private readonly string _descKey;
+        private TextService _textService;
+
+        private TextService GetTextService()
+        {
+            if (_textService == null)
+                _textService = Core.Services?.GetService<TextService>();
+            return _textService;
+        }
+
         public string Id { get; }
-        public string Name { get; }
-        public string Description { get; }
+        public string Name => GetTextService()?.DisplayText(TextType.Skill, _nameKey) ?? _nameKey;
+        public string Description => GetTextService()?.DisplayText(TextType.Skill, _descKey) ?? _descKey;
         public SkillKind Kind { get; }
         public SkillTargetType TargetType { get; }
         public int MPCost { get; }
@@ -28,8 +42,8 @@ namespace RolePlayingFramework.Skills
         protected BaseSkill(string id, string name, string description, SkillKind kind, SkillTargetType targetType, int mpCost, int jpCost, ElementType element = ElementType.Neutral, bool battleOnly = true, int hpRestoreAmount = 0, int mpRestoreAmount = 0)
         {
             Id = id;
-            Name = name;
-            Description = description;
+            _nameKey = name;
+            _descKey = description;
             Kind = kind;
             TargetType = targetType;
             MPCost = mpCost;

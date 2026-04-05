@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Rods
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Rods
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "WalkingStick",
+                InventoryTextKey.Inv_WalkingStick_Name,
                 ItemKind.WeaponRod,
                 Rarity,
-                "Simple wooden rod.",
+                InventoryTextKey.Inv_WalkingStick_Desc,
                 75,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

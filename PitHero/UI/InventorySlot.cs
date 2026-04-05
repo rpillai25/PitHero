@@ -192,7 +192,7 @@ namespace PitHero.UI
                 try
                 {
                     var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
-                    var itemSprite = itemsAtlas.GetSprite(_slotData.Item.Name);
+                    var itemSprite = itemsAtlas.GetSprite(_slotData.Item.SpriteName);
                     if (itemSprite != null)
                     {
                         var itemDrawable = new SpriteDrawable(itemSprite);

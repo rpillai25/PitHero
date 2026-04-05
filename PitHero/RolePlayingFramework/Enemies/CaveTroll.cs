@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Enemies
 {
@@ -9,7 +10,8 @@ namespace RolePlayingFramework.Enemies
     {
         private int _hp;
 
-        public string Name => "Cave Troll";
+        public string Name => MonsterTextKey.Monster_CaveTroll;
+        public EnemyId EnemyId => EnemyId.CaveTroll;
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
@@ -25,7 +27,7 @@ namespace RolePlayingFramework.Enemies
 
         public CaveTroll(int level = 13)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Cave Troll");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.CaveTroll);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - Tank archetype

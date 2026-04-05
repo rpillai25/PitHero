@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Shields
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Shields
         {
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "TowerShield",
+                InventoryTextKey.Inv_TowerShield_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Massive full-body shield.",
+                InventoryTextKey.Inv_TowerShield_Desc,
                 600,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Inventory;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace PitHero.Tests
 {
@@ -114,9 +115,9 @@ namespace PitHero.Tests
             
             Assert.IsNotNull(slot0Item);
             Assert.IsNotNull(slot1Item);
-            Assert.AreEqual("MPPotion", slot0Item.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_MPPotion_Name, slot0Item.Name);
             Assert.AreEqual(3, slot0Item.StackCount);
-            Assert.AreEqual("HPPotion", slot1Item.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_HPPotion_Name, slot1Item.Name);
             Assert.AreEqual(5, slot1Item.StackCount);
             Assert.AreEqual(2, bag.Count);
         }

@@ -8,6 +8,7 @@ using RolePlayingFramework.Jobs.Primary;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using PitHero;
 
 namespace PitHero.Tests
 {
@@ -33,7 +34,7 @@ namespace PitHero.Tests
                 original.HairColor = new Color(50, 60, 70, 255);
                 original.HairstyleIndex = 3;
                 original.ShirtColor = new Color(10, 20, 30, 255);
-                original.JobName = "Knight";
+                original.JobName = JobTextKey.Job_Knight_Name;
                 original.Level = 15;
                 original.Experience = 450;
                 original.BaseStrength = 20;
@@ -43,10 +44,10 @@ namespace PitHero.Tests
                 original.CurrentHP = 200;
                 original.CurrentMP = 50;
 
-                original.EquipmentNames = new string[] { "RustyBlade", "", "SquireHelm", "", "", "" };
+                original.EquipmentNames = new string[] { InventoryTextKey.Inv_RustyBlade_Name, "", InventoryTextKey.Inv_SquireHelm_Name, "", "", "" };
 
                 original.HasCrystal = true;
-                original.CrystalJobName = "Knight";
+                original.CrystalJobName = JobTextKey.Job_Knight_Name;
                 original.CrystalLevel = 15;
                 original.CrystalBaseStrength = 4;
                 original.CrystalBaseAgility = 3;
@@ -72,13 +73,13 @@ namespace PitHero.Tests
 
                 original.InventoryItems = new List<SavedItem>
                 {
-                    new SavedItem { Name = "HPPotion", IsConsumable = true, StackCount = 5, SlotIndex = 0 },
-                    new SavedItem { Name = "RustyBlade", IsConsumable = false, StackCount = 0, SlotIndex = 3 }
+                    new SavedItem { Name = InventoryTextKey.Inv_HPPotion_Name, IsConsumable = true, StackCount = 5, SlotIndex = 0 },
+                    new SavedItem { Name = InventoryTextKey.Inv_RustyBlade_Name, IsConsumable = false, StackCount = 0, SlotIndex = 3 }
                 };
 
                 original.AlliedMonsters = new List<SavedAlliedMonster>
                 {
-                    new SavedAlliedMonster { Name = "Bob", MonsterTypeName = "Slime", FishingProficiency = 3, CookingProficiency = 5, FarmingProficiency = 7 }
+                    new SavedAlliedMonster { Name = "Bob", MonsterTypeName = MonsterTextKey.Monster_Slime, FishingProficiency = 3, CookingProficiency = 5, FarmingProficiency = 7 }
                 };
 
                 dataStore.Save("test_save.bin", original);
@@ -145,7 +146,7 @@ namespace PitHero.Tests
 
                 var original = new SaveData();
                 original.HeroName = "EmptyHero";
-                original.JobName = "Mage";
+                original.JobName = JobTextKey.Job_Mage_Name;
                 original.Level = 1;
 
                 dataStore.Save("test_empty.bin", original);
@@ -154,7 +155,7 @@ namespace PitHero.Tests
                 dataStore.Load("test_empty.bin", loaded);
 
                 Assert.AreEqual("EmptyHero", loaded.HeroName);
-                Assert.AreEqual("Mage", loaded.JobName);
+                Assert.AreEqual(JobTextKey.Job_Mage_Name, loaded.JobName);
                 Assert.AreEqual(1, loaded.Level);
                 Assert.AreEqual(false, loaded.HasCrystal);
                 Assert.AreEqual(0, loaded.InventoryItems.Count);
@@ -171,18 +172,18 @@ namespace PitHero.Tests
         [TestMethod]
         public void ItemRegistry_TryCreateItem_FindsKnownGearItems()
         {
-            Assert.IsTrue(ItemRegistry.TryCreateItem("RustyBlade", out var sword));
+            Assert.IsTrue(ItemRegistry.TryCreateItem(InventoryTextKey.Inv_RustyBlade_Name, out var sword));
             Assert.IsNotNull(sword);
-            Assert.AreEqual("RustyBlade", sword.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_RustyBlade_Name, sword.Name);
         }
 
         /// <summary>Verifies ItemRegistry finds known potion items.</summary>
         [TestMethod]
         public void ItemRegistry_TryCreateItem_FindsKnownPotionItems()
         {
-            Assert.IsTrue(ItemRegistry.TryCreateItem("HPPotion", out var potion));
+            Assert.IsTrue(ItemRegistry.TryCreateItem(InventoryTextKey.Inv_HPPotion_Name, out var potion));
             Assert.IsNotNull(potion);
-            Assert.AreEqual("HPPotion", potion.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_HPPotion_Name, potion.Name);
         }
 
         /// <summary>Verifies ItemRegistry returns false for unknown items.</summary>
@@ -197,7 +198,7 @@ namespace PitHero.Tests
         [TestMethod]
         public void JobFactory_CreateJob_CreatesAllPrimaryJobs()
         {
-            var jobNames = new string[] { "Knight", "Mage", "Monk", "Priest", "Archer", "Thief" };
+            var jobNames = new string[] { JobTextKey.Job_Knight_Name, JobTextKey.Job_Mage_Name, JobTextKey.Job_Monk_Name, JobTextKey.Job_Priest_Name, JobTextKey.Job_Archer_Name, JobTextKey.Job_Thief_Name };
             for (int i = 0; i < jobNames.Length; i++)
             {
                 var job = JobFactory.CreateJob(jobNames[i]);
@@ -210,9 +211,9 @@ namespace PitHero.Tests
         [TestMethod]
         public void JobFactory_CreateJob_CreatesCompositeJob()
         {
-            var job = JobFactory.CreateJob("Knight-Mage");
+            var job = JobFactory.CreateJob($"{JobTextKey.Job_Knight_Name}-{JobTextKey.Job_Mage_Name}");
             Assert.IsNotNull(job);
-            Assert.AreEqual("Knight-Mage", job.Name);
+            Assert.AreEqual($"{JobTextKey.Job_Knight_Name}-{JobTextKey.Job_Mage_Name}", job.Name);
         }
 
         /// <summary>Verifies JobFactory defaults to Knight for unknown job names.</summary>
@@ -221,7 +222,7 @@ namespace PitHero.Tests
         {
             var job = JobFactory.CreateJob("UnknownJob");
             Assert.IsNotNull(job);
-            Assert.AreEqual("Knight", job.Name);
+            Assert.AreEqual(JobTextKey.Job_Knight_Name, job.Name);
         }
 
         /// <summary>Verifies non-sequential slot positions survive full ItemBag → SaveData → ItemBag round-trip.</summary>
@@ -268,17 +269,17 @@ namespace PitHero.Tests
                 // Verify saved positions match original placement
                 Assert.AreEqual(3, savedItems.Count);
                 Assert.AreEqual(15, savedItems[0].SlotIndex);
-                Assert.AreEqual("ShortSword", savedItems[0].Name);
+                Assert.AreEqual(InventoryTextKey.Inv_ShortSword_Name, savedItems[0].Name);
                 Assert.AreEqual(42, savedItems[1].SlotIndex);
-                Assert.AreEqual("IronHelm", savedItems[1].Name);
+                Assert.AreEqual(InventoryTextKey.Inv_IronHelm_Name, savedItems[1].Name);
                 Assert.AreEqual(99, savedItems[2].SlotIndex);
-                Assert.AreEqual("HPPotion", savedItems[2].Name);
+                Assert.AreEqual(InventoryTextKey.Inv_HPPotion_Name, savedItems[2].Name);
                 Assert.AreEqual(3, savedItems[2].StackCount);
 
                 // Step 3: Save through binary persistence
                 var saveData = new SaveData();
                 saveData.HeroName = "SlotTest";
-                saveData.JobName = "Knight";
+                saveData.JobName = JobTextKey.Job_Knight_Name;
                 saveData.Level = 1;
                 saveData.InventoryItems = savedItems;
 
@@ -292,11 +293,11 @@ namespace PitHero.Tests
                 // Step 5: Verify loaded slot positions
                 Assert.AreEqual(3, loaded.InventoryItems.Count);
                 Assert.AreEqual(15, loaded.InventoryItems[0].SlotIndex);
-                Assert.AreEqual("ShortSword", loaded.InventoryItems[0].Name);
+                Assert.AreEqual(InventoryTextKey.Inv_ShortSword_Name, loaded.InventoryItems[0].Name);
                 Assert.AreEqual(42, loaded.InventoryItems[1].SlotIndex);
-                Assert.AreEqual("IronHelm", loaded.InventoryItems[1].Name);
+                Assert.AreEqual(InventoryTextKey.Inv_IronHelm_Name, loaded.InventoryItems[1].Name);
                 Assert.AreEqual(99, loaded.InventoryItems[2].SlotIndex);
-                Assert.AreEqual("HPPotion", loaded.InventoryItems[2].Name);
+                Assert.AreEqual(InventoryTextKey.Inv_HPPotion_Name, loaded.InventoryItems[2].Name);
                 Assert.AreEqual(3, loaded.InventoryItems[2].StackCount);
 
                 // Step 6: Restore into a new bag (same logic as ApplyPendingLoadData)
@@ -324,21 +325,21 @@ namespace PitHero.Tests
 
                 var restoredSword = restoredBag.GetSlotItem(15);
                 Assert.IsNotNull(restoredSword, "ShortSword should be at slot 15");
-                Assert.AreEqual("ShortSword", restoredSword.Name);
+                Assert.AreEqual(InventoryTextKey.Inv_ShortSword_Name, restoredSword.Name);
 
                 Assert.IsNull(restoredBag.GetSlotItem(16), "Slot 16 should be empty");
                 Assert.IsNull(restoredBag.GetSlotItem(41), "Slot 41 should be empty");
 
                 var restoredHelm = restoredBag.GetSlotItem(42);
                 Assert.IsNotNull(restoredHelm, "IronHelm should be at slot 42");
-                Assert.AreEqual("IronHelm", restoredHelm.Name);
+                Assert.AreEqual(InventoryTextKey.Inv_IronHelm_Name, restoredHelm.Name);
 
                 Assert.IsNull(restoredBag.GetSlotItem(43), "Slot 43 should be empty");
                 Assert.IsNull(restoredBag.GetSlotItem(98), "Slot 98 should be empty");
 
                 var restoredPotion = restoredBag.GetSlotItem(99);
                 Assert.IsNotNull(restoredPotion, "HPPotion should be at slot 99");
-                Assert.AreEqual("HPPotion", restoredPotion.Name);
+                Assert.AreEqual(InventoryTextKey.Inv_HPPotion_Name, restoredPotion.Name);
                 Assert.IsTrue(restoredPotion is RolePlayingFramework.Equipment.Consumable);
                 Assert.AreEqual(3, ((RolePlayingFramework.Equipment.Consumable)restoredPotion).StackCount);
 
@@ -362,7 +363,7 @@ namespace PitHero.Tests
             {
                 var saveData = new SaveData();
                 saveData.HeroName = "ShortcutTest";
-                saveData.JobName = "Knight";
+                saveData.JobName = JobTextKey.Job_Knight_Name;
                 saveData.Level = 1;
 
                 // Set up shortcut slots: empty, item, skill, item, empty, skill, empty, empty
@@ -432,7 +433,7 @@ namespace PitHero.Tests
                 // We simulate this by creating data with empty shortcuts and checking the loaded result
                 var saveData = new SaveData();
                 saveData.HeroName = "V1Hero";
-                saveData.JobName = "Knight";
+                saveData.JobName = JobTextKey.Job_Knight_Name;
                 saveData.Level = 1;
                 saveData.ShortcutSlots = new List<SavedShortcutSlot>(); // Empty list still writes count=0
 

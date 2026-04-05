@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Enemies;
+using PitHero;
 
 namespace PitHero.Tests
 {
@@ -31,7 +32,7 @@ namespace PitHero.Tests
             Assert.IsNotNull(enemyEntity.GetComponent<TileByTileMover>());
 
             // 2. Verify the enemy component has the correct slime
-            Assert.AreEqual("Slime", enemyComponent.Enemy.Name);
+            Assert.AreEqual(MonsterTextKey.Monster_Slime, enemyComponent.Enemy.Name);
             Assert.AreEqual(1, enemyComponent.Enemy.Level);
 
             // 3. Verify animation component has proper settings

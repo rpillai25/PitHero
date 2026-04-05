@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Hammers
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Hammers
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "QuakeHammer",
+                InventoryTextKey.Inv_QuakeHammer_Name,
                 ItemKind.WeaponHammer,
                 Rarity,
-                "Massive hammer that shakes the ground.",
+                InventoryTextKey.Inv_QuakeHammer_Desc,
                 575,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Shields
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Shields
         {
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "VoidBarrier",
+                InventoryTextKey.Inv_VoidBarrier_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Shield that consumes attacks.",
+                InventoryTextKey.Inv_VoidBarrier_Desc,
                 750,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

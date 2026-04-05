@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Shields
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Shields
         {
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "QuartzWall",
+                InventoryTextKey.Inv_QuartzWall_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Shield made of massive quartz crystal.",
+                InventoryTextKey.Inv_QuartzWall_Desc,
                 850,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

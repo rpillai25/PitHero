@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Spears
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Spears
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "WoodenSpear",
+                InventoryTextKey.Inv_WoodenSpear_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Simple wooden shaft with sharpened tip.",
+                InventoryTextKey.Inv_WoodenSpear_Desc,
                 75,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

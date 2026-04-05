@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Swords
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Swords
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "ShadowFang",
+                InventoryTextKey.Inv_ShadowFang_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                $"Obsidian blade that absorbs light.",
+                InventoryTextKey.Inv_ShadowFang_Desc,
                 225,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

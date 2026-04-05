@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Staves
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Staves
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "EarthenStaff",
+                InventoryTextKey.Inv_EarthenStaff_Name,
                 ItemKind.WeaponStaff,
                 Rarity,
-                "Staff embedded with earth crystals.",
+                InventoryTextKey.Inv_EarthenStaff_Desc,
                 400,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

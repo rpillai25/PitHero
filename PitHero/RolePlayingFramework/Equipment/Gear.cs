@@ -1,3 +1,6 @@
+using Nez;
+using PitHero;
+using PitHero.Services;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Stats;
@@ -41,10 +44,26 @@ namespace RolePlayingFramework.Equipment
     /// </remarks>
     public sealed class Gear : IGear
     {
-        public string Name { get; }
+        private readonly string _nameKey;
+        private readonly string _descKey;
+        private readonly string _spriteName;
+        private TextService _textService;
+
+        private TextService GetTextService()
+        {
+            if (_textService == null)
+                _textService = Core.Services?.GetService<TextService>();
+            return _textService;
+        }
+
+        public string Name => GetTextService()?.DisplayText(TextType.Inventory, _nameKey) ?? _nameKey;
+
+        /// <summary>Sprite name used to look up the item's sprite in the Items atlas. Derived from the item class name.</summary>
+        public string SpriteName => _spriteName;
+
         public ItemKind Kind { get; }
         public ItemRarity Rarity { get; }
-        public string Description { get; }
+        public string Description => GetTextService()?.DisplayText(TextType.Inventory, _descKey) ?? _descKey;
         public int Price { get; }
         public StatBlock StatBonus { get; }
         public int AttackBonus { get; }
@@ -71,10 +90,15 @@ namespace RolePlayingFramework.Equipment
         /// <param name="allowedJobs">Bitflag of job classes that can equip this gear. Defaults based on ItemKind if not specified.</param>
         public Gear(string name, ItemKind kind, ItemRarity rarity, string description, int price, in StatBlock stats, int atk = 0, int def = 0, int hp = 0, int mp = 0, ElementalProperties elementalProps = null, JobType? allowedJobs = null)
         {
-            Name = name;
+            _nameKey = name;
+            _descKey = description;
+            const string prefix = "Inv_";
+            const string suffix = "_Name";
+            _spriteName = (name.StartsWith(prefix) && name.EndsWith(suffix))
+                ? name.Substring(prefix.Length, name.Length - prefix.Length - suffix.Length)
+                : name;
             Kind = kind;
             Rarity = rarity;
-            Description = description;
             Price = price;
             StatBonus = stats;
             AttackBonus = atk;

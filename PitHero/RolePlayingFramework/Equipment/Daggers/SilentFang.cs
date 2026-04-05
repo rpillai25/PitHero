@@ -1,3 +1,4 @@
+using PitHero;
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Daggers
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "SilentFang",
+                InventoryTextKey.Inv_SilentFang_Name,
                 ItemKind.WeaponKnife,
                 Rarity,
-                "Slim blade for stealth attacks.",
+                InventoryTextKey.Inv_SilentFang_Desc,
                 225,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

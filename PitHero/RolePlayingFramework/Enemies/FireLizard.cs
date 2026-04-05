@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Enemies
 {
@@ -9,7 +10,8 @@ namespace RolePlayingFramework.Enemies
     {
         private int _hp;
 
-        public string Name => "Fire Lizard";
+        public string Name => MonsterTextKey.Monster_FireLizard;
+        public EnemyId EnemyId => EnemyId.FireLizard;
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
@@ -25,7 +27,7 @@ namespace RolePlayingFramework.Enemies
 
         public FireLizard(int level = 9)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Fire Lizard");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.FireLizard);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - Balanced archetype

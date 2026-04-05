@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Armor
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Armor
         {
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "StuddedLeather",
+                InventoryTextKey.Inv_StuddedLeather_Name,
                 ItemKind.ArmorGi,
                 Rarity,
-                "Leather reinforced with metal studs.",
+                InventoryTextKey.Inv_StuddedLeather_Desc,
                 180,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

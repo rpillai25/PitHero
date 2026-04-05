@@ -2,6 +2,7 @@ using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
 using System.Collections.Generic;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Shields
 {
@@ -15,10 +16,10 @@ namespace RolePlayingFramework.Equipment.Shields
         {
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "IronShield",
+                InventoryTextKey.Inv_IronShield_Name,
                 ItemKind.Shield,
                 Rarity,
-                $"Regular shield of soldiers.",
+                InventoryTextKey.Inv_IronShield_Desc,
                 120,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

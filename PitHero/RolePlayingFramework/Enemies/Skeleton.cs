@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Enemies
 {
@@ -9,7 +10,8 @@ namespace RolePlayingFramework.Enemies
     {
         private int _hp;
 
-        public string Name => "Skeleton";
+        public string Name => MonsterTextKey.Monster_Skeleton;
+        public EnemyId EnemyId => EnemyId.Skeleton;
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
@@ -26,7 +28,7 @@ namespace RolePlayingFramework.Enemies
         public Skeleton(int level = 6)
         {
             // Always use the preset level for Skeletons regardless of requested level
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Skeleton");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.Skeleton);
             Level = presetLevel;
 
             // Use BalanceConfig for stats

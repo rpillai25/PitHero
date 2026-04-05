@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Swords
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Swords
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "EmberSword",
+                InventoryTextKey.Inv_EmberSword_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Blade that glows with inner heat.",
+                InventoryTextKey.Inv_EmberSword_Desc,
                 450,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

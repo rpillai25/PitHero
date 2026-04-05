@@ -1,6 +1,7 @@
 using RolePlayingFramework.Skills;
 using RolePlayingFramework.Stats;
 using System.Collections.Generic;
+using PitHero;
 
 namespace RolePlayingFramework.Jobs.Primary
 {
@@ -12,7 +13,7 @@ namespace RolePlayingFramework.Jobs.Primary
     public sealed class Knight : BaseJob
     {
         public Knight() : base(
-            name: "Knight",
+            name: JobTextKey.Job_Knight_Name,
             // BaseBonus provides initial stats at level 1
             // Target: High Vitality for HP, moderate Strength, low Agility and Magic
             baseBonus: new StatBlock(strength: 8, agility: 5, vitality: 9, magic: 3),
@@ -22,8 +23,8 @@ namespace RolePlayingFramework.Jobs.Primary
             growthPerLevel: new StatBlock(strength: 0.612f, agility: 0.378f, vitality: 0.704f, magic: 0.255f),
             tier: JobTier.Primary,
             jobFlag: JobType.Knight,
-            description: "Durable frontliner specializing in swords and heavy armor.",
-            role: "High HP/Defense tank")
+            description: JobTextKey.Job_Knight_Desc,
+            role: JobTextKey.Job_Knight_Role)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

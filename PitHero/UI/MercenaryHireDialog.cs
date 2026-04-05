@@ -27,6 +27,7 @@ namespace PitHero.UI
         private TextTooltip _hireTooltip;
         private Entity _mercenaryEntity;
         private bool _isVisible;
+        private TextService _textService;
 
         public MercenaryHireDialog()
         {
@@ -46,42 +47,42 @@ namespace PitHero.UI
                 FontScaleX = defaultLabelStyle.FontScaleX,
                 FontScaleY = defaultLabelStyle.FontScaleY
             };
-            _nameLabel = new Label("Mercenary Name", nameLabelStyle);
+            _nameLabel = new Label(GetText(TextType.UI, UITextKey.MercenaryNameLabel), nameLabelStyle);
             Add(_nameLabel).SetColspan(2).Center();
             Row().SetPadTop(5f);
 
             // Job
-            _jobLabel = new Label("Job: Knight", skin);
+            _jobLabel = new Label(GetText(TextType.UI, UITextKey.MercenaryJobLevelLabel), skin);
             Add(_jobLabel).SetColspan(2).Left();
             Row().SetPadTop(10f);
 
             // HP
-            _hpLabel = new Label("HP: 100", skin);
+            _hpLabel = new Label(string.Format(GetText(TextType.UI, UITextKey.MercenaryHpLabel), 100), skin);
             Add(_hpLabel).SetColspan(2).Left();
             Row().SetPadTop(5f);
 
             // MP
-            _mpLabel = new Label("MP: 50", skin);
+            _mpLabel = new Label(string.Format(GetText(TextType.UI, UITextKey.MercenaryMpLabel), 50), skin);
             Add(_mpLabel).SetColspan(2).Left();
             Row().SetPadTop(5f);
 
             // STR
-            _strLabel = new Label("STR: 10", skin);
+            _strLabel = new Label(string.Format(GetText(TextType.UI, UITextKey.MercenaryStrLabel), 10), skin);
             Add(_strLabel).SetColspan(2).Left();
             Row().SetPadTop(5f);
 
             // AGI
-            _agiLabel = new Label("AGI: 10", skin);
+            _agiLabel = new Label(string.Format(GetText(TextType.UI, UITextKey.MercenaryAgiLabel), 10), skin);
             Add(_agiLabel).SetColspan(2).Left();
             Row().SetPadTop(5f);
 
             // VIT
-            _vitLabel = new Label("VIT: 10", skin);
+            _vitLabel = new Label(string.Format(GetText(TextType.UI, UITextKey.MercenaryVitLabel), 10), skin);
             Add(_vitLabel).SetColspan(2).Left();
             Row().SetPadTop(5f);
 
             // MAG
-            _magLabel = new Label("MAG: 10", skin);
+            _magLabel = new Label(string.Format(GetText(TextType.UI, UITextKey.MercenaryMagLabel), 10), skin);
             Add(_magLabel).SetColspan(2).Left();
             Row().SetPadTop(5f);
 
@@ -91,7 +92,7 @@ namespace PitHero.UI
                 Font = defaultLabelStyle.Font,
                 FontColor = new Color(184, 138, 13)
             };
-            _costLabel = new Label("Cost: 0 gold", costLabelStyle);
+            _costLabel = new Label(string.Format(GetText(TextType.UI, UITextKey.MercenaryCostLabel), 0), costLabelStyle);
             Add(_costLabel).SetColspan(2).Left();
             Row().SetPadTop(15f);
 
@@ -110,11 +111,11 @@ namespace PitHero.UI
                 PressedOffsetY = baseStyle.PressedOffsetY
             };
 
-            _hireButton = new TextButton("Hire", _hireButtonStyle);
+            _hireButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonHire), _hireButtonStyle);
             _hireButton.OnClicked += OnHireClicked;
             Add(_hireButton).SetPadRight(10f).SetMinWidth(80f).SetMinHeight(30f);
 
-            _cancelButton = new TextButton("Cancel", skin, "ph-default");
+            _cancelButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonCancel), skin, "ph-default");
             _cancelButton.OnClicked += OnCancelClicked;
             Add(_cancelButton).SetMinWidth(80f).SetMinHeight(30f);
 
@@ -134,17 +135,17 @@ namespace PitHero.UI
             var maxMP = 10 + (stats.Magic * 3);
 
             _nameLabel.SetText(merc.Name);
-            _jobLabel.SetText($"Job: {merc.Job.Name}  Lv: {merc.Level}");
-            _hpLabel.SetText($"HP: {maxHP}");
-            _mpLabel.SetText($"MP: {maxMP}");
-            _strLabel.SetText($"STR: {stats.Strength}");
-            _agiLabel.SetText($"AGI: {stats.Agility}");
-            _vitLabel.SetText($"VIT: {stats.Vitality}");
-            _magLabel.SetText($"MAG: {stats.Magic}");
+            _jobLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.MercenaryJobLevelLabel), merc.Job.Name, merc.Level));
+            _hpLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.MercenaryHpLabel), maxHP));
+            _mpLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.MercenaryMpLabel), maxMP));
+            _strLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.MercenaryStrLabel), stats.Strength));
+            _agiLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.MercenaryAgiLabel), stats.Agility));
+            _vitLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.MercenaryVitLabel), stats.Vitality));
+            _magLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.MercenaryMagLabel), stats.Magic));
 
             // Display hire cost and check affordability
             var hireCost = BalanceConfig.CalculateMercenaryHireCost(merc.Level);
-            _costLabel.SetText($"Cost: {hireCost} gold");
+            _costLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.MercenaryCostLabel), hireCost));
 
             var gameState = Core.Services.GetService<GameStateService>();
             var canAfford = gameState != null && gameState.Funds >= hireCost;
@@ -232,6 +233,26 @@ namespace PitHero.UI
             }
 
             Hide();
+        }
+        /// <summary>
+        /// Safely retrieves TextService. Returns null if Core is not initialized (e.g., in unit tests).
+        /// </summary>
+        private TextService GetTextService()
+        {
+            if (_textService == null && Core.Services != null)
+            {
+                _textService = Core.Services.GetService<TextService>();
+            }
+            return _textService;
+        }
+
+        /// <summary>
+        /// Gets localized text or falls back to key name if TextService unavailable.
+        /// </summary>
+        private string GetText(TextType type, string key)
+        {
+            var service = GetTextService();
+            return service?.DisplayText(type, key) ?? key.ToString();
         }
 
         private void OnCancelClicked(Button button)

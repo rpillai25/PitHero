@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Enemies
 {
@@ -9,7 +10,8 @@ namespace RolePlayingFramework.Enemies
     {
         private int _hp;
 
-        public string Name => "Shadow Imp";
+        public string Name => MonsterTextKey.Monster_ShadowImp;
+        public EnemyId EnemyId => EnemyId.ShadowImp;
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
@@ -25,7 +27,7 @@ namespace RolePlayingFramework.Enemies
 
         public ShadowImp(int level = 7)
         {
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Shadow Imp");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.ShadowImp);
             Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats - FastFragile archetype

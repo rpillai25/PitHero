@@ -5,6 +5,7 @@ using Nez.BitmapFonts;
 using Nez.Sprites;
 using Nez.Textures;
 using PitHero.ECS.Components;
+using PitHero.Services;
 
 namespace PitHero.UI
 {
@@ -18,6 +19,7 @@ namespace PitHero.UI
         private Sprite _hpUnitSprite;
         private Sprite _mpUnitSprite;
         private BitmapFont _hudFont;
+        private TextService _textService;
         
         private Entity _heroEntity;
         private bool _isMercenary;
@@ -62,6 +64,26 @@ namespace PitHero.UI
             // Set render layer to UI
             SetRenderLayer(GameConfig.RenderLayerUI);
         }
+        /// <summary>
+        /// Safely retrieves TextService. Returns null if Core is not initialized (e.g., in unit tests).
+        /// </summary>
+        private TextService GetTextService()
+        {
+            if (_textService == null && Core.Services != null)
+            {
+                _textService = Core.Services.GetService<TextService>();
+            }
+            return _textService;
+        }
+
+        /// <summary>
+        /// Gets localized text or falls back to key name if TextService unavailable.
+        /// </summary>
+        private string GetText(TextType type, string key)
+        {
+            var service = GetTextService();
+            return service?.DisplayText(type, key) ?? key.ToString();
+        }
 
         public override void OnAddedToEntity()
         {
@@ -76,6 +98,8 @@ namespace PitHero.UI
 
             // Load HUD font (normal size only)
             _hudFont = Core.Content.LoadBitmapFont(GameConfig.FontPathHud);
+            
+            // Get TextService
         }
 
         /// <summary>
@@ -140,7 +164,7 @@ namespace PitHero.UI
             RenderHeroSprites(batcher, position, levelTextXOffset-7, levelTextYOffset-15);
             
             // Render level text on top of hero sprites
-            RenderText(batcher, position, "Lv "+_level.ToString(), levelTextXOffset-10, levelTextYOffset+14);
+            RenderText(batcher, position, GetText(TextType.UI, UITextKey.HudLevelPrefix)+_level.ToString(), levelTextXOffset-10, levelTextYOffset+14);
         }
 
         /// <summary>

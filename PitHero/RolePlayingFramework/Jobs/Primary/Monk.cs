@@ -1,6 +1,7 @@
 using RolePlayingFramework.Skills;
 using RolePlayingFramework.Stats;
 using System.Collections.Generic;
+using PitHero;
 
 namespace RolePlayingFramework.Jobs.Primary
 {
@@ -12,7 +13,7 @@ namespace RolePlayingFramework.Jobs.Primary
     public sealed class Monk : BaseJob
     {
         public Monk() : base(
-            name: "Monk",
+            name: JobTextKey.Job_Monk_Name,
             // BaseBonus provides balanced initial stats
             // Target: Balanced physical stats with good Strength and Agility
             baseBonus: new StatBlock(strength: 9, agility: 7, vitality: 7, magic: 4),
@@ -22,8 +23,8 @@ namespace RolePlayingFramework.Jobs.Primary
             growthPerLevel: new StatBlock(strength: 0.653f, agility: 0.561f, vitality: 0.520f, magic: 0.337f),
             tier: JobTier.Primary,
             jobFlag: JobType.Monk,
-            description: "Martial artist focused on endurance and counters.",
-            role: "Balanced fighter, moderate HP, good agility")
+            description: JobTextKey.Job_Monk_Desc,
+            role: JobTextKey.Job_Monk_Role)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

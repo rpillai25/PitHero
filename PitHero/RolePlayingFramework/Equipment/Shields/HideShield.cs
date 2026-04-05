@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Shields
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Shields
         {
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "HideShield",
+                InventoryTextKey.Inv_HideShield_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Leather-covered wooden frame.",
+                InventoryTextKey.Inv_HideShield_Desc,
                 100,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

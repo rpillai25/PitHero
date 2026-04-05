@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Axes
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Axes
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "FlameHatchet",
+                InventoryTextKey.Inv_FlameHatchet_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Axe head that glows red when swung.",
+                InventoryTextKey.Inv_FlameHatchet_Desc,
                 275,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

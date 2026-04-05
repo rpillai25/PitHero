@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Swords
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Swords
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "MinersPickSword",
+                InventoryTextKey.Inv_MinersPickSword_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                $"Modified mining tool repurposed as a weapon.",
+                InventoryTextKey.Inv_MinersPickSword_Desc,
                 125,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

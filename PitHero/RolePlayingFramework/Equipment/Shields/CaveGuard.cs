@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Shields
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Shields
         {
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "CaveGuard",
+                InventoryTextKey.Inv_CaveGuard_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Shield painted with cave markings.",
+                InventoryTextKey.Inv_CaveGuard_Desc,
                 175,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

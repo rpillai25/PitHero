@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Swords
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Swords
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "UndergroundRapier",
+                InventoryTextKey.Inv_UndergroundRapier_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Lightweight piercing blade for swift strikes.",
+                InventoryTextKey.Inv_UndergroundRapier_Desc,
                 425,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

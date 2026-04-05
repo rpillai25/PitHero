@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Staves
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Staves
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "ShadowwoodStaff",
+                InventoryTextKey.Inv_ShadowwoodStaff_Name,
                 ItemKind.WeaponStaff,
                 Rarity,
-                "Staff carved from black petrified wood.",
+                InventoryTextKey.Inv_ShadowwoodStaff_Desc,
                 525,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

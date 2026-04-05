@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Shields
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Shields
         {
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "RoundShield",
+                InventoryTextKey.Inv_RoundShield_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Standard circular shield.",
+                InventoryTextKey.Inv_RoundShield_Desc,
                 150,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

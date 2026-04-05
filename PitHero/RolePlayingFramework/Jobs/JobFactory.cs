@@ -1,5 +1,6 @@
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Jobs.Primary;
+using PitHero;
 
 namespace RolePlayingFramework.Jobs
 {
@@ -11,12 +12,20 @@ namespace RolePlayingFramework.Jobs
         {
             switch (jobName)
             {
-                case "Knight": return new Knight();
-                case "Mage": return new Mage();
-                case "Monk": return new Monk();
-                case "Priest": return new Priest();
-                case "Archer": return new Archer();
-                case "Thief": return new Thief();
+                // Legacy display name cases (kept for backward compat with saved games and HeroCreationUI)
+                // TODO: Update callers to pass JobTextKey constants, then remove these display-name cases
+                case "Knight":
+                case JobTextKey.Job_Knight_Name: return new Knight();
+                case "Mage":
+                case JobTextKey.Job_Mage_Name: return new Mage();
+                case "Monk":
+                case JobTextKey.Job_Monk_Name: return new Monk();
+                case "Priest":
+                case JobTextKey.Job_Priest_Name: return new Priest();
+                case "Archer":
+                case JobTextKey.Job_Archer_Name: return new Archer();
+                case "Thief":
+                case JobTextKey.Job_Thief_Name: return new Thief();
                 default: return new Knight();
             }
         }

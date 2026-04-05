@@ -817,6 +817,7 @@ namespace PitHero.Tests
             private int _hp;
             
             public string Name => $"Test Monster L{Level}";
+            public EnemyId EnemyId => EnemyId.Slime;
             public int Level { get; }
             public StatBlock Stats { get; }
             public DamageKind AttackKind => DamageKind.Physical;

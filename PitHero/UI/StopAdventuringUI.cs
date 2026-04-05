@@ -2,6 +2,7 @@ using Nez;
 using Nez.UI;
 using PitHero.AI;
 using PitHero.ECS.Components;
+using PitHero.Services;
 
 namespace PitHero.UI
 {
@@ -12,6 +13,7 @@ namespace PitHero.UI
     {
         private Stage _stage;
         private HoverableImageButton _button;
+        private TextService _textService;
 
         // Stop Adventuring styles
         private ImageButtonStyle _stopNormalStyle;
@@ -30,6 +32,27 @@ namespace PitHero.UI
 
         public StopAdventuringUI()
         {
+        }
+
+        /// <summary>
+        /// Safely retrieves TextService. Returns null if Core is not initialized (e.g., in unit tests).
+        /// </summary>
+        private TextService GetTextService()
+        {
+            if (_textService == null && Core.Services != null)
+            {
+                _textService = Core.Services.GetService<TextService>();
+            }
+            return _textService;
+        }
+
+        /// <summary>
+        /// Gets localized text or falls back to key name if TextService unavailable.
+        /// </summary>
+        private string GetText(TextType type, string key)
+        {
+            var service = GetTextService();
+            return service?.DisplayText(type, key) ?? key.ToString();
         }
 
         /// <summary>
@@ -94,7 +117,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(continueHighlight2x)
             };
 
-            _button = new HoverableImageButton(_stopNormalStyle, "Stop Adventuring");
+            _button = new HoverableImageButton(_stopNormalStyle, GetText(TextType.UI, UITextKey.ButtonStopAdventuring));
             _button.SetSize(stopSprite.SourceRect.Width, stopSprite.SourceRect.Height);
 
             _button.OnClicked += (button) => ToggleAdventuring();
@@ -166,23 +189,23 @@ namespace PitHero.UI
             {
                 case ButtonMode.StopNormal:
                     style = _stopNormalStyle;
-                    tooltip = "Stop Adventuring";
+                    tooltip = GetText(TextType.UI, UITextKey.ButtonStopAdventuring);
                     break;
                 case ButtonMode.StopHalf:
                     style = _stopHalfStyle;
-                    tooltip = "Stop Adventuring";
+                    tooltip = GetText(TextType.UI, UITextKey.ButtonStopAdventuring);
                     break;
                 case ButtonMode.ContinueNormal:
                     style = _continueNormalStyle;
-                    tooltip = "Continue Adventuring";
+                    tooltip = GetText(TextType.UI, UITextKey.ButtonContinueAdventuring);
                     break;
                 case ButtonMode.ContinueHalf:
                     style = _continueHalfStyle;
-                    tooltip = "Continue Adventuring";
+                    tooltip = GetText(TextType.UI, UITextKey.ButtonContinueAdventuring);
                     break;
                 default:
                     style = _stopNormalStyle;
-                    tooltip = "Stop Adventuring";
+                    tooltip = GetText(TextType.UI, UITextKey.ButtonStopAdventuring);
                     break;
             }
 

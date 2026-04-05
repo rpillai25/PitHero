@@ -17,6 +17,7 @@ namespace PitHero.UI
         private Table _monsterListTable;
         private ScrollPane _scrollPane;
         private Skin _skin;
+        private TextService _textService;
 
         private enum MonsterMode { Normal, Half }
         private MonsterMode _currentMonsterMode = MonsterMode.Normal;
@@ -25,6 +26,31 @@ namespace PitHero.UI
 
         /// <summary>Whether the monster window is currently visible.</summary>
         public bool IsWindowVisible => _windowVisible;
+        
+        public MonsterUI()
+        {
+        }
+
+        /// <summary>
+        /// Safely retrieves TextService. Returns null if Core is not initialized (e.g., in unit tests).
+        /// </summary>
+        private TextService GetTextService()
+        {
+            if (_textService == null && Core.Services != null)
+            {
+                _textService = Core.Services.GetService<TextService>();
+            }
+            return _textService;
+        }
+
+        /// <summary>
+        /// Gets localized text or falls back to key name if TextService unavailable.
+        /// </summary>
+        private string GetText(TextType type, string key)
+        {
+            var service = GetTextService();
+            return service?.DisplayText(type, key) ?? key.ToString();
+        }
 
         /// <summary>Initializes the monster UI and adds the button to the stage.</summary>
         public void InitializeUI(Stage stage)
@@ -59,7 +85,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(highlight2x)
             };
 
-            _monsterButton = new HoverableImageButton(_monsterNormalStyle, "Monsters");
+            _monsterButton = new HoverableImageButton(_monsterNormalStyle, GetText(TextType.UI, UITextKey.WindowMonsters));
             _monsterButton.SetSize(sprite.SourceRect.Width, sprite.SourceRect.Height);
             _monsterButton.OnClicked += (button) => HandleMonsterButtonClick();
         }
@@ -86,7 +112,7 @@ namespace PitHero.UI
 
         private void CreateMonsterWindow(Skin skin)
         {
-            _monsterWindow = new Window("Monsters", skin);
+            _monsterWindow = new Window(GetText(TextType.UI, UITextKey.WindowMonsters), skin);
             _monsterWindow.SetSize(380f, 280f);
 
             _monsterListTable = new Table();
@@ -184,7 +210,8 @@ namespace PitHero.UI
                 var textTable = new Table();
                 textTable.Top().Left();
 
-                var nameLabel  = new Label($"{monster.Name} ({monster.MonsterTypeName})", _skin);
+                var monsterTypeName = GetText(TextType.Monster, monster.MonsterTypeName);
+                var nameLabel  = new Label($"{monster.Name} ({monsterTypeName})", _skin);
                 var statsLabel = new Label($"Fish:{monster.FishingProficiency}  Cook:{monster.CookingProficiency}  Farm:{monster.FarmingProficiency}", _skin);
 
                 textTable.Add(nameLabel).Left();

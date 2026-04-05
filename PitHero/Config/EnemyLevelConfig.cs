@@ -1,3 +1,4 @@
+using RolePlayingFramework.Enemies;
 using System.Collections.Generic;
 
 namespace PitHero.Config
@@ -8,81 +9,81 @@ namespace PitHero.Config
     public static class EnemyLevelConfig
     {
         /// <summary>
-        /// Dictionary mapping enemy names to their preset spawn levels.
+        /// Dictionary mapping enemy id to their preset spawn levels.
         /// These levels are fixed and do not scale with pit level.
         /// </summary>
-        private static readonly Dictionary<string, int> EnemyLevels = new()
+        private static readonly Dictionary<EnemyId, int> EnemyLevels = new()
         {
             // Level 1 enemies (spawn in Pit Level 1-3)
-            ["Slime"] = 1,
-            ["Bat"] = 1,
-            ["Rat"] = 1,
+            [EnemyId.Slime] = 1,
+            [EnemyId.Bat] = 1,
+            [EnemyId.Rat] = 1,
 
             // Level 2-4 enemies (early cave)
-            ["Cave Mushroom"] = 2,
-            ["Stone Beetle"] = 4,
+            [EnemyId.CaveMushroom] = 2,
+            [EnemyId.StoneBeetle] = 4,
 
             // Level 3 enemies (spawn in Pit Level 4-6)
-            ["Goblin"] = 3,
-            ["Spider"] = 3,
-            ["Snake"] = 3,
+            [EnemyId.Goblin] = 3,
+            [EnemyId.Spider] = 3,
+            [EnemyId.Snake] = 3,
 
             // Level 6 enemies (spawn in Pit Level 7-8)
-            ["Skeleton"] = 6,
-            ["Orc"] = 6,
-            ["Wraith"] = 6,
+            [EnemyId.Skeleton] = 6,
+            [EnemyId.Orc] = 6,
+            [EnemyId.Wraith] = 6,
 
             // Level 7-9 enemies (mid cave)
-            ["Shadow Imp"] = 7,
-            ["Tunnel Worm"] = 8,
-            ["Fire Lizard"] = 9,
+            [EnemyId.ShadowImp] = 7,
+            [EnemyId.TunnelWorm] = 8,
+            [EnemyId.FireLizard] = 9,
 
             // Boss (spawn in Pit Level 9)
-            ["Pit Lord"] = 10,
+            [EnemyId.PitLord] = 10,
 
             // Level 11-14 enemies (deep cave)
-            ["Magma Ooze"] = 11,
-            ["Crystal Golem"] = 12,
-            ["Cave Troll"] = 13,
-            ["Ghost Miner"] = 14,
+            [EnemyId.MagmaOoze] = 11,
+            [EnemyId.CrystalGolem] = 12,
+            [EnemyId.CaveTroll] = 13,
+            [EnemyId.GhostMiner] = 14,
 
             // Level 16-18 enemies (ancient cave)
-            ["Shadow Beast"] = 16,
-            ["Lava Drake"] = 17,
-            ["Stone Wyrm"] = 18,
+            [EnemyId.ShadowBeast] = 16,
+            [EnemyId.LavaDrake] = 17,
+            [EnemyId.StoneWyrm] = 18,
 
             // Boss enemies (Cave Biome)
-            ["Stone Guardian"] = 7,
-            ["Earth Elemental"] = 17,
-            ["Molten Titan"] = 22,
-            ["Ancient Wyrm"] = 27,
+            [EnemyId.StoneGuardian] = 7,
+            [EnemyId.EarthElemental] = 17,
+            [EnemyId.MoltenTitan] = 22,
+            [EnemyId.AncientWyrm] = 27,
         };
 
         /// <summary>
         /// Get the preset level for a given enemy type.
         /// </summary>
-        /// <param name="enemyName">The name of the enemy type</param>
+        /// <param name="enemyId">The id of the enemy type</param>
         /// <returns>The preset level for this enemy type, defaults to 1 if not found</returns>
-        public static int GetPresetLevel(string enemyName)
+        public static int GetPresetLevel(EnemyId enemyId)
         {
-            return EnemyLevels.GetValueOrDefault(enemyName, 1);
+            return EnemyLevels.GetValueOrDefault(enemyId, 1);
         }
 
         /// <summary>
         /// Check if an enemy type has a specific preset level defined.
         /// </summary>
-        /// <param name="enemyName">The name of the enemy type</param>
+        /// <param name="enemyId">The id of the enemy type</param>
         /// <returns>True if the enemy has a preset level defined, false otherwise</returns>
-        public static bool HasPresetLevel(string enemyName)
+        public static bool HasPresetLevel(EnemyId enemyId)
         {
-            return EnemyLevels.ContainsKey(enemyName);
+            return EnemyLevels.ContainsKey(enemyId);
         }
 
         /// <summary>
         /// Get all defined enemy types and their preset levels.
         /// </summary>
-        /// <returns>Read-only dictionary of enemy names to their preset levels</returns>
-        public static IReadOnlyDictionary<string, int> GetAllEnemyLevels()
+        /// <returns>Read-only dictionary of enemy ids to their preset levels</returns>
+        public static IReadOnlyDictionary<EnemyId, int> GetAllEnemyLevels()
         {
             return EnemyLevels;
         }

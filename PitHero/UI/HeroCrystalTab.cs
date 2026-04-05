@@ -3,6 +3,7 @@ using Nez;
 using Nez.Textures;
 using Nez.UI;
 using PitHero.ECS.Components;
+using PitHero.Services;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Skills;
 using RolePlayingFramework.Synergies;
@@ -45,6 +46,7 @@ namespace PitHero.UI
         // Tooltip for skills
         private SkillTooltip _skillTooltip;
         private Stage _stage;
+        private TextService _textService;
 
         public HeroCrystalTab()
         {
@@ -78,6 +80,26 @@ namespace PitHero.UI
 
             return _mainContainer;
         }
+        /// <summary>
+        /// Safely retrieves TextService. Returns null if Core is not initialized (e.g., in unit tests).
+        /// </summary>
+        private TextService GetTextService()
+        {
+            if (_textService == null && Core.Services != null)
+            {
+                _textService = Core.Services.GetService<TextService>();
+            }
+            return _textService;
+        }
+
+        /// <summary>
+        /// Gets localized text or falls back to key name if TextService unavailable.
+        /// </summary>
+        private string GetText(TextType type, string key)
+        {
+            var service = GetTextService();
+            return service?.DisplayText(type, key) ?? key.ToString();
+        }
 
         private Table CreateInfoSection(Skin skin)
         {
@@ -85,19 +107,19 @@ namespace PitHero.UI
 
             // Left column: Name, Job and Level info
             var leftCol = new Table();
-            _heroNameLabel = new Label("Name: Unknown", skin, "ph-default");
+            _heroNameLabel = new Label(GetText(TextType.UI, UITextKey.HeroNameLabel), skin, "ph-default");
             leftCol.Add(_heroNameLabel).Left();
             leftCol.Row();
 
-            _jobNameLabel = new Label("Job: Unknown", skin, "ph-default");
+            _jobNameLabel = new Label(GetText(TextType.UI, UITextKey.HeroJobLabel), skin, "ph-default");
             leftCol.Add(_jobNameLabel).Left();
             leftCol.Row();
 
-            _levelLabel = new Label("Level: 1", skin, "ph-default");
+            _levelLabel = new Label(GetText(TextType.UI, UITextKey.HeroLevelLabel), skin, "ph-default");
             leftCol.Add(_levelLabel).Left();
             leftCol.Row();
 
-            _jobLevelLabel = new Label("Job Level: 1", skin, "ph-default");
+            _jobLevelLabel = new Label(GetText(TextType.UI, UITextKey.HeroJobLevelLabel), skin, "ph-default");
             leftCol.Add(_jobLevelLabel).Left();
 
             // Middle column: Hero sprite preview
@@ -105,15 +127,15 @@ namespace PitHero.UI
 
             // Right column: JP info and stats
             var rightCol = new Table();
-            _currentJPLabel = new Label("Current JP: 0", skin, "ph-default");
+            _currentJPLabel = new Label(GetText(TextType.UI, UITextKey.HeroCurrentJpLabel), skin, "ph-default");
             rightCol.Add(_currentJPLabel).Left();
             rightCol.Row();
 
-            _totalJPLabel = new Label("Total JP: 0", skin, "ph-default");
+            _totalJPLabel = new Label(GetText(TextType.UI, UITextKey.HeroTotalJpLabel), skin, "ph-default");
             rightCol.Add(_totalJPLabel).Left();
             rightCol.Row();
 
-            _statsLabel = new Label("STR:0 AGI:0 VIT:0 MAG:0", skin, "ph-default");
+            _statsLabel = new Label(GetText(TextType.UI, UITextKey.HeroStatsLabel), skin, "ph-default");
             rightCol.Add(_statsLabel).Left();
 
             infoTable.Add(leftCol).Left().Expand().Pad(5f);
@@ -128,7 +150,7 @@ namespace PitHero.UI
             var containerTable = new Table();
 
             // Section 1: Job Skills
-            var jobSkillsLabel = new Label("Job Skills", skin, "ph-default");
+            var jobSkillsLabel = new Label(GetText(TextType.UI, UITextKey.LabelJobSkills), skin, "ph-default");
             containerTable.Add(jobSkillsLabel).Left().Pad(5f);
             containerTable.Row();
 
@@ -138,7 +160,7 @@ namespace PitHero.UI
             containerTable.Row();
 
             // Section 2: Synergy Skills
-            var synergySkillsLabel = new Label("Synergy Skills", skin, "ph-default");
+            var synergySkillsLabel = new Label(GetText(TextType.UI, UITextKey.LabelSynergySkills), skin, "ph-default");
             containerTable.Add(synergySkillsLabel).Left().Pad(5f).SetPadTop(10f);
             containerTable.Row();
 
@@ -148,7 +170,7 @@ namespace PitHero.UI
             containerTable.Row();
 
             // Section 3: Synergy Effects
-            var synergyEffectsLabel = new Label("Synergy Effects", skin, "ph-default");
+            var synergyEffectsLabel = new Label(GetText(TextType.UI, UITextKey.LabelSynergyEffects), skin, "ph-default");
             containerTable.Add(synergyEffectsLabel).Left().Pad(5f).SetPadTop(10f);
             containerTable.Row();
 
@@ -178,15 +200,15 @@ namespace PitHero.UI
             var hero = _heroComponent.LinkedHero;
 
             // Update info labels
-            _heroNameLabel.SetText($"Name: {hero.Name}");
-            _jobNameLabel.SetText($"Job: {hero.Job.Name}");
-            _levelLabel.SetText($"Level: {hero.Level}");
-            _jobLevelLabel.SetText($"Job Level: {hero.GetJobLevel()}");
-            _currentJPLabel.SetText($"Current JP: {hero.GetCurrentJP()}");
-            _totalJPLabel.SetText($"Total JP: {hero.GetTotalJP()}");
+            _heroNameLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.HeroNameLabel), hero.Name));
+            _jobNameLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.HeroJobLabel), hero.Job.Name));
+            _levelLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.HeroLevelLabel), hero.Level));
+            _jobLevelLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.HeroJobLevelLabel), hero.GetJobLevel()));
+            _currentJPLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.HeroCurrentJpLabel), hero.GetCurrentJP()));
+            _totalJPLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.HeroTotalJpLabel), hero.GetTotalJP()));
 
             var stats = hero.GetTotalStats();
-            _statsLabel.SetText($"STR:{stats.Strength} AGI:{stats.Agility} VIT:{stats.Vitality} MAG:{stats.Magic}");
+            _statsLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.HeroStatsLabel), stats.Strength, stats.Agility, stats.Vitality, stats.Magic));
 
             // Rebuild skill grid
             RebuildSkillGrid(hero);
@@ -223,7 +245,7 @@ namespace PitHero.UI
             var crystal = hero.BoundCrystal;
             if (crystal == null)
             {
-                var noCrystalLabel = new Label("No crystal bound", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
+                var noCrystalLabel = new Label(GetText(TextType.UI, UITextKey.HeroNoCrystalBound), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
                 _jobSkillsGridContainer.Add(noCrystalLabel).Center();
                 return;
             }
@@ -244,7 +266,7 @@ namespace PitHero.UI
 
             if (jobSkills.Count == 0)
             {
-                var noSkillsLabel = new Label("No job skills available", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
+                var noSkillsLabel = new Label(GetText(TextType.UI, UITextKey.HeroNoJobSkillsAvailable), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
                 _jobSkillsGridContainer.Add(noSkillsLabel).Center();
                 return;
             }
@@ -317,7 +339,7 @@ namespace PitHero.UI
 
             if (synergySkills.Count == 0)
             {
-                var noSkillsLabel = new Label("No synergy skills discovered", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
+                var noSkillsLabel = new Label(GetText(TextType.UI, UITextKey.HeroNoSynergySkillsDiscovered), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
                 _synergySkillsGridContainer.Add(noSkillsLabel).Center();
                 return;
             }
@@ -357,7 +379,7 @@ namespace PitHero.UI
 
             if (activeSynergyGroups.Count == 0)
             {
-                var noEffectsLabel = new Label("No active synergy effects", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
+                var noEffectsLabel = new Label(GetText(TextType.UI, UITextKey.HeroNoActiveSynergyEffects), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Gray });
                 _synergyEffectsGridContainer.Add(noEffectsLabel).Center();
                 return;
             }

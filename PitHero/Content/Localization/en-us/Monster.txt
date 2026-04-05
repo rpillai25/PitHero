@@ -1,0 +1,26 @@
+Monster_AncientWyrm,Ancient Wyrm
+Monster_Bat,Bat
+Monster_CaveMushroom,Cave Mushroom
+Monster_CaveTroll,Cave Troll
+Monster_CrystalGolem,Crystal Golem
+Monster_EarthElemental,Earth Elemental
+Monster_FireLizard,Fire Lizard
+Monster_GhostMiner,Ghost Miner
+Monster_Goblin,Goblin
+Monster_LavaDrake,Lava Drake
+Monster_MagmaOoze,Magma Ooze
+Monster_MoltenTitan,Molten Titan
+Monster_Orc,Orc
+Monster_PitLord,Pit Lord
+Monster_Rat,Rat
+Monster_ShadowBeast,Shadow Beast
+Monster_ShadowImp,Shadow Imp
+Monster_Skeleton,Skeleton
+Monster_Slime,Slime
+Monster_Snake,Snake
+Monster_Spider,Spider
+Monster_StoneBeetle,Stone Beetle
+Monster_StoneGuardian,Stone Guardian
+Monster_StoneWyrm,Stone Wyrm
+Monster_TunnelWorm,Tunnel Worm
+Monster_Wraith,Wraith

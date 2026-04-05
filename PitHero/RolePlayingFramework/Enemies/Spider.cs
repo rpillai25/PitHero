@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Enemies
 {
@@ -9,7 +10,8 @@ namespace RolePlayingFramework.Enemies
     {
         private int _hp;
 
-        public string Name => "Spider";
+        public string Name => MonsterTextKey.Monster_Spider;
+        public EnemyId EnemyId => EnemyId.Spider;
         public int Level { get; }
         public StatBlock Stats { get; }
         public DamageKind AttackKind => DamageKind.Physical;
@@ -26,7 +28,7 @@ namespace RolePlayingFramework.Enemies
         public Spider(int level = 3)
         {
             // Always use the preset level for Spiders regardless of requested level
-            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel("Spider");
+            var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.Spider);
             Level = presetLevel;
 
             // Use BalanceConfig for stats

@@ -5,12 +5,12 @@ using Nez.Sprites;
 using Nez.UI;
 using PitHero.ECS.Components;
 using PitHero.ECS.Scenes;
+using PitHero.Services;
+using PitHero.Util;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Jobs.Primary;
 using RolePlayingFramework.Skills;
-using PitHero.Services;
-using PitHero.Util;
 
 namespace PitHero.UI
 {
@@ -62,6 +62,8 @@ namespace PitHero.UI
         private static readonly Color BrownFontColor = new Color(71, 36, 7);
         private static readonly Color DetailFontColor = new Color(37, 80, 112);
 
+        private TextService _textService;
+
         /// <summary>Creates a new HeroCreationUI that will transition to MainGameScene with the given map path</summary>
         public HeroCreationUI(string mapPath)
         {
@@ -73,6 +75,7 @@ namespace PitHero.UI
         {
             _stage = stage;
             _previewEntity = previewEntity;
+            _textService = Core.Services.GetService<TextService>();
 
             // Randomize initial selections
             _currentName = NameGenerator.GenerateRandomName();
@@ -97,7 +100,7 @@ namespace PitHero.UI
         private void CreateControlsWindow(Skin skin)
         {
             var windowStyle = skin.Get<WindowStyle>();
-            var window = new Window("Appearance", windowStyle);
+            var window = new Window(_textService.DisplayText(TextType.UI, UITextKey.WindowAppearance), windowStyle);
 
             const float windowWidth = 560f;
             const float windowHeight = 340f;
@@ -126,7 +129,7 @@ namespace PitHero.UI
 
             // --- Name row ---
             _nameLabel = new Label(_currentName, skin);
-            var rerollButton = new TextButton("Reroll", skin);
+            var rerollButton = new TextButton(_textService.DisplayText(TextType.UI, UITextKey.ButtonReroll), skin);
             rerollButton.OnClicked += (btn) =>
             {
                 _currentName = NameGenerator.GenerateRandomName();
@@ -137,14 +140,14 @@ namespace PitHero.UI
                 _currentShirtIndex = Nez.Random.Range(0, GameConfig.ShirtColors.Count);
                 _nameLabel.SetText(_currentName);
                 _jobLabel.SetText(PrimaryJobNames[_currentJobIndex]);
-                _hairstyleLabel.SetText("Hairstyle " + _currentHairstyleIndex);
-                _skinLabel.SetText("Skin " + (_currentSkinIndex + 1));
-                _hairColorLabel.SetText("Hair Color " + (_currentHairColorIndex + 1));
-                _shirtLabel.SetText("Shirt " + (_currentShirtIndex + 1));
+                _hairstyleLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairstyle), _currentHairstyleIndex));
+                _skinLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceSkin), _currentSkinIndex + 1));
+                _hairColorLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairColor), _currentHairColorIndex + 1));
+                _shirtLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceShirt), _currentShirtIndex + 1));
                 RebuildPreviewAppearance();
                 RefreshJobInfoWindow();
             };
-            controlsTable.Add(new Label("Name:", skin)).SetPadRight(10f);
+            controlsTable.Add(new Label(_textService.DisplayText(TextType.UI, UITextKey.AppearanceNameLabel), skin)).SetPadRight(10f);
             controlsTable.Add(_nameLabel).Width(labelWidth);
             controlsTable.Add(rerollButton).Width(80f).Height(arrowHeight);
             controlsTable.Row();
@@ -175,7 +178,7 @@ namespace PitHero.UI
             controlsTable.Row();
 
             // --- Hairstyle row ---
-            _hairstyleLabel = new Label("Hairstyle " + _currentHairstyleIndex, skin);
+            _hairstyleLabel = new Label(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairstyle), _currentHairstyleIndex), skin);
             var hairStyleLeft = new TextButton("<", skin);
             var hairStyleRight = new TextButton(">", skin);
             hairStyleLeft.OnClicked += (btn) =>
@@ -183,7 +186,7 @@ namespace PitHero.UI
                 _currentHairstyleIndex--;
                 if (_currentHairstyleIndex < 1)
                     _currentHairstyleIndex = GameConfig.MaleHeroHairstyleCount;
-                _hairstyleLabel.SetText("Hairstyle " + _currentHairstyleIndex);
+                _hairstyleLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairstyle), _currentHairstyleIndex));
                 RebuildPreviewAppearance();
             };
             hairStyleRight.OnClicked += (btn) =>
@@ -191,7 +194,7 @@ namespace PitHero.UI
                 _currentHairstyleIndex++;
                 if (_currentHairstyleIndex > GameConfig.MaleHeroHairstyleCount)
                     _currentHairstyleIndex = 1;
-                _hairstyleLabel.SetText("Hairstyle " + _currentHairstyleIndex);
+                _hairstyleLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairstyle), _currentHairstyleIndex));
                 RebuildPreviewAppearance();
             };
             controlsTable.Add(hairStyleLeft).Size(arrowWidth, arrowHeight);
@@ -200,7 +203,7 @@ namespace PitHero.UI
             controlsTable.Row();
 
             // --- Skin Color row ---
-            _skinLabel = new Label("Skin " + (_currentSkinIndex + 1), skin);
+            _skinLabel = new Label(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceSkin), _currentSkinIndex + 1), skin);
             var skinLeft = new TextButton("<", skin);
             var skinRight = new TextButton(">", skin);
             skinLeft.OnClicked += (btn) =>
@@ -208,7 +211,7 @@ namespace PitHero.UI
                 _currentSkinIndex--;
                 if (_currentSkinIndex < 0)
                     _currentSkinIndex = GameConfig.SkinColors.Count - 1;
-                _skinLabel.SetText("Skin " + (_currentSkinIndex + 1));
+                _skinLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceSkin), _currentSkinIndex + 1));
                 RebuildPreviewAppearance();
             };
             skinRight.OnClicked += (btn) =>
@@ -216,7 +219,7 @@ namespace PitHero.UI
                 _currentSkinIndex++;
                 if (_currentSkinIndex >= GameConfig.SkinColors.Count)
                     _currentSkinIndex = 0;
-                _skinLabel.SetText("Skin " + (_currentSkinIndex + 1));
+                _skinLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceSkin), _currentSkinIndex + 1));
                 RebuildPreviewAppearance();
             };
             controlsTable.Add(skinLeft).Size(arrowWidth, arrowHeight);
@@ -225,7 +228,7 @@ namespace PitHero.UI
             controlsTable.Row();
 
             // --- Hair Color row ---
-            _hairColorLabel = new Label("Hair Color " + (_currentHairColorIndex + 1), skin);
+            _hairColorLabel = new Label(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairColor), _currentHairColorIndex + 1), skin);
             var hairColorLeft = new TextButton("<", skin);
             var hairColorRight = new TextButton(">", skin);
             hairColorLeft.OnClicked += (btn) =>
@@ -233,7 +236,7 @@ namespace PitHero.UI
                 _currentHairColorIndex--;
                 if (_currentHairColorIndex < 0)
                     _currentHairColorIndex = GameConfig.HairColors.Count - 1;
-                _hairColorLabel.SetText("Hair Color " + (_currentHairColorIndex + 1));
+                _hairColorLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairColor), _currentHairColorIndex + 1));
                 RebuildPreviewAppearance();
             };
             hairColorRight.OnClicked += (btn) =>
@@ -241,7 +244,7 @@ namespace PitHero.UI
                 _currentHairColorIndex++;
                 if (_currentHairColorIndex >= GameConfig.HairColors.Count)
                     _currentHairColorIndex = 0;
-                _hairColorLabel.SetText("Hair Color " + (_currentHairColorIndex + 1));
+                _hairColorLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceHairColor), _currentHairColorIndex + 1));
                 RebuildPreviewAppearance();
             };
             controlsTable.Add(hairColorLeft).Size(arrowWidth, arrowHeight);
@@ -250,7 +253,7 @@ namespace PitHero.UI
             controlsTable.Row();
 
             // --- Shirt Color row ---
-            _shirtLabel = new Label("Shirt " + (_currentShirtIndex + 1), skin);
+            _shirtLabel = new Label(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceShirt), _currentShirtIndex + 1), skin);
             var shirtLeft = new TextButton("<", skin);
             var shirtRight = new TextButton(">", skin);
             shirtLeft.OnClicked += (btn) =>
@@ -258,7 +261,7 @@ namespace PitHero.UI
                 _currentShirtIndex--;
                 if (_currentShirtIndex < 0)
                     _currentShirtIndex = GameConfig.ShirtColors.Count - 1;
-                _shirtLabel.SetText("Shirt " + (_currentShirtIndex + 1));
+                _shirtLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceShirt), _currentShirtIndex + 1));
                 RebuildPreviewAppearance();
             };
             shirtRight.OnClicked += (btn) =>
@@ -266,7 +269,7 @@ namespace PitHero.UI
                 _currentShirtIndex++;
                 if (_currentShirtIndex >= GameConfig.ShirtColors.Count)
                     _currentShirtIndex = 0;
-                _shirtLabel.SetText("Shirt " + (_currentShirtIndex + 1));
+                _shirtLabel.SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.AppearanceShirt), _currentShirtIndex + 1));
                 RebuildPreviewAppearance();
             };
             controlsTable.Add(shirtLeft).Size(arrowWidth, arrowHeight);
@@ -300,10 +303,10 @@ namespace PitHero.UI
             mainTable.Row();
 
             // --- Bottom row: Create Hero / Cancel buttons ---
-            var createButton = new TextButton("Create Hero", skin);
+            var createButton = new TextButton(_textService.DisplayText(TextType.UI, UITextKey.ButtonCreateHero), skin);
             createButton.OnClicked += (btn) => OnCreateHero();
 
-            var cancelButton = new TextButton("Cancel", skin);
+            var cancelButton = new TextButton(_textService.DisplayText(TextType.UI, UITextKey.ButtonCancel), skin);
             cancelButton.OnClicked += (btn) => OnCancel();
 
             var buttonsTable = new Table();
@@ -467,14 +470,14 @@ namespace PitHero.UI
             // Role
             if (!string.IsNullOrEmpty(job.Role))
             {
-                var roleLabel = new Label("Role: " + job.Role, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = BrownFontColor });
+                var roleLabel = new Label(_textService.DisplayText(TextType.UI, UITextKey.AppearanceRolePrefix) + job.Role, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = BrownFontColor });
                 roleLabel.SetWrap(true);
                 _jobInfoContentTable.Add(roleLabel).Width(310f).Left().SetPadTop(5f);
                 _jobInfoContentTable.Row();
             }
 
             // Skills header
-            var skillsHeader = new Label("Skills:", new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = BrownFontColor });
+            var skillsHeader = new Label(_textService.DisplayText(TextType.UI, UITextKey.AppearanceSkillsLabel), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = BrownFontColor });
             _jobInfoContentTable.Add(skillsHeader).Left().SetPadTop(10f);
             _jobInfoContentTable.Row();
 
@@ -484,7 +487,7 @@ namespace PitHero.UI
 
             if (jobSkills.Count == 0)
             {
-                var noSkillsLabel = new Label("No job skills", _skin, "ph-default");
+                var noSkillsLabel = new Label(_textService.DisplayText(TextType.UI, UITextKey.AppearanceNoJobSkills), _skin, "ph-default");
                 noSkillsLabel.SetColor(Color.Gray);
                 skillGrid.Add(noSkillsLabel).Center();
             }

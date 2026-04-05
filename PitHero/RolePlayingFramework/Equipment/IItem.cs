@@ -6,6 +6,9 @@ namespace RolePlayingFramework.Equipment
         /// <summary>Display name.</summary>
         string Name { get; }
 
+        /// <summary>Sprite name used to look up the item's sprite in the Items atlas.</summary>
+        string SpriteName { get; }
+
         /// <summary>Item category.</summary>
         ItemKind Kind { get; }
 

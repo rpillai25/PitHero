@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Swords
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Swords
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "DepthsReaver",
+                InventoryTextKey.Inv_DepthsReaver_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Ancient blade from the deepest caves.",
+                InventoryTextKey.Inv_DepthsReaver_Desc,
                 600,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

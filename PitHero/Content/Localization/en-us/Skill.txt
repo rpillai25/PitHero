@@ -1,0 +1,106 @@
+Skill_Archer_EagleEye_Name,Eagle Eye
+Skill_Archer_EagleEye_Desc,Increases sight distance to spot enemies from farther away.
+Skill_Archer_PowerShot_Name,Power Shot
+Skill_Archer_PowerShot_Desc,A powerful arrow shot that deals 150% physical damage to a single target.
+Skill_Archer_Quickdraw_Name,Quickdraw
+Skill_Archer_Quickdraw_Desc,The first attack in combat has an increased critical hit chance.
+Skill_Archer_Volley_Name,Volley
+Skill_Archer_Volley_Desc,Fire a barrage of arrows at all surrounding enemies dealing physical damage.
+Skill_Knight_HeavyArmor_Name,Heavy Armor
+Skill_Knight_HeavyArmor_Desc,Provides +2 passive defense bonus when wearing heavy armor.
+Skill_Knight_HeavyStrike_Name,Heavy Strike
+Skill_Knight_HeavyStrike_Desc,A powerful overhead strike that deals bonus damage based on Strength.
+Skill_Knight_LightArmor_Name,Light Armor
+Skill_Knight_LightArmor_Desc,Allows equipping robes in addition to heavy armor.
+Skill_Knight_SpinSlash_Name,Spin Slash
+Skill_Knight_SpinSlash_Desc,Attack all surrounding enemies with a spinning blade strike dealing 80% damage.
+Skill_Mage_Economist_Name,Economist
+Skill_Mage_Economist_Desc,Reduces MP cost of all skills by 15%.
+Skill_Mage_Fire_Name,Fire
+Skill_Mage_Fire_Desc,Cast a fireball at a single enemy dealing magical fire damage based on Magic stat.
+Skill_Mage_Firestorm_Name,FireStorm
+Skill_Mage_Firestorm_Desc,Unleash a storm of flames hitting all surrounding enemies with fire damage.
+Skill_Mage_HeartFire_Name,Heart of Fire
+Skill_Mage_HeartFire_Desc,Increases all fire damage by 25%.
+Skill_Monk_Counter_Name,Counter
+Skill_Monk_Counter_Desc,Enables counterattacking when hit by enemy attacks.
+Skill_Monk_Deflect_Name,Deflect
+Skill_Monk_Deflect_Desc,Grants a 15% chance to completely deflect incoming attacks.
+Skill_Monk_FlamingFist_Name,Flaming Fist
+Skill_Monk_FlamingFist_Desc,A fiery punch that deals physical damage plus bonus damage based on Magic.
+Skill_Monk_Roundhouse_Name,Roundhouse
+Skill_Monk_Roundhouse_Desc,A spinning kick that hits all surrounding enemies with physical damage.
+Skill_Priest_CalmSpirit_Name,Calm Spirit
+Skill_Priest_CalmSpirit_Desc,Increases MP regeneration by 1 per turn cycle.
+Skill_Priest_DefenseUp_Name,Defense Up
+Skill_Priest_DefenseUp_Desc,Temporarily increase defense by 1. Effect stacks with multiple uses.
+Skill_Priest_Heal_Name,Heal
+Skill_Priest_Heal_Desc,Restore 50 HP.
+Skill_Priest_Mender_Name,Mender
+Skill_Priest_Mender_Desc,Increases all healing effects by 25%.
+Skill_Synergy_ArrowFlurry_Name,Arrow Flurry
+Skill_Synergy_ArrowFlurry_Desc,Unleashes a rapid barrage of arrows at all enemies.
+Skill_Synergy_AuraHeal_Name,Aura Heal
+Skill_Synergy_AuraHeal_Desc,Heals self and grants a temporary defense boost.
+Skill_Synergy_Blitz_Name,Blitz
+Skill_Synergy_Blitz_Desc,A rapid magic burst dealing Lightning damage.
+Skill_Synergy_DragonBolt_Name,Dragon Bolt
+Skill_Synergy_DragonBolt_Desc,Unleashes a bolt of draconic energy.
+Skill_Synergy_DragonClaw_Name,Dragon Claw
+Skill_Synergy_DragonClaw_Desc,A devastating claw strike infused with draconic energy.
+Skill_Synergy_DragonKick_Name,Dragon Kick
+Skill_Synergy_DragonKick_Desc,A powerful spinning kick that strikes with great force.
+Skill_Synergy_ElementalStorm_Name,Elemental Storm
+Skill_Synergy_ElementalStorm_Desc,Summons a devastating elemental storm.
+Skill_Synergy_ElementalVolley_Name,Elemental Volley
+Skill_Synergy_ElementalVolley_Desc,Launches a volley of magic-infused arrows at surrounding enemies.
+Skill_Synergy_EnergyBurst_Name,Energy Burst
+Skill_Synergy_EnergyBurst_Desc,Releases a burst of ki energy damaging all nearby enemies.
+Skill_Synergy_Fade_Name,Fade
+Skill_Synergy_Fade_Desc,Magically fade into the shadows, boosting evasion and MP regen.
+Skill_Synergy_FlashStrike_Name,Flash Strike
+Skill_Synergy_FlashStrike_Desc,A blindingly fast strike that is nearly impossible to evade.
+Skill_Synergy_HolyStrike_Name,Holy Strike
+Skill_Synergy_HolyStrike_Desc,A holy-infused strike that deals Light damage based on Strength.
+Skill_Synergy_IaidoSlash_Name,Iaido Slash
+Skill_Synergy_IaidoSlash_Desc,A lightning-fast draw strike that deals 130% damage.
+Skill_Synergy_KiArrow_Name,Ki Arrow
+Skill_Synergy_KiArrow_Desc,Fires an arrow charged with ki energy.
+Skill_Synergy_KiCloak_Name,Ki Cloak
+Skill_Synergy_KiCloak_Desc,Wraps self in protective ki energy, boosting defense.
+Skill_Synergy_LifeLeech_Name,Life Leech
+Skill_Synergy_LifeLeech_Desc,Drains life force from an enemy, healing self.
+Skill_Synergy_Lightshot_Name,Lightshot
+Skill_Synergy_Lightshot_Desc,Fires a holy-infused arrow dealing Light damage.
+Skill_Synergy_Meteor_Name,Meteor
+Skill_Synergy_Meteor_Desc,Summons a devastating meteor dealing massive Fire damage to all enemies.
+Skill_Synergy_PiercingArrow_Name,Piercing Arrow
+Skill_Synergy_PiercingArrow_Desc,Fires an arrow that pierces through armor.
+Skill_Synergy_PoisonArrow_Name,Poison Arrow
+Skill_Synergy_PoisonArrow_Desc,Fires a poisoned projectile that deals continuous damage.
+Skill_Synergy_Purify_Name,Purify
+Skill_Synergy_Purify_Desc,Cleanses the body and restores HP based on Magic.
+Skill_Synergy_SacredBlade_Name,Sacred Blade
+Skill_Synergy_SacredBlade_Desc,A divine blade strike dealing massive Light damage.
+Skill_Synergy_SacredStrike_Name,Sacred Strike
+Skill_Synergy_SacredStrike_Desc,A holy-infused martial arts strike.
+Skill_Synergy_ShadowBolt_Name,Shadow Bolt
+Skill_Synergy_ShadowBolt_Desc,Fires a bolt of dark energy at a single target.
+Skill_Synergy_ShadowSlash_Name,Shadow Slash
+Skill_Synergy_ShadowSlash_Desc,A shadow-enhanced strike dealing Dark damage with AGI bonus.
+Skill_Synergy_SmokeBomb_Name,Smoke Bomb
+Skill_Synergy_SmokeBomb_Desc,Throws a smoke bomb to increase evasion temporarily.
+Skill_Synergy_SneakPunch_Name,Sneak Punch
+Skill_Synergy_SneakPunch_Desc,A quick punch from the shadows with bonus damage.
+Skill_Synergy_SoulWard_Name,Soul Ward
+Skill_Synergy_SoulWard_Desc,Creates a protective ward that heals and shields.
+Skill_Synergy_Spellblade_Name,Spellblade
+Skill_Synergy_Spellblade_Desc,A magic-infused blade strike dealing combined physical and magical damage.
+Skill_Thief_Shadowstep_Name,Shadowstep
+Skill_Thief_Shadowstep_Desc,Increases chance to evade incoming attacks through superior agility.
+Skill_Thief_SneakAttack_Name,Sneak Attack
+Skill_Thief_SneakAttack_Desc,A stealthy strike that deals physical damage plus bonus damage based on Agility.
+Skill_Thief_TrapSense_Name,Trap Sense
+Skill_Thief_TrapSense_Desc,Enhanced ability to detect and disarm traps in the dungeon.
+Skill_Thief_Vanish_Name,Vanish
+Skill_Thief_Vanish_Desc,Disappear into the shadows, becoming untargetable for a short duration.

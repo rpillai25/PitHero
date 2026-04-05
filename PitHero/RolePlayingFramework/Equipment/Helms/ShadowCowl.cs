@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Helms
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Helms
         {
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "ShadowCowl",
+                InventoryTextKey.Inv_ShadowCowl_Name,
                 ItemKind.HatHeadband,
                 Rarity,
-                "Dark hood that obscures features.",
+                InventoryTextKey.Inv_ShadowCowl_Desc,
                 550,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

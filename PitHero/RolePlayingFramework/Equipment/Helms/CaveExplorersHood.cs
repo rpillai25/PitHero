@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Helms
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Helms
         {
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "CaveExplorersHood",
+                InventoryTextKey.Inv_CaveExplorersHood_Name,
                 ItemKind.HatHeadband,
                 Rarity,
-                "Practical hood for cave exploration.",
+                InventoryTextKey.Inv_CaveExplorersHood_Desc,
                 200,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

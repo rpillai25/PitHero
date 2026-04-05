@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Axes
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Axes
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "VolcanicAxe",
+                InventoryTextKey.Inv_VolcanicAxe_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Axe forged in volcanic heat.",
+                InventoryTextKey.Inv_VolcanicAxe_Desc,
                 625,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

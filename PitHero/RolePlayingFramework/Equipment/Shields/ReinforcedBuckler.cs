@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Shields
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Shields
         {
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "ReinforcedBuckler",
+                InventoryTextKey.Inv_ReinforcedBuckler_Name,
                 ItemKind.Shield,
                 Rarity,
-                "Small metal-rimmed shield.",
+                InventoryTextKey.Inv_ReinforcedBuckler_Desc,
                 125,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

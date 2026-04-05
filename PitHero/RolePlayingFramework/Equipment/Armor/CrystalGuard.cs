@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Armor
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Armor
         {
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "CrystalGuard",
+                InventoryTextKey.Inv_CrystalGuard_Name,
                 ItemKind.ArmorMail,
                 Rarity,
-                "Armor embedded with protective crystals.",
+                InventoryTextKey.Inv_CrystalGuard_Desc,
                 650,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

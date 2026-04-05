@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Daggers
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Daggers
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "ShadowStiletto",
+                InventoryTextKey.Inv_ShadowStiletto_Name,
                 ItemKind.WeaponKnife,
                 Rarity,
-                "Thin piercing blade that vanishes in shadows.",
+                InventoryTextKey.Inv_ShadowStiletto_Desc,
                 550,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

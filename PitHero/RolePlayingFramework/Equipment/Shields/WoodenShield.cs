@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Shields
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Shields
         {
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "WoodenShield",
+                InventoryTextKey.Inv_WoodenShield_Name,
                 ItemKind.Shield,
                 Rarity,
-                $"No adventurer should be without one.",
+                InventoryTextKey.Inv_WoodenShield_Desc,
                 80,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

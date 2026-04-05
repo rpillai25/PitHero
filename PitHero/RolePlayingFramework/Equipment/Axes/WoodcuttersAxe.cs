@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Axes
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Axes
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "WoodcuttersAxe",
+                InventoryTextKey.Inv_WoodcuttersAxe_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                $"Simple wood-cutting tool.",
+                InventoryTextKey.Inv_WoodcuttersAxe_Desc,
                 100,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

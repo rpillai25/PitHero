@@ -1,6 +1,7 @@
 using RolePlayingFramework.Skills;
 using RolePlayingFramework.Stats;
 using System.Collections.Generic;
+using PitHero;
 
 namespace RolePlayingFramework.Jobs.Primary
 {
@@ -12,7 +13,7 @@ namespace RolePlayingFramework.Jobs.Primary
     public sealed class Thief : BaseJob
     {
         public Thief() : base(
-            name: "Thief",
+            name: JobTextKey.Job_Thief_Name,
             // BaseBonus emphasizes Agility
             // Target: Very high Agility, moderate Strength, low Vitality and Magic
             baseBonus: new StatBlock(strength: 7, agility: 10, vitality: 5, magic: 4),
@@ -22,8 +23,8 @@ namespace RolePlayingFramework.Jobs.Primary
             growthPerLevel: new StatBlock(strength: 0.520f, agility: 0.735f, vitality: 0.388f, magic: 0.286f),
             tier: JobTier.Primary,
             jobFlag: JobType.Thief,
-            description: "Stealthy fighter with trap disarm abilities.",
-            role: "High agility, moderate damage, low defense")
+            description: JobTextKey.Job_Thief_Desc,
+            role: JobTextKey.Job_Thief_Role)
         { }
 
         protected override void DefineSkills(List<ISkill> list)

@@ -1,5 +1,6 @@
 using Nez;
 using Nez.UI;
+using PitHero.Services;
 
 namespace PitHero.UI
 {
@@ -10,6 +11,7 @@ namespace PitHero.UI
     {
         private Stage _stage;
         private HoverableImageButton _fastFButton;
+        private TextService _textService;
 
         private ImageButtonStyle _fastFNormalStyle;
         private ImageButtonStyle _fastFHalfStyle;
@@ -26,6 +28,27 @@ namespace PitHero.UI
 
         public FastFUI()
         {
+        }
+
+        /// <summary>
+        /// Safely retrieves TextService. Returns null if Core is not initialized (e.g., in unit tests).
+        /// </summary>
+        private TextService GetTextService()
+        {
+            if (_textService == null && Core.Services != null)
+            {
+                _textService = Core.Services.GetService<TextService>();
+            }
+            return _textService;
+        }
+
+        /// <summary>
+        /// Gets localized text or falls back to key name if TextService unavailable.
+        /// </summary>
+        private string GetText(TextType type, string key)
+        {
+            var service = GetTextService();
+            return service?.DisplayText(type, key) ?? key.ToString();
         }
 
         /// <summary>
@@ -85,7 +108,7 @@ namespace PitHero.UI
                 ImageOver = new SpriteDrawable(fastFHighlight2x)
             };
 
-            _fastFButton = new HoverableImageButton(_fastFNormalStyle, "Fast Forward");
+            _fastFButton = new HoverableImageButton(_fastFNormalStyle, GetText(TextType.UI, UITextKey.ButtonFastForward));
             // Explicitly size to the image
             _fastFButton.SetSize(fastFSprite.SourceRect.Width, fastFSprite.SourceRect.Height);
 

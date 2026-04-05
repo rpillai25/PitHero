@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PitHero.Config;
 using PitHero.VirtualGame;
+using RolePlayingFramework.Enemies;
 
 namespace PitHero.Tests
 {
@@ -150,7 +151,7 @@ namespace PitHero.Tests
 
                 context.PitGenerator.RegenerateForLevel(level);
 
-                string[] expectedPool = CaveBiomeConfig.GetEnemyPoolForLevel(level);
+                EnemyId[] expectedPool = CaveBiomeConfig.GetEnemyPoolForLevel(level);
                 Assert.IsTrue(expectedPool.Length > 0, $"Level {level} should have non-empty enemy pool");
 
                 // All spawned monsters should be from the pool
@@ -159,7 +160,7 @@ namespace PitHero.Tests
                     bool isInPool = false;
                     for (int i = 0; i < expectedPool.Length; i++)
                     {
-                        if (expectedPool[i] == monsterType)
+                        if (expectedPool[i].ToString() == monsterType)
                         {
                             isInPool = true;
                             break;
@@ -167,7 +168,7 @@ namespace PitHero.Tests
                     }
 
                     Assert.IsTrue(isInPool, 
-                        $"Level {level} spawned {monsterType} which is not in expected pool: {string.Join(", ", expectedPool)}");
+                        $"Level {level} spawned {monsterType} which is not in expected pool");
                 }
             }
         }
@@ -238,35 +239,35 @@ namespace PitHero.Tests
             // Pool 1 (Pit 1-4): 5 monsters (Slime, Bat, Rat, Cave Mushroom, Stone Beetle)
             for (int level = 1; level <= 4; level++)
             {
-                string[] pool = CaveBiomeConfig.GetEnemyPoolForLevel(level);
+                EnemyId[] pool = CaveBiomeConfig.GetEnemyPoolForLevel(level);
                 Assert.AreEqual(5, pool.Length, $"Pit {level} should have 5 monsters in pool");
             }
 
             // Pool 2 (Pit 6-9): 10 monsters (Pool 1 + 5 new types)
             for (int level = 6; level <= 9; level++)
             {
-                string[] pool = CaveBiomeConfig.GetEnemyPoolForLevel(level);
+                EnemyId[] pool = CaveBiomeConfig.GetEnemyPoolForLevel(level);
                 Assert.AreEqual(10, pool.Length, $"Pit {level} should have 10 monsters in pool");
             }
 
             // Pool 3 (Pit 11-14): 10 monsters (sliding window)
             for (int level = 11; level <= 14; level++)
             {
-                string[] pool = CaveBiomeConfig.GetEnemyPoolForLevel(level);
+                EnemyId[] pool = CaveBiomeConfig.GetEnemyPoolForLevel(level);
                 Assert.AreEqual(10, pool.Length, $"Pit {level} should have 10 monsters in pool");
             }
 
             // Pool 4 (Pit 16-19): 10 monsters (sliding window)
             for (int level = 16; level <= 19; level++)
             {
-                string[] pool = CaveBiomeConfig.GetEnemyPoolForLevel(level);
+                EnemyId[] pool = CaveBiomeConfig.GetEnemyPoolForLevel(level);
                 Assert.AreEqual(10, pool.Length, $"Pit {level} should have 10 monsters in pool");
             }
 
             // Pool 5 (Pit 21-24): 10 monsters (sliding window)
             for (int level = 21; level <= 24; level++)
             {
-                string[] pool = CaveBiomeConfig.GetEnemyPoolForLevel(level);
+                EnemyId[] pool = CaveBiomeConfig.GetEnemyPoolForLevel(level);
                 Assert.AreEqual(10, pool.Length, $"Pit {level} should have 10 monsters in pool");
             }
 
@@ -275,7 +276,7 @@ namespace PitHero.Tests
             for (int i = 0; i < bossFloors.Length; i++)
             {
                 int level = bossFloors[i];
-                string[] pool = CaveBiomeConfig.GetEnemyPoolForLevel(level);
+                EnemyId[] pool = CaveBiomeConfig.GetEnemyPoolForLevel(level);
                 Assert.AreEqual(0, pool.Length, $"Boss floor {level} should have empty pool");
             }
         }

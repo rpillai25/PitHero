@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Helms
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Helms
         {
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "EmberHelm",
+                InventoryTextKey.Inv_EmberHelm_Name,
                 ItemKind.HatHelm,
                 Rarity,
-                "Heat-resistant helmet with glowing edges.",
+                InventoryTextKey.Inv_EmberHelm_Desc,
                 500,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

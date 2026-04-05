@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Accessories
 {
@@ -16,10 +17,10 @@ namespace RolePlayingFramework.Equipment.Accessories
             // MP bonus scales with stat bonus for magic-focused items
             int mpBonus = statBonus * 3;
             return new Gear(
-                "MagicChain",
+                InventoryTextKey.Inv_MagicChain_Name,
                 ItemKind.Accessory,
                 Rarity,
-                $"Mages wear this to enhance their spells.",
+                InventoryTextKey.Inv_MagicChain_Desc,
                 200,
                 new StatBlock(0, 0, 0, statBonus),
                 mp: mpBonus,

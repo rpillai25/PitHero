@@ -2,6 +2,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PitHero.AI;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Inventory;
+using PitHero;
 
 namespace PitHero.Tests
 {
@@ -40,7 +41,7 @@ namespace PitHero.Tests
                 bag, 50, 500, 40, 40, out best, out idx);
 
             Assert.IsTrue(found);
-            Assert.AreEqual("MidHPPotion", best.Name, "Emergency should pick highest HP potion");
+            Assert.AreEqual(InventoryTextKey.Inv_MidHPPotion_Name, best.Name, "Emergency should pick highest HP potion");
         }
 
         [TestMethod]
@@ -57,7 +58,7 @@ namespace PitHero.Tests
                 bag, 25, 500, 40, 40, out best, out idx);
 
             Assert.IsTrue(found);
-            Assert.AreEqual("FullHPPotion", best.Name, "Emergency should allow full potions");
+            Assert.AreEqual(InventoryTextKey.Inv_FullHPPotion_Name, best.Name, "Emergency should allow full potions");
         }
 
         [TestMethod]
@@ -76,7 +77,7 @@ namespace PitHero.Tests
                 bag, 75, 500, 0, 100, out best, out idx);
 
             Assert.IsTrue(found);
-            Assert.AreEqual("MidHPPotion", best.Name, "Emergency should ignore MP and pick highest HP");
+            Assert.AreEqual(InventoryTextKey.Inv_MidHPPotion_Name, best.Name, "Emergency should ignore MP and pick highest HP");
         }
 
         // ====================================================================
@@ -101,7 +102,7 @@ namespace PitHero.Tests
                 bag, 150, 500, 40, 40, out best, out idx);
 
             Assert.IsTrue(found);
-            Assert.AreEqual("HPPotion", best.Name, "When only HP is missing, should pick HP potion");
+            Assert.AreEqual(InventoryTextKey.Inv_HPPotion_Name, best.Name, "When only HP is missing, should pick HP potion");
         }
 
         [TestMethod]
@@ -118,7 +119,7 @@ namespace PitHero.Tests
                 bag, 500, 500, 30, 100, out best, out idx);
 
             Assert.IsTrue(found);
-            Assert.AreEqual("MPPotion", best.Name, "When only MP is missing, should pick MP potion");
+            Assert.AreEqual(InventoryTextKey.Inv_MPPotion_Name, best.Name, "When only MP is missing, should pick MP potion");
         }
 
         [TestMethod]
@@ -139,7 +140,7 @@ namespace PitHero.Tests
                 bag, 150, 500, 30, 100, out best, out idx);
 
             Assert.IsTrue(found);
-            Assert.AreEqual("MixPotion", best.Name, "When both resources critical, MixPotion should be preferred");
+            Assert.AreEqual(InventoryTextKey.Inv_MixPotion_Name, best.Name, "When both resources critical, MixPotion should be preferred");
         }
 
         [TestMethod]
@@ -160,7 +161,7 @@ namespace PitHero.Tests
                 bag, 175, 500, 70, 100, out best, out idx);
 
             Assert.IsTrue(found);
-            Assert.AreEqual("MixPotion", best.Name, "MixPotion gives bonus from MP restoration");
+            Assert.AreEqual(InventoryTextKey.Inv_MixPotion_Name, best.Name, "MixPotion gives bonus from MP restoration");
         }
 
         // ====================================================================
@@ -184,7 +185,7 @@ namespace PitHero.Tests
                 bag, 150, 500, 100, 100, out best, out idx);
 
             Assert.IsTrue(found);
-            Assert.AreEqual("MidHPPotion", best.Name, "Should prefer potion with higher EffectiveHP");
+            Assert.AreEqual(InventoryTextKey.Inv_MidHPPotion_Name, best.Name, "Should prefer potion with higher EffectiveHP");
         }
 
         [TestMethod]
@@ -208,7 +209,7 @@ namespace PitHero.Tests
                 bag, 400, 500, 100, 100, out best, out idx);
 
             Assert.IsTrue(found);
-            Assert.AreEqual("HPPotion", best.Name, "Should prefer less wasteful/cheaper potion");
+            Assert.AreEqual(InventoryTextKey.Inv_HPPotion_Name, best.Name, "Should prefer less wasteful/cheaper potion");
         }
 
         // ====================================================================
@@ -244,7 +245,7 @@ namespace PitHero.Tests
                 bag, 200, 500, 100, 100, out best, out idx);
 
             Assert.IsTrue(found, "Full potion should be allowed for large deficit");
-            Assert.AreEqual("FullHPPotion", best.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_FullHPPotion_Name, best.Name);
         }
 
         // ====================================================================
@@ -265,7 +266,7 @@ namespace PitHero.Tests
                 bag, 420, 500, 100, 100, out best, out idx);
 
             Assert.IsTrue(found);
-            Assert.AreEqual("HPPotion", best.Name, "Should pick smallest sufficient potion to minimize waste");
+            Assert.AreEqual(InventoryTextKey.Inv_HPPotion_Name, best.Name, "Should pick smallest sufficient potion to minimize waste");
         }
 
         [TestMethod]
@@ -282,7 +283,7 @@ namespace PitHero.Tests
                 bag, 100, 500, 100, 100, out best, out idx);
 
             Assert.IsTrue(found);
-            Assert.AreEqual("MidHPPotion", best.Name, "Should pick sufficient potion for large deficit");
+            Assert.AreEqual(InventoryTextKey.Inv_MidHPPotion_Name, best.Name, "Should pick sufficient potion for large deficit");
         }
 
         [TestMethod]
@@ -299,7 +300,7 @@ namespace PitHero.Tests
                 bag, 400, 1000, 100, 100, out best, out idx);
 
             Assert.IsTrue(found);
-            Assert.AreEqual("HPPotion", best.Name, "Should fall back to largest partial potion");
+            Assert.AreEqual(InventoryTextKey.Inv_HPPotion_Name, best.Name, "Should fall back to largest partial potion");
         }
 
         // ====================================================================
@@ -320,7 +321,7 @@ namespace PitHero.Tests
                 bag, 500, 500, 20, 100, out best, out idx);
 
             Assert.IsTrue(found);
-            Assert.AreEqual("MPPotion", best.Name, "Should pick smallest sufficient MP potion");
+            Assert.AreEqual(InventoryTextKey.Inv_MPPotion_Name, best.Name, "Should pick smallest sufficient MP potion");
         }
 
         // ====================================================================
@@ -358,7 +359,7 @@ namespace PitHero.Tests
                 bag, 420, 500, 20, 100, out best, out idx);
 
             Assert.IsTrue(found);
-            Assert.AreEqual("MixPotion", best.Name, "Mix should be selected when it's the only option");
+            Assert.AreEqual(InventoryTextKey.Inv_MixPotion_Name, best.Name, "Mix should be selected when it's the only option");
         }
 
         [TestMethod]
@@ -382,7 +383,7 @@ namespace PitHero.Tests
             Assert.IsTrue(found);
             // Should pick separate → the more critical resource (lower %)
             // HP: 420/500 = 84%, MP: 20/100 = 20% → MP is more critical
-            Assert.AreEqual("MPPotion", best.Name, "Tied waste should prefer separate; MP is more critical");
+            Assert.AreEqual(InventoryTextKey.Inv_MPPotion_Name, best.Name, "Tied waste should prefer separate; MP is more critical");
         }
 
         [TestMethod]
@@ -409,7 +410,7 @@ namespace PitHero.Tests
 
             Assert.IsTrue(found);
             // Should prefer separate; MP is more critical (10%)
-            Assert.AreEqual("MPPotion", best.Name, "When tied, should prefer separate potions; MP is more critical");
+            Assert.AreEqual(InventoryTextKey.Inv_MPPotion_Name, best.Name, "When tied, should prefer separate potions; MP is more critical");
         }
 
         // ====================================================================
@@ -444,7 +445,7 @@ namespace PitHero.Tests
                 bag, 150, 500, 100, 100, out best, out idx);
 
             Assert.IsTrue(found, "Full potion should be allowed for large deficit");
-            Assert.AreEqual("FullHPPotion", best.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_FullHPPotion_Name, best.Name);
         }
 
         [TestMethod]
@@ -461,7 +462,7 @@ namespace PitHero.Tests
                 bag, 300, 500, 10, 100, out best, out idx);
 
             Assert.IsTrue(found, "FullMixPotion should be allowed when MP deficit is large");
-            Assert.AreEqual("FullMixPotion", best.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_FullMixPotion_Name, best.Name);
         }
 
         // ====================================================================
@@ -595,7 +596,7 @@ namespace PitHero.Tests
                 bag, 125, 500, 25, 100, out best, out idx);
 
             Assert.IsTrue(found);
-            Assert.AreEqual("MixPotion", best.Name, "MixPotion should be clearly favored when both resources critical");
+            Assert.AreEqual(InventoryTextKey.Inv_MixPotion_Name, best.Name, "MixPotion should be clearly favored when both resources critical");
         }
 
         [TestMethod]
@@ -617,7 +618,7 @@ namespace PitHero.Tests
             // HPPotion: EffHP=min(100,400)*2=200
             // MidHPPotion: EffHP=min(500,400)*2=800
             // MidHP wins on score
-            Assert.AreEqual("MidHPPotion", best.Name);
+            Assert.AreEqual(InventoryTextKey.Inv_MidHPPotion_Name, best.Name);
         }
 
         // ====================================================================

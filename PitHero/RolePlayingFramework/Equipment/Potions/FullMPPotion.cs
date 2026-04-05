@@ -1,8 +1,9 @@
+using PitHero;
 namespace RolePlayingFramework.Equipment
 {
     /// <summary>Fully restores MP.</summary>
     public sealed class FullMPPotion : BaseHPMPPotion
     {
-        public FullMPPotion() : base("FullMPPotion", ItemRarity.Epic, "Fully restores MP", 500, 0, -1) { }
+        public FullMPPotion() : base(InventoryTextKey.Inv_FullMPPotion_Name, ItemRarity.Epic, InventoryTextKey.Inv_FullMPPotion_Desc, 500, 0, -1) { }
     }
 }

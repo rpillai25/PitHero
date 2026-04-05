@@ -1,5 +1,7 @@
 using Microsoft.Xna.Framework;
+using Nez;
 using Nez.UI;
+using PitHero.Services;
 using RolePlayingFramework.Equipment;
 
 namespace PitHero.UI
@@ -17,6 +19,7 @@ namespace PitHero.UI
         private ResettableTextButton _useButton;
         private ResettableTextButton _discardButton;
         private ResettableTextButton _cancelButton;
+        private TextService _textService;
 
         public event System.Action<IItem, int> OnUseItem;
         public event System.Action<IItem, int> OnDiscardItem;
@@ -26,6 +29,7 @@ namespace PitHero.UI
         {
             _stage = stage;
             _skin = skin;
+            _textService = Core.Services.GetService<TextService>();
             CreateContextMenu();
             CreateConfirmDialog();
         }
@@ -59,7 +63,7 @@ namespace PitHero.UI
             table.Add(_useButton).Width(100).Height(25);
             table.Row();
 
-            _discardButton = new ResettableTextButton("Discard", _skin);
+            _discardButton = new ResettableTextButton(_textService.DisplayText(TextType.UI, UITextKey.DialogReallyDiscard), _skin);
             _discardButton.OnClicked += (btn) =>
             {
                 Hide();
@@ -68,7 +72,7 @@ namespace PitHero.UI
             table.Add(_discardButton).Width(100).Height(25).SetPadTop(5);
             table.Row();
 
-            _cancelButton = new ResettableTextButton("Cancel", _skin);
+            _cancelButton = new ResettableTextButton(_textService.DisplayText(TextType.UI, UITextKey.ButtonCancel), _skin);
             _cancelButton.OnClicked += (btn) => Hide();
             table.Add(_cancelButton).Width(100).Height(25).SetPadTop(5);
 
@@ -81,21 +85,21 @@ namespace PitHero.UI
         private void CreateConfirmDialog()
         {
             var windowStyle = _skin.Get<WindowStyle>();
-            _confirmDialog = new Window("Really discard?", windowStyle);
+            _confirmDialog = new Window(_textService.DisplayText(TextType.UI, UITextKey.DialogReallyDiscard), windowStyle);
             _confirmDialog.SetSize(250, 120);
             var table = new Table();
             table.Pad(10);
-            table.Add(new Label("Discard this item?", _skin)).SetPadBottom(10);
+            table.Add(new Label(_textService.DisplayText(TextType.UI, UITextKey.ConfirmDiscardMessage), _skin)).SetPadBottom(10);
             table.Row();
             var buttonTable = new Table();
-            var yesButton = new TextButton("Yes", _skin);
+            var yesButton = new TextButton(_textService.DisplayText(TextType.UI, UITextKey.ButtonYes), _skin);
             yesButton.OnClicked += (btn) =>
             {
                 HideDiscardConfirmation();
                 OnDiscardItem?.Invoke(_currentItem, _currentBagIndex);
             };
             buttonTable.Add(yesButton).Width(60);
-            var noButton = new TextButton("No", _skin);
+            var noButton = new TextButton(_textService.DisplayText(TextType.UI, UITextKey.ButtonNo), _skin);
             noButton.OnClicked += (btn) => HideDiscardConfirmation();
             buttonTable.Add(noButton).Width(60).SetPadLeft(10);
             table.Add(buttonTable);

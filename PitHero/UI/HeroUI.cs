@@ -47,6 +47,9 @@ namespace PitHero.UI
 
         // Tooltip for hovering over items
         private ItemCardTooltip _itemTooltip;
+        
+        // Text service for localization
+        private TextService _textService;
 
         // Tooltip for showing equip preview comparison
         private EquipPreviewTooltip _equipPreviewTooltip;
@@ -162,6 +165,27 @@ namespace PitHero.UI
             _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateElementalChampion());
         }
 
+        /// <summary>
+        /// Safely retrieves TextService. Returns null if Core is not initialized (e.g., in unit tests).
+        /// </summary>
+        private TextService GetTextService()
+        {
+            if (_textService == null && Core.Services != null)
+            {
+                _textService = Core.Services.GetService<TextService>();
+            }
+            return _textService;
+        }
+
+        /// <summary>
+        /// Gets localized text or falls back to key name if TextService unavailable.
+        /// </summary>
+        private string GetText(TextType type, string key)
+        {
+            var service = GetTextService();
+            return service?.DisplayText(type, key) ?? key.ToString();
+        }
+
         /// <summary>Initializes the Hero button and adds it to the stage</summary>
         public void InitializeUI(Stage stage)
         {
@@ -220,10 +244,10 @@ namespace PitHero.UI
             var tabWindowStyle = skin.Get<TabWindowStyle>(); // Use skin's tab window style
             _tabPane = new TabPane(tabWindowStyle);
             var tabStyle = CreateTabStyle(skin);
-            _inventoryTab = new Tab("Inventory", tabStyle);
-            _prioritiesTab = new Tab("Behavior", tabStyle);
-            _crystalTab = new Tab("Hero Info", tabStyle);
-            _mercenariesTab = new Tab("Mercenaries", tabStyle);
+            _inventoryTab = new Tab(GetText(TextType.UI, UITextKey.TabInventory), tabStyle);
+            _prioritiesTab = new Tab(GetText(TextType.UI, UITextKey.TabBehavior), tabStyle);
+            _crystalTab = new Tab(GetText(TextType.UI, UITextKey.TabHeroInfo), tabStyle);
+            _mercenariesTab = new Tab(GetText(TextType.UI, UITextKey.TabMercenaries), tabStyle);
             PopulateInventoryTab(_inventoryTab, skin);
             PopulatePrioritiesTab(_prioritiesTab, skin);
             PopulateCrystalTab(_crystalTab, skin);

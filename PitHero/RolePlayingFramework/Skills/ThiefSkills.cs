@@ -2,12 +2,13 @@ using RolePlayingFramework.Combat;
 using RolePlayingFramework.Enemies;
 using RolePlayingFramework.Heroes;
 using System.Collections.Generic;
+using PitHero;
 
 namespace RolePlayingFramework.Skills
 {
     public sealed class SneakAttackSkill : BaseSkill
     {
-        public SneakAttackSkill() : base("thief.sneak_attack", "Sneak Attack", "A stealthy strike that deals physical damage plus bonus damage based on Agility.", SkillKind.Active, SkillTargetType.SingleEnemy, 3, 130, ElementType.Dark) { }
+        public SneakAttackSkill() : base("thief.sneak_attack", SkillTextKey.Skill_Thief_SneakAttack_Name, SkillTextKey.Skill_Thief_SneakAttack_Desc, SkillKind.Active, SkillTargetType.SingleEnemy, 3, 130, ElementType.Dark) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             var stats = hero.GetTotalStats();
@@ -20,7 +21,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class VanishSkill : BaseSkill
     {
-        public VanishSkill() : base("thief.vanish", "Vanish", "Disappear into the shadows, becoming untargetable for a short duration.", SkillKind.Active, SkillTargetType.Self, 6, 180, ElementType.Dark) { }
+        public VanishSkill() : base("thief.vanish", SkillTextKey.Skill_Thief_Vanish_Name, SkillTextKey.Skill_Thief_Vanish_Desc, SkillKind.Active, SkillTargetType.Self, 6, 180, ElementType.Dark) { }
         public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
         {
             // TODO: Implement untargetable status for 1 turn
@@ -31,7 +32,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class ShadowstepPassive : BaseSkill
     {
-        public ShadowstepPassive() : base("thief.shadowstep", "Shadowstep", "Increases chance to evade incoming attacks through superior agility.", SkillKind.Passive, SkillTargetType.Self, 0, 70, ElementType.Neutral) { }
+        public ShadowstepPassive() : base("thief.shadowstep", SkillTextKey.Skill_Thief_Shadowstep_Name, SkillTextKey.Skill_Thief_Shadowstep_Desc, SkillKind.Passive, SkillTargetType.Self, 0, 70, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             // TODO: Implement evasion chance mechanic
@@ -41,7 +42,7 @@ namespace RolePlayingFramework.Skills
 
     public sealed class TrapSensePassive : BaseSkill
     {
-        public TrapSensePassive() : base("thief.trap_sense", "Trap Sense", "Enhanced ability to detect and disarm traps in the dungeon.", SkillKind.Passive, SkillTargetType.Self, 0, 90, ElementType.Neutral) { }
+        public TrapSensePassive() : base("thief.trap_sense", SkillTextKey.Skill_Thief_TrapSense_Name, SkillTextKey.Skill_Thief_TrapSense_Desc, SkillKind.Passive, SkillTargetType.Self, 0, 90, ElementType.Neutral) { }
         public override void ApplyPassive(Hero hero)
         {
             // TODO: Implement trap detection/disarm mechanic

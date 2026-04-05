@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Swords
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Swords
         {
             int attackBonus = BalanceConfig.CalculateEquipmentAttackBonus(PitLevel, Rarity);
             return new Gear(
-                "VoidCutter",
+                InventoryTextKey.Inv_VoidCutter_Name,
                 ItemKind.WeaponSword,
                 Rarity,
-                "Dark blade that seems to drink in light.",
+                InventoryTextKey.Inv_VoidCutter_Desc,
                 475,
                 new StatBlock(0, 0, 0, 0),
                 atk: attackBonus,

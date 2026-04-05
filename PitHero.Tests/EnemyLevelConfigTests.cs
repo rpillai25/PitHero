@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PitHero.Config;
+using RolePlayingFramework.Enemies;
 
 namespace PitHero.Tests
 {
@@ -10,17 +11,7 @@ namespace PitHero.Tests
         public void GetPresetLevel_Slime_ReturnsLevelOne()
         {
             // Arrange & Act
-            var level = EnemyLevelConfig.GetPresetLevel("Slime");
-
-            // Assert
-            Assert.AreEqual(1, level);
-        }
-
-        [TestMethod]
-        public void GetPresetLevel_UnknownEnemy_ReturnsDefaultLevelOne()
-        {
-            // Arrange & Act
-            var level = EnemyLevelConfig.GetPresetLevel("UnknownEnemy");
+            var level = EnemyLevelConfig.GetPresetLevel(EnemyId.Slime);
 
             // Assert
             Assert.AreEqual(1, level);
@@ -30,20 +21,10 @@ namespace PitHero.Tests
         public void HasPresetLevel_Slime_ReturnsTrue()
         {
             // Arrange & Act
-            var hasPreset = EnemyLevelConfig.HasPresetLevel("Slime");
+            var hasPreset = EnemyLevelConfig.HasPresetLevel(EnemyId.Slime);
 
             // Assert
             Assert.IsTrue(hasPreset);
-        }
-
-        [TestMethod]
-        public void HasPresetLevel_UnknownEnemy_ReturnsFalse()
-        {
-            // Arrange & Act
-            var hasPreset = EnemyLevelConfig.HasPresetLevel("UnknownEnemy");
-
-            // Assert
-            Assert.IsFalse(hasPreset);
         }
 
         [TestMethod]
@@ -53,8 +34,8 @@ namespace PitHero.Tests
             var allLevels = EnemyLevelConfig.GetAllEnemyLevels();
 
             // Assert
-            Assert.IsTrue(allLevels.ContainsKey("Slime"));
-            Assert.AreEqual(1, allLevels["Slime"]);
+            Assert.IsTrue(allLevels.ContainsKey(EnemyId.Slime));
+            Assert.AreEqual(1, allLevels[EnemyId.Slime]);
         }
 
         [TestMethod]
@@ -64,7 +45,7 @@ namespace PitHero.Tests
             var allLevels = EnemyLevelConfig.GetAllEnemyLevels();
 
             // Assert
-            Assert.IsInstanceOfType(allLevels, typeof(System.Collections.Generic.IReadOnlyDictionary<string, int>));
+            Assert.IsInstanceOfType(allLevels, typeof(System.Collections.Generic.IReadOnlyDictionary<EnemyId, int>));
         }
     }
 }

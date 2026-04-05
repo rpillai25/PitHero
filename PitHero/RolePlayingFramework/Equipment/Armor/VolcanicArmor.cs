@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Armor
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Armor
         {
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "VolcanicArmor",
+                InventoryTextKey.Inv_VolcanicArmor_Name,
                 ItemKind.ArmorMail,
                 Rarity,
-                "Armor tempered in volcanic heat.",
+                InventoryTextKey.Inv_VolcanicArmor_Desc,
                 900,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

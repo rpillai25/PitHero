@@ -1,6 +1,7 @@
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace RolePlayingFramework.Equipment.Armor
 {
@@ -14,10 +15,10 @@ namespace RolePlayingFramework.Equipment.Armor
         {
             int defenseBonus = BalanceConfig.CalculateEquipmentDefenseBonus(PitLevel, Rarity);
             return new Gear(
-                "BurlapTunic",
+                InventoryTextKey.Inv_BurlapTunic_Name,
                 ItemKind.ArmorRobe,
                 Rarity,
-                "Rough woven fabric armor.",
+                InventoryTextKey.Inv_BurlapTunic_Desc,
                 60,
                 new StatBlock(0, 0, 0, 0),
                 def: defenseBonus,

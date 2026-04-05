@@ -6,6 +6,7 @@ using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Jobs.Primary;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace PitHero.Tests
 {
@@ -32,8 +33,8 @@ namespace PitHero.Tests
         [TestMethod]
         public void Equip_Restrictions_ByJob_ViaAllowedJobs()
         {
-            var mage = new Hero("Mage", new Mage(), level: 2, baseStats: new StatBlock(1, 2, 2, 6));
-            var knight = new Hero("Knight", new Knight(), level: 2, baseStats: new StatBlock(6, 2, 4, 1));
+            var mage = new Hero(JobTextKey.Job_Mage_Name, new Mage(), level: 2, baseStats: new StatBlock(1, 2, 2, 6));
+            var knight = new Hero(JobTextKey.Job_Knight_Name, new Knight(), level: 2, baseStats: new StatBlock(6, 2, 4, 1));
 
             var sword = new Gear("Bronze Sword", ItemKind.WeaponSword, ItemRarity.Normal, "A bronze sword", 10, new StatBlock(1, 0, 0, 0));
             var rod = new Gear("Oak Rod", ItemKind.WeaponRod, ItemRarity.Normal, "An oak rod", 10, new StatBlock(0, 0, 0, 1));
@@ -49,8 +50,8 @@ namespace PitHero.Tests
         [TestMethod]
         public void Equip_AllowedJobs_DefaultsFromItemKind()
         {
-            var knight = new Hero("Knight", new Knight(), level: 2, baseStats: new StatBlock(6, 2, 4, 1));
-            var monk = new Hero("Monk", new Monk(), level: 2, baseStats: new StatBlock(6, 4, 4, 2));
+            var knight = new Hero(JobTextKey.Job_Knight_Name, new Knight(), level: 2, baseStats: new StatBlock(6, 2, 4, 1));
+            var monk = new Hero(JobTextKey.Job_Monk_Name, new Monk(), level: 2, baseStats: new StatBlock(6, 4, 4, 2));
 
             var mail = new Gear("Iron Mail", ItemKind.ArmorMail, ItemRarity.Normal, "Heavy armor", 10, new StatBlock(0, 0, 1, 0));
             var robe = new Gear("Tattered Cloth", ItemKind.ArmorRobe, ItemRarity.Normal, "Cloth garments", 10, new StatBlock(0, 0, 0, 1));
@@ -69,8 +70,8 @@ namespace PitHero.Tests
         [TestMethod]
         public void Equip_CustomAllowedJobs_OverridesDefault()
         {
-            var knight = new Hero("Knight", new Knight(), level: 2, baseStats: new StatBlock(6, 2, 4, 1));
-            var mage = new Hero("Mage", new Mage(), level: 2, baseStats: new StatBlock(1, 2, 2, 6));
+            var knight = new Hero(JobTextKey.Job_Knight_Name, new Knight(), level: 2, baseStats: new StatBlock(6, 2, 4, 1));
+            var mage = new Hero(JobTextKey.Job_Mage_Name, new Mage(), level: 2, baseStats: new StatBlock(1, 2, 2, 6));
 
             // Staff normally only for Priest, but this one allows Knight and Priest
             var holyStaff = new Gear("Holy Staff", ItemKind.WeaponStaff, ItemRarity.Rare, "A blessed staff", 200,
@@ -84,7 +85,7 @@ namespace PitHero.Tests
         [TestMethod]
         public void SetEquipmentSlot_EnforcesAllowedJobs()
         {
-            var knight = new Hero("Knight", new Knight(), level: 2, baseStats: new StatBlock(6, 2, 4, 1));
+            var knight = new Hero(JobTextKey.Job_Knight_Name, new Knight(), level: 2, baseStats: new StatBlock(6, 2, 4, 1));
 
             var staff = new Gear("Walking Stick", ItemKind.WeaponStaff, ItemRarity.Normal, "A walking stick", 10, new StatBlock(0, 0, 0, 1));
             var robe = new Gear("Tattered Cloth", ItemKind.ArmorRobe, ItemRarity.Normal, "Worn cloth garments", 10, new StatBlock(0, 0, 1, 0));
@@ -101,7 +102,7 @@ namespace PitHero.Tests
         [TestMethod]
         public void SetEquipmentSlot_RejectsWrongSlotType()
         {
-            var knight = new Hero("Knight", new Knight(), level: 2, baseStats: new StatBlock(6, 2, 4, 1));
+            var knight = new Hero(JobTextKey.Job_Knight_Name, new Knight(), level: 2, baseStats: new StatBlock(6, 2, 4, 1));
 
             var sword = new Gear("Bronze Sword", ItemKind.WeaponSword, ItemRarity.Normal, "A bronze sword", 10, new StatBlock(1, 0, 0, 0));
             var mail = new Gear("Iron Mail", ItemKind.ArmorMail, ItemRarity.Normal, "Heavy armor", 10, new StatBlock(0, 0, 1, 0));
@@ -132,7 +133,7 @@ namespace PitHero.Tests
         [TestMethod]
         public void CanEquipItem_RespectsExtraPermissions()
         {
-            var knight = new Hero("Knight", new Knight(), level: 2, baseStats: new StatBlock(6, 2, 4, 1));
+            var knight = new Hero(JobTextKey.Job_Knight_Name, new Knight(), level: 2, baseStats: new StatBlock(6, 2, 4, 1));
             var robe = new Gear("Tattered Cloth", ItemKind.ArmorRobe, ItemRarity.Normal, "Worn cloth garments", 10, new StatBlock(0, 0, 1, 0));
 
             Assert.IsFalse(knight.CanEquipItem(robe), "Knight should not equip robe by default.");

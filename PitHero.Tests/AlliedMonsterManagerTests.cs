@@ -4,6 +4,7 @@ using RolePlayingFramework.AlliedMonsters;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Enemies;
 using RolePlayingFramework.Stats;
+using PitHero;
 
 namespace PitHero.Tests
 {
@@ -16,6 +17,7 @@ namespace PitHero.Tests
             private int _hp = 100;
 
             public string Name { get; }
+            public EnemyId EnemyId => EnemyId.Slime;
             public int Level => 1;
             public StatBlock Stats => new StatBlock(5, 5, 5, 5);
             public DamageKind AttackKind => DamageKind.Physical;
@@ -61,7 +63,7 @@ namespace PitHero.Tests
         {
             var manager = new AlliedMonsterManager();
             // JoinPercentageModifier = 1000f => joinChance = 100.0f, always beats any 0..1 roll
-            var enemy = new MockEnemy("Slime", 1000f);
+            var enemy = new MockEnemy(MonsterTextKey.Monster_Slime, 1000f);
 
             var result = manager.TryRecruit(enemy);
 
@@ -90,12 +92,12 @@ namespace PitHero.Tests
         public void AlliedMonsterManager_TryRecruit_SetsMonsterTypeName()
         {
             var manager = new AlliedMonsterManager();
-            var enemy = new MockEnemy("Rat", 1000f);
+            var enemy = new MockEnemy(MonsterTextKey.Monster_Rat, 1000f);
 
             var result = manager.TryRecruit(enemy);
 
             Assert.IsNotNull(result, "Should recruit successfully");
-            Assert.AreEqual("Rat", result.MonsterTypeName, "MonsterTypeName should match enemy Name");
+            Assert.AreEqual(MonsterTextKey.Monster_Rat, result.MonsterTypeName, "MonsterTypeName should match enemy Name");
         }
 
         /// <summary>Tests that recruited monster has a non-empty name.</summary>
@@ -104,7 +106,7 @@ namespace PitHero.Tests
         public void AlliedMonsterManager_TryRecruit_AssignsNonEmptyName()
         {
             var manager = new AlliedMonsterManager();
-            var enemy = new MockEnemy("Bat", 1000f);
+            var enemy = new MockEnemy(MonsterTextKey.Monster_Bat, 1000f);
 
             var result = manager.TryRecruit(enemy);
 
@@ -118,7 +120,7 @@ namespace PitHero.Tests
         public void AlliedMonsterManager_TryRecruit_ProficienciesInRange()
         {
             var manager = new AlliedMonsterManager();
-            var enemy = new MockEnemy("Goblin", 1000f);
+            var enemy = new MockEnemy(MonsterTextKey.Monster_Goblin, 1000f);
 
             var result = manager.TryRecruit(enemy);
 
@@ -137,7 +139,7 @@ namespace PitHero.Tests
         public void AlliedMonsterManager_TryRecruit_MultipleRecruits_CountIncrementsCorrectly()
         {
             var manager = new AlliedMonsterManager();
-            var enemy = new MockEnemy("Slime", 1000f);
+            var enemy = new MockEnemy(MonsterTextKey.Monster_Slime, 1000f);
 
             manager.TryRecruit(enemy);
             manager.TryRecruit(enemy);
