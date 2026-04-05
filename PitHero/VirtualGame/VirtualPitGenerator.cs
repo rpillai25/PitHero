@@ -160,7 +160,7 @@ namespace PitHero.VirtualGame
                     if (pos.HasValue)
                     {
                         usedPositions.Add(pos.Value);
-                        string monsterType = enemyPool.Length > 0 ? enemyPool[random.Next(enemyPool.Length)].ToString() : "GenericMonster";
+                        string monsterType = enemyPool.Length > 0 ? enemyPool[random.Next(enemyPool.Length)].ToString() : EnemyId.Slime.ToString();
                         _worldState.AddMonster(pos.Value, monsterType);
                     }
                 }
@@ -174,7 +174,7 @@ namespace PitHero.VirtualGame
                     if (pos.HasValue)
                     {
                         usedPositions.Add(pos.Value);
-                        _worldState.AddMonster(pos.Value, "GenericMonster");
+                        _worldState.AddMonster(pos.Value, EnemyId.Slime.ToString());
                     }
                 }
             }
