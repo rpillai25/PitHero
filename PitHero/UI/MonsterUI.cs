@@ -210,7 +210,8 @@ namespace PitHero.UI
                 var textTable = new Table();
                 textTable.Top().Left();
 
-                var nameLabel  = new Label($"{monster.Name} ({monster.MonsterTypeName})", _skin);
+                var monsterTypeName = GetText(TextType.Monster, monster.MonsterTypeName);
+                var nameLabel  = new Label($"{monster.Name} ({monsterTypeName})", _skin);
                 var statsLabel = new Label($"Fish:{monster.FishingProficiency}  Cook:{monster.CookingProficiency}  Farm:{monster.FarmingProficiency}", _skin);
 
                 textTable.Add(nameLabel).Left();

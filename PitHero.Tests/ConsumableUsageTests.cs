@@ -324,6 +324,7 @@ namespace PitHero.Tests
         private class TestWeapon : IItem
         {
             public string Name => "Test Sword";
+            public string SpriteName => "TestWeapon";
             public ItemKind Kind => ItemKind.WeaponSword;
             public ItemRarity Rarity => ItemRarity.Normal;
             public string Description => "A test weapon";

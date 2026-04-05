@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Nez;
 using PitHero.AI;
 using PitHero.ECS.Scenes;
+using PitHero.Services;
 using RolePlayingFramework.Enemies;
 
 namespace PitHero.ECS.Components
@@ -83,14 +84,16 @@ namespace PitHero.ECS.Components
             }
 
             // Draw monster name centered above bar
-            var nameSize = hudFont.MeasureString(_enemy.Name);
+            var textService = Core.Services.GetService<TextService>();
+            var enemyDisplayName = textService?.DisplayText(PitHero.TextType.Monster, _enemy.Name) ?? _enemy.Name;
+            var nameSize = hudFont.MeasureString(enemyDisplayName);
             float nameScale = inverseZoom;
             Vector2 namePos = new Vector2(
                 nameWorldX - nameSize.X * nameScale * 0.5f,
                 nameWorldY - nameSize.Y * nameScale * 0.5f
             );
 
-            hudFont.DrawInto(batcher, _enemy.Name, namePos, NAME_COLOR,
+            hudFont.DrawInto(batcher, enemyDisplayName, namePos, NAME_COLOR,
                 0, Vector2.Zero, new Vector2(nameScale, nameScale), SpriteEffects.None, 0);
         }
 
