@@ -1,7 +1,9 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Xna.Framework;
 using PitHero.ECS.Components;
+using RolePlayingFramework.Balance;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Jobs;
 using System.Collections.Generic;
 using System.Linq;
 using PitHero;
@@ -315,6 +317,129 @@ namespace PitHero.Tests
             // Allow a reasonable tolerance (±5%) around the expected 60% consumable rate
             Assert.IsTrue(consumableRatio > 0.55 && consumableRatio < 0.65,
                 $"Consumable ratio should be approximately 60% but was {consumableRatio:P1} ({consumableCount} consumables, {equipmentCount} equipment)");
+        }
+
+        [TestMethod]
+        public void LootJobContext_IsEmpty_TrueWhenBothJobsAreNone()
+        {
+            var ctx = new LootJobContext();
+            Assert.IsTrue(ctx.IsEmpty, "Default LootJobContext should be empty");
+        }
+
+        [TestMethod]
+        public void LootJobContext_IsEmpty_FalseWhenHeroJobIsSet()
+        {
+            var ctx = new LootJobContext { HeroJob = JobType.Knight };
+            Assert.IsFalse(ctx.IsEmpty, "LootJobContext with HeroJob set should not be empty");
+        }
+
+        [TestMethod]
+        public void LootJobContext_IsEmpty_FalseWhenMercJobIsSet()
+        {
+            var ctx = new LootJobContext { MercJobs = JobType.Mage };
+            Assert.IsFalse(ctx.IsEmpty, "LootJobContext with MercJobs set should not be empty");
+        }
+
+        [TestMethod]
+        public void CaveLoot_EmptyContext_FlatRandomFallback_AllItemsAppear()
+        {
+            // With an empty context, all 56 common pool items should eventually appear
+            var seenKinds = new HashSet<ItemKind>();
+            int iterations = 10000;
+
+            for (int i = 0; i < iterations; i++)
+            {
+                var item = TreasureComponent.GenerateCaveItemForTreasureLevel(1, LootJobContext.Empty);
+                if (item is IGear gear)
+                    seenKinds.Add(gear.Kind);
+            }
+
+            // With flat random we expect multiple different gear kinds to appear
+            Assert.IsTrue(seenKinds.Count > 3,
+                $"Flat random should produce many gear kinds, got {seenKinds.Count}");
+        }
+
+        [TestMethod]
+        public void CaveLoot_KnightHeroContext_KnightItemsMoreFrequent()
+        {
+            // Knight uses WeaponSword, ArmorMail, HatHelm, WeaponHammer
+            var ctx = new LootJobContext { HeroJob = JobType.Knight };
+
+            int knightItems = 0;
+            int nonKnightEquipItems = 0;
+            int iterations = 5000;
+
+            for (int i = 0; i < iterations; i++)
+            {
+                var item = TreasureComponent.GenerateCaveItemForTreasureLevel(1, ctx);
+                if (item is IGear gear)
+                {
+                    var allowed = Gear.GetDefaultAllowedJobs(gear.Kind);
+                    if (allowed == JobType.All)
+                        continue; // skip shields/accessories (LootWeightAllJobs)
+                    if ((allowed & JobType.Knight) != 0)
+                        knightItems++;
+                    else
+                        nonKnightEquipItems++;
+                }
+            }
+
+            // Knight items should appear significantly more than non-knight job-restricted items
+            Assert.IsTrue(knightItems > nonKnightEquipItems * 2,
+                $"Knight items ({knightItems}) should outnumber other job-restricted items ({nonKnightEquipItems}) by more than 2x");
+        }
+
+        [TestMethod]
+        public void CaveLoot_KnightHeroMageMerc_KnightHighestMageMedium()
+        {
+            var ctx = new LootJobContext { HeroJob = JobType.Knight, MercJobs = JobType.Mage };
+
+            int knightItems = 0;
+            int mageItems = 0;
+            int otherItems = 0;
+            int iterations = 10000;
+
+            for (int i = 0; i < iterations; i++)
+            {
+                var item = TreasureComponent.GenerateCaveItemForTreasureLevel(1, ctx);
+                if (item is IGear gear)
+                {
+                    var allowed = Gear.GetDefaultAllowedJobs(gear.Kind);
+                    if (allowed == JobType.All)
+                        continue;
+                    bool forKnight = (allowed & JobType.Knight) != 0;
+                    bool forMage = (allowed & JobType.Mage) != 0;
+                    if (forKnight && !forMage)
+                        knightItems++;
+                    else if (forMage && !forKnight)
+                        mageItems++;
+                    else if (!forKnight && !forMage)
+                        otherItems++;
+                }
+            }
+
+            // Knight 4x weight, Mage 2x weight, others 1x weight
+            Assert.IsTrue(knightItems > mageItems,
+                $"Knight items ({knightItems}) should be more frequent than Mage items ({mageItems})");
+            Assert.IsTrue(mageItems > otherItems,
+                $"Mage items ({mageItems}) should be more frequent than unequippable items ({otherItems})");
+        }
+
+        [TestMethod]
+        public void CaveLoot_AllJobsGear_ReceivesAllJobsWeight()
+        {
+            // Verify shield/accessory ItemKinds return JobType.All from GetDefaultAllowedJobs
+            Assert.AreEqual(JobType.All, Gear.GetDefaultAllowedJobs(ItemKind.Shield));
+            Assert.AreEqual(JobType.All, Gear.GetDefaultAllowedJobs(ItemKind.Accessory));
+        }
+
+        [TestMethod]
+        public void LootWeightConstants_HaveExpectedValues()
+        {
+            Assert.AreEqual(4, BalanceConfig.LootWeightHeroJob);
+            Assert.AreEqual(2, BalanceConfig.LootWeightMercJob);
+            Assert.AreEqual(1, BalanceConfig.LootWeightNoPartyJob);
+            Assert.AreEqual(2, BalanceConfig.LootWeightAllJobs);
         }
     }
 }
