@@ -473,6 +473,8 @@ namespace PitHero.ECS.Components
         /// Computes an additional weight bonus based on how far behind the most-deficit
         /// active-party job (that can equip this item) is relative to the leader.
         /// Returns 0 when no deficit data is available or all counts are zero.
+        /// The deficit is capped at <see cref="GameConfig.MaxLootDeficit"/> to prevent
+        /// overflow and to keep weights sensible for extremely long runs.
         /// </summary>
         private static int ComputeDeficitBonus(JobType allowed, LootJobContext ctx)
         {
@@ -494,6 +496,9 @@ namespace PitHero.ECS.Components
                 if (deficit > maxDeficit)
                     maxDeficit = deficit;
             }
+
+            if (maxDeficit > GameConfig.MaxLootDeficit)
+                maxDeficit = GameConfig.MaxLootDeficit;
 
             return maxDeficit * BalanceConfig.LootDeficitBonusPerDrop;
         }

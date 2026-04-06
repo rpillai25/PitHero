@@ -58,6 +58,13 @@ namespace PitHero
         public const float BattleTurnWait = 0.7f;
         public const float TreasureOpenWait = 0.5f;
 
+        /// <summary>
+        /// Maximum deficit value used in loot drop weight calculations.
+        /// Caps the per-job deficit to prevent overflow and keep weights reasonable
+        /// in very long runs (max bonus = MaxLootDeficit × LootDeficitBonusPerDrop).
+        /// </summary>
+        public const int MaxLootDeficit = 20;
+
         // Sound configuration (can be updated in UI)
         public static float MasterVolume = 0.5f;
 
