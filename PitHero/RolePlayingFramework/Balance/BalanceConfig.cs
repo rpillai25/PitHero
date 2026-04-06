@@ -139,10 +139,10 @@ namespace RolePlayingFramework.Balance
         public const float CaveConsumableDropRate = 0.6f;
 
         /// <summary>Drop weight multiplier for gear matching the hero's job class.</summary>
-        public const int LootWeightHeroJob = 4;
+        public const int LootWeightHeroJob = 3;
 
         /// <summary>Drop weight multiplier for gear matching any hired mercenary's job class.</summary>
-        public const int LootWeightMercJob = 2;
+        public const int LootWeightMercJob = 3;
 
         /// <summary>
         /// Drop weight multiplier for gear that no active party member can equip.
