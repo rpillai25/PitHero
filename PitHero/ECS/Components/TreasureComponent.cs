@@ -4,6 +4,7 @@ using PitHero.Config;
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Jobs;
+using RolePlayingFramework.Loot;
 
 namespace PitHero.ECS.Components
 {
@@ -15,6 +16,19 @@ namespace PitHero.ECS.Components
 
         /// <summary>Bitwise OR of all hired mercenary job flags.</summary>
         public JobType MercJobs;
+
+        /// <summary>
+        /// Per-job drop counts sourced from <c>LootDropTracker</c>.
+        /// Index 0=Knight, 1=Monk, 2=Mage, 3=Priest, 4=Thief, 5=Archer.
+        /// Null when deficit tracking is unavailable (flat static weights apply).
+        /// </summary>
+        public int[] JobDropCounts;
+
+        /// <summary>
+        /// Cached maximum drop count across all six job slots.
+        /// 0 when <see cref="JobDropCounts"/> is null or all counts are zero.
+        /// </summary>
+        public int MaxDropCount;
 
         /// <summary>True when no party context is available (default behavior / flat random).</summary>
         public bool IsEmpty => HeroJob == JobType.None && MercJobs == JobType.None;
@@ -35,6 +49,7 @@ namespace PitHero.ECS.Components
 
         private TreasureState _state = TreasureState.CLOSED;
         private int _level = 1;
+        private int _pitLevel = 1;
         private SpriteRenderer _baseRenderer;
         private SpriteRenderer _woodRenderer;
         private SpriteAtlas _actorsAtlas;
@@ -395,16 +410,24 @@ namespace PitHero.ECS.Components
         };
 
         /// <summary>
+        /// Pre-allocated weight buffers for AOT compliance — no heap allocation during pool selection.
+        /// Sizes match the corresponding pool arrays: common=56, uncommon=77.
+        /// </summary>
+        private static readonly int[] _commonWeightBuffer = new int[56];
+        private static readonly int[] _uncommonWeightBuffer = new int[77];
+
+        /// <summary>
         /// Selects a weighted pool index biased toward gear usable by the active party.
         /// Falls back to flat random when no party context is available.
+        /// Applies a deficit bonus so party members who are behind on drops get higher weights.
         /// </summary>
         private static int SelectWeightedPoolIndex(ItemKind[] poolKinds, LootJobContext ctx)
         {
             if (ctx.IsEmpty)
                 return Nez.Random.NextInt(poolKinds.Length);
 
+            int[] weights = poolKinds.Length <= 56 ? _commonWeightBuffer : _uncommonWeightBuffer;
             int totalWeight = 0;
-            var weights = new int[poolKinds.Length];
 
             for (int i = 0; i < poolKinds.Length; i++)
             {
@@ -412,13 +435,23 @@ namespace PitHero.ECS.Components
                 int weight;
 
                 if (allowed == JobType.All)
+                {
                     weight = BalanceConfig.LootWeightAllJobs;
+                }
                 else if ((allowed & ctx.HeroJob) != 0)
+                {
                     weight = BalanceConfig.LootWeightHeroJob;
+                    weight += ComputeDeficitBonus(allowed, ctx);
+                }
                 else if ((allowed & ctx.MercJobs) != 0)
+                {
                     weight = BalanceConfig.LootWeightMercJob;
+                    weight += ComputeDeficitBonus(allowed, ctx);
+                }
                 else
+                {
                     weight = BalanceConfig.LootWeightNoPartyJob;
+                }
 
                 weights[i] = weight;
                 totalWeight += weight;
@@ -426,7 +459,7 @@ namespace PitHero.ECS.Components
 
             int roll = Nez.Random.NextInt(totalWeight);
             int cumulative = 0;
-            for (int i = 0; i < weights.Length; i++)
+            for (int i = 0; i < poolKinds.Length; i++)
             {
                 cumulative += weights[i];
                 if (roll < cumulative)
@@ -434,6 +467,35 @@ namespace PitHero.ECS.Components
             }
 
             return poolKinds.Length - 1;
+        }
+
+        /// <summary>
+        /// Computes an additional weight bonus based on how far behind the most-deficit
+        /// active-party job (that can equip this item) is relative to the leader.
+        /// Returns 0 when no deficit data is available or all counts are zero.
+        /// </summary>
+        private static int ComputeDeficitBonus(JobType allowed, LootJobContext ctx)
+        {
+            if (ctx.JobDropCounts == null || ctx.MaxDropCount == 0)
+                return 0;
+
+            JobType partyJobs = ctx.HeroJob | ctx.MercJobs;
+            int maxDeficit = 0;
+
+            for (int i = 0; i < LootDropTracker.JobFlagCount; i++)
+            {
+                JobType flag = LootDropTracker.GetJobFlag(i);
+                if ((allowed & flag) == 0)
+                    continue; // item can't be used by this job
+                if ((partyJobs & flag) == 0)
+                    continue; // job not in active party
+
+                int deficit = ctx.MaxDropCount - ctx.JobDropCounts[i];
+                if (deficit > maxDeficit)
+                    maxDeficit = deficit;
+            }
+
+            return maxDeficit * BalanceConfig.LootDeficitBonusPerDrop;
         }
 
         /// <summary>
@@ -661,14 +723,28 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Initialize this treasure chest for a specific pit level
+        /// Initialize this treasure chest for a specific pit level.
+        /// Only sets the visual level; item generation is deferred to
+        /// <see cref="GenerateContainedItem"/> so deficit-tracking weights
+        /// reflect the party state at chest-open time rather than spawn time.
         /// </summary>
         public void InitializeForPitLevel(int pitLevel, LootJobContext jobContext = default)
         {
+            _pitLevel = pitLevel;
             Level = DetermineTreasureLevel(pitLevel);
-            if (CaveBiomeConfig.IsCaveLevel(pitLevel))
+            ContainedItem = null; // generated at open time via GenerateContainedItem
+        }
+
+        /// <summary>
+        /// Generates and assigns the contained item using the supplied party context.
+        /// Call this when the chest is opened so that deficit-tracking weights reflect
+        /// the current party composition and drop history.
+        /// </summary>
+        public void GenerateContainedItem(LootJobContext ctx)
+        {
+            if (CaveBiomeConfig.IsCaveLevel(_pitLevel))
             {
-                ContainedItem = GenerateCaveItemForTreasureLevel(Level, jobContext);
+                ContainedItem = GenerateCaveItemForTreasureLevel(Level, ctx);
                 return;
             }
 

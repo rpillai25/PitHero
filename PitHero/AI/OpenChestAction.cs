@@ -7,6 +7,7 @@ using PitHero.Services;
 using PitHero.Util;
 using PitHero.Util.SoundEffectTypes;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Loot;
 
 namespace PitHero.AI
 {
@@ -71,6 +72,14 @@ namespace PitHero.AI
                             soundEffectManager?.PlaySound(SoundEffectType.ChestOpen);
 
                             _treasureComponent.State = TreasureComponent.TreasureState.OPEN;
+
+                            // Generate the contained item now (open time) so deficit weights use current party state
+                            var pitGenerator = Core.Services?.GetService<PitGenerator>();
+                            var lootCtx = pitGenerator != null
+                                ? pitGenerator.BuildLootJobContext()
+                                : LootJobContext.Empty;
+                            _treasureComponent.GenerateContainedItem(lootCtx);
+
                             Debug.Log("[OpenChest] Chest state changed to OPEN");
 
                             // Handle item pickup if there's a contained item
@@ -269,6 +278,13 @@ namespace PitHero.AI
                 {
                     hero.HealingItemExhausted = false;
                     Debug.Log($"[OpenChest] Reset HealingItemExhausted flag (picked up {containedItem.Name})");
+                }
+
+                // Record gear drop for deficit tracking
+                if (containedItem is IGear droppedGear)
+                {
+                    var tracker = Core.Services?.GetService<LootDropTracker>();
+                    tracker?.RecordDrop(droppedGear.AllowedJobs);
                 }
 
                 // Try to auto-equip if gear item

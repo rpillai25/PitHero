@@ -4,6 +4,7 @@ using PitHero.ECS.Components;
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Jobs;
+using RolePlayingFramework.Loot;
 using System.Collections.Generic;
 using System.Linq;
 using PitHero;
@@ -254,13 +255,17 @@ namespace PitHero.Tests
             // Test early pit level (should always be level 1)
             component.InitializeForPitLevel(5);
             Assert.AreEqual(1, component.Level);
-            Assert.IsNotNull(component.ContainedItem);
-            Assert.AreEqual(ItemRarity.Normal, component.ContainedItem.Rarity);
+            // Item generation is now deferred to GenerateContainedItem; ContainedItem is null at spawn time
+            Assert.IsNull(component.ContainedItem, "ContainedItem should be null after InitializeForPitLevel (deferred generation)");
+
+            // After calling GenerateContainedItem the item is populated
+            component.GenerateContainedItem(LootJobContext.Empty);
+            Assert.IsNotNull(component.ContainedItem, "ContainedItem should be non-null after GenerateContainedItem");
 
             // Test higher pit level (should potentially have higher levels)
             component.InitializeForPitLevel(100);
             Assert.IsTrue(component.Level >= 1 && component.Level <= 5);
-            Assert.IsNotNull(component.ContainedItem);
+            Assert.IsNull(component.ContainedItem, "ContainedItem should again be null after a second InitializeForPitLevel");
         }
 
         [TestMethod]
@@ -440,6 +445,219 @@ namespace PitHero.Tests
             Assert.AreEqual(2, BalanceConfig.LootWeightMercJob);
             Assert.AreEqual(1, BalanceConfig.LootWeightNoPartyJob);
             Assert.AreEqual(2, BalanceConfig.LootWeightAllJobs);
+        }
+
+        // ─── LootDropTracker Tests ────────────────────────────────────────────────
+
+        [TestMethod]
+        public void LootDropTracker_Initialize_ZeroesAllCounts()
+        {
+            var tracker = new LootDropTracker();
+            tracker.RecordDrop(JobType.Knight);
+            tracker.RecordDrop(JobType.Mage);
+            tracker.Initialize();
+
+            Assert.AreEqual(0, tracker.GetDropCount(JobType.Knight), "Knight count should be 0 after Initialize");
+            Assert.AreEqual(0, tracker.GetDropCount(JobType.Mage), "Mage count should be 0 after Initialize");
+            Assert.AreEqual(0, tracker.GetMaxDropCount(), "MaxDropCount should be 0 after Initialize");
+        }
+
+        [TestMethod]
+        public void LootDropTracker_RecordDrop_SingleJob_IncrementsCorrectSlot()
+        {
+            var tracker = new LootDropTracker();
+            tracker.Initialize();
+
+            tracker.RecordDrop(JobType.Knight);
+            tracker.RecordDrop(JobType.Knight);
+            tracker.RecordDrop(JobType.Mage);
+
+            Assert.AreEqual(2, tracker.GetDropCount(JobType.Knight), "Knight should have 2 drops");
+            Assert.AreEqual(1, tracker.GetDropCount(JobType.Mage), "Mage should have 1 drop");
+            Assert.AreEqual(0, tracker.GetDropCount(JobType.Priest), "Priest should have 0 drops");
+        }
+
+        [TestMethod]
+        public void LootDropTracker_RecordDrop_MultiJob_IncrementsAllMatchingSlots()
+        {
+            var tracker = new LootDropTracker();
+            tracker.Initialize();
+
+            // Shields/accessories allow all jobs — recording them should increment every slot
+            tracker.RecordDrop(JobType.All);
+
+            for (int i = 0; i < LootDropTracker.JobFlagCount; i++)
+            {
+                JobType flag = LootDropTracker.GetJobFlag(i);
+                Assert.AreEqual(1, tracker.GetDropCount(flag), $"Job flag {flag} should have 1 drop after All-jobs record");
+            }
+        }
+
+        [TestMethod]
+        public void LootDropTracker_GetMaxDropCount_ReturnsHighestSlot()
+        {
+            var tracker = new LootDropTracker();
+            tracker.Initialize();
+
+            tracker.RecordDrop(JobType.Knight);
+            tracker.RecordDrop(JobType.Knight);
+            tracker.RecordDrop(JobType.Knight);
+            tracker.RecordDrop(JobType.Mage);
+
+            Assert.AreEqual(3, tracker.GetMaxDropCount(), "Max should be 3 (Knight)");
+        }
+
+        [TestMethod]
+        public void LootDropTracker_GetMaxDropCount_ReturnsZeroWhenEmpty()
+        {
+            var tracker = new LootDropTracker();
+            tracker.Initialize();
+
+            Assert.AreEqual(0, tracker.GetMaxDropCount(), "Max should be 0 with no drops");
+        }
+
+        // ─── Deficit Bias Tests ───────────────────────────────────────────────────
+
+        [TestMethod]
+        public void CaveLoot_DeficitContext_NullCounts_BehavesLikeStaticWeights()
+        {
+            // When JobDropCounts is null, deficit bonus is 0 — behaviour is identical to static weights
+            var ctx = new LootJobContext { HeroJob = JobType.Knight };
+            // ctx.JobDropCounts is null by default
+
+            int knightItems = 0;
+            int otherJobItems = 0;
+            const int Trials = 2000;
+
+            for (int t = 0; t < Trials; t++)
+            {
+                var item = TreasureComponent.GenerateCaveItemForTreasureLevel(1, ctx);
+                if (item is IGear gear)
+                {
+                    var allowed = Gear.GetDefaultAllowedJobs(gear.Kind);
+                    if (allowed == JobType.All) continue;
+                    if ((allowed & JobType.Knight) != 0)
+                        knightItems++;
+                    else
+                        otherJobItems++;
+                }
+            }
+
+            Assert.IsTrue(knightItems > otherJobItems,
+                $"Without deficit data, Knight items ({knightItems}) should still outnumber other-job items ({otherJobItems})");
+        }
+
+        [TestMethod]
+        public void CaveLoot_DeficitContext_BoostsMostBehindPartyMember()
+        {
+            // Hero (Knight) has 5 drops; Mage merc has 0 drops.
+            // Deficit = 5 for Mage gear → bonus weight = 5 × LootDeficitBonusPerDrop on top of LootWeightMercJob.
+            var tracker = new LootDropTracker();
+            tracker.Initialize();
+            for (int i = 0; i < 5; i++)
+                tracker.RecordDrop(JobType.Knight);
+
+            int[] counts = tracker.GetDropCountsArray();
+            int maxCount = tracker.GetMaxDropCount();
+
+            var ctxWithDeficit = new LootJobContext
+            {
+                HeroJob = JobType.Knight,
+                MercJobs = JobType.Mage,
+                JobDropCounts = counts,
+                MaxDropCount = maxCount,
+            };
+
+            var ctxWithoutDeficit = new LootJobContext
+            {
+                HeroJob = JobType.Knight,
+                MercJobs = JobType.Mage,
+            };
+
+            int mageWithDeficit = 0;
+            int mageWithoutDeficit = 0;
+            const int Trials = 2000;
+
+            for (int t = 0; t < Trials; t++)
+            {
+                var item = TreasureComponent.GenerateCaveItemForTreasureLevel(1, ctxWithDeficit);
+                if (item is IGear gear && (Gear.GetDefaultAllowedJobs(gear.Kind) & JobType.Mage) != 0
+                    && Gear.GetDefaultAllowedJobs(gear.Kind) != JobType.All)
+                    mageWithDeficit++;
+            }
+
+            for (int t = 0; t < Trials; t++)
+            {
+                var item = TreasureComponent.GenerateCaveItemForTreasureLevel(1, ctxWithoutDeficit);
+                if (item is IGear gear && (Gear.GetDefaultAllowedJobs(gear.Kind) & JobType.Mage) != 0
+                    && Gear.GetDefaultAllowedJobs(gear.Kind) != JobType.All)
+                    mageWithoutDeficit++;
+            }
+
+            Assert.IsTrue(mageWithDeficit > mageWithoutDeficit,
+                $"Mage gear should appear more often with deficit bonus ({mageWithDeficit}) than without ({mageWithoutDeficit})");
+        }
+
+        [TestMethod]
+        public void CaveLoot_DeficitContext_ZeroDeficit_SameAsStaticWeights()
+        {
+            // When all drops are equal (no deficit), deficit bonus is 0 — identical to static weights
+            var tracker = new LootDropTracker();
+            tracker.Initialize();
+            // Give both Knight and Mage equal drops
+            for (int i = 0; i < 3; i++)
+            {
+                tracker.RecordDrop(JobType.Knight);
+                tracker.RecordDrop(JobType.Mage);
+            }
+
+            int[] counts = tracker.GetDropCountsArray();
+            int maxCount = tracker.GetMaxDropCount();
+
+            var ctxEqualDrops = new LootJobContext
+            {
+                HeroJob = JobType.Knight,
+                MercJobs = JobType.Mage,
+                JobDropCounts = counts,
+                MaxDropCount = maxCount,
+            };
+
+            var ctxNullCounts = new LootJobContext
+            {
+                HeroJob = JobType.Knight,
+                MercJobs = JobType.Mage,
+            };
+
+            int knightEqual = 0, mageEqual = 0;
+            int knightNull = 0, mageNull = 0;
+            const int Trials = 3000;
+
+            for (int t = 0; t < Trials; t++)
+            {
+                var item = TreasureComponent.GenerateCaveItemForTreasureLevel(1, ctxEqualDrops);
+                if (item is IGear gear && Gear.GetDefaultAllowedJobs(gear.Kind) != JobType.All)
+                {
+                    if ((Gear.GetDefaultAllowedJobs(gear.Kind) & JobType.Knight) != 0) knightEqual++;
+                    else if ((Gear.GetDefaultAllowedJobs(gear.Kind) & JobType.Mage) != 0) mageEqual++;
+                }
+            }
+
+            for (int t = 0; t < Trials; t++)
+            {
+                var item = TreasureComponent.GenerateCaveItemForTreasureLevel(1, ctxNullCounts);
+                if (item is IGear gear && Gear.GetDefaultAllowedJobs(gear.Kind) != JobType.All)
+                {
+                    if ((Gear.GetDefaultAllowedJobs(gear.Kind) & JobType.Knight) != 0) knightNull++;
+                    else if ((Gear.GetDefaultAllowedJobs(gear.Kind) & JobType.Mage) != 0) mageNull++;
+                }
+            }
+
+            // Ratios should be very similar (within 25%) since deficit = 0
+            double ratioEqual = knightEqual > 0 ? (double)mageEqual / knightEqual : 0;
+            double ratioNull  = knightNull  > 0 ? (double)mageNull  / knightNull  : 0;
+            double diff = System.Math.Abs(ratioEqual - ratioNull);
+            Assert.IsTrue(diff < 0.25,
+                $"Equal-drops ratio ({ratioEqual:F2}) should be close to no-counts ratio ({ratioNull:F2}), diff={diff:F2}");
         }
     }
 }

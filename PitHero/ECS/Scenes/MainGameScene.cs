@@ -15,6 +15,7 @@ using RolePlayingFramework.AlliedMonsters;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Jobs.Primary;
+using RolePlayingFramework.Loot;
 using RolePlayingFramework.Stats;
 
 namespace PitHero.ECS.Scenes
@@ -159,6 +160,11 @@ namespace PitHero.ECS.Scenes
             var playerInteractionService = new PlayerInteractionService();
             Core.Services.AddService(playerInteractionService);
             Debug.Log("[MainGameScene] PlayerInteractionService initialized");
+
+            // Initialize loot drop tracker for per-job deficit tracking
+            var lootDropTracker = new LootDropTracker();
+            lootDropTracker.Initialize();
+            Core.Services.AddService(lootDropTracker);
 
             // Apply pending load data if available
             ApplyPendingLoadData();

@@ -3,6 +3,7 @@ using Nez;
 using PitHero.ECS.Components;
 using PitHero.Util;
 using PitHero.Util.SoundEffectTypes;
+using RolePlayingFramework.Loot;
 
 namespace PitHero.AI
 {
@@ -77,6 +78,10 @@ namespace PitHero.AI
             }
 
             _plannedTargetTile = targetTile.Value;
+
+            // Reset per-job drop counts for the new pit run
+            var tracker = Core.Services?.GetService<LootDropTracker>();
+            tracker?.Initialize();
 
             // Start the coroutine-based movement to avoid TileMap collider issues
             StartJumpMovement(hero, _plannedTargetTile);

@@ -156,6 +156,13 @@ namespace RolePlayingFramework.Balance
         /// </summary>
         public const int LootWeightAllJobs = 2;
 
+        /// <summary>
+        /// Additional weight added per drop that a party member is behind the leader.
+        /// For example, if the hero has 5 drops and a merc has 2, the merc is at a deficit of 3
+        /// and gets +9 bonus weight (3 × 3) added to their base <see cref="LootWeightMercJob"/>.
+        /// </summary>
+        public const int LootDeficitBonusPerDrop = 3;
+
         #endregion
 
         #region Rarity Multipliers

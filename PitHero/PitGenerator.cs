@@ -8,6 +8,7 @@ using PitHero.Services;
 using PitHero.Util;
 using RolePlayingFramework.Enemies;
 using RolePlayingFramework.Jobs;
+using RolePlayingFramework.Loot;
 using System;
 using System.Collections.Generic;
 
@@ -773,8 +774,7 @@ namespace PitHero
                     int currentPitLevel = pitWidthManager?.CurrentPitLevel ?? 1;
 
                     var treasureComponent = entity.AddComponent(new TreasureComponent());
-                    var lootCtx = BuildLootJobContext();
-                    treasureComponent.InitializeForPitLevel(currentPitLevel, lootCtx);
+                    treasureComponent.InitializeForPitLevel(currentPitLevel);
 
                     var collider = entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
                     collider.IsTrigger = true;
@@ -1030,10 +1030,13 @@ namespace PitHero
         }
 
         /// <summary>
-        /// Builds a <see cref="LootJobContext"/> from the current hero and hired mercenaries.
+        /// <summary>
+        /// Builds a <see cref="LootJobContext"/> from the current hero, hired mercenaries,
+        /// and the <see cref="LootDropTracker"/> service (when available) so that deficit
+        /// bonuses are included in loot weight calculations.
         /// Returns an empty context when no hero is present.
         /// </summary>
-        private LootJobContext BuildLootJobContext()
+        public LootJobContext BuildLootJobContext()
         {
             var heroComp = Core.Scene?.FindComponentOfType<HeroComponent>();
             if (heroComp?.LinkedHero == null)
@@ -1052,6 +1055,13 @@ namespace PitHero
                     if (merc != null)
                         ctx.MercJobs |= merc.Job.JobFlag;
                 }
+            }
+
+            var tracker = Core.Services?.GetService<LootDropTracker>();
+            if (tracker != null)
+            {
+                ctx.JobDropCounts = tracker.GetDropCountsArray();
+                ctx.MaxDropCount = tracker.GetMaxDropCount();
             }
 
             return ctx;
