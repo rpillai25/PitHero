@@ -87,10 +87,13 @@ namespace PitHero.UI
 
             _monsterButton = new HoverableImageButton(_monsterNormalStyle, GetText(TextType.UI, UITextKey.WindowMonsters));
             _monsterButton.SetSize(sprite.SourceRect.Width, sprite.SourceRect.Height);
-            _monsterButton.OnClicked += (button) => HandleMonsterButtonClick();
+            _monsterButton.OnClicked += (button) => TriggerToggle();
         }
 
-        private void HandleMonsterButtonClick()
+        /// <summary>
+        /// Handles the monster button click - enforces single window policy and toggles the monster window
+        /// </summary>
+        public void TriggerToggle()
         {
             // Close any other open windows (single window policy)
             var allElements = _stage.GetElements();

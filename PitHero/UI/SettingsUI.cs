@@ -100,6 +100,15 @@ namespace PitHero.UI
         private StopAdventuringUI _stopAdventuringUI;
         private ReplenishUI _replenishUI;
 
+        // Keyboard shortcut state
+        private Microsoft.Xna.Framework.Input.KeyboardState _prevKeyboardState;
+        private Label _replenishKeyLabel;
+        private Label _stopKeyLabel;
+        private Label _fastFKeyLabel;
+        private Label _settingsKeyLabel;
+        private Label _heroKeyLabel;
+        private Label _monsterKeyLabel;
+
         /// <summary>Gets the HeroUI instance.</summary>
         public HeroUI HeroUI => _heroUI;
 
@@ -160,6 +169,9 @@ namespace PitHero.UI
 
             _replenishUI = new ReplenishUI();
             _replenishUI.InitializeUI(_stage);
+
+            // Create key label overlays for HUD buttons
+            CreateKeyLabels(skin);
 
             // Create settings window with TabPane (initially hidden)
             CreateSettingsWindow(skin);
@@ -761,26 +773,32 @@ namespace PitHero.UI
             // Position Replenish button leftmost
             float replenishX = startX;
             _replenishUI.SetPosition(replenishX, buttonY);
+            PositionKeyLabel(_replenishKeyLabel, replenishX, buttonY, replenishW, _replenishUI.GetHeight());
 
             // Position Stop Adventuring button directly to the right of Replenish
             float stopX = replenishX + replenishW + GameConfig.UIButtonPadding;
             _stopAdventuringUI.SetPosition(stopX, buttonY);
+            PositionKeyLabel(_stopKeyLabel, stopX, buttonY, stopW, _stopAdventuringUI.GetHeight());
 
             // Position FastF button directly to the right of Stop
             float fastFX = stopX + stopW + GameConfig.UIButtonPadding;
             _fastFUI.SetPosition(fastFX, buttonY);
+            PositionKeyLabel(_fastFKeyLabel, fastFX, buttonY, fastFW, _fastFUI.GetHeight());
 
             // Position gear button
             float gearX = fastFX + fastFW + GameConfig.UIButtonPadding;
             _gearButton.SetPosition(gearX, buttonY);
+            PositionKeyLabel(_settingsKeyLabel, gearX, buttonY, gearW, gearH);
 
             // Position hero button
             float heroX = gearX + gearW + GameConfig.UIButtonPadding;
             _heroUI.SetPosition(heroX, buttonY);
+            PositionKeyLabel(_heroKeyLabel, heroX, buttonY, heroW, _heroUI.GetHeight());
 
             // Position monster button to the right of hero
             float monsterX = heroX + heroW + GameConfig.UIButtonPadding;
             _monsterUI.SetPosition(monsterX, buttonY);
+            PositionKeyLabel(_monsterKeyLabel, monsterX, buttonY, monsterW, gearH);
 
             if (_isVisible)
             {
@@ -808,7 +826,7 @@ namespace PitHero.UI
         /// <summary>
         /// Toggles settings visibility. When opening, remembers shrink mode and restores full size. When closing, applies persistent size.
         /// </summary>
-        private void ToggleSettingsVisibility()
+        public void ToggleSettingsVisibility()
         {
             bool willShow = !_isVisible;
             if (willShow)
@@ -916,6 +934,95 @@ namespace PitHero.UI
         }
 
         /// <summary>
+        /// Creates gold shortcut key label overlays for each HUD button.
+        /// </summary>
+        private void CreateKeyLabels(Skin skin)
+        {
+            _replenishKeyLabel = new Label("R", skin, "ph-shortcut");
+            _stopKeyLabel = new Label("S", skin, "ph-shortcut");
+            _fastFKeyLabel = new Label("F", skin, "ph-shortcut");
+            _settingsKeyLabel = new Label("E", skin, "ph-shortcut");
+            _heroKeyLabel = new Label("H", skin, "ph-shortcut");
+            _monsterKeyLabel = new Label("M", skin, "ph-shortcut");
+
+            _stage.AddElement(_replenishKeyLabel);
+            _stage.AddElement(_stopKeyLabel);
+            _stage.AddElement(_fastFKeyLabel);
+            _stage.AddElement(_settingsKeyLabel);
+            _stage.AddElement(_heroKeyLabel);
+            _stage.AddElement(_monsterKeyLabel);
+        }
+
+        /// <summary>
+        /// Centers a key label below the specified button bounds.
+        /// </summary>
+        private void PositionKeyLabel(Label label, float buttonX, float buttonY, float buttonWidth, float buttonHeight)
+        {
+            if (label == null) return;
+            label.Pack();
+            float labelX = buttonX + (buttonWidth * 0.5f) - (label.GetWidth() * 0.5f);
+            float labelY = buttonY + buttonHeight + 2f;
+            label.SetPosition(labelX, labelY);
+        }
+
+        /// <summary>
+        /// Processes keyboard shortcut presses and dispatches to the appropriate UI actions.
+        /// </summary>
+        private void HandleKeyboardShortcuts()
+        {
+            var currentKeyState = Microsoft.Xna.Framework.Input.Keyboard.GetState();
+
+            if (_stage.GetKeyboardFocus() != null)
+            {
+                _prevKeyboardState = currentKeyState;
+                return;
+            }
+
+            bool JustPressed(Microsoft.Xna.Framework.Input.Keys key)
+                => currentKeyState.IsKeyDown(key) && !_prevKeyboardState.IsKeyDown(key);
+
+            bool heroWindowOpen = _heroUI != null && _heroUI.IsWindowVisible;
+
+            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.R))
+            {
+                if (heroWindowOpen)
+                    _heroUI.OpenToMercenariesTab();
+                else
+                    _replenishUI?.TriggerReplenish();
+            }
+
+            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.S))
+                _stopAdventuringUI?.TriggerToggle();
+
+            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.F))
+                _fastFUI?.TriggerToggle();
+
+            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.E))
+                ToggleSettingsVisibility();
+
+            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.H))
+                _heroUI?.TriggerToggle();
+
+            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.I))
+                _heroUI?.OpenToInventoryTab();
+
+            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.N))
+                _heroUI?.OpenToHeroInfoTab();
+
+            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.B))
+                _heroUI?.OpenToBehaviorTab();
+
+            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.M))
+                _monsterUI?.TriggerToggle();
+
+            // Hide R label on replenish button when hero window is open (R maps to Mercs then)
+            if (_replenishKeyLabel != null)
+                _replenishKeyLabel.SetVisible(!heroWindowOpen);
+
+            _prevKeyboardState = currentKeyState;
+        }
+
+        /// <summary>
         /// Updates the UI, including button styles based on shrink mode
         /// </summary>
         public void Update()
@@ -956,6 +1063,8 @@ namespace PitHero.UI
                 PositionUI();
                 _gearStyleChanged = false;
             }
+
+            HandleKeyboardShortcuts();
         }
 
         /// <summary>

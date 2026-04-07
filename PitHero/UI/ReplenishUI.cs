@@ -90,13 +90,13 @@ namespace PitHero.UI
             _button = new HoverableImageButton(_normalStyle, GetText(TextType.UI, UITextKey.ButtonReplenish));
             _button.SetSize(sprite.SourceRect.Width, sprite.SourceRect.Height);
 
-            _button.OnClicked += (button) => OnReplenishClicked();
+            _button.OnClicked += (button) => TriggerReplenish();
         }
 
         /// <summary>
-        /// Handle Replenish button click - activates smart replenish on the hero component
+        /// Triggers replenish - activates smart replenish on the hero component
         /// </summary>
-        private void OnReplenishClicked()
+        public void TriggerReplenish()
         {
             var heroEntity = Core.Scene?.FindEntity("hero");
             var heroComponent = heroEntity?.GetComponent<HeroComponent>();
