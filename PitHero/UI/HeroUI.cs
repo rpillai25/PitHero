@@ -1249,5 +1249,45 @@ namespace PitHero.UI
                 _selectedItemCard.ToFront();
             }
         }
+
+        /// <summary>
+        /// Triggers the hero button click handler (single window policy + toggle).
+        /// </summary>
+        public void TriggerToggle()
+        {
+            HandleHeroButtonClick();
+        }
+
+        /// <summary>
+        /// Switches the TabPane to the given tab and notifies HandleTabChanged.
+        /// </summary>
+        private void SwitchToTab(Tab targetTab)
+        {
+            if (_tabPane == null || targetTab == null) return;
+            var index = _tabPane.Tabs.IndexOf(targetTab);
+            if (index < 0) return;
+            _tabPane.SetActiveTab(index);
+            HandleTabChanged(targetTab);
+        }
+
+        /// <summary>
+        /// Opens the hero window if it is closed, then switches to the given tab.
+        /// </summary>
+        private void OpenAndSwitchToTab(Tab targetTab)
+        {
+            if (!_windowVisible)
+                HandleHeroButtonClick();
+            if (_windowVisible)
+                SwitchToTab(targetTab);
+        }
+
+        /// <summary>Opens the hero window to the Inventory tab.</summary>
+        public void OpenToInventoryTab() => OpenAndSwitchToTab(_inventoryTab);
+
+        /// <summary>Opens the hero window to the Hero Info tab.</summary>
+        public void OpenToHeroInfoTab() => OpenAndSwitchToTab(_crystalTab);
+
+        /// <summary>Opens the hero window to the Behavior tab.</summary>
+        public void OpenToBehaviorTab() => OpenAndSwitchToTab(_prioritiesTab);
     }
 }

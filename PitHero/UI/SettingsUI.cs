@@ -100,6 +100,9 @@ namespace PitHero.UI
         private StopAdventuringUI _stopAdventuringUI;
         private ReplenishUI _replenishUI;
 
+        // Keyboard shortcut state
+        private Microsoft.Xna.Framework.Input.KeyboardState _prevKeyboardState;
+
         /// <summary>Gets the HeroUI instance.</summary>
         public HeroUI HeroUI => _heroUI;
 
@@ -808,7 +811,7 @@ namespace PitHero.UI
         /// <summary>
         /// Toggles settings visibility. When opening, remembers shrink mode and restores full size. When closing, applies persistent size.
         /// </summary>
-        private void ToggleSettingsVisibility()
+        public void ToggleSettingsVisibility()
         {
             bool willShow = !_isVisible;
             if (willShow)
@@ -916,6 +919,52 @@ namespace PitHero.UI
         }
 
         /// <summary>
+        /// Processes keyboard shortcut presses and dispatches to the appropriate UI actions.
+        /// </summary>
+        private void HandleKeyboardShortcuts()
+        {
+            var currentKeyState = Microsoft.Xna.Framework.Input.Keyboard.GetState();
+
+            if (_stage.GetKeyboardFocus() != null)
+            {
+                _prevKeyboardState = currentKeyState;
+                return;
+            }
+
+            bool JustPressed(Microsoft.Xna.Framework.Input.Keys key)
+                => currentKeyState.IsKeyDown(key) && !_prevKeyboardState.IsKeyDown(key);
+
+            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.R))
+                _replenishUI?.TriggerReplenish();
+
+            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.S))
+                _stopAdventuringUI?.TriggerToggle();
+
+            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.F))
+                _fastFUI?.TriggerToggle();
+
+            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.E))
+                ToggleSettingsVisibility();
+
+            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.H))
+                _heroUI?.TriggerToggle();
+
+            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.I))
+                _heroUI?.OpenToInventoryTab();
+
+            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.N))
+                _heroUI?.OpenToHeroInfoTab();
+
+            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.B))
+                _heroUI?.OpenToBehaviorTab();
+
+            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.M))
+                _monsterUI?.TriggerToggle();
+
+            _prevKeyboardState = currentKeyState;
+        }
+
+        /// <summary>
         /// Updates the UI, including button styles based on shrink mode
         /// </summary>
         public void Update()
@@ -956,6 +1005,8 @@ namespace PitHero.UI
                 PositionUI();
                 _gearStyleChanged = false;
             }
+
+            HandleKeyboardShortcuts();
         }
 
         /// <summary>

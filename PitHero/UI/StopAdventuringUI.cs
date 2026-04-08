@@ -120,13 +120,13 @@ namespace PitHero.UI
             _button = new HoverableImageButton(_stopNormalStyle, GetText(TextType.UI, UITextKey.ButtonStopAdventuring));
             _button.SetSize(stopSprite.SourceRect.Width, stopSprite.SourceRect.Height);
 
-            _button.OnClicked += (button) => ToggleAdventuring();
+            _button.OnClicked += (button) => TriggerToggle();
         }
 
         /// <summary>
         /// Toggle between Stop and Continue Adventuring
         /// </summary>
-        private void ToggleAdventuring()
+        public void TriggerToggle()
         {
             _isStoppedAdventuring = !_isStoppedAdventuring;
 

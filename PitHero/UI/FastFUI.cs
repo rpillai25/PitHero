@@ -113,10 +113,13 @@ namespace PitHero.UI
             _fastFButton.SetSize(fastFSprite.SourceRect.Width, fastFSprite.SourceRect.Height);
 
             // Handle click to toggle speed
-            _fastFButton.OnClicked += (button) => ToggleSpeed();
+            _fastFButton.OnClicked += (button) => TriggerToggle();
         }
 
-        private void ToggleSpeed()
+        /// <summary>
+        /// Toggles game speed between normal and 2.5x fast forward
+        /// </summary>
+        public void TriggerToggle()
         {
             if (_isSpeedUp)
             {
