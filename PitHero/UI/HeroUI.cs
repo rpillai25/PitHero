@@ -1287,9 +1287,6 @@ namespace PitHero.UI
         /// <summary>Opens the hero window to the Hero Info tab.</summary>
         public void OpenToHeroInfoTab() => OpenAndSwitchToTab(_crystalTab);
 
-        /// <summary>Opens the hero window to the Mercenaries tab.</summary>
-        public void OpenToMercenariesTab() => OpenAndSwitchToTab(_mercenariesTab);
-
         /// <summary>Opens the hero window to the Behavior tab.</summary>
         public void OpenToBehaviorTab() => OpenAndSwitchToTab(_prioritiesTab);
     }

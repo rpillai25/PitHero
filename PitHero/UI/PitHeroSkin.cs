@@ -40,16 +40,6 @@ namespace PitHero.UI
             };
             skin.Add("ph-default", labelStyle);
 
-            // Gold/amber label style for keyboard shortcut key overlays
-            var shortcutLabelStyle = new LabelStyle
-            {
-                Font = defaultFont,
-                FontColor = new Color(200, 150, 50),
-                FontScaleX = 1f,
-                FontScaleY = 1f
-            };
-            skin.Add("ph-shortcut", shortcutLabelStyle);
-
             // Create custom text button style to use brown color
             var textButtonStyle = new TextButtonStyle
             {

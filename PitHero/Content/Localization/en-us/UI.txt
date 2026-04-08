@@ -59,10 +59,10 @@ SettingsGameSession,Game Session
 SettingsReplenishLabel,Replenish
 SettingsHpThreshold,HP Threshold: {0}%
 SettingsMpThreshold,MP Threshold: {0}%
-TabInventory,(I)nventory
-TabBehavior,(B)ehavior
-TabHeroInfo,Hero I(n)fo
-TabMercenaries,Me(r)cenaries
+TabInventory,Inventory
+TabBehavior,Behavior
+TabHeroInfo,Hero Info
+TabMercenaries,Mercenaries
 HeroNameLabel,Name: {0}
 HeroJobLabel,Job: {0}
 HeroLevelLabel,Level: {0}
