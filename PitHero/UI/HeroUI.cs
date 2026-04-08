@@ -32,6 +32,9 @@ namespace PitHero.UI
         private Tab _mercenariesTab;
         private bool _windowVisible = false;
 
+        // Reference to SettingsUI for single window policy enforcement
+        private SettingsUI _settingsUI;
+
         // Inventory tab content
         private InventoryGrid _inventoryGrid;
         private TextButton _viewStencilsButton;
@@ -215,22 +218,13 @@ namespace PitHero.UI
             _heroButton.OnClicked += (button) => HandleHeroButtonClick();
         }
 
+        /// <summary>Sets the reference to SettingsUI for single window policy enforcement.</summary>
+        public void SetSettingsUI(SettingsUI settingsUI) { _settingsUI = settingsUI; }
+
         private void HandleHeroButtonClick()
         {
-            var allElements = _stage.GetElements();
-            for (int i = 0; i < allElements.Count; i++)
-            {
-                var element = allElements[i];
-                if (element is Window window && window.IsVisible() && window != _heroWindow)
-                {
-                    window.SetVisible(false);
-                    var pauseService = Core.Services.GetService<PauseService>();
-                    if (pauseService != null)
-                        pauseService.IsPaused = false;
-                    Debug.Log("[HeroUI] Closed other UI window to enforce single window policy");
-                    break;
-                }
-            }
+            // Properly close Settings UI if it's open (single window policy)
+            _settingsUI?.ForceCloseSettings();
             ToggleHeroWindow();
         }
 

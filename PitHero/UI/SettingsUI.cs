@@ -151,9 +151,11 @@ namespace PitHero.UI
 
             _heroUI = new HeroUI();
             _heroUI.InitializeUI(_stage);
+            _heroUI.SetSettingsUI(this);
 
             _monsterUI = new MonsterUI();
             _monsterUI.InitializeUI(_stage);
+            _monsterUI.SetSettingsUI(this);
 
             _recruitmentNotificationUI = new RecruitmentNotificationUI();
             _recruitmentNotificationUI.InitializeUI(_stage, skin);
@@ -857,6 +859,27 @@ namespace PitHero.UI
             if (_isVisible)
                 _settingsWindow.ToFront();
             LayoutUI();
+        }
+
+        /// <summary>
+        /// Force closes the settings window and updates internal state.
+        /// Called by other UIs (HeroUI, MonsterUI) when enforcing the single window policy.
+        /// </summary>
+        public void ForceCloseSettings()
+        {
+            if (_isVisible)
+            {
+                _isVisible = false;
+                UIWindowManager.OnUIWindowClosing();
+                HideConfirmationDialog(_exitConfirmationDialog);
+                HideConfirmationDialog(_quitToTitleConfirmationDialog);
+                _settingsWindow.SetVisible(false);
+                var pauseService = Core.Services.GetService<PauseService>();
+                if (pauseService != null)
+                    pauseService.IsPaused = false;
+                LayoutUI();
+                Debug.Log("[SettingsUI] Settings force closed by single window policy");
+            }
         }
 
         /// <summary>

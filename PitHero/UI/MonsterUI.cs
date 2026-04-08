@@ -19,6 +19,9 @@ namespace PitHero.UI
         private Skin _skin;
         private TextService _textService;
 
+        // Reference to SettingsUI for single window policy enforcement
+        private SettingsUI _settingsUI;
+
         private enum MonsterMode { Normal, Half }
         private MonsterMode _currentMonsterMode = MonsterMode.Normal;
 
@@ -90,26 +93,16 @@ namespace PitHero.UI
             _monsterButton.OnClicked += (button) => TriggerToggle();
         }
 
+        /// <summary>Sets the reference to SettingsUI for single window policy enforcement.</summary>
+        public void SetSettingsUI(SettingsUI settingsUI) { _settingsUI = settingsUI; }
+
         /// <summary>
         /// Handles the monster button click - enforces single window policy and toggles the monster window
         /// </summary>
         public void TriggerToggle()
         {
-            // Close any other open windows (single window policy)
-            var allElements = _stage.GetElements();
-            for (int i = 0; i < allElements.Count; i++)
-            {
-                var element = allElements[i];
-                if (element is Window window && window.IsVisible() && window != _monsterWindow)
-                {
-                    window.SetVisible(false);
-                    var pauseService = Core.Services.GetService<PauseService>();
-                    if (pauseService != null)
-                        pauseService.IsPaused = false;
-                    Debug.Log("[MonsterUI] Closed other UI window to enforce single window policy");
-                    break;
-                }
-            }
+            // Properly close Settings UI if it's open (single window policy)
+            _settingsUI?.ForceCloseSettings();
             ToggleMonsterWindow();
         }
 
