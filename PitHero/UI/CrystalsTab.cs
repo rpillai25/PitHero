@@ -8,8 +8,9 @@ namespace PitHero.UI
     /// <summary>The main content of the Crystals collection tab.</summary>
     public class CrystalsTab
     {
-        private const int INVENTORY_COLS = 10;
-        private const int INVENTORY_ROWS = 8;
+        private const int INVENTORY_COLS = 8;
+        private const int INVENTORY_ROWS = 5;
+        private const int INVENTORY_TOTAL = INVENTORY_COLS * INVENTORY_ROWS; // 40 slots
         private const int QUEUE_SLOTS = 5;
         private const float SLOT_SIZE = 32f;
         private const float SLOT_PAD = 1f;
@@ -41,36 +42,44 @@ namespace PitHero.UI
             _crystalCard = new HeroCrystalCard(skin, stage);
             stage.AddElement(_crystalCard);
 
+            // ── Root table ───────────────────────────────────────────────────────
             var mainTable = new Table();
+            mainTable.Top().Left();
 
-            // Left column: Forge + Inventory
-            var leftCol = new Table();
+            // ── Forge section (spans both columns) ───────────────────────────────
+            var forgeSection = new Table();
+            forgeSection.Add(new Label(GetText(UITextKey.CrystalForgeTitle), skin, "ph-default")).Left().Pad(5);
+            forgeSection.Row();
 
-            // Forge section
-            leftCol.Add(new Label(GetText(UITextKey.CrystalForgeTitle), skin, "ph-default")).Left().Pad(5);
-            leftCol.Row();
-            var forgeTable = new Table();
+            var forgeRow = new Table();
             _forgeInputA = new CrystalSlotElement(CrystalSlotKind.Inventory);
             _forgeInputB = new CrystalSlotElement(CrystalSlotKind.Inventory);
             _forgeOutput = new CrystalSlotElement(CrystalSlotKind.Shortcut);
-            forgeTable.Add(_forgeInputA).Size(SLOT_SIZE).Pad(2);
-            forgeTable.Add(_forgeInputB).Size(SLOT_SIZE).Pad(2);
-            forgeTable.Add(new Label("+", skin, "ph-default")).Pad(2);
-            forgeTable.Add(_forgeOutput).Size(SLOT_SIZE).Pad(2);
-            leftCol.Add(forgeTable).Pad(5);
-            leftCol.Row();
+            forgeRow.Add(_forgeInputA).Size(SLOT_SIZE).Pad(2);
+            forgeRow.Add(new Label("+", skin, "ph-default")).Pad(2);
+            forgeRow.Add(_forgeInputB).Size(SLOT_SIZE).Pad(2);
+            forgeRow.Add(new Label("=", skin, "ph-default")).Pad(2);
+            forgeRow.Add(_forgeOutput).Size(SLOT_SIZE).Pad(2);
+
             _forgeButton = new TextButton(GetText(UITextKey.CrystalForgeButton), skin, "ph-default");
             _forgeButton.OnClicked += OnForgeClicked;
             _forgeButton.SetDisabled(true);
-            leftCol.Add(_forgeButton).Pad(5);
-            leftCol.Row();
+            forgeRow.Add(_forgeButton).Pad(4);
 
-            // Inventory grid
-            leftCol.Add(new Label(GetText(UITextKey.CrystalInventoryTitle), skin, "ph-default")).Left().Pad(5);
-            leftCol.Row();
+            forgeSection.Add(forgeRow).Left().Pad(2);
+
+            // Forge spans both columns of mainTable so queue label and inv label share the same row
+            mainTable.Add(forgeSection).Left().SetColspan(2).Pad(5);
+            mainTable.Row();
+
+            // ── Inventory section (left) ──────────────────────────────────────────
+            var invCol = new Table();
+            invCol.Add(new Label(GetText(UITextKey.CrystalInventoryTitle), skin, "ph-default")).Left().Pad(5);
+            invCol.Row();
+
             var invGrid = new Table();
-            _inventorySlots = new CrystalSlotElement[80];
-            for (int i = 0; i < 80; i++)
+            _inventorySlots = new CrystalSlotElement[INVENTORY_TOTAL];
+            for (int i = 0; i < INVENTORY_TOTAL; i++)
             {
                 var slot = new CrystalSlotElement(CrystalSlotKind.Inventory);
                 int idx = i;
@@ -79,30 +88,31 @@ namespace PitHero.UI
                 invGrid.Add(slot).Size(SLOT_SIZE).Pad(SLOT_PAD);
                 if ((i + 1) % INVENTORY_COLS == 0) invGrid.Row();
             }
-            leftCol.Add(invGrid).Pad(5);
-            leftCol.Row();
+            invCol.Add(invGrid).Left().Pad(2);
+            invCol.Row();
 
             _createButton = new TextButton(GetText(UITextKey.CrystalCreateButton), skin, "ph-default");
             _createButton.OnClicked += OnCreateClicked;
-            leftCol.Add(_createButton).Pad(5);
+            invCol.Add(_createButton).Left().Pad(5);
 
-            // Right column: Queue
-            var rightCol = new Table();
-            rightCol.Add(new Label(GetText(UITextKey.CrystalQueueTitle), skin, "ph-default")).Left().Pad(5);
-            rightCol.Row();
-            _queueSlots = new CrystalSlotElement[5];
-            for (int i = 0; i < 5; i++)
+            // ── Queue section (right) ─────────────────────────────────────────────
+            var queueCol = new Table();
+            queueCol.Add(new Label(GetText(UITextKey.CrystalQueueTitle), skin, "ph-default")).Left().Pad(5);
+            queueCol.Row();
+
+            _queueSlots = new CrystalSlotElement[QUEUE_SLOTS];
+            for (int i = 0; i < QUEUE_SLOTS; i++)
             {
                 var slot = new CrystalSlotElement(CrystalSlotKind.Shortcut);
                 int idx = i;
                 slot.OnSlotClicked += s => OnQueueSlotClicked(idx);
                 _queueSlots[i] = slot;
-                rightCol.Add(slot).Size(SLOT_SIZE).Pad(SLOT_PAD);
-                rightCol.Row();
+                queueCol.Add(slot).Size(SLOT_SIZE).Pad(SLOT_PAD);
+                queueCol.Row();
             }
 
-            mainTable.Add(leftCol).Top().Left();
-            mainTable.Add(rightCol).Top().Right().Pad(0, 0, 0, 10);
+            mainTable.Add(invCol).Top().Left().Pad(2);
+            mainTable.Add(queueCol).Top().Left().Pad(2, 0, 2, 5);
 
             RefreshAll();
             return mainTable;
@@ -115,10 +125,10 @@ namespace PitHero.UI
         {
             if (_crystalService == null) return;
 
-            for (int i = 0; i < 80; i++)
+            for (int i = 0; i < INVENTORY_TOTAL; i++)
                 _inventorySlots[i].SetCrystal(_crystalService.Inventory[i]);
             
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < QUEUE_SLOTS; i++)
                 _queueSlots[i].SetCrystal(_crystalService.Queue[i]);
         }
 
