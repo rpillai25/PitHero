@@ -288,6 +288,8 @@ namespace PitHero.UI
             {
                 // Crystals tab needs extra width so all 5 tab buttons fit with ≥23px side padding
                 newWidth = 490f;
+                // Refresh crystal slots so any crystals loaded from save are visible
+                _crystalsTabComponent?.RefreshAll();
             }
             else
             {
