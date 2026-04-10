@@ -164,7 +164,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 7;
+        public const int CurrentVersion = 8;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -324,6 +324,12 @@ namespace PitHero.Services
         /// <summary>Crystal queued to infuse when a new hero is created (popped from queue on death).</summary>
         public SavedHeroCrystal? PendingNextCrystal;
 
+        /// <summary>Crystal currently in forge slot A (added in version 8).</summary>
+        public SavedHeroCrystal? ForgeSlotA;
+
+        /// <summary>Crystal currently in forge slot B (added in version 8).</summary>
+        public SavedHeroCrystal? ForgeSlotB;
+
         /// <summary>Saved crystals in Second Chance Merchant vault.</summary>
         public List<SavedHeroCrystal> SecondChanceVaultCrystals;
 
@@ -343,6 +349,8 @@ namespace PitHero.Services
             CrystalCollection = new List<SavedHeroCrystal>();
             CrystalQueue = new List<SavedHeroCrystal>();
             PendingNextCrystal = null;
+            ForgeSlotA = null;
+            ForgeSlotB = null;
             SecondChanceVaultCrystals = new List<SavedHeroCrystal>();
         }
 
@@ -553,6 +561,17 @@ namespace PitHero.Services
             {
                 WriteCrystal(writer, PendingNextCrystal.Value);
             }
+
+            // 18. Forge slots (added in version 8)
+            bool hasForgeA = ForgeSlotA.HasValue;
+            writer.Write(hasForgeA);
+            if (hasForgeA)
+                WriteCrystal(writer, ForgeSlotA.Value);
+
+            bool hasForgeB = ForgeSlotB.HasValue;
+            writer.Write(hasForgeB);
+            if (hasForgeB)
+                WriteCrystal(writer, ForgeSlotB.Value);
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -780,6 +799,21 @@ namespace PitHero.Services
                         PendingNextCrystal = ReadCrystal(reader);
                     else
                         PendingNextCrystal = null;
+
+                    // 18. Forge slots (version 8+)
+                    if (version >= 8)
+                    {
+                        bool hasForgeA = reader.ReadBool();
+                        ForgeSlotA = hasForgeA ? ReadCrystal(reader) : (SavedHeroCrystal?)null;
+
+                        bool hasForgeB = reader.ReadBool();
+                        ForgeSlotB = hasForgeB ? ReadCrystal(reader) : (SavedHeroCrystal?)null;
+                    }
+                    else
+                    {
+                        ForgeSlotA = null;
+                        ForgeSlotB = null;
+                    }
                 }
                 else
                 {

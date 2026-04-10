@@ -78,8 +78,13 @@ namespace PitHero.UI
             }
         }
 
+        private bool _crystalHidden;
+
         /// <summary>Sets the crystal displayed in this slot. Pass null for an empty slot.</summary>
-        public void SetCrystal(HeroCrystal crystal) => _crystal = crystal;
+        public void SetCrystal(HeroCrystal crystal) { _crystal = crystal; _crystalHidden = false; }
+
+        /// <summary>Temporarily hides the crystal sprite (e.g. during a swap animation).</summary>
+        public void SetCrystalHidden(bool hidden) => _crystalHidden = hidden;
 
         /// <summary>Sets the selection highlight state.</summary>
         public void SetSelected(bool selected) => _isSelected = selected;
@@ -103,8 +108,8 @@ namespace PitHero.UI
             if (_backgroundDrawable != null)
                 _backgroundDrawable.Draw(batcher, x, y, w, h, new Color(255, 255, 255, 100));
 
-            // 2. Crystal content – only when a crystal occupies this slot
-            if (_crystal != null)
+            // 2. Crystal content – only when a crystal occupies this slot and not hidden
+            if (_crystal != null && !_crystalHidden)
             {
                 if (_baseDrawable != null)
                     _baseDrawable.Draw(batcher, x, y, w, h, Color.White);

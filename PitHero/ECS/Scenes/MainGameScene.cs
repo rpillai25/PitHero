@@ -429,6 +429,12 @@ namespace PitHero.ECS.Scenes
                 {
                     crystalService.PendingNextCrystal = pendingData.PendingNextCrystal.Value.ToHeroCrystal();
                 }
+
+                // Restore forge slots (physical crystals not stored in inventory)
+                if (pendingData.ForgeSlotA.HasValue)
+                    crystalService.SetForgeSlotADirect(pendingData.ForgeSlotA.Value.ToHeroCrystal());
+                if (pendingData.ForgeSlotB.HasValue)
+                    crystalService.SetForgeSlotBDirect(pendingData.ForgeSlotB.Value.ToHeroCrystal());
                 
                 Debug.Log("[MainGameScene] Restored " + pendingData.CrystalCollection.Count + " crystals to collection");
             }

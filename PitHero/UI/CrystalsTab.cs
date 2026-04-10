@@ -15,6 +15,7 @@ namespace PitHero.UI
         private const int QUEUE_SLOTS = 5;
         private const float SLOT_SIZE = 32f;
         private const float SLOT_PAD = 1f;
+        private const float SWAP_TWEEN_DURATION = 0.2f;
 
         // Slot type enum for multi-slot selection tracking
         private enum SelType { None, ForgeA, ForgeB, Inventory, Queue }
@@ -42,6 +43,9 @@ namespace PitHero.UI
         private Window _hoverTooltipWindow;
         private Label _hoverLabel;
 
+        // Swap animation overlay (reused SwapAnimationOverlay from inventory)
+        private SwapAnimationOverlay _swapOverlay;
+
         /// <summary>Creates and returns the tab content table.</summary>
         public Table CreateContent(Skin skin, Stage stage, Window heroWindow)
         {
@@ -53,6 +57,11 @@ namespace PitHero.UI
 
             _crystalCard = new HeroCrystalCard(skin, stage);
             stage.AddElement(_crystalCard);
+
+            // ── Swap overlay (shares stage with inventory overlay) ───────────────
+            _swapOverlay = new SwapAnimationOverlay();
+            stage.AddElement(_swapOverlay);
+            _swapOverlay.SetVisible(false);
 
             // ── Hover tooltip (shared across all slots) ───────────────────────
             _hoverTooltipWindow = new Window("", skin);
@@ -173,12 +182,12 @@ namespace PitHero.UI
             for (int i = 0; i < QUEUE_SLOTS; i++)
                 _queueSlots[i].SetCrystal(svc.Queue[i]);
 
-            // Refresh forge display
-            _forgeInputA.SetCrystal(svc.ForgeInputA >= 0 ? svc.Inventory[svc.ForgeInputA] : null);
-            _forgeInputB.SetCrystal(svc.ForgeInputB >= 0 ? svc.Inventory[svc.ForgeInputB] : null);
+            // Refresh forge display — forge slots are now direct crystal references
+            _forgeInputA.SetCrystal(svc.ForgeSlotA);
+            _forgeInputB.SetCrystal(svc.ForgeSlotB);
 
             // Update forge button enabled state
-            bool canForge = svc.ForgeInputA >= 0 && svc.ForgeInputB >= 0;
+            bool canForge = svc.ForgeSlotA != null && svc.ForgeSlotB != null;
             _forgeButton.SetDisabled(!canForge);
         }
 
@@ -235,19 +244,94 @@ namespace PitHero.UI
             _selElement = null;
         }
 
-        /// <summary>Returns the inventory index for the currently selected slot, or -1.</summary>
-        private int GetSelectionInventoryIndex()
+        /// <summary>Maps the current selection to a CrystalSlotType and index for SwapSlots.</summary>
+        private bool GetSelectionSlot(out CrystalSlotType slotType, out int slotIdx)
         {
-            var svc = GetCrystalService();
-            if (svc == null) return -1;
+            slotIdx = _selIndex;
             switch (_selType)
             {
-                case SelType.Inventory: return _selIndex;
-                case SelType.ForgeA: return svc.ForgeInputA;
-                case SelType.ForgeB: return svc.ForgeInputB;
-                case SelType.Queue: return svc.GetQueueInventoryIndex(_selIndex);
-                default: return -1;
+                case SelType.Inventory: slotType = CrystalSlotType.Inventory; return true;
+                case SelType.ForgeA:    slotType = CrystalSlotType.ForgeA;    slotIdx = 0; return true;
+                case SelType.ForgeB:    slotType = CrystalSlotType.ForgeB;    slotIdx = 0; return true;
+                case SelType.Queue:     slotType = CrystalSlotType.Queue;     return true;
+                default:                slotType = CrystalSlotType.Inventory; return false;
             }
+        }
+
+        /// <summary>Returns the UI element for the current selection, if still valid.</summary>
+        private CrystalSlotElement GetSelectionElement() => _selElement;
+
+        // ── Swap animation ────────────────────────────────────────────────────────
+
+        /// <summary>Plays a tween swap animation between two CrystalSlotElements, then calls onCompleted.</summary>
+        private void AnimateCrystalSwap(CrystalSlotElement slotA, CrystalSlotElement slotB, System.Action onCompleted)
+        {
+            if (_swapOverlay == null || slotA == null || slotB == null)
+            {
+                onCompleted?.Invoke();
+                return;
+            }
+
+            var crystalA = slotA.Crystal;
+            var crystalB = slotB.Crystal;
+
+            if (crystalA == null && crystalB == null)
+            {
+                onCompleted?.Invoke();
+                return;
+            }
+
+            if (Core.Content == null)
+            {
+                onCompleted?.Invoke();
+                return;
+            }
+
+            SpriteDrawable drawableA = null;
+            SpriteDrawable drawableB = null;
+            try
+            {
+                var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
+                var baseSprite = itemsAtlas.GetSprite("HeroCrystal");
+                if (crystalA != null && baseSprite != null)
+                    drawableA = new SpriteDrawable(baseSprite);
+                if (crystalB != null && baseSprite != null)
+                    drawableB = new SpriteDrawable(baseSprite);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.Log("[CrystalsTab] AnimateCrystalSwap: atlas load failed — " + ex.Message);
+                onCompleted?.Invoke();
+                return;
+            }
+
+            var stageA = slotA.GetStage();
+            if (stageA == null)
+            {
+                onCompleted?.Invoke();
+                return;
+            }
+
+            var startA = slotA.LocalToStageCoordinates(Vector2.Zero);
+            var startB = slotB.LocalToStageCoordinates(Vector2.Zero);
+
+            var colorA = crystalA?.Color ?? Color.White;
+            var colorB = crystalB?.Color ?? Color.White;
+
+            if (crystalA != null) slotA.SetCrystalHidden(true);
+            if (crystalB != null) slotB.SetCrystalHidden(true);
+
+            _swapOverlay.ToFront();
+            _swapOverlay.Begin(
+                drawableA, colorA, startA, startB,
+                drawableB, colorB, startB, startA,
+                SWAP_TWEEN_DURATION,
+                () =>
+                {
+                    slotA.SetCrystalHidden(false);
+                    slotB.SetCrystalHidden(false);
+                    onCompleted?.Invoke();
+                });
         }
 
         // ── Slot click handlers ──────────────────────────────────────────────────
@@ -272,12 +356,24 @@ namespace PitHero.UI
             }
             else
             {
-                // Move from selection to this inventory slot
-                int srcInv = GetSelectionInventoryIndex();
-                if (srcInv >= 0 && srcInv != idx)
-                    svc.SwapInventorySlots(srcInv, idx);
+                if (GetSelectionSlot(out var srcType, out var srcIdx))
+                {
+                    var srcEl = GetSelectionElement();
+                    var dstEl = _inventorySlots[idx];
+
+                    // Don't animate if same slot
+                    if (srcType == CrystalSlotType.Inventory && srcIdx == idx)
+                    {
+                        ClearSelection();
+                        HideCrystalCard();
+                        return;
+                    }
+
+                    svc.SwapSlots(srcType, srcIdx, CrystalSlotType.Inventory, idx);
+                    RefreshAll();
+                    AnimateCrystalSwap(srcEl, dstEl, null);
+                }
                 ClearSelection();
-                RefreshAll();
                 HideCrystalCard();
             }
         }
@@ -302,14 +398,24 @@ namespace PitHero.UI
             }
             else
             {
-                int srcInv = GetSelectionInventoryIndex();
-                if (srcInv >= 0)
+                if (GetSelectionSlot(out var srcType, out var srcIdx))
                 {
-                    svc.ClearQueueSlot(queueIdx);
-                    svc.EnqueueAt(queueIdx, srcInv);
+                    var srcEl = GetSelectionElement();
+                    var dstEl = _queueSlots[queueIdx];
+
+                    // Don't animate if same slot
+                    if (srcType == CrystalSlotType.Queue && srcIdx == queueIdx)
+                    {
+                        ClearSelection();
+                        HideCrystalCard();
+                        return;
+                    }
+
+                    svc.SwapSlots(srcType, srcIdx, CrystalSlotType.Queue, queueIdx);
+                    RefreshAll();
+                    AnimateCrystalSwap(srcEl, dstEl, null);
                 }
                 ClearSelection();
-                RefreshAll();
                 HideCrystalCard();
             }
         }
@@ -319,33 +425,41 @@ namespace PitHero.UI
             var svc = GetCrystalService();
             if (svc == null) return;
 
+            var dstType = forgeSlot == SelType.ForgeA ? CrystalSlotType.ForgeA : CrystalSlotType.ForgeB;
+            var dstEl = forgeSlot == SelType.ForgeA ? _forgeInputA : _forgeInputB;
+
             if (_selType == SelType.None)
             {
-                int invIdx = forgeSlot == SelType.ForgeA ? svc.ForgeInputA : svc.ForgeInputB;
-                var element = forgeSlot == SelType.ForgeA ? _forgeInputA : _forgeInputB;
-                var crystal = invIdx >= 0 ? svc.Inventory[invIdx] : null;
+                var crystal = forgeSlot == SelType.ForgeA ? svc.ForgeSlotA : svc.ForgeSlotB;
                 if (crystal != null)
                 {
-                    SetSelection(forgeSlot, invIdx, element);
+                    SetSelection(forgeSlot, 0, dstEl);
                     ShowCrystalCard(crystal);
                 }
-                else if (_selType != SelType.None)
+                else
                 {
                     HideCrystalCard();
                 }
             }
             else
             {
-                int srcInv = GetSelectionInventoryIndex();
-                if (srcInv >= 0)
+                if (GetSelectionSlot(out var srcType, out var srcIdx))
                 {
-                    if (forgeSlot == SelType.ForgeA)
-                        svc.SetForgeInput(srcInv, svc.ForgeInputB);
-                    else
-                        svc.SetForgeInput(svc.ForgeInputA, srcInv);
+                    var srcEl = GetSelectionElement();
+
+                    // Don't animate if same slot
+                    if (srcType == dstType)
+                    {
+                        ClearSelection();
+                        HideCrystalCard();
+                        return;
+                    }
+
+                    svc.SwapSlots(srcType, srcIdx, dstType, 0);
+                    RefreshAll();
+                    AnimateCrystalSwap(srcEl, dstEl, null);
                 }
                 ClearSelection();
-                RefreshAll();
                 HideCrystalCard();
             }
         }
@@ -389,3 +503,4 @@ namespace PitHero.UI
         }
     }
 }
+

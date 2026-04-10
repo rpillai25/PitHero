@@ -469,6 +469,12 @@ namespace PitHero.Services
                 // Pending next crystal
                 if (crystalService.PendingNextCrystal != null)
                     data.PendingNextCrystal = SavedHeroCrystal.FromHeroCrystal(crystalService.PendingNextCrystal);
+
+                // Forge slots (physical crystals — not inventory references)
+                if (crystalService.ForgeSlotA != null)
+                    data.ForgeSlotA = SavedHeroCrystal.FromHeroCrystal(crystalService.ForgeSlotA);
+                if (crystalService.ForgeSlotB != null)
+                    data.ForgeSlotB = SavedHeroCrystal.FromHeroCrystal(crystalService.ForgeSlotB);
             }
 
             // Second Chance Vault Crystals

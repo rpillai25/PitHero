@@ -4,8 +4,14 @@ using PitHero.VirtualGame;
 
 namespace PitHero.Services
 {
+    /// <summary>Identifies a logical crystal slot type for use with SwapSlots.</summary>
+    public enum CrystalSlotType { Inventory, ForgeA, ForgeB, Queue }
+
     /// <summary>
-    /// Service that manages the player's personal crystal inventory (80 slots) and infusion queue (5 slots).
+    /// Service that manages the player's personal crystal inventory (80 slots), forge slots (2),
+    /// and infusion queue (5 slots). All slots hold crystals directly — no index references.
+    /// Moving a crystal between slots physically removes it from the source and places it in the
+    /// destination, preventing duplicates or exploit scenarios.
     /// </summary>
     public class CrystalCollectionService : ICrystalCollectionService
     {
@@ -14,13 +20,17 @@ namespace PitHero.Services
 
         private readonly HeroCrystal[] _inventory;
         private readonly HeroCrystal[] _queue;
-        private readonly int[] _queueInventoryIndices;
+        private HeroCrystal _forgeSlotA;
+        private HeroCrystal _forgeSlotB;
 
         /// <summary>Crystal popped from queue during hero death, consumed at promotion.</summary>
         public HeroCrystal? PendingNextCrystal { get; set; }
 
-        public int ForgeInputA { get; private set; } = -1;
-        public int ForgeInputB { get; private set; } = -1;
+        /// <summary>Crystal currently in Forge slot A, or null if empty.</summary>
+        public HeroCrystal ForgeSlotA => _forgeSlotA;
+
+        /// <summary>Crystal currently in Forge slot B, or null if empty.</summary>
+        public HeroCrystal ForgeSlotB => _forgeSlotB;
 
         public int InventoryCapacity => MaxInventorySlots;
         public int QueueCapacity => QueueSlotCount;
@@ -56,15 +66,16 @@ namespace PitHero.Services
         public IReadOnlyList<HeroCrystal> Inventory => _inventory;
         public IReadOnlyList<HeroCrystal> Queue => _queue;
 
+        /// <summary>Directly assigns a crystal to forge slot A without touching inventory. Used for save/load restoration.</summary>
+        public void SetForgeSlotADirect(HeroCrystal crystal) => _forgeSlotA = crystal;
+
+        /// <summary>Directly assigns a crystal to forge slot B without touching inventory. Used for save/load restoration.</summary>
+        public void SetForgeSlotBDirect(HeroCrystal crystal) => _forgeSlotB = crystal;
+
         public CrystalCollectionService()
         {
             _inventory = new HeroCrystal[MaxInventorySlots];
             _queue = new HeroCrystal[QueueSlotCount];
-            _queueInventoryIndices = new int[QueueSlotCount];
-            for (int i = 0; i < QueueSlotCount; i++)
-            {
-                _queueInventoryIndices[i] = -1;
-            }
         }
 
         /// <summary>Attempts to add a crystal to the first available inventory slot.</summary>
@@ -95,23 +106,6 @@ namespace PitHero.Services
                 return false;
 
             _inventory[slotIndex] = null;
-
-            // Also remove from queue if it was queued
-            for (int i = 0; i < _queueInventoryIndices.Length; i++)
-            {
-                if (_queueInventoryIndices[i] == slotIndex)
-                {
-                    _queue[i] = null;
-                    _queueInventoryIndices[i] = -1;
-                }
-            }
-
-            // Clear forge inputs if this slot was selected
-            if (ForgeInputA == slotIndex)
-                ForgeInputA = -1;
-            if (ForgeInputB == slotIndex)
-                ForgeInputB = -1;
-
             return true;
         }
 
@@ -124,64 +118,119 @@ namespace PitHero.Services
             return _inventory[slotIndex];
         }
 
-        /// <summary>Sets the two forge input slots.</summary>
-        public void SetForgeInput(int slotA, int slotB)
+        /// <summary>
+        /// Swaps the crystal contents of two logical slots. If only the source has a crystal it simply
+        /// moves; if both have crystals they are exchanged. Silently does nothing for invalid indices
+        /// or when source and destination are the same slot.
+        /// </summary>
+        public void SwapSlots(CrystalSlotType srcType, int srcIdx, CrystalSlotType dstType, int dstIdx)
         {
-            ForgeInputA = slotA;
-            ForgeInputB = slotB;
+            // Prevent no-op swap with self
+            if (srcType == dstType && srcIdx == dstIdx) return;
+
+            var srcCrystal = GetSlotCrystal(srcType, srcIdx);
+            var dstCrystal = GetSlotCrystal(dstType, dstIdx);
+
+            // Prevent placing the same crystal reference in two slots
+            if (srcCrystal != null && srcCrystal == dstCrystal) return;
+
+            SetSlotCrystal(srcType, srcIdx, dstCrystal);
+            SetSlotCrystal(dstType, dstIdx, srcCrystal);
         }
 
-        /// <summary>Combines forge inputs into a combo crystal. Returns null on failure.</summary>
+        /// <summary>Returns the crystal at the specified logical slot, or null if empty or index is invalid.</summary>
+        private HeroCrystal GetSlotCrystal(CrystalSlotType type, int idx)
+        {
+            switch (type)
+            {
+                case CrystalSlotType.Inventory:
+                    if (idx < 0 || idx >= _inventory.Length) return null;
+                    return _inventory[idx];
+                case CrystalSlotType.ForgeA: return _forgeSlotA;
+                case CrystalSlotType.ForgeB: return _forgeSlotB;
+                case CrystalSlotType.Queue:
+                    if (idx < 0 || idx >= _queue.Length) return null;
+                    return _queue[idx];
+                default: return null;
+            }
+        }
+
+        /// <summary>Sets the crystal at the specified logical slot; silently ignores invalid inventory/queue indices.</summary>
+        private void SetSlotCrystal(CrystalSlotType type, int idx, HeroCrystal crystal)
+        {
+            switch (type)
+            {
+                case CrystalSlotType.Inventory:
+                    if (idx >= 0 && idx < _inventory.Length) _inventory[idx] = crystal;
+                    break;
+                case CrystalSlotType.ForgeA: _forgeSlotA = crystal; break;
+                case CrystalSlotType.ForgeB: _forgeSlotB = crystal; break;
+                case CrystalSlotType.Queue:
+                    if (idx >= 0 && idx < _queue.Length) _queue[idx] = crystal;
+                    break;
+            }
+        }
+
+        /// <summary>Combines forge slots A and B into a combo crystal. Returns null on failure.</summary>
         public HeroCrystal TryForge(string combinedName)
         {
-            if (ForgeInputA < 0 || ForgeInputB < 0)
+            if (_forgeSlotA == null || _forgeSlotB == null)
                 return null;
 
-            var crystalA = GetInventoryCrystal(ForgeInputA);
-            var crystalB = GetInventoryCrystal(ForgeInputB);
+            var combined = HeroCrystal.Combine(combinedName, _forgeSlotA, _forgeSlotB);
 
-            if (crystalA == null || crystalB == null)
-                return null;
-
-            var combined = HeroCrystal.Combine(combinedName, crystalA, crystalB);
-
-            // Remove both input crystals from inventory
-            TryRemoveFromInventory(ForgeInputA);
-            TryRemoveFromInventory(ForgeInputB);
-
-            // Clear forge inputs
-            ForgeInputA = -1;
-            ForgeInputB = -1;
+            // Consume both forge inputs
+            _forgeSlotA = null;
+            _forgeSlotB = null;
 
             return combined;
         }
 
-        /// <summary>Adds a crystal to the queue at the specified slot by referencing an inventory slot.</summary>
-        public bool EnqueueAt(int queueSlot, int inventoryIndex)
+        /// <summary>Adds a crystal directly to the back of the auto-infuse queue (does not touch inventory).</summary>
+        public bool TryEnqueue(HeroCrystal crystal)
         {
-            if (queueSlot < 0 || queueSlot >= _queue.Length)
-                return false;
-
-            if (inventoryIndex < 0 || inventoryIndex >= _inventory.Length)
-                return false;
-
-            var crystal = _inventory[inventoryIndex];
             if (crystal == null)
                 return false;
 
-            _queue[queueSlot] = crystal;
-            _queueInventoryIndices[queueSlot] = inventoryIndex;
-            return true;
+            for (int i = 0; i < _queue.Length; i++)
+            {
+                if (_queue[i] == null)
+                {
+                    _queue[i] = crystal;
+                    return true;
+                }
+            }
+            return false;
         }
 
-        /// <summary>Clears the queue slot at the specified index.</summary>
+        /// <summary>Clears the queue slot at the specified index, returning the crystal or null.</summary>
         public void ClearQueueSlot(int queueSlot)
         {
             if (queueSlot < 0 || queueSlot >= _queue.Length)
                 return;
-
             _queue[queueSlot] = null;
-            _queueInventoryIndices[queueSlot] = -1;
+        }
+
+        /// <summary>Removes and returns the first queued crystal, shifts queue up.</summary>
+        public HeroCrystal? Dequeue()
+        {
+            for (int i = 0; i < _queue.Length; i++)
+            {
+                if (_queue[i] != null)
+                {
+                    var crystal = _queue[i];
+
+                    // Shift remaining queue entries up
+                    for (int j = i; j < _queue.Length - 1; j++)
+                        _queue[j] = _queue[j + 1];
+
+                    // Clear the last slot
+                    _queue[_queue.Length - 1] = null;
+
+                    return crystal;
+                }
+            }
+            return null;
         }
 
         /// <summary>Returns the crystal at the front of the queue without removing it.</summary>
@@ -195,86 +244,7 @@ namespace PitHero.Services
             return null;
         }
 
-        /// <summary>Removes and returns the first queued crystal, removes from inventory too, shifts queue up.</summary>
-        public HeroCrystal? Dequeue()
-        {
-            for (int i = 0; i < _queue.Length; i++)
-            {
-                if (_queue[i] != null)
-                {
-                    var crystal = _queue[i];
-                    var inventoryIndex = _queueInventoryIndices[i];
-
-                    // Remove from inventory
-                    if (inventoryIndex >= 0 && inventoryIndex < _inventory.Length)
-                    {
-                        _inventory[inventoryIndex] = null;
-                    }
-
-                    // Shift remaining queue entries up
-                    for (int j = i; j < _queue.Length - 1; j++)
-                    {
-                        _queue[j] = _queue[j + 1];
-                        _queueInventoryIndices[j] = _queueInventoryIndices[j + 1];
-                    }
-
-                    // Clear the last slot
-                    _queue[_queue.Length - 1] = null;
-                    _queueInventoryIndices[_queueInventoryIndices.Length - 1] = -1;
-
-                    return crystal;
-                }
-            }
-            return null;
-        }
-
-        /// <summary>Returns the inventory index referenced by a queue slot, or -1 if none.</summary>
-        public int GetQueueInventoryIndex(int queueSlot)
-        {
-            if (queueSlot < 0 || queueSlot >= _queueInventoryIndices.Length)
-                return -1;
-            return _queueInventoryIndices[queueSlot];
-        }
-
-        /// <summary>Adds a crystal to the back of the auto-infuse queue.</summary>
-        public bool TryEnqueue(HeroCrystal crystal)
-        {
-            if (crystal == null)
-                return false;
-
-            // First add to inventory
-            if (!TryAddToInventory(crystal))
-                return false;
-
-            // Find the inventory slot we just added to
-            int inventoryIndex = -1;
-            for (int i = 0; i < _inventory.Length; i++)
-            {
-                if (_inventory[i] == crystal)
-                {
-                    inventoryIndex = i;
-                    break;
-                }
-            }
-
-            if (inventoryIndex < 0)
-                return false;
-
-            // Find first empty queue slot
-            for (int i = 0; i < _queue.Length; i++)
-            {
-                if (_queue[i] == null)
-                {
-                    _queue[i] = crystal;
-                    _queueInventoryIndices[i] = inventoryIndex;
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        /// <summary>Swaps two inventory slots, updating queue and forge references.</summary>
+        /// <summary>Swaps two inventory slots.</summary>
         public void SwapInventorySlots(int a, int b)
         {
             if (a < 0 || a >= _inventory.Length || b < 0 || b >= _inventory.Length || a == b)
@@ -283,40 +253,19 @@ namespace PitHero.Services
             var tmp = _inventory[a];
             _inventory[a] = _inventory[b];
             _inventory[b] = tmp;
-
-            // Update queue index references
-            for (int i = 0; i < _queueInventoryIndices.Length; i++)
-            {
-                if (_queueInventoryIndices[i] == a)
-                    _queueInventoryIndices[i] = b;
-                else if (_queueInventoryIndices[i] == b)
-                    _queueInventoryIndices[i] = a;
-            }
-
-            // Update forge references
-            if (ForgeInputA == a) ForgeInputA = b;
-            else if (ForgeInputA == b) ForgeInputA = a;
-
-            if (ForgeInputB == a) ForgeInputB = b;
-            else if (ForgeInputB == b) ForgeInputB = a;
         }
 
-        /// <summary>Clears the entire inventory and queue and resets PendingNextCrystal.</summary>
+        /// <summary>Clears the entire inventory, queue, forge slots, and resets PendingNextCrystal.</summary>
         public void Clear()
         {
             for (int i = 0; i < _inventory.Length; i++)
-            {
                 _inventory[i] = null;
-            }
 
             for (int i = 0; i < _queue.Length; i++)
-            {
                 _queue[i] = null;
-                _queueInventoryIndices[i] = -1;
-            }
 
-            ForgeInputA = -1;
-            ForgeInputB = -1;
+            _forgeSlotA = null;
+            _forgeSlotB = null;
             PendingNextCrystal = null;
         }
     }
