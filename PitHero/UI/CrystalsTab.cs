@@ -42,26 +42,21 @@ namespace PitHero.UI
             stage.AddElement(_crystalCard);
 
             var mainTable = new Table();
-            
-            // Load sprites
-            var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
-            var baseSprite = itemsAtlas.GetSprite("HeroCrystalBase");
-            var crystalSprite = itemsAtlas.GetSprite("HeroCrystal");
 
             // Left column: Forge + Inventory
             var leftCol = new Table();
-            
+
             // Forge section
             leftCol.Add(new Label(GetText(UITextKey.CrystalForgeTitle), skin, "ph-default")).Left().Pad(5);
             leftCol.Row();
             var forgeTable = new Table();
-            _forgeInputA = new CrystalSlotElement(baseSprite, crystalSprite, CrystalSlotKind.Inventory);
-            _forgeInputB = new CrystalSlotElement(baseSprite, crystalSprite, CrystalSlotKind.Inventory);
-            _forgeOutput = new CrystalSlotElement(baseSprite, crystalSprite, CrystalSlotKind.Shortcut);
-            forgeTable.Add(_forgeInputA).Pad(2);
-            forgeTable.Add(_forgeInputB).Pad(2);
+            _forgeInputA = new CrystalSlotElement(CrystalSlotKind.Inventory);
+            _forgeInputB = new CrystalSlotElement(CrystalSlotKind.Inventory);
+            _forgeOutput = new CrystalSlotElement(CrystalSlotKind.Shortcut);
+            forgeTable.Add(_forgeInputA).Size(SLOT_SIZE).Pad(2);
+            forgeTable.Add(_forgeInputB).Size(SLOT_SIZE).Pad(2);
             forgeTable.Add(new Label("+", skin, "ph-default")).Pad(2);
-            forgeTable.Add(_forgeOutput).Pad(2);
+            forgeTable.Add(_forgeOutput).Size(SLOT_SIZE).Pad(2);
             leftCol.Add(forgeTable).Pad(5);
             leftCol.Row();
             _forgeButton = new TextButton(GetText(UITextKey.CrystalForgeButton), skin, "ph-default");
@@ -77,11 +72,11 @@ namespace PitHero.UI
             _inventorySlots = new CrystalSlotElement[80];
             for (int i = 0; i < 80; i++)
             {
-                var slot = new CrystalSlotElement(baseSprite, crystalSprite, CrystalSlotKind.Inventory);
+                var slot = new CrystalSlotElement(CrystalSlotKind.Inventory);
                 int idx = i;
                 slot.OnSlotClicked += s => OnInventorySlotClicked(idx);
                 _inventorySlots[i] = slot;
-                invGrid.Add(slot).Pad(SLOT_PAD);
+                invGrid.Add(slot).Size(SLOT_SIZE).Pad(SLOT_PAD);
                 if ((i + 1) % INVENTORY_COLS == 0) invGrid.Row();
             }
             leftCol.Add(invGrid).Pad(5);
@@ -98,11 +93,11 @@ namespace PitHero.UI
             _queueSlots = new CrystalSlotElement[5];
             for (int i = 0; i < 5; i++)
             {
-                var slot = new CrystalSlotElement(baseSprite, crystalSprite, CrystalSlotKind.Shortcut);
+                var slot = new CrystalSlotElement(CrystalSlotKind.Shortcut);
                 int idx = i;
                 slot.OnSlotClicked += s => OnQueueSlotClicked(idx);
                 _queueSlots[i] = slot;
-                rightCol.Add(slot).Pad(SLOT_PAD);
+                rightCol.Add(slot).Size(SLOT_SIZE).Pad(SLOT_PAD);
                 rightCol.Row();
             }
 
