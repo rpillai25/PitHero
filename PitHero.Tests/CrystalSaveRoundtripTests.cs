@@ -63,7 +63,7 @@ namespace PitHero.Tests
             // Arrange: populate a mock service
             var svcBefore = new MockCrystalCollectionService();
             var c1 = MakeKnightCrystal(5);
-            var c2 = MageCrystal(6);
+            var c2 = MakeMageCrystal(6);
             var c3 = MakeKnightCrystal(8);
             svcBefore.TryAddToInventory(c1);
             svcBefore.TryAddToInventory(c2);
@@ -117,7 +117,7 @@ namespace PitHero.Tests
             }
             finally
             {
-                Directory.Delete(tempDir, recursive: true);
+                Directory.Delete(tempDir, true);
             }
         }
 
