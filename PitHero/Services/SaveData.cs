@@ -69,6 +69,7 @@ namespace PitHero.Services
             var skillEnum = crystal.LearnedSkillIds.GetEnumerator();
             while (skillEnum.MoveNext())
                 saved.LearnedSkillIds.Add(skillEnum.Current);
+            skillEnum.Dispose();
 
             saved.SynergyPoints = new Dictionary<string, int>();
             var synEnum = crystal.SynergyPoints.GetEnumerator();
@@ -80,11 +81,13 @@ namespace PitHero.Services
             var synSkillEnum = crystal.LearnedSynergySkillIds.GetEnumerator();
             while (synSkillEnum.MoveNext())
                 saved.LearnedSynergySkillIds.Add(synSkillEnum.Current);
+            synSkillEnum.Dispose();
 
             saved.DiscoveredSynergyIds = new List<string>();
             var discEnum = crystal.DiscoveredSynergyIds.GetEnumerator();
             while (discEnum.MoveNext())
                 saved.DiscoveredSynergyIds.Add(discEnum.Current);
+            discEnum.Dispose();
 
             return saved;
         }
