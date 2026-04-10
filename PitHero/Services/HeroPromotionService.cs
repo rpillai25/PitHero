@@ -123,17 +123,17 @@ namespace PitHero.Services
 
             Debug.Log("[HeroPromotionService] Crystal ceremony lightning complete — granting crystal to hero");
 
-            // Generate and assign a random crystal
-            var randomCrystal = GenerateRandomHeroCrystal();
+            // Get next crystal for hero (from pending, queue, or random)
+            var nextCrystal = GetNextCrystalForHero();
             heroComponent.LinkedHero = new RolePlayingFramework.Heroes.Hero(
                 "Hero",
-                randomCrystal.Job,
-                randomCrystal.Level,
-                randomCrystal.BaseStats,
-                randomCrystal
+                nextCrystal.Job,
+                nextCrystal.Level,
+                nextCrystal.BaseStats,
+                nextCrystal
             );
 
-            Debug.Log($"[HeroPromotionService] Hero granted crystal: {randomCrystal.Job.Name} Level {randomCrystal.Level}");
+            Debug.Log($"[HeroPromotionService] Hero granted crystal: {nextCrystal.Job.Name} Level {nextCrystal.Level}");
 
             // Clear the crystal-needed flags so GOAP resumes normal behavior
             heroComponent.NeedsCrystal = false;
@@ -461,14 +461,14 @@ namespace PitHero.Services
                 heroComponent.OnAddedToEntity();
             }
 
-            // Generate a random hero crystal for the new hero
-            var randomCrystal = GenerateRandomHeroCrystal();
+            // Get next crystal for hero (from pending, queue, or random)
+            var nextCrystal = GetNextCrystalForHero();
             heroComponent.LinkedHero = new RolePlayingFramework.Heroes.Hero(
                 mercComponent.LinkedMercenary.Name,
-                randomCrystal.Job,
-                randomCrystal.Level,
-                randomCrystal.BaseStats,
-                randomCrystal
+                nextCrystal.Job,
+                nextCrystal.Level,
+                nextCrystal.BaseStats,
+                nextCrystal
             );
 
             Debug.Log($"[HeroPromotionService] Created new hero {heroComponent.LinkedHero.Name} with Level {heroComponent.LinkedHero.Level}, HP {heroComponent.LinkedHero.CurrentHP}/{heroComponent.LinkedHero.MaxHP}");
@@ -597,6 +597,33 @@ namespace PitHero.Services
             {
                 Debug.Warn("[HeroPromotionService] Could not reconnect UI - scene is not MainGameScene");
             }
+        }
+
+        /// <summary>
+        /// Gets the next crystal to use for the hero, prioritizing pending crystal from death, then queue, then random.
+        /// </summary>
+        private HeroCrystal GetNextCrystalForHero()
+        {
+            // 1. Use pending crystal from death
+            var crystalService = Core.Services.GetService<CrystalCollectionService>();
+            if (crystalService?.PendingNextCrystal != null)
+            {
+                var pending = crystalService.PendingNextCrystal;
+                crystalService.PendingNextCrystal = null;
+                Debug.Log($"[HeroPromotionService] Using pending crystal from death: {pending.Name}");
+                return pending;
+            }
+
+            // 2. Check queue
+            var queued = crystalService?.Dequeue();
+            if (queued != null)
+            {
+                Debug.Log($"[HeroPromotionService] Using queued crystal: {queued.Name}");
+                return queued;
+            }
+
+            // 3. Random fallback
+            return GenerateRandomHeroCrystal();
         }
 
         /// <summary>

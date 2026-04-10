@@ -79,6 +79,9 @@ namespace PitHero.UI
 
         // Hero Crystal tab component
         private HeroCrystalTab _heroCrystalTab;
+        
+        // Crystals Collection tab component
+        private CrystalsTab _crystalsTabComponent;
 
         // Mercenaries tab component
         private MercenariesTab _mercenariesTabComponent;
@@ -248,6 +251,12 @@ namespace PitHero.UI
             PopulateMercenariesTab(_mercenariesTab, skin);
             _tabPane.AddTab(_inventoryTab);
             _tabPane.AddTab(_crystalTab);
+            
+            // Add Crystals Collection tab after Hero Info tab
+            var crystalsCollectionTab = new Tab(GetText(TextType.UI, UITextKey.TabCrystals), tabStyle);
+            PopulateCrystalsCollectionTab(crystalsCollectionTab, skin);
+            _tabPane.AddTab(crystalsCollectionTab);
+            
             _tabPane.AddTab(_mercenariesTab);
             _tabPane.AddTab(_prioritiesTab);
             
@@ -707,6 +716,14 @@ namespace PitHero.UI
             _heroCrystalTab = new HeroCrystalTab();
             var content = _heroCrystalTab.CreateContent(skin, _stage);
             crystalTab.Add(content).Expand().Fill();
+        }
+
+        /// <summary>Populates the Crystals collection tab with the CrystalsTab component.</summary>
+        private void PopulateCrystalsCollectionTab(Tab tab, Skin skin)
+        {
+            _crystalsTabComponent = new CrystalsTab();
+            var content = _crystalsTabComponent.CreateContent(skin, _stage);
+            tab.Add(content).Expand().Fill();
         }
 
         private void PopulateMercenariesTab(Tab mercenariesTab, Skin skin)

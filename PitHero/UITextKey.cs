@@ -153,5 +153,27 @@ namespace PitHero
         public const string SkillJpCost = "SkillJpCost";
         public const string SkillActiveMultiplier = "SkillActiveMultiplier";
         public const string EquipPreviewChanges = "EquipPreviewChanges";
+        public const string TabCrystals = "TabCrystals";
+        public const string CrystalForgeTitle = "CrystalForgeTitle";
+        public const string CrystalForgeButton = "CrystalForgeButton";
+        public const string CrystalInventoryTitle = "CrystalInventoryTitle";
+        public const string CrystalQueueTitle = "CrystalQueueTitle";
+        public const string CrystalCreateButton = "CrystalCreateButton";
+        public const string CrystalCardJobLabel = "CrystalCardJobLabel";
+        public const string CrystalCardLevelLabel = "CrystalCardLevelLabel";
+        public const string CrystalCardJobLevelLabel = "CrystalCardJobLevelLabel";
+        public const string CrystalCardStatsLabel = "CrystalCardStatsLabel";
+        public const string CrystalCardJobSkillsLabel = "CrystalCardJobSkillsLabel";
+        public const string CrystalCardSynergySkillsLabel = "CrystalCardSynergySkillsLabel";
+        public const string CrystalTooltipCombo = "CrystalTooltipCombo";
+        public const string CrystalCreationTitle = "CrystalCreationTitle";
+        public const string CrystalCreationJobLabel = "CrystalCreationJobLabel";
+        public const string CrystalCreationCreateButton = "CrystalCreationCreateButton";
+        public const string CrystalForgeNeedsTwoCrystals = "CrystalForgeNeedsTwoCrystals";
+        public const string CrystalQueueEmpty = "CrystalQueueEmpty";
+        public const string CrystalInventoryEmpty = "CrystalInventoryEmpty";
+        public const string DialogConfirmForge = "DialogConfirmForge";
+        public const string ConfirmForgeMessage = "ConfirmForgeMessage";
+        public const string CrystalInventoryFull = "CrystalInventoryFull";
     }
 }

@@ -24,6 +24,26 @@ namespace PitHero.Services
         public string SkillId;
     }
 
+    /// <summary>Lightweight struct representing a saved hero crystal.</summary>
+    public struct SavedHeroCrystal
+    {
+        public string Name;
+        public string JobName;
+        public int Level;
+        public int SlotIndex;
+        public int BaseStrength;
+        public int BaseAgility;
+        public int BaseVitality;
+        public int BaseMagic;
+        public int TotalJP;
+        public int CurrentJP;
+        public int R, G, B, A;
+        public List<string> LearnedSkillIds;
+        public Dictionary<string, int> SynergyPoints;
+        public List<string> LearnedSynergySkillIds;
+        public List<string> DiscoveredSynergyIds;
+    }
+
     /// <summary>Lightweight struct representing a saved allied monster.</summary>
     public struct SavedAlliedMonster
     {
@@ -58,7 +78,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 5;
+        public const int CurrentVersion = 6;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -208,6 +228,16 @@ namespace PitHero.Services
         /// <summary>Saved hired mercenaries.</summary>
         public List<SavedMercenary> HiredMercenaries;
 
+        // Crystal Collection (added in version 6)
+        /// <summary>Saved crystal collection (80 slots).</summary>
+        public List<SavedHeroCrystal> CrystalCollection;
+
+        /// <summary>Saved crystal queue indices (5 slots, -1 = empty).</summary>
+        public int[] CrystalQueueIndices;
+
+        /// <summary>Saved crystals in Second Chance Merchant vault.</summary>
+        public List<SavedHeroCrystal> SecondChanceVaultCrystals;
+
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
         {
@@ -221,6 +251,9 @@ namespace PitHero.Services
             AlliedMonsters = new List<SavedAlliedMonster>();
             ShortcutSlots = new List<SavedShortcutSlot>();
             HiredMercenaries = new List<SavedMercenary>();
+            CrystalCollection = new List<SavedHeroCrystal>();
+            CrystalQueueIndices = new int[5] { -1, -1, -1, -1, -1 };
+            SecondChanceVaultCrystals = new List<SavedHeroCrystal>();
         }
 
         /// <summary>Writes all game state to the persistence writer.</summary>
@@ -400,6 +433,108 @@ namespace PitHero.Services
                 WriteColor(writer, merc.HairColor);
                 writer.Write(merc.HairstyleIndex);
                 WriteColor(writer, merc.ShirtColor);
+            }
+
+            // 14. Crystal Collection (added in version 6)
+            writer.Write(CrystalCollection.Count);
+            for (int i = 0; i < CrystalCollection.Count; i++)
+            {
+                SavedHeroCrystal crystal = CrystalCollection[i];
+                writer.Write(crystal.Name ?? string.Empty);
+                writer.Write(crystal.JobName ?? string.Empty);
+                writer.Write(crystal.Level);
+                writer.Write(crystal.SlotIndex);
+                writer.Write(crystal.BaseStrength);
+                writer.Write(crystal.BaseAgility);
+                writer.Write(crystal.BaseVitality);
+                writer.Write(crystal.BaseMagic);
+                writer.Write(crystal.TotalJP);
+                writer.Write(crystal.CurrentJP);
+                writer.Write(crystal.R);
+                writer.Write(crystal.G);
+                writer.Write(crystal.B);
+                writer.Write(crystal.A);
+
+                writer.Write(crystal.LearnedSkillIds.Count);
+                for (int j = 0; j < crystal.LearnedSkillIds.Count; j++)
+                {
+                    writer.Write(crystal.LearnedSkillIds[j]);
+                }
+
+                writer.Write(crystal.SynergyPoints.Count);
+                var synEnumerator = crystal.SynergyPoints.GetEnumerator();
+                while (synEnumerator.MoveNext())
+                {
+                    writer.Write(synEnumerator.Current.Key);
+                    writer.Write(synEnumerator.Current.Value);
+                }
+                synEnumerator.Dispose();
+
+                writer.Write(crystal.LearnedSynergySkillIds.Count);
+                for (int j = 0; j < crystal.LearnedSynergySkillIds.Count; j++)
+                {
+                    writer.Write(crystal.LearnedSynergySkillIds[j]);
+                }
+
+                writer.Write(crystal.DiscoveredSynergyIds.Count);
+                for (int j = 0; j < crystal.DiscoveredSynergyIds.Count; j++)
+                {
+                    writer.Write(crystal.DiscoveredSynergyIds[j]);
+                }
+            }
+
+            // 15. Crystal Queue Indices (added in version 6)
+            for (int i = 0; i < 5; i++)
+            {
+                writer.Write(CrystalQueueIndices[i]);
+            }
+
+            // 16. Second Chance Vault Crystals (added in version 6)
+            writer.Write(SecondChanceVaultCrystals.Count);
+            for (int i = 0; i < SecondChanceVaultCrystals.Count; i++)
+            {
+                SavedHeroCrystal crystal = SecondChanceVaultCrystals[i];
+                writer.Write(crystal.Name ?? string.Empty);
+                writer.Write(crystal.JobName ?? string.Empty);
+                writer.Write(crystal.Level);
+                writer.Write(crystal.SlotIndex);
+                writer.Write(crystal.BaseStrength);
+                writer.Write(crystal.BaseAgility);
+                writer.Write(crystal.BaseVitality);
+                writer.Write(crystal.BaseMagic);
+                writer.Write(crystal.TotalJP);
+                writer.Write(crystal.CurrentJP);
+                writer.Write(crystal.R);
+                writer.Write(crystal.G);
+                writer.Write(crystal.B);
+                writer.Write(crystal.A);
+
+                writer.Write(crystal.LearnedSkillIds.Count);
+                for (int j = 0; j < crystal.LearnedSkillIds.Count; j++)
+                {
+                    writer.Write(crystal.LearnedSkillIds[j]);
+                }
+
+                writer.Write(crystal.SynergyPoints.Count);
+                var synEnumerator = crystal.SynergyPoints.GetEnumerator();
+                while (synEnumerator.MoveNext())
+                {
+                    writer.Write(synEnumerator.Current.Key);
+                    writer.Write(synEnumerator.Current.Value);
+                }
+                synEnumerator.Dispose();
+
+                writer.Write(crystal.LearnedSynergySkillIds.Count);
+                for (int j = 0; j < crystal.LearnedSynergySkillIds.Count; j++)
+                {
+                    writer.Write(crystal.LearnedSynergySkillIds[j]);
+                }
+
+                writer.Write(crystal.DiscoveredSynergyIds.Count);
+                for (int j = 0; j < crystal.DiscoveredSynergyIds.Count; j++)
+                {
+                    writer.Write(crystal.DiscoveredSynergyIds[j]);
+                }
             }
         }
 
@@ -591,6 +726,124 @@ namespace PitHero.Services
                     merc.HairstyleIndex = reader.ReadInt();
                     merc.ShirtColor = ReadColor(reader);
                     HiredMercenaries.Add(merc);
+                }
+            }
+
+            // 14. Crystal Collection (added in version 6)
+            if (version >= 6)
+            {
+                int crystalCount = reader.ReadInt();
+                CrystalCollection = new List<SavedHeroCrystal>(crystalCount);
+                for (int i = 0; i < crystalCount; i++)
+                {
+                    SavedHeroCrystal crystal;
+                    crystal.Name = reader.ReadString();
+                    crystal.JobName = reader.ReadString();
+                    crystal.Level = reader.ReadInt();
+                    crystal.SlotIndex = reader.ReadInt();
+                    crystal.BaseStrength = reader.ReadInt();
+                    crystal.BaseAgility = reader.ReadInt();
+                    crystal.BaseVitality = reader.ReadInt();
+                    crystal.BaseMagic = reader.ReadInt();
+                    crystal.TotalJP = reader.ReadInt();
+                    crystal.CurrentJP = reader.ReadInt();
+                    crystal.R = reader.ReadInt();
+                    crystal.G = reader.ReadInt();
+                    crystal.B = reader.ReadInt();
+                    crystal.A = reader.ReadInt();
+
+                    int skillCount = reader.ReadInt();
+                    crystal.LearnedSkillIds = new List<string>(skillCount);
+                    for (int j = 0; j < skillCount; j++)
+                    {
+                        crystal.LearnedSkillIds.Add(reader.ReadString());
+                    }
+
+                    int synCount = reader.ReadInt();
+                    crystal.SynergyPoints = new Dictionary<string, int>(synCount);
+                    for (int j = 0; j < synCount; j++)
+                    {
+                        string key = reader.ReadString();
+                        int value = reader.ReadInt();
+                        crystal.SynergyPoints[key] = value;
+                    }
+
+                    int synSkillCount = reader.ReadInt();
+                    crystal.LearnedSynergySkillIds = new List<string>(synSkillCount);
+                    for (int j = 0; j < synSkillCount; j++)
+                    {
+                        crystal.LearnedSynergySkillIds.Add(reader.ReadString());
+                    }
+
+                    int discSynCount = reader.ReadInt();
+                    crystal.DiscoveredSynergyIds = new List<string>(discSynCount);
+                    for (int j = 0; j < discSynCount; j++)
+                    {
+                        crystal.DiscoveredSynergyIds.Add(reader.ReadString());
+                    }
+
+                    CrystalCollection.Add(crystal);
+                }
+
+                // 15. Crystal Queue Indices (added in version 6)
+                CrystalQueueIndices = new int[5];
+                for (int i = 0; i < 5; i++)
+                {
+                    CrystalQueueIndices[i] = reader.ReadInt();
+                }
+
+                // 16. Second Chance Vault Crystals (added in version 6)
+                int vaultCrystalCount = reader.ReadInt();
+                SecondChanceVaultCrystals = new List<SavedHeroCrystal>(vaultCrystalCount);
+                for (int i = 0; i < vaultCrystalCount; i++)
+                {
+                    SavedHeroCrystal crystal;
+                    crystal.Name = reader.ReadString();
+                    crystal.JobName = reader.ReadString();
+                    crystal.Level = reader.ReadInt();
+                    crystal.SlotIndex = reader.ReadInt();
+                    crystal.BaseStrength = reader.ReadInt();
+                    crystal.BaseAgility = reader.ReadInt();
+                    crystal.BaseVitality = reader.ReadInt();
+                    crystal.BaseMagic = reader.ReadInt();
+                    crystal.TotalJP = reader.ReadInt();
+                    crystal.CurrentJP = reader.ReadInt();
+                    crystal.R = reader.ReadInt();
+                    crystal.G = reader.ReadInt();
+                    crystal.B = reader.ReadInt();
+                    crystal.A = reader.ReadInt();
+
+                    int skillCount = reader.ReadInt();
+                    crystal.LearnedSkillIds = new List<string>(skillCount);
+                    for (int j = 0; j < skillCount; j++)
+                    {
+                        crystal.LearnedSkillIds.Add(reader.ReadString());
+                    }
+
+                    int synCount = reader.ReadInt();
+                    crystal.SynergyPoints = new Dictionary<string, int>(synCount);
+                    for (int j = 0; j < synCount; j++)
+                    {
+                        string key = reader.ReadString();
+                        int value = reader.ReadInt();
+                        crystal.SynergyPoints[key] = value;
+                    }
+
+                    int synSkillCount = reader.ReadInt();
+                    crystal.LearnedSynergySkillIds = new List<string>(synSkillCount);
+                    for (int j = 0; j < synSkillCount; j++)
+                    {
+                        crystal.LearnedSynergySkillIds.Add(reader.ReadString());
+                    }
+
+                    int discSynCount = reader.ReadInt();
+                    crystal.DiscoveredSynergyIds = new List<string>(discSynCount);
+                    for (int j = 0; j < discSynCount; j++)
+                    {
+                        crystal.DiscoveredSynergyIds.Add(reader.ReadString());
+                    }
+
+                    SecondChanceVaultCrystals.Add(crystal);
                 }
             }
         }

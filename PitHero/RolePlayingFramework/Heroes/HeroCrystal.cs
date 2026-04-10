@@ -1,3 +1,4 @@
+using Microsoft.Xna.Framework;
 using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Skills;
 using RolePlayingFramework.Stats;
@@ -12,6 +13,10 @@ namespace RolePlayingFramework.Heroes
         public IJob Job { get; }
         public int Level { get; }
         public StatBlock BaseStats { get; }
+        public Color Color { get; private set; }
+
+        /// <summary>True if this crystal is a combo of two jobs.</summary>
+        public bool IsCombo => Job is CompositeJob;
 
         /// <summary>Persistent learned skill ids (active + passive).</summary>
         private readonly HashSet<string> _learnedSkillIds;
@@ -40,11 +45,17 @@ namespace RolePlayingFramework.Heroes
         public IReadOnlyCollection<string> DiscoveredSynergyIds => _discoveredSynergyIds;
 
         public HeroCrystal(string name, IJob job, int level, in StatBlock baseStats)
+            : this(name, job, level, baseStats, CrystalColorUtil.GetJobColor(job))
+        {
+        }
+
+        public HeroCrystal(string name, IJob job, int level, in StatBlock baseStats, Color color)
         {
             Name = name;
             Job = job;
             Level = level < 1 ? 1 : level;
             BaseStats = baseStats;
+            Color = color;
             _learnedSkillIds = new HashSet<string>();
             TotalJP = 0;
             CurrentJP = 0;
@@ -54,12 +65,14 @@ namespace RolePlayingFramework.Heroes
         }
 
         private HeroCrystal(string name, IJob job, int level, in StatBlock baseStats, HashSet<string> learned, int totalJP, int currentJP,
-            Dictionary<string, int>? synergyPoints = null, HashSet<string>? learnedSynergySkillIds = null, HashSet<string>? discoveredSynergyIds = null)
+            Dictionary<string, int>? synergyPoints = null, HashSet<string>? learnedSynergySkillIds = null, HashSet<string>? discoveredSynergyIds = null,
+            Color? color = null)
         {
             Name = name;
             Job = job;
             Level = level < 1 ? 1 : level;
             BaseStats = baseStats;
+            Color = color ?? CrystalColorUtil.GetJobColor(job);
             _learnedSkillIds = learned;
             TotalJP = totalJP;
             CurrentJP = currentJP;
@@ -218,8 +231,11 @@ namespace RolePlayingFramework.Heroes
             var combinedDiscoveredSynergies = new HashSet<string>(a._discoveredSynergyIds);
             foreach (var id in b._discoveredSynergyIds) combinedDiscoveredSynergies.Add(id);
 
+            // Blend colors using HSV
+            var blendedColor = CrystalColorUtil.CombineColors(a.Color, b.Color);
+
             return new HeroCrystal(combinedName, job, level, stats, union, totalJP, currentJP,
-                combinedSynergyPoints, combinedSynergySkills, combinedDiscoveredSynergies);
+                combinedSynergyPoints, combinedSynergySkills, combinedDiscoveredSynergies, blendedColor);
         }
     }
 }

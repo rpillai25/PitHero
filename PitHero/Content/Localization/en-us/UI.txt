@@ -148,3 +148,25 @@ SkillProgress,Progress: {0} / {1} SP
 SkillJpCost,Cost: {0} JP
 SkillActiveMultiplier,Active: {0}x (Multiplier: {1}x)
 EquipPreviewChanges,Changes
+TabCrystals,Crystals
+CrystalForgeTitle,Crystal Forge
+CrystalForgeButton,Forge
+CrystalInventoryTitle,Crystal Inventory
+CrystalQueueTitle,Crystal Queue
+CrystalCreateButton,Create
+CrystalCardJobLabel,Job: {0}
+CrystalCardLevelLabel,Level: {0}
+CrystalCardJobLevelLabel,Job Level: {0}
+CrystalCardStatsLabel,STR:{0} AGI:{1} VIT:{2} MAG:{3}
+CrystalCardJobSkillsLabel,Job Skills
+CrystalCardSynergySkillsLabel,Synergy Skills
+CrystalTooltipCombo,Combo
+CrystalCreationTitle,Create Crystal
+CrystalCreationJobLabel,Select Job:
+CrystalCreationCreateButton,Create
+CrystalForgeNeedsTwoCrystals,Select 2 crystals to forge
+CrystalQueueEmpty,(empty)
+CrystalInventoryEmpty,No crystals in collection
+DialogConfirmForge,Confirm Forge
+ConfirmForgeMessage,Combine these 2 crystals into a Combo Crystal?
+CrystalInventoryFull,Crystal inventory is full
