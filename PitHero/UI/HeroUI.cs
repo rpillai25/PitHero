@@ -82,6 +82,7 @@ namespace PitHero.UI
         
         // Crystals Collection tab component
         private CrystalsTab _crystalsTabComponent;
+        private Tab _crystalsCollectionTab;
 
         // Mercenaries tab component
         private MercenariesTab _mercenariesTabComponent;
@@ -253,9 +254,9 @@ namespace PitHero.UI
             _tabPane.AddTab(_crystalTab);
             
             // Add Crystals Collection tab after Hero Info tab
-            var crystalsCollectionTab = new Tab(GetText(TextType.UI, UITextKey.TabCrystals), tabStyle);
-            PopulateCrystalsCollectionTab(crystalsCollectionTab, skin);
-            _tabPane.AddTab(crystalsCollectionTab);
+            _crystalsCollectionTab = new Tab(GetText(TextType.UI, UITextKey.TabCrystals), tabStyle);
+            PopulateCrystalsCollectionTab(_crystalsCollectionTab, skin);
+            _tabPane.AddTab(_crystalsCollectionTab);
             
             _tabPane.AddTab(_mercenariesTab);
             _tabPane.AddTab(_prioritiesTab);
@@ -282,6 +283,11 @@ namespace PitHero.UI
             {
                 // Inventory tab needs full width for 20-column grid
                 newWidth = HERO_WINDOW_WIDTH;
+            }
+            else if (selectedTab == _crystalsCollectionTab)
+            {
+                // Crystals tab needs extra width so all 5 tab buttons fit with ≥23px side padding
+                newWidth = 490f;
             }
             else
             {

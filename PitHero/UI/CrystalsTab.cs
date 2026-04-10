@@ -45,6 +45,7 @@ namespace PitHero.UI
             // ── Root table ───────────────────────────────────────────────────────
             var mainTable = new Table();
             mainTable.Top().Left();
+            mainTable.PadLeft(32f);
 
             // ── Forge section (spans both columns) ───────────────────────────────
             var forgeSection = new Table();
@@ -167,7 +168,7 @@ namespace PitHero.UI
 
         private void OnCreateClicked(Button b)
         {
-            var dialog = new CrystalCreationDialog(_skin, _crystalService);
+            var dialog = new CrystalCreationDialog(_skin, _stage, _crystalService);
             dialog.OnCrystalCreated += c => RefreshAll();
             _stage.AddElement(dialog);
         }
