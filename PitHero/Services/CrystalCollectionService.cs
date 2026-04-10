@@ -228,6 +228,14 @@ namespace PitHero.Services
             return null;
         }
 
+        /// <summary>Returns the inventory index referenced by a queue slot, or -1 if none.</summary>
+        public int GetQueueInventoryIndex(int queueSlot)
+        {
+            if (queueSlot < 0 || queueSlot >= _queueInventoryIndices.Length)
+                return -1;
+            return _queueInventoryIndices[queueSlot];
+        }
+
         /// <summary>Adds a crystal to the back of the auto-infuse queue.</summary>
         public bool TryEnqueue(HeroCrystal crystal)
         {
@@ -264,6 +272,33 @@ namespace PitHero.Services
             }
 
             return false;
+        }
+
+        /// <summary>Swaps two inventory slots, updating queue and forge references.</summary>
+        public void SwapInventorySlots(int a, int b)
+        {
+            if (a < 0 || a >= _inventory.Length || b < 0 || b >= _inventory.Length || a == b)
+                return;
+
+            var tmp = _inventory[a];
+            _inventory[a] = _inventory[b];
+            _inventory[b] = tmp;
+
+            // Update queue index references
+            for (int i = 0; i < _queueInventoryIndices.Length; i++)
+            {
+                if (_queueInventoryIndices[i] == a)
+                    _queueInventoryIndices[i] = b;
+                else if (_queueInventoryIndices[i] == b)
+                    _queueInventoryIndices[i] = a;
+            }
+
+            // Update forge references
+            if (ForgeInputA == a) ForgeInputA = b;
+            else if (ForgeInputA == b) ForgeInputA = a;
+
+            if (ForgeInputB == a) ForgeInputB = b;
+            else if (ForgeInputB == b) ForgeInputB = a;
         }
 
         /// <summary>Clears the entire inventory and queue and resets PendingNextCrystal.</summary>

@@ -728,7 +728,7 @@ namespace PitHero.UI
         private void PopulateCrystalsCollectionTab(Tab tab, Skin skin)
         {
             _crystalsTabComponent = new CrystalsTab();
-            var content = _crystalsTabComponent.CreateContent(skin, _stage);
+            var content = _crystalsTabComponent.CreateContent(skin, _stage, _heroWindow);
             tab.Add(content).Expand().Fill();
         }
 
