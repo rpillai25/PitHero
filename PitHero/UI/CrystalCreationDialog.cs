@@ -213,6 +213,10 @@ namespace PitHero.UI
 
         private void OnCreateClicked(Button btn)
         {
+            // Lazy-fetch service in case it wasn't available at construction time.
+            if (_crystalService == null)
+                _crystalService = Core.Services?.GetService<CrystalCollectionService>();
+
             var job  = Jobs[_currentJobIndex];
             var stats = new StatBlock(
                 Nez.Random.Range(2, 6),

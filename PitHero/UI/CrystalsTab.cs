@@ -119,24 +119,33 @@ namespace PitHero.UI
             return mainTable;
         }
 
+        private CrystalCollectionService GetCrystalService()
+        {
+            if (_crystalService == null)
+                _crystalService = Core.Services?.GetService<CrystalCollectionService>();
+            return _crystalService;
+        }
+
         private string GetText(string key) => _textService?.DisplayText(TextType.UI, key) ?? key;
 
         /// <summary>Refreshes all slots from the service.</summary>
         public void RefreshAll()
         {
-            if (_crystalService == null) return;
+            var svc = GetCrystalService();
+            if (svc == null) return;
 
             for (int i = 0; i < INVENTORY_TOTAL; i++)
-                _inventorySlots[i].SetCrystal(_crystalService.Inventory[i]);
+                _inventorySlots[i].SetCrystal(svc.Inventory[i]);
             
             for (int i = 0; i < QUEUE_SLOTS; i++)
-                _queueSlots[i].SetCrystal(_crystalService.Queue[i]);
+                _queueSlots[i].SetCrystal(svc.Queue[i]);
         }
 
         private void OnInventorySlotClicked(int idx)
         {
+            var svc = GetCrystalService();
             _selectedInventorySlot = idx;
-            var crystal = _crystalService?.GetInventoryCrystal(idx);
+            var crystal = svc?.GetInventoryCrystal(idx);
             if (crystal != null && _crystalCard != null)
             {
                 _crystalCard.ShowCrystal(crystal);
@@ -146,21 +155,23 @@ namespace PitHero.UI
 
         private void OnQueueSlotClicked(int idx)
         {
-            if (_selectedInventorySlot >= 0 && _crystalService != null)
+            var svc = GetCrystalService();
+            if (_selectedInventorySlot >= 0 && svc != null)
             {
-                _crystalService.EnqueueAt(idx, _selectedInventorySlot);
+                svc.EnqueueAt(idx, _selectedInventorySlot);
                 RefreshAll();
             }
         }
 
         private void OnForgeClicked(Button b)
         {
-            if (_crystalService != null)
+            var svc = GetCrystalService();
+            if (svc != null)
             {
-                var result = _crystalService.TryForge("Combo Crystal");
+                var result = svc.TryForge("Combo Crystal");
                 if (result != null)
                 {
-                    _crystalService.TryAddToInventory(result);
+                    svc.TryAddToInventory(result);
                     RefreshAll();
                 }
             }
@@ -168,7 +179,8 @@ namespace PitHero.UI
 
         private void OnCreateClicked(Button b)
         {
-            var dialog = new CrystalCreationDialog(_skin, _stage, _crystalService);
+            var svc = GetCrystalService();
+            var dialog = new CrystalCreationDialog(_skin, _stage, svc);
             dialog.OnCrystalCreated += c => RefreshAll();
             _stage.AddElement(dialog);
         }

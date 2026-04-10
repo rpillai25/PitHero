@@ -99,6 +99,10 @@ namespace PitHero.ECS.Scenes
             _pitLevelStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
             _pitLevelStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
 
+            // Register crystal collection service before UI is built so CrystalsTab can
+            // resolve it via Core.Services.GetService<CrystalCollectionService>() during Initialize.
+            Core.Services.AddService(new Services.CrystalCollectionService());
+
             SetupUIOverlay();
         }
 
@@ -109,6 +113,7 @@ namespace PitHero.ECS.Scenes
         public override void Unload()
         {
             Core.Content.UnloadAsset<TmxMap>(_mapPath);
+            Core.Services.RemoveService(typeof(Services.CrystalCollectionService));
             Core.Services.RemoveService(typeof(MercenaryManager));
             Core.Services.RemoveService(typeof(AlliedMonsterManager));
             Core.Services.RemoveService(typeof(HeroPromotionService));
@@ -154,9 +159,6 @@ namespace PitHero.ECS.Scenes
             // Initialize hero promotion service (handles mercenary promotions and hero crystal ceremonies after death)
             _heroPromotionService = new Services.HeroPromotionService(this);
             Core.Services.AddService(_heroPromotionService);
-
-            // Initialize crystal collection service (manages the player's crystal inventory and queue)
-            Core.Services.AddService(new Services.CrystalCollectionService());
 
             // Initialize player interaction service for camera control
             var playerInteractionService = new PlayerInteractionService();
