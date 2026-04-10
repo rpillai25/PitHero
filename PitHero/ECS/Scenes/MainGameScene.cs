@@ -412,16 +412,20 @@ namespace PitHero.ECS.Scenes
                 }
                 
                 // Restore crystal queue
-                if (pendingData.CrystalQueueIndices != null)
+                if (pendingData.CrystalQueue != null)
                 {
-                    for (int i = 0; i < 5 && i < pendingData.CrystalQueueIndices.Length; i++)
+                    for (int i = 0; i < pendingData.CrystalQueue.Count; i++)
                     {
-                        int invIndex = pendingData.CrystalQueueIndices[i];
-                        if (invIndex >= 0)
-                        {
-                            crystalService.EnqueueAt(i, invIndex);
-                        }
+                        var qSaved = pendingData.CrystalQueue[i];
+                        var qCrystal = qSaved.ToHeroCrystal();
+                        crystalService.TryEnqueue(qCrystal);
                     }
+                }
+
+                // Restore pending next crystal
+                if (pendingData.PendingNextCrystal.HasValue)
+                {
+                    crystalService.PendingNextCrystal = pendingData.PendingNextCrystal.Value.ToHeroCrystal();
                 }
                 
                 Debug.Log("[MainGameScene] Restored " + pendingData.CrystalCollection.Count + " crystals to collection");

@@ -7,8 +7,11 @@ namespace RolePlayingFramework.Jobs
     /// <summary>Defines a job (vocation) that augments stats and grants skills.</summary>
     public interface IJob
     {
-        /// <summary>Display name of the job.</summary>
+        /// <summary>Display name of the job (may require TextService; use NameKey for persistence).</summary>
         string Name { get; }
+
+        /// <summary>Raw localization key used to identify and persist this job. Safe to call without TextService.</summary>
+        string NameKey { get; }
 
         /// <summary>Short description of the job's identity and specialty.</summary>
         string Description { get; }

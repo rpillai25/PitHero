@@ -1,31 +1,5 @@
 #if CRYSTAL_UI_FEATURE
-// This file compiles only when CRYSTAL_UI_FEATURE is defined.
-// The Principal Engineer should define this constant once SaveData v6
-// (crystal collection fields) is implemented.
-//
-// Expected new SaveData fields (v6):
-//   public List<SavedCrystal> CrystalCollection;     // up to 80 slots
-//   public List<SavedCrystal> CrystalQueue;          // up to 5 slots
-//   public SavedCrystal?      PendingNextCrystal;    // set on death
-//
-// Expected new struct:
-//   public struct SavedCrystal
-//   {
-//       public string JobName;
-//       public int    Level;
-//       public int    BaseStrength;
-//       public int    BaseAgility;
-//       public int    BaseVitality;
-//       public int    BaseMagic;
-//       public int    TotalJP;
-//       public int    CurrentJP;
-//       public string[] LearnedSkillIds;
-//       public Color  CrystalColor;     // new in v6
-//       public bool   IsCombo;          // new in v6
-//   }
-
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Microsoft.Xna.Framework;
 using Nez.Persistence.Binary;
 using PitHero.Services;
 using PitHero.VirtualGame;
@@ -42,7 +16,7 @@ namespace PitHero.Tests
     /// <summary>
     /// Tests for Save/Load crystal collection roundtrip (Scenario 4).
     /// Verifies that a CrystalCollectionService state survives serialization
-    /// through SaveData v6 and deserialization with full fidelity.
+    /// through SaveData v7 and deserialization with full fidelity.
     /// </summary>
     [TestClass]
     public class CrystalSaveRoundtripTests
@@ -73,15 +47,15 @@ namespace PitHero.Tests
 
             // Act: serialize to SaveData
             var saveData = new SaveData();
-            saveData.CrystalCollection = new List<SavedCrystal>
+            saveData.CrystalCollection = new List<SavedHeroCrystal>
             {
-                SavedCrystal.FromHeroCrystal(c1),
-                SavedCrystal.FromHeroCrystal(c2),
-                SavedCrystal.FromHeroCrystal(c3),
+                SavedHeroCrystal.FromHeroCrystal(c1),
+                SavedHeroCrystal.FromHeroCrystal(c2),
+                SavedHeroCrystal.FromHeroCrystal(c3),
             };
-            saveData.CrystalQueue = new List<SavedCrystal>
+            saveData.CrystalQueue = new List<SavedHeroCrystal>
             {
-                SavedCrystal.FromHeroCrystal(queued),
+                SavedHeroCrystal.FromHeroCrystal(queued),
             };
 
             // Persist and restore through the binary store
@@ -91,19 +65,16 @@ namespace PitHero.Tests
             try
             {
                 var dataStore = new FileDataStore(tempDir);
-                dataStore.Set("save", saveData);
+                dataStore.Save("save", saveData);
 
                 var restored = new SaveData();
-                dataStore.Get("save", restored);
+                dataStore.Load("save", restored);
 
                 // Restore into a fresh service
                 var svcAfter = new MockCrystalCollectionService();
                 for (int i = 0; i < restored.CrystalCollection.Count; i++)
                 {
                     var sc = restored.CrystalCollection[i];
-                    // Principal Engineer: CrystalCollectionService should expose a
-                    // method like RestoreFromSaved(SavedCrystal sc) that rebuilds a
-                    // HeroCrystal from the saved struct and places it in the inventory.
                     svcAfter.TryAddToInventory(sc.ToHeroCrystal());
                 }
                 for (int i = 0; i < restored.CrystalQueue.Count; i++)
@@ -125,16 +96,16 @@ namespace PitHero.Tests
         public void CrystalSave_CrystalCollection_JobNamePreservedOnRoundtrip()
         {
             var original = MakeKnightCrystal(12);
-            var saved = SavedCrystal.FromHeroCrystal(original);
+            var saved = SavedHeroCrystal.FromHeroCrystal(original);
             var restored = saved.ToHeroCrystal();
-            Assert.AreEqual(original.Job.Name, restored.Job.Name, "Job name should roundtrip");
+            Assert.AreEqual(original.Job.NameKey, restored.Job.NameKey, "Job name should roundtrip");
         }
 
         [TestMethod]
         public void CrystalSave_CrystalCollection_LevelPreservedOnRoundtrip()
         {
             var original = MakeKnightCrystal(15);
-            var saved = SavedCrystal.FromHeroCrystal(original);
+            var saved = SavedHeroCrystal.FromHeroCrystal(original);
             var restored = saved.ToHeroCrystal();
             Assert.AreEqual(original.Level, restored.Level, "Level should roundtrip");
         }
@@ -143,11 +114,9 @@ namespace PitHero.Tests
         public void CrystalSave_CrystalCollection_ColorPreservedOnRoundtrip()
         {
             var original = MakeKnightCrystal(7);
-            // Color will be set by the feature implementation
-            var saved = SavedCrystal.FromHeroCrystal(original);
+            var saved = SavedHeroCrystal.FromHeroCrystal(original);
             var restored = saved.ToHeroCrystal();
-            // Once Color property exists: Assert.AreEqual(original.Color, restored.Color)
-            Assert.IsNotNull(restored, "Roundtrip should produce a valid crystal");
+            Assert.AreEqual(original.Color, restored.Color, "Color should roundtrip");
         }
 
         [TestMethod]
@@ -158,10 +127,9 @@ namespace PitHero.Tests
             var b = MakeMageCrystal(5);
             var combo = HeroCrystal.Combine("Combo", a, b);
 
-            var saved = SavedCrystal.FromHeroCrystal(combo);
+            var saved = SavedHeroCrystal.FromHeroCrystal(combo);
             var restored = saved.ToHeroCrystal();
 
-            // Once IsCombo property exists: Assert.IsTrue(restored.IsCombo)
             Assert.IsInstanceOfType(restored.Job, typeof(CompositeJob),
                 "Restored combo crystal should still have CompositeJob");
         }
@@ -171,7 +139,7 @@ namespace PitHero.Tests
         {
             var pending = MakeMageCrystal(4);
             var saveData = new SaveData();
-            saveData.PendingNextCrystal = SavedCrystal.FromHeroCrystal(pending);
+            saveData.PendingNextCrystal = SavedHeroCrystal.FromHeroCrystal(pending);
 
             // Assert that the field is non-null and contains correct job
             Assert.IsNotNull(saveData.PendingNextCrystal, "PendingNextCrystal should be saved");
@@ -184,8 +152,8 @@ namespace PitHero.Tests
         public void CrystalSave_EmptyCollectionAndQueue_RoundtripSucceeds()
         {
             var saveData = new SaveData();
-            saveData.CrystalCollection = new List<SavedCrystal>();
-            saveData.CrystalQueue = new List<SavedCrystal>();
+            saveData.CrystalCollection = new List<SavedHeroCrystal>();
+            saveData.CrystalQueue = new List<SavedHeroCrystal>();
             saveData.PendingNextCrystal = null;
 
             // Restore into mock

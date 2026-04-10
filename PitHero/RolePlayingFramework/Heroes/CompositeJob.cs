@@ -31,6 +31,7 @@ namespace RolePlayingFramework.Heroes
         }
 
         public string Name => $"{_a.Name}-{_b.Name}";
+        public string NameKey => $"{_a.NameKey}-{_b.NameKey}";
         public string Description => $"{_a.Description} / {_b.Description}";
         public string Role => $"{_a.Role} / {_b.Role}";
         public StatBlock BaseBonus => _a.BaseBonus.Add(_b.BaseBonus).Scale(0.5f);

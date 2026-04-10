@@ -210,7 +210,7 @@ namespace PitHero.Services
                     {
                         var crystal = hero.BoundCrystal;
                         data.HasCrystal = true;
-                        data.CrystalJobName = crystal.Job.Name;
+                        data.CrystalJobName = crystal.Job.NameKey;
                         data.CrystalLevel = crystal.Level;
                         data.CrystalBaseStrength = crystal.BaseStats.Strength;
                         data.CrystalBaseAgility = crystal.BaseStats.Agility;
@@ -407,7 +407,7 @@ namespace PitHero.Services
                     {
                         var saved = new SavedHeroCrystal();
                         saved.Name = crystal.Name;
-                        saved.JobName = crystal.Job.Name;
+                        saved.JobName = crystal.Job.NameKey;
                         saved.Level = crystal.Level;
                         saved.SlotIndex = i;
                         saved.BaseStrength = crystal.BaseStats.Strength;
@@ -457,25 +457,18 @@ namespace PitHero.Services
                     }
                 }
 
-                // Crystal queue indices
-                data.CrystalQueueIndices = new int[5];
+                // Crystal queue (serialized as full crystal list)
+                data.CrystalQueue = new List<SavedHeroCrystal>();
                 var queue = crystalService.Queue;
-                for (int i = 0; i < 5; i++)
+                for (int i = 0; i < queue.Count; i++)
                 {
-                    data.CrystalQueueIndices[i] = -1; // Default
                     if (queue[i] != null)
-                    {
-                        // Find the inventory index for this queued crystal
-                        for (int j = 0; j < inventory.Count; j++)
-                        {
-                            if (inventory[j] == queue[i])
-                            {
-                                data.CrystalQueueIndices[i] = j;
-                                break;
-                            }
-                        }
-                    }
+                        data.CrystalQueue.Add(SavedHeroCrystal.FromHeroCrystal(queue[i]));
                 }
+
+                // Pending next crystal
+                if (crystalService.PendingNextCrystal != null)
+                    data.PendingNextCrystal = SavedHeroCrystal.FromHeroCrystal(crystalService.PendingNextCrystal);
             }
 
             // Second Chance Vault Crystals
@@ -489,7 +482,7 @@ namespace PitHero.Services
                     var crystal = lostCrystals[i];
                     var saved = new SavedHeroCrystal();
                     saved.Name = crystal.Name;
-                    saved.JobName = crystal.Job.Name;
+                    saved.JobName = crystal.Job.NameKey;
                     saved.Level = crystal.Level;
                     saved.SlotIndex = i;
                     saved.BaseStrength = crystal.BaseStats.Strength;

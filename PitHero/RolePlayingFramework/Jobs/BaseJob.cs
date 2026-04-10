@@ -23,6 +23,7 @@ namespace RolePlayingFramework.Jobs
         }
 
         public string Name => GetTextService()?.DisplayText(TextType.Job, _nameKey) ?? _nameKey;
+        public string NameKey => _nameKey;
         public string Description => GetTextService()?.DisplayText(TextType.Job, _descKey) ?? _descKey;
         public string Role => GetTextService()?.DisplayText(TextType.Job, _roleKey) ?? _roleKey;
         public StatBlock BaseBonus { get; }
