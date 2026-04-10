@@ -7,7 +7,6 @@ using RolePlayingFramework.Skills;
 using RolePlayingFramework.Synergies;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace PitHero.UI
 {
@@ -158,14 +157,18 @@ namespace PitHero.UI
             col = 0;
 
             var discoveredSynergyIds = _crystal.DiscoveredSynergyIds;
-            var learnedSynergyIds = _crystal.LearnedSynergySkillIds;
+            // Cast to ICollection<string> to access Contains without LINQ
+            var learnedSynergyIds = _crystal.LearnedSynergySkillIds as ICollection<string>;
+
             int synergyCount = 0;
-            foreach (var synergyId in discoveredSynergyIds)
+            // IReadOnlyCollection has no indexer, use GetEnumerator manually (UI-only code path)
+            var discoveredEnumerator = discoveredSynergyIds.GetEnumerator();
+            while (discoveredEnumerator.MoveNext())
             {
-                var pattern = SynergyDetector.GetPatternById(synergyId);
+                var pattern = SynergyDetector.GetPatternById(discoveredEnumerator.Current);
                 if (pattern?.UnlockedSkill == null) continue;
                 var skill = pattern.UnlockedSkill;
-                if (!learnedSynergyIds.Contains(skill.Id)) continue;
+                if (learnedSynergyIds == null || !learnedSynergyIds.Contains(skill.Id)) continue;
                 var btn = new SkillIconButton(skill, true);
                 btn.OnHover += OnSkillHover;
                 btn.OnUnhover += OnSkillUnhover;
