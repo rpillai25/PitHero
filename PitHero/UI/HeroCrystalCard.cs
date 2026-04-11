@@ -111,21 +111,21 @@ namespace PitHero.UI
 
             // Level
             var levelText = string.Format(GetText(TextType.UI, UITextKey.CrystalCardLevelLabel), _crystal.Level);
-            AddWhiteLabel(levelText);
+            AddDefaultLabel(levelText);
 
             // Job Level
             var jobLevelText = string.Format(GetText(TextType.UI, UITextKey.CrystalCardJobLevelLabel), _crystal.JobLevel);
-            AddWhiteLabel(jobLevelText);
+            AddDefaultLabel(jobLevelText);
 
             // Stats
             var statsText = string.Format(
                 GetText(TextType.UI, UITextKey.CrystalCardStatsLabel),
                 _crystal.BaseStats.Strength, _crystal.BaseStats.Agility,
                 _crystal.BaseStats.Vitality, _crystal.BaseStats.Magic);
-            AddWhiteLabel(statsText, padTop: 3);
+            AddDefaultLabel(statsText, padTop: 3);
 
             // ── Job Skills ───────────────────────────────────────────────────────
-            AddWhiteLabel(GetText(TextType.UI, UITextKey.CrystalCardJobSkillsLabel), padTop: 4);
+            AddDefaultLabel(GetText(TextType.UI, UITextKey.CrystalCardJobSkillsLabel), padTop: 4);
 
             var jobSkillsTable = new Table();
             jobSkillsTable.Defaults().Pad(1f);
@@ -152,7 +152,7 @@ namespace PitHero.UI
             _contentTable.Row();
 
             // ── Synergy Skills ───────────────────────────────────────────────────
-            AddWhiteLabel(GetText(TextType.UI, UITextKey.CrystalCardSynergySkillsLabel), padTop: 4);
+            AddDefaultLabel(GetText(TextType.UI, UITextKey.CrystalCardSynergySkillsLabel), padTop: 4);
 
             var synergyTable = new Table();
             synergyTable.Defaults().Pad(1f);
@@ -192,7 +192,7 @@ namespace PitHero.UI
             Pack();
         }
 
-        private void AddWhiteLabel(string text, float padTop = 0)
+        private void AddDefaultLabel(string text, float padTop = 0)
         {
             var lbl = new Label(text, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = BrownFontColor });
             _contentTable.Add(lbl).Left().Pad(padTop, 0, 2, 0);
