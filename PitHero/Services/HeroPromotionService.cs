@@ -3,6 +3,7 @@ using Nez;
 using Nez.Sprites;
 using PitHero.ECS.Components;
 using PitHero.ECS.Scenes;
+using PitHero.UI;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Inventory;
@@ -147,6 +148,9 @@ namespace PitHero.Services
 
             // Reconnect UI
             ReconnectUIToHero(heroEntity);
+
+            // Re-enable the Save button now that the promotion ceremony is complete
+            Core.Services.GetService<SettingsUI>()?.SetSaveEnabled(true);
 
             _isGrantingCrystal = false;
             Debug.Log("[HeroPromotionService] *** HERO CRYSTAL CEREMONY COMPLETE ***");

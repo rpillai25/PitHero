@@ -121,6 +121,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(TiledMapService));
             Core.Services.RemoveService(typeof(PitWidthManager));
             Core.Services.RemoveService(typeof(ShortcutBarService));
+            Core.Services.RemoveService(typeof(SettingsUI));
         }
 
         public override void Begin()
@@ -755,6 +756,9 @@ namespace PitHero.ECS.Scenes
         {
             CreateHeroEntity(34, 6, needsCrystal: true);
 
+            // Disable save while hero walks to statue — saving in this transitional state puts the game in an odd state
+            Core.Services.GetService<SettingsUI>()?.SetSaveEnabled(false);
+
             // Unfreeze and reassign mercenaries to follow the new hero
             var mercenaryManager = Core.Services.GetService<MercenaryManager>();
             if (mercenaryManager != null)
@@ -998,7 +1002,7 @@ namespace PitHero.ECS.Scenes
 
             _settingsUI = new SettingsUI(Core.Instance);
             _settingsUI.InitializeUI(uiCanvas.Stage);
-
+            Core.Services.AddService(_settingsUI);
             // Remove duplicate HeroUI creation - it's already handled by SettingsUI
             // Initialize HeroUI for pit priority management
             // _heroUI = new HeroUI();
