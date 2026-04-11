@@ -19,6 +19,8 @@ namespace PitHero.UI
         private const float SKILL_BUTTON_SIZE = 28f;
         private const float SKILL_SCROLL_HEIGHT = 80f;
 
+        private static readonly Color BrownFontColor = new Color(71, 36, 7);
+
         private HeroCrystal _crystal;
         private Table _contentTable;
         private TextService _textService;
@@ -80,12 +82,12 @@ namespace PitHero.UI
             _skillTooltip?.GetContainer().Remove();
         }
 
-        /// <summary>Positions the card so its left edge is just past the right edge of the given window.</summary>
+        /// <summary>Positions the card so its left edge is just past the right edge of the given window, shifted down 32px.</summary>
         public void PositionAtWindowRight(Window heroWindow)
         {
             if (heroWindow == null) return;
             float x = heroWindow.GetX() + heroWindow.GetWidth() + 10f;
-            float y = heroWindow.GetY();
+            float y = heroWindow.GetY() + 32f;
             float stageH = _stage.GetHeight();
             if (y + GetHeight() > stageH) y = stageH - GetHeight();
             if (y < 0) y = 0;
@@ -192,7 +194,7 @@ namespace PitHero.UI
 
         private void AddWhiteLabel(string text, float padTop = 0)
         {
-            var lbl = new Label(text, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White });
+            var lbl = new Label(text, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = BrownFontColor });
             _contentTable.Add(lbl).Left().Pad(padTop, 0, 2, 0);
             _contentTable.Row();
         }

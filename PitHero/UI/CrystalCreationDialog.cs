@@ -37,6 +37,7 @@ namespace PitHero.UI
         private Stage _stage;
 
         public event Action<HeroCrystal> OnCrystalCreated;
+        public event Action OnClosed;
 
         public CrystalCreationDialog(Skin skin, Stage stage, CrystalCollectionService crystalService) : base("", skin)
         {
@@ -89,7 +90,7 @@ namespace PitHero.UI
             var createBtn = new TextButton(GetText(UITextKey.CrystalCreationCreateButton), skin, "ph-default");
             createBtn.OnClicked += OnCreateClicked;
             var cancelBtn = new TextButton(GetText(UITextKey.ButtonCancel), skin, "ph-default");
-            cancelBtn.OnClicked += _ => Remove();
+            cancelBtn.OnClicked += _ => { OnClosed?.Invoke(); Remove(); };
 
             var btnRow = new Table();
             btnRow.Add(createBtn).Pad(4);
@@ -101,7 +102,7 @@ namespace PitHero.UI
             _jobInfoTable.Top().Left();
 
             mainTable.Add(leftTable).Top().Left().Width(185f);
-            mainTable.Add(_jobInfoTable).Top().Left().Width(280f).SetPadLeft(12f);
+            mainTable.Add(_jobInfoTable).Top().Left().Width(280f).SetPadLeft(28f);
 
             Add(mainTable).Expand().Fill();
             Pack();
@@ -228,6 +229,7 @@ namespace PitHero.UI
             if (_crystalService != null && _crystalService.TryAddToInventory(crystal))
             {
                 OnCrystalCreated?.Invoke(crystal);
+                OnClosed?.Invoke();
                 Remove();
             }
         }

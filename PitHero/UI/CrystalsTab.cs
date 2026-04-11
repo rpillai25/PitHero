@@ -46,6 +46,9 @@ namespace PitHero.UI
         // Swap animation overlay (reused SwapAnimationOverlay from inventory)
         private SwapAnimationOverlay _swapOverlay;
 
+        // Full-screen dismiss layer for the crystal card (hides card when clicking outside it)
+        private Element _cardDismissLayer;
+
         /// <summary>Creates and returns the tab content table.</summary>
         public Table CreateContent(Skin skin, Stage stage, Window heroWindow)
         {
@@ -470,12 +473,24 @@ namespace PitHero.UI
             _crystalCard.ShowCrystal(crystal);
             _crystalCard.Pack();
             _crystalCard.PositionAtWindowRight(_heroWindow);
+
+            // Ensure card dismiss layer exists and is wired up
+            if (_cardDismissLayer == null)
+            {
+                _cardDismissLayer = new DismissLayer(() => { HideCrystalCard(); ClearSelection(); });
+                _stage.AddElement(_cardDismissLayer);
+            }
+            _cardDismissLayer.SetSize(_stage.GetWidth(), _stage.GetHeight());
+            _cardDismissLayer.SetVisible(true);
+            _cardDismissLayer.ToFront();
             _crystalCard.ToFront();
         }
 
         private void HideCrystalCard()
         {
             _crystalCard?.Hide();
+            if (_cardDismissLayer != null)
+                _cardDismissLayer.SetVisible(false);
         }
 
         private void OnForgeClicked(Button b)
@@ -499,7 +514,49 @@ namespace PitHero.UI
             var svc = GetCrystalService();
             var dialog = new CrystalCreationDialog(_skin, _stage, svc);
             dialog.OnCrystalCreated += c => RefreshAll();
+
+            // Add a full-screen dismiss layer behind the dialog so clicking outside closes it.
+            Element dismissLayer = null;
+            dismissLayer = new DismissLayer(() =>
+            {
+                dismissLayer?.SetVisible(false);
+                dismissLayer?.Remove();
+                dismissLayer = null;
+                dialog.Remove();
+            });
+            dismissLayer.SetSize(_stage.GetWidth(), _stage.GetHeight());
+
+            // Clean up dismiss layer when dialog is closed via its own buttons.
+            dialog.OnClosed += () =>
+            {
+                dismissLayer?.SetVisible(false);
+                dismissLayer?.Remove();
+                dismissLayer = null;
+            };
+
+            _stage.AddElement(dismissLayer);
             _stage.AddElement(dialog);
+        }
+
+        /// <summary>Full-screen transparent element that invokes an action when clicked (consuming the click).</summary>
+        private class DismissLayer : Element, IInputListener
+        {
+            private System.Action _onDismiss;
+
+            public DismissLayer(System.Action onDismiss)
+            {
+                _onDismiss = onDismiss;
+                SetTouchable(Touchable.Enabled);
+            }
+
+            bool IInputListener.OnLeftMousePressed(Vector2 mousePos)  { _onDismiss?.Invoke(); return true; }
+            bool IInputListener.OnRightMousePressed(Vector2 mousePos) { _onDismiss?.Invoke(); return true; }
+            void IInputListener.OnLeftMouseUp(Vector2 mousePos)  { }
+            void IInputListener.OnRightMouseUp(Vector2 mousePos) { }
+            void IInputListener.OnMouseEnter()               { }
+            void IInputListener.OnMouseExit()                { }
+            void IInputListener.OnMouseMoved(Vector2 mousePos) { }
+            bool IInputListener.OnMouseScrolled(int mouseWheelDelta) => false;
         }
     }
 }
