@@ -17,6 +17,9 @@ namespace PitHero.UI
         private const float SLOT_PAD = 1f;
         private const float SWAP_TWEEN_DURATION = 0.2f;
 
+        // Pre-allocated queue slot number strings to avoid dynamic allocation (AOT compliance)
+        private static readonly string[] QueueSlotNumbers = { "1", "2", "3", "4", "5" };
+
         // Slot type enum for multi-slot selection tracking
         private enum SelType { None, ForgeA, ForgeB, Inventory, Queue }
 
@@ -154,7 +157,7 @@ namespace PitHero.UI
                 slot.OnSlotUnhovered += OnSlotUnhovered;
                 _queueSlots[i] = slot;
                 // Show 1-based slot number to the left of each queue slot
-                var numLabel = new Label((i + 1).ToString(), skin, "ph-default");
+                var numLabel = new Label(QueueSlotNumbers[i], skin, "ph-default");
                 var slotRow = new Table();
                 slotRow.Add(numLabel).Width(14f).Right().Pad(0, 0, 0, 3);
                 slotRow.Add(slot).Size(SLOT_SIZE).Pad(SLOT_PAD);
