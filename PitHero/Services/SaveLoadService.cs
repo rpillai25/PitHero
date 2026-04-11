@@ -160,7 +160,7 @@ namespace PitHero.Services
                 if (heroComp?.LinkedHero != null)
                 {
                     var hero = heroComp.LinkedHero;
-                    data.JobName = hero.Job.Name;
+                    data.JobName = hero.Job.NameKey;
                     data.Level = hero.Level;
                     data.Experience = hero.Experience;
                     data.BaseStrength = hero.BaseStats.Strength;
