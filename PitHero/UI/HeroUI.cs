@@ -293,8 +293,8 @@ namespace PitHero.UI
             }
             else
             {
-                // Hero Crystal and Priorities tabs use half width
-                newWidth = 425f;
+                // All other tabs use the same width as Crystals tab so the window looks consistent
+                newWidth = 490f;
             }
 
             _heroWindow.SetSize(newWidth, 350f);

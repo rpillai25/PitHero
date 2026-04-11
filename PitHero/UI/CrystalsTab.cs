@@ -153,7 +153,12 @@ namespace PitHero.UI
                 slot.OnSlotHovered += OnSlotHovered;
                 slot.OnSlotUnhovered += OnSlotUnhovered;
                 _queueSlots[i] = slot;
-                queueCol.Add(slot).Size(SLOT_SIZE).Pad(SLOT_PAD);
+                // Show 1-based slot number to the left of each queue slot
+                var numLabel = new Label((i + 1).ToString(), skin, "ph-default");
+                var slotRow = new Table();
+                slotRow.Add(numLabel).Width(14f).Right().Pad(0, 0, 0, 3);
+                slotRow.Add(slot).Size(SLOT_SIZE).Pad(SLOT_PAD);
+                queueCol.Add(slotRow).Left();
                 queueCol.Row();
             }
 
@@ -482,7 +487,10 @@ namespace PitHero.UI
             }
             _cardDismissLayer.SetSize(_stage.GetWidth(), _stage.GetHeight());
             _cardDismissLayer.SetVisible(true);
-            _cardDismissLayer.ToFront();
+            // Bring hero window in front of dismiss layer so slot clicks are NOT intercepted,
+            // then bring the card to the very front. Clicks outside both hero window and card
+            // will reach the dismiss layer and close the card.
+            _heroWindow?.ToFront();
             _crystalCard.ToFront();
         }
 

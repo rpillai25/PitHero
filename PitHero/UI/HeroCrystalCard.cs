@@ -109,14 +109,6 @@ namespace PitHero.UI
             _contentTable.Add(new Label(titleText, titleStyle)).Left().Pad(0, 0, 2, 0);
             _contentTable.Row();
 
-            // Level
-            var levelText = string.Format(GetText(TextType.UI, UITextKey.CrystalCardLevelLabel), _crystal.Level);
-            AddDefaultLabel(levelText);
-
-            // Job Level
-            var jobLevelText = string.Format(GetText(TextType.UI, UITextKey.CrystalCardJobLevelLabel), _crystal.JobLevel);
-            AddDefaultLabel(jobLevelText);
-
             // Stats
             var statsText = string.Format(
                 GetText(TextType.UI, UITextKey.CrystalCardStatsLabel),
