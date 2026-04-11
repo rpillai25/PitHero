@@ -401,97 +401,100 @@ StencilHatWizard
 	33,429,32,32
 	0.5,0.5
 StencilShield
-	165,297,32,32
+	0,462,32,32
 	0.5,0.5
 StencilWeaponKnuckle
-	231,231,32,32
+	165,297,32,32
 	0.5,0.5
 StencilWeaponRod
-	198,264,32,32
+	231,231,32,32
 	0.5,0.5
 StencilWeaponStaff
-	132,330,32,32
+	198,264,32,32
 	0.5,0.5
 StencilWeaponSword
-	99,363,32,32
+	132,330,32,32
 	0.5,0.5
 AbyssFang
-	66,396,32,32
+	99,363,32,32
 	0.5,0.5
 CavernCutter
-	66,429,32,32
+	66,396,32,32
 	0.5,0.5
 CaveStalkersBlade
-	198,297,32,32
+	66,429,32,32
 	0.5,0.5
 CrystalEdge
-	165,330,32,32
+	33,462,32,32
 	0.5,0.5
 DepthsReaver
-	231,264,32,32
+	165,330,32,32
 	0.5,0.5
 DiamondEdge
-	132,363,32,32
-	0.5,0.5
-EmberSword
-	99,396,32,32
-	0.5,0.5
-GloomBlade
 	264,231,32,32
 	0.5,0.5
+EmberSword
+	231,264,32,32
+	0.5,0.5
+GloomBlade
+	198,297,32,32
+	0.5,0.5
 GraniteBlade
-	132,396,32,32
+	132,363,32,32
 	0.5,0.5
 InfernoEdge
-	99,429,32,32
+	99,396,32,32
 	0.5,0.5
 LavaForgedSword
-	297,231,32,32
-	0.5,0.5
-LongSword
-	264,264,32,32
-	0.5,0.5
-MagmaBlade
 	231,297,32,32
 	0.5,0.5
-MinersPickSword
+LongSword
 	198,330,32,32
+	0.5,0.5
+MagmaBlade
+	132,396,32,32
+	0.5,0.5
+MinersPickSword
+	99,429,32,32
 	0.5,0.5
 PitLordsSword
 	165,363,32,32
 	0.5,0.5
 QuartzSaber
-	165,396,32,32
+	66,462,32,32
 	0.5,0.5
 RustyBlade
-	132,429,32,32
+	297,231,32,32
 	0.5,0.5
 ShadowFang
-	330,231,32,32
+	264,264,32,32
 	0.5,0.5
 ShortSword
-	297,264,32,32
-	0.5,0.5
-Spelunkers Saber
 	264,297,32,32
 	0.5,0.5
-StalagmiteSword
+Spelunkers Saber
 	231,330,32,32
 	0.5,0.5
-StoneSword
+StalagmiteSword
 	198,363,32,32
 	0.5,0.5
+StoneSword
+	132,429,32,32
+	0.5,0.5
 TorchBlade
-	330,264,32,32
+	99,462,32,32
 	0.5,0.5
 UndergroundRapier
-	297,297,32,32
+	165,396,32,32
 	0.5,0.5
 VoidCutter
-	264,330,32,32
+	330,231,32,32
 	0.5,0.5
 WeaponShield
-	231,363,32,32
+	297,264,32,32
+	0.5,0.5
+CrystalMasterStar
+	495,0,12,12
 	0.5,0.5
 
 Accessories
