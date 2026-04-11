@@ -16,3 +16,7 @@ Job_Priest_Role,Healing/support, high MP, moderate magic
 Job_Thief_Name,Thief
 Job_Thief_Desc,Stealthy fighter with trap disarm abilities.
 Job_Thief_Role,High agility, moderate damage, low defense
+Job_Expert_Name,Expert
+Job_Hero_Name,Hero
+Job_Legend_Name,Legend
+Job_ChosenOne_Name,Chosen One

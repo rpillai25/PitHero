@@ -1,3 +1,6 @@
+using Nez;
+using PitHero;
+using PitHero.Services;
 using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Skills;
 using RolePlayingFramework.Stats;
@@ -11,6 +14,7 @@ namespace RolePlayingFramework.Heroes
         private readonly IJob _a;
         private readonly IJob _b;
         private readonly List<ISkill> _skills;
+        private TextService _textService;
 
         public CompositeJob(IJob a, IJob b)
         {
@@ -30,8 +34,26 @@ namespace RolePlayingFramework.Heroes
             }
         }
 
-        public string Name => $"{_a.Name}-{_b.Name}";
+        private TextService GetTextService()
+        {
+            if (_textService == null)
+                _textService = Core.Services?.GetService<TextService>();
+            return _textService;
+        }
+
+        public string Name => GetTierName();
         public string NameKey => $"{_a.NameKey}-{_b.NameKey}";
+
+        private string GetTierName()
+        {
+            string key;
+            if (_skills.Count >= 20) key = JobTextKey.Job_ChosenOne_Name;
+            else if (_skills.Count >= 16) key = JobTextKey.Job_Legend_Name;
+            else if (_skills.Count >= 12) key = JobTextKey.Job_Hero_Name;
+            else key = JobTextKey.Job_Expert_Name;
+            return GetTextService()?.DisplayText(TextType.Job, key) ?? key;
+        }
+
         public string Description => $"{_a.Description} / {_b.Description}";
         public string Role => $"{_a.Role} / {_b.Role}";
         public StatBlock BaseBonus => _a.BaseBonus.Add(_b.BaseBonus).Scale(0.5f);

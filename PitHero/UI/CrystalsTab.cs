@@ -207,9 +207,7 @@ namespace PitHero.UI
         private void OnSlotHovered(CrystalSlotElement slot)
         {
             if (slot.Crystal == null) return;
-            var jobName = slot.Crystal.IsCombo
-                ? GetText(UITextKey.CrystalTooltipCombo)
-                : slot.Crystal.Job.Name;
+            var jobName = slot.Crystal.Job.Name;
             _hoverLabel.SetText(jobName);
             _hoverTooltipWindow.Pack();
 

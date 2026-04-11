@@ -101,10 +101,8 @@ namespace PitHero.UI
 
             if (_crystal == null) return;
 
-            // Title: Job name or "Combo"
-            var titleText = _crystal.IsCombo
-                ? GetText(TextType.UI, UITextKey.CrystalTooltipCombo)
-                : _crystal.Job.Name;
+            // Title: Job name (Expert/Hero/Legend/Chosen One for combo crystals)
+            var titleText = _crystal.Job.Name;
             var titleStyle = new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = _crystal.Color };
             _contentTable.Add(new Label(titleText, titleStyle)).Left().Pad(0, 0, 2, 0);
             _contentTable.Row();

@@ -219,15 +219,6 @@ namespace PitHero.ECS.Components
                 Debug.Log($"[HeroDeathComponent] Added crystal to Second Chance Vault");
             }
 
-            // Pop next queued crystal for auto-infusion
-            var crystalCollection = Core.Services.GetService<CrystalCollectionService>();
-            var nextCrystal = crystalCollection?.Dequeue();
-            if (nextCrystal != null)
-            {
-                crystalCollection.PendingNextCrystal = nextCrystal;
-                Debug.Log($"[HeroDeathComponent] Set pending next crystal: {nextCrystal.Name}");
-            }
-
             // Capture scene reference before destroying entity
             var scene = Entity.Scene;
 

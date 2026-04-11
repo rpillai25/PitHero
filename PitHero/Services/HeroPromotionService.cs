@@ -604,17 +604,9 @@ namespace PitHero.Services
         /// </summary>
         private HeroCrystal GetNextCrystalForHero()
         {
-            // 1. Use pending crystal from death
             var crystalService = Core.Services.GetService<CrystalCollectionService>();
-            if (crystalService?.PendingNextCrystal != null)
-            {
-                var pending = crystalService.PendingNextCrystal;
-                crystalService.PendingNextCrystal = null;
-                Debug.Log($"[HeroPromotionService] Using pending crystal from death: {pending.Name}");
-                return pending;
-            }
 
-            // 2. Check queue
+            // 1. Check queue — player may have rearranged between death and this ceremony
             var queued = crystalService?.Dequeue();
             if (queued != null)
             {
@@ -622,7 +614,7 @@ namespace PitHero.Services
                 return queued;
             }
 
-            // 3. Random fallback
+            // 2. Random fallback
             return GenerateRandomHeroCrystal();
         }
 
