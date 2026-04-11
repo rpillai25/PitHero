@@ -464,6 +464,15 @@ namespace PitHero.UI
                         return;
                     }
 
+                    // Only mastered crystals may be placed into forge slots
+                    var srcCrystal = srcEl?.Crystal;
+                    if (srcCrystal != null && !srcCrystal.Mastered)
+                    {
+                        ClearSelection();
+                        HideCrystalCard();
+                        return;
+                    }
+
                     svc.SwapSlots(srcType, srcIdx, dstType, 0);
                     RefreshAll();
                     AnimateCrystalSwap(srcEl, dstEl, null);

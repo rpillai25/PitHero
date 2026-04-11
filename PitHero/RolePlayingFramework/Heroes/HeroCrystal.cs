@@ -18,6 +18,10 @@ namespace RolePlayingFramework.Heroes
         /// <summary>True if this crystal is a combo of two jobs.</summary>
         public bool IsCombo => Job is CompositeJob;
 
+        /// <summary>True if all skills for this crystal's job have been learned.</summary>
+        public bool Mastered => _mastered;
+        private bool _mastered;
+
         /// <summary>Persistent learned skill ids (active + passive).</summary>
         private readonly HashSet<string> _learnedSkillIds;
         public IReadOnlyCollection<string> LearnedSkillIds => _learnedSkillIds;
@@ -85,7 +89,10 @@ namespace RolePlayingFramework.Heroes
         public void AddLearnedSkill(string skillId)
         {
             if (!string.IsNullOrEmpty(skillId))
+            {
                 _learnedSkillIds.Add(skillId);
+                _mastered = IsJobMastered();
+            }
         }
 
         /// <summary>Checks if the skill id has been learned.</summary>
@@ -108,18 +115,18 @@ namespace RolePlayingFramework.Heroes
 
             CurrentJP -= skill.JPCost;
             _learnedSkillIds.Add(skill.Id);
+            _mastered = IsJobMastered();
             return true;
         }
 
         /// <summary>Calculates the job level based on number of skills purchased.</summary>
         private int CalculateJobLevel()
         {
-            // Job level is simply the count of purchased skills for this job
             int count = 0;
             var jobSkills = Job.Skills;
-            foreach (var skill in jobSkills)
+            for (int i = 0; i < jobSkills.Count; i++)
             {
-                if (_learnedSkillIds.Contains(skill.Id))
+                if (_learnedSkillIds.Contains(jobSkills[i].Id))
                     count++;
             }
             return count;
@@ -131,14 +138,16 @@ namespace RolePlayingFramework.Heroes
             var jobSkills = Job.Skills;
             if (jobSkills.Count == 0) return true;
 
-            // Check if all skills are learned
-            foreach (var skill in jobSkills)
+            for (int i = 0; i < jobSkills.Count; i++)
             {
-                if (!_learnedSkillIds.Contains(skill.Id))
+                if (!_learnedSkillIds.Contains(jobSkills[i].Id))
                     return false;
             }
             return true;
         }
+
+        /// <summary>Sets the mastered state directly (used during save/load and combine).</summary>
+        public void SetMastered(bool mastered) => _mastered = mastered;
 
         // Synergy system methods
 
@@ -211,31 +220,41 @@ namespace RolePlayingFramework.Heroes
             var stats = a.BaseStats.Add(b.BaseStats.Scale(1f));
             var job = new CompositeJob(a.Job, b.Job);
             var union = new HashSet<string>(a._learnedSkillIds);
-            foreach (var id in b._learnedSkillIds) union.Add(id);
+            var bSkillEnum = b._learnedSkillIds.GetEnumerator();
+            while (bSkillEnum.MoveNext()) union.Add(bSkillEnum.Current);
+            bSkillEnum.Dispose();
             var totalJP = a.TotalJP + b.TotalJP;
             var currentJP = a.CurrentJP + b.CurrentJP;
 
             // Combine synergy data
             var combinedSynergyPoints = new Dictionary<string, int>(a._synergyPoints);
-            foreach (var kvp in b._synergyPoints)
+            var bSynEnum = b._synergyPoints.GetEnumerator();
+            while (bSynEnum.MoveNext())
             {
-                if (combinedSynergyPoints.ContainsKey(kvp.Key))
-                    combinedSynergyPoints[kvp.Key] += kvp.Value;
+                if (combinedSynergyPoints.ContainsKey(bSynEnum.Current.Key))
+                    combinedSynergyPoints[bSynEnum.Current.Key] += bSynEnum.Current.Value;
                 else
-                    combinedSynergyPoints[kvp.Key] = kvp.Value;
+                    combinedSynergyPoints[bSynEnum.Current.Key] = bSynEnum.Current.Value;
             }
+            bSynEnum.Dispose();
 
             var combinedSynergySkills = new HashSet<string>(a._learnedSynergySkillIds);
-            foreach (var id in b._learnedSynergySkillIds) combinedSynergySkills.Add(id);
+            var bSynSkillEnum = b._learnedSynergySkillIds.GetEnumerator();
+            while (bSynSkillEnum.MoveNext()) combinedSynergySkills.Add(bSynSkillEnum.Current);
+            bSynSkillEnum.Dispose();
 
             var combinedDiscoveredSynergies = new HashSet<string>(a._discoveredSynergyIds);
-            foreach (var id in b._discoveredSynergyIds) combinedDiscoveredSynergies.Add(id);
+            var bDiscEnum = b._discoveredSynergyIds.GetEnumerator();
+            while (bDiscEnum.MoveNext()) combinedDiscoveredSynergies.Add(bDiscEnum.Current);
+            bDiscEnum.Dispose();
 
             // Blend colors using HSV
             var blendedColor = CrystalColorUtil.CombineColors(a.Color, b.Color);
 
-            return new HeroCrystal(combinedName, job, level, stats, union, totalJP, currentJP,
+            var combined = new HeroCrystal(combinedName, job, level, stats, union, totalJP, currentJP,
                 combinedSynergyPoints, combinedSynergySkills, combinedDiscoveredSynergies, blendedColor);
+            combined.SetMastered(combined.IsJobMastered());
+            return combined;
         }
     }
 }
