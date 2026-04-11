@@ -1,4 +1,5 @@
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Heroes;
 using System.Collections.Generic;
 
 namespace PitHero.Services
@@ -25,9 +26,16 @@ namespace PitHero.Services
 
         private const int MaxStackSize = 999;
         private readonly List<StackedItem> _stacks = new List<StackedItem>();
+        private readonly List<HeroCrystal> _lostCrystals = new List<HeroCrystal>();
 
         /// <summary>Gets a read-only collection of all stacked items in the vault.</summary>
         public IReadOnlyList<StackedItem> Stacks => _stacks.AsReadOnly();
+
+        /// <summary>Gets a read-only collection of all lost crystals in the vault.</summary>
+        public IReadOnlyList<HeroCrystal> LostCrystals => _lostCrystals.AsReadOnly();
+
+        /// <summary>Gets the total number of crystals in the vault.</summary>
+        public int CrystalCount => _lostCrystals.Count;
 
         /// <summary>Adds a single item to the vault, stacking with existing items if applicable.</summary>
         /// <param name="item">The item to add.</param>
@@ -129,6 +137,7 @@ namespace PitHero.Services
         public void Clear()
         {
             _stacks.Clear();
+            _lostCrystals.Clear();
         }
 
         /// <summary>Checks if two items are the same type (for stacking purposes).</summary>
@@ -148,6 +157,20 @@ namespace PitHero.Services
             // For now, just return the item as-is since IItem is typically immutable
             // For consumables, we'll use the item as a template and track quantity separately
             return item;
+        }
+
+        /// <summary>Adds a crystal to the vault.</summary>
+        public void AddCrystal(HeroCrystal crystal)
+        {
+            if (crystal == null) return;
+            _lostCrystals.Add(crystal);
+        }
+
+        /// <summary>Removes a crystal from the vault. Returns true if removed.</summary>
+        public bool RemoveCrystal(HeroCrystal crystal)
+        {
+            if (crystal == null) return false;
+            return _lostCrystals.Remove(crystal);
         }
     }
 }

@@ -160,7 +160,7 @@ namespace PitHero.Services
                 if (heroComp?.LinkedHero != null)
                 {
                     var hero = heroComp.LinkedHero;
-                    data.JobName = hero.Job.Name;
+                    data.JobName = hero.Job.NameKey;
                     data.Level = hero.Level;
                     data.Experience = hero.Experience;
                     data.BaseStrength = hero.BaseStats.Strength;
@@ -210,7 +210,7 @@ namespace PitHero.Services
                     {
                         var crystal = hero.BoundCrystal;
                         data.HasCrystal = true;
-                        data.CrystalJobName = crystal.Job.Name;
+                        data.CrystalJobName = crystal.Job.NameKey;
                         data.CrystalLevel = crystal.Level;
                         data.CrystalBaseStrength = crystal.BaseStats.Strength;
                         data.CrystalBaseAgility = crystal.BaseStats.Agility;
@@ -391,6 +391,150 @@ namespace PitHero.Services
                         }
                     }
                     data.ShortcutSlots.Add(saved);
+                }
+            }
+
+            // Crystal Collection
+            var crystalService = Core.Services.GetService<CrystalCollectionService>();
+            if (crystalService != null)
+            {
+                data.CrystalCollection = new List<SavedHeroCrystal>();
+                var inventory = crystalService.Inventory;
+                for (int i = 0; i < inventory.Count; i++)
+                {
+                    var crystal = inventory[i];
+                    if (crystal != null)
+                    {
+                        var saved = new SavedHeroCrystal();
+                        saved.Name = crystal.Name;
+                        saved.JobName = crystal.Job.NameKey;
+                        saved.Level = crystal.Level;
+                        saved.SlotIndex = i;
+                        saved.BaseStrength = crystal.BaseStats.Strength;
+                        saved.BaseAgility = crystal.BaseStats.Agility;
+                        saved.BaseVitality = crystal.BaseStats.Vitality;
+                        saved.BaseMagic = crystal.BaseStats.Magic;
+                        saved.TotalJP = crystal.TotalJP;
+                        saved.CurrentJP = crystal.CurrentJP;
+                        saved.R = crystal.Color.R;
+                        saved.G = crystal.Color.G;
+                        saved.B = crystal.Color.B;
+                        saved.A = crystal.Color.A;
+
+                        saved.LearnedSkillIds = new List<string>(crystal.LearnedSkillIds.Count);
+                        var skillEnumerator = crystal.LearnedSkillIds.GetEnumerator();
+                        while (skillEnumerator.MoveNext())
+                        {
+                            saved.LearnedSkillIds.Add(skillEnumerator.Current);
+                        }
+                        skillEnumerator.Dispose();
+
+                        saved.SynergyPoints = new Dictionary<string, int>(crystal.SynergyPoints.Count);
+                        var synEnumerator = crystal.SynergyPoints.GetEnumerator();
+                        while (synEnumerator.MoveNext())
+                        {
+                            saved.SynergyPoints[synEnumerator.Current.Key] = synEnumerator.Current.Value;
+                        }
+                        synEnumerator.Dispose();
+
+                        saved.LearnedSynergySkillIds = new List<string>(crystal.LearnedSynergySkillIds.Count);
+                        var synSkillEnumerator = crystal.LearnedSynergySkillIds.GetEnumerator();
+                        while (synSkillEnumerator.MoveNext())
+                        {
+                            saved.LearnedSynergySkillIds.Add(synSkillEnumerator.Current);
+                        }
+                        synSkillEnumerator.Dispose();
+
+                        saved.DiscoveredSynergyIds = new List<string>(crystal.DiscoveredSynergyIds.Count);
+                        var discEnumerator = crystal.DiscoveredSynergyIds.GetEnumerator();
+                        while (discEnumerator.MoveNext())
+                        {
+                            saved.DiscoveredSynergyIds.Add(discEnumerator.Current);
+                        }
+                        discEnumerator.Dispose();
+
+                        data.CrystalCollection.Add(saved);
+                    }
+                }
+
+                // Crystal queue (serialized as full crystal list)
+                data.CrystalQueue = new List<SavedHeroCrystal>();
+                var queue = crystalService.Queue;
+                for (int i = 0; i < queue.Count; i++)
+                {
+                    if (queue[i] != null)
+                        data.CrystalQueue.Add(SavedHeroCrystal.FromHeroCrystal(queue[i]));
+                }
+
+                // Pending next crystal
+                if (crystalService.PendingNextCrystal != null)
+                    data.PendingNextCrystal = SavedHeroCrystal.FromHeroCrystal(crystalService.PendingNextCrystal);
+
+                // Forge slots (physical crystals — not inventory references)
+                if (crystalService.ForgeSlotA != null)
+                    data.ForgeSlotA = SavedHeroCrystal.FromHeroCrystal(crystalService.ForgeSlotA);
+                if (crystalService.ForgeSlotB != null)
+                    data.ForgeSlotB = SavedHeroCrystal.FromHeroCrystal(crystalService.ForgeSlotB);
+            }
+
+            // Second Chance Vault Crystals
+            var vaultService = Core.Services.GetService<SecondChanceMerchantVault>();
+            if (vaultService != null)
+            {
+                data.SecondChanceVaultCrystals = new List<SavedHeroCrystal>();
+                var lostCrystals = vaultService.LostCrystals;
+                for (int i = 0; i < lostCrystals.Count; i++)
+                {
+                    var crystal = lostCrystals[i];
+                    var saved = new SavedHeroCrystal();
+                    saved.Name = crystal.Name;
+                    saved.JobName = crystal.Job.NameKey;
+                    saved.Level = crystal.Level;
+                    saved.SlotIndex = i;
+                    saved.BaseStrength = crystal.BaseStats.Strength;
+                    saved.BaseAgility = crystal.BaseStats.Agility;
+                    saved.BaseVitality = crystal.BaseStats.Vitality;
+                    saved.BaseMagic = crystal.BaseStats.Magic;
+                    saved.TotalJP = crystal.TotalJP;
+                    saved.CurrentJP = crystal.CurrentJP;
+                    saved.R = crystal.Color.R;
+                    saved.G = crystal.Color.G;
+                    saved.B = crystal.Color.B;
+                    saved.A = crystal.Color.A;
+
+                    saved.LearnedSkillIds = new List<string>(crystal.LearnedSkillIds.Count);
+                    var skillEnumerator = crystal.LearnedSkillIds.GetEnumerator();
+                    while (skillEnumerator.MoveNext())
+                    {
+                        saved.LearnedSkillIds.Add(skillEnumerator.Current);
+                    }
+                    skillEnumerator.Dispose();
+
+                    saved.SynergyPoints = new Dictionary<string, int>(crystal.SynergyPoints.Count);
+                    var synEnumerator = crystal.SynergyPoints.GetEnumerator();
+                    while (synEnumerator.MoveNext())
+                    {
+                        saved.SynergyPoints[synEnumerator.Current.Key] = synEnumerator.Current.Value;
+                    }
+                    synEnumerator.Dispose();
+
+                    saved.LearnedSynergySkillIds = new List<string>(crystal.LearnedSynergySkillIds.Count);
+                    var synSkillEnumerator = crystal.LearnedSynergySkillIds.GetEnumerator();
+                    while (synSkillEnumerator.MoveNext())
+                    {
+                        saved.LearnedSynergySkillIds.Add(synSkillEnumerator.Current);
+                    }
+                    synSkillEnumerator.Dispose();
+
+                    saved.DiscoveredSynergyIds = new List<string>(crystal.DiscoveredSynergyIds.Count);
+                    var discEnumerator = crystal.DiscoveredSynergyIds.GetEnumerator();
+                    while (discEnumerator.MoveNext())
+                    {
+                        saved.DiscoveredSynergyIds.Add(discEnumerator.Current);
+                    }
+                    discEnumerator.Dispose();
+
+                    data.SecondChanceVaultCrystals.Add(saved);
                 }
             }
 

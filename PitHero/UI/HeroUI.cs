@@ -79,6 +79,10 @@ namespace PitHero.UI
 
         // Hero Crystal tab component
         private HeroCrystalTab _heroCrystalTab;
+        
+        // Crystals Collection tab component
+        private CrystalsTab _crystalsTabComponent;
+        private Tab _crystalsCollectionTab;
 
         // Mercenaries tab component
         private MercenariesTab _mercenariesTabComponent;
@@ -248,6 +252,12 @@ namespace PitHero.UI
             PopulateMercenariesTab(_mercenariesTab, skin);
             _tabPane.AddTab(_inventoryTab);
             _tabPane.AddTab(_crystalTab);
+            
+            // Add Crystals Collection tab after Hero Info tab
+            _crystalsCollectionTab = new Tab(GetText(TextType.UI, UITextKey.TabCrystals), tabStyle);
+            PopulateCrystalsCollectionTab(_crystalsCollectionTab, skin);
+            _tabPane.AddTab(_crystalsCollectionTab);
+            
             _tabPane.AddTab(_mercenariesTab);
             _tabPane.AddTab(_prioritiesTab);
             
@@ -274,10 +284,17 @@ namespace PitHero.UI
                 // Inventory tab needs full width for 20-column grid
                 newWidth = HERO_WINDOW_WIDTH;
             }
+            else if (selectedTab == _crystalsCollectionTab)
+            {
+                // Crystals tab needs extra width so all 5 tab buttons fit with ≥23px side padding
+                newWidth = 490f;
+                // Refresh crystal slots so any crystals loaded from save are visible
+                _crystalsTabComponent?.RefreshAll();
+            }
             else
             {
-                // Hero Crystal and Priorities tabs use half width
-                newWidth = 425f;
+                // All other tabs use the same width as Crystals tab so the window looks consistent
+                newWidth = 490f;
             }
 
             _heroWindow.SetSize(newWidth, 350f);
@@ -707,6 +724,14 @@ namespace PitHero.UI
             _heroCrystalTab = new HeroCrystalTab();
             var content = _heroCrystalTab.CreateContent(skin, _stage);
             crystalTab.Add(content).Expand().Fill();
+        }
+
+        /// <summary>Populates the Crystals collection tab with the CrystalsTab component.</summary>
+        private void PopulateCrystalsCollectionTab(Tab tab, Skin skin)
+        {
+            _crystalsTabComponent = new CrystalsTab();
+            var content = _crystalsTabComponent.CreateContent(skin, _stage, _heroWindow);
+            tab.Add(content).Expand().Fill();
         }
 
         private void PopulateMercenariesTab(Tab mercenariesTab, Skin skin)

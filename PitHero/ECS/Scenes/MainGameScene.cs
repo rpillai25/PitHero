@@ -99,6 +99,10 @@ namespace PitHero.ECS.Scenes
             _pitLevelStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
             _pitLevelStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
 
+            // Register crystal collection service before UI is built so CrystalsTab can
+            // resolve it via Core.Services.GetService<CrystalCollectionService>() during Initialize.
+            Core.Services.AddService(new Services.CrystalCollectionService());
+
             SetupUIOverlay();
         }
 
@@ -109,6 +113,7 @@ namespace PitHero.ECS.Scenes
         public override void Unload()
         {
             Core.Content.UnloadAsset<TmxMap>(_mapPath);
+            Core.Services.RemoveService(typeof(Services.CrystalCollectionService));
             Core.Services.RemoveService(typeof(MercenaryManager));
             Core.Services.RemoveService(typeof(AlliedMonsterManager));
             Core.Services.RemoveService(typeof(HeroPromotionService));
@@ -116,6 +121,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(TiledMapService));
             Core.Services.RemoveService(typeof(PitWidthManager));
             Core.Services.RemoveService(typeof(ShortcutBarService));
+            Core.Services.RemoveService(typeof(SettingsUI));
         }
 
         public override void Begin()
@@ -349,6 +355,149 @@ namespace PitHero.ECS.Scenes
             {
                 _shortcutBar.SetPendingShortcutSlots(pendingData.ShortcutSlots);
                 Debug.Log("[MainGameScene] Stored " + pendingData.ShortcutSlots.Count + " pending shortcut slots for deferred restoration");
+            }
+
+            // Restore crystal collection
+            var crystalService = Core.Services.GetService<CrystalCollectionService>();
+            if (crystalService != null && pendingData.CrystalCollection != null)
+            {
+                for (int i = 0; i < pendingData.CrystalCollection.Count; i++)
+                {
+                    var saved = pendingData.CrystalCollection[i];
+                    var crystalJob = RolePlayingFramework.Jobs.JobFactory.CreateJob(saved.JobName ?? "Knight");
+                    var crystalStats = new StatBlock(
+                        saved.BaseStrength, saved.BaseAgility,
+                        saved.BaseVitality, saved.BaseMagic);
+                    var color = new Color(saved.R, saved.G, saved.B, saved.A);
+                    
+                    var crystal = new HeroCrystal(saved.Name, crystalJob, saved.Level, crystalStats, color);
+                    
+                    // Restore JP
+                    crystal.EarnJP(saved.TotalJP);
+                    
+                    // Restore learned skills
+                    if (saved.LearnedSkillIds != null)
+                    {
+                        for (int j = 0; j < saved.LearnedSkillIds.Count; j++)
+                        {
+                            crystal.AddLearnedSkill(saved.LearnedSkillIds[j]);
+                        }
+                    }
+                    
+                    // Restore synergy data
+                    if (saved.DiscoveredSynergyIds != null)
+                    {
+                        for (int j = 0; j < saved.DiscoveredSynergyIds.Count; j++)
+                        {
+                            crystal.DiscoverSynergy(saved.DiscoveredSynergyIds[j]);
+                        }
+                    }
+                    
+                    if (saved.LearnedSynergySkillIds != null)
+                    {
+                        for (int j = 0; j < saved.LearnedSynergySkillIds.Count; j++)
+                        {
+                            crystal.LearnSynergySkill(saved.LearnedSynergySkillIds[j]);
+                        }
+                    }
+                    
+                    if (saved.SynergyPoints != null)
+                    {
+                        var synEnumerator = saved.SynergyPoints.GetEnumerator();
+                        while (synEnumerator.MoveNext())
+                        {
+                            crystal.EarnSynergyPoints(synEnumerator.Current.Key, synEnumerator.Current.Value);
+                        }
+                        synEnumerator.Dispose();
+                    }
+                    
+                    crystalService.TryAddToInventory(crystal);
+                }
+                
+                // Restore crystal queue
+                if (pendingData.CrystalQueue != null)
+                {
+                    for (int i = 0; i < pendingData.CrystalQueue.Count; i++)
+                    {
+                        var qSaved = pendingData.CrystalQueue[i];
+                        var qCrystal = qSaved.ToHeroCrystal();
+                        crystalService.TryEnqueue(qCrystal);
+                    }
+                }
+
+                // Restore pending next crystal
+                if (pendingData.PendingNextCrystal.HasValue)
+                {
+                    crystalService.PendingNextCrystal = pendingData.PendingNextCrystal.Value.ToHeroCrystal();
+                }
+
+                // Restore forge slots (physical crystals not stored in inventory)
+                if (pendingData.ForgeSlotA.HasValue)
+                    crystalService.SetForgeSlotADirect(pendingData.ForgeSlotA.Value.ToHeroCrystal());
+                if (pendingData.ForgeSlotB.HasValue)
+                    crystalService.SetForgeSlotBDirect(pendingData.ForgeSlotB.Value.ToHeroCrystal());
+                
+                Debug.Log("[MainGameScene] Restored " + pendingData.CrystalCollection.Count + " crystals to collection");
+            }
+
+            // Restore Second Chance Vault crystals
+            var vaultService = Core.Services.GetService<SecondChanceMerchantVault>();
+            if (vaultService != null && pendingData.SecondChanceVaultCrystals != null)
+            {
+                for (int i = 0; i < pendingData.SecondChanceVaultCrystals.Count; i++)
+                {
+                    var saved = pendingData.SecondChanceVaultCrystals[i];
+                    var crystalJob = RolePlayingFramework.Jobs.JobFactory.CreateJob(saved.JobName ?? "Knight");
+                    var crystalStats = new StatBlock(
+                        saved.BaseStrength, saved.BaseAgility,
+                        saved.BaseVitality, saved.BaseMagic);
+                    var color = new Color(saved.R, saved.G, saved.B, saved.A);
+                    
+                    var crystal = new HeroCrystal(saved.Name, crystalJob, saved.Level, crystalStats, color);
+                    
+                    // Restore JP
+                    crystal.EarnJP(saved.TotalJP);
+                    
+                    // Restore learned skills
+                    if (saved.LearnedSkillIds != null)
+                    {
+                        for (int j = 0; j < saved.LearnedSkillIds.Count; j++)
+                        {
+                            crystal.AddLearnedSkill(saved.LearnedSkillIds[j]);
+                        }
+                    }
+                    
+                    // Restore synergy data
+                    if (saved.DiscoveredSynergyIds != null)
+                    {
+                        for (int j = 0; j < saved.DiscoveredSynergyIds.Count; j++)
+                        {
+                            crystal.DiscoverSynergy(saved.DiscoveredSynergyIds[j]);
+                        }
+                    }
+                    
+                    if (saved.LearnedSynergySkillIds != null)
+                    {
+                        for (int j = 0; j < saved.LearnedSynergySkillIds.Count; j++)
+                        {
+                            crystal.LearnSynergySkill(saved.LearnedSynergySkillIds[j]);
+                        }
+                    }
+                    
+                    if (saved.SynergyPoints != null)
+                    {
+                        var synEnumerator = saved.SynergyPoints.GetEnumerator();
+                        while (synEnumerator.MoveNext())
+                        {
+                            crystal.EarnSynergyPoints(synEnumerator.Current.Key, synEnumerator.Current.Value);
+                        }
+                        synEnumerator.Dispose();
+                    }
+                    
+                    vaultService.AddCrystal(crystal);
+                }
+                
+                Debug.Log("[MainGameScene] Restored " + pendingData.SecondChanceVaultCrystals.Count + " crystals to Second Chance Vault");
             }
             
             Debug.Log("[MainGameScene] Load data applied successfully - Hero: " + (pendingData.HeroName ?? "?") + " Level " + pendingData.Level);
@@ -607,6 +756,9 @@ namespace PitHero.ECS.Scenes
         {
             CreateHeroEntity(34, 6, needsCrystal: true);
 
+            // Disable save while hero walks to statue — saving in this transitional state puts the game in an odd state
+            Core.Services.GetService<SettingsUI>()?.SetSaveEnabled(false);
+
             // Unfreeze and reassign mercenaries to follow the new hero
             var mercenaryManager = Core.Services.GetService<MercenaryManager>();
             if (mercenaryManager != null)
@@ -850,7 +1002,7 @@ namespace PitHero.ECS.Scenes
 
             _settingsUI = new SettingsUI(Core.Instance);
             _settingsUI.InitializeUI(uiCanvas.Stage);
-
+            Core.Services.AddService(_settingsUI);
             // Remove duplicate HeroUI creation - it's already handled by SettingsUI
             // Initialize HeroUI for pit priority management
             // _heroUI = new HeroUI();

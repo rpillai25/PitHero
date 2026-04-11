@@ -509,8 +509,21 @@ namespace PitHero.UI
             sessionTable.Add(new Label(GetText(TextType.UI, UITextKey.SettingsGameSession), skin, "ph-default")).Left().SetPadBottom(20);
             sessionTable.Row();
 
-            // Save button
-            _saveButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonSave), skin, "ph-default");
+            // Save button — uses a custom style that visually greys out when disabled
+            var saveBaseStyle = skin.Get<TextButtonStyle>("ph-default");
+            var saveButtonStyle = new TextButtonStyle
+            {
+                Up = saveBaseStyle.Up,
+                Down = saveBaseStyle.Down,
+                Over = saveBaseStyle.Over,
+                FontColor = saveBaseStyle.FontColor,
+                DownFontColor = saveBaseStyle.DownFontColor,
+                OverFontColor = saveBaseStyle.OverFontColor,
+                DisabledFontColor = new Color(120, 120, 120),
+                PressedOffsetX = saveBaseStyle.PressedOffsetX,
+                PressedOffsetY = saveBaseStyle.PressedOffsetY
+            };
+            _saveButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonSave), saveButtonStyle);
             _saveButton.OnClicked += (button) =>
             {
                 ShowSaveLoadUI(SaveLoadUI.Mode.Save);
@@ -808,6 +821,17 @@ namespace PitHero.UI
 
             _lastStageW = stageW;
             _lastStageH = stageH;
+        }
+
+        /// <summary>
+        /// Enables or disables the Save button. Disabled (greyed out) during hero promotion walk
+        /// to prevent saving while the game is in a transitional state.
+        /// </summary>
+        public void SetSaveEnabled(bool enabled)
+        {
+            if (_saveButton == null)
+                return;
+            _saveButton.SetDisabled(!enabled);
         }
 
         /// <summary>

@@ -1,5 +1,8 @@
 using Microsoft.Xna.Framework;
 using Nez.Persistence.Binary;
+using RolePlayingFramework.Heroes;
+using RolePlayingFramework.Jobs;
+using RolePlayingFramework.Stats;
 using System.Collections.Generic;
 
 namespace PitHero.Services
@@ -22,6 +25,109 @@ namespace PitHero.Services
         public int ItemBagIndex;
         /// <summary>Skill ID string (only valid when SlotType == 2).</summary>
         public string SkillId;
+    }
+
+    /// <summary>Lightweight struct representing a saved hero crystal.</summary>
+    public struct SavedHeroCrystal
+    {
+        public string Name;
+        public string JobName;
+        public int Level;
+        public int SlotIndex;
+        public int BaseStrength;
+        public int BaseAgility;
+        public int BaseVitality;
+        public int BaseMagic;
+        public int TotalJP;
+        public int CurrentJP;
+        public int R, G, B, A;
+        public List<string> LearnedSkillIds;
+        public Dictionary<string, int> SynergyPoints;
+        public List<string> LearnedSynergySkillIds;
+        public List<string> DiscoveredSynergyIds;
+
+        /// <summary>Creates a SavedHeroCrystal from a HeroCrystal instance.</summary>
+        public static SavedHeroCrystal FromHeroCrystal(HeroCrystal crystal)
+        {
+            var saved = new SavedHeroCrystal();
+            saved.Name = crystal.Name;
+            saved.JobName = crystal.Job.NameKey;
+            saved.Level = crystal.Level;
+            saved.SlotIndex = 0;
+            saved.BaseStrength = crystal.BaseStats.Strength;
+            saved.BaseAgility = crystal.BaseStats.Agility;
+            saved.BaseVitality = crystal.BaseStats.Vitality;
+            saved.BaseMagic = crystal.BaseStats.Magic;
+            saved.TotalJP = crystal.TotalJP;
+            saved.CurrentJP = crystal.CurrentJP;
+            saved.R = crystal.Color.R;
+            saved.G = crystal.Color.G;
+            saved.B = crystal.Color.B;
+            saved.A = crystal.Color.A;
+
+            saved.LearnedSkillIds = new List<string>();
+            var skillEnum = crystal.LearnedSkillIds.GetEnumerator();
+            while (skillEnum.MoveNext())
+                saved.LearnedSkillIds.Add(skillEnum.Current);
+            skillEnum.Dispose();
+
+            saved.SynergyPoints = new Dictionary<string, int>();
+            var synEnum = crystal.SynergyPoints.GetEnumerator();
+            while (synEnum.MoveNext())
+                saved.SynergyPoints[synEnum.Current.Key] = synEnum.Current.Value;
+            synEnum.Dispose();
+
+            saved.LearnedSynergySkillIds = new List<string>();
+            var synSkillEnum = crystal.LearnedSynergySkillIds.GetEnumerator();
+            while (synSkillEnum.MoveNext())
+                saved.LearnedSynergySkillIds.Add(synSkillEnum.Current);
+            synSkillEnum.Dispose();
+
+            saved.DiscoveredSynergyIds = new List<string>();
+            var discEnum = crystal.DiscoveredSynergyIds.GetEnumerator();
+            while (discEnum.MoveNext())
+                saved.DiscoveredSynergyIds.Add(discEnum.Current);
+            discEnum.Dispose();
+
+            return saved;
+        }
+
+        /// <summary>Reconstructs a HeroCrystal from this saved data.</summary>
+        public HeroCrystal ToHeroCrystal()
+        {
+            var job = JobFactory.CreateJob(JobName ?? string.Empty);
+            var stats = new StatBlock(BaseStrength, BaseAgility, BaseVitality, BaseMagic);
+            var color = new Color(R, G, B, A);
+            var crystal = new HeroCrystal(Name ?? string.Empty, job, Level, stats, color);
+
+            if (LearnedSkillIds != null)
+            {
+                for (int i = 0; i < LearnedSkillIds.Count; i++)
+                    crystal.AddLearnedSkill(LearnedSkillIds[i]);
+            }
+
+            if (SynergyPoints != null)
+            {
+                var e = SynergyPoints.GetEnumerator();
+                while (e.MoveNext())
+                    crystal.EarnSynergyPoints(e.Current.Key, e.Current.Value);
+                e.Dispose();
+            }
+
+            if (LearnedSynergySkillIds != null)
+            {
+                for (int i = 0; i < LearnedSynergySkillIds.Count; i++)
+                    crystal.LearnSynergySkill(LearnedSynergySkillIds[i]);
+            }
+
+            if (DiscoveredSynergyIds != null)
+            {
+                for (int i = 0; i < DiscoveredSynergyIds.Count; i++)
+                    crystal.DiscoverSynergy(DiscoveredSynergyIds[i]);
+            }
+
+            return crystal;
+        }
     }
 
     /// <summary>Lightweight struct representing a saved allied monster.</summary>
@@ -58,7 +164,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 5;
+        public const int CurrentVersion = 8;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -208,6 +314,25 @@ namespace PitHero.Services
         /// <summary>Saved hired mercenaries.</summary>
         public List<SavedMercenary> HiredMercenaries;
 
+        // Crystal Collection (added in version 6)
+        /// <summary>Saved crystal collection (80 slots).</summary>
+        public List<SavedHeroCrystal> CrystalCollection;
+
+        /// <summary>Saved crystals in the infuse queue (up to 5 slots, ordered front to back).</summary>
+        public List<SavedHeroCrystal> CrystalQueue;
+
+        /// <summary>Crystal queued to infuse when a new hero is created (popped from queue on death).</summary>
+        public SavedHeroCrystal? PendingNextCrystal;
+
+        /// <summary>Crystal currently in forge slot A (added in version 8).</summary>
+        public SavedHeroCrystal? ForgeSlotA;
+
+        /// <summary>Crystal currently in forge slot B (added in version 8).</summary>
+        public SavedHeroCrystal? ForgeSlotB;
+
+        /// <summary>Saved crystals in Second Chance Merchant vault.</summary>
+        public List<SavedHeroCrystal> SecondChanceVaultCrystals;
+
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
         {
@@ -221,6 +346,12 @@ namespace PitHero.Services
             AlliedMonsters = new List<SavedAlliedMonster>();
             ShortcutSlots = new List<SavedShortcutSlot>();
             HiredMercenaries = new List<SavedMercenary>();
+            CrystalCollection = new List<SavedHeroCrystal>();
+            CrystalQueue = new List<SavedHeroCrystal>();
+            PendingNextCrystal = null;
+            ForgeSlotA = null;
+            ForgeSlotB = null;
+            SecondChanceVaultCrystals = new List<SavedHeroCrystal>();
         }
 
         /// <summary>Writes all game state to the persistence writer.</summary>
@@ -401,6 +532,46 @@ namespace PitHero.Services
                 writer.Write(merc.HairstyleIndex);
                 WriteColor(writer, merc.ShirtColor);
             }
+
+            // 14. Crystal Collection (added in version 6)
+            writer.Write(CrystalCollection.Count);
+            for (int i = 0; i < CrystalCollection.Count; i++)
+            {
+                WriteCrystal(writer, CrystalCollection[i]);
+            }
+
+            // 15. Crystal Queue (version 7+: full crystal list, replaces v6 queue indices)
+            writer.Write(CrystalQueue.Count);
+            for (int i = 0; i < CrystalQueue.Count; i++)
+            {
+                WriteCrystal(writer, CrystalQueue[i]);
+            }
+
+            // 16. Second Chance Vault Crystals (added in version 6)
+            writer.Write(SecondChanceVaultCrystals.Count);
+            for (int i = 0; i < SecondChanceVaultCrystals.Count; i++)
+            {
+                WriteCrystal(writer, SecondChanceVaultCrystals[i]);
+            }
+
+            // 17. Pending Next Crystal (added in version 7)
+            bool hasPending = PendingNextCrystal.HasValue;
+            writer.Write(hasPending);
+            if (hasPending)
+            {
+                WriteCrystal(writer, PendingNextCrystal.Value);
+            }
+
+            // 18. Forge slots (added in version 8)
+            bool hasForgeA = ForgeSlotA.HasValue;
+            writer.Write(hasForgeA);
+            if (hasForgeA)
+                WriteCrystal(writer, ForgeSlotA.Value);
+
+            bool hasForgeB = ForgeSlotB.HasValue;
+            writer.Write(hasForgeB);
+            if (hasForgeB)
+                WriteCrystal(writer, ForgeSlotB.Value);
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -593,6 +764,75 @@ namespace PitHero.Services
                     HiredMercenaries.Add(merc);
                 }
             }
+
+            // 14. Crystal Collection (added in version 6)
+            if (version >= 6)
+            {
+                int crystalCount = reader.ReadInt();
+                CrystalCollection = new List<SavedHeroCrystal>(crystalCount);
+                for (int i = 0; i < crystalCount; i++)
+                {
+                    CrystalCollection.Add(ReadCrystal(reader));
+                }
+
+                if (version >= 7)
+                {
+                    // 15. Crystal Queue list (version 7+)
+                    int queueCount = reader.ReadInt();
+                    CrystalQueue = new List<SavedHeroCrystal>(queueCount);
+                    for (int i = 0; i < queueCount; i++)
+                    {
+                        CrystalQueue.Add(ReadCrystal(reader));
+                    }
+
+                    // 16. Second Chance Vault Crystals
+                    int vaultCrystalCount = reader.ReadInt();
+                    SecondChanceVaultCrystals = new List<SavedHeroCrystal>(vaultCrystalCount);
+                    for (int i = 0; i < vaultCrystalCount; i++)
+                    {
+                        SecondChanceVaultCrystals.Add(ReadCrystal(reader));
+                    }
+
+                    // 17. Pending Next Crystal (version 7+)
+                    bool hasPending = reader.ReadBool();
+                    if (hasPending)
+                        PendingNextCrystal = ReadCrystal(reader);
+                    else
+                        PendingNextCrystal = null;
+
+                    // 18. Forge slots (version 8+)
+                    if (version >= 8)
+                    {
+                        bool hasForgeA = reader.ReadBool();
+                        ForgeSlotA = hasForgeA ? ReadCrystal(reader) : (SavedHeroCrystal?)null;
+
+                        bool hasForgeB = reader.ReadBool();
+                        ForgeSlotB = hasForgeB ? ReadCrystal(reader) : (SavedHeroCrystal?)null;
+                    }
+                    else
+                    {
+                        ForgeSlotA = null;
+                        ForgeSlotB = null;
+                    }
+                }
+                else
+                {
+                    // Version 6: read old queue indices format (skip - no migration needed for dev builds)
+                    for (int i = 0; i < 5; i++)
+                        reader.ReadInt(); // discard old queue indices
+
+                    // Version 6: Second Chance Vault Crystals
+                    int vaultCrystalCount = reader.ReadInt();
+                    SecondChanceVaultCrystals = new List<SavedHeroCrystal>(vaultCrystalCount);
+                    for (int i = 0; i < vaultCrystalCount; i++)
+                    {
+                        SecondChanceVaultCrystals.Add(ReadCrystal(reader));
+                    }
+
+                    CrystalQueue = new List<SavedHeroCrystal>();
+                    PendingNextCrystal = null;
+                }
+            }
         }
 
         /// <summary>Writes a Color as four individual int components (R, G, B, A).</summary>
@@ -612,6 +852,108 @@ namespace PitHero.Services
             int b = reader.ReadInt();
             int a = reader.ReadInt();
             return new Color(r, g, b, a);
+        }
+
+        /// <summary>Writes a SavedHeroCrystal to the persistence writer.</summary>
+        private static void WriteCrystal(IPersistableWriter writer, SavedHeroCrystal crystal)
+        {
+            writer.Write(crystal.Name ?? string.Empty);
+            writer.Write(crystal.JobName ?? string.Empty);
+            writer.Write(crystal.Level);
+            writer.Write(crystal.SlotIndex);
+            writer.Write(crystal.BaseStrength);
+            writer.Write(crystal.BaseAgility);
+            writer.Write(crystal.BaseVitality);
+            writer.Write(crystal.BaseMagic);
+            writer.Write(crystal.TotalJP);
+            writer.Write(crystal.CurrentJP);
+            writer.Write(crystal.R);
+            writer.Write(crystal.G);
+            writer.Write(crystal.B);
+            writer.Write(crystal.A);
+
+            int skillCount = crystal.LearnedSkillIds != null ? crystal.LearnedSkillIds.Count : 0;
+            writer.Write(skillCount);
+            if (crystal.LearnedSkillIds != null)
+            {
+                for (int j = 0; j < crystal.LearnedSkillIds.Count; j++)
+                    writer.Write(crystal.LearnedSkillIds[j]);
+            }
+
+            int synCount = crystal.SynergyPoints != null ? crystal.SynergyPoints.Count : 0;
+            writer.Write(synCount);
+            if (crystal.SynergyPoints != null)
+            {
+                var synEnum = crystal.SynergyPoints.GetEnumerator();
+                while (synEnum.MoveNext())
+                {
+                    writer.Write(synEnum.Current.Key);
+                    writer.Write(synEnum.Current.Value);
+                }
+                synEnum.Dispose();
+            }
+
+            int synSkillCount = crystal.LearnedSynergySkillIds != null ? crystal.LearnedSynergySkillIds.Count : 0;
+            writer.Write(synSkillCount);
+            if (crystal.LearnedSynergySkillIds != null)
+            {
+                for (int j = 0; j < crystal.LearnedSynergySkillIds.Count; j++)
+                    writer.Write(crystal.LearnedSynergySkillIds[j]);
+            }
+
+            int discSynCount = crystal.DiscoveredSynergyIds != null ? crystal.DiscoveredSynergyIds.Count : 0;
+            writer.Write(discSynCount);
+            if (crystal.DiscoveredSynergyIds != null)
+            {
+                for (int j = 0; j < crystal.DiscoveredSynergyIds.Count; j++)
+                    writer.Write(crystal.DiscoveredSynergyIds[j]);
+            }
+        }
+
+        /// <summary>Reads a SavedHeroCrystal from the persistence reader.</summary>
+        private static SavedHeroCrystal ReadCrystal(IPersistableReader reader)
+        {
+            SavedHeroCrystal crystal;
+            crystal.Name = reader.ReadString();
+            crystal.JobName = reader.ReadString();
+            crystal.Level = reader.ReadInt();
+            crystal.SlotIndex = reader.ReadInt();
+            crystal.BaseStrength = reader.ReadInt();
+            crystal.BaseAgility = reader.ReadInt();
+            crystal.BaseVitality = reader.ReadInt();
+            crystal.BaseMagic = reader.ReadInt();
+            crystal.TotalJP = reader.ReadInt();
+            crystal.CurrentJP = reader.ReadInt();
+            crystal.R = reader.ReadInt();
+            crystal.G = reader.ReadInt();
+            crystal.B = reader.ReadInt();
+            crystal.A = reader.ReadInt();
+
+            int skillCount = reader.ReadInt();
+            crystal.LearnedSkillIds = new List<string>(skillCount);
+            for (int j = 0; j < skillCount; j++)
+                crystal.LearnedSkillIds.Add(reader.ReadString());
+
+            int synCount = reader.ReadInt();
+            crystal.SynergyPoints = new Dictionary<string, int>(synCount);
+            for (int j = 0; j < synCount; j++)
+            {
+                string key = reader.ReadString();
+                int value = reader.ReadInt();
+                crystal.SynergyPoints[key] = value;
+            }
+
+            int synSkillCount = reader.ReadInt();
+            crystal.LearnedSynergySkillIds = new List<string>(synSkillCount);
+            for (int j = 0; j < synSkillCount; j++)
+                crystal.LearnedSynergySkillIds.Add(reader.ReadString());
+
+            int discSynCount = reader.ReadInt();
+            crystal.DiscoveredSynergyIds = new List<string>(discSynCount);
+            for (int j = 0; j < discSynCount; j++)
+                crystal.DiscoveredSynergyIds.Add(reader.ReadString());
+
+            return crystal;
         }
     }
 }

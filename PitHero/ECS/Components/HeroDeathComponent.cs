@@ -212,6 +212,13 @@ namespace PitHero.ECS.Components
                 Debug.Warn("[HeroDeathComponent] CrystalMerchantVault service not found");
             }
 
+            // Route bound crystal to SecondChanceMerchantVault
+            if (secondChanceVault != null)
+            {
+                secondChanceVault.AddCrystal(crystal);
+                Debug.Log($"[HeroDeathComponent] Added crystal to Second Chance Vault");
+            }
+
             // Capture scene reference before destroying entity
             var scene = Entity.Scene;
 
