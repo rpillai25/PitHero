@@ -122,6 +122,7 @@ namespace RolePlayingFramework.Heroes
         /// <summary>Calculates the job level based on number of skills purchased.</summary>
         private int CalculateJobLevel()
         {
+            // Job level is simply the count of purchased skills for this job
             int count = 0;
             var jobSkills = Job.Skills;
             for (int i = 0; i < jobSkills.Count; i++)
@@ -138,6 +139,7 @@ namespace RolePlayingFramework.Heroes
             var jobSkills = Job.Skills;
             if (jobSkills.Count == 0) return true;
 
+            // Check if all skills are learned
             for (int i = 0; i < jobSkills.Count; i++)
             {
                 if (!_learnedSkillIds.Contains(jobSkills[i].Id))
