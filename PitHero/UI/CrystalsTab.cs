@@ -166,7 +166,7 @@ namespace PitHero.UI
             }
 
             mainTable.Add(invCol).Top().Left().Pad(2);
-            mainTable.Add(queueCol).Top().Left().Pad(2, 0, 2, 5);
+            mainTable.Add(queueCol).Top().Left().Pad(2, 16, 2, 5);
 
             RefreshAll();
             return mainTable;
