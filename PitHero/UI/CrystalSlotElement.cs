@@ -12,7 +12,7 @@ namespace PitHero.UI
     /// <summary>
     /// A single clickable crystal slot element. Renders the slot background sprite (Inventory or
     /// Shortcut), and – only when a crystal is present – the HeroCrystalBase sprite followed by the
-    /// tinted HeroCrystal sprite on top. Hover uses the HighlightBox sprite; selection uses SelectBox.
+    /// tinted HeroCrystal sprite on top. Hover uses the SelectBox sprite; selection uses HighlightBox.
     /// </summary>
     public class CrystalSlotElement : Element, IInputListener
     {
@@ -128,13 +128,13 @@ namespace PitHero.UI
                     _masterStarDrawable.Draw(batcher, x + w - 12f, y, 12f, 12f, Color.White);
             }
 
-            // 3. Hover highlight (HighlightBox sprite)
-            if (_isHovered && _highlightBoxDrawable != null)
-                _highlightBoxDrawable.Draw(batcher, x, y, w, h, Color.White);
-
-            // 4. Selection highlight (SelectBox sprite)
-            if (_isSelected && _selectBoxDrawable != null)
+            // 3. Hover highlight (SelectBox sprite – matches InventorySlot hover behaviour)
+            if (_isHovered && _selectBoxDrawable != null)
                 _selectBoxDrawable.Draw(batcher, x, y, w, h, Color.White);
+
+            // 4. Selection highlight (HighlightBox sprite – matches InventorySlot selected behaviour)
+            if (_isSelected && _highlightBoxDrawable != null)
+                _highlightBoxDrawable.Draw(batcher, x, y, w, h, Color.White);
 
             base.Draw(batcher, parentAlpha);
         }
