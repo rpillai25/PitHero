@@ -169,7 +169,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 9;
+        public const int CurrentVersion = 1;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -297,7 +297,7 @@ namespace PitHero.Services
         /// <summary>Third heal priority.</summary>
         public int HealPriority3;
 
-        // Behavior Settings (added in version 4)
+        // Behavior Settings
         /// <summary>Current battle tactic (cast from BattleTactic enum).</summary>
         public int BattleTacticValue;
 
@@ -319,7 +319,7 @@ namespace PitHero.Services
         /// <summary>Saved hired mercenaries.</summary>
         public List<SavedMercenary> HiredMercenaries;
 
-        // Crystal Collection (added in version 6)
+        // Crystal Collection
         /// <summary>Saved crystal collection (80 slots).</summary>
         public List<SavedHeroCrystal> CrystalCollection;
 
@@ -329,10 +329,10 @@ namespace PitHero.Services
         /// <summary>Crystal queued to infuse when a new hero is created (popped from queue on death).</summary>
         public SavedHeroCrystal? PendingNextCrystal;
 
-        /// <summary>Crystal currently in forge slot A (added in version 8).</summary>
+        /// <summary>Crystal currently in forge slot A.</summary>
         public SavedHeroCrystal? ForgeSlotA;
 
-        /// <summary>Crystal currently in forge slot B (added in version 8).</summary>
+        /// <summary>Crystal currently in forge slot B.</summary>
         public SavedHeroCrystal? ForgeSlotB;
 
         /// <summary>Saved crystals in Second Chance Merchant vault.</summary>
@@ -475,7 +475,7 @@ namespace PitHero.Services
             writer.Write(HealPriority2);
             writer.Write(HealPriority3);
 
-            // 10b. Behavior Settings (added in version 4)
+            // 10b. Behavior Settings
             writer.Write(BattleTacticValue);
             writer.Write(UseConsumablesOnMercenaries);
             writer.Write(MercenariesCanUseConsumables);
@@ -492,7 +492,7 @@ namespace PitHero.Services
                 writer.Write(monster.FarmingProficiency);
             }
 
-            // 12. Shortcut Bar (added in version 2)
+            // 12. Shortcut Bar
             writer.Write(ShortcutSlots.Count);
             for (int i = 0; i < ShortcutSlots.Count; i++)
             {
@@ -508,7 +508,7 @@ namespace PitHero.Services
                 }
             }
 
-            // 13. Hired Mercenaries (added in version 3)
+            // 13. Hired Mercenaries
             writer.Write(HiredMercenaries.Count);
             for (int i = 0; i < HiredMercenaries.Count; i++)
             {
@@ -538,28 +538,28 @@ namespace PitHero.Services
                 WriteColor(writer, merc.ShirtColor);
             }
 
-            // 14. Crystal Collection (added in version 6)
+            // 14. Crystal Collection
             writer.Write(CrystalCollection.Count);
             for (int i = 0; i < CrystalCollection.Count; i++)
             {
                 WriteCrystal(writer, CrystalCollection[i]);
             }
 
-            // 15. Crystal Queue (version 7+: full crystal list, replaces v6 queue indices)
+            // 15. Crystal Queue
             writer.Write(CrystalQueue.Count);
             for (int i = 0; i < CrystalQueue.Count; i++)
             {
                 WriteCrystal(writer, CrystalQueue[i]);
             }
 
-            // 16. Second Chance Vault Crystals (added in version 6)
+            // 16. Second Chance Vault Crystals
             writer.Write(SecondChanceVaultCrystals.Count);
             for (int i = 0; i < SecondChanceVaultCrystals.Count; i++)
             {
                 WriteCrystal(writer, SecondChanceVaultCrystals[i]);
             }
 
-            // 17. Pending Next Crystal (added in version 7)
+            // 17. Pending Next Crystal
             bool hasPending = PendingNextCrystal.HasValue;
             writer.Write(hasPending);
             if (hasPending)
@@ -567,7 +567,7 @@ namespace PitHero.Services
                 WriteCrystal(writer, PendingNextCrystal.Value);
             }
 
-            // 18. Forge slots (added in version 8)
+            // 18. Forge slots
             bool hasForgeA = ForgeSlotA.HasValue;
             writer.Write(hasForgeA);
             if (hasForgeA)
@@ -582,8 +582,8 @@ namespace PitHero.Services
         /// <summary>Reads all game state from the persistence reader.</summary>
         void IPersistable.Recover(IPersistableReader reader)
         {
-            // 1. File Version (reserved for future migration logic)
-            int version = reader.ReadInt();
+            // 1. File Version
+            reader.ReadInt();
 
             // 2. Total Time Played
             TotalTimePlayed = reader.ReadFloat();
@@ -693,13 +693,10 @@ namespace PitHero.Services
             HealPriority2 = reader.ReadInt();
             HealPriority3 = reader.ReadInt();
 
-            // 10b. Behavior Settings (added in version 4)
-            if (version >= 4)
-            {
-                BattleTacticValue = reader.ReadInt();
-                UseConsumablesOnMercenaries = reader.ReadBool();
-                MercenariesCanUseConsumables = reader.ReadBool();
-            }
+            // 10b. Behavior Settings
+            BattleTacticValue = reader.ReadInt();
+            UseConsumablesOnMercenaries = reader.ReadBool();
+            MercenariesCanUseConsumables = reader.ReadBool();
 
             // 11. Allied Monsters
             int monsterCount = reader.ReadInt();
@@ -715,129 +712,92 @@ namespace PitHero.Services
                 AlliedMonsters.Add(monster);
             }
 
-            // 12. Shortcut Bar (added in version 2)
-            if (version >= 2)
+            // 12. Shortcut Bar
+            int shortcutCount = reader.ReadInt();
+            ShortcutSlots = new List<SavedShortcutSlot>(shortcutCount);
+            for (int i = 0; i < shortcutCount; i++)
             {
-                int shortcutCount = reader.ReadInt();
-                ShortcutSlots = new List<SavedShortcutSlot>(shortcutCount);
-                for (int i = 0; i < shortcutCount; i++)
+                SavedShortcutSlot slot;
+                slot.SlotType = reader.ReadInt();
+                slot.ItemBagIndex = 0;
+                slot.SkillId = null;
+                if (slot.SlotType == 1) // Item
                 {
-                    SavedShortcutSlot slot;
-                    slot.SlotType = reader.ReadInt();
-                    slot.ItemBagIndex = 0;
-                    slot.SkillId = null;
-                    if (slot.SlotType == 1) // Item
-                    {
-                        slot.ItemBagIndex = reader.ReadInt();
-                    }
-                    else if (slot.SlotType == 2) // Skill
-                    {
-                        slot.SkillId = reader.ReadString();
-                    }
-                    ShortcutSlots.Add(slot);
+                    slot.ItemBagIndex = reader.ReadInt();
                 }
+                else if (slot.SlotType == 2) // Skill
+                {
+                    slot.SkillId = reader.ReadString();
+                }
+                ShortcutSlots.Add(slot);
             }
 
-            // 13. Hired Mercenaries (added in version 3)
-            if (version >= 3)
+            // 13. Hired Mercenaries
+            int mercCount = reader.ReadInt();
+            HiredMercenaries = new List<SavedMercenary>(mercCount);
+            for (int i = 0; i < mercCount; i++)
             {
-                int mercCount = reader.ReadInt();
-                HiredMercenaries = new List<SavedMercenary>(mercCount);
-                for (int i = 0; i < mercCount; i++)
+                SavedMercenary merc;
+                merc.Name = reader.ReadString();
+                merc.JobName = reader.ReadString();
+                merc.Level = reader.ReadInt();
+                merc.Experience = reader.ReadInt();
+                merc.BaseStrength = reader.ReadInt();
+                merc.BaseAgility = reader.ReadInt();
+                merc.BaseVitality = reader.ReadInt();
+                merc.BaseMagic = reader.ReadInt();
+                merc.CurrentHP = reader.ReadInt();
+                merc.CurrentMP = reader.ReadInt();
+                merc.EquipmentNames = new string[6];
+                for (int e = 0; e < 6; e++)
                 {
-                    SavedMercenary merc;
-                    merc.Name = reader.ReadString();
-                    merc.JobName = reader.ReadString();
-                    merc.Level = reader.ReadInt();
-                    merc.Experience = version >= 5 ? reader.ReadInt() : 0;
-                    merc.BaseStrength = reader.ReadInt();
-                    merc.BaseAgility = reader.ReadInt();
-                    merc.BaseVitality = reader.ReadInt();
-                    merc.BaseMagic = reader.ReadInt();
-                    merc.CurrentHP = reader.ReadInt();
-                    merc.CurrentMP = reader.ReadInt();
-                    merc.EquipmentNames = new string[6];
-                    for (int e = 0; e < 6; e++)
-                    {
-                        bool hasEquip = reader.ReadBool();
-                        merc.EquipmentNames[e] = hasEquip ? reader.ReadString() : null;
-                    }
-                    merc.SkinColor = ReadColor(reader);
-                    merc.HairColor = ReadColor(reader);
-                    merc.HairstyleIndex = reader.ReadInt();
-                    merc.ShirtColor = ReadColor(reader);
-                    HiredMercenaries.Add(merc);
+                    bool hasEquip = reader.ReadBool();
+                    merc.EquipmentNames[e] = hasEquip ? reader.ReadString() : null;
                 }
+                merc.SkinColor = ReadColor(reader);
+                merc.HairColor = ReadColor(reader);
+                merc.HairstyleIndex = reader.ReadInt();
+                merc.ShirtColor = ReadColor(reader);
+                HiredMercenaries.Add(merc);
             }
 
-            // 14. Crystal Collection (added in version 6)
-            if (version >= 6)
+            // 14. Crystal Collection
+            int crystalCount = reader.ReadInt();
+            CrystalCollection = new List<SavedHeroCrystal>(crystalCount);
+            for (int i = 0; i < crystalCount; i++)
             {
-                int crystalCount = reader.ReadInt();
-                CrystalCollection = new List<SavedHeroCrystal>(crystalCount);
-                for (int i = 0; i < crystalCount; i++)
-                {
-                    CrystalCollection.Add(ReadCrystal(reader, version));
-                }
-
-                if (version >= 7)
-                {
-                    // 15. Crystal Queue list (version 7+)
-                    int queueCount = reader.ReadInt();
-                    CrystalQueue = new List<SavedHeroCrystal>(queueCount);
-                    for (int i = 0; i < queueCount; i++)
-                    {
-                        CrystalQueue.Add(ReadCrystal(reader, version));
-                    }
-
-                    // 16. Second Chance Vault Crystals
-                    int vaultCrystalCount = reader.ReadInt();
-                    SecondChanceVaultCrystals = new List<SavedHeroCrystal>(vaultCrystalCount);
-                    for (int i = 0; i < vaultCrystalCount; i++)
-                    {
-                        SecondChanceVaultCrystals.Add(ReadCrystal(reader, version));
-                    }
-
-                    // 17. Pending Next Crystal (version 7+)
-                    bool hasPending = reader.ReadBool();
-                    if (hasPending)
-                        PendingNextCrystal = ReadCrystal(reader, version);
-                    else
-                        PendingNextCrystal = null;
-
-                    // 18. Forge slots (version 8+)
-                    if (version >= 8)
-                    {
-                        bool hasForgeA = reader.ReadBool();
-                        ForgeSlotA = hasForgeA ? ReadCrystal(reader, version) : (SavedHeroCrystal?)null;
-
-                        bool hasForgeB = reader.ReadBool();
-                        ForgeSlotB = hasForgeB ? ReadCrystal(reader, version) : (SavedHeroCrystal?)null;
-                    }
-                    else
-                    {
-                        ForgeSlotA = null;
-                        ForgeSlotB = null;
-                    }
-                }
-                else
-                {
-                    // Version 6: read old queue indices format (skip - no migration needed for dev builds)
-                    for (int i = 0; i < 5; i++)
-                        reader.ReadInt(); // discard old queue indices
-
-                    // Version 6: Second Chance Vault Crystals
-                    int vaultCrystalCount = reader.ReadInt();
-                    SecondChanceVaultCrystals = new List<SavedHeroCrystal>(vaultCrystalCount);
-                    for (int i = 0; i < vaultCrystalCount; i++)
-                    {
-                        SecondChanceVaultCrystals.Add(ReadCrystal(reader, version));
-                    }
-
-                    CrystalQueue = new List<SavedHeroCrystal>();
-                    PendingNextCrystal = null;
-                }
+                CrystalCollection.Add(ReadCrystal(reader));
             }
+
+            // 15. Crystal Queue
+            int queueCount = reader.ReadInt();
+            CrystalQueue = new List<SavedHeroCrystal>(queueCount);
+            for (int i = 0; i < queueCount; i++)
+            {
+                CrystalQueue.Add(ReadCrystal(reader));
+            }
+
+            // 16. Second Chance Vault Crystals
+            int vaultCrystalCount = reader.ReadInt();
+            SecondChanceVaultCrystals = new List<SavedHeroCrystal>(vaultCrystalCount);
+            for (int i = 0; i < vaultCrystalCount; i++)
+            {
+                SecondChanceVaultCrystals.Add(ReadCrystal(reader));
+            }
+
+            // 17. Pending Next Crystal
+            bool hasPending = reader.ReadBool();
+            if (hasPending)
+                PendingNextCrystal = ReadCrystal(reader);
+            else
+                PendingNextCrystal = null;
+
+            // 18. Forge slots
+            bool hasForgeA = reader.ReadBool();
+            ForgeSlotA = hasForgeA ? ReadCrystal(reader) : (SavedHeroCrystal?)null;
+
+            bool hasForgeB = reader.ReadBool();
+            ForgeSlotB = hasForgeB ? ReadCrystal(reader) : (SavedHeroCrystal?)null;
         }
 
         /// <summary>Writes a Color as four individual int components (R, G, B, A).</summary>
@@ -918,7 +878,7 @@ namespace PitHero.Services
         }
 
         /// <summary>Reads a SavedHeroCrystal from the persistence reader.</summary>
-        private static SavedHeroCrystal ReadCrystal(IPersistableReader reader, int version)
+        private static SavedHeroCrystal ReadCrystal(IPersistableReader reader)
         {
             SavedHeroCrystal crystal;
             crystal.Name = reader.ReadString();
@@ -960,7 +920,7 @@ namespace PitHero.Services
             for (int j = 0; j < discSynCount; j++)
                 crystal.DiscoveredSynergyIds.Add(reader.ReadString());
 
-            crystal.Mastered = version >= 9 ? reader.ReadBool() : false;
+            crystal.Mastered = reader.ReadBool();
 
             return crystal;
         }
