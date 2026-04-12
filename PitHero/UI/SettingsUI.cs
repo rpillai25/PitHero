@@ -680,6 +680,7 @@ namespace PitHero.UI
                     pauseService.Unpause();
                 Time.TimeScale = 1f;
                 Core.GetGlobalManager<CoroutineManager>().StopAllCoroutines();
+                AI.HeroStateMachine.IsBattleInProgress = false;
                 Core.Scene = new TitleScreenScene();
             };
             quitToTitleButtonTable.Add(quitToTitleYesButton).Width(80).Height(24).SetPadRight(10);
