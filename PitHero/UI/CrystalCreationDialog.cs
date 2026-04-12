@@ -81,7 +81,7 @@ namespace PitHero.UI
             };
 
             selectorRow.Add(prevBtn).Size(30f, 24f);
-            selectorRow.Add(_jobLabel).Width(100f).Pad(4, 10, 4, 10);
+            selectorRow.Add(_jobLabel).Width(64f).Pad(4, 10, 4, 10);
             selectorRow.Add(nextBtn).Size(30f, 24f);
             leftTable.Add(selectorRow).Left().Pad(6);
             leftTable.Row();
@@ -93,9 +93,9 @@ namespace PitHero.UI
             cancelBtn.OnClicked += _ => { OnClosed?.Invoke(); Remove(); };
 
             var btnRow = new Table();
-            btnRow.Add(createBtn).Pad(4);
-            btnRow.Add(cancelBtn).Pad(4);
-            leftTable.Add(btnRow).Left().Pad(6);
+            btnRow.Add(createBtn).Height(24).Pad(4);
+            btnRow.Add(cancelBtn).Height(24).Pad(4);
+            leftTable.Add(btnRow).Left();
 
             // ── Right panel: job info ──────────────────────────────────────────
             _jobInfoTable = new Table();
