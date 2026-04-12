@@ -109,7 +109,7 @@ namespace PitHero.UI
             _forgeButton = new TextButton(GetText(UITextKey.CrystalForgeButton), skin, "ph-default");
             _forgeButton.OnClicked += OnForgeClicked;
             _forgeButton.SetDisabled(true);
-            forgeRow.Add(_forgeButton).Pad(4);
+            forgeRow.Add(_forgeButton).Height(24).Pad(4);
 
             forgeSection.Add(forgeRow).Left().Pad(2);
 
@@ -140,7 +140,7 @@ namespace PitHero.UI
 
             _createButton = new TextButton(GetText(UITextKey.CrystalCreateButton), skin, "ph-default");
             _createButton.OnClicked += OnCreateClicked;
-            invCol.Add(_createButton).Left().Pad(5);
+            invCol.Add(_createButton).Height(24).Left().Pad(5);
 
             // ── Queue section (right) ─────────────────────────────────────────────
             var queueCol = new Table();
@@ -458,6 +458,15 @@ namespace PitHero.UI
 
                     // Don't animate if same slot
                     if (srcType == dstType)
+                    {
+                        ClearSelection();
+                        HideCrystalCard();
+                        return;
+                    }
+
+                    // Only mastered crystals may be placed into forge slots
+                    var srcCrystal = srcEl?.Crystal;
+                    if (srcCrystal != null && !srcCrystal.Mastered)
                     {
                         ClearSelection();
                         HideCrystalCard();

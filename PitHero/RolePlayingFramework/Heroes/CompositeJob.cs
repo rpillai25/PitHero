@@ -47,7 +47,8 @@ namespace RolePlayingFramework.Heroes
         private string GetTierName()
         {
             string key;
-            if (_skills.Count >= 20) key = JobTextKey.Job_ChosenOne_Name;
+            if (_skills.Count >= 24) key = JobTextKey.Job_ChosenOne_Name;
+            else if (_skills.Count >= 20) key = JobTextKey.Job_Champion_Name;
             else if (_skills.Count >= 16) key = JobTextKey.Job_Legend_Name;
             else if (_skills.Count >= 12) key = JobTextKey.Job_Hero_Name;
             else key = JobTextKey.Job_Expert_Name;

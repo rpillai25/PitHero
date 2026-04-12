@@ -12,7 +12,7 @@ namespace PitHero.UI
     /// <summary>
     /// A single clickable crystal slot element. Renders the slot background sprite (Inventory or
     /// Shortcut), and – only when a crystal is present – the HeroCrystalBase sprite followed by the
-    /// tinted HeroCrystal sprite on top. Hover uses the HighlightBox sprite; selection uses SelectBox.
+    /// tinted HeroCrystal sprite on top. Hover uses the SelectBox sprite; selection uses HighlightBox.
     /// </summary>
     public class CrystalSlotElement : Element, IInputListener
     {
@@ -25,6 +25,8 @@ namespace PitHero.UI
         // Crystal content sprites (only drawn when a crystal is present)
         private SpriteDrawable _baseDrawable;
         private SpriteDrawable _crystalDrawable;
+        // Master star sprite (drawn when crystal is mastered)
+        private SpriteDrawable _masterStarDrawable;
         // Hover / selection overlay sprites from UI atlas
         private SpriteDrawable _highlightBoxDrawable;
         private SpriteDrawable _selectBoxDrawable;
@@ -66,6 +68,10 @@ namespace PitHero.UI
                 var crystalSprite = itemsAtlas.GetSprite("HeroCrystal");
                 if (crystalSprite != null)
                     _crystalDrawable = new SpriteDrawable(crystalSprite);
+
+                var masterStarSprite = itemsAtlas.GetSprite("CrystalMasterStar");
+                if (masterStarSprite != null)
+                    _masterStarDrawable = new SpriteDrawable(masterStarSprite);
 
                 // Hover / selection overlays
                 var highlightSprite = uiAtlas.GetSprite("HighlightBox");
@@ -116,15 +122,19 @@ namespace PitHero.UI
 
                 if (_crystalDrawable != null)
                     _crystalDrawable.Draw(batcher, x, y, w, h, _crystal.Color);
+
+                // Master star in upper-right corner (12×12) when crystal is mastered
+                if (_crystal.Mastered && _masterStarDrawable != null)
+                    _masterStarDrawable.Draw(batcher, x + w - 12f, y, 12f, 12f, Color.White);
             }
 
-            // 3. Hover highlight (HighlightBox sprite)
-            if (_isHovered && _highlightBoxDrawable != null)
-                _highlightBoxDrawable.Draw(batcher, x, y, w, h, Color.White);
-
-            // 4. Selection highlight (SelectBox sprite)
-            if (_isSelected && _selectBoxDrawable != null)
+            // 3. Hover highlight (SelectBox sprite – matches InventorySlot hover behaviour)
+            if (_isHovered && _selectBoxDrawable != null)
                 _selectBoxDrawable.Draw(batcher, x, y, w, h, Color.White);
+
+            // 4. Selection highlight (HighlightBox sprite – matches InventorySlot selected behaviour)
+            if (_isSelected && _highlightBoxDrawable != null)
+                _highlightBoxDrawable.Draw(batcher, x, y, w, h, Color.White);
 
             base.Draw(batcher, parentAlpha);
         }

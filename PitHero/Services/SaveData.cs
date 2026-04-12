@@ -45,6 +45,7 @@ namespace PitHero.Services
         public Dictionary<string, int> SynergyPoints;
         public List<string> LearnedSynergySkillIds;
         public List<string> DiscoveredSynergyIds;
+        public bool Mastered;
 
         /// <summary>Creates a SavedHeroCrystal from a HeroCrystal instance.</summary>
         public static SavedHeroCrystal FromHeroCrystal(HeroCrystal crystal)
@@ -89,6 +90,8 @@ namespace PitHero.Services
                 saved.DiscoveredSynergyIds.Add(discEnum.Current);
             discEnum.Dispose();
 
+            saved.Mastered = crystal.Mastered;
+
             return saved;
         }
 
@@ -125,6 +128,8 @@ namespace PitHero.Services
                 for (int i = 0; i < DiscoveredSynergyIds.Count; i++)
                     crystal.DiscoverSynergy(DiscoveredSynergyIds[i]);
             }
+
+            crystal.SetMastered(Mastered);
 
             return crystal;
         }
@@ -164,7 +169,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 8;
+        public const int CurrentVersion = 9;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -772,7 +777,7 @@ namespace PitHero.Services
                 CrystalCollection = new List<SavedHeroCrystal>(crystalCount);
                 for (int i = 0; i < crystalCount; i++)
                 {
-                    CrystalCollection.Add(ReadCrystal(reader));
+                    CrystalCollection.Add(ReadCrystal(reader, version));
                 }
 
                 if (version >= 7)
@@ -782,7 +787,7 @@ namespace PitHero.Services
                     CrystalQueue = new List<SavedHeroCrystal>(queueCount);
                     for (int i = 0; i < queueCount; i++)
                     {
-                        CrystalQueue.Add(ReadCrystal(reader));
+                        CrystalQueue.Add(ReadCrystal(reader, version));
                     }
 
                     // 16. Second Chance Vault Crystals
@@ -790,13 +795,13 @@ namespace PitHero.Services
                     SecondChanceVaultCrystals = new List<SavedHeroCrystal>(vaultCrystalCount);
                     for (int i = 0; i < vaultCrystalCount; i++)
                     {
-                        SecondChanceVaultCrystals.Add(ReadCrystal(reader));
+                        SecondChanceVaultCrystals.Add(ReadCrystal(reader, version));
                     }
 
                     // 17. Pending Next Crystal (version 7+)
                     bool hasPending = reader.ReadBool();
                     if (hasPending)
-                        PendingNextCrystal = ReadCrystal(reader);
+                        PendingNextCrystal = ReadCrystal(reader, version);
                     else
                         PendingNextCrystal = null;
 
@@ -804,10 +809,10 @@ namespace PitHero.Services
                     if (version >= 8)
                     {
                         bool hasForgeA = reader.ReadBool();
-                        ForgeSlotA = hasForgeA ? ReadCrystal(reader) : (SavedHeroCrystal?)null;
+                        ForgeSlotA = hasForgeA ? ReadCrystal(reader, version) : (SavedHeroCrystal?)null;
 
                         bool hasForgeB = reader.ReadBool();
-                        ForgeSlotB = hasForgeB ? ReadCrystal(reader) : (SavedHeroCrystal?)null;
+                        ForgeSlotB = hasForgeB ? ReadCrystal(reader, version) : (SavedHeroCrystal?)null;
                     }
                     else
                     {
@@ -826,7 +831,7 @@ namespace PitHero.Services
                     SecondChanceVaultCrystals = new List<SavedHeroCrystal>(vaultCrystalCount);
                     for (int i = 0; i < vaultCrystalCount; i++)
                     {
-                        SecondChanceVaultCrystals.Add(ReadCrystal(reader));
+                        SecondChanceVaultCrystals.Add(ReadCrystal(reader, version));
                     }
 
                     CrystalQueue = new List<SavedHeroCrystal>();
@@ -908,10 +913,12 @@ namespace PitHero.Services
                 for (int j = 0; j < crystal.DiscoveredSynergyIds.Count; j++)
                     writer.Write(crystal.DiscoveredSynergyIds[j]);
             }
+
+            writer.Write(crystal.Mastered);
         }
 
         /// <summary>Reads a SavedHeroCrystal from the persistence reader.</summary>
-        private static SavedHeroCrystal ReadCrystal(IPersistableReader reader)
+        private static SavedHeroCrystal ReadCrystal(IPersistableReader reader, int version)
         {
             SavedHeroCrystal crystal;
             crystal.Name = reader.ReadString();
@@ -952,6 +959,8 @@ namespace PitHero.Services
             crystal.DiscoveredSynergyIds = new List<string>(discSynCount);
             for (int j = 0; j < discSynCount; j++)
                 crystal.DiscoveredSynergyIds.Add(reader.ReadString());
+
+            crystal.Mastered = version >= 9 ? reader.ReadBool() : false;
 
             return crystal;
         }
