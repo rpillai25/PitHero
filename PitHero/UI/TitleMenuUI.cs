@@ -50,14 +50,14 @@ namespace PitHero.UI
 
         private void CreateTitleLogo()
         {
-            // Load the UI atlas and get the PitHeroTitle sprite
+            // Load the UI atlas and get the Everpit title sprite
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
-            var titleSprite = uiAtlas.GetSprite("PitHeroTitle");
+            var titleSprite = uiAtlas.GetSprite("EverpitTitle");
             _titleLogo = new Image(titleSprite);
 
             // Center the logo horizontally and position it higher to allow more space for buttons
             float logoX = (_stage.GetWidth() - titleSprite.SourceRect.Width) / 2f;
-            float logoY = GameConfig.VirtualHeight * 0.10f; // 10% from top (moved higher)
+            float logoY = GameConfig.VirtualHeight * 0.30f; // 30% from top (moved higher)
 
             _titleLogo.SetPosition(logoX, logoY);
             _stage.AddElement(_titleLogo);

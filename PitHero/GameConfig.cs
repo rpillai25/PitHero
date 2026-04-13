@@ -173,6 +173,7 @@ namespace PitHero
         public const int RenderLayerLowest = 0; // Lowest possible layer
         public const int RenderLayerPickupItem = 1; // Pickup items layer
         public const int RenderLayerTop = 2;
+        
         public const int RenderLayerHeroHand1 = 4;
         public const int RenderLayerHeroHair = 5;
         public const int RenderLayerHeroEyes = 6;
@@ -181,6 +182,25 @@ namespace PitHero
         public const int RenderLayerHeroPants = 9;
         public const int RenderLayerHeroBody = 10;
         public const int RenderLayerHeroHand2 = 11;
+        
+        public const int RenderLayerMercenary1Hand1 = 12;
+        public const int RenderLayerMercenary1Hair = 13;
+        public const int RenderLayerMercenary1Eyes = 14;
+        public const int RenderLayerMercenary1Head = 15;
+        public const int RenderLayerMercenary1Shirt = 16;
+        public const int RenderLayerMercenary1Pants = 17;
+        public const int RenderLayerMercenary1Body = 18;
+        public const int RenderLayerMercenary1Hand2 = 19;
+
+        public const int RenderLayerMercenary2Hand1 = 20;
+        public const int RenderLayerMercenary2Hair = 21;
+        public const int RenderLayerMercenary2Eyes = 22;
+        public const int RenderLayerMercenary2Head = 23;
+        public const int RenderLayerMercenary2Shirt = 24;
+        public const int RenderLayerMercenary2Pants = 25;
+        public const int RenderLayerMercenary2Body = 26;
+        public const int RenderLayerMercenary2Hand2 = 27;
+
         public const int RenderLayerFogOfWar = 40;   // Fog of war layer above most things, except hero
         public const int RenderLayerActors = 60; // Actors and entities layer
         public const int RenderLayerDroppedItems = 65; // Dropped items layer
