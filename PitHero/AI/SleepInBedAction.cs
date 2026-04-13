@@ -17,6 +17,8 @@ namespace PitHero.AI
     /// </summary>
     public class SleepInBedAction : HeroActionBase
     {
+        private static readonly Direction[] SleepFacingDirections = new Direction[] { Direction.Left, Direction.Right, Direction.Up, Direction.Down };
+
         private ICoroutine _sleepCoroutine;
         private bool _sleepCompleted;
         private bool _isSleeping;
@@ -376,15 +378,13 @@ namespace PitHero.AI
             }
 
             // Set random facing direction for sleep
-            var sleepDirections = new Direction[] { Direction.Left, Direction.Right, Direction.Up, Direction.Down };
-
             if (facingComponent != null)
-                facingComponent.SetFacing(sleepDirections[Nez.Random.Range(0, 4)]);
+                facingComponent.SetFacing(SleepFacingDirections[Nez.Random.Range(0, 4)]);
 
             for (int i = 0; i < hiredMercenaries.Count && i < 2; i++)
             {
                 var mercFacing = hiredMercenaries[i].GetComponent<ActorFacingComponent>();
-                mercFacing?.SetFacing(sleepDirections[Nez.Random.Range(0, 4)]);
+                mercFacing?.SetFacing(SleepFacingDirections[Nez.Random.Range(0, 4)]);
             }
 
             // Wait one frame so HeroAnimationComponent.Update() picks up new facing direction before freeze
