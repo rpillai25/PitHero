@@ -375,6 +375,34 @@ namespace PitHero.AI
                 }
             }
 
+            // Set random facing direction for sleep
+            var sleepDirections = new Direction[] { Direction.Left, Direction.Right, Direction.Up, Direction.Down };
+
+            if (facingComponent != null)
+                facingComponent.SetFacing(sleepDirections[Nez.Random.Range(0, 4)]);
+
+            for (int i = 0; i < hiredMercenaries.Count && i < 2; i++)
+            {
+                var mercFacing = hiredMercenaries[i].GetComponent<ActorFacingComponent>();
+                mercFacing?.SetFacing(sleepDirections[Nez.Random.Range(0, 4)]);
+            }
+
+            // Wait one frame so HeroAnimationComponent.Update() picks up new facing direction before freeze
+            yield return null;
+
+            // Pause all hero animation layers so hero looks still while sleeping
+            var heroAnimComps = heroEntity.GetComponents<HeroAnimationComponent>();
+            for (int i = 0; i < heroAnimComps.Count; i++)
+                heroAnimComps[i].PauseAnimation();
+
+            // Pause all mercenary animation layers
+            for (int i = 0; i < hiredMercenaries.Count && i < 2; i++)
+            {
+                var mercAnimComps = hiredMercenaries[i].GetComponents<HeroAnimationComponent>();
+                for (int j = 0; j < mercAnimComps.Count; j++)
+                    mercAnimComps[j].PauseAnimation();
+            }
+
             // Wait for 10 seconds (sleep duration)
             float elapsed = 0f;
             while (elapsed < 10f)
@@ -475,9 +503,20 @@ namespace PitHero.AI
                 {
                     mercFollowComp.ResetPathfinding();
                     mercFollowComp.Enabled = true;
+
+                    // Unpause mercenary animation layers
+                    var mercAnimCompsWake = merc.GetComponents<HeroAnimationComponent>();
+                    for (int j = 0; j < mercAnimCompsWake.Count; j++)
+                        mercAnimCompsWake[j].UnpauseAnimation();
+
                     Debug.Log($"[SleepInBedAction] Re-enabled following for mercenary {i + 1}");
                 }
             }
+
+            // Unpause hero animation layers before walking out
+            var heroAnimCompsWake = heroEntity.GetComponents<HeroAnimationComponent>();
+            for (int i = 0; i < heroAnimCompsWake.Count; i++)
+                heroAnimCompsWake[i].UnpauseAnimation();
 
             // Step 5: Walk hero out of bed to exit tile (71, 3) - between payment tile and bed
             var exitTile = new Point(71, 3);
