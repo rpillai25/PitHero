@@ -646,6 +646,7 @@ namespace PitHero.Services
             mercComponent.IsWaitingInTavern = false;
             _occupiedTavernPositions.Remove(mercComponent.TavernPosition);
             mercComponent.FollowTarget = followTarget;
+            AssignMercenaryRenderLayers(mercEntity, hiredCount);
 
             Debug.Log($"[MercenaryManager] Hired mercenary {mercComponent.LinkedMercenary.Name}, follow target set to: {followTarget.Name}");
 
@@ -715,36 +716,30 @@ namespace PitHero.Services
             var offset = new Vector2(0, -GameConfig.TileSize / 2);
 
             var bodyAnimator = mercEntity.AddComponent(new HeroBodyAnimationComponent(saved.SkinColor));
-            bodyAnimator.SetRenderLayer(GameConfig.RenderLayerHeroBody);
             bodyAnimator.SetLocalOffset(offset);
 
             var hand2Animator = mercEntity.AddComponent(new HeroHand2AnimationComponent(saved.SkinColor));
-            hand2Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand2);
             hand2Animator.SetLocalOffset(offset);
 
             var pantsAnimator = mercEntity.AddComponent(new HeroPantsAnimationComponent(Color.White));
-            pantsAnimator.SetRenderLayer(GameConfig.RenderLayerHeroPants);
             pantsAnimator.SetLocalOffset(offset);
 
             var shirtAnimator = mercEntity.AddComponent(new HeroShirtAnimationComponent(saved.ShirtColor));
-            shirtAnimator.SetRenderLayer(GameConfig.RenderLayerHeroShirt);
             shirtAnimator.SetLocalOffset(offset);
 
             var headAnimator = mercEntity.AddComponent(new HeroHeadAnimationComponent(saved.SkinColor));
-            headAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHead);
             headAnimator.SetLocalOffset(offset);
 
             var eyesAnimator = mercEntity.AddComponent(new HeroEyesAnimationComponent(Color.White));
-            eyesAnimator.SetRenderLayer(GameConfig.RenderLayerHeroEyes);
             eyesAnimator.SetLocalOffset(offset);
 
             var hairAnimator = mercEntity.AddComponent(new HeroHairAnimationComponent(saved.HairColor, saved.HairstyleIndex));
-            hairAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHair);
             hairAnimator.SetLocalOffset(offset);
 
             var hand1Animator = mercEntity.AddComponent(new HeroHand1AnimationComponent(saved.SkinColor));
-            hand1Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand1);
             hand1Animator.SetLocalOffset(offset);
+
+            AssignMercenaryRenderLayers(mercEntity, hiredIndex);
 
             // Collider
             var collider = mercEntity.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));
@@ -998,6 +993,44 @@ namespace PitHero.Services
             }
 
             Debug.Log("[MercenaryManager] All hired mercenaries unfrozen and reassigned");
+        }
+
+        /// <summary>Assigns render layers to a mercenary entity's body part components based on its hired slot index.</summary>
+        private static void AssignMercenaryRenderLayers(Entity mercEntity, int slotIndex)
+        {
+            int bodyLayer, hand1Layer, hand2Layer, hairLayer, eyesLayer, headLayer, shirtLayer, pantsLayer;
+
+            if (slotIndex == 0)
+            {
+                bodyLayer  = GameConfig.RenderLayerMercenary1Body;
+                hand1Layer = GameConfig.RenderLayerMercenary1Hand1;
+                hand2Layer = GameConfig.RenderLayerMercenary1Hand2;
+                hairLayer  = GameConfig.RenderLayerMercenary1Hair;
+                eyesLayer  = GameConfig.RenderLayerMercenary1Eyes;
+                headLayer  = GameConfig.RenderLayerMercenary1Head;
+                shirtLayer = GameConfig.RenderLayerMercenary1Shirt;
+                pantsLayer = GameConfig.RenderLayerMercenary1Pants;
+            }
+            else
+            {
+                bodyLayer  = GameConfig.RenderLayerMercenary2Body;
+                hand1Layer = GameConfig.RenderLayerMercenary2Hand1;
+                hand2Layer = GameConfig.RenderLayerMercenary2Hand2;
+                hairLayer  = GameConfig.RenderLayerMercenary2Hair;
+                eyesLayer  = GameConfig.RenderLayerMercenary2Eyes;
+                headLayer  = GameConfig.RenderLayerMercenary2Head;
+                shirtLayer = GameConfig.RenderLayerMercenary2Shirt;
+                pantsLayer = GameConfig.RenderLayerMercenary2Pants;
+            }
+
+            mercEntity.GetComponent<HeroBodyAnimationComponent>()?.SetRenderLayer(bodyLayer);
+            mercEntity.GetComponent<HeroHand1AnimationComponent>()?.SetRenderLayer(hand1Layer);
+            mercEntity.GetComponent<HeroHand2AnimationComponent>()?.SetRenderLayer(hand2Layer);
+            mercEntity.GetComponent<HeroHairAnimationComponent>()?.SetRenderLayer(hairLayer);
+            mercEntity.GetComponent<HeroEyesAnimationComponent>()?.SetRenderLayer(eyesLayer);
+            mercEntity.GetComponent<HeroHeadAnimationComponent>()?.SetRenderLayer(headLayer);
+            mercEntity.GetComponent<HeroShirtAnimationComponent>()?.SetRenderLayer(shirtLayer);
+            mercEntity.GetComponent<HeroPantsAnimationComponent>()?.SetRenderLayer(pantsLayer);
         }
     }
 }
