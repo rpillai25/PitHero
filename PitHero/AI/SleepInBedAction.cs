@@ -378,8 +378,9 @@ namespace PitHero.AI
             }
 
             // Set random facing direction for sleep
+            Direction heroSleepDir = SleepFacingDirections[Nez.Random.Range(0, 4)];
             if (facingComponent != null)
-                facingComponent.SetFacing(SleepFacingDirections[Nez.Random.Range(0, 4)]);
+                facingComponent.SetFacing(heroSleepDir);
 
             for (int i = 0; i < hiredMercenaries.Count && i < 2; i++)
             {
@@ -390,15 +391,20 @@ namespace PitHero.AI
             // Wait one frame so HeroAnimationComponent.Update() picks up new facing direction before freeze
             yield return null;
 
-            // Pause all hero animation layers so hero looks still while sleeping
+            // Play sleep animations then pause all hero animation layers so hero looks still while sleeping
             var heroAnimComps = heroEntity.GetComponents<HeroAnimationComponent>();
+            for (int i = 0; i < heroAnimComps.Count; i++)
+                heroAnimComps[i].PlaySleepAnimationForDirection(heroSleepDir);
             for (int i = 0; i < heroAnimComps.Count; i++)
                 heroAnimComps[i].PauseAnimation();
 
-            // Pause all mercenary animation layers
+            // Play sleep animations then pause all mercenary animation layers
             for (int i = 0; i < hiredMercenaries.Count && i < 2; i++)
             {
+                Direction mercSleepDir = hiredMercenaries[i].GetComponent<ActorFacingComponent>()?.Facing ?? Direction.Down;
                 var mercAnimComps = hiredMercenaries[i].GetComponents<HeroAnimationComponent>();
+                for (int j = 0; j < mercAnimComps.Count; j++)
+                    mercAnimComps[j].PlaySleepAnimationForDirection(mercSleepDir);
                 for (int j = 0; j < mercAnimComps.Count; j++)
                     mercAnimComps[j].PauseAnimation();
             }
