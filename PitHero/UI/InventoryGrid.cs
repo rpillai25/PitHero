@@ -33,6 +33,8 @@ namespace PitHero.UI
         private readonly IItem[] _persistBuffer;           // Reusable buffer for bag ordering persistence (120 slot capacity)
         private HeroComponent _heroComponent;
         private InventorySlot _highlightedSlot;
+        /// <summary>Slot currently showing the hover-during-drag visual effect.</summary>
+        private InventorySlot _dragHoveredSlot;
         private InventoryContextMenu _contextMenu;
         private Stage _stage; // Reference to stage for tooltip management
 
@@ -161,6 +163,9 @@ namespace PitHero.UI
                     slot.OnSlotHovered += HandleSlotHovered;
                     slot.OnSlotUnhovered += HandleSlotUnhovered;
                     slot.OnSlotRightClicked += HandleSlotRightClicked;
+                    slot.OnDragStarted += HandleSlotDragStarted;
+                    slot.OnDragMoved += HandleSlotDragMoved;
+                    slot.OnDragDropped += HandleSlotDragDropped;
                     _slots.Add(slot);
                     AddElement(slot);
                 }
@@ -727,6 +732,93 @@ namespace PitHero.UI
         {
             slot.SetItemSpriteOffsetY(0f);
             OnItemUnhovered?.Invoke();
+        }
+
+        /// <summary>Returns the inventory slot at the given stage coordinates, or null if none.</summary>
+        private InventorySlot GetSlotAtStagePosition(Vector2 stagePos)
+        {
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                if (slot.SlotData.SlotType == InventorySlotType.Null) continue;
+                if (slot.SlotData.SlotType == InventorySlotType.MercenaryEquipment && slot.SlotData.MercenaryRef == null) continue;
+
+                var topLeft = slot.LocalToStageCoordinates(Vector2.Zero);
+                if (stagePos.X >= topLeft.X && stagePos.X <= topLeft.X + slot.GetWidth() &&
+                    stagePos.Y >= topLeft.Y && stagePos.Y <= topLeft.Y + slot.GetHeight())
+                    return slot;
+            }
+            return null;
+        }
+
+        /// <summary>Initiates a drag-and-drop operation from the given inventory slot.</summary>
+        private void HandleSlotDragStarted(InventorySlot source, Vector2 mousePos)
+        {
+            if (source.SlotData == null || source.SlotData.Item == null) return;
+
+            if (_highlightedSlot != null)
+            {
+                _highlightedSlot.SlotData.IsHighlighted = false;
+                _highlightedSlot = null;
+                InventorySelectionManager.ClearSelection();
+            }
+
+            source.SetItemSpriteHidden(true);
+            InventoryDragManager.BeginDrag(source, GetStage());
+        }
+
+        /// <summary>Updates the drag overlay position and hover highlight while dragging.</summary>
+        private void HandleSlotDragMoved(InventorySlot source, Vector2 mousePos)
+        {
+            if (!InventoryDragManager.IsDragging) return;
+
+            var stagePos = source.LocalToStageCoordinates(mousePos);
+            InventoryDragManager.UpdateDrag(stagePos);
+
+            var target = GetSlotAtStagePosition(stagePos);
+
+            if (_dragHoveredSlot != null && _dragHoveredSlot != target)
+            {
+                _dragHoveredSlot.SetItemSpriteOffsetY(0f);
+                _dragHoveredSlot = null;
+            }
+
+            if (target != null && target != source && target.SlotData != null && target.SlotData.Item != null)
+            {
+                target.SetItemSpriteOffsetY(HOVER_OFFSET_Y);
+                _dragHoveredSlot = target;
+            }
+        }
+
+        /// <summary>Handles the drop event, swapping items or cancelling if no valid target.</summary>
+        private void HandleSlotDragDropped(InventorySlot source, Vector2 mousePos)
+        {
+            if (_dragHoveredSlot != null)
+            {
+                _dragHoveredSlot.SetItemSpriteOffsetY(0f);
+                _dragHoveredSlot = null;
+            }
+
+            var stagePos = source.LocalToStageCoordinates(mousePos);
+            var target = GetSlotAtStagePosition(stagePos);
+
+            if (target != null && target != source)
+            {
+                source.SetItemSpriteHidden(false);
+                SwapSlotItems(source, target);
+                InventoryDragManager.EndDrag();
+            }
+            else if (target == source)
+            {
+                InventoryDragManager.CancelDrag();
+            }
+            else
+            {
+                InventoryDragManager.NotifyDropRequested(source, stagePos);
+                if (InventoryDragManager.IsDragging)
+                    InventoryDragManager.CancelDrag();
+            }
         }
 
         /// <summary>Handles double-click to use consumables or equip/unequip gear.</summary>
