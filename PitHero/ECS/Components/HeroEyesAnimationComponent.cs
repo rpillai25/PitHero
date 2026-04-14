@@ -20,5 +20,8 @@ namespace PitHero.ECS.Components
         protected override string JumpAnimLeft => "MaleHeroEyesJumpRight";  // Flipped in code
         protected override string JumpAnimRight => "MaleHeroEyesJumpRight";
         protected override string JumpAnimUp => "MaleHeroEyesJumpRight";
+
+        protected override string SleepDown => "MaleHeroEyesSleepDown";
+        protected override string SleepRight => "MaleHeroEyesSleepRight";  // Also used for SleepLeft (flipped in code)
     }
 }

@@ -22,6 +22,12 @@ namespace PitHero.ECS.Components
         protected abstract string JumpAnimRight { get; }
         protected abstract string JumpAnimUp { get; }
 
+        // Virtual sleep animation properties - default to walk animations; subclasses may override
+        protected virtual string SleepDown => AnimDown;
+        protected virtual string SleepRight => AnimRight;
+        protected virtual string SleepLeft => SleepRight;   // Flipped in code, same sprite as SleepRight
+        protected virtual string SleepUp => AnimUp;
+
         private Color _componentColor = Color.White;
         /// <summary>Gets the tint color for this component (default: White)</summary>
         public Color ComponentColor
@@ -150,6 +156,41 @@ namespace PitHero.ECS.Components
             else
             {
                 Debug.Warn($"[HeroAnimationComponent] Jump animation {animationName} not found - animations may not be loaded");
+            }
+        }
+
+        /// <summary>
+        /// Plays the appropriate sleep animation for the given direction.
+        /// For most layers this is the same as the walk animation; eye layers use dedicated sleep sprites.
+        /// Falls back to the walk animation if a sleep animation is not found.
+        /// </summary>
+        public void PlaySleepAnimationForDirection(Direction direction)
+        {
+            string animationName = direction switch
+            {
+                Direction.Up => SleepUp,
+                Direction.Down => SleepDown,
+                Direction.Left => SleepLeft,
+                Direction.Right => SleepRight,
+                Direction.UpLeft => SleepLeft,
+                Direction.UpRight => SleepRight,
+                Direction.DownLeft => SleepLeft,
+                Direction.DownRight => SleepRight,
+                _ => SleepDown
+            };
+
+            bool shouldFlip = direction == Direction.Left || direction == Direction.UpLeft || direction == Direction.DownLeft;
+            if (FlipX != shouldFlip)
+                SetFlipXAndAdjustLocalOffset(shouldFlip);
+
+            if (Animations != null && Animations.ContainsKey(animationName))
+            {
+                Play(animationName, LoopMode.Loop);
+            }
+            else
+            {
+                // Fall back to the regular walk animation for this direction
+                UpdateAnimationForDirection(direction);
             }
         }
 
