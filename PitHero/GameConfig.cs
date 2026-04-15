@@ -224,6 +224,8 @@ namespace PitHero
 
         // Inventory interaction
         public const float DoubleClickThresholdSeconds = 0.3f; // Time window for detecting double-click
+        /// <summary>Minimum pixel movement to initiate a drag operation.</summary>
+        public const float DragThresholdPixels = 4f;
 
         // Physics Layers (determines which layer an entity is on for collision)
         public const int PhysicsTileMapLayer = 0;   // Tilemap "Collision" layer

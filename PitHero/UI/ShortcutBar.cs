@@ -37,6 +37,13 @@ namespace PitHero.UI
         private HeroComponent _heroComponent;
         private int _highlightedIndex = -1; // Index of highlighted shortcut (-1 = none)
 
+        /// <summary>Shortcut slot index currently showing hover effect during drag.</summary>
+        private int _dragHoveredIndex = -1;
+        /// <summary>Drag-and-drop overlay for shortcut slot drags.</summary>
+        private DragDropOverlay _shortcutDragOverlay;
+        /// <summary>Index of the shortcut slot being dragged from.</summary>
+        private int _dragSourceIndex = -1;
+
         // Track scaling for different window modes
         private float _currentScale = 1f;
 
@@ -79,6 +86,10 @@ namespace PitHero.UI
                 slot.OnSlotDoubleClicked += () => HandleSlotDoubleClicked(index);
                 slot.OnSlotHovered += () => HandleSlotHovered(index);
                 slot.OnSlotUnhovered += () => HandleSlotUnhovered(index);
+                int capturedIndex = index;
+                slot.OnDragStarted += (s, pos) => HandleShortcutDragStarted(capturedIndex, s, pos);
+                slot.OnDragMoved += (s, pos) => HandleShortcutDragMoved(capturedIndex, s, pos);
+                slot.OnDragDropped += (s, pos) => HandleShortcutDragDropped(capturedIndex, s, pos);
 
                 _visualSlots.Add(slot);
                 AddElement(slot);
@@ -578,6 +589,185 @@ namespace PitHero.UI
             OnItemUnhovered?.Invoke();
         }
 
+        /// <summary>Gets the item referenced by the shortcut slot at the given index, or null if none.</summary>
+        private IItem GetShortcutItemAt(int index)
+        {
+            if (index < 0 || index >= SHORTCUT_COUNT) return null;
+            var data = _shortcutSlots[index];
+            if (data.SlotType == ShortcutSlotType.Item)
+                return data.ReferencedSlot?.SlotData?.Item;
+            return null;
+        }
+
+        /// <summary>Returns the shortcut slot index at the given stage position, or -1 if none.</summary>
+        private int GetShortcutIndexAtStagePosition(Vector2 stagePos)
+        {
+            for (int i = 0; i < _visualSlots.Length; i++)
+            {
+                var slot = _visualSlots.Buffer[i];
+                if (slot == null) continue;
+                var topLeft = slot.LocalToStageCoordinates(Vector2.Zero);
+                if (stagePos.X >= topLeft.X && stagePos.X <= topLeft.X + slot.GetWidth() &&
+                    stagePos.Y >= topLeft.Y && stagePos.Y <= topLeft.Y + slot.GetHeight())
+                    return i;
+            }
+            return -1;
+        }
+
+        /// <summary>Initiates a drag from a shortcut slot.</summary>
+        private void HandleShortcutDragStarted(int index, ShortcutSlotVisual slot, Vector2 mousePos)
+        {
+            var stage = slot.GetStage();
+            if (stage == null) return;
+
+            _dragSourceIndex = index;
+
+            if (_shortcutDragOverlay == null)
+            {
+                _shortcutDragOverlay = new DragDropOverlay();
+                stage.AddElement(_shortcutDragOverlay);
+                _shortcutDragOverlay.SetVisible(false);
+            }
+            _shortcutDragOverlay.ToFront();
+
+            SpriteDrawable dragDrawable = null;
+            if (Core.Content != null)
+            {
+                var shortcutData = _shortcutSlots[index];
+                try
+                {
+                    if (shortcutData.SlotType == ShortcutSlotType.Item)
+                    {
+                        var item = GetShortcutItemAt(index);
+                        if (item != null)
+                        {
+                            var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
+                            var sprite = atlas.GetSprite(item.SpriteName);
+                            if (sprite != null)
+                                dragDrawable = new SpriteDrawable(sprite);
+                        }
+                    }
+                    else if (shortcutData.SlotType == ShortcutSlotType.Skill)
+                    {
+                        var skill = shortcutData.ReferencedSkill;
+                        if (skill != null)
+                        {
+                            var skillsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/SkillsStencils.atlas");
+                            var sprite = skillsAtlas.GetSprite(skill.Id);
+                            if (sprite == null)
+                            {
+                                var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+                                sprite = uiAtlas.GetSprite("SkillIcon1");
+                            }
+                            if (sprite != null)
+                                dragDrawable = new SpriteDrawable(sprite);
+                        }
+                    }
+                }
+                catch
+                {
+                    // Silently ignore sprite load failures
+                }
+            }
+
+            _shortcutDragOverlay.BeginDrag(dragDrawable);
+            slot.SetItemSpriteHidden(true);
+        }
+
+        /// <summary>Updates the drag overlay and hover highlights while dragging a shortcut slot.</summary>
+        private void HandleShortcutDragMoved(int index, ShortcutSlotVisual slot, Vector2 mousePos)
+        {
+            var stagePos = slot.LocalToStageCoordinates(mousePos);
+            _shortcutDragOverlay?.UpdatePosition(stagePos);
+
+            int targetIndex = GetShortcutIndexAtStagePosition(stagePos);
+
+            if (_dragHoveredIndex >= 0 && _dragHoveredIndex != targetIndex && _dragHoveredIndex < _visualSlots.Length)
+            {
+                _visualSlots.Buffer[_dragHoveredIndex]?.SetItemSpriteOffsetY(0f);
+                _dragHoveredIndex = -1;
+            }
+
+            if (targetIndex >= 0 && targetIndex != index && targetIndex < _visualSlots.Length)
+            {
+                _visualSlots.Buffer[targetIndex]?.SetItemSpriteOffsetY(HOVER_OFFSET_Y);
+                _dragHoveredIndex = targetIndex;
+            }
+        }
+
+        /// <summary>Handles drop from a shortcut slot — swaps with target shortcut, removes if dropped outside, or cancels.</summary>
+        private void HandleShortcutDragDropped(int index, ShortcutSlotVisual slot, Vector2 mousePos)
+        {
+            if (_dragHoveredIndex >= 0 && _dragHoveredIndex < _visualSlots.Length)
+            {
+                _visualSlots.Buffer[_dragHoveredIndex]?.SetItemSpriteOffsetY(0f);
+                _dragHoveredIndex = -1;
+            }
+
+            var stagePos = slot.LocalToStageCoordinates(mousePos);
+            int targetIndex = GetShortcutIndexAtStagePosition(stagePos);
+
+            slot.SetItemSpriteHidden(false);
+
+            if (targetIndex >= 0 && targetIndex != index)
+            {
+                // Dropped onto a different shortcut slot — swap
+                SwapShortcuts(index, targetIndex);
+            }
+            else if (targetIndex < 0)
+            {
+                // Dropped outside all shortcut slots — remove from shortcut bar
+                ClearShortcutReference(index);
+            }
+            // Dropped on own slot — no-op (restore already done above)
+
+            _shortcutDragOverlay?.EndDrag();
+            _dragSourceIndex = -1;
+        }
+
+        /// <summary>Subscribes to InventoryDragManager to handle inventory-to-shortcut and skill-list-to-shortcut drops.</summary>
+        public void ConnectToDragManager()
+        {
+            InventoryDragManager.OnDropRequested += HandleInventoryDropOnShortcut;
+            InventoryDragManager.OnSkillDropRequested += HandleSkillDropOnShortcut;
+        }
+
+        /// <summary>
+        /// Handles an inventory item dropped onto a shortcut slot.
+        /// Only consumables are accepted; other item types are rejected.
+        /// </summary>
+        private void HandleInventoryDropOnShortcut(InventorySlot inventorySource, Vector2 stagePos)
+        {
+            int index = GetShortcutIndexAtStagePosition(stagePos);
+            if (index < 0)
+                return;
+
+            var item = inventorySource?.SlotData?.Item;
+            if (item is not Consumable)
+            {
+                // Non-consumable items cannot be placed on the shortcut bar — cancel drag
+                InventoryDragManager.CancelDrag();
+                return;
+            }
+
+            SetShortcutReference(index, inventorySource);
+            InventoryDragManager.EndDrag();
+        }
+
+        /// <summary>Handles a skill dragged from the hero skill list dropped onto a shortcut slot.</summary>
+        private void HandleSkillDropOnShortcut(ISkill skill, Vector2 stagePos)
+        {
+            int index = GetShortcutIndexAtStagePosition(stagePos);
+            if (index < 0)
+            {
+                InventoryDragManager.CancelDrag();
+                return;
+            }
+
+            SetShortcutSkill(index, skill);
+            InventoryDragManager.EndDrag();
+        }
+
         /// <summary>Uses a consumable item from the referenced inventory slot.</summary>
         private void UseConsumable(IItem item, int bagIndex)
         {
@@ -755,10 +945,20 @@ namespace PitHero.UI
         // Double-click detection
         private float _lastClickTime = -1f;
 
+        // Drag detection
+        private bool _mouseDown;
+        private Vector2 _mousePressPos;
+        private bool _isDraggingItem;
+        private bool _hideItemSprite = false;
+
         public event System.Action OnSlotClicked;
         public event System.Action OnSlotDoubleClicked;
         public event System.Action OnSlotHovered;
         public event System.Action OnSlotUnhovered;
+
+        public event System.Action<ShortcutSlotVisual, Vector2> OnDragStarted;
+        public event System.Action<ShortcutSlotVisual, Vector2> OnDragMoved;
+        public event System.Action<ShortcutSlotVisual, Vector2> OnDragDropped;
 
         public float Scale { get; set; } = 1f;
 
@@ -815,9 +1015,16 @@ namespace PitHero.UI
             _isHighlighted = highlighted;
         }
 
+        /// <summary>Sets the item sprite Y offset for visual effects (like hover).</summary>
         public void SetItemSpriteOffsetY(float offsetY)
         {
             _itemSpriteOffsetY = offsetY;
+        }
+
+        /// <summary>Shows or hides the item sprite without removing the item from the slot data.</summary>
+        public void SetItemSpriteHidden(bool hidden)
+        {
+            _hideItemSprite = hidden;
         }
 
         public override void Draw(Batcher batcher, float parentAlpha)
@@ -829,12 +1036,12 @@ namespace PitHero.UI
             }
 
             // Draw referenced item sprite if exists
-            if (_referencedItem != null && Core.Content != null)
+            if (_referencedItem != null && Core.Content != null && !_hideItemSprite)
             {
                 try
                 {
                     var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
-                    var itemSprite = itemsAtlas.GetSprite(_referencedItem.Name);
+                    var itemSprite = itemsAtlas.GetSprite(_referencedItem.SpriteName);
                     if (itemSprite != null)
                     {
                         var itemDrawable = new SpriteDrawable(itemSprite);
@@ -854,8 +1061,8 @@ namespace PitHero.UI
                     batcher.DrawString(_font, stackText, textPosition, Color.White, 0f, Vector2.Zero, Scale, Microsoft.Xna.Framework.Graphics.SpriteEffects.None, 0f);
                 }
             }
-            // Draw referenced skill sprite if exists
-            else if (_referencedSkill != null && Core.Content != null)
+            // Draw referenced skill sprite if exists (also hidden during drag)
+            else if (_referencedSkill != null && Core.Content != null && !_hideItemSprite)
             {
                 try
                 {
@@ -914,21 +1121,31 @@ namespace PitHero.UI
 
         void IInputListener.OnMouseMoved(Vector2 mousePos)
         {
+            if (!_mouseDown) return;
+            if (_referencedItem == null && _referencedSkill == null) return;
+
+            if (!_isDraggingItem)
+            {
+                float dx = mousePos.X - _mousePressPos.X;
+                float dy = mousePos.Y - _mousePressPos.Y;
+                float distSq = dx * dx + dy * dy;
+                float threshold = GameConfig.DragThresholdPixels;
+                if (distSq >= threshold * threshold)
+                {
+                    _isDraggingItem = true;
+                    OnDragStarted?.Invoke(this, mousePos);
+                }
+            }
+
+            if (_isDraggingItem)
+                OnDragMoved?.Invoke(this, mousePos);
         }
 
         bool IInputListener.OnLeftMousePressed(Vector2 mousePos)
         {
-            float currentTime = Time.TotalTime;
-            if (_lastClickTime >= 0 && (currentTime - _lastClickTime) <= GameConfig.DoubleClickThresholdSeconds)
-            {
-                OnSlotDoubleClicked?.Invoke();
-                _lastClickTime = -1f;
-            }
-            else
-            {
-                OnSlotClicked?.Invoke();
-                _lastClickTime = currentTime;
-            }
+            _mouseDown = true;
+            _mousePressPos = mousePos;
+            _isDraggingItem = false;
             return true;
         }
 
@@ -941,6 +1158,28 @@ namespace PitHero.UI
 
         void IInputListener.OnLeftMouseUp(Vector2 mousePos)
         {
+            bool wasDragging = _isDraggingItem;
+            _mouseDown = false;
+            _isDraggingItem = false;
+
+            if (wasDragging)
+            {
+                OnDragDropped?.Invoke(this, mousePos);
+                return;
+            }
+
+            // Deferred click — slot was not dragged
+            float currentTime = Time.TotalTime;
+            if (_lastClickTime >= 0 && (currentTime - _lastClickTime) <= GameConfig.DoubleClickThresholdSeconds)
+            {
+                OnSlotDoubleClicked?.Invoke();
+                _lastClickTime = -1f;
+            }
+            else
+            {
+                OnSlotClicked?.Invoke();
+                _lastClickTime = currentTime;
+            }
         }
 
         void IInputListener.OnRightMouseUp(Vector2 mousePos)

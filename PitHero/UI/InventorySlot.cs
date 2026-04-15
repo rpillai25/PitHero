@@ -31,11 +31,20 @@ namespace PitHero.UI
         // Double-click detection
         private float _lastClickTime = -1f;
 
+        // Drag detection
+        private bool _mouseDown;
+        private Vector2 _mousePressPos;
+        private bool _isDraggingItem;
+
         public event System.Action<InventorySlot> OnSlotClicked;
         public event System.Action<InventorySlot> OnSlotDoubleClicked;
         public event System.Action<InventorySlot> OnSlotHovered;
         public event System.Action<InventorySlot> OnSlotUnhovered;
         public event System.Action<InventorySlot, Vector2> OnSlotRightClicked;
+
+        public event System.Action<InventorySlot, Vector2> OnDragStarted;
+        public event System.Action<InventorySlot, Vector2> OnDragMoved;
+        public event System.Action<InventorySlot, Vector2> OnDragDropped;
 
         public InventorySlotData SlotData => _slotData;
 
@@ -284,6 +293,24 @@ namespace PitHero.UI
             {
                 _placeholderTooltip.Hit(Input.MousePosition);
             }
+
+            if (!_mouseDown || _slotData == null || _slotData.Item == null) return;
+
+            if (!_isDraggingItem)
+            {
+                float dx = mousePos.X - _mousePressPos.X;
+                float dy = mousePos.Y - _mousePressPos.Y;
+                float distSq = dx * dx + dy * dy;
+                float threshold = GameConfig.DragThresholdPixels;
+                if (distSq >= threshold * threshold)
+                {
+                    _isDraggingItem = true;
+                    OnDragStarted?.Invoke(this, mousePos);
+                }
+            }
+
+            if (_isDraggingItem)
+                OnDragMoved?.Invoke(this, mousePos);
         }
 
         bool IInputListener.OnLeftMousePressed(Vector2 mousePos)
@@ -292,20 +319,9 @@ namespace PitHero.UI
             if (_slotData.SlotType == InventorySlotType.MercenaryEquipment && _slotData.MercenaryRef == null)
                 return false;
 
-            // Check for double-click
-            float currentTime = Time.TotalTime;
-            if (_lastClickTime >= 0 && (currentTime - _lastClickTime) <= GameConfig.DoubleClickThresholdSeconds)
-            {
-                // Double-click detected
-                OnSlotDoubleClicked?.Invoke(this);
-                _lastClickTime = -1f; // Reset to prevent triple-click
-            }
-            else
-            {
-                // Single click
-                OnSlotClicked?.Invoke(this);
-                _lastClickTime = currentTime;
-            }
+            _mouseDown = true;
+            _mousePressPos = mousePos;
+            _isDraggingItem = false;
             return true;
         }
 
@@ -321,6 +337,28 @@ namespace PitHero.UI
 
         void IInputListener.OnLeftMouseUp(Vector2 mousePos)
         {
+            bool wasDragging = _isDraggingItem;
+            _mouseDown = false;
+            _isDraggingItem = false;
+
+            if (wasDragging)
+            {
+                OnDragDropped?.Invoke(this, mousePos);
+                return;
+            }
+
+            // Deferred click — slot was not dragged
+            float currentTime = Time.TotalTime;
+            if (_lastClickTime >= 0 && (currentTime - _lastClickTime) <= GameConfig.DoubleClickThresholdSeconds)
+            {
+                OnSlotDoubleClicked?.Invoke(this);
+                _lastClickTime = -1f;
+            }
+            else
+            {
+                OnSlotClicked?.Invoke(this);
+                _lastClickTime = currentTime;
+            }
         }
 
         void IInputListener.OnRightMouseUp(Vector2 mousePos)

@@ -1460,6 +1460,7 @@ namespace PitHero.ECS.Scenes
             }
 
             _shortcutBar.ConnectToHero(heroComponent, inventoryGrid);
+            _shortcutBar.ConnectToDragManager();
             Debug.Log("[MainGameScene] Connected shortcut bar to hero and inventory grid");
         }
 
