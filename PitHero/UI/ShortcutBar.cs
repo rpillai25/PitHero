@@ -630,24 +630,47 @@ namespace PitHero.UI
             }
             _shortcutDragOverlay.ToFront();
 
-            var item = GetShortcutItemAt(index);
-            if (item != null && Core.Content != null)
+            SpriteDrawable dragDrawable = null;
+            if (Core.Content != null)
             {
+                var shortcutData = _shortcutSlots[index];
                 try
                 {
-                    var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
-                    var sprite = atlas.GetSprite(item.SpriteName);
-                    if (sprite != null)
-                        _shortcutDragOverlay.BeginDrag(new SpriteDrawable(sprite));
-                    else
-                        _shortcutDragOverlay.BeginDrag(null);
+                    if (shortcutData.SlotType == ShortcutSlotType.Item)
+                    {
+                        var item = GetShortcutItemAt(index);
+                        if (item != null)
+                        {
+                            var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
+                            var sprite = atlas.GetSprite(item.SpriteName);
+                            if (sprite != null)
+                                dragDrawable = new SpriteDrawable(sprite);
+                        }
+                    }
+                    else if (shortcutData.SlotType == ShortcutSlotType.Skill)
+                    {
+                        var skill = shortcutData.ReferencedSkill;
+                        if (skill != null)
+                        {
+                            var skillsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/SkillsStencils.atlas");
+                            var sprite = skillsAtlas.GetSprite(skill.Id);
+                            if (sprite == null)
+                            {
+                                var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+                                sprite = uiAtlas.GetSprite("SkillIcon1");
+                            }
+                            if (sprite != null)
+                                dragDrawable = new SpriteDrawable(sprite);
+                        }
+                    }
                 }
                 catch
                 {
-                    _shortcutDragOverlay.BeginDrag(null);
+                    // Silently ignore sprite load failures
                 }
             }
 
+            _shortcutDragOverlay.BeginDrag(dragDrawable);
             slot.SetItemSpriteHidden(true);
         }
 
@@ -672,7 +695,7 @@ namespace PitHero.UI
             }
         }
 
-        /// <summary>Handles drop from a shortcut slot — swaps with target shortcut or cancels.</summary>
+        /// <summary>Handles drop from a shortcut slot — swaps with target shortcut, removes if dropped outside, or cancels.</summary>
         private void HandleShortcutDragDropped(int index, ShortcutSlotVisual slot, Vector2 mousePos)
         {
             if (_dragHoveredIndex >= 0 && _dragHoveredIndex < _visualSlots.Length)
@@ -688,28 +711,61 @@ namespace PitHero.UI
 
             if (targetIndex >= 0 && targetIndex != index)
             {
+                // Dropped onto a different shortcut slot — swap
                 SwapShortcuts(index, targetIndex);
             }
+            else if (targetIndex < 0)
+            {
+                // Dropped outside all shortcut slots — remove from shortcut bar
+                ClearShortcutReference(index);
+            }
+            // Dropped on own slot — no-op (restore already done above)
 
             _shortcutDragOverlay?.EndDrag();
             _dragSourceIndex = -1;
         }
 
-        /// <summary>Subscribes to InventoryDragManager to handle inventory-to-shortcut drag drops.</summary>
+        /// <summary>Subscribes to InventoryDragManager to handle inventory-to-shortcut and skill-list-to-shortcut drops.</summary>
         public void ConnectToDragManager()
         {
             InventoryDragManager.OnDropRequested += HandleInventoryDropOnShortcut;
+            InventoryDragManager.OnSkillDropRequested += HandleSkillDropOnShortcut;
         }
 
-        /// <summary>Handles an inventory item dropped onto a shortcut slot.</summary>
+        /// <summary>
+        /// Handles an inventory item dropped onto a shortcut slot.
+        /// Only consumables are accepted; other item types are rejected.
+        /// </summary>
         private void HandleInventoryDropOnShortcut(InventorySlot inventorySource, Vector2 stagePos)
         {
             int index = GetShortcutIndexAtStagePosition(stagePos);
-            if (index >= 0)
+            if (index < 0)
+                return;
+
+            var item = inventorySource?.SlotData?.Item;
+            if (!(item is Consumable))
             {
-                SetShortcutReference(index, inventorySource);
-                InventoryDragManager.EndDrag();
+                // Non-consumable items cannot be placed on the shortcut bar — cancel drag
+                InventoryDragManager.CancelDrag();
+                return;
             }
+
+            SetShortcutReference(index, inventorySource);
+            InventoryDragManager.EndDrag();
+        }
+
+        /// <summary>Handles a skill dragged from the hero skill list dropped onto a shortcut slot.</summary>
+        private void HandleSkillDropOnShortcut(ISkill skill, Vector2 stagePos)
+        {
+            int index = GetShortcutIndexAtStagePosition(stagePos);
+            if (index < 0)
+            {
+                InventoryDragManager.CancelDrag();
+                return;
+            }
+
+            SetShortcutSkill(index, skill);
+            InventoryDragManager.EndDrag();
         }
 
         /// <summary>Uses a consumable item from the referenced inventory slot.</summary>
@@ -985,7 +1041,7 @@ namespace PitHero.UI
                 try
                 {
                     var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
-                    var itemSprite = itemsAtlas.GetSprite(_referencedItem.Name);
+                    var itemSprite = itemsAtlas.GetSprite(_referencedItem.SpriteName);
                     if (itemSprite != null)
                     {
                         var itemDrawable = new SpriteDrawable(itemSprite);
@@ -1005,8 +1061,8 @@ namespace PitHero.UI
                     batcher.DrawString(_font, stackText, textPosition, Color.White, 0f, Vector2.Zero, Scale, Microsoft.Xna.Framework.Graphics.SpriteEffects.None, 0f);
                 }
             }
-            // Draw referenced skill sprite if exists
-            else if (_referencedSkill != null && Core.Content != null)
+            // Draw referenced skill sprite if exists (also hidden during drag)
+            else if (_referencedSkill != null && Core.Content != null && !_hideItemSprite)
             {
                 try
                 {

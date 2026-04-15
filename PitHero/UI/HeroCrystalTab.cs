@@ -289,6 +289,12 @@ namespace PitHero.UI
                 skillButton.OnHover += OnSkillHover;
                 skillButton.OnUnhover += OnSkillUnhover;
                 skillButton.OnClick += OnSkillClick;
+                if (isLearned && skill.Kind == SkillKind.Active)
+                {
+                    skillButton.OnDragStarted += HandleSkillButtonDragStarted;
+                    skillButton.OnDragMoved += HandleSkillButtonDragMoved;
+                    skillButton.OnDragDropped += HandleSkillButtonDragDropped;
+                }
 
                 _skillButtons.Add(skillButton);
                 _jobSkillsGridContainer.Add(skillButton).Size(32f, 32f);
@@ -360,6 +366,12 @@ namespace PitHero.UI
                 skillButton.OnHover += OnSkillHover;
                 skillButton.OnUnhover += OnSkillUnhover;
                 skillButton.OnClick += OnSkillClick;
+                if (skillInfo.IsLearned && skillInfo.Skill.Kind == SkillKind.Active)
+                {
+                    skillButton.OnDragStarted += HandleSkillButtonDragStarted;
+                    skillButton.OnDragMoved += HandleSkillButtonDragMoved;
+                    skillButton.OnDragDropped += HandleSkillButtonDragDropped;
+                }
 
                 _skillButtons.Add(skillButton);
                 _synergySkillsGridContainer.Add(skillButton).Size(32f, 32f);
@@ -427,6 +439,34 @@ namespace PitHero.UI
         private void OnSkillUnhover()
         {
             _skillTooltip.GetContainer().Remove();
+        }
+
+        /// <summary>Handles drag start on a skill button — begins a global skill drag.</summary>
+        private void HandleSkillButtonDragStarted(ISkill skill, Vector2 stagePos)
+        {
+            if (_stage == null) return;
+            // Dismiss tooltip while dragging
+            _skillTooltip.GetContainer().Remove();
+            InventoryDragManager.BeginSkillDrag(skill, _stage);
+            InventoryDragManager.UpdateDrag(stagePos);
+        }
+
+        /// <summary>Handles drag movement on a skill button — updates the overlay position.</summary>
+        private void HandleSkillButtonDragMoved(ISkill skill, Vector2 stagePos)
+        {
+            InventoryDragManager.UpdateDrag(stagePos);
+        }
+
+        /// <summary>Handles drag drop on a skill button — notifies subscribers (ShortcutBar) of the drop.</summary>
+        private void HandleSkillButtonDragDropped(ISkill skill, Vector2 stagePos)
+        {
+            if (InventoryDragManager.IsDragging)
+            {
+                InventoryDragManager.NotifySkillDropRequested(skill, stagePos);
+                // Cancel in case no subscriber handled the drop
+                if (InventoryDragManager.IsDragging)
+                    InventoryDragManager.CancelDrag();
+            }
         }
 
         private void OnEffectHover(SynergyPattern pattern, int instanceCount, float multiplier)
@@ -608,7 +648,7 @@ namespace PitHero.UI
             public string SynergyPatternId;
         }
 
-        /// <summary>Individual skill button with hover/click support</summary>
+        /// <summary>Individual skill button with hover/click/drag support</summary>
         private class SkillButton : Element, IInputListener
         {
             private ISkill _skill;
@@ -624,9 +664,21 @@ namespace PitHero.UI
             private SpriteDrawable _highlightBoxDrawable;
             private bool _isHovered;
 
+            // Drag detection
+            private bool _mouseDown;
+            private Vector2 _mousePressPos;
+            private bool _isDragging;
+
             public event System.Action<ISkill, bool, bool, int, int> OnHover;
             public event System.Action OnUnhover;
             public event System.Action<ISkill, bool, bool> OnClick;
+
+            /// <summary>Fired when drag starts. Passes skill and stage-space mouse position.</summary>
+            public event System.Action<ISkill, Vector2> OnDragStarted;
+            /// <summary>Fired when dragging. Passes skill and stage-space mouse position.</summary>
+            public event System.Action<ISkill, Vector2> OnDragMoved;
+            /// <summary>Fired when drag ends (mouse released). Passes skill and stage-space mouse position.</summary>
+            public event System.Action<ISkill, Vector2> OnDragDropped;
 
             public SkillButton(ISkill skill, bool isLearned, bool isSynergySkill = false,
                 int synergyCurrentPoints = 0, int synergyRequiredPoints = 0, string synergyPatternId = null)
@@ -719,11 +771,31 @@ namespace PitHero.UI
 
             void IInputListener.OnMouseMoved(Vector2 mousePos)
             {
-                // Not needed
+                // Only allow drag on learned Active skills
+                if (!_mouseDown || !_isLearned || _skill.Kind != SkillKind.Active) return;
+
+                if (!_isDragging)
+                {
+                    float dx = mousePos.X - _mousePressPos.X;
+                    float dy = mousePos.Y - _mousePressPos.Y;
+                    float distSq = dx * dx + dy * dy;
+                    float threshold = GameConfig.DragThresholdPixels;
+                    if (distSq >= threshold * threshold)
+                    {
+                        _isDragging = true;
+                        OnDragStarted?.Invoke(_skill, LocalToStageCoordinates(mousePos));
+                    }
+                }
+
+                if (_isDragging)
+                    OnDragMoved?.Invoke(_skill, LocalToStageCoordinates(mousePos));
             }
 
             bool IInputListener.OnLeftMousePressed(Vector2 mousePos)
             {
+                _mouseDown = true;
+                _mousePressPos = mousePos;
+                _isDragging = false;
                 return true;
             }
 
@@ -734,6 +806,16 @@ namespace PitHero.UI
 
             void IInputListener.OnLeftMouseUp(Vector2 mousePos)
             {
+                bool wasDragging = _isDragging;
+                _mouseDown = false;
+                _isDragging = false;
+
+                if (wasDragging)
+                {
+                    OnDragDropped?.Invoke(_skill, LocalToStageCoordinates(mousePos));
+                    return;
+                }
+
                 OnClick?.Invoke(_skill, _isLearned, _isSynergySkill);
             }
 

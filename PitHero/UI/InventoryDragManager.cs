@@ -2,11 +2,12 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Skills;
 
 namespace PitHero.UI
 {
     /// <summary>
-    /// Manages global drag-and-drop state for inventory, equip, and shortcut slots.
+    /// Manages global drag-and-drop state for inventory, equip, shortcut, and skill-list slots.
     /// Works alongside InventorySelectionManager for cross-component coordination.
     /// </summary>
     public static class InventoryDragManager
@@ -14,6 +15,7 @@ namespace PitHero.UI
         private static bool _isDragging;
         private static InventorySlot _sourceSlot;
         private static IItem _dragItem;
+        private static ISkill _dragSkill;
         private static DragDropOverlay _overlay;
         private static Stage _stage;
 
@@ -23,15 +25,23 @@ namespace PitHero.UI
         /// <summary>Gets the inventory slot that the drag originated from.</summary>
         public static InventorySlot SourceSlot => _sourceSlot;
 
-        /// <summary>Gets the item being dragged.</summary>
+        /// <summary>Gets the item being dragged (null when dragging a skill).</summary>
         public static IItem DragItem => _dragItem;
 
+        /// <summary>Gets the skill being dragged from the skill list (null when dragging an item).</summary>
+        public static ISkill DragSkill => _dragSkill;
+
         /// <summary>
-        /// Fired when the source component found no local drop target.
+        /// Fired when the source component found no local drop target for an item drag.
         /// ShortcutBar subscribes to handle inventory-to-shortcut drops.
-        /// InventoryGrid subscribes to handle shortcut-to-inventory drops.
         /// </summary>
         public static System.Action<InventorySlot, Vector2> OnDropRequested;
+
+        /// <summary>
+        /// Fired when a skill was dragged from the skill list with no local drop target.
+        /// ShortcutBar subscribes to handle skill-list-to-shortcut drops.
+        /// </summary>
+        public static System.Action<ISkill, Vector2> OnSkillDropRequested;
 
         /// <summary>Begins a drag from an inventory slot.</summary>
         public static void BeginDrag(InventorySlot source, Stage stage)
@@ -40,22 +50,11 @@ namespace PitHero.UI
 
             _sourceSlot = source;
             _dragItem = source?.SlotData?.Item;
+            _dragSkill = null;
             _stage = stage;
             _isDragging = true;
 
-            if (_overlay == null)
-            {
-                _overlay = new DragDropOverlay();
-                stage.AddElement(_overlay);
-                _overlay.SetVisible(false);
-            }
-            else if (_overlay.GetStage() != stage)
-            {
-                _overlay.Remove();
-                stage.AddElement(_overlay);
-                _overlay.SetVisible(false);
-            }
-            _overlay.ToFront();
+            EnsureOverlay(stage);
 
             if (_dragItem != null && Core.Content != null)
             {
@@ -63,6 +62,42 @@ namespace PitHero.UI
                 {
                     var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
                     var sprite = itemsAtlas.GetSprite(_dragItem.SpriteName);
+                    if (sprite != null)
+                        _overlay.BeginDrag(new SpriteDrawable(sprite));
+                    else
+                        _overlay.BeginDrag(null);
+                }
+                catch
+                {
+                    _overlay.BeginDrag(null);
+                }
+            }
+        }
+
+        /// <summary>Begins a drag from the hero skill list (not from a shortcut slot).</summary>
+        public static void BeginSkillDrag(ISkill skill, Stage stage)
+        {
+            if (_isDragging) return;
+
+            _sourceSlot = null;
+            _dragItem = null;
+            _dragSkill = skill;
+            _stage = stage;
+            _isDragging = true;
+
+            EnsureOverlay(stage);
+
+            if (skill != null && Core.Content != null)
+            {
+                try
+                {
+                    var skillsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/SkillsStencils.atlas");
+                    var sprite = skillsAtlas.GetSprite(skill.Id);
+                    if (sprite == null)
+                    {
+                        var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+                        sprite = uiAtlas.GetSprite("SkillIcon1");
+                    }
                     if (sprite != null)
                         _overlay.BeginDrag(new SpriteDrawable(sprite));
                     else
@@ -84,9 +119,12 @@ namespace PitHero.UI
         /// <summary>Ends the drag without cancelling — used after a successful drop.</summary>
         public static void EndDrag()
         {
+            // Restore source slot sprite visibility after a successful drop
+            _sourceSlot?.SetItemSpriteHidden(false);
             _isDragging = false;
             _sourceSlot = null;
             _dragItem = null;
+            _dragSkill = null;
             _overlay?.EndDrag();
         }
 
@@ -98,13 +136,38 @@ namespace PitHero.UI
             _isDragging = false;
             _sourceSlot = null;
             _dragItem = null;
+            _dragSkill = null;
             _overlay?.EndDrag();
         }
 
-        /// <summary>Called by a component when it could not handle a drop locally.</summary>
+        /// <summary>Called by a component when it could not handle an item drop locally.</summary>
         public static void NotifyDropRequested(InventorySlot source, Vector2 stagePos)
         {
             OnDropRequested?.Invoke(source, stagePos);
+        }
+
+        /// <summary>Called by a component when it could not handle a skill drag drop locally.</summary>
+        public static void NotifySkillDropRequested(ISkill skill, Vector2 stagePos)
+        {
+            OnSkillDropRequested?.Invoke(skill, stagePos);
+        }
+
+        /// <summary>Ensures the overlay exists on the given stage and is brought to front.</summary>
+        private static void EnsureOverlay(Stage stage)
+        {
+            if (_overlay == null)
+            {
+                _overlay = new DragDropOverlay();
+                stage.AddElement(_overlay);
+                _overlay.SetVisible(false);
+            }
+            else if (_overlay.GetStage() != stage)
+            {
+                _overlay.Remove();
+                stage.AddElement(_overlay);
+                _overlay.SetVisible(false);
+            }
+            _overlay.ToFront();
         }
     }
 }
