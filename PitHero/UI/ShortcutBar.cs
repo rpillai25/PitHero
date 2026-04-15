@@ -743,7 +743,7 @@ namespace PitHero.UI
                 return;
 
             var item = inventorySource?.SlotData?.Item;
-            if (!(item is Consumable))
+            if (item is not Consumable)
             {
                 // Non-consumable items cannot be placed on the shortcut bar — cancel drag
                 InventoryDragManager.CancelDrag();

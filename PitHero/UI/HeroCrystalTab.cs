@@ -776,11 +776,8 @@ namespace PitHero.UI
 
                 if (!_isDragging)
                 {
-                    float dx = mousePos.X - _mousePressPos.X;
-                    float dy = mousePos.Y - _mousePressPos.Y;
-                    float distSq = dx * dx + dy * dy;
                     float threshold = GameConfig.DragThresholdPixels;
-                    if (distSq >= threshold * threshold)
+                    if (Vector2.DistanceSquared(mousePos, _mousePressPos) >= threshold * threshold)
                     {
                         _isDragging = true;
                         OnDragStarted?.Invoke(_skill, LocalToStageCoordinates(mousePos));
