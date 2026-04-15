@@ -49,6 +49,9 @@ namespace PitHero.UI
         // Swap animation overlay (reused SwapAnimationOverlay from inventory)
         private SwapAnimationOverlay _swapOverlay;
 
+        // Drag-and-drop hover tracking
+        private CrystalSlotElement _dragHoveredSlot;
+
         // Full-screen dismiss layer for the crystal card (hides card when clicking outside it)
         private Element _cardDismissLayer;
 
@@ -97,9 +100,15 @@ namespace PitHero.UI
             _forgeInputA.OnSlotClicked += _ => OnForgeSlotClicked(SelType.ForgeA);
             _forgeInputA.OnSlotHovered += OnSlotHovered;
             _forgeInputA.OnSlotUnhovered += OnSlotUnhovered;
+            _forgeInputA.OnDragStarted += HandleCrystalDragStarted;
+            _forgeInputA.OnDragMoved += HandleCrystalDragMoved;
+            _forgeInputA.OnDragDropped += HandleCrystalDragDropped;
             _forgeInputB.OnSlotClicked += _ => OnForgeSlotClicked(SelType.ForgeB);
             _forgeInputB.OnSlotHovered += OnSlotHovered;
             _forgeInputB.OnSlotUnhovered += OnSlotUnhovered;
+            _forgeInputB.OnDragStarted += HandleCrystalDragStarted;
+            _forgeInputB.OnDragMoved += HandleCrystalDragMoved;
+            _forgeInputB.OnDragDropped += HandleCrystalDragDropped;
             forgeRow.Add(_forgeInputA).Size(SLOT_SIZE).Pad(2);
             forgeRow.Add(new Label("+", skin, "ph-default")).Pad(2);
             forgeRow.Add(_forgeInputB).Size(SLOT_SIZE).Pad(2);
@@ -131,6 +140,9 @@ namespace PitHero.UI
                 slot.OnSlotClicked += _ => OnInventorySlotClicked(idx);
                 slot.OnSlotHovered += OnSlotHovered;
                 slot.OnSlotUnhovered += OnSlotUnhovered;
+                slot.OnDragStarted += HandleCrystalDragStarted;
+                slot.OnDragMoved += HandleCrystalDragMoved;
+                slot.OnDragDropped += HandleCrystalDragDropped;
                 _inventorySlots[i] = slot;
                 invGrid.Add(slot).Size(SLOT_SIZE).Pad(SLOT_PAD);
                 if ((i + 1) % INVENTORY_COLS == 0) invGrid.Row();
@@ -155,6 +167,9 @@ namespace PitHero.UI
                 slot.OnSlotClicked += _ => OnQueueSlotClicked(idx);
                 slot.OnSlotHovered += OnSlotHovered;
                 slot.OnSlotUnhovered += OnSlotUnhovered;
+                slot.OnDragStarted += HandleCrystalDragStarted;
+                slot.OnDragMoved += HandleCrystalDragMoved;
+                slot.OnDragDropped += HandleCrystalDragDropped;
                 _queueSlots[i] = slot;
                 // Show 1-based slot number to the left of each queue slot
                 var numLabel = new Label(QueueSlotNumbers[i], skin, "ph-default");
@@ -554,6 +569,154 @@ namespace PitHero.UI
 
             _stage.AddElement(dismissLayer);
             _stage.AddElement(dialog);
+        }
+
+        // ── Drag and drop ────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Returns the crystal slot (forge A/B, inventory, or queue) whose bounding rect contains
+        /// the given stage-space point, or null if none matches.
+        /// </summary>
+        private CrystalSlotElement GetCrystalSlotAtStagePosition(Vector2 stagePos)
+        {
+            var forgeATopLeft = _forgeInputA.LocalToStageCoordinates(Vector2.Zero);
+            if (stagePos.X >= forgeATopLeft.X && stagePos.X <= forgeATopLeft.X + SLOT_SIZE &&
+                stagePos.Y >= forgeATopLeft.Y && stagePos.Y <= forgeATopLeft.Y + SLOT_SIZE)
+                return _forgeInputA;
+
+            var forgeBTopLeft = _forgeInputB.LocalToStageCoordinates(Vector2.Zero);
+            if (stagePos.X >= forgeBTopLeft.X && stagePos.X <= forgeBTopLeft.X + SLOT_SIZE &&
+                stagePos.Y >= forgeBTopLeft.Y && stagePos.Y <= forgeBTopLeft.Y + SLOT_SIZE)
+                return _forgeInputB;
+
+            for (int i = 0; i < _inventorySlots.Length; i++)
+            {
+                var slot = _inventorySlots[i];
+                var topLeft = slot.LocalToStageCoordinates(Vector2.Zero);
+                if (stagePos.X >= topLeft.X && stagePos.X <= topLeft.X + SLOT_SIZE &&
+                    stagePos.Y >= topLeft.Y && stagePos.Y <= topLeft.Y + SLOT_SIZE)
+                    return slot;
+            }
+
+            for (int i = 0; i < _queueSlots.Length; i++)
+            {
+                var slot = _queueSlots[i];
+                var topLeft = slot.LocalToStageCoordinates(Vector2.Zero);
+                if (stagePos.X >= topLeft.X && stagePos.X <= topLeft.X + SLOT_SIZE &&
+                    stagePos.Y >= topLeft.Y && stagePos.Y <= topLeft.Y + SLOT_SIZE)
+                    return slot;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Maps a CrystalSlotElement to its CrystalSlotType and logical index.
+        /// Returns false if the element is not a known draggable slot.
+        /// </summary>
+        private bool GetSlotInfo(CrystalSlotElement element, out CrystalSlotType slotType, out int index)
+        {
+            if (element == _forgeInputA) { slotType = CrystalSlotType.ForgeA; index = 0; return true; }
+            if (element == _forgeInputB) { slotType = CrystalSlotType.ForgeB; index = 0; return true; }
+
+            for (int i = 0; i < _inventorySlots.Length; i++)
+            {
+                if (_inventorySlots[i] == element)
+                {
+                    slotType = CrystalSlotType.Inventory;
+                    index = i;
+                    return true;
+                }
+            }
+
+            for (int i = 0; i < _queueSlots.Length; i++)
+            {
+                if (_queueSlots[i] == element)
+                {
+                    slotType = CrystalSlotType.Queue;
+                    index = i;
+                    return true;
+                }
+            }
+
+            slotType = CrystalSlotType.Inventory;
+            index = -1;
+            return false;
+        }
+
+        private void HandleCrystalDragStarted(CrystalSlotElement source, Vector2 mousePos)
+        {
+            if (source.Crystal == null) return;
+            ClearSelection();
+            HideCrystalCard();
+            source.SetCrystalHidden(true);
+            InventoryDragManager.BeginCrystalDrag(source, _stage);
+        }
+
+        private void HandleCrystalDragMoved(CrystalSlotElement source, Vector2 mousePos)
+        {
+            var stagePos = source.LocalToStageCoordinates(mousePos);
+            InventoryDragManager.UpdateDrag(stagePos);
+
+            var target = GetCrystalSlotAtStagePosition(stagePos);
+            if (target != _dragHoveredSlot)
+            {
+                if (_dragHoveredSlot != null) _dragHoveredSlot.SetSelected(false);
+                _dragHoveredSlot = target;
+                if (_dragHoveredSlot != null && _dragHoveredSlot != source)
+                    _dragHoveredSlot.SetSelected(true);
+            }
+        }
+
+        private void HandleCrystalDragDropped(CrystalSlotElement source, Vector2 mousePos)
+        {
+            if (_dragHoveredSlot != null)
+            {
+                _dragHoveredSlot.SetSelected(false);
+                _dragHoveredSlot = null;
+            }
+
+            var stagePos = source.LocalToStageCoordinates(mousePos);
+            var target = GetCrystalSlotAtStagePosition(stagePos);
+
+            if (target == null || target == source)
+            {
+                InventoryDragManager.CancelDrag();
+                return;
+            }
+
+            var srcCrystal = InventoryDragManager.DragCrystal;
+            if ((target == _forgeInputA || target == _forgeInputB) &&
+                srcCrystal != null && !srcCrystal.Mastered)
+            {
+                InventoryDragManager.CancelDrag();
+                return;
+            }
+
+            var svc = GetCrystalService();
+            if (svc == null)
+            {
+                InventoryDragManager.CancelDrag();
+                return;
+            }
+
+            if (!GetSlotInfo(source, out var srcType, out var srcIdx) ||
+                !GetSlotInfo(target, out var dstType, out var dstIdx))
+            {
+                InventoryDragManager.CancelDrag();
+                return;
+            }
+
+            if (srcType == dstType && srcIdx == dstIdx)
+            {
+                InventoryDragManager.CancelDrag();
+                return;
+            }
+
+            InventoryDragManager.EndDrag();
+            svc.SwapSlots(srcType, srcIdx, dstType, dstIdx);
+            RefreshAll();
+            AnimateCrystalSwap(source, target, null);
         }
 
         /// <summary>Full-screen transparent element that invokes an action when clicked (consuming the click).</summary>
