@@ -1,6 +1,6 @@
 ---
 name: nez-ui
-description: "**DOMAIN SKILL** — Nez UI framework best practices and PitHero UI conventions. USE FOR: building UI layouts with Table/Window/TabPane, creating custom UI elements, skin/style management, event handling, ScrollPane usage, dialog patterns, and all Nez.UI work in PitHero. DO NOT USE FOR: non-UI game logic, rendering pipelines, ECS components unrelated to UI."
+description: "**DOMAIN SKILL** — Nez UI framework best practices and PitHero UI conventions. USE FOR: building UI layouts with Table/Window/TabPane, creating custom UI elements, skin/style management, event handling, ScrollPane usage, dialog patterns, drag-and-drop with InventoryDragManager/DragDropOverlay, and all Nez.UI work in PitHero. DO NOT USE FOR: non-UI game logic, rendering pipelines, ECS components unrelated to UI."
 applyTo: "**/*UI*.cs,**/UI/**,**/*Dialog*.cs,**/*Window*.cs,**/*Tab*.cs,**/*Skin*.cs,**/*Menu*.cs"
 ---
 
@@ -396,6 +396,7 @@ PitHero extends Nez UI classes for custom behavior. Preferred approach: **inheri
 | `ReorderableTableList<T>` | `Table` | Generic reorderable list |
 | `InventoryGrid` | `Group` | 20×9 slot grid with synergy |
 | `ShortcutBar` | `Group` | 8-slot horizontal bar |
+| `DragDropOverlay` | `Element` | Ghost sprite that follows cursor during drag |
 
 ### IInputListener Interface
 
@@ -414,6 +415,226 @@ public interface IInputListener
     bool OnMouseScrolled(int mouseWheelDelta);   // return true to consume
 }
 ```
+
+---
+
+## Drag-and-Drop Pattern
+
+PitHero implements drag-and-drop on top of `IInputListener` using a three-class pattern: a **slot element** that fires events, a **container** that handles them, and a **static coordinator** (`InventoryDragManager`) for cross-component drops.
+
+### Architecture Overview
+
+```
+InventorySlot / ShortcutSlotVisual / SkillButton
+   → fires OnDragStarted / OnDragMoved / OnDragDropped
+
+InventoryGrid / ShortcutBar (containers)
+   → subscribes to slot events
+   → calls InventoryDragManager.BeginDrag / UpdateDrag / EndDrag / CancelDrag
+   → hit-tests children via GetSlotAtStagePosition()
+
+InventoryDragManager (static coordinator)
+   → owns DragDropOverlay (ghost sprite following cursor)
+   → fires OnDropRequested / OnSkillDropRequested for cross-panel drops
+   → ShortcutBar subscribes via ConnectToDragManager()
+```
+
+### Deferred Click + Drag Detection in IInputListener
+
+The click-vs-drag decision is deferred to `OnLeftMouseUp`. `OnMouseMoved` accumulates distance and promotes to drag mode if threshold exceeded.
+
+```csharp
+// Fields
+private bool _mouseDown;
+private Vector2 _mousePressPos;
+private bool _isDragging;
+
+bool IInputListener.OnLeftMousePressed(Vector2 mousePos)
+{
+    _mouseDown = true;
+    _mousePressPos = mousePos;
+    _isDragging = false;
+    return true;   // must return true to receive OnMouseMoved / OnLeftMouseUp
+}
+
+void IInputListener.OnMouseMoved(Vector2 mousePos)
+{
+    if (!_mouseDown || _item == null) return;
+
+    if (!_isDragging)
+    {
+        float threshold = GameConfig.DragThresholdPixels;   // 4px
+        if (Vector2.DistanceSquared(mousePos, _mousePressPos) >= threshold * threshold)
+        {
+            _isDragging = true;
+            OnDragStarted?.Invoke(this, mousePos);
+        }
+    }
+
+    if (_isDragging)
+        OnDragMoved?.Invoke(this, mousePos);
+}
+
+void IInputListener.OnLeftMouseUp(Vector2 mousePos)
+{
+    bool wasDragging = _isDragging;
+    _mouseDown = false;
+    _isDragging = false;
+
+    if (wasDragging)
+    {
+        OnDragDropped?.Invoke(this, mousePos);
+        return;
+    }
+
+    // No drag occurred — treat as a normal click
+    OnSlotClicked?.Invoke(this);
+}
+```
+
+### DragDropOverlay — Ghost Sprite
+
+`DragDropOverlay` is a stage-level `Element` that renders the dragged item/skill at the cursor with 70% alpha. It is owned by `InventoryDragManager` (or the local container for shortcut-to-shortcut drags) and brought to front when a drag begins.
+
+```csharp
+// DragDropOverlay usage (managed internally by InventoryDragManager)
+var overlay = new DragDropOverlay();
+stage.AddElement(overlay);
+overlay.SetVisible(false);
+overlay.ToFront();
+
+overlay.BeginDrag(new SpriteDrawable(sprite));   // show ghost
+overlay.UpdatePosition(stagePos);               // call every OnDragMoved
+overlay.EndDrag();                              // hide on drop or cancel
+```
+
+### InventoryDragManager — Cross-Component Coordinator
+
+`InventoryDragManager` is a **static** class that holds the active drag state and routes drops to subscriber components.
+
+```csharp
+// --- Starting a drag ---
+// From an inventory slot (items):
+InventoryDragManager.BeginDrag(sourceSlot, GetStage());
+
+// From a skill button (skills):
+InventoryDragManager.BeginSkillDrag(skill, _stage);
+
+// --- During drag ---
+InventoryDragManager.UpdateDrag(stagePos);   // called each OnDragMoved
+
+// --- On drop ---
+// Successful local drop (same panel):
+source.SetItemSpriteHidden(false);
+SwapSlotItems(source, target);
+InventoryDragManager.EndDrag();             // also restores source sprite
+
+// No local target — broadcast to other panels:
+InventoryDragManager.NotifyDropRequested(source, stagePos);
+// If nothing handled it:
+if (InventoryDragManager.IsDragging)
+    InventoryDragManager.CancelDrag();      // restores source sprite
+
+// For skill drags with no local target:
+InventoryDragManager.NotifySkillDropRequested(skill, stagePos);
+if (InventoryDragManager.IsDragging)
+    InventoryDragManager.CancelDrag();
+```
+
+**Critical rule**: Always call `EndDrag()` (success) or `CancelDrag()` (failure/cancel) — both restore the source slot's sprite visibility.
+
+### Hit-Testing Drop Targets
+
+Containers determine the drop target by hit-testing all child slots in stage coordinates:
+
+```csharp
+private InventorySlot GetSlotAtStagePosition(Vector2 stagePos)
+{
+    for (int i = 0; i < _slots.Length; i++)
+    {
+        var slot = _slots.Buffer[i];
+        if (slot == null) continue;
+        var topLeft = slot.LocalToStageCoordinates(Vector2.Zero);
+        if (stagePos.X >= topLeft.X && stagePos.X <= topLeft.X + slot.GetWidth() &&
+            stagePos.Y >= topLeft.Y && stagePos.Y <= topLeft.Y + slot.GetHeight())
+            return slot;
+    }
+    return null;
+}
+```
+
+**Note**: Always convert local mouse coordinates to stage coordinates with `element.LocalToStageCoordinates(mousePos)` before calling `GetSlotAtStagePosition()`.
+
+### Cross-Panel Subscription (ConnectToDragManager)
+
+Components that can **receive** drops from another panel subscribe to `InventoryDragManager` events:
+
+```csharp
+// Wire in scene setup (e.g., MainGameScene)
+shortcutBar.ConnectToDragManager();
+
+// Inside ShortcutBar:
+public void ConnectToDragManager()
+{
+    InventoryDragManager.OnDropRequested += HandleInventoryDropOnShortcut;
+    InventoryDragManager.OnSkillDropRequested += HandleSkillDropOnShortcut;
+}
+
+private void HandleInventoryDropOnShortcut(InventorySlot inventorySource, Vector2 stagePos)
+{
+    int index = GetShortcutIndexAtStagePosition(stagePos);
+    if (index < 0) { InventoryDragManager.CancelDrag(); return; }
+
+    // Only consumables allowed on the shortcut bar
+    if (inventorySource?.SlotData?.Item is not Consumable)
+    {
+        InventoryDragManager.CancelDrag();
+        return;
+    }
+
+    SetShortcutReference(index, inventorySource);
+    InventoryDragManager.EndDrag();
+}
+
+private void HandleSkillDropOnShortcut(ISkill skill, Vector2 stagePos)
+{
+    int index = GetShortcutIndexAtStagePosition(stagePos);
+    if (index < 0) { InventoryDragManager.CancelDrag(); return; }
+    SetShortcutSkill(index, skill);
+    InventoryDragManager.EndDrag();
+}
+```
+
+### Remove-on-Drop-Outside Pattern
+
+When a slot is dragged and dropped outside all valid targets, the slot is cleared:
+
+```csharp
+private void HandleShortcutDragDropped(int index, ShortcutSlotVisual slot, Vector2 mousePos)
+{
+    var stagePos = slot.LocalToStageCoordinates(mousePos);
+    int targetIndex = GetShortcutIndexAtStagePosition(stagePos);
+
+    slot.SetItemSpriteHidden(false);   // always restore first
+
+    if (targetIndex >= 0 && targetIndex != index)
+        SwapShortcuts(index, targetIndex);   // dropped on different slot
+    else if (targetIndex < 0)
+        ClearShortcutReference(index);       // dropped outside — remove
+
+    _shortcutDragOverlay?.EndDrag();
+}
+```
+
+### Drag-and-Drop Gotchas
+
+| Gotcha | Fix |
+|--------|-----|
+| Source sprite disappears after drop | Call `EndDrag()` (not just `CancelDrag()`). `EndDrag()` calls `SetItemSpriteHidden(false)` on the source slot. |
+| Skill icon not following cursor | Load skill sprite from `SkillsStencils.atlas` using `skill.Id`; fall back to `UI.atlas/"SkillIcon1"`. Items use `Items.atlas` with `item.SpriteName` (not `item.Name`). |
+| Sprite hidden during shortcut skill drag | The `else if (_referencedSkill != null)` branch in `Draw()` must also check `!_hideItemSprite`. |
+| Drop not detected on target panel | Subscribe via `ConnectToDragManager()` in scene setup; `NotifyDropRequested` / `NotifySkillDropRequested` fires only when the source panel finds no local target. |
+| Click fires even after drag | Track `wasDragging` flag in `OnLeftMouseUp` and return early when `true`. |
 
 ---
 
@@ -555,3 +776,5 @@ public class MyFeatureUI
 | Tab content not filling | Chain `.Expand().Fill()` on the TabPane cell |
 | UI elements not responding to input | Check `SetTouchable(Touchable.Enabled)` and render layer order |
 | Font not showing | Use `Graphics.Instance.BitmapFont` or load via `Content.LoadBitmapFont(path)` |
+| Drag source sprite disappears | Always call `InventoryDragManager.EndDrag()` or `CancelDrag()` — both restore `SetItemSpriteHidden(false)` |
+| Wrong sprite shown during drag | Items atlas: use `item.SpriteName`. Skills atlas: `SkillsStencils.atlas` keyed by `skill.Id`, fall back to `UI.atlas/"SkillIcon1"` |
