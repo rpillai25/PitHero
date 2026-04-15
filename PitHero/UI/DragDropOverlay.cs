@@ -10,13 +10,21 @@ namespace PitHero.UI
         private SpriteDrawable _dragDrawable;
         private bool _active;
         private Vector2 _currentStagePos;
+        private Color _dragTint = Color.White;
         private const float DragAlpha = 0.7f;
         private const float SlotSize = 32f;
 
         /// <summary>Begins rendering the dragged item sprite following the cursor.</summary>
         public void BeginDrag(SpriteDrawable drawable)
         {
+            BeginDrag(drawable, Color.White);
+        }
+
+        /// <summary>Begins rendering the dragged item sprite following the cursor with a tint color.</summary>
+        public void BeginDrag(SpriteDrawable drawable, Color tint)
+        {
             _dragDrawable = drawable;
+            _dragTint = tint;
             _active = true;
             SetVisible(true);
         }
@@ -32,6 +40,7 @@ namespace PitHero.UI
         {
             _active = false;
             _dragDrawable = null;
+            _dragTint = Color.White;
             SetVisible(false);
         }
 
@@ -42,7 +51,7 @@ namespace PitHero.UI
                 return;
             var drawPos = new Vector2(_currentStagePos.X - SlotSize * 0.5f, _currentStagePos.Y - SlotSize * 0.5f);
             _dragDrawable.Draw(batcher, drawPos.X, drawPos.Y, SlotSize, SlotSize,
-                new Color(1f, 1f, 1f, DragAlpha));
+                new Color(_dragTint.R / 255f, _dragTint.G / 255f, _dragTint.B / 255f, DragAlpha));
         }
     }
 }

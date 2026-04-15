@@ -34,11 +34,19 @@ namespace PitHero.UI
         private bool _isHovered;
         private bool _isSelected;
 
+        // Drag detection state
+        private bool _mouseDown;
+        private Vector2 _mousePressPos;
+        private bool _isDragging;
+
         public CrystalSlotKind Kind;
 
         public event Action<CrystalSlotElement> OnSlotClicked;
         public event Action<CrystalSlotElement> OnSlotHovered;
         public event Action<CrystalSlotElement> OnSlotUnhovered;
+        public event Action<CrystalSlotElement, Vector2> OnDragStarted;
+        public event Action<CrystalSlotElement, Vector2> OnDragMoved;
+        public event Action<CrystalSlotElement, Vector2> OnDragDropped;
 
         public HeroCrystal Crystal => _crystal;
 
@@ -143,7 +151,9 @@ namespace PitHero.UI
 
         bool IInputListener.OnLeftMousePressed(Vector2 mousePos)
         {
-            OnSlotClicked?.Invoke(this);
+            _mouseDown = true;
+            _mousePressPos = mousePos;
+            _isDragging = false;
             return true;
         }
 
@@ -161,8 +171,35 @@ namespace PitHero.UI
             OnSlotUnhovered?.Invoke(this);
         }
 
-        void IInputListener.OnMouseMoved(Vector2 mousePos) { }
-        void IInputListener.OnLeftMouseUp(Vector2 mousePos) { }
+        void IInputListener.OnMouseMoved(Vector2 mousePos)
+        {
+            if (!_mouseDown) return;
+            if (!_isDragging)
+            {
+                float threshold = GameConfig.DragThresholdPixels;
+                if (Vector2.DistanceSquared(mousePos, _mousePressPos) >= threshold * threshold)
+                {
+                    _isDragging = true;
+                    OnDragStarted?.Invoke(this, mousePos);
+                }
+            }
+            if (_isDragging)
+                OnDragMoved?.Invoke(this, mousePos);
+        }
+
+        void IInputListener.OnLeftMouseUp(Vector2 mousePos)
+        {
+            bool wasDragging = _isDragging;
+            _mouseDown = false;
+            _isDragging = false;
+            if (wasDragging)
+            {
+                OnDragDropped?.Invoke(this, mousePos);
+                return;
+            }
+            OnSlotClicked?.Invoke(this);
+        }
+
         void IInputListener.OnRightMouseUp(Vector2 mousePos) { }
         bool IInputListener.OnMouseScrolled(int mouseWheelDelta) => false;
 
