@@ -737,6 +737,7 @@ namespace PitHero.UI
         private void PopulateMercenariesTab(Tab mercenariesTab, Skin skin)
         {
             _mercenariesTabComponent = new MercenariesTab();
+            _mercenariesTabComponent.OnDismissRequested += OnMercenaryDismissRequested;
             var content = _mercenariesTabComponent.CreateContent(skin, _stage);
             mercenariesTab.Add(content).Expand().Fill();
         }
@@ -965,17 +966,19 @@ namespace PitHero.UI
             var mercManager = Core.Services?.GetService<MercenaryManager>();
             List<Mercenary> hiredMercs = null;
             List<MercenaryAppearance> appearances = null;
+            List<Entity> hiredEntities = null;
 
             if (mercManager != null)
             {
-                var hiredEntities = mercManager.GetHiredMercenaries();
-                if (hiredEntities != null && hiredEntities.Count > 0)
+                var entities = mercManager.GetHiredMercenaries();
+                if (entities != null && entities.Count > 0)
                 {
-                    hiredMercs = new List<Mercenary>(hiredEntities.Count);
-                    appearances = new List<MercenaryAppearance>(hiredEntities.Count);
-                    for (int i = 0; i < hiredEntities.Count; i++)
+                    hiredEntities = entities;
+                    hiredMercs = new List<Mercenary>(entities.Count);
+                    appearances = new List<MercenaryAppearance>(entities.Count);
+                    for (int i = 0; i < entities.Count; i++)
                     {
-                        var mc = hiredEntities[i].GetComponent<MercenaryComponent>();
+                        var mc = entities[i].GetComponent<MercenaryComponent>();
                         if (mc?.LinkedMercenary != null)
                         {
                             hiredMercs.Add(mc.LinkedMercenary);
@@ -991,7 +994,32 @@ namespace PitHero.UI
                 }
             }
 
-            _mercenariesTabComponent.UpdateWithMercenaries(hiredMercs, appearances);
+            _mercenariesTabComponent.UpdateWithMercenaries(hiredMercs, appearances, hiredEntities);
+        }
+
+        /// <summary>Shows a Yes/No confirmation dialog for dismissing a hired mercenary.</summary>
+        private void OnMercenaryDismissRequested(Entity mercEntity)
+        {
+            if (mercEntity == null) return;
+
+            var textService = Core.Services?.GetService<TextService>();
+            if (textService == null) return;
+
+            var mc = mercEntity.GetComponent<MercenaryComponent>();
+            var mercName = mc?.LinkedMercenary?.Name ?? "this mercenary";
+
+            var title = textService.DisplayText(TextType.UI, UITextKey.DialogConfirmDismissMercenary);
+            var message = string.Format(textService.DisplayText(TextType.UI, UITextKey.ConfirmDismissMercenaryMessage), mercName);
+            var skin = PitHeroSkin.CreateSkin();
+
+            var dialog = new ConfirmationDialog(title, message, skin, onYes: () =>
+            {
+                var mercManager = Core.Services?.GetService<MercenaryManager>();
+                mercManager?.DismissPartyMercenary(mercEntity);
+                RefreshMercenariesTab();
+            });
+
+            dialog.Show(_stage);
         }
 
         /// <summary>Refreshes battle tactic radio buttons and consumable checkboxes from HeroComponent state.</summary>

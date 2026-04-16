@@ -8,7 +8,7 @@ using RolePlayingFramework.Balance;
 namespace PitHero.UI
 {
     /// <summary>
-    /// Popup dialog for hiring mercenaries
+    /// Popup dialog for hiring or dismissing tavern mercenaries
     /// </summary>
     public class MercenaryHireDialog : Table
     {
@@ -22,6 +22,7 @@ namespace PitHero.UI
         private readonly Label _magLabel;
         private readonly Label _costLabel;
         private readonly TextButton _hireButton;
+        private readonly TextButton _dismissButton;
         private readonly TextButton _cancelButton;
         private readonly TextButtonStyle _hireButtonStyle;
         private TextTooltip _hireTooltip;
@@ -38,7 +39,7 @@ namespace PitHero.UI
             SetBackground(windowStyle.Background);
             Pad(20f);
 
-            // Name (with custom green color)
+            // Name (with custom blue color)
             var defaultLabelStyle = skin.Get<LabelStyle>("ph-default");
             var nameLabelStyle = new LabelStyle
             {
@@ -86,7 +87,7 @@ namespace PitHero.UI
             Add(_magLabel).SetColspan(2).Left();
             Row().SetPadTop(5f);
 
-            // Hire cost
+            // Hire cost (only shown when player can hire)
             var costLabelStyle = new LabelStyle
             {
                 Font = defaultLabelStyle.Font,
@@ -113,11 +114,19 @@ namespace PitHero.UI
 
             _hireButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonHire), _hireButtonStyle);
             _hireButton.OnClicked += OnHireClicked;
-            Add(_hireButton).SetPadRight(10f).SetMinWidth(80f).SetMinHeight(30f);
+
+            _dismissButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonDismiss), skin, "ph-default");
+            _dismissButton.OnClicked += OnDismissClicked;
 
             _cancelButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonCancel), skin, "ph-default");
             _cancelButton.OnClicked += OnCancelClicked;
-            Add(_cancelButton).SetMinWidth(80f).SetMinHeight(30f);
+
+            // Place all buttons in a sub-table so we can show/hide Hire cleanly
+            var buttonRow = new Table();
+            buttonRow.Add(_hireButton).SetPadRight(8f).SetMinWidth(80f).SetMinHeight(30f);
+            buttonRow.Add(_dismissButton).SetPadRight(8f).SetMinWidth(80f).SetMinHeight(30f);
+            buttonRow.Add(_cancelButton).SetMinWidth(80f).SetMinHeight(30f);
+            Add(buttonRow).SetColspan(2).Center();
 
             SetVisible(false);
         }
@@ -143,30 +152,43 @@ namespace PitHero.UI
             _vitLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.MercenaryVitLabel), stats.Vitality));
             _magLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.MercenaryMagLabel), stats.Magic));
 
-            // Display hire cost and check affordability
-            var hireCost = BalanceConfig.CalculateMercenaryHireCost(merc.Level);
-            _costLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.MercenaryCostLabel), hireCost));
+            // Show hire button + cost only when the player can still hire
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            var canHireMore = mercenaryManager != null && mercenaryManager.CanHireMore();
+            _hireButton.SetVisible(canHireMore);
+            _costLabel.SetVisible(canHireMore);
 
-            var gameState = Core.Services.GetService<GameStateService>();
-            var canAfford = gameState != null && gameState.Funds >= hireCost;
-            _hireButton.SetDisabled(!canAfford);
-
-            // Add or remove tooltip based on affordability
-            if (!canAfford)
+            if (canHireMore)
             {
-                if (_hireTooltip == null)
+                // Display hire cost and check affordability
+                var hireCost = BalanceConfig.CalculateMercenaryHireCost(merc.Level);
+                _costLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.MercenaryCostLabel), hireCost));
+
+                var gameState = Core.Services.GetService<GameStateService>();
+                var canAfford = gameState != null && gameState.Funds >= hireCost;
+                _hireButton.SetDisabled(!canAfford);
+
+                // Add or remove tooltip based on affordability
+                if (!canAfford)
                 {
-                    var tooltipStyle = new TextTooltipStyle
+                    if (_hireTooltip == null)
                     {
-                        LabelStyle = new LabelStyle
+                        var tooltipStyle = new TextTooltipStyle
                         {
-                            Font = Graphics.Instance.BitmapFont,
-                            FontColor = Color.White
-                        }
-                    };
-                    _hireTooltip = new TextTooltip("Not enough gold", _hireButton, tooltipStyle);
-                    _hireTooltip.SetInstant(true);
-                    _hireTooltip.SetAlways(true);
+                            LabelStyle = new LabelStyle
+                            {
+                                Font = Graphics.Instance.BitmapFont,
+                                FontColor = Color.White
+                            }
+                        };
+                        _hireTooltip = new TextTooltip("Not enough gold", _hireButton, tooltipStyle);
+                        _hireTooltip.SetInstant(true);
+                        _hireTooltip.SetAlways(true);
+                    }
+                }
+                else
+                {
+                    ClearHireTooltip();
                 }
             }
             else
@@ -230,6 +252,21 @@ namespace PitHero.UI
                 {
                     Debug.Warn("[MercenaryHireDialog] Failed to hire mercenary");
                 }
+            }
+
+            Hide();
+        }
+
+        /// <summary>Handles the Dismiss button click — triggers natural walk-off-screen for the tavern mercenary.</summary>
+        private void OnDismissClicked(Button button)
+        {
+            if (_mercenaryEntity == null) return;
+
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager != null)
+            {
+                mercenaryManager.DismissTavernMercenary(_mercenaryEntity);
+                Debug.Log("[MercenaryHireDialog] Dismissed tavern mercenary");
             }
 
             Hide();

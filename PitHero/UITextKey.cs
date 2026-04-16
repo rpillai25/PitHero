@@ -14,6 +14,7 @@ namespace PitHero
         public const string ButtonExit = "ButtonExit";
         public const string ButtonReset = "ButtonReset";
         public const string ButtonHire = "ButtonHire";
+        public const string ButtonDismiss = "ButtonDismiss";
         public const string ButtonReroll = "ButtonReroll";
         public const string ButtonCreateHero = "ButtonCreateHero";
         public const string ButtonQuitToTitle = "ButtonQuitToTitle";
@@ -175,5 +176,7 @@ namespace PitHero
         public const string DialogConfirmForge = "DialogConfirmForge";
         public const string ConfirmForgeMessage = "ConfirmForgeMessage";
         public const string CrystalInventoryFull = "CrystalInventoryFull";
+        public const string DialogConfirmDismissMercenary = "DialogConfirmDismissMercenary";
+        public const string ConfirmDismissMercenaryMessage = "ConfirmDismissMercenaryMessage";
     }
 }

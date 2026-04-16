@@ -518,6 +518,103 @@ namespace PitHero.Services
             mercEntity.Destroy();
         }
 
+        /// <summary>
+        /// Dismisses a hired party mercenary. Unequips all gear and returns it to the hero
+        /// inventory; any overflow goes to the SecondChanceMerchantVault. The mercenary
+        /// entity is immediately destroyed.
+        /// </summary>
+        public void DismissPartyMercenary(Entity mercEntity)
+        {
+            var mercComponent = mercEntity?.GetComponent<MercenaryComponent>();
+            if (mercComponent == null || !mercComponent.IsHired)
+            {
+                Debug.Warn("[MercenaryManager] DismissPartyMercenary - entity is null or not hired");
+                return;
+            }
+
+            var merc = mercComponent.LinkedMercenary;
+            Debug.Log($"[MercenaryManager] Dismissing party mercenary {merc.Name}");
+
+            // Return all equipped gear to hero inventory; overflow to vault
+            var heroEntity = _scene?.FindEntity("hero");
+            var heroComponent = heroEntity?.GetComponent<HeroComponent>();
+            var vault = Core.Services.GetService<SecondChanceMerchantVault>();
+
+            var slots = new EquipmentSlot[]
+            {
+                EquipmentSlot.WeaponShield1,
+                EquipmentSlot.Armor,
+                EquipmentSlot.Hat,
+                EquipmentSlot.WeaponShield2,
+                EquipmentSlot.Accessory1,
+                EquipmentSlot.Accessory2
+            };
+
+            for (int i = 0; i < slots.Length; i++)
+            {
+                var gear = merc.Unequip(slots[i]);
+                if (gear == null) continue;
+
+                bool added = heroComponent != null && heroComponent.TryAddItem(gear);
+                if (!added)
+                {
+                    vault?.AddItem(gear);
+                    Debug.Log($"[MercenaryManager] Gear {gear.Name} sent to vault (inventory full)");
+                }
+                else
+                {
+                    Debug.Log($"[MercenaryManager] Gear {gear.Name} returned to hero inventory");
+                }
+            }
+
+            // If this mercenary was the follow target for the second mercenary, reassign
+            ReassignFollowTargetsAfterDismissal(mercEntity);
+
+            // Remove and destroy
+            RemoveMercenary(mercEntity);
+        }
+
+        /// <summary>
+        /// Dismisses a tavern (unhired) mercenary, triggering the natural walk-off-screen
+        /// animation so a new mercenary can arrive shortly after.
+        /// </summary>
+        public void DismissTavernMercenary(Entity mercEntity)
+        {
+            var mercComponent = mercEntity?.GetComponent<MercenaryComponent>();
+            if (mercComponent == null || mercComponent.IsHired || mercComponent.IsBeingRemoved)
+            {
+                Debug.Warn("[MercenaryManager] DismissTavernMercenary - invalid state");
+                return;
+            }
+
+            Debug.Log($"[MercenaryManager] Dismissing tavern mercenary {mercComponent.LinkedMercenary?.Name}");
+            _isRemovingMercenary = true;
+            Core.StartCoroutine(WalkOffscreenAndRemove(mercEntity));
+        }
+
+        /// <summary>
+        /// Reassigns follow targets for any hired mercenaries that were following the
+        /// dismissed entity, pointing them to the hero instead.
+        /// </summary>
+        private void ReassignFollowTargetsAfterDismissal(Entity dismissedEntity)
+        {
+            var heroEntity = _scene?.FindEntity("hero");
+            if (heroEntity == null) return;
+
+            for (int i = 0; i < _mercenaryEntities.Count; i++)
+            {
+                var entity = _mercenaryEntities[i];
+                if (entity == dismissedEntity) continue;
+
+                var comp = entity.GetComponent<MercenaryComponent>();
+                if (comp != null && comp.IsHired && comp.FollowTarget == dismissedEntity)
+                {
+                    comp.FollowTarget = heroEntity;
+                    Debug.Log($"[MercenaryManager] Reassigned {comp.LinkedMercenary?.Name} follow target to hero after dismissal");
+                }
+            }
+        }
+
         /// <summary>Gets all unhired mercenaries</summary>
         public List<Entity> GetUnhiredMercenaries()
         {
