@@ -168,7 +168,7 @@ namespace PitHero.VirtualGame
 
             _hiredMercenaries.RemoveAt(hiredIndex);
 
-            Console.WriteLine(
+            Nez.Debug.Log(
                 $"[VirtualMercenaryParty] Dismissed hired mercenary '{mercName}': " +
                 $"{toInventory} items to inventory, {toVault} items to vault.");
 
@@ -192,7 +192,7 @@ namespace PitHero.VirtualGame
             Mercenary merc = _tavernMercenaries[tavernIndex];
             _tavernMercenaries.RemoveAt(tavernIndex);
 
-            Console.WriteLine(
+            Nez.Debug.Log(
                 $"[VirtualMercenaryParty] Dismissed tavern mercenary '{merc.Name}' (walk-out triggered).");
         }
 
