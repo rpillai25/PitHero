@@ -156,7 +156,7 @@ namespace PitHero.UI
         }
 
         /// <summary>Refreshes the tab with current mercenary data and appearance.</summary>
-        public void UpdateWithMercenaries(List<Mercenary> hiredMercenaries, List<MercenaryAppearance> appearances, List<Nez.Entity> hiredEntities = null)
+        public void UpdateWithMercenaries(List<Mercenary> hiredMercenaries, List<MercenaryAppearance> appearances, List<Entity> hiredEntities = null)
         {
             _skillButtons.Clear();
 
