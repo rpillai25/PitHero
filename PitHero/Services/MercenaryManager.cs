@@ -414,15 +414,11 @@ namespace PitHero.Services
             
             if (path == null || path.Count == 0)
             {
-                Debug.Warn($"[MercenaryManager] Could not find path to exit for {mercComponent.LinkedMercenary.Name} - removing anyway");
-                RemoveMercenary(mercEntity);
-                _isRemovingMercenary = false;
-                
-                // Immediately try to spawn replacement
-                TrySpawnMercenary();
-                yield break;
+                Debug.Warn($"[MercenaryManager] Could not find path to exit for {mercComponent.LinkedMercenary.Name} - sliding offscreen from current position");
+                // Fall through to slide-down animation so the mercenary still walks off visually
             }
-
+            else
+            {
             // Follow the path to walk to exit point
             for (int i = 0; i < path.Count; i++)
             {
@@ -455,6 +451,7 @@ namespace PitHero.Services
 
                 // Small delay between moves
                 yield return Coroutine.WaitForSeconds(0.05f);
+            }
             }
 
             Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} reached exit point - now sliding down offscreen (64 pixels)");
@@ -600,6 +597,8 @@ namespace PitHero.Services
             }
 
             Debug.Log($"[MercenaryManager] Dismissing tavern mercenary {mercComponent.LinkedMercenary?.Name}");
+            // Mark as being removed immediately so the mercenary is non-clickable from this frame onward
+            mercComponent.IsBeingRemoved = true;
             _isRemovingMercenary = true;
             Core.StartCoroutine(WalkOffscreenAndRemove(mercEntity));
         }

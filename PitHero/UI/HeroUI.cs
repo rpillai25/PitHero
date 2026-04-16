@@ -1017,6 +1017,7 @@ namespace PitHero.UI
                 var mercManager = Core.Services?.GetService<MercenaryManager>();
                 mercManager?.DismissPartyMercenary(mercEntity);
                 RefreshMercenariesTab();
+                RefreshMercenaryEquipSlots();
             });
 
             dialog.Show(_stage);
