@@ -292,11 +292,17 @@ namespace PitHero.Services
             if (tileMover == null || mercComponent == null || pathfinding == null)
                 yield break;
 
-            // Wait for pathfinding to initialize
+            // Wait for pathfinding to initialize (or until dismissed)
             while (!pathfinding.IsPathfindingInitialized)
             {
+                if (mercComponent.IsBeingRemoved)
+                    yield break;
                 yield return null;
             }
+
+            // Stop immediately if dismissed before we started walking
+            if (mercComponent.IsBeingRemoved)
+                yield break;
 
             // Calculate current tile position
             var currentPos = mercEntity.Transform.Position;
@@ -319,10 +325,10 @@ namespace PitHero.Services
             // Follow the path
             for (int i = 0; i < path.Count; i++)
             {
-                // Check if mercenary was hired during the walk - if so, stop walking to tavern
-                if (mercComponent.IsHired)
+                // Check if mercenary was hired or dismissed during the walk
+                if (mercComponent.IsHired || mercComponent.IsBeingRemoved)
                 {
-                    Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} was hired during walk to tavern - stopping tavern walk");
+                    Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} was hired/dismissed during walk to tavern - stopping tavern walk");
                     yield break;
                 }
 
@@ -349,10 +355,10 @@ namespace PitHero.Services
                     // Wait for movement to complete
                     while (tileMover.IsMoving)
                     {
-                        // Also check during movement if mercenary was hired
-                        if (mercComponent.IsHired)
+                        // Also check during movement if mercenary was hired or dismissed
+                        if (mercComponent.IsHired || mercComponent.IsBeingRemoved)
                         {
-                            Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} was hired during movement - stopping tavern walk");
+                            Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} was hired/dismissed during movement - stopping tavern walk");
                             yield break;
                         }
                         yield return null;
@@ -384,6 +390,12 @@ namespace PitHero.Services
 
             // Mark as being removed so it can't be hired during removal animation
             mercComponent.IsBeingRemoved = true;
+
+            // Wait for pathfinding to initialize before calculating the exit path
+            while (!pathfinding.IsPathfindingInitialized)
+            {
+                yield return null;
+            }
 
             // Calculate current tile position
             var currentPos = mercEntity.Transform.Position;
