@@ -30,6 +30,9 @@ namespace PitHero.Services
 
         private static readonly Point SpawnPosition = new Point(104, 11);
 
+        // The tile mercenaries walk to before sliding south off the bottom of the map
+        private static readonly Point TavernExitTile = new Point(103, 6);
+
         private readonly List<Entity> _mercenaryEntities;
         private readonly HashSet<Point> _occupiedTavernPositions;
         private float _timeSinceLastSpawn;
@@ -404,8 +407,8 @@ namespace PitHero.Services
                 (int)(currentPos.Y / GameConfig.TileSize)
             );
 
-            // Target is 2 tiles to the left of spawn position (exit point)
-            var exitTile = new Point(SpawnPosition.X - 2, SpawnPosition.Y);
+            // Target is the southern exit of the tavern area
+            var exitTile = TavernExitTile;
 
             Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} leaving tavern - walking to exit point ({exitTile.X},{exitTile.Y})");
 

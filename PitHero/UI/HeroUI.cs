@@ -1018,6 +1018,8 @@ namespace PitHero.UI
                 mercManager?.DismissPartyMercenary(mercEntity);
                 RefreshMercenariesTab();
                 RefreshMercenaryEquipSlots();
+                // Notify inventory grid that items were added to the bag so they appear immediately
+                InventorySelectionManager.OnInventoryChanged?.Invoke();
             });
 
             dialog.Show(_stage);
