@@ -170,3 +170,6 @@ CrystalInventoryEmpty,No crystals in collection
 DialogConfirmForge,Confirm Forge
 ConfirmForgeMessage,Combine these 2 crystals into a Combo Crystal?
 CrystalInventoryFull,Crystal inventory is full
+ButtonDismiss,Dismiss
+DialogConfirmDismissMercenary,Dismiss Mercenary
+ConfirmDismissMercenaryMessage,Are you sure you want to dismiss {0}? Their gear will be returned to your inventory.

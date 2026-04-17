@@ -33,11 +33,20 @@ namespace PitHero.UI
         // Per-mercenary sprite preview containers
         private readonly Table[] _previewContainers = new Table[2];
 
+        // Dismiss buttons (up to 2)
+        private readonly TextButton[] _dismissButtons = new TextButton[2];
+
+        // Entities currently shown (needed for dismiss action)
+        private readonly Entity[] _displayedEntities = new Entity[2];
+
         // Skill buttons for tooltip support
         private readonly List<MercSkillButton> _skillButtons = new List<MercSkillButton>(32);
 
         // Tooltip for skills
         private SkillTooltip _skillTooltip;
+
+        /// <summary>Fired when the player requests to dismiss a hired mercenary.</summary>
+        public event System.Action<Entity> OnDismissRequested;
 
         /// <summary>Creates and returns the main container for this tab.</summary>
         public Table CreateContent(Skin skin, Stage stage)
@@ -105,6 +114,12 @@ namespace PitHero.UI
             // Sprite preview container
             _previewContainers[index] = new Table();
 
+            // Dismiss button
+            var capturedIndex = index;
+            _dismissButtons[index] = new TextButton(_textService.DisplayText(TextType.UI, UITextKey.ButtonDismiss), skin, "ph-default");
+            _dismissButtons[index].OnClicked += (btn) => OnDismissButtonClicked(capturedIndex);
+            _dismissButtons[index].SetVisible(false);
+
             // Info section: left column (labels) + middle column (sprite preview)
             var infoSection = new Table();
 
@@ -133,11 +148,15 @@ namespace PitHero.UI
             row.Add(_skillGrids[index]).Left().SetPadTop(2f);
             row.Row();
 
+            // Row: Dismiss button (right-aligned)
+            row.Add(_dismissButtons[index]).Right().SetPadTop(6f).SetMinWidth(80f).SetMinHeight(28f);
+            row.Row();
+
             // The no-merc label is shown/hidden via SetVisible on the row
         }
 
         /// <summary>Refreshes the tab with current mercenary data and appearance.</summary>
-        public void UpdateWithMercenaries(List<Mercenary> hiredMercenaries, List<MercenaryAppearance> appearances)
+        public void UpdateWithMercenaries(List<Mercenary> hiredMercenaries, List<MercenaryAppearance> appearances, List<Entity> hiredEntities = null)
         {
             _skillButtons.Clear();
 
@@ -150,6 +169,9 @@ namespace PitHero.UI
                 if (hiredMercenaries != null && m < hiredMercenaries.Count)
                     merc = hiredMercenaries[m];
 
+                // Track entity for dismiss action
+                _displayedEntities[m] = (hiredEntities != null && m < hiredEntities.Count) ? hiredEntities[m] : null;
+
                 if (merc == null)
                 {
                     // Hide info, show placeholder for first row only
@@ -158,6 +180,7 @@ namespace PitHero.UI
                     _jobLabels[m].SetText("");
                     _statsLabels[m].SetText("");
                     _mercRows[m].SetVisible(m == 0);
+                    _dismissButtons[m].SetVisible(false);
                     if (m == 0)
                     {
                         _skillGrids[m].Add(_noMercLabels[m]).Center();
@@ -166,6 +189,7 @@ namespace PitHero.UI
                 }
 
                 _mercRows[m].SetVisible(true);
+                _dismissButtons[m].SetVisible(true);
 
                 // Update info labels
                 _nameLabels[m].SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.MercenaryNameLabel), merc.Name));
@@ -195,6 +219,14 @@ namespace PitHero.UI
                 // Populate job skill icons
                 PopulateSkillGrid(m, merc);
             }
+        }
+
+        /// <summary>Handles a dismiss button click for the specified mercenary slot.</summary>
+        private void OnDismissButtonClicked(int index)
+        {
+            var entity = _displayedEntities[index];
+            if (entity == null) return;
+            OnDismissRequested?.Invoke(entity);
         }
 
         /// <summary>Populates the skill grid for a mercenary.</summary>

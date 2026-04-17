@@ -30,6 +30,9 @@ namespace PitHero.Services
 
         private static readonly Point SpawnPosition = new Point(104, 11);
 
+        // The tile mercenaries walk to before sliding south off the bottom of the map
+        private static readonly Point TavernExitTile = new Point(103, 6);
+
         private readonly List<Entity> _mercenaryEntities;
         private readonly HashSet<Point> _occupiedTavernPositions;
         private float _timeSinceLastSpawn;
@@ -292,11 +295,17 @@ namespace PitHero.Services
             if (tileMover == null || mercComponent == null || pathfinding == null)
                 yield break;
 
-            // Wait for pathfinding to initialize
+            // Wait for pathfinding to initialize (or until dismissed)
             while (!pathfinding.IsPathfindingInitialized)
             {
+                if (mercComponent.IsBeingRemoved)
+                    yield break;
                 yield return null;
             }
+
+            // Stop immediately if dismissed before we started walking
+            if (mercComponent.IsBeingRemoved)
+                yield break;
 
             // Calculate current tile position
             var currentPos = mercEntity.Transform.Position;
@@ -319,10 +328,10 @@ namespace PitHero.Services
             // Follow the path
             for (int i = 0; i < path.Count; i++)
             {
-                // Check if mercenary was hired during the walk - if so, stop walking to tavern
-                if (mercComponent.IsHired)
+                // Check if mercenary was hired or dismissed during the walk
+                if (mercComponent.IsHired || mercComponent.IsBeingRemoved)
                 {
-                    Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} was hired during walk to tavern - stopping tavern walk");
+                    Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} was hired/dismissed during walk to tavern - stopping tavern walk");
                     yield break;
                 }
 
@@ -349,10 +358,10 @@ namespace PitHero.Services
                     // Wait for movement to complete
                     while (tileMover.IsMoving)
                     {
-                        // Also check during movement if mercenary was hired
-                        if (mercComponent.IsHired)
+                        // Also check during movement if mercenary was hired or dismissed
+                        if (mercComponent.IsHired || mercComponent.IsBeingRemoved)
                         {
-                            Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} was hired during movement - stopping tavern walk");
+                            Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} was hired/dismissed during movement - stopping tavern walk");
                             yield break;
                         }
                         yield return null;
@@ -385,6 +394,12 @@ namespace PitHero.Services
             // Mark as being removed so it can't be hired during removal animation
             mercComponent.IsBeingRemoved = true;
 
+            // Wait for pathfinding to initialize before calculating the exit path
+            while (!pathfinding.IsPathfindingInitialized)
+            {
+                yield return null;
+            }
+
             // Calculate current tile position
             var currentPos = mercEntity.Transform.Position;
             var currentTile = new Point(
@@ -392,8 +407,8 @@ namespace PitHero.Services
                 (int)(currentPos.Y / GameConfig.TileSize)
             );
 
-            // Target is 2 tiles to the left of spawn position (exit point)
-            var exitTile = new Point(SpawnPosition.X - 2, SpawnPosition.Y);
+            // Target is the southern exit of the tavern area
+            var exitTile = TavernExitTile;
 
             Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} leaving tavern - walking to exit point ({exitTile.X},{exitTile.Y})");
 
@@ -402,15 +417,11 @@ namespace PitHero.Services
             
             if (path == null || path.Count == 0)
             {
-                Debug.Warn($"[MercenaryManager] Could not find path to exit for {mercComponent.LinkedMercenary.Name} - removing anyway");
-                RemoveMercenary(mercEntity);
-                _isRemovingMercenary = false;
-                
-                // Immediately try to spawn replacement
-                TrySpawnMercenary();
-                yield break;
+                Debug.Warn($"[MercenaryManager] Could not find path to exit for {mercComponent.LinkedMercenary.Name} - sliding offscreen from current position");
+                // Fall through to slide-down animation so the mercenary still walks off visually
             }
-
+            else
+            {
             // Follow the path to walk to exit point
             for (int i = 0; i < path.Count; i++)
             {
@@ -443,6 +454,7 @@ namespace PitHero.Services
 
                 // Small delay between moves
                 yield return Coroutine.WaitForSeconds(0.05f);
+            }
             }
 
             Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} reached exit point - now sliding down offscreen (64 pixels)");
@@ -516,6 +528,105 @@ namespace PitHero.Services
 
             _mercenaryEntities.Remove(mercEntity);
             mercEntity.Destroy();
+        }
+
+        /// <summary>
+        /// Dismisses a hired party mercenary. Unequips all gear and returns it to the hero
+        /// inventory; any overflow goes to the SecondChanceMerchantVault. The mercenary
+        /// entity is immediately destroyed.
+        /// </summary>
+        public void DismissPartyMercenary(Entity mercEntity)
+        {
+            var mercComponent = mercEntity?.GetComponent<MercenaryComponent>();
+            if (mercComponent == null || !mercComponent.IsHired)
+            {
+                Debug.Warn("[MercenaryManager] DismissPartyMercenary - entity is null or not hired");
+                return;
+            }
+
+            var merc = mercComponent.LinkedMercenary;
+            Debug.Log($"[MercenaryManager] Dismissing party mercenary {merc.Name}");
+
+            // Return all equipped gear to hero inventory; overflow to vault
+            var heroEntity = _scene?.FindEntity("hero");
+            var heroComponent = heroEntity?.GetComponent<HeroComponent>();
+            var vault = Core.Services.GetService<SecondChanceMerchantVault>();
+
+            var slots = new EquipmentSlot[]
+            {
+                EquipmentSlot.WeaponShield1,
+                EquipmentSlot.Armor,
+                EquipmentSlot.Hat,
+                EquipmentSlot.WeaponShield2,
+                EquipmentSlot.Accessory1,
+                EquipmentSlot.Accessory2
+            };
+
+            for (int i = 0; i < slots.Length; i++)
+            {
+                var gear = merc.Unequip(slots[i]);
+                if (gear == null) continue;
+
+                bool added = heroComponent != null && heroComponent.TryAddItem(gear);
+                if (!added)
+                {
+                    vault?.AddItem(gear);
+                    Debug.Log($"[MercenaryManager] Gear {gear.Name} sent to vault (inventory full)");
+                }
+                else
+                {
+                    Debug.Log($"[MercenaryManager] Gear {gear.Name} returned to hero inventory");
+                }
+            }
+
+            // If this mercenary was the follow target for the second mercenary, reassign
+            ReassignFollowTargetsAfterDismissal(mercEntity);
+
+            // Remove and destroy
+            RemoveMercenary(mercEntity);
+        }
+
+        /// <summary>
+        /// Dismisses a tavern (unhired) mercenary, triggering the natural walk-off-screen
+        /// animation so a new mercenary can arrive shortly after.
+        /// </summary>
+        public void DismissTavernMercenary(Entity mercEntity)
+        {
+            var mercComponent = mercEntity?.GetComponent<MercenaryComponent>();
+            if (mercComponent == null || mercComponent.IsHired || mercComponent.IsBeingRemoved)
+            {
+                Debug.Warn("[MercenaryManager] DismissTavernMercenary - invalid state");
+                return;
+            }
+
+            Debug.Log($"[MercenaryManager] Dismissing tavern mercenary {mercComponent.LinkedMercenary?.Name}");
+            // Mark as being removed immediately so the mercenary is non-clickable from this frame onward
+            mercComponent.IsBeingRemoved = true;
+            _isRemovingMercenary = true;
+            Core.StartCoroutine(WalkOffscreenAndRemove(mercEntity));
+        }
+
+        /// <summary>
+        /// Reassigns follow targets for any hired mercenaries that were following the
+        /// dismissed entity, pointing them to the hero instead.
+        /// </summary>
+        private void ReassignFollowTargetsAfterDismissal(Entity dismissedEntity)
+        {
+            var heroEntity = _scene?.FindEntity("hero");
+            if (heroEntity == null) return;
+
+            for (int i = 0; i < _mercenaryEntities.Count; i++)
+            {
+                var entity = _mercenaryEntities[i];
+                if (entity == dismissedEntity) continue;
+
+                var comp = entity.GetComponent<MercenaryComponent>();
+                if (comp != null && comp.IsHired && comp.FollowTarget == dismissedEntity)
+                {
+                    comp.FollowTarget = heroEntity;
+                    Debug.Log($"[MercenaryManager] Reassigned {comp.LinkedMercenary?.Name} follow target to hero after dismissal");
+                }
+            }
         }
 
         /// <summary>Gets all unhired mercenaries</summary>
