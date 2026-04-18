@@ -55,198 +55,234 @@ UIMonsterHighlight2x
 UIMonsterInverse2x
 	325,187,60,60
 	0.5,0.5
-UIStop2x
+UIReplenish2x
 	386,122,60,60
 	0.5,0.5
-UIStopHighlight2x
+UIReplenishHighlight2x
 	386,183,60,60
 	0.5,0.5
-UIStopInverse2x
+UIReplenishInverse2x
 	447,122,60,60
 	0.5,0.5
+UISecondChance2x
+	447,183,60,60
+	0.5,0.5
+UISecondChanceHighlight2x
+	0,204,60,60
+	0.5,0.5
+UISecondChanceInverse2x
+	0,265,60,60
+	0.5,0.5
+UIStop2x
+	61,204,60,60
+	0.5,0.5
+UIStopHighlight2x
+	122,196,60,60
+	0.5,0.5
+UIStopInverse2x
+	0,326,60,60
+	0.5,0.5
 HighlightBox
-	0,204,32,32
+	61,265,32,32
 	0.5,0.5
 SelectBox
-	33,204,32,32
+	61,298,32,32
 	0.5,0.5
 UIGearHighlight
-	73,196,32,32
+	94,265,32,32
 	0.5,0.5
 UIGearInverse
-	106,196,32,32
+	0,387,32,32
 	0.5,0.5
 UIGear
-	139,196,31,30
+	127,257,31,30
 	0.5,0.5
 UIContinue
-	171,196,30,30
+	94,298,30,30
 	0.5,0.5
 UIContinueHighlight
-	461,0,30,30
+	61,331,30,30
 	0.5,0.5
 UIContinueInverse
-	470,31,30,30
+	127,288,30,30
 	0.5,0.5
 UIFastF
-	470,62,30,30
+	159,257,30,30
 	0.5,0.5
 UIFastFHighlight
-	447,183,30,30
+	0,420,30,30
 	0.5,0.5
 UIFastFInverse
-	447,214,30,30
+	33,387,30,30
 	0.5,0.5
 UIHero
-	478,183,30,30
+	92,331,30,30
 	0.5,0.5
 UIHeroHighlight
-	478,214,30,30
+	125,319,30,30
 	0.5,0.5
 UIHeroInverse
-	0,237,30,30
+	158,288,30,30
 	0.5,0.5
 UIMonster
-	0,268,30,30
+	190,252,30,30
 	0.5,0.5
 UIMonsterHighlight
-	31,237,30,30
+	64,362,30,30
 	0.5,0.5
 UIMonsterInverse
-	0,299,30,30
+	33,418,30,30
+	0.5,0.5
+UIReplenish
+	0,451,30,30
+	0.5,0.5
+UIReplenishHighlight
+	64,393,30,30
+	0.5,0.5
+UIReplenishInverse
+	95,362,30,30
+	0.5,0.5
+UISecondChance
+	461,0,30,30
+	0.5,0.5
+UISecondChanceHighlight
+	190,283,30,30
+	0.5,0.5
+UISecondChanceInverse
+	221,252,30,30
 	0.5,0.5
 UIStop
-	31,268,30,30
+	156,319,30,30
 	0.5,0.5
 UIStopHighlight
-	62,237,30,30
+	31,449,30,30
 	0.5,0.5
 UIStopInverse
-	62,268,30,30
+	64,424,30,30
 	0.5,0.5
 NinePatchTab_Active
-	0,330,24,24
+	0,482,24,24
 	0.5,0.5
 NinePatchTab_Hover
-	31,299,24,24
+	95,393,24,24
 	0.5,0.5
 NinePatchTab_Inactive
-	93,229,24,24
+	126,350,24,24
 	0.5,0.5
 SkillIcon1
-	93,254,24,24
+	461,31,24,24
 	0.5,0.5
 SkillIcon10
-	118,229,24,24
+	126,375,24,24
 	0.5,0.5
 SkillIcon2
-	31,324,24,24
+	151,350,24,24
 	0.5,0.5
 SkillIcon3
-	56,299,24,24
+	252,252,24,24
 	0.5,0.5
 SkillIcon4
-	0,355,24,24
+	221,283,24,24
 	0.5,0.5
 SkillIcon5
-	93,279,24,24
+	189,314,24,24
 	0.5,0.5
 SkillIcon6
-	143,227,24,24
+	25,482,24,24
 	0.5,0.5
 SkillIcon7
-	118,254,24,24
+	95,418,24,24
 	0.5,0.5
 SkillIcon8
-	56,324,24,24
+	486,31,24,24
 	0.5,0.5
 SkillIcon9
-	0,380,24,24
+	62,455,24,24
 	0.5,0.5
 UISortAlpha
-	25,349,24,24
+	151,375,24,24
 	0.5,0.5
 UISortAlphaHighlight
-	143,252,24,24
+	120,400,24,24
 	0.5,0.5
 UISortAlphaInverse
-	168,227,24,24
+	176,350,24,24
 	0.5,0.5
 UISortTime
-	81,304,24,24
+	214,314,24,24
 	0.5,0.5
 UISortTimeHighlight
-	118,279,24,24
+	252,277,24,24
 	0.5,0.5
 UISortTimeInverse
-	25,374,24,24
+	277,248,24,24
 	0.5,0.5
 UISortType
-	50,349,24,24
+	470,56,24,24
 	0.5,0.5
 UISortTypeHighlight
-	0,405,24,24
+	50,480,24,24
 	0.5,0.5
 UISortTypeInverse
-	81,329,24,24
+	95,443,24,24
 	0.5,0.5
 CharacterSelector
-	106,304,20,19
+	120,425,20,19
 	0.5,0.5
 UIRadioButton_Selected
-	143,277,18,18
+	183,196,18,18
 	0.5,0.5
 UIRadioButton_Unselected
-	168,252,18,18
+	183,215,18,18
 	0.5,0.5
 UIRadioButton_Unselected_Highlight
-	50,374,18,18
+	492,0,18,18
 	0.5,0.5
 UICheckbox_Checked
-	25,399,16,16
+	183,234,16,16
 	0.5,0.5
 UICheckbox_Unchecked
-	106,324,16,16
+	145,400,16,16
 	0.5,0.5
 UICheckbox_Unchecked_Highlight
-	0,430,16,16
+	277,273,16,16
 	0.5,0.5
 UISliderKnob
-	127,304,14,14
+	302,248,14,14
 	0.5,0.5
 UISliderKnobDown
-	75,354,14,14
+	495,56,14,14
 	0.5,0.5
 UISliderKnobOver
-	187,252,14,14
+	470,81,14,14
 	0.5,0.5
 NinePatchButton_Down
-	168,271,12,12
+	201,339,12,12
 	0.5,0.5
 NinePatchButton_Over
-	143,296,12,12
+	176,375,12,12
 	0.5,0.5
 NinePatchButton_Up
-	25,416,12,12
+	201,352,12,12
 	0.5,0.5
 UISortOrderArrow
-	42,399,10,13
+	214,339,10,13
 	0.5,0.5
 NinePatchScroll
-	193,227,9,9
+	492,19,9,9
 	0.5,0.5
 NinePatchScrollKnob
-	193,237,9,9
+	502,19,9,9
 	0.5,0.5
 HPUnit2x
-	66,204,2,8
+	61,362,2,8
 	0.5,0.5
 MPUnit2x
-	69,204,2,8
+	61,371,2,8
 	0.5,0.5
 HPUnit
-	66,213,1,4
+	73,196,1,4
 	0.5,0.5
 MPUnit
-	68,213,1,4
+	75,196,1,4
 	0.5,0.5

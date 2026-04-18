@@ -65,13 +65,12 @@ namespace PitHero.UI
         {
             var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
 
-            // Use Gear sprites as placeholder
-            var sprite = uiAtlas.GetSprite("UIGear");
-            var sprite2x = uiAtlas.GetSprite("UIGear2x");
-            var highlight = uiAtlas.GetSprite("UIGearHighlight");
-            var highlight2x = uiAtlas.GetSprite("UIGearHighlight2x");
-            var inverse = uiAtlas.GetSprite("UIGearInverse");
-            var inverse2x = uiAtlas.GetSprite("UIGearInverse2x");
+            var sprite = uiAtlas.GetSprite("UIReplenish");
+            var sprite2x = uiAtlas.GetSprite("UIReplenish2x");
+            var highlight = uiAtlas.GetSprite("UIReplenishHighlight");
+            var highlight2x = uiAtlas.GetSprite("UIReplenishHighlight2x");
+            var inverse = uiAtlas.GetSprite("UIReplenishInverse");
+            var inverse2x = uiAtlas.GetSprite("UIReplenishInverse2x");
 
             _normalStyle = new ImageButtonStyle
             {
