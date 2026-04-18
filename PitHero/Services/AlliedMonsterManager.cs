@@ -46,7 +46,7 @@ namespace PitHero.Services
 
             var allied = new AlliedMonster(firstName, enemy.Name, fishing, cooking, farming);
             _alliedMonsters.Add(allied);
-            var textService = Core.Services.GetService<TextService>();
+            var textService = Core.Services?.GetService<TextService>();
             var enemyDisplayName = textService?.DisplayText(PitHero.TextType.Monster, enemy.Name) ?? enemy.Name;
             _pendingNotifications.Enqueue($"{enemyDisplayName} {firstName} was recruited!");
             Debug.Log($"[AlliedMonsterManager] {enemy.Name} joined as '{firstName}'! Fishing:{fishing} Cooking:{cooking} Farming:{farming}");
