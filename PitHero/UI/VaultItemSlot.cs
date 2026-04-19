@@ -96,7 +96,9 @@ namespace PitHero.UI
             float h = GetHeight();
             var color = Color.White * parentAlpha;
 
-            _backgroundDrawable?.Draw(batcher, x, y, w, h, color);
+            // Draw background at the same translucent alpha used by InventorySlot so the
+            // parchment window shows through (opaque = black slots; alpha 100 ≈ 39% opacity)
+            _backgroundDrawable?.Draw(batcher, x, y, w, h, new Color(255, 255, 255, 100));
 
             if (_stack != null && !_itemSpriteHidden)
             {

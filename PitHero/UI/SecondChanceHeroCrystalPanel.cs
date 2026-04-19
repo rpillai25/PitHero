@@ -7,8 +7,9 @@ using RolePlayingFramework.Heroes;
 namespace PitHero.UI
 {
     /// <summary>
-    /// Displays the hero's crystal collection (inventory + queue + forge) for the Second Chance Shop.
-    /// Accepts vault crystal drops for purchase. Does not support forge/create functionality.
+    /// Displays the hero's crystal inventory and queue for the Second Chance Shop.
+    /// Forge slots are omitted — they are not needed in the buy-back flow.
+    /// Accepts vault crystal drops for purchase.
     /// </summary>
     public class SecondChanceHeroCrystalPanel
     {
@@ -24,8 +25,6 @@ namespace PitHero.UI
 
         private CrystalSlotElement[] _inventorySlots;
         private CrystalSlotElement[] _queueSlots;
-        private CrystalSlotElement _forgeSlotA;
-        private CrystalSlotElement _forgeSlotB;
 
         private Stage _stage;
         private Skin _skin;
@@ -58,31 +57,10 @@ namespace PitHero.UI
             var mainTable = new Table();
             mainTable.Top().Left().PadLeft(4f);
 
-            // ── Forge section ──────────────────────────────────────────────────
-            var forgeSection = new Table();
-            forgeSection.Add(new Label("Forge:", skin, "ph-default")).Left().Pad(2f);
-            forgeSection.Row();
-
-            _forgeSlotA = new CrystalSlotElement(CrystalSlotKind.Inventory);
-            _forgeSlotA.OnSlotHovered += OnSlotHovered;
-            _forgeSlotA.OnSlotUnhovered += OnSlotUnhovered;
-            _forgeSlotA.OnDragDropped += (slot, pos) => HandleHeroSlotDrop(CrystalSlotType.ForgeA, 0, slot);
-
-            _forgeSlotB = new CrystalSlotElement(CrystalSlotKind.Inventory);
-            _forgeSlotB.OnSlotHovered += OnSlotHovered;
-            _forgeSlotB.OnSlotUnhovered += OnSlotUnhovered;
-            _forgeSlotB.OnDragDropped += (slot, pos) => HandleHeroSlotDrop(CrystalSlotType.ForgeB, 0, slot);
-
-            var forgeRow = new Table();
-            forgeRow.Add(_forgeSlotA).Size(SLOT_SIZE).Pad(SLOT_PAD);
-            forgeRow.Add(_forgeSlotB).Size(SLOT_SIZE).Pad(SLOT_PAD);
-            forgeSection.Add(forgeRow).Left();
-            mainTable.Add(forgeSection).Left().Pad(2f);
-            mainTable.Row();
-
-            // ── Inventory section ──────────────────────────────────────────────
-            mainTable.Add(new Label("Crystal Inventory:", skin, "ph-default")).Left().Pad(2f, 0f, 2f, 0f);
-            mainTable.Row();
+            // ── Inventory section (left column) ─────────────────────────────────
+            var invCol = new Table();
+            invCol.Add(new Label("Crystal Inventory:", skin, "ph-default")).Left().Pad(5);
+            invCol.Row();
 
             _inventorySlots = new CrystalSlotElement[INV_TOTAL];
             var invGrid = new Table();
@@ -97,15 +75,14 @@ namespace PitHero.UI
                 invGrid.Add(slot).Size(SLOT_SIZE).Pad(SLOT_PAD);
                 if ((i + 1) % INV_COLS == 0) invGrid.Row();
             }
-            mainTable.Add(invGrid).Left().Pad(2f);
-            mainTable.Row();
+            invCol.Add(invGrid).Left().Pad(2);
 
-            // ── Queue section ─────────────────────────────────────────────────
-            mainTable.Add(new Label("Queue:", skin, "ph-default")).Left().Pad(2f, 0f, 2f, 0f);
-            mainTable.Row();
+            // ── Queue section (right column, slots stacked vertically) ─────────
+            var queueCol = new Table();
+            queueCol.Add(new Label("Queue:", skin, "ph-default")).Left().Pad(5);
+            queueCol.Row();
 
             _queueSlots = new CrystalSlotElement[QUEUE_SLOTS];
-            var queueRow = new Table();
             for (int i = 0; i < QUEUE_SLOTS; i++)
             {
                 var slot = new CrystalSlotElement(CrystalSlotKind.Shortcut);
@@ -118,9 +95,13 @@ namespace PitHero.UI
                 var slotRow = new Table();
                 slotRow.Add(numLabel).Width(14f).Right().Pad(0, 0, 0, 3);
                 slotRow.Add(slot).Size(SLOT_SIZE).Pad(SLOT_PAD);
-                queueRow.Add(slotRow).Left();
+                queueCol.Add(slotRow).Left();
+                queueCol.Row();
             }
-            mainTable.Add(queueRow).Left().Pad(2f);
+
+            // Side-by-side: inventory left, queue right (mirrors CrystalsTab layout)
+            mainTable.Add(invCol).Top().Left().Pad(2);
+            mainTable.Add(queueCol).Top().Left().Pad(2, 16, 2, 5);
 
             RefreshAll();
             return mainTable;
@@ -136,8 +117,6 @@ namespace PitHero.UI
                 _inventorySlots[i].SetCrystal(svc.Inventory[i]);
             for (int i = 0; i < QUEUE_SLOTS; i++)
                 _queueSlots[i].SetCrystal(svc.Queue[i]);
-            _forgeSlotA?.SetCrystal(svc.ForgeSlotA);
-            _forgeSlotB?.SetCrystal(svc.ForgeSlotB);
         }
 
         private void HandleHeroSlotDrop(CrystalSlotType slotType, int slotIdx, CrystalSlotElement slot)

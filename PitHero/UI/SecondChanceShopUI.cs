@@ -168,8 +168,11 @@ namespace PitHero.UI
             var scrollPane = new ScrollPane(_heroInventoryGrid, skin, "ph-default");
             scrollPane.SetScrollingDisabled(true, false);
 
+            // Use Expand().Fill() to match HeroUI's PopulateInventoryTab layout so the
+            // ScrollPane gets an explicit height (without Fill, InventoryGrid reports 0
+            // preferred height and the ScrollPane collapses to nothing)
             var content = new Table();
-            content.Add(scrollPane).Width(700f).Top().Left().Pad(4f);
+            content.Add(scrollPane).Width(700f).Expand().Fill().Pad(0f);
 
             _heroInventoryWindow.Add(content).Expand().Fill();
             _heroInventoryWindow.SetVisible(false);
