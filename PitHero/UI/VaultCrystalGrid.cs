@@ -23,8 +23,8 @@ namespace PitHero.UI
         /// <summary>Fired when a vault crystal drag starts.</summary>
         public event System.Action<VaultCrystalSlot> OnVaultCrystalDragStarted;
 
-        /// <summary>Fired when a vault crystal drag is dropped (anywhere).</summary>
-        public event System.Action<VaultCrystalSlot> OnVaultCrystalDragDropped;
+        /// <summary>Fired when a vault crystal drag is dropped. The Vector2 is the stage-coordinate drop position.</summary>
+        public event System.Action<VaultCrystalSlot, Vector2> OnVaultCrystalDragDropped;
 
         /// <summary>Creates a new vault crystal grid.</summary>
         public VaultCrystalGrid()
@@ -138,7 +138,7 @@ namespace PitHero.UI
         {
             var stagePos = slot.LocalToStageCoordinates(pos);
             InventoryDragManager.UpdateDrag(stagePos);
-            OnVaultCrystalDragDropped?.Invoke(slot);
+            OnVaultCrystalDragDropped?.Invoke(slot, stagePos);
         }
     }
 }

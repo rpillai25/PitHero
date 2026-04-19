@@ -1,3 +1,4 @@
+using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
 using PitHero.ECS.Components;
@@ -514,10 +515,22 @@ namespace PitHero.UI
             InventoryDragManager.EndDrag();
         }
 
-        /// <summary>Called when the vault slot fires a drop event with no hero grid target — cancels the drag.</summary>
-        private void HandleVaultDragDropped(VaultItemSlot slot)
+        /// <summary>
+        /// Called when a vault item drag is released. Checks whether the drop position hits a hero
+        /// inventory slot; if so, starts the purchase confirmation flow. Otherwise cancels.
+        /// </summary>
+        private void HandleVaultDragDropped(VaultItemSlot slot, Vector2 stagePos)
         {
-            if (InventoryDragManager.IsDragging && InventoryDragManager.IsVaultItemDrag)
+            if (!InventoryDragManager.IsDragging || !InventoryDragManager.IsVaultItemDrag)
+                return;
+
+            var vaultStack = InventoryDragManager.SourceVaultStack;
+            var heroSlot = _heroInventoryGrid?.GetSlotAtStagePosition(stagePos);
+            if (heroSlot != null && vaultStack != null)
+            {
+                HandleVaultItemDrop(heroSlot, vaultStack);
+            }
+            else
             {
                 InventoryDragManager.CancelDrag();
                 _vaultItemGrid?.ShowAllItemSprites();
@@ -626,10 +639,30 @@ namespace PitHero.UI
             InventoryDragManager.EndDrag();
         }
 
-        /// <summary>Called when the vault crystal grid fires a drop event with no hero panel target — cancels the drag.</summary>
-        private void HandleVaultCrystalDragDropped(VaultCrystalSlot slot)
+        /// <summary>
+        /// Called when a vault crystal drag is released. Checks whether the drop position hits a hero
+        /// crystal slot; if so, starts the purchase confirmation flow. Otherwise cancels.
+        /// </summary>
+        private void HandleVaultCrystalDragDropped(VaultCrystalSlot slot, Vector2 stagePos)
         {
-            if (InventoryDragManager.IsDragging && InventoryDragManager.IsVaultCrystalDrag)
+            if (!InventoryDragManager.IsDragging || !InventoryDragManager.IsVaultCrystalDrag)
+                return;
+
+            var crystal = InventoryDragManager.SourceVaultCrystal;
+            if (crystal != null && _heroCrystalPanel != null &&
+                _heroCrystalPanel.TryGetCrystalSlotAtStagePosition(stagePos,
+                    out CrystalSlotType destSlotType, out int destSlotIdx, out CrystalSlotElement destSlot))
+            {
+                // Only accept drops on empty slots
+                if (destSlot.Crystal != null)
+                {
+                    InventoryDragManager.CancelDrag();
+                    _vaultCrystalGrid?.ShowAllCrystalSprites();
+                    return;
+                }
+                HandleVaultCrystalDrop(destSlotType, destSlotIdx, crystal);
+            }
+            else
             {
                 InventoryDragManager.CancelDrag();
                 _vaultCrystalGrid?.ShowAllCrystalSprites();

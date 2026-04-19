@@ -119,6 +119,56 @@ namespace PitHero.UI
                 _queueSlots[i].SetCrystal(svc.Queue[i]);
         }
 
+        /// <summary>
+        /// Finds a crystal slot at the given stage position.
+        /// Returns true and sets slotType, slotIdx, and slot if a slot was found.
+        /// Returns false if no slot is under the position.
+        /// </summary>
+        public bool TryGetCrystalSlotAtStagePosition(Vector2 stagePos,
+            out CrystalSlotType slotType, out int slotIdx, out CrystalSlotElement slot)
+        {
+            if (_inventorySlots != null)
+            {
+                for (int i = 0; i < INV_TOTAL; i++)
+                {
+                    var s = _inventorySlots[i];
+                    if (s == null) continue;
+                    var topLeft = s.LocalToStageCoordinates(Vector2.Zero);
+                    if (stagePos.X >= topLeft.X && stagePos.X <= topLeft.X + s.GetWidth() &&
+                        stagePos.Y >= topLeft.Y && stagePos.Y <= topLeft.Y + s.GetHeight())
+                    {
+                        slotType = CrystalSlotType.Inventory;
+                        slotIdx = i;
+                        slot = s;
+                        return true;
+                    }
+                }
+            }
+
+            if (_queueSlots != null)
+            {
+                for (int i = 0; i < QUEUE_SLOTS; i++)
+                {
+                    var s = _queueSlots[i];
+                    if (s == null) continue;
+                    var topLeft = s.LocalToStageCoordinates(Vector2.Zero);
+                    if (stagePos.X >= topLeft.X && stagePos.X <= topLeft.X + s.GetWidth() &&
+                        stagePos.Y >= topLeft.Y && stagePos.Y <= topLeft.Y + s.GetHeight())
+                    {
+                        slotType = CrystalSlotType.Queue;
+                        slotIdx = i;
+                        slot = s;
+                        return true;
+                    }
+                }
+            }
+
+            slotType = CrystalSlotType.Inventory;
+            slotIdx = -1;
+            slot = null;
+            return false;
+        }
+
         private void HandleHeroSlotDrop(CrystalSlotType slotType, int slotIdx, CrystalSlotElement slot)
         {
             // Only handle vault crystal drags

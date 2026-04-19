@@ -739,7 +739,7 @@ namespace PitHero.UI
         }
 
         /// <summary>Returns the inventory slot at the given stage coordinates, or null if none.</summary>
-        private InventorySlot GetSlotAtStagePosition(Vector2 stagePos)
+        public InventorySlot GetSlotAtStagePosition(Vector2 stagePos)
         {
             for (int i = 0; i < _slots.Length; i++)
             {
