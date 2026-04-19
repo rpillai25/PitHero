@@ -96,6 +96,7 @@ namespace PitHero.UI
         private FastFUI _fastFUI;
         private HeroUI _heroUI;
         private MonsterUI _monsterUI;
+        private SecondChanceShopUI _secondChanceShopUI;
         private RecruitmentNotificationUI _recruitmentNotificationUI;
         private StopAdventuringUI _stopAdventuringUI;
         private ReplenishUI _replenishUI;
@@ -105,6 +106,9 @@ namespace PitHero.UI
 
         /// <summary>Gets the HeroUI instance.</summary>
         public HeroUI HeroUI => _heroUI;
+
+        /// <summary>Gets the SecondChanceShopUI instance.</summary>
+        public SecondChanceShopUI SecondChanceShopUI => _secondChanceShopUI;
 
         // Window size modes
         public enum WindowSizeMode
@@ -156,6 +160,15 @@ namespace PitHero.UI
             _monsterUI = new MonsterUI();
             _monsterUI.InitializeUI(_stage);
             _monsterUI.SetSettingsUI(this);
+
+            _secondChanceShopUI = new SecondChanceShopUI();
+            _secondChanceShopUI.InitializeUI(_stage);
+            _secondChanceShopUI.SetSettingsUI(this);
+            _secondChanceShopUI.SetHeroUI(_heroUI);
+            _secondChanceShopUI.SetMonsterUI(_monsterUI);
+
+            _heroUI.SetSecondChanceShopUI(_secondChanceShopUI);
+            _monsterUI.SetSecondChanceShopUI(_secondChanceShopUI);
 
             _recruitmentNotificationUI = new RecruitmentNotificationUI();
             _recruitmentNotificationUI.InitializeUI(_stage, skin);
@@ -769,9 +782,10 @@ namespace PitHero.UI
             float monsterW = _monsterUI.GetWidth();
             float stopW    = _stopAdventuringUI.GetWidth();
             float replenishW = _replenishUI.GetWidth();
+            float secondChanceW = _secondChanceShopUI.GetWidth();
 
-            // Calculate total width needed for all six buttons with padding
-            float totalWidth = replenishW + stopW + fastFW + gearW + heroW + monsterW + (5 * GameConfig.UIButtonPadding);
+            // Calculate total width needed for all seven buttons with padding
+            float totalWidth = replenishW + stopW + fastFW + gearW + heroW + monsterW + secondChanceW + (6 * GameConfig.UIButtonPadding);
 
             // Center all buttons as a group
             float startX = (stageW - totalWidth) * 0.5f;
@@ -800,6 +814,10 @@ namespace PitHero.UI
             // Position monster button to the right of hero
             float monsterX = heroX + heroW + GameConfig.UIButtonPadding;
             _monsterUI.SetPosition(monsterX, buttonY);
+
+            // Position second chance shop button to the right of monster
+            float secondChanceX = monsterX + monsterW + GameConfig.UIButtonPadding;
+            _secondChanceShopUI.SetPosition(secondChanceX, buttonY);
 
             if (_isVisible)
             {
@@ -855,6 +873,13 @@ namespace PitHero.UI
                 {
                     _monsterUI.ForceCloseWindow();
                     Debug.Log("[SettingsUI] Closed MonsterUI window to enforce single window policy");
+                }
+
+                // Close SecondChanceShopUI window if it's open before opening settings (single window policy)
+                if (_secondChanceShopUI != null && _secondChanceShopUI.IsWindowVisible)
+                {
+                    _secondChanceShopUI.ForceCloseWindow();
+                    Debug.Log("[SettingsUI] Closed SecondChanceShopUI window to enforce single window policy");
                 }
 
                 // Use centralized UI window manager for opening behavior
@@ -1027,6 +1052,7 @@ namespace PitHero.UI
             _fastFUI?.Update();
             _heroUI?.Update();
             _monsterUI?.Update();
+            _secondChanceShopUI?.Update();
             _recruitmentNotificationUI?.Update();
             _stopAdventuringUI?.Update();
             _replenishUI?.Update();
@@ -1042,6 +1068,7 @@ namespace PitHero.UI
             if (_fastFUI != null && _fastFUI.ConsumeStyleChangedFlag()) needsReposition = true;
             if (_heroUI != null && _heroUI.ConsumeStyleChangedFlag()) needsReposition = true;
             if (_monsterUI != null && _monsterUI.ConsumeStyleChangedFlag()) needsReposition = true;
+            if (_secondChanceShopUI != null && _secondChanceShopUI.ConsumeStyleChangedFlag()) needsReposition = true;
             if (_stopAdventuringUI != null && _stopAdventuringUI.ConsumeStyleChangedFlag()) needsReposition = true;
             if (_replenishUI != null && _replenishUI.ConsumeStyleChangedFlag()) needsReposition = true;
 
