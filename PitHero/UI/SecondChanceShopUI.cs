@@ -7,20 +7,29 @@ using RolePlayingFramework.Heroes;
 
 namespace PitHero.UI
 {
-    /// <summary>UI shell for the Second Chance Shop - provides a button and tabbed window for purchasing items and crystals.</summary>
+    /// <summary>UI shell for the Second Chance Shop - provides a button, a vault window, and a separate hero panel for purchasing items and crystals.</summary>
     public class SecondChanceShopUI
     {
         private Stage _stage;
         private HoverableImageButton _shopButton;
+
+        // Left panel: shop window with vault grid tabs
         private Window _shopWindow;
+        private TabPane _tabPane;
+        private Tab _itemsTab;
+        private Tab _crystalsTab;
+
+        // Right panel: separate windows for hero inventory and crystal panel
+        private Window _heroInventoryWindow;
+        private Window _heroCrystalWindow;
+
+        // Merchant sprite shown between the two panels
+        private Image _merchantSprite;
+
         private bool _windowVisible = false;
         private ImageButtonStyle _shopNormalStyle;
         private ImageButtonStyle _shopHalfStyle;
         private bool _styleChanged = false;
-        private TabPane _tabPane;
-        private Tab _itemsTab;
-        private Tab _crystalsTab;
-        private Image _merchantSprite;
         private SettingsUI _settingsUI;
         private HeroUI _heroUI;
         private MonsterUI _monsterUI;
@@ -35,6 +44,9 @@ namespace PitHero.UI
         // Crystals tab components
         private VaultCrystalGrid _vaultCrystalGrid;
         private SecondChanceHeroCrystalPanel _heroCrystalPanel;
+
+        // Which tab is currently active (0=Items, 1=Crystals)
+        private int _activeTabIndex = 0;
 
         private enum ShopMode { Normal, Half }
         private ShopMode _currentShopMode = ShopMode.Normal;
@@ -74,13 +86,16 @@ namespace PitHero.UI
             _shopButton.SetSize(sprite.SourceRect.Width, sprite.SourceRect.Height);
             _shopButton.OnClicked += (button) => TriggerToggle();
 
-            // Load merchant sprite for display beside the window
+            // Load merchant sprite - 256x256 px; displayed between shop and hero panels
             var merchantSprite = uiAtlas.GetSprite("SecondChanceMerchant");
             _merchantSprite = new Image(new SpriteDrawable(merchantSprite));
+            // Display at natural sprite dimensions so the full character is visible
+            _merchantSprite.SetSize(merchantSprite.SourceRect.Width, merchantSprite.SourceRect.Height);
 
             CreateShopWindow(_skin);
-            PopulateItemsTab(_itemsTab, _skin);
-            PopulateCrystalsTab(_crystalsTab, _skin);
+            CreateHeroInventoryWindow(_skin);
+            CreateHeroCrystalWindow(_skin);
+
             _pauseService = Core.Services?.GetService<PauseService>();
             _stage.AddElement(_shopButton);
         }
@@ -89,9 +104,7 @@ namespace PitHero.UI
         private TextService GetTextService()
         {
             if (_textService == null && Core.Services != null)
-            {
                 _textService = Core.Services.GetService<TextService>();
-            }
             return _textService;
         }
 
@@ -102,27 +115,164 @@ namespace PitHero.UI
             return service?.DisplayText(type, key) ?? key;
         }
 
-        /// <summary>Creates the shop window with Items and Crystals tabs.</summary>
+        // ──────────────────────────────────────────────────────────────────────────
+        // Window creation
+        // ──────────────────────────────────────────────────────────────────────────
+
+        /// <summary>Creates the shop window containing only the vault grid tabs.</summary>
         private void CreateShopWindow(Skin skin)
         {
             _shopWindow = new Window(GetText(TextType.UI, UITextKey.WindowSecondChanceShop), skin);
-            _shopWindow.SetSize(505f, 348f);
+            _shopWindow.SetSize(GameConfig.SecondChanceShopWindowWidth, GameConfig.SecondChanceShopWindowHeight);
+            _shopWindow.Pad(0); // tabs flush with window edges
 
             var tabWindowStyle = skin.Get<TabWindowStyle>("ph-default");
             _tabPane = new TabPane(tabWindowStyle);
 
             var tabStyle = new TabStyle { Background = null };
-
-            _itemsTab = new Tab(GetText(TextType.UI, UITextKey.TabItems), tabStyle);
-
+            _itemsTab    = new Tab(GetText(TextType.UI, UITextKey.TabItems),    tabStyle);
             _crystalsTab = new Tab(GetText(TextType.UI, UITextKey.TabCrystals), tabStyle);
+
+            PopulateItemsTab(_itemsTab, skin);
+            PopulateCrystalsTab(_crystalsTab, skin);
 
             _tabPane.AddTab(_itemsTab);
             _tabPane.AddTab(_crystalsTab);
 
+            // Wire tab button clicks to swap the right-side hero panel
+            for (int i = 0; i < _tabPane.TabButtons.Count; i++)
+            {
+                int tabIndex = i;
+                _tabPane.TabButtons[i].OnClick += () => HandleTabChanged(tabIndex);
+            }
+
             _shopWindow.Add(_tabPane).Expand().Fill().Pad(0);
             _shopWindow.SetVisible(false);
         }
+
+        /// <summary>Creates the hero inventory window (right panel for the Items tab).</summary>
+        private void CreateHeroInventoryWindow(Skin skin)
+        {
+            _heroInventoryWindow = new Window("", skin);
+            _heroInventoryWindow.Pad(0);
+            _heroInventoryWindow.SetSize(GameConfig.SecondChanceHeroPanelWidth, GameConfig.SecondChanceHeroPanelHeight);
+
+            _heroInventoryGrid = new InventoryGrid();
+            _heroInventoryGrid.InitializeContextMenu(_stage, skin);
+            _heroInventoryGrid.OnVaultItemDropRequested += HandleVaultItemDrop;
+
+            var heroComponent = Core.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
+            if (heroComponent != null)
+                _heroInventoryGrid.ConnectToHero(heroComponent);
+
+            var scrollPane = new ScrollPane(_heroInventoryGrid, skin, "ph-default");
+            scrollPane.SetScrollingDisabled(true, false);
+
+            var content = new Table();
+            content.Add(scrollPane).Width(700f).Top().Left().Pad(4f);
+
+            _heroInventoryWindow.Add(content).Expand().Fill();
+            _heroInventoryWindow.SetVisible(false);
+        }
+
+        /// <summary>Creates the hero crystal window (right panel for the Crystals tab).</summary>
+        private void CreateHeroCrystalWindow(Skin skin)
+        {
+            _heroCrystalWindow = new Window("", skin);
+            _heroCrystalWindow.Pad(0);
+            _heroCrystalWindow.SetSize(GameConfig.SecondChanceHeroPanelWidth, GameConfig.SecondChanceHeroPanelHeight);
+
+            _heroCrystalPanel = new SecondChanceHeroCrystalPanel();
+            _heroCrystalPanel.OnVaultCrystalDropRequested += HandleVaultCrystalDrop;
+
+            var heroPanel = _heroCrystalPanel.CreateContent(skin, _stage);
+
+            var content = new Table();
+            content.Add(heroPanel).Top().Left().Pad(4f);
+
+            _heroCrystalWindow.Add(content).Expand().Fill();
+            _heroCrystalWindow.SetVisible(false);
+        }
+
+        // ──────────────────────────────────────────────────────────────────────────
+        // Tab population (vault grids only — no hero panel content here)
+        // ──────────────────────────────────────────────────────────────────────────
+
+        /// <summary>Populates the Items tab with the vault item grid.</summary>
+        private void PopulateItemsTab(Tab tab, Skin skin)
+        {
+            var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
+
+            _vaultItemGrid = new VaultItemGrid();
+            _vaultItemGrid.InitializeTooltip(_stage, skin);
+            if (vault != null)
+                _vaultItemGrid.RefreshFromVault(vault);
+
+            // Cancel drag when it lands outside the hero inventory grid
+            _vaultItemGrid.OnVaultSlotDragDropped += HandleVaultDragDropped;
+
+            var scrollPane = new ScrollPane(_vaultItemGrid, skin, "ph-default");
+            scrollPane.SetScrollingDisabled(true, false);
+            scrollPane.SetFadeScrollBars(false);
+
+            var content = new Table();
+            content.Top().Left().Pad(8f);
+            content.Add(scrollPane).Size(297f, 198f).Top().Left();
+
+            tab.ClearChildren();
+            tab.Add(content).Expand().Fill();
+        }
+
+        /// <summary>Populates the Crystals tab with the vault crystal grid.</summary>
+        private void PopulateCrystalsTab(Tab tab, Skin skin)
+        {
+            var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
+
+            _vaultCrystalGrid = new VaultCrystalGrid();
+            _vaultCrystalGrid.InitializeTooltip(_stage, skin);
+            if (vault != null)
+                _vaultCrystalGrid.RefreshFromVault(vault);
+
+            // Cancel drag when it lands outside the hero crystal panel
+            _vaultCrystalGrid.OnVaultCrystalDragDropped += HandleVaultCrystalDragDropped;
+
+            var scrollPane = new ScrollPane(_vaultCrystalGrid, skin, "ph-default");
+            scrollPane.SetScrollingDisabled(true, false);
+            scrollPane.SetFadeScrollBars(false);
+
+            var content = new Table();
+            content.Top().Left().Pad(8f);
+            content.Add(scrollPane).Size(297f, 198f).Top().Left();
+
+            tab.ClearChildren();
+            tab.Add(content).Expand().Fill();
+        }
+
+        // ──────────────────────────────────────────────────────────────────────────
+        // Tab switching
+        // ──────────────────────────────────────────────────────────────────────────
+
+        /// <summary>Shows the correct right-side hero panel when the active tab changes.</summary>
+        private void HandleTabChanged(int tabIndex)
+        {
+            _activeTabIndex = tabIndex;
+            if (!_windowVisible) return;
+
+            if (tabIndex == 0) // Items tab
+            {
+                _heroInventoryWindow?.SetVisible(true);
+                _heroCrystalWindow?.SetVisible(false);
+            }
+            else // Crystals tab
+            {
+                _heroInventoryWindow?.SetVisible(false);
+                _heroCrystalWindow?.SetVisible(true);
+            }
+        }
+
+        // ──────────────────────────────────────────────────────────────────────────
+        // Show / hide
+        // ──────────────────────────────────────────────────────────────────────────
 
         /// <summary>Enforces single window policy then toggles the shop window.</summary>
         public void TriggerToggle()
@@ -139,14 +289,40 @@ namespace PitHero.UI
             if (_windowVisible)
             {
                 UIWindowManager.OnUIWindowOpening();
+
+                // Shop (left panel)
                 _stage.AddElement(_shopWindow);
                 _shopWindow.SetVisible(true);
+                _shopWindow.SetPosition(GameConfig.SecondChanceShopWindowX, GameConfig.SecondChanceShopWindowY);
                 _shopWindow.ToFront();
-                PositionWindow();
+
+                // Merchant sprite (between panels)
                 _stage.AddElement(_merchantSprite);
                 _merchantSprite.SetPosition(GameConfig.SecondChanceMerchantSpriteX, GameConfig.SecondChanceMerchantSpriteY);
                 _merchantSprite.ToFront();
+
+                // Hero panel (right) — show the one matching the active tab
+                _stage.AddElement(_heroInventoryWindow);
+                _stage.AddElement(_heroCrystalWindow);
+                _heroInventoryWindow.SetPosition(GameConfig.SecondChanceHeroPanelX, GameConfig.SecondChanceHeroPanelY);
+                _heroCrystalWindow.SetPosition(GameConfig.SecondChanceHeroPanelX, GameConfig.SecondChanceHeroPanelY);
+
+                if (_activeTabIndex == 0)
+                {
+                    _heroInventoryWindow.SetVisible(true);
+                    _heroCrystalWindow.SetVisible(false);
+                }
+                else
+                {
+                    _heroInventoryWindow.SetVisible(false);
+                    _heroCrystalWindow.SetVisible(true);
+                }
+
+                _heroInventoryWindow.ToFront();
+                _heroCrystalWindow.ToFront();
+
                 RefreshShopData();
+
                 if (_pauseService != null)
                     _pauseService.IsPaused = true;
             }
@@ -156,30 +332,14 @@ namespace PitHero.UI
                 _shopWindow.SetVisible(false);
                 _shopWindow.Remove();
                 _merchantSprite.Remove();
+                _heroInventoryWindow.SetVisible(false);
+                _heroInventoryWindow.Remove();
+                _heroCrystalWindow.SetVisible(false);
+                _heroCrystalWindow.Remove();
+
                 if (_pauseService != null)
                     _pauseService.IsPaused = false;
             }
-        }
-
-        private void PositionWindow()
-        {
-            if (_shopButton == null || _shopWindow == null) return;
-            float btnX = _shopButton.GetX();
-            float btnW = _shopButton.GetWidth();
-            float winW = _shopWindow.GetWidth();
-            float winH = _shopWindow.GetHeight();
-            float stageW = _stage.GetWidth();
-            float stageH = _stage.GetHeight();
-
-            float winX = btnX + btnW + 4f;
-            if (winX + winW > stageW) winX = btnX - 4f - winW;
-            if (winX < 0) winX = 0;
-
-            float winY = _shopButton.GetY() + 4f;
-            if (winY + winH > stageH) winY = stageH - winH;
-            if (winY < 0) winY = 0;
-
-            _shopWindow.SetPosition(winX, winY);
         }
 
         /// <summary>Force-closes the shop window. Used by single window policy.</summary>
@@ -192,11 +352,19 @@ namespace PitHero.UI
                 _shopWindow?.SetVisible(false);
                 _shopWindow?.Remove();
                 _merchantSprite?.Remove();
+                _heroInventoryWindow?.SetVisible(false);
+                _heroInventoryWindow?.Remove();
+                _heroCrystalWindow?.SetVisible(false);
+                _heroCrystalWindow?.Remove();
+
                 if (_pauseService != null)
                     _pauseService.IsPaused = false;
-                Debug.Log("[SecondChanceShopUI] Shop window force closed by single window policy");
             }
         }
+
+        // ──────────────────────────────────────────────────────────────────────────
+        // Positioning & style
+        // ──────────────────────────────────────────────────────────────────────────
 
         /// <summary>Sets the SettingsUI reference for single window policy.</summary>
         public void SetSettingsUI(SettingsUI settingsUI) { _settingsUI = settingsUI; }
@@ -208,11 +376,7 @@ namespace PitHero.UI
         public void SetMonsterUI(MonsterUI monsterUI) { _monsterUI = monsterUI; }
 
         /// <summary>Sets the position of the shop icon button.</summary>
-        public void SetPosition(float x, float y)
-        {
-            _shopButton?.SetPosition(x, y);
-            if (_windowVisible) PositionWindow();
-        }
+        public void SetPosition(float x, float y) => _shopButton?.SetPosition(x, y);
 
         /// <summary>Returns the width of the shop icon button.</summary>
         public float GetWidth() => _shopButton?.GetWidth() ?? 0f;
@@ -255,52 +419,11 @@ namespace PitHero.UI
         }
 
         /// <summary>Updates the shop UI each frame.</summary>
-        public void Update()
-        {
-            UpdateButtonStyleIfNeeded();
-            if (_windowVisible) PositionWindow();
-        }
+        public void Update() => UpdateButtonStyleIfNeeded();
 
-        /// <summary>Populates the Items tab with a vault grid on the left and hero inventory on the right.</summary>
-        private void PopulateItemsTab(Tab tab, Skin skin)
-        {
-            var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
-            var heroComponent = Core.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
-
-            var content = new Table();
-            content.Top().Left().Pad(4f);
-
-            // Left: vault item grid (scrollable)
-            _vaultItemGrid = new VaultItemGrid();
-            _vaultItemGrid.InitializeTooltip(_stage, skin);
-            if (vault != null)
-                _vaultItemGrid.RefreshFromVault(vault);
-
-            var scrollPane = new ScrollPane(_vaultItemGrid, skin, "ph-default");
-            scrollPane.SetScrollingDisabled(true, false);
-            scrollPane.SetFadeScrollBars(false);
-
-            // 9 slots * 33px = 297px wide, 6 rows * 33px = 198px tall
-            content.Add(scrollPane).Size(297f, 198f).Top().Left().Pad(4f);
-
-            // Right: hero inventory grid
-            _heroInventoryGrid = new InventoryGrid();
-            if (heroComponent != null)
-                _heroInventoryGrid.ConnectToHero(heroComponent);
-            _heroInventoryGrid.InitializeContextMenu(_stage, skin);
-            _heroInventoryGrid.OnVaultItemDropRequested += HandleVaultItemDrop;
-
-            var heroScrollPane = new ScrollPane(_heroInventoryGrid, skin, "ph-default");
-            heroScrollPane.SetScrollingDisabled(true, false);
-
-            content.Add(heroScrollPane).Width(700f).Top().Left().Pad(4f);
-
-            tab.ClearChildren();
-            tab.Add(content).Expand().Fill();
-
-            // If the drag is dropped somewhere not on the hero grid, cancel it
-            _vaultItemGrid.OnVaultSlotDragDropped += HandleVaultDragDropped;
-        }
+        // ──────────────────────────────────────────────────────────────────────────
+        // Purchase handlers
+        // ──────────────────────────────────────────────────────────────────────────
 
         /// <summary>Called when a vault item is dropped onto a hero inventory or equipment slot.</summary>
         private void HandleVaultItemDrop(InventorySlot destSlot, SecondChanceMerchantVault.StackedItem vaultStack)
@@ -325,7 +448,7 @@ namespace PitHero.UI
                 }
             }
 
-            var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
+            var vault     = Core.Services?.GetService<SecondChanceMerchantVault>();
             var gameState = Core.Services?.GetService<GameStateService>();
             if (vault == null || gameState == null)
             {
@@ -342,7 +465,7 @@ namespace PitHero.UI
                 promptText,
                 _skin,
                 onYes: () => ExecuteItemPurchase(vaultStack, destSlot, price, vault, gameState),
-                onNo: () =>
+                onNo:  () =>
                 {
                     InventoryDragManager.CancelDrag();
                     _vaultItemGrid?.ShowAllItemSprites();
@@ -363,7 +486,6 @@ namespace PitHero.UI
             {
                 InventoryDragManager.CancelDrag();
                 _vaultItemGrid?.ShowAllItemSprites();
-                Debug.Log("[SecondChanceShopUI] Purchase failed: insufficient gold");
                 return;
             }
 
@@ -379,22 +501,14 @@ namespace PitHero.UI
 
             var item = vaultStack.ItemTemplate;
             if (destSlot.SlotData.SlotType == InventorySlotType.Equipment && destSlot.SlotData.EquipmentSlot.HasValue)
-            {
-                // Equip directly to hero using the validated SetEquipmentSlot method
                 heroComp.LinkedHero?.SetEquipmentSlot(destSlot.SlotData.EquipmentSlot.Value, item);
-            }
             else if (destSlot.SlotData.SlotType == InventorySlotType.Inventory && destSlot.SlotData.BagIndex.HasValue)
-            {
                 heroComp.Bag?.SetSlotItem(destSlot.SlotData.BagIndex.Value, item);
-            }
 
             vault.RemoveQuantity(vaultStack, 1);
-
             _vaultItemGrid?.RefreshFromVault(vault);
             InventorySelectionManager.OnInventoryChanged?.Invoke();
             InventoryDragManager.EndDrag();
-
-            Debug.Log("[SecondChanceShopUI] Purchased " + (item?.Name ?? "unknown") + " for " + price + " gold");
         }
 
         /// <summary>Called when the vault slot fires a drop event with no hero grid target — cancels the drag.</summary>
@@ -443,43 +557,11 @@ namespace PitHero.UI
             }
         }
 
-        /// <summary>Populates the Crystals tab with a vault crystal grid on the left and hero crystal panel on the right.</summary>
-        private void PopulateCrystalsTab(Tab tab, Skin skin)
-        {
-            var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
-
-            var content = new Table();
-            content.Top().Left().Pad(4f);
-
-            // Left: vault crystal grid (scrollable)
-            _vaultCrystalGrid = new VaultCrystalGrid();
-            _vaultCrystalGrid.InitializeTooltip(_stage, skin);
-            if (vault != null)
-                _vaultCrystalGrid.RefreshFromVault(vault);
-
-            var scrollPane = new ScrollPane(_vaultCrystalGrid, skin, "ph-default");
-            scrollPane.SetScrollingDisabled(true, false);
-            scrollPane.SetFadeScrollBars(false);
-            content.Add(scrollPane).Size(297f, 198f).Top().Left().Pad(4f);
-
-            // Right: hero crystal panel
-            _heroCrystalPanel = new SecondChanceHeroCrystalPanel();
-            _heroCrystalPanel.OnVaultCrystalDropRequested += HandleVaultCrystalDrop;
-
-            var heroPanel = _heroCrystalPanel.CreateContent(skin, _stage);
-            content.Add(heroPanel).Top().Left().Pad(4f);
-
-            tab.ClearChildren();
-            tab.Add(content).Expand().Fill();
-
-            _vaultCrystalGrid.OnVaultCrystalDragDropped += HandleVaultCrystalDragDropped;
-        }
-
         /// <summary>Called when a vault crystal is dropped onto a hero crystal slot.</summary>
         private void HandleVaultCrystalDrop(CrystalSlotType destSlotType, int destSlotIdx, HeroCrystal crystal)
         {
-            var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
-            var gameState = Core.Services?.GetService<GameStateService>();
+            var vault         = Core.Services?.GetService<SecondChanceMerchantVault>();
+            var gameState     = Core.Services?.GetService<GameStateService>();
             var crystalService = Core.Services?.GetService<CrystalCollectionService>();
 
             if (vault == null || gameState == null || crystalService == null)
@@ -497,7 +579,7 @@ namespace PitHero.UI
                 promptText,
                 _skin,
                 onYes: () => ExecuteCrystalPurchase(crystal, destSlotType, destSlotIdx, price, vault, gameState, crystalService),
-                onNo: () =>
+                onNo:  () =>
                 {
                     InventoryDragManager.CancelDrag();
                     _vaultCrystalGrid?.ShowAllCrystalSprites();
@@ -520,32 +602,25 @@ namespace PitHero.UI
             {
                 InventoryDragManager.CancelDrag();
                 _vaultCrystalGrid?.ShowAllCrystalSprites();
-                Debug.Log("[SecondChanceShopUI] Crystal purchase failed: insufficient gold");
                 return;
             }
 
             gameState.Funds -= price;
 
-            // Place crystal into inventory (TryAddToInventory finds first free slot)
             bool placed = crystalService.TryAddToInventory(crystal);
-
             if (!placed)
             {
                 // Inventory full — refund gold
                 gameState.Funds += price;
                 InventoryDragManager.CancelDrag();
                 _vaultCrystalGrid?.ShowAllCrystalSprites();
-                Debug.Log("[SecondChanceShopUI] Crystal purchase failed: inventory full");
                 return;
             }
 
             vault.RemoveCrystal(crystal);
-
             _vaultCrystalGrid?.RefreshFromVault(vault);
             _heroCrystalPanel?.RefreshAll();
             InventoryDragManager.EndDrag();
-
-            Debug.Log("[SecondChanceShopUI] Crystal purchased: " + crystal.Name + " for " + price + " gold");
         }
 
         /// <summary>Called when the vault crystal grid fires a drop event with no hero panel target — cancels the drag.</summary>
@@ -557,6 +632,10 @@ namespace PitHero.UI
                 _vaultCrystalGrid?.ShowAllCrystalSprites();
             }
         }
+
+        // ──────────────────────────────────────────────────────────────────────────
+        // Data refresh
+        // ──────────────────────────────────────────────────────────────────────────
 
         /// <summary>Refreshes all shop data when the window is opened.</summary>
         private void RefreshShopData()

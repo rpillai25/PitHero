@@ -223,9 +223,23 @@ namespace PitHero
         // UI Button Spacing
         public const float UIButtonPadding = 4f; // Padding between UI buttons
 
-        // Second Chance Shop merchant sprite position
-        public const float SecondChanceMerchantSpriteX = 1150f;
-        public const float SecondChanceMerchantSpriteY = 255f;
+        // Second Chance Shop layout positions
+        // Shop window (vault grid + tabs) positioned near left-center
+        public const float SecondChanceShopWindowX = 573f;
+        public const float SecondChanceShopWindowY = 12f;
+        public const float SecondChanceShopWindowWidth = 350f;
+        public const float SecondChanceShopWindowHeight = 310f;
+
+        // Hero panel (inventory/crystal) positioned to fill right side of screen
+        public const float SecondChanceHeroPanelX = 1200f;
+        public const float SecondChanceHeroPanelY = 12f;
+        public const float SecondChanceHeroPanelWidth = 720f;
+        public const float SecondChanceHeroPanelHeight = 340f;
+
+        // Merchant sprite positioned between shop window and hero panel
+        // Sprite is 256x256; Y=50 places it within the 360px stage height (50 to 306)
+        public const float SecondChanceMerchantSpriteX = 935f;
+        public const float SecondChanceMerchantSpriteY = 50f;
 
         // Inventory interaction
         public const float DoubleClickThresholdSeconds = 0.3f; // Time window for detecting double-click
