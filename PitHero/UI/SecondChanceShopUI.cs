@@ -3,6 +3,7 @@ using Nez.UI;
 using PitHero.ECS.Components;
 using PitHero.Services;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Heroes;
 
 namespace PitHero.UI
 {
@@ -30,6 +31,10 @@ namespace PitHero.UI
         // Items tab components
         private VaultItemGrid _vaultItemGrid;
         private InventoryGrid _heroInventoryGrid;
+
+        // Crystals tab components
+        private VaultCrystalGrid _vaultCrystalGrid;
+        private SecondChanceHeroCrystalPanel _heroCrystalPanel;
 
         private enum ShopMode { Normal, Half }
         private ShopMode _currentShopMode = ShopMode.Normal;
@@ -75,6 +80,7 @@ namespace PitHero.UI
 
             CreateShopWindow(_skin);
             PopulateItemsTab(_itemsTab, _skin);
+            PopulateCrystalsTab(_crystalsTab, _skin);
             _pauseService = Core.Services?.GetService<PauseService>();
             _stage.AddElement(_shopButton);
         }
@@ -110,7 +116,6 @@ namespace PitHero.UI
             _itemsTab = new Tab(GetText(TextType.UI, UITextKey.TabItems), tabStyle);
 
             _crystalsTab = new Tab(GetText(TextType.UI, UITextKey.TabCrystals), tabStyle);
-            _crystalsTab.Add(new Label("Crystals tab - coming soon", skin, "ph-default")).Expand().Fill().Pad(8f);
 
             _tabPane.AddTab(_itemsTab);
             _tabPane.AddTab(_crystalsTab);
@@ -141,6 +146,7 @@ namespace PitHero.UI
                 _stage.AddElement(_merchantSprite);
                 _merchantSprite.SetPosition(GameConfig.SecondChanceMerchantSpriteX, GameConfig.SecondChanceMerchantSpriteY);
                 _merchantSprite.ToFront();
+                RefreshShopData();
                 if (_pauseService != null)
                     _pauseService.IsPaused = true;
             }
@@ -435,6 +441,138 @@ namespace PitHero.UI
                 default:
                     return false;
             }
+        }
+
+        /// <summary>Populates the Crystals tab with a vault crystal grid on the left and hero crystal panel on the right.</summary>
+        private void PopulateCrystalsTab(Tab tab, Skin skin)
+        {
+            var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
+
+            var content = new Table();
+            content.Top().Left().Pad(4f);
+
+            // Left: vault crystal grid (scrollable)
+            _vaultCrystalGrid = new VaultCrystalGrid();
+            _vaultCrystalGrid.InitializeTooltip(_stage, skin);
+            if (vault != null)
+                _vaultCrystalGrid.RefreshFromVault(vault);
+
+            var scrollPane = new ScrollPane(_vaultCrystalGrid, skin, "ph-default");
+            scrollPane.SetScrollingDisabled(true, false);
+            scrollPane.SetFadeScrollBars(false);
+            content.Add(scrollPane).Size(297f, 198f).Top().Left().Pad(4f);
+
+            // Right: hero crystal panel
+            _heroCrystalPanel = new SecondChanceHeroCrystalPanel();
+            _heroCrystalPanel.OnVaultCrystalDropRequested += HandleVaultCrystalDrop;
+
+            var heroPanel = _heroCrystalPanel.CreateContent(skin, _stage);
+            content.Add(heroPanel).Top().Left().Pad(4f);
+
+            tab.ClearChildren();
+            tab.Add(content).Expand().Fill();
+
+            _vaultCrystalGrid.OnVaultCrystalDragDropped += HandleVaultCrystalDragDropped;
+        }
+
+        /// <summary>Called when a vault crystal is dropped onto a hero crystal slot.</summary>
+        private void HandleVaultCrystalDrop(CrystalSlotType destSlotType, int destSlotIdx, HeroCrystal crystal)
+        {
+            var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
+            var gameState = Core.Services?.GetService<GameStateService>();
+            var crystalService = Core.Services?.GetService<CrystalCollectionService>();
+
+            if (vault == null || gameState == null || crystalService == null)
+            {
+                InventoryDragManager.CancelDrag();
+                _vaultCrystalGrid?.ShowAllCrystalSprites();
+                return;
+            }
+
+            int price = crystal.Level * GameConfig.CrystalBuyBackBasePrice;
+            string promptText = string.Format(GetText(TextType.UI, UITextKey.SecondChanceBuyPrompt), price);
+
+            var dialog = new ConfirmationDialog(
+                GetText(TextType.UI, UITextKey.WindowSecondChanceShop),
+                promptText,
+                _skin,
+                onYes: () => ExecuteCrystalPurchase(crystal, destSlotType, destSlotIdx, price, vault, gameState, crystalService),
+                onNo: () =>
+                {
+                    InventoryDragManager.CancelDrag();
+                    _vaultCrystalGrid?.ShowAllCrystalSprites();
+                }
+            );
+            dialog.Show(_stage);
+        }
+
+        /// <summary>Executes the crystal purchase: deducts gold, places crystal, removes from vault, refreshes panels.</summary>
+        private void ExecuteCrystalPurchase(
+            HeroCrystal crystal,
+            CrystalSlotType destSlotType,
+            int destSlotIdx,
+            int price,
+            SecondChanceMerchantVault vault,
+            GameStateService gameState,
+            CrystalCollectionService crystalService)
+        {
+            if (gameState.Funds < price)
+            {
+                InventoryDragManager.CancelDrag();
+                _vaultCrystalGrid?.ShowAllCrystalSprites();
+                Debug.Log("[SecondChanceShopUI] Crystal purchase failed: insufficient gold");
+                return;
+            }
+
+            gameState.Funds -= price;
+
+            // Place crystal into inventory (TryAddToInventory finds first free slot)
+            bool placed = crystalService.TryAddToInventory(crystal);
+
+            if (!placed)
+            {
+                // Inventory full — refund gold
+                gameState.Funds += price;
+                InventoryDragManager.CancelDrag();
+                _vaultCrystalGrid?.ShowAllCrystalSprites();
+                Debug.Log("[SecondChanceShopUI] Crystal purchase failed: inventory full");
+                return;
+            }
+
+            vault.RemoveCrystal(crystal);
+
+            _vaultCrystalGrid?.RefreshFromVault(vault);
+            _heroCrystalPanel?.RefreshAll();
+            InventoryDragManager.EndDrag();
+
+            Debug.Log("[SecondChanceShopUI] Crystal purchased: " + crystal.Name + " for " + price + " gold");
+        }
+
+        /// <summary>Called when the vault crystal grid fires a drop event with no hero panel target — cancels the drag.</summary>
+        private void HandleVaultCrystalDragDropped(VaultCrystalSlot slot)
+        {
+            if (InventoryDragManager.IsDragging && InventoryDragManager.IsVaultCrystalDrag)
+            {
+                InventoryDragManager.CancelDrag();
+                _vaultCrystalGrid?.ShowAllCrystalSprites();
+            }
+        }
+
+        /// <summary>Refreshes all shop data when the window is opened.</summary>
+        private void RefreshShopData()
+        {
+            var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
+            if (vault != null)
+            {
+                _vaultItemGrid?.RefreshFromVault(vault);
+                _vaultCrystalGrid?.RefreshFromVault(vault);
+            }
+
+            var heroComp = Core.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
+            if (heroComp != null)
+                _heroInventoryGrid?.ConnectToHero(heroComp);
+
+            _heroCrystalPanel?.RefreshAll();
         }
     }
 }
