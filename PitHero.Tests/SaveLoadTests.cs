@@ -213,7 +213,7 @@ namespace PitHero.Tests
         {
             var job = JobFactory.CreateJob($"{JobTextKey.Job_Knight_Name}-{JobTextKey.Job_Mage_Name}");
             Assert.IsNotNull(job);
-            Assert.AreEqual($"{JobTextKey.Job_Knight_Name}-{JobTextKey.Job_Mage_Name}", job.Name);
+            Assert.AreEqual($"{JobTextKey.Job_Knight_Name}-{JobTextKey.Job_Mage_Name}", job.NameKey);
         }
 
         /// <summary>Verifies JobFactory defaults to Knight for unknown job names.</summary>
