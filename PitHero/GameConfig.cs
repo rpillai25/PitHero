@@ -77,6 +77,7 @@ namespace PitHero
         public const int InnPaymentTileX = 67; // Hero pays at (67, 3) facing right
         public const int InnPaymentTileY = 3;
         public const int InnCostGold = 10; // Cost to sleep at inn
+        public const int CrystalBuyBackBasePrice = 100; // Base gold cost per crystal level for Second Chance Shop
 
         // Tavern seat configuration (for Stop Adventuring)
         public const int TavernHeroSeatTileX = 93;

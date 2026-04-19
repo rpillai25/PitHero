@@ -21,6 +21,7 @@ namespace PitHero.UI
 
         // Reference to SettingsUI for single window policy enforcement
         private SettingsUI _settingsUI;
+        private SecondChanceShopUI _secondChanceShopUI;
 
         private enum MonsterMode { Normal, Half }
         private MonsterMode _currentMonsterMode = MonsterMode.Normal;
@@ -96,6 +97,9 @@ namespace PitHero.UI
         /// <summary>Sets the reference to SettingsUI for single window policy enforcement.</summary>
         public void SetSettingsUI(SettingsUI settingsUI) { _settingsUI = settingsUI; }
 
+        /// <summary>Sets the reference to SecondChanceShopUI for single window policy enforcement.</summary>
+        public void SetSecondChanceShopUI(SecondChanceShopUI secondChanceShopUI) { _secondChanceShopUI = secondChanceShopUI; }
+
         /// <summary>
         /// Handles the monster button click - enforces single window policy and toggles the monster window
         /// </summary>
@@ -103,6 +107,7 @@ namespace PitHero.UI
         {
             // Properly close Settings UI if it's open (single window policy)
             _settingsUI?.ForceCloseSettings();
+            _secondChanceShopUI?.ForceCloseWindow();
             ToggleMonsterWindow();
         }
 
