@@ -223,6 +223,10 @@ namespace PitHero
         // UI Button Spacing
         public const float UIButtonPadding = 4f; // Padding between UI buttons
 
+        // Second Chance Shop merchant sprite position
+        public const float SecondChanceMerchantSpriteX = 1150f;
+        public const float SecondChanceMerchantSpriteY = 255f;
+
         // Inventory interaction
         public const float DoubleClickThresholdSeconds = 0.3f; // Time window for detecting double-click
         /// <summary>Minimum pixel movement to initiate a drag operation.</summary>

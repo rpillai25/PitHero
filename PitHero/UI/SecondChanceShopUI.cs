@@ -23,6 +23,7 @@ namespace PitHero.UI
         private MonsterUI _monsterUI;
         private Skin _skin;
         private TextService _textService;
+        private PauseService _pauseService;
 
         private enum ShopMode { Normal, Half }
         private ShopMode _currentShopMode = ShopMode.Normal;
@@ -67,6 +68,7 @@ namespace PitHero.UI
             _merchantSprite = new Image(new SpriteDrawable(merchantSprite));
 
             CreateShopWindow(_skin);
+            _pauseService = Core.Services?.GetService<PauseService>();
             _stage.AddElement(_shopButton);
         }
 
@@ -131,11 +133,10 @@ namespace PitHero.UI
                 _shopWindow.ToFront();
                 PositionWindow();
                 _stage.AddElement(_merchantSprite);
-                _merchantSprite.SetPosition(1150f, 255f);
+                _merchantSprite.SetPosition(GameConfig.SecondChanceMerchantSpriteX, GameConfig.SecondChanceMerchantSpriteY);
                 _merchantSprite.ToFront();
-                var pauseService = Core.Services.GetService<PauseService>();
-                if (pauseService != null)
-                    pauseService.IsPaused = true;
+                if (_pauseService != null)
+                    _pauseService.IsPaused = true;
             }
             else
             {
@@ -143,9 +144,8 @@ namespace PitHero.UI
                 _shopWindow.SetVisible(false);
                 _shopWindow.Remove();
                 _merchantSprite.Remove();
-                var pauseService = Core.Services.GetService<PauseService>();
-                if (pauseService != null)
-                    pauseService.IsPaused = false;
+                if (_pauseService != null)
+                    _pauseService.IsPaused = false;
             }
         }
 
@@ -180,9 +180,8 @@ namespace PitHero.UI
                 _shopWindow?.SetVisible(false);
                 _shopWindow?.Remove();
                 _merchantSprite?.Remove();
-                var pauseService = Core.Services.GetService<PauseService>();
-                if (pauseService != null)
-                    pauseService.IsPaused = false;
+                if (_pauseService != null)
+                    _pauseService.IsPaused = false;
                 Debug.Log("[SecondChanceShopUI] Shop window force closed by single window policy");
             }
         }
