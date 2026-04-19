@@ -6,6 +6,7 @@ using Nez.BitmapFonts;
 using Nez.Sprites;
 using Nez.UI;
 using PitHero.ECS.Components;
+using PitHero.Services;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Mercenaries;
 using RolePlayingFramework.Synergies;
@@ -65,6 +66,9 @@ namespace PitHero.UI
 
         // Public event for stencil removal confirmation
         public event System.Action<PlacedStencil> OnStencilRemovalRequested;
+
+        /// <summary>Fired when a vault item is dragged and dropped onto a slot in this grid. Provides destination slot and vault stack.</summary>
+        public event System.Action<InventorySlot, SecondChanceMerchantVault.StackedItem> OnVaultItemDropRequested;
 
         private int _nextAcquireIndex = 1; // monotonic acquisition counter
         private readonly Dictionary<IItem, int> _acquireIndexMap; // persistent mapping of items to acquire indices
@@ -798,6 +802,17 @@ namespace PitHero.UI
             {
                 _dragHoveredSlot.SetItemSpriteOffsetY(0f);
                 _dragHoveredSlot = null;
+            }
+
+            // Handle vault item drop specially - route to purchase flow
+            if (InventoryDragManager.IsVaultItemDrag)
+            {
+                var vaultStack = InventoryDragManager.SourceVaultStack;
+                var stagePos2 = source.LocalToStageCoordinates(mousePos);
+                var target2 = GetSlotAtStagePosition(stagePos2);
+                if (target2 != null)
+                    OnVaultItemDropRequested?.Invoke(target2, vaultStack);
+                return;
             }
 
             var stagePos = source.LocalToStageCoordinates(mousePos);

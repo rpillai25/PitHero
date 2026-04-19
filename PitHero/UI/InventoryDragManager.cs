@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
+using PitHero.Services;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Skills;
@@ -21,6 +22,7 @@ namespace PitHero.UI
         private static HeroCrystal _dragCrystal;
         private static DragDropOverlay _overlay;
         private static Stage _stage;
+        private static SecondChanceMerchantVault.StackedItem _sourceVaultStack;
 
         /// <summary>Gets whether a drag operation is currently in progress.</summary>
         public static bool IsDragging => _isDragging;
@@ -40,6 +42,12 @@ namespace PitHero.UI
         /// <summary>Gets the crystal being dragged (null when dragging an item or skill).</summary>
         public static HeroCrystal DragCrystal => _dragCrystal;
 
+        /// <summary>Gets the vault stack that is being dragged (null when not a vault item drag).</summary>
+        public static SecondChanceMerchantVault.StackedItem SourceVaultStack => _sourceVaultStack;
+
+        /// <summary>Gets whether the current drag originated from the Second Chance vault.</summary>
+        public static bool IsVaultItemDrag => _sourceVaultStack != null;
+
         /// <summary>
         /// Fired when the source component found no local drop target for an item drag.
         /// ShortcutBar subscribes to handle inventory-to-shortcut drops.
@@ -51,6 +59,40 @@ namespace PitHero.UI
         /// ShortcutBar subscribes to handle skill-list-to-shortcut drops.
         /// </summary>
         public static System.Action<ISkill, Vector2> OnSkillDropRequested;
+
+        /// <summary>Begins a drag from a Second Chance vault item slot.</summary>
+        public static void BeginVaultItemDrag(SecondChanceMerchantVault.StackedItem source, Stage stage)
+        {
+            if (_isDragging) return;
+
+            _sourceVaultStack = source;
+            _sourceSlot = null;
+            _dragItem = source?.ItemTemplate;
+            _dragSkill = null;
+            _sourceCrystalSlot = null;
+            _dragCrystal = null;
+            _stage = stage;
+            _isDragging = true;
+
+            EnsureOverlay(stage);
+
+            if (_dragItem != null && Core.Content != null)
+            {
+                try
+                {
+                    var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
+                    var sprite = itemsAtlas.GetSprite(_dragItem.SpriteName);
+                    if (sprite != null)
+                        _overlay.BeginDrag(new SpriteDrawable(sprite));
+                    else
+                        _overlay.BeginDrag(null);
+                }
+                catch
+                {
+                    _overlay.BeginDrag(null);
+                }
+            }
+        }
 
         /// <summary>Begins a drag from a crystal slot.</summary>
         public static void BeginCrystalDrag(CrystalSlotElement source, Stage stage)
@@ -170,6 +212,7 @@ namespace PitHero.UI
             _dragSkill = null;
             _sourceCrystalSlot = null;
             _dragCrystal = null;
+            _sourceVaultStack = null;
             _overlay?.EndDrag();
         }
 
@@ -185,6 +228,7 @@ namespace PitHero.UI
             _dragSkill = null;
             _sourceCrystalSlot = null;
             _dragCrystal = null;
+            _sourceVaultStack = null;
             _overlay?.EndDrag();
         }
 

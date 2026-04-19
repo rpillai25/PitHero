@@ -1,6 +1,8 @@
 using Nez;
 using Nez.UI;
+using PitHero.ECS.Components;
 using PitHero.Services;
+using RolePlayingFramework.Equipment;
 
 namespace PitHero.UI
 {
@@ -24,6 +26,10 @@ namespace PitHero.UI
         private Skin _skin;
         private TextService _textService;
         private PauseService _pauseService;
+
+        // Items tab components
+        private VaultItemGrid _vaultItemGrid;
+        private InventoryGrid _heroInventoryGrid;
 
         private enum ShopMode { Normal, Half }
         private ShopMode _currentShopMode = ShopMode.Normal;
@@ -68,6 +74,7 @@ namespace PitHero.UI
             _merchantSprite = new Image(new SpriteDrawable(merchantSprite));
 
             CreateShopWindow(_skin);
+            PopulateItemsTab(_itemsTab, _skin);
             _pauseService = Core.Services?.GetService<PauseService>();
             _stage.AddElement(_shopButton);
         }
@@ -101,7 +108,6 @@ namespace PitHero.UI
             var tabStyle = new TabStyle { Background = null };
 
             _itemsTab = new Tab(GetText(TextType.UI, UITextKey.TabItems), tabStyle);
-            _itemsTab.Add(new Label("Items tab - coming soon", skin, "ph-default")).Expand().Fill().Pad(8f);
 
             _crystalsTab = new Tab(GetText(TextType.UI, UITextKey.TabCrystals), tabStyle);
             _crystalsTab.Add(new Label("Crystals tab - coming soon", skin, "ph-default")).Expand().Fill().Pad(8f);
@@ -247,6 +253,188 @@ namespace PitHero.UI
         {
             UpdateButtonStyleIfNeeded();
             if (_windowVisible) PositionWindow();
+        }
+
+        /// <summary>Populates the Items tab with a vault grid on the left and hero inventory on the right.</summary>
+        private void PopulateItemsTab(Tab tab, Skin skin)
+        {
+            var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
+            var heroComponent = Core.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
+
+            var content = new Table();
+            content.Top().Left().Pad(4f);
+
+            // Left: vault item grid (scrollable)
+            _vaultItemGrid = new VaultItemGrid();
+            _vaultItemGrid.InitializeTooltip(_stage, skin);
+            if (vault != null)
+                _vaultItemGrid.RefreshFromVault(vault);
+
+            var scrollPane = new ScrollPane(_vaultItemGrid, skin, "ph-default");
+            scrollPane.SetScrollingDisabled(true, false);
+            scrollPane.SetFadeScrollBars(false);
+
+            // 9 slots * 33px = 297px wide, 6 rows * 33px = 198px tall
+            content.Add(scrollPane).Size(297f, 198f).Top().Left().Pad(4f);
+
+            // Right: hero inventory grid
+            _heroInventoryGrid = new InventoryGrid();
+            if (heroComponent != null)
+                _heroInventoryGrid.ConnectToHero(heroComponent);
+            _heroInventoryGrid.InitializeContextMenu(_stage, skin);
+            _heroInventoryGrid.OnVaultItemDropRequested += HandleVaultItemDrop;
+
+            var heroScrollPane = new ScrollPane(_heroInventoryGrid, skin, "ph-default");
+            heroScrollPane.SetScrollingDisabled(true, false);
+
+            content.Add(heroScrollPane).Width(700f).Top().Left().Pad(4f);
+
+            tab.ClearChildren();
+            tab.Add(content).Expand().Fill();
+
+            // If the drag is dropped somewhere not on the hero grid, cancel it
+            _vaultItemGrid.OnVaultSlotDragDropped += HandleVaultDragDropped;
+        }
+
+        /// <summary>Called when a vault item is dropped onto a hero inventory or equipment slot.</summary>
+        private void HandleVaultItemDrop(InventorySlot destSlot, SecondChanceMerchantVault.StackedItem vaultStack)
+        {
+            // Destination must be empty
+            if (destSlot.SlotData.Item != null)
+            {
+                InventoryDragManager.CancelDrag();
+                _vaultItemGrid?.ShowAllItemSprites();
+                return;
+            }
+
+            // For equipment slots, validate item type compatibility
+            if (destSlot.SlotData.SlotType == InventorySlotType.Equipment && destSlot.SlotData.EquipmentSlot.HasValue)
+            {
+                var heroComp = Core.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
+                if (!CanEquipInSlot(vaultStack.ItemTemplate, destSlot.SlotData.EquipmentSlot.Value, heroComp))
+                {
+                    InventoryDragManager.CancelDrag();
+                    _vaultItemGrid?.ShowAllItemSprites();
+                    return;
+                }
+            }
+
+            var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
+            var gameState = Core.Services?.GetService<GameStateService>();
+            if (vault == null || gameState == null)
+            {
+                InventoryDragManager.CancelDrag();
+                _vaultItemGrid?.ShowAllItemSprites();
+                return;
+            }
+
+            int price = vaultStack.ItemTemplate?.Price ?? 0;
+            string promptText = string.Format(GetText(TextType.UI, UITextKey.SecondChanceBuyPrompt), price);
+
+            var dialog = new ConfirmationDialog(
+                GetText(TextType.UI, UITextKey.WindowSecondChanceShop),
+                promptText,
+                _skin,
+                onYes: () => ExecuteItemPurchase(vaultStack, destSlot, price, vault, gameState),
+                onNo: () =>
+                {
+                    InventoryDragManager.CancelDrag();
+                    _vaultItemGrid?.ShowAllItemSprites();
+                }
+            );
+            dialog.Show(_stage);
+        }
+
+        /// <summary>Executes the item purchase: deducts gold, places item, removes from vault, refreshes grids.</summary>
+        private void ExecuteItemPurchase(
+            SecondChanceMerchantVault.StackedItem vaultStack,
+            InventorySlot destSlot,
+            int price,
+            SecondChanceMerchantVault vault,
+            GameStateService gameState)
+        {
+            if (gameState.Funds < price)
+            {
+                InventoryDragManager.CancelDrag();
+                _vaultItemGrid?.ShowAllItemSprites();
+                Debug.Log("[SecondChanceShopUI] Purchase failed: insufficient gold");
+                return;
+            }
+
+            var heroComp = Core.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
+            if (heroComp == null)
+            {
+                InventoryDragManager.CancelDrag();
+                _vaultItemGrid?.ShowAllItemSprites();
+                return;
+            }
+
+            gameState.Funds -= price;
+
+            var item = vaultStack.ItemTemplate;
+            if (destSlot.SlotData.SlotType == InventorySlotType.Equipment && destSlot.SlotData.EquipmentSlot.HasValue)
+            {
+                // Equip directly to hero using the validated SetEquipmentSlot method
+                heroComp.LinkedHero?.SetEquipmentSlot(destSlot.SlotData.EquipmentSlot.Value, item);
+            }
+            else if (destSlot.SlotData.SlotType == InventorySlotType.Inventory && destSlot.SlotData.BagIndex.HasValue)
+            {
+                heroComp.Bag?.SetSlotItem(destSlot.SlotData.BagIndex.Value, item);
+            }
+
+            vault.RemoveQuantity(vaultStack, 1);
+
+            _vaultItemGrid?.RefreshFromVault(vault);
+            InventorySelectionManager.OnInventoryChanged?.Invoke();
+            InventoryDragManager.EndDrag();
+
+            Debug.Log("[SecondChanceShopUI] Purchased " + (item?.Name ?? "unknown") + " for " + price + " gold");
+        }
+
+        /// <summary>Called when the vault slot fires a drop event with no hero grid target — cancels the drag.</summary>
+        private void HandleVaultDragDropped(VaultItemSlot slot)
+        {
+            if (InventoryDragManager.IsDragging && InventoryDragManager.IsVaultItemDrag)
+            {
+                InventoryDragManager.CancelDrag();
+                _vaultItemGrid?.ShowAllItemSprites();
+            }
+        }
+
+        /// <summary>Returns true if the given item can be placed in the specified equipment slot.</summary>
+        private bool CanEquipInSlot(IItem item, EquipmentSlot slot, HeroComponent heroComp)
+        {
+            if (item == null) return false;
+            var gear = item as Gear;
+            if (gear == null) return false;
+
+            switch (slot)
+            {
+                case EquipmentSlot.WeaponShield1:
+                case EquipmentSlot.WeaponShield2:
+                    return gear.Kind == ItemKind.WeaponSword
+                        || gear.Kind == ItemKind.WeaponKnife
+                        || gear.Kind == ItemKind.WeaponKnuckle
+                        || gear.Kind == ItemKind.WeaponStaff
+                        || gear.Kind == ItemKind.WeaponRod
+                        || gear.Kind == ItemKind.WeaponBow
+                        || gear.Kind == ItemKind.WeaponHammer
+                        || gear.Kind == ItemKind.Shield;
+                case EquipmentSlot.Armor:
+                    return gear.Kind == ItemKind.ArmorMail
+                        || gear.Kind == ItemKind.ArmorGi
+                        || gear.Kind == ItemKind.ArmorRobe;
+                case EquipmentSlot.Hat:
+                    return gear.Kind == ItemKind.HatHelm
+                        || gear.Kind == ItemKind.HatHeadband
+                        || gear.Kind == ItemKind.HatWizard
+                        || gear.Kind == ItemKind.HatPriest;
+                case EquipmentSlot.Accessory1:
+                case EquipmentSlot.Accessory2:
+                    return gear.Kind == ItemKind.Accessory;
+                default:
+                    return false;
+            }
         }
     }
 }
