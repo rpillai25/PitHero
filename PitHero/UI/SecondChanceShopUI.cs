@@ -480,8 +480,11 @@ namespace PitHero.UI
                 return;
             }
 
-            // For equipment slots, validate item type compatibility
-            if (destSlot.SlotData.SlotType == InventorySlotType.Equipment && destSlot.SlotData.EquipmentSlot.HasValue)
+            bool isEquipSlot = destSlot.SlotData.SlotType == InventorySlotType.Equipment
+                               && destSlot.SlotData.EquipmentSlot.HasValue;
+
+            // For equipment slots, validate item type and job-class compatibility
+            if (isEquipSlot)
             {
                 var heroComp = Core.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
                 if (!CanEquipInSlot(vaultStack.ItemTemplate, destSlot.SlotData.EquipmentSlot.Value, heroComp))
@@ -501,32 +504,72 @@ namespace PitHero.UI
                 return;
             }
 
-            int price = vaultStack.ItemTemplate?.Price ?? 0;
-            string promptText = string.Format(GetText(TextType.UI, UITextKey.SecondChanceBuyPrompt), price);
+            int unitPrice = vaultStack.ItemTemplate?.Price ?? 0;
+            string shopTitle = GetText(TextType.UI, UITextKey.WindowSecondChanceShop);
 
-            var dialog = new ConfirmationDialog(
-                GetText(TextType.UI, UITextKey.WindowSecondChanceShop),
-                promptText,
-                _skin,
-                onYes: () => ExecuteItemPurchase(vaultStack, destSlot, price, vault, gameState),
-                onNo:  () =>
-                {
-                    InventoryDragManager.CancelDrag();
-                    _vaultItemGrid?.ShowAllItemSprites();
-                }
-            );
-            dialog.Show(_stage);
+            System.Action cancelAction = () =>
+            {
+                InventoryDragManager.CancelDrag();
+                _vaultItemGrid?.ShowAllItemSprites();
+            };
+
+            if (isEquipSlot || vaultStack.Quantity <= 1)
+            {
+                // Equip slot or single-item stack: plain confirm with unit price, always qty=1
+                string promptText = string.Format(GetText(TextType.UI, UITextKey.SecondChanceBuyPrompt), unitPrice);
+                var dialog = new ConfirmationDialog(shopTitle, promptText, _skin,
+                    onYes: () => ExecuteItemPurchase(vaultStack, destSlot, 1, unitPrice, vault, gameState),
+                    onNo:  cancelAction);
+                dialog.Show(_stage);
+            }
+            else
+            {
+                // Multi-item stack dropped onto an inventory slot: show quantity selector
+                var heroComp = Core.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
+                int maxQty = ComputeMaxQtyForInventorySlot(vaultStack, heroComp);
+                string itemName = vaultStack.ItemTemplate?.Name ?? "";
+                var qtyDialog = new VaultBuyQuantityDialog(shopTitle, itemName, unitPrice, maxQty, _skin,
+                    onConfirm: (qty) => ExecuteItemPurchase(vaultStack, destSlot, qty, unitPrice, vault, gameState),
+                    onCancel:  cancelAction);
+                qtyDialog.Show(_stage);
+            }
         }
 
-        /// <summary>Executes the item purchase: deducts gold, places item, removes from vault, refreshes grids.</summary>
+        /// <summary>
+        /// Computes the maximum purchasable quantity for a vault item dropped onto an inventory slot.
+        /// Consumables are capped by their StackSize (all N fit in one bag slot).
+        /// Gear is capped by vault quantity and available empty bag slots.
+        /// </summary>
+        private int ComputeMaxQtyForInventorySlot(
+            SecondChanceMerchantVault.StackedItem vaultStack,
+            HeroComponent heroComp)
+        {
+            int vaultQty = vaultStack.Quantity;
+            var item = vaultStack.ItemTemplate;
+
+            if (item is Consumable consumable)
+                return System.Math.Min(vaultQty, consumable.StackSize);
+
+            // Gear: one item per bag slot; cap by available empty slots (min 1)
+            int bagFree = (heroComp?.Bag != null) ? (heroComp.Bag.Capacity - heroComp.Bag.Count) : 1;
+            int gearMax = System.Math.Min(vaultQty, bagFree);
+            return gearMax > 0 ? gearMax : 1;
+        }
+
+        /// <summary>
+        /// Executes the item purchase: deducts total gold (unitPrice × qty), places items in hero
+        /// inventory or equipment slot, removes qty from vault, and refreshes grids.
+        /// </summary>
         private void ExecuteItemPurchase(
             SecondChanceMerchantVault.StackedItem vaultStack,
             InventorySlot destSlot,
-            int price,
+            int qty,
+            int unitPrice,
             SecondChanceMerchantVault vault,
             GameStateService gameState)
         {
-            if (gameState.Funds < price)
+            int totalPrice = unitPrice * qty;
+            if (gameState.Funds < totalPrice)
             {
                 InventoryDragManager.CancelDrag();
                 _vaultItemGrid?.ShowAllItemSprites();
@@ -541,15 +584,40 @@ namespace PitHero.UI
                 return;
             }
 
-            gameState.Funds -= price;
+            gameState.Funds -= totalPrice;
 
             var item = vaultStack.ItemTemplate;
             if (destSlot.SlotData.SlotType == InventorySlotType.Equipment && destSlot.SlotData.EquipmentSlot.HasValue)
+            {
+                // Equip slots always receive exactly 1 item
                 heroComp.LinkedHero?.SetEquipmentSlot(destSlot.SlotData.EquipmentSlot.Value, item);
+                vault.RemoveQuantity(vaultStack, 1);
+            }
             else if (destSlot.SlotData.SlotType == InventorySlotType.Inventory && destSlot.SlotData.BagIndex.HasValue)
-                heroComp.Bag?.SetSlotItem(destSlot.SlotData.BagIndex.Value, item);
+            {
+                if (item is Consumable consumable)
+                {
+                    // The vault stores the consumable as a shared reference template and tracks the
+                    // total count separately via StackedItem.Quantity.  Setting StackCount = 1
+                    // normalises the template before placement, then TryAdd (qty-1) times stacks
+                    // the same reference in the target slot until StackCount == qty.
+                    // The vault never reads ItemTemplate.StackCount after insertion, so this
+                    // intentional mutation is safe within the current vault design.
+                    consumable.StackCount = 1;
+                    heroComp.Bag?.SetSlotItem(destSlot.SlotData.BagIndex.Value, consumable);
+                    for (int i = 1; i < qty; i++)
+                        heroComp.Bag?.TryAdd(consumable);
+                }
+                else
+                {
+                    // Gear: first copy to the dragged-onto slot, remaining to any empty bag slots
+                    heroComp.Bag?.SetSlotItem(destSlot.SlotData.BagIndex.Value, item);
+                    for (int i = 1; i < qty; i++)
+                        heroComp.Bag?.TryAdd(item);
+                }
+                vault.RemoveQuantity(vaultStack, qty);
+            }
 
-            vault.RemoveQuantity(vaultStack, 1);
             _vaultItemGrid?.RefreshFromVault(vault);
             InventorySelectionManager.OnInventoryChanged?.Invoke();
             InventoryDragManager.EndDrag();
