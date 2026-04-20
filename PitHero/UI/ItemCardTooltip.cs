@@ -27,6 +27,7 @@ namespace PitHero.UI
 
         private IItem _item;
         private List<ActiveSynergy> _synergies;
+        private bool _showBuyPrice;
         private Table _contentTable;
         private Container _wrapper;
 
@@ -50,16 +51,17 @@ namespace PitHero.UI
         }
 
         /// <summary>Shows the tooltip with the specified item.</summary>
-        public void ShowItem(IItem item)
+        public void ShowItem(IItem item, bool showBuyPrice = false)
         {
-            ShowItem(item, null);
+            ShowItem(item, null, showBuyPrice);
         }
 
         /// <summary>Shows the tooltip with the specified item and synergy information.</summary>
-        public void ShowItem(IItem item, List<ActiveSynergy> synergies)
+        public void ShowItem(IItem item, List<ActiveSynergy> synergies, bool showBuyPrice = false)
         {
             _item = item;
             _synergies = synergies;
+            _showBuyPrice = showBuyPrice;
             if (_item == null)
             {
                 return;
@@ -127,9 +129,11 @@ namespace PitHero.UI
                 maxLineWidth = Max(maxLineWidth, Measure(font, jobsText));
             }
 
-            // Sell Price (always shown)
-            var sellPrice = _item.GetSellPrice();
-            var priceText = $"Sell Price: {sellPrice}G";
+            string priceText;
+            if (_showBuyPrice)
+                priceText = $"Buy Price: {_item.Price}G";
+            else
+                priceText = $"Sell Price: {_item.GetSellPrice()}G";
             var priceLabel = new Label(priceText, new LabelStyle { Font = font, FontColor = BrownFontColor });
             _contentTable.Add(priceLabel).Left();
             _contentTable.Row();

@@ -42,6 +42,7 @@ namespace PitHero.UI
         // Items tab components
         private VaultItemGrid _vaultItemGrid;
         private InventoryGrid _heroInventoryGrid;
+        private ItemCardTooltip _heroInventoryTooltip;
 
         // Crystals tab components
         private VaultCrystalGrid _vaultCrystalGrid;
@@ -163,6 +164,11 @@ namespace PitHero.UI
             _heroInventoryGrid.InitializeContextMenu(_stage, skin);
             _heroInventoryGrid.OnVaultItemDropRequested += HandleVaultItemDrop;
 
+            var dummyTarget = new Element();
+            dummyTarget.SetSize(0, 0);
+            _heroInventoryTooltip = new ItemCardTooltip(dummyTarget, skin);
+            _heroInventoryGrid.OnItemHovered  += HandleHeroInventoryItemHovered;
+            _heroInventoryGrid.OnItemUnhovered += HandleHeroInventoryItemUnhovered;
             var heroComponent = Core.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
             if (heroComponent != null)
                 _heroInventoryGrid.ConnectToHero(heroComponent);
@@ -341,6 +347,7 @@ namespace PitHero.UI
                 _heroInventoryWindow.Remove();
                 _heroCrystalWindow.SetVisible(false);
                 _heroCrystalWindow.Remove();
+                _heroInventoryTooltip?.GetContainer().Remove();
 
                 if (_pauseService != null)
                     _pauseService.IsPaused = false;
@@ -361,6 +368,7 @@ namespace PitHero.UI
                 _heroInventoryWindow?.Remove();
                 _heroCrystalWindow?.SetVisible(false);
                 _heroCrystalWindow?.Remove();
+                _heroInventoryTooltip?.GetContainer().Remove();
 
                 if (_pauseService != null)
                     _pauseService.IsPaused = false;
@@ -428,6 +436,7 @@ namespace PitHero.UI
         {
             UpdatePromotionVisibilityIfNeeded();
             UpdateButtonStyleIfNeeded();
+            UpdateHeroInventoryTooltipPosition();
         }
 
         /// <summary>
@@ -463,6 +472,44 @@ namespace PitHero.UI
                 _shopButton.SetTouchable(Touchable.Enabled);
             }
             _styleChanged = true; // Triggers SettingsUI layout reflow
+        }
+
+        // ──────────────────────────────────────────────────────────────────────────
+        // Hero inventory hover tooltip
+        // ──────────────────────────────────────────────────────────────────────────
+
+        private void HandleHeroInventoryItemHovered(IItem item, InventorySlot slot)
+        {
+            if (item == null || _heroInventoryTooltip == null) return;
+            _heroInventoryTooltip.ShowItem(item, showBuyPrice: false);
+            if (_heroInventoryTooltip.GetContainer().GetParent() == null)
+                _stage.AddElement(_heroInventoryTooltip.GetContainer());
+        }
+
+        private void HandleHeroInventoryItemUnhovered()
+        {
+            _heroInventoryTooltip?.GetContainer().Remove();
+        }
+
+        /// <summary>Keeps the hero inventory tooltip positioned near the cursor each frame.</summary>
+        private void UpdateHeroInventoryTooltipPosition()
+        {
+            if (_heroInventoryTooltip == null) return;
+            var container = _heroInventoryTooltip.GetContainer();
+            if (container.GetParent() == null) return;
+
+            var mousePos = _stage.GetMousePosition();
+            container.Validate();
+            float stageH = _stage.GetHeight();
+            float stageW = _stage.GetWidth();
+            float tx = mousePos.X + 10f;
+            float ty = mousePos.Y + 10f;
+            if (ty + container.GetHeight() > stageH)
+                ty = stageH - container.GetHeight();
+            if (ty < 0) ty = 0;
+            if (tx + container.GetWidth() > stageW)
+                tx = mousePos.X - container.GetWidth() - 10f;
+            container.SetPosition(tx, ty);
         }
 
         // ──────────────────────────────────────────────────────────────────────────

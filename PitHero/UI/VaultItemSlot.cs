@@ -67,6 +67,7 @@ namespace PitHero.UI
         public void SetStack(SecondChanceMerchantVault.StackedItem stack)
         {
             _stack = stack;
+            _itemSpriteHidden = false;
             _itemDrawable = null;
             if (_stack?.ItemTemplate != null && Core.Content != null)
             {

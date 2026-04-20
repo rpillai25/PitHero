@@ -88,7 +88,7 @@ namespace PitHero.UI
             if (slot.Stack?.ItemTemplate == null || _tooltip == null || _tooltipStage == null)
                 return;
 
-            _tooltip.ShowItem(slot.Stack.ItemTemplate);
+            _tooltip.ShowItem(slot.Stack.ItemTemplate, showBuyPrice: true);
             if (_tooltip.GetContainer().GetParent() == null)
                 _tooltipStage.AddElement(_tooltip.GetContainer());
 
@@ -110,17 +110,18 @@ namespace PitHero.UI
 
         private void HandleSlotUnhovered(VaultItemSlot slot)
         {
+            if (InventoryDragManager.IsVaultItemDrag) return;
             _tooltip?.GetContainer().Remove();
         }
 
         private void HandleSlotDragStarted(VaultItemSlot slot, Vector2 pos)
         {
             if (slot.Stack == null) return;
-            _tooltip?.GetContainer().Remove();
             slot.SetItemSpriteHidden(true);
             var stagePos = slot.LocalToStageCoordinates(pos);
             InventoryDragManager.BeginVaultItemDrag(slot.Stack, _tooltipStage);
             InventoryDragManager.UpdateDrag(stagePos);
+            PositionTooltipAtStagePos(stagePos);
             OnVaultSlotDragStarted?.Invoke(slot);
         }
 
@@ -128,13 +129,35 @@ namespace PitHero.UI
         {
             var stagePos = slot.LocalToStageCoordinates(pos);
             InventoryDragManager.UpdateDrag(stagePos);
+            PositionTooltipAtStagePos(stagePos);
         }
 
         private void HandleSlotDragDropped(VaultItemSlot slot, Vector2 pos)
         {
             var stagePos = slot.LocalToStageCoordinates(pos);
             InventoryDragManager.UpdateDrag(stagePos);
+            _tooltip?.GetContainer().Remove();
             OnVaultSlotDragDropped?.Invoke(slot, stagePos);
+        }
+
+        /// <summary>Positions the tooltip container near the given stage position (cursor).</summary>
+        private void PositionTooltipAtStagePos(Vector2 stagePos)
+        {
+            if (_tooltip == null || _tooltipStage == null) return;
+            var container = _tooltip.GetContainer();
+            if (container.GetParent() == null)
+                _tooltipStage.AddElement(container);
+            container.Validate();
+            float stageW = _tooltipStage.GetWidth();
+            float stageH = _tooltipStage.GetHeight();
+            float tx = stagePos.X + 12f;
+            float ty = stagePos.Y + 12f;
+            if (ty + container.GetHeight() > stageH)
+                ty = stageH - container.GetHeight();
+            if (ty < 0) ty = 0;
+            if (tx + container.GetWidth() > stageW)
+                tx = stagePos.X - container.GetWidth() - 12f;
+            container.SetPosition(tx, ty);
         }
     }
 }
