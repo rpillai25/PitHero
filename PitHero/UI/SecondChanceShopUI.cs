@@ -31,6 +31,7 @@ namespace PitHero.UI
         private ImageButtonStyle _shopNormalStyle;
         private ImageButtonStyle _shopHalfStyle;
         private bool _styleChanged = false;
+        private bool _isHiddenForPromotion = false;
         private SettingsUI _settingsUI;
         private HeroUI _heroUI;
         private MonsterUI _monsterUI;
@@ -423,7 +424,46 @@ namespace PitHero.UI
         }
 
         /// <summary>Updates the shop UI each frame.</summary>
-        public void Update() => UpdateButtonStyleIfNeeded();
+        public void Update()
+        {
+            UpdatePromotionVisibilityIfNeeded();
+            UpdateButtonStyleIfNeeded();
+        }
+
+        /// <summary>
+        /// Hides/shows the shop button depending on whether the hero is in a post-death promotion state.
+        /// Mirrors the same pattern used by StopAdventuringUI.
+        /// </summary>
+        private void UpdatePromotionVisibilityIfNeeded()
+        {
+            if (_shopButton == null || Core.Scene == null)
+                return;
+
+            var heroEntity = Core.Scene.FindEntity("hero");
+            var heroComponent = heroEntity?.GetComponent<HeroComponent>();
+            bool shouldHide = heroComponent != null && heroComponent.NeedsCrystal;
+
+            if (shouldHide == _isHiddenForPromotion)
+                return;
+
+            _isHiddenForPromotion = shouldHide;
+
+            if (shouldHide)
+            {
+                // Auto-close the shop window when the hero dies
+                if (_windowVisible)
+                    ForceCloseWindow();
+
+                _shopButton.SetVisible(false);
+                _shopButton.SetTouchable(Touchable.Disabled);
+            }
+            else
+            {
+                _shopButton.SetVisible(true);
+                _shopButton.SetTouchable(Touchable.Enabled);
+            }
+            _styleChanged = true; // Triggers SettingsUI layout reflow
+        }
 
         // ──────────────────────────────────────────────────────────────────────────
         // Purchase handlers
@@ -537,18 +577,20 @@ namespace PitHero.UI
             }
         }
 
-        /// <summary>Returns true if the given item can be placed in the specified equipment slot.</summary>
+        /// <summary>Returns true if the given item can be placed in the specified equipment slot by this hero.</summary>
         private bool CanEquipInSlot(IItem item, EquipmentSlot slot, HeroComponent heroComp)
         {
             if (item == null) return false;
             var gear = item as Gear;
             if (gear == null) return false;
 
+            // Check slot-kind compatibility first
+            bool slotCompatible;
             switch (slot)
             {
                 case EquipmentSlot.WeaponShield1:
                 case EquipmentSlot.WeaponShield2:
-                    return gear.Kind == ItemKind.WeaponSword
+                    slotCompatible = gear.Kind == ItemKind.WeaponSword
                         || gear.Kind == ItemKind.WeaponKnife
                         || gear.Kind == ItemKind.WeaponKnuckle
                         || gear.Kind == ItemKind.WeaponStaff
@@ -556,21 +598,33 @@ namespace PitHero.UI
                         || gear.Kind == ItemKind.WeaponBow
                         || gear.Kind == ItemKind.WeaponHammer
                         || gear.Kind == ItemKind.Shield;
+                    break;
                 case EquipmentSlot.Armor:
-                    return gear.Kind == ItemKind.ArmorMail
+                    slotCompatible = gear.Kind == ItemKind.ArmorMail
                         || gear.Kind == ItemKind.ArmorGi
                         || gear.Kind == ItemKind.ArmorRobe;
+                    break;
                 case EquipmentSlot.Hat:
-                    return gear.Kind == ItemKind.HatHelm
+                    slotCompatible = gear.Kind == ItemKind.HatHelm
                         || gear.Kind == ItemKind.HatHeadband
                         || gear.Kind == ItemKind.HatWizard
                         || gear.Kind == ItemKind.HatPriest;
+                    break;
                 case EquipmentSlot.Accessory1:
                 case EquipmentSlot.Accessory2:
-                    return gear.Kind == ItemKind.Accessory;
+                    slotCompatible = gear.Kind == ItemKind.Accessory;
+                    break;
                 default:
                     return false;
             }
+
+            if (!slotCompatible) return false;
+
+            // Also check job-class restriction: the hero's job must allow this piece of gear
+            if (heroComp?.LinkedHero != null)
+                return heroComp.LinkedHero.CanEquipItem(gear);
+
+            return true;
         }
 
         /// <summary>Called when a vault crystal is dropped onto a hero crystal slot.</summary>
