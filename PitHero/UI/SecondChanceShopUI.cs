@@ -532,18 +532,32 @@ namespace PitHero.UI
                 return;
             }
 
-            bool isEquipSlot = destSlot.SlotData.SlotType == InventorySlotType.Equipment
+            bool isEquipSlot = (destSlot.SlotData.SlotType == InventorySlotType.Equipment
+                                || destSlot.SlotData.SlotType == InventorySlotType.MercenaryEquipment)
                                && destSlot.SlotData.EquipmentSlot.HasValue;
 
             // For equipment slots, validate item type and job-class compatibility
             if (isEquipSlot)
             {
-                var heroComp = Core.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
-                if (!CanEquipInSlot(vaultStack.ItemTemplate, destSlot.SlotData.EquipmentSlot.Value, heroComp))
+                if (destSlot.SlotData.SlotType == InventorySlotType.MercenaryEquipment)
                 {
-                    InventoryDragManager.CancelDrag();
-                    _vaultItemGrid?.ShowAllItemSprites();
-                    return;
+                    var merc = destSlot.SlotData.MercenaryRef;
+                    if (!CanEquipInSlot(vaultStack.ItemTemplate, destSlot.SlotData.EquipmentSlot.Value, merc))
+                    {
+                        InventoryDragManager.CancelDrag();
+                        _vaultItemGrid?.ShowAllItemSprites();
+                        return;
+                    }
+                }
+                else
+                {
+                    var heroComp = Core.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
+                    if (!CanEquipInSlot(vaultStack.ItemTemplate, destSlot.SlotData.EquipmentSlot.Value, heroComp))
+                    {
+                        InventoryDragManager.CancelDrag();
+                        _vaultItemGrid?.ShowAllItemSprites();
+                        return;
+                    }
                 }
             }
 
@@ -639,9 +653,15 @@ namespace PitHero.UI
             gameState.Funds -= totalPrice;
 
             var item = vaultStack.ItemTemplate;
-            if (destSlot.SlotData.SlotType == InventorySlotType.Equipment && destSlot.SlotData.EquipmentSlot.HasValue)
+            if (destSlot.SlotData.SlotType == InventorySlotType.MercenaryEquipment && destSlot.SlotData.EquipmentSlot.HasValue)
             {
-                // Equip slots always receive exactly 1 item
+                // Mercenary equip slots always receive exactly 1 item
+                destSlot.SlotData.MercenaryRef?.SetEquipmentSlot(destSlot.SlotData.EquipmentSlot.Value, item);
+                vault.RemoveQuantity(vaultStack, 1);
+            }
+            else if (destSlot.SlotData.SlotType == InventorySlotType.Equipment && destSlot.SlotData.EquipmentSlot.HasValue)
+            {
+                // Hero equip slots always receive exactly 1 item
                 heroComp.LinkedHero?.SetEquipmentSlot(destSlot.SlotData.EquipmentSlot.Value, item);
                 vault.RemoveQuantity(vaultStack, 1);
             }
@@ -704,13 +724,36 @@ namespace PitHero.UI
             var gear = item as Gear;
             if (gear == null) return false;
 
-            // Check slot-kind compatibility first
-            bool slotCompatible;
+            if (!IsGearKindCompatibleWithSlot(gear, slot)) return false;
+
+            // Also check job-class restriction: the hero's job must allow this piece of gear
+            if (heroComp?.LinkedHero != null)
+                return heroComp.LinkedHero.CanEquipItem(gear);
+
+            return true;
+        }
+
+        /// <summary>Returns true if the given item can be placed in the specified equipment slot by this mercenary.</summary>
+        private bool CanEquipInSlot(IItem item, EquipmentSlot slot, Mercenary merc)
+        {
+            if (item == null || merc == null) return false;
+            var gear = item as Gear;
+            if (gear == null) return false;
+
+            if (!IsGearKindCompatibleWithSlot(gear, slot)) return false;
+
+            // Check job-class restriction: the mercenary's job must allow this piece of gear
+            return merc.CanEquipItem(gear);
+        }
+
+        /// <summary>Returns true if the gear's ItemKind is compatible with the given equipment slot.</summary>
+        private static bool IsGearKindCompatibleWithSlot(Gear gear, EquipmentSlot slot)
+        {
             switch (slot)
             {
                 case EquipmentSlot.WeaponShield1:
                 case EquipmentSlot.WeaponShield2:
-                    slotCompatible = gear.Kind == ItemKind.WeaponSword
+                    return gear.Kind == ItemKind.WeaponSword
                         || gear.Kind == ItemKind.WeaponKnife
                         || gear.Kind == ItemKind.WeaponKnuckle
                         || gear.Kind == ItemKind.WeaponStaff
@@ -718,33 +761,21 @@ namespace PitHero.UI
                         || gear.Kind == ItemKind.WeaponBow
                         || gear.Kind == ItemKind.WeaponHammer
                         || gear.Kind == ItemKind.Shield;
-                    break;
                 case EquipmentSlot.Armor:
-                    slotCompatible = gear.Kind == ItemKind.ArmorMail
+                    return gear.Kind == ItemKind.ArmorMail
                         || gear.Kind == ItemKind.ArmorGi
                         || gear.Kind == ItemKind.ArmorRobe;
-                    break;
                 case EquipmentSlot.Hat:
-                    slotCompatible = gear.Kind == ItemKind.HatHelm
+                    return gear.Kind == ItemKind.HatHelm
                         || gear.Kind == ItemKind.HatHeadband
                         || gear.Kind == ItemKind.HatWizard
                         || gear.Kind == ItemKind.HatPriest;
-                    break;
                 case EquipmentSlot.Accessory1:
                 case EquipmentSlot.Accessory2:
-                    slotCompatible = gear.Kind == ItemKind.Accessory;
-                    break;
+                    return gear.Kind == ItemKind.Accessory;
                 default:
                     return false;
             }
-
-            if (!slotCompatible) return false;
-
-            // Also check job-class restriction: the hero's job must allow this piece of gear
-            if (heroComp?.LinkedHero != null)
-                return heroComp.LinkedHero.CanEquipItem(gear);
-
-            return true;
         }
 
         /// <summary>Called when a vault crystal is dropped onto a hero crystal slot.</summary>
