@@ -5,6 +5,8 @@ using PitHero.ECS.Components;
 using PitHero.Services;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Heroes;
+using RolePlayingFramework.Mercenaries;
+using System.Collections.Generic;
 
 namespace PitHero.UI
 {
@@ -171,7 +173,10 @@ namespace PitHero.UI
             _heroInventoryGrid.OnItemUnhovered += HandleHeroInventoryItemUnhovered;
             var heroComponent = Core.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
             if (heroComponent != null)
+            {
                 _heroInventoryGrid.ConnectToHero(heroComponent);
+                RefreshMercenaryEquipSlots();
+            }
 
             var scrollPane = new ScrollPane(_heroInventoryGrid, skin, "ph-default");
             scrollPane.SetScrollingDisabled(true, false);
@@ -842,6 +847,32 @@ namespace PitHero.UI
         // Data refresh
         // ──────────────────────────────────────────────────────────────────────────
 
+        /// <summary>Gathers hired mercenaries and refreshes their equip slots in the inventory grid.</summary>
+        private void RefreshMercenaryEquipSlots()
+        {
+            if (_heroInventoryGrid == null) return;
+
+            var mercManager = Core.Services?.GetService<MercenaryManager>();
+            List<Mercenary> hiredMercs = null;
+
+            if (mercManager != null)
+            {
+                var hiredEntities = mercManager.GetHiredMercenaries();
+                if (hiredEntities != null && hiredEntities.Count > 0)
+                {
+                    hiredMercs = new List<Mercenary>(hiredEntities.Count);
+                    for (int i = 0; i < hiredEntities.Count; i++)
+                    {
+                        var mc = hiredEntities[i].GetComponent<MercenaryComponent>();
+                        if (mc?.LinkedMercenary != null)
+                            hiredMercs.Add(mc.LinkedMercenary);
+                    }
+                }
+            }
+
+            _heroInventoryGrid.RefreshMercenarySlots(hiredMercs);
+        }
+
         /// <summary>Refreshes all shop data when the window is opened.</summary>
         private void RefreshShopData()
         {
@@ -855,6 +886,8 @@ namespace PitHero.UI
             var heroComp = Core.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
             if (heroComp != null)
                 _heroInventoryGrid?.ConnectToHero(heroComp);
+
+            RefreshMercenaryEquipSlots();
 
             _heroCrystalPanel?.RefreshAll();
         }
