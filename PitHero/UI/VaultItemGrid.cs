@@ -89,23 +89,24 @@ namespace PitHero.UI
                 return;
 
             _tooltip.ShowItem(slot.Stack.ItemTemplate, showBuyPrice: true);
-            if (_tooltip.GetContainer().GetParent() == null)
-                _tooltipStage.AddElement(_tooltip.GetContainer());
-
-            // Position tooltip near the slot
-            var slotPos = slot.LocalToStageCoordinates(new Vector2(slot.GetWidth(), 0));
             var container = _tooltip.GetContainer();
+            if (container.GetParent() == null)
+                _tooltipStage.AddElement(container);
+
+            // Position tooltip at cursor (same pattern as HeroUI.HandleItemHovered)
             container.Validate();
-            float tx = slotPos.X + 4f;
-            float ty = slotPos.Y;
+            var mousePos = _tooltipStage.GetMousePosition();
+            float tx = mousePos.X + 10f;
+            float ty = mousePos.Y + 10f;
             float stageH = _tooltipStage.GetHeight();
             float stageW = _tooltipStage.GetWidth();
             if (ty + container.GetHeight() > stageH)
                 ty = stageH - container.GetHeight();
             if (ty < 0) ty = 0;
             if (tx + container.GetWidth() > stageW)
-                tx = slotPos.X - container.GetWidth() - 4f;
+                tx = mousePos.X - container.GetWidth() - 10f;
             container.SetPosition(tx, ty);
+            container.ToFront();
         }
 
         private void HandleSlotUnhovered(VaultItemSlot slot)

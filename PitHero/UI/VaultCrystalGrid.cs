@@ -96,17 +96,22 @@ namespace PitHero.UI
             if (slot.Crystal == null || _hoverTooltip == null || _tooltipStage == null) return;
             var crystal = slot.Crystal;
             _hoverLabel.SetText(crystal.Name + " (Lv." + crystal.Level + ") - " + (GameConfig.CrystalBuyBackBasePrice * crystal.Level) + "g");
-            _hoverTooltip.Pack();
+            // Add to stage first so Pack()/GetHeight() returns correct dimensions
             if (_hoverTooltip.GetParent() == null)
                 _tooltipStage.AddElement(_hoverTooltip);
+            _hoverTooltip.Pack();
             _hoverTooltip.SetVisible(true);
             _hoverTooltip.ToFront();
             var mousePos = _tooltipStage.GetMousePosition();
             float tx = mousePos.X + 10f;
             float ty = mousePos.Y + 10f;
             float stageH = _tooltipStage.GetHeight();
+            float stageW = _tooltipStage.GetWidth();
             if (ty + _hoverTooltip.GetHeight() > stageH)
                 ty = stageH - _hoverTooltip.GetHeight();
+            if (ty < 0) ty = 0;
+            if (tx + _hoverTooltip.GetWidth() > stageW)
+                tx = mousePos.X - _hoverTooltip.GetWidth() - 10f;
             _hoverTooltip.SetPosition(tx, ty);
         }
 

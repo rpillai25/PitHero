@@ -487,8 +487,24 @@ namespace PitHero.UI
         {
             if (item == null || _heroInventoryTooltip == null) return;
             _heroInventoryTooltip.ShowItem(item, showBuyPrice: false);
-            if (_heroInventoryTooltip.GetContainer().GetParent() == null)
-                _stage.AddElement(_heroInventoryTooltip.GetContainer());
+            var container = _heroInventoryTooltip.GetContainer();
+            if (container.GetParent() == null)
+                _stage.AddElement(container);
+
+            // Position at cursor immediately (same as HeroUI.HandleItemHovered)
+            container.Validate();
+            var mousePos = _stage.GetMousePosition();
+            float stageH = _stage.GetHeight();
+            float stageW = _stage.GetWidth();
+            float tx = mousePos.X + 10f;
+            float ty = mousePos.Y + 10f;
+            if (ty + container.GetHeight() > stageH)
+                ty = stageH - container.GetHeight();
+            if (ty < 0) ty = 0;
+            if (tx + container.GetWidth() > stageW)
+                tx = mousePos.X - container.GetWidth() - 10f;
+            container.SetPosition(tx, ty);
+            container.ToFront();
         }
 
         private void HandleHeroInventoryItemUnhovered()
