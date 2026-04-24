@@ -37,6 +37,9 @@ namespace PitHero.UI
         /// <summary>Fired when a vault crystal is dropped on a valid empty slot.</summary>
         public event System.Action<CrystalSlotType, int, HeroCrystal> OnVaultCrystalDropRequested;
 
+        /// <summary>Fired when a hero crystal slot is clicked and has a crystal.</summary>
+        public event System.Action<HeroCrystal> OnCrystalSlotClicked;
+
         /// <summary>Creates the panel content and returns the root Table.</summary>
         public Table CreateContent(Skin skin, Stage stage)
         {
@@ -71,6 +74,7 @@ namespace PitHero.UI
                 slot.OnSlotHovered += OnSlotHovered;
                 slot.OnSlotUnhovered += OnSlotUnhovered;
                 slot.OnDragDropped += (s, pos) => HandleHeroSlotDrop(CrystalSlotType.Inventory, idx, s);
+                slot.OnSlotClicked += OnInventorySlotClicked;
                 _inventorySlots[i] = slot;
                 invGrid.Add(slot).Size(SLOT_SIZE).Pad(SLOT_PAD);
                 if ((i + 1) % INV_COLS == 0) invGrid.Row();
@@ -90,6 +94,7 @@ namespace PitHero.UI
                 slot.OnSlotHovered += OnSlotHovered;
                 slot.OnSlotUnhovered += OnSlotUnhovered;
                 slot.OnDragDropped += (s, pos) => HandleHeroSlotDrop(CrystalSlotType.Queue, idx, s);
+                slot.OnSlotClicked += OnQueueSlotClicked;
                 _queueSlots[i] = slot;
                 var numLabel = new Label(QueueSlotNumbers[i], skin, "ph-default");
                 var slotRow = new Table();
@@ -190,6 +195,22 @@ namespace PitHero.UI
             }
 
             OnVaultCrystalDropRequested?.Invoke(slotType, slotIdx, crystal);
+        }
+
+        private void OnInventorySlotClicked(CrystalSlotElement slot)
+        {
+            OnAnyCrystalSlotClicked(slot);
+        }
+
+        private void OnQueueSlotClicked(CrystalSlotElement slot)
+        {
+            OnAnyCrystalSlotClicked(slot);
+        }
+
+        private void OnAnyCrystalSlotClicked(CrystalSlotElement slot)
+        {
+            if (slot.Crystal != null)
+                OnCrystalSlotClicked?.Invoke(slot.Crystal);
         }
 
         private void OnSlotHovered(CrystalSlotElement slot)

@@ -202,6 +202,7 @@ namespace PitHero.UI
 
             _heroCrystalPanel = new SecondChanceHeroCrystalPanel();
             _heroCrystalPanel.OnVaultCrystalDropRequested += HandleVaultCrystalDrop;
+            _heroCrystalPanel.OnCrystalSlotClicked += HandleHeroCrystalSlotClicked;
 
             var heroPanel = _heroCrystalPanel.CreateContent(skin, _stage);
 
@@ -908,6 +909,12 @@ namespace PitHero.UI
             ShowVaultCrystalCard(slot.Crystal);
         }
 
+        private void HandleHeroCrystalSlotClicked(HeroCrystal crystal)
+        {
+            if (crystal == null) return;
+            ShowVaultCrystalCard(crystal);
+        }
+
         private void ShowVaultCrystalCard(HeroCrystal crystal)
         {
             if (_vaultCrystalCard == null) return;
@@ -921,7 +928,10 @@ namespace PitHero.UI
                 _stage.AddElement(_vaultCrystalCardDismissLayer);
             _vaultCrystalCardDismissLayer.SetSize(_stage.GetWidth(), _stage.GetHeight());
             _vaultCrystalCardDismissLayer.SetVisible(true);
+            // Bring both panels above the dismiss layer so slot clicks still register;
+            // the crystal card goes on top of everything so it is always readable.
             _shopWindow?.ToFront();
+            _heroCrystalWindow?.ToFront();
             _vaultCrystalCard.ToFront();
         }
 
@@ -997,8 +1007,8 @@ namespace PitHero.UI
                 SetVisible(false);
             }
 
-            bool IInputListener.OnLeftMousePressed(Vector2 mousePos)  { _onDismiss?.Invoke(); return false; }
-            bool IInputListener.OnRightMousePressed(Vector2 mousePos) => false;
+            bool IInputListener.OnLeftMousePressed(Vector2 mousePos)  { _onDismiss?.Invoke(); return true; }
+            bool IInputListener.OnRightMousePressed(Vector2 mousePos) { _onDismiss?.Invoke(); return true; }
             void IInputListener.OnMouseEnter()  { }
             void IInputListener.OnMouseExit()   { }
             void IInputListener.OnMouseMoved(Vector2 mousePos) { }
