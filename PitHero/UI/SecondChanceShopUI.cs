@@ -944,6 +944,7 @@ namespace PitHero.UI
             }
             if (_heroCrystalPanel != null)
             {
+                // slotType and slotIdx are not needed here; only the slot element is used
                 if (_heroCrystalPanel.TryGetCrystalSlotAtStagePosition(stagePos,
                         out _, out _, out var slot) && slot?.Crystal != null)
                     return slot.Crystal;
