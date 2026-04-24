@@ -924,7 +924,8 @@ namespace PitHero.UI
 
             if (_vaultCrystalCardDismissLayer == null)
                 _vaultCrystalCardDismissLayer = new VaultCrystalCardDismissLayer(
-                    FindCrystalAtStagePosition, ShowVaultCrystalCard, HideVaultCrystalCard);
+                    FindCrystalAtStagePosition, ShowVaultCrystalCard, HideVaultCrystalCard,
+                    HandleDismissLayerMouseMoved);
             if (_vaultCrystalCardDismissLayer.GetParent() == null)
                 _stage.AddElement(_vaultCrystalCardDismissLayer);
             _vaultCrystalCardDismissLayer.SetSize(_stage.GetWidth(), _stage.GetHeight());
@@ -957,6 +958,15 @@ namespace PitHero.UI
             _vaultCrystalCard?.Hide();
             if (_vaultCrystalCardDismissLayer != null)
                 _vaultCrystalCardDismissLayer.SetVisible(false);
+            _vaultCrystalGrid?.ClearManualHoverState();
+            _heroCrystalPanel?.ClearManualHoverState();
+        }
+
+        /// <summary>Called by the dismiss layer on mouse move to forward hover events to underlying slots.</summary>
+        private void HandleDismissLayerMouseMoved(Vector2 stagePos)
+        {
+            _vaultCrystalGrid?.UpdateHoverFromStagePos(stagePos);
+            _heroCrystalPanel?.UpdateHoverFromStagePos(stagePos);
         }
 
         // ──────────────────────────────────────────────────────────────────────────
@@ -1019,15 +1029,18 @@ namespace PitHero.UI
             private readonly System.Func<Vector2, HeroCrystal> _findCrystalAtPos;
             private readonly System.Action<HeroCrystal> _onShowCrystal;
             private readonly System.Action _onDismiss;
+            private readonly System.Action<Vector2> _onMouseMoved;
 
             public VaultCrystalCardDismissLayer(
                 System.Func<Vector2, HeroCrystal> findCrystalAtPos,
                 System.Action<HeroCrystal> onShowCrystal,
-                System.Action onDismiss)
+                System.Action onDismiss,
+                System.Action<Vector2> onMouseMoved)
             {
                 _findCrystalAtPos = findCrystalAtPos;
                 _onShowCrystal = onShowCrystal;
                 _onDismiss = onDismiss;
+                _onMouseMoved = onMouseMoved;
                 SetTouchable(Touchable.Enabled);
                 SetVisible(false);
             }
@@ -1044,7 +1057,7 @@ namespace PitHero.UI
             bool IInputListener.OnRightMousePressed(Vector2 mousePos) { _onDismiss?.Invoke(); return true; }
             void IInputListener.OnMouseEnter()  { }
             void IInputListener.OnMouseExit()   { }
-            void IInputListener.OnMouseMoved(Vector2 mousePos) { }
+            void IInputListener.OnMouseMoved(Vector2 mousePos) { _onMouseMoved?.Invoke(mousePos); }
             void IInputListener.OnLeftMouseUp(Vector2 mousePos)  { }
             void IInputListener.OnRightMouseUp(Vector2 mousePos) { }
             bool IInputListener.OnMouseScrolled(int mouseWheelDelta) => false;

@@ -19,6 +19,7 @@ namespace PitHero.UI
         private Stage _tooltipStage;
         private Window _hoverTooltip;
         private Label _hoverLabel;
+        private VaultCrystalSlot _manualHoveredSlot;
 
         /// <summary>Fired when a vault crystal drag starts.</summary>
         public event System.Action<VaultCrystalSlot> OnVaultCrystalDragStarted;
@@ -83,6 +84,36 @@ namespace PitHero.UI
         {
             for (int i = 0; i < MAX_VISIBLE; i++)
                 _slots[i].SetCrystalHidden(false);
+        }
+
+        /// <summary>Called by the dismiss layer on mouse move to simulate hover on the underlying slot.</summary>
+        public void UpdateHoverFromStagePos(Vector2 stagePos)
+        {
+            VaultCrystalSlot slotUnderCursor = null;
+            for (int i = 0; i < MAX_VISIBLE; i++)
+            {
+                var slot = _slots[i];
+                var topLeft = slot.LocalToStageCoordinates(Vector2.Zero);
+                if (stagePos.X >= topLeft.X && stagePos.X <= topLeft.X + slot.GetWidth() &&
+                    stagePos.Y >= topLeft.Y && stagePos.Y <= topLeft.Y + slot.GetHeight())
+                {
+                    slotUnderCursor = slot;
+                    break;
+                }
+            }
+            if (slotUnderCursor != _manualHoveredSlot)
+            {
+                _manualHoveredSlot?.SetHovered(false);
+                _manualHoveredSlot = slotUnderCursor;
+                _manualHoveredSlot?.SetHovered(true);
+            }
+        }
+
+        /// <summary>Clears any manually-set hover state (call when dismiss layer is hidden).</summary>
+        public void ClearManualHoverState()
+        {
+            _manualHoveredSlot?.SetHovered(false);
+            _manualHoveredSlot = null;
         }
 
         /// <summary>Returns the vault crystal under the given stage position, or null if none.</summary>

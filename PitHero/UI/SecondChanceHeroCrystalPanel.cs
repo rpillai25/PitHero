@@ -34,6 +34,9 @@ namespace PitHero.UI
         private Window _hoverTooltip;
         private Label _hoverLabel;
 
+        // Manual hover tracking (used by dismiss layer)
+        private CrystalSlotElement _manualHoveredSlot;
+
         /// <summary>Fired when a vault crystal is dropped on a valid empty slot.</summary>
         public event System.Action<CrystalSlotType, int, HeroCrystal> OnVaultCrystalDropRequested;
 
@@ -172,6 +175,55 @@ namespace PitHero.UI
             slotIdx = -1;
             slot = null;
             return false;
+        }
+
+        /// <summary>Called by the dismiss layer on mouse move to simulate hover on the underlying slot.</summary>
+        public void UpdateHoverFromStagePos(Vector2 stagePos)
+        {
+            CrystalSlotElement slotUnderCursor = null;
+            if (_inventorySlots != null)
+            {
+                for (int i = 0; i < INV_TOTAL; i++)
+                {
+                    var s = _inventorySlots[i];
+                    if (s == null) continue;
+                    var topLeft = s.LocalToStageCoordinates(Vector2.Zero);
+                    if (stagePos.X >= topLeft.X && stagePos.X <= topLeft.X + s.GetWidth() &&
+                        stagePos.Y >= topLeft.Y && stagePos.Y <= topLeft.Y + s.GetHeight())
+                    {
+                        slotUnderCursor = s;
+                        break;
+                    }
+                }
+            }
+            if (slotUnderCursor == null && _queueSlots != null)
+            {
+                for (int i = 0; i < QUEUE_SLOTS; i++)
+                {
+                    var s = _queueSlots[i];
+                    if (s == null) continue;
+                    var topLeft = s.LocalToStageCoordinates(Vector2.Zero);
+                    if (stagePos.X >= topLeft.X && stagePos.X <= topLeft.X + s.GetWidth() &&
+                        stagePos.Y >= topLeft.Y && stagePos.Y <= topLeft.Y + s.GetHeight())
+                    {
+                        slotUnderCursor = s;
+                        break;
+                    }
+                }
+            }
+            if (slotUnderCursor != _manualHoveredSlot)
+            {
+                _manualHoveredSlot?.SetHovered(false);
+                _manualHoveredSlot = slotUnderCursor;
+                _manualHoveredSlot?.SetHovered(true);
+            }
+        }
+
+        /// <summary>Clears any manually-set hover state (call when dismiss layer is hidden).</summary>
+        public void ClearManualHoverState()
+        {
+            _manualHoveredSlot?.SetHovered(false);
+            _manualHoveredSlot = null;
         }
 
         private void HandleHeroSlotDrop(CrystalSlotType slotType, int slotIdx, CrystalSlotElement slot)

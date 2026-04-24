@@ -72,6 +72,15 @@ namespace PitHero.UI
         /// <summary>Hides the crystal sprite (e.g., during drag).</summary>
         public void SetCrystalHidden(bool hidden) => _crystalHidden = hidden;
 
+        /// <summary>Manually sets hover state (used when a dismiss layer intercepts mouse events).</summary>
+        public void SetHovered(bool hovered)
+        {
+            if (_isHovered == hovered) return;
+            _isHovered = hovered;
+            if (hovered) OnSlotHovered?.Invoke(this);
+            else OnSlotUnhovered?.Invoke(this);
+        }
+
         public override float PreferredWidth => SlotSize;
         public override float PreferredHeight => SlotSize;
 
