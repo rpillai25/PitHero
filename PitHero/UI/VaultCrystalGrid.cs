@@ -85,6 +85,21 @@ namespace PitHero.UI
                 _slots[i].SetCrystalHidden(false);
         }
 
+        /// <summary>Returns the vault crystal under the given stage position, or null if none.</summary>
+        public HeroCrystal TryGetVaultCrystalAtStagePosition(Vector2 stagePos)
+        {
+            for (int i = 0; i < MAX_VISIBLE; i++)
+            {
+                var slot = _slots[i];
+                if (slot.Crystal == null) continue;
+                var topLeft = slot.LocalToStageCoordinates(Vector2.Zero);
+                if (stagePos.X >= topLeft.X && stagePos.X <= topLeft.X + slot.GetWidth() &&
+                    stagePos.Y >= topLeft.Y && stagePos.Y <= topLeft.Y + slot.GetHeight())
+                    return slot.Crystal;
+            }
+            return null;
+        }
+
         private void LayoutSlots()
         {
             for (int i = 0; i < MAX_VISIBLE; i++)

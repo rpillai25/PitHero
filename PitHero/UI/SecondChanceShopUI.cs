@@ -923,16 +923,32 @@ namespace PitHero.UI
             _vaultCrystalCard.PositionAtWindowLeft(_shopWindow);
 
             if (_vaultCrystalCardDismissLayer == null)
-                _vaultCrystalCardDismissLayer = new VaultCrystalCardDismissLayer(HideVaultCrystalCard);
+                _vaultCrystalCardDismissLayer = new VaultCrystalCardDismissLayer(
+                    FindCrystalAtStagePosition, ShowVaultCrystalCard, HideVaultCrystalCard);
             if (_vaultCrystalCardDismissLayer.GetParent() == null)
                 _stage.AddElement(_vaultCrystalCardDismissLayer);
             _vaultCrystalCardDismissLayer.SetSize(_stage.GetWidth(), _stage.GetHeight());
             _vaultCrystalCardDismissLayer.SetVisible(true);
-            // Bring both panels above the dismiss layer so slot clicks still register;
-            // the crystal card goes on top of everything so it is always readable.
-            _shopWindow?.ToFront();
-            _heroCrystalWindow?.ToFront();
+            // Dismiss layer sits on top of all windows so clicks anywhere inside the
+            // shop or hero crystal panel are captured; the card is above the dismiss layer.
             _vaultCrystalCard.ToFront();
+        }
+
+        /// <summary>Returns the HeroCrystal under stagePos in either the vault grid or hero crystal panel.</summary>
+        private HeroCrystal FindCrystalAtStagePosition(Vector2 stagePos)
+        {
+            if (_vaultCrystalGrid != null)
+            {
+                var vc = _vaultCrystalGrid.TryGetVaultCrystalAtStagePosition(stagePos);
+                if (vc != null) return vc;
+            }
+            if (_heroCrystalPanel != null)
+            {
+                if (_heroCrystalPanel.TryGetCrystalSlotAtStagePosition(stagePos,
+                        out _, out _, out var slot) && slot?.Crystal != null)
+                    return slot.Crystal;
+            }
+            return null;
         }
 
         private void HideVaultCrystalCard()
@@ -995,19 +1011,35 @@ namespace PitHero.UI
         // Inner helpers
         // ──────────────────────────────────────────────────────────────────────────
 
-        /// <summary>Full-stage transparent overlay that dismisses the vault crystal card on any click.</summary>
+        /// <summary>Full-stage transparent overlay that dismisses the vault crystal card on any click,
+        /// or shows a new card if the click lands on another crystal slot.</summary>
         private class VaultCrystalCardDismissLayer : Element, IInputListener
         {
+            private readonly System.Func<Vector2, HeroCrystal> _findCrystalAtPos;
+            private readonly System.Action<HeroCrystal> _onShowCrystal;
             private readonly System.Action _onDismiss;
 
-            public VaultCrystalCardDismissLayer(System.Action onDismiss)
+            public VaultCrystalCardDismissLayer(
+                System.Func<Vector2, HeroCrystal> findCrystalAtPos,
+                System.Action<HeroCrystal> onShowCrystal,
+                System.Action onDismiss)
             {
+                _findCrystalAtPos = findCrystalAtPos;
+                _onShowCrystal = onShowCrystal;
                 _onDismiss = onDismiss;
                 SetTouchable(Touchable.Enabled);
                 SetVisible(false);
             }
 
-            bool IInputListener.OnLeftMousePressed(Vector2 mousePos)  { _onDismiss?.Invoke(); return true; }
+            bool IInputListener.OnLeftMousePressed(Vector2 mousePos)
+            {
+                var crystal = _findCrystalAtPos?.Invoke(mousePos);
+                if (crystal != null)
+                    _onShowCrystal?.Invoke(crystal);
+                else
+                    _onDismiss?.Invoke();
+                return true;
+            }
             bool IInputListener.OnRightMousePressed(Vector2 mousePos) { _onDismiss?.Invoke(); return true; }
             void IInputListener.OnMouseEnter()  { }
             void IInputListener.OnMouseExit()   { }
