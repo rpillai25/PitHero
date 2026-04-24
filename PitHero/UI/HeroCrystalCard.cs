@@ -94,6 +94,20 @@ namespace PitHero.UI
             SetPosition(x, y);
         }
 
+        /// <summary>Positions the card so its left edge is just to the left of the given window, shifted down 32px.</summary>
+        public void PositionAtWindowLeft(Window window)
+        {
+            if (window == null) return;
+            Pack();
+            float x = window.GetX() - GetWidth() - 10f;
+            float y = window.GetY() + 32f;
+            float stageH = _stage.GetHeight();
+            if (y + GetHeight() > stageH) y = stageH - GetHeight();
+            if (y < 0) y = 0;
+            if (x < 0) x = 0;
+            SetPosition(x, y);
+        }
+
         private void RebuildContent()
         {
             _contentTable.Clear();

@@ -26,6 +26,9 @@ namespace PitHero.UI
         /// <summary>Fired when a vault crystal drag is dropped. The Vector2 is the stage-coordinate drop position.</summary>
         public event System.Action<VaultCrystalSlot, Vector2> OnVaultCrystalDragDropped;
 
+        /// <summary>Fired when a vault crystal slot is clicked (not a drag).</summary>
+        public event System.Action<VaultCrystalSlot> OnVaultCrystalSlotClicked;
+
         /// <summary>Creates a new vault crystal grid.</summary>
         public VaultCrystalGrid()
         {
@@ -34,6 +37,7 @@ namespace PitHero.UI
             {
                 var slot = new VaultCrystalSlot();
                 _slots[i] = slot;
+                slot.OnSlotClicked += HandleSlotClicked;
                 slot.OnSlotHovered += HandleSlotHovered;
                 slot.OnSlotUnhovered += HandleSlotUnhovered;
                 slot.OnDragStarted += HandleSlotDragStarted;
@@ -91,11 +95,17 @@ namespace PitHero.UI
             }
         }
 
+        private void HandleSlotClicked(VaultCrystalSlot slot)
+        {
+            if (slot.Crystal == null) return;
+            OnVaultCrystalSlotClicked?.Invoke(slot);
+        }
+
         private void HandleSlotHovered(VaultCrystalSlot slot)
         {
             if (slot.Crystal == null || _hoverTooltip == null || _tooltipStage == null) return;
             var crystal = slot.Crystal;
-            _hoverLabel.SetText(crystal.Name + " (Lv." + crystal.Level + ") - " + (GameConfig.CrystalBuyBackBasePrice * crystal.Level) + "g");
+            _hoverLabel.SetText(crystal.Job.Name + " (Lv." + crystal.Level + ") - " + (GameConfig.CrystalBuyBackBasePrice * crystal.Level) + "g");
             // Add to stage first so Pack()/GetHeight() returns correct dimensions
             if (_hoverTooltip.GetParent() == null)
                 _tooltipStage.AddElement(_hoverTooltip);

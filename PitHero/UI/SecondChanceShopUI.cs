@@ -49,6 +49,8 @@ namespace PitHero.UI
         // Crystals tab components
         private VaultCrystalGrid _vaultCrystalGrid;
         private SecondChanceHeroCrystalPanel _heroCrystalPanel;
+        private HeroCrystalCard _vaultCrystalCard;
+        private VaultCrystalCardDismissLayer _vaultCrystalCardDismissLayer;
 
         // Which tab is currently active (0=Items, 1=Crystals)
         private int _activeTabIndex = 0;
@@ -251,6 +253,14 @@ namespace PitHero.UI
 
             // Cancel drag when it lands outside the hero crystal panel
             _vaultCrystalGrid.OnVaultCrystalDragDropped += HandleVaultCrystalDragDropped;
+            _vaultCrystalGrid.OnVaultCrystalSlotClicked += HandleVaultCrystalSlotClicked;
+
+            // Create the crystal info card (same as HeroUI CrystalsTab)
+            if (_vaultCrystalCard == null)
+            {
+                _vaultCrystalCard = new HeroCrystalCard(skin, _stage);
+                _stage.AddElement(_vaultCrystalCard);
+            }
 
             var scrollPane = new ScrollPane(_vaultCrystalGrid, skin, "ph-default");
             scrollPane.SetScrollingDisabled(true, false);
@@ -353,6 +363,7 @@ namespace PitHero.UI
                 _heroCrystalWindow.SetVisible(false);
                 _heroCrystalWindow.Remove();
                 _heroInventoryTooltip?.GetContainer().Remove();
+                HideVaultCrystalCard();
 
                 if (_pauseService != null)
                     _pauseService.IsPaused = false;
@@ -374,6 +385,7 @@ namespace PitHero.UI
                 _heroCrystalWindow?.SetVisible(false);
                 _heroCrystalWindow?.Remove();
                 _heroInventoryTooltip?.GetContainer().Remove();
+                HideVaultCrystalCard();
 
                 if (_pauseService != null)
                     _pauseService.IsPaused = false;
@@ -890,6 +902,36 @@ namespace PitHero.UI
             }
         }
 
+        private void HandleVaultCrystalSlotClicked(VaultCrystalSlot slot)
+        {
+            if (slot.Crystal == null) return;
+            ShowVaultCrystalCard(slot.Crystal);
+        }
+
+        private void ShowVaultCrystalCard(HeroCrystal crystal)
+        {
+            if (_vaultCrystalCard == null) return;
+            _vaultCrystalCard.ShowCrystal(crystal);
+            _vaultCrystalCard.Pack();
+            _vaultCrystalCard.PositionAtWindowLeft(_shopWindow);
+
+            if (_vaultCrystalCardDismissLayer == null)
+                _vaultCrystalCardDismissLayer = new VaultCrystalCardDismissLayer(HideVaultCrystalCard);
+            if (_vaultCrystalCardDismissLayer.GetParent() == null)
+                _stage.AddElement(_vaultCrystalCardDismissLayer);
+            _vaultCrystalCardDismissLayer.SetSize(_stage.GetWidth(), _stage.GetHeight());
+            _vaultCrystalCardDismissLayer.SetVisible(true);
+            _shopWindow?.ToFront();
+            _vaultCrystalCard.ToFront();
+        }
+
+        private void HideVaultCrystalCard()
+        {
+            _vaultCrystalCard?.Hide();
+            if (_vaultCrystalCardDismissLayer != null)
+                _vaultCrystalCardDismissLayer.SetVisible(false);
+        }
+
         // ──────────────────────────────────────────────────────────────────────────
         // Data refresh
         // ──────────────────────────────────────────────────────────────────────────
@@ -937,6 +979,32 @@ namespace PitHero.UI
             RefreshMercenaryEquipSlots();
 
             _heroCrystalPanel?.RefreshAll();
+        }
+
+        // ──────────────────────────────────────────────────────────────────────────
+        // Inner helpers
+        // ──────────────────────────────────────────────────────────────────────────
+
+        /// <summary>Full-stage transparent overlay that dismisses the vault crystal card on any click.</summary>
+        private class VaultCrystalCardDismissLayer : Element, IInputListener
+        {
+            private readonly System.Action _onDismiss;
+
+            public VaultCrystalCardDismissLayer(System.Action onDismiss)
+            {
+                _onDismiss = onDismiss;
+                SetTouchable(Touchable.Enabled);
+                SetVisible(false);
+            }
+
+            bool IInputListener.OnLeftMousePressed(Vector2 mousePos)  { _onDismiss?.Invoke(); return false; }
+            bool IInputListener.OnRightMousePressed(Vector2 mousePos) => false;
+            void IInputListener.OnMouseEnter()  { }
+            void IInputListener.OnMouseExit()   { }
+            void IInputListener.OnMouseMoved(Vector2 mousePos) { }
+            void IInputListener.OnLeftMouseUp(Vector2 mousePos)  { }
+            void IInputListener.OnRightMouseUp(Vector2 mousePos) { }
+            bool IInputListener.OnMouseScrolled(int mouseWheelDelta) => false;
         }
     }
 }
