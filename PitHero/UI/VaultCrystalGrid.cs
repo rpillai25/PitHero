@@ -143,7 +143,6 @@ namespace PitHero.UI
 
         private void HandleSlotClicked(VaultCrystalSlot slot)
         {
-            if (slot.Crystal == null) return;
             OnVaultCrystalSlotClicked?.Invoke(slot);
         }
 

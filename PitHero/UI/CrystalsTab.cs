@@ -109,6 +109,7 @@ namespace PitHero.UI
             _forgeInputB.OnDragStarted += HandleCrystalDragStarted;
             _forgeInputB.OnDragMoved += HandleCrystalDragMoved;
             _forgeInputB.OnDragDropped += HandleCrystalDragDropped;
+            _forgeOutput.OnSlotClicked += _ => { HideCrystalCard(); ClearSelection(); };
             forgeRow.Add(_forgeInputA).Size(SLOT_SIZE).Pad(2);
             forgeRow.Add(new Label("+", skin, "ph-default")).Pad(2);
             forgeRow.Add(_forgeInputB).Size(SLOT_SIZE).Pad(2);

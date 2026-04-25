@@ -905,13 +905,21 @@ namespace PitHero.UI
 
         private void HandleVaultCrystalSlotClicked(VaultCrystalSlot slot)
         {
-            if (slot.Crystal == null) return;
+            if (slot.Crystal == null)
+            {
+                HideVaultCrystalCard();
+                return;
+            }
             ShowVaultCrystalCard(slot.Crystal);
         }
 
         private void HandleHeroCrystalSlotClicked(HeroCrystal crystal)
         {
-            if (crystal == null) return;
+            if (crystal == null)
+            {
+                HideVaultCrystalCard();
+                return;
+            }
             ShowVaultCrystalCard(crystal);
         }
 

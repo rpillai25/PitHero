@@ -261,8 +261,7 @@ namespace PitHero.UI
 
         private void OnAnyCrystalSlotClicked(CrystalSlotElement slot)
         {
-            if (slot.Crystal != null)
-                OnCrystalSlotClicked?.Invoke(slot.Crystal);
+            OnCrystalSlotClicked?.Invoke(slot.Crystal);
         }
 
         private void OnSlotHovered(CrystalSlotElement slot)
