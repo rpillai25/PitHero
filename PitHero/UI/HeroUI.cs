@@ -32,8 +32,9 @@ namespace PitHero.UI
         private Tab _mercenariesTab;
         private bool _windowVisible = false;
 
-        // Reference to SettingsUI for single window policy enforcement
+        // References for single window policy enforcement
         private SettingsUI _settingsUI;
+        private SecondChanceShopUI _secondChanceShopUI;
 
         // Inventory tab content
         private InventoryGrid _inventoryGrid;
@@ -225,10 +226,14 @@ namespace PitHero.UI
         /// <summary>Sets the reference to SettingsUI for single window policy enforcement.</summary>
         public void SetSettingsUI(SettingsUI settingsUI) { _settingsUI = settingsUI; }
 
+        /// <summary>Sets the reference to SecondChanceShopUI for single window policy enforcement.</summary>
+        public void SetSecondChanceShopUI(SecondChanceShopUI secondChanceShopUI) { _secondChanceShopUI = secondChanceShopUI; }
+
         private void HandleHeroButtonClick()
         {
             // Properly close Settings UI if it's open (single window policy)
             _settingsUI?.ForceCloseSettings();
+            _secondChanceShopUI?.ForceCloseWindow();
             ToggleHeroWindow();
         }
 
@@ -902,6 +907,7 @@ namespace PitHero.UI
                 UIWindowManager.OnUIWindowClosing();
                 _selectedItemCard?.Hide();
                 _inventoryGrid?.ClearSelection();
+                _crystalsTabComponent?.Cleanup();
                 _heroWindow.SetVisible(false);
                 _heroWindow.Remove();
                 var pauseService = Core.Services.GetService<PauseService>();
@@ -1158,7 +1164,7 @@ namespace PitHero.UI
         {
             if (_windowVisible)
             {
-                _windowVisible = false; UIWindowManager.OnUIWindowClosing(); _selectedItemCard?.Hide(); _inventoryGrid?.ClearSelection(); _heroWindow?.SetVisible(false); _heroWindow?.Remove(); var pauseService = Core.Services.GetService<PauseService>(); if (pauseService != null) pauseService.IsPaused = false; Debug.Log("[HeroUI] Hero window force closed by single window policy");
+                _windowVisible = false; UIWindowManager.OnUIWindowClosing(); _selectedItemCard?.Hide(); _inventoryGrid?.ClearSelection(); _crystalsTabComponent?.Cleanup(); _heroWindow?.SetVisible(false); _heroWindow?.Remove(); var pauseService = Core.Services.GetService<PauseService>(); if (pauseService != null) pauseService.IsPaused = false; Debug.Log("[HeroUI] Hero window force closed by single window policy");
             }
         }
 

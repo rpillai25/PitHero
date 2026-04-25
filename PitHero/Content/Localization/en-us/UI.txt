@@ -173,3 +173,9 @@ CrystalInventoryFull,Crystal inventory is full
 ButtonDismiss,Dismiss
 DialogConfirmDismissMercenary,Dismiss Mercenary
 ConfirmDismissMercenaryMessage,Are you sure you want to dismiss {0}? Their gear will be returned to your inventory.
+WindowSecondChanceShop,Second Chance Shop
+TabItems,Items
+SecondChanceBuyPrompt,Buy for {0} gold?
+SecondChanceBuyQtyPrompt,Buy {0}?
+SecondChanceBuyTotal,Total: {0} gold
+SecondChanceNoGold,Not enough gold!

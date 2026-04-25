@@ -16,6 +16,14 @@ namespace PitHero.Services
         public int SlotIndex;
     }
 
+    /// <summary>Lightweight struct representing a stacked item in the Second Chance Merchant vault.</summary>
+    public struct SavedVaultItem
+    {
+        public string Name;
+        public bool IsConsumable;
+        public int Quantity;
+    }
+
     /// <summary>Lightweight struct representing a saved shortcut bar slot.</summary>
     public struct SavedShortcutSlot
     {
@@ -169,7 +177,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 1;
+        public const int CurrentVersion = 2;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -338,6 +346,9 @@ namespace PitHero.Services
         /// <summary>Saved crystals in Second Chance Merchant vault.</summary>
         public List<SavedHeroCrystal> SecondChanceVaultCrystals;
 
+        /// <summary>Saved item stacks in Second Chance Merchant vault.</summary>
+        public List<SavedVaultItem> SecondChanceVaultItems;
+
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
         {
@@ -357,6 +368,7 @@ namespace PitHero.Services
             ForgeSlotA = null;
             ForgeSlotB = null;
             SecondChanceVaultCrystals = new List<SavedHeroCrystal>();
+            SecondChanceVaultItems = new List<SavedVaultItem>();
         }
 
         /// <summary>Writes all game state to the persistence writer.</summary>
@@ -577,13 +589,24 @@ namespace PitHero.Services
             writer.Write(hasForgeB);
             if (hasForgeB)
                 WriteCrystal(writer, ForgeSlotB.Value);
+
+            // 19. Second Chance Vault Items
+            int vaultItemCount = SecondChanceVaultItems != null ? SecondChanceVaultItems.Count : 0;
+            writer.Write(vaultItemCount);
+            for (int i = 0; i < vaultItemCount; i++)
+            {
+                SavedVaultItem vi = SecondChanceVaultItems[i];
+                writer.Write(vi.Name ?? string.Empty);
+                writer.Write(vi.IsConsumable);
+                writer.Write(vi.Quantity);
+            }
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
         void IPersistable.Recover(IPersistableReader reader)
         {
             // 1. File Version
-            reader.ReadInt();
+            int fileVersion = reader.ReadInt();
 
             // 2. Total Time Played
             TotalTimePlayed = reader.ReadFloat();
@@ -798,6 +821,25 @@ namespace PitHero.Services
 
             bool hasForgeB = reader.ReadBool();
             ForgeSlotB = hasForgeB ? ReadCrystal(reader) : (SavedHeroCrystal?)null;
+
+            // 19. Second Chance Vault Items (version 2+)
+            if (fileVersion >= 2)
+            {
+                int vaultItemCount = reader.ReadInt();
+                SecondChanceVaultItems = new List<SavedVaultItem>(vaultItemCount);
+                for (int i = 0; i < vaultItemCount; i++)
+                {
+                    SavedVaultItem vi;
+                    vi.Name = reader.ReadString();
+                    vi.IsConsumable = reader.ReadBool();
+                    vi.Quantity = reader.ReadInt();
+                    SecondChanceVaultItems.Add(vi);
+                }
+            }
+            else
+            {
+                SecondChanceVaultItems = new List<SavedVaultItem>();
+            }
         }
 
         /// <summary>Writes a Color as four individual int components (R, G, B, A).</summary>

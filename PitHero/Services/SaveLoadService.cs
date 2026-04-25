@@ -536,6 +536,20 @@ namespace PitHero.Services
 
                     data.SecondChanceVaultCrystals.Add(saved);
                 }
+
+                // Second Chance Vault Items
+                data.SecondChanceVaultItems = new List<SavedVaultItem>();
+                var vaultStacks = vaultService.Stacks;
+                for (int i = 0; i < vaultStacks.Count; i++)
+                {
+                    var stack = vaultStacks[i];
+                    if (stack?.ItemTemplate == null) continue;
+                    var vi = new SavedVaultItem();
+                    vi.Name = stack.ItemTemplate.Name;
+                    vi.IsConsumable = stack.ItemTemplate is Consumable;
+                    vi.Quantity = stack.Quantity;
+                    data.SecondChanceVaultItems.Add(vi);
+                }
             }
 
             return data;

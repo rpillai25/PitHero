@@ -109,6 +109,7 @@ namespace PitHero.UI
             _forgeInputB.OnDragStarted += HandleCrystalDragStarted;
             _forgeInputB.OnDragMoved += HandleCrystalDragMoved;
             _forgeInputB.OnDragDropped += HandleCrystalDragDropped;
+            _forgeOutput.OnSlotClicked += _ => { HideCrystalCard(); ClearSelection(); };
             forgeRow.Add(_forgeInputA).Size(SLOT_SIZE).Pad(2);
             forgeRow.Add(new Label("+", skin, "ph-default")).Pad(2);
             forgeRow.Add(_forgeInputB).Size(SLOT_SIZE).Pad(2);
@@ -512,10 +513,12 @@ namespace PitHero.UI
             }
             _cardDismissLayer.SetSize(_stage.GetWidth(), _stage.GetHeight());
             _cardDismissLayer.SetVisible(true);
-            // Bring hero window in front of dismiss layer so slot clicks are NOT intercepted,
-            // then bring the card to the very front. Clicks outside both hero window and card
-            // will reach the dismiss layer and close the card.
+            // Bring hero window above the dismiss layer so its crystal-slot children receive
+            // native click/hover events.  Set ChildrenOnly touchable so empty areas in the
+            // window background are NOT hit by the window, letting those clicks fall through
+            // to the dismiss layer behind it.  The card sits at the very front.
             _heroWindow?.ToFront();
+            _heroWindow?.SetTouchable(Touchable.ChildrenOnly);
             _crystalCard.ToFront();
         }
 
@@ -524,6 +527,14 @@ namespace PitHero.UI
             _crystalCard?.Hide();
             if (_cardDismissLayer != null)
                 _cardDismissLayer.SetVisible(false);
+            _heroWindow?.SetTouchable(Touchable.Enabled);
+        }
+
+        /// <summary>Hides any open crystal card and clears selection. Called when the parent Hero UI window closes.</summary>
+        public void Cleanup()
+        {
+            HideCrystalCard();
+            ClearSelection();
         }
 
         private void OnForgeClicked(Button b)

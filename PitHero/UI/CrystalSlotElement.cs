@@ -103,6 +103,15 @@ namespace PitHero.UI
         /// <summary>Sets the selection highlight state.</summary>
         public void SetSelected(bool selected) => _isSelected = selected;
 
+        /// <summary>Manually sets hover state (used when a dismiss layer intercepts mouse events).</summary>
+        public void SetHovered(bool hovered)
+        {
+            if (_isHovered == hovered) return;
+            _isHovered = hovered;
+            if (hovered) OnSlotHovered?.Invoke(this);
+            else OnSlotUnhovered?.Invoke(this);
+        }
+
         // Tell Table the slot's preferred size so it allocates 32×32 per cell.
         public override float PreferredWidth => SlotSize;
         public override float PreferredHeight => SlotSize;

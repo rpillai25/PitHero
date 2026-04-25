@@ -178,5 +178,11 @@ namespace PitHero
         public const string CrystalInventoryFull = "CrystalInventoryFull";
         public const string DialogConfirmDismissMercenary = "DialogConfirmDismissMercenary";
         public const string ConfirmDismissMercenaryMessage = "ConfirmDismissMercenaryMessage";
+        public const string WindowSecondChanceShop = "WindowSecondChanceShop";
+        public const string TabItems = "TabItems";
+        public const string SecondChanceBuyPrompt = "SecondChanceBuyPrompt";
+        public const string SecondChanceBuyQtyPrompt = "SecondChanceBuyQtyPrompt";
+        public const string SecondChanceBuyTotal = "SecondChanceBuyTotal";
+        public const string SecondChanceNoGold = "SecondChanceNoGold";
     }
 }
