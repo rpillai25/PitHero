@@ -17,6 +17,7 @@ namespace PitHero.UI
         private readonly VaultItemSlot[] _slots;
         private Stage _tooltipStage;
         private ItemCardTooltip _tooltip;
+        private int _hoverCheckFrame;
 
         /// <summary>Fired when a vault slot drag begins.</summary>
         public event System.Action<VaultItemSlot> OnVaultSlotDragStarted;
@@ -80,6 +81,28 @@ namespace PitHero.UI
                 int col = i % COLS;
                 int row = i / COLS;
                 _slots[i].SetPosition(col * (SLOT_SIZE + SLOT_PAD), row * (SLOT_SIZE + SLOT_PAD));
+            }
+        }
+
+        /// <summary>Called every frame by SecondChanceShopUI to run periodic hover checks for missed hover events.</summary>
+        public void Update(Vector2 mouseStagePos)
+        {
+            _hoverCheckFrame++;
+            if (_hoverCheckFrame % 5 != 0) return;
+
+            if (_tooltip != null && _tooltip.GetContainer().HasParent()) return;
+
+            for (int i = 0; i < MAX_VISIBLE; i++)
+            {
+                var slot = _slots[i];
+                if (slot == null || slot.Stack?.ItemTemplate == null) continue;
+                var topLeft = slot.LocalToStageCoordinates(Vector2.Zero);
+                if (mouseStagePos.X >= topLeft.X && mouseStagePos.X <= topLeft.X + slot.GetWidth() &&
+                    mouseStagePos.Y >= topLeft.Y && mouseStagePos.Y <= topLeft.Y + slot.GetHeight())
+                {
+                    HandleSlotHovered(slot);
+                    return;
+                }
             }
         }
 

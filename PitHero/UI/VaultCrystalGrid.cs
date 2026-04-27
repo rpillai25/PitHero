@@ -20,6 +20,7 @@ namespace PitHero.UI
         private Window _hoverTooltip;
         private Label _hoverLabel;
         private VaultCrystalSlot _manualHoveredSlot;
+        private int _hoverCheckFrame;
 
         /// <summary>Fired when a vault crystal drag starts.</summary>
         public event System.Action<VaultCrystalSlot> OnVaultCrystalDragStarted;
@@ -114,6 +115,28 @@ namespace PitHero.UI
         {
             _manualHoveredSlot?.SetHovered(false);
             _manualHoveredSlot = null;
+        }
+
+        /// <summary>Called every frame by SecondChanceShopUI to run periodic hover checks for missed hover events.</summary>
+        public void Update(Vector2 mouseStagePos)
+        {
+            _hoverCheckFrame++;
+            if (_hoverCheckFrame % 5 != 0) return;
+
+            if (_hoverTooltip != null && _hoverTooltip.GetParent() != null && _hoverTooltip.IsVisible()) return;
+
+            for (int i = 0; i < MAX_VISIBLE; i++)
+            {
+                var slot = _slots[i];
+                if (slot == null || slot.Crystal == null) continue;
+                var topLeft = slot.LocalToStageCoordinates(Vector2.Zero);
+                if (mouseStagePos.X >= topLeft.X && mouseStagePos.X <= topLeft.X + slot.GetWidth() &&
+                    mouseStagePos.Y >= topLeft.Y && mouseStagePos.Y <= topLeft.Y + slot.GetHeight())
+                {
+                    HandleSlotHovered(slot);
+                    return;
+                }
+            }
         }
 
         /// <summary>Returns the vault crystal under the given stage position, or null if none.</summary>
