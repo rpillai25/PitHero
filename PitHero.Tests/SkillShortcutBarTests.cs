@@ -55,40 +55,6 @@ namespace PitHero.Tests
         }
         
         [TestMethod]
-        public void InventorySelectionManager_SetSelectedFromHeroCrystalTab_SetsSkillSelection()
-        {
-            // Arrange
-            var skill = new KnightSkills.HeavyStrikeSkill();
-            
-            // Act
-            InventorySelectionManager.SetSelectedFromHeroCrystalTab(skill, null);
-            
-            // Assert
-            Assert.IsTrue(InventorySelectionManager.HasSelection());
-            Assert.IsTrue(InventorySelectionManager.IsSelectionFromHeroCrystalTab());
-            Assert.AreEqual(skill, InventorySelectionManager.GetSelectedSkill());
-            
-            // Cleanup
-            InventorySelectionManager.ClearSelection();
-        }
-        
-        [TestMethod]
-        public void InventorySelectionManager_ClearSelection_ClearsSkillSelection()
-        {
-            // Arrange
-            var skill = new KnightSkills.SpinSlashSkill();
-            InventorySelectionManager.SetSelectedFromHeroCrystalTab(skill, null);
-            
-            // Act
-            InventorySelectionManager.ClearSelection();
-            
-            // Assert
-            Assert.IsFalse(InventorySelectionManager.HasSelection());
-            Assert.IsFalse(InventorySelectionManager.IsSelectionFromHeroCrystalTab());
-            Assert.IsNull(InventorySelectionManager.GetSelectedSkill());
-        }
-        
-        [TestMethod]
         public void ActiveSkill_HasCorrectKind()
         {
             // Arrange & Act

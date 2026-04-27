@@ -35,7 +35,6 @@ namespace PitHero.UI
         private readonly FastList<ShortcutSlotVisual> _visualSlots;
 
         private HeroComponent _heroComponent;
-        private int _highlightedIndex = -1; // Index of highlighted shortcut (-1 = none)
 
         /// <summary>Shortcut slot index currently showing hover effect during drag.</summary>
         private int _dragHoveredIndex = -1;
@@ -82,8 +81,6 @@ namespace PitHero.UI
             {
                 int index = x; // Capture the loop variable by value
                 var slot = new ShortcutSlotVisual(x + 1); // Pass shortcut key (1-8)
-                slot.OnSlotClicked += () => HandleSlotClicked(index);
-                slot.OnSlotDoubleClicked += () => HandleSlotDoubleClicked(index);
                 slot.OnSlotHovered += () => HandleSlotHovered(index);
                 slot.OnSlotUnhovered += () => HandleSlotUnhovered(index);
                 int capturedIndex = index;
@@ -151,9 +148,6 @@ namespace PitHero.UI
 
             // Subscribe to inventory changes to refresh visual display
             InventorySelectionManager.OnInventoryChanged += RefreshVisualSlots;
-
-            // Subscribe to selection cleared event
-            InventorySelectionManager.OnSelectionCleared += ClearLocalSelectionState;
         }
 
         /// <summary>Sets a reference to an InventoryGrid slot at the specified shortcut index.</summary>
@@ -393,123 +387,6 @@ namespace PitHero.UI
             }
         }
 
-        /// <summary>Clears only the local highlighted slot without invoking events.</summary>
-        private void ClearLocalSelectionState()
-        {
-            if (_highlightedIndex >= 0)
-            {
-                var visualSlot = _visualSlots.Buffer[_highlightedIndex];
-                if (visualSlot != null)
-                    visualSlot.SetHighlighted(false);
-                _highlightedIndex = -1;
-            }
-        }
-
-        /// <summary>Handles slot click highlighting.</summary>
-        private void HandleSlotClicked(int index)
-        {
-            // Check if there's a cross-component selection (from InventoryGrid or HeroCrystalTab)
-            if (InventorySelectionManager.HasSelection() && !InventorySelectionManager.IsSelectionFromShortcutBar())
-            {
-                // Check if it's a skill from HeroCrystalTab
-                if (InventorySelectionManager.IsSelectionFromHeroCrystalTab())
-                {
-                    var selectedSkill = InventorySelectionManager.GetSelectedSkill();
-                    if (selectedSkill != null)
-                    {
-                        // Set this shortcut to reference that skill
-                        SetShortcutSkill(index, selectedSkill);
-
-                        // Clear the selection
-                        InventorySelectionManager.ClearSelection();
-                        OnSkillDeselected?.Invoke();
-                        return;
-                    }
-                }
-                else
-                {
-                    // Get the selected inventory slot
-                    var inventorySlot = InventorySelectionManager.GetSelectedSlot();
-
-                    // Set this shortcut to reference that inventory slot
-                    SetShortcutReference(index, inventorySlot);
-
-                    // Clear the selection
-                    InventorySelectionManager.ClearSelection();
-                    OnItemDeselected?.Invoke();
-                    return;
-                }
-            }
-
-            // Handle shortcut-to-shortcut interaction (swapping)
-            if (_highlightedIndex >= 0 && _highlightedIndex != index)
-            {
-                // We have a selected shortcut and clicked a different one - swap them
-                SwapShortcuts(_highlightedIndex, index);
-
-                // Clear the highlight
-                var oldVisualSlot = _visualSlots.Buffer[_highlightedIndex];
-                if (oldVisualSlot != null)
-                    oldVisualSlot.SetHighlighted(false);
-                _highlightedIndex = -1;
-
-                InventorySelectionManager.ClearSelection();
-                OnItemDeselected?.Invoke();
-                OnSkillDeselected?.Invoke();
-                return;
-            }
-
-            // Toggle highlight on the shortcut itself
-            if (_highlightedIndex == -1)
-            {
-                _highlightedIndex = index;
-                var visualSlot = _visualSlots.Buffer[index];
-                if (visualSlot != null)
-                {
-                    visualSlot.SetHighlighted(true);
-                    InventorySelectionManager.SetSelectedFromShortcut(index, _heroComponent);
-
-                    var shortcutData = _shortcutSlots[index];
-                    if (shortcutData.SlotType == ShortcutSlotType.Item && shortcutData.ReferencedSlot?.SlotData?.Item != null)
-                        OnItemSelected?.Invoke(shortcutData.ReferencedSlot.SlotData.Item);
-                    else if (shortcutData.SlotType == ShortcutSlotType.Skill && shortcutData.ReferencedSkill != null)
-                        OnSkillSelected?.Invoke(shortcutData.ReferencedSkill);
-                }
-            }
-            else if (_highlightedIndex == index)
-            {
-                // Clicking the same slot clears the highlight
-                var visualSlot = _visualSlots.Buffer[_highlightedIndex];
-                if (visualSlot != null)
-                    visualSlot.SetHighlighted(false);
-                _highlightedIndex = -1;
-                InventorySelectionManager.ClearSelection();
-                OnItemDeselected?.Invoke();
-                OnSkillDeselected?.Invoke();
-            }
-            else
-            {
-                // Clicking a different shortcut - just move the highlight
-                var oldVisualSlot = _visualSlots.Buffer[_highlightedIndex];
-                if (oldVisualSlot != null)
-                    oldVisualSlot.SetHighlighted(false);
-
-                _highlightedIndex = index;
-                var newVisualSlot = _visualSlots.Buffer[index];
-                if (newVisualSlot != null)
-                {
-                    newVisualSlot.SetHighlighted(true);
-                    InventorySelectionManager.SetSelectedFromShortcut(index, _heroComponent);
-
-                    var shortcutData = _shortcutSlots[index];
-                    if (shortcutData.SlotType == ShortcutSlotType.Item && shortcutData.ReferencedSlot?.SlotData?.Item != null)
-                        OnItemSelected?.Invoke(shortcutData.ReferencedSlot.SlotData.Item);
-                    else if (shortcutData.SlotType == ShortcutSlotType.Skill && shortcutData.ReferencedSkill != null)
-                        OnSkillSelected?.Invoke(shortcutData.ReferencedSkill);
-                }
-            }
-        }
-
         /// <summary>Swaps the item/skill references between two shortcut slots.</summary>
         private void SwapShortcuts(int indexA, int indexB)
         {
@@ -532,48 +409,9 @@ namespace PitHero.UI
             RefreshVisualSlots();
         }
 
-        /// <summary>Handles double-click to use consumables or skills.</summary>
-        private void HandleSlotDoubleClicked(int index)
-        {
-            var shortcutData = _shortcutSlots[index];
-
-            // Handle item double-click
-            if (shortcutData.SlotType == ShortcutSlotType.Item)
-            {
-                var referencedSlot = shortcutData.ReferencedSlot;
-                if (referencedSlot?.SlotData?.Item == null || !referencedSlot.SlotData.BagIndex.HasValue)
-                    return;
-
-                var item = referencedSlot.SlotData.Item;
-                var bagIndex = referencedSlot.SlotData.BagIndex.Value;
-
-                // Only consumables can be used from shortcut bar
-                if (item is Consumable)
-                {
-                    UseConsumable(item, bagIndex);
-                }
-            }
-            // Handle skill double-click (same as pressing the shortcut key)
-            else if (shortcutData.SlotType == ShortcutSlotType.Skill)
-            {
-                UseSkill(shortcutData.ReferencedSkill);
-            }
-        }
-
         private void HandleSlotHovered(int index)
         {
-            var visualSlot = _visualSlots.Buffer[index];
             var shortcutData = _shortcutSlots[index];
-
-            // Show hover effect if there's a cross-component selection or local highlight
-            bool hasContent = (shortcutData.SlotType == ShortcutSlotType.Item && shortcutData.ReferencedSlot?.SlotData?.Item != null) ||
-                              (shortcutData.SlotType == ShortcutSlotType.Skill && shortcutData.ReferencedSkill != null);
-
-            if ((InventorySelectionManager.HasSelection() && hasContent) ||
-                (_highlightedIndex >= 0 && _highlightedIndex != index && hasContent))
-            {
-                visualSlot?.SetItemSpriteOffsetY(HOVER_OFFSET_Y);
-            }
 
             // Invoke appropriate hover event
             if (shortcutData.SlotType == ShortcutSlotType.Item && shortcutData.ReferencedSlot?.SlotData?.Item != null)
@@ -875,13 +713,6 @@ namespace PitHero.UI
             RefreshVisualSlots();
         }
 
-        /// <summary>Public method to clear selection state (called when closing inventory UI).</summary>
-        public void ClearSelection()
-        {
-            // Just call the manager's clear - it will notify this component via callback
-            InventorySelectionManager.ClearSelection();
-        }
-
         /// <summary>Handles shortcut key presses (1-8).</summary>
         public void HandleKeyboardShortcuts()
         {
@@ -942,17 +773,12 @@ namespace PitHero.UI
         private bool _isHighlighted;
         private float _itemSpriteOffsetY = 0f;
 
-        // Double-click detection
-        private float _lastClickTime = -1f;
-
         // Drag detection
         private bool _mouseDown;
         private Vector2 _mousePressPos;
         private bool _isDraggingItem;
         private bool _hideItemSprite = false;
 
-        public event System.Action OnSlotClicked;
-        public event System.Action OnSlotDoubleClicked;
         public event System.Action OnSlotHovered;
         public event System.Action OnSlotUnhovered;
 
@@ -1165,20 +991,6 @@ namespace PitHero.UI
             if (wasDragging)
             {
                 OnDragDropped?.Invoke(this, mousePos);
-                return;
-            }
-
-            // Deferred click — slot was not dragged
-            float currentTime = Time.TotalTime;
-            if (_lastClickTime >= 0 && (currentTime - _lastClickTime) <= GameConfig.DoubleClickThresholdSeconds)
-            {
-                OnSlotDoubleClicked?.Invoke();
-                _lastClickTime = -1f;
-            }
-            else
-            {
-                OnSlotClicked?.Invoke();
-                _lastClickTime = currentTime;
             }
         }
 

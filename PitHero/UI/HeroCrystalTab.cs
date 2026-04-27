@@ -497,26 +497,10 @@ namespace PitHero.UI
 
             var hero = _heroComponent.LinkedHero;
 
-            // If skill is learned and Active, allow selecting it for shortcut bar
+            // Learned active skills: drag-and-drop is the only way to assign to shortcut bar.
+            // No click action for learned active skills.
             if (isLearned && skill.Kind == SkillKind.Active)
-            {
-                // Toggle selection for active skills
-                if (InventorySelectionManager.HasSelection() &&
-                    InventorySelectionManager.IsSelectionFromHeroCrystalTab() &&
-                    InventorySelectionManager.GetSelectedSkill() == skill)
-                {
-                    // Clicking the same skill deselects it
-                    InventorySelectionManager.ClearSelection();
-                    Debug.Log($"[HeroCrystalTab] Deselected skill: {skill.Name}");
-                }
-                else
-                {
-                    // Select this skill for assignment to shortcut bar
-                    InventorySelectionManager.SetSelectedFromHeroCrystalTab(skill, _heroComponent);
-                    Debug.Log($"[HeroCrystalTab] Selected skill for shortcut bar: {skill.Name}");
-                }
                 return;
-            }
 
             // If skill is not learned, attempt purchase only if it's a job skill
             if (!isLearned)
@@ -743,15 +727,6 @@ namespace PitHero.UI
                 if (_isLearned && _skill.Kind == SkillKind.Active && _isHovered && _selectBoxDrawable != null)
                 {
                     _selectBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
-                }
-
-                // Draw HighlightBox if this skill is selected and is an Active skill
-                if (_isLearned && _skill.Kind == SkillKind.Active &&
-                    InventorySelectionManager.IsSelectionFromHeroCrystalTab() &&
-                    InventorySelectionManager.GetSelectedSkill() == _skill &&
-                    _highlightBoxDrawable != null)
-                {
-                    _highlightBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
                 }
             }
 

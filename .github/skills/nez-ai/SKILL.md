@@ -78,6 +78,7 @@ public enum ActorState
 
 Used by `CalculateTargetLocation()` to map actions to destinations:
 
+
 ```csharp
 public enum LocationType
 {

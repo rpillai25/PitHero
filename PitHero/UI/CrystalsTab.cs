@@ -20,9 +20,6 @@ namespace PitHero.UI
         // Pre-allocated queue slot number strings to avoid dynamic allocation (AOT compliance)
         private static readonly string[] QueueSlotNumbers = { "1", "2", "3", "4", "5" };
 
-        // Slot type enum for multi-slot selection tracking
-        private enum SelType { None, ForgeA, ForgeB, Inventory, Queue }
-
         private CrystalSlotElement _forgeInputA;
         private CrystalSlotElement _forgeInputB;
         private CrystalSlotElement _forgeOutput;
@@ -36,11 +33,6 @@ namespace PitHero.UI
         private Skin _skin;
         private TextService _textService;
         private Window _heroWindow;
-
-        // Selection tracking (source slot for crystal movement)
-        private SelType _selType = SelType.None;
-        private int _selIndex = -1;
-        private CrystalSlotElement _selElement = null;
 
         // Hover tooltip
         private Window _hoverTooltipWindow;
@@ -97,19 +89,19 @@ namespace PitHero.UI
             _forgeInputA = new CrystalSlotElement(CrystalSlotKind.Inventory);
             _forgeInputB = new CrystalSlotElement(CrystalSlotKind.Inventory);
             _forgeOutput = new CrystalSlotElement(CrystalSlotKind.Shortcut);
-            _forgeInputA.OnSlotClicked += _ => OnForgeSlotClicked(SelType.ForgeA);
+            _forgeInputA.OnSlotClicked += _ => OnForgeSlotClicked(_forgeInputA, CrystalSlotType.ForgeA);
             _forgeInputA.OnSlotHovered += OnSlotHovered;
             _forgeInputA.OnSlotUnhovered += OnSlotUnhovered;
             _forgeInputA.OnDragStarted += HandleCrystalDragStarted;
             _forgeInputA.OnDragMoved += HandleCrystalDragMoved;
             _forgeInputA.OnDragDropped += HandleCrystalDragDropped;
-            _forgeInputB.OnSlotClicked += _ => OnForgeSlotClicked(SelType.ForgeB);
+            _forgeInputB.OnSlotClicked += _ => OnForgeSlotClicked(_forgeInputB, CrystalSlotType.ForgeB);
             _forgeInputB.OnSlotHovered += OnSlotHovered;
             _forgeInputB.OnSlotUnhovered += OnSlotUnhovered;
             _forgeInputB.OnDragStarted += HandleCrystalDragStarted;
             _forgeInputB.OnDragMoved += HandleCrystalDragMoved;
             _forgeInputB.OnDragDropped += HandleCrystalDragDropped;
-            _forgeOutput.OnSlotClicked += _ => { HideCrystalCard(); ClearSelection(); };
+            _forgeOutput.OnSlotClicked += _ => HideCrystalCard();
             forgeRow.Add(_forgeInputA).Size(SLOT_SIZE).Pad(2);
             forgeRow.Add(new Label("+", skin, "ph-default")).Pad(2);
             forgeRow.Add(_forgeInputB).Size(SLOT_SIZE).Pad(2);
@@ -247,45 +239,6 @@ namespace PitHero.UI
             _hoverTooltipWindow.Remove();
         }
 
-        // ── Selection helpers ────────────────────────────────────────────────────
-
-        private void SetSelection(SelType type, int index, CrystalSlotElement element)
-        {
-            // Deselect previous
-            if (_selElement != null) _selElement.SetSelected(false);
-
-            _selType = type;
-            _selIndex = index;
-            _selElement = element;
-
-            if (_selElement != null) _selElement.SetSelected(true);
-        }
-
-        private void ClearSelection()
-        {
-            if (_selElement != null) _selElement.SetSelected(false);
-            _selType = SelType.None;
-            _selIndex = -1;
-            _selElement = null;
-        }
-
-        /// <summary>Maps the current selection to a CrystalSlotType and index for SwapSlots.</summary>
-        private bool GetSelectionSlot(out CrystalSlotType slotType, out int slotIdx)
-        {
-            slotIdx = _selIndex;
-            switch (_selType)
-            {
-                case SelType.Inventory: slotType = CrystalSlotType.Inventory; return true;
-                case SelType.ForgeA:    slotType = CrystalSlotType.ForgeA;    slotIdx = 0; return true;
-                case SelType.ForgeB:    slotType = CrystalSlotType.ForgeB;    slotIdx = 0; return true;
-                case SelType.Queue:     slotType = CrystalSlotType.Queue;     return true;
-                default:                slotType = CrystalSlotType.Inventory; return false;
-            }
-        }
-
-        /// <summary>Returns the UI element for the current selection, if still valid.</summary>
-        private CrystalSlotElement GetSelectionElement() => _selElement;
-
         // ── Swap animation ────────────────────────────────────────────────────────
 
         /// <summary>Plays a tween swap animation between two CrystalSlotElements, then calls onCompleted.</summary>
@@ -359,143 +312,42 @@ namespace PitHero.UI
                 });
         }
 
-        // ── Slot click handlers ──────────────────────────────────────────────────
+        // ── Slot click handlers — info card display only, no movement ───────────
 
+        /// <summary>Shows crystal info card when clicking a crystal inventory slot; hides on empty.</summary>
         private void OnInventorySlotClicked(int idx)
         {
             var svc = GetCrystalService();
             if (svc == null) return;
-
-            if (_selType == SelType.None)
-            {
-                var crystal = svc.GetInventoryCrystal(idx);
-                if (crystal != null)
-                {
-                    SetSelection(SelType.Inventory, idx, _inventorySlots[idx]);
-                    ShowCrystalCard(crystal);
-                }
-                else
-                {
-                    HideCrystalCard();
-                }
-            }
+            var crystal = svc.GetInventoryCrystal(idx);
+            if (crystal != null)
+                ShowCrystalCard(crystal);
             else
-            {
-                if (GetSelectionSlot(out var srcType, out var srcIdx))
-                {
-                    var srcEl = GetSelectionElement();
-                    var dstEl = _inventorySlots[idx];
-
-                    // Don't animate if same slot
-                    if (srcType == CrystalSlotType.Inventory && srcIdx == idx)
-                    {
-                        ClearSelection();
-                        HideCrystalCard();
-                        return;
-                    }
-
-                    svc.SwapSlots(srcType, srcIdx, CrystalSlotType.Inventory, idx);
-                    RefreshAll();
-                    AnimateCrystalSwap(srcEl, dstEl, null);
-                }
-                ClearSelection();
                 HideCrystalCard();
-            }
         }
 
+        /// <summary>Shows crystal info card when clicking a queue slot; hides on empty.</summary>
         private void OnQueueSlotClicked(int queueIdx)
         {
             var svc = GetCrystalService();
             if (svc == null) return;
-
-            if (_selType == SelType.None)
-            {
-                var crystal = svc.Queue[queueIdx];
-                if (crystal != null)
-                {
-                    SetSelection(SelType.Queue, queueIdx, _queueSlots[queueIdx]);
-                    ShowCrystalCard(crystal);
-                }
-                else
-                {
-                    HideCrystalCard();
-                }
-            }
+            var crystal = svc.Queue[queueIdx];
+            if (crystal != null)
+                ShowCrystalCard(crystal);
             else
-            {
-                if (GetSelectionSlot(out var srcType, out var srcIdx))
-                {
-                    var srcEl = GetSelectionElement();
-                    var dstEl = _queueSlots[queueIdx];
-
-                    // Don't animate if same slot
-                    if (srcType == CrystalSlotType.Queue && srcIdx == queueIdx)
-                    {
-                        ClearSelection();
-                        HideCrystalCard();
-                        return;
-                    }
-
-                    svc.SwapSlots(srcType, srcIdx, CrystalSlotType.Queue, queueIdx);
-                    RefreshAll();
-                    AnimateCrystalSwap(srcEl, dstEl, null);
-                }
-                ClearSelection();
                 HideCrystalCard();
-            }
         }
 
-        private void OnForgeSlotClicked(SelType forgeSlot)
+        /// <summary>Shows crystal info card when clicking a forge input slot; hides on empty.</summary>
+        private void OnForgeSlotClicked(CrystalSlotElement slotElement, CrystalSlotType slotType)
         {
             var svc = GetCrystalService();
             if (svc == null) return;
-
-            var dstType = forgeSlot == SelType.ForgeA ? CrystalSlotType.ForgeA : CrystalSlotType.ForgeB;
-            var dstEl = forgeSlot == SelType.ForgeA ? _forgeInputA : _forgeInputB;
-
-            if (_selType == SelType.None)
-            {
-                var crystal = forgeSlot == SelType.ForgeA ? svc.ForgeSlotA : svc.ForgeSlotB;
-                if (crystal != null)
-                {
-                    SetSelection(forgeSlot, 0, dstEl);
-                    ShowCrystalCard(crystal);
-                }
-                else
-                {
-                    HideCrystalCard();
-                }
-            }
+            var crystal = slotType == CrystalSlotType.ForgeA ? svc.ForgeSlotA : svc.ForgeSlotB;
+            if (crystal != null)
+                ShowCrystalCard(crystal);
             else
-            {
-                if (GetSelectionSlot(out var srcType, out var srcIdx))
-                {
-                    var srcEl = GetSelectionElement();
-
-                    // Don't animate if same slot
-                    if (srcType == dstType)
-                    {
-                        ClearSelection();
-                        HideCrystalCard();
-                        return;
-                    }
-
-                    // Only mastered crystals may be placed into forge slots
-                    var srcCrystal = srcEl?.Crystal;
-                    if (srcCrystal != null && !srcCrystal.Mastered)
-                    {
-                        ClearSelection();
-                        HideCrystalCard();
-                        return;
-                    }
-
-                    svc.SwapSlots(srcType, srcIdx, dstType, 0);
-                    RefreshAll();
-                    AnimateCrystalSwap(srcEl, dstEl, null);
-                }
-                ClearSelection();
                 HideCrystalCard();
-            }
         }
 
         private void ShowCrystalCard(HeroCrystal crystal)
@@ -508,7 +360,7 @@ namespace PitHero.UI
             // Ensure card dismiss layer exists and is wired up
             if (_cardDismissLayer == null)
             {
-                _cardDismissLayer = new DismissLayer(() => { HideCrystalCard(); ClearSelection(); });
+                _cardDismissLayer = new DismissLayer(() => HideCrystalCard());
                 _stage.AddElement(_cardDismissLayer);
             }
             _cardDismissLayer.SetSize(_stage.GetWidth(), _stage.GetHeight());
@@ -530,11 +382,10 @@ namespace PitHero.UI
             _heroWindow?.SetTouchable(Touchable.Enabled);
         }
 
-        /// <summary>Hides any open crystal card and clears selection. Called when the parent Hero UI window closes.</summary>
+        /// <summary>Hides any open crystal card. Called when the parent Hero UI window closes.</summary>
         public void Cleanup()
         {
             HideCrystalCard();
-            ClearSelection();
         }
 
         private void OnForgeClicked(Button b)
@@ -547,7 +398,6 @@ namespace PitHero.UI
                 {
                     svc.TryAddToInventory(result);
                     RefreshAll();
-                    ClearSelection();
                     HideCrystalCard();
                 }
             }
@@ -658,7 +508,6 @@ namespace PitHero.UI
         private void HandleCrystalDragStarted(CrystalSlotElement source, Vector2 mousePos)
         {
             if (source.Crystal == null) return;
-            ClearSelection();
             HideCrystalCard();
             source.SetCrystalHidden(true);
             InventoryDragManager.BeginCrystalDrag(source, _stage);

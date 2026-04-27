@@ -33,7 +33,6 @@ namespace PitHero.UI
         private readonly FastList<InventorySlot> _slots;   // Row-major, may contain nulls for Null slots or capacity-disabled slots
         private readonly IItem[] _persistBuffer;           // Reusable buffer for bag ordering persistence (120 slot capacity)
         private HeroComponent _heroComponent;
-        private InventorySlot _highlightedSlot;
         /// <summary>Slot currently showing the hover-during-drag visual effect.</summary>
         private InventorySlot _dragHoveredSlot;
         private InventoryContextMenu _contextMenu;
@@ -162,8 +161,7 @@ namespace PitHero.UI
                         continue;
                     }
                     var slot = new InventorySlot(data);
-                    slot.OnSlotClicked += HandleSlotClicked;
-                    slot.OnSlotDoubleClicked += HandleSlotDoubleClicked;
+                    slot.OnSlotClicked += HandleStencilSlotClicked;
                     slot.OnSlotHovered += HandleSlotHovered;
                     slot.OnSlotUnhovered += HandleSlotUnhovered;
                     slot.OnSlotRightClicked += HandleSlotRightClicked;
@@ -262,17 +260,9 @@ namespace PitHero.UI
 
             // Unsubscribe before re-subscribing to prevent duplicate handlers (idempotent)
             InventorySelectionManager.OnInventoryChanged -= UpdateItemsFromBag;
-            InventorySelectionManager.OnSelectionCleared -= ClearLocalSelectionState;
-            InventorySelectionManager.OnCrossComponentSwapAnimate -= HandleCrossComponentSwapAnimate;
 
             // Subscribe to cross-component inventory changes
             InventorySelectionManager.OnInventoryChanged += UpdateItemsFromBag;
-
-            // Subscribe to selection cleared event
-            InventorySelectionManager.OnSelectionCleared += ClearLocalSelectionState;
-
-            // Subscribe to cross-component swap animation
-            InventorySelectionManager.OnCrossComponentSwapAnimate += HandleCrossComponentSwapAnimate;
 
             // Load name font for drawing mercenary names
             if (_nameFont == null && Core.Content != null)
@@ -322,50 +312,6 @@ namespace PitHero.UI
 
             // Populate items from assigned mercenaries
             UpdateMercenaryEquipmentSlots();
-        }
-
-        /// <summary>Clears only the local highlighted slot without invoking events.</summary>
-        private void ClearLocalSelectionState()
-        {
-            if (_highlightedSlot != null)
-            {
-                _highlightedSlot.SlotData.IsHighlighted = false;
-                _highlightedSlot = null;
-            }
-        }
-
-        /// <summary>Handles cross-component swap animation by triggering local animation for this component's slot.</summary>
-        private void HandleCrossComponentSwapAnimate(InventorySlot slotA, InventorySlot slotB)
-        {
-            // Find which slot belongs to this component
-            InventorySlot mySlot = null;
-            for (int i = 0; i < _slots.Length; i++)
-            {
-                var slot = _slots.Buffer[i];
-                if (slot == slotA || slot == slotB)
-                {
-                    mySlot = slot;
-                    break;
-                }
-            }
-
-            if (mySlot != null)
-            {
-                // Trigger a brief "pop" animation by hiding and showing the sprite
-                AnimateCrossComponentSwap(mySlot);
-            }
-        }
-
-        /// <summary>Animates a single slot for cross-component swap (simple hide/show effect).</summary>
-        private void AnimateCrossComponentSwap(InventorySlot slot)
-        {
-            // For cross-component swaps, we can't tween between different coordinate spaces,
-            // so we just hide the sprite briefly and let the refresh show the new item
-            if (slot.SlotData.Item != null)
-            {
-                slot.SetItemSpriteHidden(true);
-                // The sprite will be shown again when UpdateItemsFromBag is called after the swap
-            }
         }
 
         /// <summary>Initializes the context menu for inventory interactions.</summary>
@@ -627,49 +573,13 @@ namespace PitHero.UI
             SetSize(gridWidth, gridHeight);
         }
 
-        /// <summary>Handles slot click highlighting and swapping.</summary>
-        private void HandleSlotClicked(InventorySlot clickedSlot)
+        /// <summary>Routes slot clicks to stencil-mode handling. No item movement on click — drag-and-drop only.</summary>
+        private void HandleStencilSlotClicked(InventorySlot clickedSlot)
         {
-            // Handle stencil mode interactions (both move and remove modes)
+            // Only process clicks when in stencil mode; all other click actions are disabled.
             if (_moveStencilsMode || _removeStencilsMode)
             {
                 HandleStencilModeClick(clickedSlot);
-                return;
-            }
-
-            // Ignore clicks from shortcut bar selections - shortcuts reference inventory slots, not swap with them
-            if (InventorySelectionManager.HasSelection() && InventorySelectionManager.IsSelectionFromShortcutBar())
-            {
-                // Clear the shortcut selection - we don't support moving shortcuts back to inventory
-                InventorySelectionManager.ClearSelection();
-                return;
-            }
-
-            if (_highlightedSlot == null)
-            {
-                _highlightedSlot = clickedSlot;
-                clickedSlot.SlotData.IsHighlighted = true;
-                InventorySelectionManager.SetSelectedFromInventory(clickedSlot, _heroComponent);
-                Debug.Log($"Highlighted slot at ({clickedSlot.SlotData.X},{clickedSlot.SlotData.Y})");
-                if (clickedSlot.SlotData.Item != null)
-                    OnItemSelected?.Invoke(clickedSlot.SlotData.Item);
-            }
-            else if (_highlightedSlot == clickedSlot)
-            {
-                _highlightedSlot.SlotData.IsHighlighted = false;
-                _highlightedSlot = null;
-                InventorySelectionManager.ClearSelection();
-                OnItemDeselected?.Invoke();
-            }
-            else
-            {
-                var prev = _highlightedSlot;
-                SwapSlotItems(_highlightedSlot, clickedSlot);
-                _highlightedSlot.SlotData.IsHighlighted = false;
-                _highlightedSlot = null;
-                InventorySelectionManager.ClearSelection();
-                Debug.Log($"Swapped items between ({prev.SlotData.X},{clickedSlot.SlotData.Y}) and ({clickedSlot.SlotData.X},{clickedSlot.SlotData.Y})");
-                OnItemDeselected?.Invoke();
             }
         }
 
@@ -724,10 +634,6 @@ namespace PitHero.UI
 
         private void HandleSlotHovered(InventorySlot slot)
         {
-            // Check for cross-component hover (from ShortcutBar) or local hover
-            if ((InventorySelectionManager.HasSelection() && slot.SlotData.Item != null) ||
-                (_highlightedSlot != null && _highlightedSlot != slot && slot.SlotData.Item != null))
-                slot.SetItemSpriteOffsetY(HOVER_OFFSET_Y);
             if (slot.SlotData.Item != null)
                 OnItemHovered?.Invoke(slot.SlotData.Item, slot);
         }
@@ -760,13 +666,6 @@ namespace PitHero.UI
         private void HandleSlotDragStarted(InventorySlot source, Vector2 mousePos)
         {
             if (source.SlotData == null || source.SlotData.Item == null) return;
-
-            if (_highlightedSlot != null)
-            {
-                _highlightedSlot.SlotData.IsHighlighted = false;
-                _highlightedSlot = null;
-                InventorySelectionManager.ClearSelection();
-            }
 
             source.SetItemSpriteHidden(true);
             InventoryDragManager.BeginDrag(source, GetStage());
@@ -834,76 +733,6 @@ namespace PitHero.UI
                 if (InventoryDragManager.IsDragging)
                     InventoryDragManager.CancelDrag();
             }
-        }
-
-        /// <summary>Handles double-click to use consumables or equip/unequip gear.</summary>
-        private void HandleSlotDoubleClicked(InventorySlot slot)
-        {
-            // Equipment slot: attempt to unequip to first empty bag slot
-            if (slot.SlotData.SlotType == InventorySlotType.Equipment)
-            {
-                if (slot.SlotData.Item != null)
-                {
-                    var emptySlot = FindFirstEmptyBagSlot();
-                    if (emptySlot != null)
-                    {
-                        SwapSlotItems(slot, emptySlot);
-                    }
-                }
-                // always clear selection/highlight after a double-click
-                ClearSelectionHighlight();
-                return;
-            }
-
-            // Mercenary equipment slot: attempt to unequip to first empty bag slot
-            if (slot.SlotData.SlotType == InventorySlotType.MercenaryEquipment)
-            {
-                if (slot.SlotData.Item != null && slot.SlotData.MercenaryRef != null)
-                {
-                    var emptySlot = FindFirstEmptyBagSlot();
-                    if (emptySlot != null)
-                    {
-                        SwapSlotItems(slot, emptySlot);
-                    }
-                }
-                ClearSelectionHighlight();
-                return;
-            }
-
-            // Bag slots: use consumables or equip gear
-            if (slot.SlotData.Item is Consumable && slot.SlotData.BagIndex.HasValue)
-            {
-                UseConsumable(slot.SlotData.Item, slot.SlotData.BagIndex.Value);
-            }
-            else if (slot.SlotData.Item is IGear gear)
-            {
-                var targetEquipmentSlot = FindTargetEquipmentSlot(gear);
-                if (targetEquipmentSlot != null)
-                {
-                    SwapSlotItems(slot, targetEquipmentSlot);
-                }
-            }
-
-            // always clear selection/highlight after a double-click
-            ClearSelectionHighlight();
-        }
-
-        /// <summary>Clears current highlighted slot and notifies deselection.</summary>
-        private void ClearSelectionHighlight()
-        {
-            if (_highlightedSlot != null)
-            {
-                _highlightedSlot.SlotData.IsHighlighted = false;
-                _highlightedSlot = null;
-                OnItemDeselected?.Invoke();
-            }
-        }
-
-        /// <summary>Public method to clear selection state (called when closing inventory UI).</summary>
-        public void ClearSelection()
-        {
-            // Just call the manager's clear - it will notify this component via callback
-            InventorySelectionManager.ClearSelection();
         }
 
         /// <summary>Handles right-click to show context menu.</summary>

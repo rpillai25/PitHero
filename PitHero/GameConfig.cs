@@ -242,7 +242,6 @@ namespace PitHero
         public const float SecondChanceMerchantSpriteY = 50f;
 
         // Inventory interaction
-        public const float DoubleClickThresholdSeconds = 0.3f; // Time window for detecting double-click
         /// <summary>Minimum pixel movement to initiate a drag operation.</summary>
         public const float DragThresholdPixels = 4f;
 

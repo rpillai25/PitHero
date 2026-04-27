@@ -28,16 +28,12 @@ namespace PitHero.UI
         private SpriteDrawable _placeholderDrawable;
         private Tooltip _placeholderTooltip;
 
-        // Double-click detection
-        private float _lastClickTime = -1f;
-
         // Drag detection
         private bool _mouseDown;
         private Vector2 _mousePressPos;
         private bool _isDraggingItem;
 
         public event System.Action<InventorySlot> OnSlotClicked;
-        public event System.Action<InventorySlot> OnSlotDoubleClicked;
         public event System.Action<InventorySlot> OnSlotHovered;
         public event System.Action<InventorySlot> OnSlotUnhovered;
         public event System.Action<InventorySlot, Vector2> OnSlotRightClicked;
@@ -347,18 +343,8 @@ namespace PitHero.UI
                 return;
             }
 
-            // Deferred click — slot was not dragged
-            float currentTime = Time.TotalTime;
-            if (_lastClickTime >= 0 && (currentTime - _lastClickTime) <= GameConfig.DoubleClickThresholdSeconds)
-            {
-                OnSlotDoubleClicked?.Invoke(this);
-                _lastClickTime = -1f;
-            }
-            else
-            {
-                OnSlotClicked?.Invoke(this);
-                _lastClickTime = currentTime;
-            }
+            // Click without drag — only fire for stencil mode (no item movement on plain click)
+            OnSlotClicked?.Invoke(this);
         }
 
         void IInputListener.OnRightMouseUp(Vector2 mousePos)
