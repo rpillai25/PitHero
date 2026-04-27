@@ -43,6 +43,7 @@ namespace PitHero.UI
 
         // Drag-and-drop hover tracking
         private CrystalSlotElement _dragHoveredSlot;
+        private int _hoverCheckFrame;
 
         // Full-screen dismiss layer for the crystal card (hides card when clicking outside it)
         private Element _cardDismissLayer;
@@ -380,6 +381,73 @@ namespace PitHero.UI
             if (_cardDismissLayer != null)
                 _cardDismissLayer.SetVisible(false);
             _heroWindow?.SetTouchable(Touchable.Enabled);
+        }
+
+        /// <summary>Called every frame by HeroUI to run periodic hover checks and keep tooltip visible.</summary>
+        public void Update()
+        {
+            if (_stage == null) return;
+
+            _hoverCheckFrame++;
+            if (_hoverCheckFrame % 5 != 0) return;
+
+            if (_hoverTooltipWindow != null && _hoverTooltipWindow.GetParent() != null && _hoverTooltipWindow.IsVisible()) return;
+
+            var mousePos = _stage.GetMousePosition();
+
+            if (_inventorySlots != null)
+            {
+                for (int i = 0; i < _inventorySlots.Length; i++)
+                {
+                    var slot = _inventorySlots[i];
+                    if (slot == null || slot.Crystal == null) continue;
+                    var topLeft = slot.LocalToStageCoordinates(Vector2.Zero);
+                    if (mousePos.X >= topLeft.X && mousePos.X <= topLeft.X + slot.GetWidth() &&
+                        mousePos.Y >= topLeft.Y && mousePos.Y <= topLeft.Y + slot.GetHeight())
+                    {
+                        OnSlotHovered(slot);
+                        return;
+                    }
+                }
+            }
+
+            if (_queueSlots != null)
+            {
+                for (int i = 0; i < _queueSlots.Length; i++)
+                {
+                    var slot = _queueSlots[i];
+                    if (slot == null || slot.Crystal == null) continue;
+                    var topLeft = slot.LocalToStageCoordinates(Vector2.Zero);
+                    if (mousePos.X >= topLeft.X && mousePos.X <= topLeft.X + slot.GetWidth() &&
+                        mousePos.Y >= topLeft.Y && mousePos.Y <= topLeft.Y + slot.GetHeight())
+                    {
+                        OnSlotHovered(slot);
+                        return;
+                    }
+                }
+            }
+
+            if (_forgeInputA != null && _forgeInputA.Crystal != null)
+            {
+                var topLeft = _forgeInputA.LocalToStageCoordinates(Vector2.Zero);
+                if (mousePos.X >= topLeft.X && mousePos.X <= topLeft.X + _forgeInputA.GetWidth() &&
+                    mousePos.Y >= topLeft.Y && mousePos.Y <= topLeft.Y + _forgeInputA.GetHeight())
+                {
+                    OnSlotHovered(_forgeInputA);
+                    return;
+                }
+            }
+
+            if (_forgeInputB != null && _forgeInputB.Crystal != null)
+            {
+                var topLeft = _forgeInputB.LocalToStageCoordinates(Vector2.Zero);
+                if (mousePos.X >= topLeft.X && mousePos.X <= topLeft.X + _forgeInputB.GetWidth() &&
+                    mousePos.Y >= topLeft.Y && mousePos.Y <= topLeft.Y + _forgeInputB.GetHeight())
+                {
+                    OnSlotHovered(_forgeInputB);
+                    return;
+                }
+            }
         }
 
         /// <summary>Hides any open crystal card. Called when the parent Hero UI window closes.</summary>

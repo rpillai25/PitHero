@@ -36,6 +36,7 @@ namespace PitHero.UI
 
         // Manual hover tracking (used by dismiss layer)
         private CrystalSlotElement _manualHoveredSlot;
+        private int _hoverCheckFrame;
 
         /// <summary>Fired when a vault crystal is dropped on a valid empty slot.</summary>
         public event System.Action<CrystalSlotType, int, HeroCrystal> OnVaultCrystalDropRequested;
@@ -125,6 +126,47 @@ namespace PitHero.UI
                 _inventorySlots[i].SetCrystal(svc.Inventory[i]);
             for (int i = 0; i < QUEUE_SLOTS; i++)
                 _queueSlots[i].SetCrystal(svc.Queue[i]);
+        }
+
+        /// <summary>Called every frame by SecondChanceShopUI to run periodic hover checks for missed hover events.</summary>
+        public void Update(Vector2 mouseStagePos)
+        {
+            _hoverCheckFrame++;
+            if (_hoverCheckFrame % 5 != 0) return;
+
+            if (_hoverTooltip != null && _hoverTooltip.GetParent() != null && _hoverTooltip.IsVisible()) return;
+
+            if (_inventorySlots != null)
+            {
+                for (int i = 0; i < INV_TOTAL; i++)
+                {
+                    var slot = _inventorySlots[i];
+                    if (slot == null || slot.Crystal == null) continue;
+                    var topLeft = slot.LocalToStageCoordinates(Vector2.Zero);
+                    if (mouseStagePos.X >= topLeft.X && mouseStagePos.X <= topLeft.X + slot.GetWidth() &&
+                        mouseStagePos.Y >= topLeft.Y && mouseStagePos.Y <= topLeft.Y + slot.GetHeight())
+                    {
+                        OnSlotHovered(slot);
+                        return;
+                    }
+                }
+            }
+
+            if (_queueSlots != null)
+            {
+                for (int i = 0; i < QUEUE_SLOTS; i++)
+                {
+                    var slot = _queueSlots[i];
+                    if (slot == null || slot.Crystal == null) continue;
+                    var topLeft = slot.LocalToStageCoordinates(Vector2.Zero);
+                    if (mouseStagePos.X >= topLeft.X && mouseStagePos.X <= topLeft.X + slot.GetWidth() &&
+                        mouseStagePos.Y >= topLeft.Y && mouseStagePos.Y <= topLeft.Y + slot.GetHeight())
+                    {
+                        OnSlotHovered(slot);
+                        return;
+                    }
+                }
+            }
         }
 
         /// <summary>

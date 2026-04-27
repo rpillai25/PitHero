@@ -397,6 +397,7 @@ PitHero extends Nez UI classes for custom behavior. Preferred approach: **inheri
 | `InventoryGrid` | `Group` | 20×9 slot grid with synergy |
 | `ShortcutBar` | `Group` | 8-slot horizontal bar |
 | `DragDropOverlay` | `Element` | Ghost sprite that follows cursor during drag |
+| `ItemCardTooltip` | `Tooltip` | Cached item stat card that follows cursor |
 
 ### IInputListener Interface
 
@@ -764,6 +765,132 @@ public class MyFeatureUI
 
 ---
 
+## Item Tooltip Caching & Hover Safety
+
+### ItemCardTooltip
+
+`ItemCardTooltip` (extends `Tooltip`) displays a rich item stat card at the cursor position. Building its content (`RebuildContent()`) creates many `Label`/`Image` widgets and is expensive. A per-instance content cache skips rebuilds when the same item is re-hovered.
+
+**Showing the tooltip:**
+```csharp
+// Simplest — no synergies, no buy price
+_itemTooltip.ShowItem(item);
+
+// With synergies (from InventoryGrid.GetSynergiesForSlot)
+_itemTooltip.ShowItem(item, synergies);
+
+// With buy price (vault items)
+_itemTooltip.ShowItem(item, showBuyPrice: true);
+```
+
+**Caching behaviour:** `ShowItem()` compares the incoming item *reference* (`ReferenceEquals`), synergy count, and `showBuyPrice` flag against the last build. If all match, it skips `RebuildContent()` entirely and just calls `Pack()`. The rebuild happens when:
+- A different item reference is passed
+- Synergy count changes (e.g. new stencil placed)
+- Price mode changes
+
+**When to invalidate the cache:**
+```csharp
+_itemTooltip.InvalidateCache();   // forces a full rebuild on the next ShowItem call
+```
+Call `InvalidateCache()` in these situations:
+- When the hero window or shop opens (items may have changed since last open)
+- When `RefreshShopData()` is called in `SecondChanceShopUI`
+- When a new save is loaded (handled automatically because window opens fresh)
+
+**Showing/hiding in the stage:**
+```csharp
+// Show
+_itemTooltip.ShowItem(item, synergies);
+if (_itemTooltip.GetContainer().GetParent() == null)
+    _stage.AddElement(_itemTooltip.GetContainer());
+_itemTooltip.GetContainer().ToFront();
+
+// Hide
+_itemTooltip.GetContainer().Remove();
+
+// Check if visible
+bool isShowing = _itemTooltip.GetContainer().HasParent();
+```
+
+**Positioning (call every frame while shown):**
+```csharp
+var mousePos = _stage.GetMousePosition();
+var container = _itemTooltip.GetContainer();
+container.Validate();   // ensure size is calculated before clamping
+float tx = mousePos.X + 10f;
+float ty = mousePos.Y + 10f;
+float stageH = _stage.GetHeight();
+if (ty + container.GetHeight() > stageH)
+    ty = stageH - container.GetHeight();
+if (ty < 0) ty = 0;
+container.SetPosition(tx, ty);
+```
+
+---
+
+### Periodic Hover Safety Check
+
+Nez UI hover events (`OnMouseEnter`) fire once when the mouse enters an element. If the event is missed (e.g. window opens while cursor is already over a slot, or the event is consumed by an overlapping element), the tooltip never appears.
+
+**Pattern:** In the owning UI class's `Update()` method, add a frame counter and every 5 frames hit-test all slots against the mouse position. If a slot with content is under the cursor and the tooltip is not showing, trigger the hover handler directly.
+
+```csharp
+// Field
+private int _hoverCheckFrame;
+
+// In Update():
+_hoverCheckFrame++;
+if (_hoverCheckFrame % 5 == 0)
+    PerformPeriodicHoverCheck();
+
+// Safety net method:
+private void PerformPeriodicHoverCheck()
+{
+    if (_tooltip == null) return;
+    if (_tooltip.GetContainer().HasParent()) return;   // already showing — do nothing
+
+    var mousePos = _stage.GetMousePosition();
+
+    // Hit-test all slots manually
+    for (int i = 0; i < _slots.Length; i++)
+    {
+        var slot = _slots[i];
+        if (slot == null || slot.Item == null) continue;
+        var topLeft = slot.LocalToStageCoordinates(Vector2.Zero);
+        if (mousePos.X >= topLeft.X && mousePos.X <= topLeft.X + slot.GetWidth() &&
+            mousePos.Y >= topLeft.Y && mousePos.Y <= topLeft.Y + slot.GetHeight())
+        {
+            HandleSlotHovered(slot);   // reuse the normal hover handler
+            return;
+        }
+    }
+}
+```
+
+**Rules:**
+- Use `% 5` (every 5 frames), not every frame — avoids calling expensive slot traversal at 60 Hz.
+- Guard with `HasParent()` / `IsVisible()` so the check is a no-op when the tooltip is already on screen.
+- Reuse the existing `HandleSlotHovered` / `OnSlotHovered` handler — do not duplicate tooltip positioning logic.
+- The check belongs in the UI class that owns the tooltip, not in the slot element itself.
+
+**Where this is applied in PitHero:**
+
+| UI Context | Tooltip Type | Where Update() is called |
+|---|---|---|
+| `HeroUI` inventory tab | `ItemCardTooltip` | `HeroUI.Update()` → `PerformPeriodicHoverCheck()` |
+| `HeroUI` crystals tab | `Window`+`Label` | `HeroUI.Update()` → `_crystalsTabComponent.Update()` |
+| `SecondChanceShopUI` vault items | `ItemCardTooltip` | `SecondChanceShopUI.Update()` → `_vaultItemGrid.Update(mousePos)` |
+| `SecondChanceShopUI` hero inventory | `ItemCardTooltip` | `SecondChanceShopUI.Update()` → `PerformHeroInventoryPeriodicHoverCheck()` |
+| `SecondChanceShopUI` vault crystals | `Window`+`Label` | `SecondChanceShopUI.Update()` → `_vaultCrystalGrid.Update(mousePos)` |
+| `SecondChanceShopUI` hero crystals | `Window`+`Label` | `SecondChanceShopUI.Update()` → `_heroCrystalPanel.Update(mousePos)` |
+
+**For Window+Label crystal tooltips** (cheaper, no cache needed), check `GetParent() != null && IsVisible()` instead of `HasParent()` since `Remove()` is called on unhover:
+```csharp
+if (_hoverTooltipWindow != null && _hoverTooltipWindow.GetParent() != null && _hoverTooltipWindow.IsVisible()) return;
+```
+
+---
+
 ## Quick Reference: Common Gotchas
 
 | Gotcha | Fix |
@@ -778,3 +905,6 @@ public class MyFeatureUI
 | Font not showing | Use `Graphics.Instance.BitmapFont` or load via `Content.LoadBitmapFont(path)` |
 | Drag source sprite disappears | Always call `InventoryDragManager.EndDrag()` or `CancelDrag()` — both restore `SetItemSpriteHidden(false)` |
 | Wrong sprite shown during drag | Items atlas: use `item.SpriteName`. Skills atlas: `SkillsStencils.atlas` keyed by `skill.Id`, fall back to `UI.atlas/"SkillIcon1"` |
+| Item tooltip doesn't appear on hover | Add a periodic hover check (every 5 frames) in the owning UI's `Update()` — see "Periodic Hover Safety Check" section |
+| Item tooltip rebuilds on every hover (slow) | Call `_itemTooltip.ShowItem()` — it skips `RebuildContent()` when the same item ref + synergy count + price mode is already built |
+| Tooltip shows stale stats after save load or window reopen | Call `_itemTooltip.InvalidateCache()` when the window opens or `RefreshShopData()` is called |

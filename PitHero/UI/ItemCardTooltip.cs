@@ -31,6 +31,11 @@ namespace PitHero.UI
         private Table _contentTable;
         private Container _wrapper;
 
+        // Content cache — avoids calling RebuildContent() for the same item reference
+        private IItem _lastBuiltForItem;
+        private int _lastSynergyCount = -1;
+        private bool _lastShowBuyPrice;
+
         public ItemCardTooltip(Element targetElement, Skin skin) : base(null, targetElement)
         {
             // Create content table
@@ -67,8 +72,28 @@ namespace PitHero.UI
                 return;
             }
 
+            // Skip rebuild if content is already current for this exact item reference,
+            // synergy count, and price mode — avoids expensive widget recreation.
+            int synergyCount = synergies != null ? synergies.Count : 0;
+            if (ReferenceEquals(_item, _lastBuiltForItem)
+                && synergyCount == _lastSynergyCount
+                && _showBuyPrice == _lastShowBuyPrice)
+            {
+                _container.Pack();
+                return;
+            }
+
             RebuildContent();
+            _lastBuiltForItem = _item;
+            _lastSynergyCount = synergyCount;
+            _lastShowBuyPrice = _showBuyPrice;
             _container.Pack();
+        }
+
+        /// <summary>Invalidates the content cache, forcing a full rebuild on the next ShowItem call.</summary>
+        public void InvalidateCache()
+        {
+            _lastBuiltForItem = null;
         }
 
         /// <summary>Rebuilds the tooltip content for the current item and sizes width to longest line plus padding.</summary>

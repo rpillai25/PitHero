@@ -51,6 +51,7 @@ namespace PitHero.UI
 
         // Tooltip for hovering over items
         private ItemCardTooltip _itemTooltip;
+        private int _hoverCheckFrame;
         
         // Text service for localization
         private TextService _textService;
@@ -839,6 +840,7 @@ namespace PitHero.UI
             if (_windowVisible)
             {
                 UIWindowManager.OnUIWindowOpening();
+                _itemTooltip?.InvalidateCache();
                 InitializePriorityItems();
                 _priorityList?.Rebuild();
                 InitializeHealPriorityItems();
@@ -1147,7 +1149,28 @@ namespace PitHero.UI
                 // Update hero crystal tab tooltip
                 if (_heroCrystalTab != null)
                     _heroCrystalTab.Update();
+
+                // Update crystals collection tab hover check
+                _crystalsTabComponent?.Update();
+
+                // Periodic hover check — safety net for missed hover events
+                _hoverCheckFrame++;
+                if (_hoverCheckFrame % 5 == 0)
+                    PerformPeriodicHoverCheck();
             }
+        }
+
+        /// <summary>Periodic safety-net hover check: ensures the item tooltip appears if the mouse is
+        /// inside a slot but the hover event was not delivered. Runs every 5 frames.</summary>
+        private void PerformPeriodicHoverCheck()
+        {
+            if (_itemTooltip == null || _inventoryGrid == null) return;
+            if (_itemTooltip.GetContainer().HasParent()) return;
+
+            var mousePos = _stage.GetMousePosition();
+            var slot = _inventoryGrid.GetSlotAtStagePosition(mousePos);
+            if (slot != null && slot.SlotData.Item != null)
+                HandleItemHovered(slot.SlotData.Item, slot);
         }
 
         public bool IsWindowVisible => _windowVisible;

@@ -54,6 +54,7 @@ namespace PitHero.UI
 
         // Which tab is currently active (0=Items, 1=Crystals)
         private int _activeTabIndex = 0;
+        private int _hoverCheckFrame;
 
         private enum ShopMode { Normal, Half }
         private ShopMode _currentShopMode = ShopMode.Normal;
@@ -455,6 +456,34 @@ namespace PitHero.UI
             UpdatePromotionVisibilityIfNeeded();
             UpdateButtonStyleIfNeeded();
             UpdateHeroInventoryTooltipPosition();
+
+            if (_windowVisible && _stage != null)
+            {
+                var mousePos = _stage.GetMousePosition();
+                if (_activeTabIndex == 0)
+                {
+                    _vaultItemGrid?.Update(mousePos);
+                    PerformHeroInventoryPeriodicHoverCheck(mousePos);
+                }
+                else
+                {
+                    _vaultCrystalGrid?.Update(mousePos);
+                    _heroCrystalPanel?.Update(mousePos);
+                }
+            }
+        }
+
+        /// <summary>Periodic safety-net hover check for the hero inventory tooltip in the shop.</summary>
+        private void PerformHeroInventoryPeriodicHoverCheck(Vector2 mousePos)
+        {
+            _hoverCheckFrame++;
+            if (_hoverCheckFrame % 5 != 0) return;
+            if (_heroInventoryTooltip == null || _heroInventoryGrid == null) return;
+            if (_heroInventoryTooltip.GetContainer().HasParent()) return;
+
+            var slot = _heroInventoryGrid.GetSlotAtStagePosition(mousePos);
+            if (slot != null && slot.SlotData.Item != null)
+                HandleHeroInventoryItemHovered(slot.SlotData.Item, slot);
         }
 
         /// <summary>
@@ -988,6 +1017,8 @@ namespace PitHero.UI
         /// <summary>Refreshes all shop data when the window is opened.</summary>
         private void RefreshShopData()
         {
+            _heroInventoryTooltip?.InvalidateCache();
+
             var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
             if (vault != null)
             {
