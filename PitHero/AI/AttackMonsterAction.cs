@@ -1314,7 +1314,28 @@ namespace PitHero.AI
             if (mercComponent == null) return;
 
             Debug.Log($"[AttackMonster] Mercenary {mercComponent.LinkedMercenary.Name} died in battle");
-            
+
+            // Transfer all equipped gear to the Second Chance Merchant Vault
+            var vault = Core.Services.GetService<SecondChanceMerchantVault>();
+            if (vault != null)
+            {
+                var merc = mercComponent.LinkedMercenary;
+                var gearToTransfer = new List<RolePlayingFramework.Equipment.IItem>(6);
+                if (merc.WeaponShield1 != null) gearToTransfer.Add(merc.WeaponShield1);
+                if (merc.Armor != null) gearToTransfer.Add(merc.Armor);
+                if (merc.Hat != null) gearToTransfer.Add(merc.Hat);
+                if (merc.WeaponShield2 != null) gearToTransfer.Add(merc.WeaponShield2);
+                if (merc.Accessory1 != null) gearToTransfer.Add(merc.Accessory1);
+                if (merc.Accessory2 != null) gearToTransfer.Add(merc.Accessory2);
+
+                vault.AddItems(gearToTransfer);
+                Debug.Log($"[AttackMonster] Transferred {gearToTransfer.Count} items from {merc.Name} to SecondChanceMerchantVault");
+            }
+            else
+            {
+                Debug.Warn("[AttackMonster] SecondChanceMerchantVault service not found - mercenary gear lost");
+            }
+
             // Check if this mercenary was following the hero
             bool wasFollowingHero = mercComponent.FollowTarget?.GetComponent<HeroComponent>() != null;
 
