@@ -36,5 +36,10 @@ namespace PitHero.AI.Interfaces
         /// <param name="radius">Radius for clearing fog (default 1)</param>
         /// <returns>True if any fog was actually cleared</returns>
         bool ClearFogOfWarAroundTile(int centerTileX, int centerTileY, HeroComponent heroComponent);
+
+        /// <summary>
+        /// Returns true when the specified tile currently has an active fog-of-war tile on the FogOfWar layer.
+        /// </summary>
+        bool IsFogOfWarTile(int tileX, int tileY);
     }
 }

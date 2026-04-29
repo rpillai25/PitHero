@@ -103,6 +103,18 @@ namespace PitHero.VirtualGame
         }
 
         /// <summary>
+        /// Returns true when the specified tile currently has an active fog-of-war tile on the FogOfWar layer.
+        /// </summary>
+        public bool IsFogOfWarTile(int tileX, int tileY)
+        {
+            var fogLayer = _virtualMap.GetVirtualLayer("FogOfWar");
+            if (fogLayer == null)
+                return false;
+
+            return fogLayer.GetTile(tileX, tileY) != null;
+        }
+
+        /// <summary>
         /// Initialize basic tile patterns that PitWidthManager expects to find
         /// </summary>
         private void InitializeBasicPatterns()

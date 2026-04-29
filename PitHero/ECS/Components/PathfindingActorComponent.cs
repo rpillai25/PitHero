@@ -16,6 +16,7 @@ namespace PitHero.ECS.Components
     {
         private AstarGridGraph _astarGraph;
         private bool _isPathfindingInitialized;
+        private readonly List<Point> _tempFogWalls = new List<Point>(64);
 
         /// <summary>
         /// Gets the A* pathfinding graph for this actor
@@ -155,6 +156,62 @@ namespace PitHero.ECS.Components
             {
                 Debug.Error($"[PathfindingActor] Error calculating path for {Entity.Name}: {ex.Message}");
                 return null;
+            }
+        }
+
+        /// <summary>
+        /// Calculate a path from start to target, treating fog-of-war covered tiles as additional walls.
+        /// Temporary fog walls are injected before the A* search and always removed in a finally block.
+        /// Falls back to regular CalculatePath when TiledMapService is unavailable.
+        /// </summary>
+        public virtual List<Point> CalculateFogAwarePath(Point start, Point target)
+        {
+            if (!_isPathfindingInitialized)
+            {
+                Debug.Warn($"[PathfindingActor] Cannot calculate fog-aware path for {Entity.Name} - pathfinding not initialized");
+                return null;
+            }
+
+            var tms = Core.Services.GetService<TiledMapService>();
+            if (tms == null)
+                return CalculatePath(start, target);
+
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            int pitLeft   = GameConfig.PitRectX;
+            int pitTop    = GameConfig.PitRectY;
+            int pitRight  = pitLeft + (pitWidthManager?.CurrentPitRectWidthTiles ?? GameConfig.PitRectWidth) - 1;
+            int pitBottom = pitTop + GameConfig.PitRectHeight - 1;
+
+            _tempFogWalls.Clear();
+
+            try
+            {
+                for (int x = pitLeft; x <= pitRight; x++)
+                {
+                    for (int y = pitTop; y <= pitBottom; y++)
+                    {
+                        if ((x == start.X && y == start.Y) || (x == target.X && y == target.Y))
+                            continue;
+
+                        if (tms.IsFogOfWarTile(x, y))
+                        {
+                            var fogTile = new Point(x, y);
+                            if (!_astarGraph.Walls.Contains(fogTile))
+                            {
+                                _astarGraph.Walls.Add(fogTile);
+                                _tempFogWalls.Add(fogTile);
+                            }
+                        }
+                    }
+                }
+
+                return CalculatePath(start, target);
+            }
+            finally
+            {
+                for (int i = 0; i < _tempFogWalls.Count; i++)
+                    _astarGraph.Walls.Remove(_tempFogWalls[i]);
+                _tempFogWalls.Clear();
             }
         }
 

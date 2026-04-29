@@ -143,7 +143,7 @@ namespace PitHero.ECS.Components
                 }
                 
                 _lastTargetTile = targetTile;
-                _currentPath = _pathfinding.CalculatePath(myTile, targetTile);
+                _currentPath = _pathfinding.CalculateFogAwarePath(myTile, targetTile);
                 _pathIndex = 0;
 
                 if (_currentPath == null || _currentPath.Count == 0)
