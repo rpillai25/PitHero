@@ -606,7 +606,12 @@ namespace PitHero.UI
             InventoryDragManager.EndDrag();
         }
 
-        /// <summary>Uses a consumable item from the referenced inventory slot.</summary>
+        /// <summary>
+        /// Uses a consumable item from the referenced inventory slot.
+        /// When <see cref="HeroComponent.UseConsumablesOnMercenaries"/> is enabled and the
+        /// hero is not in battle, targets the most critical party member instead of always
+        /// targeting the hero. Mirrors the targeting logic of <see cref="PitHero.AI.UseHealingItemAction"/>.
+        /// </summary>
         private void UseConsumable(IItem item, int bagIndex)
         {
             if (item is not Consumable consumable)
@@ -640,10 +645,21 @@ namespace PitHero.UI
                 return;
             }
 
-            // Try to consume the item immediately (out of battle)
-            if (consumable.Consume(hero))
+            // Determine the target: most critical party member when the option is enabled,
+            // otherwise always the hero.
+            object target = hero;
+            if (_heroComponent.UseConsumablesOnMercenaries)
             {
-                Debug.Log($"[ShortcutBar] Used {item.Name}");
+                target = FindMostCriticalTargetForConsumable(consumable);
+            }
+
+            // Try to consume the item immediately (out of battle)
+            if (consumable.Consume(target))
+            {
+                string targetName = target is RolePlayingFramework.Heroes.Hero h
+                    ? h.Name
+                    : ((RolePlayingFramework.Mercenaries.Mercenary)target).Name;
+                Debug.Log($"[ShortcutBar] Used {item.Name} on {targetName}");
 
                 // Reset HealingSkillExhausted if MP restoration item is used
                 if (_heroComponent != null && consumable.MPRestoreAmount > 0)
@@ -666,6 +682,82 @@ namespace PitHero.UI
             {
                 Debug.Log($"[ShortcutBar] Failed to use {item.Name}");
             }
+        }
+
+        /// <summary>
+        /// Finds the party member who can benefit most from the given consumable.
+        /// Unlike the AI path, this does not use criticality thresholds — the player has
+        /// already chosen to use the item. Selects whoever has the most missing HP (for HP
+        /// potions), most missing MP (for MP potions), or lowest min(HP%,MP%) (for mix
+        /// potions), restricted to targets the potion can actually help. Falls back to the
+        /// hero if nobody has any missing resources of the relevant type.
+        /// </summary>
+        private object FindMostCriticalTargetForConsumable(Consumable consumable)
+        {
+            bool restoresHP = consumable.HPRestoreAmount != 0;
+            bool restoresMP = consumable.MPRestoreAmount != 0;
+
+            object bestTarget = null;
+            float lowestPercent = 1f;
+
+            // Evaluate hero
+            var heroObj = _heroComponent.LinkedHero;
+            if (heroObj != null)
+            {
+                float hpPct = heroObj.MaxHP > 0 ? (float)heroObj.CurrentHP / heroObj.MaxHP : 1f;
+                float mpPct = heroObj.MaxMP > 0 ? (float)heroObj.CurrentMP / heroObj.MaxMP : 1f;
+                bool canBenefit = (restoresHP && hpPct < 1f) || (restoresMP && mpPct < 1f);
+                if (canBenefit)
+                {
+                    float relevantPct = RelevantPercent(hpPct, mpPct, restoresHP, restoresMP);
+                    if (relevantPct < lowestPercent)
+                    {
+                        bestTarget = heroObj;
+                        lowestPercent = relevantPct;
+                    }
+                }
+            }
+
+            // Evaluate each hired mercenary
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager != null)
+            {
+                var hiredMercenaries = mercenaryManager.GetHiredMercenaries();
+                for (int i = 0; i < hiredMercenaries.Count; i++)
+                {
+                    var merc = hiredMercenaries[i];
+                    var mercComp = merc.GetComponent<MercenaryComponent>();
+                    if (mercComp?.LinkedMercenary == null)
+                        continue;
+
+                    var mercenary = mercComp.LinkedMercenary;
+                    float hpPct = mercenary.MaxHP > 0 ? (float)mercenary.CurrentHP / mercenary.MaxHP : 1f;
+                    float mpPct = mercenary.MaxMP > 0 ? (float)mercenary.CurrentMP / mercenary.MaxMP : 1f;
+                    bool canBenefit = (restoresHP && hpPct < 1f) || (restoresMP && mpPct < 1f);
+                    if (canBenefit)
+                    {
+                        float relevantPct = RelevantPercent(hpPct, mpPct, restoresHP, restoresMP);
+                        if (relevantPct < lowestPercent)
+                        {
+                            bestTarget = mercenary;
+                            lowestPercent = relevantPct;
+                        }
+                    }
+                }
+            }
+
+            // Fall back to hero — Consume() will return false gracefully if at full HP/MP
+            return bestTarget ?? _heroComponent.LinkedHero;
+        }
+
+        /// <summary>Returns the percentage most relevant to a potion's restore type.</summary>
+        private static float RelevantPercent(float hpPct, float mpPct, bool restoresHP, bool restoresMP)
+        {
+            if (restoresHP && restoresMP)
+                return System.Math.Min(hpPct, mpPct);
+            if (restoresHP)
+                return hpPct;
+            return mpPct;
         }
 
         /// <summary>Uses a skill from the shortcut bar.</summary>
