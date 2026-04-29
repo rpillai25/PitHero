@@ -223,6 +223,12 @@ namespace PitHero
         // UI Button Spacing
         public const float UIButtonPadding = 4f; // Padding between UI buttons
 
+        // UI bar auto-hide
+        public const float UIBarAutoHideDelay = 10f;  // Seconds of idle before the UI bar auto-hides
+        public const float UIBarSlideSpeed = 500f;    // Stage pixels per second for the slide animation
+        public const float UIBarHideOffset = 54f;     // Stage pixels the bar slides up when hidden
+        public const float UIBarProximityY = 48f;     // Mouse Y <= this (stage coords) triggers proximity-unhide
+
         // Second Chance Shop layout positions
         // Shop window (vault grid + tabs) positioned near left-center
         public const float SecondChanceShopWindowX = 573f;

@@ -104,6 +104,17 @@ namespace PitHero.UI
         // Keyboard shortcut state
         private Microsoft.Xna.Framework.Input.KeyboardState _prevKeyboardState;
 
+        // UI bar auto-hide state
+        private bool _uiBarHidden = false;
+        private float _uiBarSlideY = 0f;      // current animated Y offset (0 = visible, negative = off-screen above)
+        private float _uiBarIdleTimer = 0f;
+        private bool _uiBarAnimating = false;
+
+        // Cached stage-coordinate bounds of the bar (updated each PositionUI call)
+        private float _uiBarLeft = 0f;
+        private float _uiBarRight = 1920f;
+        private float _uiBarBottom = 54f;
+
         /// <summary>Gets the HeroUI instance.</summary>
         public HeroUI HeroUI => _heroUI;
 
@@ -789,7 +800,7 @@ namespace PitHero.UI
 
             // Center all buttons as a group
             float startX = (stageW - totalWidth) * 0.5f;
-            float buttonY = 2f;
+            float buttonY = 2f + _uiBarSlideY;
 
             // Position Replenish button leftmost
             float replenishX = startX;
@@ -818,6 +829,12 @@ namespace PitHero.UI
             // Position second chance shop button to the right of monster
             float secondChanceX = monsterX + monsterW + GameConfig.UIButtonPadding;
             _secondChanceShopUI.SetPosition(secondChanceX, buttonY);
+
+            // Cache bar bounds in normal (non-animated) stage coords for proximity detection.
+            // Use the resting buttonY (2f) so the zone is stable even while animating.
+            _uiBarLeft = startX;
+            _uiBarRight = startX + totalWidth;
+            _uiBarBottom = 2f + gearH;
 
             if (_isVisible)
             {
@@ -1034,6 +1051,9 @@ namespace PitHero.UI
             if (JustPressed(Microsoft.Xna.Framework.Input.Keys.M))
                 _monsterUI?.TriggerToggle();
 
+            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.Tab))
+                ToggleUIBarVisibility();
+
             _prevKeyboardState = currentKeyState;
         }
 
@@ -1063,8 +1083,14 @@ namespace PitHero.UI
                 UIWindowManager.UpdatePersistentWindowSizeIfChanged();
             }
 
-            // Reposition only if any button size changed or stage dimensions changed
-            bool needsReposition = _gearStyleChanged;
+            // Handle UI bar auto-hide (updates _uiBarSlideY and _uiBarAnimating)
+            bool uiBarWasAnimating = _uiBarAnimating;
+            UpdateUIBarAutoHide();
+
+            // Reposition only if any button size changed or stage dimensions changed.
+            // Include uiBarWasAnimating so PositionUI is called on the frame animation stops,
+            // ensuring buttons land at their exact target position.
+            bool needsReposition = _gearStyleChanged || _uiBarAnimating || uiBarWasAnimating;
             if (_fastFUI != null && _fastFUI.ConsumeStyleChangedFlag()) needsReposition = true;
             if (_heroUI != null && _heroUI.ConsumeStyleChangedFlag()) needsReposition = true;
             if (_monsterUI != null && _monsterUI.ConsumeStyleChangedFlag()) needsReposition = true;
@@ -1241,6 +1267,100 @@ namespace PitHero.UI
                 _zoomSlider.SetValueAndCommit(currentZoom);
                 _zoomLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsZoom), currentZoom.ToString("F2")));
                 Debug.Log($"[SettingsUI] Updated zoom slider to current camera zoom: {currentZoom:F2}x");
+            }
+        }
+
+        /// <summary>Toggles the UI bar between visible and hidden. Hides only when no sub-window is open.</summary>
+        private void ToggleUIBarVisibility()
+        {
+            if (_uiBarHidden)
+            {
+                ShowUIBar();
+                return;
+            }
+
+            bool anyWindowOpen = _isVisible ||
+                                 (_heroUI != null && _heroUI.IsWindowVisible) ||
+                                 (_monsterUI != null && _monsterUI.IsWindowVisible) ||
+                                 (_secondChanceShopUI != null && _secondChanceShopUI.IsWindowVisible);
+            if (!anyWindowOpen)
+                HideUIBar();
+        }
+
+        /// <summary>Slides the UI bar down into its normal position.</summary>
+        private void ShowUIBar()
+        {
+            _uiBarHidden = false;
+            _uiBarIdleTimer = 0f;
+            _uiBarAnimating = true;
+        }
+
+        /// <summary>Slides the UI bar up off the top of the screen.</summary>
+        private void HideUIBar()
+        {
+            _uiBarHidden = true;
+            _uiBarAnimating = true;
+        }
+
+        /// <summary>
+        /// Updates the UI bar auto-hide timer, proximity detection, and slide animation each frame.
+        /// </summary>
+        private void UpdateUIBarAutoHide()
+        {
+            // Use raw mouse state: _stage.GetMousePosition() clamps to window bounds and cannot
+            // reliably detect when the cursor has left the game window.
+            var rawMouse = Microsoft.Xna.Framework.Input.Mouse.GetState();
+            var viewport = _game.GraphicsDevice.Viewport;
+            bool mouseInWindow = rawMouse.X >= 0 && rawMouse.X < viewport.Width &&
+                                 rawMouse.Y >= 0 && rawMouse.Y < viewport.Height;
+
+            // Scale raw window-pixel coords to stage virtual coords for bounds comparison.
+            float scaleX = viewport.Width > 0 ? _stage.GetWidth() / viewport.Width : 1f;
+            float scaleY = viewport.Height > 0 ? _stage.GetHeight() / viewport.Height : 1f;
+            float stageMX = rawMouse.X * scaleX;
+            float stageMY = rawMouse.Y * scaleY;
+
+            const float proximityPad = 16f;
+            bool mouseInProximity = mouseInWindow &&
+                                    stageMX >= _uiBarLeft - proximityPad &&
+                                    stageMX <= _uiBarRight + proximityPad &&
+                                    stageMY <= _uiBarBottom + proximityPad;
+            bool anyWindowOpen = _isVisible ||
+                                 (_heroUI != null && _heroUI.IsWindowVisible) ||
+                                 (_monsterUI != null && _monsterUI.IsWindowVisible) ||
+                                 (_secondChanceShopUI != null && _secondChanceShopUI.IsWindowVisible);
+
+            if (mouseInProximity || anyWindowOpen)
+            {
+                _uiBarIdleTimer = 0f;
+                if (_uiBarHidden)
+                    ShowUIBar();
+            }
+            else
+            {
+                _uiBarIdleTimer += Time.DeltaTime;
+                if (_uiBarIdleTimer >= GameConfig.UIBarAutoHideDelay && !_uiBarHidden)
+                    HideUIBar();
+            }
+
+            if (!_uiBarAnimating)
+                return;
+
+            // Derive the hide offset from the actual button height so half-size (2x sprite) mode
+            // moves the bar far enough to fully clear the screen edge.
+            float hideOffset = _gearButton != null ? (_gearButton.GetHeight() + 4f) : GameConfig.UIBarHideOffset;
+            float targetY = _uiBarHidden ? -hideOffset : 0f;
+            float delta = targetY - _uiBarSlideY;
+            float step = GameConfig.UIBarSlideSpeed * Time.DeltaTime;
+
+            if (Math.Abs(delta) <= step)
+            {
+                _uiBarSlideY = targetY;
+                _uiBarAnimating = false;
+            }
+            else
+            {
+                _uiBarSlideY += (delta > 0f ? 1f : -1f) * step;
             }
         }
     }
