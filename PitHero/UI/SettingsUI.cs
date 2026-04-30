@@ -121,6 +121,8 @@ namespace PitHero.UI
         private float _shortcutBarSlideY = 0f;   // 0 = visible, positive = sliding off-screen below
         private float _shortcutBarIdleTimer = 0f;
         private bool _shortcutBarAnimating = false;
+        private bool _prevIsHalfHeightMode = false;
+        private bool _halfHeightModeKnown = false; // true after first UpdateShortcutBarAutoHide call
 
         // Hide bar settings (all enabled by default)
         private bool _autoHideEnabled = true;
@@ -1454,6 +1456,25 @@ namespace PitHero.UI
         {
             if (_shortcutBar == null) return;
 
+            // Detect window-mode changes. On switch to half-size, immediately snap the bar
+            // back to visible — the 2x scale changes the base position, so any stale slide
+            // offset would land the bar at the wrong place, and the bigger bar warrants showing.
+            bool isHalfMode = WindowManager.IsHalfHeightMode();
+            if (!_halfHeightModeKnown)
+            {
+                _prevIsHalfHeightMode = isHalfMode;
+                _halfHeightModeKnown = true;
+            }
+            else if (isHalfMode != _prevIsHalfHeightMode)
+            {
+                _prevIsHalfHeightMode = isHalfMode;
+                _shortcutBarHidden = false;
+                _shortcutBarSlideY = 0f;
+                _shortcutBarAnimating = false;
+                _shortcutBarIdleTimer = 0f;
+                _shortcutBar.SetSlideOffsetY(0f);
+            }
+
             var rawMouse = Microsoft.Xna.Framework.Input.Mouse.GetState();
             var viewport = _game.GraphicsDevice.Viewport;
             bool mouseInWindow = rawMouse.X >= 0 && rawMouse.X < viewport.Width &&
@@ -1464,8 +1485,12 @@ namespace PitHero.UI
             float stageMX = rawMouse.X * scaleX;
             float stageMY = rawMouse.Y * scaleY;
 
-            // Compute shortcut bar horizontal bounds from its current base position.
-            float sbWidth = _shortcutBar.GetWidth();
+            // Compute shortcut bar bounds. Group.GetWidth() returns 0 because the Group's size is
+            // not auto-derived from its children — compute from slot count and scale directly.
+            float sbScale = isHalfMode ? 2f : 1f;
+            float sbSlotSize = 32f * sbScale;
+            float sbSlotPad = 1f * sbScale;
+            float sbWidth = 8 * (sbSlotSize + sbSlotPad);
             float sbX = _shortcutBar.GetX();
             const float sbProximityPad = 16f;
             float stageH = _stage.GetHeight();
@@ -1474,7 +1499,10 @@ namespace PitHero.UI
                                         stageMX <= sbX + sbWidth + sbProximityPad &&
                                         stageMY >= stageH - GameConfig.UIBarProximityY;
 
-            if (mouseNearShortcutBar)
+            // Hero UI open: show bar immediately (drag-to-shortcut feedback) and suppress idle hide.
+            bool heroUIOpen = _heroUI != null && _heroUI.IsWindowVisible;
+
+            if (mouseNearShortcutBar || heroUIOpen)
             {
                 _shortcutBarIdleTimer = 0f;
                 if (_shortcutBarHidden)
@@ -1489,8 +1517,13 @@ namespace PitHero.UI
 
             if (!_shortcutBarAnimating) return;
 
-            float sbScale = WindowManager.IsHalfHeightMode() ? 2f : 1f;
-            float sbHideOffset = 32f * sbScale + 20f;
+            // Mirror the PositionShortcutBar formula to compute how far the bar must slide
+            // before its top edge clears the bottom of the stage.
+            // PositionShortcutBar: bottomY = stageH - barHeight - 16 + yOffset
+            //   => distance from bottomY to stageH = barHeight + 16 - yOffset
+            float sbBarHeight = 32f * sbScale;
+            float sbYOffset = isHalfMode ? -16f : 0f;
+            float sbHideOffset = sbBarHeight + 16f - sbYOffset + 4f; // +4 margin
             float targetOffsetY = _shortcutBarHidden ? sbHideOffset : 0f;
             float sbDelta = targetOffsetY - _shortcutBarSlideY;
             float sbStep = GameConfig.UIBarSlideSpeed * Time.DeltaTime;
