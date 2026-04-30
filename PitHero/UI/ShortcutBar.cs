@@ -50,6 +50,7 @@ namespace PitHero.UI
         private float _baseX = 0f;
         private float _baseY = 0f;
         private float _offsetX = 0f;
+        private float _slideOffsetY = 0f;
 
         // Public events for item/skill display
         public event System.Action<IItem> OnItemHovered;
@@ -134,10 +135,17 @@ namespace PitHero.UI
             UpdatePosition();
         }
 
-        /// <summary>Updates the actual position based on base + offset.</summary>
+        /// <summary>Sets a vertical slide offset used for the hide/show animation.</summary>
+        public void SetSlideOffsetY(float offsetY)
+        {
+            _slideOffsetY = offsetY;
+            UpdatePosition();
+        }
+
+        /// <summary>Updates the actual position based on base + offset + slide.</summary>
         private void UpdatePosition()
         {
-            SetPosition(_baseX + _offsetX, _baseY);
+            SetPosition(_baseX + _offsetX, _baseY + _slideOffsetY);
         }
 
         /// <summary>Connects shortcut bar to hero and inventory grid.</summary>

@@ -115,11 +115,31 @@ namespace PitHero.UI
         private float _uiBarRight = 1920f;
         private float _uiBarBottom = 54f;
 
+        // Shortcut bar reference and hide state
+        private ShortcutBar _shortcutBar;
+        private bool _shortcutBarHidden = false;
+        private float _shortcutBarSlideY = 0f;   // 0 = visible, positive = sliding off-screen below
+        private float _shortcutBarIdleTimer = 0f;
+        private bool _shortcutBarAnimating = false;
+
+        // Hide bar settings (all enabled by default)
+        private bool _autoHideEnabled = true;
+        private bool _hideButtonBar = true;
+        private bool _hideShortcutBar = true;
+
+        // Hide bar settings checkboxes
+        private CheckBox _autoHideUIBarsCheckBox;
+        private CheckBox _hideButtonBarCheckBox;
+        private CheckBox _hideShortcutBarCheckBox;
+
         /// <summary>Gets the HeroUI instance.</summary>
         public HeroUI HeroUI => _heroUI;
 
         /// <summary>Gets the SecondChanceShopUI instance.</summary>
         public SecondChanceShopUI SecondChanceShopUI => _secondChanceShopUI;
+
+        /// <summary>Connects the shortcut bar so SettingsUI can manage its hide/show animation.</summary>
+        public void SetShortcutBar(ShortcutBar bar) => _shortcutBar = bar;
 
         // Window size modes
         public enum WindowSizeMode
@@ -619,6 +639,28 @@ namespace PitHero.UI
             };
             mpSliderTable.Add(_replenishMPSlider).Width(180);
             buttonsTable.Add(mpSliderTable).Left();
+            buttonsTable.Row();
+
+            // Hide Bar Settings section
+            buttonsTable.Add(new Label(GetText(TextType.UI, UITextKey.SettingsHideBarLabel), skin, "ph-default")).Left().SetPadTop(20f).SetPadBottom(8f);
+            buttonsTable.Row();
+
+            _autoHideUIBarsCheckBox = new CheckBox(GetText(TextType.UI, UITextKey.SettingsAutoHideUIBars), skin, "ph-default");
+            _autoHideUIBarsCheckBox.IsChecked = _autoHideEnabled;
+            _autoHideUIBarsCheckBox.OnChanged += (isChecked) => { _autoHideEnabled = isChecked; };
+            buttonsTable.Add(_autoHideUIBarsCheckBox).Left().SetPadBottom(4f);
+            buttonsTable.Row();
+
+            _hideButtonBarCheckBox = new CheckBox(GetText(TextType.UI, UITextKey.SettingsHideButtonBar), skin, "ph-default");
+            _hideButtonBarCheckBox.IsChecked = _hideButtonBar;
+            _hideButtonBarCheckBox.OnChanged += (isChecked) => { _hideButtonBar = isChecked; };
+            buttonsTable.Add(_hideButtonBarCheckBox).Left().SetPadBottom(4f);
+            buttonsTable.Row();
+
+            _hideShortcutBarCheckBox = new CheckBox(GetText(TextType.UI, UITextKey.SettingsHideShortcutBar), skin, "ph-default");
+            _hideShortcutBarCheckBox.IsChecked = _hideShortcutBar;
+            _hideShortcutBarCheckBox.OnChanged += (isChecked) => { _hideShortcutBar = isChecked; };
+            buttonsTable.Add(_hideShortcutBarCheckBox).Left();
 
             buttonsTab.Add(buttonsTable).Expand().Top().Left();
         }
@@ -1054,6 +1096,20 @@ namespace PitHero.UI
             if (JustPressed(Microsoft.Xna.Framework.Input.Keys.Tab))
                 ToggleUIBarVisibility();
 
+            // If the shortcut bar is hidden and a shortcut number key is pressed, unhide it for feedback.
+            if (_shortcutBarHidden)
+            {
+                for (int k = 0; k < 8; k++)
+                {
+                    var numKey = (Microsoft.Xna.Framework.Input.Keys)((int)Microsoft.Xna.Framework.Input.Keys.D1 + k);
+                    if (JustPressed(numKey))
+                    {
+                        ShowShortcutBar();
+                        break;
+                    }
+                }
+            }
+
             _prevKeyboardState = currentKeyState;
         }
 
@@ -1083,13 +1139,14 @@ namespace PitHero.UI
                 UIWindowManager.UpdatePersistentWindowSizeIfChanged();
             }
 
-            // Handle UI bar auto-hide (updates _uiBarSlideY and _uiBarAnimating)
+            // Handle UI bar and shortcut bar auto-hide animations.
             bool uiBarWasAnimating = _uiBarAnimating;
             UpdateUIBarAutoHide();
+            UpdateShortcutBarAutoHide();
 
             // Reposition only if any button size changed or stage dimensions changed.
-            // Include uiBarWasAnimating so PositionUI is called on the frame animation stops,
-            // ensuring buttons land at their exact target position.
+            // Include wasAnimating so PositionUI is called on the frame the animation stops,
+            // ensuring buttons snap to their exact target position.
             bool needsReposition = _gearStyleChanged || _uiBarAnimating || uiBarWasAnimating;
             if (_fastFUI != null && _fastFUI.ConsumeStyleChangedFlag()) needsReposition = true;
             if (_heroUI != null && _heroUI.ConsumeStyleChangedFlag()) needsReposition = true;
@@ -1270,12 +1327,18 @@ namespace PitHero.UI
             }
         }
 
-        /// <summary>Toggles the UI bar between visible and hidden. Hides only when no sub-window is open.</summary>
+        /// <summary>
+        /// Toggles both bars based on their individual "Hide" checkboxes.
+        /// If any controlled bar is hidden, shows all. Otherwise hides the enabled bars.
+        /// </summary>
         private void ToggleUIBarVisibility()
         {
-            if (_uiBarHidden)
+            bool anyControlledBarHidden = (_hideButtonBar && _uiBarHidden) ||
+                                          (_hideShortcutBar && _shortcutBarHidden);
+            if (anyControlledBarHidden)
             {
-                ShowUIBar();
+                if (_hideButtonBar) ShowUIBar();
+                if (_hideShortcutBar) ShowShortcutBar();
                 return;
             }
 
@@ -1283,8 +1346,10 @@ namespace PitHero.UI
                                  (_heroUI != null && _heroUI.IsWindowVisible) ||
                                  (_monsterUI != null && _monsterUI.IsWindowVisible) ||
                                  (_secondChanceShopUI != null && _secondChanceShopUI.IsWindowVisible);
-            if (!anyWindowOpen)
+            if (_hideButtonBar && !anyWindowOpen)
                 HideUIBar();
+            if (_hideShortcutBar)
+                HideShortcutBar();
         }
 
         /// <summary>Slides the UI bar down into its normal position.</summary>
@@ -1330,13 +1395,14 @@ namespace PitHero.UI
                                  (_monsterUI != null && _monsterUI.IsWindowVisible) ||
                                  (_secondChanceShopUI != null && _secondChanceShopUI.IsWindowVisible);
 
+            // Proximity or an open window always resets the idle timer and shows the bar.
             if (mouseInProximity || anyWindowOpen)
             {
                 _uiBarIdleTimer = 0f;
                 if (_uiBarHidden)
                     ShowUIBar();
             }
-            else
+            else if (_autoHideEnabled && _hideButtonBar)
             {
                 _uiBarIdleTimer += Time.DeltaTime;
                 if (_uiBarIdleTimer >= GameConfig.UIBarAutoHideDelay && !_uiBarHidden)
@@ -1362,6 +1428,84 @@ namespace PitHero.UI
             {
                 _uiBarSlideY += (delta > 0f ? 1f : -1f) * step;
             }
+        }
+
+        /// <summary>Slides the shortcut bar into view.</summary>
+        private void ShowShortcutBar()
+        {
+            if (_shortcutBar == null) return;
+            _shortcutBarHidden = false;
+            _shortcutBarIdleTimer = 0f;
+            _shortcutBarAnimating = true;
+        }
+
+        /// <summary>Slides the shortcut bar down off the bottom of the screen.</summary>
+        private void HideShortcutBar()
+        {
+            if (_shortcutBar == null) return;
+            _shortcutBarHidden = true;
+            _shortcutBarAnimating = true;
+        }
+
+        /// <summary>
+        /// Updates the shortcut bar auto-hide timer, proximity detection, and slide animation each frame.
+        /// </summary>
+        private void UpdateShortcutBarAutoHide()
+        {
+            if (_shortcutBar == null) return;
+
+            var rawMouse = Microsoft.Xna.Framework.Input.Mouse.GetState();
+            var viewport = _game.GraphicsDevice.Viewport;
+            bool mouseInWindow = rawMouse.X >= 0 && rawMouse.X < viewport.Width &&
+                                 rawMouse.Y >= 0 && rawMouse.Y < viewport.Height;
+
+            float scaleX = viewport.Width > 0 ? _stage.GetWidth() / viewport.Width : 1f;
+            float scaleY = viewport.Height > 0 ? _stage.GetHeight() / viewport.Height : 1f;
+            float stageMX = rawMouse.X * scaleX;
+            float stageMY = rawMouse.Y * scaleY;
+
+            // Compute shortcut bar horizontal bounds from its current base position.
+            float sbWidth = _shortcutBar.GetWidth();
+            float sbX = _shortcutBar.GetX();
+            const float sbProximityPad = 16f;
+            float stageH = _stage.GetHeight();
+            bool mouseNearShortcutBar = mouseInWindow &&
+                                        stageMX >= sbX - sbProximityPad &&
+                                        stageMX <= sbX + sbWidth + sbProximityPad &&
+                                        stageMY >= stageH - GameConfig.UIBarProximityY;
+
+            if (mouseNearShortcutBar)
+            {
+                _shortcutBarIdleTimer = 0f;
+                if (_shortcutBarHidden)
+                    ShowShortcutBar();
+            }
+            else if (_autoHideEnabled && _hideShortcutBar)
+            {
+                _shortcutBarIdleTimer += Time.DeltaTime;
+                if (_shortcutBarIdleTimer >= GameConfig.UIBarAutoHideDelay && !_shortcutBarHidden)
+                    HideShortcutBar();
+            }
+
+            if (!_shortcutBarAnimating) return;
+
+            float sbScale = WindowManager.IsHalfHeightMode() ? 2f : 1f;
+            float sbHideOffset = 32f * sbScale + 20f;
+            float targetOffsetY = _shortcutBarHidden ? sbHideOffset : 0f;
+            float sbDelta = targetOffsetY - _shortcutBarSlideY;
+            float sbStep = GameConfig.UIBarSlideSpeed * Time.DeltaTime;
+
+            if (Math.Abs(sbDelta) <= sbStep)
+            {
+                _shortcutBarSlideY = targetOffsetY;
+                _shortcutBarAnimating = false;
+            }
+            else
+            {
+                _shortcutBarSlideY += (sbDelta > 0f ? 1f : -1f) * sbStep;
+            }
+
+            _shortcutBar.SetSlideOffsetY(_shortcutBarSlideY);
         }
     }
 }

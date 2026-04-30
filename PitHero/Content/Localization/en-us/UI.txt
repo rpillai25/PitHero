@@ -43,7 +43,7 @@ HudGold,Gold: {0}
 HudLevelPrefix,Lv 
 TabWindow,Window
 TabSession,Session
-TabButtons,Buttons
+TabButtons,UI Options
 SettingsAlwaysOnTop,Always On Top
 SettingsAutoScrollToHero,Auto-scroll to Hero
 SettingsSwapMonitor,Swap Monitor
@@ -56,9 +56,13 @@ SettingsDockTop,Dock Top
 SettingsDockBottom,Dock Bottom
 SettingsDockCenter,Dock Center
 SettingsGameSession,Game Session
-SettingsReplenishLabel,Replenish
+SettingsReplenishLabel,Replenish Button Thresholds
 SettingsHpThreshold,HP Threshold: {0}%
 SettingsMpThreshold,MP Threshold: {0}%
+SettingsHideBarLabel,Hide Bar Settings
+SettingsAutoHideUIBars,Auto-hide UI Bar(s)
+SettingsHideButtonBar,Hide Button Bar
+SettingsHideShortcutBar,Hide Shortcut Bar
 TabInventory,Inventory
 TabBehavior,Behavior
 TabHeroInfo,Hero Info

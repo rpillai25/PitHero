@@ -1105,6 +1105,9 @@ namespace PitHero.ECS.Scenes
             shortcutBarService.SetShortcutBar(_shortcutBar);
             Core.Services.AddService(shortcutBarService);
 
+            // Let SettingsUI manage the shortcut bar hide/show animation
+            _settingsUI?.SetShortcutBar(_shortcutBar);
+
             // Mercenary hire dialog
             _mercenaryHireDialog = new MercenaryHireDialog();
             uiCanvas.Stage.AddElement(_mercenaryHireDialog);
