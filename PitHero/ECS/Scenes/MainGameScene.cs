@@ -1147,7 +1147,7 @@ namespace PitHero.ECS.Scenes
                 var consoleSkin = PitHeroSkin.CreateSkin();
                 _eventConsolePanel = new EventConsolePanel(consoleSkin, eventService);
                 _eventConsolePanel.SetSize(480f, 120f);
-                _eventConsolePanel.SetPosition(GameConfig.VirtualWidth - 480f, GameConfig.VirtualHeight - 120f - 32f);
+                _eventConsolePanel.SetPosition(GameConfig.VirtualWidth - 790f, GameConfig.VirtualHeight - 120f - 16f);
                 uiCanvas.Stage.AddElement(_eventConsolePanel);
             }
         }
