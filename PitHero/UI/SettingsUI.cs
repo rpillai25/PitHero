@@ -1448,7 +1448,7 @@ namespace PitHero.UI
             }
             else if (_autoHideEnabled && _hideButtonBar)
             {
-                _uiBarIdleTimer += Time.DeltaTime;
+                _uiBarIdleTimer += Time.UnscaledDeltaTime;
                 if (_uiBarIdleTimer >= GameConfig.UIBarAutoHideDelay && !_uiBarHidden)
                     HideUIBar();
             }
@@ -1461,7 +1461,7 @@ namespace PitHero.UI
             float hideOffset = _gearButton != null ? (_gearButton.GetHeight() + 4f) : GameConfig.UIBarHideOffset;
             float targetY = _uiBarHidden ? -hideOffset : 0f;
             float delta = targetY - _uiBarSlideY;
-            float step = GameConfig.UIBarSlideSpeed * Time.DeltaTime;
+            float step = GameConfig.UIBarSlideSpeed * Time.UnscaledDeltaTime;
 
             if (Math.Abs(delta) <= step)
             {
@@ -1552,7 +1552,7 @@ namespace PitHero.UI
             }
             else if (_autoHideEnabled && _hideShortcutBar)
             {
-                _shortcutBarIdleTimer += Time.DeltaTime;
+                _shortcutBarIdleTimer += Time.UnscaledDeltaTime;
                 if (_shortcutBarIdleTimer >= GameConfig.UIBarAutoHideDelay && !_shortcutBarHidden)
                     HideShortcutBar();
             }
@@ -1568,7 +1568,7 @@ namespace PitHero.UI
             float sbHideOffset = sbBarHeight + 16f - sbYOffset + 4f; // +4 margin
             float targetOffsetY = _shortcutBarHidden ? sbHideOffset : 0f;
             float sbDelta = targetOffsetY - _shortcutBarSlideY;
-            float sbStep = GameConfig.UIBarSlideSpeed * Time.DeltaTime;
+            float sbStep = GameConfig.UIBarSlideSpeed * Time.UnscaledDeltaTime;
 
             if (Math.Abs(sbDelta) <= sbStep)
             {
@@ -1636,7 +1636,7 @@ namespace PitHero.UI
             }
             else if (_autoHideEnabled && _hideEventConsole)
             {
-                _consoleIdleTimer += Time.DeltaTime;
+                _consoleIdleTimer += Time.UnscaledDeltaTime;
                 if (_consoleIdleTimer >= GameConfig.UIBarAutoHideDelay && !_consoleHidden)
                     HideEventConsole();
             }
@@ -1648,7 +1648,7 @@ namespace PitHero.UI
             float hideOffset = (stageH - baseY) + 4f;
             float targetOffsetY = _consoleHidden ? hideOffset : 0f;
             float delta = targetOffsetY - _consoleSlideY;
-            float step = GameConfig.UIBarSlideSpeed * Time.DeltaTime;
+            float step = GameConfig.UIBarSlideSpeed * Time.UnscaledDeltaTime;
 
             if (Math.Abs(delta) <= step)
             {
