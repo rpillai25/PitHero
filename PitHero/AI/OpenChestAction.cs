@@ -262,6 +262,11 @@ namespace PitHero.AI
             if (hero.TryAddItem(containedItem))
             {
                 Debug.Log($"[OpenChest] Added {containedItem.Name} to hero's main bag. Bag contents:");
+
+                var evtSvc = Core.Services.GetService<GameEventService>();
+                var txtSvc = Core.Services.GetService<TextService>();
+                if (evtSvc != null && txtSvc != null)
+                    evtSvc.Emit(string.Format(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleItemFound), hero.LinkedHero.Name, containedItem.Name));
                 LogBagContents(hero.Bag);
 
                 // Reset HealingItemExhausted if picked up item is a healing consumable

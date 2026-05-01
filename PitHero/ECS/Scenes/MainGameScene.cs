@@ -44,6 +44,7 @@ namespace PitHero.ECS.Scenes
         private Entity _mercenarySelectBoxEntity; // Entity for rendering SelectBox over hovered mercenary
         private Entity _mercenaryNameLabelEntity; // Entity for rendering name above hovered mercenary
         private Services.HeroPromotionService _heroPromotionService; // Manages hero crystal promotion after death
+        private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
 
         // HUD fonts for different shrink levels
         public BitmapFont _hudFontNormal;
@@ -100,6 +101,9 @@ namespace PitHero.ECS.Scenes
             _pitLevelStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
             _pitLevelStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
 
+            // Register game event service so systems can broadcast events to the event console.
+            Core.Services.AddService(new Services.GameEventService());
+
             // Register crystal collection service before UI is built so CrystalsTab can
             // resolve it via Core.Services.GetService<CrystalCollectionService>() during Initialize.
             Core.Services.AddService(new Services.CrystalCollectionService());
@@ -113,7 +117,9 @@ namespace PitHero.ECS.Scenes
         /// </summary>
         public override void Unload()
         {
+            _eventConsolePanel?.Dispose();
             Core.Content.UnloadAsset<TmxMap>(_mapPath);
+            Core.Services.RemoveService(typeof(Services.GameEventService));
             Core.Services.RemoveService(typeof(Services.CrystalCollectionService));
             Core.Services.RemoveService(typeof(MercenaryManager));
             Core.Services.RemoveService(typeof(AlliedMonsterManager));
@@ -1111,6 +1117,17 @@ namespace PitHero.ECS.Scenes
             // Mercenary hire dialog
             _mercenaryHireDialog = new MercenaryHireDialog();
             uiCanvas.Stage.AddElement(_mercenaryHireDialog);
+
+            // Event console panel (lower-right corner)
+            var eventService = Core.Services.GetService<Services.GameEventService>();
+            if (eventService != null)
+            {
+                var consoleSkin = PitHeroSkin.CreateSkin();
+                _eventConsolePanel = new EventConsolePanel(consoleSkin, eventService);
+                _eventConsolePanel.SetSize(480f, 120f);
+                _eventConsolePanel.SetPosition(GameConfig.VirtualWidth - 480f, GameConfig.VirtualHeight - 120f - 32f);
+                uiCanvas.Stage.AddElement(_eventConsolePanel);
+            }
         }
 
         private void AddPitLevelTestComponent()

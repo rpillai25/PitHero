@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Sprites;
+using PitHero;
 using PitHero.ECS.Components;
 using PitHero.ECS.Scenes;
 using PitHero.UI;
@@ -135,6 +136,11 @@ namespace PitHero.Services
             );
 
             Debug.Log($"[HeroPromotionService] Hero granted crystal: {nextCrystal.Job.Name} Level {nextCrystal.Level}");
+
+            var evtSvc = Core.Services.GetService<GameEventService>();
+            var txtSvc = Core.Services.GetService<TextService>();
+            if (evtSvc != null && txtSvc != null)
+                evtSvc.Emit(string.Format(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleCrystalPromotion), heroComponent.LinkedHero.Name, nextCrystal.Job.Name));
 
             // Clear the crystal-needed flags so GOAP resumes normal behavior
             heroComponent.NeedsCrystal = false;
@@ -476,6 +482,11 @@ namespace PitHero.Services
             );
 
             Debug.Log($"[HeroPromotionService] Created new hero {heroComponent.LinkedHero.Name} with Level {heroComponent.LinkedHero.Level}, HP {heroComponent.LinkedHero.CurrentHP}/{heroComponent.LinkedHero.MaxHP}");
+
+            var evtSvcPromo = Core.Services.GetService<GameEventService>();
+            var txtSvcPromo = Core.Services.GetService<TextService>();
+            if (evtSvcPromo != null && txtSvcPromo != null)
+                evtSvcPromo.Emit(string.Format(txtSvcPromo.DisplayText(TextType.UI, UITextKey.ConsoleCrystalPromotion), heroComponent.LinkedHero.Name, nextCrystal.Job.Name));
 
             // Add bouncy digit and text components for damage/miss display (if not already present)
             if (!mercenary.HasComponent<BouncyDigitComponent>())

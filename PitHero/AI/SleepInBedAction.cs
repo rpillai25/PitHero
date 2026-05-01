@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using PitHero;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
 using PitHero.Services;
@@ -120,6 +121,10 @@ namespace PitHero.AI
 
             // Start the sleep coroutine
             Debug.Log("[SleepInBedAction] Starting sleep action");
+            var evtSvcInn = Core.Services.GetService<GameEventService>();
+            var txtSvcInn = Core.Services.GetService<TextService>();
+            if (evtSvcInn != null && txtSvcInn != null)
+                evtSvcInn.Emit(txtSvcInn.DisplayText(TextType.UI, UITextKey.ConsoleInnRest));
             _isSleeping = true;
             _sleepCoroutine = Core.StartCoroutine(SleepCoroutine(hero));
             return false; // Not complete yet
@@ -237,9 +242,10 @@ namespace PitHero.AI
             if (gameState != null && gameState.Funds >= GameConfig.InnCostGold)
             {
                 gameState.Funds -= GameConfig.InnCostGold;
-                _hasPaidInnkeeper = true;              
+                _hasPaidInnkeeper = true;
                 soundEffectManager.PlaySound(SoundEffectType.PayGold);
                 Debug.Log($"[SleepInBedAction] Paid {GameConfig.InnCostGold} gold to innkeeper. Remaining funds: {gameState.Funds}");
+
             }
             else
             {

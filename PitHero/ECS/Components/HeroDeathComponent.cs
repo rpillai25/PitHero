@@ -7,6 +7,7 @@ using PitHero.ECS.Scenes;
 using PitHero.Services;
 using System.Collections;
 using System.Collections.Generic;
+using PitHero;
 
 namespace PitHero.ECS.Components
 {
@@ -29,14 +30,17 @@ namespace PitHero.ECS.Components
         private Entity _shadowEntity;
         private bool _deathAnimationStarted;
 
+        private string _killerName;
+
         /// <summary>
-        /// Starts the hero death animation sequence.
+        /// Starts the hero death animation sequence, recording the name of the killer for the event console.
         /// </summary>
-        public void StartDeathAnimation()
+        public void StartDeathAnimation(string killerName = "")
         {
             if (_deathAnimationStarted)
                 return;
 
+            _killerName = killerName;
             _deathAnimationStarted = true;
 
             // Disable all other components on the hero entity to prevent movement during death
@@ -64,6 +68,20 @@ namespace PitHero.ECS.Components
             }
 
             Debug.Log($"[HeroDeathComponent] Starting death animation for {hero.Name}");
+
+            // Emit hero-died event to the event console
+            var evtSvc = Nez.Core.Services.GetService<PitHero.Services.GameEventService>();
+            var txtSvc = Nez.Core.Services.GetService<PitHero.Services.TextService>();
+            if (evtSvc != null && txtSvc != null)
+            {
+                int phraseIndex = Nez.Random.Range(0, 5);
+                string phrase = phraseIndex == 0 ? txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHeroDiedPhrase1)
+                              : phraseIndex == 1 ? txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHeroDiedPhrase2)
+                              : phraseIndex == 2 ? txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHeroDiedPhrase3)
+                              : phraseIndex == 3 ? txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHeroDiedPhrase4)
+                              : txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHeroDiedPhrase5);
+                evtSvc.Emit(string.Format(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHeroDied), txtSvc.DisplayText(TextType.Monster, _killerName), hero.Name, phrase));
+            }
 
             // Face hero downward
             var facing = Entity.GetComponent<ActorFacingComponent>();
