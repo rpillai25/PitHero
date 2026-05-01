@@ -1147,8 +1147,8 @@ namespace PitHero.ECS.Scenes
                 var consoleSkin = PitHeroSkin.CreateSkin();
                 _eventConsolePanel = new EventConsolePanel(consoleSkin, eventService);
                 _eventConsolePanel.SetSize(480f, 120f);
-                _eventConsolePanel.SetPosition(GameConfig.VirtualWidth - 790f, GameConfig.VirtualHeight - 120f - 16f);
                 uiCanvas.Stage.AddElement(_eventConsolePanel);
+                PositionEventConsolePanel();
             }
         }
 
@@ -1404,6 +1404,7 @@ namespace PitHero.ECS.Scenes
 
                 // Update shortcut bar position and scale when mode changes
                 PositionShortcutBar();
+                PositionEventConsolePanel();
             }
 
             // Pit level label and Funds label stay at bottom-left with no scaling or offset changes
@@ -1503,6 +1504,25 @@ namespace PitHero.ECS.Scenes
                 float offsetX = inventoryOpen ? -150f : 0f; // Offset left by 150px when inventory open
                 _shortcutBar.SetOffsetX(offsetX);
             }
+        }
+
+        /// <summary>
+        /// Positions the event console panel just to the right of the shortcut bar, with one-slot padding.
+        /// Mirrors PositionShortcutBar()'s scale logic so both stay in sync across window modes.
+        /// </summary>
+        private void PositionEventConsolePanel()
+        {
+            if (_eventConsolePanel == null)
+                return;
+
+            float scale = WindowManager.IsHalfHeightMode() ? 2f : 1f;
+            float slotSize = 32f;
+            float barWidth = 8 * (slotSize + 1f) * scale;
+            float barRightEdge = Screen.Width / 2f + barWidth / 2f;
+            float oneSlotPadding = slotSize * scale;
+            float panelX = barRightEdge + oneSlotPadding;
+            float panelY = GameConfig.VirtualHeight - 120f - 16f;
+            _eventConsolePanel.SetPosition(panelX, panelY);
         }
 
         /// <summary>
