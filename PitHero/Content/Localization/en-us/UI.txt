@@ -206,3 +206,7 @@ ConsoleMonsterAttack,{0} attacks {1} for {2} damage!
 ConsoleItemFound,{0} found {1}.
 ConsoleMonsterRecruited,{0} has recruited {1} the {2}
 ConsoleAutoEquip,{0} equipped {1}.
+ConsoleWelcome,Welcome, {0}!
+ConsoleWelcomePhrase1,Good luck on your adventure.
+ConsoleWelcomePhrase2,Go forth and pursue strength and wealth.
+ConsoleWelcomePhrase3,May you get many returns today!

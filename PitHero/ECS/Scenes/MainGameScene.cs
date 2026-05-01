@@ -176,6 +176,8 @@ namespace PitHero.ECS.Scenes
             // Apply pending load data if available
             ApplyPendingLoadData();
 
+            EmitWelcomeMessage();
+
             _isInitializationComplete = true;
         }
 
@@ -544,6 +546,26 @@ namespace PitHero.ECS.Scenes
             }
             
             Debug.Log("[MainGameScene] Load data applied successfully - Hero: " + (pendingData.HeroName ?? "?") + " Level " + pendingData.Level);
+        }
+
+        /// <summary>Emits the welcome greeting and a random introductory phrase to the event console.</summary>
+        private void EmitWelcomeMessage()
+        {
+            var evtSvc = Core.Services.GetService<Services.GameEventService>();
+            var txtSvc = Core.Services.GetService<TextService>();
+            if (evtSvc == null || txtSvc == null) return;
+
+            var heroComp = FindEntity("hero")?.GetComponent<ECS.Components.HeroComponent>();
+            string heroName = heroComp?.LinkedHero?.Name ?? "Hero";
+
+            evtSvc.Emit(Services.ConsoleSegment.Build(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleWelcome),
+                (heroName, GameConfig.ConsoleColorHeroName)));
+
+            int phraseIndex = Nez.Random.Range(0, 3);
+            string phrase = phraseIndex == 0 ? txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleWelcomePhrase1)
+                          : phraseIndex == 1 ? txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleWelcomePhrase2)
+                          : txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleWelcomePhrase3);
+            evtSvc.Emit(phrase);
         }
 
         private void LoadMap()

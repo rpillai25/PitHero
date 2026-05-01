@@ -209,5 +209,9 @@ namespace PitHero
         public const string ConsoleItemFound = "ConsoleItemFound";
         public const string ConsoleMonsterRecruited = "ConsoleMonsterRecruited";
         public const string ConsoleAutoEquip = "ConsoleAutoEquip";
+        public const string ConsoleWelcome = "ConsoleWelcome";
+        public const string ConsoleWelcomePhrase1 = "ConsoleWelcomePhrase1";
+        public const string ConsoleWelcomePhrase2 = "ConsoleWelcomePhrase2";
+        public const string ConsoleWelcomePhrase3 = "ConsoleWelcomePhrase3";
     }
 }
