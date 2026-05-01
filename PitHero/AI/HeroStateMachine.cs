@@ -31,6 +31,7 @@ namespace PitHero.AI
         private JumpOutOfPitForStopAction _jumpOutOfPitForStopAction;
         private WalkToTavernForStopAction _walkToTavernForStopAction;
         private bool _lastStoppedAdventure;
+        private bool _innRestEmitted;
 
         // Healing priority tracking for replanning when priorities change
         private HeroHealPriority _lastHealPriority1;
@@ -209,7 +210,17 @@ namespace PitHero.AI
                 _hasTrackedPriorities = true;
 
                 if (PlanContainsSleepInBed(_actionPlan))
-                    EmitInnRestEvent();
+                {
+                    if (!_innRestEmitted)
+                    {
+                        EmitInnRestEvent();
+                        _innRestEmitted = true;
+                    }
+                }
+                else
+                {
+                    _innRestEmitted = false;
+                }
 
                 CurrentState = ActorState.GoTo;
             }
@@ -261,7 +272,17 @@ namespace PitHero.AI
                         _hasTrackedPriorities = true;
 
                         if (PlanContainsSleepInBed(_actionPlan))
-                            EmitInnRestEvent();
+                        {
+                            if (!_innRestEmitted)
+                            {
+                                EmitInnRestEvent();
+                                _innRestEmitted = true;
+                            }
+                        }
+                        else
+                        {
+                            _innRestEmitted = false;
+                        }
 
                         CurrentState = ActorState.GoTo;
                     }

@@ -203,5 +203,6 @@ ConsoleCrystalPromotion,{0} ventures forth as a {1}!
 ConsoleInnRest,Visiting inn to rest
 ConsoleMercenaryHired,{0} {1} was hired
 ConsoleMonsterAttack,{0} attacks {1} for {2} damage!
-ConsoleItemFound,{0} found {1}!
+ConsoleItemFound,{0} found {1}.
 ConsoleMonsterRecruited,{0} has recruited {1} the {2}
+ConsoleAutoEquip,{0} equipped {1}.
