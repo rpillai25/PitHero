@@ -699,7 +699,7 @@ namespace PitHero.AI
         /// Applies a healing skill's HP/MP restore effects and displays the heal digit.
         /// The caller is responsible for spending MP before calling this method.
         /// </summary>
-        private System.Collections.IEnumerator ApplyHealingSkillEffectsAndDisplay(ISkill skill, object healTarget, bool targetsHero, HeroComponent heroComponent, List<Entity> validMercenaries)
+        private System.Collections.IEnumerator ApplyHealingSkillEffectsAndDisplay(ISkill skill, object healTarget, bool targetsHero, HeroComponent heroComponent, List<Entity> validMercenaries, string casterName)
         {
             if (skill.HPRestoreAmount > 0)
             {
@@ -715,6 +715,16 @@ namespace PitHero.AI
                     SoundEffectManager sfx = Core.GetGlobalManager<SoundEffectManager>();
                     sfx?.PlaySound(SoundEffectType.Restorative);
                     yield return ShowHealDigitOnEntity(targetEntity, skill.HPRestoreAmount);
+
+                    string targetName = healTarget is Hero th ? th.Name : ((Mercenary)healTarget).Name;
+                    var evtSvc = Core.Services.GetService<GameEventService>();
+                    var txtSvc = Core.Services.GetService<TextService>();
+                    if (evtSvc != null && txtSvc != null)
+                        evtSvc.Emit(ConsoleSegment.Build(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHealSkill),
+                            (casterName, GameConfig.ConsoleColorHeroName),
+                            (skill.Name, Color.White),
+                            (targetName, GameConfig.ConsoleColorHeroName),
+                            (skill.HPRestoreAmount.ToString(), Color.White)));
                 }
             }
 
@@ -881,7 +891,7 @@ namespace PitHero.AI
                     {
                         hero.SpendMP(skill.MPCost);
                         var healTarget = queuedAction.Target ?? hero;
-                        yield return ApplyHealingSkillEffectsAndDisplay(skill, healTarget, queuedAction.TargetsHero, heroComponent, validMercenaries);
+                        yield return ApplyHealingSkillEffectsAndDisplay(skill, healTarget, queuedAction.TargetsHero, heroComponent, validMercenaries, hero.Name);
                         Debug.Log($"[AttackMonster] Used healing skill {skill.Name}");
                     }
                     else
@@ -1068,7 +1078,7 @@ namespace PitHero.AI
                         mercenary.UseMP(healSkill.MPCost);
                         mercComponent.ActionQueueVisualization?.ShowAction(new QueuedAction(healSkill));
                         var healTarget = mercDecision.Target ?? hero;
-                        yield return ApplyHealingSkillEffectsAndDisplay(healSkill, healTarget, mercDecision.TargetsHero, heroComponent, validMercenaries);
+                        yield return ApplyHealingSkillEffectsAndDisplay(healSkill, healTarget, mercDecision.TargetsHero, heroComponent, validMercenaries, mercenary.Name);
                         Debug.Log($"[AttackMonster] {mercenary.Name} used {healSkill.Name}");
                     }
                     break;
