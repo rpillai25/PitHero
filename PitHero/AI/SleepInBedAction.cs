@@ -121,10 +121,6 @@ namespace PitHero.AI
 
             // Start the sleep coroutine
             Debug.Log("[SleepInBedAction] Starting sleep action");
-            var evtSvcInn = Core.Services.GetService<GameEventService>();
-            var txtSvcInn = Core.Services.GetService<TextService>();
-            if (evtSvcInn != null && txtSvcInn != null)
-                evtSvcInn.Emit(txtSvcInn.DisplayText(TextType.UI, UITextKey.ConsoleInnRest));
             _isSleeping = true;
             _sleepCoroutine = Core.StartCoroutine(SleepCoroutine(hero));
             return false; // Not complete yet
