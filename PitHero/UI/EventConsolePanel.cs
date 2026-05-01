@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Nez;
@@ -19,6 +20,18 @@ namespace PitHero.UI
         private readonly GameEventService _eventService;
         private bool _scrollToBottom;
 
+        /// <summary>Fires whenever a new event is added to the log, including while hidden.</summary>
+        public event Action OnNewEvent;
+
+        private float _baseX;
+        private float _baseY;
+        private float _slideOffsetY;
+
+        /// <summary>The resting X position before any slide offset is applied.</summary>
+        public float BaseX => _baseX;
+        /// <summary>The resting Y position before any slide offset is applied.</summary>
+        public float BaseY => _baseY;
+
         public EventConsolePanel(Skin skin, GameEventService eventService) : base()
         {
             _eventService = eventService;
@@ -36,6 +49,21 @@ namespace PitHero.UI
             Add(_scrollPane).Width(480f).Height(120f).Expand().Fill();
 
             _eventService.OnEvent += OnEventReceived;
+        }
+
+        /// <summary>Sets the resting position and re-applies the current slide offset.</summary>
+        public void SetBasePosition(float x, float y)
+        {
+            _baseX = x;
+            _baseY = y;
+            SetPosition(x, y + _slideOffsetY);
+        }
+
+        /// <summary>Applies a vertical slide offset (positive = moves downward off screen). Called by SettingsUI for auto-hide animation.</summary>
+        public void SetSlideOffsetY(float offsetY)
+        {
+            _slideOffsetY = offsetY;
+            SetPosition(_baseX, _baseY + offsetY);
         }
 
         /// <summary>Unsubscribes from the GameEventService to prevent stale listeners after scene unload.</summary>
@@ -59,6 +87,7 @@ namespace PitHero.UI
             }
 
             _scrollToBottom = true;
+            OnNewEvent?.Invoke();
         }
 
         /// <summary>Scrolls to the bottom after layout has been validated so _maxY is current.</summary>

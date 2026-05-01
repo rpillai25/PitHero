@@ -69,6 +69,7 @@ namespace PitHero
         public const string SettingsAutoHideUIBars = "SettingsAutoHideUIBars";
         public const string SettingsHideButtonBar = "SettingsHideButtonBar";
         public const string SettingsHideShortcutBar = "SettingsHideShortcutBar";
+        public const string SettingsHideEventConsole = "SettingsHideEventConsole";
         public const string TabInventory = "TabInventory";
         public const string TabBehavior = "TabBehavior";
         public const string TabHeroInfo = "TabHeroInfo";

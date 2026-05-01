@@ -1149,6 +1149,7 @@ namespace PitHero.ECS.Scenes
                 _eventConsolePanel.SetSize(480f, 120f);
                 uiCanvas.Stage.AddElement(_eventConsolePanel);
                 PositionEventConsolePanel();
+                _settingsUI?.SetEventConsolePanel(_eventConsolePanel);
             }
         }
 
@@ -1522,7 +1523,7 @@ namespace PitHero.ECS.Scenes
             float oneSlotPadding = slotSize * scale;
             float panelX = barRightEdge + oneSlotPadding;
             float panelY = GameConfig.VirtualHeight - 120f - 16f;
-            _eventConsolePanel.SetPosition(panelX, panelY);
+            _eventConsolePanel.SetBasePosition(panelX, panelY);
         }
 
         /// <summary>

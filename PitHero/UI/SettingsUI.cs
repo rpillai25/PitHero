@@ -128,11 +128,20 @@ namespace PitHero.UI
         private bool _autoHideEnabled = true;
         private bool _hideButtonBar = true;
         private bool _hideShortcutBar = true;
+        private bool _hideEventConsole = true;
 
         // Hide bar settings checkboxes
         private CheckBox _autoHideUIBarsCheckBox;
         private CheckBox _hideButtonBarCheckBox;
         private CheckBox _hideShortcutBarCheckBox;
+        private CheckBox _hideEventConsoleCheckBox;
+
+        // Event console reference and hide state
+        private EventConsolePanel _eventConsolePanel;
+        private bool _consoleHidden = false;
+        private float _consoleSlideY = 0f;
+        private float _consoleIdleTimer = 0f;
+        private bool _consoleAnimating = false;
 
         /// <summary>Gets the HeroUI instance.</summary>
         public HeroUI HeroUI => _heroUI;
@@ -142,6 +151,23 @@ namespace PitHero.UI
 
         /// <summary>Connects the shortcut bar so SettingsUI can manage its hide/show animation.</summary>
         public void SetShortcutBar(ShortcutBar bar) => _shortcutBar = bar;
+
+        /// <summary>Connects the event console panel so SettingsUI can manage its hide/show animation.</summary>
+        public void SetEventConsolePanel(EventConsolePanel panel)
+        {
+            if (_eventConsolePanel != null)
+                _eventConsolePanel.OnNewEvent -= OnConsoleNewEvent;
+            _eventConsolePanel = panel;
+            if (_eventConsolePanel != null)
+                _eventConsolePanel.OnNewEvent += OnConsoleNewEvent;
+        }
+
+        private void OnConsoleNewEvent()
+        {
+            _consoleIdleTimer = 0f;
+            if (_consoleHidden)
+                ShowEventConsole();
+        }
 
         // Window size modes
         public enum WindowSizeMode
@@ -662,7 +688,18 @@ namespace PitHero.UI
             _hideShortcutBarCheckBox = new CheckBox(GetText(TextType.UI, UITextKey.SettingsHideShortcutBar), skin, "ph-default");
             _hideShortcutBarCheckBox.IsChecked = _hideShortcutBar;
             _hideShortcutBarCheckBox.OnChanged += (isChecked) => { _hideShortcutBar = isChecked; };
-            buttonsTable.Add(_hideShortcutBarCheckBox).Left();
+            buttonsTable.Add(_hideShortcutBarCheckBox).Left().SetPadBottom(4f);
+            buttonsTable.Row();
+
+            _hideEventConsoleCheckBox = new CheckBox(GetText(TextType.UI, UITextKey.SettingsHideEventConsole), skin, "ph-default");
+            _hideEventConsoleCheckBox.IsChecked = _hideEventConsole;
+            _hideEventConsoleCheckBox.OnChanged += (isChecked) =>
+            {
+                _hideEventConsole = isChecked;
+                if (!isChecked && _consoleHidden)
+                    ShowEventConsole();
+            };
+            buttonsTable.Add(_hideEventConsoleCheckBox).Left();
 
             buttonsTab.Add(buttonsTable).Expand().Top().Left();
         }
@@ -1141,10 +1178,11 @@ namespace PitHero.UI
                 UIWindowManager.UpdatePersistentWindowSizeIfChanged();
             }
 
-            // Handle UI bar and shortcut bar auto-hide animations.
+            // Handle UI bar, shortcut bar, and event console auto-hide animations.
             bool uiBarWasAnimating = _uiBarAnimating;
             UpdateUIBarAutoHide();
             UpdateShortcutBarAutoHide();
+            UpdateEventConsoleAutoHide();
 
             // Reposition only if any button size changed or stage dimensions changed.
             // Include wasAnimating so PositionUI is called on the frame the animation stops,
@@ -1336,11 +1374,13 @@ namespace PitHero.UI
         private void ToggleUIBarVisibility()
         {
             bool anyControlledBarHidden = (_hideButtonBar && _uiBarHidden) ||
-                                          (_hideShortcutBar && _shortcutBarHidden);
+                                          (_hideShortcutBar && _shortcutBarHidden) ||
+                                          (_hideEventConsole && _consoleHidden);
             if (anyControlledBarHidden)
             {
                 if (_hideButtonBar) ShowUIBar();
                 if (_hideShortcutBar) ShowShortcutBar();
+                if (_hideEventConsole) ShowEventConsole();
                 return;
             }
 
@@ -1352,6 +1392,8 @@ namespace PitHero.UI
                 HideUIBar();
             if (_hideShortcutBar)
                 HideShortcutBar();
+            if (_hideEventConsole)
+                HideEventConsole();
         }
 
         /// <summary>Slides the UI bar down into its normal position.</summary>
@@ -1539,6 +1581,86 @@ namespace PitHero.UI
             }
 
             _shortcutBar.SetSlideOffsetY(_shortcutBarSlideY);
+        }
+
+        /// <summary>Slides the event console panel into view.</summary>
+        private void ShowEventConsole()
+        {
+            if (_eventConsolePanel == null) return;
+            _consoleHidden = false;
+            _consoleIdleTimer = 0f;
+            _consoleAnimating = true;
+        }
+
+        /// <summary>Slides the event console panel down off the bottom of the screen.</summary>
+        private void HideEventConsole()
+        {
+            if (_eventConsolePanel == null) return;
+            _consoleHidden = true;
+            _consoleAnimating = true;
+        }
+
+        /// <summary>
+        /// Updates the event console auto-hide timer, proximity detection, and slide animation each frame.
+        /// </summary>
+        private void UpdateEventConsoleAutoHide()
+        {
+            if (_eventConsolePanel == null) return;
+
+            var rawMouse = Microsoft.Xna.Framework.Input.Mouse.GetState();
+            var viewport = _game.GraphicsDevice.Viewport;
+            bool mouseInWindow = rawMouse.X >= 0 && rawMouse.X < viewport.Width &&
+                                 rawMouse.Y >= 0 && rawMouse.Y < viewport.Height;
+
+            float scaleX = viewport.Width > 0 ? _stage.GetWidth() / viewport.Width : 1f;
+            float scaleY = viewport.Height > 0 ? _stage.GetHeight() / viewport.Height : 1f;
+            float stageMX = rawMouse.X * scaleX;
+            float stageMY = rawMouse.Y * scaleY;
+
+            const float consolePad = 16f;
+            float baseX = _eventConsolePanel.BaseX;
+            float baseY = _eventConsolePanel.BaseY;
+            const float consoleW = 480f;
+            const float consoleH = 120f;
+            bool mouseNearConsole = mouseInWindow &&
+                                    stageMX >= baseX - consolePad &&
+                                    stageMX <= baseX + consoleW + consolePad &&
+                                    stageMY >= baseY - consolePad &&
+                                    stageMY <= baseY + consoleH + consolePad;
+
+            if (mouseNearConsole)
+            {
+                _consoleIdleTimer = 0f;
+                if (_consoleHidden)
+                    ShowEventConsole();
+            }
+            else if (_autoHideEnabled && _hideEventConsole)
+            {
+                _consoleIdleTimer += Time.DeltaTime;
+                if (_consoleIdleTimer >= GameConfig.UIBarAutoHideDelay && !_consoleHidden)
+                    HideEventConsole();
+            }
+
+            if (!_consoleAnimating) return;
+
+            float stageH = _stage.GetHeight();
+            // Push the panel far enough below the bottom edge to fully clear it.
+            float hideOffset = (stageH - baseY) + 4f;
+            float targetOffsetY = _consoleHidden ? hideOffset : 0f;
+            float delta = targetOffsetY - _consoleSlideY;
+            float step = GameConfig.UIBarSlideSpeed * Time.DeltaTime;
+
+            if (Math.Abs(delta) <= step)
+            {
+                _consoleSlideY = targetOffsetY;
+                _consoleAnimating = false;
+            }
+            else
+            {
+                _consoleSlideY += (delta > 0f ? 1f : -1f) * step;
+            }
+
+            _eventConsolePanel.SetSlideOffsetY(_consoleSlideY);
         }
     }
 }

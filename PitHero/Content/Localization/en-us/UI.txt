@@ -63,6 +63,7 @@ SettingsHideBarLabel,Hide Bar Settings
 SettingsAutoHideUIBars,Auto-hide UI Bar(s)
 SettingsHideButtonBar,Hide Button Bar
 SettingsHideShortcutBar,Hide Shortcut Bar
+SettingsHideEventConsole,Hide Event Console
 TabInventory,Inventory
 TabBehavior,Behavior
 TabHeroInfo,Hero Info
