@@ -354,7 +354,11 @@ namespace PitHero.AI
                 var evtSvc = Core.Services.GetService<GameEventService>();
                 var txtSvc = Core.Services.GetService<TextService>();
                 if (evtSvc != null && txtSvc != null)
-                    evtSvc.Emit(string.Format(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHealSkill), casterName, skill.Name, targetName, healAmount));
+                    evtSvc.Emit(ConsoleSegment.Build(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHealSkill),
+                        (casterName, GameConfig.ConsoleColorHeroName),
+                        (skill.Name, Color.White),
+                        (targetName, GameConfig.ConsoleColorHeroName),
+                        (healAmount.ToString(), Color.White)));
 
                 return true;
             }

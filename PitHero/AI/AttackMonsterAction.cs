@@ -760,7 +760,11 @@ namespace PitHero.AI
                     var evtSvcItem = Core.Services.GetService<GameEventService>();
                     var txtSvcItem = Core.Services.GetService<TextService>();
                     if (evtSvcItem != null && txtSvcItem != null)
-                        evtSvcItem.Emit(string.Format(txtSvcItem.DisplayText(TextType.UI, UITextKey.ConsoleBattleHealConsumable), userName, consumable.Name, targetName, healAmount));
+                        evtSvcItem.Emit(ConsoleSegment.Build(txtSvcItem.DisplayText(TextType.UI, UITextKey.ConsoleBattleHealConsumable),
+                            (userName, GameConfig.ConsoleColorHeroName),
+                            (consumable.Name, RarityUtils.GetRarityColor(consumable.Rarity)),
+                            (targetName, GameConfig.ConsoleColorHeroName),
+                            (healAmount.ToString(), Color.White)));
 
                     var targetEntity = FindTargetEntity(target, targetsHero, heroComponent, validMercenaries);
                     SoundEffectManager sfx = Core.GetGlobalManager<SoundEffectManager>();
@@ -825,7 +829,10 @@ namespace PitHero.AI
                     var evtSvcRecruit = Core.Services.GetService<GameEventService>();
                     var txtSvcRecruit = Core.Services.GetService<TextService>();
                     if (evtSvcRecruit != null && txtSvcRecruit != null)
-                        evtSvcRecruit.Emit(string.Format(txtSvcRecruit.DisplayText(TextType.UI, UITextKey.ConsoleMonsterRecruited), hero.Name, recruited.Name, txtSvcRecruit.DisplayText(TextType.Monster, enemy.Name)));
+                        evtSvcRecruit.Emit(ConsoleSegment.Build(txtSvcRecruit.DisplayText(TextType.UI, UITextKey.ConsoleMonsterRecruited),
+                            (hero.Name, GameConfig.ConsoleColorHeroName),
+                            (recruited.Name, GameConfig.ConsoleColorEnemyName),
+                            (txtSvcRecruit.DisplayText(TextType.Monster, enemy.Name), GameConfig.ConsoleColorEnemyName)));
                 }
             }
         }
@@ -941,7 +948,11 @@ namespace PitHero.AI
                 var evtSvcSkill = Core.Services.GetService<GameEventService>();
                 var txtSvcSkill = Core.Services.GetService<TextService>();
                 if (evtSvcSkill != null && txtSvcSkill != null)
-                    evtSvcSkill.Emit(string.Format(txtSvcSkill.DisplayText(TextType.UI, UITextKey.ConsoleSkillAttack), hero.Name, skill.Name, txtSvcSkill.DisplayText(TextType.Monster, enemy.Name), damage));
+                    evtSvcSkill.Emit(ConsoleSegment.Build(txtSvcSkill.DisplayText(TextType.UI, UITextKey.ConsoleSkillAttack),
+                        (hero.Name, GameConfig.ConsoleColorHeroName),
+                        (skill.Name, Color.White),
+                        (txtSvcSkill.DisplayText(TextType.Monster, enemy.Name), GameConfig.ConsoleColorEnemyName),
+                        (damage.ToString(), Color.White)));
 
                 var enemyBouncyDigit = monsterEntity.GetComponent<BouncyDigitComponent>();
                 if (enemyBouncyDigit != null)
@@ -958,7 +969,8 @@ namespace PitHero.AI
                     var evtSvcSkillDeath = Core.Services.GetService<GameEventService>();
                     var txtSvcSkillDeath = Core.Services.GetService<TextService>();
                     if (evtSvcSkillDeath != null && txtSvcSkillDeath != null)
-                        evtSvcSkillDeath.Emit(string.Format(txtSvcSkillDeath.DisplayText(TextType.UI, UITextKey.ConsoleMonsterDied), txtSvcSkillDeath.DisplayText(TextType.Monster, enemy.Name)));
+                        evtSvcSkillDeath.Emit(ConsoleSegment.Build(txtSvcSkillDeath.DisplayText(TextType.UI, UITextKey.ConsoleMonsterDied),
+                            (txtSvcSkillDeath.DisplayText(TextType.Monster, enemy.Name), GameConfig.ConsoleColorEnemyName)));
 
                     validMonsters.Remove(monsterEntity);
                 }
@@ -997,7 +1009,10 @@ namespace PitHero.AI
                 var evtSvc = Core.Services.GetService<GameEventService>();
                 var txtSvc = Core.Services.GetService<TextService>();
                 if (evtSvc != null && txtSvc != null)
-                    evtSvc.Emit(string.Format(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleAttack), hero.Name, txtSvc.DisplayText(TextType.Monster, targetEnemy.Name), heroAttackResult.Damage));
+                    evtSvc.Emit(ConsoleSegment.Build(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleAttack),
+                        (hero.Name, GameConfig.ConsoleColorHeroName),
+                        (txtSvc.DisplayText(TextType.Monster, targetEnemy.Name), GameConfig.ConsoleColorEnemyName),
+                        (heroAttackResult.Damage.ToString(), Color.White)));
 
                 yield return ShowDamageDigitOnEntity(targetMonster, heroAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor);
 
@@ -1009,7 +1024,8 @@ namespace PitHero.AI
                     var evtSvcDeath = Core.Services.GetService<GameEventService>();
                     var txtSvcDeath = Core.Services.GetService<TextService>();
                     if (evtSvcDeath != null && txtSvcDeath != null)
-                        evtSvcDeath.Emit(string.Format(txtSvcDeath.DisplayText(TextType.UI, UITextKey.ConsoleMonsterDied), txtSvcDeath.DisplayText(TextType.Monster, targetEnemy.Name)));
+                        evtSvcDeath.Emit(ConsoleSegment.Build(txtSvcDeath.DisplayText(TextType.UI, UITextKey.ConsoleMonsterDied),
+                            (txtSvcDeath.DisplayText(TextType.Monster, targetEnemy.Name), GameConfig.ConsoleColorEnemyName)));
 
                     validMonsters.Remove(targetMonster);
                     yield return FadeOutAndDestroyMonster(targetMonster);
@@ -1136,7 +1152,11 @@ namespace PitHero.AI
                     var evtSvcAtkSkill = Core.Services.GetService<GameEventService>();
                     var txtSvcAtkSkill = Core.Services.GetService<TextService>();
                     if (evtSvcAtkSkill != null && txtSvcAtkSkill != null)
-                        evtSvcAtkSkill.Emit(string.Format(txtSvcAtkSkill.DisplayText(TextType.UI, UITextKey.ConsoleSkillAttack), mercenary.Name, atkSkill.Name, txtSvcAtkSkill.DisplayText(TextType.Monster, sEnemy.Name), sResult.Damage));
+                        evtSvcAtkSkill.Emit(ConsoleSegment.Build(txtSvcAtkSkill.DisplayText(TextType.UI, UITextKey.ConsoleSkillAttack),
+                            (mercenary.Name, GameConfig.ConsoleColorHeroName),
+                            (atkSkill.Name, Color.White),
+                            (txtSvcAtkSkill.DisplayText(TextType.Monster, sEnemy.Name), GameConfig.ConsoleColorEnemyName),
+                            (sResult.Damage.ToString(), Color.White)));
 
                     var sDigit = sMonsterEntity.GetComponent<BouncyDigitComponent>();
                     if (sDigit != null)
@@ -1153,7 +1173,8 @@ namespace PitHero.AI
                         var evtSvcAtkSkillDeath = Core.Services.GetService<GameEventService>();
                         var txtSvcAtkSkillDeath = Core.Services.GetService<TextService>();
                         if (evtSvcAtkSkillDeath != null && txtSvcAtkSkillDeath != null)
-                            evtSvcAtkSkillDeath.Emit(string.Format(txtSvcAtkSkillDeath.DisplayText(TextType.UI, UITextKey.ConsoleMonsterDied), txtSvcAtkSkillDeath.DisplayText(TextType.Monster, sEnemy.Name)));
+                            evtSvcAtkSkillDeath.Emit(ConsoleSegment.Build(txtSvcAtkSkillDeath.DisplayText(TextType.UI, UITextKey.ConsoleMonsterDied),
+                                (txtSvcAtkSkillDeath.DisplayText(TextType.Monster, sEnemy.Name), GameConfig.ConsoleColorEnemyName)));
 
                         validMonsters.Remove(sMonsterEntity);
                     }
@@ -1207,7 +1228,10 @@ namespace PitHero.AI
                 var evtSvcMerc = Core.Services.GetService<GameEventService>();
                 var txtSvcMerc = Core.Services.GetService<TextService>();
                 if (evtSvcMerc != null && txtSvcMerc != null)
-                    evtSvcMerc.Emit(string.Format(txtSvcMerc.DisplayText(TextType.UI, UITextKey.ConsoleAttack), mercenary.Name, txtSvcMerc.DisplayText(TextType.Monster, targetEnemy.Name), mercAttackResult.Damage));
+                    evtSvcMerc.Emit(ConsoleSegment.Build(txtSvcMerc.DisplayText(TextType.UI, UITextKey.ConsoleAttack),
+                        (mercenary.Name, GameConfig.ConsoleColorHeroName),
+                        (txtSvcMerc.DisplayText(TextType.Monster, targetEnemy.Name), GameConfig.ConsoleColorEnemyName),
+                        (mercAttackResult.Damage.ToString(), Color.White)));
 
                 yield return ShowDamageDigitOnEntity(paTarget, mercAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor);
 
@@ -1219,7 +1243,8 @@ namespace PitHero.AI
                     var evtSvcMercDeath = Core.Services.GetService<GameEventService>();
                     var txtSvcMercDeath = Core.Services.GetService<TextService>();
                     if (evtSvcMercDeath != null && txtSvcMercDeath != null)
-                        evtSvcMercDeath.Emit(string.Format(txtSvcMercDeath.DisplayText(TextType.UI, UITextKey.ConsoleMonsterDied), txtSvcMercDeath.DisplayText(TextType.Monster, targetEnemy.Name)));
+                        evtSvcMercDeath.Emit(ConsoleSegment.Build(txtSvcMercDeath.DisplayText(TextType.UI, UITextKey.ConsoleMonsterDied),
+                            (txtSvcMercDeath.DisplayText(TextType.Monster, targetEnemy.Name), GameConfig.ConsoleColorEnemyName)));
 
                     validMonsters.Remove(paTarget);
                     yield return FadeOutAndDestroyMonster(paTarget);
@@ -1303,7 +1328,10 @@ namespace PitHero.AI
                 var evtSvcHeroAtk = Core.Services.GetService<GameEventService>();
                 var txtSvcHeroAtk = Core.Services.GetService<TextService>();
                 if (evtSvcHeroAtk != null && txtSvcHeroAtk != null)
-                    evtSvcHeroAtk.Emit(string.Format(txtSvcHeroAtk.DisplayText(TextType.UI, UITextKey.ConsoleMonsterAttack), txtSvcHeroAtk.DisplayText(TextType.Monster, enemy.Name), hero.Name, enemyAttackResult.Damage));
+                    evtSvcHeroAtk.Emit(ConsoleSegment.Build(txtSvcHeroAtk.DisplayText(TextType.UI, UITextKey.ConsoleMonsterAttack),
+                        (txtSvcHeroAtk.DisplayText(TextType.Monster, enemy.Name), GameConfig.ConsoleColorEnemyName),
+                        (hero.Name, GameConfig.ConsoleColorHeroName),
+                        (enemyAttackResult.Damage.ToString(), Color.White)));
 
                 heroComponent.RegisterHeroBurstDamage(actualDamage);
 
@@ -1355,7 +1383,10 @@ namespace PitHero.AI
                 var evtSvcMercAtk = Core.Services.GetService<GameEventService>();
                 var txtSvcMercAtk = Core.Services.GetService<TextService>();
                 if (evtSvcMercAtk != null && txtSvcMercAtk != null)
-                    evtSvcMercAtk.Emit(string.Format(txtSvcMercAtk.DisplayText(TextType.UI, UITextKey.ConsoleMonsterAttack), txtSvcMercAtk.DisplayText(TextType.Monster, enemy.Name), targetMercenary.Name, enemyAttackResult.Damage));
+                    evtSvcMercAtk.Emit(ConsoleSegment.Build(txtSvcMercAtk.DisplayText(TextType.UI, UITextKey.ConsoleMonsterAttack),
+                        (txtSvcMercAtk.DisplayText(TextType.Monster, enemy.Name), GameConfig.ConsoleColorEnemyName),
+                        (targetMercenary.Name, GameConfig.ConsoleColorHeroName),
+                        (enemyAttackResult.Damage.ToString(), Color.White)));
 
                 heroComponent.RegisterMercenaryBurstDamage(targetEntity, targetMercComp, actualDamage);
 
@@ -1391,7 +1422,9 @@ namespace PitHero.AI
             var evtSvcMercDied = Core.Services.GetService<GameEventService>();
             var txtSvcMercDied = Core.Services.GetService<TextService>();
             if (evtSvcMercDied != null && txtSvcMercDied != null)
-                evtSvcMercDied.Emit(string.Format(txtSvcMercDied.DisplayText(TextType.UI, UITextKey.ConsoleMercenaryDied), mercComponent.LinkedMercenary.Name, txtSvcMercDied.DisplayText(TextType.Monster, killerName)));
+                evtSvcMercDied.Emit(ConsoleSegment.Build(txtSvcMercDied.DisplayText(TextType.UI, UITextKey.ConsoleMercenaryDied),
+                    (mercComponent.LinkedMercenary.Name, GameConfig.ConsoleColorHeroName),
+                    (txtSvcMercDied.DisplayText(TextType.Monster, killerName), GameConfig.ConsoleColorEnemyName)));
 
             // Transfer all equipped gear to the Second Chance Merchant Vault
             var vault = Core.Services.GetService<SecondChanceMerchantVault>();

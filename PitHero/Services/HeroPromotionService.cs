@@ -140,7 +140,9 @@ namespace PitHero.Services
             var evtSvc = Core.Services.GetService<GameEventService>();
             var txtSvc = Core.Services.GetService<TextService>();
             if (evtSvc != null && txtSvc != null)
-                evtSvc.Emit(string.Format(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleCrystalPromotion), heroComponent.LinkedHero.Name, nextCrystal.Job.Name));
+                evtSvc.Emit(ConsoleSegment.Build(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleCrystalPromotion),
+                    (heroComponent.LinkedHero.Name, GameConfig.ConsoleColorHeroName),
+                    (nextCrystal.Job.Name, Color.White)));
 
             // Clear the crystal-needed flags so GOAP resumes normal behavior
             heroComponent.NeedsCrystal = false;
@@ -486,7 +488,9 @@ namespace PitHero.Services
             var evtSvcPromo = Core.Services.GetService<GameEventService>();
             var txtSvcPromo = Core.Services.GetService<TextService>();
             if (evtSvcPromo != null && txtSvcPromo != null)
-                evtSvcPromo.Emit(string.Format(txtSvcPromo.DisplayText(TextType.UI, UITextKey.ConsoleCrystalPromotion), heroComponent.LinkedHero.Name, nextCrystal.Job.Name));
+                evtSvcPromo.Emit(ConsoleSegment.Build(txtSvcPromo.DisplayText(TextType.UI, UITextKey.ConsoleCrystalPromotion),
+                    (heroComponent.LinkedHero.Name, GameConfig.ConsoleColorHeroName),
+                    (nextCrystal.Job.Name, Color.White)));
 
             // Add bouncy digit and text components for damage/miss display (if not already present)
             if (!mercenary.HasComponent<BouncyDigitComponent>())

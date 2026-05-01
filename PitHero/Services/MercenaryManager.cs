@@ -765,7 +765,9 @@ namespace PitHero.Services
             var evtSvc = Core.Services.GetService<GameEventService>();
             var txtSvc = Core.Services.GetService<TextService>();
             if (evtSvc != null && txtSvc != null)
-                evtSvc.Emit(string.Format(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleMercenaryHired), mercComponent.LinkedMercenary.Job.Name, mercComponent.LinkedMercenary.Name));
+                evtSvc.Emit(ConsoleSegment.Build(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleMercenaryHired),
+                    (mercComponent.LinkedMercenary.Job.Name, Color.White),
+                    (mercComponent.LinkedMercenary.Name, GameConfig.ConsoleColorHeroName)));
 
             // Add state machine and jump component for pit jumping
             if (!mercEntity.HasComponent<HeroJumpComponent>())

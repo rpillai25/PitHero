@@ -63,7 +63,8 @@ namespace PitHero.AI
             var evtSvc = Core.Services.GetService<GameEventService>();
             var txtSvc = Core.Services.GetService<TextService>();
             if (evtSvc != null && txtSvc != null && hero.LinkedHero != null)
-                evtSvc.Emit(string.Format(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHeroRespawn), hero.LinkedHero.Name));
+                evtSvc.Emit(ConsoleSegment.Build(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHeroRespawn),
+                    (hero.LinkedHero.Name, GameConfig.ConsoleColorHeroName)));
 
             var currentPos = hero.Entity.Transform.Position;
             var currentTile = new Point(

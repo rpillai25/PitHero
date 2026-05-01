@@ -80,7 +80,10 @@ namespace PitHero.ECS.Components
                               : phraseIndex == 2 ? txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHeroDiedPhrase3)
                               : phraseIndex == 3 ? txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHeroDiedPhrase4)
                               : txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHeroDiedPhrase5);
-                evtSvc.Emit(string.Format(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHeroDied), txtSvc.DisplayText(TextType.Monster, _killerName), hero.Name, phrase));
+                evtSvc.Emit(ConsoleSegment.Build(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHeroDied),
+                    (txtSvc.DisplayText(TextType.Monster, _killerName), GameConfig.ConsoleColorEnemyName),
+                    (hero.Name, GameConfig.ConsoleColorHeroName),
+                    (phrase, Color.White)));
             }
 
             // Face hero downward

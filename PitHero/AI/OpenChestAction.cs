@@ -266,7 +266,9 @@ namespace PitHero.AI
                 var evtSvc = Core.Services.GetService<GameEventService>();
                 var txtSvc = Core.Services.GetService<TextService>();
                 if (evtSvc != null && txtSvc != null)
-                    evtSvc.Emit(string.Format(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleItemFound), hero.LinkedHero.Name, containedItem.Name));
+                    evtSvc.Emit(ConsoleSegment.Build(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleItemFound),
+                        (hero.LinkedHero.Name, GameConfig.ConsoleColorHeroName),
+                        (containedItem.Name, RarityUtils.GetRarityColor(containedItem.Rarity))));
                 LogBagContents(hero.Bag);
 
                 // Reset HealingItemExhausted if picked up item is a healing consumable

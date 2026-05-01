@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Nez;
+using Nez.BitmapFonts;
 using Nez.UI;
 using PitHero.Services;
 
@@ -11,22 +12,18 @@ namespace PitHero.UI
     {
         private const int MaxEvents = 50;
 
-        private readonly List<string> _events;
+        private readonly List<ConsoleSegment[]> _events;
         private readonly Table _logTable;
         private readonly ScrollPane _scrollPane;
-        private readonly Skin _skin;
+        private readonly BitmapFont _consoleFont;
         private readonly GameEventService _eventService;
         private bool _scrollToBottom;
 
-        /// <summary>
-        /// Initializes the EventConsolePanel, wires up the log table inside a scroll pane,
-        /// and subscribes to the provided GameEventService.
-        /// </summary>
         public EventConsolePanel(Skin skin, GameEventService eventService) : base()
         {
-            _skin = skin;
             _eventService = eventService;
-            _events = new List<string>(MaxEvents);
+            _events = new List<ConsoleSegment[]>(MaxEvents);
+            _consoleFont = skin.Get<LabelStyle>("console-label").Font;
 
             _logTable = new Table();
             _logTable.Top().Left();
@@ -47,18 +44,18 @@ namespace PitHero.UI
             _eventService.OnEvent -= OnEventReceived;
         }
 
-        private void OnEventReceived(string message)
+        private void OnEventReceived(ConsoleSegment[] segments)
         {
             if (_events.Count >= MaxEvents)
             {
                 _events.RemoveAt(0);
-                _events.Add(message);
+                _events.Add(segments);
                 RebuildLog();
             }
             else
             {
-                _events.Add(message);
-                AppendLabel(message);
+                _events.Add(segments);
+                AppendRow(segments);
             }
 
             _scrollToBottom = true;
@@ -78,11 +75,22 @@ namespace PitHero.UI
             base.Draw(batcher, parentAlpha);
         }
 
-        private void AppendLabel(string message)
+        private void AppendRow(ConsoleSegment[] segments)
         {
-            var label = new Label(message, _skin, "console-label");
-            label.SetWrap(true);
-            _logTable.Add(label).Pad(2f).Left().SetExpandX().SetFillX();
+            var rowTable = new Table();
+            rowTable.Left();
+            for (int i = 0; i < segments.Length; i++)
+            {
+                // Each label gets its own LabelStyle instance so colors are independent.
+                // Sharing a skin style and calling SetFontColor mutates the shared object,
+                // causing all labels from that style to render in the last-set color.
+                var label = new Label(segments[i].Text, new LabelStyle(_consoleFont, segments[i].Color));
+                if (i == segments.Length - 1)
+                    rowTable.Add(label).Left().SetExpandX().SetFillX();
+                else
+                    rowTable.Add(label).Left();
+            }
+            _logTable.Add(rowTable).Pad(2f).Left().SetExpandX().SetFillX();
             _logTable.Row();
         }
 
@@ -90,7 +98,7 @@ namespace PitHero.UI
         {
             _logTable.Clear();
             for (int i = 0; i < _events.Count; i++)
-                AppendLabel(_events[i]);
+                AppendRow(_events[i]);
         }
     }
 }
