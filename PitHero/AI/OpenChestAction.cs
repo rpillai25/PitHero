@@ -263,12 +263,9 @@ namespace PitHero.AI
             {
                 Debug.Log($"[OpenChest] Added {containedItem.Name} to hero's main bag. Bag contents:");
 
-                var evtSvc = Core.Services.GetService<GameEventService>();
-                var txtSvc = Core.Services.GetService<TextService>();
-                if (evtSvc != null && txtSvc != null)
-                    evtSvc.Emit(ConsoleSegment.Build(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleItemFound),
-                        (hero.LinkedHero.Name, GameConfig.ConsoleColorHeroName),
-                        (containedItem.Name, RarityUtils.GetRarityColor(containedItem.Rarity))));
+                Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleItemFound,
+                    (hero.LinkedHero.Name, GameConfig.ConsoleColorHeroName),
+                    (containedItem.Name, RarityUtils.GetRarityColor(containedItem.Rarity)));
                 LogBagContents(hero.Bag);
 
                 // Reset HealingItemExhausted if picked up item is a healing consumable
@@ -314,12 +311,9 @@ namespace PitHero.AI
         /// <summary>Emits a console event for a successful auto-equip.</summary>
         private void EmitAutoEquipEvent(string characterName, IGear gear)
         {
-            var evtSvc = Core.Services.GetService<GameEventService>();
-            var txtSvc = Core.Services.GetService<TextService>();
-            if (evtSvc != null && txtSvc != null)
-                evtSvc.Emit(ConsoleSegment.Build(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleAutoEquip),
-                    (characterName, GameConfig.ConsoleColorHeroName),
-                    (gear.Name, RarityUtils.GetRarityColor(gear.Rarity))));
+            Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleAutoEquip,
+                (characterName, GameConfig.ConsoleColorHeroName),
+                (gear.Name, RarityUtils.GetRarityColor(gear.Rarity)));
         }
 
         /// <summary>Attempts to auto-equip gear on hero and mercenaries, then cascades any displaced gear as hand-me-downs.</summary>

@@ -102,7 +102,7 @@ namespace PitHero.ECS.Scenes
             _pitLevelStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
 
             // Register game event service so systems can broadcast events to the event console.
-            Core.Services.AddService(new Services.GameEventService());
+            Core.Services.AddService(new Services.GameEventService(Core.Services.GetService<TextService>()));
 
             // Register crystal collection service before UI is built so CrystalsTab can
             // resolve it via Core.Services.GetService<CrystalCollectionService>() during Initialize.
@@ -552,15 +552,15 @@ namespace PitHero.ECS.Scenes
         private void EmitWelcomeMessage()
         {
             var evtSvc = Core.Services.GetService<Services.GameEventService>();
-            var txtSvc = Core.Services.GetService<TextService>();
-            if (evtSvc == null || txtSvc == null) return;
+            if (evtSvc == null) return;
 
             var heroComp = FindEntity("hero")?.GetComponent<ECS.Components.HeroComponent>();
             string heroName = heroComp?.LinkedHero?.Name ?? "Hero";
 
-            evtSvc.Emit(Services.ConsoleSegment.Build(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleWelcome),
-                (heroName, GameConfig.ConsoleColorHeroName)));
+            evtSvc.EmitLocalized(UITextKey.ConsoleWelcome,
+                (heroName, GameConfig.ConsoleColorHeroName));
 
+            var txtSvc = Core.Services.GetService<TextService>();
             int phraseIndex = Nez.Random.Range(0, 3);
             string phrase = phraseIndex == 0 ? txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleWelcomePhrase1)
                           : phraseIndex == 1 ? txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleWelcomePhrase2)

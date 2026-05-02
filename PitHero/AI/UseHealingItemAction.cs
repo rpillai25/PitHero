@@ -225,13 +225,10 @@ namespace PitHero.AI
 
                 if (hpRestored > 0)
                 {
-                    var evtSvc = Core.Services.GetService<GameEventService>();
-                    var txtSvc = Core.Services.GetService<TextService>();
-                    if (evtSvc != null && txtSvc != null)
-                        evtSvc.Emit(ConsoleSegment.Build(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleOutBattleHealConsumable),
-                            (targetName, GameConfig.ConsoleColorHeroName),
-                            (consumable.Name, RarityUtils.GetRarityColor(consumable.Rarity)),
-                            (hpRestored.ToString(), Color.White)));
+                    Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleOutBattleHealConsumable,
+                        (targetName, GameConfig.ConsoleColorHeroName),
+                        (consumable.Name, RarityUtils.GetRarityColor(consumable.Rarity)),
+                        (hpRestored.ToString(), Color.White));
                 }
 
                 // Consume the item from the hero's bag

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
+using PitHero;
 
 namespace PitHero.Services
 {
@@ -48,6 +49,13 @@ namespace PitHero.Services
     /// <summary>Global service for broadcasting gameplay events to UI listeners such as the EventConsolePanel.</summary>
     public class GameEventService
     {
+        private readonly TextService _textService;
+
+        public GameEventService(TextService textService)
+        {
+            _textService = textService;
+        }
+
         /// <summary>Fired whenever a game event is emitted. Each element is a colored text segment.</summary>
         public event Action<ConsoleSegment[]> OnEvent;
 
@@ -62,5 +70,17 @@ namespace PitHero.Services
         {
             OnEvent?.Invoke(segments);
         }
+
+        /// <summary>Looks up the UI localized format for key and emits a colored segment row.</summary>
+        public void EmitLocalized(string key, params (string text, Color color)[] args)
+        {
+            string format = _textService.DisplayText(TextType.UI, key);
+            Emit(args.Length == 0
+                ? new[] { new ConsoleSegment(format, Color.White) }
+                : ConsoleSegment.Build(format, args));
+        }
+
+        /// <summary>Resolves a localized monster name for use as an EmitLocalized argument.</summary>
+        public string MonsterName(string key) => _textService.DisplayText(TextType.Monster, key);
     }
 }

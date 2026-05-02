@@ -927,10 +927,7 @@ namespace PitHero.AI
         /// <summary>Emits the inn-rest console event.</summary>
         private void EmitInnRestEvent()
         {
-            var evtSvc = Core.Services.GetService<GameEventService>();
-            var txtSvc = Core.Services.GetService<TextService>();
-            if (evtSvc != null && txtSvc != null)
-                evtSvc.Emit(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleInnRest));
+            Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleInnRest);
         }
 
         #endregion
