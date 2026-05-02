@@ -1492,7 +1492,8 @@ namespace PitHero.ECS.Scenes
                 float barWidth = 8 * (32f + 1f) * scale;
                 float barHeight = 32f * scale;
 
-                float centerX = Screen.Width / 2f - barWidth / 2f;
+                float halfShift = WindowManager.IsHalfHeightMode() ? -64f : 0f;
+                float centerX = Screen.Width / 2f - barWidth / 2f + halfShift;
                 // Add extra padding for shortcut number text below slots (14px for text + 2px offset = 16px total)
                 // Shift up by 16 pixels when in Half mode
                 float yOffset = WindowManager.IsHalfHeightMode() ? -16f : 0f;
@@ -1516,13 +1517,31 @@ namespace PitHero.ECS.Scenes
             if (_eventConsolePanel == null)
                 return;
 
-            float scale = WindowManager.IsHalfHeightMode() ? 2f : 1f;
+            bool halfMode = WindowManager.IsHalfHeightMode();
+            float scale = halfMode ? 2f : 1f;
+            float displayScale = halfMode ? 2f : 1f;
+
             float slotSize = 32f;
             float barWidth = 8 * (slotSize + 1f) * scale;
             float barRightEdge = Screen.Width / 2f + barWidth / 2f;
             float oneSlotPadding = slotSize * scale;
-            float panelX = barRightEdge + oneSlotPadding;
-            float panelY = GameConfig.VirtualHeight - 120f - 16f;
+
+            const float panelW = 480f;
+            const float panelH = 120f;
+            float visualW = panelW * displayScale;
+            float visualH = panelH * displayScale;
+
+            // Anchor the visual bottom edge 16px above the screen bottom.
+            float panelY = GameConfig.VirtualHeight - 16f - visualH;
+
+            // Start just past the shortcut bar, but clamp so the visual right edge stays on screen.
+            float halfShift = halfMode ? -64f : 0f;
+            float panelX = barRightEdge + oneSlotPadding + halfShift;
+            float clampedX = GameConfig.VirtualWidth - visualW;
+            if (panelX + visualW > GameConfig.VirtualWidth)
+                panelX = System.Math.Max(panelX, clampedX);
+
+            _eventConsolePanel.SetDisplayScale(displayScale);
             _eventConsolePanel.SetBasePosition(panelX, panelY);
         }
 

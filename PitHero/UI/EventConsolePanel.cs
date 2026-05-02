@@ -51,6 +51,16 @@ namespace PitHero.UI
             _eventService.OnEvent += OnEventReceived;
         }
 
+        /// <summary>
+        /// Sets a visual display scale applied via Group transform. Use 1f for normal mode, 1.5f for half-window mode.
+        /// The panel's layout footprint stays the same; only the rendered output is scaled.
+        /// </summary>
+        public void SetDisplayScale(float scale)
+        {
+            SetTransform(scale != 1f);
+            SetScale(scale);
+        }
+
         /// <summary>Sets the resting position and re-applies the current slide offset.</summary>
         public void SetBasePosition(float x, float y)
         {
