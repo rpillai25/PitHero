@@ -44,6 +44,7 @@ namespace PitHero.ECS.Scenes
         private Entity _mercenarySelectBoxEntity; // Entity for rendering SelectBox over hovered mercenary
         private Entity _mercenaryNameLabelEntity; // Entity for rendering name above hovered mercenary
         private Services.HeroPromotionService _heroPromotionService; // Manages hero crystal promotion after death
+        private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
 
         // HUD fonts for different shrink levels
         public BitmapFont _hudFontNormal;
@@ -100,6 +101,9 @@ namespace PitHero.ECS.Scenes
             _pitLevelStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
             _pitLevelStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
 
+            // Register game event service so systems can broadcast events to the event console.
+            Core.Services.AddService(new Services.GameEventService());
+
             // Register crystal collection service before UI is built so CrystalsTab can
             // resolve it via Core.Services.GetService<CrystalCollectionService>() during Initialize.
             Core.Services.AddService(new Services.CrystalCollectionService());
@@ -113,7 +117,9 @@ namespace PitHero.ECS.Scenes
         /// </summary>
         public override void Unload()
         {
+            _eventConsolePanel?.Dispose();
             Core.Content.UnloadAsset<TmxMap>(_mapPath);
+            Core.Services.RemoveService(typeof(Services.GameEventService));
             Core.Services.RemoveService(typeof(Services.CrystalCollectionService));
             Core.Services.RemoveService(typeof(MercenaryManager));
             Core.Services.RemoveService(typeof(AlliedMonsterManager));
@@ -169,6 +175,8 @@ namespace PitHero.ECS.Scenes
 
             // Apply pending load data if available
             ApplyPendingLoadData();
+
+            EmitWelcomeMessage();
 
             _isInitializationComplete = true;
         }
@@ -538,6 +546,26 @@ namespace PitHero.ECS.Scenes
             }
             
             Debug.Log("[MainGameScene] Load data applied successfully - Hero: " + (pendingData.HeroName ?? "?") + " Level " + pendingData.Level);
+        }
+
+        /// <summary>Emits the welcome greeting and a random introductory phrase to the event console.</summary>
+        private void EmitWelcomeMessage()
+        {
+            var evtSvc = Core.Services.GetService<Services.GameEventService>();
+            var txtSvc = Core.Services.GetService<TextService>();
+            if (evtSvc == null || txtSvc == null) return;
+
+            var heroComp = FindEntity("hero")?.GetComponent<ECS.Components.HeroComponent>();
+            string heroName = heroComp?.LinkedHero?.Name ?? "Hero";
+
+            evtSvc.Emit(Services.ConsoleSegment.Build(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleWelcome),
+                (heroName, GameConfig.ConsoleColorHeroName)));
+
+            int phraseIndex = Nez.Random.Range(0, 3);
+            string phrase = phraseIndex == 0 ? txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleWelcomePhrase1)
+                          : phraseIndex == 1 ? txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleWelcomePhrase2)
+                          : txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleWelcomePhrase3);
+            evtSvc.Emit(phrase);
         }
 
         private void LoadMap()
@@ -1111,6 +1139,18 @@ namespace PitHero.ECS.Scenes
             // Mercenary hire dialog
             _mercenaryHireDialog = new MercenaryHireDialog();
             uiCanvas.Stage.AddElement(_mercenaryHireDialog);
+
+            // Event console panel (lower-right corner)
+            var eventService = Core.Services.GetService<Services.GameEventService>();
+            if (eventService != null)
+            {
+                var consoleSkin = PitHeroSkin.CreateSkin();
+                _eventConsolePanel = new EventConsolePanel(consoleSkin, eventService);
+                _eventConsolePanel.SetSize(480f, 120f);
+                uiCanvas.Stage.AddElement(_eventConsolePanel);
+                PositionEventConsolePanel();
+                _settingsUI?.SetEventConsolePanel(_eventConsolePanel);
+            }
         }
 
         private void AddPitLevelTestComponent()
@@ -1365,6 +1405,7 @@ namespace PitHero.ECS.Scenes
 
                 // Update shortcut bar position and scale when mode changes
                 PositionShortcutBar();
+                PositionEventConsolePanel();
             }
 
             // Pit level label and Funds label stay at bottom-left with no scaling or offset changes
@@ -1451,7 +1492,8 @@ namespace PitHero.ECS.Scenes
                 float barWidth = 8 * (32f + 1f) * scale;
                 float barHeight = 32f * scale;
 
-                float centerX = Screen.Width / 2f - barWidth / 2f;
+                float halfShift = WindowManager.IsHalfHeightMode() ? -64f : 0f;
+                float centerX = Screen.Width / 2f - barWidth / 2f + halfShift;
                 // Add extra padding for shortcut number text below slots (14px for text + 2px offset = 16px total)
                 // Shift up by 16 pixels when in Half mode
                 float yOffset = WindowManager.IsHalfHeightMode() ? -16f : 0f;
@@ -1464,6 +1506,45 @@ namespace PitHero.ECS.Scenes
                 float offsetX = inventoryOpen ? -150f : 0f; // Offset left by 150px when inventory open
                 _shortcutBar.SetOffsetX(offsetX);
             }
+        }
+
+        /// <summary>
+        /// Positions the event console panel just to the right of the shortcut bar, with one-slot padding.
+        /// Mirrors PositionShortcutBar()'s scale logic so both stay in sync across window modes.
+        /// </summary>
+        private void PositionEventConsolePanel()
+        {
+            if (_eventConsolePanel == null)
+                return;
+
+            bool halfMode = WindowManager.IsHalfHeightMode();
+            float scale = halfMode ? 2f : 1f;
+            float displayScale = halfMode ? 2f : 1f;
+
+            float slotSize = 32f;
+            float barWidth = 8 * (slotSize + 1f) * scale;
+            float barRightEdge = Screen.Width / 2f + barWidth / 2f;
+            float oneSlotPadding = slotSize * scale;
+
+            const float panelH = 120f;
+            float visualH = panelH * displayScale;
+
+            // Anchor the visual bottom edge 16px above the screen bottom.
+            float panelY = GameConfig.VirtualHeight - 16f - visualH;
+
+            float halfShift = halfMode ? -96f : 0f;
+            float panelX = barRightEdge + oneSlotPadding + halfShift;
+
+            // In half mode, fill from panelX to the right screen edge so the scrollbar is always
+            // visible and text wraps within the available space. Divide by displayScale because
+            // the Group transform scales the layout back up visually.
+            float layoutW = halfMode
+                ? (GameConfig.VirtualWidth - panelX) / displayScale
+                : 480f;
+
+            _eventConsolePanel.SetDisplayScale(displayScale);
+            _eventConsolePanel.SetLayoutSize(layoutW, panelH);
+            _eventConsolePanel.SetBasePosition(panelX, panelY);
         }
 
         /// <summary>

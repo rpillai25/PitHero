@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using PitHero;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
 using PitHero.Services;
@@ -189,9 +190,17 @@ namespace PitHero.AI
         {
             if (consumable == null || target == null || bagIndex < 0) return false;
 
+            string targetName = isHero
+                ? ((RolePlayingFramework.Heroes.Hero)target).Name
+                : ((RolePlayingFramework.Mercenaries.Mercenary)target).Name;
+
+            int hpBefore = isHero
+                ? ((RolePlayingFramework.Heroes.Hero)target).CurrentHP
+                : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentHP;
+
             // Use the consumable's Consume method which handles both Hero and Mercenary contexts
             bool consumed = consumable.Consume(target);
-            
+
             if (consumed)
             {
                 // Reset HealingSkillExhausted so healing skills are re-evaluated next cycle
@@ -202,19 +211,28 @@ namespace PitHero.AI
                 SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
                 soundEffectManager.PlaySound(SoundEffectType.Restorative);
 
-                string targetName = isHero 
-                    ? ((RolePlayingFramework.Heroes.Hero)target).Name 
-                    : ((RolePlayingFramework.Mercenaries.Mercenary)target).Name;
-                
-                int currentHP = isHero 
-                    ? ((RolePlayingFramework.Heroes.Hero)target).CurrentHP 
+                int currentHP = isHero
+                    ? ((RolePlayingFramework.Heroes.Hero)target).CurrentHP
                     : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentHP;
-                
-                int maxHP = isHero 
-                    ? ((RolePlayingFramework.Heroes.Hero)target).MaxHP 
+
+                int maxHP = isHero
+                    ? ((RolePlayingFramework.Heroes.Hero)target).MaxHP
                     : ((RolePlayingFramework.Mercenaries.Mercenary)target).MaxHP;
 
+                int hpRestored = currentHP - hpBefore;
+
                 Debug.Log($"[UseHealingItemAction] Used {consumable.Name} on {targetName}. Current HP: {currentHP}/{maxHP}");
+
+                if (hpRestored > 0)
+                {
+                    var evtSvc = Core.Services.GetService<GameEventService>();
+                    var txtSvc = Core.Services.GetService<TextService>();
+                    if (evtSvc != null && txtSvc != null)
+                        evtSvc.Emit(ConsoleSegment.Build(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleOutBattleHealConsumable),
+                            (targetName, GameConfig.ConsoleColorHeroName),
+                            (consumable.Name, RarityUtils.GetRarityColor(consumable.Rarity)),
+                            (hpRestored.ToString(), Color.White)));
+                }
 
                 // Consume the item from the hero's bag
                 if (heroComponent.Bag != null && heroComponent.Bag.ConsumeFromStack(bagIndex))

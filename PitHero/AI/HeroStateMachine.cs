@@ -31,6 +31,7 @@ namespace PitHero.AI
         private JumpOutOfPitForStopAction _jumpOutOfPitForStopAction;
         private WalkToTavernForStopAction _walkToTavernForStopAction;
         private bool _lastStoppedAdventure;
+        private bool _innRestEmitted;
 
         // Healing priority tracking for replanning when priorities change
         private HeroHealPriority _lastHealPriority1;
@@ -207,7 +208,20 @@ namespace PitHero.AI
                 _lastHealPriority2 = _hero.HealPriority2;
                 _lastHealPriority3 = _hero.HealPriority3;
                 _hasTrackedPriorities = true;
-                
+
+                if (PlanContainsSleepInBed(_actionPlan))
+                {
+                    if (!_innRestEmitted)
+                    {
+                        EmitInnRestEvent();
+                        _innRestEmitted = true;
+                    }
+                }
+                else
+                {
+                    _innRestEmitted = false;
+                }
+
                 CurrentState = ActorState.GoTo;
             }
             else
@@ -256,7 +270,20 @@ namespace PitHero.AI
                         _lastHealPriority2 = _hero.HealPriority2;
                         _lastHealPriority3 = _hero.HealPriority3;
                         _hasTrackedPriorities = true;
-                        
+
+                        if (PlanContainsSleepInBed(_actionPlan))
+                        {
+                            if (!_innRestEmitted)
+                            {
+                                EmitInnRestEvent();
+                                _innRestEmitted = true;
+                            }
+                        }
+                        else
+                        {
+                            _innRestEmitted = false;
+                        }
+
                         CurrentState = ActorState.GoTo;
                     }
                     else
@@ -881,6 +908,29 @@ namespace PitHero.AI
                 return deltaX > 0 ? Direction.Right : Direction.Left;
             else
                 return deltaY > 0 ? Direction.Down : Direction.Up;
+        }
+
+        #endregion
+
+        #region Planning Helpers
+
+        /// <summary>Returns true if the given plan contains a SleepInBedAction step.</summary>
+        private bool PlanContainsSleepInBed(Stack<Nez.AI.GOAP.Action> plan)
+        {
+            var actions = plan.ToArray();
+            for (int i = 0; i < actions.Length; i++)
+                if (actions[i] is SleepInBedAction)
+                    return true;
+            return false;
+        }
+
+        /// <summary>Emits the inn-rest console event.</summary>
+        private void EmitInnRestEvent()
+        {
+            var evtSvc = Core.Services.GetService<GameEventService>();
+            var txtSvc = Core.Services.GetService<TextService>();
+            if (evtSvc != null && txtSvc != null)
+                evtSvc.Emit(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleInnRest));
         }
 
         #endregion
