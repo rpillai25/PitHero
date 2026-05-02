@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.BitmapFonts;
@@ -16,9 +17,11 @@ namespace PitHero.UI
         private readonly List<ConsoleSegment[]> _events;
         private readonly Table _logTable;
         private readonly ScrollPane _scrollPane;
+        private readonly Cell _scrollPaneCell;
         private readonly BitmapFont _consoleFont;
         private readonly GameEventService _eventService;
         private bool _scrollToBottom;
+        private float _layoutWidth = 480f;
 
         /// <summary>Fires whenever a new event is added to the log, including while hidden.</summary>
         public event Action OnNewEvent;
@@ -46,13 +49,25 @@ namespace PitHero.UI
             _scrollPane.SetFadeScrollBars(false);
 
             SetBackground(new PrimitiveDrawable(new Color(0, 0, 0, 180)));
-            Add(_scrollPane).Width(480f).Height(120f).Expand().Fill();
+            _scrollPaneCell = Add(_scrollPane).Width(480f).Height(120f).Expand().Fill();
 
             _eventService.OnEvent += OnEventReceived;
         }
 
         /// <summary>
-        /// Sets a visual display scale applied via Group transform. Use 1f for normal mode, 1.5f for half-window mode.
+        /// Updates the scrollpane cell constraints and the panel's own size so text wraps
+        /// correctly at the new width. Call before SetBasePosition when the layout width changes.
+        /// </summary>
+        public void SetLayoutSize(float width, float height)
+        {
+            _layoutWidth = width;
+            _scrollPaneCell.Width(width).Height(height);
+            SetSize(width, height);
+            InvalidateHierarchy();
+        }
+
+        /// <summary>
+        /// Sets a visual display scale applied via Group transform. Use 1f for normal mode, 2f for half-window mode.
         /// The panel's layout footprint stays the same; only the rendered output is scaled.
         /// </summary>
         public void SetDisplayScale(float scale)
@@ -116,21 +131,110 @@ namespace PitHero.UI
 
         private void AppendRow(ConsoleSegment[] segments)
         {
-            var rowTable = new Table();
-            rowTable.Left();
-            for (int i = 0; i < segments.Length; i++)
+            var lines = SplitToLines(segments);
+            for (int l = 0; l < lines.Count; l++)
             {
-                // Each label gets its own LabelStyle instance so colors are independent.
-                // Sharing a skin style and calling SetFontColor mutates the shared object,
-                // causing all labels from that style to render in the last-set color.
-                var label = new Label(segments[i].Text, new LabelStyle(_consoleFont, segments[i].Color));
-                if (i == segments.Length - 1)
-                    rowTable.Add(label).Left().SetExpandX().SetFillX();
-                else
+                var lineSegs = lines[l];
+                var rowTable = new Table();
+                rowTable.Left();
+                for (int i = 0; i < lineSegs.Length; i++)
+                {
+                    // Each label gets its own LabelStyle instance so colors are independent.
+                    // Sharing a skin style and calling SetFontColor mutates the shared object,
+                    // causing all labels from that style to render in the last-set color.
+                    var label = new Label(lineSegs[i].Text, new LabelStyle(_consoleFont, lineSegs[i].Color));
                     rowTable.Add(label).Left();
+                }
+                _logTable.Add(rowTable).Pad(2f).Left().SetExpandX().SetFillX();
+                _logTable.Row();
             }
-            _logTable.Add(rowTable).Pad(2f).Left().SetExpandX().SetFillX();
-            _logTable.Row();
+        }
+
+        /// <summary>Splits a segment array into multiple lines using whole-word wrapping.</summary>
+        private List<ConsoleSegment[]> SplitToLines(ConsoleSegment[] segments)
+        {
+            float spaceWidth = _consoleFont.MeasureString(" ").X;
+
+            // Flatten all segments into (word, color) tokens, stripping spaces.
+            var tokens = new List<(string Word, Color Color)>(segments.Length * 4);
+            for (int s = 0; s < segments.Length; s++)
+            {
+                var parts = segments[s].Text.Split(' ');
+                for (int p = 0; p < parts.Length; p++)
+                {
+                    if (parts[p].Length > 0)
+                        tokens.Add((parts[p], segments[s].Color));
+                }
+            }
+
+            var lines = new List<ConsoleSegment[]>(2);
+            if (tokens.Count == 0)
+            {
+                lines.Add(segments);
+                return lines;
+            }
+
+            // Greedy line-fill: add tokens until width exceeded, then start a new line.
+            var lineTokens = new List<(string Word, Color Color)>(tokens.Count);
+            float lineWidth = 0f;
+
+            for (int t = 0; t < tokens.Count; t++)
+            {
+                float wordWidth = _consoleFont.MeasureString(tokens[t].Word).X;
+                float needed = lineWidth == 0f ? wordWidth : spaceWidth + wordWidth;
+
+                if (lineWidth == 0f || lineWidth + needed <= _layoutWidth)
+                {
+                    lineTokens.Add(tokens[t]);
+                    lineWidth += needed;
+                }
+                else
+                {
+                    lines.Add(MergeTokensToSegments(lineTokens));
+                    lineTokens.Clear();
+                    lineTokens.Add(tokens[t]);
+                    lineWidth = wordWidth;
+                }
+            }
+
+            if (lineTokens.Count > 0)
+                lines.Add(MergeTokensToSegments(lineTokens));
+
+            return lines;
+        }
+
+        /// <summary>Merges consecutive same-color tokens back into ConsoleSegment array, space-separated.</summary>
+        private static ConsoleSegment[] MergeTokensToSegments(List<(string Word, Color Color)> tokens)
+        {
+            if (tokens.Count == 0)
+                return Array.Empty<ConsoleSegment>();
+
+            var result = new List<ConsoleSegment>(tokens.Count);
+            var sb = new StringBuilder();
+            Color currentColor = tokens[0].Color;
+            sb.Append(tokens[0].Word);
+
+            for (int i = 1; i < tokens.Count; i++)
+            {
+                if (tokens[i].Color == currentColor)
+                {
+                    sb.Append(' ');
+                    sb.Append(tokens[i].Word);
+                }
+                else
+                {
+                    result.Add(new ConsoleSegment(sb.ToString(), currentColor));
+                    sb.Clear();
+                    // Leading space acts as the separator between differently-colored labels.
+                    // Same-color tokens use the ' ' appended in the branch above.
+                    sb.Append(' ');
+                    sb.Append(tokens[i].Word);
+                    currentColor = tokens[i].Color;
+                }
+            }
+
+            result.Add(new ConsoleSegment(sb.ToString(), currentColor));
+            return result.ToArray();
         }
 
         private void RebuildLog()

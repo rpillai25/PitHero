@@ -1526,22 +1526,24 @@ namespace PitHero.ECS.Scenes
             float barRightEdge = Screen.Width / 2f + barWidth / 2f;
             float oneSlotPadding = slotSize * scale;
 
-            const float panelW = 480f;
             const float panelH = 120f;
-            float visualW = panelW * displayScale;
             float visualH = panelH * displayScale;
 
             // Anchor the visual bottom edge 16px above the screen bottom.
             float panelY = GameConfig.VirtualHeight - 16f - visualH;
 
-            // Start just past the shortcut bar, but clamp so the visual right edge stays on screen.
-            float halfShift = halfMode ? -64f : 0f;
+            float halfShift = halfMode ? -96f : 0f;
             float panelX = barRightEdge + oneSlotPadding + halfShift;
-            float clampedX = GameConfig.VirtualWidth - visualW;
-            if (panelX + visualW > GameConfig.VirtualWidth)
-                panelX = System.Math.Max(panelX, clampedX);
+
+            // In half mode, fill from panelX to the right screen edge so the scrollbar is always
+            // visible and text wraps within the available space. Divide by displayScale because
+            // the Group transform scales the layout back up visually.
+            float layoutW = halfMode
+                ? (GameConfig.VirtualWidth - panelX) / displayScale
+                : 480f;
 
             _eventConsolePanel.SetDisplayScale(displayScale);
+            _eventConsolePanel.SetLayoutSize(layoutW, panelH);
             _eventConsolePanel.SetBasePosition(panelX, panelY);
         }
 
