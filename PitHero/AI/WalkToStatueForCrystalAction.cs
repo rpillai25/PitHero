@@ -60,9 +60,8 @@ namespace PitHero.AI
 
             Debug.Log($"[WalkToStatueForCrystalAction] Hero walking to statue at ({StatueTileX},{StatueTileY}) to receive crystal");
 
-            var evtSvc = Core.Services.GetService<GameEventService>();
-            if (evtSvc != null && hero.LinkedHero != null)
-                evtSvc.EmitLocalized(UITextKey.ConsoleHeroRespawn,
+            if (hero.LinkedHero != null)
+                Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleHeroRespawn,
                     (hero.LinkedHero.Name, GameConfig.ConsoleColorHeroName));
 
             var currentPos = hero.Entity.Transform.Position;

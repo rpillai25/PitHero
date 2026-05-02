@@ -831,11 +831,10 @@ namespace PitHero.AI
                 {
                     Debug.Log($"[AttackMonster] {enemy.Name} recruited as '{recruited.Name}'");
                     var evtSvc = Core.Services.GetService<GameEventService>();
-                    if (evtSvc != null)
-                        evtSvc.EmitLocalized(UITextKey.ConsoleMonsterRecruited,
-                            (hero.Name, GameConfig.ConsoleColorHeroName),
-                            (recruited.Name, GameConfig.ConsoleColorEnemyName),
-                            (evtSvc.MonsterName(enemy.Name), GameConfig.ConsoleColorEnemyName));
+                    evtSvc?.EmitLocalized(UITextKey.ConsoleMonsterRecruited,
+                        (hero.Name, GameConfig.ConsoleColorHeroName),
+                        (recruited.Name, GameConfig.ConsoleColorEnemyName),
+                        (evtSvc?.MonsterName(enemy.Name) ?? enemy.Name, GameConfig.ConsoleColorEnemyName));
                 }
             }
         }
@@ -1008,11 +1007,10 @@ namespace PitHero.AI
                 Debug.Log($"[AttackMonster] Hero deals {heroAttackResult.Damage} damage to {targetEnemy.Name}. Enemy HP: {targetEnemy.CurrentHP}/{targetEnemy.MaxHP}");
 
                 var evtSvc = Core.Services.GetService<GameEventService>();
-                if (evtSvc != null)
-                    evtSvc.EmitLocalized(UITextKey.ConsoleAttack,
-                        (hero.Name, GameConfig.ConsoleColorHeroName),
-                        (evtSvc.MonsterName(targetEnemy.Name), GameConfig.ConsoleColorEnemyName),
-                        (heroAttackResult.Damage.ToString(), Color.White));
+                evtSvc?.EmitLocalized(UITextKey.ConsoleAttack,
+                    (hero.Name, GameConfig.ConsoleColorHeroName),
+                    (evtSvc?.MonsterName(targetEnemy.Name) ?? targetEnemy.Name, GameConfig.ConsoleColorEnemyName),
+                    (heroAttackResult.Damage.ToString(), Color.White));
 
                 yield return ShowDamageDigitOnEntity(targetMonster, heroAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor);
 

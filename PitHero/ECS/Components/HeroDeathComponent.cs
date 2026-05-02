@@ -71,20 +71,16 @@ namespace PitHero.ECS.Components
 
             // Emit hero-died event to the event console
             var evtSvc = Nez.Core.Services.GetService<PitHero.Services.GameEventService>();
-            var txtSvc = Nez.Core.Services.GetService<PitHero.Services.TextService>();
-            if (evtSvc != null && txtSvc != null)
-            {
-                int phraseIndex = Nez.Random.Range(0, 5);
-                string phrase = phraseIndex == 0 ? txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHeroDiedPhrase1)
-                              : phraseIndex == 1 ? txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHeroDiedPhrase2)
-                              : phraseIndex == 2 ? txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHeroDiedPhrase3)
-                              : phraseIndex == 3 ? txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHeroDiedPhrase4)
-                              : txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHeroDiedPhrase5);
-                evtSvc.Emit(ConsoleSegment.Build(txtSvc.DisplayText(TextType.UI, UITextKey.ConsoleHeroDied),
-                    (txtSvc.DisplayText(TextType.Monster, _killerName), GameConfig.ConsoleColorEnemyName),
-                    (hero.Name, GameConfig.ConsoleColorHeroName),
-                    (phrase, Color.White)));
-            }
+            int phraseIndex = Nez.Random.Range(0, 5);
+            string phrase = phraseIndex == 0 ? evtSvc?.LocalizeUI(UITextKey.ConsoleHeroDiedPhrase1) ?? ""
+                          : phraseIndex == 1 ? evtSvc?.LocalizeUI(UITextKey.ConsoleHeroDiedPhrase2) ?? ""
+                          : phraseIndex == 2 ? evtSvc?.LocalizeUI(UITextKey.ConsoleHeroDiedPhrase3) ?? ""
+                          : phraseIndex == 3 ? evtSvc?.LocalizeUI(UITextKey.ConsoleHeroDiedPhrase4) ?? ""
+                          : evtSvc?.LocalizeUI(UITextKey.ConsoleHeroDiedPhrase5) ?? "";
+            evtSvc?.EmitLocalized(UITextKey.ConsoleHeroDied,
+                (evtSvc?.MonsterName(_killerName) ?? _killerName, GameConfig.ConsoleColorEnemyName),
+                (hero.Name, GameConfig.ConsoleColorHeroName),
+                (phrase, Color.White));
 
             // Face hero downward
             var facing = Entity.GetComponent<ActorFacingComponent>();

@@ -82,5 +82,8 @@ namespace PitHero.Services
 
         /// <summary>Resolves a localized monster name for use as an EmitLocalized argument.</summary>
         public string MonsterName(string key) => _textService.DisplayText(TextType.Monster, key);
+
+        /// <summary>Resolves a UI-category localized string for use as an EmitLocalized argument.</summary>
+        public string LocalizeUI(string key) => _textService.DisplayText(TextType.UI, key);
     }
 }
