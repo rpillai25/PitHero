@@ -26,7 +26,7 @@ namespace PitHero.UI
         private TextButton _forgeButton;
         private CrystalSlotElement[] _inventorySlots;
         private CrystalSlotElement[] _queueSlots;
-        private TextButton _createButton;
+        private HoverableTextButton _createButton;
         private HeroCrystalCard _crystalCard;
         private CrystalCollectionService _crystalService;
         private Stage _stage;
@@ -83,7 +83,7 @@ namespace PitHero.UI
 
             // ── Forge section (spans both columns) ───────────────────────────────
             var forgeSection = new Table();
-            forgeSection.Add(new Label(GetText(UITextKey.CrystalForgeTitle), skin, "ph-default")).Left().Pad(5);
+            forgeSection.Add(new HoverableLabel(GetText(UITextKey.CrystalForgeTitle), skin, "ph-default", GetText(UITextKey.CrystalForgeTitleTooltip), _stage)).Left().Pad(5);
             forgeSection.Row();
 
             var forgeRow = new Table();
@@ -144,13 +144,14 @@ namespace PitHero.UI
             invCol.Add(invGrid).Left().Pad(2);
             invCol.Row();
 
-            _createButton = new TextButton(GetText(UITextKey.CrystalCreateButton), skin, "ph-default");
+            _createButton = new HoverableTextButton(GetText(UITextKey.CrystalCreateButton), skin, "ph-default", GetText(UITextKey.CrystalCreateButtonTooltip), _stage);
             _createButton.OnClicked += OnCreateClicked;
+            _createButton.OnClicked += (_) => _createButton.HideTooltip();
             invCol.Add(_createButton).Height(24).Left().Pad(5);
 
             // ── Queue section (right) ─────────────────────────────────────────────
             var queueCol = new Table();
-            queueCol.Add(new Label(GetText(UITextKey.CrystalQueueTitle), skin, "ph-default")).Left().Pad(5);
+            queueCol.Add(new HoverableLabel(GetText(UITextKey.CrystalQueueTitle), skin, "ph-default", GetText(UITextKey.CrystalQueueTitleTooltip), _stage)).Left().Pad(5);
             queueCol.Row();
 
             _queueSlots = new CrystalSlotElement[QUEUE_SLOTS];

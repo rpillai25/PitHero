@@ -57,6 +57,7 @@ SettingsDockBottom,Dock Bottom
 SettingsDockCenter,Dock Center
 SettingsGameSession,Game Session
 SettingsReplenishLabel,Replenish Button Thresholds
+SettingsReplenishThresholdHint,(HP or MP must be below this level to replenish)
 SettingsHpThreshold,HP Threshold: {0}%
 SettingsMpThreshold,MP Threshold: {0}%
 SettingsHideBarLabel,Hide Bar Settings
@@ -95,6 +96,8 @@ MercenaryNoMercenariesHired,No mercenaries hired
 MercenaryNoJobSkills,No job skills
 BehaviorPitPriority,Pit Priority
 BehaviorHealPriority,Heal Priority
+BehaviorPitPriorityTooltip,What does the party care about in the pit?
+BehaviorHealPriorityTooltip,What does the Party and Replenish button do to heal HP or MP?
 BehaviorBattleTactics,Battle Tactics
 BehaviorTacticBlitz,Blitz
 BehaviorTacticStrategic,Strategic
@@ -155,10 +158,13 @@ SkillActiveMultiplier,Active: {0}x (Multiplier: {1}x)
 EquipPreviewChanges,Changes
 TabCrystals,Crystals
 CrystalForgeTitle,Crystal Forge
+CrystalForgeTitleTooltip,Combine mastered crystals to form more powerful crystal
 CrystalForgeButton,Forge
 CrystalInventoryTitle,Crystal Inventory
 CrystalQueueTitle,Crystal Queue
+CrystalQueueTitleTooltip,Queue next jobs for Hero for future runs
 CrystalCreateButton,Create
+CrystalCreateButtonTooltip,Create a new crystal for a selected job
 CrystalCardJobLabel,Job: {0}
 CrystalCardLevelLabel,Level: {0}
 CrystalCardJobLevelLabel,Job Level: {0}
@@ -176,6 +182,7 @@ DialogConfirmForge,Confirm Forge
 ConfirmForgeMessage,Combine these 2 crystals into a Combo Crystal?
 CrystalInventoryFull,Crystal inventory is full
 ButtonDismiss,Dismiss
+ButtonDiscard,Discard
 DialogConfirmDismissMercenary,Dismiss Mercenary
 ConfirmDismissMercenaryMessage,Are you sure you want to dismiss {0}? Their gear will be returned to your inventory.
 WindowSecondChanceShop,Second Chance Shop

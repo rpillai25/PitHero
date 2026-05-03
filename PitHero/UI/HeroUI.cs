@@ -219,7 +219,7 @@ namespace PitHero.UI
             _heroNormalStyle = new ImageButtonStyle { ImageUp = new SpriteDrawable(heroSprite), ImageDown = new SpriteDrawable(heroInverse), ImageOver = new SpriteDrawable(heroHighlight) };
             _heroHalfStyle = new ImageButtonStyle { ImageUp = new SpriteDrawable(heroSprite2x), ImageDown = new SpriteDrawable(heroInverse2x), ImageOver = new SpriteDrawable(heroHighlight2x) };
 
-            _heroButton = new HoverableImageButton(_heroNormalStyle, "Hero");
+            _heroButton = new HoverableImageButton(_heroNormalStyle, "Party");
             _heroButton.SetSize(heroSprite.SourceRect.Width, heroSprite.SourceRect.Height);
             _heroButton.OnClicked += (button) => HandleHeroButtonClick();
         }
@@ -258,13 +258,12 @@ namespace PitHero.UI
             PopulateMercenariesTab(_mercenariesTab, skin);
             _tabPane.AddTab(_inventoryTab);
             _tabPane.AddTab(_crystalTab);
-            
-            // Add Crystals Collection tab after Hero Info tab
+            _tabPane.AddTab(_mercenariesTab);
+
             _crystalsCollectionTab = new Tab(GetText(TextType.UI, UITextKey.TabCrystals), tabStyle);
             PopulateCrystalsCollectionTab(_crystalsCollectionTab, skin);
             _tabPane.AddTab(_crystalsCollectionTab);
-            
-            _tabPane.AddTab(_mercenariesTab);
+
             _tabPane.AddTab(_prioritiesTab);
             
             // Hook into tab button clicks to adjust window width
@@ -583,8 +582,8 @@ namespace PitHero.UI
             container.SetFillParent(true);
 
             // Pit Priority section (extra top padding to clear tab buttons)
-            var pitPriorityLabel = new Label("Pit Priority", skin, "ph-default");
-            container.Add(pitPriorityLabel).SetAlign(Align.Left).SetPadTop(90f).SetPadBottom(5f);
+            var pitPriorityLabel = new HoverableLabel("Pit Priority", skin, "ph-default", GetText(TextType.UI, UITextKey.BehaviorPitPriorityTooltip), _stage);
+            container.Add(pitPriorityLabel).SetAlign(Align.Left).SetPadTop(172f).SetPadBottom(5f);
             container.Row();
 
             InitializePriorityItems();
@@ -593,7 +592,7 @@ namespace PitHero.UI
             container.Row();
 
             // Heal Priority section
-            var healPriorityLabel = new Label("Heal Priority", skin, "ph-default");
+            var healPriorityLabel = new HoverableLabel("Heal Priority", skin, "ph-default", GetText(TextType.UI, UITextKey.BehaviorHealPriorityTooltip), _stage);
             container.Add(healPriorityLabel).SetAlign(Align.Left).SetPadBottom(5f);
             container.Row();
 

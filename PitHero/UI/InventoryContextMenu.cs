@@ -23,6 +23,7 @@ namespace PitHero.UI
 
         public event System.Action<IItem, int> OnUseItem;
         public event System.Action<IItem, int> OnDiscardItem;
+        public event System.Action OnHidden;
 
         /// <summary>Initializes context menu windows.</summary>
         public void Initialize(Stage stage, Skin skin)
@@ -63,7 +64,7 @@ namespace PitHero.UI
             table.Add(_useButton).Width(100).Height(25);
             table.Row();
 
-            _discardButton = new ResettableTextButton(_textService.DisplayText(TextType.UI, UITextKey.DialogReallyDiscard), _skin);
+            _discardButton = new ResettableTextButton(_textService.DisplayText(TextType.UI, UITextKey.ButtonDiscard), _skin);
             _discardButton.OnClicked += (btn) =>
             {
                 Hide();
@@ -147,6 +148,7 @@ namespace PitHero.UI
                 _contextMenuWindow.SetVisible(false);
             if (_dismissLayer != null)
                 _dismissLayer.SetVisible(false);
+            OnHidden?.Invoke();
         }
 
         /// <summary>Shows discard confirmation.</summary>

@@ -15,6 +15,7 @@ namespace PitHero
         public const string ButtonReset = "ButtonReset";
         public const string ButtonHire = "ButtonHire";
         public const string ButtonDismiss = "ButtonDismiss";
+        public const string ButtonDiscard = "ButtonDiscard";
         public const string ButtonReroll = "ButtonReroll";
         public const string ButtonCreateHero = "ButtonCreateHero";
         public const string ButtonQuitToTitle = "ButtonQuitToTitle";
@@ -63,6 +64,7 @@ namespace PitHero
         public const string SettingsDockCenter = "SettingsDockCenter";
         public const string SettingsGameSession = "SettingsGameSession";
         public const string SettingsReplenishLabel = "SettingsReplenishLabel";
+        public const string SettingsReplenishThresholdHint = "SettingsReplenishThresholdHint";
         public const string SettingsHpThreshold = "SettingsHpThreshold";
         public const string SettingsMpThreshold = "SettingsMpThreshold";
         public const string SettingsHideBarLabel = "SettingsHideBarLabel";
@@ -101,6 +103,8 @@ namespace PitHero
         public const string MercenaryNoJobSkills = "MercenaryNoJobSkills";
         public const string BehaviorPitPriority = "BehaviorPitPriority";
         public const string BehaviorHealPriority = "BehaviorHealPriority";
+        public const string BehaviorPitPriorityTooltip = "BehaviorPitPriorityTooltip";
+        public const string BehaviorHealPriorityTooltip = "BehaviorHealPriorityTooltip";
         public const string BehaviorBattleTactics = "BehaviorBattleTactics";
         public const string BehaviorTacticBlitz = "BehaviorTacticBlitz";
         public const string BehaviorTacticStrategic = "BehaviorTacticStrategic";
@@ -161,10 +165,13 @@ namespace PitHero
         public const string EquipPreviewChanges = "EquipPreviewChanges";
         public const string TabCrystals = "TabCrystals";
         public const string CrystalForgeTitle = "CrystalForgeTitle";
+        public const string CrystalForgeTitleTooltip = "CrystalForgeTitleTooltip";
         public const string CrystalForgeButton = "CrystalForgeButton";
         public const string CrystalInventoryTitle = "CrystalInventoryTitle";
         public const string CrystalQueueTitle = "CrystalQueueTitle";
+        public const string CrystalQueueTitleTooltip = "CrystalQueueTitleTooltip";
         public const string CrystalCreateButton = "CrystalCreateButton";
+        public const string CrystalCreateButtonTooltip = "CrystalCreateButtonTooltip";
         public const string CrystalCardJobLabel = "CrystalCardJobLabel";
         public const string CrystalCardLevelLabel = "CrystalCardLevelLabel";
         public const string CrystalCardJobLevelLabel = "CrystalCardJobLevelLabel";

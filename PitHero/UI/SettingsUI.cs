@@ -628,7 +628,10 @@ namespace PitHero.UI
 
             // Replenish section
             var replenishLabel = new Label(GetText(TextType.UI, UITextKey.SettingsReplenishLabel), skin, "ph-default");
-            buttonsTable.Add(replenishLabel).Left().SetPadBottom(10f);
+            buttonsTable.Add(replenishLabel).Left().SetPadBottom(4f);
+            buttonsTable.Row();
+            var replenishHintLabel = new Label(GetText(TextType.UI, UITextKey.SettingsReplenishThresholdHint), skin, "ph-default");
+            buttonsTable.Add(replenishHintLabel).Left().SetPadBottom(10f);
             buttonsTable.Row();
 
             // HP Threshold slider row

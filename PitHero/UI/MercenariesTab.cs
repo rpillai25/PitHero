@@ -192,7 +192,7 @@ namespace PitHero.UI
                 _dismissButtons[m].SetVisible(true);
 
                 // Update info labels
-                _nameLabels[m].SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.MercenaryNameLabel), merc.Name));
+                _nameLabels[m].SetText(merc.Name);
                 _levelLabels[m].SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.HeroLevelLabel), merc.Level));
                 _jobLabels[m].SetText(string.Format(_textService.DisplayText(TextType.UI, UITextKey.HeroJobLabel), merc.Job.Name));
 

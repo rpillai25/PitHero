@@ -123,6 +123,17 @@ namespace PitHero.UI
             CrossClassSynergyPatterns.RegisterAllCrossClassPatterns(_synergyDetector);
         }
 
+        /// <summary>Clears all slot hover states and fires OnItemUnhovered, used when context menu closes.</summary>
+        private void ClearHoverState()
+        {
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot != null) slot.SlotData.IsHovered = false;
+            }
+            OnItemUnhovered?.Invoke();
+        }
+
         /// <summary>Returns true if any slot is currently hovered.</summary>
         public bool HasAnyHoveredSlot()
         {
@@ -324,6 +335,7 @@ namespace PitHero.UI
             _contextMenu.Initialize(stage, skin);
             _contextMenu.OnUseItem += (item, bagIndex) => UseConsumable(item, bagIndex);
             _contextMenu.OnDiscardItem += (item, bagIndex) => DiscardItem(bagIndex);
+            _contextMenu.OnHidden += ClearHoverState;
 
             // Add placeholder tooltips to stage
             AddPlaceholderTooltipsToStage();

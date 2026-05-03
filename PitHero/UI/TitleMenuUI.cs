@@ -140,7 +140,8 @@ namespace PitHero.UI
 
         private void StartGame(string mapPath)
         {
-            // Transition to hero creation scene instead of directly to the game
+            var gameState = Core.Services.GetService<GameStateService>();
+            if (gameState != null) gameState.Funds = 0;
             var heroCreationScene = new HeroCreationScene(mapPath);
             Core.Scene = heroCreationScene;
         }
