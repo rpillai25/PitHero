@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using PitHero;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
 using PitHero.Services;
@@ -237,9 +238,10 @@ namespace PitHero.AI
             if (gameState != null && gameState.Funds >= GameConfig.InnCostGold)
             {
                 gameState.Funds -= GameConfig.InnCostGold;
-                _hasPaidInnkeeper = true;              
+                _hasPaidInnkeeper = true;
                 soundEffectManager.PlaySound(SoundEffectType.PayGold);
                 Debug.Log($"[SleepInBedAction] Paid {GameConfig.InnCostGold} gold to innkeeper. Remaining funds: {gameState.Funds}");
+
             }
             else
             {

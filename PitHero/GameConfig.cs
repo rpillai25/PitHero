@@ -274,6 +274,10 @@ namespace PitHero
         public static readonly Color RARITY_EPIC = new Color(144, 82, 188);     // Purple (matches TREASURE_SHADE_4)
         public static readonly Color RARITY_LEGENDARY = new Color(203, 129, 22); // Gold (matches TREASURE_SHADE_5)
 
+        // Event Console Name Colors
+        public static readonly Color ConsoleColorHeroName = new Color(100, 180, 255);  // Light blue — heroes and mercenaries
+        public static readonly Color ConsoleColorEnemyName = new Color(220, 80, 80);   // Red — enemy names
+
         //Hero Paperdoll Colors
         public static readonly Color SKIN_SHADE_1 = new Color(251, 200, 178); //Applies to body and hands
         public static readonly Color SKIN_SHADE_2 = new Color(140, 91, 62);

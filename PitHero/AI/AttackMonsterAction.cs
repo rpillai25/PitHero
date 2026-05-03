@@ -699,7 +699,7 @@ namespace PitHero.AI
         /// Applies a healing skill's HP/MP restore effects and displays the heal digit.
         /// The caller is responsible for spending MP before calling this method.
         /// </summary>
-        private System.Collections.IEnumerator ApplyHealingSkillEffectsAndDisplay(ISkill skill, object healTarget, bool targetsHero, HeroComponent heroComponent, List<Entity> validMercenaries)
+        private System.Collections.IEnumerator ApplyHealingSkillEffectsAndDisplay(ISkill skill, object healTarget, bool targetsHero, HeroComponent heroComponent, List<Entity> validMercenaries, string casterName)
         {
             if (skill.HPRestoreAmount > 0)
             {
@@ -715,6 +715,13 @@ namespace PitHero.AI
                     SoundEffectManager sfx = Core.GetGlobalManager<SoundEffectManager>();
                     sfx?.PlaySound(SoundEffectType.Restorative);
                     yield return ShowHealDigitOnEntity(targetEntity, skill.HPRestoreAmount);
+
+                    string targetName = healTarget is Hero th ? th.Name : ((Mercenary)healTarget).Name;
+                    Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleHealSkill,
+                        (casterName, GameConfig.ConsoleColorHeroName),
+                        (skill.Name, Color.White),
+                        (targetName, GameConfig.ConsoleColorHeroName),
+                        (skill.HPRestoreAmount.ToString(), Color.White));
                 }
             }
 
@@ -750,6 +757,19 @@ namespace PitHero.AI
                 int healAmount = hpAfter - hpBefore;
                 if (healAmount > 0)
                 {
+                    string userName = targetsHero
+                        ? (heroComponent.LinkedHero?.Name ?? "Hero")
+                        : ((target is Mercenary healMerc) ? healMerc.Name : "Mercenary");
+                    string targetName = targetsHero
+                        ? (heroComponent.LinkedHero?.Name ?? "Hero")
+                        : ((target is Mercenary tgtMerc) ? tgtMerc.Name : "Mercenary");
+
+                    Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleBattleHealConsumable,
+                        (userName, GameConfig.ConsoleColorHeroName),
+                        (consumable.Name, RarityUtils.GetRarityColor(consumable.Rarity)),
+                        (targetName, GameConfig.ConsoleColorHeroName),
+                        (healAmount.ToString(), Color.White));
+
                     var targetEntity = FindTargetEntity(target, targetsHero, heroComponent, validMercenaries);
                     SoundEffectManager sfx = Core.GetGlobalManager<SoundEffectManager>();
                     sfx?.PlaySound(SoundEffectType.Restorative);
@@ -808,7 +828,14 @@ namespace PitHero.AI
             {
                 var recruited = alliedMonsterMgr.TryRecruit(enemy);
                 if (recruited != null)
+                {
                     Debug.Log($"[AttackMonster] {enemy.Name} recruited as '{recruited.Name}'");
+                    var evtSvc = Core.Services.GetService<GameEventService>();
+                    evtSvc?.EmitLocalized(UITextKey.ConsoleMonsterRecruited,
+                        (hero.Name, GameConfig.ConsoleColorHeroName),
+                        (recruited.Name, GameConfig.ConsoleColorEnemyName),
+                        (evtSvc?.MonsterName(enemy.Name) ?? enemy.Name, GameConfig.ConsoleColorEnemyName));
+                }
             }
         }
 
@@ -856,7 +883,7 @@ namespace PitHero.AI
                     {
                         hero.SpendMP(skill.MPCost);
                         var healTarget = queuedAction.Target ?? hero;
-                        yield return ApplyHealingSkillEffectsAndDisplay(skill, healTarget, queuedAction.TargetsHero, heroComponent, validMercenaries);
+                        yield return ApplyHealingSkillEffectsAndDisplay(skill, healTarget, queuedAction.TargetsHero, heroComponent, validMercenaries, hero.Name);
                         Debug.Log($"[AttackMonster] Used healing skill {skill.Name}");
                     }
                     else
@@ -920,6 +947,14 @@ namespace PitHero.AI
 
                 Debug.Log($"[AttackMonster] {skill.Name} dealt {damage} damage to {enemy.Name}. Enemy HP: {enemy.CurrentHP}/{enemy.MaxHP}");
 
+                var evtSvcSkill = Core.Services.GetService<GameEventService>();
+                if (evtSvcSkill != null)
+                    evtSvcSkill.EmitLocalized(UITextKey.ConsoleSkillAttack,
+                        (hero.Name, GameConfig.ConsoleColorHeroName),
+                        (skill.Name, Color.White),
+                        (evtSvcSkill.MonsterName(enemy.Name), GameConfig.ConsoleColorEnemyName),
+                        (damage.ToString(), Color.White));
+
                 var enemyBouncyDigit = monsterEntity.GetComponent<BouncyDigitComponent>();
                 if (enemyBouncyDigit != null)
                 {
@@ -931,6 +966,12 @@ namespace PitHero.AI
                 {
                     Debug.Log($"[AttackMonster] {enemy.Name} defeated by {skill.Name}!");
                     AwardEnemyDeathRewards(hero, enemy, heroComponent, validMercenaries);
+
+                    var evtSvcSkillDeath = Core.Services.GetService<GameEventService>();
+                    if (evtSvcSkillDeath != null)
+                        evtSvcSkillDeath.EmitLocalized(UITextKey.ConsoleMonsterDied,
+                            (evtSvcSkillDeath.MonsterName(enemy.Name), GameConfig.ConsoleColorEnemyName));
+
                     validMonsters.Remove(monsterEntity);
                 }
             }
@@ -965,12 +1006,24 @@ namespace PitHero.AI
                 bool enemyDied = targetEnemy.TakeDamage(heroAttackResult.Damage);
                 Debug.Log($"[AttackMonster] Hero deals {heroAttackResult.Damage} damage to {targetEnemy.Name}. Enemy HP: {targetEnemy.CurrentHP}/{targetEnemy.MaxHP}");
 
+                var evtSvc = Core.Services.GetService<GameEventService>();
+                evtSvc?.EmitLocalized(UITextKey.ConsoleAttack,
+                    (hero.Name, GameConfig.ConsoleColorHeroName),
+                    (evtSvc?.MonsterName(targetEnemy.Name) ?? targetEnemy.Name, GameConfig.ConsoleColorEnemyName),
+                    (heroAttackResult.Damage.ToString(), Color.White));
+
                 yield return ShowDamageDigitOnEntity(targetMonster, heroAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor);
 
                 if (enemyDied)
                 {
                     Debug.Log($"[AttackMonster] {targetEnemy.Name} defeated! Starting fade out");
                     AwardEnemyDeathRewards(hero, targetEnemy, heroComponent, validMercenaries);
+
+                    var evtSvcDeath = Core.Services.GetService<GameEventService>();
+                    if (evtSvcDeath != null)
+                        evtSvcDeath.EmitLocalized(UITextKey.ConsoleMonsterDied,
+                            (evtSvcDeath.MonsterName(targetEnemy.Name), GameConfig.ConsoleColorEnemyName));
+
                     validMonsters.Remove(targetMonster);
                     yield return FadeOutAndDestroyMonster(targetMonster);
                 }
@@ -1012,7 +1065,7 @@ namespace PitHero.AI
                         mercenary.UseMP(healSkill.MPCost);
                         mercComponent.ActionQueueVisualization?.ShowAction(new QueuedAction(healSkill));
                         var healTarget = mercDecision.Target ?? hero;
-                        yield return ApplyHealingSkillEffectsAndDisplay(healSkill, healTarget, mercDecision.TargetsHero, heroComponent, validMercenaries);
+                        yield return ApplyHealingSkillEffectsAndDisplay(healSkill, healTarget, mercDecision.TargetsHero, heroComponent, validMercenaries, mercenary.Name);
                         Debug.Log($"[AttackMonster] {mercenary.Name} used {healSkill.Name}");
                     }
                     break;
@@ -1093,6 +1146,14 @@ namespace PitHero.AI
                     bool sEnemyDied = sEnemy.TakeDamage(sResult.Damage);
                     Debug.Log($"[AttackMonster] {mercenary.Name}'s {atkSkill.Name} dealt {sResult.Damage} to {sEnemy.Name}. HP: {sEnemy.CurrentHP}/{sEnemy.MaxHP}");
 
+                    var evtSvcAtkSkill = Core.Services.GetService<GameEventService>();
+                    if (evtSvcAtkSkill != null)
+                        evtSvcAtkSkill.EmitLocalized(UITextKey.ConsoleSkillAttack,
+                            (mercenary.Name, GameConfig.ConsoleColorHeroName),
+                            (atkSkill.Name, Color.White),
+                            (evtSvcAtkSkill.MonsterName(sEnemy.Name), GameConfig.ConsoleColorEnemyName),
+                            (sResult.Damage.ToString(), Color.White));
+
                     var sDigit = sMonsterEntity.GetComponent<BouncyDigitComponent>();
                     if (sDigit != null)
                     {
@@ -1104,6 +1165,12 @@ namespace PitHero.AI
                     {
                         Debug.Log($"[AttackMonster] {sEnemy.Name} defeated by {mercenary.Name}'s {atkSkill.Name}!");
                         AwardEnemyDeathRewards(hero, sEnemy, null, validMercenaries);
+
+                        var evtSvcAtkSkillDeath = Core.Services.GetService<GameEventService>();
+                        if (evtSvcAtkSkillDeath != null)
+                            evtSvcAtkSkillDeath.EmitLocalized(UITextKey.ConsoleMonsterDied,
+                                (evtSvcAtkSkillDeath.MonsterName(sEnemy.Name), GameConfig.ConsoleColorEnemyName));
+
                         validMonsters.Remove(sMonsterEntity);
                     }
                 }
@@ -1153,12 +1220,25 @@ namespace PitHero.AI
                 bool enemyDied = targetEnemy.TakeDamage(mercAttackResult.Damage);
                 Debug.Log($"[AttackMonster] {mercenary.Name} deals {mercAttackResult.Damage} damage to {targetEnemy.Name}. Enemy HP: {targetEnemy.CurrentHP}/{targetEnemy.MaxHP}");
 
+                var evtSvcMerc = Core.Services.GetService<GameEventService>();
+                if (evtSvcMerc != null)
+                    evtSvcMerc.EmitLocalized(UITextKey.ConsoleAttack,
+                        (mercenary.Name, GameConfig.ConsoleColorHeroName),
+                        (evtSvcMerc.MonsterName(targetEnemy.Name), GameConfig.ConsoleColorEnemyName),
+                        (mercAttackResult.Damage.ToString(), Color.White));
+
                 yield return ShowDamageDigitOnEntity(paTarget, mercAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor);
 
                 if (enemyDied)
                 {
                     Debug.Log($"[AttackMonster] {targetEnemy.Name} defeated by {mercenary.Name}! Starting fade out");
                     AwardEnemyDeathRewards(hero, targetEnemy, null, validMercenaries);
+
+                    var evtSvcMercDeath = Core.Services.GetService<GameEventService>();
+                    if (evtSvcMercDeath != null)
+                        evtSvcMercDeath.EmitLocalized(UITextKey.ConsoleMonsterDied,
+                            (evtSvcMercDeath.MonsterName(targetEnemy.Name), GameConfig.ConsoleColorEnemyName));
+
                     validMonsters.Remove(paTarget);
                     yield return FadeOutAndDestroyMonster(paTarget);
                 }
@@ -1238,6 +1318,13 @@ namespace PitHero.AI
                 bool heroDied = hero.TakeDamage(actualDamage);
                 Debug.Log($"[AttackMonster] {enemy.Name} deals {enemyAttackResult.Damage} damage to {hero.Name}. Hero HP: {hero.CurrentHP}/{hero.MaxHP}");
 
+                var evtSvcHeroAtk = Core.Services.GetService<GameEventService>();
+                if (evtSvcHeroAtk != null)
+                    evtSvcHeroAtk.EmitLocalized(UITextKey.ConsoleMonsterAttack,
+                        (evtSvcHeroAtk.MonsterName(enemy.Name), GameConfig.ConsoleColorEnemyName),
+                        (hero.Name, GameConfig.ConsoleColorHeroName),
+                        (enemyAttackResult.Damage.ToString(), Color.White));
+
                 heroComponent.RegisterHeroBurstDamage(actualDamage);
 
                 yield return ShowDamageDigitOnEntity(heroComponent.Entity, enemyAttackResult.Damage, BouncyDigitComponent.HeroDigitColor);
@@ -1248,7 +1335,7 @@ namespace PitHero.AI
                     var deathComponent = heroComponent.Entity.GetComponent<HeroDeathComponent>();
                     if (deathComponent == null)
                         deathComponent = heroComponent.Entity.AddComponent(new HeroDeathComponent());
-                    deathComponent.StartDeathAnimation();
+                    deathComponent.StartDeathAnimation(enemy.Name);
                 }
             }
             else
@@ -1285,6 +1372,13 @@ namespace PitHero.AI
                 bool mercDied = targetMercenary.TakeDamage(actualDamage);
                 Debug.Log($"[AttackMonster] {enemy.Name} deals {enemyAttackResult.Damage} damage to {targetMercenary.Name}. Mercenary HP: {targetMercenary.CurrentHP}/{targetMercenary.MaxHP}");
 
+                var evtSvcMercAtk = Core.Services.GetService<GameEventService>();
+                if (evtSvcMercAtk != null)
+                    evtSvcMercAtk.EmitLocalized(UITextKey.ConsoleMonsterAttack,
+                        (evtSvcMercAtk.MonsterName(enemy.Name), GameConfig.ConsoleColorEnemyName),
+                        (targetMercenary.Name, GameConfig.ConsoleColorHeroName),
+                        (enemyAttackResult.Damage.ToString(), Color.White));
+
                 heroComponent.RegisterMercenaryBurstDamage(targetEntity, targetMercComp, actualDamage);
 
                 yield return ShowDamageDigitOnEntity(targetEntity, enemyAttackResult.Damage, BouncyDigitComponent.HeroDigitColor);
@@ -1292,7 +1386,7 @@ namespace PitHero.AI
                 if (mercDied)
                 {
                     Debug.Log($"[AttackMonster] {targetMercenary.Name} died! Starting fade out");
-                    HandleMercenaryDeath(targetEntity, heroComponent, validMercenaries);
+                    HandleMercenaryDeath(targetEntity, heroComponent, validMercenaries, enemy.Name);
                     validMercenaries.Remove(targetEntity);
                     yield return FadeOutAndDestroyMercenary(targetEntity);
                 }
@@ -1306,14 +1400,21 @@ namespace PitHero.AI
 
 
         /// <summary>
-        /// Handle mercenary death by removing them permanently and reassigning followers if needed
+        /// Handle mercenary death by removing them permanently and reassigning followers if needed.
+        /// Emits a mercenary-death console event with the killer's name.
         /// </summary>
-        private void HandleMercenaryDeath(Entity mercenaryEntity, HeroComponent heroComponent, List<Entity> validMercenaries)
+        private void HandleMercenaryDeath(Entity mercenaryEntity, HeroComponent heroComponent, List<Entity> validMercenaries, string killerName)
         {
             var mercComponent = mercenaryEntity.GetComponent<MercenaryComponent>();
             if (mercComponent == null) return;
 
             Debug.Log($"[AttackMonster] Mercenary {mercComponent.LinkedMercenary.Name} died in battle");
+
+            var evtSvcMercDied = Core.Services.GetService<GameEventService>();
+            if (evtSvcMercDied != null)
+                evtSvcMercDied.EmitLocalized(UITextKey.ConsoleMercenaryDied,
+                    (mercComponent.LinkedMercenary.Name, GameConfig.ConsoleColorHeroName),
+                    (evtSvcMercDied.MonsterName(killerName), GameConfig.ConsoleColorEnemyName));
 
             // Transfer all equipped gear to the Second Chance Merchant Vault
             var vault = Core.Services.GetService<SecondChanceMerchantVault>();

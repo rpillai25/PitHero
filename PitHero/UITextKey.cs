@@ -69,6 +69,7 @@ namespace PitHero
         public const string SettingsAutoHideUIBars = "SettingsAutoHideUIBars";
         public const string SettingsHideButtonBar = "SettingsHideButtonBar";
         public const string SettingsHideShortcutBar = "SettingsHideShortcutBar";
+        public const string SettingsHideEventConsole = "SettingsHideEventConsole";
         public const string TabInventory = "TabInventory";
         public const string TabBehavior = "TabBehavior";
         public const string TabHeroInfo = "TabHeroInfo";
@@ -188,5 +189,30 @@ namespace PitHero
         public const string SecondChanceBuyQtyPrompt = "SecondChanceBuyQtyPrompt";
         public const string SecondChanceBuyTotal = "SecondChanceBuyTotal";
         public const string SecondChanceNoGold = "SecondChanceNoGold";
+        public const string ConsoleAttack = "ConsoleAttack";
+        public const string ConsoleSkillAttack = "ConsoleSkillAttack";
+        public const string ConsoleBattleHealConsumable = "ConsoleBattleHealConsumable";
+        public const string ConsoleOutBattleHealConsumable = "ConsoleOutBattleHealConsumable";
+        public const string ConsoleHealSkill = "ConsoleHealSkill";
+        public const string ConsoleMercenaryDied = "ConsoleMercenaryDied";
+        public const string ConsoleHeroDied = "ConsoleHeroDied";
+        public const string ConsoleHeroDiedPhrase1 = "ConsoleHeroDiedPhrase1";
+        public const string ConsoleHeroDiedPhrase2 = "ConsoleHeroDiedPhrase2";
+        public const string ConsoleHeroDiedPhrase3 = "ConsoleHeroDiedPhrase3";
+        public const string ConsoleHeroDiedPhrase4 = "ConsoleHeroDiedPhrase4";
+        public const string ConsoleHeroDiedPhrase5 = "ConsoleHeroDiedPhrase5";
+        public const string ConsoleMonsterDied = "ConsoleMonsterDied";
+        public const string ConsoleHeroRespawn = "ConsoleHeroRespawn";
+        public const string ConsoleCrystalPromotion = "ConsoleCrystalPromotion";
+        public const string ConsoleInnRest = "ConsoleInnRest";
+        public const string ConsoleMercenaryHired = "ConsoleMercenaryHired";
+        public const string ConsoleMonsterAttack = "ConsoleMonsterAttack";
+        public const string ConsoleItemFound = "ConsoleItemFound";
+        public const string ConsoleMonsterRecruited = "ConsoleMonsterRecruited";
+        public const string ConsoleAutoEquip = "ConsoleAutoEquip";
+        public const string ConsoleWelcome = "ConsoleWelcome";
+        public const string ConsoleWelcomePhrase1 = "ConsoleWelcomePhrase1";
+        public const string ConsoleWelcomePhrase2 = "ConsoleWelcomePhrase2";
+        public const string ConsoleWelcomePhrase3 = "ConsoleWelcomePhrase3";
     }
 }

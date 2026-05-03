@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using PitHero;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
 using PitHero.Services;
@@ -349,6 +350,13 @@ namespace PitHero.AI
                 int casterMP = isCasterHero ? ((RolePlayingFramework.Heroes.Hero)caster).CurrentMP : ((RolePlayingFramework.Mercenaries.Mercenary)caster).CurrentMP;
                 int casterMaxMP = isCasterHero ? ((RolePlayingFramework.Heroes.Hero)caster).MaxMP : ((RolePlayingFramework.Mercenaries.Mercenary)caster).MaxMP;
                 Debug.Log($"[UseHealingSkillAction] {casterName} healed {targetName} for {healAmount} HP using {skill.Name}. Target HP: {currentHP}/{maxHP}, Caster MP: {casterMP}/{casterMaxMP}");
+
+                Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleHealSkill,
+                    (casterName, GameConfig.ConsoleColorHeroName),
+                    (skill.Name, Color.White),
+                    (targetName, GameConfig.ConsoleColorHeroName),
+                    (healAmount.ToString(), Color.White));
+
                 return true;
             }
 

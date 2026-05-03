@@ -88,8 +88,8 @@ namespace PitHero.ECS.Components
 
         private void HandleZoomInput()
         {
-            // Pre-calc shift state since it impacts both right-click reset and wheel behavior
             bool shiftDown = Input.IsKeyDown(Keys.LeftShift) || Input.IsKeyDown(Keys.RightShift);
+            bool ctrlDown = Input.IsKeyDown(Keys.LeftControl) || Input.IsKeyDown(Keys.RightControl);
 
             // SHIFT + Right-Click: Reset window size (if shrunk) and reset zoom + recenter
             if (shiftDown && Input.RightMouseButtonPressed)
@@ -118,13 +118,15 @@ namespace PitHero.ECS.Components
             if (wheelDelta == 0)
                 return;
 
+            // SHIFT + scroll: camera zoom only
             if (shiftDown)
             {
-                HandleWindowResizeZoom(wheelDelta);
-            }
-            else
-            {
                 HandleCameraOnlyZoom(wheelDelta);
+            }
+            // CTRL + scroll: window resize
+            else if (ctrlDown)
+            {
+                HandleWindowResizeZoom(wheelDelta);
             }
         }
 

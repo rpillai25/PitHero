@@ -63,6 +63,7 @@ SettingsHideBarLabel,Hide Bar Settings
 SettingsAutoHideUIBars,Auto-hide UI Bar(s)
 SettingsHideButtonBar,Hide Button Bar
 SettingsHideShortcutBar,Hide Shortcut Bar
+SettingsHideEventConsole,Hide Event Console
 TabInventory,Inventory
 TabBehavior,Behavior
 TabHeroInfo,Hero Info
@@ -183,3 +184,30 @@ SecondChanceBuyPrompt,Buy for {0} gold?
 SecondChanceBuyQtyPrompt,Buy {0}?
 SecondChanceBuyTotal,Total: {0} gold
 SecondChanceNoGold,Not enough gold!
+
+# Event Console Messages
+ConsoleAttack,{0} attacks {1} for {2} damage!
+ConsoleSkillAttack,{0} uses {1} on {2} for {3} damage!
+ConsoleBattleHealConsumable,{0} uses {1} on {2}. Restored {3} HP.
+ConsoleOutBattleHealConsumable,{0} used {1}. Restored {2} HP.
+ConsoleHealSkill,{0} uses {1} on {2}. Restored {3} HP.
+ConsoleMercenaryDied,{0} was killed by {1}.
+ConsoleHeroDied,{0} has ended {1}'s run. {2}
+ConsoleHeroDiedPhrase1,Better luck next time...
+ConsoleHeroDiedPhrase2,Don't have negative thoughts. Remember your mantra.
+ConsoleHeroDiedPhrase3,Here's to new beginnings.
+ConsoleHeroDiedPhrase4,Forging a powerful crystal may help.
+ConsoleHeroDiedPhrase5,Visit the Second Chance Merchant.
+ConsoleMonsterDied,{0} was defeated!
+ConsoleHeroRespawn,{0} walks to the hero statue for his next chance
+ConsoleCrystalPromotion,{0} ventures forth as a {1}!
+ConsoleInnRest,Visiting inn to rest
+ConsoleMercenaryHired,{0} {1} was hired
+ConsoleMonsterAttack,{0} attacks {1} for {2} damage!
+ConsoleItemFound,{0} found {1}.
+ConsoleMonsterRecruited,{0} has recruited {1} the {2}
+ConsoleAutoEquip,{0} equipped {1}.
+ConsoleWelcome,Welcome, {0}!
+ConsoleWelcomePhrase1,Good luck on your adventure.
+ConsoleWelcomePhrase2,Go forth and pursue strength and wealth.
+ConsoleWelcomePhrase3,May you get many returns today!

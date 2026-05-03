@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using PitHero;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Equipment;
@@ -760,6 +761,10 @@ namespace PitHero.Services
             AssignMercenaryRenderLayers(mercEntity, hiredCount);
 
             Debug.Log($"[MercenaryManager] Hired mercenary {mercComponent.LinkedMercenary.Name}, follow target set to: {followTarget.Name}");
+
+            Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleMercenaryHired,
+                (mercComponent.LinkedMercenary.Job.Name, Color.White),
+                (mercComponent.LinkedMercenary.Name, GameConfig.ConsoleColorHeroName));
 
             // Add state machine and jump component for pit jumping
             if (!mercEntity.HasComponent<HeroJumpComponent>())

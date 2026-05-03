@@ -1,6 +1,8 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using PitHero;
 using PitHero.ECS.Components;
+using PitHero.Services;
 using System.Collections;
 
 namespace PitHero.AI
@@ -57,6 +59,10 @@ namespace PitHero.AI
             }
 
             Debug.Log($"[WalkToStatueForCrystalAction] Hero walking to statue at ({StatueTileX},{StatueTileY}) to receive crystal");
+
+            if (hero.LinkedHero != null)
+                Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleHeroRespawn,
+                    (hero.LinkedHero.Name, GameConfig.ConsoleColorHeroName));
 
             var currentPos = hero.Entity.Transform.Position;
             var currentTile = new Point(

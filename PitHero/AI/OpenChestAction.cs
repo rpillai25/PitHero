@@ -262,6 +262,10 @@ namespace PitHero.AI
             if (hero.TryAddItem(containedItem))
             {
                 Debug.Log($"[OpenChest] Added {containedItem.Name} to hero's main bag. Bag contents:");
+
+                Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleItemFound,
+                    (hero.LinkedHero.Name, GameConfig.ConsoleColorHeroName),
+                    (containedItem.Name, RarityUtils.GetRarityColor(containedItem.Rarity)));
                 LogBagContents(hero.Bag);
 
                 // Reset HealingItemExhausted if picked up item is a healing consumable
@@ -304,6 +308,14 @@ namespace PitHero.AI
             }
         }
 
+        /// <summary>Emits a console event for a successful auto-equip.</summary>
+        private void EmitAutoEquipEvent(string characterName, IGear gear)
+        {
+            Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleAutoEquip,
+                (characterName, GameConfig.ConsoleColorHeroName),
+                (gear.Name, RarityUtils.GetRarityColor(gear.Rarity)));
+        }
+
         /// <summary>Attempts to auto-equip gear on hero and mercenaries, then cascades any displaced gear as hand-me-downs.</summary>
         private void TryAutoEquipFromChest(HeroComponent heroComp, IItem item)
         {
@@ -321,6 +333,7 @@ namespace PitHero.AI
                 if (GearAutoEquipService.TryAutoEquipOnHero(heroComp.LinkedHero, heroComp.Bag, gear, out IGear heroDisplaced))
                 {
                     Debug.Log($"[OpenChest] Auto-equipped {gear.Name} on hero");
+                    EmitAutoEquipEvent(heroComp.LinkedHero.Name, gear);
                     if (heroDisplaced != null && hiredMercenaries != null)
                         TryHandMeDownToMercs(heroComp, hiredMercenaries, heroDisplaced, 0);
                     return;
@@ -339,6 +352,7 @@ namespace PitHero.AI
                 if (GearAutoEquipService.TryAutoEquipOnMercenary(mercComp.LinkedMercenary, heroComp.Bag, gear, out IGear mercDisplaced))
                 {
                     Debug.Log($"[OpenChest] Auto-equipped {gear.Name} on mercenary {mercComp.LinkedMercenary.Name}");
+                    EmitAutoEquipEvent(mercComp.LinkedMercenary.Name, gear);
                     if (mercDisplaced != null)
                         TryHandMeDownToMercs(heroComp, hiredMercenaries, mercDisplaced, i + 1);
                     return;
@@ -360,6 +374,7 @@ namespace PitHero.AI
                 if (GearAutoEquipService.TryAutoEquipOnMercenary(mercComp.LinkedMercenary, heroComp.Bag, displacedGear, out IGear chainDisplaced))
                 {
                     Debug.Log($"[OpenChest] Hand-me-down: {displacedGear.Name} auto-equipped on {mercComp.LinkedMercenary.Name}");
+                    EmitAutoEquipEvent(mercComp.LinkedMercenary.Name, displacedGear);
                     if (chainDisplaced != null)
                         TryHandMeDownToMercs(heroComp, hiredMercenaries, chainDisplaced, i + 1);
                     return;

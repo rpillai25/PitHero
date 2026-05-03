@@ -40,6 +40,10 @@ namespace PitHero.UI
             };
             skin.Add("ph-default", labelStyle);
 
+            // Child label style for the event console (white text on dark background)
+            var defaultLabelStyle = skin.Get<LabelStyle>("ph-default");
+            skin.Add("console-label", new LabelStyle(defaultLabelStyle.Font, Color.White));
+
             // Create custom text button style to use brown color
             var textButtonStyle = new TextButtonStyle
             {
