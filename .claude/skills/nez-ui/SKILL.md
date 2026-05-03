@@ -20,7 +20,9 @@ Nez UI is based on [TableLayout](https://github.com/EsotericSoftware/tablelayout
 2. **Always use the `"ph-default"` style** when creating UI elements with `PitHeroSkin` (unless a unique style is explicitly requested).
 3. **Never mutate `"ph-default"` style properties** — do NOT do `element.GetStyle().FontColor = someColor`. If a unique color is needed, create a **new style instance** with the desired color.
 4. **Use `HoverableImageButton`** instead of Nez `ImageButton` (adds tooltip hover support).
-5. **Use `EnhancedSlider`** instead of Nez `Slider` (adds deferred value commit on mouse release).
+5. **Use `HoverableTextButton`** instead of Nez `TextButton` when a hover tooltip is needed (windowed tooltip that follows cursor, suppresses on click).
+6. **Use `HoverableLabel`** instead of Nez `Label` when a hover tooltip is needed (windowed tooltip via `IInputListener`).
+7. **Use `EnhancedSlider`** instead of Nez `Slider` (adds deferred value commit on mouse release).
 6. **Use `PausableSpriteAnimator`** instead of `SpriteAnimator`.
 7. **AOT compliance**: No `foreach`, no LINQ in UI update loops. Use `for` loops. Pre-allocate collections. Avoid `new` during gameplay.
 
@@ -386,7 +388,9 @@ PitHero extends Nez UI classes for custom behavior. Preferred approach: **inheri
 
 | PitHero Class | Base Class | Purpose |
 |---------------|------------|---------|
-| `HoverableImageButton` | `ImageButton` | ImageButton with tooltip hover |
+| `HoverableImageButton` | `ImageButton` | ImageButton with tooltip hover (uses `Draw()` polling) |
+| `HoverableTextButton` | `TextButton` | TextButton with windowed cursor tooltip; suppresses on click |
+| `HoverableLabel` | `Label` + `IInputListener` | Label with windowed cursor tooltip |
 | `ResettableTextButton` | `TextButton` | TextButton with state reset |
 | `EnhancedSlider` | `ProgressBar` + `IInputListener` | Slider with deferred commit |
 | `ConfirmationDialog` | `Window` | Yes/No dialog |
@@ -761,6 +765,62 @@ public class MyFeatureUI
         _stage.AddElement(_mainWindow);
     }
 }
+```
+
+---
+
+## Simple Hover Tooltips (HoverableLabel / HoverableTextButton)
+
+For lightweight single-line tooltips on labels or buttons, use `HoverableLabel` and `HoverableTextButton`. Both render a windowed tooltip (`Window` with skin background, `Graphics.Instance.BitmapFont`, brown font color) that follows the mouse cursor — the same visual style as `SkillTooltip` and `ItemCardTooltip`.
+
+### HoverableLabel
+
+Drop-in replacement for `Label` when a hover tooltip is needed. Implements `IInputListener` internally; no extra wiring required.
+
+```csharp
+// Requires: skin, stage reference, localized tooltip string
+var label = new HoverableLabel(
+    GetText(TextType.UI, UITextKey.SomeLabel),   // displayed label text
+    skin, "ph-default",
+    GetText(TextType.UI, UITextKey.SomeLabelTooltip),  // tooltip text
+    _stage);
+container.Add(label).Left();
+```
+
+- The tooltip window is added to the stage in the constructor and stays hidden until hover.
+- `OnMouseMoved` calls `_stage.GetMousePosition()` to track the cursor accurately (do NOT use the `mousePos` parameter — it is in local element space).
+
+### HoverableTextButton
+
+Drop-in replacement for `TextButton` when a hover tooltip is needed. Uses `Draw()` polling (like `HoverableImageButton`) to track `_mouseOver`.
+
+```csharp
+var btn = new HoverableTextButton(
+    GetText(TextType.UI, UITextKey.SomeButton),
+    skin, "ph-default",
+    GetText(TextType.UI, UITextKey.SomeButtonTooltip),
+    _stage);
+btn.OnClicked += OnSomeButtonClicked;
+// Suppress tooltip when the click opens a new panel
+btn.OnClicked += (_) => btn.HideTooltip();
+```
+
+**`HideTooltip()`** hides the tooltip and sets a `_suppressed` flag so it won't re-appear until the mouse physically leaves and re-enters the button. Always call it when the click opens a dialog or transitions to a new view — otherwise the tooltip lingers over the new UI.
+
+The tooltip also auto-hides whenever `IsVisible()` returns false (e.g. the parent window is closed).
+
+### Tooltip text keys convention
+
+Add a `*Tooltip` suffix to the base key name in both `UITextKey.cs` and `UI.txt`:
+
+```
+// UITextKey.cs
+public const string CrystalForgeTitle = "CrystalForgeTitle";
+public const string CrystalForgeTitleTooltip = "CrystalForgeTitleTooltip";
+
+// UI.txt
+CrystalForgeTitle,Crystal Forge
+CrystalForgeTitleTooltip,Combine mastered crystals to form more powerful crystal
 ```
 
 ---
