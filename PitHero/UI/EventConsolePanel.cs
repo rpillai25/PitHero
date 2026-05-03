@@ -60,10 +60,16 @@ namespace PitHero.UI
         /// </summary>
         public void SetLayoutSize(float width, float height)
         {
+            bool widthChanged = width != _layoutWidth;
             _layoutWidth = width;
             _scrollPaneCell.Width(width).Height(height);
             SetSize(width, height);
             InvalidateHierarchy();
+            if (widthChanged && _events.Count > 0)
+            {
+                RebuildLog();
+                _scrollToBottom = true;
+            }
         }
 
         /// <summary>
