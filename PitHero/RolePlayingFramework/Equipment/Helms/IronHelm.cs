@@ -10,7 +10,7 @@ namespace RolePlayingFramework.Equipment.Helms
     public static class IronHelm
     {
         private const int PitLevel = 15;
-        private const ItemRarity Rarity = ItemRarity.Normal;
+        private static readonly ItemRarity Rarity = RarityUtils.GetRarityForBiomeLevel(PitLevel);
 
         public static Gear Create()
         {

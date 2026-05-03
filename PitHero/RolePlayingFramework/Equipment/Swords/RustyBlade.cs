@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Equipment.Swords
     public static class RustyBlade
     {
         private const int PitLevel = 1;
-        private const ItemRarity Rarity = ItemRarity.Normal;
+        private static readonly ItemRarity Rarity = RarityUtils.GetRarityForBiomeLevel(PitLevel);
 
         public static Gear Create()
         {

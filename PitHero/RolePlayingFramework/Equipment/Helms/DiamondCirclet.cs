@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Equipment.Helms
     public static class DiamondCirclet
     {
         private const int PitLevel = 23;
-        private const ItemRarity Rarity = ItemRarity.Uncommon;
+        private static readonly ItemRarity Rarity = RarityUtils.GetRarityForBiomeLevel(PitLevel);
 
         public static Gear Create()
         {

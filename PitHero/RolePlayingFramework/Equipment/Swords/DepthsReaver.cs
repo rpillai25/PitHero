@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Equipment.Swords
     public static class DepthsReaver
     {
         private const int PitLevel = 19;
-        private const ItemRarity Rarity = ItemRarity.Uncommon;
+        private static readonly ItemRarity Rarity = RarityUtils.GetRarityForBiomeLevel(PitLevel);
 
         public static Gear Create()
         {

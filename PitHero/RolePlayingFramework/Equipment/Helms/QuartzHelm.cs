@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Equipment.Helms
     public static class QuartzHelm
     {
         private const int PitLevel = 20;
-        private const ItemRarity Rarity = ItemRarity.Uncommon;
+        private static readonly ItemRarity Rarity = RarityUtils.GetRarityForBiomeLevel(PitLevel);
 
         public static Gear Create()
         {

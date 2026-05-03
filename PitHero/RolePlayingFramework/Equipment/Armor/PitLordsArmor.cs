@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Equipment.Armor
     public static class PitLordsArmor
     {
         private const int PitLevel = 25;
-        private const ItemRarity Rarity = ItemRarity.Uncommon;
+        private static readonly ItemRarity Rarity = RarityUtils.GetRarityForBiomeLevel(PitLevel);
 
         public static Gear Create()
         {

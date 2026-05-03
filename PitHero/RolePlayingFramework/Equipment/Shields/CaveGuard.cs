@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Equipment.Shields
     public static class CaveGuard
     {
         private const int PitLevel = 6;
-        private const ItemRarity Rarity = ItemRarity.Normal;
+        private static readonly ItemRarity Rarity = RarityUtils.GetRarityForBiomeLevel(PitLevel);
 
         public static Gear Create()
         {

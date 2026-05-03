@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Equipment.Helms
     public static class ChainCoif
     {
         private const int PitLevel = 6;
-        private const ItemRarity Rarity = ItemRarity.Normal;
+        private static readonly ItemRarity Rarity = RarityUtils.GetRarityForBiomeLevel(PitLevel);
 
         public static Gear Create()
         {

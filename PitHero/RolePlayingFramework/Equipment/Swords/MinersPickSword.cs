@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Equipment.Swords
     public static class MinersPickSword
     {
         private const int PitLevel = 4;
-        private const ItemRarity Rarity = ItemRarity.Normal;
+        private static readonly ItemRarity Rarity = RarityUtils.GetRarityForBiomeLevel(PitLevel);
 
         public static Gear Create()
         {

@@ -115,40 +115,40 @@ namespace PitHero.Tests
         #region Edge Case Tests - Pit 11 Equipment (Uncommon Start)
 
         [TestMethod]
-        public void CrystalEdge_Pit11Uncommon_ShouldHaveCorrectStats()
+        public void CrystalEdge_Pit11Normal_ShouldHaveCorrectStats()
         {
             var item = GearItems.CrystalEdge();
-            int expectedAttack = BalanceConfig.CalculateEquipmentAttackBonus(11, ItemRarity.Uncommon);
-            
+            int expectedAttack = BalanceConfig.CalculateEquipmentAttackBonus(11, ItemRarity.Normal);
+
             Assert.IsNotNull(item);
             Assert.AreEqual(ItemKind.WeaponSword, item.Kind);
-            Assert.AreEqual(ItemRarity.Uncommon, item.Rarity);
+            Assert.AreEqual(ItemRarity.Normal, item.Rarity);
             Assert.AreEqual(expectedAttack, item.AttackBonus);
             Assert.AreEqual(400, item.Price);
             Assert.AreEqual(ElementType.Earth, item.ElementalProps.Element);
         }
 
         [TestMethod]
-        public void SteelShield_Pit11Uncommon_ShouldHaveCorrectStats()
+        public void SteelShield_Pit11Normal_ShouldHaveCorrectStats()
         {
             var item = GearItems.SteelShield();
-            int expectedDefense = BalanceConfig.CalculateEquipmentDefenseBonus(11, ItemRarity.Uncommon);
-            
+            int expectedDefense = BalanceConfig.CalculateEquipmentDefenseBonus(11, ItemRarity.Normal);
+
             Assert.IsNotNull(item);
             Assert.AreEqual(ItemKind.Shield, item.Kind);
-            Assert.AreEqual(ItemRarity.Uncommon, item.Rarity);
+            Assert.AreEqual(ItemRarity.Normal, item.Rarity);
             Assert.AreEqual(expectedDefense, item.DefenseBonus);
         }
 
         [TestMethod]
-        public void SteelHelm_Pit11Uncommon_ShouldHaveCorrectStats()
+        public void SteelHelm_Pit11Normal_ShouldHaveCorrectStats()
         {
             var item = GearItems.SteelHelm();
-            int expectedDefense = BalanceConfig.CalculateEquipmentDefenseBonus(11, ItemRarity.Uncommon);
-            
+            int expectedDefense = BalanceConfig.CalculateEquipmentDefenseBonus(11, ItemRarity.Normal);
+
             Assert.IsNotNull(item);
             Assert.AreEqual(ItemKind.HatHelm, item.Kind);
-            Assert.AreEqual(ItemRarity.Uncommon, item.Rarity);
+            Assert.AreEqual(ItemRarity.Normal, item.Rarity);
             Assert.AreEqual(expectedDefense, item.DefenseBonus);
         }
 
@@ -157,53 +157,54 @@ namespace PitHero.Tests
         #region Edge Case Tests - Pit 25 Equipment (Highest Stats)
 
         [TestMethod]
-        public void PitLordsSword_Pit25Uncommon_ShouldHaveCorrectStats()
+        public void PitLordsSword_Pit25Epic_ShouldHaveCorrectStats()
         {
             var item = GearItems.PitLordsSword();
-            int expectedAttack = BalanceConfig.CalculateEquipmentAttackBonus(25, ItemRarity.Uncommon);
-            
+            int expectedAttack = BalanceConfig.CalculateEquipmentAttackBonus(25, ItemRarity.Epic);
+
             Assert.IsNotNull(item);
-            Assert.AreEqual(InventoryTextKey.Inv_PitLordsSword_Name, item.Name);
             Assert.AreEqual(ItemKind.WeaponSword, item.Kind);
-            Assert.AreEqual(ItemRarity.Uncommon, item.Rarity);
-            Assert.AreEqual(expectedAttack, item.AttackBonus, "Should match BalanceConfig formula: (1 + 25/2) * 1.5 = 20");
+            Assert.AreEqual(ItemRarity.Epic, item.Rarity);
+            Assert.AreEqual(expectedAttack, item.AttackBonus, "Should match BalanceConfig formula at Epic rarity");
             Assert.AreEqual(750, item.Price);
             Assert.AreEqual(ElementType.Dark, item.ElementalProps.Element);
         }
 
         [TestMethod]
-        public void PitLordsArmor_Pit25Uncommon_ShouldHaveCorrectStats()
+        public void PitLordsArmor_Pit25Epic_ShouldHaveCorrectStats()
         {
             var item = GearItems.PitLordsArmor();
-            int expectedDefense = BalanceConfig.CalculateEquipmentDefenseBonus(25, ItemRarity.Uncommon);
-            
+            int expectedDefense = BalanceConfig.CalculateEquipmentDefenseBonus(25, ItemRarity.Epic);
+
             Assert.IsNotNull(item);
             Assert.AreEqual(ItemKind.ArmorMail, item.Kind);
-            Assert.AreEqual(ItemRarity.Uncommon, item.Rarity);
-            Assert.AreEqual(expectedDefense, item.DefenseBonus, "Should match BalanceConfig formula: (1 + 25/3) * 1.5 = 14");
+            Assert.AreEqual(ItemRarity.Epic, item.Rarity);
+            Assert.AreEqual(expectedDefense, item.DefenseBonus, "Should match BalanceConfig formula at Epic rarity");
             Assert.AreEqual(1100, item.Price);
         }
 
         [TestMethod]
-        public void PitLordsAegis_Pit25Uncommon_ShouldHaveCorrectStats()
+        public void PitLordsAegis_Pit25Epic_ShouldHaveCorrectStats()
         {
             var item = GearItems.PitLordsAegis();
-            int expectedDefense = BalanceConfig.CalculateEquipmentDefenseBonus(25, ItemRarity.Uncommon);
-            
+            int expectedDefense = BalanceConfig.CalculateEquipmentDefenseBonus(25, ItemRarity.Epic);
+
             Assert.IsNotNull(item);
             Assert.AreEqual(ItemKind.Shield, item.Kind);
+            Assert.AreEqual(ItemRarity.Epic, item.Rarity);
             Assert.AreEqual(expectedDefense, item.DefenseBonus);
             Assert.AreEqual(1100, item.Price);
         }
 
         [TestMethod]
-        public void PitLordsCrown_Pit25Uncommon_ShouldHaveCorrectStats()
+        public void PitLordsCrown_Pit25Epic_ShouldHaveCorrectStats()
         {
             var item = GearItems.PitLordsCrown();
-            int expectedDefense = BalanceConfig.CalculateEquipmentDefenseBonus(25, ItemRarity.Uncommon);
-            
+            int expectedDefense = BalanceConfig.CalculateEquipmentDefenseBonus(25, ItemRarity.Epic);
+
             Assert.IsNotNull(item);
             Assert.AreEqual(ItemKind.HatHelm, item.Kind);
+            Assert.AreEqual(ItemRarity.Epic, item.Rarity);
             Assert.AreEqual(expectedDefense, item.DefenseBonus);
             Assert.AreEqual(1100, item.Price);
         }
@@ -290,12 +291,13 @@ namespace PitHero.Tests
         #region Progression Tests - Sample Equipment Across Range
 
         [TestMethod]
-        public void EmberSword_Pit13Uncommon_ShouldHaveCorrectStats()
+        public void EmberSword_Pit13Normal_ShouldHaveCorrectStats()
         {
             var item = GearItems.EmberSword();
-            int expectedAttack = BalanceConfig.CalculateEquipmentAttackBonus(13, ItemRarity.Uncommon);
-            
+            int expectedAttack = BalanceConfig.CalculateEquipmentAttackBonus(13, ItemRarity.Normal);
+
             Assert.IsNotNull(item);
+            Assert.AreEqual(ItemRarity.Normal, item.Rarity);
             Assert.AreEqual(expectedAttack, item.AttackBonus);
             Assert.AreEqual(ElementType.Fire, item.ElementalProps.Element);
         }

@@ -47,5 +47,19 @@ namespace PitHero
                 _ => ItemRarity.Normal
             };
         }
+
+        /// <summary>
+        /// Gets the rarity for gear at the given pit level, anchored to the biome it belongs to.
+        /// Every 25 pit levels is a new biome; rarity resets each biome.
+        /// Distribution: Normal (biome levels 1-16), Uncommon (17-21), Rare (22-24), Epic (25).
+        /// </summary>
+        public static ItemRarity GetRarityForBiomeLevel(int pitLevel)
+        {
+            int biomeLevel = ((pitLevel - 1) % 25) + 1;
+            if (biomeLevel <= 16) return ItemRarity.Normal;
+            if (biomeLevel <= 21) return ItemRarity.Uncommon;
+            if (biomeLevel <= 24) return ItemRarity.Rare;
+            return ItemRarity.Epic;
+        }
     }
 }

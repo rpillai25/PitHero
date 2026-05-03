@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Equipment.Swords
     public static class GloomBlade
     {
         private const int PitLevel = 17;
-        private const ItemRarity Rarity = ItemRarity.Uncommon;
+        private static readonly ItemRarity Rarity = RarityUtils.GetRarityForBiomeLevel(PitLevel);
 
         public static Gear Create()
         {

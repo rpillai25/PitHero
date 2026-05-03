@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Equipment.Armor
     public static class HideVest
     {
         private const int PitLevel = 3;
-        private const ItemRarity Rarity = ItemRarity.Normal;
+        private static readonly ItemRarity Rarity = RarityUtils.GetRarityForBiomeLevel(PitLevel);
 
         public static Gear Create()
         {

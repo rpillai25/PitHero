@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Equipment.Swords
     public static class ShortSword
     {
         private const int PitLevel = 5;
-        private const ItemRarity Rarity = ItemRarity.Normal;
+        private static readonly ItemRarity Rarity = RarityUtils.GetRarityForBiomeLevel(PitLevel);
 
         public static Gear Create()
         {

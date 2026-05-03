@@ -176,29 +176,22 @@ namespace PitHero.ECS.Components
 
         /// <summary>
         /// Generate cave biome loot for the given treasure level.
-        /// Rolls consumable vs equipment first using CaveConsumableDropRate (60/40 split).
+        /// Normal (level 1) chests can drop consumables or gear. All other chest colors drop gear only.
         /// </summary>
         public static IItem GenerateCaveItemForTreasureLevel(int treasureLevel, LootJobContext ctx = default)
         {
-            bool isConsumable = Nez.Random.NextFloat() < BalanceConfig.CaveConsumableDropRate;
-
-            if (isConsumable)
+            if (treasureLevel == 1)
             {
-                return treasureLevel switch
-                {
-                    1 => GenerateNormalPotion(),
-                    2 => GenerateCaveUncommonEquipment(ctx),
-                    3 => GenerateMidPotion(),
-                    _ => GenerateItemForTreasureLevel(treasureLevel)
-                };
+                bool isConsumable = Nez.Random.NextFloat() < BalanceConfig.CaveConsumableDropRate;
+                return isConsumable ? GenerateNormalPotion() : GenerateCaveCommonEquipment(ctx);
             }
 
             return treasureLevel switch
             {
-                1 => GenerateCaveCommonEquipment(ctx),
                 2 => GenerateCaveUncommonEquipment(ctx),
-                3 => GearItems.NecklaceOfHealth(),
-                _ => GenerateItemForTreasureLevel(treasureLevel)
+                3 => GenerateCaveRareEquipment(ctx),
+                4 => GenerateCaveEpicEquipment(ctx),
+                _ => GenerateCaveEpicEquipment(ctx),
             };
         }
 
@@ -248,7 +241,7 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Generate cave common equipment from all Normal-rarity cave gear items (56 items).
+        /// Generate cave common equipment from all Normal-rarity cave gear items (78 items).
         /// </summary>
         private static readonly ItemKind[] _commonPoolKinds = new ItemKind[]
         {
@@ -308,90 +301,114 @@ namespace PitHero.ECS.Components
             ItemKind.HatHelm,        // 53: ReinforcedCap
             ItemKind.HatHelm,        // 54: SquireHelm
             ItemKind.Accessory,      // 55: ProtectRing
+            // Swords promoted to Normal (56-60)
+            ItemKind.WeaponSword,    // 56: CrystalEdge
+            ItemKind.WeaponSword,    // 57: UndergroundRapier
+            ItemKind.WeaponSword,    // 58: EmberSword
+            ItemKind.WeaponSword,    // 59: VoidCutter
+            ItemKind.WeaponSword,    // 60: StalagmiteSword
+            // Armor promoted to Normal (61-65)
+            ItemKind.ArmorMail,      // 61: StonePlate
+            ItemKind.ArmorMail,      // 62: EmberguardMail
+            ItemKind.ArmorGi,        // 63: ShadowVest
+            ItemKind.ArmorMail,      // 64: ReinforcedPlate
+            ItemKind.ArmorMail,      // 65: CrystalGuard
+            // Shields promoted to Normal (66-71)
+            ItemKind.Shield,         // 66: SteelShield
+            ItemKind.Shield,         // 67: GraniteGuard
+            ItemKind.Shield,         // 68: EmberShield
+            ItemKind.Shield,         // 69: ShadowGuard
+            ItemKind.Shield,         // 70: TowerShield
+            ItemKind.Shield,         // 71: CrystalBarrier
+            // Helms promoted to Normal (72-77)
+            ItemKind.HatHelm,        // 72: SteelHelm
+            ItemKind.HatHelm,        // 73: StoneCrown
+            ItemKind.HatHelm,        // 74: EmberHelm
+            ItemKind.HatHeadband,    // 75: ShadowCowl
+            ItemKind.HatHelm,        // 76: GreatHelm
+            ItemKind.HatHeadband,    // 77: CrystalCirclet
         };
 
         /// <summary>
-        /// Generate cave uncommon equipment from all Uncommon-rarity cave gear items (77 items).
+        /// Generate cave uncommon equipment from all Uncommon-rarity cave gear items (39 items).
         /// </summary>
         private static readonly ItemKind[] _uncommonPoolKinds = new ItemKind[]
         {
-            ItemKind.WeaponSword,    // 0:  AbyssFang
-            ItemKind.WeaponSword,    // 1:  CrystalEdge
+            // Swords (Uncommon) — 0..4
+            ItemKind.WeaponSword,    // 0:  GloomBlade
+            ItemKind.WeaponSword,    // 1:  LavaForgedSword
             ItemKind.WeaponSword,    // 2:  DepthsReaver
-            ItemKind.WeaponSword,    // 3:  DiamondEdge
-            ItemKind.WeaponSword,    // 4:  EmberSword
-            ItemKind.WeaponSword,    // 5:  GloomBlade
-            ItemKind.WeaponSword,    // 6:  InfernoEdge
-            ItemKind.WeaponSword,    // 7:  LavaForgedSword
-            ItemKind.WeaponSword,    // 8:  MagmaBlade
-            ItemKind.WeaponSword,    // 9:  PitLordsSword
-            ItemKind.WeaponSword,    // 10: QuartzSaber
-            ItemKind.WeaponSword,    // 11: StalagmiteSword
-            ItemKind.WeaponSword,    // 12: UndergroundRapier
-            ItemKind.WeaponSword,    // 13: VoidCutter
-            ItemKind.WeaponSword,    // 14: CrystalCleaver
-            ItemKind.WeaponSword,    // 15: ObsidianCleaver
-            ItemKind.WeaponSword,    // 16: ShadowSplitter
-            ItemKind.WeaponSword,    // 17: VolcanicAxe
-            ItemKind.WeaponKnife,    // 18: AssassinsEdge
-            ItemKind.WeaponKnife,    // 19: SerpentsTooth
-            ItemKind.WeaponKnife,    // 20: ShadowStiletto
-            ItemKind.WeaponSword,    // 21: CavePike
-            ItemKind.WeaponSword,    // 22: FlameLance
-            ItemKind.WeaponSword,    // 23: InfernalPike
-            ItemKind.WeaponSword,    // 24: StalactiteSpear
-            ItemKind.WeaponHammer,   // 25: GeologistsHammer
-            ItemKind.WeaponHammer,   // 26: MagmaMaul
-            ItemKind.WeaponHammer,   // 27: QuakeHammer
-            ItemKind.WeaponStaff,    // 28: EarthenStaff
-            ItemKind.WeaponRod,      // 29: EmberRod
-            ItemKind.WeaponStaff,    // 30: ShadowwoodStaff
-            ItemKind.ArmorMail,      // 31: AbyssPlate
-            ItemKind.ArmorMail,      // 32: CrystalGuard
-            ItemKind.ArmorMail,      // 33: DiamondMail
-            ItemKind.ArmorMail,      // 34: EmberguardMail
-            ItemKind.ArmorMail,      // 35: GranitePlate
-            ItemKind.ArmorMail,      // 36: LavaplateArmor
-            ItemKind.ArmorMail,      // 37: MagmaBlastPlate
-            ItemKind.ArmorMail,      // 38: PitLordsArmor
-            ItemKind.ArmorMail,      // 39: ReinforcedPlate
-            ItemKind.ArmorGi,        // 40: ShadowVest
-            ItemKind.ArmorMail,      // 41: SteelCuirass
-            ItemKind.ArmorMail,      // 42: StonePlate
-            ItemKind.ArmorMail,      // 43: Voidmail
-            ItemKind.ArmorMail,      // 44: VolcanicArmor
-            ItemKind.Shield,         // 45: AbyssWall
-            ItemKind.Shield,         // 46: CrystalBarrier
-            ItemKind.Shield,         // 47: DiamondBarrier
-            ItemKind.Shield,         // 48: EmberShield
-            ItemKind.Shield,         // 49: GraniteGuard
-            ItemKind.Shield,         // 50: HeaterShield
-            ItemKind.Shield,         // 51: InfernoGuard
-            ItemKind.Shield,         // 52: LavaShield
-            ItemKind.Shield,         // 53: MagmaWall
-            ItemKind.Shield,         // 54: PitLordsAegis
-            ItemKind.Shield,         // 55: QuartzWall
-            ItemKind.Shield,         // 56: ShadowGuard
-            ItemKind.Shield,         // 57: SteelShield
-            ItemKind.Shield,         // 58: TowerShield
-            ItemKind.Shield,         // 59: VoidBarrier
-            ItemKind.HatHelm,        // 60: AbyssHelm
-            ItemKind.HatHeadband,    // 61: CrystalCirclet
-            ItemKind.HatHeadband,    // 62: DiamondCirclet
-            ItemKind.HatHelm,        // 63: EmberHelm
-            ItemKind.HatHelm,        // 64: GreatHelm
-            ItemKind.HatHelm,        // 65: InfernoCrown
-            ItemKind.HatHelm,        // 66: LavaCrown
-            ItemKind.HatHelm,        // 67: MagmaHelm
-            ItemKind.HatHelm,        // 68: PitLordsCrown
-            ItemKind.HatHelm,        // 69: QuartzHelm
-            ItemKind.HatHeadband,    // 70: ShadowCowl
-            ItemKind.HatHelm,        // 71: SteelHelm
-            ItemKind.HatHelm,        // 72: StoneCrown
-            ItemKind.HatHelm,        // 73: VoidMask
-            ItemKind.HatHelm,        // 74: WingedHelm
-            ItemKind.Accessory,      // 75: MagicChain
-            ItemKind.Accessory,      // 76: RingOfPower
+            ItemKind.WeaponSword,    // 3:  QuartzSaber
+            ItemKind.WeaponSword,    // 4:  InfernoEdge
+            // Axes (Uncommon) — 5..8
+            ItemKind.WeaponSword,    // 5:  CrystalCleaver
+            ItemKind.WeaponSword,    // 6:  ObsidianCleaver
+            ItemKind.WeaponSword,    // 7:  ShadowSplitter
+            ItemKind.WeaponSword,    // 8:  VolcanicAxe
+            // Daggers (Uncommon) — 9..11
+            ItemKind.WeaponKnife,    // 9:  AssassinsEdge
+            ItemKind.WeaponKnife,    // 10: SerpentsTooth
+            ItemKind.WeaponKnife,    // 11: ShadowStiletto
+            // Spears (Uncommon) — 12..15
+            ItemKind.WeaponSword,    // 12: CavePike
+            ItemKind.WeaponSword,    // 13: FlameLance
+            ItemKind.WeaponSword,    // 14: InfernalPike
+            ItemKind.WeaponSword,    // 15: StalactiteSpear
+            // Hammers (Uncommon) — 16..18
+            ItemKind.WeaponHammer,   // 16: GeologistsHammer
+            ItemKind.WeaponHammer,   // 17: MagmaMaul
+            ItemKind.WeaponHammer,   // 18: QuakeHammer
+            // Staves/Rods (Uncommon) — 19..21
+            ItemKind.WeaponStaff,    // 19: EarthenStaff
+            ItemKind.WeaponRod,      // 20: EmberRod
+            ItemKind.WeaponStaff,    // 21: ShadowwoodStaff
+            // Armor (Uncommon) — 22..26
+            ItemKind.ArmorMail,      // 22: LavaplateArmor
+            ItemKind.ArmorMail,      // 23: Voidmail
+            ItemKind.ArmorMail,      // 24: SteelCuirass
+            ItemKind.ArmorMail,      // 25: GranitePlate
+            ItemKind.ArmorMail,      // 26: VolcanicArmor
+            // Shields (Uncommon) — 27..31
+            ItemKind.Shield,         // 27: LavaShield
+            ItemKind.Shield,         // 28: VoidBarrier
+            ItemKind.Shield,         // 29: HeaterShield
+            ItemKind.Shield,         // 30: QuartzWall
+            ItemKind.Shield,         // 31: InfernoGuard
+            // Helms (Uncommon) — 32..36
+            ItemKind.HatHelm,        // 32: LavaCrown
+            ItemKind.HatHelm,        // 33: VoidMask
+            ItemKind.HatHelm,        // 34: WingedHelm
+            ItemKind.HatHelm,        // 35: QuartzHelm
+            ItemKind.HatHelm,        // 36: InfernoCrown
+            // Accessories (Uncommon) — 37..38
+            ItemKind.Accessory,      // 37: MagicChain
+            ItemKind.Accessory,      // 38: RingOfPower
+        };
+
+        /// <summary>Generate cave rare equipment from all Rare-rarity cave gear items (12 items).</summary>
+        private static readonly ItemKind[] _rarePoolKinds = new ItemKind[]
+        {
+            ItemKind.WeaponSword,    // 0:  AbyssFang
+            ItemKind.WeaponSword,    // 1:  DiamondEdge
+            ItemKind.WeaponSword,    // 2:  MagmaBlade
+            ItemKind.ArmorMail,      // 3:  AbyssPlate
+            ItemKind.ArmorMail,      // 4:  DiamondMail
+            ItemKind.ArmorMail,      // 5:  MagmaBlastPlate
+            ItemKind.Shield,         // 6:  AbyssWall
+            ItemKind.Shield,         // 7:  DiamondBarrier
+            ItemKind.Shield,         // 8:  MagmaWall
+            ItemKind.HatHelm,        // 9:  AbyssHelm
+            ItemKind.HatHeadband,    // 10: DiamondCirclet
+            ItemKind.HatHelm,        // 11: MagmaHelm
+        };
+
+        /// <summary>Generate cave epic equipment from all Epic-rarity cave gear items (4 items).</summary>
+        private static readonly ItemKind[] _epicPoolKinds = new ItemKind[]
+        {
+            ItemKind.WeaponSword,    // 0: PitLordsSword
+            ItemKind.ArmorMail,      // 1: PitLordsArmor
+            ItemKind.Shield,         // 2: PitLordsAegis
+            ItemKind.HatHelm,        // 3: PitLordsCrown
         };
 
         /// <summary>
@@ -437,7 +454,7 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Generate cave common equipment from all Normal-rarity cave gear items (56 items).
+        /// Generate cave common equipment from all Normal-rarity cave gear items (78 items).
         /// </summary>
         private static IItem GenerateCaveCommonEquipment(LootJobContext ctx = default)
         {
@@ -509,106 +526,128 @@ namespace PitHero.ECS.Components
                 case 53: return GearItems.ReinforcedCap();
                 case 54: return GearItems.SquireHelm();
                 // Accessories (Normal) — 55
-                default: return GearItems.ProtectRing();
+                case 55: return GearItems.ProtectRing();
+                // Swords promoted to Normal — 56..60
+                case 56: return GearItems.CrystalEdge();
+                case 57: return GearItems.UndergroundRapier();
+                case 58: return GearItems.EmberSword();
+                case 59: return GearItems.VoidCutter();
+                case 60: return GearItems.StalagmiteSword();
+                // Armor promoted to Normal — 61..65
+                case 61: return GearItems.StonePlate();
+                case 62: return GearItems.EmberguardMail();
+                case 63: return GearItems.ShadowVest();
+                case 64: return GearItems.ReinforcedPlate();
+                case 65: return GearItems.CrystalGuard();
+                // Shields promoted to Normal — 66..71
+                case 66: return GearItems.SteelShield();
+                case 67: return GearItems.GraniteGuard();
+                case 68: return GearItems.EmberShield();
+                case 69: return GearItems.ShadowGuard();
+                case 70: return GearItems.TowerShield();
+                case 71: return GearItems.CrystalBarrier();
+                // Helms promoted to Normal — 72..77
+                case 72: return GearItems.SteelHelm();
+                case 73: return GearItems.StoneCrown();
+                case 74: return GearItems.EmberHelm();
+                case 75: return GearItems.ShadowCowl();
+                case 76: return GearItems.GreatHelm();
+                default: return GearItems.CrystalCirclet();
             }
         }
 
         /// <summary>
-        /// Generate cave uncommon equipment from all Uncommon-rarity cave gear items (77 items).
+        /// Generate cave uncommon equipment from all Uncommon-rarity cave gear items (39 items).
         /// </summary>
         private static IItem GenerateCaveUncommonEquipment(LootJobContext ctx = default)
         {
             int index = SelectWeightedPoolIndex(_uncommonPoolKinds, ctx);
             switch (index)
             {
-                // Swords (Uncommon) — 0..13
-                case 0:  return GearItems.AbyssFang();
-                case 1:  return GearItems.CrystalEdge();
+                // Swords (Uncommon) — 0..4
+                case 0:  return GearItems.GloomBlade();
+                case 1:  return GearItems.LavaForgedSword();
                 case 2:  return GearItems.DepthsReaver();
-                case 3:  return GearItems.DiamondEdge();
-                case 4:  return GearItems.EmberSword();
-                case 5:  return GearItems.GloomBlade();
-                case 6:  return GearItems.InfernoEdge();
-                case 7:  return GearItems.LavaForgedSword();
-                case 8:  return GearItems.MagmaBlade();
-                case 9:  return GearItems.PitLordsSword();
-                case 10: return GearItems.QuartzSaber();
-                case 11: return GearItems.StalagmiteSword();
-                case 12: return GearItems.UndergroundRapier();
-                case 13: return GearItems.VoidCutter();
-                // Axes (Uncommon) — 14..17
-                case 14: return GearItems.CrystalCleaver();
-                case 15: return GearItems.ObsidianCleaver();
-                case 16: return GearItems.ShadowSplitter();
-                case 17: return GearItems.VolcanicAxe();
-                // Daggers (Uncommon) — 18..20
-                case 18: return GearItems.AssassinsEdge();
-                case 19: return GearItems.SerpentsTooth();
-                case 20: return GearItems.ShadowStiletto();
-                // Spears (Uncommon) — 21..24
-                case 21: return GearItems.CavePike();
-                case 22: return GearItems.FlameLance();
-                case 23: return GearItems.InfernalPike();
-                case 24: return GearItems.StalactiteSpear();
-                // Hammers (Uncommon) — 25..27
-                case 25: return GearItems.GeologistsHammer();
-                case 26: return GearItems.MagmaMaul();
-                case 27: return GearItems.QuakeHammer();
-                // Staves (Uncommon) — 28..30
-                case 28: return GearItems.EarthenStaff();
-                case 29: return GearItems.EmberRod();
-                case 30: return GearItems.ShadowwoodStaff();
-                // Armor (Uncommon) — 31..44
-                case 31: return GearItems.AbyssPlate();
-                case 32: return GearItems.CrystalGuard();
-                case 33: return GearItems.DiamondMail();
-                case 34: return GearItems.EmberguardMail();
-                case 35: return GearItems.GranitePlate();
-                case 36: return GearItems.LavaplateArmor();
-                case 37: return GearItems.MagmaBlastPlate();
-                case 38: return GearItems.PitLordsArmor();
-                case 39: return GearItems.ReinforcedPlate();
-                case 40: return GearItems.ShadowVest();
-                case 41: return GearItems.SteelCuirass();
-                case 42: return GearItems.StonePlate();
-                case 43: return GearItems.Voidmail();
-                case 44: return GearItems.VolcanicArmor();
-                // Shields (Uncommon) — 45..59
-                case 45: return GearItems.AbyssWall();
-                case 46: return GearItems.CrystalBarrier();
-                case 47: return GearItems.DiamondBarrier();
-                case 48: return GearItems.EmberShield();
-                case 49: return GearItems.GraniteGuard();
-                case 50: return GearItems.HeaterShield();
-                case 51: return GearItems.InfernoGuard();
-                case 52: return GearItems.LavaShield();
-                case 53: return GearItems.MagmaWall();
-                case 54: return GearItems.PitLordsAegis();
-                case 55: return GearItems.QuartzWall();
-                case 56: return GearItems.ShadowGuard();
-                case 57: return GearItems.SteelShield();
-                case 58: return GearItems.TowerShield();
-                case 59: return GearItems.VoidBarrier();
-                // Helms (Uncommon) — 60..74
-                case 60: return GearItems.AbyssHelm();
-                case 61: return GearItems.CrystalCirclet();
-                case 62: return GearItems.DiamondCirclet();
-                case 63: return GearItems.EmberHelm();
-                case 64: return GearItems.GreatHelm();
-                case 65: return GearItems.InfernoCrown();
-                case 66: return GearItems.LavaCrown();
-                case 67: return GearItems.MagmaHelm();
-                case 68: return GearItems.PitLordsCrown();
-                case 69: return GearItems.QuartzHelm();
-                case 70: return GearItems.ShadowCowl();
-                case 71: return GearItems.SteelHelm();
-                case 72: return GearItems.StoneCrown();
-                case 73: return GearItems.VoidMask();
-                case 74: return GearItems.WingedHelm();
-                // Accessories (Uncommon) — 75..76
-                case 75: return GearItems.MagicChain();
+                case 3:  return GearItems.QuartzSaber();
+                case 4:  return GearItems.InfernoEdge();
+                // Axes (Uncommon) — 5..8
+                case 5:  return GearItems.CrystalCleaver();
+                case 6:  return GearItems.ObsidianCleaver();
+                case 7:  return GearItems.ShadowSplitter();
+                case 8:  return GearItems.VolcanicAxe();
+                // Daggers (Uncommon) — 9..11
+                case 9:  return GearItems.AssassinsEdge();
+                case 10: return GearItems.SerpentsTooth();
+                case 11: return GearItems.ShadowStiletto();
+                // Spears (Uncommon) — 12..15
+                case 12: return GearItems.CavePike();
+                case 13: return GearItems.FlameLance();
+                case 14: return GearItems.InfernalPike();
+                case 15: return GearItems.StalactiteSpear();
+                // Hammers (Uncommon) — 16..18
+                case 16: return GearItems.GeologistsHammer();
+                case 17: return GearItems.MagmaMaul();
+                case 18: return GearItems.QuakeHammer();
+                // Staves/Rods (Uncommon) — 19..21
+                case 19: return GearItems.EarthenStaff();
+                case 20: return GearItems.EmberRod();
+                case 21: return GearItems.ShadowwoodStaff();
+                // Armor (Uncommon) — 22..26
+                case 22: return GearItems.LavaplateArmor();
+                case 23: return GearItems.Voidmail();
+                case 24: return GearItems.SteelCuirass();
+                case 25: return GearItems.GranitePlate();
+                case 26: return GearItems.VolcanicArmor();
+                // Shields (Uncommon) — 27..31
+                case 27: return GearItems.LavaShield();
+                case 28: return GearItems.VoidBarrier();
+                case 29: return GearItems.HeaterShield();
+                case 30: return GearItems.QuartzWall();
+                case 31: return GearItems.InfernoGuard();
+                // Helms (Uncommon) — 32..36
+                case 32: return GearItems.LavaCrown();
+                case 33: return GearItems.VoidMask();
+                case 34: return GearItems.WingedHelm();
+                case 35: return GearItems.QuartzHelm();
+                case 36: return GearItems.InfernoCrown();
+                // Accessories (Uncommon) — 37..38
+                case 37: return GearItems.MagicChain();
                 default: return GearItems.RingOfPower();
             }
+        }
+
+        /// <summary>Generate cave rare equipment from all Rare-rarity cave gear items (12 items).</summary>
+        private static IItem GenerateCaveRareEquipment(LootJobContext ctx = default)
+        {
+            int index = SelectWeightedPoolIndex(_rarePoolKinds, ctx);
+            return index switch
+            {
+                0  => GearItems.AbyssFang(),
+                1  => GearItems.DiamondEdge(),
+                2  => GearItems.MagmaBlade(),
+                3  => GearItems.AbyssPlate(),
+                4  => GearItems.DiamondMail(),
+                5  => GearItems.MagmaBlastPlate(),
+                6  => GearItems.AbyssWall(),
+                7  => GearItems.DiamondBarrier(),
+                8  => GearItems.MagmaWall(),
+                9  => GearItems.AbyssHelm(),
+                10 => GearItems.DiamondCirclet(),
+                _  => GearItems.MagmaHelm(),
+            };
+        }
+
+        /// <summary>Generate cave epic equipment from all Epic-rarity cave gear items (4 items).</summary>
+        private static IItem GenerateCaveEpicEquipment(LootJobContext ctx = default)
+        {
+            int index = SelectWeightedPoolIndex(_epicPoolKinds, ctx);
+            return index switch
+            {
+                0 => GearItems.PitLordsSword(),
+                1 => GearItems.PitLordsArmor(),
+                2 => GearItems.PitLordsAegis(),
+                _ => GearItems.PitLordsCrown(),
+            };
         }
 
         /// <summary>

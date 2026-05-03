@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Equipment.Helms
     public static class StoneCrown
     {
         private const int PitLevel = 12;
-        private const ItemRarity Rarity = ItemRarity.Uncommon;
+        private static readonly ItemRarity Rarity = RarityUtils.GetRarityForBiomeLevel(PitLevel);
 
         public static Gear Create()
         {

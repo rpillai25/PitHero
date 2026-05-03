@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Equipment.Helms
     public static class VoidMask
     {
         private const int PitLevel = 18;
-        private const ItemRarity Rarity = ItemRarity.Uncommon;
+        private static readonly ItemRarity Rarity = RarityUtils.GetRarityForBiomeLevel(PitLevel);
 
         public static Gear Create()
         {

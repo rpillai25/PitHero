@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Equipment.Shields
     public static class SteelShield
     {
         private const int PitLevel = 11;
-        private const ItemRarity Rarity = ItemRarity.Uncommon;
+        private static readonly ItemRarity Rarity = RarityUtils.GetRarityForBiomeLevel(PitLevel);
 
         public static Gear Create()
         {

@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Equipment.Swords
     public static class LongSword
     {
         private const int PitLevel = 15;
-        private const ItemRarity Rarity = ItemRarity.Normal;
+        private static readonly ItemRarity Rarity = RarityUtils.GetRarityForBiomeLevel(PitLevel);
 
         public static Gear Create()
         {

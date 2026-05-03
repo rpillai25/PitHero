@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Equipment.Armor
     public static class DiamondMail
     {
         private const int PitLevel = 23;
-        private const ItemRarity Rarity = ItemRarity.Uncommon;
+        private static readonly ItemRarity Rarity = RarityUtils.GetRarityForBiomeLevel(PitLevel);
 
         public static Gear Create()
         {

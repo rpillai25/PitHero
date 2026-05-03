@@ -9,7 +9,7 @@ namespace RolePlayingFramework.Equipment.Shields
     public static class ReinforcedBuckler
     {
         private const int PitLevel = 4;
-        private const ItemRarity Rarity = ItemRarity.Normal;
+        private static readonly ItemRarity Rarity = RarityUtils.GetRarityForBiomeLevel(PitLevel);
 
         public static Gear Create()
         {
