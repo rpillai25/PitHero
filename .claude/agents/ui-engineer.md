@@ -19,6 +19,9 @@ You are expertly familiar with the Nez.UI and PitHero.UI namespaces and the UI a
 
 Your output must follow the Feature Builder handoff contract exactly.
 
+# Agent Skills to use for implementation
+- nez-ui
+
 # UI Component Rules
 - NEVER use SetFontScale() for any UI element. If the user wants to scale a font, create a larger font.
 - Use `HoverableImageButton` instead of Nez `ImageButton`

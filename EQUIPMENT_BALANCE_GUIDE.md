@@ -362,19 +362,22 @@ var resistances = new Dictionary<ElementType, float>
 
 ## Creating New Equipment: Step-by-Step Guide
 
-### Step 1: Determine Pit Level and Rarity
+### Step 1: Determine Pit Level (Rarity is Automatic)
 
 **Questions to ask:**
 - At what pit depth should this equipment be found?
-- What rarity tier is appropriate?
-- Is this a progression item or a rare drop?
+- Which biome does it belong to? (Every 25 pit levels = one biome)
 
 **Pit Level Assignment:**
 - Starter (1-10): Basic equipment for early game
-- Early (11-25): First upgrades
-- Mid (26-40): Mid-game equipment
-- Late (41-70): Advanced equipment
-- Legendary (71-100): End-game equipment
+- Early (11-25): First upgrades (cave biome)
+- Mid (26-40): Mid-game equipment (biome 2)
+- Late (41-70): Advanced equipment (biomes 3-4)
+- Legendary (71-100): End-game equipment (biomes 4-5)
+
+**Rarity is computed automatically** for Sword/Armor/Helm/Shield items via `RarityUtils.GetRarityForBiomeLevel(PitLevel)`. You do not manually assign rarity — set the `PitLevel` constant and the correct rarity (and its stat multiplier) is derived from it. The cutoffs within each 25-level biome are: Normal (levels 1–16), Uncommon (17–21), Rare (22–24), Epic (25).
+
+For other item types (Accessories, Axes, Daggers, etc.), rarity is still assigned manually until enough items exist to warrant the spread.
 
 ### Step 2: Choose Equipment Type and Stats
 
@@ -420,6 +423,7 @@ int statBonus = BalanceConfig.CalculateEquipmentStatBonus(pitLevel, rarity);
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Stats;
+using PitHero;
 using System.Collections.Generic;
 
 namespace RolePlayingFramework.Equipment.Category
@@ -428,7 +432,8 @@ namespace RolePlayingFramework.Equipment.Category
     public static class YourItem
     {
         private const int PitLevel = 25;
-        private const ItemRarity Rarity = ItemRarity.Rare;
+        // Rarity is derived from biome-relative level — do NOT hardcode for Sword/Armor/Helm/Shield items
+        private static readonly ItemRarity Rarity = RarityUtils.GetRarityForBiomeLevel(PitLevel);
 
         public static Gear Create()
         {
@@ -443,10 +448,10 @@ namespace RolePlayingFramework.Equipment.Category
             };
             
             return new Gear(
-                "YourItem",
+                InventoryTextKey.Inv_YourItem_Name,
                 ItemKind.WeaponSword, // Choose appropriate kind
                 Rarity,
-                $"+{attackBonus} Attack", // Update based on stats
+                InventoryTextKey.Inv_YourItem_Desc,
                 500, // Price in gold
                 new StatBlock(0, 0, 0, 0), // Stat bonuses
                 atk: attackBonus,
@@ -600,16 +605,44 @@ Key methods:
 
 ### Treasure Level Behavior
 
-- Pit 1-10 always return treasure level 1.
-- Pit 11+ introduces treasure level transitions through weighted roll thresholds.
-- Non-boss cave floors in pit 11-25 use 35% chance for treasure level 2 and 65% for level 1.
-- Boss floors in pit 11-25 use 60% chance for treasure level 2 and 40% for level 1.
+| Treasure Level | Chest Color | Can Drop Consumables? | Gear Rarity |
+|---|---|---|---|
+| 1 (Brown) | Normal | Yes (60% chance) | Normal |
+| 2 (Green) | Uncommon | No — gear only | Uncommon |
+| 3 (Blue) | Rare | No — gear only | Rare |
+| 4 (Purple) | Epic | No — gear only | Epic |
+| 5 (Gold) | Legendary | No — gear only | Epic (Legendary gear not yet implemented) |
 
-### Rarity-Band Transition
+Colored chests (level 2+) **never** drop consumables. Only brown (Normal) chests mix consumables and gear.
 
-- Cave rarity band is `Normal` for pit 1-10.
-- Cave rarity band transitions to `Uncommon` starting at pit 11.
-- This transition aligns with the treasure-level probability change so item progression increases without a hard loot reset.
+### Treasure Level Probability by Pit Depth
+
+Chest color is determined by `TreasureComponent.DetermineTreasureLevel()` / `CaveBiomeConfig.DetermineCaveTreasureLevel()`:
+
+- Pit 1-10: Level 1 only (100%)
+- Pit 10-30: Level 1 (80%), Level 2 (20%)
+- Pit 30-60: Level 1 (70%), Level 2 (20%), Level 3 (10%)
+- Pit 60-90: Level 1 (55%), Level 2 (25%), Level 3 (15%), Level 4 (5%)
+- Pit 90+: Level 1 (40%), Level 2 (30%), Level 3 (20%), Level 4 (9%), Level 5 (1%)
+
+### Biome-Relative Rarity Formula
+
+Gear rarity is **not** assigned manually — it is computed from the item's pit level relative to its biome. Every 25 pit levels is one biome; rarity resets at the start of each biome.
+
+**Formula:** `biomeLevel = ((pitLevel - 1) % 25) + 1`
+
+| Biome Level Range | Rarity | % of Items |
+|---|---|---|
+| 1–16 | Normal | 65% |
+| 17–21 | Uncommon | 20% |
+| 22–24 | Rare | 10% |
+| 25 | Epic | 5% |
+
+**Implementation:** `RarityUtils.GetRarityForBiomeLevel(pitLevel)` — use this instead of hardcoding rarity for Sword/Armor/Helm/Shield items. A PitLevel 22 item in biome 1 and a PitLevel 47 item in biome 2 both resolve to Rare.
+
+### Consumable Rarity
+
+All consumables are always `ItemRarity.Normal`, regardless of potency. Mid and Full potions are more powerful than basic potions, but potency is represented by their restore amounts — not by rarity tier. Do not assign Uncommon/Rare/Epic to consumables.
 
 ---
 
