@@ -52,6 +52,9 @@ namespace RolePlayingFramework.Equipment
             BattleOnly = battleOnly;
         }
 
+        /// <summary>Returns a new instance of this consumable type with default StackCount (1). Used by purchase flows to avoid sharing the vault template reference.</summary>
+        public abstract Consumable CreateFreshInstance();
+
         /// <summary>Consume this item and apply its effect.</summary>
         public virtual bool Consume(object context)
         {

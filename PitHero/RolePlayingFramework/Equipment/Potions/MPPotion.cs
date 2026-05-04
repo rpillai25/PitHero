@@ -5,5 +5,7 @@ namespace RolePlayingFramework.Equipment
     public sealed class MPPotion : BaseHPMPPotion
     {
         public MPPotion() : base(InventoryTextKey.Inv_MPPotion_Name, ItemRarity.Normal, InventoryTextKey.Inv_MPPotion_Desc, 20, 0, 100) { }
+        /// <summary>Returns a new MPPotion instance with StackCount = 1.</summary>
+        public override Consumable CreateFreshInstance() => new MPPotion();
     }
 }

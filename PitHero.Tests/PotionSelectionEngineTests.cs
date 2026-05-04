@@ -631,6 +631,7 @@ namespace PitHero.Tests
                 : base("Battle Elixir", ItemRarity.Normal, "Test", 10, 200, 0, true)
             {
             }
+            public override Consumable CreateFreshInstance() => new TestBattleOnlyPotion();
         }
     }
 }

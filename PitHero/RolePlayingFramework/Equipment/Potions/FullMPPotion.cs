@@ -5,5 +5,7 @@ namespace RolePlayingFramework.Equipment
     public sealed class FullMPPotion : BaseHPMPPotion
     {
         public FullMPPotion() : base(InventoryTextKey.Inv_FullMPPotion_Name, ItemRarity.Normal, InventoryTextKey.Inv_FullMPPotion_Desc, 500, 0, -1) { }
+        /// <summary>Returns a new FullMPPotion instance with StackCount = 1.</summary>
+        public override Consumable CreateFreshInstance() => new FullMPPotion();
     }
 }

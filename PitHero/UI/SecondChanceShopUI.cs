@@ -729,16 +729,24 @@ namespace PitHero.UI
             {
                 if (item is Consumable consumable)
                 {
-                    // The vault stores the consumable as a shared reference template and tracks the
-                    // total count separately via StackedItem.Quantity.  Setting StackCount = 1
-                    // normalises the template before placement, then TryAdd (qty-1) times stacks
-                    // the same reference in the target slot until StackCount == qty.
-                    // The vault never reads ItemTemplate.StackCount after insertion, so this
-                    // intentional mutation is safe within the current vault design.
-                    consumable.StackCount = 1;
-                    heroComp.Bag?.SetSlotItem(destSlot.SlotData.BagIndex.Value, consumable);
-                    for (int i = 1; i < qty; i++)
-                        heroComp.Bag?.TryAdd(consumable);
+                    // Always create a fresh independent instance — never mutate or share the vault
+                    // template reference, which may already exist in other bag slots from prior purchases.
+                    var freshConsumable = consumable.CreateFreshInstance();
+                    freshConsumable.StackCount = System.Math.Min(qty, freshConsumable.StackSize);
+                    heroComp.Bag?.SetSlotItem(destSlot.SlotData.BagIndex.Value, freshConsumable);
+
+                    // Handle the rare case where qty exceeds one stack (overflow → fill empty slots).
+                    int overflow = qty - freshConsumable.StackCount;
+                    for (int i = 0; i < heroComp.Bag.Capacity && overflow > 0; i++)
+                    {
+                        if (heroComp.Bag.GetSlotItem(i) == null)
+                        {
+                            var extra = consumable.CreateFreshInstance();
+                            extra.StackCount = System.Math.Min(overflow, extra.StackSize);
+                            heroComp.Bag.SetSlotItem(i, extra);
+                            overflow -= extra.StackCount;
+                        }
+                    }
                 }
                 else
                 {
