@@ -191,6 +191,7 @@ SecondChanceBuyPrompt,Buy for {0} gold?
 SecondChanceBuyQtyPrompt,Buy {0}?
 SecondChanceBuyTotal,Total: {0} gold
 SecondChanceNoGold,Not enough gold!
+SecondChanceSellPrompt,Sell for {0} gold?
 
 # Event Console Messages
 ConsoleAttack,{0} attacks {1} for {2} damage!

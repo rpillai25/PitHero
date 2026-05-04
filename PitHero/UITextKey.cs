@@ -196,6 +196,7 @@ namespace PitHero
         public const string SecondChanceBuyQtyPrompt = "SecondChanceBuyQtyPrompt";
         public const string SecondChanceBuyTotal = "SecondChanceBuyTotal";
         public const string SecondChanceNoGold = "SecondChanceNoGold";
+        public const string SecondChanceSellPrompt = "SecondChanceSellPrompt";
         public const string ConsoleAttack = "ConsoleAttack";
         public const string ConsoleSkillAttack = "ConsoleSkillAttack";
         public const string ConsoleBattleHealConsumable = "ConsoleBattleHealConsumable";

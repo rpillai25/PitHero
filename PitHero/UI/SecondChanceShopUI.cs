@@ -169,6 +169,7 @@ namespace PitHero.UI
             _heroInventoryGrid.InitializeContextMenu(_stage, skin);
             _heroInventoryGrid.OnVaultItemDropRequested += HandleVaultItemDrop;
             _heroInventoryGrid.OnItemSoldToVault += HandleHeroInventorySell;
+            _heroInventoryGrid.OnHeroItemDroppedOutside += HandleHeroItemDroppedOutside;
 
             var dummyTarget = new Element();
             dummyTarget.SetSize(0, 0);
@@ -760,6 +761,48 @@ namespace PitHero.UI
             var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
             if (vault != null)
                 _vaultItemGrid?.RefreshFromVault(vault);
+        }
+
+        /// <summary>
+        /// Called when a hero inventory item drag is released outside the inventory grid.
+        /// If the drop position falls over the shop window while the Items tab is active, shows a sell confirmation dialog.
+        /// </summary>
+        private void HandleHeroItemDroppedOutside(InventorySlot sourceSlot, Vector2 stagePos)
+        {
+            if (_activeTabIndex != 0 || !_windowVisible) return;
+            if (!IsPositionOverShopWindow(stagePos)) return;
+
+            var item = sourceSlot.SlotData?.Item;
+            if (item == null || !sourceSlot.SlotData.BagIndex.HasValue) return;
+            int bagIndex = sourceSlot.SlotData.BagIndex.Value;
+
+            int qty = (item is RolePlayingFramework.Equipment.Consumable c) ? c.StackCount : 1;
+            int sellGold = item.GetSellPrice() * qty;
+
+            _heroInventoryGrid.NotifyExternalDropHandled();
+
+            string promptText = string.Format(GetText(TextType.UI, UITextKey.SecondChanceSellPrompt), sellGold);
+            var dialog = new ConfirmationDialog(
+                GetText(TextType.UI, UITextKey.DialogReallyDiscard),
+                promptText,
+                _skin,
+                onYes: () =>
+                {
+                    _heroInventoryGrid.DiscardItem(bagIndex);
+                    InventoryDragManager.EndDrag();
+                },
+                onNo: () => InventoryDragManager.CancelDrag()
+            );
+            dialog.Show(_stage);
+        }
+
+        /// <summary>Returns true if the given stage position falls within the shop window bounds.</summary>
+        private bool IsPositionOverShopWindow(Vector2 stagePos)
+        {
+            if (_shopWindow == null) return false;
+            var topLeft = _shopWindow.LocalToStageCoordinates(Vector2.Zero);
+            return stagePos.X >= topLeft.X && stagePos.X <= topLeft.X + _shopWindow.GetWidth() &&
+                   stagePos.Y >= topLeft.Y && stagePos.Y <= topLeft.Y + _shopWindow.GetHeight();
         }
 
         /// <summary>

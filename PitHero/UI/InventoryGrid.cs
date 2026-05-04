@@ -69,6 +69,11 @@ namespace PitHero.UI
         // Fired after an item is sold to the Second Chance vault
         public event System.Action OnItemSoldToVault;
 
+        /// <summary>Fired when an item drag is released outside the grid, passing the source slot and stage drop position.</summary>
+        public event System.Action<InventorySlot, Vector2> OnHeroItemDroppedOutside;
+
+        private bool _externalDropHandled;
+
         /// <summary>Fired when a vault item is dragged and dropped onto a slot in this grid. Provides destination slot and vault stack.</summary>
         public event System.Action<InventorySlot, SecondChanceMerchantVault.StackedItem> OnVaultItemDropRequested;
 
@@ -744,6 +749,9 @@ namespace PitHero.UI
             }
             else
             {
+                _externalDropHandled = false;
+                OnHeroItemDroppedOutside?.Invoke(source, stagePos);
+                if (_externalDropHandled) return;
                 InventoryDragManager.NotifyDropRequested(source, stagePos);
                 if (InventoryDragManager.IsDragging)
                     InventoryDragManager.CancelDrag();
@@ -805,8 +813,11 @@ namespace PitHero.UI
             }
         }
 
+        /// <summary>Signals that an external handler (e.g. SecondChanceShopUI) has taken ownership of the current outside-drop event.</summary>
+        public void NotifyExternalDropHandled() { _externalDropHandled = true; }
+
         /// <summary>Sells an item from the bag to the Second Chance vault and awards gold.</summary>
-        private void DiscardItem(int bagIndex)
+        public void DiscardItem(int bagIndex)
         {
             if (_heroComponent?.Bag == null)
                 return;
