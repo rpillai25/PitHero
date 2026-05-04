@@ -26,6 +26,8 @@ namespace PitHero.UI
                 return false;
             if (!string.Equals(src.Name, dst.Name, System.StringComparison.Ordinal))
                 return false;
+            if (src.StackCount >= src.StackSize)
+                return false;
             if (dst.StackCount >= dst.StackSize)
                 return false;
             int space = dst.StackSize - dst.StackCount;
