@@ -168,6 +168,7 @@ namespace PitHero.UI
             _heroInventoryGrid = new InventoryGrid();
             _heroInventoryGrid.InitializeContextMenu(_stage, skin);
             _heroInventoryGrid.OnVaultItemDropRequested += HandleVaultItemDrop;
+            _heroInventoryGrid.OnItemSoldToVault += HandleHeroInventorySell;
 
             var dummyTarget = new Element();
             dummyTarget.SetSize(0, 0);
@@ -751,6 +752,14 @@ namespace PitHero.UI
             _vaultItemGrid?.RefreshFromVault(vault);
             InventorySelectionManager.OnInventoryChanged?.Invoke();
             InventoryDragManager.EndDrag();
+        }
+
+        /// <summary>Refreshes the vault item grid when the hero sells an item from their inventory.</summary>
+        private void HandleHeroInventorySell()
+        {
+            var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
+            if (vault != null)
+                _vaultItemGrid?.RefreshFromVault(vault);
         }
 
         /// <summary>

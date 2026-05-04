@@ -28,14 +28,14 @@ WindowMonsters,Monsters
 WindowSaveGame,Save Game
 WindowLoadGame,Load Game
 DialogReallyQuit,Really Quit?
-DialogReallyDiscard,Really discard?
+DialogReallyDiscard,Sell Item?
 DialogConfirmPurchase,Confirm Purchase
 DialogConfirmSave,Confirm Save
 DialogConfirmLoad,Confirm Load
 ConfirmQuitMessage,Are you sure you want to quit?
 ConfirmExitMessage,Are you sure you want to exit?
 ConfirmQuitToTitleMessage,Are you sure you want to quit to title?
-ConfirmDiscardMessage,Discard this item?
+ConfirmDiscardMessage,Send to Second Chance shop?
 ConfirmOverwriteSaveSlot,Overwrite save in slot {0}?
 ConfirmLoadSaveSlot,Load save from slot {0}?
 HudPitLevel,Pit Lv. {0}
@@ -182,7 +182,7 @@ DialogConfirmForge,Confirm Forge
 ConfirmForgeMessage,Combine these 2 crystals into a Combo Crystal?
 CrystalInventoryFull,Crystal inventory is full
 ButtonDismiss,Dismiss
-ButtonDiscard,Discard
+ButtonDiscard,Sell
 DialogConfirmDismissMercenary,Dismiss Mercenary
 ConfirmDismissMercenaryMessage,Are you sure you want to dismiss {0}? Their gear will be returned to your inventory.
 WindowSecondChanceShop,Second Chance Shop

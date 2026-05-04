@@ -66,6 +66,9 @@ namespace PitHero.UI
         // Public event for stencil removal confirmation
         public event System.Action<PlacedStencil> OnStencilRemovalRequested;
 
+        // Fired after an item is sold to the Second Chance vault
+        public event System.Action OnItemSoldToVault;
+
         /// <summary>Fired when a vault item is dragged and dropped onto a slot in this grid. Provides destination slot and vault stack.</summary>
         public event System.Action<InventorySlot, SecondChanceMerchantVault.StackedItem> OnVaultItemDropRequested;
 
@@ -802,7 +805,7 @@ namespace PitHero.UI
             }
         }
 
-        /// <summary>Discards an item from the bag.</summary>
+        /// <summary>Sells an item from the bag to the Second Chance vault and awards gold.</summary>
         private void DiscardItem(int bagIndex)
         {
             if (_heroComponent?.Bag == null)
@@ -811,9 +814,19 @@ namespace PitHero.UI
             var item = _heroComponent.Bag.GetSlotItem(bagIndex);
             if (item != null)
             {
+                int qty = (item is RolePlayingFramework.Equipment.Consumable c) ? c.StackCount : 1;
+                int gold = item.GetSellPrice() * qty;
+
+                var vault = Core.Services?.GetService<PitHero.Services.SecondChanceMerchantVault>();
+                vault?.AddItem(item);
+
+                var gameState = Core.Services?.GetService<PitHero.Services.GameStateService>();
+                if (gameState != null) gameState.Funds += gold;
+
                 _heroComponent.Bag.SetSlotItem(bagIndex, null);
-                Debug.Log($"Discarded {item.Name}");
+                Debug.Log($"Sold {item.Name} x{qty} for {gold}G");
                 UpdateItemsFromBag();
+                OnItemSoldToVault?.Invoke();
             }
         }
 
