@@ -141,28 +141,28 @@ namespace PitHero.Config
             levels[7] = new[] { EnemyId.Slime, EnemyId.Bat, EnemyId.Rat, EnemyId.CaveMushroom, EnemyId.StoneBeetle, EnemyId.Goblin, EnemyId.Spider, EnemyId.Snake, EnemyId.ShadowImp, EnemyId.TunnelWorm };
             levels[8] = new[] { EnemyId.Slime, EnemyId.Bat, EnemyId.Rat, EnemyId.CaveMushroom, EnemyId.StoneBeetle, EnemyId.Goblin, EnemyId.Spider, EnemyId.Snake, EnemyId.ShadowImp, EnemyId.TunnelWorm };
             levels[9] = new[] { EnemyId.Slime, EnemyId.Bat, EnemyId.Rat, EnemyId.CaveMushroom, EnemyId.StoneBeetle, EnemyId.Goblin, EnemyId.Spider, EnemyId.Snake, EnemyId.ShadowImp, EnemyId.FireLizard };
-            levels[10] = System.Array.Empty<EnemyId>(); // Pit Lord boss
+            levels[10] = System.Array.Empty<EnemyId>(); // Earth Elemental boss
 
             // Pool 3 (Pit 11-15): Deep Cave
             levels[11] = new[] { EnemyId.Goblin, EnemyId.Spider, EnemyId.Snake, EnemyId.TunnelWorm, EnemyId.FireLizard, EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.MagmaOoze, EnemyId.CrystalGolem };
             levels[12] = new[] { EnemyId.Goblin, EnemyId.Spider, EnemyId.Snake, EnemyId.TunnelWorm, EnemyId.FireLizard, EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.MagmaOoze, EnemyId.CrystalGolem };
             levels[13] = new[] { EnemyId.Goblin, EnemyId.Spider, EnemyId.Snake, EnemyId.TunnelWorm, EnemyId.FireLizard, EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.CaveTroll, EnemyId.GhostMiner };
             levels[14] = new[] { EnemyId.Goblin, EnemyId.Spider, EnemyId.Snake, EnemyId.TunnelWorm, EnemyId.FireLizard, EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.CaveTroll, EnemyId.GhostMiner };
-            levels[15] = System.Array.Empty<EnemyId>(); // Earth Elemental boss
+            levels[15] = System.Array.Empty<EnemyId>(); // Molten Titan boss
 
             // Pool 4 (Pit 16-20): Ancient Cave
             levels[16] = new[] { EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.MagmaOoze, EnemyId.CrystalGolem, EnemyId.CaveTroll, EnemyId.GhostMiner, EnemyId.ShadowBeast, EnemyId.LavaDrake, EnemyId.StoneWyrm };
             levels[17] = new[] { EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.MagmaOoze, EnemyId.CrystalGolem, EnemyId.CaveTroll, EnemyId.GhostMiner, EnemyId.ShadowBeast, EnemyId.LavaDrake, EnemyId.StoneWyrm };
             levels[18] = new[] { EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.MagmaOoze, EnemyId.CrystalGolem, EnemyId.CaveTroll, EnemyId.GhostMiner, EnemyId.ShadowBeast, EnemyId.LavaDrake, EnemyId.StoneWyrm };
             levels[19] = new[] { EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.MagmaOoze, EnemyId.CrystalGolem, EnemyId.CaveTroll, EnemyId.GhostMiner, EnemyId.ShadowBeast, EnemyId.LavaDrake, EnemyId.StoneWyrm };
-            levels[20] = System.Array.Empty<EnemyId>(); // Molten Titan boss
+            levels[20] = System.Array.Empty<EnemyId>(); // Ancient Wyrm boss
 
             // Pool 5 (Pit 21-25): Abyssal Cave
             levels[21] = new[] { EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.CrystalGolem, EnemyId.CaveTroll, EnemyId.GhostMiner, EnemyId.ShadowBeast, EnemyId.LavaDrake, EnemyId.StoneWyrm, EnemyId.MagmaOoze };
             levels[22] = new[] { EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.CrystalGolem, EnemyId.CaveTroll, EnemyId.GhostMiner, EnemyId.ShadowBeast, EnemyId.LavaDrake, EnemyId.StoneWyrm, EnemyId.MagmaOoze };
             levels[23] = new[] { EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.CrystalGolem, EnemyId.CaveTroll, EnemyId.GhostMiner, EnemyId.ShadowBeast, EnemyId.LavaDrake, EnemyId.StoneWyrm, EnemyId.MagmaOoze };
             levels[24] = new[] { EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.CrystalGolem, EnemyId.CaveTroll, EnemyId.GhostMiner, EnemyId.ShadowBeast, EnemyId.LavaDrake, EnemyId.StoneWyrm, EnemyId.MagmaOoze };
-            levels[25] = System.Array.Empty<EnemyId>(); // Ancient Wyrm big boss
+            levels[25] = System.Array.Empty<EnemyId>(); // Pit Lord boss
 
             return levels;
         }

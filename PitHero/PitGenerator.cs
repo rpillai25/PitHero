@@ -111,10 +111,10 @@ namespace PitHero
                     return pitLevel switch
                     {
                         5 => (new StoneGuardian(scaledLevel), Color.DarkGray),
-                        10 => (new PitLord(scaledLevel), Color.Red),
-                        15 => (new EarthElemental(scaledLevel), Color.Brown),
-                        20 => (new MoltenTitan(scaledLevel), Color.DarkRed),
-                        25 => (new AncientWyrm(scaledLevel), Color.DarkRed),
+                        10 => (new EarthElemental(scaledLevel), Color.Brown),
+                        15 => (new MoltenTitan(scaledLevel), Color.DarkRed),
+                        20 => (new AncientWyrm(scaledLevel), Color.DarkRed),
+                        25 => (new PitLord(scaledLevel), Color.Red),
                         _ => (new PitLord(scaledLevel), Color.Red)
                     };
                 }
