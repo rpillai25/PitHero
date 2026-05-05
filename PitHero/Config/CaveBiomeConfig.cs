@@ -148,21 +148,21 @@ namespace PitHero.Config
             levels[12] = new[] { EnemyId.Goblin, EnemyId.Spider, EnemyId.Snake, EnemyId.TunnelWorm, EnemyId.FireLizard, EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.MagmaOoze, EnemyId.CrystalGolem };
             levels[13] = new[] { EnemyId.Goblin, EnemyId.Spider, EnemyId.Snake, EnemyId.TunnelWorm, EnemyId.FireLizard, EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.CaveTroll, EnemyId.GhostMiner };
             levels[14] = new[] { EnemyId.Goblin, EnemyId.Spider, EnemyId.Snake, EnemyId.TunnelWorm, EnemyId.FireLizard, EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.CaveTroll, EnemyId.GhostMiner };
-            levels[15] = System.Array.Empty<EnemyId>(); // Molten Titan boss
+            levels[15] = System.Array.Empty<EnemyId>(); // Ancient Wyrm boss
 
             // Pool 4 (Pit 16-20): Ancient Cave
             levels[16] = new[] { EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.MagmaOoze, EnemyId.CrystalGolem, EnemyId.CaveTroll, EnemyId.GhostMiner, EnemyId.ShadowBeast, EnemyId.LavaDrake, EnemyId.StoneWyrm };
             levels[17] = new[] { EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.MagmaOoze, EnemyId.CrystalGolem, EnemyId.CaveTroll, EnemyId.GhostMiner, EnemyId.ShadowBeast, EnemyId.LavaDrake, EnemyId.StoneWyrm };
             levels[18] = new[] { EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.MagmaOoze, EnemyId.CrystalGolem, EnemyId.CaveTroll, EnemyId.GhostMiner, EnemyId.ShadowBeast, EnemyId.LavaDrake, EnemyId.StoneWyrm };
             levels[19] = new[] { EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.MagmaOoze, EnemyId.CrystalGolem, EnemyId.CaveTroll, EnemyId.GhostMiner, EnemyId.ShadowBeast, EnemyId.LavaDrake, EnemyId.StoneWyrm };
-            levels[20] = System.Array.Empty<EnemyId>(); // Ancient Wyrm boss
+            levels[20] = System.Array.Empty<EnemyId>(); // Pit Lord boss
 
             // Pool 5 (Pit 21-25): Abyssal Cave
             levels[21] = new[] { EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.CrystalGolem, EnemyId.CaveTroll, EnemyId.GhostMiner, EnemyId.ShadowBeast, EnemyId.LavaDrake, EnemyId.StoneWyrm, EnemyId.MagmaOoze };
             levels[22] = new[] { EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.CrystalGolem, EnemyId.CaveTroll, EnemyId.GhostMiner, EnemyId.ShadowBeast, EnemyId.LavaDrake, EnemyId.StoneWyrm, EnemyId.MagmaOoze };
             levels[23] = new[] { EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.CrystalGolem, EnemyId.CaveTroll, EnemyId.GhostMiner, EnemyId.ShadowBeast, EnemyId.LavaDrake, EnemyId.StoneWyrm, EnemyId.MagmaOoze };
             levels[24] = new[] { EnemyId.Skeleton, EnemyId.Orc, EnemyId.Wraith, EnemyId.CrystalGolem, EnemyId.CaveTroll, EnemyId.GhostMiner, EnemyId.ShadowBeast, EnemyId.LavaDrake, EnemyId.StoneWyrm, EnemyId.MagmaOoze };
-            levels[25] = System.Array.Empty<EnemyId>(); // Pit Lord boss
+            levels[25] = System.Array.Empty<EnemyId>(); // Molten Titan boss
 
             return levels;
         }

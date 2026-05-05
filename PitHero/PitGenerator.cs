@@ -112,9 +112,9 @@ namespace PitHero
                     {
                         5 => (new StoneGuardian(scaledLevel), Color.DarkGray),
                         10 => (new EarthElemental(scaledLevel), Color.Brown),
-                        15 => (new MoltenTitan(scaledLevel), Color.DarkRed),
-                        20 => (new AncientWyrm(scaledLevel), Color.DarkRed),
-                        25 => (new PitLord(scaledLevel), Color.Red),
+                        15 => (new AncientWyrm(scaledLevel), Color.DarkRed),
+                        20 => (new PitLord(scaledLevel), Color.Red),
+                        25 => (new MoltenTitan(scaledLevel), Color.DarkRed),
                         _ => (new PitLord(scaledLevel), Color.Red)
                     };
                 }
