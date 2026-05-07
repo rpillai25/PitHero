@@ -19,1423 +19,2026 @@ LightningStrike_6
 LightningStrike_7
 	129,258,128,128
 	0.5,0.5
+ancientwyrm_move_down_1
+	0,387,92,52
+	0.5,0.5
+ancientwyrm_move_right_1
+	258,129,92,52
+	0.5,0.5
+ancientwyrm_move_up_1
+	387,0,92,52
+	0.5,0.5
 HeroStatue
-	258,129,64,181
+	258,182,64,181
+	0.5,0.5
+moltentitan_move_down_1
+	387,53,64,90
+	0.5,0.5
+moltentitan_move_right_1
+	93,387,64,90
+	0.5,0.5
+moltentitan_move_up_1
+	323,182,64,90
+	0.5,0.5
+pitlord_move_down_1
+	0,440,64,64
+	0.5,0.5
+pitlord_move_right_1
+	158,387,64,64
+	0.5,0.5
+pitlord_move_up_1
+	388,144,64,64
+	0.5,0.5
+stoneguardian_move_down_1
+	323,273,64,64
+	0.5,0.5
+stoneguardian_move_right_1
+	388,209,64,64
+	0.5,0.5
+stoneguardian_move_up_1
+	223,387,64,64
+	0.5,0.5
+earthelemental_move_down_1
+	452,53,59,74
+	0.5,0.5
+earthelemental_move_right_1
+	323,338,59,74
+	0.5,0.5
+earthelemental_move_up_1
+	388,274,59,74
+	0.5,0.5
+cavetroll_move_down_1
+	453,128,57,52
+	0.5,0.5
+cavetroll_move_right_1
+	158,452,57,52
+	0.5,0.5
+cavetroll_move_up_1
+	453,181,57,52
+	0.5,0.5
+orc_move_down_1
+	216,452,53,55
+	0.5,0.5
+orc_move_right_1
+	453,234,53,55
+	0.5,0.5
+orc_move_up_1
+	270,452,53,55
+	0.5,0.5
+shadowbeast_move_down_1
+	383,349,53,55
+	0.5,0.5
+shadowbeast_move_right_1
+	448,290,53,55
+	0.5,0.5
+shadowbeast_move_up_1
+	324,413,53,55
+	0.5,0.5
+lavadrake_move_down_1
+	437,349,51,55
+	0.5,0.5
+lavadrake_move_right_1
+	383,405,51,55
+	0.5,0.5
+lavadrake_move_up_1
+	435,405,51,55
+	0.5,0.5
+stonewyrm_move_down_1
+	512,0,50,56
+	0.5,0.5
+stonewyrm_move_right_1
+	563,0,50,56
+	0.5,0.5
+stonewyrm_move_up_1
+	512,57,50,56
+	0.5,0.5
+cavemushroom_move_down_1
+	614,0,48,48
+	0.5,0.5
+cavemushroom_move_down_2
+	563,57,48,48
+	0.5,0.5
+cavemushroom_move_down_3
+	512,114,48,48
+	0.5,0.5
+cavemushroom_move_down_4
+	614,49,48,48
+	0.5,0.5
+cavemushroom_move_down_5
+	663,0,48,48
+	0.5,0.5
+cavemushroom_move_down_6
+	563,106,48,48
+	0.5,0.5
+cavemushroom_move_down_7
+	511,163,48,48
+	0.5,0.5
+cavemushroom_move_down_8
+	712,0,48,48
+	0.5,0.5
+cavemushroom_move_right_1
+	663,49,48,48
+	0.5,0.5
+cavemushroom_move_right_2
+	612,98,48,48
+	0.5,0.5
+cavemushroom_move_right_3
+	561,155,48,48
+	0.5,0.5
+cavemushroom_move_right_4
+	511,212,48,48
+	0.5,0.5
+cavemushroom_move_right_5
+	612,147,48,48
+	0.5,0.5
+cavemushroom_move_right_6
+	661,98,48,48
+	0.5,0.5
+cavemushroom_move_right_7
+	712,49,48,48
+	0.5,0.5
+cavemushroom_move_right_8
+	761,0,48,48
+	0.5,0.5
+cavemushroom_move_up_1
+	560,204,48,48
+	0.5,0.5
+cavemushroom_move_up_2
+	507,261,48,48
+	0.5,0.5
+cavemushroom_move_up_3
+	710,98,48,48
+	0.5,0.5
+cavemushroom_move_up_4
+	661,147,48,48
+	0.5,0.5
+cavemushroom_move_up_5
+	610,196,48,48
+	0.5,0.5
+cavemushroom_move_up_6
+	810,0,48,48
+	0.5,0.5
+cavemushroom_move_up_7
+	761,49,48,48
+	0.5,0.5
+cavemushroom_move_up_8
+	560,253,48,48
+	0.5,0.5
+firelizard_move_down_1
+	502,310,48,48
+	0.5,0.5
+firelizard_move_right_1
+	378,461,48,48
+	0.5,0.5
+firelizard_move_up_1
+	609,245,48,48
+	0.5,0.5
+snake_move_down_1
+	659,196,48,48
+	0.5,0.5
+snake_move_right_1
+	710,147,48,48
+	0.5,0.5
+snake_move_up_1
+	759,98,48,48
+	0.5,0.5
+crystalgolem_move_down_1
+	810,49,45,56
+	0.5,0.5
+crystalgolem_move_right_1
+	859,0,45,56
+	0.5,0.5
+crystalgolem_move_up_1
+	489,359,45,56
+	0.5,0.5
+wraith_move_down_1
+	551,310,44,55
+	0.5,0.5
+wraith_move_down_2
+	609,294,44,55
+	0.5,0.5
+wraith_move_right_1
+	658,245,44,55
+	0.5,0.5
+wraith_move_right_2
+	708,196,44,55
+	0.5,0.5
+wraith_move_up_1
+	905,0,44,55
+	0.5,0.5
+wraith_move_up_2
+	487,416,44,55
+	0.5,0.5
+ghostminer_move_down_1
+	759,147,42,53
+	0.5,0.5
+ghostminer_move_right_1
+	856,57,42,53
+	0.5,0.5
+ghostminer_move_up_1
+	808,106,42,53
+	0.5,0.5
+tunnelworm_move_down_1
+	535,366,39,61
+	0.5,0.5
+tunnelworm_move_right_1
+	575,366,39,61
+	0.5,0.5
+tunnelworm_move_up_1
+	950,0,39,61
+	0.5,0.5
+stonebeetle_move_down_1
+	324,469,37,38
+	0.5,0.5
+stonebeetle_move_right_1
+	427,461,37,38
+	0.5,0.5
+stonebeetle_move_up_1
+	899,57,37,38
+	0.5,0.5
+magmaooze_move_down_1
+	65,478,36,31
+	0.5,0.5
+magmaooze_move_right_1
+	102,478,36,31
+	0.5,0.5
+magmaooze_move_up_1
+	654,301,36,31
+	0.5,0.5
+skeleton_move_down_1
+	351,129,35,46
+	0.5,0.5
+skeleton_move_right_1
+	753,201,35,46
+	0.5,0.5
+skeleton_move_up_1
+	703,252,35,46
+	0.5,0.5
+rat_move_down_1
+	532,428,35,42
+	0.5,0.5
+rat_move_right_1
+	851,111,35,42
+	0.5,0.5
+rat_move_up_1
+	802,160,35,42
+	0.5,0.5
+goblin_move_down_1
+	288,364,33,44
+	0.5,0.5
+goblin_move_right_1
+	615,350,33,44
+	0.5,0.5
+goblin_move_up_1
+	654,333,33,44
 	0.5,0.5
 male_hero_arm_jump_right_0
-	0,387,32,46
+	990,0,32,46
 	0.5,0.5
 male_hero_arm_jump_right_1
-	387,0,32,46
+	739,252,32,46
 	0.5,0.5
 male_hero_arm_jump_right_2
-	420,0,32,46
+	691,301,32,46
 	0.5,0.5
 male_hero_arm_jump_right_3
-	33,387,32,46
+	899,96,32,46
 	0.5,0.5
 male_hero_arm_jump_right_4
-	387,47,32,46
+	568,428,32,46
 	0.5,0.5
 male_hero_arm_jump_right_5
-	0,434,32,46
+	838,160,32,46
 	0.5,0.5
 male_hero_arm_walk_down_0
-	323,129,32,46
+	789,203,32,46
 	0.5,0.5
 male_hero_arm_walk_down_1
-	66,387,32,46
+	615,395,32,46
 	0.5,0.5
 male_hero_arm_walk_down_2
-	453,0,32,46
+	937,62,32,46
 	0.5,0.5
 male_hero_arm_walk_down_3
-	33,434,32,46
+	772,250,32,46
 	0.5,0.5
 male_hero_arm_walk_down_4
-	420,47,32,46
+	724,299,32,46
 	0.5,0.5
 male_hero_arm_walk_down_5
-	387,94,32,46
+	871,154,32,46
 	0.5,0.5
 male_hero_arm_walk_down_6
-	99,387,32,46
+	970,62,32,46
 	0.5,0.5
 male_hero_arm_walk_down_7
-	323,176,32,46
+	649,378,32,46
 	0.5,0.5
 male_hero_arm_walk_right_0
-	66,434,32,46
+	688,348,32,46
 	0.5,0.5
 male_hero_arm_walk_right_1
-	453,47,32,46
+	822,207,32,46
 	0.5,0.5
 male_hero_arm_walk_right_2
-	420,94,32,46
+	932,109,32,46
 	0.5,0.5
 male_hero_arm_walk_right_3
-	132,387,32,46
+	757,299,32,46
 	0.5,0.5
 male_hero_arm_walk_right_4
-	356,141,32,46
+	601,442,32,46
 	0.5,0.5
 male_hero_arm_walk_right_5
-	389,141,32,46
+	855,207,32,46
 	0.5,0.5
 male_hero_arm_walk_right_6
-	99,434,32,46
+	721,348,32,46
 	0.5,0.5
 male_hero_arm_walk_right_7
-	356,188,32,46
+	965,109,32,46
 	0.5,0.5
 male_hero_arm_walk_up_0
-	323,223,32,46
+	648,425,32,46
 	0.5,0.5
 male_hero_arm_walk_up_1
-	453,94,32,46
+	805,254,32,46
 	0.5,0.5
 male_hero_arm_walk_up_2
-	165,387,32,46
+	682,395,32,46
 	0.5,0.5
 male_hero_arm_walk_up_3
-	422,141,32,46
+	904,156,32,46
 	0.5,0.5
 male_hero_arm_walk_up_4
-	132,434,32,46
+	838,254,32,46
 	0.5,0.5
 male_hero_arm_walk_up_5
-	258,311,32,46
+	937,156,32,46
 	0.5,0.5
 male_hero_arm_walk_up_6
-	389,188,32,46
+	888,203,32,46
 	0.5,0.5
 male_hero_arm_walk_up_7
-	198,387,32,46
+	754,346,32,46
 	0.5,0.5
 male_hero_back_arm_jump_right_0
-	356,235,32,46
+	790,301,32,46
 	0.5,0.5
 male_hero_back_arm_jump_right_1
-	323,270,32,46
+	715,395,32,46
 	0.5,0.5
 male_hero_back_arm_jump_right_2
-	455,141,32,46
+	823,301,32,46
 	0.5,0.5
 male_hero_back_arm_jump_right_3
-	165,434,32,46
+	921,203,32,46
 	0.5,0.5
 male_hero_back_arm_jump_right_4
-	422,188,32,46
+	681,442,32,46
 	0.5,0.5
 male_hero_back_arm_jump_right_5
-	258,358,32,46
+	871,254,32,46
 	0.5,0.5
 male_hero_back_arm_walk_down_0
-	389,235,32,46
+	970,156,32,46
 	0.5,0.5
 male_hero_back_arm_walk_down_1
-	198,434,32,46
+	787,348,32,46
 	0.5,0.5
 male_hero_back_arm_walk_down_2
-	356,282,32,46
+	748,395,32,46
 	0.5,0.5
 male_hero_back_arm_walk_down_3
-	291,317,32,46
+	714,442,32,46
 	0.5,0.5
 male_hero_back_arm_walk_down_4
-	455,188,32,46
+	954,203,32,46
 	0.5,0.5
 male_hero_back_arm_walk_down_5
-	291,364,32,46
+	856,301,32,46
 	0.5,0.5
 male_hero_back_arm_walk_down_6
-	422,235,32,46
+	904,250,32,46
 	0.5,0.5
 male_hero_back_arm_walk_down_7
-	231,405,32,46
+	820,348,32,46
 	0.5,0.5
 male_hero_back_arm_walk_right_0
-	389,282,32,46
+	781,395,32,46
 	0.5,0.5
 male_hero_back_arm_walk_right_1
-	231,452,32,46
+	937,250,32,46
 	0.5,0.5
 male_hero_back_arm_walk_right_2
-	324,329,32,46
+	747,442,32,46
 	0.5,0.5
 male_hero_back_arm_walk_right_3
-	357,329,32,46
+	987,203,32,46
 	0.5,0.5
 male_hero_back_arm_walk_right_4
-	455,235,32,46
+	889,301,32,46
 	0.5,0.5
 male_hero_back_arm_walk_right_5
-	324,376,32,46
+	853,348,32,46
 	0.5,0.5
 male_hero_back_arm_walk_right_6
-	264,411,32,46
+	814,395,32,46
 	0.5,0.5
 male_hero_back_arm_walk_right_7
-	422,282,32,46
+	970,250,32,46
 	0.5,0.5
 male_hero_back_arm_walk_up_0
-	390,329,32,46
+	780,442,32,46
 	0.5,0.5
 male_hero_back_arm_walk_up_1
-	264,458,32,46
+	922,297,32,46
 	0.5,0.5
 male_hero_back_arm_walk_up_2
-	357,376,32,46
+	886,348,32,46
 	0.5,0.5
 male_hero_back_arm_walk_up_3
-	455,282,32,46
+	847,395,32,46
 	0.5,0.5
 male_hero_back_arm_walk_up_4
-	297,423,32,46
+	955,297,32,46
 	0.5,0.5
 male_hero_back_arm_walk_up_5
-	423,329,32,46
+	813,442,32,46
 	0.5,0.5
 male_hero_back_arm_walk_up_6
-	330,423,32,46
+	922,344,32,46
 	0.5,0.5
 male_hero_back_arm_walk_up_7
-	390,376,32,46
+	880,395,32,46
 	0.5,0.5
 male_hero_body_jump_right_0
-	456,329,32,46
+	988,297,32,46
 	0.5,0.5
 male_hero_body_jump_right_1
-	363,423,32,46
+	846,442,32,46
 	0.5,0.5
 male_hero_body_jump_right_2
-	423,376,32,46
+	955,344,32,46
 	0.5,0.5
 male_hero_body_jump_right_3
-	396,423,32,46
+	913,395,32,46
 	0.5,0.5
 male_hero_body_jump_right_4
-	456,376,32,46
+	879,442,32,46
 	0.5,0.5
 male_hero_body_jump_right_5
-	429,423,32,46
+	988,344,32,46
 	0.5,0.5
 male_hero_body_walk_down_0
-	462,423,32,46
+	946,391,32,46
 	0.5,0.5
 male_hero_body_walk_down_1
-	486,0,32,46
+	912,442,32,46
 	0.5,0.5
 male_hero_body_walk_down_2
-	519,0,32,46
+	979,391,32,46
 	0.5,0.5
 male_hero_body_walk_down_3
-	486,47,32,46
+	946,438,32,46
 	0.5,0.5
 male_hero_body_walk_down_4
-	552,0,32,46
+	979,438,32,46
 	0.5,0.5
 male_hero_body_walk_down_5
-	519,47,32,46
+	0,505,32,46
 	0.5,0.5
 male_hero_body_walk_down_6
-	486,94,32,46
+	0,552,32,46
 	0.5,0.5
 male_hero_body_walk_down_7
-	585,0,32,46
+	33,510,32,46
 	0.5,0.5
 male_hero_body_walk_right_0
-	552,47,32,46
+	66,510,32,46
 	0.5,0.5
 male_hero_body_walk_right_1
-	519,94,32,46
+	33,557,32,46
 	0.5,0.5
 male_hero_body_walk_right_2
-	618,0,32,46
+	0,599,32,46
 	0.5,0.5
 male_hero_body_walk_right_3
-	488,141,32,46
+	99,510,32,46
 	0.5,0.5
 male_hero_body_walk_right_4
-	585,47,32,46
+	66,557,32,46
 	0.5,0.5
 male_hero_body_walk_right_5
-	552,94,32,46
+	33,604,32,46
 	0.5,0.5
 male_hero_body_walk_right_6
-	651,0,32,46
+	132,510,32,46
 	0.5,0.5
 male_hero_body_walk_right_7
-	521,141,32,46
+	0,646,32,46
 	0.5,0.5
 male_hero_body_walk_up_0
-	618,47,32,46
+	99,557,32,46
 	0.5,0.5
 male_hero_body_walk_up_1
-	488,188,32,46
+	66,604,32,46
 	0.5,0.5
 male_hero_body_walk_up_2
-	585,94,32,46
+	165,505,32,46
 	0.5,0.5
 male_hero_body_walk_up_3
-	684,0,32,46
+	33,651,32,46
 	0.5,0.5
 male_hero_body_walk_up_4
-	554,141,32,46
+	132,557,32,46
 	0.5,0.5
 male_hero_body_walk_up_5
-	651,47,32,46
+	0,693,32,46
 	0.5,0.5
 male_hero_body_walk_up_6
-	521,188,32,46
+	99,604,32,46
 	0.5,0.5
 male_hero_body_walk_up_7
-	618,94,32,46
+	66,651,32,46
 	0.5,0.5
 male_hero_eyes_jump_right_0
-	717,0,32,46
+	165,552,32,46
 	0.5,0.5
 male_hero_eyes_jump_right_1
-	488,235,32,46
+	198,508,32,46
 	0.5,0.5
 male_hero_eyes_jump_right_2
-	587,141,32,46
+	33,698,32,46
 	0.5,0.5
 male_hero_eyes_jump_right_3
-	684,47,32,46
+	132,604,32,46
 	0.5,0.5
 male_hero_eyes_jump_right_4
-	554,188,32,46
+	231,508,32,46
 	0.5,0.5
 male_hero_eyes_jump_right_5
-	651,94,32,46
+	0,740,32,46
 	0.5,0.5
 male_hero_eyes_sleep_down_0
-	750,0,32,46
+	99,651,32,46
 	0.5,0.5
 male_hero_eyes_sleep_right_0
-	521,235,32,46
+	198,555,32,46
 	0.5,0.5
 male_hero_eyes_walk_down_0
-	620,141,32,46
+	66,698,32,46
 	0.5,0.5
 male_hero_eyes_walk_down_1
-	717,47,32,46
+	165,599,32,46
 	0.5,0.5
 male_hero_eyes_walk_down_2
-	488,282,32,46
+	264,508,32,46
 	0.5,0.5
 male_hero_eyes_walk_down_3
-	587,188,32,46
+	33,745,32,46
 	0.5,0.5
 male_hero_eyes_walk_down_4
-	684,94,32,46
+	132,651,32,46
 	0.5,0.5
 male_hero_eyes_walk_down_5
-	783,0,32,46
+	231,555,32,46
 	0.5,0.5
 male_hero_eyes_walk_down_6
-	554,235,32,46
+	0,787,32,46
 	0.5,0.5
 male_hero_eyes_walk_down_7
-	653,141,32,46
+	99,698,32,46
 	0.5,0.5
 male_hero_eyes_walk_right_0
-	750,47,32,46
+	198,602,32,46
 	0.5,0.5
 male_hero_eyes_walk_right_1
-	521,282,32,46
+	297,508,32,46
 	0.5,0.5
 male_hero_eyes_walk_right_2
-	620,188,32,46
+	66,745,32,46
 	0.5,0.5
 male_hero_eyes_walk_right_3
-	717,94,32,46
+	165,646,32,46
 	0.5,0.5
 male_hero_eyes_walk_right_4
-	816,0,32,46
+	264,555,32,46
 	0.5,0.5
 male_hero_eyes_walk_right_5
-	489,329,32,46
+	33,792,32,46
 	0.5,0.5
 male_hero_eyes_walk_right_6
-	587,235,32,46
+	132,698,32,46
 	0.5,0.5
 male_hero_eyes_walk_right_7
-	686,141,32,46
+	231,602,32,46
 	0.5,0.5
 male_hero_eyes_walk_up_0
-	783,47,32,46
+	0,834,32,46
 	0.5,0.5
 male_hero_eyes_walk_up_1
-	554,282,32,46
+	330,508,32,46
 	0.5,0.5
 male_hero_eyes_walk_up_2
-	653,188,32,46
+	99,745,32,46
 	0.5,0.5
 male_hero_eyes_walk_up_3
-	750,94,32,46
+	198,649,32,46
 	0.5,0.5
 male_hero_eyes_walk_up_4
-	849,0,32,46
+	297,555,32,46
 	0.5,0.5
 male_hero_eyes_walk_up_5
-	522,329,32,46
+	66,792,32,46
 	0.5,0.5
 male_hero_eyes_walk_up_6
-	620,235,32,46
+	165,693,32,46
 	0.5,0.5
 male_hero_eyes_walk_up_7
-	719,141,32,46
+	264,602,32,46
 	0.5,0.5
 male_hero_hair2_jump_right_0
-	816,47,32,46
+	33,839,32,46
 	0.5,0.5
 male_hero_hair2_jump_right_1
-	489,376,32,46
+	132,745,32,46
 	0.5,0.5
 male_hero_hair2_jump_right_2
-	587,282,32,46
+	231,649,32,46
 	0.5,0.5
 male_hero_hair2_jump_right_3
-	686,188,32,46
+	0,881,32,46
 	0.5,0.5
 male_hero_hair2_jump_right_4
-	783,94,32,46
+	330,555,32,46
 	0.5,0.5
 male_hero_hair2_jump_right_5
-	882,0,32,46
+	363,510,32,46
 	0.5,0.5
 male_hero_hair2_walk_down_0
-	555,329,32,46
+	99,792,32,46
 	0.5,0.5
 male_hero_hair2_walk_down_1
-	653,235,32,46
+	198,696,32,46
 	0.5,0.5
 male_hero_hair2_walk_down_2
-	752,141,32,46
+	297,602,32,46
 	0.5,0.5
 male_hero_hair2_walk_down_3
-	849,47,32,46
+	66,839,32,46
 	0.5,0.5
 male_hero_hair2_walk_down_4
-	522,376,32,46
+	165,740,32,46
 	0.5,0.5
 male_hero_hair2_walk_down_5
-	620,282,32,46
+	396,510,32,46
 	0.5,0.5
 male_hero_hair2_walk_down_6
-	719,188,32,46
+	264,649,32,46
 	0.5,0.5
 male_hero_hair2_walk_down_7
-	816,94,32,46
+	33,886,32,46
 	0.5,0.5
 male_hero_hair2_walk_right_0
-	915,0,32,46
+	363,557,32,46
 	0.5,0.5
 male_hero_hair2_walk_right_1
-	588,329,32,46
+	132,792,32,46
 	0.5,0.5
 male_hero_hair2_walk_right_2
-	495,423,32,46
+	231,696,32,46
 	0.5,0.5
 male_hero_hair2_walk_right_3
-	686,235,32,46
+	0,928,32,46
 	0.5,0.5
 male_hero_hair2_walk_right_4
-	785,141,32,46
+	330,602,32,46
 	0.5,0.5
 male_hero_hair2_walk_right_5
-	882,47,32,46
+	99,839,32,46
 	0.5,0.5
 male_hero_hair2_walk_right_6
-	555,376,32,46
+	429,500,32,46
 	0.5,0.5
 male_hero_hair2_walk_right_7
-	653,282,32,46
+	198,743,32,46
 	0.5,0.5
 male_hero_hair2_walk_up_0
-	752,188,32,46
+	297,649,32,46
 	0.5,0.5
 male_hero_hair2_walk_up_1
-	849,94,32,46
+	165,787,32,46
 	0.5,0.5
 male_hero_hair2_walk_up_2
-	948,0,32,46
+	66,886,32,46
 	0.5,0.5
 male_hero_hair2_walk_up_3
-	621,329,32,46
+	396,557,32,46
 	0.5,0.5
 male_hero_hair2_walk_up_4
-	528,423,32,46
+	465,472,32,46
 	0.5,0.5
 male_hero_hair2_walk_up_5
-	719,235,32,46
+	264,696,32,46
 	0.5,0.5
 male_hero_hair2_walk_up_6
-	818,141,32,46
+	33,933,32,46
 	0.5,0.5
 male_hero_hair2_walk_up_7
-	915,47,32,46
+	363,604,32,46
 	0.5,0.5
 male_hero_hair3_jump_right_0
-	588,376,32,46
+	498,472,32,46
 	0.5,0.5
 male_hero_hair3_jump_right_1
-	686,282,32,46
+	132,839,32,46
 	0.5,0.5
 male_hero_hair3_jump_right_2
-	785,188,32,46
+	231,743,32,46
 	0.5,0.5
 male_hero_hair3_jump_right_3
-	882,94,32,46
+	429,547,32,46
 	0.5,0.5
 male_hero_hair3_jump_right_4
-	981,0,32,46
+	330,649,32,46
 	0.5,0.5
 male_hero_hair3_jump_right_5
-	654,329,32,46
+	462,519,32,46
 	0.5,0.5
 male_hero_hair3_walk_down_0
-	561,423,32,46
+	99,886,32,46
 	0.5,0.5
 male_hero_hair3_walk_down_1
-	752,235,32,46
+	198,790,32,46
 	0.5,0.5
 male_hero_hair3_walk_down_2
-	851,141,32,46
+	297,696,32,46
 	0.5,0.5
 male_hero_hair3_walk_down_3
-	948,47,32,46
+	165,834,32,46
 	0.5,0.5
 male_hero_hair3_walk_down_4
-	621,376,32,46
+	66,933,32,46
 	0.5,0.5
 male_hero_hair3_walk_down_5
-	719,282,32,46
+	396,604,32,46
 	0.5,0.5
 male_hero_hair3_walk_down_6
-	818,188,32,46
+	532,471,32,46
 	0.5,0.5
 male_hero_hair3_walk_down_7
-	915,94,32,46
+	264,743,32,46
 	0.5,0.5
 male_hero_hair3_walk_right_0
-	687,329,32,46
+	495,519,32,46
 	0.5,0.5
 male_hero_hair3_walk_right_1
-	594,423,32,46
+	363,651,32,46
 	0.5,0.5
 male_hero_hair3_walk_right_2
-	785,235,32,46
+	132,886,32,46
 	0.5,0.5
 male_hero_hair3_walk_right_3
-	884,141,32,46
+	231,790,32,46
 	0.5,0.5
 male_hero_hair3_walk_right_4
-	981,47,32,46
+	429,594,32,46
 	0.5,0.5
 male_hero_hair3_walk_right_5
-	654,376,32,46
+	330,696,32,46
 	0.5,0.5
 male_hero_hair3_walk_right_6
-	752,282,32,46
+	462,566,32,46
 	0.5,0.5
 male_hero_hair3_walk_right_7
-	851,188,32,46
+	99,933,32,46
 	0.5,0.5
 male_hero_hair3_walk_up_0
-	948,94,32,46
+	198,837,32,46
 	0.5,0.5
 male_hero_hair3_walk_up_1
-	720,329,32,46
+	297,743,32,46
 	0.5,0.5
 male_hero_hair3_walk_up_2
-	627,423,32,46
+	565,475,32,46
 	0.5,0.5
 male_hero_hair3_walk_up_3
-	818,235,32,46
+	165,881,32,46
 	0.5,0.5
 male_hero_hair3_walk_up_4
-	917,141,32,46
+	396,651,32,46
 	0.5,0.5
 male_hero_hair3_walk_up_5
-	687,376,32,46
+	528,519,32,46
 	0.5,0.5
 male_hero_hair3_walk_up_6
-	785,282,32,46
+	264,790,32,46
 	0.5,0.5
 male_hero_hair3_walk_up_7
-	884,188,32,46
+	363,698,32,46
 	0.5,0.5
 male_hero_hair4_jump_right_0
-	981,94,32,46
+	495,566,32,46
 	0.5,0.5
 male_hero_hair4_jump_right_1
-	753,329,32,46
+	132,933,32,46
 	0.5,0.5
 male_hero_hair4_jump_right_2
-	660,423,32,46
+	231,837,32,46
 	0.5,0.5
 male_hero_hair4_jump_right_3
-	851,235,32,46
+	429,641,32,46
 	0.5,0.5
 male_hero_hair4_jump_right_4
-	950,141,32,46
+	330,743,32,46
 	0.5,0.5
 male_hero_hair4_jump_right_5
-	720,376,32,46
+	462,613,32,46
 	0.5,0.5
 male_hero_hair4_walk_down_0
-	818,282,32,46
+	198,884,32,46
 	0.5,0.5
 male_hero_hair4_walk_down_1
-	917,188,32,46
+	561,522,32,46
 	0.5,0.5
 male_hero_hair4_walk_down_2
-	786,329,32,46
+	297,790,32,46
 	0.5,0.5
 male_hero_hair4_walk_down_3
-	693,423,32,46
+	598,489,32,46
 	0.5,0.5
 male_hero_hair4_walk_down_4
-	884,235,32,46
+	165,928,32,46
 	0.5,0.5
 male_hero_hair4_walk_down_5
-	983,141,32,46
+	528,566,32,46
 	0.5,0.5
 male_hero_hair4_walk_down_6
-	753,376,32,46
+	396,698,32,46
 	0.5,0.5
 male_hero_hair4_walk_down_7
-	851,282,32,46
+	264,837,32,46
 	0.5,0.5
 male_hero_hair4_walk_right_0
-	950,188,32,46
+	495,613,32,46
 	0.5,0.5
 male_hero_hair4_walk_right_1
-	819,329,32,46
+	363,745,32,46
 	0.5,0.5
 male_hero_hair4_walk_right_2
-	726,423,32,46
+	231,884,32,46
 	0.5,0.5
 male_hero_hair4_walk_right_3
-	917,235,32,46
+	429,688,32,46
 	0.5,0.5
 male_hero_hair4_walk_right_4
-	786,376,32,46
+	631,489,32,46
 	0.5,0.5
 male_hero_hair4_walk_right_5
-	884,282,32,46
+	330,790,32,46
 	0.5,0.5
 male_hero_hair4_walk_right_6
-	983,188,32,46
+	462,660,32,46
 	0.5,0.5
 male_hero_hair4_walk_right_7
-	852,329,32,46
+	198,931,32,46
 	0.5,0.5
 male_hero_hair4_walk_up_0
-	759,423,32,46
+	561,569,32,46
 	0.5,0.5
 male_hero_hair4_walk_up_1
-	950,235,32,46
+	297,837,32,46
 	0.5,0.5
 male_hero_hair4_walk_up_2
-	819,376,32,46
+	594,536,32,46
 	0.5,0.5
 male_hero_hair4_walk_up_3
-	917,282,32,46
+	396,745,32,46
 	0.5,0.5
 male_hero_hair4_walk_up_4
-	885,329,32,46
+	528,613,32,46
 	0.5,0.5
 male_hero_hair4_walk_up_5
-	792,423,32,46
+	264,884,32,46
 	0.5,0.5
 male_hero_hair4_walk_up_6
-	983,235,32,46
+	664,489,32,46
 	0.5,0.5
 male_hero_hair4_walk_up_7
-	852,376,32,46
+	495,660,32,46
 	0.5,0.5
 male_hero_hair5_jump_right_0
-	950,282,32,46
+	363,792,32,46
 	0.5,0.5
 male_hero_hair5_jump_right_1
-	918,329,32,46
+	231,931,32,46
 	0.5,0.5
 male_hero_hair5_jump_right_2
-	825,423,32,46
+	627,536,32,46
 	0.5,0.5
 male_hero_hair5_jump_right_3
-	885,376,32,46
+	429,735,32,46
 	0.5,0.5
 male_hero_hair5_jump_right_4
-	983,282,32,46
+	330,837,32,46
 	0.5,0.5
 male_hero_hair5_jump_right_5
-	951,329,32,46
+	462,707,32,46
 	0.5,0.5
 male_hero_hair5_walk_down_0
-	858,423,32,46
+	594,583,32,46
 	0.5,0.5
 male_hero_hair5_walk_down_1
-	918,376,32,46
+	561,616,32,46
 	0.5,0.5
 male_hero_hair5_walk_down_2
-	984,329,32,46
+	297,884,32,46
 	0.5,0.5
 male_hero_hair5_walk_down_3
-	891,423,32,46
+	697,489,32,46
 	0.5,0.5
 male_hero_hair5_walk_down_4
-	951,376,32,46
+	528,660,32,46
 	0.5,0.5
 male_hero_hair5_walk_down_5
-	924,423,32,46
+	396,792,32,46
 	0.5,0.5
 male_hero_hair5_walk_down_6
-	984,376,32,46
+	264,931,32,46
 	0.5,0.5
 male_hero_hair5_walk_down_7
-	957,423,32,46
+	660,536,32,46
 	0.5,0.5
 male_hero_hair5_walk_right_0
-	990,423,32,46
+	495,707,32,46
 	0.5,0.5
 male_hero_hair5_walk_right_1
-	0,481,32,46
+	363,839,32,46
 	0.5,0.5
 male_hero_hair5_walk_right_2
-	33,481,32,46
+	627,583,32,46
 	0.5,0.5
 male_hero_hair5_walk_right_3
-	0,528,32,46
+	429,782,32,46
 	0.5,0.5
 male_hero_hair5_walk_right_4
-	66,481,32,46
+	330,884,32,46
 	0.5,0.5
 male_hero_hair5_walk_right_5
-	33,528,32,46
+	462,754,32,46
 	0.5,0.5
 male_hero_hair5_walk_right_6
-	0,575,32,46
+	730,489,32,46
 	0.5,0.5
 male_hero_hair5_walk_right_7
-	99,481,32,46
+	561,663,32,46
 	0.5,0.5
 male_hero_hair5_walk_up_0
-	66,528,32,46
+	594,630,32,46
 	0.5,0.5
 male_hero_hair5_walk_up_1
-	33,575,32,46
+	297,931,32,46
 	0.5,0.5
 male_hero_hair5_walk_up_2
-	132,481,32,46
+	693,536,32,46
 	0.5,0.5
 male_hero_hair5_walk_up_3
-	0,622,32,46
+	396,839,32,46
 	0.5,0.5
 male_hero_hair5_walk_up_4
-	99,528,32,46
+	528,707,32,46
 	0.5,0.5
 male_hero_hair5_walk_up_5
-	66,575,32,46
+	660,583,32,46
 	0.5,0.5
 male_hero_hair5_walk_up_6
-	165,481,32,46
+	363,886,32,46
 	0.5,0.5
 male_hero_hair5_walk_up_7
-	33,622,32,46
+	495,754,32,46
 	0.5,0.5
 male_hero_hair_jump_right_0
-	132,528,32,46
+	763,489,32,46
 	0.5,0.5
 male_hero_hair_jump_right_1
-	0,669,32,46
+	627,630,32,46
 	0.5,0.5
 male_hero_hair_jump_right_2
-	99,575,32,46
+	429,829,32,46
 	0.5,0.5
 male_hero_hair_jump_right_3
-	198,481,32,46
+	330,931,32,46
 	0.5,0.5
 male_hero_hair_jump_right_4
-	66,622,32,46
+	726,536,32,46
 	0.5,0.5
 male_hero_hair_jump_right_5
-	165,528,32,46
+	462,801,32,46
 	0.5,0.5
 male_hero_hair_walk_down_0
-	33,669,32,46
+	594,677,32,46
 	0.5,0.5
 male_hero_hair_walk_down_1
-	132,575,32,46
+	561,710,32,46
 	0.5,0.5
 male_hero_hair_walk_down_2
-	0,716,32,46
+	693,583,32,46
 	0.5,0.5
 male_hero_hair_walk_down_3
-	99,622,32,46
+	528,754,32,46
 	0.5,0.5
 male_hero_hair_walk_down_4
-	198,528,32,46
+	396,886,32,46
 	0.5,0.5
 male_hero_hair_walk_down_5
-	231,499,32,46
+	796,489,32,46
 	0.5,0.5
 male_hero_hair_walk_down_6
-	66,669,32,46
+	660,630,32,46
 	0.5,0.5
 male_hero_hair_walk_down_7
-	165,575,32,46
+	759,536,32,46
 	0.5,0.5
 male_hero_hair_walk_right_0
-	33,716,32,46
+	495,801,32,46
 	0.5,0.5
 male_hero_hair_walk_right_1
-	132,622,32,46
+	363,933,32,46
 	0.5,0.5
 male_hero_hair_walk_right_2
-	0,763,32,46
+	627,677,32,46
 	0.5,0.5
 male_hero_hair_walk_right_3
-	297,470,32,46
+	429,876,32,46
 	0.5,0.5
 male_hero_hair_walk_right_4
-	99,669,32,46
+	726,583,32,46
 	0.5,0.5
 male_hero_hair_walk_right_5
-	264,505,32,46
+	462,848,32,46
 	0.5,0.5
 male_hero_hair_walk_right_6
-	198,575,32,46
+	561,757,32,46
 	0.5,0.5
 male_hero_hair_walk_right_7
-	231,546,32,46
+	829,489,32,46
 	0.5,0.5
 male_hero_hair_walk_up_0
-	66,716,32,46
+	594,724,32,46
 	0.5,0.5
 male_hero_hair_walk_up_1
-	165,622,32,46
+	693,630,32,46
 	0.5,0.5
 male_hero_hair_walk_up_2
-	33,763,32,46
+	792,536,32,46
 	0.5,0.5
 male_hero_hair_walk_up_3
-	330,470,32,46
+	396,933,32,46
 	0.5,0.5
 male_hero_hair_walk_up_4
-	132,669,32,46
+	528,801,32,46
 	0.5,0.5
 male_hero_hair_walk_up_5
-	0,810,32,46
+	660,677,32,46
 	0.5,0.5
 male_hero_hair_walk_up_6
-	297,517,32,46
+	759,583,32,46
 	0.5,0.5
 male_hero_hair_walk_up_7
-	99,716,32,46
+	495,848,32,46
 	0.5,0.5
 male_hero_head_jump_right_0
-	264,552,32,46
+	862,489,32,46
 	0.5,0.5
 male_hero_head_jump_right_1
-	198,622,32,46
+	627,724,32,46
 	0.5,0.5
 male_hero_head_jump_right_2
-	231,593,32,46
+	429,923,32,46
 	0.5,0.5
 male_hero_head_jump_right_3
-	66,763,32,46
+	726,630,32,46
 	0.5,0.5
 male_hero_head_jump_right_4
-	363,470,32,46
+	462,895,32,46
 	0.5,0.5
 male_hero_head_jump_right_5
-	165,669,32,46
+	825,536,32,46
 	0.5,0.5
 male_hero_head_walk_down_0
-	33,810,32,46
+	594,771,32,46
 	0.5,0.5
 male_hero_head_walk_down_1
-	330,517,32,46
+	561,804,32,46
 	0.5,0.5
 male_hero_head_walk_down_2
-	132,716,32,46
+	693,677,32,46
 	0.5,0.5
 male_hero_head_walk_down_3
-	0,857,32,46
+	792,583,32,46
 	0.5,0.5
 male_hero_head_walk_down_4
-	297,564,32,46
+	528,848,32,46
 	0.5,0.5
 male_hero_head_walk_down_5
-	99,763,32,46
+	660,724,32,46
 	0.5,0.5
 male_hero_head_walk_down_6
-	264,599,32,46
+	895,489,32,46
 	0.5,0.5
 male_hero_head_walk_down_7
-	396,470,32,46
+	759,630,32,46
 	0.5,0.5
 male_hero_head_walk_right_0
-	198,669,32,46
+	495,895,32,46
 	0.5,0.5
 male_hero_head_walk_right_1
-	231,640,32,46
+	858,536,32,46
 	0.5,0.5
 male_hero_head_walk_right_2
-	66,810,32,46
+	627,771,32,46
 	0.5,0.5
 male_hero_head_walk_right_3
-	363,517,32,46
+	429,970,32,46
 	0.5,0.5
 male_hero_head_walk_right_4
-	165,716,32,46
+	726,677,32,46
 	0.5,0.5
 male_hero_head_walk_right_5
-	33,857,32,46
+	462,942,32,46
 	0.5,0.5
 male_hero_head_walk_right_6
-	330,564,32,46
+	825,583,32,46
 	0.5,0.5
 male_hero_head_walk_right_7
-	132,763,32,46
+	561,851,32,46
 	0.5,0.5
 male_hero_head_walk_up_0
-	429,470,32,46
+	594,818,32,46
 	0.5,0.5
 male_hero_head_walk_up_1
-	0,904,32,46
+	928,489,32,46
 	0.5,0.5
 male_hero_head_walk_up_2
-	297,611,32,46
+	693,724,32,46
 	0.5,0.5
 male_hero_head_walk_up_3
-	99,810,32,46
+	792,630,32,46
 	0.5,0.5
 male_hero_head_walk_up_4
-	264,646,32,46
+	528,895,32,46
 	0.5,0.5
 male_hero_head_walk_up_5
-	396,517,32,46
+	891,536,32,46
 	0.5,0.5
 male_hero_head_walk_up_6
-	198,716,32,46
+	660,771,32,46
 	0.5,0.5
 male_hero_head_walk_up_7
-	231,687,32,46
+	759,677,32,46
 	0.5,0.5
 male_hero_headwear_jump_right_0
-	66,857,32,46
+	495,942,32,46
 	0.5,0.5
 male_hero_headwear_jump_right_1
-	363,564,32,46
+	858,583,32,46
 	0.5,0.5
 male_hero_headwear_jump_right_2
-	165,763,32,46
+	627,818,32,46
 	0.5,0.5
 male_hero_headwear_jump_right_3
-	462,470,32,46
+	961,485,32,46
 	0.5,0.5
 male_hero_headwear_jump_right_4
-	33,904,32,46
+	726,724,32,46
 	0.5,0.5
 male_hero_headwear_jump_right_5
-	330,611,32,46
+	825,630,32,46
 	0.5,0.5
 male_hero_headwear_walk_down_0
-	132,810,32,46
+	594,865,32,46
 	0.5,0.5
 male_hero_headwear_walk_down_1
-	429,517,32,46
+	561,898,32,46
 	0.5,0.5
 male_hero_headwear_walk_down_2
-	0,951,32,46
+	924,536,32,46
 	0.5,0.5
 male_hero_headwear_walk_down_3
-	297,658,32,46
+	693,771,32,46
 	0.5,0.5
 male_hero_headwear_walk_down_4
-	99,857,32,46
+	792,677,32,46
 	0.5,0.5
 male_hero_headwear_walk_down_5
-	264,693,32,46
+	528,942,32,46
 	0.5,0.5
 male_hero_headwear_walk_down_6
-	396,564,32,46
+	891,583,32,46
 	0.5,0.5
 male_hero_headwear_walk_down_7
-	198,763,32,46
+	660,818,32,46
 	0.5,0.5
 male_hero_headwear_walk_right_0
-	231,734,32,46
+	759,724,32,46
 	0.5,0.5
 male_hero_headwear_walk_right_1
-	495,470,32,46
+	858,630,32,46
 	0.5,0.5
 male_hero_headwear_walk_right_2
-	66,904,32,46
+	627,865,32,46
 	0.5,0.5
 male_hero_headwear_walk_right_3
-	363,611,32,46
+	957,536,32,46
 	0.5,0.5
 male_hero_headwear_walk_right_4
-	165,810,32,46
+	726,771,32,46
 	0.5,0.5
 male_hero_headwear_walk_right_5
-	462,517,32,46
+	825,677,32,46
 	0.5,0.5
 male_hero_headwear_walk_right_6
-	33,951,32,46
+	561,945,32,46
 	0.5,0.5
 male_hero_headwear_walk_right_7
-	330,658,32,46
+	594,912,32,46
 	0.5,0.5
 male_hero_headwear_walk_up_0
-	132,857,32,46
+	924,583,32,46
 	0.5,0.5
 male_hero_headwear_walk_up_1
-	429,564,32,46
+	693,818,32,46
 	0.5,0.5
 male_hero_headwear_walk_up_2
-	528,470,32,46
+	792,724,32,46
 	0.5,0.5
 male_hero_headwear_walk_up_3
-	297,705,32,46
+	891,630,32,46
 	0.5,0.5
 male_hero_headwear_walk_up_4
-	99,904,32,46
+	660,865,32,46
 	0.5,0.5
 male_hero_headwear_walk_up_5
-	264,740,32,46
+	990,532,32,46
 	0.5,0.5
 male_hero_headwear_walk_up_6
-	396,611,32,46
+	759,771,32,46
 	0.5,0.5
 male_hero_headwear_walk_up_7
-	198,810,32,46
+	858,677,32,46
 	0.5,0.5
 male_hero_pants_jump_right_0
-	495,517,32,46
+	627,912,32,46
 	0.5,0.5
 male_hero_pants_jump_right_1
-	231,781,32,46
+	957,583,32,46
 	0.5,0.5
 male_hero_pants_jump_right_2
-	66,951,32,46
+	726,818,32,46
 	0.5,0.5
 male_hero_pants_jump_right_3
-	363,658,32,46
+	825,724,32,46
 	0.5,0.5
 male_hero_pants_jump_right_4
-	165,857,32,46
+	594,959,32,46
 	0.5,0.5
 male_hero_pants_jump_right_5
-	462,564,32,46
+	924,630,32,46
 	0.5,0.5
 male_hero_pants_walk_down_0
-	561,470,32,46
+	693,865,32,46
 	0.5,0.5
 male_hero_pants_walk_down_1
-	330,705,32,46
+	792,771,32,46
 	0.5,0.5
 male_hero_pants_walk_down_2
-	132,904,32,46
+	891,677,32,46
 	0.5,0.5
 male_hero_pants_walk_down_3
-	429,611,32,46
+	990,579,32,46
 	0.5,0.5
 male_hero_pants_walk_down_4
-	528,517,32,46
+	660,912,32,46
 	0.5,0.5
 male_hero_pants_walk_down_5
-	297,752,32,46
+	759,818,32,46
 	0.5,0.5
 male_hero_pants_walk_down_6
-	99,951,32,46
+	858,724,32,46
 	0.5,0.5
 male_hero_pants_walk_down_7
-	264,787,32,46
+	627,959,32,46
 	0.5,0.5
 male_hero_pants_walk_right_0
-	396,658,32,46
+	957,630,32,46
 	0.5,0.5
 male_hero_pants_walk_right_1
-	198,857,32,46
+	726,865,32,46
 	0.5,0.5
 male_hero_pants_walk_right_2
-	495,564,32,46
+	825,771,32,46
 	0.5,0.5
 male_hero_pants_walk_right_3
-	231,828,32,46
+	924,677,32,46
 	0.5,0.5
 male_hero_pants_walk_right_4
-	594,470,32,46
+	693,912,32,46
 	0.5,0.5
 male_hero_pants_walk_right_5
-	363,705,32,46
+	792,818,32,46
 	0.5,0.5
 male_hero_pants_walk_right_6
-	165,904,32,46
+	891,724,32,46
 	0.5,0.5
 male_hero_pants_walk_right_7
-	462,611,32,46
+	990,626,32,46
 	0.5,0.5
 male_hero_pants_walk_up_0
-	561,517,32,46
+	660,959,32,46
 	0.5,0.5
 male_hero_pants_walk_up_1
-	330,752,32,46
+	759,865,32,46
 	0.5,0.5
 male_hero_pants_walk_up_2
-	132,951,32,46
+	858,771,32,46
 	0.5,0.5
 male_hero_pants_walk_up_3
-	429,658,32,46
+	957,677,32,46
 	0.5,0.5
 male_hero_pants_walk_up_4
-	528,564,32,46
+	726,912,32,46
 	0.5,0.5
 male_hero_pants_walk_up_5
-	297,799,32,46
+	825,818,32,46
 	0.5,0.5
 male_hero_pants_walk_up_6
-	627,470,32,46
+	924,724,32,46
 	0.5,0.5
 male_hero_pants_walk_up_7
-	264,834,32,46
+	693,959,32,46
 	0.5,0.5
 male_hero_shirt_jump_right_0
-	396,705,32,46
+	792,865,32,46
 	0.5,0.5
 male_hero_shirt_jump_right_1
-	198,904,32,46
+	891,771,32,46
 	0.5,0.5
 male_hero_shirt_jump_right_2
-	495,611,32,46
+	990,673,32,46
 	0.5,0.5
 male_hero_shirt_jump_right_3
-	231,875,32,46
+	759,912,32,46
 	0.5,0.5
 male_hero_shirt_jump_right_4
-	594,517,32,46
+	858,818,32,46
 	0.5,0.5
 male_hero_shirt_jump_right_5
-	363,752,32,46
+	957,724,32,46
 	0.5,0.5
 male_hero_shirt_walk_down_0
-	165,951,32,46
+	726,959,32,46
 	0.5,0.5
 male_hero_shirt_walk_down_1
-	462,658,32,46
+	825,865,32,46
 	0.5,0.5
 male_hero_shirt_walk_down_2
-	561,564,32,46
+	924,771,32,46
 	0.5,0.5
 male_hero_shirt_walk_down_3
-	330,799,32,46
+	792,912,32,46
 	0.5,0.5
 male_hero_shirt_walk_down_4
-	660,470,32,46
+	891,818,32,46
 	0.5,0.5
 male_hero_shirt_walk_down_5
-	429,705,32,46
+	990,720,32,46
 	0.5,0.5
 male_hero_shirt_walk_down_6
-	528,611,32,46
+	759,959,32,46
 	0.5,0.5
 male_hero_shirt_walk_down_7
-	297,846,32,46
+	858,865,32,46
 	0.5,0.5
 male_hero_shirt_walk_right_0
-	627,517,32,46
+	957,771,32,46
 	0.5,0.5
 male_hero_shirt_walk_right_1
-	264,881,32,46
+	825,912,32,46
 	0.5,0.5
 male_hero_shirt_walk_right_2
-	396,752,32,46
+	924,818,32,46
 	0.5,0.5
 male_hero_shirt_walk_right_3
-	198,951,32,46
+	792,959,32,46
 	0.5,0.5
 male_hero_shirt_walk_right_4
-	231,922,32,46
+	891,865,32,46
 	0.5,0.5
 male_hero_shirt_walk_right_5
-	495,658,32,46
+	990,767,32,46
 	0.5,0.5
 male_hero_shirt_walk_right_6
-	594,564,32,46
+	858,912,32,46
 	0.5,0.5
 male_hero_shirt_walk_right_7
-	363,799,32,46
+	957,818,32,46
 	0.5,0.5
 male_hero_shirt_walk_up_0
-	693,470,32,46
+	825,959,32,46
 	0.5,0.5
 male_hero_shirt_walk_up_1
-	462,705,32,46
+	924,865,32,46
 	0.5,0.5
 male_hero_shirt_walk_up_2
-	561,611,32,46
+	891,912,32,46
 	0.5,0.5
 male_hero_shirt_walk_up_3
-	330,846,32,46
+	990,814,32,46
 	0.5,0.5
 male_hero_shirt_walk_up_4
-	660,517,32,46
+	858,959,32,46
 	0.5,0.5
 male_hero_shirt_walk_up_5
-	429,752,32,46
+	957,865,32,46
 	0.5,0.5
 male_hero_shirt_walk_up_6
-	528,658,32,46
+	924,912,32,46
 	0.5,0.5
 male_hero_shirt_walk_up_7
-	297,893,32,46
+	891,959,32,46
+	0.5,0.5
+bat_move_down_1
+	288,409,32,32
+	0.5,0.5
+bat_move_down_2
+	0,975,32,32
+	0.5,0.5
+bat_move_down_3
+	33,980,32,32
+	0.5,0.5
+bat_move_down_4
+	66,980,32,32
+	0.5,0.5
+bat_move_down_5
+	99,980,32,32
+	0.5,0.5
+bat_move_right_1
+	132,980,32,32
+	0.5,0.5
+bat_move_right_2
+	165,975,32,32
+	0.5,0.5
+bat_move_right_3
+	198,978,32,32
+	0.5,0.5
+bat_move_right_4
+	231,978,32,32
+	0.5,0.5
+bat_move_right_5
+	264,978,32,32
+	0.5,0.5
+bat_move_up_1
+	297,978,32,32
+	0.5,0.5
+bat_move_up_2
+	330,978,32,32
+	0.5,0.5
+bat_move_up_3
+	363,980,32,32
+	0.5,0.5
+bat_move_up_4
+	396,980,32,32
+	0.5,0.5
+bat_move_up_5
+	990,861,32,32
+	0.5,0.5
+slime_move_down_1
+	957,912,32,32
+	0.5,0.5
+slime_move_right_1
+	924,959,32,32
+	0.5,0.5
+slime_move_up_1
+	990,894,32,32
+	0.5,0.5
+spider_move_down_1
+	957,945,32,32
+	0.5,0.5
+spider_move_down_2
+	990,927,32,32
+	0.5,0.5
+spider_move_down_3
+	957,978,32,32
+	0.5,0.5
+spider_move_down_4
+	990,960,32,32
+	0.5,0.5
+spider_move_right_1
+	1023,0,32,32
+	0.5,0.5
+spider_move_right_2
+	1023,33,32,32
+	0.5,0.5
+spider_move_right_3
+	1056,0,32,32
+	0.5,0.5
+spider_move_right_4
+	1003,66,32,32
+	0.5,0.5
+spider_move_up_1
+	1089,0,32,32
+	0.5,0.5
+spider_move_up_2
+	1056,33,32,32
+	0.5,0.5
+spider_move_up_3
+	1003,99,32,32
+	0.5,0.5
+spider_move_up_4
+	1036,66,32,32
 	0.5,0.5
 treasure_base_closed
-	627,564,32,32
+	1089,33,32,32
 	0.5,0.5
 treasure_base_open
-	264,928,32,32
+	1122,0,32,32
 	0.5,0.5
 treasure_wood_closed
-	396,799,32,32
+	1003,132,32,32
 	0.5,0.5
 treasure_wood_open
-	726,470,32,32
+	1036,99,32,32
 	0.5,0.5
 wall
-	495,705,32,32
+	1069,66,32,32
 	0.5,0.5
 wizard_orb
-	231,969,32,32
+	1122,33,32,32
 	0.5,0.5
 Slime_WalkDown_1
-	594,611,32,28
+	1155,0,32,28
 	0.5,0.5
 Slime_WalkDown_2
-	363,846,32,28
+	1069,99,32,28
 	0.5,0.5
 Slime_WalkDown_3
-	693,517,32,28
+	1003,165,32,28
 	0.5,0.5
 Slime_WalkDown_4
-	462,752,32,28
+	1036,132,32,28
 	0.5,0.5
 Slime_WalkRight_1
-	561,658,32,28
+	1102,66,32,28
 	0.5,0.5
 Slime_WalkRight_2
-	330,893,32,28
+	1155,29,32,28
 	0.5,0.5
 Slime_WalkRight_3
-	660,564,32,28
+	1188,0,32,28
 	0.5,0.5
 Slime_WalkRight_4
-	627,597,32,28
+	1102,95,32,28
 	0.5,0.5
 Slime_WalkUp_1
-	264,961,32,28
+	1069,128,32,28
 	0.5,0.5
 Slime_WalkUp_2
-	396,832,32,28
+	1036,161,32,28
 	0.5,0.5
 Slime_WalkUp_3
-	429,799,32,28
+	1135,66,32,28
 	0.5,0.5
 Slime_WalkUp_4
-	759,470,32,28
+	1188,29,32,28
 	0.5,0.5
 HeroShadow
-	356,129,27,5
+	480,0,27,5
+	0.5,0.5
+shadowimp_move_down_1
+	480,6,25,24
+	0.5,0.5
+shadowimp_move_right_1
+	65,440,25,24
+	0.5,0.5
+shadowimp_move_up_1
+	1221,0,25,24
 	0.5,0.5
 PlaceholderMonster
-	726,503,24,24
+	1020,194,24,24
 	0.5,0.5
 
 MaleHeroArmJumpRight
 	10
-	8,9,10,11,12,13
+	98,99,100,101,102,103
 MaleHeroArmWalkDown
 	10
-	14,15,16,17,18,19,20,21
+	104,105,106,107,108,109,110,111
 MaleHeroArmWalkRight
 	10
-	22,23,24,25,26,27,28,29
+	112,113,114,115,116,117,118,119
 MaleHeroArmWalkUp
 	10
-	30,31,32,33,34,35,36,37
+	120,121,122,123,124,125,126,127
 MaleHeroBackArmJumpRight
 	10
-	38,39,40,41,42,43
+	128,129,130,131,132,133
 MaleHeroBackArmWalkDown
 	10
-	44,45,46,47,48,49,50,51
+	134,135,136,137,138,139,140,141
 MaleHeroBackArmWalkRight
 	10
-	52,53,54,55,56,57,58,59
+	142,143,144,145,146,147,148,149
 MaleHeroBackArmWalkUp
 	10
-	60,61,62,63,64,65,66,67
+	150,151,152,153,154,155,156,157
 MaleHeroBodyJumpRight
 	10
-	68,69,70,71,72,73
+	158,159,160,161,162,163
 MaleHeroBodyWalkDown
 	10
-	74,75,76,77,78,79,80,81
+	164,165,166,167,168,169,170,171
 MaleHeroBodyWalkRight
 	10
-	82,83,84,85,86,87,88,89
+	172,173,174,175,176,177,178,179
 MaleHeroBodyWalkUp
 	10
-	90,91,92,93,94,95,96,97
+	180,181,182,183,184,185,186,187
 MaleHeroEyesJumpRight
 	10
-	98,99,100,101,102,103
+	188,189,190,191,192,193
 MaleHeroEyesSleepDown
 	10
-	104
+	194
 MaleHeroEyesSleepRight
 	10
-	105
+	195
 MaleHeroEyesWalkDown
 	10
-	106,107,108,109,110,111,112,113
+	196,197,198,199,200,201,202,203
 MaleHeroEyesWalkRight
 	10
-	114,115,116,117,118,119,120,121
+	204,205,206,207,208,209,210,211
 MaleHeroEyesWalkUp
 	10
-	122,123,124,125,126,127,128,129
+	212,213,214,215,216,217,218,219
 MaleHeroHair2JumpRight
 	10
-	130,131,132,133,134,135
+	220,221,222,223,224,225
 MaleHeroHair2WalkDown
 	10
-	136,137,138,139,140,141,142,143
+	226,227,228,229,230,231,232,233
 MaleHeroHair2WalkRight
 	10
-	144,145,146,147,148,149,150,151
+	234,235,236,237,238,239,240,241
 MaleHeroHair2WalkUp
 	10
-	152,153,154,155,156,157,158,159
+	242,243,244,245,246,247,248,249
 MaleHeroHair3JumpRight
 	10
-	160,161,162,163,164,165
+	250,251,252,253,254,255
 MaleHeroHair3WalkDown
 	10
-	166,167,168,169,170,171,172,173
+	256,257,258,259,260,261,262,263
 MaleHeroHair3WalkRight
 	10
-	174,175,176,177,178,179,180,181
+	264,265,266,267,268,269,270,271
 MaleHeroHair3WalkUp
 	10
-	182,183,184,185,186,187,188,189
+	272,273,274,275,276,277,278,279
 MaleHeroHair4JumpRight
 	10
-	190,191,192,193,194,195
+	280,281,282,283,284,285
 MaleHeroHair4WalkDown
 	10
-	196,197,198,199,200,201,202,203
+	286,287,288,289,290,291,292,293
 MaleHeroHair4WalkRight
 	10
-	204,205,206,207,208,209,210,211
+	294,295,296,297,298,299,300,301
 MaleHeroHair4WalkUp
 	10
-	212,213,214,215,216,217,218,219
+	302,303,304,305,306,307,308,309
 MaleHeroHair5JumpRight
 	10
-	220,221,222,223,224,225
+	310,311,312,313,314,315
 MaleHeroHair5WalkDown
 	10
-	226,227,228,229,230,231,232,233
+	316,317,318,319,320,321,322,323
 MaleHeroHair5WalkRight
 	10
-	234,235,236,237,238,239,240,241
+	324,325,326,327,328,329,330,331
 MaleHeroHair5WalkUp
 	10
-	242,243,244,245,246,247,248,249
+	332,333,334,335,336,337,338,339
 MaleHeroHairJumpRight
 	10
-	250,251,252,253,254,255
+	340,341,342,343,344,345
 MaleHeroHairWalkDown
 	10
-	256,257,258,259,260,261,262,263
+	346,347,348,349,350,351,352,353
 MaleHeroHairWalkRight
 	10
-	264,265,266,267,268,269,270,271
+	354,355,356,357,358,359,360,361
 MaleHeroHairWalkUp
 	10
-	272,273,274,275,276,277,278,279
+	362,363,364,365,366,367,368,369
 MaleHeroHeadJumpRight
 	10
-	280,281,282,283,284,285
+	370,371,372,373,374,375
 MaleHeroHeadWalkDown
 	10
-	286,287,288,289,290,291,292,293
+	376,377,378,379,380,381,382,383
 MaleHeroHeadWalkRight
 	10
-	294,295,296,297,298,299,300,301
+	384,385,386,387,388,389,390,391
 MaleHeroHeadWalkUp
 	10
-	302,303,304,305,306,307,308,309
+	392,393,394,395,396,397,398,399
 MaleHeroHeadwearJumpRight
 	10
-	310,311,312,313,314,315
+	400,401,402,403,404,405
 MaleHeroHeadwearWalkDown
 	10
-	316,317,318,319,320,321,322,323
+	406,407,408,409,410,411,412,413
 MaleHeroHeadwearWalkRight
 	10
-	324,325,326,327,328,329,330,331
+	414,415,416,417,418,419,420,421
 MaleHeroHeadwearWalkUp
 	10
-	332,333,334,335,336,337,338,339
+	422,423,424,425,426,427,428,429
 MaleHeroPantsJumpRight
 	10
-	340,341,342,343,344,345
+	430,431,432,433,434,435
 MaleHeroPantsWalkDown
 	10
-	346,347,348,349,350,351,352,353
+	436,437,438,439,440,441,442,443
 MaleHeroPantsWalkRight
 	10
-	354,355,356,357,358,359,360,361
+	444,445,446,447,448,449,450,451
 MaleHeroPantsWalkUp
 	10
-	362,363,364,365,366,367,368,369
+	452,453,454,455,456,457,458,459
 MaleHeroShirtJumpRight
 	10
-	370,371,372,373,374,375
+	460,461,462,463,464,465
 MaleHeroShirtWalkDown
 	10
-	376,377,378,379,380,381,382,383
+	466,467,468,469,470,471,472,473
 MaleHeroShirtWalkRight
 	10
-	384,385,386,387,388,389,390,391
+	474,475,476,477,478,479,480,481
 MaleHeroShirtWalkUp
 	10
-	392,393,394,395,396,397,398,399
-Props
+	482,483,484,485,486,487,488,489
+AncientWyrmMoveDown
 	10
 	7
+AncientWyrmMoveRight
+	10
+	8
+AncientWyrmMoveUp
+	10
+	9
+BatMoveDown
+	10
+	490,491,492,493,494
+BatMoveRight
+	10
+	495,496,497,498,499
+BatMoveUp
+	10
+	500,501,502,503,504
+CaveMushroomMoveDown
+	10
+	38,39,40,41,42,43,44,45
+CaveMushroomMoveRight
+	10
+	46,47,48,49,50,51,52,53
+CaveMushroomMoveUp
+	10
+	54,55,56,57,58,59,60,61
+CaveTrollMoveDown
+	10
+	23
+CaveTrollMoveRight
+	10
+	24
+CaveTrollMoveUp
+	10
+	25
+CrystalGolemMoveDown
+	10
+	68
+CrystalGolemMoveRight
+	10
+	69
+CrystalGolemMoveUp
+	10
+	70
+EarthElementalMoveDown
+	10
+	20
+EarthElementalMoveRight
+	10
+	21
+EarthElementalMoveUp
+	10
+	22
+FireLizardMoveDown
+	10
+	62
+FireLizardMoveRight
+	10
+	63
+FireLizardMoveUp
+	10
+	64
+GhostMinerMoveDown
+	10
+	77
+GhostMinerMoveRight
+	10
+	78
+GhostMinerMoveUp
+	10
+	79
+GoblinMoveDown
+	10
+	95
+GoblinMoveRight
+	10
+	96
+GoblinMoveUp
+	10
+	97
+LavaDrakeMoveDown
+	10
+	32
+LavaDrakeMoveRight
+	10
+	33
+LavaDrakeMoveUp
+	10
+	34
+MagmaOozeMoveDown
+	10
+	86
+MagmaOozeMoveRight
+	10
+	87
+MagmaOozeMoveUp
+	10
+	88
+MoltenTitanMoveDown
+	10
+	11
+MoltenTitanMoveRight
+	10
+	12
+MoltenTitanMoveUp
+	10
+	13
+OrcMoveDown
+	10
+	26
+OrcMoveRight
+	10
+	27
+OrcMoveUp
+	10
+	28
+PitLordMoveDown
+	10
+	14
+PitLordMoveRight
+	10
+	15
+PitLordMoveUp
+	10
+	16
+RatMoveDown
+	10
+	92
+RatMoveRight
+	10
+	93
+RatMoveUp
+	10
+	94
+ShadowBeastMoveDown
+	10
+	29
+ShadowBeastMoveRight
+	10
+	30
+ShadowBeastMoveUp
+	10
+	31
+ShadowImpMoveDown
+	10
+	539
+ShadowImpMoveRight
+	10
+	540
+ShadowImpMoveUp
+	10
+	541
+SkeletonMoveDown
+	10
+	89
+SkeletonMoveRight
+	10
+	90
+SkeletonMoveUp
+	10
+	91
+SlimeMoveDown
+	10
+	505
+SlimeMoveRight
+	10
+	506
+SlimeMoveUp
+	10
+	507
 SlimeWalkDown
 	10
-	406,407,408,409
+	526,527,528,529
 SlimeWalkRight
 	10
-	410,411,412,413
+	530,531,532,533
 SlimeWalkUp
 	10
-	414,415,416,417
+	534,535,536,537
+SnakeMoveDown
+	10
+	65
+SnakeMoveRight
+	10
+	66
+SnakeMoveUp
+	10
+	67
+SpiderMoveDown
+	10
+	508,509,510,511
+SpiderMoveRight
+	10
+	512,513,514,515
+SpiderMoveUp
+	10
+	516,517,518,519
+StoneBeetleMoveDown
+	10
+	83
+StoneBeetleMoveRight
+	10
+	84
+StoneBeetleMoveUp
+	10
+	85
+StoneGuardianMoveDown
+	10
+	17
+StoneGuardianMoveRight
+	10
+	18
+StoneGuardianMoveUp
+	10
+	19
+StoneWyrmMoveDown
+	10
+	35
+StoneWyrmMoveRight
+	10
+	36
+StoneWyrmMoveUp
+	10
+	37
+TunnelWormMoveDown
+	10
+	80
+TunnelWormMoveRight
+	10
+	81
+TunnelWormMoveUp
+	10
+	82
+WraithMoveDown
+	10
+	71,72
+WraithMoveRight
+	10
+	73,74
+WraithMoveUp
+	10
+	75,76
+Props
+	10
+	10
 Things
 	10
-	400,401,402,403,404,405
+	520,521,522,523,524,525
 LightningStrike
 	40
 	0,1,2,3,4,5,6
