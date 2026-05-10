@@ -12,6 +12,7 @@ namespace PitHero.ECS.Components
         private readonly string _animLeft;
         private readonly string _animRight;
         private readonly string _animUp;
+        private readonly string _animAttack;
 
         public NamedMonsterAnimationComponent(string enemyIdName, Color color) : base(color)
         {
@@ -19,6 +20,7 @@ namespace PitHero.ECS.Components
             _animRight = $"{enemyIdName}MoveRight";
             _animLeft = $"{enemyIdName}MoveRight";
             _animUp = $"{enemyIdName}MoveUp";
+            _animAttack = $"{enemyIdName}Attack";
         }
 
         protected override string DefaultAnimation => _animDown;
@@ -26,5 +28,6 @@ namespace PitHero.ECS.Components
         protected override string AnimLeft => _animLeft;
         protected override string AnimRight => _animRight;
         protected override string AnimUp => _animUp;
+        protected override string AnimAttack => _animAttack;
     }
 }

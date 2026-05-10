@@ -1321,6 +1321,10 @@ namespace PitHero.AI
 
             FaceTarget(participant.MonsterEntity, targetEntity.Transform.Position);
 
+            var monsterAnim = participant.MonsterEntity.GetComponent<EnemyAnimationComponent>();
+            if (monsterAnim != null)
+                yield return monsterAnim.PlayAttackAnimation();
+
             if (targetChoice.isHero)
                 yield return ExecuteMonsterAttackHero(enemy, enemyBattleStats, heroComponent, hero, heroBattleStats, attackResolver);
             else

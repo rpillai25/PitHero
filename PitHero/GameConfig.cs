@@ -58,6 +58,12 @@ namespace PitHero
         public const float BattleTurnWait = 0.7f;
         public const float TreasureOpenWait = 0.5f;
 
+        // Monster animation
+        public const float MonsterWobbleFrequency = 10f; // radians/sec oscillation for 1-frame move animations
+        public const float MonsterWobbleAmplitude = 0.12f; // radians (~7°) max rotation during wobble
+        public const float MonsterAttackPlaceholderDuration = 1.0f; // seconds for the placeholder attack animation
+        public const float MonsterAttackJumpHeight = 6f; // pixels to offset upward during placeholder attack
+
         // Sound configuration (can be updated in UI)
         public static float MasterVolume = 0.5f;
 

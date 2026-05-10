@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using PitHero.Services;
 using PitHero.Util;
 
 namespace PitHero.ECS.Components
@@ -10,9 +11,14 @@ namespace PitHero.ECS.Components
     public abstract class EnemyAnimationComponent : PausableSpriteAnimator, IUpdatable
     {
         private ActorFacingComponent _facing;
-        private Direction _lastDirection = Direction.Down; // Default to down
+        private Direction _lastDirection = Direction.Down;
         private TileByTileMover _mover;
         private TiledMapService _tiledMapService;
+        private PauseService _pauseService;
+
+        // Wobble state for 1-frame movement animations
+        private float _wobbleTimer;
+        private bool _wasWobbling;
 
         // Abstract properties for animation names - each enemy type defines its own
         protected abstract string DefaultAnimation { get; }
@@ -20,6 +26,9 @@ namespace PitHero.ECS.Components
         protected abstract string AnimLeft { get; }
         protected abstract string AnimRight { get; }
         protected abstract string AnimUp { get; }
+
+        /// <summary>Attack animation name, or null if none exists for this enemy.</summary>
+        protected virtual string AnimAttack => null;
 
         private Color _componentColor = Color.White;
         /// <summary>Gets the tint color for this component (default: White)</summary>
@@ -37,6 +46,8 @@ namespace PitHero.ECS.Components
         public override void OnAddedToEntity()
         {
             base.OnAddedToEntity();
+
+            _pauseService = Core.Services.GetService<PauseService>();
 
             try
             {
@@ -79,6 +90,106 @@ namespace PitHero.ECS.Components
             }
 
             CheckFogVisibility();
+            UpdateWobble();
+        }
+
+        /// <summary>
+        /// Applies a subtle rotation wobble when the monster is moving and its animation has only one frame.
+        /// </summary>
+        private void UpdateWobble()
+        {
+            if (_mover == null)
+                _mover = Entity?.GetComponent<TileByTileMover>();
+            if (_mover == null)
+                return;
+
+            bool isMoving = _mover.IsMoving;
+            bool singleFrame = IsSingleFrameAnimation();
+
+            if (isMoving && singleFrame)
+            {
+                if (_pauseService?.IsPaused != true)
+                    _wobbleTimer += Nez.Time.DeltaTime;
+                Entity.Transform.LocalRotation =
+                    (float)System.Math.Sin(_wobbleTimer * GameConfig.MonsterWobbleFrequency)
+                    * GameConfig.MonsterWobbleAmplitude;
+                _wasWobbling = true;
+            }
+            else if (_wasWobbling)
+            {
+                Entity.Transform.LocalRotation = 0f;
+                _wasWobbling = false;
+                _wobbleTimer = 0f;
+            }
+        }
+
+        /// <summary>Returns true when the active animation consists of a single sprite frame.</summary>
+        private bool IsSingleFrameAnimation()
+        {
+            if (CurrentAnimation == null) return false;
+            return CurrentAnimation.Sprites.Length == 1;
+        }
+
+        /// <summary>
+        /// Plays the named attack animation if it exists in the atlas, otherwise runs a placeholder
+        /// that flips and jumps to simulate an attack. Yields until complete.
+        /// </summary>
+        public System.Collections.IEnumerator PlayAttackAnimation()
+        {
+            if (AnimAttack != null && Animations != null && Animations.ContainsKey(AnimAttack))
+            {
+                Play(AnimAttack, LoopMode.Once);
+                while (AnimationState == State.Running)
+                    yield return null;
+                Play(DefaultAnimation, LoopMode.Loop);
+            }
+            else
+            {
+                yield return PlayAttackPlaceholder();
+            }
+        }
+
+        /// <summary>
+        /// Placeholder attack: flips the sprite 3 times and bounces it up/down over one second.
+        /// Used when no real attack animation exists for this enemy.
+        /// </summary>
+        private System.Collections.IEnumerator PlayAttackPlaceholder()
+        {
+            const int flipCount = 3;
+            bool originalFlipX = FlipX;
+            float originalOffsetY = LocalOffset.Y;
+
+            float elapsed = 0f;
+            int lastFlipStage = 0;
+
+            while (elapsed < GameConfig.MonsterAttackPlaceholderDuration)
+            {
+                if (_pauseService?.IsPaused == true)
+                {
+                    yield return null;
+                    continue;
+                }
+
+                elapsed += Nez.Time.DeltaTime;
+                float t = System.Math.Min(elapsed / GameConfig.MonsterAttackPlaceholderDuration, 1f);
+
+                // Alternate FlipX across flipCount*2 equal stages
+                int stage = (int)(t * flipCount * 2);
+                if (stage != lastFlipStage)
+                {
+                    FlipX = (stage % 2 == 1) ? !originalFlipX : originalFlipX;
+                    lastFlipStage = stage;
+                }
+
+                // Arc up and down flipCount times using |sin| — visual-only, entity position unchanged
+                float jumpT = (float)System.Math.Abs(System.Math.Sin(t * System.Math.PI * flipCount));
+                LocalOffset = new Vector2(LocalOffset.X, originalOffsetY - jumpT * GameConfig.MonsterAttackJumpHeight);
+
+                yield return null;
+            }
+
+            FlipX = originalFlipX;
+            LocalOffset = new Vector2(LocalOffset.X, originalOffsetY);
         }
 
         /// <summary>
