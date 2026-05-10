@@ -156,23 +156,54 @@ namespace PitHero.ECS.Components
             // Update triggers after reaching destination
             _triggerHelper?.Update();
 
-            // Clear fog around the tile we just arrived at only for heroes
             var tms = Core.Services.GetService<TiledMapService>();
             var heroComponent = Entity.GetComponent<HeroComponent>();
             if (tms != null && heroComponent != null)
             {
+                // Hero: clear fog and refresh visibility of any monsters now in revealed tiles
                 var tile = GetCurrentTileCoordinates();
                 bool fogCleared = tms.ClearFogOfWarAroundTile(tile.X, tile.Y, heroComponent);
-
-                // Trigger fog cooldown if fog was cleared
                 if (fogCleared)
                 {
                     heroComponent.TriggerFogCooldown();
+                    RefreshMonsterFogVisibility(tms);
+                }
+            }
+            else if (tms != null)
+            {
+                // Monster: if the animator was hidden and the destination tile is now clear, re-enable it
+                var enemyAnim = Entity.GetComponent<EnemyAnimationComponent>();
+                if (enemyAnim != null && !enemyAnim.Enabled)
+                {
+                    var tile = GetCurrentTileCoordinates();
+                    if (!tms.IsFogOfWarTile(tile.X, tile.Y))
+                        enemyAnim.SetEnabled(true);
                 }
             }
 
             IsMoving = false;
             CurrentDirection = null;
+        }
+
+        /// <summary>
+        /// Scans all monster entities and re-enables their animator if their tile is no longer fogged.
+        /// Called after the hero clears fog.
+        /// </summary>
+        private static void RefreshMonsterFogVisibility(TiledMapService tms)
+        {
+            var monsters = Core.Scene?.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
+            if (monsters == null)
+                return;
+            for (int i = 0; i < monsters.Count; i++)
+            {
+                var mover = monsters[i].GetComponent<TileByTileMover>();
+                var anim = monsters[i].GetComponent<EnemyAnimationComponent>();
+                if (mover == null || anim == null || anim.Enabled)
+                    continue;
+                var tile = mover.GetCurrentTileCoordinates();
+                if (!tms.IsFogOfWarTile(tile.X, tile.Y))
+                    anim.SetEnabled(true);
+            }
         }
 
         /// <summary>

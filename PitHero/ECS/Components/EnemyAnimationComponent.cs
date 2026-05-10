@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using PitHero.Util;
 
 namespace PitHero.ECS.Components
 {
@@ -10,6 +11,8 @@ namespace PitHero.ECS.Components
     {
         private ActorFacingComponent _facing;
         private Direction _lastDirection = Direction.Down; // Default to down
+        private TileByTileMover _mover;
+        private TiledMapService _tiledMapService;
 
         // Abstract properties for animation names - each enemy type defines its own
         protected abstract string DefaultAnimation { get; }
@@ -74,6 +77,32 @@ namespace PitHero.ECS.Components
                 _lastDirection = direction;
                 UpdateAnimationForDirection(direction);
             }
+
+            CheckFogVisibility();
+        }
+
+        /// <summary>
+        /// Hides the monster when its tile is fogged and movement is complete.
+        /// Re-enabling is handled externally by TileByTileMover since Update() stops when this component is disabled.
+        /// </summary>
+        private void CheckFogVisibility()
+        {
+            if (_mover == null)
+                _mover = Entity?.GetComponent<TileByTileMover>();
+            if (_mover == null)
+                return;
+
+            if (_tiledMapService == null)
+                _tiledMapService = Core.Services.GetService<TiledMapService>();
+            if (_tiledMapService == null)
+                return;
+
+            if (_mover.IsMoving)
+                return;
+
+            var tile = _mover.GetCurrentTileCoordinates();
+            if (_tiledMapService.IsFogOfWarTile(tile.X, tile.Y) && Enabled)
+                SetEnabled(false);
         }
 
         /// <summary>

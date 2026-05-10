@@ -831,7 +831,7 @@ namespace PitHero
                     // Add animation component using atlas sprite animations for all monster types
                     EnemyAnimationComponent enemyAnimation;
                     enemyAnimation = entity.AddComponent(new NamedMonsterAnimationComponent(enemy.EnemyId.ToString(), Color.White));
-                    enemyAnimation.SetRenderLayer(GameConfig.RenderLayerActors);
+                    enemyAnimation.SetRenderLayer(GameConfig.RenderLayerActorAboveFogOfWar);
 
                     // Add facing component for animation direction tracking
                     var enemyFacing = entity.AddComponent(new ActorFacingComponent());
