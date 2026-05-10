@@ -186,7 +186,10 @@ namespace PitHero.ECS.Scenes
         {
             var pendingData = SaveLoadService.PendingLoadData;
             if (pendingData == null)
+            {
+                Core.Services.GetService<SaveLoadService>()?.ResetForNewGame();
                 return;
+            }
 
             // Clear pending data so it's not applied again
             SaveLoadService.PendingLoadData = null;

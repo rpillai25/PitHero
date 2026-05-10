@@ -42,6 +42,13 @@ namespace PitHero.Services
             RefreshSlotPreviews();
         }
 
+        /// <summary>Resets time-tracking state so a new game begins with zero elapsed play time.</summary>
+        public void ResetForNewGame()
+        {
+            LoadedTimePlayed = 0f;
+            TimeAtLoad = Time.TotalTime;
+        }
+
         /// <summary>Gets the filename for a given slot index.</summary>
         private string GetFilename(int slotIndex)
         {

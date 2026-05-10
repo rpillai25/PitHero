@@ -128,7 +128,7 @@ namespace PitHero.Services
             // Get next crystal for hero (from pending, queue, or random)
             var nextCrystal = GetNextCrystalForHero();
             heroComponent.LinkedHero = new RolePlayingFramework.Heroes.Hero(
-                "Hero",
+                heroComponent.LinkedHero.Name,
                 nextCrystal.Job,
                 nextCrystal.Level,
                 nextCrystal.BaseStats,
