@@ -57,5 +57,6 @@ namespace PitHero.AI.Interfaces
         bool ExploredPit { get; set; }
         bool FoundWizardOrb { get; set; }
         bool ActivatedWizardOrb { get; set; }
+        bool BossDefeated { get; set; }
     }
 }

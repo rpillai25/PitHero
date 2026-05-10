@@ -830,6 +830,7 @@ namespace PitHero.Tests
             public int SPYield { get; }
             public int GoldYield { get; }
             public float JoinPercentageModifier => 1.0f;
+            public bool IsBoss => false;
 
             public TestMonster(int level, BalanceConfig.MonsterArchetype archetype)
             {

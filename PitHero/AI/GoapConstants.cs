@@ -18,6 +18,7 @@
         public const string HealingSkillExhausted = "HealingSkillExhausted";
         public const string InnExhausted = "InnExhausted";
         public const string IsAlive = "IsAlive";
+        public const string BossDefeated = "BossDefeated";
 
         // Mercenary GOAP States
         public const string MercenaryInsidePit = "MercenaryInsidePit";

@@ -51,6 +51,7 @@ namespace PitHero.ECS.Components
             set => _foundWizardOrb = value;
         }
         public bool ActivatedWizardOrb { get; set; }                 // True after ActivateWizardOrbAction, false upon pit regeneration
+        public bool BossDefeated { get; set; }                       // True when no boss blocks this pit level (always true on non-boss floors)
         public bool AdjacentToMonster { get; set; }                  // True when monster exists in tile adjacent to hero
         public bool AdjacentToChest { get; set; }                    // True when chest exists in tile adjacent to hero
 
@@ -628,6 +629,7 @@ namespace PitHero.ECS.Components
             ExploredPit = false;
             _foundWizardOrb = false;
             ActivatedWizardOrb = false;
+            BossDefeated = true; // Non-boss floors have no boss gate; overridden to false when entering a boss floor
 
             // Initialize tile tracking
             _currentTile = GetCurrentTilePosition();
@@ -848,6 +850,10 @@ namespace PitHero.ECS.Components
             if (ActivatedWizardOrb)
             {
                 worldState.Set(GoapConstants.ActivatedWizardOrb, true);
+            }
+            if (BossDefeated)
+            {
+                worldState.Set(GoapConstants.BossDefeated, true);
             }
             if (AdjacentToMonster)
             {

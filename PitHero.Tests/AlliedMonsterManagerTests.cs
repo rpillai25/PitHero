@@ -30,6 +30,7 @@ namespace PitHero.Tests
             public int SPYield => 1;
             public int GoldYield => 8;
             public float JoinPercentageModifier { get; }
+            public bool IsBoss => false;
 
             public MockEnemy(string name, float joinModifier)
             {

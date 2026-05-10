@@ -74,6 +74,7 @@ namespace PitHero.AI
 
             // Postconditions: Monster is defeated, recalculate adjacency
             SetPostcondition(GoapConstants.AdjacentToMonster, false);
+            SetPostcondition(GoapConstants.BossDefeated, true);
         }
 
         public override bool Execute(HeroComponent hero)
@@ -799,6 +800,27 @@ namespace PitHero.AI
         // ─── Reward awarding ──────────────────────────────────────────────────────
 
         /// <summary>
+        /// If the defeated enemy is a boss, marks BossDefeated on the hero and restores the WizardOrb to its normal blue tint.
+        /// </summary>
+        private void HandleBossDefeated(RolePlayingFramework.Enemies.IEnemy enemy, HeroComponent heroComponent)
+        {
+            if (!enemy.IsBoss) return;
+            heroComponent.BossDefeated = true;
+            var scene = Core.Scene;
+            if (scene != null)
+            {
+                var orbEntities = scene.FindEntitiesWithTag(GameConfig.TAG_WIZARD_ORB);
+                if (orbEntities.Count > 0)
+                {
+                    var orbRenderer = orbEntities[0].GetComponent<Nez.RenderableComponent>();
+                    if (orbRenderer != null)
+                        orbRenderer.Color = Color.White;
+                }
+            }
+            Debug.Log($"[AttackMonster] Boss {enemy.Name} defeated - BossDefeated=true, WizardOrb restored to Blue");
+        }
+
+        /// <summary>
         /// Awards XP, JP, SP, and gold to the party when an enemy is defeated,
         /// and attempts to recruit the defeated enemy as an allied monster.
         /// Pass heroComponent to also reset the InnExhausted flag on a hero kill.
@@ -966,6 +988,7 @@ namespace PitHero.AI
                 {
                     Debug.Log($"[AttackMonster] {enemy.Name} defeated by {skill.Name}!");
                     AwardEnemyDeathRewards(hero, enemy, heroComponent, validMercenaries);
+                    HandleBossDefeated(enemy, heroComponent);
 
                     var evtSvcSkillDeath = Core.Services.GetService<GameEventService>();
                     if (evtSvcSkillDeath != null)
@@ -1018,6 +1041,7 @@ namespace PitHero.AI
                 {
                     Debug.Log($"[AttackMonster] {targetEnemy.Name} defeated! Starting fade out");
                     AwardEnemyDeathRewards(hero, targetEnemy, heroComponent, validMercenaries);
+                    HandleBossDefeated(targetEnemy, heroComponent);
 
                     var evtSvcDeath = Core.Services.GetService<GameEventService>();
                     if (evtSvcDeath != null)
@@ -1165,6 +1189,7 @@ namespace PitHero.AI
                     {
                         Debug.Log($"[AttackMonster] {sEnemy.Name} defeated by {mercenary.Name}'s {atkSkill.Name}!");
                         AwardEnemyDeathRewards(hero, sEnemy, null, validMercenaries);
+                        HandleBossDefeated(sEnemy, heroComponent);
 
                         var evtSvcAtkSkillDeath = Core.Services.GetService<GameEventService>();
                         if (evtSvcAtkSkillDeath != null)
@@ -1233,6 +1258,7 @@ namespace PitHero.AI
                 {
                     Debug.Log($"[AttackMonster] {targetEnemy.Name} defeated by {mercenary.Name}! Starting fade out");
                     AwardEnemyDeathRewards(hero, targetEnemy, null, validMercenaries);
+                    HandleBossDefeated(targetEnemy, heroComponent);
 
                     var evtSvcMercDeath = Core.Services.GetService<GameEventService>();
                     if (evtSvcMercDeath != null)

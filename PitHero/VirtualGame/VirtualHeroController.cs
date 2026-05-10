@@ -22,6 +22,7 @@ namespace PitHero.VirtualGame
         public bool ExploredPit { get; set; }
         public bool FoundWizardOrb { get; set; }
         public bool ActivatedWizardOrb { get; set; }
+        public bool BossDefeated { get; set; } = true;
 
         public VirtualHeroController(IWorldState worldState)
         {

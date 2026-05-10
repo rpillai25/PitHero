@@ -24,6 +24,7 @@ namespace RolePlayingFramework.Enemies
         public int SPYield { get; }
         public int GoldYield { get; }
         public float JoinPercentageModifier => 1.2f;
+        public bool IsBoss => false;
 
         public Slime(int level = 1)
         {

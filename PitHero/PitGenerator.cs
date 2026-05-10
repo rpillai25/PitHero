@@ -357,9 +357,10 @@ namespace PitHero
             int maxObstacles = MaxObstacles(level);
 
             // Calculate actual entity counts with variance
+            bool isBossFloor = CaveBiomeConfig.IsBossFloor(level);
             int obstacleCount = Nez.Random.Range(minObstacles, maxObstacles + 1);
             int chestCount = Nez.Random.Range(maxChests / 2, maxChests + 1);
-            int monsterCount = Nez.Random.Range(maxMonsters / 2, maxMonsters + 1);
+            int monsterCount = isBossFloor ? 1 : Nez.Random.Range(maxMonsters / 2, maxMonsters + 1);
 
             Debug.Log($"[PitGenerator] Level {level} calculated amounts:");
             Debug.Log($"[PitGenerator]   Max Monsters: {maxMonsters}, Actual: {monsterCount}");
@@ -398,10 +399,11 @@ namespace PitHero
 
                 if (validObstacles.Count > 0 || targetPositions.Count == 0)
                 {
+                    var wizardOrbColor = isBossFloor ? Color.Red : Color.White;
                     CreateEntitiesAtPositions(validObstacles, GameConfig.TAG_OBSTACLE, Color.Gray, "obstacle", level);
                     CreateEntitiesAtPositions(treasures, GameConfig.TAG_TREASURE, Color.Yellow, "treasure", level);
                     CreateEntitiesAtPositions(monsters, GameConfig.TAG_MONSTER, Color.White, "monster", level);
-                    CreateEntitiesAtPositions(wizardOrbs, GameConfig.TAG_WIZARD_ORB, Color.Blue, "wizard_orb", level);
+                    CreateEntitiesAtPositions(wizardOrbs, GameConfig.TAG_WIZARD_ORB, wizardOrbColor, "wizard_orb", level);
 
                     validLayoutGenerated = true;
                     Debug.Log($"[PitGenerator] Valid layout generated on attempt {attempt}");
@@ -791,6 +793,7 @@ namespace PitHero
                         if (wizardOrbSprite != null)
                         {
                             var renderer = entity.AddComponent(new SpriteRenderer(wizardOrbSprite));
+                            renderer.Color = color;
                             renderer.SetRenderLayer(GameConfig.RenderLayerActors);
                         }
                         else
@@ -822,23 +825,12 @@ namespace PitHero
                     // Create appropriate enemy for pit level
                     var (enemy, enemyColor) = CreateEnemyForPitLevel(pitLevel);
 
-                    var enemyComponent = entity.AddComponent(new EnemyComponent(enemy, isStationary: false));
-                    Debug.Log($"[PitGenerator] Created {enemy.Name} enemy (Level {enemy.Level}, HP {enemy.CurrentHP}) at tile ({tilePos.X},{tilePos.Y})");
+                    var enemyComponent = entity.AddComponent(new EnemyComponent(enemy, isStationary: enemy.IsBoss));
+                    Debug.Log($"[PitGenerator] Created {enemy.Name} enemy (Level {enemy.Level}, HP {enemy.CurrentHP}, IsBoss {enemy.IsBoss}) at tile ({tilePos.X},{tilePos.Y})");
 
-                    // Add animation component based on enemy type
-                    // Use PlaceholderMonster sprite with color tint for all enemies for now
-                    // TODO: Replace with specific sprites when available
-
+                    // Add animation component using atlas sprite animations for all monster types
                     EnemyAnimationComponent enemyAnimation;
-
-                    if (enemy is Slime)
-                    {
-                        enemyAnimation = entity.AddComponent(new SlimeAnimationComponent());
-                    }
-                    else
-                    {
-                        enemyAnimation = entity.AddComponent(new PlaceholderMonsterAnimationComponent(enemyColor));
-                    }
+                    enemyAnimation = entity.AddComponent(new NamedMonsterAnimationComponent(enemy.EnemyId.ToString(), Color.White));
                     enemyAnimation.SetRenderLayer(GameConfig.RenderLayerActors);
 
                     // Add facing component for animation direction tracking

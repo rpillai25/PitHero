@@ -49,6 +49,9 @@ namespace RolePlayingFramework.Enemies
         /// </summary>
         float JoinPercentageModifier { get; }
 
+        /// <summary>True if this enemy is a boss (stationary, one per floor, gates WizardOrb).</summary>
+        bool IsBoss { get; }
+
         /// <summary>Inflicts damage, returns true if died.</summary>
         bool TakeDamage(int amount);
     }

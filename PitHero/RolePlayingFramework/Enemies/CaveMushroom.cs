@@ -24,6 +24,7 @@ namespace RolePlayingFramework.Enemies
         public int SPYield { get; }
         public int GoldYield { get; }
         public float JoinPercentageModifier => 1.0f;
+        public bool IsBoss => false;
 
         public CaveMushroom(int level = 2)
         {

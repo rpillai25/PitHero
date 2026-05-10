@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.AI.Interfaces;
+using PitHero.Config;
 using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.Util;
@@ -18,6 +19,7 @@ namespace PitHero.AI
             SetPrecondition(GoapConstants.InsidePit, true);
             SetPrecondition(GoapConstants.ExploredPit, true);
             SetPrecondition(GoapConstants.FoundWizardOrb, true);
+            SetPrecondition(GoapConstants.BossDefeated, true);
             SetPostcondition(GoapConstants.ActivatedWizardOrb, true);
             SetPostcondition(GoapConstants.PitInitialized, false);
         }
@@ -73,6 +75,12 @@ namespace PitHero.AI
             hero.ExploredPit = false;  // Reset upon regeneration
             hero.ActivatedWizardOrb = false;  // Reset upon regeneration
 
+            // BossDefeated is false on boss floors until the boss is killed; true on all other floors
+            var pitWidthManagerForBoss = Core.Services.GetService<PitWidthManager>();
+            int newPitLevel = pitWidthManagerForBoss?.CurrentPitLevel ?? 1;
+            hero.BossDefeated = !CaveBiomeConfig.IsBossFloor(newPitLevel);
+
+            Debug.Log($"[ActivateWizardOrb] BossDefeated set to {hero.BossDefeated} for new pit level {newPitLevel}");
             Debug.Log("[ActivateWizardOrb] Wizard orb activation complete - pit regenerated and hero repositioned");
             return true; // Action complete
         }
@@ -124,6 +132,11 @@ namespace PitHero.AI
             context.HeroController.ExploredPit = false;  // Reset upon regeneration
             context.HeroController.ActivatedWizardOrb = false;  // Reset upon regeneration
 
+            // BossDefeated is false on boss floors until the boss is killed; true on all other floors
+            int newVirtualPitLevel = context.PitWidthManager.CurrentPitLevel;
+            context.HeroController.BossDefeated = !CaveBiomeConfig.IsBossFloor(newVirtualPitLevel);
+
+            context.LogDebug($"[ActivateWizardOrbAction] BossDefeated set to {context.HeroController.BossDefeated} for new pit level {newVirtualPitLevel}");
             context.LogDebug($"[ActivateWizardOrbAction] Wizard orb activation complete - pit regenerated and hero repositioned");
             return true; // Action complete
         }
