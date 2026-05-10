@@ -202,7 +202,7 @@ namespace PitHero
         public const int RenderLayerMercenary2Body = 26;
         public const int RenderLayerMercenary2Hand2 = 27;
 
-        public const int ActorAboveFogOfWar = 39; // Actors above fog of war but below UI
+        public const int RenderLayerActorAboveFogOfWar = 39; // Actors above fog of war but below UI
         public const int RenderLayerFogOfWar = 40;   // Fog of war layer above most things, except hero
         public const int RenderLayerActors = 60; // Actors and entities layer
         public const int RenderLayerDroppedItems = 65; // Dropped items layer
