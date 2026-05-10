@@ -849,6 +849,15 @@ namespace PitHero
                     var enemyBouncyText = entity.AddComponent(new BouncyTextComponent());
                     enemyBouncyText.SetRenderLayer(GameConfig.RenderLayerLowest);
                     enemyBouncyText.SetEnabled(false);
+
+                    // Set initial fog visibility before first render frame
+                    var spawnTms = Core.Services.GetService<TiledMapService>();
+                    if (spawnTms != null)
+                    {
+                        var spawnTile = enemyMover.GetCurrentTileCoordinates();
+                        if (spawnTms.IsFogOfWarTile(spawnTile.X, spawnTile.Y))
+                            enemyAnimation.SetEnabled(false);
+                    }
                 }
                 else
                 {
