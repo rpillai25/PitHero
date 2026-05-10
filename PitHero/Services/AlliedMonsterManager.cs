@@ -33,6 +33,8 @@ namespace PitHero.Services
         /// </summary>
         public AlliedMonster TryRecruit(IEnemy enemy)
         {
+            if (enemy.IsBoss) return null;
+
             float joinChance = GameConfig.BaseMonsterJoinChance * enemy.JoinPercentageModifier;
             if (joinChance <= 0f) return null;
 
