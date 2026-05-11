@@ -168,16 +168,23 @@ namespace PitHero.ECS.Components
                     heroComponent.TriggerFogCooldown();
                     RefreshMonsterFogVisibility(tms);
                 }
+                // Hero moved — re-evaluate every monster's render layer against the new hero Y
+                RefreshAllMonsterRenderLayers(Entity.Transform.Position.Y);
             }
             else if (tms != null)
             {
                 // Monster: if the animator was hidden and the destination tile is now clear, re-enable it
                 var enemyAnim = Entity.GetComponent<EnemyAnimationComponent>();
-                if (enemyAnim != null && !enemyAnim.Enabled)
+                if (enemyAnim != null)
                 {
-                    var tile = GetCurrentTileCoordinates();
-                    if (!tms.IsFogOfWarTile(tile.X, tile.Y))
-                        enemyAnim.SetEnabled(true);
+                    if (!enemyAnim.Enabled)
+                    {
+                        var tile = GetCurrentTileCoordinates();
+                        if (!tms.IsFogOfWarTile(tile.X, tile.Y))
+                            enemyAnim.SetEnabled(true);
+                    }
+                    // Monster landed on new tile — update its render layer relative to the hero
+                    UpdateMonsterRenderLayer(enemyAnim);
                 }
             }
 
@@ -203,6 +210,47 @@ namespace PitHero.ECS.Components
                 var tile = mover.GetCurrentTileCoordinates();
                 if (!tms.IsFogOfWarTile(tile.X, tile.Y))
                     anim.SetEnabled(true);
+            }
+        }
+
+        /// <summary>
+        /// Updates this monster's EnemyAnimationComponent render layer based on its Y position
+        /// relative to the hero. Finds the hero via scene tag lookup.
+        /// </summary>
+        private void UpdateMonsterRenderLayer(EnemyAnimationComponent enemyAnim)
+        {
+            var heroEntities = Core.Scene?.FindEntitiesWithTag(GameConfig.TAG_HERO);
+            if (heroEntities == null || heroEntities.Count == 0)
+                return;
+            float heroY = heroEntities[0].Transform.Position.Y;
+            float monsterY = Entity.Transform.Position.Y;
+            // Monster south of hero (larger Y) → in front; north or same row → behind
+            int layer = monsterY > heroY
+                ? GameConfig.RenderLayerMonsterYLowerThanParty
+                : GameConfig.RenderLayerMonsterYHigherThanParty;
+            enemyAnim.SetRenderLayer(layer);
+        }
+
+        /// <summary>
+        /// Re-evaluates the render layer for every monster in the scene against the supplied hero Y.
+        /// Called when the hero lands on a new tile so stationary monsters stay correct.
+        /// </summary>
+        private static void RefreshAllMonsterRenderLayers(float heroY)
+        {
+            var monsters = Core.Scene?.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
+            if (monsters == null)
+                return;
+            for (int i = 0; i < monsters.Count; i++)
+            {
+                var anim = monsters[i].GetComponent<EnemyAnimationComponent>();
+                if (anim == null)
+                    continue;
+                float monsterY = monsters[i].Transform.Position.Y;
+                // Monster south of hero (larger Y) → in front; north or same row → behind
+                int layer = monsterY > heroY
+                    ? GameConfig.RenderLayerMonsterYLowerThanParty
+                    : GameConfig.RenderLayerMonsterYHigherThanParty;
+                anim.SetRenderLayer(layer);
             }
         }
 
