@@ -181,34 +181,36 @@ namespace PitHero
         public const int RenderLayerPickupItem = 1; // Pickup items layer
         public const int RenderLayerTop = 2;
         
-        public const int RenderLayerHeroHand1 = 4;
-        public const int RenderLayerHeroHair = 5;
-        public const int RenderLayerHeroEyes = 6;
-        public const int RenderLayerHeroHead = 7;
-        public const int RenderLayerHeroShirt = 8;
-        public const int RenderLayerHeroPants = 9;
-        public const int RenderLayerHeroBody = 10;
-        public const int RenderLayerHeroHand2 = 11;
+        public const int RenderLayerMonsterYLowerThanParty = 9;  // Monsters with Y position lower than the party are rendered here (in front of some hero layers)
+
+        public const int RenderLayerHeroHand1 = 10;
+        public const int RenderLayerHeroHair = 11;
+        public const int RenderLayerHeroEyes = 12;
+        public const int RenderLayerHeroHead = 13;
+        public const int RenderLayerHeroShirt = 14;
+        public const int RenderLayerHeroPants = 15;
+        public const int RenderLayerHeroBody = 16;
+        public const int RenderLayerHeroHand2 = 17;
         
-        public const int RenderLayerMercenary1Hand1 = 12;
-        public const int RenderLayerMercenary1Hair = 13;
-        public const int RenderLayerMercenary1Eyes = 14;
-        public const int RenderLayerMercenary1Head = 15;
-        public const int RenderLayerMercenary1Shirt = 16;
-        public const int RenderLayerMercenary1Pants = 17;
-        public const int RenderLayerMercenary1Body = 18;
-        public const int RenderLayerMercenary1Hand2 = 19;
+        public const int RenderLayerMercenary1Hand1 = 18;
+        public const int RenderLayerMercenary1Hair = 19;
+        public const int RenderLayerMercenary1Eyes = 20;
+        public const int RenderLayerMercenary1Head = 21;
+        public const int RenderLayerMercenary1Shirt = 22;
+        public const int RenderLayerMercenary1Pants = 23;
+        public const int RenderLayerMercenary1Body = 24;
+        public const int RenderLayerMercenary1Hand2 = 25;
 
-        public const int RenderLayerMercenary2Hand1 = 20;
-        public const int RenderLayerMercenary2Hair = 21;
-        public const int RenderLayerMercenary2Eyes = 22;
-        public const int RenderLayerMercenary2Head = 23;
-        public const int RenderLayerMercenary2Shirt = 24;
-        public const int RenderLayerMercenary2Pants = 25;
-        public const int RenderLayerMercenary2Body = 26;
-        public const int RenderLayerMercenary2Hand2 = 27;
+        public const int RenderLayerMercenary2Hand1 = 26;
+        public const int RenderLayerMercenary2Hair = 27;
+        public const int RenderLayerMercenary2Eyes = 28;
+        public const int RenderLayerMercenary2Head = 29;
+        public const int RenderLayerMercenary2Shirt = 30;
+        public const int RenderLayerMercenary2Pants = 31;
+        public const int RenderLayerMercenary2Body = 32;
+        public const int RenderLayerMercenary2Hand2 = 33;
 
-        public const int RenderLayerActorAboveFogOfWar = 39; // Actors above fog of war but below UI
+        public const int RenderLayerMonsterYHigherThanParty = 39; // Monsters with Y position higher than the party are rendered here (behind all hero layers but in front of fog of war)
         public const int RenderLayerFogOfWar = 40;   // Fog of war layer above most things, except hero
         public const int RenderLayerActors = 60; // Actors and entities layer
         public const int RenderLayerDroppedItems = 65; // Dropped items layer
