@@ -109,3 +109,33 @@ drawable.SetPadding(0, 0, 25, 25);   // force text centering
 var button = new Button(ButtonStyle.Create(Color.Black, Color.DarkGray, Color.Green));
 table.Add(button).SetMinWidth(100).SetMinHeight(30);
 ```
+
+## NinePatch Window Background
+
+The standard `WindowStyle` uses the `NinepatchWindowBackground` sprite from `UI.atlas` with bounds **(24, 24, 24, 24)**:
+
+```csharp
+var ninePatch       = new NinePatchSprite(ninepatchSprite, 24, 24, 24, 24);
+var windowBackground = new NinePatchDrawable(ninePatch);
+```
+
+## TabPane Padding Rule
+
+When a `TabPane` is the only child of a `Window`, kill padding at **both** levels so tabs sit flush with the window edge:
+
+```csharp
+_window.Pad(0);                                       // Remove window's internal Table padding
+_window.Add(_tabPane).Expand().Fill().Pad(0);         // Remove cell padding
+```
+
+Otherwise the default Window padding pushes the tabs in by several pixels and they look misaligned.
+
+## Window Title Convention
+
+For tabbed windows (`HeroUI`, `SettingsUI`), use an **empty title** — the tabs themselves provide context ("Inventory / Hero Crystal / Behavior", "Window / Session"). For untabbed panels (`StencilLibraryPanel`), keep the title.
+
+```csharp
+_window = new Window("", windowStyle);   // tabbed window — no title
+```
+
+Empty title avoids visual clutter against the NinePatch background.

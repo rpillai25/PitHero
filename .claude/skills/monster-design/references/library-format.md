@@ -1,11 +1,11 @@
-# MONSTER_LIBRARY.md Format
+# PitHero/docs/MonsterLibrary.md Format
 
-When `MONSTER_LIBRARY.md` is first created, write the format header at the top so future additions stay consistent.
+When `PitHero/docs/MonsterLibrary.md` is first created, write the format header at the top so future additions stay consistent.
 
 ## Header Template (top of file)
 
 ````markdown
-# MONSTER_LIBRARY.md
+# MonsterLibrary.md
 
 Catalog of designed monsters for PitHero. The implementer reads this file when coding monster classes — see Principal Game Engineer for the C# Monster Creation Pattern.
 
@@ -72,4 +72,4 @@ Added 5 monsters for Cave pit levels 11–15:
 - Cave Sentinel (Tank)
 ```
 
-The implementer then uses each entry plus `MONSTER_BALANCE_GUIDE.md` to write the C# class.
+The implementer then uses each entry plus `PitHero/docs/MonsterBalanceGuide.md` to write the C# class.

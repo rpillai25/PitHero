@@ -212,3 +212,14 @@ if (_hoverTooltipWindow != null &&
     _hoverTooltipWindow.IsVisible())
     return;
 ```
+
+## State-Aware Tooltip Content (Skill Icons)
+
+When a grid icon represents an item with multiple states (learned/unlearned, affordable/too-expensive, level-locked), encode state in the tooltip's **text color and lines**, not in separate tooltip windows:
+
+- **Learned** — skill name in green; show "Learned" status line
+- **Unlearned, affordable** — name in white; show "JP cost: N"
+- **Unlearned, insufficient JP** — name in white; show "Insufficient JP" status line
+- **Level too low** — name in white; show "Requires level N" status line
+
+This keeps a single tooltip implementation per icon type. The `SkillButton` in `HeroCrystalTab` is a working example using `IInputListener.OnMouseEnter/OnMouseExit` for show/hide and `OnLeftMouseUp` for click-to-purchase.

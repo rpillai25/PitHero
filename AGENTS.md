@@ -140,14 +140,27 @@ All formulas live in `BalanceConfig.cs`. Caps are enforced via `StatConstants`:
 
 ## Reference Documents
 
-Repo-root design docs (kept as standalone references — don't duplicate their content into agent files or skills):
-- `EQUIPMENT_BALANCE_GUIDE.md`
-- `MONSTER_BALANCE_GUIDE.md`
-- `JOB_STAT_CURVES.md`
-- `CAVE_BIOME_BALANCE_REPORT.md`
-- `VIRTUAL_GAME_LOGIC_LAYER.md`
+Design docs under `PitHero/docs/` (kept as standalone references — don't duplicate their content into agent files or skills):
+
+**Balance / data:**
+- `PitHero/docs/EquipmentBalanceGuide.md`
+- `PitHero/docs/MonsterBalanceGuide.md`
+- `PitHero/docs/JobStatCurves.md`
+- `PitHero/docs/CaveBiomeBalanceReport.md`
+- `PitHero/docs/EquipmentLibrary.md`
+- `PitHero/docs/MonsterLibrary.md`
+
+**Architecture / subsystems:**
 - `PitHero/docs/RolePlayingFramework.md`
-- `features/` — per-feature design docs
+- `PitHero/docs/VirtualGameLogicLayer.md`
+- `PitHero/docs/JpSystem.md` — Job Points, skill purchase flow, mastery
+- `PitHero/docs/SynergySystem.md` — Inventory pattern matching architecture
+- `PitHero/docs/DynamicPit.md` — `PitWidthManager` + expansion cadence
+- `PitHero/docs/Permadeath.md` — Hero death, crystal vault, sell-value formula
+- `PitHero/docs/HeroPromotion.md` — Mercenary→hero conversion via crystal/statue
+
+**Per-feature docs:**
+- `features/`
 
 ## Agent Skills (Claude Code)
 
@@ -155,8 +168,8 @@ Domain skills under `.claude/skills/` provide on-demand guidance via progressive
 
 - `nez-ai` — GOAP, state machines, behavior trees, virtual-layer AI
 - `nez-ui` — Nez.UI patterns, skins, drag-drop, dialogs, UI implementation
-- `monster-design` — monster balance, biome progression, MONSTER_LIBRARY.md
-- `equipment-design` — equipment balance, biome progression, EQUIPMENT_LIBRARY.md
+- `monster-design` — monster balance, biome progression, `PitHero/docs/MonsterLibrary.md`
+- `equipment-design` — equipment balance, biome progression, `PitHero/docs/EquipmentLibrary.md`
 - `pit-balance-test` — virtual-game balance testing across pit levels
 - `virtual-game-layer` — coverage analysis for `VirtualGame/`
 - `make-skill-template` — meta-skill for scaffolding new skills

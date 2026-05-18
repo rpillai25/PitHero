@@ -119,6 +119,19 @@ private void UpdateHealingActionCosts()
 public override bool ShouldNotOverride() => true;  // Don't interrupt this action
 ```
 
+## Service-Integrated Multi-Phase Actions
+
+When an action mutates a shared service (e.g., spends gold, restores HP) between phases, gate the entire action on the precondition **before** starting the coroutine, and re-verify funds at the actual mutation point.
+
+Example: `SleepInBedAction` (Inn flow)
+
+- **Precondition gate (`Execute` entry):** check `GameStateService.Funds >= GameConfig.InnCostGold`. If not satisfied, return `true` immediately so the planner picks a different action — don't enter the coroutine to discover this.
+- **`CalculateTargetLocation`** returns the *payment* tile (`InnPaymentTileX/Y`), not the bed tile — so GoTo walks the hero to the innkeeper first.
+- **Coroutine phases:** face innkeeper (`Direction.Right`) → 0.5s animation delay → `GameStateService.Funds -= InnCostGold` → pathfind to bed → sleep → restore HP/MP.
+- Innkeeper entity is spawned at a fixed tile in `MainGameScene.SpawnInnkeeper()` with `TAG_INNKEEPER`; he never moves.
+
+The lesson: any action that spends a resource (gold, MP, items) must verify availability in `Execute` *before* starting visual coroutines — otherwise you can spend a frame walking to the NPC only to abort, which looks broken.
+
 ## GoTo State — Navigation
 
 The GoTo state handles ALL destination movement. Uses A* and `TileByTileMover`.

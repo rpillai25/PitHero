@@ -49,13 +49,13 @@ After monsters and equipment have been **designed AND implemented** for a featur
 
 ## Standard Test Procedure (high-level)
 
-1. **Read** `MONSTER_LIBRARY.md`, `EQUIPMENT_LIBRARY.md`, `JOB_STAT_CURVES.md`, `MONSTER_BALANCE_GUIDE.md`, `EQUIPMENT_BALANCE_GUIDE.md`, `VIRTUAL_GAME_LOGIC_LAYER.md`.
+1. **Read** the docs under `PitHero/docs/`: `MonsterLibrary.md`, `EquipmentLibrary.md`, `JobStatCurves.md`, `MonsterBalanceGuide.md`, `EquipmentBalanceGuide.md`, `VirtualGameLogicLayer.md`.
 2. **Run** virtual-layer traversal from pit level 1 → 100+ for one or more jobs.
 3. **Capture metrics** at sampling points (levels 1, 5, 10, 15, 20, 25, 30, 50, 75, 99) and at every boss floor:
    - HP-after-encounter, damage dealt vs taken, elemental advantage usage, healing-pool consumption
    - XP-to-next-level pacing
    - Equipment drops the hero actually used
-4. **Compare** against expected curve in `JOB_STAT_CURVES.md` and the balance guides.
+4. **Compare** against expected curve in `PitHero/docs/JobStatCurves.md` and the balance guides.
 5. **Identify** imbalances: spikes/cliffs in difficulty, jobs that fail certain levels, dead elemental matchups, useless equipment tiers, overpowered Rare drops, etc.
 6. **Write** the report. Pass/fail verdict + prioritized rebalance recommendations.
 

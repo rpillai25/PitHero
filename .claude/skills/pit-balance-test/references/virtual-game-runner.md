@@ -4,7 +4,7 @@
 
 ## Authoritative Source
 
-Always read `VIRTUAL_GAME_LOGIC_LAYER.md` at the repo root for the full overview of the virtual layer (entry points, supported components, how `VirtualWorldState` mirrors the live `WorldState`).
+Always read `PitHero/docs/VirtualGameLogicLayer.md` for the full overview of the virtual layer (entry points, supported components, how `VirtualWorldState` mirrors the live `WorldState`).
 
 ## Test Entry Points
 

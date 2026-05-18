@@ -45,8 +45,9 @@ PitHero uses **GOAP + SimpleStateMachine** following the F.E.A.R. pattern: a GOA
 | If you are working on… | Read |
 |---|---|
 | GOAP architecture, ActionPlanner setup, world/goal state, GoapConstants | `references/goap-architecture.md` |
-| FSM patterns (SimpleStateMachine, SKStateMachine), mercenary AI, replanning/interrupts | `references/state-machines.md` |
+| FSM patterns (SimpleStateMachine, SKStateMachine), replanning/interrupts | `references/state-machines.md` |
 | Creating a new GOAP action, multi-frame phases, dynamic costs, coroutines, GoTo/CalculateTargetLocation | `references/action-types.md` |
+| Mercenary AI — follow/jump/sleep patterns, freeze/unfreeze on hero death, follow-chain invariant | `references/mercenary-ai.md` |
 | Behavior trees or Utility AI (Nez built-ins, not currently used in PitHero) | `references/behavior-trees.md` |
 | Virtual game layer AI testing — `IGoapContext`, `VirtualHeroStateMachine`, dual execution | `references/virtual-layer-ai.md` |
 

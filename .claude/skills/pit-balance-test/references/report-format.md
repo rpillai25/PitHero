@@ -89,5 +89,5 @@ Tabulate findings by pit-level range. Each finding has a severity.
 
 - Use concrete numbers. "Knight dies at level 25" beats "Knight feels weak in Cave."
 - Tie every issue to a metric captured during traversal.
-- Cite which monster/equipment entries in `MONSTER_LIBRARY.md` / `EQUIPMENT_LIBRARY.md` need adjustment.
+- Cite which monster/equipment entries in `PitHero/docs/MonsterLibrary.md` / `PitHero/docs/EquipmentLibrary.md` need adjustment.
 - For each recommendation, propose a **specific number change** (multiplier from X → Y, stat from N → M). Vague recommendations are not actionable.

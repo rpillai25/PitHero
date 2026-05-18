@@ -8,9 +8,8 @@ Claude Code-specific notes for PitHero. **All project development rules live in 
 - **Domain expertise (auto-loaded by description match):** `.claude/skills/`
   - `nez-ai`, `nez-ui`, `monster-design`, `equipment-design`, `pit-balance-test`, `virtual-game-layer`, `make-skill-template`
 - **The single agent in this repo:** `.claude/agents/principal-game-engineer.md` (implementer; skills auto-discover)
-- **Reference docs at repo root:** `EQUIPMENT_BALANCE_GUIDE.md`, `MONSTER_BALANCE_GUIDE.md`, `JOB_STAT_CURVES.md`, `CAVE_BIOME_BALANCE_REPORT.md`, `VIRTUAL_GAME_LOGIC_LAYER.md`
+- **Reference docs (balance, libraries, subsystems):** `PitHero/docs/` — see [AGENTS.md](AGENTS.md) "Reference Documents" for the full list
 - **Feature design docs:** `features/`
-- **RPG system internals:** `PitHero/docs/RolePlayingFramework.md`
 
 ## Claude Code Conventions
 

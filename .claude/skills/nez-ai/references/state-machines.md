@@ -77,34 +77,4 @@ void PerformAction_Tick()
 
 ## Mercenary AI
 
-Mercenaries use the same GOAP + 3-state FSM pattern with `MercenaryStateMachine`.
-
-### MercenaryActionBase
-
-```csharp
-public abstract class MercenaryActionBase : Action
-{
-    protected MercenaryActionBase(string name, int cost = 1) : base(name, cost) { }
-    public abstract bool Execute(MercenaryComponent mercenary);
-}
-```
-
-### Mercenary Actions (5 total)
-
-| Action | Purpose |
-|---|---|
-| `FollowTargetAction` | Follow hero/other merc via pathfinding |
-| `WalkToPitEdgeAction` | Walk to pit boundary |
-| `MercenaryJumpIntoPitAction` | Jump into pit (coroutine) |
-| `MercenaryJumpOutOfPitAction` | Jump out of pit (coroutine) |
-| `WalkToHeroStatueAction` | Walk to hero statue for promotion |
-
-### Mercenary Replanning
-
-```csharp
-// If target's pit status changed unexpectedly, replan
-if (_expectedTargetInPit != targetActuallyInPit)
-{
-    CurrentState = ActorState.Idle;  // Replan
-}
-```
+Mercenaries use the same GOAP + 3-state FSM pattern with `MercenaryStateMachine`. The action set, follow/jump/sleep behaviors, and freeze/unfreeze-on-hero-death pattern are documented in **`references/mercenary-ai.md`**.

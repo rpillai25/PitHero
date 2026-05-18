@@ -12,7 +12,6 @@ namespace PitHero.Tests
     /// Tests for the ICrystalCollectionService contract, executed against
     /// MockCrystalCollectionService. When the production CrystalCollectionService
     /// is implemented, the same tests can run against it by swapping the factory.
-    /// All scenarios from HERO_CRYSTAL_TAB_IMPLEMENTATION.md are covered here.
     /// </summary>
     [TestClass]
     public class CrystalCollectionServiceTests

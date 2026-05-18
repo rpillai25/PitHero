@@ -38,8 +38,7 @@ namespace PitHero.Tests
         [TestMethod]
         public void CrystalColorUtil_CombineColors_RedAndBlue_ProducesMidtonePurple()
         {
-            // Knight = Green (example), Mage = Red (example) per HERO_CRYSTAL_TAB_UI_MOCKUP
-            // Here we test generic HSV blend
+            // Generic HSV blend test (Knight green + Mage red → midtone purple).
             var red = new Color(255, 0, 0);
             var blue = new Color(0, 0, 255);
             var result = CrystalColorUtil.CombineColors(red, blue);

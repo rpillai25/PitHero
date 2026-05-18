@@ -22,7 +22,7 @@ After feature planning is complete and **before** the implementer writes gamepla
 | If you are working on… | Read |
 |---|---|
 | Coverage checklist — what to inspect, what counts as "covered", priority order | `references/coverage-checklist.md` |
-| Virtual-layer architecture — main types, where to add code, how state mirrors the live layer | `references/architecture.md` and the repo's `VIRTUAL_GAME_LOGIC_LAYER.md` |
+| Virtual-layer architecture — main types, where to add code, how state mirrors the live layer | `references/architecture.md` and `PitHero/docs/VirtualGameLogicLayer.md` |
 
 ## What Counts as "Covered"
 
@@ -62,13 +62,13 @@ The feature has coverage gaps. Produce:
 
 ## Approach
 
-1. Read `VIRTUAL_GAME_LOGIC_LAYER.md` for current scope.
+1. Read `PitHero/docs/VirtualGameLogicLayer.md` for current scope.
 2. Read the feature plan (in `features/`) to identify which systems are touched.
 3. For each touched system, check the coverage checklist (`references/coverage-checklist.md`).
 4. For each gap relevant to the feature:
    - Add the minimal virtual counterpart needed
    - Write a focused unit test or smoke test to confirm the virtual counterpart works
-   - Update `VIRTUAL_GAME_LOGIC_LAYER.md` to reflect new coverage
+   - Update `PitHero/docs/VirtualGameLogicLayer.md` to reflect new coverage
 5. Write the All Clear or Delta Plan output.
 
 ## Build/Test Validation

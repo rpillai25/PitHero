@@ -1,6 +1,6 @@
 # Virtual Game Layer Architecture
 
-Authoritative deep-dive: `VIRTUAL_GAME_LOGIC_LAYER.md` at the repo root. Below is a quick orientation.
+Authoritative deep-dive: `PitHero/docs/VirtualGameLogicLayer.md`. Below is a quick orientation.
 
 ## Folder
 
@@ -57,7 +57,7 @@ Look at the test count diff — your new virtual component should add focused te
 
 ## Documenting Coverage
 
-When you add or extend virtual-layer code, update `VIRTUAL_GAME_LOGIC_LAYER.md`:
+When you add or extend virtual-layer code, update `PitHero/docs/VirtualGameLogicLayer.md`:
 - Note the new file(s) added
 - Update the coverage table for the affected subsystem
 - If new GOAP actions gained `Execute(IGoapContext)` support, list them

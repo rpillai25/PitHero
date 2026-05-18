@@ -1,6 +1,6 @@
 # Monster Balance Formulas (Quick Reference)
 
-The authoritative source for formulas is `MONSTER_BALANCE_GUIDE.md` at the repo root. This file is a concise lookup table for design work.
+The authoritative source for formulas is `PitHero/docs/MonsterBalanceGuide.md`. This file is a concise lookup table for design work.
 
 ## Core Formulas
 

@@ -19,15 +19,15 @@ You are **not** a designer. You receive a plan and context, then implement. If s
 
 # Approach
 
-1. Read the plan and any referenced design data (`MONSTER_LIBRARY.md`, `EQUIPMENT_LIBRARY.md`, feature docs under `features/`).
+1. Read the plan and any referenced design data (`PitHero/docs/MonsterLibrary.md`, `PitHero/docs/EquipmentLibrary.md`, feature docs under `features/`).
 2. Identify the files that will change. Read them. Understand surrounding patterns before adding to them.
 3. Implement in small, reviewable units. Build after each meaningful change.
 4. Validate before declaring done.
 
 # Implementation Notes
 
-- **Monsters** are implemented from `MONSTER_LIBRARY.md` entries. After adding the C# class, register the monster in the appropriate spawn pool. If a spawn-pool concept doesn't exist for the relevant biome yet, create it and integrate it cleanly. If no texture exists, use a placeholder consistent with the visual description in the library.
-- **Equipment** is implemented from `EQUIPMENT_LIBRARY.md` entries. After adding the factory method, ensure the item can spawn in treasure chests via the appropriate spawn pool. Same texture placeholder rule applies.
+- **Monsters** are implemented from `PitHero/docs/MonsterLibrary.md` entries. After adding the C# class, register the monster in the appropriate spawn pool. If a spawn-pool concept doesn't exist for the relevant biome yet, create it and integrate it cleanly. If no texture exists, use a placeholder consistent with the visual description in the library.
+- **Equipment** is implemented from `PitHero/docs/EquipmentLibrary.md` entries. After adding the factory method, ensure the item can spawn in treasure chests via the appropriate spawn pool. Same texture placeholder rule applies.
 - Project-wide rules (AOT, Nez, UI, localization, constants, code style) are in `AGENTS.md` at the repo root.
 
 # Monster Creation Pattern

@@ -59,3 +59,39 @@ For any UI change, also run the game and verify:
 ```
 
 Don't ship UI changes that compile but haven't been visually verified — UI is the one area where automated tests don't catch most regressions.
+
+## Common Patterns Worth Reusing
+
+### Tabbed UI with per-tab state refresh
+
+When a window owns multiple tabs that show *changing* data (JP, equipment, learned skills), refresh per-tab content on **window open**, not on tab switch. Example: `HeroUI.ToggleHeroWindow` calls `_heroCrystalTab.UpdateWithHero(hero)` whenever the window opens, and `Update()` refreshes the crystal-tab tooltip position each frame while shown. Click-to-purchase inside a tab triggers a local `RebuildSkillGrid` after the JP mutation, not a full window rebuild.
+
+### Atlas-driven icon grid (skills, stencils)
+
+Skills and synergy patterns load icons from `Content/Atlases/SkillsStencils.atlas` keyed by the **skill ID** or **pattern ID**:
+
+```csharp
+var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/SkillsStencils.atlas");
+var sprite = atlas.GetSprite(skill.Id);   // e.g. "knight.spin_slash", "synergy.holy_strike"
+```
+
+Naming convention: `synergy.*` for synergy-unlocked skills, `{job}.*` for job skills, `{job}.{pattern}` for pattern-only stencils.
+
+### Conditional sprite selection with fallback
+
+For elements that may render either of two related sprites (e.g., stencil shows skill icon if unlocked, pattern icon if not), prefer the more specific one with a chained fallback:
+
+```csharp
+string spriteName = _pattern.UnlockedSkill != null
+    ? _pattern.UnlockedSkill.Id
+    : _pattern.Id;
+var sprite = atlas.GetSprite(spriteName);
+if (sprite != null) drawable.Draw(...);
+else DrawFallbackIcon(batcher);     // e.g. first item kind from pattern
+```
+
+Wrap the atlas load in `try/catch` and fall back silently — missing sprites or a missing atlas should never crash the UI.
+
+### State-aware icon rendering
+
+For grid icons with learned/unlearned states, render learned at full color and unlearned at **0.5 alpha** (don't use a separate grayscale sprite). Synergy skills are auto-learned (no JP click) — clicking an unlearned synergy skill should show an info message, not a purchase dialog. Only job skills route to the JP confirmation flow.

@@ -664,7 +664,7 @@ This guide provides a comprehensive framework for creating balanced equipment in
 
 **Related Documentation:**
 - `BalanceConfig.cs` - All balance formulas and constants
-- `MONSTER_BALANCE_GUIDE.md` - Monster balancing guidelines
+- `MonsterBalanceGuide.md` - Monster balancing guidelines
 - `Gear.cs` - Equipment class definition
 - Existing equipment implementations in `/PitHero/RolePlayingFramework/Equipment/`
 

@@ -1,16 +1,16 @@
 ---
 name: equipment-design
-description: "**DOMAIN SKILL** — Designing balanced equipment (weapons, armor, helms, shields, accessories) for PitHero pit levels and biomes. USE FOR: creating new gear, weapons, armor, helms, shields, accessories, item rarity tiers (Normal/Uncommon/Rare/Epic/Legendary); balancing attack/defense/stat bonuses by pit level and biome; assigning elemental properties; populating treasure-chest spawn pools; updating EQUIPMENT_LIBRARY.md. DO NOT USE FOR: implementing equipment C# code (see Equipment Creation Pattern in `principal-game-engineer.md`), item art, consumable items, skills/abilities."
+description: "**DOMAIN SKILL** — Designing balanced equipment (weapons, armor, helms, shields, accessories) for PitHero pit levels and biomes. USE FOR: creating new gear, weapons, armor, helms, shields, accessories, item rarity tiers (Normal/Uncommon/Rare/Epic/Legendary); balancing attack/defense/stat bonuses by pit level and biome; assigning elemental properties; populating treasure-chest spawn pools; updating PitHero/docs/EquipmentLibrary.md. DO NOT USE FOR: implementing equipment C# code (see Equipment Creation Pattern in `principal-game-engineer.md`), item art, consumable items, skills/abilities."
 ---
 
 # Equipment Design — PitHero
 
-You are designing equipment — not implementing it. Output is design data in `EQUIPMENT_LIBRARY.md` at the repo root, which the implementer reads when coding the equipment factories.
+You are designing equipment — not implementing it. Output is design data in `PitHero/docs/EquipmentLibrary.md`, which the implementer reads when coding the equipment factories.
 
 ## Core Constraints
 
 - **No source code.** Design only.
-- **EQUIPMENT_LIBRARY.md** is the deliverable. Create it if missing.
+- **`PitHero/docs/EquipmentLibrary.md`** is the deliverable. Create it if missing.
 - A feature planning artifact under `features/` is also fine to create/update if you're tracking a multi-item batch.
 
 ## Equipment Categories
@@ -52,9 +52,9 @@ You are designing equipment — not implementing it. Output is design data in `E
 
 | If you are working on… | Read |
 |---|---|
-| Attack/defense/stat-bonus formulas, rarity multipliers, scaling by pit level | `references/balance-formulas.md` and the repo's `EQUIPMENT_BALANCE_GUIDE.md` |
+| Attack/defense/stat-bonus formulas, rarity multipliers, scaling by pit level | `references/balance-formulas.md` and the repo's `PitHero/docs/EquipmentBalanceGuide.md` |
 | Biome-by-biome design themes, elemental tilt, boss-tier drops | `references/biome-progression.md` |
-| Format of EQUIPMENT_LIBRARY.md entries — fields, header structure, examples | `references/library-format.md` |
+| Format of `PitHero/docs/EquipmentLibrary.md` entries — fields, header structure, examples | `references/library-format.md` |
 
 ## Element Assignment Guidelines
 
@@ -73,16 +73,16 @@ You are designing equipment — not implementing it. Output is design data in `E
 
 ## Design Approach
 
-1. Read `EQUIPMENT_BALANCE_GUIDE.md` for formulas and rarity multipliers.
+1. Read `PitHero/docs/EquipmentBalanceGuide.md` for formulas and rarity multipliers.
 2. Identify the **biome** and **pit-level range** being designed.
 3. Design **one piece of each type** (weapon, armor, helm, shield, accessory) for the new 5-level block — this expands the spawn pool by 5.
 4. For each piece, decide: name, rarity, pit level it spawns at, stat bonus, attack/defense value, element, visual description.
 5. Verify the hero's progression — Normal/Uncommon shouldn't make a same-level hero feel overpowered; Rare may give a real edge; Epic/Legendary are deliberately exceptional.
-6. Append entries to `EQUIPMENT_LIBRARY.md` using the common format.
+6. Append entries to `PitHero/docs/EquipmentLibrary.md` using the common format.
 
 ## Output
 
-Update or create `EQUIPMENT_LIBRARY.md` at the repo root. When first created, define the common entry format at the top. Each entry must include:
+Update or create `PitHero/docs/EquipmentLibrary.md`. When first created, define the common entry format at the top. Each entry must include:
 
 - Name
 - Type (weapon/armor/helm/shield/accessory)

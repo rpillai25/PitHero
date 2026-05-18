@@ -1,6 +1,6 @@
 # Equipment Balance Formulas (Quick Reference)
 
-Authoritative source: `EQUIPMENT_BALANCE_GUIDE.md` at the repo root. This is a concise lookup for design work.
+Authoritative source: `PitHero/docs/EquipmentBalanceGuide.md`. This is a concise lookup for design work.
 
 ## Core Formulas
 
@@ -59,7 +59,7 @@ For each new piece, compute the same-level hero's effective attack/defense and c
 | 75 | high | very high | ~360 HP | Normal weapon ~38 ATK |
 | 99 | 68 STR | 88 MAG | 78 VIT/415 HP | Normal weapon ~50 ATK |
 
-(See `JOB_STAT_CURVES.md` for the per-job curves.)
+(See `PitHero/docs/JobStatCurves.md` for the per-job curves.)
 
 A Normal-rarity weapon should add roughly **+50–100% to a same-level hero's effective offense** — never multiply it. Rare items may double it. Legendary items can triple or more.
 

@@ -54,7 +54,7 @@ Accessories can break the biome's elemental tilt for variety (a Fire ring in the
 
 ## Hero Power Curve Awareness
 
-The hero's stats grow per `JOB_STAT_CURVES.md`. When designing for level N:
+The hero's stats grow per `PitHero/docs/JobStatCurves.md`. When designing for level N:
 
 - A Normal weapon should match the hero's attack output at level N — not double it.
 - An Uncommon weapon adds ~10–15% effective offense.
@@ -62,4 +62,4 @@ The hero's stats grow per `JOB_STAT_CURVES.md`. When designing for level N:
 - An Epic weapon may exceed level expectations significantly (low drop rate compensates).
 - A Legendary item should feel game-changing.
 
-Cross-reference with `JOB_STAT_CURVES.md` so the gear curve matches the hero's stat curve.
+Cross-reference with `PitHero/docs/JobStatCurves.md` so the gear curve matches the hero's stat curve.

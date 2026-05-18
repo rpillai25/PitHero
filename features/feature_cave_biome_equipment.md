@@ -23,14 +23,14 @@ Create 113 missing equipment pieces for the Cave Biome (Pit Levels 1-25) using t
 - All equipment integrated into GearItems.cs
 - All equipment uses BalanceConfig formulas correctly
 - Project compiles successfully after implementation
-- Unit tests validate all equipment stats match EQUIPMENT_LIBRARY.md specifications
+- Unit tests validate all equipment stats match PitHero/docs/EquipmentLibrary.md specifications
 
 ---
 
 ## 3. Inputs Consumed
 
 ### Source Documents
-1. **EQUIPMENT_LIBRARY.md**: Complete specification of all 113 missing pieces
+1. **PitHero/docs/EquipmentLibrary.md**: Complete specification of all 113 missing pieces
    - Equipment stats (pit level, rarity, bonuses)
    - Visual themes and descriptions
    - Price and element assignments
@@ -154,7 +154,7 @@ public static Gear CrystalEdge() => Swords.CrystalEdge.Create();
 1. **Create Sword Files** (14 files)
    - Location: `PitHero/RolePlayingFramework/Equipment/Swords/`
    - Use ShortSword.cs and LongSword.cs as templates
-   - Follow EQUIPMENT_LIBRARY.md specifications exactly
+   - Follow PitHero/docs/EquipmentLibrary.md specifications exactly
 
 2. **Create Axe Files** (5 files)
    - Location: `PitHero/RolePlayingFramework/Equipment/Axes/`
@@ -173,7 +173,7 @@ public static Gear CrystalEdge() => Swords.CrystalEdge.Create();
    - Fix any compilation errors
 
 6. **Formula Validation**
-   - Verify attack bonuses match EQUIPMENT_LIBRARY.md
+   - Verify attack bonuses match PitHero/docs/EquipmentLibrary.md
    - Verify element assignments correct
    - Verify rarity settings correct
 
@@ -205,7 +205,7 @@ public static Gear CrystalEdge() => Swords.CrystalEdge.Create();
 5. `StalactiteSpear.cs` (Pit 19, Uncommon, Earth)
 6. `InfernalPike.cs` (Pit 23, Uncommon, Fire)
 
-**ItemKind**: Use `ItemKind.WeaponSword` (per EQUIPMENT_LIBRARY.md specification)
+**ItemKind**: Use `ItemKind.WeaponSword` (per PitHero/docs/EquipmentLibrary.md specification)
 
 #### Hammers/ (5 new files)
 1. `Mallet.cs` (Pit 3, Normal, Neutral)
@@ -214,7 +214,7 @@ public static Gear CrystalEdge() => Swords.CrystalEdge.Create();
 4. `QuakeHammer.cs` (Pit 18, Uncommon, Earth)
 5. `MagmaMaul.cs` (Pit 25, Uncommon, Fire)
 
-**ItemKind**: Use `ItemKind.WeaponKnuckle` (per EQUIPMENT_LIBRARY.md specification)
+**ItemKind**: Use `ItemKind.WeaponKnuckle` (per PitHero/docs/EquipmentLibrary.md specification)
 
 #### Staves/ (5 new files)
 1. `WalkingStick.cs` (Pit 2, Normal, Neutral)
@@ -223,7 +223,7 @@ public static Gear CrystalEdge() => Swords.CrystalEdge.Create();
 4. `ShadowwoodStaff.cs` (Pit 16, Uncommon, Darkness)
 5. `EmberRod.cs` (Pit 21, Uncommon, Fire)
 
-**ItemKind**: Use `ItemKind.WeaponStaff` (per EQUIPMENT_LIBRARY.md specification)
+**ItemKind**: Use `ItemKind.WeaponStaff` (per PitHero/docs/EquipmentLibrary.md specification)
 
 ### GearItems.cs Integration (16 methods)
 Add 16 factory methods for new weapon types.
@@ -254,7 +254,7 @@ Add 16 factory methods for new weapon types.
    - Fix any compilation errors
 
 6. **Formula Validation**
-   - Verify attack bonuses match EQUIPMENT_LIBRARY.md
+   - Verify attack bonuses match PitHero/docs/EquipmentLibrary.md
    - Verify ItemKind assignments correct
 
 ### Success Criteria
@@ -320,7 +320,7 @@ Add 23 factory methods for armor pieces.
    - Run: `dotnet build`
 
 4. **Formula Validation**
-   - Verify defense bonuses match EQUIPMENT_LIBRARY.md
+   - Verify defense bonuses match PitHero/docs/EquipmentLibrary.md
    - Verify ItemKind assignments (Robe/Gi/Mail) correct
 
 ### Success Criteria
@@ -417,7 +417,7 @@ Add 46 factory methods for shields and helms.
    - Run: `dotnet build`
 
 5. **Formula Validation**
-   - Verify defense bonuses match EQUIPMENT_LIBRARY.md
+   - Verify defense bonuses match PitHero/docs/EquipmentLibrary.md
    - Verify ItemKind assignments correct
 
 ### Success Criteria
@@ -456,7 +456,7 @@ namespace RolePlayingFramework.Equipment.[Category]
                 "[DisplayName]",
                 ItemKind.[WeaponSword|Shield|ArmorMail|HatHelm|etc],
                 Rarity,
-                $"[Description from EQUIPMENT_LIBRARY.md]",
+                $"[Description from PitHero/docs/EquipmentLibrary.md]",
                 [PriceInGold],
                 new StatBlock(0, 0, 0, 0),
                 atk: [attackBonus], // For weapons only
@@ -492,7 +492,7 @@ namespace RolePlayingFramework.Equipment.[Category]
 
 ### Element Mapping
 
-From EQUIPMENT_LIBRARY.md:
+From PitHero/docs/EquipmentLibrary.md:
 - **Neutral**: No elemental properties
 - **Earth**: Defensive, stone-based
 - **Fire**: Aggressive, flame-based
@@ -507,7 +507,7 @@ From EQUIPMENT_LIBRARY.md:
 
 **Class Names**: Match file names exactly
 
-**Display Names**: Match EQUIPMENT_LIBRARY.md exactly (keep spaces, apostrophes)
+**Display Names**: Match PitHero/docs/EquipmentLibrary.md exactly (keep spaces, apostrophes)
 
 ### GearItems.cs Integration Pattern
 
@@ -556,7 +556,7 @@ For each equipment piece, validate:
    - Normal: 1.0x
    - Uncommon: 1.5x
 
-3. **Element Assignment**: Matches EQUIPMENT_LIBRARY.md
+3. **Element Assignment**: Matches PitHero/docs/EquipmentLibrary.md
 
 4. **ItemKind**: Correct for equipment type/subtype
 
@@ -575,7 +575,7 @@ Test categories:
 3. **Element Tests**: Correct elemental properties assigned
 4. **ItemKind Tests**: Correct equipment types assigned
 5. **Rarity Tests**: Correct rarity assigned
-6. **Price Tests**: Prices reasonable and match EQUIPMENT_LIBRARY.md
+6. **Price Tests**: Prices reasonable and match PitHero/docs/EquipmentLibrary.md
 
 Example test structure:
 ```csharp
@@ -599,11 +599,11 @@ public void CrystalEdge_HasCorrectStats()
 
 | Risk | Impact | Probability | Mitigation Strategy |
 |------|--------|-------------|---------------------|
-| **Incorrect formula calculations** | High | Medium | Validate each phase against EQUIPMENT_LIBRARY.md; create unit tests |
+| **Incorrect formula calculations** | High | Medium | Validate each phase against PitHero/docs/EquipmentLibrary.md; create unit tests |
 | **ItemKind assignment errors** | High | Medium | Reference mapping table; verify during code review |
 | **Naming inconsistencies** | Medium | High | Follow strict naming convention; automate checks |
 | **Missing GearItems.cs integration** | High | Low | Checklist for each piece; build verification |
-| **Element assignment errors** | Medium | Medium | Cross-reference EQUIPMENT_LIBRARY.md; visual review |
+| **Element assignment errors** | Medium | Medium | Cross-reference PitHero/docs/EquipmentLibrary.md; visual review |
 | **Compilation errors** | High | Low | Build after each phase; fix immediately |
 | **Large file editing conflicts** | Medium | Low | Use multi_replace for GearItems.cs; work incrementally |
 
@@ -612,13 +612,13 @@ public void CrystalEdge_HasCorrectStats()
 **Per Equipment Piece**:
 - [ ] File name matches class name (PascalCase, no spaces)
 - [ ] XML documentation comment present
-- [ ] PitLevel constant matches EQUIPMENT_LIBRARY.md
-- [ ] Rarity constant matches EQUIPMENT_LIBRARY.md
+- [ ] PitLevel constant matches PitHero/docs/EquipmentLibrary.md
+- [ ] Rarity constant matches PitHero/docs/EquipmentLibrary.md
 - [ ] Correct BalanceConfig formula used (Attack vs Defense)
-- [ ] DisplayName matches EQUIPMENT_LIBRARY.md (preserve spaces/apostrophes)
+- [ ] DisplayName matches PitHero/docs/EquipmentLibrary.md (preserve spaces/apostrophes)
 - [ ] ItemKind matches equipment type
-- [ ] Price matches EQUIPMENT_LIBRARY.md
-- [ ] Element matches EQUIPMENT_LIBRARY.md
+- [ ] Price matches PitHero/docs/EquipmentLibrary.md
+- [ ] Element matches PitHero/docs/EquipmentLibrary.md
 - [ ] Description present and accurate
 
 **Per Phase**:
@@ -654,7 +654,7 @@ public void CrystalEdge_HasCorrectStats()
 - Understanding of equipment stat progression
 
 ### File Dependencies
-- `EQUIPMENT_LIBRARY.md`: Complete equipment specifications
+- `PitHero/docs/EquipmentLibrary.md`: Complete equipment specifications
 - Existing equipment files: Templates for new implementations
 - `GearItems.cs`: Integration point for all equipment
 
@@ -720,13 +720,13 @@ public void CrystalEdge_HasCorrectStats()
 ### Recommended Next Agent: Principal Game Engineer Agent
 
 **Handoff Context**:
-- **Input**: This implementation plan + EQUIPMENT_LIBRARY.md
+- **Input**: This implementation plan + PitHero/docs/EquipmentLibrary.md
 - **Task**: Implement all 4 phases sequentially
 - **Output**: 113 equipment files + GearItems.cs integration + build success
 
 **Handoff Checklist**:
 - [ ] Implementation plan reviewed and understood
-- [ ] EQUIPMENT_LIBRARY.md accessible
+- [ ] PitHero/docs/EquipmentLibrary.md accessible
 - [ ] Template files identified (ShortSword.cs, LongSword.cs, etc.)
 - [ ] Development environment ready (FNA/Nez initialized)
 - [ ] Ready to execute Phase 1
@@ -747,7 +747,7 @@ Each phase is complete when:
 - ✅ All files created with correct factory pattern
 - ✅ GearItems.cs updated with all methods for that phase
 - ✅ Project builds successfully (`dotnet build`)
-- ✅ Formulas validated against EQUIPMENT_LIBRARY.md
+- ✅ Formulas validated against PitHero/docs/EquipmentLibrary.md
 - ✅ No compilation warnings
 
 ### Overall Feature Completion
@@ -821,7 +821,7 @@ Feature is complete when:
 ### Key Findings
 
 1. **Implementation Pattern Established**: ShortSword.cs and LongSword.cs provide clear templates
-2. **ItemKind Mapping**: EQUIPMENT_LIBRARY.md specifies exact ItemKind for each equipment subtype
+2. **ItemKind Mapping**: PitHero/docs/EquipmentLibrary.md specifies exact ItemKind for each equipment subtype
 3. **Naming Convention**: File names must be PascalCase with spaces removed, display names preserve original formatting
 4. **Element Distribution**: Cave biome focuses on Neutral, Earth, Fire, and Darkness elements
 5. **Rarity Progression**: Normal (Pit 1-10), Uncommon (Pit 11-25) for Cave Biome
@@ -857,7 +857,7 @@ Feature is complete when:
 **Status**: ✅ **YES - READY FOR IMPLEMENTATION**
 
 ### Prerequisites Met
-- ✅ Complete equipment specifications in EQUIPMENT_LIBRARY.md
+- ✅ Complete equipment specifications in PitHero/docs/EquipmentLibrary.md
 - ✅ Factory pattern established and documented
 - ✅ BalanceConfig formulas available
 - ✅ Template files identified
@@ -866,7 +866,7 @@ Feature is complete when:
 
 ### What Principal Game Engineer Needs
 1. This implementation plan (feature_cave_biome_equipment.md)
-2. Access to EQUIPMENT_LIBRARY.md
+2. Access to PitHero/docs/EquipmentLibrary.md
 3. Template files: ShortSword.cs, LongSword.cs, LeatherArmor.cs, etc.
 4. Working development environment (FNA/Nez initialized)
 5. Ability to run `dotnet build`

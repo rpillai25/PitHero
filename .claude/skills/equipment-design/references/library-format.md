@@ -1,11 +1,11 @@
-# EQUIPMENT_LIBRARY.md Format
+# PitHero/docs/EquipmentLibrary.md Format
 
-When `EQUIPMENT_LIBRARY.md` is first created, write the format header at the top.
+When `PitHero/docs/EquipmentLibrary.md` is first created, write the format header at the top.
 
 ## Header Template (top of file)
 
 ````markdown
-# EQUIPMENT_LIBRARY.md
+# EquipmentLibrary.md
 
 Catalog of designed equipment for PitHero. The implementer reads this when coding equipment factory methods — see Principal Game Engineer for the C# Equipment Creation Pattern.
 
@@ -70,4 +70,4 @@ Added equipment for Cave pit levels 11–15:
 - Accessory: Stone Pendant (Pit 12, Normal, Earth)
 ```
 
-The implementer then uses each entry plus `EQUIPMENT_BALANCE_GUIDE.md` to write the C# factory method.
+The implementer then uses each entry plus `PitHero/docs/EquipmentBalanceGuide.md` to write the C# factory method.

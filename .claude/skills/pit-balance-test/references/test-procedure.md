@@ -2,7 +2,7 @@
 
 ## Pre-flight
 
-1. Confirm the relevant monsters and equipment from `MONSTER_LIBRARY.md` / `EQUIPMENT_LIBRARY.md` are **implemented** in the codebase. If they are not, halt and report — testing un-implemented designs is not the job.
+1. Confirm the relevant monsters and equipment from `PitHero/docs/MonsterLibrary.md` / `PitHero/docs/EquipmentLibrary.md` are **implemented** in the codebase. If they are not, halt and report — testing un-implemented designs is not the job.
 2. Run unit tests first:
    ```bash
    dotnet test PitHero.Tests/

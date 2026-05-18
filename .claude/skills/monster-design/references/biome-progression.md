@@ -16,7 +16,7 @@
   - Larger sprite size (often Large 64×64)
   - Unique mechanic or elemental gimmick
   - Higher loot tier
-- **Non-boss levels (e.g. 10, 11):** transitional, validate progression — use `Cave` biome boundaries as a reference (`CAVE_BIOME_BALANCE_REPORT.md`)
+- **Non-boss levels (e.g. 10, 11):** transitional, validate progression — use `Cave` biome boundaries as a reference (`PitHero/docs/CaveBiomeBalanceReport.md`)
 
 ## Spawn-Pool Sliding Window
 

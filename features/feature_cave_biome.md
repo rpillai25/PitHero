@@ -187,8 +187,8 @@ Based on `BalanceConfig.EstimatePlayerLevelForPitLevel()`:
 6. Use `Assert` methods from MSTest
 
 ### Documentation Standards
-1. Update MONSTER_BALANCE_GUIDE.md if needed
-2. Update EQUIPMENT_BALANCE_GUIDE.md if needed
+1. Update PitHero/docs/MonsterBalanceGuide.md if needed
+2. Update PitHero/docs/EquipmentBalanceGuide.md if needed
 3. Add cave biome notes to relevant guides
 4. Document all design decisions in feature file
 5. Keep AGENTS.md in sync
@@ -438,7 +438,7 @@ Based on `BalanceConfig.EstimatePlayerLevelForPitLevel()`:
   - Include testing strategy summary
 
 **Task 6.3: Update Balance Guides**
-- **Files**: `MONSTER_BALANCE_GUIDE.md`, `EQUIPMENT_BALANCE_GUIDE.md`
+- **Files**: `PitHero/docs/MonsterBalanceGuide.md`, `PitHero/docs/EquipmentBalanceGuide.md`
 - **Subtasks**:
   - Add cave biome section to MONSTER_BALANCE_GUIDE
     - Reference enemy tiers and progression
@@ -456,8 +456,8 @@ Based on `BalanceConfig.EstimatePlayerLevelForPitLevel()`:
 
 **Deliverables**:
 - New file: `features/CAVE_BIOME_DESIGN.md`
-- Updated: `MONSTER_BALANCE_GUIDE.md`
-- Updated: `EQUIPMENT_BALANCE_GUIDE.md`
+- Updated: `PitHero/docs/MonsterBalanceGuide.md`
+- Updated: `PitHero/docs/EquipmentBalanceGuide.md`
 - Updated: `AGENTS.md`
 
 ---
@@ -535,8 +535,8 @@ dotnet test PitHero.Tests/
 - [ ] Virtual layer has 100% parity for all 25 levels
 - [ ] Edge case tests cover all boundary conditions
 - [ ] Documentation file `CAVE_BIOME_DESIGN.md` created
-- [ ] `MONSTER_BALANCE_GUIDE.md` updated with cave sections
-- [ ] `EQUIPMENT_BALANCE_GUIDE.md` updated with cave sections
+- [ ] `PitHero/docs/MonsterBalanceGuide.md` updated with cave sections
+- [ ] `PitHero/docs/EquipmentBalanceGuide.md` updated with cave sections
 
 ### Nice to Have (P2)
 - [ ] 40+ tests with extensive edge case coverage
@@ -620,8 +620,8 @@ dotnet test PitHero.Tests/
 - `PitHero.Tests/CaveProgressionIntegrationTests.cs` (new)
 - `PitHero.Tests/CaveBiomeEdgeCaseTests.cs` (new)
 - `features/CAVE_BIOME_DESIGN.md` (new)
-- `MONSTER_BALANCE_GUIDE.md` (update)
-- `EQUIPMENT_BALANCE_GUIDE.md` (update)
+- `PitHero/docs/MonsterBalanceGuide.md` (update)
+- `PitHero/docs/EquipmentBalanceGuide.md` (update)
 
 **No Code Changes Required** (Only Testing & Documentation):
 - `CaveBiomeConfig.cs` is complete ✅
