@@ -924,10 +924,12 @@ namespace PitHero.AI
             return false;
         }
 
-        /// <summary>Emits the inn-rest console event.</summary>
+        /// <summary>Emits the inn-rest console event, using night-specific text when it's nighttime.</summary>
         private void EmitInnRestEvent()
         {
-            Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleInnRest);
+            var timeService = Core.Services.GetService<InGameTimeService>();
+            var key = timeService?.IsNighttime == true ? UITextKey.ConsoleNightSleep : UITextKey.ConsoleInnRest;
+            Core.Services.GetService<GameEventService>()?.EmitLocalized(key);
         }
 
         #endregion

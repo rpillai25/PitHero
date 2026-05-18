@@ -899,6 +899,11 @@ namespace PitHero.ECS.Components
             {
                 worldState.Set(GoapConstants.SeatedInTavern, true);
             }
+            var timeService = Core.Services.GetService<InGameTimeService>();
+            if (timeService?.IsNighttime == true)
+            {
+                worldState.Set(GoapConstants.IsNighttime, true);
+            }
         }
 
         /// <summary>
@@ -919,6 +924,14 @@ namespace PitHero.ECS.Components
             if (NeedsCrystal)
             {
                 goalState.Set(GoapConstants.HasArrivedAtStatueForCrystal, true);
+                return;
+            }
+
+            // HIGH PRIORITY: Night sleep — hero must rest from 10 PM to 6 AM (inn sleep is free at night)
+            var timeServiceForGoal = Core.Services.GetService<InGameTimeService>();
+            if (timeServiceForGoal?.IsNighttime == true)
+            {
+                goalState.Set(GoapConstants.IsNighttime, false);
                 return;
             }
 

@@ -213,6 +213,7 @@ namespace PitHero
         public const string ConsoleHeroRespawn = "ConsoleHeroRespawn";
         public const string ConsoleCrystalPromotion = "ConsoleCrystalPromotion";
         public const string ConsoleInnRest = "ConsoleInnRest";
+        public const string ConsoleNightSleep = "ConsoleNightSleep";
         public const string ConsoleMercenaryHired = "ConsoleMercenaryHired";
         public const string ConsoleMonsterAttack = "ConsoleMonsterAttack";
         public const string ConsoleItemFound = "ConsoleItemFound";

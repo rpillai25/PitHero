@@ -30,6 +30,7 @@ namespace PitHero.ECS.Scenes
         private Entity _pauseOverlayEntity; // Pause overlay entity
         private Label _pitLevelLabel; // UI label showing pit level
         private Label _fundsLabel; // UI label showing total funds
+        private Label _clockLabel; // UI label showing in-game time
         private int _lastDisplayedPitLevel = -1; // Track last displayed level to avoid string churn
         private int _lastDisplayedFunds = -1; // Track last displayed funds to avoid string churn
         private ShortcutBar _shortcutBar; // Shortcut bar displayed at bottom center
@@ -58,6 +59,8 @@ namespace PitHero.ECS.Scenes
         private const float PitLabelBaseX = 10f; // X position for Pit Lv label (bottom-left)
         private const float PitLabelBaseY = 350f; // Y position for Pit Lv label (bottom-left, ~30px from bottom at 360px height)
         private const float FundsLabelBaseX = 120f; // X position for Funds label (next to Pit Lv)
+        private const float ClockLabelRightPadding = 32f; // Pixels from right edge for clock label
+        private const float ClockLabelBaseY = 16f; // Y position for clock label (top area, offset to avoid cutoff)
         private const float FundsLabelBaseY = 350f; // Y position for Funds label (same as Pit Lv)
         private const float GraphicalHudBaseX = 10f; // Base X position for graphical HUD (shifted left to fill space)
         private const float GraphicalHudBaseY = 4f; // Base Y position for graphical HUD
@@ -1088,6 +1091,10 @@ namespace PitHero.ECS.Scenes
             _fundsLabel.SetStyle(_pitLevelStyleNormal);
             _fundsLabel.SetPosition(FundsLabelBaseX, FundsLabelBaseY);
 
+            // Clock label (upper-right, position adjusted dynamically based on text width)
+            _clockLabel = uiCanvas.Stage.AddElement(new Label("6:00 AM", _hudFontNormal));
+            _clockLabel.SetStyle(_pitLevelStyleNormal);
+
             // Create graphical HUD entity to display HP/MP/Level
             var hudEntity = CreateEntity("graphical-hud");
             hudEntity.SetPosition(GraphicalHudBaseX, GraphicalHudBaseY);
@@ -1235,6 +1242,17 @@ namespace PitHero.ECS.Scenes
                 _fundsLabel.SetText($"Gold: {currentFunds}");
                 _lastDisplayedFunds = currentFunds;
             }
+        }
+
+        private void UpdateClockLabel()
+        {
+            if (_clockLabel == null || _hudFontNormal == null) return;
+            var timeService = Core.Services.GetService<InGameTimeService>();
+            if (timeService == null) return;
+            string text = timeService.FormatTime();
+            _clockLabel.SetText(text);
+            float labelWidth = _hudFontNormal.MeasureString(text).X;
+            _clockLabel.SetPosition(GameConfig.VirtualWidth - labelWidth - ClockLabelRightPadding, ClockLabelBaseY);
         }
 
         /// <summary>
@@ -1637,6 +1655,8 @@ namespace PitHero.ECS.Scenes
             // Keep pit level label up to date
             UpdatePitLevelLabel();
             UpdateFundsLabel();
+            Core.Services.GetService<InGameTimeService>()?.Update();
+            UpdateClockLabel();
             UpdateHeroHUD();
             UpdateHudFontMode();
 

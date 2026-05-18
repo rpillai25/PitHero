@@ -49,6 +49,11 @@ namespace PitHero.AI
                 return false;
             }
 
+            // Night sleep is always valid — no HP/MP or gold requirement
+            var timeService = Core.Services.GetService<InGameTimeService>();
+            if (timeService?.IsNighttime == true)
+                return true;
+
             // Must have either HPCritical or MPCritical to justify using the inn
             if (!heroComponent.HPCritical && !heroComponent.MPCritical)
             {
@@ -87,13 +92,18 @@ namespace PitHero.AI
 
         public override bool Execute(HeroComponent hero)
         {
-            // Check if hero has enough gold before starting the jump
-            var gameState = Core.Services.GetService<GameStateService>();
-            if (gameState == null || gameState.Funds < GameConfig.InnCostGold)
+            // Night sleep is free — skip gold check
+            var timeService = Core.Services.GetService<InGameTimeService>();
+            bool isNightSleep = timeService?.IsNighttime == true;
+            if (!isNightSleep)
             {
-                Debug.Log($"[JumpOutOfPitForInn] Not enough gold for inn. Have {gameState?.Funds ?? 0}, need {GameConfig.InnCostGold}. Setting InnExhausted.");
-                hero.InnExhausted = true;
-                return true; // Action complete (failed due to no gold)
+                var gameState = Core.Services.GetService<GameStateService>();
+                if (gameState == null || gameState.Funds < GameConfig.InnCostGold)
+                {
+                    Debug.Log($"[JumpOutOfPitForInn] Not enough gold for inn. Have {gameState?.Funds ?? 0}, need {GameConfig.InnCostGold}. Setting InnExhausted.");
+                    hero.InnExhausted = true;
+                    return true; // Action complete (failed due to no gold)
+                }
             }
 
             // If already jumping, check if movement is complete

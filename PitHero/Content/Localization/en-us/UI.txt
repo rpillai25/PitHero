@@ -210,6 +210,7 @@ ConsoleMonsterDied,{0} was defeated!
 ConsoleHeroRespawn,{0} walks to the hero statue for his next chance
 ConsoleCrystalPromotion,{0} ventures forth as a {1}!
 ConsoleInnRest,Visiting inn to rest
+ConsoleNightSleep,Turning in for the night
 ConsoleMercenaryHired,{0} {1} was hired
 ConsoleMonsterAttack,{0} attacks {1} for {2} damage!
 ConsoleItemFound,{0} found {1}.

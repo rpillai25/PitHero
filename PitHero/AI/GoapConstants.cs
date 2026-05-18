@@ -32,6 +32,9 @@
         public const string NeedsCrystal = "NeedsCrystal";
         public const string HasArrivedAtStatueForCrystal = "HasArrivedAtStatueForCrystal";
 
+        // Time-of-day states
+        public const string IsNighttime = "IsNighttime";
+
         // Stop adventuring states
         public const string StoppedAdventure = "StoppedAdventure";
         public const string SeatedInTavern = "SeatedInTavern";

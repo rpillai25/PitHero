@@ -32,9 +32,10 @@ namespace PitHero.AI
             // Note: No HPCritical precondition — this action can satisfy either HPCritical or MPCritical goals.
             // The Validate() method ensures at least one of these conditions is true.
 
-            // Inn restores both HP and MP to full
+            // Inn restores both HP and MP to full; night sleep satisfies the IsNighttime goal
             SetPostcondition(GoapConstants.HPCritical, false);
             SetPostcondition(GoapConstants.MPCritical, false);
+            SetPostcondition(GoapConstants.IsNighttime, false);
             
             _isSleeping = false;
             _hasReachedPaymentTile = false;
@@ -44,8 +45,14 @@ namespace PitHero.AI
         public override bool Validate()
         {
             var heroComponent = Game1.Scene.FindEntity("hero")?.GetComponent<HeroComponent>();
+
+            // Night sleep is always valid — no HP/MP or gold requirement
+            var timeService = Core.Services.GetService<InGameTimeService>();
+            if (timeService?.IsNighttime == true)
+                return true;
+
             var healPrioritiesInOrder = heroComponent?.GetHealPrioritiesInOrder();
-            
+
             // Must have either HPCritical or MPCritical
             if (!heroComponent.HPCritical && !heroComponent.MPCritical)
             {
@@ -88,7 +95,7 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Execute the sleep action - walk to payment tile, pay innkeeper, sleep for 10 seconds and restore full HP and MP
+        /// Execute the sleep action - walk to payment tile, pay innkeeper (if not night sleep), then sleep and restore HP/MP
         /// NOTE: Gold check happens here since we can't add dynamic preconditions
         /// </summary>
         public override bool Execute(HeroComponent hero)
@@ -111,25 +118,31 @@ namespace PitHero.AI
                 return false;
             }
 
-            // Check if hero has enough gold to pay for the inn (only before starting the action)
-            var gameState = Core.Services.GetService<GameStateService>();
-            if (gameState == null || gameState.Funds < GameConfig.InnCostGold)
+            var timeService = Core.Services.GetService<InGameTimeService>();
+            bool isNightSleep = timeService?.IsNighttime == true;
+
+            // Night sleep is free — skip gold check
+            if (!isNightSleep)
             {
-                Debug.Log($"[SleepInBedAction] Not enough gold to sleep at inn. Have {gameState?.Funds ?? 0}, need {GameConfig.InnCostGold}");
-                return true; // Return true to mark action as "complete" so hero can try other actions
+                var gameState = Core.Services.GetService<GameStateService>();
+                if (gameState == null || gameState.Funds < GameConfig.InnCostGold)
+                {
+                    Debug.Log($"[SleepInBedAction] Not enough gold to sleep at inn. Have {gameState?.Funds ?? 0}, need {GameConfig.InnCostGold}");
+                    return true; // Return true to mark action as "complete" so hero can try other actions
+                }
             }
 
             // Start the sleep coroutine
-            Debug.Log("[SleepInBedAction] Starting sleep action");
+            Debug.Log($"[SleepInBedAction] Starting sleep action (isNightSleep={isNightSleep})");
             _isSleeping = true;
-            _sleepCoroutine = Core.StartCoroutine(SleepCoroutine(hero));
+            _sleepCoroutine = Core.StartCoroutine(SleepCoroutine(hero, isNightSleep));
             return false; // Not complete yet
         }
 
         /// <summary>
-        /// Coroutine that walks to payment tile, pays innkeeper, then sleeps for 10 seconds and heals the hero and hired mercenaries to full HP and MP
+        /// Coroutine that walks to payment tile, optionally pays innkeeper (free for night sleep), then sleeps and heals the hero and hired mercenaries
         /// </summary>
-        private IEnumerator SleepCoroutine(HeroComponent hero)
+        private IEnumerator SleepCoroutine(HeroComponent hero, bool isNightSleep)
         {
             var heroEntity = hero.Entity;
             var tileMover = heroEntity.GetComponent<TileByTileMover>();
@@ -233,23 +246,29 @@ namespace PitHero.AI
             // Wait a brief moment (payment animation would go here)
             yield return Coroutine.WaitForSeconds(0.5f);
 
-            // Step 3: Pay the innkeeper (deduct 10 gold)
-            var gameState = Core.Services.GetService<GameStateService>();
-            if (gameState != null && gameState.Funds >= GameConfig.InnCostGold)
+            // Step 3: Pay the innkeeper (skipped for free night sleep)
+            if (!isNightSleep)
             {
-                gameState.Funds -= GameConfig.InnCostGold;
-                _hasPaidInnkeeper = true;
-                soundEffectManager.PlaySound(SoundEffectType.PayGold);
-                Debug.Log($"[SleepInBedAction] Paid {GameConfig.InnCostGold} gold to innkeeper. Remaining funds: {gameState.Funds}");
-
+                var gameState = Core.Services.GetService<GameStateService>();
+                if (gameState != null && gameState.Funds >= GameConfig.InnCostGold)
+                {
+                    gameState.Funds -= GameConfig.InnCostGold;
+                    _hasPaidInnkeeper = true;
+                    soundEffectManager.PlaySound(SoundEffectType.PayGold);
+                    Debug.Log($"[SleepInBedAction] Paid {GameConfig.InnCostGold} gold to innkeeper. Remaining funds: {gameState.Funds}");
+                }
+                else
+                {
+                    Debug.Error("[SleepInBedAction] Not enough gold to pay innkeeper!");
+                    _sleepCompleted = true;
+                    _sleepCoroutine = null;
+                    _isSleeping = false;
+                    yield break;
+                }
             }
             else
             {
-                Debug.Error("[SleepInBedAction] Not enough gold to pay innkeeper!");
-                _sleepCompleted = true;
-                _sleepCoroutine = null;
-                _isSleeping = false;
-                yield break;
+                Debug.Log("[SleepInBedAction] Night sleep — innkeeper stay is free");
             }
 
             // Step 4: Walk to bed (73, 3)
@@ -411,12 +430,24 @@ namespace PitHero.AI
                     mercAnimComps[j].PauseAnimation();
             }
 
-            // Wait for 10 seconds (sleep duration)
-            float elapsed = 0f;
-            while (elapsed < 10f)
+            // Night sleep: wait until 6 AM; healing sleep: wait 10 seconds
+            if (isNightSleep)
             {
-                elapsed += Time.DeltaTime;
-                yield return null;
+                var timeServiceForSleep = Core.Services.GetService<InGameTimeService>();
+                Debug.Log("[SleepInBedAction] Night sleep — waiting until 6 AM");
+                while (timeServiceForSleep?.IsNighttime == true)
+                {
+                    yield return null;
+                }
+            }
+            else
+            {
+                float elapsed = 0f;
+                while (elapsed < 10f)
+                {
+                    elapsed += Time.DeltaTime;
+                    yield return null;
+                }
             }
 
             Debug.Log("[SleepInBedAction] Sleep complete, restoring HP and MP to full for hero and mercenaries");
