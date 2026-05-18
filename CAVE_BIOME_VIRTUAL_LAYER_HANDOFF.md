@@ -191,7 +191,7 @@ Implement virtual layer infrastructure to track and test:
 - ✅ Consistent naming conventions
 - ✅ AOT-compliant (no LINQ, use `for` loops)
 - ✅ Nez framework compliance
-- ✅ Follows copilot-instructions.md guidelines
+- ✅ Follows AGENTS.md guidelines
 
 ---
 
@@ -317,7 +317,7 @@ dotnet test PitHero.Tests/ --filter "FullyQualifiedName~CaveBiomeConfigTests"
 - ✅ Complete documentation created
 - ✅ Zero breaking changes to existing code
 - ✅ 100% backward compatibility maintained
-- ✅ Code follows all project standards (copilot-instructions.md)
+- ✅ Code follows all project standards (AGENTS.md)
 
 ### Build Verification
 

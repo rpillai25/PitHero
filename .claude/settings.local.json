@@ -6,7 +6,9 @@
       "Bash(Get-ChildItem *)",
       "Bash(xargs grep *)",
       "mcp__github__issue_read",
-      "Bash(Select-Object -ExpandProperty Name)"
+      "Bash(Select-Object -ExpandProperty Name)",
+      "Bash(Select-Object Name)",
+      "Bash(Select-Object FullName)"
     ]
   }
 }

@@ -54,7 +54,7 @@ After this change there must be **no path** through which a left-click (or doubl
 - **`SwapAnimationOverlay`** — keep using for post-drop animation (already used by drag paths in `InventoryGrid` via `InventorySelectionManager.TryAnimateSwap` and by `CrystalsTab.AnimateCrystalSwap`).
 - **`HeroCrystalTab.HandleSkillButtonDragStarted/Moved/Dropped`** — already in place for active-skill drag onto shortcut bar; no equivalent for skills exists in the click model except the soon-removed selection.
 
-### 3.3 Constraints & Rules (from `CLAUDE.md` / `.github/copilot-instructions.md`)
+### 3.3 Constraints & Rules (from `CLAUDE.md` / `AGENTS.md`)
 
 **AOT / hot-path:**
 - Use `for` loops, not `foreach`.

@@ -330,7 +330,7 @@ All Priority 1 deliverables completed:
 
 **Code Quality:**
 - ✅ No compilation errors
-- ✅ Follows PitHero coding standards (see .github/copilot-instructions.md)
+- ✅ Follows PitHero coding standards (see AGENTS.md)
 - ✅ All tests pass (CaveBiomeMonsterTests.cs)
 - ✅ Proper BalanceConfig integration
 - ✅ AOT-compliant code (no LINQ, pre-allocated collections)

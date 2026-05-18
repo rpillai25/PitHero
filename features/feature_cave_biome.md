@@ -191,7 +191,7 @@ Based on `BalanceConfig.EstimatePlayerLevelForPitLevel()`:
 2. Update EQUIPMENT_BALANCE_GUIDE.md if needed
 3. Add cave biome notes to relevant guides
 4. Document all design decisions in feature file
-5. Keep copilot-instructions.md in sync
+5. Keep AGENTS.md in sync
 
 ---
 
@@ -447,8 +447,8 @@ Based on `BalanceConfig.EstimatePlayerLevelForPitLevel()`:
     - Document treasure level probabilities
     - Explain rarity band transitions
 
-**Task 6.4: Update Copilot Instructions**
-- **Files**: `.github/copilot-instructions.md`
+**Task 6.4: Update Project Agent Guidelines**
+- **Files**: `AGENTS.md`
 - **Subtasks**:
   - Add cave biome reference to Architecture Guidelines
   - Document `CaveBiomeConfig` usage patterns
@@ -458,7 +458,7 @@ Based on `BalanceConfig.EstimatePlayerLevelForPitLevel()`:
 - New file: `features/CAVE_BIOME_DESIGN.md`
 - Updated: `MONSTER_BALANCE_GUIDE.md`
 - Updated: `EQUIPMENT_BALANCE_GUIDE.md`
-- Updated: `.github/copilot-instructions.md`
+- Updated: `AGENTS.md`
 
 ---
 
