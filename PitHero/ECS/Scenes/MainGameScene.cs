@@ -9,6 +9,7 @@ using PitHero.AI;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
 using PitHero.Services;
+using PitHero.Rendering;
 using PitHero.UI;
 using PitHero.Util;
 using RolePlayingFramework.AlliedMonsters;
@@ -46,6 +47,7 @@ namespace PitHero.ECS.Scenes
         private Entity _mercenaryNameLabelEntity; // Entity for rendering name above hovered mercenary
         private Services.HeroPromotionService _heroPromotionService; // Manages hero crystal promotion after death
         private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
+        private ColorGradingPostProcessor _colorGrading;
 
         // HUD fonts for different shrink levels
         public BitmapFont _hudFontNormal;
@@ -112,7 +114,14 @@ namespace PitHero.ECS.Scenes
             Core.Services.AddService(new Services.CrystalCollectionService());
 
             SetupUIOverlay();
+
+            // Color grading post-processor — swap LUT at runtime via SetColorGradingLUT()
+            // Comment out to disable (or set _colorGrading.Enabled = false at runtime)
+            _colorGrading = AddPostProcessor(new ColorGradingPostProcessor(0));
         }
+
+        // Call to swap the color grading LUT at runtime (e.g. day/night transitions)
+        public void SetColorGradingLUT(string contentPath) => _colorGrading?.SwapLUT(contentPath);
 
         /// <summary>
         /// Removes scene-specific services and unloads the cached TiledMap so a new
