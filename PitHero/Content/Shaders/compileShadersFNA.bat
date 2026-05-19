@@ -1,0 +1,1 @@
+C:\Users\rpill\Devroot\PitHero\Nez\DefaultContentSource\FNAShaderCompiler\fxc.exe /T fx_2_0 ColorGrading.fx /Fo ColorGrading.fxb
