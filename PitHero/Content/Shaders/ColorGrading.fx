@@ -1,19 +1,29 @@
-// Color Grading Shader with LUTs - FNA/XNA compatible (Shader Model 3.0)
-// Adapted from TheKosmonaut 2017 (kosmonaut3d@googlemail.com)
+// Color Grading Shader with dual-LUT blending - FNA/XNA compatible (Shader Model 3.0)
 // Pixel-shader only: Nez Batcher applies its own SpriteEffect vertex pass.
 
-float Size     = 16;
-float SizeRoot = 4;
-float InvLUTSize = 0.015625; // 1 / (SizeRoot * Size), updated from C# when Size/SizeRoot change
+float Size       = 16;
+float SizeRoot   = 4;
+float InvLUTSize = 0.015625; // 1 / (SizeRoot * Size)
+float BlendFactor = 0;       // 0 = full LUT A, 1 = full LUT B
 
 // Input scene texture - bound automatically to s0 by Nez Batcher
 sampler2D InputSampler : register(s0);
 
-// LUT texture - bound via Effect.Parameters["LUTTexture"] in C#
-texture LUTTexture;
-sampler2D LUTSampler = sampler_state
+texture LUTTextureA;
+sampler2D LUTSamplerA = sampler_state
 {
-    Texture   = <LUTTexture>;
+    Texture   = <LUTTextureA>;
+    MinFilter = Linear;
+    MagFilter = Linear;
+    MipFilter = None;
+    AddressU  = Clamp;
+    AddressV  = Clamp;
+};
+
+texture LUTTextureB;
+sampler2D LUTSamplerB = sampler_state
+{
+    Texture   = <LUTTextureB>;
     MinFilter = Linear;
     MagFilter = Linear;
     MipFilter = None;
@@ -27,8 +37,6 @@ struct PSInput
     float2 TexCoord : TEXCOORD0;
 };
 
-// Trilinear LUT lookup: hardware bilinear handles R+G within a blue slice;
-// we manually lerp between adjacent blue slices.
 float4 PSApplyLUT(PSInput input) : COLOR0
 {
     float4 color = tex2D(InputSampler, input.TexCoord);
@@ -55,7 +63,9 @@ float4 PSApplyLUT(PSInput input) : COLOR0
         (row1 * Size + green + 0.5) * InvLUTSize
     );
 
-    return lerp(tex2D(LUTSampler, uv0), tex2D(LUTSampler, uv1), blueFrac);
+    float4 gradedA = lerp(tex2D(LUTSamplerA, uv0), tex2D(LUTSamplerA, uv1), blueFrac);
+    float4 gradedB = lerp(tex2D(LUTSamplerB, uv0), tex2D(LUTSamplerB, uv1), blueFrac);
+    return lerp(gradedA, gradedB, BlendFactor);
 }
 
 technique ApplyLUT

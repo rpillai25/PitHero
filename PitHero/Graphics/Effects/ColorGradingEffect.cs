@@ -7,15 +7,41 @@ namespace PitHero.Rendering
 {
     public class ColorGradingEffect : Effect
     {
-        public Texture2D LookUpTable
+        public Texture2D LookUpTableA
         {
-            get => _lut;
+            get => _lutA;
             set
             {
-                if (_lut != value)
+                if (_lutA != value)
                 {
-                    _lut = value;
-                    _lutParam.SetValue(_lut);
+                    _lutA = value;
+                    _lutAParam.SetValue(_lutA);
+                }
+            }
+        }
+
+        public Texture2D LookUpTableB
+        {
+            get => _lutB;
+            set
+            {
+                if (_lutB != value)
+                {
+                    _lutB = value;
+                    _lutBParam.SetValue(_lutB);
+                }
+            }
+        }
+
+        public float BlendFactor
+        {
+            get => _blendFactor;
+            set
+            {
+                if (_blendFactor != value)
+                {
+                    _blendFactor = value;
+                    _blendFactorParam.SetValue(_blendFactor);
                 }
             }
         }
@@ -50,11 +76,15 @@ namespace PitHero.Rendering
             }
         }
 
-        Texture2D _lut;
-        float _size     = 16f;
-        float _sizeRoot = 4f;
+        Texture2D _lutA;
+        Texture2D _lutB;
+        float _blendFactor = 0f;
+        float _size        = 16f;
+        float _sizeRoot    = 4f;
 
-        EffectParameter _lutParam;
+        EffectParameter _lutAParam;
+        EffectParameter _lutBParam;
+        EffectParameter _blendFactorParam;
         EffectParameter _sizeParam;
         EffectParameter _sizeRootParam;
         EffectParameter _invLUTSizeParam;
@@ -63,13 +93,16 @@ namespace PitHero.Rendering
 
         public ColorGradingEffect() : base(Core.GraphicsDevice, _shaderBytes ??= LoadShaderBytes())
         {
-            _lutParam        = Parameters["LUTTexture"];
-            _sizeParam       = Parameters["Size"];
-            _sizeRootParam   = Parameters["SizeRoot"];
-            _invLUTSizeParam = Parameters["InvLUTSize"];
+            _lutAParam        = Parameters["LUTTextureA"];
+            _lutBParam        = Parameters["LUTTextureB"];
+            _blendFactorParam = Parameters["BlendFactor"];
+            _sizeParam        = Parameters["Size"];
+            _sizeRootParam    = Parameters["SizeRoot"];
+            _invLUTSizeParam  = Parameters["InvLUTSize"];
 
             _sizeParam.SetValue(_size);
             _sizeRootParam.SetValue(_sizeRoot);
+            _blendFactorParam.SetValue(_blendFactor);
             UpdateInvLUTSize();
         }
 

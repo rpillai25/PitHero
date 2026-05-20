@@ -115,13 +115,8 @@ namespace PitHero.ECS.Scenes
 
             SetupUIOverlay();
 
-            // Color grading post-processor — swap LUT at runtime via SetColorGradingLUT()
-            // Comment out to disable (or set _colorGrading.Enabled = false at runtime)
             _colorGrading = AddPostProcessor(new ColorGradingPostProcessor(0));
         }
-
-        // Call to swap the color grading LUT at runtime (e.g. day/night transitions)
-        public void SetColorGradingLUT(string contentPath) => _colorGrading?.SwapLUT(contentPath);
 
         /// <summary>
         /// Removes scene-specific services and unloads the cached TiledMap so a new
@@ -1665,6 +1660,7 @@ namespace PitHero.ECS.Scenes
             UpdatePitLevelLabel();
             UpdateFundsLabel();
             Core.Services.GetService<InGameTimeService>()?.Update();
+            _colorGrading?.UpdateTimeOfDay();
             UpdateClockLabel();
             UpdateHeroHUD();
             UpdateHudFontMode();
