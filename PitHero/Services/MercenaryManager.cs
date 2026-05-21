@@ -766,6 +766,15 @@ namespace PitHero.Services
                 (mercComponent.LinkedMercenary.Job.Name, Color.White),
                 (mercComponent.LinkedMercenary.Name, GameConfig.ConsoleColorHeroName));
 
+            // If the hero is sleeping, defer AI initialization — merc stays at tavern chair until wake-up
+            var heroComponent = heroEntity?.GetComponent<HeroComponent>();
+            if (heroComponent?.IsSleeping == true)
+            {
+                mercComponent.IsHiredDuringSleep = true;
+                Debug.Log($"[MercenaryManager] Hero is sleeping — mercenary {mercComponent.LinkedMercenary.Name} will wait in tavern until party wakes");
+                return true;
+            }
+
             // Add state machine and jump component for pit jumping
             if (!mercEntity.HasComponent<HeroJumpComponent>())
             {

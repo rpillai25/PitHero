@@ -18,6 +18,9 @@ namespace PitHero.ECS.Components
         /// <summary>True if this mercenary is waiting in the tavern</summary>
         public bool IsWaitingInTavern { get; set; }
 
+        /// <summary>True if this mercenary was hired while the party was asleep; state machine deferred until wake-up.</summary>
+        public bool IsHiredDuringSleep { get; set; }
+
         /// <summary>True if this mercenary is walking offscreen to be removed</summary>
         public bool IsBeingRemoved { get; set; }
 

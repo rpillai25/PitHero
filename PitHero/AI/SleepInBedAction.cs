@@ -555,6 +555,22 @@ namespace PitHero.AI
                 }
             }
 
+            // Initialize any mercenaries hired while party was asleep
+            var allHiredMercs = mercenaryManager?.GetHiredMercenaries() ?? new List<Entity>();
+            for (int i = 0; i < allHiredMercs.Count; i++)
+            {
+                var merc = allHiredMercs[i];
+                var mercComp = merc.GetComponent<MercenaryComponent>();
+                if (mercComp != null && mercComp.IsHiredDuringSleep)
+                {
+                    mercComp.IsHiredDuringSleep = false;
+                    if (!merc.HasComponent<HeroJumpComponent>())
+                        merc.AddComponent(new HeroJumpComponent());
+                    merc.AddComponent(new AI.MercenaryStateMachine());
+                    Debug.Log($"[SleepInBedAction] Initialized mercenary hired during sleep: {mercComp.LinkedMercenary.Name}");
+                }
+            }
+
             // Unpause hero animation layers before walking out
             var heroAnimCompsWake = heroEntity.GetComponents<HeroAnimationComponent>();
             for (int i = 0; i < heroAnimCompsWake.Count; i++)
