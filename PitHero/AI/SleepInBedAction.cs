@@ -106,6 +106,7 @@ namespace PitHero.AI
                 Debug.Log("[SleepInBedAction] Sleep previously completed, resetting for next use");
                 _sleepCompleted = false; // Reset for next time this action is used
                 _isSleeping = false;
+                hero.IsSleeping = false;
                 _hasReachedPaymentTile = false;
                 _hasPaidInnkeeper = false;
                 return true;
@@ -135,6 +136,7 @@ namespace PitHero.AI
             // Start the sleep coroutine
             Debug.Log($"[SleepInBedAction] Starting sleep action (isNightSleep={isNightSleep})");
             _isSleeping = true;
+            hero.IsSleeping = true;
             _sleepCoroutine = Core.StartCoroutine(SleepCoroutine(hero, isNightSleep));
             return false; // Not complete yet
         }
@@ -263,6 +265,7 @@ namespace PitHero.AI
                     _sleepCompleted = true;
                     _sleepCoroutine = null;
                     _isSleeping = false;
+                    hero.IsSleeping = false;
                     yield break;
                 }
             }
@@ -637,6 +640,7 @@ namespace PitHero.AI
             _sleepCompleted = true;
             _sleepCoroutine = null;
             _isSleeping = false;
+            hero.IsSleeping = false;
 
             Debug.Log("[SleepInBedAction] Sleep action completed, hero has left the inn");
         }

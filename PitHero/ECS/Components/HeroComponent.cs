@@ -306,6 +306,11 @@ namespace PitHero.ECS.Components
         /// </summary>
         public bool SeatedInTavern { get; set; }
 
+        /// <summary>
+        /// True while the party is sleeping in the inn (set by SleepInBedAction).
+        /// </summary>
+        public bool IsSleeping { get; set; }
+
         // Replenish override tracking - per-character flags set when Replenish button is pressed
         private bool _replenishHPOverrideHero;
         private bool _replenishMPOverrideHero;

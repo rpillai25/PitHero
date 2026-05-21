@@ -29,6 +29,7 @@ namespace PitHero.UI
         private bool _isStoppedAdventuring = false;
         private bool _styleChanged = false;
         private bool _isHiddenForPromotion = false;
+        private bool _isHiddenForSleep = false;
 
         public StopAdventuringUI()
         {
@@ -280,6 +281,36 @@ namespace PitHero.UI
             _styleChanged = true; // Triggers SettingsUI layout reflow via ConsumeStyleChangedFlag
         }
 
+        private void ApplySleepVisibility(bool hidden)
+        {
+            if (hidden)
+            {
+                _button.SetVisible(false);
+                _button.SetTouchable(Touchable.Disabled);
+            }
+            else
+            {
+                _button.SetVisible(true);
+                _button.SetTouchable(Touchable.Enabled);
+            }
+            _styleChanged = true;
+        }
+
+        private void UpdateSleepVisibilityIfNeeded()
+        {
+            if (_button == null || Core.Scene == null)
+                return;
+
+            var heroComponent = Core.Scene.FindEntity("hero")?.GetComponent<HeroComponent>();
+            bool shouldHide = heroComponent != null && heroComponent.IsSleeping;
+
+            if (shouldHide == _isHiddenForSleep)
+                return;
+
+            _isHiddenForSleep = shouldHide;
+            ApplySleepVisibility(shouldHide);
+        }
+
         /// <summary>
         /// Checks if the hero is pending crystal promotion and hides/shows the button accordingly.
         /// Skips entity lookup entirely when the button is not yet initialized or state is unchanged.
@@ -306,6 +337,7 @@ namespace PitHero.UI
         /// </summary>
         public void Update()
         {
+            UpdateSleepVisibilityIfNeeded();
             UpdatePromotionVisibilityIfNeeded();
             UpdateButtonStyleIfNeeded();
         }

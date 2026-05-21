@@ -200,7 +200,11 @@ namespace PitHero.ECS.Scenes
 
             // Clear pending data so it's not applied again
             SaveLoadService.PendingLoadData = null;
-            
+
+            // Restore in-game time so Color Grading reflects the correct time of day
+            if (pendingData.InGameTimeAccumulatedSeconds > 0)
+                Core.Services.GetService<InGameTimeService>()?.SetAccumulatedTime(pendingData.InGameTimeAccumulatedSeconds);
+
             Debug.Log("[MainGameScene] Applying pending load data...");
             
             // Find hero entity and component

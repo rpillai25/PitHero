@@ -177,11 +177,14 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 2;
+        public const int CurrentVersion = 3;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
         public float TotalTimePlayed;
+
+        /// <summary>Accumulated in-game time in real seconds (drives day/night and Color Grading).</summary>
+        public float InGameTimeAccumulatedSeconds;
 
         // Hero Design
         /// <summary>The hero's display name.</summary>
@@ -379,6 +382,7 @@ namespace PitHero.Services
 
             // 2. Total Time Played
             writer.Write(TotalTimePlayed);
+            writer.Write(InGameTimeAccumulatedSeconds);
 
             // 3. Hero Design
             writer.Write(HeroName ?? string.Empty);
@@ -610,6 +614,8 @@ namespace PitHero.Services
 
             // 2. Total Time Played
             TotalTimePlayed = reader.ReadFloat();
+            if (fileVersion >= 3)
+                InGameTimeAccumulatedSeconds = reader.ReadFloat();
 
             // 3. Hero Design
             HeroName = reader.ReadString();

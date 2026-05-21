@@ -147,6 +147,11 @@ namespace PitHero.Services
                 data.TotalTimePlayed = (float)Time.TotalTime;
             }
 
+            // In-game time
+            var timeService = Core.Services.GetService<InGameTimeService>();
+            if (timeService != null)
+                data.InGameTimeAccumulatedSeconds = timeService.AccumulatedSeconds;
+
             // Hero Design
             var designService = Core.Services.GetService<HeroDesignService>();
             if (designService != null && designService.HasDesign)

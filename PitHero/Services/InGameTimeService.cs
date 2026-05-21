@@ -18,6 +18,10 @@ namespace PitHero.Services
         public bool IsNighttime => Hour >= 22 || Hour < 6;
         public bool IsActiveHours => !IsNighttime;
 
+        public float AccumulatedSeconds => _accumulatedSeconds;
+
+        public void SetAccumulatedTime(float seconds) => _accumulatedSeconds = seconds;
+
         public void Update()
         {
             var pauseService = Core.Services.GetService<PauseService>();
