@@ -155,6 +155,7 @@ Design docs under `PitHero/docs/` (kept as standalone references — don't dupli
 - `PitHero/docs/VirtualGameLogicLayer.md`
 - `PitHero/docs/JpSystem.md` — Job Points, skill purchase flow, mastery
 - `PitHero/docs/SynergySystem.md` — Inventory pattern matching architecture
+- `PitHero/docs/ColorGrading.md` — dual-LUT post-processor, day/night schedule, shader recompile steps
 - `PitHero/docs/DynamicPit.md` — `PitWidthManager` + expansion cadence
 - `PitHero/docs/Permadeath.md` — Hero death, crystal vault, sell-value formula
 - `PitHero/docs/HeroPromotion.md` — Mercenary→hero conversion via crystal/statue
