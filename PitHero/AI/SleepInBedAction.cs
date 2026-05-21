@@ -555,20 +555,13 @@ namespace PitHero.AI
                 }
             }
 
-            // Initialize any mercenaries hired while party was asleep
+            // Initialize any mercenaries hired while party was asleep (releases reserved tavern seats)
             var allHiredMercs = mercenaryManager?.GetHiredMercenaries() ?? new List<Entity>();
             for (int i = 0; i < allHiredMercs.Count; i++)
             {
-                var merc = allHiredMercs[i];
-                var mercComp = merc.GetComponent<MercenaryComponent>();
+                var mercComp = allHiredMercs[i].GetComponent<MercenaryComponent>();
                 if (mercComp != null && mercComp.IsHiredDuringSleep)
-                {
-                    mercComp.IsHiredDuringSleep = false;
-                    if (!merc.HasComponent<HeroJumpComponent>())
-                        merc.AddComponent(new HeroJumpComponent());
-                    merc.AddComponent(new AI.MercenaryStateMachine());
-                    Debug.Log($"[SleepInBedAction] Initialized mercenary hired during sleep: {mercComp.LinkedMercenary.Name}");
-                }
+                    mercenaryManager.InitializeDeferredMercenary(allHiredMercs[i]);
             }
 
             // Unpause hero animation layers before walking out

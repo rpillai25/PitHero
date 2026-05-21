@@ -756,7 +756,6 @@ namespace PitHero.Services
             // Now mark as hired and update state
             mercComponent.IsHired = true;
             mercComponent.IsWaitingInTavern = false;
-            _occupiedTavernPositions.Remove(mercComponent.TavernPosition);
             mercComponent.FollowTarget = followTarget;
             AssignMercenaryRenderLayers(mercEntity, hiredCount);
 
@@ -766,7 +765,8 @@ namespace PitHero.Services
                 (mercComponent.LinkedMercenary.Job.Name, Color.White),
                 (mercComponent.LinkedMercenary.Name, GameConfig.ConsoleColorHeroName));
 
-            // If the hero is sleeping, defer AI initialization — merc stays at tavern chair until wake-up
+            // If the hero is sleeping, defer AI initialization — merc stays at tavern chair until wake-up.
+            // Keep the seat reserved in _occupiedTavernPositions so no other merc sits on top of them.
             var heroComponent = heroEntity?.GetComponent<HeroComponent>();
             if (heroComponent?.IsSleeping == true)
             {
@@ -775,14 +775,33 @@ namespace PitHero.Services
                 return true;
             }
 
-            // Add state machine and jump component for pit jumping
+            // Release the tavern seat and start the AI
+            _occupiedTavernPositions.Remove(mercComponent.TavernPosition);
+
             if (!mercEntity.HasComponent<HeroJumpComponent>())
-            {
                 mercEntity.AddComponent(new HeroJumpComponent());
-            }
             mercEntity.AddComponent(new AI.MercenaryStateMachine());
 
             return true;
+        }
+
+        /// <summary>
+        /// Releases the reserved tavern seat and starts the AI for a mercenary that was hired while the party was asleep.
+        /// Called by SleepInBedAction when the party wakes up.
+        /// </summary>
+        public void InitializeDeferredMercenary(Entity mercEntity)
+        {
+            var mercComp = mercEntity.GetComponent<MercenaryComponent>();
+            if (mercComp == null || !mercComp.IsHiredDuringSleep) return;
+
+            mercComp.IsHiredDuringSleep = false;
+            _occupiedTavernPositions.Remove(mercComp.TavernPosition);
+
+            if (!mercEntity.HasComponent<HeroJumpComponent>())
+                mercEntity.AddComponent(new HeroJumpComponent());
+            mercEntity.AddComponent(new AI.MercenaryStateMachine());
+
+            Debug.Log($"[MercenaryManager] Initialized deferred mercenary {mercComp.LinkedMercenary.Name} — tavern seat released");
         }
 
         /// <summary>Spawns a hired mercenary from saved data and positions it near the hero.</summary>
