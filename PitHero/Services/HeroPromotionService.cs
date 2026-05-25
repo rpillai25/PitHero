@@ -127,8 +127,12 @@ namespace PitHero.Services
 
             // Get next crystal for hero (from pending, queue, or random)
             var nextCrystal = GetNextCrystalForHero();
+            // LinkedHero is null when hero respawned without a crystal (needsCrystal path)
+            var heroName = heroComponent.LinkedHero?.Name
+                ?? Core.Services.GetService<HeroDesignService>()?.GetDesign().Name
+                ?? "Hero";
             heroComponent.LinkedHero = new RolePlayingFramework.Heroes.Hero(
-                heroComponent.LinkedHero.Name,
+                heroName,
                 nextCrystal.Job,
                 nextCrystal.Level,
                 nextCrystal.BaseStats,
