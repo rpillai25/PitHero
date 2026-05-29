@@ -61,6 +61,10 @@ namespace PitHero.AI
                 return true; // Complete as failed
             }
 
+            // Reset ExploredPit before repositioning so the fog-clear inside RepositionHeroToStartPosition
+            // is not blocked by the ClearFogOfWarAroundTile guard that returns early when ExploredPit is true.
+            hero.ExploredPit = false;
+
             // Reposition hero to starting position inside pit (where they normally land when jumping in)
             RepositionHeroToStartPosition(hero);
 
@@ -72,7 +76,6 @@ namespace PitHero.AI
 
             // Set hero state flags - values from ActivatePitRegenAction (these take priority)
             hero.PitInitialized = true;
-            hero.ExploredPit = false;  // Reset upon regeneration
             hero.ActivatedWizardOrb = false;  // Reset upon regeneration
 
             // BossDefeated is false on boss floors until the boss is killed; true on all other floors
