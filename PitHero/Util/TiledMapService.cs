@@ -2,8 +2,10 @@
 using Nez;
 using Nez.AI.Pathfinding;
 using Nez.Tiled;
+using PitHero;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
+using System;
 
 namespace PitHero.Util
 {
@@ -90,7 +92,21 @@ namespace PitHero.Util
 
             RemoveTile("FogOfWar", tileX, tileY);
             Debug.Log($"FogOfWar tile removed at {tileX}, {tileY}");
+            UpdateFogBitmasks(tileX, tileY);
             return true;
+        }
+
+        private void UpdateFogBitmasks(int clearedX, int clearedY)
+        {
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    if (dx == 0 && dy == 0) continue;
+                    int nx = clearedX + dx, ny = clearedY + dy;
+                    if (!IsFogOfWarTile(nx, ny)) continue;
+                    int idx = TileBitmask.GetTileIndex(nx, ny, GameConfig.FogOfWarZeroTileIndex, IsFogOfWarTile);
+                    SetTile("FogOfWar", nx, ny, idx);
+                }
         }
 
         /// <summary>

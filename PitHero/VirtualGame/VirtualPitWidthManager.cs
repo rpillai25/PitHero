@@ -237,7 +237,7 @@ namespace PitHero.VirtualGame
 
                 if (shouldSetFogOfWar && _fogOfWarIndex != 0)
                 {
-                    _tiledMapService.SetTile("FogOfWar", x, y, _fogOfWarIndex);
+                    _tiledMapService.SetTile("FogOfWar", x, y, GameConfig.FogOfWarZeroTileIndex + 15);
                 }
             }
         }
@@ -263,7 +263,7 @@ namespace PitHero.VirtualGame
             {
                 for (int y = 3; y <= 9; y++)
                 {
-                    _tiledMapService.SetTile("FogOfWar", x, y, _fogOfWarIndex);
+                    _tiledMapService.SetTile("FogOfWar", x, y, GameConfig.FogOfWarZeroTileIndex + 15);
                 }
             }
 

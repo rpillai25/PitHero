@@ -97,7 +97,8 @@ namespace PitHero
         public const float HeroFogCooldownDuration = 1f; // Duration in seconds for fog cooldown after clearing fog
 
         // Hero uncover radius configuration
-        public const int DefaultHeroUncoverRadius = 1; // Default radius for hero fog clearing        
+        public const int DefaultHeroUncoverRadius = 1; // Default radius for hero fog clearing
+        public const int FogOfWarZeroTileIndex = 138; // Base GID for fog; GIDs 137-152 cover the 16 bitmask variants
 
         // Building Configuration
         public const int TownBuildingWidth = 48;

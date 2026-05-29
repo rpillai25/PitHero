@@ -547,7 +547,7 @@ namespace PitHero
             {
                 for (int y = 3; y <= 9; y++) // y=3 to y=9 is the explorable pit interior
                 {
-                    _tiledMapService.SetTile("FogOfWar", x, y, _fogOfWarIndex);
+                    _tiledMapService.SetTile("FogOfWar", x, y, GameConfig.FogOfWarZeroTileIndex + 15);
                 }
             }
 
@@ -594,7 +594,7 @@ namespace PitHero
 
                 if (shouldSetFogOfWar && _fogOfWarIndex != 0)
                 {
-                    tiledMapService.SetTile("FogOfWar", x, y, _fogOfWarIndex);
+                    tiledMapService.SetTile("FogOfWar", x, y, GameConfig.FogOfWarZeroTileIndex + 15);
                 }
             }
         }

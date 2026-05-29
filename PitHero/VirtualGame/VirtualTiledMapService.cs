@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
+using PitHero.Util;
 using System;
 
 namespace PitHero.VirtualGame
@@ -51,6 +52,7 @@ namespace PitHero.VirtualGame
                     fogLayer.RemoveTile(tileX, tileY);
                     _worldState.ClearFogOfWar(new Point(tileX, tileY), 0); // Single tile clear
                     Console.WriteLine($"[VirtualTiledMapService] Cleared FogOfWar tile at ({tileX},{tileY})");
+                    UpdateFogBitmasks(tileX, tileY);
                     return true;
                 }
             }
@@ -112,6 +114,19 @@ namespace PitHero.VirtualGame
                 return false;
 
             return fogLayer.GetTile(tileX, tileY) != null;
+        }
+
+        private void UpdateFogBitmasks(int clearedX, int clearedY)
+        {
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    if (dx == 0 && dy == 0) continue;
+                    int nx = clearedX + dx, ny = clearedY + dy;
+                    if (!IsFogOfWarTile(nx, ny)) continue;
+                    int idx = TileBitmask.GetTileIndex(nx, ny, GameConfig.FogOfWarZeroTileIndex, IsFogOfWarTile);
+                    SetTile("FogOfWar", nx, ny, idx);
+                }
         }
 
         /// <summary>
