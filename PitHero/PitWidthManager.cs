@@ -551,6 +551,16 @@ namespace PitHero
                 }
             }
 
+            // Second pass: correct bitmask for perimeter tiles that border non-fog areas
+            for (int x = 2; x <= _currentPitRightEdge - 2; x++)
+            {
+                for (int y = 3; y <= 9; y++)
+                {
+                    int idx = TileBitmask.GetTileIndex(x, y, GameConfig.FogOfWarZeroTileIndex, _tiledMapService.IsFogOfWarTile);
+                    _tiledMapService.SetTile("FogOfWar", x, y, idx);
+                }
+            }
+
             Debug.Log($"[PitWidthManager] FogOfWar regeneration complete");
         }
 

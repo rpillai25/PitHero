@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using PitHero.AI.Interfaces;
+using PitHero.Util;
 using System;
 using System.Collections.Generic;
 
@@ -264,6 +265,16 @@ namespace PitHero.VirtualGame
                 for (int y = 3; y <= 9; y++)
                 {
                     _tiledMapService.SetTile("FogOfWar", x, y, GameConfig.FogOfWarZeroTileIndex + 15);
+                }
+            }
+
+            // Second pass: correct bitmask for perimeter tiles that border non-fog areas
+            for (int x = 2; x <= _currentPitRightEdge - 2; x++)
+            {
+                for (int y = 3; y <= 9; y++)
+                {
+                    int idx = TileBitmask.GetTileIndex(x, y, GameConfig.FogOfWarZeroTileIndex, _tiledMapService.IsFogOfWarTile);
+                    _tiledMapService.SetTile("FogOfWar", x, y, idx);
                 }
             }
 
