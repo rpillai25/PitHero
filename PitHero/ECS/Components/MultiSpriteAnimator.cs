@@ -31,6 +31,7 @@ namespace PitHero.ECS.Components
 
         private PaperdollRenderer _renderer;
         private Sprite            _compositeSprite;
+        private int               _lastYSortRow = int.MinValue;
 
         public override RectangleF Bounds
         {
@@ -80,7 +81,17 @@ namespace PitHero.ECS.Components
             _renderer = null;
         }
 
-        public void Update() { }
+        public void Update()
+        {
+            // Snap to tile row so depth is stable while crossing a tile; only re-sort when the row changes.
+            // This prevents a sort every frame that would cause flickering when two entities share a row.
+            var row = (int)(Entity.Transform.Position.Y / GameConfig.TileSize);
+            if (row != _lastYSortRow)
+            {
+                _lastYSortRow = row;
+                SetLayerDepth(Mathf.Clamp01(1f - row * GameConfig.TileSize * GameConfig.YSortDepthScale));
+            }
+        }
 
         public override void Render(Batcher batcher, Camera camera)
         {

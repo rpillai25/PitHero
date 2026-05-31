@@ -12,6 +12,7 @@ namespace PitHero.ECS.Components
     {
         private ActorFacingComponent _facing;
         private Direction _lastDirection = Direction.Down;
+        private int _lastYSortRow = int.MinValue;
         private TileByTileMover _mover;
         private TiledMapService _tiledMapService;
         private PauseService _pauseService;
@@ -80,6 +81,12 @@ namespace PitHero.ECS.Components
         public new void Update()
         {
             base.Update();
+            var row = (int)(Entity.Transform.Position.Y / GameConfig.TileSize);
+            if (row != _lastYSortRow)
+            {
+                _lastYSortRow = row;
+                SetLayerDepth(Mathf.Clamp01(1f - row * GameConfig.TileSize * GameConfig.YSortDepthScale));
+            }
             if (_facing == null)
                 return;
             var direction = _facing.Facing;

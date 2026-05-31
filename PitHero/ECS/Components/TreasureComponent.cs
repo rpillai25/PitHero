@@ -110,11 +110,9 @@ namespace PitHero.ECS.Components
 
             // Create base renderer (drawn first = behind wood)
             _baseRenderer = Entity.AddComponent(new SpriteRenderer());
-            _baseRenderer.SetRenderLayer(GameConfig.RenderLayerTreasureBase);
 
             // Create wood renderer (drawn second = in front of base)
             _woodRenderer = Entity.AddComponent(new SpriteRenderer());
-            _woodRenderer.SetRenderLayer(GameConfig.RenderLayerTreasureWood);
 
             UpdateSprites();
             UpdateWoodColor();
@@ -127,7 +125,7 @@ namespace PitHero.ECS.Components
                 GameConfig.TileSize,
                 GameConfig.TileSize,
                 new Microsoft.Xna.Framework.Vector2(GameConfig.TileSize / 2f, GameConfig.TileSize / 2f)));
-            compositor.SetRenderLayer(GameConfig.RenderLayerTreasureComposite);
+            compositor.SetRenderLayer(GameConfig.RenderLayerActors);
         }
 
         private void UpdateSprites()
