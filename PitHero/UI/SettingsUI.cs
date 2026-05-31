@@ -887,8 +887,8 @@ namespace PitHero.UI
             // Calculate total width needed for all eight buttons with padding
             float totalWidth = replenishW + stopW + fastFW + gearW + heroW + monsterW + secondChanceW + farmW + (7 * GameConfig.UIButtonPadding);
 
-            // Center all buttons as a group
-            float startX = (stageW - totalWidth) * 0.5f;
+            // Center all buttons as a group, shifted left by one button slot
+            float startX = (stageW - totalWidth) * 0.5f - (gearW + GameConfig.UIButtonPadding);
             float buttonY = 2f + _uiBarSlideY;
 
             // Position Replenish button leftmost
