@@ -125,7 +125,7 @@ namespace PitHero.ECS.Components
                 GameConfig.TileSize,
                 GameConfig.TileSize,
                 new Microsoft.Xna.Framework.Vector2(GameConfig.TileSize / 2f, GameConfig.TileSize / 2f)));
-            compositor.SetRenderLayer(GameConfig.RenderLayerActors);
+            compositor.SetRenderLayer(GameConfig.RenderLayerSingleTileObject);
         }
 
         private void UpdateSprites()

@@ -69,6 +69,18 @@ Game1 (Nez.Core)
 - Hero collider uses `GameConfig.PhysicsHeroWorldLayer` and collides with `GameConfig.PhysicsTileMapLayer`
 - Do not throttle entity update rate unless explicitly asked (entities update every frame)
 
+### Rendering
+
+See `PitHero/docs/RenderingSystem.md` for the full reference.  Key rules:
+
+- **Never use plain `SpriteRenderer` at `RenderLayerActors` or `RenderLayerSingleTileObject`** — it skips Y-sort and renders in arbitrary order.
+- Multi-layer humanoid actors (hero, mercenaries, innkeeper) → `MultiSpriteAnimator` at `RenderLayerActors`.
+- Multi-layer static objects (treasure chests) → `StaticSpriteCompositor` at `RenderLayerSingleTileObject`.
+- Single-sprite world objects (walls, orbs, statues, any ≤ 32×32 tile objects) → `YSortSpriteRenderer` at `RenderLayerSingleTileObject`.
+- Single-sprite larger world objects → `YSortSpriteRenderer` at `RenderLayerActors`.
+- Animated single-sprite monsters → subclass `EnemyAnimationComponent` at `RenderLayerActors`.
+- Y-sort (`LayerDepth`) updates are tile-row-snapped and change-gated — do not call `SetLayerDepth` every frame unconditionally.
+
 ### UI
 - Use the `"ph-default"` style for all `PitHeroSkin` elements unless a unique style is explicitly needed
 - Never call `SetFontScale()` — load a larger bitmap font asset instead
@@ -151,6 +163,7 @@ Design docs under `PitHero/docs/` (kept as standalone references — don't dupli
 - `PitHero/docs/MonsterLibrary.md`
 
 **Architecture / subsystems:**
+- `PitHero/docs/RenderingSystem.md` — render layer stack, Y-sort, MultiSpriteAnimator / StaticSpriteCompositor / YSortSpriteRenderer
 - `PitHero/docs/RolePlayingFramework.md`
 - `PitHero/docs/VirtualGameLogicLayer.md`
 - `PitHero/docs/JpSystem.md` — Job Points, skill purchase flow, mastery

@@ -185,9 +185,7 @@ namespace PitHero
         public const int RenderLayerFogOfWar = 40;   // Fog of war layer above most things, except hero
         // Actors layer — heroes, mercenaries, monsters, and treasures. Y-sorted within layer via LayerDepth.
         public const int RenderLayerActors = 60;
-        // Y-sort: LayerDepth = Mathf.Clamp01(1f - entity.Y * YSortDepthScale)
-        // Higher world-Y (closer to camera) → smaller depth → drawn in front.
-        public const float YSortDepthScale = 1f / 100000f;
+        public const int RenderLayerSingleTileObject = 61; // Single tile object layer (below actors, so single tile objects render below monsters/heroes)
         public const int RenderLayerDroppedItems = 65; // Dropped items layer
         public const int RenderLayerBase = 100; // Background layer
 
@@ -195,6 +193,10 @@ namespace PitHero
         public const int RenderLayerGraphicalHUD = 997; // Graphical HUD layer (screen space, not affected by scene scaling)
         public const int RenderLayerUI = 998; // UI layer (always on top)
         public const int TransparentPauseOverlay = 999; // Transparent overlay for paused action when UI is active
+
+        // Y-sort: LayerDepth = Mathf.Clamp01(1f - entity.Y * YSortDepthScale)
+        // Higher world-Y (closer to camera) → smaller depth → drawn in front.
+        public const float YSortDepthScale = 1f / 100000f;
 
         // Font paths
         public const string FontMainUI = "Content/Fonts/Express.fnt";

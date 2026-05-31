@@ -972,7 +972,7 @@ namespace PitHero.ECS.Scenes
                 var statueSprite = actorsAtlas.GetSprite("HeroStatue");
                 if (statueSprite != null)
                 {
-                    var renderer = statueEntity.AddComponent(new SpriteRenderer(statueSprite));
+                    var renderer = statueEntity.AddComponent(new YSortSpriteRenderer(statueSprite));
                     renderer.SetRenderLayer(GameConfig.RenderLayerActors);
                     Debug.Log($"[MainGameScene] Hero statue spawned at tile ({tileX}, {tileY}) with HeroStatue sprite");
                 }
