@@ -699,8 +699,8 @@ namespace PitHero
                         var wallSprite = _actorsAtlas.GetSprite("wall");
                         if (wallSprite != null)
                         {
-                            var renderer = entity.AddComponent(new SpriteRenderer(wallSprite));
-                            renderer.SetRenderLayer(GameConfig.RenderLayerActors);
+                            var renderer = entity.AddComponent(new YSortSpriteRenderer(wallSprite));
+                            renderer.SetRenderLayer(GameConfig.RenderLayerSingleTileObject);
                         }
                         else
                         {
@@ -792,7 +792,7 @@ namespace PitHero
                         var wizardOrbSprite = _actorsAtlas.GetSprite("wizard_orb");
                         if (wizardOrbSprite != null)
                         {
-                            var renderer = entity.AddComponent(new SpriteRenderer(wizardOrbSprite));
+                            var renderer = entity.AddComponent(new YSortSpriteRenderer(wizardOrbSprite));
                             renderer.Color = color;
                             renderer.SetRenderLayer(GameConfig.RenderLayerActors);
                         }
@@ -831,7 +831,7 @@ namespace PitHero
                     // Add animation component using atlas sprite animations for all monster types
                     EnemyAnimationComponent enemyAnimation;
                     enemyAnimation = entity.AddComponent(new NamedMonsterAnimationComponent(enemy.EnemyId.ToString(), Color.White));
-                    enemyAnimation.SetRenderLayer(GameConfig.RenderLayerMonsterYHigherThanParty);
+                    enemyAnimation.SetRenderLayer(GameConfig.RenderLayerActors);
 
                     // Add facing component for animation direction tracking
                     var enemyFacing = entity.AddComponent(new ActorFacingComponent());

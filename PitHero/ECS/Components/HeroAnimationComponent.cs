@@ -36,6 +36,17 @@ namespace PitHero.ECS.Components
             set { _componentColor = value; }
         }
 
+        /// <summary>
+        /// Set to true by MultiSpriteAnimator so this layer is composited rather than rendered directly.
+        /// </summary>
+        public bool OwnedByComposite { get; set; }
+
+        public override bool IsVisibleFromCamera(Camera camera)
+        {
+            if (OwnedByComposite) return false;
+            return base.IsVisibleFromCamera(camera);
+        }
+
         /// <summary>Gets the walk down animation name for this animation component</summary>
         public string WalkDownAnimationName => AnimDown;
 

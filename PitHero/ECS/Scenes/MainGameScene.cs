@@ -710,46 +710,42 @@ namespace PitHero.ECS.Scenes
 
             // Body layer
             var heroBodyAnimator = hero.AddComponent(new HeroBodyAnimationComponent(design.SkinColor));
-            heroBodyAnimator.SetRenderLayer(GameConfig.RenderLayerHeroBody);
             heroBodyAnimator.SetLocalOffset(offset);
 
             // Hand2 layer (top-most paperdoll layer)
             var heroHand2Animator = hero.AddComponent(new HeroHand2AnimationComponent(design.SkinColor));
-            heroHand2Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand2);
             heroHand2Animator.SetLocalOffset(offset);
             heroHand2Animator.ComponentColor = design.SkinColor;
 
             // Pants layer
             var heroPantsAnimator = hero.AddComponent(new HeroPantsAnimationComponent(Color.White));
-            heroPantsAnimator.SetRenderLayer(GameConfig.RenderLayerHeroPants);
             heroPantsAnimator.SetLocalOffset(offset);
 
             // Shirt layer
             var heroShirtAnimator = hero.AddComponent(new HeroShirtAnimationComponent(design.ShirtColor));
-            heroShirtAnimator.SetRenderLayer(GameConfig.RenderLayerHeroShirt);
             heroShirtAnimator.SetLocalOffset(offset);
 
             // Head layer
             var heroHeadAnimator = hero.AddComponent(new HeroHeadAnimationComponent(design.SkinColor));
-            heroHeadAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHead);
             heroHeadAnimator.SetLocalOffset(offset);
             heroHeadAnimator.ComponentColor = design.SkinColor;
 
             // Eyes layer
             var heroEyesAnimator = hero.AddComponent(new HeroEyesAnimationComponent(Color.White));
-            heroEyesAnimator.SetRenderLayer(GameConfig.RenderLayerHeroEyes);
             heroEyesAnimator.SetLocalOffset(offset);
 
             // Hair layer
             var heroHairAnimator = hero.AddComponent(new HeroHairAnimationComponent(design.HairColor, design.HairstyleIndex));
-            heroHairAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHair);
             heroHairAnimator.SetLocalOffset(offset);
 
             // Hand1 layer (bottom-most paperdoll layer)
             var heroHand1Animator = hero.AddComponent(new HeroHand1AnimationComponent(design.SkinColor));
-            heroHand1Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand1);
             heroHand1Animator.SetLocalOffset(offset);
             heroHand1Animator.ComponentColor = design.SkinColor;
+
+            // Composite all paperdoll layers into a single render target to prevent z-order artifacts
+            var heroMultiAnimator = hero.AddComponent(new MultiSpriteAnimator());
+            heroMultiAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
 
             // Add jump animation component for pit jumping animations
             var heroJumpController = hero.AddComponent(new HeroJumpComponent());
@@ -976,7 +972,7 @@ namespace PitHero.ECS.Scenes
                 var statueSprite = actorsAtlas.GetSprite("HeroStatue");
                 if (statueSprite != null)
                 {
-                    var renderer = statueEntity.AddComponent(new SpriteRenderer(statueSprite));
+                    var renderer = statueEntity.AddComponent(new YSortSpriteRenderer(statueSprite));
                     renderer.SetRenderLayer(GameConfig.RenderLayerActors);
                     Debug.Log($"[MainGameScene] Hero statue spawned at tile ({tileX}, {tileY}) with HeroStatue sprite");
                 }
@@ -1018,40 +1014,35 @@ namespace PitHero.ECS.Scenes
             // Use a distinct color scheme for innkeeper
             var bodyColor = new Color(251, 200, 178); // Fair skin tone
             var bodyAnimator = innkeeperEntity.AddComponent(new HeroBodyAnimationComponent(bodyColor));
-            bodyAnimator.SetRenderLayer(GameConfig.RenderLayerHeroBody);
             bodyAnimator.SetLocalOffset(offset);
 
             var hand2Animator = innkeeperEntity.AddComponent(new HeroHand2AnimationComponent(bodyColor));
-            hand2Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand2);
             hand2Animator.SetLocalOffset(offset);
 
             var pantsAnimator = innkeeperEntity.AddComponent(new HeroPantsAnimationComponent(Color.White));
-            pantsAnimator.SetRenderLayer(GameConfig.RenderLayerHeroPants);
             pantsAnimator.SetLocalOffset(offset);
 
             // Use a distinctive shirt color for innkeeper (brown/beige for apron-like appearance)
             var shirtColor = new Color(140, 91, 62); // Brown
             var shirtAnimator = innkeeperEntity.AddComponent(new HeroShirtAnimationComponent(shirtColor));
-            shirtAnimator.SetRenderLayer(GameConfig.RenderLayerHeroShirt);
             shirtAnimator.SetLocalOffset(offset);
 
             var headAnimator = innkeeperEntity.AddComponent(new HeroHeadAnimationComponent(bodyColor));
-            headAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHead);
             headAnimator.SetLocalOffset(offset);
 
             var eyesAnimator = innkeeperEntity.AddComponent(new HeroEyesAnimationComponent(Color.White));
-            eyesAnimator.SetRenderLayer(GameConfig.RenderLayerHeroEyes);
             eyesAnimator.SetLocalOffset(offset);
 
             // Gray hair for older innkeeper appearance
             var hairColor = new Color(100, 100, 100); // Gray
             var hairAnimator = innkeeperEntity.AddComponent(new HeroHairAnimationComponent(hairColor, hairstyleIndex: 1)); // Use default hairstyle for innkeeper
-            hairAnimator.SetRenderLayer(GameConfig.RenderLayerHeroHair);
             hairAnimator.SetLocalOffset(offset);
 
             var hand1Animator = innkeeperEntity.AddComponent(new HeroHand1AnimationComponent(bodyColor));
-            hand1Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand1);
             hand1Animator.SetLocalOffset(offset);
+
+            var innkeeperMultiAnimator = innkeeperEntity.AddComponent(new MultiSpriteAnimator());
+            innkeeperMultiAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
 
             Debug.Log($"[MainGameScene] Innkeeper spawned at tile ({tileX}, {tileY}) facing left");
         }
