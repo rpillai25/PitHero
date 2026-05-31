@@ -100,6 +100,7 @@ namespace PitHero.UI
         private RecruitmentNotificationUI _recruitmentNotificationUI;
         private StopAdventuringUI _stopAdventuringUI;
         private ReplenishUI _replenishUI;
+        private FarmUI _farmUI;
 
         // Keyboard shortcut state
         private Microsoft.Xna.Framework.Input.KeyboardState _prevKeyboardState;
@@ -237,6 +238,9 @@ namespace PitHero.UI
 
             _replenishUI = new ReplenishUI();
             _replenishUI.InitializeUI(_stage);
+
+            _farmUI = new FarmUI();
+            _farmUI.InitializeUI(_stage);
 
             // Create settings window with TabPane (initially hidden)
             CreateSettingsWindow(skin);
@@ -878,9 +882,10 @@ namespace PitHero.UI
             float stopW    = _stopAdventuringUI.GetWidth();
             float replenishW = _replenishUI.GetWidth();
             float secondChanceW = _secondChanceShopUI.GetWidth();
+            float farmW    = _farmUI.GetWidth();
 
-            // Calculate total width needed for all seven buttons with padding
-            float totalWidth = replenishW + stopW + fastFW + gearW + heroW + monsterW + secondChanceW + (6 * GameConfig.UIButtonPadding);
+            // Calculate total width needed for all eight buttons with padding
+            float totalWidth = replenishW + stopW + fastFW + gearW + heroW + monsterW + secondChanceW + farmW + (7 * GameConfig.UIButtonPadding);
 
             // Center all buttons as a group
             float startX = (stageW - totalWidth) * 0.5f;
@@ -914,11 +919,22 @@ namespace PitHero.UI
             float secondChanceX = monsterX + monsterW + GameConfig.UIButtonPadding;
             _secondChanceShopUI.SetPosition(secondChanceX, buttonY);
 
+            // Position Farm button to the right of second chance shop
+            float farmX = secondChanceX + secondChanceW + GameConfig.UIButtonPadding;
+            _farmUI.SetPosition(farmX, buttonY);
+
+            // Position Farm sub-buttons starting below the Settings (gear) button
+            float subButtonY = buttonY + _stopAdventuringUI.GetHeight() + 2f;
+            _farmUI.SetSubButtonsPosition(gearX, subButtonY);
+
             // Cache bar bounds in normal (non-animated) stage coords for proximity detection.
             // Use the resting buttonY (2f) so the zone is stable even while animating.
             _uiBarLeft = startX;
             _uiBarRight = startX + totalWidth;
-            _uiBarBottom = 2f + gearH;
+            float barH = gearH;
+            if (_farmUI != null && _farmUI.AreSubButtonsVisible)
+                barH += _farmUI.GetSubButtonsHeight() + 2f;
+            _uiBarBottom = 2f + barH;
 
             if (_isVisible)
             {
@@ -1174,6 +1190,7 @@ namespace PitHero.UI
             _recruitmentNotificationUI?.Update();
             _stopAdventuringUI?.Update();
             _replenishUI?.Update();
+            _farmUI?.Update();
 
             // Update persistent size if window size changed externally (e.g., Shift+Mouse Wheel)
             if (!_isVisible) // Only update when settings are closed
@@ -1197,6 +1214,8 @@ namespace PitHero.UI
             if (_secondChanceShopUI != null && _secondChanceShopUI.ConsumeStyleChangedFlag()) needsReposition = true;
             if (_stopAdventuringUI != null && _stopAdventuringUI.ConsumeStyleChangedFlag()) needsReposition = true;
             if (_replenishUI != null && _replenishUI.ConsumeStyleChangedFlag()) needsReposition = true;
+            if (_farmUI != null && _farmUI.ConsumeStyleChangedFlag()) needsReposition = true;
+            if (_farmUI != null && _farmUI.ConsumeSubButtonsToggleFlag()) needsReposition = true;
 
             if (_stage.GetWidth() != _lastStageW || _stage.GetHeight() != _lastStageH)
                 needsReposition = true;
@@ -1412,6 +1431,7 @@ namespace PitHero.UI
         {
             _uiBarHidden = true;
             _uiBarAnimating = true;
+            _farmUI?.DismissSubButtons();
         }
 
         /// <summary>

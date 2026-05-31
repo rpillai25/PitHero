@@ -29,6 +29,12 @@ namespace PitHero
         public const string ButtonFastForward = "ButtonFastForward";
         public const string ButtonStopAdventuring = "ButtonStopAdventuring";
         public const string ButtonContinueAdventuring = "ButtonContinueAdventuring";
+        public const string ButtonFarm = "ButtonFarm";
+        public const string ButtonFarmTill = "ButtonFarmTill";
+        public const string ButtonFarmSeeds = "ButtonFarmSeeds";
+        public const string ButtonFarmBuildings = "ButtonFarmBuildings";
+        public const string ButtonFarmOptions = "ButtonFarmOptions";
+        public const string ButtonFarmDestroyCrops = "ButtonFarmDestroyCrops";
         public const string WindowAppearance = "WindowAppearance";
         public const string WindowJobInfo = "WindowJobInfo";
         public const string WindowMonsters = "WindowMonsters";

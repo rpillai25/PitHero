@@ -22,6 +22,12 @@ ButtonReplenish,Replenish
 ButtonFastForward,Fast Forward
 ButtonStopAdventuring,Stop Adventuring
 ButtonContinueAdventuring,Continue Adventuring
+ButtonFarm,Farm
+ButtonFarmTill,Till
+ButtonFarmSeeds,Seeds
+ButtonFarmBuildings,Buildings
+ButtonFarmOptions,Options
+ButtonFarmDestroyCrops,Destroy Crops
 WindowAppearance,Appearance
 WindowJobInfo,Job Info
 WindowMonsters,Monsters
