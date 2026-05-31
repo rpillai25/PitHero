@@ -6,7 +6,7 @@ namespace PitHero.ECS.Components
     /// <summary>
     /// Abstract base class for hero sprite animations based on facing direction using the Actors.atlas
     /// </summary>
-    public abstract class HeroAnimationComponent : PausableSpriteAnimator, IUpdatable
+    public abstract class HeroAnimationComponent : PausableSpriteAnimator, IUpdatable, ICompositeLayer
     {
         private ActorFacingComponent _facing;
         private Direction _lastDirection = Direction.Down; // Default to down
@@ -35,6 +35,9 @@ namespace PitHero.ECS.Components
             get => _componentColor;
             set { _componentColor = value; }
         }
+
+        /// <summary>ICompositeLayer.LayerColor — wraps RenderableComponent.Color field.</summary>
+        public Color LayerColor => Color;
 
         /// <summary>
         /// Set to true by MultiSpriteAnimator so this layer is composited rather than rendered directly.

@@ -50,6 +50,25 @@ The depth is snapped to tile rows, not raw pixel positions.  This means:
 
 ## Renderer Classes
 
+### `ICompositeLayer` — layer contract
+
+**File:** `ECS/Components/ICompositeLayer.cs`
+
+Interface for any layer that participates in `MultiSpriteAnimator` compositing:
+
+```csharp
+Sprite Sprite { get; }           // current animation frame
+Vector2 LocalOffset { get; }     // draw offset from entity world-position
+bool FlipX { get; }              // horizontal mirror flag
+Color LayerColor { get; }        // tint (wraps RenderableComponent.Color field)
+bool OwnedByComposite { get; set; }
+```
+
+Implementors must return `false` from `IsVisibleFromCamera` when `OwnedByComposite = true`
+so the DefaultRenderer skips them. See `HeroAnimationComponent` for the reference pattern.
+
+---
+
 ### `SpriteCompositorBase` — shared RT-compositing base
 
 **File:** `ECS/Components/SpriteCompositorBase.cs`
@@ -66,17 +85,17 @@ supply a per-layer draw callback — the only thing that differs between composi
 
 **File:** `ECS/Components/MultiSpriteAnimator.cs`
 
-Use for actors whose visual is composed of multiple `HeroAnimationComponent` paperdoll
-layers (hero, mercenaries, innkeeper). Extends `SpriteCompositorBase`.
+Composites any `ICompositeLayer` stack into a single 32×46 RT. Generic — works for hero
+paperdolls, innkeeper, mercenaries, and any future multi-part animated actor (e.g. a dragon
+built from independently-animated body-part components). Extends `SpriteCompositorBase`.
 
 **How it works:**
-1. Constructor receives layers in back-to-front draw order.
-2. `OnAddedToEntity` marks each child `OwnedByComposite = true` so the DefaultRenderer
-   skips them, then calls `InitCompositor` with a draw callback that iterates layers.
+1. Constructor receives any `ICompositeLayer[]` in back-to-front draw order.
+2. `OnAddedToEntity` sets `OwnedByComposite = true` on each layer (suppresses direct render),
+   then calls `InitCompositor` with a draw callback that iterates layers via the interface.
 3. Each frame in `Render()` (base class): ends the outer batcher, switches to a 32×46
-   `RenderTarget2D`, draws layers via the callback with a translation matrix that maps
-   entity world-position → RT pixel (16, 39), restores the scene RT, and draws the
-   composited sprite.
+   `RenderTarget2D`, draws layers with a translation matrix that maps entity world-position →
+   RT pixel (16, 39), restores the scene RT, and blits the composited sprite.
 4. `Update()` (base class) applies tile-row-snapped Y-sort.
 
 **Key constants:**
@@ -84,7 +103,7 @@ layers (hero, mercenaries, innkeeper). Extends `SpriteCompositorBase`.
 - `RtEntityPivot = (16, 39)` — accounts for center sprite origin (16, 23) + local offset
   (0, −16): `pivot.Y = origin.Y + |offset.Y| = 23 + 16 = 39`
 
-**Usage:**
+**Usage (hero/mercenary — existing ICompositeLayer implementors):**
 ```csharp
 // Add paperdoll components first, then pass them in back-to-front order:
 var animator = entity.AddComponent(new MultiSpriteAnimator(
@@ -92,6 +111,14 @@ var animator = entity.AddComponent(new MultiSpriteAnimator(
     headAnimator, eyesAnimator, hairAnimator, hand1Animator));
 animator.SetRenderLayer(GameConfig.RenderLayerActors);
 ```
+
+**Adding a new multi-part animated actor (e.g. a dragon):**
+1. Each body-part component extends `SpriteAnimator` (or similar) and implements
+   `ICompositeLayer` (add `LayerColor` property and `OwnedByComposite` flag; override
+   `IsVisibleFromCamera` to return `false` when `OwnedByComposite`).
+2. Pass all parts to `MultiSpriteAnimator(params ICompositeLayer[])` back-to-front.
+3. Layer-specific animation control (play attack, set direction) is called directly on
+   the part components — `MultiSpriteAnimator` only handles compositing, not animation logic.
 
 ---
 

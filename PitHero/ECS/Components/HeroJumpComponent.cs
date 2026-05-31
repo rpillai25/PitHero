@@ -143,19 +143,13 @@ namespace PitHero.ECS.Components
                 return;
             }
 
-            if (_multiSpriteAnimator != null)
-            {
-                // MultiSpriteAnimator path: arc lives on the composite's LocalOffset
-                _initialYOffset = _multiSpriteAnimator.LocalOffset.Y;
-                _multiSpriteAnimator.PlayJumpAnimation(direction);
-            }
-            else
-            {
-                // Legacy path: arc applied per-layer
-                _initialYOffset = _heroAnimators[0].LocalOffset.Y;
-                foreach (var animator in _heroAnimators)
-                    animator?.PlayJumpAnimation(direction);
-            }
+            // Arc offset lives on the composite's LocalOffset when present; otherwise per-layer.
+            _initialYOffset = _multiSpriteAnimator != null
+                ? _multiSpriteAnimator.LocalOffset.Y
+                : (_heroAnimators.Count > 0 ? _heroAnimators[0].LocalOffset.Y : 0f);
+
+            foreach (var animator in _heroAnimators)
+                animator?.PlayJumpAnimation(direction);
 
             if (_shadowRenderer != null)
                 _shadowRenderer.SetEnabled(true);
@@ -175,25 +169,20 @@ namespace PitHero.ECS.Components
                 InitializeAnimators();
             }
 
+            // Reset the arc offset — on the composite when present, per-layer in legacy path.
             if (_multiSpriteAnimator != null)
-            {
                 _multiSpriteAnimator.LocalOffset = new Vector2(0f, _initialYOffset);
-                _multiSpriteAnimator.UpdateAnimationForDirection(_jumpDirection);
-            }
             else
-            {
                 foreach (var animator in _heroAnimators)
-                {
                     if (animator != null)
                         animator.SetLocalOffset(new Vector2(animator.LocalOffset.X, _initialYOffset));
-                }
-                foreach (var animator in _heroAnimators)
+
+            foreach (var animator in _heroAnimators)
+            {
+                if (animator != null)
                 {
-                    if (animator != null)
-                    {
-                        animator.UpdateAnimationForDirection(_jumpDirection);
-                        animator.UnpauseAnimation();
-                    }
+                    animator.UpdateAnimationForDirection(_jumpDirection);
+                    animator.UnpauseAnimation();
                 }
             }
 
