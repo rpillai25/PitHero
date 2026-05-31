@@ -238,7 +238,9 @@ namespace PitHero.Services
             hand1Animator.SetLocalOffset(offset);
 
             // Composite all paperdoll layers into a single render target to prevent z-order artifacts
-            var mercMultiAnimator = mercEntity.AddComponent(new MultiSpriteAnimator());
+            var mercMultiAnimator = mercEntity.AddComponent(new MultiSpriteAnimator(
+                hand2Animator, bodyAnimator, pantsAnimator, shirtAnimator,
+                headAnimator, eyesAnimator, hairAnimator, hand1Animator));
             mercMultiAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
 
             // Add collider (non-blocking - mercenaries should not hinder hero movement)
@@ -879,7 +881,9 @@ namespace PitHero.Services
             hand1Animator.SetLocalOffset(offset);
 
             // Composite all paperdoll layers into a single render target to prevent z-order artifacts
-            var mercMultiAnimator = mercEntity.AddComponent(new MultiSpriteAnimator());
+            var mercMultiAnimator = mercEntity.AddComponent(new MultiSpriteAnimator(
+                hand2Animator, bodyAnimator, pantsAnimator, shirtAnimator,
+                headAnimator, eyesAnimator, hairAnimator, hand1Animator));
             mercMultiAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
 
             // Collider

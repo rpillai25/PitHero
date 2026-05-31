@@ -50,32 +50,47 @@ The depth is snapped to tile rows, not raw pixel positions.  This means:
 
 ## Renderer Classes
 
+### `SpriteCompositorBase` — shared RT-compositing base
+
+**File:** `ECS/Components/SpriteCompositorBase.cs`
+
+Abstract base for both `MultiSpriteAnimator` and `StaticSpriteCompositor`. Handles
+tile-row Y-sort, bounds calculation, the per-frame RT blit loop (pixel-rounding,
+batcher save/restore, composite sprite draw), and disposal. Subclasses call
+`InitCompositor(rtWidth, rtHeight, pivot, drawCallback)` from `OnAddedToEntity()` and
+supply a per-layer draw callback — the only thing that differs between compositor types.
+
+---
+
 ### `MultiSpriteAnimator` — multi-layer animated actors
 
 **File:** `ECS/Components/MultiSpriteAnimator.cs`
 
 Use for actors whose visual is composed of multiple `HeroAnimationComponent` paperdoll
-layers (hero, mercenaries, innkeeper).
+layers (hero, mercenaries, innkeeper). Extends `SpriteCompositorBase`.
 
 **How it works:**
-1. Discovers all `HeroAnimationComponent` subtypes on the entity at `OnAddedToEntity`.
-2. Marks each child `OwnedByComposite = true` so the DefaultRenderer skips them.
-3. Each frame in `Render()`: ends the outer batcher, switches to a private 32×46
-   `RenderTarget2D`, draws every child layer in back-to-front order with a translation
-   matrix that maps entity world-position → RT pixel (16, 39), then restores the scene
-   RT and draws the composited sprite at the entity's world position.
-4. `Update()` applies tile-row-snapped Y-sort.
+1. Constructor receives layers in back-to-front draw order.
+2. `OnAddedToEntity` marks each child `OwnedByComposite = true` so the DefaultRenderer
+   skips them, then calls `InitCompositor` with a draw callback that iterates layers.
+3. Each frame in `Render()` (base class): ends the outer batcher, switches to a 32×46
+   `RenderTarget2D`, draws layers via the callback with a translation matrix that maps
+   entity world-position → RT pixel (16, 39), restores the scene RT, and draws the
+   composited sprite.
+4. `Update()` (base class) applies tile-row-snapped Y-sort.
 
-**Key constants inside the class:**
+**Key constants:**
 - `RT_WIDTH = 32`, `RT_HEIGHT = 46`
 - `RtEntityPivot = (16, 39)` — accounts for center sprite origin (16, 23) + local offset
   (0, −16): `pivot.Y = origin.Y + |offset.Y| = 23 + 16 = 39`
 
 **Usage:**
 ```csharp
-var animator = entity.AddComponent(new MultiSpriteAnimator());
+// Add paperdoll components first, then pass them in back-to-front order:
+var animator = entity.AddComponent(new MultiSpriteAnimator(
+    hand2Animator, bodyAnimator, pantsAnimator, shirtAnimator,
+    headAnimator, eyesAnimator, hairAnimator, hand1Animator));
 animator.SetRenderLayer(GameConfig.RenderLayerActors);
-// Add paperdoll components (HeroBodyAnimationComponent, etc.) BEFORE this line.
 ```
 
 ---
@@ -85,13 +100,13 @@ animator.SetRenderLayer(GameConfig.RenderLayerActors);
 **File:** `ECS/Components/StaticSpriteCompositor.cs`
 
 Use for non-animated objects with multiple `SpriteRenderer` layers (treasure chests:
-base + wood lid).
+base + wood lid). Extends `SpriteCompositorBase`.
 
-**How it works:** Same RT compositing pattern as `MultiSpriteAnimator`, but children are
-plain `SpriteRenderer` instances.  Children are `SetEnabled(false)` (not rendered by the
-DefaultRenderer); the compositor calls `child.Render(batcher, null)` directly each frame,
-so `Sprite` and `Color` changes from `UpdateSprites()` / `UpdateWoodColor()` are picked
-up automatically.
+**How it works:** Same RT compositing pattern as `MultiSpriteAnimator` (both share the
+base class), but children are plain `SpriteRenderer` instances.  Children are
+`SetEnabled(false)` (not rendered by the DefaultRenderer); the compositor calls
+`child.Render(batcher, null)` directly each frame, so `Sprite` and `Color` changes from
+`UpdateSprites()` / `UpdateWoodColor()` are picked up automatically.
 
 **Usage (from `TreasureComponent.InitializeRenderers`):**
 ```csharp
@@ -157,8 +172,7 @@ order relative to heroes and monsters.
 
 ### Render-target compositing pattern
 
-`MultiSpriteAnimator` and `StaticSpriteCompositor` both follow this sequence inside
-`Render(Batcher batcher, Camera camera)`:
+`SpriteCompositorBase.Render()` (shared by `MultiSpriteAnimator` and `StaticSpriteCompositor`) follows this sequence:
 
 ```
 1. prevRTs = GraphicsDevice.GetRenderTargets()

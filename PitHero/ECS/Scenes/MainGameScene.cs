@@ -744,7 +744,9 @@ namespace PitHero.ECS.Scenes
             heroHand1Animator.ComponentColor = design.SkinColor;
 
             // Composite all paperdoll layers into a single render target to prevent z-order artifacts
-            var heroMultiAnimator = hero.AddComponent(new MultiSpriteAnimator());
+            var heroMultiAnimator = hero.AddComponent(new MultiSpriteAnimator(
+                heroHand2Animator, heroBodyAnimator, heroPantsAnimator, heroShirtAnimator,
+                heroHeadAnimator, heroEyesAnimator, heroHairAnimator, heroHand1Animator));
             heroMultiAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
 
             // Add jump animation component for pit jumping animations
@@ -1041,7 +1043,9 @@ namespace PitHero.ECS.Scenes
             var hand1Animator = innkeeperEntity.AddComponent(new HeroHand1AnimationComponent(bodyColor));
             hand1Animator.SetLocalOffset(offset);
 
-            var innkeeperMultiAnimator = innkeeperEntity.AddComponent(new MultiSpriteAnimator());
+            var innkeeperMultiAnimator = innkeeperEntity.AddComponent(new MultiSpriteAnimator(
+                hand2Animator, bodyAnimator, pantsAnimator, shirtAnimator,
+                headAnimator, eyesAnimator, hairAnimator, hand1Animator));
             innkeeperMultiAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
 
             Debug.Log($"[MainGameScene] Innkeeper spawned at tile ({tileX}, {tileY}) facing left");
