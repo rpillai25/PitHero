@@ -13,6 +13,7 @@ namespace PitHero.ECS.Components
         private const string HERO_SHADOW_SPRITE = "HeroShadow";
         private const float MAX_JUMP_HEIGHT_PX = 32f; // peak vertical offset during jump (matches previous discrete peak)
 
+        private MultiSpriteAnimator _multiSpriteAnimator;
         private List<HeroAnimationComponent> _heroAnimators;
         private SpriteRenderer _shadowRenderer;
         private SpriteAtlas _actorsAtlas;
@@ -50,7 +51,9 @@ namespace PitHero.ECS.Components
 
         private void InitializeAnimators()
         {
-            // Get all hero animation components (the paperdoll layers) in render order
+            _multiSpriteAnimator = Entity?.GetComponent<MultiSpriteAnimator>();
+
+            // Keep individual animator list for SetColor and any legacy fallback
             _heroAnimators = new List<HeroAnimationComponent>
             {
                 Entity?.GetComponent<HeroHand2AnimationComponent>(),
@@ -62,15 +65,10 @@ namespace PitHero.ECS.Components
                 Entity?.GetComponent<HeroHairAnimationComponent>(),
                 Entity?.GetComponent<HeroHand1AnimationComponent>()
             };
-
-            // Remove any null components from the list
             _heroAnimators.RemoveAll(animator => animator == null);
 
-            if (_heroAnimators.Count == 0)
-            {
-                Debug.Warn("[HeroJumpComponent] No HeroAnimationComponent layers found on entity");
-                return;
-            }
+            if (_multiSpriteAnimator == null && _heroAnimators.Count == 0)
+                Debug.Warn("[HeroJumpComponent] No animation components found on entity");
         }
 
         /// <summary>Sets hero color for all layers</summary>
@@ -139,25 +137,30 @@ namespace PitHero.ECS.Components
                 InitializeAnimators();
             }
 
-            if (_heroAnimators.Count == 0 || _actorsAtlas == null)
+            if (_multiSpriteAnimator == null && (_heroAnimators.Count == 0 || _actorsAtlas == null))
             {
                 Debug.Warn("[HeroJumpComponent] StartJump called but graphics components not available (this is normal in tests)");
                 return;
             }
 
-            // Use the first animator for offset tracking (they should all have the same offset)
-            _initialYOffset = _heroAnimators[0].LocalOffset.Y;
-
-            // Start jump animation on all layers
-            foreach (var animator in _heroAnimators)
+            if (_multiSpriteAnimator != null)
             {
-                animator?.PlayJumpAnimation(direction);
+                // MultiSpriteAnimator path: arc lives on the composite's LocalOffset
+                _initialYOffset = _multiSpriteAnimator.LocalOffset.Y;
+                _multiSpriteAnimator.PlayJumpAnimation(direction);
+            }
+            else
+            {
+                // Legacy path: arc applied per-layer
+                _initialYOffset = _heroAnimators[0].LocalOffset.Y;
+                foreach (var animator in _heroAnimators)
+                    animator?.PlayJumpAnimation(direction);
             }
 
             if (_shadowRenderer != null)
                 _shadowRenderer.SetEnabled(true);
 
-            Debug.Log($"[HeroJumpComponent] Started jump animation for direction {direction} with duration {duration}s on {_heroAnimators.Count} layers");
+            Debug.Log($"[HeroJumpComponent] Started jump animation for direction {direction} with duration {duration}s");
         }
 
         /// <summary>Ends current jump</summary>
@@ -172,25 +175,30 @@ namespace PitHero.ECS.Components
                 InitializeAnimators();
             }
 
-            // Reset offset for all layers
-            foreach (var animator in _heroAnimators)
+            if (_multiSpriteAnimator != null)
             {
-                if (animator != null)
-                    animator.SetLocalOffset(new Vector2(animator.LocalOffset.X, _initialYOffset));
+                _multiSpriteAnimator.LocalOffset = new Vector2(0f, _initialYOffset);
+                _multiSpriteAnimator.UpdateAnimationForDirection(_jumpDirection);
+            }
+            else
+            {
+                foreach (var animator in _heroAnimators)
+                {
+                    if (animator != null)
+                        animator.SetLocalOffset(new Vector2(animator.LocalOffset.X, _initialYOffset));
+                }
+                foreach (var animator in _heroAnimators)
+                {
+                    if (animator != null)
+                    {
+                        animator.UpdateAnimationForDirection(_jumpDirection);
+                        animator.UnpauseAnimation();
+                    }
+                }
             }
 
             if (_shadowRenderer != null)
                 _shadowRenderer.SetEnabled(false);
-
-            // Update animation direction for all layers
-            foreach (var animator in _heroAnimators)
-            {
-                if (animator != null)
-                {
-                    animator.UpdateAnimationForDirection(_jumpDirection);
-                    animator.UnpauseAnimation(); // in case something paused externally
-                }
-            }
 
             Debug.Log("[HeroJumpComponent] Ended jump animation");
         }
@@ -198,25 +206,27 @@ namespace PitHero.ECS.Components
         /// <summary>Updates vertical offset along parabolic arc</summary>
         private void UpdateJumpVerticalOffset(float progress)
         {
-            // Initialize _heroAnimators if null (may happen in tests)
             if (_heroAnimators == null)
-            {
                 InitializeAnimators();
-            }
 
-            if (_heroAnimators.Count == 0) return;
             if (progress < 0f) progress = 0f;
             if (progress > 1f) progress = 1f;
 
-            var t = progress;
-            var heightFactor = 4f * t * (1f - t);
+            var heightFactor = 4f * progress * (1f - progress);
             var yOffset = _initialYOffset - (MAX_JUMP_HEIGHT_PX * heightFactor);
 
-            // Update offset for all layers
-            foreach (var animator in _heroAnimators)
+            if (_multiSpriteAnimator != null)
             {
-                if (animator != null)
-                    animator.SetLocalOffset(new Vector2(animator.LocalOffset.X, yOffset));
+                _multiSpriteAnimator.LocalOffset = new Vector2(0f, yOffset);
+            }
+            else
+            {
+                if (_heroAnimators.Count == 0) return;
+                foreach (var animator in _heroAnimators)
+                {
+                    if (animator != null)
+                        animator.SetLocalOffset(new Vector2(animator.LocalOffset.X, yOffset));
+                }
             }
         }
 

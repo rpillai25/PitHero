@@ -245,6 +245,10 @@ namespace PitHero.Services
             hand1Animator.SetRenderLayer(GameConfig.RenderLayerHeroHand1);
             hand1Animator.SetLocalOffset(offset);
 
+            // Composite all paperdoll layers into a single render target to prevent z-order artifacts
+            var mercMultiAnimator = mercEntity.AddComponent(new MultiSpriteAnimator());
+            mercMultiAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
+
             // Add collider (non-blocking - mercenaries should not hinder hero movement)
             var collider = mercEntity.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));
             collider.IsTrigger = true; // Make it a trigger so it doesn't block movement

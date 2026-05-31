@@ -751,6 +751,10 @@ namespace PitHero.ECS.Scenes
             heroHand1Animator.SetLocalOffset(offset);
             heroHand1Animator.ComponentColor = design.SkinColor;
 
+            // Composite all paperdoll layers into a single render target to prevent z-order artifacts
+            var heroMultiAnimator = hero.AddComponent(new MultiSpriteAnimator());
+            heroMultiAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
+
             // Add jump animation component for pit jumping animations
             var heroJumpController = hero.AddComponent(new HeroJumpComponent());
             var collider = hero.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));
