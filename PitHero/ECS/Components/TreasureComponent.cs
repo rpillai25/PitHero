@@ -108,16 +108,26 @@ namespace PitHero.ECS.Components
                 return;
             }
 
-            // Create base renderer on the treasure base layer
+            // Create base renderer (drawn first = behind wood)
             _baseRenderer = Entity.AddComponent(new SpriteRenderer());
             _baseRenderer.SetRenderLayer(GameConfig.RenderLayerTreasureBase);
 
-            // Create wood renderer on the treasure wood layer
+            // Create wood renderer (drawn second = in front of base)
             _woodRenderer = Entity.AddComponent(new SpriteRenderer());
             _woodRenderer.SetRenderLayer(GameConfig.RenderLayerTreasureWood);
 
             UpdateSprites();
             UpdateWoodColor();
+
+            // Composite both layers into a single 32×32 render target so the chest
+            // always occupies exactly one render layer with no z-order inconsistency.
+            // Treasure sprites are 32×32 with center origin — pivot maps entity pos to RT center.
+            var compositor = Entity.AddComponent(new StaticSpriteCompositor(
+                new Nez.Sprites.SpriteRenderer[] { _baseRenderer, _woodRenderer },
+                GameConfig.TileSize,
+                GameConfig.TileSize,
+                new Microsoft.Xna.Framework.Vector2(GameConfig.TileSize / 2f, GameConfig.TileSize / 2f)));
+            compositor.SetRenderLayer(GameConfig.RenderLayerTreasureComposite);
         }
 
         private void UpdateSprites()

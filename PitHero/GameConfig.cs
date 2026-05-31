@@ -222,6 +222,9 @@ namespace PitHero
         public const int RenderLayerDroppedItems = 65; // Dropped items layer
         public const int RenderLayerTreasureWood = 69;
         public const int RenderLayerTreasureBase = 70;
+        // Single layer used by StaticSpriteCompositor for treasure chests.
+        // Same value as RenderLayerTreasureWood — maintains original depth behind actors/fog.
+        public const int RenderLayerTreasureComposite = 69;
         public const int RenderLayerBase = 100; // Background layer
 
         public const int RenderLayerActionQueue = 996; // Action queue layer (screen space, not affected by scene scaling)
