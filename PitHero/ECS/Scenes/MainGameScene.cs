@@ -48,6 +48,9 @@ namespace PitHero.ECS.Scenes
         private Services.HeroPromotionService _heroPromotionService; // Manages hero crystal promotion after death
         private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
         private ColorGradingPostProcessor _colorGrading;
+        private TillModeOverlay _tillModeOverlay;
+        private Label _tillingLabel;
+        private bool _wasInTillMode;
 
         // HUD fonts for different shrink levels
         public BitmapFont _hudFontNormal;
@@ -605,6 +608,9 @@ namespace PitHero.ECS.Scenes
 
             _cameraController?.ConfigureZoomForMap(_mapPath);
 
+            // Initialize till mode overlay now that the map is loaded
+            _tillModeOverlay = new TillModeOverlay(this, _tmxMap);
+
             // Initialize pit width manager after map and services are set up
             SetupPitWidthManager();
         }
@@ -1098,6 +1104,11 @@ namespace PitHero.ECS.Scenes
             _clockLabel = uiCanvas.Stage.AddElement(new Label("6:00 AM", _hudFontNormal));
             _clockLabel.SetStyle(_pitLevelStyleNormal);
 
+            // Tilling label (upper area, left of clock — visible only in till mode)
+            _tillingLabel = uiCanvas.Stage.AddElement(new Label("Tilling Soil", _hudFontNormal));
+            _tillingLabel.SetStyle(_pitLevelStyleNormal);
+            _tillingLabel.SetVisible(false);
+
             // Create graphical HUD entity to display HP/MP/Level
             var hudEntity = CreateEntity("graphical-hud");
             hudEntity.SetPosition(GraphicalHudBaseX, GraphicalHudBaseY);
@@ -1256,6 +1267,24 @@ namespace PitHero.ECS.Scenes
             _clockLabel.SetText(text);
             float labelWidth = _hudFontNormal.MeasureString(text).X;
             _clockLabel.SetPosition(GameConfig.VirtualWidth - labelWidth - ClockLabelRightPadding, ClockLabelBaseY);
+        }
+
+        private void UpdateTillingLabel()
+        {
+            if (_tillingLabel == null || _hudFontNormal == null) return;
+            bool inTillMode = _settingsUI?.IsTillModeActive ?? false;
+            _tillingLabel.SetVisible(inTillMode);
+            if (!inTillMode) return;
+
+            float alpha = (float)Math.Sin(Time.TotalTime * Math.PI * 1.2f) * 0.5f + 0.5f;
+            _tillingLabel.SetFontColor(new Color(255, 255, 255, (int)(alpha * 255)));
+
+            const string labelText = "Tilling Soil";
+            float tillingWidth = _hudFontNormal.MeasureString(labelText).X;
+            string timeText = Core.Services.GetService<InGameTimeService>()?.FormatTime() ?? "6:00 AM";
+            float clockWidth = _hudFontNormal.MeasureString(timeText).X;
+            float clockX = GameConfig.VirtualWidth - clockWidth - ClockLabelRightPadding;
+            _tillingLabel.SetPosition(clockX - tillingWidth - 16f, ClockLabelBaseY);
         }
 
         /// <summary>
@@ -1661,6 +1690,16 @@ namespace PitHero.ECS.Scenes
             Core.Services.GetService<InGameTimeService>()?.Update();
             _colorGrading?.UpdateTimeOfDay();
             UpdateClockLabel();
+            UpdateTillingLabel();
+            bool inTillMode = _settingsUI?.IsTillModeActive ?? false;
+            if (inTillMode != _wasInTillMode)
+            {
+                if (inTillMode) _tillModeOverlay?.OnEnterTillMode();
+                else            _tillModeOverlay?.OnExitTillMode();
+                _wasInTillMode = inTillMode;
+            }
+            if (inTillMode)
+                _tillModeOverlay?.Update();
             UpdateHeroHUD();
             UpdateHudFontMode();
 

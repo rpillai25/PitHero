@@ -147,6 +147,9 @@ namespace PitHero.UI
         /// <summary>Gets the HeroUI instance.</summary>
         public HeroUI HeroUI => _heroUI;
 
+        /// <summary>Returns true when the player is currently in till mode.</summary>
+        public bool IsTillModeActive => _farmUI?.IsInTillMode ?? false;
+
         /// <summary>Gets the SecondChanceShopUI instance.</summary>
         public SecondChanceShopUI SecondChanceShopUI => _secondChanceShopUI;
 
@@ -1176,6 +1179,10 @@ namespace PitHero.UI
         /// </summary>
         public void Update()
         {
+            // Exit till mode when Escape is pressed
+            if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape) && IsTillModeActive)
+                _farmUI?.ExitTillMode();
+
             // Update smooth scrolling animation
             UpdateSmoothScrolling();
 
@@ -1439,6 +1446,13 @@ namespace PitHero.UI
         /// </summary>
         private void UpdateUIBarAutoHide()
         {
+            if (IsTillModeActive)
+            {
+                _uiBarIdleTimer = 0f;
+                if (_uiBarHidden) ShowUIBar();
+                return;
+            }
+
             // Use raw mouse state: _stage.GetMousePosition() clamps to window bounds and cannot
             // reliably detect when the cursor has left the game window.
             var rawMouse = Microsoft.Xna.Framework.Input.Mouse.GetState();
