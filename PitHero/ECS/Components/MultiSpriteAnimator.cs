@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -86,25 +87,28 @@ namespace PitHero.ECS.Components
             if (_renderer == null || _compositeSprite == null)
                 return;
 
-            // Save the current render target (scene RT) before we switch to ours
-            var prevRTs = Core.GraphicsDevice.GetRenderTargets();
+            // Round to integer pixels so the RT content aligns exactly with the display position
+            // each frame — prevents the sub-pixel shimmer ("heat haze") that occurs when the entity
+            // moves at fractional pixel offsets.
+            var entityPos = new Vector2(
+                (float)Math.Round(Entity.Transform.Position.X),
+                (float)Math.Round(Entity.Transform.Position.Y));
 
-            // End the outer batch so we can safely begin our own
+            var prevRTs = Core.GraphicsDevice.GetRenderTargets();
             batcher.End();
 
-            // Composite all paperdoll layers → 32×46 RT
-            _renderer.RenderComposite(Entity.Transform.Position);
+            _renderer.RenderComposite(entityPos);
 
-            // Restore the scene render target
             Core.GraphicsDevice.SetRenderTargets(prevRTs.Length > 0 ? prevRTs : null);
 
-            // Resume the outer batch with the camera transform (mirrors DefaultRenderer.BeginRender)
-            batcher.Begin(Material ?? Material.DefaultMaterial, camera.TransformMatrix);
+            // Resume with explicit point sampling so the RT composite is not filtered
+            batcher.Begin(BlendState.AlphaBlend, SamplerState.PointClamp,
+                DepthStencilState.None, RasterizerState.CullCounterClockwise,
+                null, camera.TransformMatrix, false);
 
-            // Draw the composited character at entity position
             batcher.Draw(
                 _compositeSprite,
-                Entity.Transform.Position + _localOffset,
+                entityPos + _localOffset,
                 Color,
                 Entity.Transform.Rotation,
                 _compositeSprite.Origin,
@@ -160,7 +164,10 @@ namespace PitHero.ECS.Components
                 Core.GraphicsDevice.SetRenderTarget(RenderTexture);
                 Core.GraphicsDevice.Clear(RenderTargetClearColor);
                 _currentMaterial = Material;
-                Graphics.Instance.Batcher.Begin(_currentMaterial, _rtTransform);
+                // Use point sampling inside the RT to match atlas sprite rendering quality
+                Graphics.Instance.Batcher.Begin(BlendState.AlphaBlend, SamplerState.PointClamp,
+                    DepthStencilState.None, RasterizerState.CullCounterClockwise,
+                    null, _rtTransform, false);
             }
 
             public void RenderComposite(Vector2 entityPos)

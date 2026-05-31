@@ -753,7 +753,7 @@ namespace PitHero.ECS.Scenes
 
             // Composite all paperdoll layers into a single render target to prevent z-order artifacts
             var heroMultiAnimator = hero.AddComponent(new MultiSpriteAnimator());
-            heroMultiAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
+            heroMultiAnimator.SetRenderLayer(GameConfig.RenderLayerHeroComposite);
 
             // Add jump animation component for pit jumping animations
             var heroJumpController = hero.AddComponent(new HeroJumpComponent());

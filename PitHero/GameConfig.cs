@@ -184,6 +184,11 @@ namespace PitHero
         
         public const int RenderLayerMonsterYLowerThanParty = 9;  // Monsters with Y position lower than the party are rendered here (in front of some hero layers)
 
+        // Single layer used by MultiSpriteAnimator for hero and mercenary composites.
+        // Must be between RenderLayerMonsterYLowerThanParty (9) and RenderLayerMonsterYHigherThanParty (39)
+        // so near monsters render in front and far monsters render behind — same effective depth as the old paperdoll body.
+        public const int RenderLayerHeroComposite = 16;
+
         public const int RenderLayerHeroHand1 = 10;
         public const int RenderLayerHeroHair = 11;
         public const int RenderLayerHeroEyes = 12;

@@ -247,7 +247,7 @@ namespace PitHero.Services
 
             // Composite all paperdoll layers into a single render target to prevent z-order artifacts
             var mercMultiAnimator = mercEntity.AddComponent(new MultiSpriteAnimator());
-            mercMultiAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
+            mercMultiAnimator.SetRenderLayer(GameConfig.RenderLayerHeroComposite);
 
             // Add collider (non-blocking - mercenaries should not hinder hero movement)
             var collider = mercEntity.AddComponent(new BoxCollider(GameConfig.HeroWidth, GameConfig.HeroHeight));
