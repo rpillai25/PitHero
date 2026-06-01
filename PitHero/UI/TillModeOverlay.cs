@@ -5,6 +5,7 @@ using Nez;
 using Nez.Sprites;
 using Nez.Tiled;
 using Nez.Textures;
+using Nez.UI;
 using PitHero.Farming;
 using PitHero.Services;
 using PitHero.Util;
@@ -19,6 +20,7 @@ namespace PitHero.UI
     {
         private readonly Scene _scene;
         private readonly TmxMap _map;
+        private Stage _stage;
 
         private Entity _cursorEntity;
         private PrototypeSpriteRenderer _cursorRenderer;
@@ -48,6 +50,8 @@ namespace PitHero.UI
             _scene = scene;
             _map   = map;
         }
+
+        public void SetStage(Stage stage) => _stage = stage;
 
         /// <summary>Activates till mode: creates the cursor entity and overlay entities for existing ReadyToTill tiles.</summary>
         public void OnEnterTillMode()
@@ -88,6 +92,14 @@ namespace PitHero.UI
 
                 if (_cursorRenderer != null)
                     _cursorRenderer.Color = tillable ? CursorTillableColor : CursorUntillableColor;
+            }
+
+            // Don't place tiles while the mouse is over any UI element (buttons, dialogs, etc.)
+            if (_stage != null && _stage.Hit(_stage.ScreenToStageCoordinates(_stage.GetMousePosition())) != null)
+            {
+                _lastMarkDragTile   = NoTile;
+                _lastUnmarkDragTile = NoTile;
+                return;
             }
 
             var tileService = Core.Services.GetService<TileStateService>();

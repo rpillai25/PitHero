@@ -51,6 +51,7 @@ namespace PitHero.ECS.Scenes
         private TillModeOverlay _tillModeOverlay;
         private Label _tillingLabel;
         private bool _wasInTillMode;
+        private Nez.UI.Stage _uiStage;
 
         // HUD fonts for different shrink levels
         public BitmapFont _hudFontNormal;
@@ -620,8 +621,11 @@ namespace PitHero.ECS.Scenes
 
             _cameraController?.ConfigureZoomForMap(_mapPath);
 
-            // Initialize till mode overlay now that the map is loaded
+            // Initialize till mode overlay now that the map is loaded. SetupUIOverlay() runs
+            // earlier (in Initialize, before Begin) so _uiStage already exists here; wire it now
+            // so the overlay can detect when the mouse is over UI and suppress tile placement.
             _tillModeOverlay = new TillModeOverlay(this, _tmxMap);
+            _tillModeOverlay.SetStage(_uiStage);
 
             // Initialize pit width manager after map and services are set up
             SetupPitWidthManager();
@@ -1091,6 +1095,9 @@ namespace PitHero.ECS.Scenes
             var uiCanvas = uiEntity.AddComponent(new UICanvas());
             uiCanvas.IsFullScreen = false;
             uiCanvas.RenderLayer = GameConfig.RenderLayerUI;
+            _uiStage = uiCanvas.Stage;
+            // Note: _tillModeOverlay is created later in LoadMap (during Begin) and wires itself
+            // to _uiStage there. Do not call SetStage here — the overlay does not exist yet.
 
             _settingsUI = new SettingsUI(Core.Instance);
             _settingsUI.InitializeUI(uiCanvas.Stage);
