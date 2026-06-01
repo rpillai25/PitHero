@@ -116,6 +116,9 @@ namespace PitHero.UI
         private float _uiBarRight = 1920f;
         private float _uiBarBottom = 54f;
 
+        /// <summary>Right edge (X) of the top button bar in stage coords. Updated each frame by PositionUI.</summary>
+        public float UIBarRight => _uiBarRight;
+
         // Shortcut bar reference and hide state
         private ShortcutBar _shortcutBar;
         private bool _shortcutBarHidden = false;

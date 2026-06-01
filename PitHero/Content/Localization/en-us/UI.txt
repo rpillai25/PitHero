@@ -28,6 +28,7 @@ ButtonFarmSeeds,Seeds
 ButtonFarmBuildings,Buildings
 ButtonFarmOptions,Options
 ButtonFarmDestroyCrops,Destroy Crops
+LabelTillingSoil,Tilling Soil
 WindowAppearance,Appearance
 WindowJobInfo,Job Info
 WindowMonsters,Monsters

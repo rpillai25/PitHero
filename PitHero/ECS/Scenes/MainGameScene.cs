@@ -58,6 +58,8 @@ namespace PitHero.ECS.Scenes
         public BitmapFont _hudFontHalf;
         private LabelStyle _pitLevelStyleNormal;
         private LabelStyle _pitLevelStyleHalf;
+        private LabelStyle _modeStyleNormal;
+        private LabelStyle _modeStyleHalf;
         private enum HudMode { Normal, Half }
         private HudMode _currentHudMode = HudMode.Normal;
 
@@ -109,6 +111,10 @@ namespace PitHero.ECS.Scenes
             // Pre-create label styles to avoid per-frame allocations
             _pitLevelStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
             _pitLevelStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
+            _modeStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
+            _modeStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
+
+
 
             // Register game event service so systems can broadcast events to the event console.
             Core.Services.AddService(new Services.GameEventService(Core.Services.GetService<TextService>()));
@@ -1123,9 +1129,10 @@ namespace PitHero.ECS.Scenes
             _clockLabel = uiCanvas.Stage.AddElement(new Label("6:00 AM", _hudFontNormal));
             _clockLabel.SetStyle(_pitLevelStyleNormal);
 
-            // Tilling label (upper area, left of clock — visible only in till mode)
-            _tillingLabel = uiCanvas.Stage.AddElement(new Label("Tilling Soil", _hudFontNormal));
-            _tillingLabel.SetStyle(_pitLevelStyleNormal);
+            // Tilling label (upper area, centered between button bar and clock — visible only in till mode)
+            string tillingText = Core.Services.GetService<TextService>()?.DisplayText(TextType.UI, UITextKey.LabelTillingSoil) ?? "Tilling Soil";
+            _tillingLabel = uiCanvas.Stage.AddElement(new Label(tillingText, _hudFontNormal));
+            _tillingLabel.SetStyle(_modeStyleNormal);
             _tillingLabel.SetVisible(false);
 
             // Create graphical HUD entity to display HP/MP/Level
@@ -1296,14 +1303,23 @@ namespace PitHero.ECS.Scenes
             if (!inTillMode) return;
 
             float alpha = (float)Math.Sin(Time.TotalTime * Math.PI * 1.2f) * 0.5f + 0.5f;
-            _tillingLabel.SetFontColor(new Color(255, 255, 255, (int)(alpha * 255)));
+            _tillingLabel.SetFontColor(new Color(0, 255, 255, (int)(alpha * 255)));
 
-            const string labelText = "Tilling Soil";
+            // Measure the label text directly from the label so we stay in sync with the localized string.
+            string labelText = _tillingLabel.GetText();
             float tillingWidth = _hudFontNormal.MeasureString(labelText).X;
+
+            // Clock left edge
             string timeText = Core.Services.GetService<InGameTimeService>()?.FormatTime() ?? "6:00 AM";
             float clockWidth = _hudFontNormal.MeasureString(timeText).X;
             float clockX = GameConfig.VirtualWidth - clockWidth - ClockLabelRightPadding;
-            _tillingLabel.SetPosition(clockX - tillingWidth - 16f, ClockLabelBaseY);
+
+            // Button bar right edge (exposed by SettingsUI; falls back to 0 before first PositionUI)
+            float barRight = _settingsUI?.UIBarRight ?? 0f;
+
+            // Center the label in the gap between the button bar and the clock
+            float midX = (barRight + clockX) / 2f;
+            _tillingLabel.SetPosition(midX - tillingWidth / 2f, ClockLabelBaseY);
         }
 
         /// <summary>

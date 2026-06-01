@@ -202,8 +202,10 @@ namespace PitHero.UI
             entity.SetPosition(wx, wy);
 
             var renderer = entity.AddComponent(new SpriteRenderer(GetBitmaskSprite(tile.X, tile.Y)));
-            renderer.Color = Color.Yellow;
+            renderer.Color = Color.White;
             renderer.SetRenderLayer(GameConfig.RenderLayerSingleTileObject);
+            var grayScaleEffect = new GrayscaleEffect();
+            renderer.SetMaterial(new Material(grayScaleEffect));
 
             _overlayEntities[tile] = entity;
         }
