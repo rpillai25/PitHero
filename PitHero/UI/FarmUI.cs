@@ -146,7 +146,10 @@ namespace PitHero.UI
 
         private void ToggleTillMode()
         {
-            IsInTillMode = !IsInTillMode;
+            // Only enters till mode — exiting is handled by SettingsUI detecting any UI click,
+            // so the button is idempotent when already in till mode.
+            if (!IsInTillMode)
+                IsInTillMode = true;
         }
 
         /// <summary>Forces till mode off (e.g., when the player presses Escape).</summary>

@@ -94,8 +94,11 @@ namespace PitHero.UI
                     _cursorRenderer.Color = tillable ? CursorTillableColor : CursorUntillableColor;
             }
 
-            // Don't place tiles while the mouse is over any UI element (buttons, dialogs, etc.)
-            if (_stage != null && _stage.Hit(_stage.ScreenToStageCoordinates(_stage.GetMousePosition())) != null)
+            // Don't place tiles while the mouse is over any UI element (buttons, dialogs, etc.).
+            // GetMousePosition() already returns stage-space (virtual-screen) coords for a non-fullscreen
+            // UICanvas — passing it through ScreenToStageCoordinates would apply the scrolled world camera
+            // transform and produce the wrong coordinates.
+            if (_stage != null && _stage.Hit(_stage.GetMousePosition()) != null)
             {
                 _lastMarkDragTile   = NoTile;
                 _lastUnmarkDragTile = NoTile;
