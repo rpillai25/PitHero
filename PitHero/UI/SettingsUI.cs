@@ -116,6 +116,9 @@ namespace PitHero.UI
         private float _uiBarRight = 1920f;
         private float _uiBarBottom = 54f;
 
+        /// <summary>Right edge (X) of the top button bar in stage coords. Updated each frame by PositionUI.</summary>
+        public float UIBarRight => _uiBarRight;
+
         // Shortcut bar reference and hide state
         private ShortcutBar _shortcutBar;
         private bool _shortcutBarHidden = false;
@@ -146,6 +149,12 @@ namespace PitHero.UI
 
         /// <summary>Gets the HeroUI instance.</summary>
         public HeroUI HeroUI => _heroUI;
+
+        /// <summary>Returns true when the player is currently in till mode.</summary>
+        public bool IsTillModeActive => _farmUI?.IsInTillMode ?? false;
+
+        // Tracks till mode state from end of previous frame so we can detect the frame it turned on.
+        private bool _prevIsTillModeActive = false;
 
         /// <summary>Gets the SecondChanceShopUI instance.</summary>
         public SecondChanceShopUI SecondChanceShopUI => _secondChanceShopUI;
@@ -793,6 +802,7 @@ namespace PitHero.UI
                 Time.TimeScale = 1f;
                 Core.GetGlobalManager<CoroutineManager>().StopAllCoroutines();
                 AI.HeroStateMachine.IsBattleInProgress = false;
+                Core.Services.GetService<TileStateService>()?.Clear();
                 Core.Scene = new TitleScreenScene();
             };
             quitToTitleButtonTable.Add(quitToTitleYesButton).Width(80).Height(24).SetPadRight(10);
@@ -1176,6 +1186,16 @@ namespace PitHero.UI
         /// </summary>
         public void Update()
         {
+            // OnClicked (mouse-up) already ran in base.Update() before this method is called.
+            // If till mode is now active but wasn't at the end of last frame, the click that activated
+            // it is the same LeftMouseButtonReleased event we'd use to exit — suppress the exit check
+            // on this frame only.
+            bool tillModeJustEntered = IsTillModeActive && !_prevIsTillModeActive;
+
+            // Exit till mode when Escape is pressed
+            if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape) && IsTillModeActive)
+                _farmUI?.ExitTillMode();
+
             // Update smooth scrolling animation
             UpdateSmoothScrolling();
 
@@ -1191,6 +1211,16 @@ namespace PitHero.UI
             _stopAdventuringUI?.Update();
             _replenishUI?.Update();
             _farmUI?.Update();
+
+            // Exit till mode when any UI element is clicked. Skip on the frame till mode was just
+            // entered — that LeftMouseButtonReleased is the same click that activated it.
+            if (IsTillModeActive && !tillModeJustEntered && Input.LeftMouseButtonReleased &&
+                _stage.Hit(_stage.GetMousePosition()) != null)
+            {
+                _farmUI?.ExitTillMode();
+            }
+
+            _prevIsTillModeActive = IsTillModeActive;
 
             // Update persistent size if window size changed externally (e.g., Shift+Mouse Wheel)
             if (!_isVisible) // Only update when settings are closed
@@ -1439,6 +1469,13 @@ namespace PitHero.UI
         /// </summary>
         private void UpdateUIBarAutoHide()
         {
+            if (IsTillModeActive)
+            {
+                _uiBarIdleTimer = 0f;
+                if (_uiBarHidden) ShowUIBar();
+                return;
+            }
+
             // Use raw mouse state: _stage.GetMousePosition() clamps to window bounds and cannot
             // reliably detect when the cursor has left the game window.
             var rawMouse = Microsoft.Xna.Framework.Input.Mouse.GetState();
@@ -1540,44 +1577,53 @@ namespace PitHero.UI
                 _shortcutBar.SetSlideOffsetY(0f);
             }
 
-            var rawMouse = Microsoft.Xna.Framework.Input.Mouse.GetState();
-            var viewport = _game.GraphicsDevice.Viewport;
-            bool mouseInWindow = rawMouse.X >= 0 && rawMouse.X < viewport.Width &&
-                                 rawMouse.Y >= 0 && rawMouse.Y < viewport.Height;
-
-            float scaleX = viewport.Width > 0 ? _stage.GetWidth() / viewport.Width : 1f;
-            float scaleY = viewport.Height > 0 ? _stage.GetHeight() / viewport.Height : 1f;
-            float stageMX = rawMouse.X * scaleX;
-            float stageMY = rawMouse.Y * scaleY;
-
-            // Compute shortcut bar bounds. Group.GetWidth() returns 0 because the Group's size is
-            // not auto-derived from its children — compute from slot count and scale directly.
             float sbScale = isHalfMode ? 2f : 1f;
-            float sbSlotSize = 32f * sbScale;
-            float sbSlotPad = 1f * sbScale;
-            float sbWidth = 8 * (sbSlotSize + sbSlotPad);
-            float sbX = _shortcutBar.GetX();
-            const float sbProximityPad = 16f;
-            float stageH = _stage.GetHeight();
-            bool mouseNearShortcutBar = mouseInWindow &&
-                                        stageMX >= sbX - sbProximityPad &&
-                                        stageMX <= sbX + sbWidth + sbProximityPad &&
-                                        stageMY >= stageH - GameConfig.UIBarProximityY;
 
-            // Hero UI open: show bar immediately (drag-to-shortcut feedback) and suppress idle hide.
-            bool heroUIOpen = _heroUI != null && _heroUI.IsWindowVisible;
-
-            if (mouseNearShortcutBar || heroUIOpen)
+            if (IsTillModeActive)
             {
-                _shortcutBarIdleTimer = 0f;
-                if (_shortcutBarHidden)
-                    ShowShortcutBar();
+                // Hide the shortcut bar for the duration of till mode; animation block below still runs.
+                if (!_shortcutBarHidden) HideShortcutBar();
             }
-            else if (_autoHideEnabled && _hideShortcutBar)
+            else
             {
-                _shortcutBarIdleTimer += Time.UnscaledDeltaTime;
-                if (_shortcutBarIdleTimer >= GameConfig.UIBarAutoHideDelay && !_shortcutBarHidden)
-                    HideShortcutBar();
+                var rawMouse = Microsoft.Xna.Framework.Input.Mouse.GetState();
+                var viewport = _game.GraphicsDevice.Viewport;
+                bool mouseInWindow = rawMouse.X >= 0 && rawMouse.X < viewport.Width &&
+                                     rawMouse.Y >= 0 && rawMouse.Y < viewport.Height;
+
+                float scaleX = viewport.Width > 0 ? _stage.GetWidth() / viewport.Width : 1f;
+                float scaleY = viewport.Height > 0 ? _stage.GetHeight() / viewport.Height : 1f;
+                float stageMX = rawMouse.X * scaleX;
+                float stageMY = rawMouse.Y * scaleY;
+
+                // Compute shortcut bar bounds. Group.GetWidth() returns 0 because the Group's size is
+                // not auto-derived from its children — compute from slot count and scale directly.
+                float sbSlotSize = 32f * sbScale;
+                float sbSlotPad = 1f * sbScale;
+                float sbWidth = 8 * (sbSlotSize + sbSlotPad);
+                float sbX = _shortcutBar.GetX();
+                const float sbProximityPad = 16f;
+                float stageH = _stage.GetHeight();
+                bool mouseNearShortcutBar = mouseInWindow &&
+                                            stageMX >= sbX - sbProximityPad &&
+                                            stageMX <= sbX + sbWidth + sbProximityPad &&
+                                            stageMY >= stageH - GameConfig.UIBarProximityY;
+
+                // Hero UI open: show bar immediately (drag-to-shortcut feedback) and suppress idle hide.
+                bool heroUIOpen = _heroUI != null && _heroUI.IsWindowVisible;
+
+                if (mouseNearShortcutBar || heroUIOpen)
+                {
+                    _shortcutBarIdleTimer = 0f;
+                    if (_shortcutBarHidden)
+                        ShowShortcutBar();
+                }
+                else if (_autoHideEnabled && _hideShortcutBar)
+                {
+                    _shortcutBarIdleTimer += Time.UnscaledDeltaTime;
+                    if (_shortcutBarIdleTimer >= GameConfig.UIBarAutoHideDelay && !_shortcutBarHidden)
+                        HideShortcutBar();
+                }
             }
 
             if (!_shortcutBarAnimating) return;
@@ -1630,45 +1676,54 @@ namespace PitHero.UI
         {
             if (_eventConsolePanel == null) return;
 
-            var rawMouse = Microsoft.Xna.Framework.Input.Mouse.GetState();
-            var viewport = _game.GraphicsDevice.Viewport;
-            bool mouseInWindow = rawMouse.X >= 0 && rawMouse.X < viewport.Width &&
-                                 rawMouse.Y >= 0 && rawMouse.Y < viewport.Height;
-
-            float scaleX = viewport.Width > 0 ? _stage.GetWidth() / viewport.Width : 1f;
-            float scaleY = viewport.Height > 0 ? _stage.GetHeight() / viewport.Height : 1f;
-            float stageMX = rawMouse.X * scaleX;
-            float stageMY = rawMouse.Y * scaleY;
-
-            const float consolePad = 16f;
-            float baseX = _eventConsolePanel.BaseX;
-            float baseY = _eventConsolePanel.BaseY;
-            const float consoleW = 480f;
-            const float consoleH = 120f;
-            bool mouseNearConsole = mouseInWindow &&
-                                    stageMX >= baseX - consolePad &&
-                                    stageMX <= baseX + consoleW + consolePad &&
-                                    stageMY >= baseY - consolePad &&
-                                    stageMY <= baseY + consoleH + consolePad;
-
-            if (mouseNearConsole)
+            if (IsTillModeActive)
             {
-                _consoleIdleTimer = 0f;
-                if (_consoleHidden)
-                    ShowEventConsole();
+                // Hide the event console for the duration of till mode; animation block below still runs.
+                if (!_consoleHidden) HideEventConsole();
             }
-            else if (_autoHideEnabled && _hideEventConsole)
+            else
             {
-                _consoleIdleTimer += Time.UnscaledDeltaTime;
-                if (_consoleIdleTimer >= GameConfig.UIBarAutoHideDelay && !_consoleHidden)
-                    HideEventConsole();
+                var rawMouse = Microsoft.Xna.Framework.Input.Mouse.GetState();
+                var viewport = _game.GraphicsDevice.Viewport;
+                bool mouseInWindow = rawMouse.X >= 0 && rawMouse.X < viewport.Width &&
+                                     rawMouse.Y >= 0 && rawMouse.Y < viewport.Height;
+
+                float scaleX = viewport.Width > 0 ? _stage.GetWidth() / viewport.Width : 1f;
+                float scaleY = viewport.Height > 0 ? _stage.GetHeight() / viewport.Height : 1f;
+                float stageMX = rawMouse.X * scaleX;
+                float stageMY = rawMouse.Y * scaleY;
+
+                const float consolePad = 16f;
+                float baseX = _eventConsolePanel.BaseX;
+                float baseY = _eventConsolePanel.BaseY;
+                const float consoleW = 480f;
+                const float consoleH = 120f;
+                bool mouseNearConsole = mouseInWindow &&
+                                        stageMX >= baseX - consolePad &&
+                                        stageMX <= baseX + consoleW + consolePad &&
+                                        stageMY >= baseY - consolePad &&
+                                        stageMY <= baseY + consoleH + consolePad;
+
+                if (mouseNearConsole)
+                {
+                    _consoleIdleTimer = 0f;
+                    if (_consoleHidden)
+                        ShowEventConsole();
+                }
+                else if (_autoHideEnabled && _hideEventConsole)
+                {
+                    _consoleIdleTimer += Time.UnscaledDeltaTime;
+                    if (_consoleIdleTimer >= GameConfig.UIBarAutoHideDelay && !_consoleHidden)
+                        HideEventConsole();
+                }
             }
 
             if (!_consoleAnimating) return;
 
             float stageH = _stage.GetHeight();
+            float consolePanelBaseY = _eventConsolePanel.BaseY;
             // Push the panel far enough below the bottom edge to fully clear it.
-            float hideOffset = (stageH - baseY) + 4f;
+            float hideOffset = (stageH - consolePanelBaseY) + 4f;
             float targetOffsetY = _consoleHidden ? hideOffset : 0f;
             float delta = targetOffsetY - _consoleSlideY;
             float step = GameConfig.UIBarSlideSpeed * Time.UnscaledDeltaTime;

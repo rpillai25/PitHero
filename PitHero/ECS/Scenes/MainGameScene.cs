@@ -48,12 +48,18 @@ namespace PitHero.ECS.Scenes
         private Services.HeroPromotionService _heroPromotionService; // Manages hero crystal promotion after death
         private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
         private ColorGradingPostProcessor _colorGrading;
+        private TillModeOverlay _tillModeOverlay;
+        private Label _tillingLabel;
+        private bool _wasInTillMode;
+        private Nez.UI.Stage _uiStage;
 
         // HUD fonts for different shrink levels
         public BitmapFont _hudFontNormal;
         public BitmapFont _hudFontHalf;
         private LabelStyle _pitLevelStyleNormal;
         private LabelStyle _pitLevelStyleHalf;
+        private LabelStyle _modeStyleNormal;
+        private LabelStyle _modeStyleHalf;
         private enum HudMode { Normal, Half }
         private HudMode _currentHudMode = HudMode.Normal;
 
@@ -105,6 +111,10 @@ namespace PitHero.ECS.Scenes
             // Pre-create label styles to avoid per-frame allocations
             _pitLevelStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
             _pitLevelStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
+            _modeStyleNormal = new LabelStyle(_hudFontNormal, Color.White);
+            _modeStyleHalf = new LabelStyle(_hudFontHalf, Color.White);
+
+
 
             // Register game event service so systems can broadcast events to the event console.
             Core.Services.AddService(new Services.GameEventService(Core.Services.GetService<TextService>()));
@@ -200,6 +210,18 @@ namespace PitHero.ECS.Scenes
 
             // Clear pending data so it's not applied again
             SaveLoadService.PendingLoadData = null;
+
+            // Restore tile states (farming)
+            var tileStateService = Core.Services.GetService<TileStateService>();
+            if (tileStateService != null && pendingData.TileStates != null)
+            {
+                tileStateService.Clear();
+                for (int i = 0; i < pendingData.TileStates.Count; i++)
+                {
+                    var ts = pendingData.TileStates[i];
+                    tileStateService.SetFlag(new Microsoft.Xna.Framework.Point(ts.X, ts.Y), (Farming.TileStateFlag)ts.Flags);
+                }
+            }
 
             // Restore in-game time so Color Grading reflects the correct time of day
             if (pendingData.InGameTimeAccumulatedSeconds > 0)
@@ -604,6 +626,12 @@ namespace PitHero.ECS.Scenes
             fogLayerRenderer.SetRenderLayer(GameConfig.RenderLayerFogOfWar);
 
             _cameraController?.ConfigureZoomForMap(_mapPath);
+
+            // Initialize till mode overlay now that the map is loaded. SetupUIOverlay() runs
+            // earlier (in Initialize, before Begin) so _uiStage already exists here; wire it now
+            // so the overlay can detect when the mouse is over UI and suppress tile placement.
+            _tillModeOverlay = new TillModeOverlay(this, _tmxMap);
+            _tillModeOverlay.SetStage(_uiStage);
 
             // Initialize pit width manager after map and services are set up
             SetupPitWidthManager();
@@ -1073,6 +1101,9 @@ namespace PitHero.ECS.Scenes
             var uiCanvas = uiEntity.AddComponent(new UICanvas());
             uiCanvas.IsFullScreen = false;
             uiCanvas.RenderLayer = GameConfig.RenderLayerUI;
+            _uiStage = uiCanvas.Stage;
+            // Note: _tillModeOverlay is created later in LoadMap (during Begin) and wires itself
+            // to _uiStage there. Do not call SetStage here — the overlay does not exist yet.
 
             _settingsUI = new SettingsUI(Core.Instance);
             _settingsUI.InitializeUI(uiCanvas.Stage);
@@ -1097,6 +1128,12 @@ namespace PitHero.ECS.Scenes
             // Clock label (upper-right, position adjusted dynamically based on text width)
             _clockLabel = uiCanvas.Stage.AddElement(new Label("6:00 AM", _hudFontNormal));
             _clockLabel.SetStyle(_pitLevelStyleNormal);
+
+            // Tilling label (upper area, centered between button bar and clock — visible only in till mode)
+            string tillingText = Core.Services.GetService<TextService>()?.DisplayText(TextType.UI, UITextKey.LabelTillingSoil) ?? "Tilling Soil";
+            _tillingLabel = uiCanvas.Stage.AddElement(new Label(tillingText, _hudFontNormal));
+            _tillingLabel.SetStyle(_modeStyleNormal);
+            _tillingLabel.SetVisible(false);
 
             // Create graphical HUD entity to display HP/MP/Level
             var hudEntity = CreateEntity("graphical-hud");
@@ -1256,6 +1293,33 @@ namespace PitHero.ECS.Scenes
             _clockLabel.SetText(text);
             float labelWidth = _hudFontNormal.MeasureString(text).X;
             _clockLabel.SetPosition(GameConfig.VirtualWidth - labelWidth - ClockLabelRightPadding, ClockLabelBaseY);
+        }
+
+        private void UpdateTillingLabel()
+        {
+            if (_tillingLabel == null || _hudFontNormal == null) return;
+            bool inTillMode = _settingsUI?.IsTillModeActive ?? false;
+            _tillingLabel.SetVisible(inTillMode);
+            if (!inTillMode) return;
+
+            float alpha = (float)Math.Sin(Time.TotalTime * Math.PI * 1.2f) * 0.5f + 0.5f;
+            _tillingLabel.SetFontColor(new Color(0, 255, 255, (int)(alpha * 255)));
+
+            // Measure the label text directly from the label so we stay in sync with the localized string.
+            string labelText = _tillingLabel.GetText();
+            float tillingWidth = _hudFontNormal.MeasureString(labelText).X;
+
+            // Clock left edge
+            string timeText = Core.Services.GetService<InGameTimeService>()?.FormatTime() ?? "6:00 AM";
+            float clockWidth = _hudFontNormal.MeasureString(timeText).X;
+            float clockX = GameConfig.VirtualWidth - clockWidth - ClockLabelRightPadding;
+
+            // Button bar right edge (exposed by SettingsUI; falls back to 0 before first PositionUI)
+            float barRight = _settingsUI?.UIBarRight ?? 0f;
+
+            // Center the label in the gap between the button bar and the clock
+            float midX = (barRight + clockX) / 2f;
+            _tillingLabel.SetPosition(midX - tillingWidth / 2f, ClockLabelBaseY);
         }
 
         /// <summary>
@@ -1661,6 +1725,16 @@ namespace PitHero.ECS.Scenes
             Core.Services.GetService<InGameTimeService>()?.Update();
             _colorGrading?.UpdateTimeOfDay();
             UpdateClockLabel();
+            UpdateTillingLabel();
+            bool inTillMode = _settingsUI?.IsTillModeActive ?? false;
+            if (inTillMode != _wasInTillMode)
+            {
+                if (inTillMode) _tillModeOverlay?.OnEnterTillMode();
+                else            _tillModeOverlay?.OnExitTillMode();
+                _wasInTillMode = inTillMode;
+            }
+            if (inTillMode)
+                _tillModeOverlay?.Update();
             UpdateHeroHUD();
             UpdateHudFontMode();
 

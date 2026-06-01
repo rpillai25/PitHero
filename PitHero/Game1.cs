@@ -45,6 +45,9 @@ namespace PitHero
             // Disable pausing when focus is lost - essential for idle game behavior
             PauseOnFocusLost = false;
 
+            Core.ExitOnEscapeKeypress = false;
+            Services.AddService(new TileStateService());
+
             var scene = new TitleScreenScene();
             Scene = scene;
         }

@@ -35,6 +35,7 @@ namespace PitHero
         public const string ButtonFarmBuildings = "ButtonFarmBuildings";
         public const string ButtonFarmOptions = "ButtonFarmOptions";
         public const string ButtonFarmDestroyCrops = "ButtonFarmDestroyCrops";
+        public const string LabelTillingSoil = "LabelTillingSoil";
         public const string WindowAppearance = "WindowAppearance";
         public const string WindowJobInfo = "WindowJobInfo";
         public const string WindowMonsters = "WindowMonsters";

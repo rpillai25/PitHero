@@ -44,6 +44,9 @@ namespace PitHero.UI
 
         public bool AreSubButtonsVisible => _subButtonsVisible;
 
+        /// <summary>Gets whether till mode is currently active.</summary>
+        public bool IsInTillMode { get; private set; }
+
         private TextService GetTextService()
         {
             if (_textService == null && Core.Services != null)
@@ -136,6 +139,23 @@ namespace PitHero.UI
                 _subButtons[i].SetSize(sprite.SourceRect.Width, sprite.SourceRect.Height);
                 _subButtons[i].SetVisible(false);
             }
+
+            // Wire Till button (index 0)
+            _subButtons[0].OnClicked += (_) => ToggleTillMode();
+        }
+
+        private void ToggleTillMode()
+        {
+            // Only enters till mode — exiting is handled by SettingsUI detecting any UI click,
+            // so the button is idempotent when already in till mode.
+            if (!IsInTillMode)
+                IsInTillMode = true;
+        }
+
+        /// <summary>Forces till mode off (e.g., when the player presses Escape).</summary>
+        public void ExitTillMode()
+        {
+            IsInTillMode = false;
         }
 
         private void ToggleSubButtons()

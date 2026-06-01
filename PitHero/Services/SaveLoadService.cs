@@ -564,6 +564,21 @@ namespace PitHero.Services
                 }
             }
 
+            // Tile States (farming)
+            var tileStateService = Core.Services.GetService<TileStateService>();
+            if (tileStateService != null)
+            {
+                data.TileStates = new List<SavedTileState>();
+                foreach (var kvp in tileStateService.GetAllStates())
+                {
+                    var ts = new SavedTileState();
+                    ts.X = kvp.Key.X;
+                    ts.Y = kvp.Key.Y;
+                    ts.Flags = (int)kvp.Value;
+                    data.TileStates.Add(ts);
+                }
+            }
+
             return data;
         }
 
