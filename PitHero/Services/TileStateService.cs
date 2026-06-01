@@ -50,5 +50,11 @@ namespace PitHero.Services
                 if ((kvp.Value & flag) != 0)
                     yield return kvp.Key;
         }
+
+        /// <summary>Returns a snapshot of all entries for serialization.</summary>
+        public IEnumerable<KeyValuePair<Point, TileStateFlag>> GetAllStates() => _tileStates;
+
+        /// <summary>Removes all tile state. Called when quitting to title so stale data cannot bleed into a new save.</summary>
+        public void Clear() => _tileStates.Clear();
     }
 }

@@ -204,6 +204,18 @@ namespace PitHero.ECS.Scenes
             // Clear pending data so it's not applied again
             SaveLoadService.PendingLoadData = null;
 
+            // Restore tile states (farming)
+            var tileStateService = Core.Services.GetService<TileStateService>();
+            if (tileStateService != null && pendingData.TileStates != null)
+            {
+                tileStateService.Clear();
+                for (int i = 0; i < pendingData.TileStates.Count; i++)
+                {
+                    var ts = pendingData.TileStates[i];
+                    tileStateService.SetFlag(new Microsoft.Xna.Framework.Point(ts.X, ts.Y), (Farming.TileStateFlag)ts.Flags);
+                }
+            }
+
             // Restore in-game time so Color Grading reflects the correct time of day
             if (pendingData.InGameTimeAccumulatedSeconds > 0)
                 Core.Services.GetService<InGameTimeService>()?.SetAccumulatedTime(pendingData.InGameTimeAccumulatedSeconds);

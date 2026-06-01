@@ -143,6 +143,14 @@ namespace PitHero.Services
         }
     }
 
+    /// <summary>Lightweight struct representing a persisted tile state entry.</summary>
+    public struct SavedTileState
+    {
+        public int X;
+        public int Y;
+        public int Flags;
+    }
+
     /// <summary>Lightweight struct representing a saved allied monster.</summary>
     public struct SavedAlliedMonster
     {
@@ -177,7 +185,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 3;
+        public const int CurrentVersion = 4;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -352,6 +360,10 @@ namespace PitHero.Services
         /// <summary>Saved item stacks in Second Chance Merchant vault.</summary>
         public List<SavedVaultItem> SecondChanceVaultItems;
 
+        // Farming
+        /// <summary>Per-tile farming state flags (ReadyToTill, Tilled, etc.).</summary>
+        public List<SavedTileState> TileStates;
+
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
         {
@@ -372,6 +384,7 @@ namespace PitHero.Services
             ForgeSlotB = null;
             SecondChanceVaultCrystals = new List<SavedHeroCrystal>();
             SecondChanceVaultItems = new List<SavedVaultItem>();
+            TileStates = new List<SavedTileState>();
         }
 
         /// <summary>Writes all game state to the persistence writer.</summary>
@@ -603,6 +616,16 @@ namespace PitHero.Services
                 writer.Write(vi.Name ?? string.Empty);
                 writer.Write(vi.IsConsumable);
                 writer.Write(vi.Quantity);
+            }
+
+            // 20. Tile States (farming)
+            int tileStateCount = TileStates != null ? TileStates.Count : 0;
+            writer.Write(tileStateCount);
+            for (int i = 0; i < tileStateCount; i++)
+            {
+                writer.Write(TileStates[i].X);
+                writer.Write(TileStates[i].Y);
+                writer.Write(TileStates[i].Flags);
             }
         }
 
@@ -845,6 +868,25 @@ namespace PitHero.Services
             else
             {
                 SecondChanceVaultItems = new List<SavedVaultItem>();
+            }
+
+            // 20. Tile States (version 4+)
+            if (fileVersion >= 4)
+            {
+                int tileStateCount = reader.ReadInt();
+                TileStates = new List<SavedTileState>(tileStateCount);
+                for (int i = 0; i < tileStateCount; i++)
+                {
+                    SavedTileState ts;
+                    ts.X = reader.ReadInt();
+                    ts.Y = reader.ReadInt();
+                    ts.Flags = reader.ReadInt();
+                    TileStates.Add(ts);
+                }
+            }
+            else
+            {
+                TileStates = new List<SavedTileState>();
             }
         }
 

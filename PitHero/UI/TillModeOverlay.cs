@@ -7,6 +7,7 @@ using Nez.Tiled;
 using Nez.Textures;
 using PitHero.Farming;
 using PitHero.Services;
+using PitHero.Util;
 
 namespace PitHero.UI
 {
@@ -35,9 +36,12 @@ namespace PitHero.UI
         private static readonly Color CursorTillableColor   = new Color(101, 67, 33, 128);
         private static readonly Color CursorUntillableColor = new Color(255, 0, 0, 128);
 
-        private const int TillGid = 170;
-        private const int TillMinTileX = 120;
-        private const int TillMinTileY = 1;
+        private const int TillZerothGid = 122;   // GIDs 122-137 are the 16 transition variants
+        private const int TillMinTileX  = 120;
+        private const int TillMinTileY  = 1;
+
+        // Cached tileset for GIDs 122-137 (same sheet for all variants)
+        private TmxTileset _tillTileset;
 
         public TillModeOverlay(Scene scene, TmxMap map)
         {
@@ -105,6 +109,7 @@ namespace PitHero.UI
                     {
                         tileService.SetFlag(tile, TileStateFlag.ReadyToTill);
                         CreateOverlayEntity(tile);
+                        RecalculateNeighborhood(tile);
                     }
                 }
             }
@@ -118,6 +123,7 @@ namespace PitHero.UI
                     {
                         tileService.ClearFlag(tile, TileStateFlag.ReadyToTill);
                         DestroyOverlayEntity(tile);
+                        RecalculateNeighborhood(tile);
                     }
                 }
             }
@@ -174,19 +180,14 @@ namespace PitHero.UI
             if (_overlayEntities.ContainsKey(tile))
                 return;
 
-            var tileset = _map.GetTilesetForTileGid(TillGid);
-            var rectF   = tileset.TileRegions[TillGid];
-            var rect    = new Rectangle((int)rectF.X, (int)rectF.Y, (int)rectF.Width, (int)rectF.Height);
-            var sprite  = new Sprite(tileset.Image.Texture, rect);
-
             float wx = tile.X * GameConfig.TileSize + GameConfig.TileSize / 2f;
             float wy = tile.Y * GameConfig.TileSize + GameConfig.TileSize / 2f;
 
             var entity = _scene.CreateEntity("till-overlay-" + tile.X + "-" + tile.Y);
             entity.SetPosition(wx, wy);
 
-            var renderer = entity.AddComponent(new SpriteRenderer(sprite));
-            renderer.Color = new Color(255, 255, 255, 128);
+            var renderer = entity.AddComponent(new SpriteRenderer(GetBitmaskSprite(tile.X, tile.Y)));
+            renderer.Color = Color.Yellow;
             renderer.SetRenderLayer(GameConfig.RenderLayerSingleTileObject);
 
             _overlayEntities[tile] = entity;
@@ -199,6 +200,41 @@ namespace PitHero.UI
 
             entity.Destroy();
             _overlayEntities.Remove(tile);
+        }
+
+        // Recompute transition sprites for the 8 tiles surrounding center (skips tiles with no entity).
+        private void RecalculateNeighborhood(Point center)
+        {
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    if (dx == 0 && dy == 0) continue;
+                    UpdateOverlaySprite(new Point(center.X + dx, center.Y + dy));
+                }
+        }
+
+        private void UpdateOverlaySprite(Point tile)
+        {
+            if (!_overlayEntities.TryGetValue(tile, out var entity))
+                return;
+            var renderer = entity.GetComponent<SpriteRenderer>();
+            if (renderer != null)
+                renderer.Sprite = GetBitmaskSprite(tile.X, tile.Y);
+        }
+
+        private Sprite GetBitmaskSprite(int tileX, int tileY)
+        {
+            int gid = TileBitmask.GetTileIndex(tileX, tileY, TillZerothGid, IsReadyToTill);
+            var tileset = _tillTileset ??= _map.GetTilesetForTileGid(TillZerothGid);
+            var rectF = tileset.TileRegions[gid];
+            var rect  = new Rectangle((int)rectF.X, (int)rectF.Y, (int)rectF.Width, (int)rectF.Height);
+            return new Sprite(tileset.Image.Texture, rect);
+        }
+
+        private bool IsReadyToTill(int x, int y)
+        {
+            var svc = Core.Services.GetService<TileStateService>();
+            return svc != null && svc.HasFlag(new Point(x, y), TileStateFlag.ReadyToTill);
         }
     }
 }
