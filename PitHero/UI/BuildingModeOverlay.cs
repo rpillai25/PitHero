@@ -52,6 +52,9 @@ namespace PitHero.UI
 
         public bool IsInPlacingState => _state == PlacementState.Placing;
 
+        /// <summary>Fired when the Cancel button is clicked; caller should invoke FarmUI.ExitBuildingMode().</summary>
+        public event System.Action RequestExitBuildingMode;
+
         // ─────────────────────────────────────────────────────────────────────────
         public BuildingModeOverlay(Scene scene, Stage stage)
         {
@@ -97,24 +100,29 @@ namespace PitHero.UI
             _inventoryWindow.SetMovable(false);
             _inventoryWindow.SetResizable(false);
 
-            var row = new Table();
-            row.Pad(WinPad);
+            var content = new Table();
+            content.Pad(WinPad);
 
-            // MonsterHouse slot
+            // Building slots row
             var slotA = new BuildingSlotButton(
                 _cropsAtlas.GetSprite(BuildingConfig.GetSpriteName(BuildingType.MonsterHouse)),
                 BuildingConfig.GetDisplayName(BuildingType.MonsterHouse));
             slotA.OnClicked += () => OnBuildingSlotClicked(BuildingType.MonsterHouse);
-            row.Add(slotA).Size(SlotSize, SlotSize).Pad(4f);
+            content.Add(slotA).Size(SlotSize, SlotSize).Pad(4f);
 
-            // CropStorage slot
             var slotB = new BuildingSlotButton(
                 _cropsAtlas.GetSprite(BuildingConfig.GetSpriteName(BuildingType.CropStorage)),
                 BuildingConfig.GetDisplayName(BuildingType.CropStorage));
             slotB.OnClicked += () => OnBuildingSlotClicked(BuildingType.CropStorage);
-            row.Add(slotB).Size(SlotSize, SlotSize).Pad(4f);
+            content.Add(slotB).Size(SlotSize, SlotSize).Pad(4f);
 
-            _inventoryWindow.Add(row).Expand().Fill();
+            // Cancel button below slots
+            content.Row();
+            var cancelButton = new TextButton("Cancel", skin, "ph-default");
+            cancelButton.OnClicked += (_) => RequestExitBuildingMode?.Invoke();
+            content.Add(cancelButton).SetColspan(2).Width(100f).SetPadTop(8f);
+
+            _inventoryWindow.Add(content).Expand().Fill();
             _inventoryWindow.Pack();
             _inventoryWindow.SetVisible(false);
             _stage.AddElement(_inventoryWindow);

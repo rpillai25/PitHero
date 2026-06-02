@@ -159,6 +159,9 @@ namespace PitHero.UI
         /// <summary>Returns true when the player is currently in building placement mode.</summary>
         public bool IsBuildingModeActive => _farmUI?.IsInBuildingMode ?? false;
 
+        /// <summary>Exits building mode — called by the overlay's Cancel button.</summary>
+        public void ExitBuildingModeViaFarm() => _farmUI?.ExitBuildingMode();
+
         // Tracks building mode state from end of previous frame so we can detect the frame it turned on.
         private bool _prevIsBuildingModeActive = false;
 

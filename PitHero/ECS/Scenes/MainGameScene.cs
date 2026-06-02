@@ -654,6 +654,7 @@ namespace PitHero.ECS.Scenes
 
             // Building mode overlay — creates its UI panels on the same stage.
             _buildingModeOverlay = new BuildingModeOverlay(this, _uiStage);
+            _buildingModeOverlay.RequestExitBuildingMode += () => _settingsUI?.ExitBuildingModeViaFarm();
 
             // Initialize pit width manager after map and services are set up
             SetupPitWidthManager();
