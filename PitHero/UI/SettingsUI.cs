@@ -156,6 +156,12 @@ namespace PitHero.UI
         // Tracks till mode state from end of previous frame so we can detect the frame it turned on.
         private bool _prevIsTillModeActive = false;
 
+        /// <summary>Returns true when the player is currently in building placement mode.</summary>
+        public bool IsBuildingModeActive => _farmUI?.IsInBuildingMode ?? false;
+
+        // Tracks building mode state from end of previous frame so we can detect the frame it turned on.
+        private bool _prevIsBuildingModeActive = false;
+
         /// <summary>Gets the SecondChanceShopUI instance.</summary>
         public SecondChanceShopUI SecondChanceShopUI => _secondChanceShopUI;
 
@@ -1196,6 +1202,10 @@ namespace PitHero.UI
             if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape) && IsTillModeActive)
                 _farmUI?.ExitTillMode();
 
+            // Exit building mode when Escape is pressed
+            if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape) && IsBuildingModeActive)
+                _farmUI?.ExitBuildingMode();
+
             // Update smooth scrolling animation
             UpdateSmoothScrolling();
 
@@ -1220,7 +1230,8 @@ namespace PitHero.UI
                 _farmUI?.ExitTillMode();
             }
 
-            _prevIsTillModeActive = IsTillModeActive;
+            _prevIsTillModeActive     = IsTillModeActive;
+            _prevIsBuildingModeActive = IsBuildingModeActive;
 
             // Update persistent size if window size changed externally (e.g., Shift+Mouse Wheel)
             if (!_isVisible) // Only update when settings are closed

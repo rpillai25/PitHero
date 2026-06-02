@@ -47,6 +47,9 @@ namespace PitHero.UI
         /// <summary>Gets whether till mode is currently active.</summary>
         public bool IsInTillMode { get; private set; }
 
+        /// <summary>Gets whether building placement mode is currently active.</summary>
+        public bool IsInBuildingMode { get; private set; }
+
         private TextService GetTextService()
         {
             if (_textService == null && Core.Services != null)
@@ -142,6 +145,9 @@ namespace PitHero.UI
 
             // Wire Till button (index 0)
             _subButtons[0].OnClicked += (_) => ToggleTillMode();
+
+            // Wire Buildings button (index 2)
+            _subButtons[2].OnClicked += (_) => ToggleBuildingMode();
         }
 
         private void ToggleTillMode()
@@ -149,13 +155,35 @@ namespace PitHero.UI
             // Only enters till mode — exiting is handled by SettingsUI detecting any UI click,
             // so the button is idempotent when already in till mode.
             if (!IsInTillMode)
+            {
+                ExitBuildingMode(); // mutual exclusion
                 IsInTillMode = true;
+            }
         }
 
         /// <summary>Forces till mode off (e.g., when the player presses Escape).</summary>
         public void ExitTillMode()
         {
             IsInTillMode = false;
+        }
+
+        private void ToggleBuildingMode()
+        {
+            if (IsInBuildingMode)
+            {
+                IsInBuildingMode = false;
+            }
+            else
+            {
+                ExitTillMode(); // mutual exclusion
+                IsInBuildingMode = true;
+            }
+        }
+
+        /// <summary>Forces building placement mode off.</summary>
+        public void ExitBuildingMode()
+        {
+            IsInBuildingMode = false;
         }
 
         private void ToggleSubButtons()

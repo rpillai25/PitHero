@@ -151,6 +151,14 @@ namespace PitHero.Services
         public int Flags;
     }
 
+    /// <summary>Lightweight struct representing a persisted placed building.</summary>
+    public struct SavedBuilding
+    {
+        public int BuildingTypeId; // cast of BuildingType enum
+        public int TileX;
+        public int TileY;
+    }
+
     /// <summary>Lightweight struct representing a saved allied monster.</summary>
     public struct SavedAlliedMonster
     {
@@ -185,7 +193,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 4;
+        public const int CurrentVersion = 5;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -364,6 +372,10 @@ namespace PitHero.Services
         /// <summary>Per-tile farming state flags (ReadyToTill, Tilled, etc.).</summary>
         public List<SavedTileState> TileStates;
 
+        // Buildings
+        /// <summary>Buildings placed on the farm map.</summary>
+        public List<SavedBuilding> PlacedBuildings;
+
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
         {
@@ -385,6 +397,7 @@ namespace PitHero.Services
             SecondChanceVaultCrystals = new List<SavedHeroCrystal>();
             SecondChanceVaultItems = new List<SavedVaultItem>();
             TileStates = new List<SavedTileState>();
+            PlacedBuildings = new List<SavedBuilding>();
         }
 
         /// <summary>Writes all game state to the persistence writer.</summary>
@@ -626,6 +639,16 @@ namespace PitHero.Services
                 writer.Write(TileStates[i].X);
                 writer.Write(TileStates[i].Y);
                 writer.Write(TileStates[i].Flags);
+            }
+
+            // 21. Placed Buildings (version 5+)
+            int buildingCount = PlacedBuildings != null ? PlacedBuildings.Count : 0;
+            writer.Write(buildingCount);
+            for (int i = 0; i < buildingCount; i++)
+            {
+                writer.Write(PlacedBuildings[i].BuildingTypeId);
+                writer.Write(PlacedBuildings[i].TileX);
+                writer.Write(PlacedBuildings[i].TileY);
             }
         }
 
@@ -887,6 +910,25 @@ namespace PitHero.Services
             else
             {
                 TileStates = new List<SavedTileState>();
+            }
+
+            // 21. Placed Buildings (version 5+)
+            if (fileVersion >= 5)
+            {
+                int buildingCount = reader.ReadInt();
+                PlacedBuildings = new List<SavedBuilding>(buildingCount);
+                for (int i = 0; i < buildingCount; i++)
+                {
+                    SavedBuilding b;
+                    b.BuildingTypeId = reader.ReadInt();
+                    b.TileX          = reader.ReadInt();
+                    b.TileY          = reader.ReadInt();
+                    PlacedBuildings.Add(b);
+                }
+            }
+            else
+            {
+                PlacedBuildings = new List<SavedBuilding>();
             }
         }
 

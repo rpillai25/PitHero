@@ -579,6 +579,23 @@ namespace PitHero.Services
                 }
             }
 
+            // Buildings
+            var buildingService = Core.Services.GetService<BuildingService>();
+            if (buildingService != null)
+            {
+                data.PlacedBuildings = new List<SavedBuilding>();
+                var all = buildingService.GetAll();
+                for (int i = 0; i < all.Count; i++)
+                {
+                    var pb = all[i];
+                    SavedBuilding sb;
+                    sb.BuildingTypeId = (int)pb.Type;
+                    sb.TileX          = pb.TileX;
+                    sb.TileY          = pb.TileY;
+                    data.PlacedBuildings.Add(sb);
+                }
+            }
+
             return data;
         }
 
