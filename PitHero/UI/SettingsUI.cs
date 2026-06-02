@@ -1590,9 +1590,9 @@ namespace PitHero.UI
 
             float sbScale = isHalfMode ? 2f : 1f;
 
-            if (IsTillModeActive)
+            if (IsTillModeActive || IsBuildingModeActive)
             {
-                // Hide the shortcut bar for the duration of till mode; animation block below still runs.
+                // Hide the shortcut bar while till mode or building placement mode is active.
                 if (!_shortcutBarHidden) HideShortcutBar();
             }
             else
@@ -1687,9 +1687,9 @@ namespace PitHero.UI
         {
             if (_eventConsolePanel == null) return;
 
-            if (IsTillModeActive)
+            if (IsTillModeActive || IsBuildingModeActive)
             {
-                // Hide the event console for the duration of till mode; animation block below still runs.
+                // Hide the event console while till mode or building placement mode is active.
                 if (!_consoleHidden) HideEventConsole();
             }
             else
