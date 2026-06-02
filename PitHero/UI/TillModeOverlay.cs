@@ -75,6 +75,15 @@ namespace PitHero.UI
             DestroyAllOverlays();
         }
 
+        /// <summary>
+        /// Shows grayscale overlay sprites for all ReadyToTill tiles without activating the full
+        /// till mode cursor. Called by BuildingModeOverlay so blocked tiles are visible during placement.
+        /// </summary>
+        public void ShowTilledOverlays() => RestoreOverlays();
+
+        /// <summary>Removes the grayscale overlay sprites (inverse of ShowTilledOverlays).</summary>
+        public void HideTilledOverlays() => DestroyAllOverlays();
+
         /// <summary>Per-frame update: moves the cursor, updates its color, and handles left/right click.</summary>
         public void Update()
         {
@@ -82,7 +91,9 @@ namespace PitHero.UI
             int tileX = (int)(worldPos.X / GameConfig.TileSize);
             int tileY = (int)(worldPos.Y / GameConfig.TileSize);
 
-            bool tillable = tileX >= TillMinTileX && tileY >= TillMinTileY;
+            var buildingService = Core.Services.GetService<BuildingService>();
+            bool occupiedByBuilding = buildingService != null && buildingService.IsTileOccupied(tileX, tileY);
+            bool tillable = tileX >= TillMinTileX && tileY >= TillMinTileY && !occupiedByBuilding;
 
             if (_cursorEntity != null)
             {

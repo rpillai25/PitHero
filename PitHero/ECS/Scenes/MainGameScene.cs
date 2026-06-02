@@ -53,6 +53,7 @@ namespace PitHero.ECS.Scenes
         private bool _wasInTillMode;
         private BuildingModeOverlay _buildingModeOverlay;
         private bool _wasInBuildingMode;
+        private bool _wasInPlacingState;
         private Nez.UI.Stage _uiStage;
 
         // HUD fonts for different shrink levels
@@ -1768,6 +1769,18 @@ namespace PitHero.ECS.Scenes
             }
             if (inBuildingMode)
                 _buildingModeOverlay?.Update();
+
+            // Show tilled-tile overlays while the player is actively placing a building so blocked
+            // areas are immediately visible. Driven independently of actual till mode.
+            bool inPlacingState = inBuildingMode && (_buildingModeOverlay?.IsInPlacingState ?? false);
+            if (inPlacingState != _wasInPlacingState)
+            {
+                if (inPlacingState && !inTillMode)
+                    _tillModeOverlay?.ShowTilledOverlays();
+                else if (!inPlacingState && !inTillMode)
+                    _tillModeOverlay?.HideTilledOverlays();
+                _wasInPlacingState = inPlacingState;
+            }
             UpdateHeroHUD();
             UpdateHudFontMode();
 
