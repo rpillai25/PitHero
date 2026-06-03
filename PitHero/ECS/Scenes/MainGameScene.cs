@@ -51,6 +51,9 @@ namespace PitHero.ECS.Scenes
         private TillModeOverlay _tillModeOverlay;
         private Label _tillingLabel;
         private bool _wasInTillMode;
+        private BuildingModeOverlay _buildingModeOverlay;
+        private bool _wasInBuildingMode;
+        private bool _wasInPlacingState;
         private Nez.UI.Stage _uiStage;
 
         // HUD fonts for different shrink levels
@@ -123,6 +126,9 @@ namespace PitHero.ECS.Scenes
             // resolve it via Core.Services.GetService<CrystalCollectionService>() during Initialize.
             Core.Services.AddService(new Services.CrystalCollectionService());
 
+            // Register building service so farm building placement and counts are queryable.
+            Core.Services.AddService(new Services.BuildingService());
+
             SetupUIOverlay();
 
             _colorGrading = AddPostProcessor(new ColorGradingPostProcessor(0));
@@ -138,6 +144,7 @@ namespace PitHero.ECS.Scenes
             Core.Content.UnloadAsset<TmxMap>(_mapPath);
             Core.Services.RemoveService(typeof(Services.GameEventService));
             Core.Services.RemoveService(typeof(Services.CrystalCollectionService));
+            Core.Services.RemoveService(typeof(Services.BuildingService));
             Core.Services.RemoveService(typeof(MercenaryManager));
             Core.Services.RemoveService(typeof(AlliedMonsterManager));
             Core.Services.RemoveService(typeof(HeroPromotionService));
@@ -220,6 +227,19 @@ namespace PitHero.ECS.Scenes
                 {
                     var ts = pendingData.TileStates[i];
                     tileStateService.SetFlag(new Microsoft.Xna.Framework.Point(ts.X, ts.Y), (Farming.TileStateFlag)ts.Flags);
+                }
+            }
+
+            // Restore placed buildings
+            var buildingService = Core.Services.GetService<Services.BuildingService>();
+            buildingService?.Clear();
+            if (pendingData.PlacedBuildings != null && _buildingModeOverlay != null)
+            {
+                for (int i = 0; i < pendingData.PlacedBuildings.Count; i++)
+                {
+                    var sb   = pendingData.PlacedBuildings[i];
+                    var type = (Util.BuildingType)sb.BuildingTypeId;
+                    _buildingModeOverlay.SpawnRestoredBuilding(type, sb.TileX, sb.TileY);
                 }
             }
 
@@ -632,6 +652,10 @@ namespace PitHero.ECS.Scenes
             // so the overlay can detect when the mouse is over UI and suppress tile placement.
             _tillModeOverlay = new TillModeOverlay(this, _tmxMap);
             _tillModeOverlay.SetStage(_uiStage);
+
+            // Building mode overlay — creates its UI panels on the same stage.
+            _buildingModeOverlay = new BuildingModeOverlay(this, _uiStage);
+            _buildingModeOverlay.RequestExitBuildingMode += () => _settingsUI?.ExitBuildingModeViaFarm();
 
             // Initialize pit width manager after map and services are set up
             SetupPitWidthManager();
@@ -1735,6 +1759,28 @@ namespace PitHero.ECS.Scenes
             }
             if (inTillMode)
                 _tillModeOverlay?.Update();
+
+            bool inBuildingMode = _settingsUI?.IsBuildingModeActive ?? false;
+            if (inBuildingMode != _wasInBuildingMode)
+            {
+                if (inBuildingMode) _buildingModeOverlay?.OnEnterBuildingMode();
+                else                _buildingModeOverlay?.OnExitBuildingMode();
+                _wasInBuildingMode = inBuildingMode;
+            }
+            if (inBuildingMode)
+                _buildingModeOverlay?.Update();
+
+            // Show tilled-tile overlays while the player is actively placing a building so blocked
+            // areas are immediately visible. Driven independently of actual till mode.
+            bool inPlacingState = inBuildingMode && (_buildingModeOverlay?.IsInPlacingState ?? false);
+            if (inPlacingState != _wasInPlacingState)
+            {
+                if (inPlacingState && !inTillMode)
+                    _tillModeOverlay?.ShowTilledOverlays();
+                else if (!inPlacingState && !inTillMode)
+                    _tillModeOverlay?.HideTilledOverlays();
+                _wasInPlacingState = inPlacingState;
+            }
             UpdateHeroHUD();
             UpdateHudFontMode();
 

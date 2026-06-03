@@ -156,6 +156,15 @@ namespace PitHero.UI
         // Tracks till mode state from end of previous frame so we can detect the frame it turned on.
         private bool _prevIsTillModeActive = false;
 
+        /// <summary>Returns true when the player is currently in building placement mode.</summary>
+        public bool IsBuildingModeActive => _farmUI?.IsInBuildingMode ?? false;
+
+        /// <summary>Exits building mode — called by the overlay's Cancel button.</summary>
+        public void ExitBuildingModeViaFarm() => _farmUI?.ExitBuildingMode();
+
+        // Tracks building mode state from end of previous frame so we can detect the frame it turned on.
+        private bool _prevIsBuildingModeActive = false;
+
         /// <summary>Gets the SecondChanceShopUI instance.</summary>
         public SecondChanceShopUI SecondChanceShopUI => _secondChanceShopUI;
 
@@ -1196,6 +1205,10 @@ namespace PitHero.UI
             if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape) && IsTillModeActive)
                 _farmUI?.ExitTillMode();
 
+            // Exit building mode when Escape is pressed
+            if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape) && IsBuildingModeActive)
+                _farmUI?.ExitBuildingMode();
+
             // Update smooth scrolling animation
             UpdateSmoothScrolling();
 
@@ -1220,7 +1233,8 @@ namespace PitHero.UI
                 _farmUI?.ExitTillMode();
             }
 
-            _prevIsTillModeActive = IsTillModeActive;
+            _prevIsTillModeActive     = IsTillModeActive;
+            _prevIsBuildingModeActive = IsBuildingModeActive;
 
             // Update persistent size if window size changed externally (e.g., Shift+Mouse Wheel)
             if (!_isVisible) // Only update when settings are closed
@@ -1579,9 +1593,9 @@ namespace PitHero.UI
 
             float sbScale = isHalfMode ? 2f : 1f;
 
-            if (IsTillModeActive)
+            if (IsTillModeActive || IsBuildingModeActive)
             {
-                // Hide the shortcut bar for the duration of till mode; animation block below still runs.
+                // Hide the shortcut bar while till mode or building placement mode is active.
                 if (!_shortcutBarHidden) HideShortcutBar();
             }
             else
@@ -1676,9 +1690,9 @@ namespace PitHero.UI
         {
             if (_eventConsolePanel == null) return;
 
-            if (IsTillModeActive)
+            if (IsTillModeActive || IsBuildingModeActive)
             {
-                // Hide the event console for the duration of till mode; animation block below still runs.
+                // Hide the event console while till mode or building placement mode is active.
                 if (!_consoleHidden) HideEventConsole();
             }
             else
