@@ -183,23 +183,18 @@ namespace PitHero.UI
         /// <summary>Returns the current seed inventory array (direct reference).</summary>
         public int[] GetSeedInventory() => _seedInventory;
 
-        /// <summary>Replaces the seed inventory with the provided array. Missing slots default to 16.</summary>
+        /// <summary>Loads saved counts into the existing inventory array in place. Missing slots default to 16.</summary>
         public void SetSeedInventory(int[] counts)
         {
             if (counts == null)
                 return;
 
-            _seedInventory = new int[CropTypeInfo.Count];
+            // Mutate in place so CropSlotButton._inventory references remain valid.
             int copy = counts.Length < CropTypeInfo.Count ? counts.Length : CropTypeInfo.Count;
             for (int i = 0; i < copy; i++)
                 _seedInventory[i] = counts[i];
             for (int i = copy; i < CropTypeInfo.Count; i++)
                 _seedInventory[i] = 16;
-
-            // Sync the reference into the service so SaveLoadService can persist it.
-            var svc = Core.Services.GetService<CropPlantingService>();
-            if (svc != null)
-                svc.SeedInventory = _seedInventory;
         }
 
         // ── Load-restore ──────────────────────────────────────────────────────────
@@ -268,6 +263,8 @@ namespace PitHero.UI
 
         // ── Inventory window ──────────────────────────────────────────────────────
 
+        private Table _slotTable;
+
         private void CreateInventoryWindow()
         {
             var skin = PitHeroSkin.CreateSkin();
@@ -278,21 +275,8 @@ namespace PitHero.UI
             var outer = new Table();
             outer.Pad(WinPad);
 
-            // Scroll pane wrapping crop slots
-            var slotTable = new Table();
-            for (int i = 0; i < CropTypeInfo.Count; i++)
-            {
-                var cropType = (CropType)i;
-                var sprite   = _cropsAtlas.GetSprite(CropConfig.GetFullyGrownSpriteName(cropType));
-                int count    = _seedInventory[i];
-                var slot     = new CropSlotButton(sprite, CropConfig.GetDisplayName(cropType), count, _seedInventory, i);
-                slot.OnClicked += () => OnCropSlotClicked(cropType);
-                slotTable.Add(slot).Size(SlotSize, SlotSize).Pad(2f);
-                if ((i + 1) % CropsPerRow == 0)
-                    slotTable.Row();
-            }
-
-            var scroll = new ScrollPane(slotTable, skin, "ph-default");
+            _slotTable = new Table();
+            var scroll = new ScrollPane(_slotTable, skin, "ph-default");
             scroll.SetScrollingDisabled(true, false);
             outer.Add(scroll).Width(SlotSize * CropsPerRow + 16f).Height(200f);
             outer.Row();
@@ -302,7 +286,6 @@ namespace PitHero.UI
             outer.Add(cancelButton).Width(100f).SetPadTop(8f);
 
             _inventoryWindow.Add(outer).Expand().Fill();
-            _inventoryWindow.Pack();
             _inventoryWindow.SetVisible(false);
             _stage.AddElement(_inventoryWindow);
 
@@ -315,6 +298,22 @@ namespace PitHero.UI
 
         private void ShowInventoryWindow()
         {
+            // Rebuild slot table every time: skip zero-count crops and show live counts.
+            _slotTable.Clear();
+            int col = 0;
+            for (int i = 0; i < CropTypeInfo.Count; i++)
+            {
+                if (_seedInventory[i] <= 0) continue;
+                var cropType = (CropType)i;
+                var sprite   = _cropsAtlas.GetSprite(CropConfig.GetFullyGrownSpriteName(cropType));
+                var slot     = new CropSlotButton(sprite, CropConfig.GetDisplayName(cropType), _seedInventory, i);
+                slot.OnClicked += () => OnCropSlotClicked(cropType);
+                _slotTable.Add(slot).Size(SlotSize, SlotSize).Pad(2f);
+                col++;
+                if (col % CropsPerRow == 0)
+                    _slotTable.Row();
+            }
+
             _inventoryWindow.Pack();
             float w = _inventoryWindow.GetWidth();
             float h = _inventoryWindow.GetHeight();
@@ -503,7 +502,7 @@ namespace PitHero.UI
 
             public event System.Action OnClicked;
 
-            public CropSlotButton(Sprite sprite, string tooltipText, int stackCount, int[] inventory, int inventoryIndex)
+            public CropSlotButton(Sprite sprite, string tooltipText, int[] inventory, int inventoryIndex)
             {
                 _sprite         = sprite;
                 _tooltipText    = tooltipText;
