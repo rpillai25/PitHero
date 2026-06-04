@@ -596,6 +596,33 @@ namespace PitHero.Services
                 }
             }
 
+            // Crop plans and seed inventory
+            var cropPlantingService = Core.Services.GetService<CropPlantingService>();
+            if (cropPlantingService != null)
+            {
+                // Seed inventory
+                if (cropPlantingService.SeedInventory != null)
+                {
+                    int seedLen = cropPlantingService.SeedInventory.Length;
+                    data.SeedInventory = new int[seedLen];
+                    for (int i = 0; i < seedLen; i++)
+                        data.SeedInventory[i] = cropPlantingService.SeedInventory[i];
+                }
+
+                // Plans
+                var allPlans = cropPlantingService.GetAllPlans();
+                data.CropPlans = new List<SavedCropPlan>(allPlans.Count);
+                for (int i = 0; i < allPlans.Count; i++)
+                {
+                    var plan = allPlans[i];
+                    SavedCropPlan cp;
+                    cp.CropTypeId = (int)plan.Type;
+                    cp.TileX      = plan.TileX;
+                    cp.TileY      = plan.TileY;
+                    data.CropPlans.Add(cp);
+                }
+            }
+
             return data;
         }
 

@@ -50,6 +50,9 @@ namespace PitHero.UI
         /// <summary>Gets whether building placement mode is currently active.</summary>
         public bool IsInBuildingMode { get; private set; }
 
+        /// <summary>Gets whether seed planting mode is currently active.</summary>
+        public bool IsInSeedMode { get; private set; }
+
         private TextService GetTextService()
         {
             if (_textService == null && Core.Services != null)
@@ -146,6 +149,9 @@ namespace PitHero.UI
             // Wire Till button (index 0)
             _subButtons[0].OnClicked += (_) => ToggleTillMode();
 
+            // Wire Seeds button (index 1)
+            _subButtons[1].OnClicked += (_) => ToggleSeedMode();
+
             // Wire Buildings button (index 2)
             _subButtons[2].OnClicked += (_) => ToggleBuildingMode();
         }
@@ -157,6 +163,7 @@ namespace PitHero.UI
             if (!IsInTillMode)
             {
                 ExitBuildingMode(); // mutual exclusion
+                ExitSeedMode();     // mutual exclusion
                 IsInTillMode = true;
             }
         }
@@ -175,7 +182,8 @@ namespace PitHero.UI
             }
             else
             {
-                ExitTillMode(); // mutual exclusion
+                ExitTillMode();  // mutual exclusion
+                ExitSeedMode();  // mutual exclusion
                 IsInBuildingMode = true;
             }
         }
@@ -184,6 +192,26 @@ namespace PitHero.UI
         public void ExitBuildingMode()
         {
             IsInBuildingMode = false;
+        }
+
+        private void ToggleSeedMode()
+        {
+            if (IsInSeedMode)
+            {
+                IsInSeedMode = false;
+            }
+            else
+            {
+                ExitTillMode();      // mutual exclusion
+                ExitBuildingMode();  // mutual exclusion
+                IsInSeedMode = true;
+            }
+        }
+
+        /// <summary>Forces seed planting mode off.</summary>
+        public void ExitSeedMode()
+        {
+            IsInSeedMode = false;
         }
 
         private void ToggleSubButtons()
