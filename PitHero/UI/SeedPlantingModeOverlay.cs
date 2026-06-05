@@ -26,7 +26,6 @@ namespace PitHero.UI
         // ── State ─────────────────────────────────────────────────────────────────
         private PlacementState _state = PlacementState.Choosing;
         private CropType _selectedCrop;
-        private bool _savedAutoScroll;
 
         // ── Seed inventory ────────────────────────────────────────────────────────
         private int[] _seedInventory;
@@ -88,20 +87,16 @@ namespace PitHero.UI
 
         // ── Public lifecycle ──────────────────────────────────────────────────────
 
-        /// <summary>Called when the player enters seed mode; saves scroll state and shows the inventory.</summary>
+        /// <summary>Called when the player enters seed mode; shows the crop inventory.</summary>
         public void OnEnterSeedMode()
         {
-            _savedAutoScroll = UIWindowManager.AutoScrollToHeroEnabled;
-            UIWindowManager.SetAutoScrollToHero(false);
             _state = PlacementState.Choosing;
-            RestorePlanVisuals();
             ShowInventoryWindow();
         }
 
-        /// <summary>Called when the player exits seed mode; restores scroll state and tears down world entities.</summary>
+        /// <summary>Called when the player exits seed mode; tears down UI/ghost.</summary>
         public void OnExitSeedMode()
         {
-            UIWindowManager.SetAutoScrollToHero(_savedAutoScroll);
             DestroyGhost();
             DestroyTileIndicator();
             HideStackCountLabel();
@@ -109,8 +104,13 @@ namespace PitHero.UI
             _descWindow?.SetVisible(false);
             _state = PlacementState.Choosing;
             _lastDragTile = NoTile;
-            Core.Services.GetService<CropPlantingService>()?.DestroyPlanVisuals();
         }
+
+        /// <summary>Creates grayscale world entities for all plans that have none. Called when any farm sub-mode is entered.</summary>
+        public void ShowPlanVisuals() => RestorePlanVisuals();
+
+        /// <summary>Destroys grayscale world entities for all plans. Called when all farm sub-modes are exited.</summary>
+        public void HidePlanVisuals() => Core.Services.GetService<CropPlantingService>()?.DestroyPlanVisuals();
 
         /// <summary>Per-frame update; only meaningful while in the Placing state.</summary>
         public void Update()

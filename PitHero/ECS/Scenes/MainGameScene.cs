@@ -53,7 +53,8 @@ namespace PitHero.ECS.Scenes
         private bool _wasInTillMode;
         private BuildingModeOverlay _buildingModeOverlay;
         private bool _wasInBuildingMode;
-        private bool _wasInPlacingState;
+        private bool _wasInFarmMode;
+        private bool _savedFarmAutoScroll;
         private SeedPlantingModeOverlay _seedModeOverlay;
         private bool _wasInSeedMode;
         private Label _plantingCropsLabel;
@@ -1805,6 +1806,7 @@ namespace PitHero.ECS.Scenes
             UpdateClockLabel();
             UpdateTillingLabel();
             bool inTillMode = _settingsUI?.IsTillModeActive ?? false;
+            bool prevInTillMode = _wasInTillMode;
             if (inTillMode != _wasInTillMode)
             {
                 if (inTillMode) _tillModeOverlay?.OnEnterTillMode();
@@ -1834,18 +1836,33 @@ namespace PitHero.ECS.Scenes
             if (inSeedMode)
                 _seedModeOverlay?.Update();
 
-            // Show tilled-tile overlays while the player is actively placing a building, or any time
-            // seed mode is open (all three states: Choosing, Describing, Placing).
-            bool inPlacingState = (inBuildingMode && (_buildingModeOverlay?.IsInPlacingState ?? false))
-                                || inSeedMode;
-            if (inPlacingState != _wasInPlacingState)
+            // Show tilled-tile overlays and grayscale crop plans whenever the farm menu is open
+            // (sub-buttons visible or any sub-mode active). Also manages auto-scroll suppression.
+            bool inFarmMode = (_settingsUI?.IsFarmSubMenuOpen ?? false) || inTillMode || inBuildingMode || inSeedMode;
+            if (inFarmMode != _wasInFarmMode)
             {
-                if (inPlacingState && !inTillMode)
-                    _tillModeOverlay?.ShowTilledOverlays();
-                else if (!inPlacingState && !inTillMode)
-                    _tillModeOverlay?.HideTilledOverlays();
-                _wasInPlacingState = inPlacingState;
+                if (inFarmMode)
+                {
+                    _savedFarmAutoScroll = UIWindowManager.AutoScrollToHeroEnabled;
+                    UIWindowManager.SetAutoScrollToHero(false);
+                    if (!inTillMode)
+                        _tillModeOverlay?.ShowTilledOverlays();
+                    _seedModeOverlay?.ShowPlanVisuals();
+                }
+                else
+                {
+                    UIWindowManager.SetAutoScrollToHero(_savedFarmAutoScroll);
+                    if (!inTillMode)
+                        _tillModeOverlay?.HideTilledOverlays();
+                    _seedModeOverlay?.HidePlanVisuals();
+                }
+                _wasInFarmMode = inFarmMode;
             }
+
+            // OnExitTillMode hides the tilled overlays, but if farm mode is still open they should
+            // remain visible. Re-show them whenever till mode just exited inside an active farm session.
+            if (inFarmMode && prevInTillMode && !inTillMode)
+                _tillModeOverlay?.ShowTilledOverlays();
 
             UpdatePlantingCropsLabel();
 

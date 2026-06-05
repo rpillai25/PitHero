@@ -165,6 +165,9 @@ namespace PitHero.UI
         // Tracks building mode state from end of previous frame so we can detect the frame it turned on.
         private bool _prevIsBuildingModeActive = false;
 
+        /// <summary>Returns true when the farm sub-buttons are visible (farm button expanded).</summary>
+        public bool IsFarmSubMenuOpen => _farmUI?.AreSubButtonsVisible ?? false;
+
         /// <summary>Returns true when the player is currently in seed planting mode.</summary>
         public bool IsSeedModeActive => _farmUI?.IsInSeedMode ?? false;
 
@@ -1497,7 +1500,7 @@ namespace PitHero.UI
         /// </summary>
         private void UpdateUIBarAutoHide()
         {
-            if (IsTillModeActive || IsSeedModeActive)
+            if (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive)
             {
                 _uiBarIdleTimer = 0f;
                 if (_uiBarHidden) ShowUIBar();
