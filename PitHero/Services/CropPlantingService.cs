@@ -76,6 +76,31 @@ namespace PitHero.Services
             _plans[idx] = p;
         }
 
+        /// <summary>
+        /// Removes a single plan at the given tile, destroys its entity, and returns the crop type.
+        /// Returns null if no plan exists there. Uses swap-remove for O(1) list mutation.
+        /// </summary>
+        public CropType? RemovePlan(Point tile)
+        {
+            if (!_tileIndex.TryGetValue(tile, out int idx))
+                return null;
+
+            var plan = _plans[idx];
+            plan.WorldEntity?.Destroy();
+
+            int last = _plans.Count - 1;
+            if (idx != last)
+            {
+                var lastPlan = _plans[last];
+                _plans[idx] = lastPlan;
+                _tileIndex[new Point(lastPlan.TileX, lastPlan.TileY)] = idx;
+            }
+            _plans.RemoveAt(last);
+            _tileIndex.Remove(tile);
+
+            return plan.Type;
+        }
+
         /// <summary>Destroys all world entities and clears the plan registry.</summary>
         public void Clear()
         {

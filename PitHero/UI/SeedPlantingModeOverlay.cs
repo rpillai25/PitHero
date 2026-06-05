@@ -16,7 +16,7 @@ namespace PitHero.UI
     /// </summary>
     public class SeedPlantingModeOverlay
     {
-        private enum PlacementState { Choosing, Describing, Placing }
+        private enum PlacementState { Choosing, Describing, Placing, Removing }
 
         // ── World / scene references ──────────────────────────────────────────────
         private readonly Scene _scene;
@@ -62,6 +62,9 @@ namespace PitHero.UI
 
         /// <summary>Fired when the Cancel button is clicked; caller should invoke FarmUI.ExitSeedMode().</summary>
         public event System.Action RequestExitSeedMode;
+
+        /// <summary>Fired when the player clicks UI while in remove-crops mode; caller should invoke FarmUI.ExitRemoveCropsMode().</summary>
+        public event System.Action RequestExitRemoveCropsMode;
 
         // ─────────────────────────────────────────────────────────────────────────
 
@@ -112,10 +115,24 @@ namespace PitHero.UI
         /// <summary>Destroys grayscale world entities for all plans. Called when all farm sub-modes are exited.</summary>
         public void HidePlanVisuals() => Core.Services.GetService<CropPlantingService>()?.DestroyPlanVisuals();
 
-        /// <summary>Per-frame update; only meaningful while in the Placing state.</summary>
+        /// <summary>Called when the player enters remove-crops mode; creates the tile indicator.</summary>
+        public void OnEnterRemoveCropsMode()
+        {
+            _state = PlacementState.Removing;
+            CreateTileIndicator();
+        }
+
+        /// <summary>Called when the player exits remove-crops mode; tears down the tile indicator.</summary>
+        public void OnExitRemoveCropsMode()
+        {
+            DestroyTileIndicator();
+            _state = PlacementState.Choosing;
+        }
+
+        /// <summary>Per-frame update; runs during Placing and Removing states.</summary>
         public void Update()
         {
-            if (_state != PlacementState.Placing)
+            if (_state != PlacementState.Placing && _state != PlacementState.Removing)
                 return;
 
             var worldPos = _scene.Camera.MouseToWorldPoint();
@@ -126,55 +143,85 @@ namespace PitHero.UI
             if (_stage.Hit(_stage.GetMousePosition()) != null)
             {
                 if (Input.LeftMouseButtonPressed)
-                    RequestExitSeedMode?.Invoke();
+                {
+                    if (_state == PlacementState.Placing) RequestExitSeedMode?.Invoke();
+                    else                                  RequestExitRemoveCropsMode?.Invoke();
+                }
                 _lastDragTile = NoTile;
                 return;
             }
 
-            // Ghost: bottom-center of sprite aligns to bottom of tile
-            float ghostX = tileX * GameConfig.TileSize + GameConfig.TileSize / 2f;
-            float ghostH = 0f;
-            if (_ghostEntity != null && _ghostRenderer?.Sprite != null)
+            if (_state == PlacementState.Placing)
             {
-                ghostH = _ghostRenderer.Sprite.SourceRect.Height;
-                float ghostY = tileY * GameConfig.TileSize + GameConfig.TileSize - ghostH / 2f;
-                _ghostEntity.SetPosition(ghostX, ghostY);
-            }
+                // Ghost: bottom-center of sprite aligns to bottom of tile
+                float ghostX = tileX * GameConfig.TileSize + GameConfig.TileSize / 2f;
+                if (_ghostEntity != null && _ghostRenderer?.Sprite != null)
+                {
+                    float ghostH = _ghostRenderer.Sprite.SourceRect.Height;
+                    float ghostY = tileY * GameConfig.TileSize + GameConfig.TileSize - ghostH / 2f;
+                    _ghostEntity.SetPosition(ghostX, ghostY);
+                }
 
-            // Tile indicator: centered in tile
-            if (_tileIndicatorEntity != null)
-            {
-                float indX = tileX * GameConfig.TileSize + GameConfig.TileSize / 2f;
-                float indY = tileY * GameConfig.TileSize + GameConfig.TileSize / 2f;
-                _tileIndicatorEntity.SetPosition(indX, indY);
+                // Tile indicator: green = valid placement, red = invalid
+                if (_tileIndicatorEntity != null)
+                {
+                    _tileIndicatorEntity.SetPosition(
+                        tileX * GameConfig.TileSize + GameConfig.TileSize / 2f,
+                        tileY * GameConfig.TileSize + GameConfig.TileSize / 2f);
+                    bool valid = IsValidPlacement(tileX, tileY);
+                    if (_tileIndicatorRenderer != null)
+                        _tileIndicatorRenderer.Color = valid
+                            ? new Color(0, 255, 0, 128)
+                            : new Color(255, 0, 0, 128);
+                }
 
-                bool valid = IsValidPlacement(tileX, tileY);
-                if (_tileIndicatorRenderer != null)
-                    _tileIndicatorRenderer.Color = valid
-                        ? new Color(0, 255, 0, 128)
-                        : new Color(255, 0, 0, 128);
-            }
+                // Stack count label: follow cursor in stage space
+                if (_stackCountLabel != null)
+                {
+                    var mouseStage = _stage.GetMousePosition();
+                    _stackCountLabel.SetPosition(mouseStage.X + 6f, mouseStage.Y - 14f);
+                    _stackCountLabel.SetText(_seedInventory[(int)_selectedCrop].ToString());
+                    _stackCountLabel.SetVisible(true);
+                }
 
-            // Stack count label: follow cursor in stage space
-            if (_stackCountLabel != null)
-            {
-                var mouseStage = _stage.GetMousePosition();
-                _stackCountLabel.SetPosition(mouseStage.X + 6f, mouseStage.Y - 14f);
-                _stackCountLabel.SetText(_seedInventory[(int)_selectedCrop].ToString());
-                _stackCountLabel.SetVisible(true);
+                // Place crop on valid click / drag
+                var tile = new Point(tileX, tileY);
+                if (Input.LeftMouseButtonDown && tile != _lastDragTile)
+                {
+                    _lastDragTile = tile;
+                    if (IsValidPlacement(tileX, tileY))
+                        PlaceCrop(tileX, tileY);
+                }
+                else if (!Input.LeftMouseButtonDown)
+                {
+                    _lastDragTile = NoTile;
+                }
             }
+            else // Removing
+            {
+                var cropService = Core.Services.GetService<CropPlantingService>();
+                var tile = new Point(tileX, tileY);
+                bool hasPlan = cropService != null && cropService.HasPlan(tile);
 
-            // Place crop on valid click / drag
-            var tile = new Point(tileX, tileY);
-            if (Input.LeftMouseButtonDown && tile != _lastDragTile)
-            {
-                _lastDragTile = tile;
-                if (IsValidPlacement(tileX, tileY))
-                    PlaceCrop(tileX, tileY);
-            }
-            else if (!Input.LeftMouseButtonDown)
-            {
-                _lastDragTile = NoTile;
+                // Tile indicator: green = plan exists and can be removed, red = nothing here
+                if (_tileIndicatorEntity != null)
+                {
+                    _tileIndicatorEntity.SetPosition(
+                        tileX * GameConfig.TileSize + GameConfig.TileSize / 2f,
+                        tileY * GameConfig.TileSize + GameConfig.TileSize / 2f);
+                    if (_tileIndicatorRenderer != null)
+                        _tileIndicatorRenderer.Color = hasPlan
+                            ? new Color(0, 255, 0, 128)
+                            : new Color(255, 0, 0, 128);
+                }
+
+                // Single click to remove (no drag)
+                if (Input.LeftMouseButtonPressed && hasPlan)
+                {
+                    var removed = cropService.RemovePlan(tile);
+                    if (removed.HasValue)
+                        _seedInventory[(int)removed.Value]++;
+                }
             }
         }
 

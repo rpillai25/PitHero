@@ -154,6 +154,9 @@ namespace PitHero.UI
 
             // Wire Buildings button (index 2)
             _subButtons[2].OnClicked += (_) => ToggleBuildingMode();
+
+            // Wire Remove Crops button (index 4)
+            _subButtons[4].OnClicked += (_) => ToggleRemoveCropsMode();
         }
 
         private void ToggleTillMode()
@@ -162,8 +165,9 @@ namespace PitHero.UI
             // so the button is idempotent when already in till mode.
             if (!IsInTillMode)
             {
-                ExitBuildingMode(); // mutual exclusion
-                ExitSeedMode();     // mutual exclusion
+                ExitBuildingMode();     // mutual exclusion
+                ExitSeedMode();         // mutual exclusion
+                ExitRemoveCropsMode();  // mutual exclusion
                 IsInTillMode = true;
             }
         }
@@ -182,8 +186,9 @@ namespace PitHero.UI
             }
             else
             {
-                ExitTillMode();  // mutual exclusion
-                ExitSeedMode();  // mutual exclusion
+                ExitTillMode();         // mutual exclusion
+                ExitSeedMode();         // mutual exclusion
+                ExitRemoveCropsMode();  // mutual exclusion
                 IsInBuildingMode = true;
             }
         }
@@ -202,8 +207,9 @@ namespace PitHero.UI
             }
             else
             {
-                ExitTillMode();      // mutual exclusion
-                ExitBuildingMode();  // mutual exclusion
+                ExitTillMode();         // mutual exclusion
+                ExitBuildingMode();     // mutual exclusion
+                ExitRemoveCropsMode();  // mutual exclusion
                 IsInSeedMode = true;
             }
         }
@@ -212,6 +218,29 @@ namespace PitHero.UI
         public void ExitSeedMode()
         {
             IsInSeedMode = false;
+        }
+
+        public bool IsInRemoveCropsMode { get; private set; }
+
+        private void ToggleRemoveCropsMode()
+        {
+            if (IsInRemoveCropsMode)
+            {
+                IsInRemoveCropsMode = false;
+            }
+            else
+            {
+                ExitTillMode();      // mutual exclusion
+                ExitBuildingMode();  // mutual exclusion
+                ExitSeedMode();      // mutual exclusion
+                IsInRemoveCropsMode = true;
+            }
+        }
+
+        /// <summary>Forces remove-crops mode off.</summary>
+        public void ExitRemoveCropsMode()
+        {
+            IsInRemoveCropsMode = false;
         }
 
         private void ToggleSubButtons()

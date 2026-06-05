@@ -174,6 +174,12 @@ namespace PitHero.UI
         /// <summary>Exits seed planting mode — called by the overlay's Cancel button or Escape.</summary>
         public void ExitSeedModeViaFarm() => _farmUI?.ExitSeedMode();
 
+        /// <summary>Returns true when the player is in remove-crops mode.</summary>
+        public bool IsRemoveCropsModeActive => _farmUI?.IsInRemoveCropsMode ?? false;
+
+        /// <summary>Exits remove-crops mode.</summary>
+        public void ExitRemoveCropsModeViaFarm() => _farmUI?.ExitRemoveCropsMode();
+
         // Tracks seed mode state from end of previous frame so we can detect the frame it turned on.
         private bool _prevIsSeedModeActive = false;
 
@@ -1225,6 +1231,10 @@ namespace PitHero.UI
             if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape) && IsSeedModeActive)
                 ExitSeedModeViaFarm();
 
+            // Exit remove-crops mode when Escape is pressed
+            if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape) && IsRemoveCropsModeActive)
+                ExitRemoveCropsModeViaFarm();
+
             // Update smooth scrolling animation
             UpdateSmoothScrolling();
 
@@ -1500,7 +1510,7 @@ namespace PitHero.UI
         /// </summary>
         private void UpdateUIBarAutoHide()
         {
-            if (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive)
+            if (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive)
             {
                 _uiBarIdleTimer = 0f;
                 if (_uiBarHidden) ShowUIBar();

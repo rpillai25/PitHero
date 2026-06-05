@@ -57,6 +57,7 @@ namespace PitHero.ECS.Scenes
         private bool _savedFarmAutoScroll;
         private SeedPlantingModeOverlay _seedModeOverlay;
         private bool _wasInSeedMode;
+        private bool _wasInRemoveCropsMode;
         private Label _plantingCropsLabel;
         private Nez.UI.Stage _uiStage;
 
@@ -683,7 +684,8 @@ namespace PitHero.ECS.Scenes
 
             // Seed planting overlay — creates its UI panels on the same stage.
             _seedModeOverlay = new SeedPlantingModeOverlay(this, _uiStage);
-            _seedModeOverlay.RequestExitSeedMode += () => _settingsUI?.ExitSeedModeViaFarm();
+            _seedModeOverlay.RequestExitSeedMode        += () => _settingsUI?.ExitSeedModeViaFarm();
+            _seedModeOverlay.RequestExitRemoveCropsMode += () => _settingsUI?.ExitRemoveCropsModeViaFarm();
 
             // Initialize pit width manager after map and services are set up
             SetupPitWidthManager();
@@ -1836,9 +1838,19 @@ namespace PitHero.ECS.Scenes
             if (inSeedMode)
                 _seedModeOverlay?.Update();
 
+            bool inRemoveCropsMode = _settingsUI?.IsRemoveCropsModeActive ?? false;
+            if (inRemoveCropsMode != _wasInRemoveCropsMode)
+            {
+                if (inRemoveCropsMode) _seedModeOverlay?.OnEnterRemoveCropsMode();
+                else                   _seedModeOverlay?.OnExitRemoveCropsMode();
+                _wasInRemoveCropsMode = inRemoveCropsMode;
+            }
+            if (inRemoveCropsMode)
+                _seedModeOverlay?.Update();
+
             // Show tilled-tile overlays and grayscale crop plans whenever the farm menu is open
             // (sub-buttons visible or any sub-mode active). Also manages auto-scroll suppression.
-            bool inFarmMode = (_settingsUI?.IsFarmSubMenuOpen ?? false) || inTillMode || inBuildingMode || inSeedMode;
+            bool inFarmMode = (_settingsUI?.IsFarmSubMenuOpen ?? false) || inTillMode || inBuildingMode || inSeedMode || inRemoveCropsMode;
             if (inFarmMode != _wasInFarmMode)
             {
                 if (inFarmMode)
