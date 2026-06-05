@@ -392,6 +392,22 @@ namespace PitHero.UI
             if (_seedInventory[(int)_selectedCrop] <= 0)
                 return false;
 
+            // Reject if any of the 8 neighboring tiles has a different crop type planned.
+            if (cropService != null)
+            {
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        if (dx == 0 && dy == 0) continue;
+                        var neighbor = new Microsoft.Xna.Framework.Point(tx + dx, ty + dy);
+                        var neighborType = cropService.GetPlanType(neighbor);
+                        if (neighborType.HasValue && neighborType.Value != _selectedCrop)
+                            return false;
+                    }
+                }
+            }
+
             return true;
         }
 
