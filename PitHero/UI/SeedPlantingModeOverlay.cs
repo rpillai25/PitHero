@@ -205,25 +205,14 @@ namespace PitHero.UI
         /// </summary>
         public void SpawnRestoredCropPlan(CropType type, int tileX, int tileY)
         {
-            var sprite = _cropsAtlas.GetSprite(CropConfig.GetFullyGrownSpriteName(type));
-            float spriteH = sprite != null ? sprite.SourceRect.Height : GameConfig.TileSize;
-            float wx = tileX * GameConfig.TileSize + GameConfig.TileSize / 2f;
-            float wy = tileY * GameConfig.TileSize + GameConfig.TileSize - spriteH / 2f;
-
-            var entity = _scene.CreateEntity(
-                "crop-plan-" + type.ToString() + "-" + tileX + "-" + tileY);
-            entity.SetPosition(wx, wy);
-
-            var renderer = entity.AddComponent(new SpriteRenderer(sprite));
-            renderer.SetRenderLayer(GameConfig.RenderLayerSingleTileObject - 1);
-            renderer.SetMaterial(new Material(new GrayscaleEffect()));
-
+            // Only registers plan data — no entity created here.
+            // RestorePlanVisuals() (called from OnEnterSeedMode) spawns visuals on demand.
             Core.Services.GetService<CropPlantingService>()?.AddPlan(new PlacedCropPlan
             {
                 Type        = type,
                 TileX       = tileX,
                 TileY       = tileY,
-                WorldEntity = entity,
+                WorldEntity = null,
             });
         }
 

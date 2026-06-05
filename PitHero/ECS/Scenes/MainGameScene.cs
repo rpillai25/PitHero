@@ -1834,10 +1834,10 @@ namespace PitHero.ECS.Scenes
             if (inSeedMode)
                 _seedModeOverlay?.Update();
 
-            // Show tilled-tile overlays while the player is actively placing a building or crop so
-            // viable tiles are immediately visible. Driven independently of actual till mode.
+            // Show tilled-tile overlays while the player is actively placing a building, or any time
+            // seed mode is open (all three states: Choosing, Describing, Placing).
             bool inPlacingState = (inBuildingMode && (_buildingModeOverlay?.IsInPlacingState ?? false))
-                                || (inSeedMode    && (_seedModeOverlay?.IsInPlacingState    ?? false));
+                                || inSeedMode;
             if (inPlacingState != _wasInPlacingState)
             {
                 if (inPlacingState && !inTillMode)
