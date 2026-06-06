@@ -16,7 +16,7 @@ namespace PitHero.UI
     /// </summary>
     public class SeedPlantingModeOverlay
     {
-        private enum PlacementState { Choosing, Describing, Placing, Removing }
+        private enum PlacementState { Choosing, Placing, Removing }
 
         // ── World / scene references ──────────────────────────────────────────────
         private readonly Scene _scene;
@@ -43,10 +43,6 @@ namespace PitHero.UI
 
         // ── Inventory window ──────────────────────────────────────────────────────
         private Window _inventoryWindow;
-
-        // ── Description window ────────────────────────────────────────────────────
-        private Window _descWindow;
-        private Label _descNameLabel;
 
         // ── Drag-tracking ─────────────────────────────────────────────────────────
         private static readonly Point NoTile = new Point(int.MinValue, int.MinValue);
@@ -80,7 +76,6 @@ namespace PitHero.UI
                 _seedInventory[i] = 16;
 
             CreateInventoryWindow();
-            CreateDescriptionWindow();
 
             // Expose the inventory array via the service so SaveLoadService can persist it.
             var svc = Core.Services.GetService<CropPlantingService>();
@@ -104,7 +99,6 @@ namespace PitHero.UI
             DestroyTileIndicator();
             HideStackCountLabel();
             _inventoryWindow?.SetVisible(false);
-            _descWindow?.SetVisible(false);
             _state = PlacementState.Choosing;
             _lastDragTile = NoTile;
         }
@@ -359,62 +353,12 @@ namespace PitHero.UI
             _inventoryWindow.SetVisible(true);
         }
 
-        // ── Description window ────────────────────────────────────────────────────
-
-        private void CreateDescriptionWindow()
-        {
-            var skin = PitHeroSkin.CreateSkin();
-            _descWindow = new Window("", skin, "ph-default");
-            _descWindow.SetMovable(false);
-            _descWindow.SetResizable(false);
-
-            var content = new Table();
-            content.Pad(WinPad);
-
-            _descNameLabel = new Label("", skin, "ph-default");
-            content.Add(_descNameLabel).SetPadBottom(8f);
-            content.Row();
-
-            var plantButton = new TextButton("Plant", skin, "ph-default");
-            plantButton.OnClicked += (_) => OnPlantClicked();
-            content.Add(plantButton).Width(80f).SetPadBottom(4f);
-            content.Row();
-
-            var cancelButton = new TextButton("Cancel", skin, "ph-default");
-            cancelButton.OnClicked += (_) => { _descWindow.SetVisible(false); ShowInventoryWindow(); _state = PlacementState.Choosing; };
-            content.Add(cancelButton).Width(80f);
-
-            _descWindow.Add(content).Expand().Fill();
-            _descWindow.Pack();
-            _descWindow.SetVisible(false);
-            _stage.AddElement(_descWindow);
-        }
-
-        private void ShowDescriptionWindow()
-        {
-            _descWindow.Pack();
-            float w = _descWindow.GetWidth();
-            float h = _descWindow.GetHeight();
-            _descWindow.SetPosition(
-                (_stage.GetWidth()  - w) / 2f,
-                (_stage.GetHeight() - h) / 2f - 30f);
-            _descWindow.SetVisible(true);
-        }
-
         // ── State transitions ─────────────────────────────────────────────────────
 
         private void OnCropSlotClicked(CropType crop)
         {
             _selectedCrop = crop;
-            _descNameLabel?.SetText(CropConfig.GetDisplayName(crop));
             _inventoryWindow.SetVisible(false);
-            ShowDescriptionWindow();
-            _state = PlacementState.Describing;
-        }
-
-        private void OnPlantClicked()
-        {
-            _descWindow.SetVisible(false);
             CreateGhost(_selectedCrop);
             CreateTileIndicator();
             _stackCountLabel?.SetVisible(true);
