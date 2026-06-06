@@ -1620,9 +1620,9 @@ namespace PitHero.UI
 
             float sbScale = isHalfMode ? 2f : 1f;
 
-            if (IsTillModeActive || IsBuildingModeActive || IsSeedModeActive)
+            if (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive)
             {
-                // Hide the shortcut bar while till mode, building placement, or seed planting mode is active.
+                // Hide the shortcut bar while any farm UI is visible.
                 if (!_shortcutBarHidden) HideShortcutBar();
             }
             else
@@ -1717,9 +1717,9 @@ namespace PitHero.UI
         {
             if (_eventConsolePanel == null) return;
 
-            if (IsTillModeActive || IsBuildingModeActive || IsSeedModeActive)
+            if (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive)
             {
-                // Hide the event console while till mode, building placement, or seed planting mode is active.
+                // Hide the event console while any farm UI is visible.
                 if (!_consoleHidden) HideEventConsole();
             }
             else
