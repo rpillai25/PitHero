@@ -165,6 +165,34 @@ namespace PitHero.UI
         // Tracks building mode state from end of previous frame so we can detect the frame it turned on.
         private bool _prevIsBuildingModeActive = false;
 
+        /// <summary>Returns true when the farm sub-buttons are visible (farm button expanded).</summary>
+        public bool IsFarmSubMenuOpen => _farmUI?.AreSubButtonsVisible ?? false;
+
+        /// <summary>Returns true when the player is currently in seed planting mode.</summary>
+        public bool IsSeedModeActive => _farmUI?.IsInSeedMode ?? false;
+
+        /// <summary>Exits seed planting mode — called by the overlay's Cancel button or Escape.</summary>
+        public void ExitSeedModeViaFarm() => _farmUI?.ExitSeedMode();
+
+        /// <summary>Returns true when the player is in remove-crops mode.</summary>
+        public bool IsRemoveCropsModeActive => _farmUI?.IsInRemoveCropsMode ?? false;
+
+        /// <summary>Exits remove-crops mode.</summary>
+        public void ExitRemoveCropsModeViaFarm() => _farmUI?.ExitRemoveCropsMode();
+
+        /// <summary>Dismisses sub-buttons and exits all farm sub-modes at once.</summary>
+        private void DismissAllFarmUI()
+        {
+            _farmUI?.DismissSubButtons();
+            _farmUI?.ExitTillMode();
+            _farmUI?.ExitBuildingMode();
+            _farmUI?.ExitSeedMode();
+            _farmUI?.ExitRemoveCropsMode();
+        }
+
+        // Tracks seed mode state from end of previous frame so we can detect the frame it turned on.
+        private bool _prevIsSeedModeActive = false;
+
         /// <summary>Gets the SecondChanceShopUI instance.</summary>
         public SecondChanceShopUI SecondChanceShopUI => _secondChanceShopUI;
 
@@ -1209,6 +1237,22 @@ namespace PitHero.UI
             if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape) && IsBuildingModeActive)
                 _farmUI?.ExitBuildingMode();
 
+            // Exit seed mode when Escape is pressed
+            if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape) && IsSeedModeActive)
+                ExitSeedModeViaFarm();
+
+            // Exit remove-crops mode when Escape is pressed
+            if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape) && IsRemoveCropsModeActive)
+                ExitRemoveCropsModeViaFarm();
+
+            // Mutual exclusion: any non-farm panel open → dismiss farm UI entirely.
+            bool anyNonFarmPanelOpen = _isVisible
+                || (_heroUI?.IsWindowVisible    ?? false)
+                || (_monsterUI?.IsWindowVisible ?? false)
+                || (_secondChanceShopUI?.IsWindowVisible ?? false);
+            if (anyNonFarmPanelOpen && (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive))
+                DismissAllFarmUI();
+
             // Update smooth scrolling animation
             UpdateSmoothScrolling();
 
@@ -1235,6 +1279,7 @@ namespace PitHero.UI
 
             _prevIsTillModeActive     = IsTillModeActive;
             _prevIsBuildingModeActive = IsBuildingModeActive;
+            _prevIsSeedModeActive     = IsSeedModeActive;
 
             // Update persistent size if window size changed externally (e.g., Shift+Mouse Wheel)
             if (!_isVisible) // Only update when settings are closed
@@ -1483,7 +1528,7 @@ namespace PitHero.UI
         /// </summary>
         private void UpdateUIBarAutoHide()
         {
-            if (IsTillModeActive)
+            if (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive)
             {
                 _uiBarIdleTimer = 0f;
                 if (_uiBarHidden) ShowUIBar();
@@ -1593,9 +1638,9 @@ namespace PitHero.UI
 
             float sbScale = isHalfMode ? 2f : 1f;
 
-            if (IsTillModeActive || IsBuildingModeActive)
+            if (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive)
             {
-                // Hide the shortcut bar while till mode or building placement mode is active.
+                // Hide the shortcut bar while any farm UI is visible.
                 if (!_shortcutBarHidden) HideShortcutBar();
             }
             else
@@ -1690,9 +1735,9 @@ namespace PitHero.UI
         {
             if (_eventConsolePanel == null) return;
 
-            if (IsTillModeActive || IsBuildingModeActive)
+            if (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive)
             {
-                // Hide the event console while till mode or building placement mode is active.
+                // Hide the event console while any farm UI is visible.
                 if (!_consoleHidden) HideEventConsole();
             }
             else

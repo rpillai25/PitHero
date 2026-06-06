@@ -53,7 +53,12 @@ namespace PitHero.ECS.Scenes
         private bool _wasInTillMode;
         private BuildingModeOverlay _buildingModeOverlay;
         private bool _wasInBuildingMode;
-        private bool _wasInPlacingState;
+        private bool _wasInFarmMode;
+        private bool _savedFarmAutoScroll;
+        private SeedPlantingModeOverlay _seedModeOverlay;
+        private bool _wasInSeedMode;
+        private bool _wasInRemoveCropsMode;
+        private Label _plantingCropsLabel;
         private Nez.UI.Stage _uiStage;
 
         // HUD fonts for different shrink levels
@@ -129,6 +134,9 @@ namespace PitHero.ECS.Scenes
             // Register building service so farm building placement and counts are queryable.
             Core.Services.AddService(new Services.BuildingService());
 
+            // Register crop planting service so plan tracking and seed inventory are queryable.
+            Core.Services.AddService(new Services.CropPlantingService());
+
             SetupUIOverlay();
 
             _colorGrading = AddPostProcessor(new ColorGradingPostProcessor(0));
@@ -145,6 +153,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.GameEventService));
             Core.Services.RemoveService(typeof(Services.CrystalCollectionService));
             Core.Services.RemoveService(typeof(Services.BuildingService));
+            Core.Services.RemoveService(typeof(Services.CropPlantingService));
             Core.Services.RemoveService(typeof(MercenaryManager));
             Core.Services.RemoveService(typeof(AlliedMonsterManager));
             Core.Services.RemoveService(typeof(HeroPromotionService));
@@ -240,6 +249,22 @@ namespace PitHero.ECS.Scenes
                     var sb   = pendingData.PlacedBuildings[i];
                     var type = (Util.BuildingType)sb.BuildingTypeId;
                     _buildingModeOverlay.SpawnRestoredBuilding(type, sb.TileX, sb.TileY);
+                }
+            }
+
+            // Restore seed inventory
+            if (pendingData.SeedInventory != null && _seedModeOverlay != null)
+                _seedModeOverlay.SetSeedInventory(pendingData.SeedInventory);
+
+            // Restore crop plans
+            var cropPlantingService = Core.Services.GetService<Services.CropPlantingService>();
+            cropPlantingService?.Clear();
+            if (pendingData.CropPlans != null && _seedModeOverlay != null)
+            {
+                for (int i = 0; i < pendingData.CropPlans.Count; i++)
+                {
+                    var cp = pendingData.CropPlans[i];
+                    _seedModeOverlay.SpawnRestoredCropPlan((Farming.CropType)cp.CropTypeId, cp.TileX, cp.TileY);
                 }
             }
 
@@ -656,6 +681,11 @@ namespace PitHero.ECS.Scenes
             // Building mode overlay — creates its UI panels on the same stage.
             _buildingModeOverlay = new BuildingModeOverlay(this, _uiStage);
             _buildingModeOverlay.RequestExitBuildingMode += () => _settingsUI?.ExitBuildingModeViaFarm();
+
+            // Seed planting overlay — creates its UI panels on the same stage.
+            _seedModeOverlay = new SeedPlantingModeOverlay(this, _uiStage);
+            _seedModeOverlay.RequestExitSeedMode        += () => _settingsUI?.ExitSeedModeViaFarm();
+            _seedModeOverlay.RequestExitRemoveCropsMode += () => _settingsUI?.ExitRemoveCropsModeViaFarm();
 
             // Initialize pit width manager after map and services are set up
             SetupPitWidthManager();
@@ -1159,6 +1189,12 @@ namespace PitHero.ECS.Scenes
             _tillingLabel.SetStyle(_modeStyleNormal);
             _tillingLabel.SetVisible(false);
 
+            // Planting label (same area, visible only during the Placing sub-state of seed mode)
+            string plantingText = Core.Services.GetService<TextService>()?.DisplayText(TextType.UI, UITextKey.LabelPlantingCrops) ?? "Planting Crops";
+            _plantingCropsLabel = uiCanvas.Stage.AddElement(new Label(plantingText, _hudFontNormal));
+            _plantingCropsLabel.SetStyle(_modeStyleNormal);
+            _plantingCropsLabel.SetVisible(false);
+
             // Create graphical HUD entity to display HP/MP/Level
             var hudEntity = CreateEntity("graphical-hud");
             hudEntity.SetPosition(GraphicalHudBaseX, GraphicalHudBaseY);
@@ -1344,6 +1380,27 @@ namespace PitHero.ECS.Scenes
             // Center the label in the gap between the button bar and the clock
             float midX = (barRight + clockX) / 2f;
             _tillingLabel.SetPosition(midX - tillingWidth / 2f, ClockLabelBaseY);
+        }
+
+        /// <summary>Shows and animates the "Planting Crops" label while the player is in the placing sub-state.</summary>
+        private void UpdatePlantingCropsLabel()
+        {
+            if (_plantingCropsLabel == null || _hudFontNormal == null) return;
+            bool inPlacingState = (_settingsUI?.IsSeedModeActive ?? false) && (_seedModeOverlay?.IsInPlacingState ?? false);
+            _plantingCropsLabel.SetVisible(inPlacingState);
+            if (!inPlacingState) return;
+
+            float alpha = (float)Math.Sin(Time.TotalTime * Math.PI * 1.2f) * 0.5f + 0.5f;
+            _plantingCropsLabel.SetFontColor(new Color(0, 255, 255, (int)(alpha * 255)));
+
+            string labelText = _plantingCropsLabel.GetText();
+            float labelWidth = _hudFontNormal.MeasureString(labelText).X;
+            string timeText = Core.Services.GetService<InGameTimeService>()?.FormatTime() ?? "6:00 AM";
+            float clockWidth = _hudFontNormal.MeasureString(timeText).X;
+            float clockX = GameConfig.VirtualWidth - clockWidth - ClockLabelRightPadding;
+            float barRight = _settingsUI?.UIBarRight ?? 0f;
+            float midX = (barRight + clockX) / 2f;
+            _plantingCropsLabel.SetPosition(midX - labelWidth / 2f, ClockLabelBaseY);
         }
 
         /// <summary>
@@ -1751,6 +1808,7 @@ namespace PitHero.ECS.Scenes
             UpdateClockLabel();
             UpdateTillingLabel();
             bool inTillMode = _settingsUI?.IsTillModeActive ?? false;
+            bool prevInTillMode = _wasInTillMode;
             if (inTillMode != _wasInTillMode)
             {
                 if (inTillMode) _tillModeOverlay?.OnEnterTillMode();
@@ -1770,17 +1828,56 @@ namespace PitHero.ECS.Scenes
             if (inBuildingMode)
                 _buildingModeOverlay?.Update();
 
-            // Show tilled-tile overlays while the player is actively placing a building so blocked
-            // areas are immediately visible. Driven independently of actual till mode.
-            bool inPlacingState = inBuildingMode && (_buildingModeOverlay?.IsInPlacingState ?? false);
-            if (inPlacingState != _wasInPlacingState)
+            bool inSeedMode = _settingsUI?.IsSeedModeActive ?? false;
+            if (inSeedMode != _wasInSeedMode)
             {
-                if (inPlacingState && !inTillMode)
-                    _tillModeOverlay?.ShowTilledOverlays();
-                else if (!inPlacingState && !inTillMode)
-                    _tillModeOverlay?.HideTilledOverlays();
-                _wasInPlacingState = inPlacingState;
+                if (inSeedMode) _seedModeOverlay?.OnEnterSeedMode();
+                else            _seedModeOverlay?.OnExitSeedMode();
+                _wasInSeedMode = inSeedMode;
             }
+            if (inSeedMode)
+                _seedModeOverlay?.Update();
+
+            bool inRemoveCropsMode = _settingsUI?.IsRemoveCropsModeActive ?? false;
+            if (inRemoveCropsMode != _wasInRemoveCropsMode)
+            {
+                if (inRemoveCropsMode) _seedModeOverlay?.OnEnterRemoveCropsMode();
+                else                   _seedModeOverlay?.OnExitRemoveCropsMode();
+                _wasInRemoveCropsMode = inRemoveCropsMode;
+            }
+            if (inRemoveCropsMode)
+                _seedModeOverlay?.Update();
+
+            // Show tilled-tile overlays and grayscale crop plans whenever the farm menu is open
+            // (sub-buttons visible or any sub-mode active). Also manages auto-scroll suppression.
+            bool inFarmMode = (_settingsUI?.IsFarmSubMenuOpen ?? false) || inTillMode || inBuildingMode || inSeedMode || inRemoveCropsMode;
+            if (inFarmMode != _wasInFarmMode)
+            {
+                if (inFarmMode)
+                {
+                    _savedFarmAutoScroll = UIWindowManager.AutoScrollToHeroEnabled;
+                    UIWindowManager.SetAutoScrollToHero(false);
+                    if (!inTillMode)
+                        _tillModeOverlay?.ShowTilledOverlays();
+                    _seedModeOverlay?.ShowPlanVisuals();
+                }
+                else
+                {
+                    UIWindowManager.SetAutoScrollToHero(_savedFarmAutoScroll);
+                    if (!inTillMode)
+                        _tillModeOverlay?.HideTilledOverlays();
+                    _seedModeOverlay?.HidePlanVisuals();
+                }
+                _wasInFarmMode = inFarmMode;
+            }
+
+            // OnExitTillMode hides the tilled overlays, but if farm mode is still open they should
+            // remain visible. Re-show them whenever till mode just exited inside an active farm session.
+            if (inFarmMode && prevInTillMode && !inTillMode)
+                _tillModeOverlay?.ShowTilledOverlays();
+
+            UpdatePlantingCropsLabel();
+
             UpdateHeroHUD();
             UpdateHudFontMode();
 

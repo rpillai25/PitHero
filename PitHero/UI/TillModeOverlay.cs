@@ -145,7 +145,9 @@ namespace PitHero.UI
                 if (tile != _lastUnmarkDragTile)
                 {
                     _lastUnmarkDragTile = tile;
-                    if (tileService.HasFlag(tile, TileStateFlag.ReadyToTill))
+                    var cropService = Core.Services.GetService<CropPlantingService>();
+                    bool hasCropPlan = cropService != null && cropService.HasPlan(tile);
+                    if (tileService.HasFlag(tile, TileStateFlag.ReadyToTill) && !hasCropPlan)
                     {
                         tileService.ClearFlag(tile, TileStateFlag.ReadyToTill);
                         DestroyOverlayEntity(tile);

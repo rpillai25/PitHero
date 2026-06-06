@@ -50,6 +50,9 @@ namespace PitHero.UI
         /// <summary>Gets whether building placement mode is currently active.</summary>
         public bool IsInBuildingMode { get; private set; }
 
+        /// <summary>Gets whether seed planting mode is currently active.</summary>
+        public bool IsInSeedMode { get; private set; }
+
         private TextService GetTextService()
         {
             if (_textService == null && Core.Services != null)
@@ -146,8 +149,14 @@ namespace PitHero.UI
             // Wire Till button (index 0)
             _subButtons[0].OnClicked += (_) => ToggleTillMode();
 
+            // Wire Seeds button (index 1)
+            _subButtons[1].OnClicked += (_) => ToggleSeedMode();
+
             // Wire Buildings button (index 2)
             _subButtons[2].OnClicked += (_) => ToggleBuildingMode();
+
+            // Wire Remove Crops button (index 4)
+            _subButtons[4].OnClicked += (_) => ToggleRemoveCropsMode();
         }
 
         private void ToggleTillMode()
@@ -156,7 +165,9 @@ namespace PitHero.UI
             // so the button is idempotent when already in till mode.
             if (!IsInTillMode)
             {
-                ExitBuildingMode(); // mutual exclusion
+                ExitBuildingMode();     // mutual exclusion
+                ExitSeedMode();         // mutual exclusion
+                ExitRemoveCropsMode();  // mutual exclusion
                 IsInTillMode = true;
             }
         }
@@ -175,7 +186,9 @@ namespace PitHero.UI
             }
             else
             {
-                ExitTillMode(); // mutual exclusion
+                ExitTillMode();         // mutual exclusion
+                ExitSeedMode();         // mutual exclusion
+                ExitRemoveCropsMode();  // mutual exclusion
                 IsInBuildingMode = true;
             }
         }
@@ -184,6 +197,50 @@ namespace PitHero.UI
         public void ExitBuildingMode()
         {
             IsInBuildingMode = false;
+        }
+
+        private void ToggleSeedMode()
+        {
+            if (IsInSeedMode)
+            {
+                IsInSeedMode = false;
+            }
+            else
+            {
+                ExitTillMode();         // mutual exclusion
+                ExitBuildingMode();     // mutual exclusion
+                ExitRemoveCropsMode();  // mutual exclusion
+                IsInSeedMode = true;
+            }
+        }
+
+        /// <summary>Forces seed planting mode off.</summary>
+        public void ExitSeedMode()
+        {
+            IsInSeedMode = false;
+        }
+
+        public bool IsInRemoveCropsMode { get; private set; }
+
+        private void ToggleRemoveCropsMode()
+        {
+            if (IsInRemoveCropsMode)
+            {
+                IsInRemoveCropsMode = false;
+            }
+            else
+            {
+                ExitTillMode();      // mutual exclusion
+                ExitBuildingMode();  // mutual exclusion
+                ExitSeedMode();      // mutual exclusion
+                IsInRemoveCropsMode = true;
+            }
+        }
+
+        /// <summary>Forces remove-crops mode off.</summary>
+        public void ExitRemoveCropsMode()
+        {
+            IsInRemoveCropsMode = false;
         }
 
         private void ToggleSubButtons()
@@ -301,10 +358,14 @@ namespace PitHero.UI
         {
             UpdateButtonStyleIfNeeded();
 
-            if (_subButtonsVisible && Input.LeftMouseButtonPressed)
+            // Only dismiss sub-buttons from world clicks when no sub-mode is running.
+            // While a sub-mode is active (placing crops, tilling, etc.) world clicks belong
+            // to that mode and must not collapse the sub-button row.
+            bool anySubModeActive = IsInTillMode || IsInBuildingMode || IsInSeedMode || IsInRemoveCropsMode;
+            if (_subButtonsVisible && !anySubModeActive && Input.LeftMouseButtonPressed)
             {
                 var mousePos = _stage.GetMousePosition();
-                if (!IsMouseOverAnyFarmButton(mousePos))
+                if (!IsMouseOverAnyFarmButton(mousePos) && _stage.Hit(mousePos) == null)
                     DismissSubButtons();
             }
         }

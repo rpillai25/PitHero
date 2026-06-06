@@ -159,6 +159,17 @@ namespace PitHero.Services
         public int TileY;
     }
 
+    /// <summary>Lightweight struct representing a saved crop planting plan.</summary>
+    public struct SavedCropPlan
+    {
+        /// <summary>CropType enum value cast to int.</summary>
+        public int CropTypeId;
+        /// <summary>Tile X coordinate of the plan.</summary>
+        public int TileX;
+        /// <summary>Tile Y coordinate of the plan.</summary>
+        public int TileY;
+    }
+
     /// <summary>Lightweight struct representing a saved allied monster.</summary>
     public struct SavedAlliedMonster
     {
@@ -193,7 +204,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 5;
+        public const int CurrentVersion = 6;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -376,6 +387,13 @@ namespace PitHero.Services
         /// <summary>Buildings placed on the farm map.</summary>
         public List<SavedBuilding> PlacedBuildings;
 
+        // Seed Planting
+        /// <summary>Seed inventory counts, indexed by CropType enum value (13 entries).</summary>
+        public int[] SeedInventory;
+
+        /// <summary>Crop planting plans placed on the farm.</summary>
+        public List<SavedCropPlan> CropPlans;
+
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
         {
@@ -398,6 +416,10 @@ namespace PitHero.Services
             SecondChanceVaultItems = new List<SavedVaultItem>();
             TileStates = new List<SavedTileState>();
             PlacedBuildings = new List<SavedBuilding>();
+            SeedInventory = new int[Farming.CropTypeInfo.Count];
+            for (int i = 0; i < Farming.CropTypeInfo.Count; i++)
+                SeedInventory[i] = 16;
+            CropPlans = new List<SavedCropPlan>();
         }
 
         /// <summary>Writes all game state to the persistence writer.</summary>
@@ -649,6 +671,22 @@ namespace PitHero.Services
                 writer.Write(PlacedBuildings[i].BuildingTypeId);
                 writer.Write(PlacedBuildings[i].TileX);
                 writer.Write(PlacedBuildings[i].TileY);
+            }
+
+            // 22. Seed Inventory (version 6+)
+            int seedCount = SeedInventory != null ? SeedInventory.Length : 0;
+            writer.Write(seedCount);
+            for (int i = 0; i < seedCount; i++)
+                writer.Write(SeedInventory[i]);
+
+            // 23. Crop Plans (version 6+)
+            int cropPlanCount = CropPlans != null ? CropPlans.Count : 0;
+            writer.Write(cropPlanCount);
+            for (int i = 0; i < cropPlanCount; i++)
+            {
+                writer.Write(CropPlans[i].CropTypeId);
+                writer.Write(CropPlans[i].TileX);
+                writer.Write(CropPlans[i].TileY);
             }
         }
 
@@ -929,6 +967,42 @@ namespace PitHero.Services
             else
             {
                 PlacedBuildings = new List<SavedBuilding>();
+            }
+
+            // 22. Seed Inventory (version 6+)
+            if (fileVersion >= 6)
+            {
+                int seedCount = reader.ReadInt();
+                SeedInventory = new int[Farming.CropTypeInfo.Count];
+                for (int i = 0; i < seedCount && i < Farming.CropTypeInfo.Count; i++)
+                    SeedInventory[i] = reader.ReadInt();
+                for (int i = seedCount; i < Farming.CropTypeInfo.Count; i++)
+                    SeedInventory[i] = 16;
+            }
+            else
+            {
+                SeedInventory = new int[Farming.CropTypeInfo.Count];
+                for (int i = 0; i < Farming.CropTypeInfo.Count; i++)
+                    SeedInventory[i] = 16;
+            }
+
+            // 23. Crop Plans (version 6+)
+            if (fileVersion >= 6)
+            {
+                int cropPlanCount = reader.ReadInt();
+                CropPlans = new List<SavedCropPlan>(cropPlanCount);
+                for (int i = 0; i < cropPlanCount; i++)
+                {
+                    SavedCropPlan cp;
+                    cp.CropTypeId = reader.ReadInt();
+                    cp.TileX      = reader.ReadInt();
+                    cp.TileY      = reader.ReadInt();
+                    CropPlans.Add(cp);
+                }
+            }
+            else
+            {
+                CropPlans = new List<SavedCropPlan>();
             }
         }
 
