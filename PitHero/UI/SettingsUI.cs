@@ -180,6 +180,16 @@ namespace PitHero.UI
         /// <summary>Exits remove-crops mode.</summary>
         public void ExitRemoveCropsModeViaFarm() => _farmUI?.ExitRemoveCropsMode();
 
+        /// <summary>Dismisses sub-buttons and exits all farm sub-modes at once.</summary>
+        private void DismissAllFarmUI()
+        {
+            _farmUI?.DismissSubButtons();
+            _farmUI?.ExitTillMode();
+            _farmUI?.ExitBuildingMode();
+            _farmUI?.ExitSeedMode();
+            _farmUI?.ExitRemoveCropsMode();
+        }
+
         // Tracks seed mode state from end of previous frame so we can detect the frame it turned on.
         private bool _prevIsSeedModeActive = false;
 
@@ -1234,6 +1244,14 @@ namespace PitHero.UI
             // Exit remove-crops mode when Escape is pressed
             if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape) && IsRemoveCropsModeActive)
                 ExitRemoveCropsModeViaFarm();
+
+            // Mutual exclusion: any non-farm panel open → dismiss farm UI entirely.
+            bool anyNonFarmPanelOpen = _isVisible
+                || (_heroUI?.IsWindowVisible    ?? false)
+                || (_monsterUI?.IsWindowVisible ?? false)
+                || (_secondChanceShopUI?.IsWindowVisible ?? false);
+            if (anyNonFarmPanelOpen && (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive))
+                DismissAllFarmUI();
 
             // Update smooth scrolling animation
             UpdateSmoothScrolling();
