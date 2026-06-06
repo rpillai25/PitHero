@@ -361,7 +361,8 @@ namespace PitHero.UI
             if (_subButtonsVisible && Input.LeftMouseButtonPressed)
             {
                 var mousePos = _stage.GetMousePosition();
-                if (!IsMouseOverAnyFarmButton(mousePos))
+                // Only dismiss when clicking empty world space — not when a UI element consumed the click.
+                if (!IsMouseOverAnyFarmButton(mousePos) && _stage.Hit(mousePos) == null)
                     DismissSubButtons();
             }
         }
