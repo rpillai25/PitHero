@@ -358,10 +358,13 @@ namespace PitHero.UI
         {
             UpdateButtonStyleIfNeeded();
 
-            if (_subButtonsVisible && Input.LeftMouseButtonPressed)
+            // Only dismiss sub-buttons from world clicks when no sub-mode is running.
+            // While a sub-mode is active (placing crops, tilling, etc.) world clicks belong
+            // to that mode and must not collapse the sub-button row.
+            bool anySubModeActive = IsInTillMode || IsInBuildingMode || IsInSeedMode || IsInRemoveCropsMode;
+            if (_subButtonsVisible && !anySubModeActive && Input.LeftMouseButtonPressed)
             {
                 var mousePos = _stage.GetMousePosition();
-                // Only dismiss when clicking empty world space — not when a UI element consumed the click.
                 if (!IsMouseOverAnyFarmButton(mousePos) && _stage.Hit(mousePos) == null)
                     DismissSubButtons();
             }
