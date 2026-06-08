@@ -142,209 +142,221 @@ UITillInverse2x
 HighlightBox
 	130,452,32,32
 	0.5,0.5
-SelectBox
+JobCooking
 	163,452,32,32
 	0.5,0.5
-UIBuildings
+JobFarming
 	196,452,32,32
 	0.5,0.5
-UIBuildingsHighlight
+JobFishing
 	229,452,32,32
 	0.5,0.5
-UIBuildingsInverse
+JobNone
 	262,452,32,32
 	0.5,0.5
-UIContinue
+SelectBox
 	295,455,32,32
 	0.5,0.5
-UIContinueHighlight
+UIBuildings
 	328,455,32,32
 	0.5,0.5
-UIContinueInverse
+UIBuildingsHighlight
 	590,195,32,32
 	0.5,0.5
-UIDestroyCrop
+UIBuildingsInverse
 	794,0,32,32
 	0.5,0.5
-UIDestroyCropHighlight
+UIContinue
 	743,65,32,32
 	0.5,0.5
-UIDestroyCropInverse
+UIContinueHighlight
 	486,325,32,32
 	0.5,0.5
-UIFarm
+UIContinueInverse
 	361,455,32,32
 	0.5,0.5
-UIFarmHighlight
+UIDestroyCrop
 	590,228,32,32
 	0.5,0.5
-UIFarmInverse
+UIDestroyCropHighlight
 	623,195,32,32
 	0.5,0.5
-UIFarmOptions
+UIDestroyCropInverse
 	794,33,32,32
 	0.5,0.5
-UIFarmOptionsHighlight
+UIFarm
 	827,0,32,32
 	0.5,0.5
-UIFarmOptionsInverse
+UIFarmHighlight
 	743,98,32,32
 	0.5,0.5
-UIFastF
+UIFarmInverse
 	486,358,32,32
 	0.5,0.5
-UIFastFHighlight
+UIFarmOptions
 	519,325,32,32
 	0.5,0.5
-UIFastFInverse
+UIFarmOptionsHighlight
 	394,455,32,32
 	0.5,0.5
-UIGear
+UIFarmOptionsInverse
 	656,195,32,32
 	0.5,0.5
-UIGearHighlight
+UIFastF
 	623,228,32,32
 	0.5,0.5
-UIGearInverse
+UIFastFHighlight
 	582,261,32,32
 	0.5,0.5
-UIHero
+UIFastFInverse
 	860,0,32,32
 	0.5,0.5
-UIHeroHighlight
+UIGear
 	827,33,32,32
 	0.5,0.5
-UIHeroInverse
+UIGearHighlight
 	776,66,32,32
 	0.5,0.5
-UIMonster
+UIGearInverse
 	720,131,32,32
 	0.5,0.5
-UIMonsterHighlight
+UIHero
 	776,99,32,32
 	0.5,0.5
-UIMonsterInverse
+UIHeroHighlight
 	809,66,32,32
 	0.5,0.5
-UIReplenish
+UIHeroInverse
 	582,294,32,32
 	0.5,0.5
-UIReplenishHighlight
+UIMonster
 	615,261,32,32
 	0.5,0.5
-UIReplenishInverse
+UIMonsterHighlight
 	519,358,32,32
 	0.5,0.5
-UISecondChance
+UIMonsterInverse
 	455,391,32,32
 	0.5,0.5
-UISecondChanceHighlight
+UIReplenish
 	455,424,32,32
 	0.5,0.5
-UISecondChanceInverse
+UIReplenishHighlight
 	488,391,32,32
 	0.5,0.5
-UISeed
+UIReplenishInverse
 	656,228,32,32
 	0.5,0.5
-UISeedHighlight
+UISecondChance
 	720,164,32,32
 	0.5,0.5
-UISeedInverse
+UISecondChanceHighlight
 	860,33,32,32
 	0.5,0.5
-UISettings
+UISecondChanceInverse
 	893,0,32,32
 	0.5,0.5
-UISettingsHighlight
+UISeed
 	809,99,32,32
 	0.5,0.5
-UISettingsInverse
+UISeedHighlight
 	842,66,32,32
 	0.5,0.5
-UIStop
+UISeedInverse
 	753,132,32,32
 	0.5,0.5
-UIStopHighlight
+UISettings
 	615,294,32,32
 	0.5,0.5
-UIStopInverse
+UISettingsHighlight
 	648,261,32,32
 	0.5,0.5
-UITill
+UISettingsInverse
 	552,327,32,32
 	0.5,0.5
-UITillHighlight
+UIStop
 	488,424,32,32
 	0.5,0.5
-UITillInverse
+UIStopHighlight
 	585,327,32,32
+	0.5,0.5
+UIStopInverse
+	552,360,32,32
+	0.5,0.5
+UITill
+	427,457,32,32
+	0.5,0.5
+UITillHighlight
+	460,457,32,32
+	0.5,0.5
+UITillInverse
+	689,197,32,32
 	0.5,0.5
 NinePatchTab_Active
 	130,355,24,24
 	0.5,0.5
 NinePatchTab_Hover
-	427,455,24,24
-	0.5,0.5
-NinePatchTab_Inactive
-	689,195,24,24
-	0.5,0.5
-SkillIcon1
-	427,480,24,24
-	0.5,0.5
-SkillIcon10
-	689,220,24,24
-	0.5,0.5
-SkillIcon2
-	552,360,24,24
-	0.5,0.5
-SkillIcon3
 	521,391,24,24
 	0.5,0.5
-SkillIcon4
-	452,457,24,24
-	0.5,0.5
-SkillIcon5
-	714,197,24,24
-	0.5,0.5
-SkillIcon6
+NinePatchTab_Inactive
 	753,165,24,24
 	0.5,0.5
-SkillIcon7
+SkillIcon1
 	786,132,24,24
 	0.5,0.5
-SkillIcon8
+SkillIcon10
+	689,230,24,24
+	0.5,0.5
+SkillIcon2
+	722,197,24,24
+	0.5,0.5
+SkillIcon3
 	893,33,24,24
 	0.5,0.5
-SkillIcon9
+SkillIcon4
 	926,0,24,24
 	0.5,0.5
-UISortAlpha
-	689,245,24,24
-	0.5,0.5
-UISortAlphaHighlight
-	477,457,24,24
-	0.5,0.5
-UISortAlphaInverse
-	452,482,24,24
-	0.5,0.5
-UISortTime
-	714,222,24,24
-	0.5,0.5
-UISortTimeHighlight
-	739,197,24,24
-	0.5,0.5
-UISortTimeInverse
-	552,385,24,24
-	0.5,0.5
-UISortType
+SkillIcon5
 	521,416,24,24
 	0.5,0.5
+SkillIcon6
+	842,99,24,24
+	0.5,0.5
+SkillIcon7
+	875,66,24,24
+	0.5,0.5
+SkillIcon8
+	648,294,24,24
+	0.5,0.5
+SkillIcon9
+	681,261,24,24
+	0.5,0.5
+UISortAlpha
+	811,132,24,24
+	0.5,0.5
+UISortAlphaHighlight
+	786,157,24,24
+	0.5,0.5
+UISortAlphaInverse
+	753,190,24,24
+	0.5,0.5
+UISortTime
+	722,222,24,24
+	0.5,0.5
+UISortTimeHighlight
+	585,360,24,24
+	0.5,0.5
+UISortTimeInverse
+	546,393,24,24
+	0.5,0.5
+UISortType
+	618,327,24,24
+	0.5,0.5
 UISortTypeHighlight
-	577,360,24,24
+	493,457,24,24
 	0.5,0.5
 UISortTypeInverse
-	842,99,24,24
+	951,0,24,24
 	0.5,0.5
 CharacterSelector
 	0,485,20,19
