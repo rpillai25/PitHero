@@ -157,6 +157,7 @@ namespace PitHero.Services
         public int BuildingTypeId; // cast of BuildingType enum
         public int TileX;
         public int TileY;
+        public int UniqueId;
     }
 
     /// <summary>Lightweight struct representing a saved crop planting plan.</summary>
@@ -178,6 +179,8 @@ namespace PitHero.Services
         public int FishingProficiency;
         public int CookingProficiency;
         public int FarmingProficiency;
+        public int MonsterJobId;
+        public int MonsterHouseId;
     }
 
     /// <summary>Lightweight struct representing a saved hired mercenary.</summary>
@@ -204,7 +207,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 6;
+        public const int CurrentVersion = 8;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -394,6 +397,9 @@ namespace PitHero.Services
         /// <summary>Crop planting plans placed on the farm.</summary>
         public List<SavedCropPlan> CropPlans;
 
+        /// <summary>Next building unique ID to allocate. Ensures IDs are never reused across saves.</summary>
+        public int NextBuildingId;
+
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
         {
@@ -420,6 +426,7 @@ namespace PitHero.Services
             for (int i = 0; i < Farming.CropTypeInfo.Count; i++)
                 SeedInventory[i] = 16;
             CropPlans = new List<SavedCropPlan>();
+            NextBuildingId = 1;
         }
 
         /// <summary>Writes all game state to the persistence writer.</summary>
@@ -554,6 +561,8 @@ namespace PitHero.Services
                 writer.Write(monster.FishingProficiency);
                 writer.Write(monster.CookingProficiency);
                 writer.Write(monster.FarmingProficiency);
+                writer.Write(monster.MonsterJobId);
+                writer.Write(monster.MonsterHouseId);
             }
 
             // 12. Shortcut Bar
@@ -671,6 +680,7 @@ namespace PitHero.Services
                 writer.Write(PlacedBuildings[i].BuildingTypeId);
                 writer.Write(PlacedBuildings[i].TileX);
                 writer.Write(PlacedBuildings[i].TileY);
+                writer.Write(PlacedBuildings[i].UniqueId);
             }
 
             // 22. Seed Inventory (version 6+)
@@ -688,6 +698,9 @@ namespace PitHero.Services
                 writer.Write(CropPlans[i].TileX);
                 writer.Write(CropPlans[i].TileY);
             }
+
+            // 24. Next Building ID (version 8+)
+            writer.Write(NextBuildingId);
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -822,6 +835,23 @@ namespace PitHero.Services
                 monster.FishingProficiency = reader.ReadInt();
                 monster.CookingProficiency = reader.ReadInt();
                 monster.FarmingProficiency = reader.ReadInt();
+                if (fileVersion >= 8)
+                {
+                    monster.MonsterJobId = reader.ReadInt();
+                    monster.MonsterHouseId = reader.ReadInt();
+                }
+                else if (fileVersion >= 7)
+                {
+                    monster.MonsterJobId = reader.ReadInt();
+                    reader.ReadInt(); // discard old MonsterHouseTileX
+                    reader.ReadInt(); // discard old MonsterHouseTileY
+                    monster.MonsterHouseId = -1;
+                }
+                else
+                {
+                    monster.MonsterHouseId = 0;
+                    monster.MonsterJobId = 0;
+                }
                 AlliedMonsters.Add(monster);
             }
 
@@ -961,8 +991,14 @@ namespace PitHero.Services
                     b.BuildingTypeId = reader.ReadInt();
                     b.TileX          = reader.ReadInt();
                     b.TileY          = reader.ReadInt();
+                    if (fileVersion >= 8)
+                        b.UniqueId = reader.ReadInt();
+                    else
+                        b.UniqueId = i + 1; // assign sequential IDs for old saves
                     PlacedBuildings.Add(b);
                 }
+                if (fileVersion < 8)
+                    NextBuildingId = PlacedBuildings.Count + 1;
             }
             else
             {
@@ -1004,6 +1040,10 @@ namespace PitHero.Services
             {
                 CropPlans = new List<SavedCropPlan>();
             }
+
+            // 24. Next Building ID (version 8+)
+            if (fileVersion >= 8)
+                NextBuildingId = reader.ReadInt();
         }
 
         /// <summary>Writes a Color as four individual int components (R, G, B, A).</summary>

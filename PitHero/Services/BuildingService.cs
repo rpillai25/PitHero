@@ -9,6 +9,7 @@ namespace PitHero.Services
         public BuildingType Type;
         public int TileX;
         public int TileY;
+        public int UniqueId; // stable identifier, never changes even if moved
         public Entity WorldEntity; // runtime reference; null after scene reload until restored
     }
 
@@ -16,6 +17,13 @@ namespace PitHero.Services
     public class BuildingService
     {
         private readonly List<PlacedBuilding> _buildings = new List<PlacedBuilding>();
+        private int _nextId = 1;
+
+        /// <summary>Next ID to allocate. Persisted in the save file so IDs are never reused.</summary>
+        public int NextId { get => _nextId; set => _nextId = value; }
+
+        /// <summary>Allocates and returns the next unique building ID.</summary>
+        public int AllocateId() => _nextId++;
 
         public int MonsterHouseCount
         {

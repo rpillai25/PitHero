@@ -319,6 +319,8 @@ namespace PitHero.Services
                     saved.FishingProficiency = monster.FishingProficiency;
                     saved.CookingProficiency = monster.CookingProficiency;
                     saved.FarmingProficiency = monster.FarmingProficiency;
+                    saved.MonsterJobId = (int)monster.Job;
+                    saved.MonsterHouseId = monster.MonsterHouseId;
                     data.AlliedMonsters.Add(saved);
                 }
             }
@@ -592,8 +594,10 @@ namespace PitHero.Services
                     sb.BuildingTypeId = (int)pb.Type;
                     sb.TileX          = pb.TileX;
                     sb.TileY          = pb.TileY;
+                    sb.UniqueId       = pb.UniqueId;
                     data.PlacedBuildings.Add(sb);
                 }
+                data.NextBuildingId = buildingService.NextId;
             }
 
             // Crop plans and seed inventory

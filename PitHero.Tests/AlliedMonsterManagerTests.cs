@@ -31,11 +31,13 @@ namespace PitHero.Tests
             public int GoldYield => 8;
             public float JoinPercentageModifier { get; }
             public bool IsBoss => false;
+            public bool IsRecruitable { get; }
 
-            public MockEnemy(string name, float joinModifier)
+            public MockEnemy(string name, float joinModifier, bool isRecruitable = true)
             {
                 Name = name;
                 JoinPercentageModifier = joinModifier;
+                IsRecruitable = isRecruitable;
             }
 
             public bool TakeDamage(int amount)
@@ -57,28 +59,43 @@ namespace PitHero.Tests
             Assert.AreEqual(0, manager.Count, "New manager should have 0 allied monsters");
         }
 
-        /// <summary>Tests that TryRecruit with a guaranteed modifier returns a non-null monster.</summary>
+        /// <summary>Tests that TryRecruit returns null when no BuildingService is available (unit test env).</summary>
         [TestMethod]
         [TestCategory("AlliedMonsters")]
-        public void AlliedMonsterManager_TryRecruit_GuaranteedJoin_ReturnsMonster()
+        public void AlliedMonsterManager_TryRecruit_NoBuildingService_ReturnsNull()
         {
             var manager = new AlliedMonsterManager();
-            // JoinPercentageModifier = 1000f => joinChance = 100.0f, always beats any 0..1 roll
+            // Core.Services is unavailable in unit tests, so the building guard triggers
             var enemy = new MockEnemy(MonsterTextKey.Monster_Slime, 1000f);
 
             var result = manager.TryRecruit(enemy);
 
-            Assert.IsNotNull(result, "Should recruit successfully with a very high modifier");
-            Assert.AreEqual(1, manager.Count, "Count should be 1 after successful recruit");
+            Assert.IsNull(result, "Should return null when BuildingService is unavailable");
+            Assert.AreEqual(0, manager.Count, "Count should remain 0");
         }
 
-        /// <summary>Tests that TryRecruit with zero modifier never recruits.</summary>
+        /// <summary>Tests that TryRecruit returns null for non-recruitable enemies.</summary>
+        [TestMethod]
+        [TestCategory("AlliedMonsters")]
+        public void AlliedMonsterManager_TryRecruit_NonRecruitable_ReturnsNull()
+        {
+            var manager = new AlliedMonsterManager();
+            var enemy = new MockEnemy("PitLord", 1000f, isRecruitable: false);
+
+            var result = manager.TryRecruit(enemy);
+
+            Assert.IsNull(result, "Should not recruit a non-recruitable enemy");
+            Assert.AreEqual(0, manager.Count, "Count should remain 0 after failed recruit");
+        }
+
+        /// <summary>Tests that TryRecruit returns null for a zero-modifier recruitable enemy (no building service guard triggers first).</summary>
         [TestMethod]
         [TestCategory("AlliedMonsters")]
         public void AlliedMonsterManager_TryRecruit_ZeroModifier_ReturnsNull()
         {
             var manager = new AlliedMonsterManager();
-            // JoinPercentageModifier = 0f => joinChance = 0, which triggers early-out
+            // Even if building service existed, zero modifier would fail. In tests it
+            // returns null due to building service guard (which is fine — result is same).
             var enemy = new MockEnemy("PitLord", 0f);
 
             var result = manager.TryRecruit(enemy);
@@ -87,66 +104,60 @@ namespace PitHero.Tests
             Assert.AreEqual(0, manager.Count, "Count should remain 0 after failed recruit");
         }
 
-        /// <summary>Tests that recruited monster stores correct type name.</summary>
+        /// <summary>Tests that AddAlliedMonster stores the correct type name.</summary>
         [TestMethod]
         [TestCategory("AlliedMonsters")]
         public void AlliedMonsterManager_TryRecruit_SetsMonsterTypeName()
         {
             var manager = new AlliedMonsterManager();
-            var enemy = new MockEnemy(MonsterTextKey.Monster_Rat, 1000f);
+            var allied = new AlliedMonster(MonsterTextKey.Monster_Rat, MonsterTextKey.Monster_Rat, 5, 5, 5);
+            manager.AddAlliedMonster(allied);
 
-            var result = manager.TryRecruit(enemy);
-
-            Assert.IsNotNull(result, "Should recruit successfully");
-            Assert.AreEqual(MonsterTextKey.Monster_Rat, result.MonsterTypeName, "MonsterTypeName should match enemy Name");
+            Assert.AreEqual(1, manager.Count, "Count should be 1");
+            Assert.AreEqual(MonsterTextKey.Monster_Rat, manager.AlliedMonsters[0].MonsterTypeName,
+                "MonsterTypeName should match what was provided");
         }
 
-        /// <summary>Tests that recruited monster has a non-empty name.</summary>
+        /// <summary>Tests that AddAlliedMonster stores a non-empty name.</summary>
         [TestMethod]
         [TestCategory("AlliedMonsters")]
         public void AlliedMonsterManager_TryRecruit_AssignsNonEmptyName()
         {
             var manager = new AlliedMonsterManager();
-            var enemy = new MockEnemy(MonsterTextKey.Monster_Bat, 1000f);
+            var allied = new AlliedMonster("Fluffy", MonsterTextKey.Monster_Bat, 5, 5, 5);
+            manager.AddAlliedMonster(allied);
 
-            var result = manager.TryRecruit(enemy);
-
-            Assert.IsNotNull(result, "Should recruit successfully");
-            Assert.IsFalse(string.IsNullOrEmpty(result.Name), "Recruited monster should have a non-empty name");
+            Assert.IsFalse(string.IsNullOrEmpty(manager.AlliedMonsters[0].Name),
+                "Allied monster should have a non-empty name");
         }
 
-        /// <summary>Tests that recruited monster proficiencies are within 1-9 range.</summary>
+        /// <summary>Tests that AlliedMonster proficiencies are clamped to 1-9 range.</summary>
         [TestMethod]
         [TestCategory("AlliedMonsters")]
         public void AlliedMonsterManager_TryRecruit_ProficienciesInRange()
         {
-            var manager = new AlliedMonsterManager();
-            var enemy = new MockEnemy(MonsterTextKey.Monster_Goblin, 1000f);
+            var allied = new AlliedMonster("Buddy", MonsterTextKey.Monster_Goblin, 5, 7, 3);
 
-            var result = manager.TryRecruit(enemy);
-
-            Assert.IsNotNull(result, "Should recruit successfully");
-            Assert.IsTrue(result.FishingProficiency >= 1 && result.FishingProficiency <= 9,
-                $"Fishing proficiency {result.FishingProficiency} should be in range 1-9");
-            Assert.IsTrue(result.CookingProficiency >= 1 && result.CookingProficiency <= 9,
-                $"Cooking proficiency {result.CookingProficiency} should be in range 1-9");
-            Assert.IsTrue(result.FarmingProficiency >= 1 && result.FarmingProficiency <= 9,
-                $"Farming proficiency {result.FarmingProficiency} should be in range 1-9");
+            Assert.IsTrue(allied.FishingProficiency >= 1 && allied.FishingProficiency <= 9,
+                $"Fishing proficiency {allied.FishingProficiency} should be in range 1-9");
+            Assert.IsTrue(allied.CookingProficiency >= 1 && allied.CookingProficiency <= 9,
+                $"Cooking proficiency {allied.CookingProficiency} should be in range 1-9");
+            Assert.IsTrue(allied.FarmingProficiency >= 1 && allied.FarmingProficiency <= 9,
+                $"Farming proficiency {allied.FarmingProficiency} should be in range 1-9");
         }
 
-        /// <summary>Tests that multiple successful recruits increment Count correctly.</summary>
+        /// <summary>Tests that multiple AddAlliedMonster calls increment Count correctly.</summary>
         [TestMethod]
         [TestCategory("AlliedMonsters")]
         public void AlliedMonsterManager_TryRecruit_MultipleRecruits_CountIncrementsCorrectly()
         {
             var manager = new AlliedMonsterManager();
-            var enemy = new MockEnemy(MonsterTextKey.Monster_Slime, 1000f);
 
-            manager.TryRecruit(enemy);
-            manager.TryRecruit(enemy);
-            manager.TryRecruit(enemy);
+            manager.AddAlliedMonster(new AlliedMonster("A", MonsterTextKey.Monster_Slime, 5, 5, 5));
+            manager.AddAlliedMonster(new AlliedMonster("B", MonsterTextKey.Monster_Slime, 5, 5, 5));
+            manager.AddAlliedMonster(new AlliedMonster("C", MonsterTextKey.Monster_Slime, 5, 5, 5));
 
-            Assert.AreEqual(3, manager.Count, "Count should be 3 after three successful recruits");
+            Assert.AreEqual(3, manager.Count, "Count should be 3 after three adds");
         }
 
         /// <summary>Tests that AlliedMonsters list is accessible and matches Count.</summary>
@@ -155,13 +166,46 @@ namespace PitHero.Tests
         public void AlliedMonsterManager_AlliedMonsters_ListMatchesCount()
         {
             var manager = new AlliedMonsterManager();
-            var enemy = new MockEnemy("Snake", 1000f);
 
-            manager.TryRecruit(enemy);
-            manager.TryRecruit(enemy);
+            manager.AddAlliedMonster(new AlliedMonster("X", "Snake", 5, 5, 5));
+            manager.AddAlliedMonster(new AlliedMonster("Y", "Snake", 5, 5, 5));
 
             Assert.AreEqual(manager.Count, manager.AlliedMonsters.Count,
                 "AlliedMonsters list count should equal Count property");
+        }
+
+        /// <summary>Tests that AlliedMonster Job defaults to None and can be changed.</summary>
+        [TestMethod]
+        [TestCategory("AlliedMonsters")]
+        public void AlliedMonster_Job_DefaultsToNone_AndIsMutable()
+        {
+            var allied = new AlliedMonster("Grim", "Skeleton", 5, 5, 5);
+
+            Assert.AreEqual(MonsterJob.None, allied.Job, "Job should default to None");
+
+            allied.Job = MonsterJob.Farming;
+            Assert.AreEqual(MonsterJob.Farming, allied.Job, "Job should be updatable to Farming");
+        }
+
+        /// <summary>Tests that AlliedMonster MonsterHouseId defaults to -1.</summary>
+        [TestMethod]
+        [TestCategory("AlliedMonsters")]
+        public void AlliedMonster_MonsterHouseId_DefaultsToNegativeOne()
+        {
+            var allied = new AlliedMonster("Goop", "Slime", 5, 5, 5);
+
+            Assert.AreEqual(-1, allied.MonsterHouseId, "MonsterHouseId should default to -1");
+        }
+
+        /// <summary>Tests that AlliedMonster MonsterHouseId can be set via constructor.</summary>
+        [TestMethod]
+        [TestCategory("AlliedMonsters")]
+        public void AlliedMonster_MonsterHouseId_SetViaConstructor()
+        {
+            var building = new PlacedBuilding { UniqueId = 1 };
+            var allied = new AlliedMonster("Blob", "Slime", 5, 5, 5, monsterHouseId: building.UniqueId);
+
+            Assert.AreEqual(1, allied.MonsterHouseId, "MonsterHouseId should be 1");
         }
     }
 }

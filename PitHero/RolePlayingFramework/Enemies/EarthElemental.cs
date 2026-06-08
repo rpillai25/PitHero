@@ -25,6 +25,7 @@ namespace RolePlayingFramework.Enemies
         public int GoldYield { get; }
         public float JoinPercentageModifier => 0.6f;
         public bool IsBoss => true;
+        public bool IsRecruitable => false;
 
         public EarthElemental(int level = 17)
         {

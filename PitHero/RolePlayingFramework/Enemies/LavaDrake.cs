@@ -25,6 +25,7 @@ namespace RolePlayingFramework.Enemies
         public int GoldYield { get; }
         public float JoinPercentageModifier => 0.3f;
         public bool IsBoss => false;
+        public bool IsRecruitable => false;
 
         public LavaDrake(int level = 17)
         {

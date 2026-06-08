@@ -25,6 +25,7 @@ namespace RolePlayingFramework.Enemies
         public int GoldYield { get; }
         public float JoinPercentageModifier => 0.2f;
         public bool IsBoss => true;
+        public bool IsRecruitable => false;
 
         public MoltenTitan(int level = 22)
         {

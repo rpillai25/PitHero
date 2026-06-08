@@ -248,9 +248,11 @@ namespace PitHero.ECS.Scenes
                 {
                     var sb   = pendingData.PlacedBuildings[i];
                     var type = (Util.BuildingType)sb.BuildingTypeId;
-                    _buildingModeOverlay.SpawnRestoredBuilding(type, sb.TileX, sb.TileY);
+                    _buildingModeOverlay.SpawnRestoredBuilding(type, sb.TileX, sb.TileY, sb.UniqueId);
                 }
             }
+            if (buildingService != null)
+                buildingService.NextId = pendingData.NextBuildingId;
 
             // Restore seed inventory
             if (pendingData.SeedInventory != null && _seedModeOverlay != null)
@@ -422,9 +424,10 @@ namespace PitHero.ECS.Scenes
                 for (int i = 0; i < pendingData.AlliedMonsters.Count; i++)
                 {
                     var saved = pendingData.AlliedMonsters[i];
-                    var allied = new AlliedMonster(
-                        saved.Name, saved.MonsterTypeName,
-                        saved.FishingProficiency, saved.CookingProficiency, saved.FarmingProficiency);
+                    var allied = new AlliedMonster(saved.Name, saved.MonsterTypeName,
+                        saved.FishingProficiency, saved.CookingProficiency, saved.FarmingProficiency,
+                        saved.MonsterHouseId);
+                    allied.Job = (MonsterJob)saved.MonsterJobId;
                     alliedManager.AddAlliedMonster(allied);
                 }
             }

@@ -831,6 +831,7 @@ namespace PitHero.Tests
             public int GoldYield { get; }
             public float JoinPercentageModifier => 1.0f;
             public bool IsBoss => false;
+            public bool IsRecruitable => false;
 
             public TestMonster(int level, BalanceConfig.MonsterArchetype archetype)
             {

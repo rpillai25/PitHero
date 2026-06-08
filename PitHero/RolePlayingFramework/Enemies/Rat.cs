@@ -25,6 +25,7 @@ namespace RolePlayingFramework.Enemies
         public int GoldYield { get; }
         public float JoinPercentageModifier => 1.5f;
         public bool IsBoss => false;
+        public bool IsRecruitable => true;
 
         public Rat(int level = 1)
         {

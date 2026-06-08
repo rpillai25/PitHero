@@ -270,7 +270,7 @@ namespace PitHero.UI
         /// Spawns a previously-saved building at its final world position with no fall animation.
         /// Called by MainGameScene.ApplyPendingLoadData() for each building in the save file.
         /// </summary>
-        public void SpawnRestoredBuilding(BuildingType type, int tileX, int tileY)
+        public void SpawnRestoredBuilding(BuildingType type, int tileX, int tileY, int uniqueId)
         {
             var finalPos = BuildingConfig.GetWorldPos(tileX, tileY, type);
             var sprite   = _cropsAtlas.GetSprite(BuildingConfig.GetSpriteName(type));
@@ -286,6 +286,7 @@ namespace PitHero.UI
                 Type        = type,
                 TileX       = tileX,
                 TileY       = tileY,
+                UniqueId    = uniqueId,
                 WorldEntity = entity
             });
         }
@@ -331,11 +332,14 @@ namespace PitHero.UI
 
             entity.AddComponent(new BuildingFallAnimator(finalPos.Y));
 
-            Core.Services.GetService<BuildingService>()?.AddBuilding(new PlacedBuilding
+            var buildingSvc = Core.Services.GetService<BuildingService>();
+            int newId = buildingSvc?.AllocateId() ?? 0;
+            buildingSvc?.AddBuilding(new PlacedBuilding
             {
                 Type        = type,
                 TileX       = tileX,
                 TileY       = tileY,
+                UniqueId    = newId,
                 WorldEntity = entity
             });
 

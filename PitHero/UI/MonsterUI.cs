@@ -1,6 +1,8 @@
+using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
 using PitHero.Services;
+using RolePlayingFramework.AlliedMonsters;
 
 namespace PitHero.UI
 {
@@ -114,7 +116,7 @@ namespace PitHero.UI
         private void CreateMonsterWindow(Skin skin)
         {
             _monsterWindow = new Window(GetText(TextType.UI, UITextKey.WindowMonsters), skin);
-            _monsterWindow.SetSize(380f, 280f);
+            _monsterWindow.SetSize(460f, 280f);
 
             _monsterListTable = new Table();
             _monsterListTable.Top().Left();
@@ -163,7 +165,7 @@ namespace PitHero.UI
                 return;
             }
 
-            // Load the actors atlas once for sprite lookups
+            // Load atlases once for sprite lookups
             Nez.Sprites.SpriteAtlas actorsAtlas = null;
             try
             {
@@ -174,16 +176,28 @@ namespace PitHero.UI
                 Debug.Warn($"[MonsterUI] Failed to load Actors.atlas: {ex.Message}");
             }
 
+            Nez.Sprites.SpriteAtlas uiAtlas = null;
+            try
+            {
+                uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+            }
+            catch (System.Exception ex)
+            {
+                Debug.Warn($"[MonsterUI] Failed to load UI.atlas: {ex.Message}");
+            }
+
             var monsters = manager.AlliedMonsters;
+            const float CellSize = 48f;
+
             for (int i = 0; i < monsters.Count; i++)
             {
                 var monster = monsters[i];
 
-                // Build a row: [Sprite] [Name + Stats]
+                // Build a row: [48x48 sprite cell] [textTable] [jobTable]
                 var rowTable = new Table();
                 rowTable.Left();
 
-                // Try the down-facing frame for this monster type, fall back to placeholder
+                // --- Left: monster sprite scaled to fit inside 48x48 ---
                 if (actorsAtlas != null)
                 {
                     Nez.Textures.Sprite monsterSprite = null;
@@ -201,27 +215,117 @@ namespace PitHero.UI
 
                     if (monsterSprite != null)
                     {
+                        float sprW = monsterSprite.SourceRect.Width;
+                        float sprH = monsterSprite.SourceRect.Height;
+                        float displayW = (sprW <= CellSize && sprH <= CellSize) ? sprW : CellSize;
+                        float displayH = (sprW <= CellSize && sprH <= CellSize) ? sprH : CellSize;
                         var spriteImage = new Image(new SpriteDrawable(monsterSprite));
-                        spriteImage.SetSize(SpriteSize, SpriteSize);
-                        rowTable.Add(spriteImage).Size(SpriteSize, SpriteSize).Pad(2f, 2f, 2f, 8f);
+                        spriteImage.SetSize(displayW, displayH);
+                        rowTable.Add(spriteImage).Size(CellSize, CellSize).Pad(2f, 2f, 2f, 4f);
+                    }
+                    else
+                    {
+                        // Empty placeholder cell to keep layout consistent
+                        rowTable.Add(new Label("", _skin)).Size(CellSize, CellSize).Pad(2f, 2f, 2f, 4f);
                     }
                 }
+                else
+                {
+                    rowTable.Add(new Label("", _skin)).Size(CellSize, CellSize).Pad(2f, 2f, 2f, 4f);
+                }
 
-                // Text columns: name on top, stats on second line
+                // --- Middle: textTable with name, stats, job ---
                 var textTable = new Table();
                 textTable.Top().Left();
 
                 var monsterTypeName = GetText(TextType.Monster, monster.MonsterTypeName);
+                string jobDisplayName = monster.Job switch
+                {
+                    MonsterJob.Farming => "Farming",
+                    MonsterJob.Cooking => "Cooking",
+                    MonsterJob.Fishing => "Fishing",
+                    _ => "None"
+                };
+
                 var nameLabel  = new Label($"{monster.Name} ({monsterTypeName})", _skin);
                 var statsLabel = new Label($"Fish:{monster.FishingProficiency}  Cook:{monster.CookingProficiency}  Farm:{monster.FarmingProficiency}", _skin);
+                var jobLabel   = new Label($"Job: {jobDisplayName}", _skin);
 
                 textTable.Add(nameLabel).Left();
                 textTable.Row();
                 textTable.Add(statsLabel).Left();
+                textTable.Row();
+                textTable.Add(jobLabel).Left();
 
-                rowTable.Add(textTable).Left();
+                rowTable.Add(textTable).Left().Pad(2f, 0f, 2f, 4f);
 
-                _monsterListTable.Add(rowTable).Left().Pad(4f, 2f, 0f, 2f);
+                // --- Right: jobTable with current job label + 4 job buttons ---
+                var jobTable = new Table();
+                jobTable.Top().Right();
+
+                var jobHeaderLabel = new Label($"Job: {jobDisplayName}", _skin);
+                jobTable.Add(jobHeaderLabel).Right().SetPadBottom(2f);
+                jobTable.Row();
+
+                // Row of 4 job buttons
+                var buttonsTable = new Table();
+                buttonsTable.Left();
+
+                MonsterJob[] jobs = { MonsterJob.None, MonsterJob.Farming, MonsterJob.Cooking, MonsterJob.Fishing };
+                string[] jobNames = { "None", "Farming", "Cooking", "Fishing" };
+                string[] spriteNames = { "JobNone", "JobFarming", "JobCooking", "JobFishing" };
+
+                // Capture for closure
+                var capturedMonster = monster;
+
+                for (int j = 0; j < jobs.Length; j++)
+                {
+                    var jobValue = jobs[j];
+                    var spriteName = spriteNames[j];
+                    var jobName = jobNames[j];
+
+                    Nez.Textures.Sprite jobSprite = null;
+                    if (uiAtlas != null)
+                    {
+                        try { jobSprite = uiAtlas.GetSprite(spriteName); }
+                        catch (System.Exception) { jobSprite = null; }
+                    }
+
+                    if (jobSprite != null)
+                    {
+                        bool isSelected = (capturedMonster.Job == jobValue);
+                        var btnStyle = new ImageButtonStyle
+                        {
+                            ImageUp = new SpriteDrawable(jobSprite)
+                        };
+                        var jobBtn = new HoverableImageButton(btnStyle, jobName);
+                        jobBtn.GetImage().SetColor(isSelected
+                            ? Color.White
+                            : new Color(128, 128, 128, 200));
+
+                        var closuredMonster = capturedMonster;
+                        var closuredJob = jobValue;
+                        jobBtn.OnClicked += (_) =>
+                        {
+                            closuredMonster.Job = closuredJob;
+                            RefreshMonsterList();
+                        };
+
+                        buttonsTable.Add(jobBtn).Size(32f, 32f).Pad(1f);
+                    }
+                    else
+                    {
+                        // Fallback text button
+                        var fallbackLabel = new Label(jobName.Substring(0, 1), _skin);
+                        buttonsTable.Add(fallbackLabel).Size(32f, 32f).Pad(1f);
+                    }
+                }
+
+                jobTable.Add(buttonsTable).Right();
+
+                rowTable.Add(jobTable).Right().SetExpandX().Pad(2f, 0f, 2f, 2f);
+
+                _monsterListTable.Add(rowTable).Left().SetExpandX().SetFillX().Pad(4f, 2f, 0f, 2f);
                 _monsterListTable.Row();
             }
         }

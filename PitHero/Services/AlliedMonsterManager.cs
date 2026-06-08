@@ -33,6 +33,35 @@ namespace PitHero.Services
         /// </summary>
         public AlliedMonster TryRecruit(IEnemy enemy)
         {
+            if (!enemy.IsRecruitable) return null;
+
+            BuildingService buildingService = null;
+            try { buildingService = Core.Services?.GetService<BuildingService>(); }
+            catch (System.Exception) { /* Core not initialized (e.g. unit tests) */ }
+            if (buildingService == null || buildingService.MonsterHouseCount == 0) return null;
+
+            // Find a monster house with available capacity (< 16 linked monsters)
+            PlacedBuilding targetHouse = null;
+            var allBuildings = buildingService.GetAll();
+            for (int b = 0; b < allBuildings.Count; b++)
+            {
+                var building = allBuildings[b];
+                if (building.Type != Util.BuildingType.MonsterHouse) continue;
+                int linkedCount = 0;
+                for (int m = 0; m < _alliedMonsters.Count; m++)
+                {
+                    var am = _alliedMonsters[m];
+                    if (am.MonsterHouseId == building.UniqueId)
+                        linkedCount++;
+                }
+                if (linkedCount < 16)
+                {
+                    targetHouse = building;
+                    break;
+                }
+            }
+            if (targetHouse == null) return null;
+
             if (enemy.IsBoss) return null;
 
             float joinChance = GameConfig.BaseMonsterJoinChance * enemy.JoinPercentageModifier;
@@ -46,7 +75,8 @@ namespace PitHero.Services
             int cooking = Nez.Random.Range(1, 10);
             int farming = Nez.Random.Range(1, 10);
 
-            var allied = new AlliedMonster(firstName, enemy.Name, fishing, cooking, farming);
+            var allied = new AlliedMonster(firstName, enemy.Name, fishing, cooking, farming,
+                targetHouse.UniqueId);
             _alliedMonsters.Add(allied);
             var textService = Core.Services?.GetService<TextService>();
             var enemyDisplayName = textService?.DisplayText(PitHero.TextType.Monster, enemy.Name) ?? enemy.Name;

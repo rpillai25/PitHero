@@ -25,6 +25,7 @@ namespace RolePlayingFramework.Enemies
         public int GoldYield { get; }
         public float JoinPercentageModifier => 0.9f;
         public bool IsBoss => false;
+        public bool IsRecruitable => true;
 
         public Goblin(int level = 3)
         {

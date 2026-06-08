@@ -25,6 +25,7 @@ namespace RolePlayingFramework.Enemies
         public int GoldYield { get; }
         public float JoinPercentageModifier => 0.7f;
         public bool IsBoss => false;
+        public bool IsRecruitable => true;
 
         public GhostMiner(int level = 14)
         {
