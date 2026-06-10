@@ -320,8 +320,7 @@ namespace PitHero.UI
             _stage.AddElement(_inventoryWindow);
 
             // Create the stage-space stack count label used during placing
-            _stackCountLabel = new Label("", skin, "ph-default");
-            _stackCountLabel.SetFontColor(Microsoft.Xna.Framework.Color.White);
+            _stackCountLabel = new Label("", new LabelStyle { Font = Nez.Graphics.Instance.BitmapFont, FontColor = Microsoft.Xna.Framework.Color.White });
             _stackCountLabel.SetVisible(false);
             _stage.AddElement(_stackCountLabel);
         }
