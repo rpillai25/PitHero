@@ -19,6 +19,24 @@ namespace PitHero.UI
         /// <summary>
         /// Override Draw to track mouse hover state and show/hide text accordingly
         /// </summary>
+        /// <summary>
+        /// Returns the button's X position in stage (absolute) coordinates by walking the parent chain.
+        /// Necessary because GetX()/GetY() return local coordinates relative to the immediate parent.
+        /// </summary>
+        private Microsoft.Xna.Framework.Vector2 GetStagePosition()
+        {
+            float absX = GetX();
+            float absY = GetY();
+            var p = GetParent();
+            while (p != null)
+            {
+                absX += p.GetX();
+                absY += p.GetY();
+                p = p.GetParent();
+            }
+            return new Microsoft.Xna.Framework.Vector2(absX, absY);
+        }
+
         public override void Draw(Batcher batcher, float parentAlpha)
         {
             // Call base draw first
@@ -32,12 +50,10 @@ namespace PitHero.UI
                 // Mouse entered
                 if (!string.IsNullOrEmpty(_hoverText))
                 {
-                    // Calculate position with better centering using estimated text width
                     float estimatedTextWidth = EstimateTextWidth(_hoverText);
-
-                    float hoverX = GetX() + (GetWidth() * 0.5f) - (estimatedTextWidth * 0.5f); // Center text properly
-                    float hoverY = GetY() + GetHeight() + GetYPadding(); // Below button with proper padding
-
+                    var stagePos = GetStagePosition();
+                    float hoverX = stagePos.X + (GetWidth() * 0.5f) - (estimatedTextWidth * 0.5f);
+                    float hoverY = stagePos.Y + GetHeight() + GetYPadding();
                     HoverTextManager.ShowHoverText(_hoverText, hoverX, hoverY);
                 }
             }

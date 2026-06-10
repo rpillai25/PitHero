@@ -160,7 +160,7 @@ namespace PitHero.UI
             var manager = Core.Services.GetService<AlliedMonsterManager>();
             if (manager == null || manager.Count == 0)
             {
-                _monsterListTable.Add(new Label("No allied monsters yet.", _skin)).Left().SetPadBottom(4f);
+                _monsterListTable.Add(new Label("No allied monsters yet.", _skin, "ph-default")).Left().SetPadBottom(4f);
                 _monsterListTable.Row();
                 return;
             }
@@ -197,41 +197,34 @@ namespace PitHero.UI
                 var rowTable = new Table();
                 rowTable.Left();
 
-                // --- Left: monster sprite scaled to fit inside 48x48 ---
+                // --- Left: monster sprite (frame 0 of MoveDown animation) ---
+                Nez.Textures.Sprite monsterSprite = null;
                 if (actorsAtlas != null)
                 {
-                    Nez.Textures.Sprite monsterSprite = null;
                     try
                     {
-                        monsterSprite = actorsAtlas.GetSprite($"{monster.MonsterTypeName}_WalkDown_1");
-                        if (monsterSprite == null)
-                            monsterSprite = actorsAtlas.GetSprite("PlaceholderMonster");
+                        string typeName = monster.MonsterTypeName.StartsWith("Monster_")
+                            ? monster.MonsterTypeName.Substring("Monster_".Length)
+                            : monster.MonsterTypeName;
+                        var anim = actorsAtlas.GetAnimation($"{typeName}MoveDown");
+                        if (anim?.Sprites != null && anim.Sprites.Length > 0)
+                            monsterSprite = anim.Sprites[0];
                     }
-                    catch (System.Exception ex)
-                    {
-                        Debug.Warn($"[MonsterUI] Failed to load sprite for {monster.MonsterTypeName}: {ex.Message}");
-                        monsterSprite = null;
-                    }
+                    catch (System.Exception) { monsterSprite = null; }
+                }
 
-                    if (monsterSprite != null)
-                    {
-                        float sprW = monsterSprite.SourceRect.Width;
-                        float sprH = monsterSprite.SourceRect.Height;
-                        float displayW = (sprW <= CellSize && sprH <= CellSize) ? sprW : CellSize;
-                        float displayH = (sprW <= CellSize && sprH <= CellSize) ? sprH : CellSize;
-                        var spriteImage = new Image(new SpriteDrawable(monsterSprite));
-                        spriteImage.SetSize(displayW, displayH);
-                        rowTable.Add(spriteImage).Size(CellSize, CellSize).Pad(2f, 2f, 2f, 4f);
-                    }
-                    else
-                    {
-                        // Empty placeholder cell to keep layout consistent
-                        rowTable.Add(new Label("", _skin)).Size(CellSize, CellSize).Pad(2f, 2f, 2f, 4f);
-                    }
+                if (monsterSprite != null)
+                {
+                    float sprW = monsterSprite.SourceRect.Width;
+                    float sprH = monsterSprite.SourceRect.Height;
+                    float displayW = sprW <= CellSize ? sprW : CellSize;
+                    float displayH = sprH <= CellSize ? sprH : CellSize;
+                    var spriteImage = new Image(new SpriteDrawable(monsterSprite), Nez.UI.Scaling.Fit);
+                    rowTable.Add(spriteImage).Size(displayW, displayH).Pad(2f, 2f, 2f, 4f);
                 }
                 else
                 {
-                    rowTable.Add(new Label("", _skin)).Size(CellSize, CellSize).Pad(2f, 2f, 2f, 4f);
+                    rowTable.Add(new Label("?", _skin, "ph-default")).Size(CellSize, CellSize).Pad(2f, 2f, 2f, 4f);
                 }
 
                 // --- Middle: textTable with name, stats, job ---
@@ -247,9 +240,9 @@ namespace PitHero.UI
                     _ => "None"
                 };
 
-                var nameLabel  = new Label($"{monster.Name} ({monsterTypeName})", _skin);
-                var statsLabel = new Label($"Fish:{monster.FishingProficiency}  Cook:{monster.CookingProficiency}  Farm:{monster.FarmingProficiency}", _skin);
-                var jobLabel   = new Label($"Job: {jobDisplayName}", _skin);
+                var nameLabel  = new Label($"{monster.Name} ({monsterTypeName})", _skin, "ph-default");
+                var statsLabel = new Label($"Fish:{monster.FishingProficiency}  Cook:{monster.CookingProficiency}  Farm:{monster.FarmingProficiency}", _skin, "ph-default");
+                var jobLabel   = new Label($"Job: {jobDisplayName}", _skin, "ph-default");
 
                 textTable.Add(nameLabel).Left();
                 textTable.Row();
@@ -263,7 +256,7 @@ namespace PitHero.UI
                 var jobTable = new Table();
                 jobTable.Top().Right();
 
-                var jobHeaderLabel = new Label($"Job: {jobDisplayName}", _skin);
+                var jobHeaderLabel = new Label($"Job: {jobDisplayName}", _skin, "ph-default");
                 jobTable.Add(jobHeaderLabel).Right().SetPadBottom(2f);
                 jobTable.Row();
 
@@ -315,8 +308,7 @@ namespace PitHero.UI
                     }
                     else
                     {
-                        // Fallback text button
-                        var fallbackLabel = new Label(jobName.Substring(0, 1), _skin);
+                        var fallbackLabel = new Label(jobName.Substring(0, 1), _skin, "ph-default");
                         buttonsTable.Add(fallbackLabel).Size(32f, 32f).Pad(1f);
                     }
                 }
