@@ -35,6 +35,7 @@ namespace PitHero.UI
         // References for single window policy enforcement
         private SettingsUI _settingsUI;
         private SecondChanceShopUI _secondChanceShopUI;
+        private MonsterUI _monsterUI;
 
         // Inventory tab content
         private InventoryGrid _inventoryGrid;
@@ -229,12 +230,14 @@ namespace PitHero.UI
 
         /// <summary>Sets the reference to SecondChanceShopUI for single window policy enforcement.</summary>
         public void SetSecondChanceShopUI(SecondChanceShopUI secondChanceShopUI) { _secondChanceShopUI = secondChanceShopUI; }
+        public void SetMonsterUI(MonsterUI monsterUI) { _monsterUI = monsterUI; }
 
         private void HandleHeroButtonClick()
         {
             // Properly close Settings UI if it's open (single window policy)
             _settingsUI?.ForceCloseSettings();
             _secondChanceShopUI?.ForceCloseWindow();
+            _monsterUI?.ForceCloseWindow();
             ToggleHeroWindow();
         }
 

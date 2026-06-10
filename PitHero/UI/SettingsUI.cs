@@ -274,7 +274,9 @@ namespace PitHero.UI
             _secondChanceShopUI.SetMonsterUI(_monsterUI);
 
             _heroUI.SetSecondChanceShopUI(_secondChanceShopUI);
+            _heroUI.SetMonsterUI(_monsterUI);
             _monsterUI.SetSecondChanceShopUI(_secondChanceShopUI);
+            _monsterUI.SetHeroUI(_heroUI);
 
             _recruitmentNotificationUI = new RecruitmentNotificationUI();
             _recruitmentNotificationUI.InitializeUI(_stage, skin);
