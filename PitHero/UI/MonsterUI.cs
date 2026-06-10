@@ -217,12 +217,8 @@ namespace PitHero.UI
 
                 if (monsterSprite != null)
                 {
-                    float sprW = monsterSprite.SourceRect.Width;
-                    float sprH = monsterSprite.SourceRect.Height;
-                    float displayW = sprW <= CellSize ? sprW : CellSize;
-                    float displayH = sprH <= CellSize ? sprH : CellSize;
                     var spriteImage = new Image(new SpriteDrawable(monsterSprite), Nez.UI.Scaling.Fit);
-                    rowTable.Add(spriteImage).Size(displayW, displayH).Pad(2f, 2f, 2f, 4f);
+                    rowTable.Add(spriteImage).Size(CellSize, CellSize).Pad(2f, 2f, 2f, 4f);
                 }
                 else
                 {
