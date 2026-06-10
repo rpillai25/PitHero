@@ -29,6 +29,8 @@ namespace PitHero.UI
         private MonsterMode _currentMonsterMode = MonsterMode.Normal;
 
         private const float SpriteSize = 32f;
+        private static readonly Color BrownColor = new Color(71, 36, 7);
+        private static LabelStyle BrownStyle() => new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = BrownColor };
 
         /// <summary>Whether the monster window is currently visible.</summary>
         public bool IsWindowVisible => _windowVisible;
@@ -160,7 +162,7 @@ namespace PitHero.UI
             var manager = Core.Services.GetService<AlliedMonsterManager>();
             if (manager == null || manager.Count == 0)
             {
-                _monsterListTable.Add(new Label("No allied monsters yet.", _skin, "ph-default")).Left().SetPadBottom(4f);
+                _monsterListTable.Add(new Label("No allied monsters yet.", BrownStyle())).Left().SetPadBottom(4f);
                 _monsterListTable.Row();
                 return;
             }
@@ -224,7 +226,7 @@ namespace PitHero.UI
                 }
                 else
                 {
-                    rowTable.Add(new Label("?", _skin, "ph-default")).Size(CellSize, CellSize).Pad(2f, 2f, 2f, 4f);
+                    rowTable.Add(new Label("?", BrownStyle())).Size(CellSize, CellSize).Pad(2f, 2f, 2f, 4f);
                 }
 
                 // --- Middle: textTable with name, stats, job ---
@@ -240,9 +242,9 @@ namespace PitHero.UI
                     _ => "None"
                 };
 
-                var nameLabel  = new Label($"{monster.Name} ({monsterTypeName})", _skin, "ph-default");
-                var statsLabel = new Label($"Fish:{monster.FishingProficiency}  Cook:{monster.CookingProficiency}  Farm:{monster.FarmingProficiency}", _skin, "ph-default");
-                var jobLabel   = new Label($"Job: {jobDisplayName}", _skin, "ph-default");
+                var nameLabel  = new Label($"{monster.Name} ({monsterTypeName})", BrownStyle());
+                var statsLabel = new Label($"Fish:{monster.FishingProficiency}  Cook:{monster.CookingProficiency}  Farm:{monster.FarmingProficiency}", BrownStyle());
+                var jobLabel   = new Label($"Job: {jobDisplayName}", BrownStyle());
 
                 textTable.Add(nameLabel).Left();
                 textTable.Row();
@@ -256,7 +258,7 @@ namespace PitHero.UI
                 var jobTable = new Table();
                 jobTable.Top().Right();
 
-                var jobHeaderLabel = new Label($"Job: {jobDisplayName}", _skin, "ph-default");
+                var jobHeaderLabel = new Label($"Job: {jobDisplayName}", BrownStyle());
                 jobTable.Add(jobHeaderLabel).Right().SetPadBottom(2f);
                 jobTable.Row();
 
@@ -308,7 +310,7 @@ namespace PitHero.UI
                     }
                     else
                     {
-                        var fallbackLabel = new Label(jobName.Substring(0, 1), _skin, "ph-default");
+                        var fallbackLabel = new Label(jobName.Substring(0, 1), BrownStyle());
                         buttonsTable.Add(fallbackLabel).Size(32f, 32f).Pad(1f);
                     }
                 }
