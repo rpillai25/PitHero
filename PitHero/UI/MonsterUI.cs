@@ -244,13 +244,10 @@ namespace PitHero.UI
 
                 var nameLabel  = new Label($"{monster.Name} ({monsterTypeName})", BrownStyle());
                 var statsLabel = new Label($"Fish:{monster.FishingProficiency}  Cook:{monster.CookingProficiency}  Farm:{monster.FarmingProficiency}", BrownStyle());
-                var jobLabel   = new Label($"Job: {jobDisplayName}", BrownStyle());
 
                 textTable.Add(nameLabel).Left();
                 textTable.Row();
                 textTable.Add(statsLabel).Left();
-                textTable.Row();
-                textTable.Add(jobLabel).Left();
 
                 rowTable.Add(textTable).Left().Pad(2f, 0f, 2f, 4f);
 
