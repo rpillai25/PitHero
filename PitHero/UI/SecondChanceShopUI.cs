@@ -37,6 +37,7 @@ namespace PitHero.UI
         private SettingsUI _settingsUI;
         private HeroUI _heroUI;
         private MonsterUI _monsterUI;
+        private FarmUI _farmUI;
         private Skin _skin;
         private TextService _textService;
         private PauseService _pauseService;
@@ -310,6 +311,7 @@ namespace PitHero.UI
             _settingsUI?.ForceCloseSettings();
             _heroUI?.ForceCloseWindow();
             _monsterUI?.ForceCloseWindow();
+            _farmUI?.DismissSubButtons();
             ToggleShopWindow();
         }
 
@@ -408,6 +410,7 @@ namespace PitHero.UI
 
         /// <summary>Sets the MonsterUI reference for single window policy.</summary>
         public void SetMonsterUI(MonsterUI monsterUI) { _monsterUI = monsterUI; }
+        public void SetFarmUI(FarmUI farmUI) { _farmUI = farmUI; }
 
         /// <summary>Sets the position of the shop icon button.</summary>
         public void SetPosition(float x, float y) => _shopButton?.SetPosition(x, y);

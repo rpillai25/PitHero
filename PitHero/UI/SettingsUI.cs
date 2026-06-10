@@ -290,6 +290,14 @@ namespace PitHero.UI
             _farmUI = new FarmUI();
             _farmUI.InitializeUI(_stage);
 
+            // Wire cross-UI references for single-window policy (all UIs must exist before wiring)
+            _heroUI.SetFarmUI(_farmUI);
+            _monsterUI.SetFarmUI(_farmUI);
+            _secondChanceShopUI.SetFarmUI(_farmUI);
+            _farmUI.SetHeroUI(_heroUI);
+            _farmUI.SetMonsterUI(_monsterUI);
+            _farmUI.SetSecondChanceShopUI(_secondChanceShopUI);
+
             // Create settings window with TabPane (initially hidden)
             CreateSettingsWindow(skin);
 

@@ -36,6 +36,7 @@ namespace PitHero.UI
         private SettingsUI _settingsUI;
         private SecondChanceShopUI _secondChanceShopUI;
         private MonsterUI _monsterUI;
+        private FarmUI _farmUI;
 
         // Inventory tab content
         private InventoryGrid _inventoryGrid;
@@ -231,6 +232,7 @@ namespace PitHero.UI
         /// <summary>Sets the reference to SecondChanceShopUI for single window policy enforcement.</summary>
         public void SetSecondChanceShopUI(SecondChanceShopUI secondChanceShopUI) { _secondChanceShopUI = secondChanceShopUI; }
         public void SetMonsterUI(MonsterUI monsterUI) { _monsterUI = monsterUI; }
+        public void SetFarmUI(FarmUI farmUI) { _farmUI = farmUI; }
 
         private void HandleHeroButtonClick()
         {
@@ -238,6 +240,7 @@ namespace PitHero.UI
             _settingsUI?.ForceCloseSettings();
             _secondChanceShopUI?.ForceCloseWindow();
             _monsterUI?.ForceCloseWindow();
+            _farmUI?.DismissSubButtons();
             ToggleHeroWindow();
         }
 

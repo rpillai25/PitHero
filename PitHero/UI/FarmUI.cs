@@ -38,6 +38,14 @@ namespace PitHero.UI
         private bool _subButtonsVisible = false;
         private bool _subButtonsToggled = false;
 
+        private HeroUI _heroUI;
+        private MonsterUI _monsterUI;
+        private SecondChanceShopUI _secondChanceShopUI;
+
+        public void SetHeroUI(HeroUI heroUI) { _heroUI = heroUI; }
+        public void SetMonsterUI(MonsterUI monsterUI) { _monsterUI = monsterUI; }
+        public void SetSecondChanceShopUI(SecondChanceShopUI secondChanceShopUI) { _secondChanceShopUI = secondChanceShopUI; }
+
         private enum ButtonMode { Normal, Half }
         private ButtonMode _currentMode = ButtonMode.Normal;
         private bool _styleChanged = false;
@@ -246,6 +254,12 @@ namespace PitHero.UI
         private void ToggleSubButtons()
         {
             _subButtonsVisible = !_subButtonsVisible;
+            if (_subButtonsVisible)
+            {
+                _heroUI?.ForceCloseWindow();
+                _monsterUI?.ForceCloseWindow();
+                _secondChanceShopUI?.ForceCloseWindow();
+            }
             foreach (var btn in _subButtons)
                 btn.SetVisible(_subButtonsVisible);
             _subButtonsToggled = true;
