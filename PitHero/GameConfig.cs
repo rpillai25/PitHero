@@ -109,7 +109,7 @@ namespace PitHero
         public const int FarmMinTillTileX = 120;         // tiles at x >= this can be marked for tilling
         public const int FarmMinTillTileY = 1;           // tiles at y >= this can be marked for tilling
         public const int FarmMinWanderTileX = 118;       // farming monsters wander at x >= this
-        public const float TillBaseDurationSeconds = 1.8f;     // hoe time at FarmingProficiency 1
+        public const float TillBaseDurationSeconds = 3f;       // hoe time at FarmingProficiency 1
         public const float TillProficiencySpeedStep = 0.06f;   // till duration reduced 6% per proficiency point above 1
         public const float FarmMonsterIdlePollInterval = 0.25f; // seconds between queue checks while idle
         public const int FarmWanderRadiusTiles = 4;             // idle wander stays within this radius of the nearest field tile
