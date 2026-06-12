@@ -163,6 +163,13 @@ namespace PitHero.Services
             fsm.HoeAnimator = hoeAnimator;
             fsm.BodyAnimator = bodyAnimator;
 
+            // Spread concurrent workers across the queue so they don't all till side by side:
+            // first worker claims from the front, second from the back, the rest from a fixed
+            // random spot in between.
+            fsm.QueuePick = _workers.Count == 0 ? 0f
+                : _workers.Count == 1 ? 1f
+                : Nez.Random.NextFloat();
+
             var worker = new ActiveWorker { Monster = monster, Entity = entity, Fsm = fsm };
             _workers.Add(worker);
 
@@ -218,16 +225,23 @@ namespace PitHero.Services
             enumerator.Dispose();
         }
 
+        /// <summary>Claims the next valid till action from the front of the queue.</summary>
+        public bool TryClaimAction(out FarmAction action) => TryClaimAction(0f, out action);
+
         /// <summary>
-        /// Pops the next valid till action, skipping entries invalidated since they were queued.
-        /// A returned action is considered claimed until CompleteAction/ReleaseAction/ReportBlocked.
+        /// Pops the next valid till action near the given normalized queue position (0 = front,
+        /// 1 = back), skipping entries invalidated since they were queued. Workers are given
+        /// different positions so they spread across the field instead of clustering. A returned
+        /// action is considered claimed until CompleteAction/ReleaseAction/ReportBlocked.
         /// Returns false when the queue is empty.
         /// </summary>
-        public bool TryClaimAction(out FarmAction action)
+        public bool TryClaimAction(float queuePick, out FarmAction action)
         {
             while (_queue.Count > 0)
             {
-                action = _queue.RemoveFront();
+                int index = (int)(queuePick * (_queue.Count - 1) + 0.5f);
+                action = _queue[index];
+                _queue.RemoveAt(index);
                 var tile = action.TargetTile;
                 if (!_tracked.Contains(tile))
                     continue;   // unmarked while queued
@@ -262,6 +276,34 @@ namespace PitHero.Services
             _tracked.Remove(action.TargetTile);
             if (!_blocked.Contains(action.TargetTile))
                 _blocked.Add(action.TargetTile);
+        }
+
+        /// <summary>
+        /// Finds the field tile (tilled or planned-for-tilling) closest to the given tile. Used to
+        /// keep idle monsters wandering near the field instead of across the whole farm. Returns
+        /// false when no field tiles exist.
+        /// </summary>
+        public bool TryGetNearestFieldTile(Point from, out Point nearest)
+        {
+            nearest = default;
+            long best = long.MaxValue;
+            var enumerator = _tileState.GetAllStates().GetEnumerator();
+            while (enumerator.MoveNext())
+            {
+                if ((enumerator.Current.Value & (TileStateFlag.Tilled | TileStateFlag.ReadyToTill)) == 0)
+                    continue;
+                var tile = enumerator.Current.Key;
+                long dx = tile.X - from.X;
+                long dy = tile.Y - from.Y;
+                long distSq = dx * dx + dy * dy;
+                if (distSq < best)
+                {
+                    best = distSq;
+                    nearest = tile;
+                }
+            }
+            enumerator.Dispose();
+            return best != long.MaxValue;
         }
 
         private void HandleReadyToTillSet(Point tile)

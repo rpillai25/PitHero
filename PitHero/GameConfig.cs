@@ -112,6 +112,7 @@ namespace PitHero
         public const float TillBaseDurationSeconds = 1.8f;     // hoe time at FarmingProficiency 1
         public const float TillProficiencySpeedStep = 0.06f;   // till duration reduced 6% per proficiency point above 1
         public const float FarmMonsterIdlePollInterval = 0.25f; // seconds between queue checks while idle
+        public const int FarmWanderRadiusTiles = 4;             // idle wander stays within this radius of the nearest field tile
 
         // Camera Configuration
         public const float CameraDefaultZoom = 1f; // default zoom level

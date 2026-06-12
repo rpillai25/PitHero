@@ -29,6 +29,12 @@ namespace PitHero.ECS.Components
         /// <summary>Body animator, used to match the hoe's layer depth while tilling.</summary>
         public EnemyAnimationComponent BodyAnimator;
 
+        /// <summary>
+        /// Normalized queue position this worker claims from (0 = front, 1 = back); assigned by
+        /// the coordinator at spawn so concurrent workers spread across the field.
+        /// </summary>
+        public float QueuePick;
+
         private FarmAction _currentAction;
         private bool _hasAction;
         private bool _standRight;        // standing right of the target (preferred) vs left (fallback)
@@ -115,7 +121,7 @@ namespace PitHero.ECS.Components
             if (elapsedTimeInState < GameConfig.FarmMonsterIdlePollInterval)
                 return;
 
-            if (_coordinator.TryClaimAction(out _currentAction))
+            if (_coordinator.TryClaimAction(QueuePick, out _currentAction))
             {
                 _hasAction = true;
                 if (TryPathToStandTile())
@@ -309,6 +315,28 @@ namespace PitHero.ECS.Components
         private bool TryPathToWanderTarget()
         {
             var pathfinder = _coordinator.Pathfinder;
+
+            // Idle monsters hang around the field rather than roaming the whole farm
+            if (_coordinator.TryGetNearestFieldTile(_mover.CurrentTile, out var fieldTile))
+            {
+                int r = GameConfig.FarmWanderRadiusTiles;
+                for (int attempt = 0; attempt < 8; attempt++)
+                {
+                    int x = fieldTile.X + Nez.Random.Range(-r, r + 1);
+                    int y = fieldTile.Y + Nez.Random.Range(-r, r + 1);
+                    if (x < GameConfig.FarmMinWanderTileX) x = GameConfig.FarmMinWanderTileX;
+                    else if (x >= pathfinder.Width) x = pathfinder.Width - 1;
+                    if (y < 1) y = 1;
+                    else if (y > pathfinder.Height - 2) y = pathfinder.Height - 2;
+                    var goal = new Point(x, y);
+                    if (goal == _mover.CurrentTile)
+                        continue;
+                    if (TrySetPathTo(goal))
+                        return true;
+                }
+            }
+
+            // No field yet (or all nearby spots unreachable) — wander anywhere on the farm
             for (int attempt = 0; attempt < 8; attempt++)
             {
                 int x = Nez.Random.Range(GameConfig.FarmMinWanderTileX, pathfinder.Width);

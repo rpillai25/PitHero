@@ -161,6 +161,90 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void QueuePick_FrontAndBack_ClaimOppositeEnds()
+        {
+            _tileState.SetFlag(new Point(125, 5), TileStateFlag.ReadyToTill);
+            _tileState.SetFlag(new Point(126, 5), TileStateFlag.ReadyToTill);
+            _tileState.SetFlag(new Point(127, 5), TileStateFlag.ReadyToTill);
+
+            Assert.IsTrue(_coordinator.TryClaimAction(0f, out var front));
+            Assert.IsTrue(_coordinator.TryClaimAction(1f, out var back));
+
+            Assert.AreEqual(new Point(125, 5), front.TargetTile);
+            Assert.AreEqual(new Point(127, 5), back.TargetTile);
+        }
+
+        [TestMethod]
+        public void QueuePick_Middle_ClaimsMiddleEntry()
+        {
+            _tileState.SetFlag(new Point(125, 5), TileStateFlag.ReadyToTill);
+            _tileState.SetFlag(new Point(126, 5), TileStateFlag.ReadyToTill);
+            _tileState.SetFlag(new Point(127, 5), TileStateFlag.ReadyToTill);
+
+            Assert.IsTrue(_coordinator.TryClaimAction(0.5f, out var mid));
+
+            Assert.AreEqual(new Point(126, 5), mid.TargetTile);
+        }
+
+        [TestMethod]
+        public void QueuePick_SkipsInvalidatedEntries()
+        {
+            _tileState.SetFlag(new Point(125, 5), TileStateFlag.ReadyToTill);
+            _tileState.SetFlag(new Point(126, 5), TileStateFlag.ReadyToTill);
+            _tileState.ClearFlag(new Point(126, 5), TileStateFlag.ReadyToTill);
+
+            Assert.IsTrue(_coordinator.TryClaimAction(1f, out var action));
+            Assert.AreEqual(new Point(125, 5), action.TargetTile);
+            Assert.IsFalse(_coordinator.TryClaimAction(1f, out _));
+        }
+
+        [TestMethod]
+        public void TryGetNearestFieldTile_ReturnsClosestTilledOrPlannedTile()
+        {
+            _tileState.SetFlag(new Point(125, 5), TileStateFlag.Tilled);
+            _tileState.SetFlag(new Point(200, 5), TileStateFlag.ReadyToTill);
+
+            Assert.IsTrue(_coordinator.TryGetNearestFieldTile(new Point(130, 5), out var nearMark));
+            Assert.AreEqual(new Point(125, 5), nearMark);
+
+            Assert.IsTrue(_coordinator.TryGetNearestFieldTile(new Point(195, 5), out var nearPlan));
+            Assert.AreEqual(new Point(200, 5), nearPlan);
+        }
+
+        [TestMethod]
+        public void TryGetNearestFieldTile_FalseWhenNoFieldExists()
+        {
+            Assert.IsFalse(_coordinator.TryGetNearestFieldTile(new Point(130, 5), out _));
+        }
+
+        [TestMethod]
+        public void QueuePick_MidQueueClaims_NeverLoseOrDuplicateTasks()
+        {
+            // Mirrors the in-game symptom: workers claiming mid-queue must drain every marked
+            // tile exactly once — no tiles silently lost, none claimed twice.
+            var marked = new System.Collections.Generic.HashSet<Point>();
+            for (int i = 0; i < 30; i++)
+            {
+                var tile = new Point(125 + i, 5);
+                _tileState.SetFlag(tile, TileStateFlag.ReadyToTill);
+                marked.Add(tile);
+            }
+
+            var claimed = new System.Collections.Generic.HashSet<Point>();
+            float[] picks = { 0f, 1f, 0.37f, 0.5f };
+            int turn = 0;
+            while (_coordinator.TryClaimAction(picks[turn++ % picks.Length], out var action))
+            {
+                Assert.IsTrue(claimed.Add(action.TargetTile), $"tile {action.TargetTile} claimed twice");
+                _coordinator.CompleteAction(in action);
+                _tileState.ClearFlag(action.TargetTile, TileStateFlag.ReadyToTill);
+                _tileState.SetFlag(action.TargetTile, TileStateFlag.Tilled);
+            }
+
+            Assert.IsTrue(claimed.SetEquals(marked), "some marked tiles were never claimed");
+        }
+
+        [TestMethod]
         public void Constructor_ScansExistingFlags()
         {
             var tileState = new TileStateService();
