@@ -154,6 +154,9 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.CrystalCollectionService));
             Core.Services.RemoveService(typeof(Services.BuildingService));
             Core.Services.RemoveService(typeof(Services.CropPlantingService));
+            Core.Services.RemoveService(typeof(Services.TilledTileService));
+            Core.Services.GetService<Services.FarmTaskCoordinator>()?.Detach();
+            Core.Services.RemoveService(typeof(Services.FarmTaskCoordinator));
             Core.Services.RemoveService(typeof(MercenaryManager));
             Core.Services.RemoveService(typeof(AlliedMonsterManager));
             Core.Services.RemoveService(typeof(HeroPromotionService));
@@ -197,6 +200,14 @@ namespace PitHero.ECS.Scenes
             var alliedMonsterManager = new AlliedMonsterManager();
             Core.Services.AddService(alliedMonsterManager);
 
+            // Initialize farm task coordinator (central till queue + farming monster lifecycle)
+            var farmTaskCoordinator = new Services.FarmTaskCoordinator(
+                Core.Services.GetService<TileStateService>(),
+                Core.Services.GetService<Services.BuildingService>(),
+                _tmxMap.Width, _tmxMap.Height, alliedMonsterManager);
+            farmTaskCoordinator.Initialize(this);
+            Core.Services.AddService(farmTaskCoordinator);
+
             // Initialize hero promotion service (handles mercenary promotions and hero crystal ceremonies after death)
             _heroPromotionService = new Services.HeroPromotionService(this);
             Core.Services.AddService(_heroPromotionService);
@@ -237,6 +248,12 @@ namespace PitHero.ECS.Scenes
                     var ts = pendingData.TileStates[i];
                     tileStateService.SetFlag(new Microsoft.Xna.Framework.Point(ts.X, ts.Y), (Farming.TileStateFlag)ts.Flags);
                 }
+
+                // Re-derive real tilled tiles on the Detail layer from the restored Tilled flags
+                Core.Services.GetService<Services.TilledTileService>()?.RestoreAllTilledTiles();
+
+                // Rebuild the till queue from the restored ReadyToTill flags (idempotent)
+                Core.Services.GetService<Services.FarmTaskCoordinator>()?.RescanReadyToTill();
             }
 
             // Restore placed buildings
@@ -665,6 +682,10 @@ namespace PitHero.ECS.Scenes
             baseLayerRenderer.SetLayerToRender("Base");
             baseLayerRenderer.RenderLayer = GameConfig.RenderLayerBase;
 
+            var detailLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(_tmxMap));
+            detailLayerRenderer.SetLayerToRender("Detail");
+            detailLayerRenderer.SetRenderLayer(GameConfig.RenderLayerDetail);
+
             var topLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(_tmxMap));
             topLayerRenderer.SetLayerToRender("Top");
             topLayerRenderer.SetRenderLayer(GameConfig.RenderLayerTop);
@@ -680,6 +701,12 @@ namespace PitHero.ECS.Scenes
             // so the overlay can detect when the mouse is over UI and suppress tile placement.
             _tillModeOverlay = new TillModeOverlay(this, _tmxMap);
             _tillModeOverlay.SetStage(_uiStage);
+
+            // Tilled tile service writes real tilled tiles to the Detail layer when farming
+            // monsters complete till actions; the overlay drops its grayscale sprite in response.
+            var tilledTileService = new Services.TilledTileService(_tmxMap, Core.Services.GetService<TileStateService>());
+            tilledTileService.OnTileTilled += tile => _tillModeOverlay?.OnTileTilled(tile);
+            Core.Services.AddService(tilledTileService);
 
             // Building mode overlay — creates its UI panels on the same stage.
             _buildingModeOverlay = new BuildingModeOverlay(this, _uiStage);
@@ -1896,6 +1923,9 @@ namespace PitHero.ECS.Scenes
             // Update mercenary manager
             var mercenaryManager = Core.Services.GetService<MercenaryManager>();
             mercenaryManager?.Update();
+
+            // Sync farming monster workers with job assignments
+            Core.Services.GetService<Services.FarmTaskCoordinator>()?.Update();
 
             // Check if a living hero who respawned without a crystal has arrived at the statue
             _heroPromotionService?.CheckAndPromoteHeroIfNeeded();

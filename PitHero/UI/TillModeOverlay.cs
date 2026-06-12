@@ -38,10 +38,6 @@ namespace PitHero.UI
         private static readonly Color CursorTillableColor   = new Color(101, 67, 33, 128);
         private static readonly Color CursorUntillableColor = new Color(255, 0, 0, 128);
 
-        private const int TillZerothGid = 122;   // GIDs 122-137 are the 16 transition variants
-        private const int TillMinTileX  = 120;
-        private const int TillMinTileY  = 1;
-
         // Cached tileset for GIDs 122-137 (same sheet for all variants)
         private TmxTileset _tillTileset;
 
@@ -93,7 +89,7 @@ namespace PitHero.UI
 
             var buildingService = Core.Services.GetService<BuildingService>();
             bool occupiedByBuilding = buildingService != null && buildingService.IsTileOccupied(tileX, tileY);
-            bool tillable = tileX >= TillMinTileX && tileY >= TillMinTileY && !occupiedByBuilding;
+            bool tillable = tileX >= GameConfig.FarmMinTillTileX && tileY >= GameConfig.FarmMinTillTileY && !occupiedByBuilding;
 
             if (_cursorEntity != null)
             {
@@ -131,7 +127,8 @@ namespace PitHero.UI
                 if (tile != _lastMarkDragTile)
                 {
                     _lastMarkDragTile = tile;
-                    if (tillable && !tileService.HasFlag(tile, TileStateFlag.ReadyToTill))
+                    if (tillable && !tileService.HasFlag(tile, TileStateFlag.ReadyToTill)
+                        && !tileService.HasFlag(tile, TileStateFlag.Tilled))
                     {
                         tileService.SetFlag(tile, TileStateFlag.ReadyToTill);
                         CreateOverlayEntity(tile);
@@ -252,19 +249,32 @@ namespace PitHero.UI
                 renderer.Sprite = GetBitmaskSprite(tile.X, tile.Y);
         }
 
+        /// <summary>
+        /// Removes the grayscale overlay for a tile that just became a real tilled tile and updates
+        /// the transition sprites of its still-planned neighbors. Safe to call when till mode is
+        /// inactive (no overlay entities exist).
+        /// </summary>
+        public void OnTileTilled(Point tile)
+        {
+            DestroyOverlayEntity(tile);
+            RecalculateNeighborhood(tile);
+        }
+
         private Sprite GetBitmaskSprite(int tileX, int tileY)
         {
-            int gid = TileBitmask.GetTileIndex(tileX, tileY, TillZerothGid, IsReadyToTill);
-            var tileset = _tillTileset ??= _map.GetTilesetForTileGid(TillZerothGid);
+            int gid = TileBitmask.GetTileIndex(tileX, tileY, GameConfig.TillZerothGid, IsReadyToTill);
+            var tileset = _tillTileset ??= _map.GetTilesetForTileGid(GameConfig.TillZerothGid);
             var rectF = tileset.TileRegions[gid];
             var rect  = new Rectangle((int)rectF.X, (int)rectF.Y, (int)rectF.Width, (int)rectF.Height);
             return new Sprite(tileset.Image.Texture, rect);
         }
 
+        // Overlay sprites connect to both planned (ReadyToTill) and real (Tilled) tiles so the
+        // grayscale plan visually joins tilled soil as monsters work through it.
         private bool IsReadyToTill(int x, int y)
         {
             var svc = Core.Services.GetService<TileStateService>();
-            return svc != null && svc.HasFlag(new Point(x, y), TileStateFlag.ReadyToTill);
+            return svc != null && svc.HasFlag(new Point(x, y), TileStateFlag.ReadyToTill | TileStateFlag.Tilled);
         }
     }
 }

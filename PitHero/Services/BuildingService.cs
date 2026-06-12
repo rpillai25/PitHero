@@ -19,6 +19,9 @@ namespace PitHero.Services
         private readonly List<PlacedBuilding> _buildings = new List<PlacedBuilding>();
         private int _nextId = 1;
 
+        /// <summary>Fired after the set of placed buildings changes (placement or restore).</summary>
+        public System.Action BuildingsChanged;
+
         /// <summary>Next ID to allocate. Persisted in the save file so IDs are never reused.</summary>
         public int NextId { get => _nextId; set => _nextId = value; }
 
@@ -49,7 +52,11 @@ namespace PitHero.Services
 
         public IReadOnlyList<PlacedBuilding> GetAll() => _buildings;
 
-        public void AddBuilding(PlacedBuilding b) => _buildings.Add(b);
+        public void AddBuilding(PlacedBuilding b)
+        {
+            _buildings.Add(b);
+            BuildingsChanged?.Invoke();
+        }
 
         public bool IsTileOccupied(int tileX, int tileY)
         {
