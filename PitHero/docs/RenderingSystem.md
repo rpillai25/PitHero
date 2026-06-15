@@ -28,21 +28,16 @@ UI / HUD layers (screen-space, unaffected by camera): `RenderLayerActionQueue` (
 
 ## Y-Sorting
 
-All actors at `RenderLayerActors` and `RenderLayerSingleTileObject` are Y-sorted within
-their layer using `LayerDepth`:
+All actors at `RenderLayerActors` and `RenderLayerSingleTileObject` are Y-sorted each
+frame by `YSortManager` (a SceneComponent). It queries all enabled renderables on those
+two layers, filters to only those whose bounds intersect the camera viewport, and assigns:
 
 ```
-layerDepth = Clamp01(1 − tileRow × TileSize × YSortDepthScale)
+layerDepth = Clamp01(1 − entity.Y × YSortDepthScale)
 ```
 
-Where `tileRow = (int)(entity.Y / TileSize)`.  **Higher world-Y (lower on screen, closer
-to the camera) → smaller `LayerDepth` → drawn later → appears in front.**
-
-The depth is snapped to tile rows, not raw pixel positions.  This means:
-- Depth is constant while an entity moves within a tile — no sort triggered mid-tile.
-- The sort only fires when an entity crosses a tile-row boundary.
-- Two entities on the same tile row get the same depth and a stable (if arbitrary) order,
-  with no frame-by-frame flickering.
+Using pixel-granular Y (not tile rows) ensures a unique depth per pixel row, eliminating
+the flickering that tile-row snapping caused between adjacent entities.
 
 `GameConfig.YSortDepthScale = 1f / 100000f` supports pits up to ~3 000 tiles deep.
 
@@ -74,10 +69,11 @@ so the DefaultRenderer skips them. See `HeroAnimationComponent` for the referenc
 **File:** `ECS/Components/SpriteCompositorBase.cs`
 
 Abstract base for both `MultiSpriteAnimator` and `StaticSpriteCompositor`. Handles
-tile-row Y-sort, bounds calculation, the per-frame RT blit loop (pixel-rounding,
-batcher save/restore, composite sprite draw), and disposal. Subclasses call
+bounds calculation, the per-frame RT blit loop (pixel-rounding, batcher save/restore,
+composite sprite draw), and disposal. Subclasses call
 `InitCompositor(rtWidth, rtHeight, pivot, drawCallback)` from `OnAddedToEntity()` and
 supply a per-layer draw callback — the only thing that differs between compositor types.
+Y-sort is handled centrally by `YSortManager`.
 
 ---
 
@@ -96,7 +92,7 @@ built from independently-animated body-part components). Extends `SpriteComposit
 3. Each frame in `Render()` (base class): ends the outer batcher, switches to a 32×46
    `RenderTarget2D`, draws layers with a translation matrix that maps entity world-position →
    RT pixel (16, 39), restores the scene RT, and blits the composited sprite.
-4. `Update()` (base class) applies tile-row-snapped Y-sort.
+4. Y-sort is applied each frame by `YSortManager` (SceneComponent).
 
 **Key constants:**
 - `RT_WIDTH = 32`, `RT_HEIGHT = 46`
@@ -154,9 +150,9 @@ no local offset.
 
 **File:** `ECS/Components/YSortSpriteRenderer.cs`
 
-Drop-in replacement for `SpriteRenderer` for any world entity at `RenderLayerActors` or
-`RenderLayerSingleTileObject` that renders as a single sprite.  Adds tile-row-snapped
-Y-sort automatically.
+Named `SpriteRenderer` subclass for any world entity at `RenderLayerActors` or
+`RenderLayerSingleTileObject` that renders as a single sprite. Y-sort is handled
+centrally by `YSortManager`; this class exists solely as a semantic marker.
 
 **Usage:**
 ```csharp
@@ -165,6 +161,20 @@ r.SetRenderLayer(GameConfig.RenderLayerSingleTileObject); // or RenderLayerActor
 ```
 
 Currently used by: pit walls, wizard orbs, hero statue.
+
+---
+
+### `YSortManager` — centralized Y-sort SceneComponent
+
+**File:** `ECS/Components/YSortManager.cs`
+
+SceneComponent that runs once per frame before entity updates. Iterates
+`RenderLayerActors` and `RenderLayerSingleTileObject`, skips renderables outside the
+camera bounds, and writes a pixel-granular `LayerDepth` to each visible renderable.
+Replaces the per-component `IUpdatable` approach that was on `YSortSpriteRenderer`,
+`SpriteCompositorBase`, and `EnemyAnimationComponent`.
+
+Registered in `MainGameScene.Initialize()` via `AddSceneComponent<YSortManager>()`.
 
 ---
 

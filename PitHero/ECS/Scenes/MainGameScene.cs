@@ -137,6 +137,8 @@ namespace PitHero.ECS.Scenes
             // Register crop planting service so plan tracking and seed inventory are queryable.
             Core.Services.AddService(new Services.CropPlantingService());
 
+            AddSceneComponent<YSortManager>();
+
             SetupUIOverlay();
 
             _colorGrading = AddPostProcessor(new ColorGradingPostProcessor(0));

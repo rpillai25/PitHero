@@ -11,7 +11,7 @@ namespace PitHero.ECS.Components
     /// the per-frame RT blit, and disposal. Subclasses call InitCompositor() from OnAddedToEntity()
     /// and supply a draw callback for their layer-specific rendering.
     /// </summary>
-    public abstract class SpriteCompositorBase : RenderableComponent, IUpdatable
+    public abstract class SpriteCompositorBase : RenderableComponent
     {
         protected Sprite  _compositeSprite;
         protected int     _rtWidth;
@@ -19,7 +19,6 @@ namespace PitHero.ECS.Components
         protected Vector2 _rtEntityPivot;
 
         private CompositorRenderer _renderer;
-        private int                _lastYSortRow = int.MinValue;
 
         public override RectangleF Bounds
         {
@@ -53,16 +52,6 @@ namespace PitHero.ECS.Components
         {
             _renderer?.RenderTexture?.Dispose();
             _renderer = null;
-        }
-
-        public void Update()
-        {
-            var row = (int)(Entity.Transform.Position.Y / GameConfig.TileSize);
-            if (row != _lastYSortRow)
-            {
-                _lastYSortRow = row;
-                SetLayerDepth(Mathf.Clamp01(1f - row * GameConfig.TileSize * GameConfig.YSortDepthScale));
-            }
         }
 
         public override void Render(Batcher batcher, Camera camera)
