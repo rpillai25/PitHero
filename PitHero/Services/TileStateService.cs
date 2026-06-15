@@ -9,13 +9,25 @@ namespace PitHero.Services
     {
         private readonly Dictionary<Point, TileStateFlag> _tileStates = new Dictionary<Point, TileStateFlag>();
 
+        /// <summary>Fired when a tile's ReadyToTill bit transitions from unset to set.</summary>
+        public System.Action<Point> OnReadyToTillSet;
+
+        /// <summary>Fired when a tile's ReadyToTill bit transitions from set to unset.</summary>
+        public System.Action<Point> OnReadyToTillCleared;
+
         /// <summary>Adds the given flag(s) to the tile, merging with any existing flags.</summary>
         public void SetFlag(Point tile, TileStateFlag flag)
         {
             if (_tileStates.TryGetValue(tile, out var existing))
                 _tileStates[tile] = existing | flag;
             else
+            {
+                existing = TileStateFlag.None;
                 _tileStates[tile] = flag;
+            }
+
+            if ((flag & TileStateFlag.ReadyToTill) != 0 && (existing & TileStateFlag.ReadyToTill) == 0)
+                OnReadyToTillSet?.Invoke(tile);
         }
 
         /// <summary>Removes the given flag(s) from the tile. Removes the entry entirely when no flags remain.</summary>
@@ -28,6 +40,9 @@ namespace PitHero.Services
                     _tileStates.Remove(tile);
                 else
                     _tileStates[tile] = result;
+
+                if ((existing & TileStateFlag.ReadyToTill) != 0 && (result & TileStateFlag.ReadyToTill) == 0)
+                    OnReadyToTillCleared?.Invoke(tile);
             }
         }
 

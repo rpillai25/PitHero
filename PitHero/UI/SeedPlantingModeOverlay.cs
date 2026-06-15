@@ -373,7 +373,11 @@ namespace PitHero.UI
 
             var tile = new Microsoft.Xna.Framework.Point(tx, ty);
 
-            if (tileService == null || !tileService.HasFlag(tile, TileStateFlag.ReadyToTill))
+            if (tileService == null)
+                return false;
+            bool readyOrTilled = tileService.HasFlag(tile, TileStateFlag.ReadyToTill)
+                              || tileService.HasFlag(tile, TileStateFlag.Tilled);
+            if (!readyOrTilled)
                 return false;
 
             if (cropService != null && cropService.HasPlan(tile))

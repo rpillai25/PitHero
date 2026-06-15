@@ -104,6 +104,16 @@ namespace PitHero
         public const int TownBuildingWidth = 48;
         public const int TownBuildingHeight = 48;
 
+        // Farming Configuration
+        public const int TillZerothGid = 122;            // GIDs 122-137 are the 16 tilled-tile bitmask variants
+        public const int FarmMinTillTileX = 120;         // tiles at x >= this can be marked for tilling
+        public const int FarmMinTillTileY = 1;           // tiles at y >= this can be marked for tilling
+        public const int FarmMinWanderTileX = 118;       // farming monsters wander at x >= this
+        public const float TillBaseDurationSeconds = 3f;       // hoe time at FarmingProficiency 1
+        public const float TillProficiencySpeedStep = 0.06f;   // till duration reduced 6% per proficiency point above 1
+        public const float FarmMonsterIdlePollInterval = 0.25f; // seconds between queue checks while idle
+        public const int FarmWanderRadiusTiles = 4;             // idle wander stays within this radius of the nearest field tile
+
         // Camera Configuration
         public const float CameraDefaultZoom = 1f; // default zoom level
         public const float CameraMinimumZoom = 0.5f; // can't zoom out past default for normal maps
@@ -188,6 +198,7 @@ namespace PitHero
         public const int RenderLayerSingleTileObject = 61; // Single tile object layer (below actors, so single tile objects render below monsters/heroes)
         public const int RenderLayerDroppedItems = 65; // Dropped items layer
         public const int RenderLayerBuilding = 80; // Placed buildings — above map base, below fog of war
+        public const int RenderLayerDetail = 90; // Detail tilemap layer (tilled soil, etc.) — above base, below buildings
         public const int RenderLayerBase = 100; // Background layer
 
         public const int RenderLayerActionQueue = 996; // Action queue layer (screen space, not affected by scene scaling)

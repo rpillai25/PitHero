@@ -14,6 +14,7 @@ namespace PitHero.ECS.Components
         private Direction _lastDirection = Direction.Down;
         private int _lastYSortRow = int.MinValue;
         private TileByTileMover _mover;
+        private FarmMonsterMover _farmMover;
         private TiledMapService _tiledMapService;
         private PauseService _pauseService;
 
@@ -105,12 +106,16 @@ namespace PitHero.ECS.Components
         /// </summary>
         private void UpdateWobble()
         {
-            if (_mover == null)
+            if (_mover == null && _farmMover == null)
+            {
                 _mover = Entity?.GetComponent<TileByTileMover>();
-            if (_mover == null)
-                return;
+                if (_mover == null)
+                    _farmMover = Entity?.GetComponent<FarmMonsterMover>();
+                if (_mover == null && _farmMover == null)
+                    return;
+            }
 
-            bool isMoving = _mover.IsMoving;
+            bool isMoving = _mover != null ? _mover.IsMoving : _farmMover.IsMoving;
             bool singleFrame = IsSingleFrameAnimation();
 
             if (isMoving && singleFrame)
@@ -205,6 +210,10 @@ namespace PitHero.ECS.Components
         /// </summary>
         private void CheckFogVisibility()
         {
+            // Farm monsters move with FarmMonsterMover and never enter fogged pit tiles
+            if (_farmMover != null)
+                return;
+
             if (_mover == null)
                 _mover = Entity?.GetComponent<TileByTileMover>();
             if (_mover == null)
