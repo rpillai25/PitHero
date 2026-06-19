@@ -279,9 +279,13 @@ namespace PitHero.Services
             // Priority 2: Plant
             if (TryClaimFromQueue(_plantQueue, _plantTracked, queuePick, ValidatePlant, out action))
                 return true;
-            // Priority 3: Water
-            if (TryClaimFromQueue(_waterQueue, _waterTracked, queuePick, ValidateWater, out action))
-                return true;
+            // Priority 3: Water — only when no plant work remains (queued or in-progress)
+            if (_plantTracked.Count == 0)
+            {
+                PopulateWaterQueue();
+                if (TryClaimFromQueue(_waterQueue, _waterTracked, queuePick, ValidateWater, out action))
+                    return true;
+            }
             action = default;
             return false;
         }
