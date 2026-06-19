@@ -32,7 +32,7 @@ namespace PitHero.Services
         }
 
         /// <summary>
-        /// Marks the tile Tilled (clearing ReadyToTill), writes the real Detail-layer tile, and
+        /// Marks the tile Tilled (clearing ReadyToTill), writes the real Base-layer tile, and
         /// recomputes the bitmask GIDs of already-tilled cardinal neighbors.
         /// </summary>
         public void TillTile(Point tile)
