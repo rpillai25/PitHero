@@ -52,6 +52,17 @@ namespace PitHero.ECS.Components
         private float _waterDuration;
         private float _plantDuration;
 
+        // Watering can charges: 0 = empty (must fill before watering), max = WateringCanMaxCharges
+        private int _wateringCanCharges = 0;
+        private bool _fillAnimating;
+        private float _fillDisplayTimer;
+
+        private static readonly Point[] PondFillTiles =
+        {
+            new Point(118, 2), new Point(118, 3), new Point(118, 4),
+            new Point(118, 5), new Point(118, 6), new Point(118, 7),
+        };
+
         public bool ShouldPause => true;
 
         /// <summary>True once the monster has been asked to walk home and despawn.</summary>
@@ -136,6 +147,22 @@ namespace PitHero.ECS.Components
             if (_coordinator.TryClaimAction(QueuePick, out _currentAction))
             {
                 _hasAction = true;
+
+                // Can is empty — must fill at the pond before watering any crop
+                if (_currentAction.Type == FarmActionType.Water && _wateringCanCharges == 0)
+                {
+                    if (TryPathToNearestPondTile())
+                    {
+                        CurrentState = FarmingMonsterState.FillWateringCan;
+                    }
+                    else
+                    {
+                        _coordinator.ReleaseWaterAction(in _currentAction);
+                        _hasAction = false;
+                    }
+                    return;
+                }
+
                 if (TryPathToStandTile())
                 {
                     CurrentState = FarmingMonsterState.MoveToTask;
@@ -323,6 +350,7 @@ namespace PitHero.ECS.Components
                 return;
 
             _wetTileService?.SetWet(_currentAction.TargetTile);
+            _wateringCanCharges--;
             _coordinator.CompleteWaterAction(in _currentAction);
             _hasAction = false;
             CurrentState = FarmingMonsterState.Idle;
@@ -332,6 +360,69 @@ namespace PitHero.ECS.Components
         {
             WateringCanAnimator?.SetEnabled(false);
             WateringAnimator?.SetEnabled(false);
+        }
+
+        // ---------------------------------------------------------------- FillWateringCan
+
+        private void FillWateringCan_Enter()
+        {
+            _fillAnimating = false;
+            _fillDisplayTimer = 0f;
+        }
+
+        private void FillWateringCan_Tick()
+        {
+            if (_goHome)
+            {
+                AbandonCurrentAction();
+                CurrentState = FarmingMonsterState.ReturnHome;
+                return;
+            }
+
+            if (_mover.IsMoving)
+                return;
+
+            if (!_fillAnimating)
+            {
+                _fillAnimating = true;
+                _fillDisplayTimer = 0f;
+                _facing?.SetFacing(Direction.Left);
+
+                if (WateringCanAnimator != null)
+                {
+                    float quadrant = GameConfig.TileSize / 4f;
+                    WateringCanAnimator.SetLocalOffset(new Vector2(-quadrant, quadrant));
+                    WateringCanAnimator.FlipX = false;
+                    if (BodyAnimator != null)
+                        WateringCanAnimator.SetLayerDepth(BodyAnimator.LayerDepth - 0.0001f);
+                    WateringCanAnimator.SetEnabled(true);
+                    WateringCanAnimator.Play("WateringCan", Nez.Sprites.SpriteAnimator.LoopMode.Loop);
+                }
+                return;
+            }
+
+            _fillDisplayTimer += Time.DeltaTime;
+            if (_fillDisplayTimer < GameConfig.WateringCanFillDurationSeconds)
+                return;
+
+            _wateringCanCharges = GameConfig.WateringCanMaxCharges;
+
+            if (TryPathToStandTile())
+            {
+                CurrentState = FarmingMonsterState.MoveToTask;
+            }
+            else
+            {
+                _coordinator.ReleaseWaterAction(in _currentAction);
+                _hasAction = false;
+                CurrentState = FarmingMonsterState.Idle;
+            }
+        }
+
+        private void FillWateringCan_Exit()
+        {
+            _fillAnimating = false;
+            WateringCanAnimator?.SetEnabled(false);
         }
 
         // ---------------------------------------------------------------- Wander
@@ -486,6 +577,29 @@ namespace PitHero.ECS.Components
                     return true;
             }
             return false;
+        }
+
+        private bool TryPathToNearestPondTile()
+        {
+            var pos = _mover.CurrentTile;
+            Point best = default;
+            long bestDist = long.MaxValue;
+            foreach (var t in PondFillTiles)
+            {
+                if (!_coordinator.Pathfinder.IsPassable(t))
+                    continue;
+                long dx = t.X - pos.X;
+                long dy = t.Y - pos.Y;
+                long distSq = dx * dx + dy * dy;
+                if (distSq < bestDist)
+                {
+                    bestDist = distSq;
+                    best = t;
+                }
+            }
+            if (bestDist == long.MaxValue)
+                return false;
+            return TrySetPathTo(best);
         }
 
         private static Vector2 TileCenter(Point tile)
