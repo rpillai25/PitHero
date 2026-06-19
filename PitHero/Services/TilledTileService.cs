@@ -6,13 +6,13 @@ using PitHero.Util;
 namespace PitHero.Services
 {
     /// <summary>
-    /// Writes real tilled tiles to the tilemap "Detail" layer when farming monsters complete a till
+    /// Writes real tilled tiles to the tilemap "Base" layer when farming monsters complete a till
     /// action. Uses the same bitmask transition logic as the Till Mode overlay, but considers only
     /// Tilled neighbors so real tiles connect to other real tiles.
     /// </summary>
     public class TilledTileService
     {
-        private readonly TmxLayer _detailLayer;
+        private readonly TmxLayer _baseLayer;
         private readonly TileStateService _tileState;
         private readonly System.Func<int, int, bool> _isTilled;
 
@@ -21,7 +21,7 @@ namespace PitHero.Services
 
         public TilledTileService(TmxMap map, TileStateService tileState)
         {
-            _detailLayer = map.GetLayer<TmxLayer>("Detail");
+            _baseLayer = map.GetLayer<TmxLayer>("Base");
             _tileState = tileState;
             _isTilled = IsTilled;
         }
@@ -44,7 +44,7 @@ namespace PitHero.Services
             OnTileTilled?.Invoke(tile);
         }
 
-        /// <summary>Re-derives all real Detail-layer tiles from Tilled flags after a save is loaded.</summary>
+        /// <summary>Re-derives all real Base-layer tiles from Tilled flags after a save is loaded.</summary>
         public void RestoreAllTilledTiles()
         {
             var enumerator = _tileState.GetAllStates().GetEnumerator();
@@ -58,10 +58,10 @@ namespace PitHero.Services
 
         private void SetTilledGid(int x, int y)
         {
-            if (_detailLayer == null)
+            if (_baseLayer == null)
                 return;
             int gid = TileBitmask.GetTileIndex(x, y, GameConfig.TillZerothGid, _isTilled);
-            _detailLayer.SetTile(x, y, gid);
+            _baseLayer.SetTile(x, y, gid);
         }
 
         // Only the 4 cardinal neighbors participate in the bitmask, so only they can change.
@@ -75,7 +75,7 @@ namespace PitHero.Services
 
         private void SetIfTilled(int x, int y)
         {
-            if (_detailLayer == null || x < 0 || y < 0 || x >= _detailLayer.Width || y >= _detailLayer.Height)
+            if (_baseLayer == null || x < 0 || y < 0 || x >= _baseLayer.Width || y >= _baseLayer.Height)
                 return;
             if (IsTilled(x, y))
                 SetTilledGid(x, y);
