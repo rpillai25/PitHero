@@ -380,7 +380,11 @@ namespace PitHero.UI
             if (!readyOrTilled)
                 return false;
 
+            // Reject if a plan already exists or a crop is already planted/growing/grown
             if (cropService != null && cropService.HasPlan(tile))
+                return false;
+            var cropGrowthService = Core.Services.GetService<CropGrowthService>();
+            if (cropGrowthService != null && cropGrowthService.HasCrop(tile))
                 return false;
 
             if (_seedInventory[(int)_selectedCrop] <= 0)
@@ -422,6 +426,7 @@ namespace PitHero.UI
             renderer.SetRenderLayer(GameConfig.RenderLayerSingleTileObject - 1);
             renderer.SetMaterial(new Material(new GrayscaleEffect()));
 
+            var tile = new Point(tileX, tileY);
             Core.Services.GetService<CropPlantingService>()?.AddPlan(new PlacedCropPlan
             {
                 Type        = _selectedCrop,
@@ -429,6 +434,11 @@ namespace PitHero.UI
                 TileY       = tileY,
                 WorldEntity = entity,
             });
+
+            // If the tile is already tilled, HandleTileTilled won't fire again — notify directly
+            var tileStateService = Core.Services.GetService<TileStateService>();
+            if (tileStateService != null && tileStateService.HasFlag(tile, TileStateFlag.Tilled))
+                Core.Services.GetService<FarmTaskCoordinator>()?.NotifyPlanAddedOnTilledTile(tile);
 
             // If seeds are exhausted, return to the inventory window
             if (_seedInventory[(int)_selectedCrop] <= 0)

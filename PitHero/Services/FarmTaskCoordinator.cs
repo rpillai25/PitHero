@@ -364,6 +364,19 @@ namespace PitHero.Services
         }
 
         /// <summary>
+        /// Called when a crop plan is placed on a tile that is already Tilled.
+        /// In that case HandleTileTilled won't fire again, so we enqueue the Plant action here.
+        /// </summary>
+        public void NotifyPlanAddedOnTilledTile(Point tile)
+        {
+            var cropGrowth = Core.Services.GetService<CropGrowthService>();
+            if (cropGrowth != null && cropGrowth.HasCrop(tile))
+                return;
+            if (_plantTracked.Add(tile))
+                _plantQueue.AddBack(new FarmAction { Type = FarmActionType.Plant, TargetTile = tile });
+        }
+
+        /// <summary>
         /// Enqueues Plant actions for all Tilled tiles that have a crop plan but no planted crop.
         /// Called at load restore and on demand. Idempotent thanks to the tracked set.
         /// </summary>
