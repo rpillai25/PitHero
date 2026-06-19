@@ -171,6 +171,16 @@ namespace PitHero.Services
         public int TileY;
     }
 
+    /// <summary>Lightweight struct representing a persisted active crop's growth state.</summary>
+    public struct SavedCropGrowthState
+    {
+        public int TileX;
+        public int TileY;
+        public int CropTypeId;
+        public float AccumulatedHours;
+        public int CurrentFrame;
+    }
+
     /// <summary>Lightweight struct representing a saved allied monster.</summary>
     public struct SavedAlliedMonster
     {
@@ -207,7 +217,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 8;
+        public const int CurrentVersion = 9;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -400,6 +410,9 @@ namespace PitHero.Services
         /// <summary>Next building unique ID to allocate. Ensures IDs are never reused across saves.</summary>
         public int NextBuildingId;
 
+        /// <summary>Active crop growth states for all planted crops.</summary>
+        public List<SavedCropGrowthState> CropGrowthStates;
+
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
         {
@@ -427,6 +440,7 @@ namespace PitHero.Services
                 SeedInventory[i] = 16;
             CropPlans = new List<SavedCropPlan>();
             NextBuildingId = 1;
+            CropGrowthStates = new List<SavedCropGrowthState>();
         }
 
         /// <summary>Writes all game state to the persistence writer.</summary>
@@ -701,6 +715,18 @@ namespace PitHero.Services
 
             // 24. Next Building ID (version 8+)
             writer.Write(NextBuildingId);
+
+            // 25. Crop Growth States (version 9+)
+            int cropGrowthCount = CropGrowthStates != null ? CropGrowthStates.Count : 0;
+            writer.Write(cropGrowthCount);
+            for (int i = 0; i < cropGrowthCount; i++)
+            {
+                writer.Write(CropGrowthStates[i].TileX);
+                writer.Write(CropGrowthStates[i].TileY);
+                writer.Write(CropGrowthStates[i].CropTypeId);
+                writer.Write(CropGrowthStates[i].AccumulatedHours);
+                writer.Write(CropGrowthStates[i].CurrentFrame);
+            }
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -1044,6 +1070,27 @@ namespace PitHero.Services
             // 24. Next Building ID (version 8+)
             if (fileVersion >= 8)
                 NextBuildingId = reader.ReadInt();
+
+            // 25. Crop Growth States (version 9+)
+            if (fileVersion >= 9)
+            {
+                int cropGrowthCount = reader.ReadInt();
+                CropGrowthStates = new List<SavedCropGrowthState>(cropGrowthCount);
+                for (int i = 0; i < cropGrowthCount; i++)
+                {
+                    SavedCropGrowthState cgs;
+                    cgs.TileX            = reader.ReadInt();
+                    cgs.TileY            = reader.ReadInt();
+                    cgs.CropTypeId       = reader.ReadInt();
+                    cgs.AccumulatedHours = reader.ReadFloat();
+                    cgs.CurrentFrame     = reader.ReadInt();
+                    CropGrowthStates.Add(cgs);
+                }
+            }
+            else
+            {
+                CropGrowthStates = new List<SavedCropGrowthState>();
+            }
         }
 
         /// <summary>Writes a Color as four individual int components (R, G, B, A).</summary>
