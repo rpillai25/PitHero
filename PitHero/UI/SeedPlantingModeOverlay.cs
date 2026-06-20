@@ -48,6 +48,10 @@ namespace PitHero.UI
         private static readonly Point NoTile = new Point(int.MinValue, int.MinValue);
         private Point _lastDragTile = NoTile;
 
+        // ── Growing-crop overlays (shown in all farm sub-modes, separate from plans) ──
+        private readonly System.Collections.Generic.List<Entity> _growingCropOverlays =
+            new System.Collections.Generic.List<Entity>();
+
         // ── Constants ─────────────────────────────────────────────────────────────
         private const float SlotSize   = 40f;
         private const float WinPad     = 16f;
@@ -103,11 +107,19 @@ namespace PitHero.UI
             _lastDragTile = NoTile;
         }
 
-        /// <summary>Creates grayscale world entities for all plans that have none. Called when any farm sub-mode is entered.</summary>
-        public void ShowPlanVisuals() => RestorePlanVisuals();
+        /// <summary>Creates grayscale world entities for all plans and planted crops. Called when any farm sub-mode is entered.</summary>
+        public void ShowPlanVisuals()
+        {
+            RestorePlanVisuals();
+            RestoreGrowingCropOverlays();
+        }
 
-        /// <summary>Destroys grayscale world entities for all plans. Called when all farm sub-modes are exited.</summary>
-        public void HidePlanVisuals() => Core.Services.GetService<CropPlantingService>()?.DestroyPlanVisuals();
+        /// <summary>Destroys grayscale world entities for all plans and planted-crop overlays. Called when all farm sub-modes are exited.</summary>
+        public void HidePlanVisuals()
+        {
+            Core.Services.GetService<CropPlantingService>()?.DestroyPlanVisuals();
+            DestroyGrowingCropOverlays();
+        }
 
         /// <summary>Called when the player enters remove-crops mode; creates the tile indicator.</summary>
         public void OnEnterRemoveCropsMode()
@@ -289,6 +301,45 @@ namespace PitHero.UI
 
                 service.SetPlanEntity(new Microsoft.Xna.Framework.Point(plan.TileX, plan.TileY), entity);
             }
+        }
+
+        /// <summary>
+        /// Spawns grayscale overlays for all actively planted crops so players can identify crop
+        /// types while in any farm planning sub-mode. Destroyed on HidePlanVisuals.
+        /// </summary>
+        private void RestoreGrowingCropOverlays()
+        {
+            DestroyGrowingCropOverlays();
+
+            var cropGrowthService = Core.Services.GetService<CropGrowthService>();
+            if (cropGrowthService == null)
+                return;
+
+            foreach (var kvp in cropGrowthService.GetAllData())
+            {
+                var tile = kvp.Key;
+                var cropType = kvp.Value.Type;
+
+                var sprite = _cropsAtlas.GetSprite(CropConfig.GetFullyGrownSpriteName(cropType));
+                float sprH = sprite != null ? sprite.SourceRect.Height : GameConfig.TileSize;
+                float wx = tile.X * GameConfig.TileSize + GameConfig.TileSize / 2f;
+                float wy = tile.Y * GameConfig.TileSize + GameConfig.TileSize - sprH / 2f;
+
+                var entity = _scene.CreateEntity("growing-crop-overlay-" + tile.X + "-" + tile.Y);
+                entity.SetPosition(wx, wy);
+                var renderer = entity.AddComponent(new SpriteRenderer(sprite));
+                renderer.SetRenderLayer(GameConfig.RenderLayerSingleTileObject - 1);
+                renderer.SetMaterial(new Material(new GrayscaleEffect()));
+
+                _growingCropOverlays.Add(entity);
+            }
+        }
+
+        private void DestroyGrowingCropOverlays()
+        {
+            for (int i = 0; i < _growingCropOverlays.Count; i++)
+                _growingCropOverlays[i]?.Destroy();
+            _growingCropOverlays.Clear();
         }
 
         // ── Inventory window ──────────────────────────────────────────────────────
