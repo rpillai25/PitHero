@@ -35,6 +35,14 @@ namespace PitHero.Services
         /// <summary>Returns true if a crop has been planted at the given tile.</summary>
         public bool HasCrop(Point tile) => _crops.ContainsKey(tile);
 
+        /// <summary>Returns the type of the planted crop at the given tile, or null if none.</summary>
+        public CropType? GetCropType(Point tile)
+        {
+            if (_crops.TryGetValue(tile, out var data))
+                return data.Type;
+            return null;
+        }
+
         /// <summary>
         /// Plants a seed at the tile: removes the plan-preview entity, creates the frame-1 crop
         /// entity, and registers the crop for growth tracking.

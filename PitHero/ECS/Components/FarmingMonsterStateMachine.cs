@@ -165,6 +165,8 @@ namespace PitHero.ECS.Components
 
                 if (TryPathToStandTile())
                 {
+                    if (_currentAction.Type == FarmActionType.Water)
+                        _mover.OffsetFinalWaypoint(new Vector2(-16f, -16f));
                     CurrentState = FarmingMonsterState.MoveToTask;
                 }
                 else
@@ -409,6 +411,7 @@ namespace PitHero.ECS.Components
 
             if (TryPathToStandTile())
             {
+                _mover.OffsetFinalWaypoint(new Vector2(-16f, -16f));
                 CurrentState = FarmingMonsterState.MoveToTask;
             }
             else
