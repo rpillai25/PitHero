@@ -59,6 +59,14 @@ namespace PitHero.ECS.Components
             _index = 0;
         }
 
+        /// <summary>Shifts the final waypoint by the given world-space offset. Used to nudge the
+        /// stopping position within a tile (e.g. 16px left for watering stand).</summary>
+        public void OffsetFinalWaypoint(Vector2 offset)
+        {
+            if (_count > 0)
+                _waypoints[_count - 1] += offset;
+        }
+
         /// <summary>Discards any remaining waypoints, halting in place.</summary>
         public void Stop()
         {

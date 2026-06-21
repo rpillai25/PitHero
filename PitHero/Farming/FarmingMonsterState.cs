@@ -7,6 +7,9 @@ namespace PitHero.Farming
         Idle,
         MoveToTask,
         PerformTill,
+        PerformPlant,
+        PerformWater,
+        FillWateringCan,
         Wander,
         ReturnHome
     }

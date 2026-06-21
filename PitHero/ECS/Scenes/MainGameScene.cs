@@ -60,6 +60,7 @@ namespace PitHero.ECS.Scenes
         private bool _wasInRemoveCropsMode;
         private Label _plantingCropsLabel;
         private Nez.UI.Stage _uiStage;
+        private int _lastInGameHour = -1;
 
         // HUD fonts for different shrink levels
         public BitmapFont _hudFontNormal;
@@ -157,6 +158,8 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.BuildingService));
             Core.Services.RemoveService(typeof(Services.CropPlantingService));
             Core.Services.RemoveService(typeof(Services.TilledTileService));
+            Core.Services.RemoveService(typeof(Services.WetTileService));
+            Core.Services.RemoveService(typeof(Services.CropGrowthService));
             Core.Services.GetService<Services.FarmTaskCoordinator>()?.Detach();
             Core.Services.RemoveService(typeof(Services.FarmTaskCoordinator));
             Core.Services.RemoveService(typeof(MercenaryManager));
@@ -202,11 +205,12 @@ namespace PitHero.ECS.Scenes
             var alliedMonsterManager = new AlliedMonsterManager();
             Core.Services.AddService(alliedMonsterManager);
 
-            // Initialize farm task coordinator (central till queue + farming monster lifecycle)
+            // Initialize farm task coordinator (central till/plant/water queue + farming monster lifecycle)
             var farmTaskCoordinator = new Services.FarmTaskCoordinator(
                 Core.Services.GetService<TileStateService>(),
                 Core.Services.GetService<Services.BuildingService>(),
-                _tmxMap.Width, _tmxMap.Height, alliedMonsterManager);
+                _tmxMap.Width, _tmxMap.Height, alliedMonsterManager,
+                Core.Services.GetService<Services.TilledTileService>());
             farmTaskCoordinator.Initialize(this);
             Core.Services.AddService(farmTaskCoordinator);
 
@@ -257,6 +261,21 @@ namespace PitHero.ECS.Scenes
                 // Rebuild the till queue from the restored ReadyToTill flags (idempotent)
                 Core.Services.GetService<Services.FarmTaskCoordinator>()?.RescanReadyToTill();
             }
+
+            // Restore wet tile visuals
+            Core.Services.GetService<Services.WetTileService>()?.RestoreAllWetTiles();
+
+            // Restore active crop entities and growth state
+            var cropGrowthService = Core.Services.GetService<Services.CropGrowthService>();
+            if (cropGrowthService != null && pendingData.CropGrowthStates != null)
+            {
+                var cropsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
+                cropGrowthService.RestoreAll(pendingData.CropGrowthStates, this, cropsAtlas);
+            }
+
+            // Rebuild plant/water queues from restored state
+            Core.Services.GetService<Services.FarmTaskCoordinator>()?.RescanForPlanting();
+            Core.Services.GetService<Services.FarmTaskCoordinator>()?.PopulateWaterQueue();
 
             // Restore placed buildings
             var buildingService = Core.Services.GetService<Services.BuildingService>();
@@ -706,9 +725,18 @@ namespace PitHero.ECS.Scenes
 
             // Tilled tile service writes real tilled tiles to the Detail layer when farming
             // monsters complete till actions; the overlay drops its grayscale sprite in response.
-            var tilledTileService = new Services.TilledTileService(_tmxMap, Core.Services.GetService<TileStateService>());
+            var tileStateService = Core.Services.GetService<TileStateService>();
+            var tilledTileService = new Services.TilledTileService(_tmxMap, tileStateService);
             tilledTileService.OnTileTilled += tile => _tillModeOverlay?.OnTileTilled(tile);
             Core.Services.AddService(tilledTileService);
+
+            // Wet tile service writes watered-soil bitmask tiles to the Detail layer.
+            var wetTileService = new Services.WetTileService(_tmxMap, tileStateService);
+            Core.Services.AddService(wetTileService);
+
+            // Crop growth service tracks all actively growing crops and advances frames.
+            var cropGrowthService = new Services.CropGrowthService(Core.Services.GetService<Services.CropPlantingService>());
+            Core.Services.AddService(cropGrowthService);
 
             // Building mode overlay — creates its UI panels on the same stage.
             _buildingModeOverlay = new BuildingModeOverlay(this, _uiStage);
@@ -1928,6 +1956,28 @@ namespace PitHero.ECS.Scenes
 
             // Sync farming monster workers with job assignments
             Core.Services.GetService<Services.FarmTaskCoordinator>()?.Update();
+
+            // Morning reset: clear wet tiles and re-populate watering queue at 6AM
+            var timeService = Core.Services.GetService<InGameTimeService>();
+            if (timeService != null)
+            {
+                int currentHour = timeService.Hour;
+                if (currentHour == 6 && _lastInGameHour != 6 && _lastInGameHour != -1)
+                {
+                    Core.Services.GetService<Services.WetTileService>()?.ClearAllWet();
+                    Core.Services.GetService<Services.FarmTaskCoordinator>()?.PopulateWaterQueue();
+                }
+                _lastInGameHour = currentHour;
+            }
+
+            // Advance crop growth when not paused
+            bool isPaused = pauseService?.IsPaused ?? false;
+            if (!isPaused)
+            {
+                var cropsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
+                Core.Services.GetService<Services.CropGrowthService>()?.Update(
+                    Core.Services.GetService<TileStateService>(), cropsAtlas);
+            }
 
             // Check if a living hero who respawned without a crystal has arrived at the statue
             _heroPromotionService?.CheckAndPromoteHeroIfNeeded();

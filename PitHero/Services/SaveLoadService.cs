@@ -627,6 +627,23 @@ namespace PitHero.Services
                 }
             }
 
+            // Crop growth states
+            var cropGrowthService = Core.Services.GetService<CropGrowthService>();
+            if (cropGrowthService != null)
+            {
+                data.CropGrowthStates = new List<SavedCropGrowthState>();
+                foreach (var kvp in cropGrowthService.GetAllData())
+                {
+                    var cgs = new SavedCropGrowthState();
+                    cgs.TileX            = kvp.Key.X;
+                    cgs.TileY            = kvp.Key.Y;
+                    cgs.CropTypeId       = (int)kvp.Value.Type;
+                    cgs.AccumulatedHours = kvp.Value.AccumulatedHours;
+                    cgs.CurrentFrame     = kvp.Value.CurrentFrame;
+                    data.CropGrowthStates.Add(cgs);
+                }
+            }
+
             return data;
         }
 

@@ -8,9 +8,9 @@ using RolePlayingFramework.AlliedMonsters;
 namespace PitHero.ECS.Components
 {
     /// <summary>
-    /// Drives a single farming monster: emerge from the monster house door, claim till actions from
-    /// the FarmTaskCoordinator, walk to the stand tile beside the target, swing the forked hoe, and
-    /// wander the farm when no work remains. RequestReturnHome sends it back into the house.
+    /// Drives a single farming monster: emerge from the monster house door, claim till/plant/water
+    /// actions from the FarmTaskCoordinator, walk to the stand tile beside the target, perform the
+    /// action, and wander the farm when no work remains. RequestReturnHome sends it back into the house.
     /// </summary>
     public class FarmingMonsterStateMachine : SimpleStateMachine<FarmingMonsterState>, IPausableComponent
     {
@@ -22,12 +22,20 @@ namespace PitHero.ECS.Components
         private ActorFacingComponent _facing;
         private PauseService _pauseService;
         private TilledTileService _tilledTileService;
+        private CropGrowthService _cropGrowthService;
+        private WetTileService _wetTileService;
 
         /// <summary>Animator for the ForkedHoe swing; assigned by the coordinator at spawn.</summary>
         public PausableSpriteAnimator HoeAnimator;
 
         /// <summary>Body animator, used to match the hoe's layer depth while tilling.</summary>
         public EnemyAnimationComponent BodyAnimator;
+
+        /// <summary>Animator for the WateringCan sprite; assigned by the coordinator at spawn.</summary>
+        public PausableSpriteAnimator WateringCanAnimator;
+
+        /// <summary>Animator for the Watering overlay animation; assigned by the coordinator at spawn.</summary>
+        public PausableSpriteAnimator WateringAnimator;
 
         /// <summary>
         /// Normalized queue position this worker claims from (0 = front, 1 = back); assigned by
@@ -41,6 +49,19 @@ namespace PitHero.ECS.Components
         private bool _goHome;
         private bool _returnReachedExit; // ReturnHome phase: walked to the exit tile, stepping into the door
         private float _tillDuration;
+        private float _waterDuration;
+        private float _plantDuration;
+
+        // Watering can charges: 0 = empty (must fill before watering), max = WateringCanMaxCharges
+        private int _wateringCanCharges = 0;
+        private bool _fillAnimating;
+        private float _fillDisplayTimer;
+
+        private static readonly Point[] PondFillTiles =
+        {
+            new Point(118, 2), new Point(118, 3), new Point(118, 4),
+            new Point(118, 5), new Point(118, 6), new Point(118, 7),
+        };
 
         public bool ShouldPause => true;
 
@@ -63,6 +84,8 @@ namespace PitHero.ECS.Components
             _facing = Entity.GetComponent<ActorFacingComponent>();
             _pauseService = Core.Services.GetService<PauseService>();
             _tilledTileService = Core.Services.GetService<TilledTileService>();
+            _cropGrowthService = Core.Services.GetService<CropGrowthService>();
+            _wetTileService = Core.Services.GetService<WetTileService>();
 
             InitialState = FarmingMonsterState.EmergeFromHouse;
         }
@@ -124,8 +147,26 @@ namespace PitHero.ECS.Components
             if (_coordinator.TryClaimAction(QueuePick, out _currentAction))
             {
                 _hasAction = true;
+
+                // Can is empty — must fill at the pond before watering any crop
+                if (_currentAction.Type == FarmActionType.Water && _wateringCanCharges == 0)
+                {
+                    if (TryPathToNearestPondTile())
+                    {
+                        CurrentState = FarmingMonsterState.FillWateringCan;
+                    }
+                    else
+                    {
+                        _coordinator.ReleaseWaterAction(in _currentAction);
+                        _hasAction = false;
+                    }
+                    return;
+                }
+
                 if (TryPathToStandTile())
                 {
+                    if (_currentAction.Type == FarmActionType.Water)
+                        _mover.OffsetFinalWaypoint(new Vector2(-16f, -16f));
                     CurrentState = FarmingMonsterState.MoveToTask;
                 }
                 else
@@ -153,19 +194,59 @@ namespace PitHero.ECS.Components
             if (_mover.IsMoving)
                 return;
 
-            // Arrived — re-validate before swinging the hoe
             var tile = _currentAction.TargetTile;
             var tileState = Core.Services.GetService<TileStateService>();
-            bool stillValid = tileState != null && tileState.HasFlag(tile, TileStateFlag.ReadyToTill);
-            if (!stillValid)
-            {
-                _coordinator.CompleteAction(in _currentAction);   // drop the stale claim
-                _hasAction = false;
-                CurrentState = FarmingMonsterState.Idle;
-                return;
-            }
 
-            CurrentState = FarmingMonsterState.PerformTill;
+            switch (_currentAction.Type)
+            {
+                case FarmActionType.Till:
+                {
+                    bool stillValid = tileState != null && tileState.HasFlag(tile, TileStateFlag.ReadyToTill);
+                    if (!stillValid)
+                    {
+                        _coordinator.CompleteAction(in _currentAction);
+                        _hasAction = false;
+                        CurrentState = FarmingMonsterState.Idle;
+                        return;
+                    }
+                    CurrentState = FarmingMonsterState.PerformTill;
+                    break;
+                }
+                case FarmActionType.Plant:
+                {
+                    var cropPlanting = Core.Services.GetService<CropPlantingService>();
+                    bool hasPlan = cropPlanting != null && cropPlanting.HasPlan(tile);
+                    bool alreadyPlanted = _cropGrowthService != null && _cropGrowthService.HasCrop(tile);
+                    if (!hasPlan || alreadyPlanted)
+                    {
+                        _coordinator.CompletePlantAction(in _currentAction);
+                        _hasAction = false;
+                        CurrentState = FarmingMonsterState.Idle;
+                        return;
+                    }
+                    CurrentState = FarmingMonsterState.PerformPlant;
+                    break;
+                }
+                case FarmActionType.Water:
+                {
+                    bool hasCrop = _cropGrowthService != null && _cropGrowthService.HasCrop(tile);
+                    bool alreadyWet = tileState != null && tileState.HasFlag(tile, TileStateFlag.Wet);
+                    if (!hasCrop || alreadyWet)
+                    {
+                        _coordinator.CompleteWaterAction(in _currentAction);
+                        _hasAction = false;
+                        CurrentState = FarmingMonsterState.Idle;
+                        return;
+                    }
+                    CurrentState = FarmingMonsterState.PerformWater;
+                    break;
+                }
+                default:
+                    _coordinator.CompleteAction(in _currentAction);
+                    _hasAction = false;
+                    CurrentState = FarmingMonsterState.Idle;
+                    break;
+            }
         }
 
         // ---------------------------------------------------------------- PerformTill
@@ -205,6 +286,146 @@ namespace PitHero.ECS.Components
         private void PerformTill_Exit()
         {
             HoeAnimator?.SetEnabled(false);
+        }
+
+        // ---------------------------------------------------------------- PerformPlant
+
+        private void PerformPlant_Enter()
+        {
+            _facing?.SetFacing(_standRight ? Direction.Left : Direction.Right);
+            _plantDuration = GameConfig.PlantBaseDurationSeconds;
+        }
+
+        private void PerformPlant_Tick()
+        {
+            if (elapsedTimeInState < _plantDuration)
+                return;
+
+            var tile = _currentAction.TargetTile;
+            var cropPlanting = Core.Services.GetService<CropPlantingService>();
+            var cropType = cropPlanting?.GetPlanType(tile) ?? Farming.CropType.Wheat;
+
+            // Load the crops atlas to get crop sprites
+            var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
+            _cropGrowthService?.PlantCrop(tile, cropType, Entity.Scene, atlas);
+
+            _coordinator.CompletePlantAction(in _currentAction);
+            _hasAction = false;
+            CurrentState = FarmingMonsterState.Idle;
+        }
+
+        // ---------------------------------------------------------------- PerformWater
+
+        private void PerformWater_Enter()
+        {
+            _facing?.SetFacing(_standRight ? Direction.Left : Direction.Right);
+
+            float proficiencyScale = 1f - GameConfig.TillProficiencySpeedStep * (_monster.FarmingProficiency - 1);
+            _waterDuration = GameConfig.WaterBaseDurationSeconds * proficiencyScale;
+
+            if (WateringCanAnimator != null)
+            {
+                float quadrant = GameConfig.TileSize / 4f;
+                WateringCanAnimator.SetLocalOffset(new Vector2(_standRight ? -quadrant : quadrant, quadrant));
+                WateringCanAnimator.FlipX = !_standRight;
+                if (BodyAnimator != null)
+                    WateringCanAnimator.SetLayerDepth(BodyAnimator.LayerDepth - 0.0001f);
+                WateringCanAnimator.SetEnabled(true);
+                WateringCanAnimator.Play("WateringCan", Nez.Sprites.SpriteAnimator.LoopMode.Loop);
+            }
+
+            if (WateringAnimator != null)
+            {
+                float quadrant = GameConfig.TileSize / 4f;
+                WateringAnimator.SetLocalOffset(new Vector2(_standRight ? -quadrant : quadrant, quadrant));
+                WateringAnimator.FlipX = !_standRight;
+                if (BodyAnimator != null)
+                    WateringAnimator.SetLayerDepth(BodyAnimator.LayerDepth - 0.0002f);
+                WateringAnimator.SetEnabled(true);
+                WateringAnimator.Play("Watering", Nez.Sprites.SpriteAnimator.LoopMode.Loop);
+            }
+        }
+
+        private void PerformWater_Tick()
+        {
+            if (elapsedTimeInState < _waterDuration)
+                return;
+
+            _wetTileService?.SetWet(_currentAction.TargetTile);
+            _wateringCanCharges--;
+            _coordinator.CompleteWaterAction(in _currentAction);
+            _hasAction = false;
+            CurrentState = FarmingMonsterState.Idle;
+        }
+
+        private void PerformWater_Exit()
+        {
+            WateringCanAnimator?.SetEnabled(false);
+            WateringAnimator?.SetEnabled(false);
+        }
+
+        // ---------------------------------------------------------------- FillWateringCan
+
+        private void FillWateringCan_Enter()
+        {
+            _fillAnimating = false;
+            _fillDisplayTimer = 0f;
+        }
+
+        private void FillWateringCan_Tick()
+        {
+            if (_goHome)
+            {
+                AbandonCurrentAction();
+                CurrentState = FarmingMonsterState.ReturnHome;
+                return;
+            }
+
+            if (_mover.IsMoving)
+                return;
+
+            if (!_fillAnimating)
+            {
+                _fillAnimating = true;
+                _fillDisplayTimer = 0f;
+                _facing?.SetFacing(Direction.Left);
+
+                if (WateringCanAnimator != null)
+                {
+                    float quadrant = GameConfig.TileSize / 4f;
+                    WateringCanAnimator.SetLocalOffset(new Vector2(-quadrant, quadrant));
+                    WateringCanAnimator.FlipX = false;
+                    if (BodyAnimator != null)
+                        WateringCanAnimator.SetLayerDepth(BodyAnimator.LayerDepth - 0.0001f);
+                    WateringCanAnimator.SetEnabled(true);
+                    WateringCanAnimator.Play("WateringCan", Nez.Sprites.SpriteAnimator.LoopMode.Loop);
+                }
+                return;
+            }
+
+            _fillDisplayTimer += Time.DeltaTime;
+            if (_fillDisplayTimer < GameConfig.WateringCanFillDurationSeconds)
+                return;
+
+            _wateringCanCharges = GameConfig.WateringCanMaxCharges;
+
+            if (TryPathToStandTile())
+            {
+                _mover.OffsetFinalWaypoint(new Vector2(-16f, -16f));
+                CurrentState = FarmingMonsterState.MoveToTask;
+            }
+            else
+            {
+                _coordinator.ReleaseWaterAction(in _currentAction);
+                _hasAction = false;
+                CurrentState = FarmingMonsterState.Idle;
+            }
+        }
+
+        private void FillWateringCan_Exit()
+        {
+            _fillAnimating = false;
+            WateringCanAnimator?.SetEnabled(false);
         }
 
         // ---------------------------------------------------------------- Wander
@@ -263,13 +484,24 @@ namespace PitHero.ECS.Components
             if (!_hasAction)
                 return;
             _mover.Stop();
-            _coordinator.ReleaseAction(in _currentAction);
+            switch (_currentAction.Type)
+            {
+                case FarmActionType.Plant:
+                    _coordinator.ReleasePlantAction(in _currentAction);
+                    break;
+                case FarmActionType.Water:
+                    _coordinator.ReleaseWaterAction(in _currentAction);
+                    break;
+                default:
+                    _coordinator.ReleaseAction(in _currentAction);
+                    break;
+            }
             _hasAction = false;
         }
 
         /// <summary>
-        /// Paths to the stand tile beside the till target: one tile to the right (preferred) or one
-        /// tile to the left (mirrored hoe). Returns false when neither is reachable.
+        /// Paths to the stand tile beside the target: one tile to the right (preferred) or one
+        /// tile to the left (mirrored tool). Returns false when neither is reachable.
         /// </summary>
         private bool TryPathToStandTile()
         {
@@ -348,6 +580,29 @@ namespace PitHero.ECS.Components
                     return true;
             }
             return false;
+        }
+
+        private bool TryPathToNearestPondTile()
+        {
+            var pos = _mover.CurrentTile;
+            Point best = default;
+            long bestDist = long.MaxValue;
+            foreach (var t in PondFillTiles)
+            {
+                if (!_coordinator.Pathfinder.IsPassable(t))
+                    continue;
+                long dx = t.X - pos.X;
+                long dy = t.Y - pos.Y;
+                long distSq = dx * dx + dy * dy;
+                if (distSq < bestDist)
+                {
+                    bestDist = distSq;
+                    best = t;
+                }
+            }
+            if (bestDist == long.MaxValue)
+                return false;
+            return TrySetPathTo(best);
         }
 
         private static Vector2 TileCenter(Point tile)

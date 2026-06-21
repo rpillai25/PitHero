@@ -9,9 +9,9 @@ using RolePlayingFramework.AlliedMonsters;
 namespace PitHero.Services
 {
     /// <summary>
-    /// Central coordinator for farm work. Fills a shared action queue from ReadyToTill tile flags
-    /// (event-driven — no per-frame scans) and hands actions out to farming monsters so multiple
-    /// workers never target the same tile. Also owns the shared farm pathfinder.
+    /// Central coordinator for farm work. Fills shared action queues from tile flags (event-driven
+    /// — no per-frame scans) and hands actions out to farming monsters so multiple workers never
+    /// target the same tile. Also owns the shared farm pathfinder.
     /// </summary>
     public class FarmTaskCoordinator
     {
@@ -33,17 +33,25 @@ namespace PitHero.Services
         // Tiles whose stand positions were unreachable; retried when buildings change.
         private readonly List<Point> _blocked = new List<Point>(16);
 
+        // Plant and water queues
+        private readonly Deque<FarmAction> _plantQueue = new Deque<FarmAction>(64);
+        private readonly HashSet<Point> _plantTracked = new HashSet<Point>();
+        private readonly Deque<FarmAction> _waterQueue = new Deque<FarmAction>(64);
+        private readonly HashSet<Point> _waterTracked = new HashSet<Point>();
+        private TilledTileService _tilledTileService;
+
         private readonly List<ActiveWorker> _workers = new List<ActiveWorker>(16);
         private Scene _scene;
 
         /// <summary>Shared A* grid for all farming monsters.</summary>
         public FarmPathfinder Pathfinder { get; }
 
-        /// <summary>Number of actions waiting in the queue (excludes claimed actions).</summary>
+        /// <summary>Number of actions waiting in the till queue (excludes claimed actions).</summary>
         public int PendingActionCount => _queue.Count;
 
         public FarmTaskCoordinator(TileStateService tileState, BuildingService buildingService,
-            int mapWidthTiles, int mapHeightTiles, AlliedMonsterManager alliedMonsters = null)
+            int mapWidthTiles, int mapHeightTiles, AlliedMonsterManager alliedMonsters = null,
+            TilledTileService tilledTileService = null)
         {
             _tileState = tileState;
             _buildingService = buildingService;
@@ -56,6 +64,10 @@ namespace PitHero.Services
             _tileState.OnReadyToTillCleared += HandleReadyToTillCleared;
             _buildingService.BuildingsChanged += HandleBuildingsChanged;
 
+            _tilledTileService = tilledTileService;
+            if (_tilledTileService != null)
+                _tilledTileService.OnTileTilled += HandleTileTilled;
+
             RescanReadyToTill();
         }
 
@@ -65,6 +77,8 @@ namespace PitHero.Services
             _tileState.OnReadyToTillSet -= HandleReadyToTillSet;
             _tileState.OnReadyToTillCleared -= HandleReadyToTillCleared;
             _buildingService.BuildingsChanged -= HandleBuildingsChanged;
+            if (_tilledTileService != null)
+                _tilledTileService.OnTileTilled -= HandleTileTilled;
         }
 
         /// <summary>Provides the scene used to spawn farming monster entities.</summary>
@@ -163,6 +177,28 @@ namespace PitHero.Services
             fsm.HoeAnimator = hoeAnimator;
             fsm.BodyAnimator = bodyAnimator;
 
+            // Watering can — single sprite, shown during PerformWater
+            var wateringCanAnimator = entity.AddComponent(new PausableSpriteAnimator());
+            wateringCanAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
+            wateringCanAnimator.SetEnabled(false);
+            var wateringCanSprite = cropsAtlas?.GetSprite("WateringCan");
+            if (wateringCanSprite != null)
+            {
+                var singleFrameAnim = new Nez.Sprites.SpriteAnimation(new[] { wateringCanSprite }, 1);
+                wateringCanAnimator.AddAnimation("WateringCan", singleFrameAnim);
+            }
+
+            // Watering effect — 6-frame animation played on top of the can
+            var wateringAnimator = entity.AddComponent(new PausableSpriteAnimator());
+            wateringAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
+            wateringAnimator.SetEnabled(false);
+            var wateringAnim = cropsAtlas?.GetAnimation("Watering");
+            if (wateringAnim != null)
+                wateringAnimator.AddAnimation("Watering", wateringAnim);
+
+            fsm.WateringCanAnimator = wateringCanAnimator;
+            fsm.WateringAnimator = wateringAnimator;
+
             // Spread concurrent workers across the queue so they don't all till side by side:
             // first worker claims from the front, second from the back, the rest from a fixed
             // random spot in between.
@@ -225,34 +261,54 @@ namespace PitHero.Services
             enumerator.Dispose();
         }
 
-        /// <summary>Claims the next valid till action from the front of the queue.</summary>
+        /// <summary>Claims the next valid action from the queues (priority: Till > Plant > Water).</summary>
         public bool TryClaimAction(out FarmAction action) => TryClaimAction(0f, out action);
 
         /// <summary>
-        /// Pops the next valid till action near the given normalized queue position (0 = front,
-        /// 1 = back), skipping entries invalidated since they were queued. Workers are given
-        /// different positions so they spread across the field instead of clustering. A returned
-        /// action is considered claimed until CompleteAction/ReleaseAction/ReportBlocked.
-        /// Returns false when the queue is empty.
+        /// Pops the next valid action near the given normalized queue position (0 = front,
+        /// 1 = back), with priority: Till first, then Plant, then Water.
+        /// Workers are given different positions so they spread across the field instead of clustering.
+        /// A returned action is considered claimed until Complete/Release/ReportBlocked.
+        /// Returns false when all queues are empty.
         /// </summary>
         public bool TryClaimAction(float queuePick, out FarmAction action)
         {
-            while (_queue.Count > 0)
+            // Priority 1: Till
+            if (TryClaimFromQueue(_queue, _tracked, queuePick, ValidateTill, out action))
+                return true;
+            // Priority 2: Plant
+            if (TryClaimFromQueue(_plantQueue, _plantTracked, queuePick, ValidatePlant, out action))
+                return true;
+            // Priority 3: Water — only when no plant work remains (queued or in-progress)
+            if (_plantTracked.Count == 0)
             {
-                int index = (int)(queuePick * (_queue.Count - 1) + 0.5f);
-                action = _queue[index];
-                _queue.RemoveAt(index);
+                PopulateWaterQueue();
+                if (TryClaimFromQueue(_waterQueue, _waterTracked, queuePick, ValidateWater, out action))
+                    return true;
+            }
+            action = default;
+            return false;
+        }
+
+        private bool TryClaimFromQueue(Deque<FarmAction> queue, HashSet<Point> tracked, float queuePick,
+            System.Func<Point, bool> validate, out FarmAction action)
+        {
+            while (queue.Count > 0)
+            {
+                int index = queue.Count == 1 ? 0 : (int)(queuePick * (queue.Count - 1) + 0.5f);
+                action = queue[index];
+                queue.RemoveAt(index);
                 var tile = action.TargetTile;
-                if (!_tracked.Contains(tile))
-                    continue;   // unmarked while queued
-                if (!_tileState.HasFlag(tile, TileStateFlag.ReadyToTill))
-                {
-                    _tracked.Remove(tile);
+                if (!tracked.Contains(tile))
                     continue;
-                }
                 if (_buildingService.IsTileOccupied(tile.X, tile.Y))
                 {
-                    _tracked.Remove(tile);
+                    tracked.Remove(tile);
+                    continue;
+                }
+                if (!validate(tile))
+                {
+                    tracked.Remove(tile);
                     continue;
                 }
                 return true;
@@ -261,14 +317,43 @@ namespace PitHero.Services
             return false;
         }
 
+        private bool ValidateTill(Point tile) => _tileState.HasFlag(tile, TileStateFlag.ReadyToTill);
+
+        private bool ValidatePlant(Point tile)
+        {
+            var cropPlanting = Core.Services.GetService<CropPlantingService>();
+            var cropGrowth = Core.Services.GetService<CropGrowthService>();
+            return cropPlanting != null && cropPlanting.HasPlan(tile)
+                && (cropGrowth == null || !cropGrowth.HasCrop(tile));
+        }
+
+        private bool ValidateWater(Point tile)
+        {
+            var cropGrowth = Core.Services.GetService<CropGrowthService>();
+            return cropGrowth != null && cropGrowth.HasCrop(tile)
+                && !_tileState.HasFlag(tile, TileStateFlag.Wet);
+        }
+
         /// <summary>
-        /// Marks a claimed action finished. Call BEFORE TilledTileService.TillTile so the
+        /// Marks a claimed till action finished. Call BEFORE TilledTileService.TillTile so the
         /// ReadyToTill-cleared event from the flag change is a no-op for the queue.
         /// </summary>
         public void CompleteAction(in FarmAction action) => _tracked.Remove(action.TargetTile);
 
-        /// <summary>Returns a claimed action to the front of the queue (e.g. job unassigned mid-walk).</summary>
+        /// <summary>Returns a claimed till action to the front of the queue (e.g. job unassigned mid-walk).</summary>
         public void ReleaseAction(in FarmAction action) => _queue.AddFront(action);
+
+        /// <summary>Marks a claimed plant action finished.</summary>
+        public void CompletePlantAction(in FarmAction action) => _plantTracked.Remove(action.TargetTile);
+
+        /// <summary>Returns a claimed plant action to the front of the queue.</summary>
+        public void ReleasePlantAction(in FarmAction action) => _plantQueue.AddFront(action);
+
+        /// <summary>Marks a claimed water action finished.</summary>
+        public void CompleteWaterAction(in FarmAction action) => _waterTracked.Remove(action.TargetTile);
+
+        /// <summary>Returns a claimed water action to the front of the queue.</summary>
+        public void ReleaseWaterAction(in FarmAction action) => _waterQueue.AddFront(action);
 
         /// <summary>Reports a claimed action as unreachable; retried when buildings change.</summary>
         public void ReportBlocked(in FarmAction action)
@@ -276,6 +361,65 @@ namespace PitHero.Services
             _tracked.Remove(action.TargetTile);
             if (!_blocked.Contains(action.TargetTile))
                 _blocked.Add(action.TargetTile);
+        }
+
+        /// <summary>
+        /// Called when a crop plan is placed on a tile that is already Tilled.
+        /// In that case HandleTileTilled won't fire again, so we enqueue the Plant action here.
+        /// </summary>
+        public void NotifyPlanAddedOnTilledTile(Point tile)
+        {
+            var cropGrowth = Core.Services.GetService<CropGrowthService>();
+            if (cropGrowth != null && cropGrowth.HasCrop(tile))
+                return;
+            if (_plantTracked.Add(tile))
+                _plantQueue.AddBack(new FarmAction { Type = FarmActionType.Plant, TargetTile = tile });
+        }
+
+        /// <summary>
+        /// Enqueues Plant actions for all Tilled tiles that have a crop plan but no planted crop.
+        /// Called at load restore and on demand. Idempotent thanks to the tracked set.
+        /// </summary>
+        public void RescanForPlanting()
+        {
+            var cropPlanting = Core.Services.GetService<CropPlantingService>();
+            var cropGrowth = Core.Services.GetService<CropGrowthService>();
+            if (cropPlanting == null)
+                return;
+
+            var enumerator = _tileState.GetAllStates().GetEnumerator();
+            while (enumerator.MoveNext())
+            {
+                if ((enumerator.Current.Value & TileStateFlag.Tilled) == 0)
+                    continue;
+                var tile = enumerator.Current.Key;
+                if (!cropPlanting.HasPlan(tile))
+                    continue;
+                if (cropGrowth != null && cropGrowth.HasCrop(tile))
+                    continue;
+                if (_plantTracked.Add(tile))
+                    _plantQueue.AddBack(new FarmAction { Type = FarmActionType.Plant, TargetTile = tile });
+            }
+            enumerator.Dispose();
+        }
+
+        /// <summary>
+        /// Enqueues Water actions for all tiles with planted crops that are not currently wet.
+        /// Called each morning and at load restore.
+        /// </summary>
+        public void PopulateWaterQueue()
+        {
+            var cropGrowth = Core.Services.GetService<CropGrowthService>();
+            if (cropGrowth == null)
+                return;
+
+            foreach (var tile in cropGrowth.GetAllCropTiles())
+            {
+                if (_tileState.HasFlag(tile, TileStateFlag.Wet))
+                    continue;
+                if (_waterTracked.Add(tile))
+                    _waterQueue.AddBack(new FarmAction { Type = FarmActionType.Water, TargetTile = tile });
+            }
         }
 
         /// <summary>
@@ -319,6 +463,15 @@ namespace PitHero.Services
             bool claimed = _tracked.Contains(tile) && !IsQueued(tile);
             if (!claimed)
                 _tracked.Remove(tile);
+        }
+
+        private void HandleTileTilled(Point tile)
+        {
+            var cropPlanting = Core.Services.GetService<CropPlantingService>();
+            if (cropPlanting == null || !cropPlanting.HasPlan(tile))
+                return;
+            if (_plantTracked.Add(tile))
+                _plantQueue.AddBack(new FarmAction { Type = FarmActionType.Plant, TargetTile = tile });
         }
 
         private void HandleBuildingsChanged()
