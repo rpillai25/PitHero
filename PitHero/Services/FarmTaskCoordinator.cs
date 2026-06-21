@@ -337,7 +337,10 @@ namespace PitHero.Services
         {
             var cropGrowth = Core.Services.GetService<CropGrowthService>();
             return cropGrowth != null && cropGrowth.HasCrop(tile)
-                && !_tileState.HasFlag(tile, TileStateFlag.Wet);
+                && !_tileState.HasFlag(tile, TileStateFlag.Wet)
+                // Skip fully-grown crops: watering does nothing for them, so workers prioritize
+                // crops that are still growing.
+                && !_tileState.HasFlag(tile, TileStateFlag.CropGrown);
         }
 
         /// <summary>
@@ -422,6 +425,10 @@ namespace PitHero.Services
             foreach (var tile in cropGrowth.GetAllCropTiles())
             {
                 if (_tileState.HasFlag(tile, TileStateFlag.Wet))
+                    continue;
+                // Fully-grown crops don't benefit from watering; skip them so workers prioritize
+                // crops that are still growing.
+                if (_tileState.HasFlag(tile, TileStateFlag.CropGrown))
                     continue;
                 if (_waterTracked.Add(tile))
                     _waterQueue.AddBack(new FarmAction { Type = FarmActionType.Water, TargetTile = tile });

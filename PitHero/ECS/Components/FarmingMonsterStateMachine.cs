@@ -231,7 +231,10 @@ namespace PitHero.ECS.Components
                 {
                     bool hasCrop = _cropGrowthService != null && _cropGrowthService.HasCrop(tile);
                     bool alreadyWet = tileState != null && tileState.HasFlag(tile, TileStateFlag.Wet);
-                    if (!hasCrop || alreadyWet)
+                    // Crop may have finished growing while the worker walked over; grown crops
+                    // don't need water, so drop the action.
+                    bool fullyGrown = tileState != null && tileState.HasFlag(tile, TileStateFlag.CropGrown);
+                    if (!hasCrop || alreadyWet || fullyGrown)
                     {
                         _coordinator.CompleteWaterAction(in _currentAction);
                         _hasAction = false;
