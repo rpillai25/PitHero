@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Nez;
+using PitHero.Config;
 using PitHero.ECS.Components;
 using PitHero.Farming;
 using PitHero.Util;
@@ -94,13 +95,18 @@ namespace PitHero.Services
             if (_alliedMonsters == null || _scene == null)
                 return;
 
+            var timeService = Core.Services.GetService<InGameTimeService>();
+
             var roster = _alliedMonsters.AlliedMonsters;
             for (int i = 0; i < roster.Count; i++)
             {
                 var monster = roster[i];
                 int workerIndex = FindWorkerIndex(monster);
 
-                if (monster.Job == MonsterJob.Farming)
+                // Asleep monsters (outside their day/night work window) retreat into the house.
+                bool awake = !MonsterScheduleConfig.IsAsleep(monster.MonsterTypeName, timeService);
+
+                if (monster.Job == MonsterJob.Farming && awake)
                 {
                     if (workerIndex < 0)
                         SpawnWorker(monster);

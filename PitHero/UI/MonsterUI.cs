@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
+using PitHero.Config;
 using PitHero.Services;
 using RolePlayingFramework.AlliedMonsters;
 
@@ -254,6 +255,16 @@ namespace PitHero.UI
                 textTable.Add(nameLabel).Left();
                 textTable.Row();
                 textTable.Add(statsLabel).Left();
+
+                // Show a red, waving "Sleeping" label when the monster is outside its work window.
+                var timeService = Core.Services?.GetService<InGameTimeService>();
+                if (MonsterScheduleConfig.IsAsleep(monster.MonsterTypeName, timeService))
+                {
+                    var sleepStyle = (_skin?.Get<LabelStyle>("ph-sleeping"))
+                        ?? new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Red };
+                    textTable.Row();
+                    textTable.Add(new SineWaveLabel("Sleeping", sleepStyle)).Left();
+                }
 
                 rowTable.Add(textTable).Left().Pad(2f, 0f, 2f, 4f);
 

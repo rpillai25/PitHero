@@ -44,6 +44,10 @@ namespace PitHero.UI
             var defaultLabelStyle = skin.Get<LabelStyle>("ph-default");
             skin.Add("console-label", new LabelStyle(defaultLabelStyle.Font, Color.White));
 
+            // Dedicated red style for the waving "Sleeping" label (issue #272). Standalone so it
+            // does not affect any other text.
+            skin.Add("ph-sleeping", new LabelStyle(defaultFont, Color.Red));
+
             // Create custom text button style to use brown color
             var textButtonStyle = new TextButtonStyle
             {
