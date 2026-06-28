@@ -122,6 +122,7 @@ namespace PitHero
         public const float AppleHarvestWaitSeconds = 2f;        // worker waits this long under an apple tree before jumping
         public const float AppleHarvestJumpDurationSeconds = 0.6f; // duration of the apple-picking jump arc
         public const float AppleTreeTopHarvestOffsetPx = 26f;   // worker sprite centre rises to this many px below the apple-tree top
+        public const float HarvestDepositSeconds = 2f;          // worker stays hidden "inside" the storage building this long after delivering
 
         // Camera Configuration
         public const float CameraDefaultZoom = 1f; // default zoom level

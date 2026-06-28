@@ -510,7 +510,7 @@ namespace PitHero.ECS.Components
 
             if (TryBeginCarry())
             {
-                TrySetPathTo(_harvestDoorTile);
+                TryWalkToStorageDoor();
                 CurrentState = FarmingMonsterState.CarryHarvestToStorage;
             }
             else
@@ -575,7 +575,7 @@ namespace PitHero.ECS.Components
                     BodyAnimator.SetLocalOffset(new Vector2(BodyAnimator.LocalOffset.X, _bodyBaseOffsetY));
                 HarvestCarryRenderer?.SetLocalOffset(Vector2.Zero);
                 _appleJumping = false;
-                TrySetPathTo(_harvestDoorTile);
+                TryWalkToStorageDoor();
                 CurrentState = FarmingMonsterState.CarryHarvestToStorage;
             }
         }
@@ -587,6 +587,23 @@ namespace PitHero.ECS.Components
             if (_mover.IsMoving)
                 return;
             DepositAndFinish();
+        }
+
+        /// <summary>
+        /// Paths to the storage door tile, then continues one extra tile (32px) north so the worker
+        /// reaches the building's doorway before stepping inside. Returns false if the door is unreachable.
+        /// </summary>
+        private bool TryWalkToStorageDoor()
+        {
+            if (!TrySetPathTo(_harvestDoorTile))
+                return false;
+
+            var northStep = new Vector2(0f, -GameConfig.TileSize);
+            if (_mover.IsMoving)
+                _mover.OffsetFinalWaypoint(northStep);
+            else
+                _mover.SetSingleTarget(TileCenter(_harvestDoorTile) + northStep);
+            return true;
         }
 
         // ---------------------------------------------------------------- harvest helpers
@@ -647,17 +664,32 @@ namespace PitHero.ECS.Components
                 {
                     _harvestBuildingId = building.UniqueId;
                     _harvestDoorTile = door;
-                    if (TrySetPathTo(door))
+                    if (TryWalkToStorageDoor())
                         return; // keep carrying to the new destination
                     storage.TryDeposit(_harvestBuildingId, _harvestCropType); // adjacent fallback
                 }
                 // else: nowhere to put it — crop is dropped (rare)
             }
 
+            // Delivered: the crop and the worker both vanish "into" the storage building.
             HideCarrySprite();
+            BodyAnimator?.SetEnabled(false);
+            _mover?.Stop();
             _coordinator.CompleteHarvestAction(in _currentAction);
             _hasAction = false;
             _harvestPickedUp = false;
+            CurrentState = FarmingMonsterState.DepositHarvest;
+        }
+
+        // ---------------------------------------------------------------- DepositHarvest
+
+        private void DepositHarvest_Tick()
+        {
+            // Worker is "inside" the storage building; reappear after the wait.
+            if (elapsedTimeInState < GameConfig.HarvestDepositSeconds)
+                return;
+
+            BodyAnimator?.SetEnabled(true);
             CurrentState = FarmingMonsterState.Idle;
         }
 

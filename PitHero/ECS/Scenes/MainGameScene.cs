@@ -163,6 +163,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.CrystalCollectionService));
             Core.Services.RemoveService(typeof(Services.BuildingService));
             Core.Services.RemoveService(typeof(Services.CropPlantingService));
+            Core.Services.RemoveService(typeof(Services.CropStorageInventoryService));
             Core.Services.RemoveService(typeof(Services.TilledTileService));
             Core.Services.RemoveService(typeof(Services.WetTileService));
             Core.Services.RemoveService(typeof(Services.CropGrowthService));
