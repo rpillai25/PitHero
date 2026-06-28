@@ -37,6 +37,9 @@ namespace PitHero.ECS.Components
         /// <summary>Animator for the Watering overlay animation; assigned by the coordinator at spawn.</summary>
         public PausableSpriteAnimator WateringAnimator;
 
+        /// <summary>Renderer for the harvested crop carried in the worker's hands; assigned at spawn.</summary>
+        public Nez.Sprites.SpriteRenderer HarvestCarryRenderer;
+
         /// <summary>
         /// Normalized queue position this worker claims from (0 = front, 1 = back); assigned by
         /// the coordinator at spawn so concurrent workers spread across the field.
@@ -51,6 +54,17 @@ namespace PitHero.ECS.Components
         private float _tillDuration;
         private float _waterDuration;
         private float _plantDuration;
+
+        // Harvest state
+        private Farming.CropType _harvestCropType;
+        private int _harvestBuildingId;
+        private Point _harvestDoorTile;
+        private bool _harvestPickedUp;        // crop has been removed/reverted and is now carried
+        private bool _appleJumping;
+        private float _appleJumpStartElapsed;
+        private float _appleJumpPeakPx;
+        private float _bodyBaseOffsetY;
+        private Nez.Sprites.SpriteAtlas _cropsAtlas;
 
         // Watering can charges: 0 = empty (must fill before watering), max = WateringCanMaxCharges
         private int _wateringCanCharges = 0;
@@ -163,6 +177,22 @@ namespace PitHero.ECS.Components
                     return;
                 }
 
+                // Harvest: walk exactly onto the crop tile (no adjacent stand offset)
+                if (_currentAction.Type == FarmActionType.Harvest)
+                {
+                    if (TrySetPathTo(_currentAction.TargetTile))
+                    {
+                        CurrentState = FarmingMonsterState.MoveToTask;
+                    }
+                    else
+                    {
+                        // Unreachable for now — drop it; PopulateHarvestQueue re-adds it later
+                        _coordinator.CompleteHarvestAction(in _currentAction);
+                        _hasAction = false;
+                    }
+                    return;
+                }
+
                 if (TryPathToStandTile())
                 {
                     if (_currentAction.Type == FarmActionType.Water)
@@ -242,6 +272,21 @@ namespace PitHero.ECS.Components
                         return;
                     }
                     CurrentState = FarmingMonsterState.PerformWater;
+                    break;
+                }
+                case FarmActionType.Harvest:
+                {
+                    bool hasCrop = _cropGrowthService != null && _cropGrowthService.HasCrop(tile);
+                    bool grown = tileState != null && tileState.HasFlag(tile, TileStateFlag.CropGrown);
+                    if (!hasCrop || !grown)
+                    {
+                        _coordinator.CompleteHarvestAction(in _currentAction);
+                        _hasAction = false;
+                        CurrentState = FarmingMonsterState.Idle;
+                        return;
+                    }
+                    _harvestCropType = _cropGrowthService.GetCropType(tile).Value;
+                    CurrentState = FarmingMonsterState.PerformHarvest;
                     break;
                 }
                 default:
@@ -431,6 +476,233 @@ namespace PitHero.ECS.Components
             WateringCanAnimator?.SetEnabled(false);
         }
 
+        // ---------------------------------------------------------------- PerformHarvest
+
+        private void PerformHarvest_Enter()
+        {
+            _harvestPickedUp = false;
+            _appleJumping = false;
+            bool isApple = _harvestCropType == Farming.CropType.AppleTree;
+            _facing?.SetFacing(isApple ? Direction.Up : Direction.Down);
+            if (BodyAnimator != null)
+                _bodyBaseOffsetY = BodyAnimator.LocalOffset.Y;
+        }
+
+        private void PerformHarvest_Tick()
+        {
+            // Safe to abandon only before the crop is picked up (field unchanged)
+            if (_goHome && !_harvestPickedUp)
+            {
+                AbandonCurrentAction();
+                ResetHarvestVisuals();
+                CurrentState = FarmingMonsterState.ReturnHome;
+                return;
+            }
+
+            if (_harvestCropType == Farming.CropType.AppleTree)
+            {
+                PerformAppleHarvest_Tick();
+                return;
+            }
+
+            if (elapsedTimeInState < GameConfig.HarvestWaitSeconds)
+                return;
+
+            if (TryBeginCarry())
+            {
+                TrySetPathTo(_harvestDoorTile);
+                CurrentState = FarmingMonsterState.CarryHarvestToStorage;
+            }
+            else
+            {
+                // No storage with room right now — leave the crop grown and retry later
+                _coordinator.CompleteHarvestAction(in _currentAction);
+                _hasAction = false;
+                CurrentState = FarmingMonsterState.Idle;
+            }
+        }
+
+        /// <summary>Apple trees: wait, jump to reach the apples, pick them at the apex, land, then carry.</summary>
+        private void PerformAppleHarvest_Tick()
+        {
+            // Phase 1: wait under the tree
+            if (!_appleJumping && elapsedTimeInState < GameConfig.AppleHarvestWaitSeconds)
+                return;
+
+            // Begin the jump
+            if (!_appleJumping)
+            {
+                _appleJumping = true;
+                _appleJumpStartElapsed = elapsedTimeInState;
+                if (BodyAnimator != null)
+                    _bodyBaseOffsetY = BodyAnimator.LocalOffset.Y;
+                _appleJumpPeakPx = ComputeAppleJumpPeak(_currentAction.TargetTile);
+            }
+
+            float jumpElapsed = elapsedTimeInState - _appleJumpStartElapsed;
+            float progress = jumpElapsed / GameConfig.AppleHarvestJumpDurationSeconds;
+            if (progress > 1f) progress = 1f;
+
+            float arc = 4f * progress * (1f - progress);
+            float offsetY = _bodyBaseOffsetY - _appleJumpPeakPx * arc;
+            if (BodyAnimator != null)
+                BodyAnimator.SetLocalOffset(new Vector2(BodyAnimator.LocalOffset.X, offsetY));
+
+            // At the apex, pick the apples (revert the tree) — they appear in hand on the way down
+            if (!_harvestPickedUp && progress >= 0.5f)
+            {
+                if (!TryBeginCarry())
+                {
+                    // No storage with room — land and leave the tree grown
+                    if (BodyAnimator != null)
+                        BodyAnimator.SetLocalOffset(new Vector2(BodyAnimator.LocalOffset.X, _bodyBaseOffsetY));
+                    _appleJumping = false;
+                    _coordinator.CompleteHarvestAction(in _currentAction);
+                    _hasAction = false;
+                    CurrentState = FarmingMonsterState.Idle;
+                    return;
+                }
+            }
+
+            // Carry sprite tracks the body arc while descending
+            if (_harvestPickedUp && HarvestCarryRenderer != null)
+                HarvestCarryRenderer.SetLocalOffset(new Vector2(0f, offsetY - _bodyBaseOffsetY));
+
+            if (progress >= 1f)
+            {
+                // Landed — reset body, centre the carry sprite, and walk to storage
+                if (BodyAnimator != null)
+                    BodyAnimator.SetLocalOffset(new Vector2(BodyAnimator.LocalOffset.X, _bodyBaseOffsetY));
+                HarvestCarryRenderer?.SetLocalOffset(Vector2.Zero);
+                _appleJumping = false;
+                TrySetPathTo(_harvestDoorTile);
+                CurrentState = FarmingMonsterState.CarryHarvestToStorage;
+            }
+        }
+
+        // ---------------------------------------------------------------- CarryHarvestToStorage
+
+        private void CarryHarvestToStorage_Tick()
+        {
+            if (_mover.IsMoving)
+                return;
+            DepositAndFinish();
+        }
+
+        // ---------------------------------------------------------------- harvest helpers
+
+        /// <summary>
+        /// Finds storage with room, applies the field result (remove or revert), and shows the carry
+        /// sprite. Returns false (without touching the field) when no Crop Storage has room.
+        /// </summary>
+        private bool TryBeginCarry()
+        {
+            var tile = _currentAction.TargetTile;
+            if (!_coordinator.TryFindNearestStorageWithCapacity(tile, _harvestCropType, out var building, out var door))
+                return false;
+
+            _harvestBuildingId = building.UniqueId;
+            _harvestDoorTile = door;
+            ApplyHarvestResult(tile);
+            ShowCarrySprite();
+            _harvestPickedUp = true;
+            return true;
+        }
+
+        private void ApplyHarvestResult(Point tile)
+        {
+            EnsureCropsAtlas();
+            var tileState = Core.Services.GetService<TileStateService>();
+
+            if (Util.CropConfig.IsRepeatHarvest(_harvestCropType))
+            {
+                int revertFrame = Util.CropConfig.GetRevertFrame(_harvestCropType);
+                float mult = Util.CropConfig.GetRegrowthRateMultiplier(_harvestCropType);
+                _cropGrowthService?.RevertCropForRegrowth(tile, revertFrame, mult, _cropsAtlas);
+                tileState?.ClearFlag(tile, TileStateFlag.CropGrown);
+                tileState?.SetFlag(tile, TileStateFlag.CropGrowing);
+                // Soil dries out; the crop must be re-watered to regrow (re-enters the water queue)
+                tileState?.ClearFlag(tile, TileStateFlag.Wet);
+                _wetTileService?.ClearWet(tile);
+            }
+            else
+            {
+                // Regular crops are permanently removed — clean tilled slate for replanting
+                _cropGrowthService?.RemoveCrop(tile);
+                tileState?.ClearFlag(tile, TileStateFlag.CropGrown);
+                tileState?.ClearFlag(tile, TileStateFlag.CropGrowing);
+            }
+        }
+
+        private void DepositAndFinish()
+        {
+            var storage = Core.Services.GetService<CropStorageInventoryService>();
+            bool deposited = storage != null && storage.TryDeposit(_harvestBuildingId, _harvestCropType);
+
+            if (!deposited && storage != null)
+            {
+                // Destination filled while we walked — redirect to any storage with room
+                if (_coordinator.TryFindNearestStorageWithCapacity(_mover.CurrentTile, _harvestCropType,
+                        out var building, out var door))
+                {
+                    _harvestBuildingId = building.UniqueId;
+                    _harvestDoorTile = door;
+                    if (TrySetPathTo(door))
+                        return; // keep carrying to the new destination
+                    storage.TryDeposit(_harvestBuildingId, _harvestCropType); // adjacent fallback
+                }
+                // else: nowhere to put it — crop is dropped (rare)
+            }
+
+            HideCarrySprite();
+            _coordinator.CompleteHarvestAction(in _currentAction);
+            _hasAction = false;
+            _harvestPickedUp = false;
+            CurrentState = FarmingMonsterState.Idle;
+        }
+
+        private float ComputeAppleJumpPeak(Point tile)
+        {
+            EnsureCropsAtlas();
+            var treeSprite = _cropsAtlas?.GetSprite(Util.CropConfig.GetFullyGrownSpriteName(Farming.CropType.AppleTree));
+            float treeH = treeSprite != null ? treeSprite.SourceRect.Height : GameConfig.TileSize;
+            float treeTopY = tile.Y * GameConfig.TileSize + GameConfig.TileSize - treeH;
+            float targetY = treeTopY + GameConfig.AppleTreeTopHarvestOffsetPx;
+            float groundCenterY = Entity.Transform.Position.Y + _bodyBaseOffsetY;
+            float peak = groundCenterY - targetY;
+            return peak < 0f ? 0f : peak;
+        }
+
+        private void ShowCarrySprite()
+        {
+            if (HarvestCarryRenderer == null)
+                return;
+            EnsureCropsAtlas();
+            var sprite = _cropsAtlas?.GetSprite(Util.CropConfig.GetHarvestSpriteName(_harvestCropType));
+            if (sprite == null)
+                return;
+            HarvestCarryRenderer.Sprite = sprite;
+            HarvestCarryRenderer.SetLocalOffset(Vector2.Zero); // centre of the worker
+            // Renders on RenderLayerActorPropOverlay (set at spawn), so it always sits above the worker.
+            HarvestCarryRenderer.SetEnabled(true);
+        }
+
+        private void HideCarrySprite() => HarvestCarryRenderer?.SetEnabled(false);
+
+        private void ResetHarvestVisuals()
+        {
+            HideCarrySprite();
+            if (BodyAnimator != null)
+                BodyAnimator.SetLocalOffset(new Vector2(BodyAnimator.LocalOffset.X, _bodyBaseOffsetY));
+            _appleJumping = false;
+        }
+
+        private void EnsureCropsAtlas()
+        {
+            if (_cropsAtlas == null)
+                _cropsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
+        }
+
         // ---------------------------------------------------------------- Wander
 
         private void Wander_Enter()
@@ -494,6 +766,9 @@ namespace PitHero.ECS.Components
                     break;
                 case FarmActionType.Water:
                     _coordinator.ReleaseWaterAction(in _currentAction);
+                    break;
+                case FarmActionType.Harvest:
+                    _coordinator.ReleaseHarvestAction(in _currentAction);
                     break;
                 default:
                     _coordinator.ReleaseAction(in _currentAction);

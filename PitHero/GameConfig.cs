@@ -118,6 +118,10 @@ namespace PitHero
         public const float TillProficiencySpeedStep = 0.06f;   // till duration reduced 6% per proficiency point above 1
         public const float FarmMonsterIdlePollInterval = 0.25f; // seconds between queue checks while idle
         public const int FarmWanderRadiusTiles = 4;             // idle wander stays within this radius of the nearest field tile
+        public const float HarvestWaitSeconds = 5f;             // worker waits this long on the crop tile before harvesting
+        public const float AppleHarvestWaitSeconds = 2f;        // worker waits this long under an apple tree before jumping
+        public const float AppleHarvestJumpDurationSeconds = 0.6f; // duration of the apple-picking jump arc
+        public const float AppleTreeTopHarvestOffsetPx = 26f;   // worker sprite centre rises to this many px below the apple-tree top
 
         // Camera Configuration
         public const float CameraDefaultZoom = 1f; // default zoom level
@@ -198,6 +202,7 @@ namespace PitHero
         public const int RenderLayerTop = 2;
 
         public const int RenderLayerFogOfWar = 40;   // Fog of war layer above most things, except hero
+        public const int RenderLayerActorPropOverlay = 41; // Actor prop overlay layer (above actors, below fog of war).  Useful for things like watering can, water, harvested crops that display over monster workers.
         // Actors layer — heroes, mercenaries, monsters, and treasures. Y-sorted within layer via LayerDepth.
         public const int RenderLayerActors = 60;
         public const int RenderLayerSingleTileObject = 61; // Single tile object layer (below actors, so single tile objects render below monsters/heroes)

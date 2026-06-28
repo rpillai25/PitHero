@@ -31,6 +31,18 @@ namespace PitHero.Util
             return new Vector2(wx, wy);
         }
 
+        /// <summary>
+        /// Tile a farm worker walks to in order to enter/deliver at the building.
+        /// MonsterHouse: the doorway at the bottom-centre of the 5×5 footprint (anchorY+2).
+        /// CropStorage: the passable approach tile directly below the 3×4 footprint
+        /// (anchorY+2; the footprint ends at anchorY+1, so this tile is outside it).
+        /// </summary>
+        public static Point GetDoorTile(BuildingType t, Point anchorTile) => t switch
+        {
+            BuildingType.MonsterHouse => new Point(anchorTile.X, anchorTile.Y + 2),
+            _                         => new Point(anchorTile.X, anchorTile.Y + 2),
+        };
+
         public static string GetSpriteName(BuildingType t) => t switch
         {
             BuildingType.MonsterHouse => "MonsterHouse",

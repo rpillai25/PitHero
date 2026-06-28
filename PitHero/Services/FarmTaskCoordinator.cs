@@ -39,6 +39,11 @@ namespace PitHero.Services
         private readonly HashSet<Point> _plantTracked = new HashSet<Point>();
         private readonly Deque<FarmAction> _waterQueue = new Deque<FarmAction>(64);
         private readonly HashSet<Point> _waterTracked = new HashSet<Point>();
+
+        // Harvest queue — fully-grown crops awaiting collection
+        private readonly Deque<FarmAction> _harvestQueue = new Deque<FarmAction>(64);
+        private readonly HashSet<Point> _harvestTracked = new HashSet<Point>();
+
         private TilledTileService _tilledTileService;
 
         private readonly List<ActiveWorker> _workers = new List<ActiveWorker>(16);
@@ -185,7 +190,7 @@ namespace PitHero.Services
 
             // Watering can — single sprite, shown during PerformWater
             var wateringCanAnimator = entity.AddComponent(new PausableSpriteAnimator());
-            wateringCanAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
+            wateringCanAnimator.SetRenderLayer(GameConfig.RenderLayerActorPropOverlay);
             wateringCanAnimator.SetEnabled(false);
             var wateringCanSprite = cropsAtlas?.GetSprite("WateringCan");
             if (wateringCanSprite != null)
@@ -196,7 +201,7 @@ namespace PitHero.Services
 
             // Watering effect — 6-frame animation played on top of the can
             var wateringAnimator = entity.AddComponent(new PausableSpriteAnimator());
-            wateringAnimator.SetRenderLayer(GameConfig.RenderLayerActors);
+            wateringAnimator.SetRenderLayer(GameConfig.RenderLayerActorPropOverlay);
             wateringAnimator.SetEnabled(false);
             var wateringAnim = cropsAtlas?.GetAnimation("Watering");
             if (wateringAnim != null)
@@ -204,6 +209,13 @@ namespace PitHero.Services
 
             fsm.WateringCanAnimator = wateringCanAnimator;
             fsm.WateringAnimator = wateringAnimator;
+
+            // Harvest carry sprite — the harvested crop shown in the worker's hands while delivering.
+            // Sprite is set per-harvest in the FSM; starts hidden.
+            var harvestCarryRenderer = entity.AddComponent(new Nez.Sprites.SpriteRenderer());
+            harvestCarryRenderer.SetRenderLayer(GameConfig.RenderLayerActorPropOverlay);
+            harvestCarryRenderer.SetEnabled(false);
+            fsm.HarvestCarryRenderer = harvestCarryRenderer;
 
             // Spread concurrent workers across the queue so they don't all till side by side:
             // first worker claims from the front, second from the back, the rest from a fixed
@@ -285,7 +297,11 @@ namespace PitHero.Services
             // Priority 2: Plant
             if (TryClaimFromQueue(_plantQueue, _plantTracked, queuePick, ValidatePlant, out action))
                 return true;
-            // Priority 3: Water — only when no plant work remains (queued or in-progress)
+            // Priority 3: Harvest — collect fully-grown crops before watering still-growing ones
+            PopulateHarvestQueue();
+            if (TryClaimFromQueue(_harvestQueue, _harvestTracked, queuePick, ValidateHarvest, out action))
+                return true;
+            // Priority 4: Water — only when no plant work remains (queued or in-progress)
             if (_plantTracked.Count == 0)
             {
                 PopulateWaterQueue();
@@ -343,6 +359,55 @@ namespace PitHero.Services
                 && !_tileState.HasFlag(tile, TileStateFlag.CropGrown);
         }
 
+        private bool ValidateHarvest(Point tile)
+        {
+            var cropGrowth = Core.Services.GetService<CropGrowthService>();
+            if (cropGrowth == null)
+                return false;
+            var cropType = cropGrowth.GetCropType(tile);
+            if (cropType == null)
+                return false;
+            if (!_tileState.HasFlag(tile, TileStateFlag.CropGrown))
+                return false;
+            // Only claim if some Crop Storage can actually accept the harvested crop.
+            return TryFindNearestStorageWithCapacity(tile, cropType.Value, out _, out _);
+        }
+
+        /// <summary>
+        /// Finds the Crop Storage building (with room for this crop) whose door is nearest the crop
+        /// tile. Returns false when none exists or none has capacity.
+        /// </summary>
+        public bool TryFindNearestStorageWithCapacity(Point fromTile, Farming.CropType crop,
+            out PlacedBuilding building, out Point doorTile)
+        {
+            building = null;
+            doorTile = default;
+
+            var storage = Core.Services.GetService<CropStorageInventoryService>();
+            var all = _buildingService.GetAll();
+            long best = long.MaxValue;
+            for (int i = 0; i < all.Count; i++)
+            {
+                var b = all[i];
+                if (b.Type != BuildingType.CropStorage)
+                    continue;
+                if (storage != null && !storage.HasCapacityFor(b.UniqueId, crop))
+                    continue;
+
+                var door = BuildingConfig.GetDoorTile(b.Type, new Point(b.TileX, b.TileY));
+                long dx = door.X - fromTile.X;
+                long dy = door.Y - fromTile.Y;
+                long distSq = dx * dx + dy * dy;
+                if (distSq < best)
+                {
+                    best = distSq;
+                    building = b;
+                    doorTile = door;
+                }
+            }
+            return building != null;
+        }
+
         /// <summary>
         /// Marks a claimed till action finished. Call BEFORE TilledTileService.TillTile so the
         /// ReadyToTill-cleared event from the flag change is a no-op for the queue.
@@ -363,6 +428,12 @@ namespace PitHero.Services
 
         /// <summary>Returns a claimed water action to the front of the queue.</summary>
         public void ReleaseWaterAction(in FarmAction action) => _waterQueue.AddFront(action);
+
+        /// <summary>Marks a claimed harvest action finished.</summary>
+        public void CompleteHarvestAction(in FarmAction action) => _harvestTracked.Remove(action.TargetTile);
+
+        /// <summary>Returns a claimed harvest action to the front of the queue.</summary>
+        public void ReleaseHarvestAction(in FarmAction action) => _harvestQueue.AddFront(action);
 
         /// <summary>Reports a claimed action as unreachable; retried when buildings change.</summary>
         public void ReportBlocked(in FarmAction action)
@@ -432,6 +503,25 @@ namespace PitHero.Services
                     continue;
                 if (_waterTracked.Add(tile))
                     _waterQueue.AddBack(new FarmAction { Type = FarmActionType.Water, TargetTile = tile });
+            }
+        }
+
+        /// <summary>
+        /// Enqueues Harvest actions for all fully-grown crop tiles not already tracked. Called from
+        /// TryClaimAction (cheap scan, mirrors PopulateWaterQueue).
+        /// </summary>
+        public void PopulateHarvestQueue()
+        {
+            var cropGrowth = Core.Services.GetService<CropGrowthService>();
+            if (cropGrowth == null)
+                return;
+
+            foreach (var tile in cropGrowth.GetAllCropTiles())
+            {
+                if (!_tileState.HasFlag(tile, TileStateFlag.CropGrown))
+                    continue;
+                if (_harvestTracked.Add(tile))
+                    _harvestQueue.AddBack(new FarmAction { Type = FarmActionType.Harvest, TargetTile = tile });
             }
         }
 

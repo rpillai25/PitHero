@@ -179,6 +179,23 @@ namespace PitHero.Services
         public int CropTypeId;
         public float AccumulatedHours;
         public int CurrentFrame;
+        /// <summary>Per-stage time multiplier (1 normally, &gt;1 while a repeat crop regrows). Save version 10+.</summary>
+        public float RegrowthRateMultiplier;
+    }
+
+    /// <summary>A single occupied harvested-crop storage slot.</summary>
+    public struct SavedHarvestSlot
+    {
+        public int SlotIndex;
+        public int CropTypeId;
+        public int Count;
+    }
+
+    /// <summary>Harvested-crop inventory for one Crop Storage building (save version 10+).</summary>
+    public struct SavedCropStorageInventory
+    {
+        public int BuildingUniqueId;
+        public List<SavedHarvestSlot> Slots;
     }
 
     /// <summary>Lightweight struct representing a saved allied monster.</summary>
@@ -217,7 +234,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 9;
+        public const int CurrentVersion = 10;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -413,6 +430,9 @@ namespace PitHero.Services
         /// <summary>Active crop growth states for all planted crops.</summary>
         public List<SavedCropGrowthState> CropGrowthStates;
 
+        /// <summary>Harvested-crop inventories, one per Crop Storage building.</summary>
+        public List<SavedCropStorageInventory> CropStorageInventories;
+
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
         {
@@ -441,6 +461,7 @@ namespace PitHero.Services
             CropPlans = new List<SavedCropPlan>();
             NextBuildingId = 1;
             CropGrowthStates = new List<SavedCropGrowthState>();
+            CropStorageInventories = new List<SavedCropStorageInventory>();
         }
 
         /// <summary>Writes all game state to the persistence writer.</summary>
@@ -716,7 +737,7 @@ namespace PitHero.Services
             // 24. Next Building ID (version 8+)
             writer.Write(NextBuildingId);
 
-            // 25. Crop Growth States (version 9+)
+            // 25. Crop Growth States (version 9+; RegrowthRateMultiplier added in version 10)
             int cropGrowthCount = CropGrowthStates != null ? CropGrowthStates.Count : 0;
             writer.Write(cropGrowthCount);
             for (int i = 0; i < cropGrowthCount; i++)
@@ -726,6 +747,24 @@ namespace PitHero.Services
                 writer.Write(CropGrowthStates[i].CropTypeId);
                 writer.Write(CropGrowthStates[i].AccumulatedHours);
                 writer.Write(CropGrowthStates[i].CurrentFrame);
+                writer.Write(CropGrowthStates[i].RegrowthRateMultiplier);
+            }
+
+            // 26. Crop Storage harvested-crop inventories (version 10+)
+            int storageInvCount = CropStorageInventories != null ? CropStorageInventories.Count : 0;
+            writer.Write(storageInvCount);
+            for (int i = 0; i < storageInvCount; i++)
+            {
+                var inv = CropStorageInventories[i];
+                writer.Write(inv.BuildingUniqueId);
+                int slotCount = inv.Slots != null ? inv.Slots.Count : 0;
+                writer.Write(slotCount);
+                for (int s = 0; s < slotCount; s++)
+                {
+                    writer.Write(inv.Slots[s].SlotIndex);
+                    writer.Write(inv.Slots[s].CropTypeId);
+                    writer.Write(inv.Slots[s].Count);
+                }
             }
         }
 
@@ -1071,7 +1110,7 @@ namespace PitHero.Services
             if (fileVersion >= 8)
                 NextBuildingId = reader.ReadInt();
 
-            // 25. Crop Growth States (version 9+)
+            // 25. Crop Growth States (version 9+; RegrowthRateMultiplier added in version 10)
             if (fileVersion >= 9)
             {
                 int cropGrowthCount = reader.ReadInt();
@@ -1084,12 +1123,40 @@ namespace PitHero.Services
                     cgs.CropTypeId       = reader.ReadInt();
                     cgs.AccumulatedHours = reader.ReadFloat();
                     cgs.CurrentFrame     = reader.ReadInt();
+                    cgs.RegrowthRateMultiplier = fileVersion >= 10 ? reader.ReadFloat() : 1f;
                     CropGrowthStates.Add(cgs);
                 }
             }
             else
             {
                 CropGrowthStates = new List<SavedCropGrowthState>();
+            }
+
+            // 26. Crop Storage harvested-crop inventories (version 10+)
+            if (fileVersion >= 10)
+            {
+                int storageInvCount = reader.ReadInt();
+                CropStorageInventories = new List<SavedCropStorageInventory>(storageInvCount);
+                for (int i = 0; i < storageInvCount; i++)
+                {
+                    SavedCropStorageInventory inv;
+                    inv.BuildingUniqueId = reader.ReadInt();
+                    int slotCount = reader.ReadInt();
+                    inv.Slots = new List<SavedHarvestSlot>(slotCount);
+                    for (int s = 0; s < slotCount; s++)
+                    {
+                        SavedHarvestSlot slot;
+                        slot.SlotIndex  = reader.ReadInt();
+                        slot.CropTypeId = reader.ReadInt();
+                        slot.Count      = reader.ReadInt();
+                        inv.Slots.Add(slot);
+                    }
+                    CropStorageInventories.Add(inv);
+                }
+            }
+            else
+            {
+                CropStorageInventories = new List<SavedCropStorageInventory>();
             }
         }
 

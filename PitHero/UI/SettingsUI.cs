@@ -180,6 +180,12 @@ namespace PitHero.UI
         /// <summary>Exits remove-crops mode.</summary>
         public void ExitRemoveCropsModeViaFarm() => _farmUI?.ExitRemoveCropsMode();
 
+        /// <summary>Returns true when the Harvested Crops viewer is open.</summary>
+        public bool IsHarvestedCropsModeActive => _farmUI?.IsInHarvestedCropsMode ?? false;
+
+        /// <summary>Exits the Harvested Crops viewer — called by the overlay's Close button or Escape.</summary>
+        public void ExitHarvestedCropsModeViaFarm() => _farmUI?.ExitHarvestedCropsMode();
+
         /// <summary>Dismisses sub-buttons and exits all farm sub-modes at once.</summary>
         private void DismissAllFarmUI()
         {
@@ -188,6 +194,7 @@ namespace PitHero.UI
             _farmUI?.ExitBuildingMode();
             _farmUI?.ExitSeedMode();
             _farmUI?.ExitRemoveCropsMode();
+            _farmUI?.ExitHarvestedCropsMode();
         }
 
         // Tracks seed mode state from end of previous frame so we can detect the frame it turned on.
@@ -1255,12 +1262,16 @@ namespace PitHero.UI
             if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape) && IsRemoveCropsModeActive)
                 ExitRemoveCropsModeViaFarm();
 
+            // Exit Harvested Crops viewer when Escape is pressed
+            if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape) && IsHarvestedCropsModeActive)
+                ExitHarvestedCropsModeViaFarm();
+
             // Mutual exclusion: any non-farm panel open → dismiss farm UI entirely.
             bool anyNonFarmPanelOpen = _isVisible
                 || (_heroUI?.IsWindowVisible    ?? false)
                 || (_monsterUI?.IsWindowVisible ?? false)
                 || (_secondChanceShopUI?.IsWindowVisible ?? false);
-            if (anyNonFarmPanelOpen && (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive))
+            if (anyNonFarmPanelOpen && (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive || IsHarvestedCropsModeActive))
                 DismissAllFarmUI();
 
             // Update smooth scrolling animation
@@ -1538,7 +1549,7 @@ namespace PitHero.UI
         /// </summary>
         private void UpdateUIBarAutoHide()
         {
-            if (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive)
+            if (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive || IsHarvestedCropsModeActive)
             {
                 _uiBarIdleTimer = 0f;
                 if (_uiBarHidden) ShowUIBar();
@@ -1648,7 +1659,7 @@ namespace PitHero.UI
 
             float sbScale = isHalfMode ? 2f : 1f;
 
-            if (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive)
+            if (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive || IsHarvestedCropsModeActive)
             {
                 // Hide the shortcut bar while any farm UI is visible.
                 if (!_shortcutBarHidden) HideShortcutBar();
@@ -1745,7 +1756,7 @@ namespace PitHero.UI
         {
             if (_eventConsolePanel == null) return;
 
-            if (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive)
+            if (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive || IsHarvestedCropsModeActive)
             {
                 // Hide the event console while any farm UI is visible.
                 if (!_consoleHidden) HideEventConsole();

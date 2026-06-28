@@ -28,6 +28,7 @@ ButtonFarmSeeds,Seeds
 ButtonFarmBuildings,Buildings
 ButtonFarmOptions,Options
 ButtonFarmDestroyCrops,Remove Crops
+ButtonFarmHarvestedCrops,Harvested Crops
 LabelTillingSoil,Tilling Soil
 LabelPlantingCrops,Planting Crops
 WindowAppearance,Appearance
