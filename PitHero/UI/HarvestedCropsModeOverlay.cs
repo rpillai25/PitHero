@@ -71,7 +71,7 @@ namespace PitHero.UI
             _slotTable = new Table();
             var scroll = new ScrollPane(_slotTable, skin, "ph-default");
             scroll.SetScrollingDisabled(true, false);
-            outer.Add(scroll).Width(SlotSize * Columns + 16f).Height(240f);
+            outer.Add(scroll).Width(SlotSize * Columns + 48f).Height(240f);
             outer.Row();
 
             var closeButton = new TextButton("Close", skin, "ph-default");
@@ -109,14 +109,15 @@ namespace PitHero.UI
                     var slot = slots[s];
                     if (slot.IsEmpty)
                     {
-                        var blank = new Element();
+                        // Empty slot: render the inventory-slot background only.
+                        var blank = new HarvestSlotButton(null, slot.Type, 0, null);
                         _slotTable.Add(blank).Size(SlotSize, SlotSize).Pad(2f);
                     }
                     else
                     {
                         var sprite = _cropsAtlas.GetSprite(CropConfig.GetHarvestSpriteName(slot.Type));
                         var cell = new HarvestSlotButton(sprite, slot.Type, slot.Count,
-                            CropConfig.GetDisplayName(slot.Type));
+                            CropConfig.GetHarvestDisplayName(slot.Type));
                         var captured = slot.Type;
                         cell.OnClicked += () => ShowDescription(captured);
                         _slotTable.Add(cell).Size(SlotSize, SlotSize).Pad(2f);
@@ -174,7 +175,7 @@ namespace PitHero.UI
 
         private void ShowDescription(CropType crop)
         {
-            _descNameLabel.SetText(CropConfig.GetDisplayName(crop));
+            _descNameLabel.SetText(CropConfig.GetHarvestDisplayName(crop));
             _descDescLabel.SetText(CropConfig.GetDescription(crop));
             _descWindow.Pack();
             float w = _descWindow.GetWidth();
@@ -190,9 +191,13 @@ namespace PitHero.UI
 
         private class HarvestSlotButton : Element, IInputListener
         {
+            // Inventory-slot background drawn at the same translucency as the inventory UI.
+            private static readonly Color SlotBgColor = new Color(255, 255, 255, 100);
+
             private readonly SpriteDrawable _draw;
             private readonly int _count;
             private readonly string _tooltipText;
+            private SpriteDrawable _background;
             private Sprite _selectBox;
             private bool _hovered;
 
@@ -203,11 +208,17 @@ namespace PitHero.UI
                 _draw        = sprite != null ? new SpriteDrawable(sprite) : null;
                 _count       = count;
                 _tooltipText = tooltipText;
-                SetTouchable(Touchable.Enabled);
+                // Empty slots show the background only — no hover/click.
+                SetTouchable(sprite != null ? Touchable.Enabled : Touchable.Disabled);
                 SetSize(SlotSize, SlotSize);
 
                 if (Core.Content != null)
                 {
+                    var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
+                    var bgSprite   = itemsAtlas?.GetSprite("Inventory");
+                    if (bgSprite != null)
+                        _background = new SpriteDrawable(bgSprite);
+
                     var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
                     _selectBox  = uiAtlas?.GetSprite("SelectBox");
                 }
@@ -215,6 +226,8 @@ namespace PitHero.UI
 
             public override void Draw(Batcher batcher, float parentAlpha)
             {
+                _background?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), SlotBgColor);
+
                 _draw?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
 
                 if (_hovered && _selectBox != null)

@@ -128,6 +128,12 @@ namespace PitHero.Util
             return GetAtlasPrefix(crop) + "_" + frame;
         }
 
+        /// <summary>Display name of a crop's harvested product (e.g. an Apple Tree yields "Apple").</summary>
+        public static string GetHarvestDisplayName(CropType crop)
+        {
+            return crop == CropType.AppleTree ? "Apple" : GetDisplayName(crop);
+        }
+
         /// <summary>Returns the CropsProps atlas sprite name for a crop's harvested product.</summary>
         public static string GetHarvestSpriteName(CropType crop)
         {
