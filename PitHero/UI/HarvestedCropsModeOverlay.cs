@@ -42,6 +42,19 @@ namespace PitHero.UI
             CreateDescriptionWindow();
         }
 
+        private TextService _textService;
+
+        /// <summary>Resolves a localized UI string, falling back to the key if the service is unavailable.</summary>
+        private string GetText(string key)
+        {
+            if (_textService == null)
+                _textService = Core.Services?.GetService<TextService>();
+            return _textService?.DisplayText(TextType.UI, key) ?? key;
+        }
+
+        /// <summary>Localized harvested-product name for a crop (e.g. Apple Tree → "Apple").</summary>
+        private string GetHarvestName(CropType crop) => GetText(CropConfig.GetHarvestDisplayNameKey(crop));
+
         /// <summary>Called when the player enters harvested-crops mode; rebuilds and shows the grid.</summary>
         public void OnEnterHarvestedCropsMode()
         {
@@ -61,7 +74,7 @@ namespace PitHero.UI
         private void CreateInventoryWindow()
         {
             var skin = PitHeroSkin.CreateSkin();
-            _inventoryWindow = new Window("Harvested Crops", skin, "ph-default");
+            _inventoryWindow = new Window(GetText(UITextKey.WindowHarvestedCrops), skin, "ph-default");
             _inventoryWindow.SetMovable(false);
             _inventoryWindow.SetResizable(false);
 
@@ -74,7 +87,7 @@ namespace PitHero.UI
             outer.Add(scroll).Width(SlotSize * Columns + 48f).Height(240f);
             outer.Row();
 
-            var closeButton = new TextButton("Close", skin, "ph-default");
+            var closeButton = new TextButton(GetText(UITextKey.ButtonClose), skin, "ph-default");
             closeButton.OnClicked += (_) => RequestExitHarvestedCropsMode?.Invoke();
             outer.Add(closeButton).Width(100f).SetPadTop(8f);
 
@@ -117,7 +130,7 @@ namespace PitHero.UI
                     {
                         var sprite = _cropsAtlas.GetSprite(CropConfig.GetHarvestSpriteName(slot.Type));
                         var cell = new HarvestSlotButton(sprite, slot.Type, slot.Count,
-                            CropConfig.GetHarvestDisplayName(slot.Type));
+                            GetHarvestName(slot.Type));
                         var captured = slot.Type;
                         cell.OnClicked += () => ShowDescription(captured);
                         _slotTable.Add(cell).Size(SlotSize, SlotSize).Pad(2f);
@@ -163,7 +176,7 @@ namespace PitHero.UI
             content.Add(_descDescLabel).Width(200f).SetPadBottom(10f);
             content.Row();
 
-            var closeButton = new TextButton("Close", skin, "ph-default");
+            var closeButton = new TextButton(GetText(UITextKey.ButtonClose), skin, "ph-default");
             closeButton.OnClicked += (_) => _descWindow.SetVisible(false);
             content.Add(closeButton).Width(80f);
 
@@ -175,8 +188,8 @@ namespace PitHero.UI
 
         private void ShowDescription(CropType crop)
         {
-            _descNameLabel.SetText(CropConfig.GetHarvestDisplayName(crop));
-            _descDescLabel.SetText(CropConfig.GetDescription(crop));
+            _descNameLabel.SetText(GetHarvestName(crop));
+            _descDescLabel.SetText(GetText(CropConfig.GetDescriptionKey(crop)));
             _descWindow.Pack();
             float w = _descWindow.GetWidth();
             float h = _descWindow.GetHeight();

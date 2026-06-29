@@ -57,6 +57,17 @@ namespace PitHero.UI
         private const float WinPad     = 16f;
         private const int   CropsPerRow = 4;
 
+        // ── Localization ──────────────────────────────────────────────────────────
+        private TextService _textService;
+
+        /// <summary>Resolves a localized UI string, falling back to the key if the service is unavailable.</summary>
+        private string GetText(string key)
+        {
+            if (_textService == null)
+                _textService = Core.Services?.GetService<TextService>();
+            return _textService?.DisplayText(TextType.UI, key) ?? key;
+        }
+
         /// <summary>Returns true when the overlay is actively in the placing sub-state.</summary>
         public bool IsInPlacingState => _state == PlacementState.Placing;
 
@@ -349,7 +360,7 @@ namespace PitHero.UI
         private void CreateInventoryWindow()
         {
             var skin = PitHeroSkin.CreateSkin();
-            _inventoryWindow = new Window("Seeds", skin, "ph-default");
+            _inventoryWindow = new Window(GetText(UITextKey.WindowSeeds), skin, "ph-default");
             _inventoryWindow.SetMovable(false);
             _inventoryWindow.SetResizable(false);
 
@@ -362,7 +373,7 @@ namespace PitHero.UI
             outer.Add(scroll).Width(SlotSize * CropsPerRow + 16f).Height(200f);
             outer.Row();
 
-            var cancelButton = new TextButton("Cancel", skin, "ph-default");
+            var cancelButton = new TextButton(GetText(UITextKey.ButtonCancel), skin, "ph-default");
             cancelButton.OnClicked += (_) => RequestExitSeedMode?.Invoke();
             outer.Add(cancelButton).Width(100f).SetPadTop(8f);
 
@@ -386,7 +397,7 @@ namespace PitHero.UI
                 if (_seedInventory[i] <= 0) continue;
                 var cropType = (CropType)i;
                 var sprite   = _cropsAtlas.GetSprite(CropConfig.GetFullyGrownSpriteName(cropType));
-                var slot     = new CropSlotButton(sprite, CropConfig.GetDisplayName(cropType), _seedInventory, i);
+                var slot     = new CropSlotButton(sprite, GetText(CropConfig.GetDisplayNameKey(cropType)), _seedInventory, i);
                 slot.OnClicked += () => OnCropSlotClicked(cropType);
                 _slotTable.Add(slot).Size(SlotSize, SlotSize).Pad(2f);
                 col++;

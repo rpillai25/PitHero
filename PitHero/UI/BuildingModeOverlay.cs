@@ -50,6 +50,16 @@ namespace PitHero.UI
         private const float SlotSize = 100f;
         private const float WinPad = 16f;
 
+        private TextService _textService;
+
+        /// <summary>Resolves a localized UI string, falling back to the key if the service is unavailable.</summary>
+        private string GetText(string key)
+        {
+            if (_textService == null)
+                _textService = Core.Services?.GetService<TextService>();
+            return _textService?.DisplayText(TextType.UI, key) ?? key;
+        }
+
         public bool IsInPlacingState => _state == PlacementState.Placing;
 
         /// <summary>Fired when the Cancel button is clicked; caller should invoke FarmUI.ExitBuildingMode().</summary>
@@ -96,7 +106,7 @@ namespace PitHero.UI
         private void CreateInventoryWindow()
         {
             var skin = PitHeroSkin.CreateSkin();
-            _inventoryWindow = new Window("Buildings", skin, "ph-default");
+            _inventoryWindow = new Window(GetText(UITextKey.WindowBuildings), skin, "ph-default");
             _inventoryWindow.SetMovable(false);
             _inventoryWindow.SetResizable(false);
 
@@ -106,19 +116,19 @@ namespace PitHero.UI
             // Building slots row
             var slotA = new BuildingSlotButton(
                 _cropsAtlas.GetSprite(BuildingConfig.GetSpriteName(BuildingType.MonsterHouse)),
-                BuildingConfig.GetDisplayName(BuildingType.MonsterHouse));
+                GetText(BuildingConfig.GetDisplayNameKey(BuildingType.MonsterHouse)));
             slotA.OnClicked += () => OnBuildingSlotClicked(BuildingType.MonsterHouse);
             content.Add(slotA).Size(SlotSize, SlotSize).Pad(4f);
 
             var slotB = new BuildingSlotButton(
                 _cropsAtlas.GetSprite(BuildingConfig.GetSpriteName(BuildingType.CropStorage)),
-                BuildingConfig.GetDisplayName(BuildingType.CropStorage));
+                GetText(BuildingConfig.GetDisplayNameKey(BuildingType.CropStorage)));
             slotB.OnClicked += () => OnBuildingSlotClicked(BuildingType.CropStorage);
             content.Add(slotB).Size(SlotSize, SlotSize).Pad(4f);
 
             // Cancel button below slots
             content.Row();
-            var cancelButton = new TextButton("Cancel", skin, "ph-default");
+            var cancelButton = new TextButton(GetText(UITextKey.ButtonCancel), skin, "ph-default");
             cancelButton.OnClicked += (_) => RequestExitBuildingMode?.Invoke();
             content.Add(cancelButton).SetColspan(2).Width(100f).SetPadTop(8f);
 
@@ -164,7 +174,7 @@ namespace PitHero.UI
             content.Add(_descCostLabel).SetPadBottom(10f);
             content.Row();
 
-            _buildButton = new TextButton("Build", skin, "ph-default");
+            _buildButton = new TextButton(GetText(UITextKey.ButtonBuild), skin, "ph-default");
             _buildButton.OnClicked += (_) => { if (!_buildButton.GetDisabled()) OnBuildClicked(); };
             content.Add(_buildButton).Width(80f);
 
@@ -178,9 +188,9 @@ namespace PitHero.UI
         {
             _pendingCost = BuildingConfig.GetCost(type);
 
-            _descNameLabel.SetText(BuildingConfig.GetDisplayName(type));
-            _descDescLabel.SetText(BuildingConfig.GetDescription(type));
-            _descCostLabel.SetText($"Cost {_pendingCost} G");
+            _descNameLabel.SetText(GetText(BuildingConfig.GetDisplayNameKey(type)));
+            _descDescLabel.SetText(GetText(BuildingConfig.GetDescriptionKey(type)));
+            _descCostLabel.SetText(string.Format(GetText(UITextKey.BuildingCostFormat), _pendingCost));
             _buildButton.SetDisabled(funds < _pendingCost);
 
             _descWindow.Pack();

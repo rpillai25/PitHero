@@ -55,16 +55,18 @@ namespace PitHero.Util
             _                         => 50,
         };
 
-        public static string GetDisplayName(BuildingType t) => t switch
+        /// <summary>Localization key (UI text) for a building's display name. Resolve via TextService.</summary>
+        public static string GetDisplayNameKey(BuildingType t) => t switch
         {
-            BuildingType.MonsterHouse => "Monster House",
-            _                         => "Crop Storage",
+            BuildingType.MonsterHouse => UITextKey.BuildingNameMonsterHouse,
+            _                         => UITextKey.BuildingNameCropStorage,
         };
 
-        public static string GetDescription(BuildingType t) => t switch
+        /// <summary>Localization key (UI text) for a building's description. Resolve via TextService.</summary>
+        public static string GetDescriptionKey(BuildingType t) => t switch
         {
-            BuildingType.MonsterHouse => "Houses 16 monsters",
-            _                         => "Holds 32 stacks of crops",
+            BuildingType.MonsterHouse => UITextKey.BuildingDescMonsterHouse,
+            _                         => UITextKey.BuildingDescCropStorage,
         };
 
         private static (int dx, int dy)[] BuildFootprint(int dxMin, int dxMax, int dyMin, int dyMax)

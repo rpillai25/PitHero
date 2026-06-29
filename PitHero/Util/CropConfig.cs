@@ -5,25 +5,25 @@ namespace PitHero.Util
     /// <summary>Static lookup helpers for crop display names, atlas prefixes, and frame indices.</summary>
     public static class CropConfig
     {
-        /// <summary>Returns the human-readable display name for a crop type.</summary>
-        public static string GetDisplayName(CropType crop)
+        /// <summary>Localization key (UI text) for a crop type's display name. Resolve via TextService.</summary>
+        public static string GetDisplayNameKey(CropType crop)
         {
             return crop switch
             {
-                CropType.AppleTree  => "Apple Tree",
-                CropType.Corn       => "Corn",
-                CropType.Eggplant   => "Eggplant",
-                CropType.Grapes     => "Grapes",
-                CropType.Lettuce    => "Lettuce",
-                CropType.Onion      => "Onion",
-                CropType.Potato     => "Potato",
-                CropType.Pumpkin    => "Pumpkin",
-                CropType.Sugarcane  => "Sugarcane",
-                CropType.Tomato     => "Tomato",
-                CropType.Turnip     => "Turnip",
-                CropType.Watermelon => "Watermelon",
-                CropType.Wheat      => "Wheat",
-                _                   => crop.ToString(),
+                CropType.AppleTree  => UITextKey.CropNameAppleTree,
+                CropType.Corn       => UITextKey.CropNameCorn,
+                CropType.Eggplant   => UITextKey.CropNameEggplant,
+                CropType.Grapes     => UITextKey.CropNameGrapes,
+                CropType.Lettuce    => UITextKey.CropNameLettuce,
+                CropType.Onion      => UITextKey.CropNameOnion,
+                CropType.Potato     => UITextKey.CropNamePotato,
+                CropType.Pumpkin    => UITextKey.CropNamePumpkin,
+                CropType.Sugarcane  => UITextKey.CropNameSugarcane,
+                CropType.Tomato     => UITextKey.CropNameTomato,
+                CropType.Turnip     => UITextKey.CropNameTurnip,
+                CropType.Watermelon => UITextKey.CropNameWatermelon,
+                CropType.Wheat      => UITextKey.CropNameWheat,
+                _                   => UITextKey.CropNameAppleTree,
             };
         }
 
@@ -128,10 +128,29 @@ namespace PitHero.Util
             return GetAtlasPrefix(crop) + "_" + frame;
         }
 
-        /// <summary>Display name of a crop's harvested product (e.g. an Apple Tree yields "Apple").</summary>
-        public static string GetHarvestDisplayName(CropType crop)
+        /// <summary>
+        /// Localization key (UI text) for a crop's harvested-product display name. An Apple Tree
+        /// yields "Apple"; every other crop's product shares its own name. Resolve via TextService.
+        /// </summary>
+        public static string GetHarvestDisplayNameKey(CropType crop)
         {
-            return crop == CropType.AppleTree ? "Apple" : GetDisplayName(crop);
+            return crop switch
+            {
+                CropType.AppleTree  => UITextKey.HarvestCropApple,
+                CropType.Corn       => UITextKey.HarvestCropCorn,
+                CropType.Eggplant   => UITextKey.HarvestCropEggplant,
+                CropType.Grapes     => UITextKey.HarvestCropGrapes,
+                CropType.Lettuce    => UITextKey.HarvestCropLettuce,
+                CropType.Onion      => UITextKey.HarvestCropOnion,
+                CropType.Potato     => UITextKey.HarvestCropPotato,
+                CropType.Pumpkin    => UITextKey.HarvestCropPumpkin,
+                CropType.Sugarcane  => UITextKey.HarvestCropSugarcane,
+                CropType.Tomato     => UITextKey.HarvestCropTomato,
+                CropType.Turnip     => UITextKey.HarvestCropTurnip,
+                CropType.Watermelon => UITextKey.HarvestCropWatermelon,
+                CropType.Wheat      => UITextKey.HarvestCropWheat,
+                _                   => UITextKey.HarvestCropApple,
+            };
         }
 
         /// <summary>Returns the CropsProps atlas sprite name for a crop's harvested product.</summary>
@@ -235,25 +254,28 @@ namespace PitHero.Util
             };
         }
 
-        /// <summary>Returns a short flavor description for a crop, shown in the Harvested Crops viewer.</summary>
-        public static string GetDescription(CropType crop)
+        /// <summary>
+        /// Localization key (UI text) for a crop's flavor description, shown in the Harvested Crops
+        /// viewer. Resolve via TextService.
+        /// </summary>
+        public static string GetDescriptionKey(CropType crop)
         {
             return crop switch
             {
-                CropType.AppleTree  => "Crisp orchard apples picked from a mature tree.",
-                CropType.Corn       => "Sweet golden ears, great roasted or milled.",
-                CropType.Eggplant   => "Glossy purple fruit with a hearty bite.",
-                CropType.Grapes     => "Plump clusters prized for juice and wine.",
-                CropType.Lettuce    => "Crunchy leafy heads, fresh and light.",
-                CropType.Onion      => "Pungent bulbs that flavor any dish.",
-                CropType.Potato     => "Starchy tubers, filling and versatile.",
-                CropType.Pumpkin    => "Big autumn squash with a sweet flesh.",
-                CropType.Sugarcane  => "Fibrous stalks pressed for sweet syrup.",
-                CropType.Tomato     => "Juicy red fruit bursting with flavor.",
-                CropType.Turnip     => "Humble roots, quick to grow and store.",
-                CropType.Watermelon => "Huge melons full of cool, sweet water.",
-                CropType.Wheat      => "Golden grain, the staple of every loaf.",
-                _                   => GetDisplayName(crop),
+                CropType.AppleTree  => UITextKey.CropDescAppleTree,
+                CropType.Corn       => UITextKey.CropDescCorn,
+                CropType.Eggplant   => UITextKey.CropDescEggplant,
+                CropType.Grapes     => UITextKey.CropDescGrapes,
+                CropType.Lettuce    => UITextKey.CropDescLettuce,
+                CropType.Onion      => UITextKey.CropDescOnion,
+                CropType.Potato     => UITextKey.CropDescPotato,
+                CropType.Pumpkin    => UITextKey.CropDescPumpkin,
+                CropType.Sugarcane  => UITextKey.CropDescSugarcane,
+                CropType.Tomato     => UITextKey.CropDescTomato,
+                CropType.Turnip     => UITextKey.CropDescTurnip,
+                CropType.Watermelon => UITextKey.CropDescWatermelon,
+                CropType.Wheat      => UITextKey.CropDescWheat,
+                _                   => UITextKey.CropDescAppleTree,
             };
         }
     }
