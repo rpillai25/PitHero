@@ -654,7 +654,8 @@ namespace PitHero.ECS.Components
         private void DepositAndFinish()
         {
             var storage = Core.Services.GetService<CropStorageInventoryService>();
-            bool deposited = storage != null && storage.TryDeposit(_harvestBuildingId, _harvestCropType);
+            int yield = Util.CropConfig.GetHarvestYield(_harvestCropType);
+            bool deposited = storage != null && storage.TryDeposit(_harvestBuildingId, _harvestCropType, yield);
 
             if (!deposited && storage != null)
             {
@@ -666,7 +667,7 @@ namespace PitHero.ECS.Components
                     _harvestDoorTile = door;
                     if (TryWalkToStorageDoor())
                         return; // keep carrying to the new destination
-                    storage.TryDeposit(_harvestBuildingId, _harvestCropType); // adjacent fallback
+                    storage.TryDeposit(_harvestBuildingId, _harvestCropType, yield); // adjacent fallback
                 }
                 // else: nowhere to put it — crop is dropped (rare)
             }

@@ -61,36 +61,44 @@ namespace PitHero.Services
         }
 
         /// <summary>
-        /// Adds one harvested crop to the building. Fills an existing non-full stack first, else the
-        /// first empty slot. Returns false when all slots are full.
+        /// Adds <paramref name="amount"/> harvested crops to the building, spilling across existing
+        /// non-full stacks and empty slots as needed. Returns true if at least one unit was stored.
+        /// Any remainder that doesn't fit (all slots full) is dropped.
         /// </summary>
-        public bool TryDeposit(int buildingId, CropType crop)
+        public bool TryDeposit(int buildingId, CropType crop, int amount = 1)
         {
+            if (amount <= 0)
+                return false;
+
             var slots = GetOrCreate(buildingId);
             int max = CropConfig.GetMaxHarvestStack(crop);
+            int remaining = amount;
 
-            // Existing non-full stack of this crop
-            for (int i = 0; i < slots.Length; i++)
+            // Top off existing non-full stacks of this crop first
+            for (int i = 0; i < slots.Length && remaining > 0; i++)
             {
                 if (!slots[i].IsEmpty && slots[i].Type == crop && slots[i].Count < max)
                 {
-                    slots[i].Count++;
-                    return true;
+                    int room = max - slots[i].Count;
+                    int add = room < remaining ? room : remaining;
+                    slots[i].Count += add;
+                    remaining -= add;
                 }
             }
 
-            // First empty slot
-            for (int i = 0; i < slots.Length; i++)
+            // Then spill into empty slots
+            for (int i = 0; i < slots.Length && remaining > 0; i++)
             {
                 if (slots[i].IsEmpty)
                 {
+                    int add = max < remaining ? max : remaining;
                     slots[i].Type = crop;
-                    slots[i].Count = 1;
-                    return true;
+                    slots[i].Count = add;
+                    remaining -= add;
                 }
             }
 
-            return false;
+            return remaining < amount;
         }
 
         /// <summary>Returns the slot array for a building (creating an empty one if needed). Read-only view for UI.</summary>

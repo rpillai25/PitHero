@@ -136,6 +136,28 @@ namespace PitHero.Util
             return prefix + "_Harvest";
         }
 
+        /// <summary>Number of harvested units produced each time this crop is harvested.</summary>
+        public static int GetHarvestYield(CropType crop)
+        {
+            return crop switch
+            {
+                CropType.AppleTree  => 4,
+                CropType.Corn       => 3,
+                CropType.Eggplant   => 1,
+                CropType.Grapes     => 1,
+                CropType.Lettuce    => 4,
+                CropType.Onion      => 9,
+                CropType.Potato     => 4,
+                CropType.Pumpkin    => 1,
+                CropType.Sugarcane  => 2,
+                CropType.Tomato     => 4,
+                CropType.Turnip     => 9,
+                CropType.Watermelon => 1,
+                CropType.Wheat      => 1,
+                _                   => 1,
+            };
+        }
+
         /// <summary>Maximum number of a harvested crop that can be held in a single storage slot.</summary>
         public static int GetMaxHarvestStack(CropType crop)
         {
