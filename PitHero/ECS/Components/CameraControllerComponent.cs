@@ -264,7 +264,7 @@ namespace PitHero.ECS.Components
             var currentMousePosition = Input.ScaledMousePosition;
             bool shiftDown = Input.IsKeyDown(Keys.LeftShift) || Input.IsKeyDown(Keys.RightShift);
 
-            if (Input.RightMouseButtonPressed)
+            if (Input.RightMouseButtonPressed && IsMouseInsideWindow())
             {
                 // Do not start panning if this press is used for SHIFT+Right-Click reset
                 if (shiftDown)
@@ -299,6 +299,19 @@ namespace PitHero.ECS.Components
                 // Reset manual control timer on active panning
                 _manualControlTimer = 0f;
             }
+        }
+
+        /// <summary>
+        /// Returns true when the window has OS focus and the raw cursor is within the client area.
+        /// Used to gate the start of right-mouse panning so scrolling doesn't begin while the
+        /// cursor is outside the game window.
+        /// </summary>
+        private static bool IsMouseInsideWindow()
+        {
+            if (!Core.Instance.IsActive)
+                return false;
+            var raw = Input.RawMousePosition;
+            return raw.X >= 0 && raw.Y >= 0 && raw.X < Screen.Width && raw.Y < Screen.Height;
         }
 
         /// <summary>
