@@ -21,13 +21,15 @@ namespace PitHero.UI
         private ImageButtonStyle[] _subNormalStyles;
         private ImageButtonStyle[] _subHalfStyles;
 
+        // "UISeed" is reused as a placeholder sprite for the Harvested Crops button (index 0).
         private static readonly string[] SubButtonBaseNames =
         {
-            "UITill", "UISeed", "UIBuildings", "UIFarmOptions", "UIDestroyCrop"
+            "UISeed", "UITill", "UISeed", "UIBuildings", "UIFarmOptions", "UIDestroyCrop"
         };
 
         private static readonly string[] SubButtonTextKeys =
         {
+            UITextKey.ButtonFarmHarvestedCrops,
             UITextKey.ButtonFarmTill,
             UITextKey.ButtonFarmSeeds,
             UITextKey.ButtonFarmBuildings,
@@ -60,6 +62,9 @@ namespace PitHero.UI
 
         /// <summary>Gets whether seed planting mode is currently active.</summary>
         public bool IsInSeedMode { get; private set; }
+
+        /// <summary>Gets whether the Harvested Crops viewer is currently open.</summary>
+        public bool IsInHarvestedCropsMode { get; private set; }
 
         private TextService GetTextService()
         {
@@ -154,17 +159,20 @@ namespace PitHero.UI
                 _subButtons[i].SetVisible(false);
             }
 
-            // Wire Till button (index 0)
-            _subButtons[0].OnClicked += (_) => ToggleTillMode();
+            // Wire Harvested Crops button (index 0)
+            _subButtons[0].OnClicked += (_) => ToggleHarvestedCropsMode();
 
-            // Wire Seeds button (index 1)
-            _subButtons[1].OnClicked += (_) => ToggleSeedMode();
+            // Wire Till button (index 1)
+            _subButtons[1].OnClicked += (_) => ToggleTillMode();
 
-            // Wire Buildings button (index 2)
-            _subButtons[2].OnClicked += (_) => ToggleBuildingMode();
+            // Wire Seeds button (index 2)
+            _subButtons[2].OnClicked += (_) => ToggleSeedMode();
 
-            // Wire Remove Crops button (index 4)
-            _subButtons[4].OnClicked += (_) => ToggleRemoveCropsMode();
+            // Wire Buildings button (index 3)
+            _subButtons[3].OnClicked += (_) => ToggleBuildingMode();
+
+            // Wire Remove Crops button (index 5)
+            _subButtons[5].OnClicked += (_) => ToggleRemoveCropsMode();
         }
 
         private void ToggleTillMode()
@@ -173,9 +181,10 @@ namespace PitHero.UI
             // so the button is idempotent when already in till mode.
             if (!IsInTillMode)
             {
-                ExitBuildingMode();     // mutual exclusion
-                ExitSeedMode();         // mutual exclusion
-                ExitRemoveCropsMode();  // mutual exclusion
+                ExitBuildingMode();        // mutual exclusion
+                ExitSeedMode();            // mutual exclusion
+                ExitRemoveCropsMode();     // mutual exclusion
+                ExitHarvestedCropsMode();  // mutual exclusion
                 IsInTillMode = true;
             }
         }
@@ -194,9 +203,10 @@ namespace PitHero.UI
             }
             else
             {
-                ExitTillMode();         // mutual exclusion
-                ExitSeedMode();         // mutual exclusion
-                ExitRemoveCropsMode();  // mutual exclusion
+                ExitTillMode();            // mutual exclusion
+                ExitSeedMode();            // mutual exclusion
+                ExitRemoveCropsMode();     // mutual exclusion
+                ExitHarvestedCropsMode();  // mutual exclusion
                 IsInBuildingMode = true;
             }
         }
@@ -215,9 +225,10 @@ namespace PitHero.UI
             }
             else
             {
-                ExitTillMode();         // mutual exclusion
-                ExitBuildingMode();     // mutual exclusion
-                ExitRemoveCropsMode();  // mutual exclusion
+                ExitTillMode();            // mutual exclusion
+                ExitBuildingMode();        // mutual exclusion
+                ExitRemoveCropsMode();     // mutual exclusion
+                ExitHarvestedCropsMode();  // mutual exclusion
                 IsInSeedMode = true;
             }
         }
@@ -238,9 +249,10 @@ namespace PitHero.UI
             }
             else
             {
-                ExitTillMode();      // mutual exclusion
-                ExitBuildingMode();  // mutual exclusion
-                ExitSeedMode();      // mutual exclusion
+                ExitTillMode();            // mutual exclusion
+                ExitBuildingMode();        // mutual exclusion
+                ExitSeedMode();            // mutual exclusion
+                ExitHarvestedCropsMode();  // mutual exclusion
                 IsInRemoveCropsMode = true;
             }
         }
@@ -249,6 +261,28 @@ namespace PitHero.UI
         public void ExitRemoveCropsMode()
         {
             IsInRemoveCropsMode = false;
+        }
+
+        private void ToggleHarvestedCropsMode()
+        {
+            if (IsInHarvestedCropsMode)
+            {
+                IsInHarvestedCropsMode = false;
+            }
+            else
+            {
+                ExitTillMode();         // mutual exclusion
+                ExitBuildingMode();     // mutual exclusion
+                ExitSeedMode();         // mutual exclusion
+                ExitRemoveCropsMode();  // mutual exclusion
+                IsInHarvestedCropsMode = true;
+            }
+        }
+
+        /// <summary>Forces the Harvested Crops viewer off.</summary>
+        public void ExitHarvestedCropsMode()
+        {
+            IsInHarvestedCropsMode = false;
         }
 
         private void ToggleSubButtons()
@@ -375,7 +409,7 @@ namespace PitHero.UI
             // Only dismiss sub-buttons from world clicks when no sub-mode is running.
             // While a sub-mode is active (placing crops, tilling, etc.) world clicks belong
             // to that mode and must not collapse the sub-button row.
-            bool anySubModeActive = IsInTillMode || IsInBuildingMode || IsInSeedMode || IsInRemoveCropsMode;
+            bool anySubModeActive = IsInTillMode || IsInBuildingMode || IsInSeedMode || IsInRemoveCropsMode || IsInHarvestedCropsMode;
             if (_subButtonsVisible && !anySubModeActive && Input.LeftMouseButtonPressed)
             {
                 var mousePos = _stage.GetMousePosition();

@@ -20,6 +20,8 @@ namespace PitHero.Services
             public float AccumulatedHours;
             public int CurrentFrame;
             public Entity WorldEntity;
+            /// <summary>Per-stage time multiplier; 1 for first growth, &gt;1 for slowed regrowth after a repeat harvest.</summary>
+            public float RegrowthRateMultiplier;
         }
 
         private const float SecondsPerInGameHour = 60f;
@@ -74,7 +76,42 @@ namespace PitHero.Services
                 AccumulatedHours = 0f,
                 CurrentFrame = 1,
                 WorldEntity = entity,
+                RegrowthRateMultiplier = 1f,
             };
+        }
+
+        /// <summary>
+        /// Removes a harvested regular crop: destroys its world entity and drops growth tracking.
+        /// The caller is responsible for clearing the tile's CropGrown/CropGrowing flags.
+        /// </summary>
+        public void RemoveCrop(Point tile)
+        {
+            if (_crops.TryGetValue(tile, out var data))
+            {
+                data.WorldEntity?.Destroy();
+                _crops.Remove(tile);
+            }
+        }
+
+        /// <summary>
+        /// Reverts a harvested repeat-harvest crop to an earlier frame so it regrows. Resets growth
+        /// accumulation to match the revert frame at the (possibly slowed) regrowth rate and swaps the
+        /// world sprite. The caller clears CropGrown / sets CropGrowing / clears Wet.
+        /// </summary>
+        public void RevertCropForRegrowth(Point tile, int revertFrame, float multiplier, SpriteAtlas atlas)
+        {
+            if (!_crops.TryGetValue(tile, out var data))
+                return;
+
+            int frame = revertFrame < 1 ? 1 : revertFrame;
+            float effectiveHoursPerStage = CropConfig.GetHoursPerStage(data.Type) * multiplier;
+
+            data.CurrentFrame = frame;
+            data.AccumulatedHours = (frame - 1) * effectiveHoursPerStage;
+            data.RegrowthRateMultiplier = multiplier;
+            _crops[tile] = data;
+
+            UpdateEntitySprite(data, tile, atlas);
         }
 
         /// <summary>
@@ -100,7 +137,8 @@ namespace PitHero.Services
                     data.AccumulatedHours += Time.DeltaTime / SecondsPerInGameHour;
 
                 int maxFrame = CropConfig.GetFrameCount(data.Type);
-                float hoursPerStage = CropConfig.GetHoursPerStage(data.Type);
+                float multiplier = data.RegrowthRateMultiplier <= 0f ? 1f : data.RegrowthRateMultiplier;
+                float hoursPerStage = CropConfig.GetHoursPerStage(data.Type) * multiplier;
                 int expectedFrame = 1 + (int)(data.AccumulatedHours / hoursPerStage);
                 if (expectedFrame > maxFrame)
                     expectedFrame = maxFrame;
@@ -122,12 +160,13 @@ namespace PitHero.Services
         }
 
         /// <summary>Returns all crop data for serialization.</summary>
-        public IEnumerable<KeyValuePair<Point, (CropType Type, float AccumulatedHours, int CurrentFrame)>> GetAllData()
+        public IEnumerable<KeyValuePair<Point, (CropType Type, float AccumulatedHours, int CurrentFrame, float RegrowthRateMultiplier)>> GetAllData()
         {
             foreach (var kvp in _crops)
-                yield return new KeyValuePair<Point, (CropType, float, int)>(
+                yield return new KeyValuePair<Point, (CropType, float, int, float)>(
                     kvp.Key,
-                    (kvp.Value.Type, kvp.Value.AccumulatedHours, kvp.Value.CurrentFrame));
+                    (kvp.Value.Type, kvp.Value.AccumulatedHours, kvp.Value.CurrentFrame,
+                     kvp.Value.RegrowthRateMultiplier <= 0f ? 1f : kvp.Value.RegrowthRateMultiplier));
         }
 
         /// <summary>Reconstructs crop entities and tracking data from a save. Call after tile states are restored.</summary>
@@ -163,6 +202,7 @@ namespace PitHero.Services
                     AccumulatedHours = s.AccumulatedHours,
                     CurrentFrame = s.CurrentFrame,
                     WorldEntity = entity,
+                    RegrowthRateMultiplier = s.RegrowthRateMultiplier <= 0f ? 1f : s.RegrowthRateMultiplier,
                 };
             }
         }

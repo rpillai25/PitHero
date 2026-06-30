@@ -58,6 +58,8 @@ namespace PitHero.ECS.Scenes
         private SeedPlantingModeOverlay _seedModeOverlay;
         private bool _wasInSeedMode;
         private bool _wasInRemoveCropsMode;
+        private HarvestedCropsModeOverlay _harvestedCropsModeOverlay;
+        private bool _wasInHarvestedCropsMode;
         private Label _plantingCropsLabel;
         private Nez.UI.Stage _uiStage;
         private int _lastInGameHour = -1;
@@ -138,6 +140,10 @@ namespace PitHero.ECS.Scenes
             // Register crop planting service so plan tracking and seed inventory are queryable.
             Core.Services.AddService(new Services.CropPlantingService());
 
+            // Register harvested-crop storage so workers can deposit crops and the UI can view them.
+            Core.Services.AddService(new Services.CropStorageInventoryService(
+                Core.Services.GetService<Services.BuildingService>()));
+
             AddSceneComponent<YSortManager>();
 
             SetupUIOverlay();
@@ -157,6 +163,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.CrystalCollectionService));
             Core.Services.RemoveService(typeof(Services.BuildingService));
             Core.Services.RemoveService(typeof(Services.CropPlantingService));
+            Core.Services.RemoveService(typeof(Services.CropStorageInventoryService));
             Core.Services.RemoveService(typeof(Services.TilledTileService));
             Core.Services.RemoveService(typeof(Services.WetTileService));
             Core.Services.RemoveService(typeof(Services.CropGrowthService));
@@ -291,6 +298,36 @@ namespace PitHero.ECS.Scenes
             }
             if (buildingService != null)
                 buildingService.NextId = pendingData.NextBuildingId;
+
+            // Restore harvested-crop storage inventories (keyed by building UniqueId, so after buildings)
+            var cropStorageService = Core.Services.GetService<Services.CropStorageInventoryService>();
+            if (cropStorageService != null)
+            {
+                cropStorageService.Clear();
+                if (pendingData.CropStorageInventories != null)
+                {
+                    for (int i = 0; i < pendingData.CropStorageInventories.Count; i++)
+                    {
+                        var inv = pendingData.CropStorageInventories[i];
+                        var arr = new Services.HarvestSlot[Services.CropStorageInventoryService.SlotsPerBuilding];
+                        if (inv.Slots != null)
+                        {
+                            for (int s = 0; s < inv.Slots.Count; s++)
+                            {
+                                var sl = inv.Slots[s];
+                                if (sl.SlotIndex < 0 || sl.SlotIndex >= arr.Length)
+                                    continue;
+                                arr[sl.SlotIndex] = new Services.HarvestSlot
+                                {
+                                    Type  = (Farming.CropType)sl.CropTypeId,
+                                    Count = sl.Count,
+                                };
+                            }
+                        }
+                        cropStorageService.RestoreInventory(inv.BuildingUniqueId, arr);
+                    }
+                }
+            }
 
             // Restore seed inventory
             if (pendingData.SeedInventory != null && _seedModeOverlay != null)
@@ -746,6 +783,10 @@ namespace PitHero.ECS.Scenes
             _seedModeOverlay = new SeedPlantingModeOverlay(this, _uiStage);
             _seedModeOverlay.RequestExitSeedMode        += () => _settingsUI?.ExitSeedModeViaFarm();
             _seedModeOverlay.RequestExitRemoveCropsMode += () => _settingsUI?.ExitRemoveCropsModeViaFarm();
+
+            // Harvested Crops viewer — read-only storage grid on the same stage.
+            _harvestedCropsModeOverlay = new HarvestedCropsModeOverlay(this, _uiStage);
+            _harvestedCropsModeOverlay.RequestExitHarvestedCropsMode += () => _settingsUI?.ExitHarvestedCropsModeViaFarm();
 
             // Initialize pit width manager after map and services are set up
             SetupPitWidthManager();
@@ -1908,9 +1949,17 @@ namespace PitHero.ECS.Scenes
             if (inRemoveCropsMode)
                 _seedModeOverlay?.Update();
 
+            bool inHarvestedCropsMode = _settingsUI?.IsHarvestedCropsModeActive ?? false;
+            if (inHarvestedCropsMode != _wasInHarvestedCropsMode)
+            {
+                if (inHarvestedCropsMode) _harvestedCropsModeOverlay?.OnEnterHarvestedCropsMode();
+                else                      _harvestedCropsModeOverlay?.OnExitHarvestedCropsMode();
+                _wasInHarvestedCropsMode = inHarvestedCropsMode;
+            }
+
             // Show tilled-tile overlays and grayscale crop plans whenever the farm menu is open
             // (sub-buttons visible or any sub-mode active). Also manages auto-scroll suppression.
-            bool inFarmMode = (_settingsUI?.IsFarmSubMenuOpen ?? false) || inTillMode || inBuildingMode || inSeedMode || inRemoveCropsMode;
+            bool inFarmMode = (_settingsUI?.IsFarmSubMenuOpen ?? false) || inTillMode || inBuildingMode || inSeedMode || inRemoveCropsMode || inHarvestedCropsMode;
             if (inFarmMode != _wasInFarmMode)
             {
                 if (inFarmMode)

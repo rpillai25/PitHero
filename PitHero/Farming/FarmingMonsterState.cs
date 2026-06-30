@@ -10,6 +10,9 @@ namespace PitHero.Farming
         PerformPlant,
         PerformWater,
         FillWateringCan,
+        PerformHarvest,
+        CarryHarvestToStorage,
+        DepositHarvest,
         Wander,
         ReturnHome
     }

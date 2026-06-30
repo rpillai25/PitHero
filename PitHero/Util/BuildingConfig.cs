@@ -31,6 +31,18 @@ namespace PitHero.Util
             return new Vector2(wx, wy);
         }
 
+        /// <summary>
+        /// Tile a farm worker walks to in order to enter/deliver at the building.
+        /// MonsterHouse: the doorway at the bottom-centre of the 5×5 footprint (anchorY+2).
+        /// CropStorage: the passable approach tile directly below the 3×4 footprint
+        /// (anchorY+2; the footprint ends at anchorY+1, so this tile is outside it).
+        /// </summary>
+        public static Point GetDoorTile(BuildingType t, Point anchorTile) => t switch
+        {
+            BuildingType.MonsterHouse => new Point(anchorTile.X, anchorTile.Y + 2),
+            _                         => new Point(anchorTile.X, anchorTile.Y + 2),
+        };
+
         public static string GetSpriteName(BuildingType t) => t switch
         {
             BuildingType.MonsterHouse => "MonsterHouse",
@@ -43,16 +55,18 @@ namespace PitHero.Util
             _                         => 50,
         };
 
-        public static string GetDisplayName(BuildingType t) => t switch
+        /// <summary>Localization key (UI text) for a building's display name. Resolve via TextService.</summary>
+        public static string GetDisplayNameKey(BuildingType t) => t switch
         {
-            BuildingType.MonsterHouse => "Monster House",
-            _                         => "Crop Storage",
+            BuildingType.MonsterHouse => UITextKey.BuildingNameMonsterHouse,
+            _                         => UITextKey.BuildingNameCropStorage,
         };
 
-        public static string GetDescription(BuildingType t) => t switch
+        /// <summary>Localization key (UI text) for a building's description. Resolve via TextService.</summary>
+        public static string GetDescriptionKey(BuildingType t) => t switch
         {
-            BuildingType.MonsterHouse => "Houses 16 monsters",
-            _                         => "Holds 32 stacks of crops",
+            BuildingType.MonsterHouse => UITextKey.BuildingDescMonsterHouse,
+            _                         => UITextKey.BuildingDescCropStorage,
         };
 
         private static (int dx, int dy)[] BuildFootprint(int dxMin, int dxMax, int dyMin, int dyMax)

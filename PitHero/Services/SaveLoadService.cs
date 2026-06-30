@@ -640,7 +640,36 @@ namespace PitHero.Services
                     cgs.CropTypeId       = (int)kvp.Value.Type;
                     cgs.AccumulatedHours = kvp.Value.AccumulatedHours;
                     cgs.CurrentFrame     = kvp.Value.CurrentFrame;
+                    cgs.RegrowthRateMultiplier = kvp.Value.RegrowthRateMultiplier;
                     data.CropGrowthStates.Add(cgs);
+                }
+            }
+
+            // Harvested-crop storage inventories
+            var cropStorageService = Core.Services.GetService<CropStorageInventoryService>();
+            if (cropStorageService != null)
+            {
+                data.CropStorageInventories = new List<SavedCropStorageInventory>();
+                foreach (var kvp in cropStorageService.GetAllInventories())
+                {
+                    var inv = new SavedCropStorageInventory
+                    {
+                        BuildingUniqueId = kvp.Key,
+                        Slots = new List<SavedHarvestSlot>(),
+                    };
+                    var slots = kvp.Value;
+                    for (int i = 0; i < slots.Length; i++)
+                    {
+                        if (slots[i].IsEmpty)
+                            continue;
+                        inv.Slots.Add(new SavedHarvestSlot
+                        {
+                            SlotIndex  = i,
+                            CropTypeId = (int)slots[i].Type,
+                            Count      = slots[i].Count,
+                        });
+                    }
+                    data.CropStorageInventories.Add(inv);
                 }
             }
 

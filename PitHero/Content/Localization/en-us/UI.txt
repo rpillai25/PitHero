@@ -28,6 +28,55 @@ ButtonFarmSeeds,Seeds
 ButtonFarmBuildings,Buildings
 ButtonFarmOptions,Options
 ButtonFarmDestroyCrops,Remove Crops
+ButtonFarmHarvestedCrops,Harvested Crops
+HarvestCropApple,Apple
+HarvestCropCorn,Corn
+HarvestCropEggplant,Eggplant
+HarvestCropGrapes,Grapes
+HarvestCropLettuce,Lettuce
+HarvestCropOnion,Onion
+HarvestCropPotato,Potato
+HarvestCropPumpkin,Pumpkin
+HarvestCropSugarcane,Sugarcane
+HarvestCropTomato,Tomato
+HarvestCropTurnip,Turnip
+HarvestCropWatermelon,Watermelon
+HarvestCropWheat,Wheat
+CropNameAppleTree,Apple Tree
+CropNameCorn,Corn
+CropNameEggplant,Eggplant
+CropNameGrapes,Grapes
+CropNameLettuce,Lettuce
+CropNameOnion,Onion
+CropNamePotato,Potato
+CropNamePumpkin,Pumpkin
+CropNameSugarcane,Sugarcane
+CropNameTomato,Tomato
+CropNameTurnip,Turnip
+CropNameWatermelon,Watermelon
+CropNameWheat,Wheat
+CropDescAppleTree,Crisp orchard apples picked from a mature tree.
+CropDescCorn,Sweet golden ears, great roasted or milled.
+CropDescEggplant,Glossy purple fruit with a hearty bite.
+CropDescGrapes,Plump clusters prized for juice and wine.
+CropDescLettuce,Crunchy leafy heads, fresh and light.
+CropDescOnion,Pungent bulbs that flavor any dish.
+CropDescPotato,Starchy tubers, filling and versatile.
+CropDescPumpkin,Big autumn squash with a sweet flesh.
+CropDescSugarcane,Fibrous stalks pressed for sweet syrup.
+CropDescTomato,Juicy red fruit bursting with flavor.
+CropDescTurnip,Humble roots, quick to grow and store.
+CropDescWatermelon,Huge melons full of cool, sweet water.
+CropDescWheat,Golden grain, the staple of every loaf.
+BuildingNameMonsterHouse,Monster House
+BuildingNameCropStorage,Crop Storage
+BuildingDescMonsterHouse,Houses 16 monsters
+BuildingDescCropStorage,Holds 32 stacks of crops
+WindowBuildings,Buildings
+WindowSeeds,Seeds
+WindowHarvestedCrops,Harvested Crops
+ButtonBuild,Build
+BuildingCostFormat,Cost {0} G
 LabelTillingSoil,Tilling Soil
 LabelPlantingCrops,Planting Crops
 WindowAppearance,Appearance
