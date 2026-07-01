@@ -280,5 +280,8 @@ namespace PitHero
         public const string ConsoleWelcomePhrase1 = "ConsoleWelcomePhrase1";
         public const string ConsoleWelcomePhrase2 = "ConsoleWelcomePhrase2";
         public const string ConsoleWelcomePhrase3 = "ConsoleWelcomePhrase3";
+        public const string TabSeeds = "TabSeeds";
+        public const string SecondChanceOwnedCount = "SecondChanceOwnedCount";
+        public const string ConsoleSeedsFound = "ConsoleSeedsFound";
     }
 }

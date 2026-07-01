@@ -133,10 +133,16 @@ namespace RolePlayingFramework.Balance
         #region Loot Drop Constants
 
         /// <summary>
-        /// Probability that a cave treasure chest contains a consumable instead of equipment.
+        /// Probability that a treasure chest contains a consumable instead of equipment.
         /// 0.6 = 60% consumables, 40% equipment.
         /// </summary>
         public const float CaveConsumableDropRate = 0.6f;
+
+        /// <summary>
+        /// Probability that an uncommon (level-2) treasure chest yields seeds instead of its normal loot.
+        /// 0.10 = 10% of uncommon chests.
+        /// </summary>
+        public const float SeedChestDropRate = 0.10f;
 
         /// <summary>Drop weight multiplier for gear matching the hero's job class.</summary>
         public const int LootWeightHeroJob = 4;

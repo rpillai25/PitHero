@@ -16,6 +16,7 @@ namespace PitHero.UI
         private int _quantity = 1;
         private readonly int _unitPrice;
         private readonly int _maxQty;
+        private readonly bool _wrapQuantity;
         private Label _quantityLabel;
         private Label _totalCostLabel;
         private readonly System.Action<int> _onConfirm;
@@ -27,6 +28,14 @@ namespace PitHero.UI
         /// <param name="skin">Nez.UI skin to use.</param>
         /// <param name="onConfirm">Invoked with the chosen quantity when Yes is pressed.</param>
         /// <param name="onCancel">Invoked when No is pressed (nullable).</param>
+        /// <param name="ownedCount">
+        /// When &gt;= 0, an "Owned: N" row is rendered above the quantity selector.
+        /// Pass -1 (default) to omit the row; existing call sites are unaffected.
+        /// </param>
+        /// <param name="wrapQuantity">
+        /// When true, the quantity selector wraps around (1 → maxQty when decremented, maxQty → 1 when
+        /// incremented) instead of clamping. Defaults to false so existing call sites keep clamping.
+        /// </param>
         public VaultBuyQuantityDialog(
             string title,
             string itemName,
@@ -34,16 +43,21 @@ namespace PitHero.UI
             int maxQty,
             Skin skin,
             System.Action<int> onConfirm,
-            System.Action onCancel = null)
+            System.Action onCancel = null,
+            int ownedCount = -1,
+            bool wrapQuantity = false)
             : base(title, skin)
         {
             _unitPrice = unitPrice;
             _maxQty    = maxQty > 1 ? maxQty : 1;
+            _wrapQuantity = wrapQuantity;
             _onConfirm = onConfirm;
 
             var textService = Core.Services.GetService<TextService>();
 
-            SetSize(380, maxQty > 1 ? 220 : 180);
+            bool showOwned = ownedCount >= 0;
+            int extraHeight = showOwned ? 30 : 0;
+            SetSize(380, (maxQty > 1 ? 220 : 180) + extraHeight);
             SetMovable(false);
 
             var dialogTable = new Table();
@@ -57,6 +71,17 @@ namespace PitHero.UI
             promptLabel.SetWrap(true);
             dialogTable.Add(promptLabel).Width(330f).SetPadBottom(10);
             dialogTable.Row();
+
+            // ── Owned count row (seeds tab only) ────────────────────────────────
+            if (showOwned)
+            {
+                string ownedText = string.Format(
+                    textService.DisplayText(TextType.UI, UITextKey.SecondChanceOwnedCount),
+                    ownedCount);
+                var ownedLabel = new Label(ownedText, skin);
+                dialogTable.Add(ownedLabel).Width(330f).SetPadBottom(8);
+                dialogTable.Row();
+            }
 
             // ── Quantity selector row (hidden when maxQty == 1) ─────────────────
             if (maxQty > 1)
@@ -135,8 +160,16 @@ namespace PitHero.UI
         private void ChangeQuantity(int delta)
         {
             int next = _quantity + delta;
-            if (next < 1) next = 1;
-            if (next > _maxQty) next = _maxQty;
+            if (_wrapQuantity)
+            {
+                if (next < 1) next = _maxQty;
+                else if (next > _maxQty) next = 1;
+            }
+            else
+            {
+                if (next < 1) next = 1;
+                if (next > _maxQty) next = _maxQty;
+            }
             if (next == _quantity) return;
 
             _quantity = next;

@@ -984,7 +984,7 @@ namespace PitHero.UI
                 {
                     var stackText = _stackCount.ToString();
                     var textPosition = new Vector2(GetX() + 2f * Scale, GetY() + _itemSpriteOffsetY + GetHeight() - _font.LineHeight * Scale + 2f * Scale);
-                    batcher.DrawString(_font, stackText, textPosition, Color.White, 0f, Vector2.Zero, Scale, Microsoft.Xna.Framework.Graphics.SpriteEffects.None, 0f);
+                    StackCountText.Draw(batcher, _font, stackText, textPosition, Color.White, Scale);
                 }
             }
             // Draw referenced skill sprite if exists (also hidden during drag)

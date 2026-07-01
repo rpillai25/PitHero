@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
+using PitHero.Farming;
 using PitHero.Services;
 using PitHero.Util;
 using PitHero.Util.SoundEffectTypes;
@@ -239,6 +240,42 @@ namespace PitHero.AI
         /// </summary>
         private void HandleItemPickup(HeroComponent hero, TreasureComponent treasureComponent)
         {
+            // Seed chest: award seeds and show crop pickup animation before checking for a normal item.
+            if (treasureComponent.ContainedSeedType.HasValue)
+            {
+                var crop = treasureComponent.ContainedSeedType.Value;
+                int cnt  = treasureComponent.ContainedSeedCount;
+
+                Core.Services.GetService<CropPlantingService>()?.AddSeeds(crop, cnt);
+
+                // Pickup animation using the crop's fully-grown sprite from CropsProps.atlas
+                var cropsAtlas = Core.Content?.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
+                var cropSprite = cropsAtlas?.GetSprite(CropConfig.GetFullyGrownSpriteName(crop));
+                if (cropSprite != null)
+                {
+                    var scene = Core.Scene;
+                    var animEntity = scene?.CreateEntity("itemPickupAnimation");
+                    if (animEntity != null)
+                    {
+                        animEntity.Transform.Position = _chestEntity.Transform.Position;
+                        animEntity.AddComponent(new ItemPickupAnimationComponent(cropSprite, CropConfig.GetAtlasPrefix(crop)));
+                    }
+                }
+
+                // Console event styled like ConsoleItemFound
+                var gameEventSvc = Core.Services.GetService<GameEventService>();
+                var textSvc = Core.Services.GetService<TextService>();
+                string cropDisplayName = textSvc?.DisplayText(TextType.UI, CropConfig.GetDisplayNameKey(crop)) ?? crop.ToString();
+                gameEventSvc?.EmitLocalized(UITextKey.ConsoleSeedsFound,
+                    (hero.LinkedHero.Name, GameConfig.ConsoleColorHeroName),
+                    (cnt.ToString(), Color.White),
+                    (cropDisplayName, Color.Green));
+
+                treasureComponent.ContainedSeedType  = null;
+                treasureComponent.ContainedSeedCount = 0;
+                return;
+            }
+
             var containedItem = treasureComponent.ContainedItem;
             if (containedItem == null)
             {

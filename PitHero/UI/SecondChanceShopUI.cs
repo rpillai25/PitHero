@@ -1,8 +1,11 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using Nez.Textures;
 using Nez.UI;
 using PitHero.ECS.Components;
+using PitHero.Farming;
 using PitHero.Services;
+using PitHero.Util;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Mercenaries;
@@ -21,6 +24,7 @@ namespace PitHero.UI
         private TabPane _tabPane;
         private Tab _itemsTab;
         private Tab _crystalsTab;
+        private Tab _seedsTab;
 
         // Right panel: separate windows for hero inventory and crystal panel
         private Window _heroInventoryWindow;
@@ -141,12 +145,15 @@ namespace PitHero.UI
             var tabStyle = new TabStyle { Background = null };
             _itemsTab    = new Tab(GetText(TextType.UI, UITextKey.TabItems),    tabStyle);
             _crystalsTab = new Tab(GetText(TextType.UI, UITextKey.TabCrystals), tabStyle);
+            _seedsTab    = new Tab(GetText(TextType.UI, UITextKey.TabSeeds),    tabStyle);
 
             PopulateItemsTab(_itemsTab, skin);
             PopulateCrystalsTab(_crystalsTab, skin);
+            PopulateSeedsTab(_seedsTab, skin);
 
             _tabPane.AddTab(_itemsTab);
             _tabPane.AddTab(_crystalsTab);
+            _tabPane.AddTab(_seedsTab);
 
             // Wire tab button clicks to swap the right-side hero panel
             for (int i = 0; i < _tabPane.TabButtons.Count; i++)
@@ -279,6 +286,84 @@ namespace PitHero.UI
             tab.Add(content).Expand().Fill();
         }
 
+        /// <summary>Populates the Seeds tab with a 4-per-row grid of purchasable crop seed slots.</summary>
+        private void PopulateSeedsTab(Tab tab, Skin skin)
+        {
+            var cropsAtlas       = Core.Content?.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
+            var cropPlantingService = Core.Services?.GetService<CropPlantingService>();
+
+            var grid = new Table();
+            grid.Top().Left().Pad(4f);
+
+            int col = 0;
+            for (int i = 0; i < CropTypeInfo.Count; i++)
+            {
+                var crop = (CropType)i;
+                string spriteName = CropConfig.GetFullyGrownSpriteName(crop);
+                var sprite = cropsAtlas?.GetSprite(spriteName);
+
+                string cropName = GetText(TextType.UI, CropConfig.GetDisplayNameKey(crop));
+                int price       = CropConfig.GetSeedPrice(crop);
+                string tooltip  = cropName + " - " + price + "G";
+
+                var slot = new SeedShopSlot(sprite, crop, cropPlantingService, tooltip);
+                slot.OnBuyClicked += HandleSeedBuyClicked;
+
+                grid.Add(slot).Size(40f, 40f).Pad(2f);
+                col++;
+                if (col >= 4)
+                {
+                    grid.Row();
+                    col = 0;
+                }
+            }
+
+            var scrollPane = new ScrollPane(grid, skin, "ph-default");
+            scrollPane.SetScrollingDisabled(true, false);
+            scrollPane.SetFadeScrollBars(false);
+
+            var content = new Table();
+            content.Top().Left().Pad(8f);
+            content.Add(scrollPane).Size(297f, 198f).Top().Left();
+
+            tab.ClearChildren();
+            tab.Add(content).Expand().Fill();
+        }
+
+        /// <summary>Opens the quantity dialog and executes a seed purchase when confirmed.</summary>
+        private void HandleSeedBuyClicked(CropType crop)
+        {
+            var cropPlantingService = Core.Services?.GetService<CropPlantingService>();
+            if (cropPlantingService == null) return;
+
+            int unitPrice = CropConfig.GetSeedPrice(crop);
+            int ownedCount = cropPlantingService.SeedInventory != null
+                ? cropPlantingService.SeedInventory[(int)crop]
+                : 0;
+            string shopTitle = GetText(TextType.UI, UITextKey.WindowSecondChanceShop);
+            string cropName  = GetText(TextType.UI, CropConfig.GetDisplayNameKey(crop));
+
+            var qtyDialog = new VaultBuyQuantityDialog(
+                shopTitle,
+                cropName,
+                unitPrice,
+                9,
+                _skin,
+                onConfirm: (qty) =>
+                {
+                    var gameState = Core.Services?.GetService<GameStateService>();
+                    if (gameState == null) return;
+                    int totalPrice = unitPrice * qty;
+                    if (gameState.Funds < totalPrice) return;
+                    gameState.Funds -= totalPrice;
+                    cropPlantingService.AddSeeds(crop, qty);
+                },
+                onCancel: null,
+                ownedCount: ownedCount,
+                wrapQuantity: true);
+            qtyDialog.Show(_stage);
+        }
+
         // ──────────────────────────────────────────────────────────────────────────
         // Tab switching
         // ──────────────────────────────────────────────────────────────────────────
@@ -294,10 +379,15 @@ namespace PitHero.UI
                 _heroInventoryWindow?.SetVisible(true);
                 _heroCrystalWindow?.SetVisible(false);
             }
-            else // Crystals tab
+            else if (tabIndex == 1) // Crystals tab
             {
                 _heroInventoryWindow?.SetVisible(false);
                 _heroCrystalWindow?.SetVisible(true);
+            }
+            else // Seeds tab — no hero-side panel
+            {
+                _heroInventoryWindow?.SetVisible(false);
+                _heroCrystalWindow?.SetVisible(false);
             }
         }
 
@@ -344,10 +434,15 @@ namespace PitHero.UI
                     _heroInventoryWindow.SetVisible(true);
                     _heroCrystalWindow.SetVisible(false);
                 }
-                else
+                else if (_activeTabIndex == 1)
                 {
                     _heroInventoryWindow.SetVisible(false);
                     _heroCrystalWindow.SetVisible(true);
+                }
+                else // Seeds tab — no hero-side panel
+                {
+                    _heroInventoryWindow.SetVisible(false);
+                    _heroCrystalWindow.SetVisible(false);
                 }
 
                 _heroInventoryWindow.ToFront();
@@ -470,11 +565,12 @@ namespace PitHero.UI
                     _vaultItemGrid?.Update(mousePos);
                     PerformHeroInventoryPeriodicHoverCheck(mousePos);
                 }
-                else
+                else if (_activeTabIndex == 1)
                 {
                     _vaultCrystalGrid?.Update(mousePos);
                     _heroCrystalPanel?.Update(mousePos);
                 }
+                // Seeds tab (index 2): no per-frame grid update needed
             }
         }
 
@@ -1101,6 +1197,110 @@ namespace PitHero.UI
         // ──────────────────────────────────────────────────────────────────────────
         // Inner helpers
         // ──────────────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// A single slot in the Seeds shop grid.  Draws the crop's fully-grown sprite, overlays
+        /// a live owned-count badge (read each frame so it updates immediately after a purchase),
+        /// shows a hover tooltip with crop name and price, and fires OnBuyClicked on left-mouse-up.
+        /// </summary>
+        private class SeedShopSlot : Element, IInputListener
+        {
+            // Inventory-slot background drawn at the same translucency as the inventory UI.
+            private static readonly Color SlotBgColor = new Color(255, 255, 255, 100);
+            private readonly Sprite          _sprite;
+            private readonly CropType        _crop;
+            private readonly CropPlantingService _cropService;
+            private readonly SpriteDrawable  _draw;
+            private SpriteDrawable _background;
+            private Sprite _selectBox;
+            private bool   _hovered;
+            private readonly string _tooltipText;
+
+            /// <summary>Fired when the player left-clicks this slot.</summary>
+            public event System.Action<CropType> OnBuyClicked;
+
+            public SeedShopSlot(Sprite sprite, CropType crop, CropPlantingService cropService, string tooltipText)
+            {
+                _sprite      = sprite;
+                _crop        = crop;
+                _cropService = cropService;
+                _tooltipText = tooltipText;
+                _draw        = sprite != null ? new SpriteDrawable(sprite) : null;
+                SetTouchable(Touchable.Enabled);
+                SetSize(40f, 40f);
+
+                if (Core.Content != null)
+                {
+                    var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
+                    var bgSprite   = itemsAtlas?.GetSprite("Inventory");
+                    if (bgSprite != null)
+                        _background = new SpriteDrawable(bgSprite);
+
+                    var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
+                    _selectBox  = uiAtlas?.GetSprite("SelectBox");
+                }
+            }
+
+            public override void Draw(Batcher batcher, float parentAlpha)
+            {
+                _background?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), SlotBgColor);
+
+                _draw?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+
+                if (_hovered && _selectBox != null)
+                    new SpriteDrawable(_selectBox).Draw(
+                        batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+
+                // Live count from seed inventory (read each frame — auto-updates after purchase)
+                int count = _cropService?.SeedInventory != null
+                    ? _cropService.SeedInventory[(int)_crop]
+                    : 0;
+                var font = Nez.Graphics.Instance?.BitmapFont;
+                if (font != null)
+                {
+                    string countStr = count.ToString();
+                    float tw = font.MeasureString(countStr).X;
+                    var pos = new Vector2(GetX() + GetWidth() - tw - 2f, GetY() + GetHeight() - font.LineHeight - 1f);
+                    StackCountText.Draw(batcher, font, countStr, pos, Color.White);
+                }
+            }
+
+            void IInputListener.OnMouseEnter()
+            {
+                _hovered = true;
+                if (!string.IsNullOrEmpty(_tooltipText))
+                {
+                    var stage = GetStage();
+                    if (stage != null)
+                    {
+                        var mp = stage.GetMousePosition();
+                        HoverTextManager.ShowHoverText(_tooltipText, mp.X + 12f, mp.Y - 4f);
+                    }
+                    else
+                    {
+                        HoverTextManager.ShowHoverText(_tooltipText, GetX(), GetY() + GetHeight() + 4f);
+                    }
+                }
+            }
+
+            void IInputListener.OnMouseExit()
+            {
+                _hovered = false;
+                HoverTextManager.HideHoverText();
+            }
+
+            void IInputListener.OnMouseMoved(Vector2 mousePos) { }
+
+            bool IInputListener.OnLeftMousePressed(Vector2 mousePos) => true;
+
+            void IInputListener.OnLeftMouseUp(Vector2 mousePos) => OnBuyClicked?.Invoke(_crop);
+
+            bool IInputListener.OnRightMousePressed(Vector2 mousePos) => false;
+
+            void IInputListener.OnRightMouseUp(Vector2 mousePos) { }
+
+            bool IInputListener.OnMouseScrolled(int mouseWheelDelta) => false;
+        }
 
         /// <summary>Full-stage transparent overlay that dismisses the vault crystal card on any click.
         /// Crystal-slot clicks are handled by the slots themselves (windows use ChildrenOnly touchable).</summary>

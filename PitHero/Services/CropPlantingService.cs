@@ -101,6 +101,17 @@ namespace PitHero.Services
             return plan.Type;
         }
 
+        /// <summary>
+        /// Adds the given number of seeds for the specified crop to the seed inventory.
+        /// Safe to call before the overlay assigns the array — allocates a fallback if needed.
+        /// </summary>
+        public void AddSeeds(CropType crop, int count)
+        {
+            if (SeedInventory == null)
+                SeedInventory = new int[CropTypeInfo.Count];
+            SeedInventory[(int)crop] += count;
+        }
+
         /// <summary>Destroys all world entities and clears the plan registry.</summary>
         public void Clear()
         {

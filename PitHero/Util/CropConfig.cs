@@ -239,6 +239,28 @@ namespace PitHero.Util
             };
         }
 
+        /// <summary>Gold cost to purchase one seed of this crop from the Second Chance Shop.</summary>
+        public static int GetSeedPrice(CropType crop)
+        {
+            return crop switch
+            {
+                CropType.AppleTree  => 200,
+                CropType.Corn       => 50,
+                CropType.Eggplant   => 50,
+                CropType.Grapes     => 50,
+                CropType.Lettuce    => 50,
+                CropType.Onion      => 50,
+                CropType.Potato     => 50,
+                CropType.Pumpkin    => 100,
+                CropType.Sugarcane  => 50,
+                CropType.Tomato     => 50,
+                CropType.Turnip     => 50,
+                CropType.Watermelon => 100,
+                CropType.Wheat      => 25,
+                _                   => 50,
+            };
+        }
+
         /// <summary>
         /// Per-stage time multiplier applied while a repeat-harvest crop regrows. 1.0 = normal
         /// rate; 1.5 = slower regrowth (Corn, Tomato, AppleTree).
