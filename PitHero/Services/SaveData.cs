@@ -456,8 +456,7 @@ namespace PitHero.Services
             TileStates = new List<SavedTileState>();
             PlacedBuildings = new List<SavedBuilding>();
             SeedInventory = new int[Farming.CropTypeInfo.Count];
-            for (int i = 0; i < Farming.CropTypeInfo.Count; i++)
-                SeedInventory[i] = 16;
+            SeedInventory[(int)Farming.CropType.Wheat] = 5;
             CropPlans = new List<SavedCropPlan>();
             NextBuildingId = 1;
             CropGrowthStates = new List<SavedCropGrowthState>();

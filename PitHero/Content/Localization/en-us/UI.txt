@@ -244,11 +244,13 @@ DialogConfirmDismissMercenary,Dismiss Mercenary
 ConfirmDismissMercenaryMessage,Are you sure you want to dismiss {0}? Their gear will be returned to your inventory.
 WindowSecondChanceShop,Second Chance Shop
 TabItems,Items
+TabSeeds,Seeds
 SecondChanceBuyPrompt,Buy for {0} gold?
 SecondChanceBuyQtyPrompt,Buy {0}?
 SecondChanceBuyTotal,Total: {0} gold
 SecondChanceNoGold,Not enough gold!
 SecondChanceSellPrompt,Sell for {0} gold?
+SecondChanceOwnedCount,Owned: {0}
 
 # Event Console Messages
 ConsoleAttack,{0} attacks {1} for {2} damage!
@@ -271,6 +273,7 @@ ConsoleNightSleep,Turning in for the night
 ConsoleMercenaryHired,{0} {1} was hired
 ConsoleMonsterAttack,{0} attacks {1} for {2} damage!
 ConsoleItemFound,{0} found {1}.
+ConsoleSeedsFound,{0} found {1}x {2} seeds!
 ConsoleMonsterRecruited,{0} has recruited {1} the {2}
 ConsoleAutoEquip,{0} equipped {1}.
 ConsoleWelcome,Welcome, {0}!

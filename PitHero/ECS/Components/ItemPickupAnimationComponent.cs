@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Sprites;
+using Nez.Textures;
 using RolePlayingFramework.Equipment;
 
 namespace PitHero.ECS.Components
@@ -12,14 +13,24 @@ namespace PitHero.ECS.Components
     {
         private SpriteRenderer _renderer;
         private IItem _item;
+        private readonly Sprite _explicitSprite;
+        private readonly string _debugName;
         private Vector2 _startPosition;
         private float _animationDuration = 1.0f; // 1 second animation
         private float _elapsedTime;
         private bool _animationComplete = false;
 
+        /// <summary>Creates an animation that loads the sprite from Items.atlas by item name.</summary>
         public ItemPickupAnimationComponent(IItem item)
         {
             _item = item;
+        }
+
+        /// <summary>Creates an animation using an explicitly provided sprite (e.g. from CropsProps.atlas).</summary>
+        public ItemPickupAnimationComponent(Sprite sprite, string debugName)
+        {
+            _explicitSprite = sprite;
+            _debugName = debugName ?? "pickup";
         }
 
         public override void OnAddedToEntity()
@@ -28,11 +39,21 @@ namespace PitHero.ECS.Components
             _startPosition = Entity.Transform.Position;
             _elapsedTime = 0f;
             LoadItemSprite();
-            Debug.Log($"[ItemPickupAnimation] Started pickup animation for {_item.Name} at position X: {_startPosition.X}, Y: {_startPosition.Y}");
+            string displayName = _item?.Name ?? _debugName ?? "?";
+            Debug.Log($"[ItemPickupAnimation] Started pickup animation for {displayName} at position X: {_startPosition.X}, Y: {_startPosition.Y}");
         }
 
         private void LoadItemSprite()
         {
+            // Use explicit sprite when provided (e.g. crop sprites from CropsProps.atlas)
+            if (_explicitSprite != null)
+            {
+                _renderer = Entity.AddComponent(new SpriteRenderer(_explicitSprite));
+                _renderer.SetRenderLayer(GameConfig.RenderLayerPickupItem);
+                Debug.Log($"[ItemPickupAnimation] Using explicit sprite '{_debugName}'");
+                return;
+            }
+
             try
             {
                 var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
@@ -76,7 +97,8 @@ namespace PitHero.ECS.Components
             {
                 // Animation complete
                 _animationComplete = true;
-                Debug.Log($"[ItemPickupAnimation] Animation complete for {_item.Name}, removing entity");
+                string displayName = _item?.Name ?? _debugName ?? "?";
+                Debug.Log($"[ItemPickupAnimation] Animation complete for {displayName}, removing entity");
                 Entity.Destroy();
                 return;
             }

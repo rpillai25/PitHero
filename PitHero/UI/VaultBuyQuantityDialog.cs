@@ -27,6 +27,10 @@ namespace PitHero.UI
         /// <param name="skin">Nez.UI skin to use.</param>
         /// <param name="onConfirm">Invoked with the chosen quantity when Yes is pressed.</param>
         /// <param name="onCancel">Invoked when No is pressed (nullable).</param>
+        /// <param name="ownedCount">
+        /// When &gt;= 0, an "Owned: N" row is rendered above the quantity selector.
+        /// Pass -1 (default) to omit the row; existing call sites are unaffected.
+        /// </param>
         public VaultBuyQuantityDialog(
             string title,
             string itemName,
@@ -34,7 +38,8 @@ namespace PitHero.UI
             int maxQty,
             Skin skin,
             System.Action<int> onConfirm,
-            System.Action onCancel = null)
+            System.Action onCancel = null,
+            int ownedCount = -1)
             : base(title, skin)
         {
             _unitPrice = unitPrice;
@@ -43,7 +48,9 @@ namespace PitHero.UI
 
             var textService = Core.Services.GetService<TextService>();
 
-            SetSize(380, maxQty > 1 ? 220 : 180);
+            bool showOwned = ownedCount >= 0;
+            int extraHeight = showOwned ? 30 : 0;
+            SetSize(380, (maxQty > 1 ? 220 : 180) + extraHeight);
             SetMovable(false);
 
             var dialogTable = new Table();
@@ -57,6 +64,17 @@ namespace PitHero.UI
             promptLabel.SetWrap(true);
             dialogTable.Add(promptLabel).Width(330f).SetPadBottom(10);
             dialogTable.Row();
+
+            // ── Owned count row (seeds tab only) ────────────────────────────────
+            if (showOwned)
+            {
+                string ownedText = string.Format(
+                    textService.DisplayText(TextType.UI, UITextKey.SecondChanceOwnedCount),
+                    ownedCount);
+                var ownedLabel = new Label(ownedText, skin);
+                dialogTable.Add(ownedLabel).Width(330f).SetPadBottom(8);
+                dialogTable.Row();
+            }
 
             // ── Quantity selector row (hidden when maxQty == 1) ─────────────────
             if (maxQty > 1)

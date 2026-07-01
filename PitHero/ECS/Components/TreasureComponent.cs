@@ -1,6 +1,7 @@
 using Nez;
 using Nez.Sprites;
 using PitHero.Config;
+using PitHero.Farming;
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Jobs;
@@ -80,6 +81,15 @@ namespace PitHero.ECS.Components
             get => _containedItem;
             set => _containedItem = value;
         }
+
+        /// <summary>
+        /// When non-null, this chest yields seeds of the specified crop type instead of a normal item.
+        /// Transient — set during <see cref="InitializeForPitLevel"/>; cleared after pickup.
+        /// </summary>
+        public CropType? ContainedSeedType;
+
+        /// <summary>Number of seeds to award when <see cref="ContainedSeedType"/> is set.</summary>
+        public int ContainedSeedCount;
 
         public override void OnAddedToEntity()
         {
@@ -713,6 +723,16 @@ namespace PitHero.ECS.Components
         public void InitializeForPitLevel(int pitLevel, LootJobContext jobContext = default)
         {
             Level = DetermineTreasureLevel(pitLevel);
+
+            // Seed drop: any uncommon (level-2) chest has a chance to yield seeds instead of normal loot.
+            if (Level == 2 && Nez.Random.NextFloat() < BalanceConfig.SeedChestDropRate)
+            {
+                ContainedSeedType  = (CropType)Nez.Random.NextInt(CropTypeInfo.Count);
+                ContainedSeedCount = Nez.Random.NextInt(3) + 1; // 1..3
+                ContainedItem = null;
+                return;
+            }
+
             if (CaveBiomeConfig.IsCaveLevel(pitLevel))
             {
                 ContainedItem = GenerateCaveItemForTreasureLevel(Level, jobContext);
