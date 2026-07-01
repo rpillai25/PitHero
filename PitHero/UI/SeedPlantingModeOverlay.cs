@@ -604,7 +604,7 @@ namespace PitHero.UI
                 {
                     string countStr = count.ToString();
                     float tw = font.MeasureString(countStr).X;
-                    batcher.DrawString(font, countStr,
+                    StackCountText.Draw(batcher, font, countStr,
                         new Vector2(GetX() + GetWidth() - tw - 2f, GetY() + GetHeight() - font.LineHeight - 1f),
                         Color.White);
                 }

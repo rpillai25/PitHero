@@ -109,7 +109,7 @@ namespace PitHero.UI
                 if (_stack.Quantity > 1 && _font != null)
                 {
                     var qty = _stack.Quantity.ToString();
-                    batcher.DrawString(_font, qty, new Vector2(x + 2, y + h - _font.LineHeight), Color.White);
+                    StackCountText.Draw(batcher, _font, qty, new Vector2(x + 2, y + h - _font.LineHeight), Color.White);
                 }
             }
 

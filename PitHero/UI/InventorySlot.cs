@@ -218,7 +218,7 @@ namespace PitHero.UI
                         var stackText = consumable.StackCount.ToString();
                         // Apply offset to stack count as well
                         var textPosition = new Vector2(GetX() + 2f * Scale, GetY() + _itemSpriteOffsetY + GetHeight() - _font.LineHeight * Scale + 2f * Scale);
-                        batcher.DrawString(_font, stackText, textPosition, Color.White, 0f, Vector2.Zero, Scale, SpriteEffects.None, 0f);
+                        StackCountText.Draw(batcher, _font, stackText, textPosition, Color.White, Scale);
                     }
                 }
             }
