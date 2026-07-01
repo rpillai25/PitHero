@@ -13,6 +13,9 @@ namespace PitHero.UI
     /// </summary>
     public class VaultBuyQuantityDialog : Window
     {
+        /// <summary>Minimum height (px) for every button in this dialog. Adjust here to retune all at once.</summary>
+        private const float ButtonHeight = 16f;
+
         private int _quantity = 1;
         private readonly int _unitPrice;
         private readonly int _maxQty;
@@ -90,14 +93,14 @@ namespace PitHero.UI
 
                 var decreaseBtn = new TextButton("<", skin, "ph-default");
                 decreaseBtn.OnClicked += (b) => ChangeQuantity(-1);
-                qtyTable.Add(decreaseBtn).Width(40).SetPadRight(8);
+                qtyTable.Add(decreaseBtn).Width(40).SetMinHeight(ButtonHeight).SetPadRight(8);
 
                 _quantityLabel = new Label("1", skin);
                 qtyTable.Add(_quantityLabel).Width(40);
 
                 var increaseBtn = new TextButton(">", skin, "ph-default");
                 increaseBtn.OnClicked += (b) => ChangeQuantity(1);
-                qtyTable.Add(increaseBtn).Width(40).SetPadLeft(8);
+                qtyTable.Add(increaseBtn).Width(40).SetMinHeight(ButtonHeight).SetPadLeft(8);
 
                 dialogTable.Add(qtyTable).SetPadBottom(8);
                 dialogTable.Row();
@@ -130,7 +133,7 @@ namespace PitHero.UI
                 _onConfirm?.Invoke(_quantity);
                 Remove();
             };
-            buttonTable.Add(yesButton).Width(80).SetPadRight(10);
+            buttonTable.Add(yesButton).Width(80).SetMinHeight(ButtonHeight).SetPadRight(10);
 
             var noButton = new TextButton(textService.DisplayText(TextType.UI, UITextKey.ButtonNo), skin, "ph-default");
             noButton.OnClicked += (b) =>
@@ -138,7 +141,7 @@ namespace PitHero.UI
                 onCancel?.Invoke();
                 Remove();
             };
-            buttonTable.Add(noButton).Width(80);
+            buttonTable.Add(noButton).Width(80).SetMinHeight(ButtonHeight);
 
             dialogTable.Add(buttonTable);
 
