@@ -1204,10 +1204,18 @@ namespace PitHero.UI
         /// </summary>
         private class SeedShopSlot : Element, IInputListener
         {
+            // Inventory-slot background drawn at the same translucency as the inventory UI.
+            private static readonly Color SlotBgColor = new Color(255, 255, 255, 100);
+            // White stack-count text with a dark outline for a readable look against any crop sprite.
+            // Both are scoped to this slot so they never affect other UI text.
+            private static readonly Color CountTextColor    = Color.White;
+            private static readonly Color CountOutlineColor = new Color(0, 20, 60, 220);
+
             private readonly Sprite          _sprite;
             private readonly CropType        _crop;
             private readonly CropPlantingService _cropService;
             private readonly SpriteDrawable  _draw;
+            private SpriteDrawable _background;
             private Sprite _selectBox;
             private bool   _hovered;
             private readonly string _tooltipText;
@@ -1227,6 +1235,11 @@ namespace PitHero.UI
 
                 if (Core.Content != null)
                 {
+                    var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
+                    var bgSprite   = itemsAtlas?.GetSprite("Inventory");
+                    if (bgSprite != null)
+                        _background = new SpriteDrawable(bgSprite);
+
                     var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
                     _selectBox  = uiAtlas?.GetSprite("SelectBox");
                 }
@@ -1234,6 +1247,8 @@ namespace PitHero.UI
 
             public override void Draw(Batcher batcher, float parentAlpha)
             {
+                _background?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), SlotBgColor);
+
                 _draw?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
 
                 if (_hovered && _selectBox != null)
@@ -1249,9 +1264,15 @@ namespace PitHero.UI
                 {
                     string countStr = count.ToString();
                     float tw = font.MeasureString(countStr).X;
-                    batcher.DrawString(font, countStr,
-                        new Vector2(GetX() + GetWidth() - tw - 2f, GetY() + GetHeight() - font.LineHeight - 1f),
-                        Color.White);
+                    var pos = new Vector2(GetX() + GetWidth() - tw - 2f, GetY() + GetHeight() - font.LineHeight - 1f);
+
+                    // Dark 1px outline (4 directions) so the radiant blue reads against any crop sprite.
+                    batcher.DrawString(font, countStr, pos + new Vector2(-1f,  0f), CountOutlineColor);
+                    batcher.DrawString(font, countStr, pos + new Vector2( 1f,  0f), CountOutlineColor);
+                    batcher.DrawString(font, countStr, pos + new Vector2( 0f, -1f), CountOutlineColor);
+                    batcher.DrawString(font, countStr, pos + new Vector2( 0f,  1f), CountOutlineColor);
+
+                    batcher.DrawString(font, countStr, pos, CountTextColor);
                 }
             }
 
