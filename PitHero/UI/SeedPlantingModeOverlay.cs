@@ -559,11 +559,15 @@ namespace PitHero.UI
 
         private class CropSlotButton : Element, IInputListener
         {
+            // Inventory-slot background drawn at the same translucency as the inventory UI.
+            private static readonly Color SlotBgColor = new Color(255, 255, 255, 100);
+
             private readonly Sprite     _sprite;
             private readonly string     _tooltipText;
             private readonly int[]      _inventory;
             private readonly int        _inventoryIndex;
             private readonly SpriteDrawable _draw;
+            private SpriteDrawable _background;
             private Sprite _selectBox;
             private bool   _hovered;
 
@@ -581,6 +585,11 @@ namespace PitHero.UI
 
                 if (Core.Content != null)
                 {
+                    var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
+                    var bgSprite   = itemsAtlas?.GetSprite("Inventory");
+                    if (bgSprite != null)
+                        _background = new SpriteDrawable(bgSprite);
+
                     var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
                     _selectBox  = uiAtlas?.GetSprite("SelectBox");
                 }
@@ -588,6 +597,8 @@ namespace PitHero.UI
 
             public override void Draw(Batcher batcher, float parentAlpha)
             {
+                _background?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), SlotBgColor);
+
                 _draw?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
 
                 if (_hovered && _selectBox != null)
