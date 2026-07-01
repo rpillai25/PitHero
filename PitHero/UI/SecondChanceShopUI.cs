@@ -359,7 +359,8 @@ namespace PitHero.UI
                     cropPlantingService.AddSeeds(crop, qty);
                 },
                 onCancel: null,
-                ownedCount: ownedCount);
+                ownedCount: ownedCount,
+                wrapQuantity: true);
             qtyDialog.Show(_stage);
         }
 

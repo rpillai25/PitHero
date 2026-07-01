@@ -16,6 +16,7 @@ namespace PitHero.UI
         private int _quantity = 1;
         private readonly int _unitPrice;
         private readonly int _maxQty;
+        private readonly bool _wrapQuantity;
         private Label _quantityLabel;
         private Label _totalCostLabel;
         private readonly System.Action<int> _onConfirm;
@@ -31,6 +32,10 @@ namespace PitHero.UI
         /// When &gt;= 0, an "Owned: N" row is rendered above the quantity selector.
         /// Pass -1 (default) to omit the row; existing call sites are unaffected.
         /// </param>
+        /// <param name="wrapQuantity">
+        /// When true, the quantity selector wraps around (1 → maxQty when decremented, maxQty → 1 when
+        /// incremented) instead of clamping. Defaults to false so existing call sites keep clamping.
+        /// </param>
         public VaultBuyQuantityDialog(
             string title,
             string itemName,
@@ -39,11 +44,13 @@ namespace PitHero.UI
             Skin skin,
             System.Action<int> onConfirm,
             System.Action onCancel = null,
-            int ownedCount = -1)
+            int ownedCount = -1,
+            bool wrapQuantity = false)
             : base(title, skin)
         {
             _unitPrice = unitPrice;
             _maxQty    = maxQty > 1 ? maxQty : 1;
+            _wrapQuantity = wrapQuantity;
             _onConfirm = onConfirm;
 
             var textService = Core.Services.GetService<TextService>();
@@ -153,8 +160,16 @@ namespace PitHero.UI
         private void ChangeQuantity(int delta)
         {
             int next = _quantity + delta;
-            if (next < 1) next = 1;
-            if (next > _maxQty) next = _maxQty;
+            if (_wrapQuantity)
+            {
+                if (next < 1) next = _maxQty;
+                else if (next > _maxQty) next = 1;
+            }
+            else
+            {
+                if (next < 1) next = 1;
+                if (next > _maxQty) next = _maxQty;
+            }
             if (next == _quantity) return;
 
             _quantity = next;
