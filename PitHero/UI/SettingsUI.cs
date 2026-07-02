@@ -147,6 +147,12 @@ namespace PitHero.UI
         private float _consoleIdleTimer = 0f;
         private bool _consoleAnimating = false;
 
+        // Auto-hide markers: shown at each element's resting center while it is hidden, so the
+        // player can see where to hover to reveal it (issue #278).
+        private UIMarkerComponent _topBarMarker;
+        private UIMarkerComponent _shortcutBarMarker;
+        private UIMarkerComponent _consoleMarker;
+
         /// <summary>Gets the HeroUI instance.</summary>
         public HeroUI HeroUI => _heroUI;
 
@@ -314,6 +320,26 @@ namespace PitHero.UI
 
             // Set up initial layout
             LayoutUI();
+        }
+
+        /// <summary>
+        /// Creates the three auto-hide marker entities (top bar, shortcut bar, event console) on the
+        /// given scene. Must be called with the scene that owns this UI — during Scene.Initialize()
+        /// (when InitializeUI runs) Core.Scene still points at the previous scene, so the caller
+        /// passes its scene explicitly. Each marker is a screen-space sprite positioned/toggled each
+        /// frame by the auto-hide updaters.
+        /// </summary>
+        public void CreateMarkers(Scene scene)
+        {
+            if (scene == null) return; // e.g. unit tests without an active scene
+
+            var lightPurple = new Color(200, 160, 255);
+            _topBarMarker = scene.CreateEntity("ui-marker-topbar")
+                .AddComponent(new UIMarkerComponent(lightPurple, flipY: false));
+            _shortcutBarMarker = scene.CreateEntity("ui-marker-shortcut")
+                .AddComponent(new UIMarkerComponent(Color.Gold, flipY: true));
+            _consoleMarker = scene.CreateEntity("ui-marker-console")
+                .AddComponent(new UIMarkerComponent(Color.LightBlue, flipY: true));
         }
         /// <summary>
         /// Safely retrieves TextService. Returns null if Core is not initialized (e.g., in unit tests).
@@ -1547,12 +1573,22 @@ namespace PitHero.UI
         /// <summary>
         /// Updates the UI bar auto-hide timer, proximity detection, and slide animation each frame.
         /// </summary>
+        /// <summary>
+        /// Tests whether the (stage-coord) cursor is within the 32x32 marker rect plus 5px padding.
+        /// </summary>
+        private static bool MouseInMarkerRect(bool inWindow, float mx, float my, float cx, float cy)
+        {
+            const float half = 16f + 5f; // 32px sprite half-extent + 5px pad
+            return inWindow && mx >= cx - half && mx <= cx + half && my >= cy - half && my <= cy + half;
+        }
+
         private void UpdateUIBarAutoHide()
         {
             if (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive || IsHarvestedCropsModeActive)
             {
                 _uiBarIdleTimer = 0f;
                 if (_uiBarHidden) ShowUIBar();
+                _topBarMarker?.SetVisible(false);
                 return;
             }
 
@@ -1579,8 +1615,19 @@ namespace PitHero.UI
                                  (_monsterUI != null && _monsterUI.IsWindowVisible) ||
                                  (_secondChanceShopUI != null && _secondChanceShopUI.IsWindowVisible);
 
-            // Proximity or an open window always resets the idle timer and shows the bar.
-            if (mouseInProximity || anyWindowOpen)
+            // Marker sits flush against the top edge, centered on the button group.
+            float topCX = (_uiBarLeft + _uiBarRight) * 0.5f;
+            float topCY = 16f; // 32px sprite half-height => top edge flush at y=0
+            _topBarMarker?.SetCenter(topCX, topCY);
+
+            // While hidden, reveal only when hovering the marker (tight); while visible, use the
+            // existing bar-bounds proximity to keep the idle timer reset.
+            bool topReveal = _uiBarHidden
+                ? MouseInMarkerRect(mouseInWindow, stageMX, stageMY, topCX, topCY)
+                : mouseInProximity;
+
+            // Reveal-zone hover or an open window always resets the idle timer and shows the bar.
+            if (topReveal || anyWindowOpen)
             {
                 _uiBarIdleTimer = 0f;
                 if (_uiBarHidden)
@@ -1592,6 +1639,9 @@ namespace PitHero.UI
                 if (_uiBarIdleTimer >= GameConfig.UIBarAutoHideDelay && !_uiBarHidden)
                     HideUIBar();
             }
+
+            // Marker is only shown once the bar has fully slid off-screen.
+            _topBarMarker?.SetVisible(_uiBarHidden && !_uiBarAnimating);
 
             if (!_uiBarAnimating)
                 return;
@@ -1659,7 +1709,17 @@ namespace PitHero.UI
 
             float sbScale = isHalfMode ? 2f : 1f;
 
-            if (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive || IsHarvestedCropsModeActive)
+            // Marker sits flush against the bottom edge, centered on the shortcut bar.
+            // _shortcutBar.GetX() includes the inventory-open _offsetX shift, but the bar is
+            // force-shown (never hidden) while Hero UI is open, so _offsetX == 0 whenever the
+            // marker is actually visible.
+            float sbMarkerWidth = 8 * (32f * sbScale + 1f * sbScale);
+            float scCX = _shortcutBar.GetX() + sbMarkerWidth * 0.5f;
+            float scCY = _stage.GetHeight() - 16f; // 32px sprite half-height => bottom edge flush
+            _shortcutBarMarker?.SetCenter(scCX, scCY);
+
+            bool sbFarmActive = IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive || IsHarvestedCropsModeActive;
+            if (sbFarmActive)
             {
                 // Hide the shortcut bar while any farm UI is visible.
                 if (!_shortcutBarHidden) HideShortcutBar();
@@ -1692,7 +1752,13 @@ namespace PitHero.UI
                 // Hero UI open: show bar immediately (drag-to-shortcut feedback) and suppress idle hide.
                 bool heroUIOpen = _heroUI != null && _heroUI.IsWindowVisible;
 
-                if (mouseNearShortcutBar || heroUIOpen)
+                // While hidden, reveal only when hovering the marker (tight); while visible, use the
+                // existing bar-bounds proximity to keep the idle timer reset.
+                bool scReveal = _shortcutBarHidden
+                    ? MouseInMarkerRect(mouseInWindow, stageMX, stageMY, scCX, scCY)
+                    : mouseNearShortcutBar;
+
+                if (scReveal || heroUIOpen)
                 {
                     _shortcutBarIdleTimer = 0f;
                     if (_shortcutBarHidden)
@@ -1705,6 +1771,9 @@ namespace PitHero.UI
                         HideShortcutBar();
                 }
             }
+
+            // Marker is only shown once the bar has fully slid off-screen, and never during farm modes.
+            _shortcutBarMarker?.SetVisible(_shortcutBarHidden && !_shortcutBarAnimating && !sbFarmActive);
 
             if (!_shortcutBarAnimating) return;
 
@@ -1756,7 +1825,13 @@ namespace PitHero.UI
         {
             if (_eventConsolePanel == null) return;
 
-            if (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive || IsHarvestedCropsModeActive)
+            // Marker sits flush against the bottom edge, centered on the event console footprint.
+            float ecCX = _eventConsolePanel.BaseX + 480f * 0.5f;
+            float ecCY = _stage.GetHeight() - 16f; // 32px sprite half-height => bottom edge flush
+            _consoleMarker?.SetCenter(ecCX, ecCY);
+
+            bool ecFarmActive = IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive || IsHarvestedCropsModeActive;
+            if (ecFarmActive)
             {
                 // Hide the event console while any farm UI is visible.
                 if (!_consoleHidden) HideEventConsole();
@@ -1784,7 +1859,13 @@ namespace PitHero.UI
                                         stageMY >= baseY - consolePad &&
                                         stageMY <= baseY + consoleH + consolePad;
 
-                if (mouseNearConsole)
+                // While hidden, reveal only when hovering the marker (tight); while visible, use the
+                // existing footprint proximity to keep the idle timer reset.
+                bool ecReveal = _consoleHidden
+                    ? MouseInMarkerRect(mouseInWindow, stageMX, stageMY, ecCX, ecCY)
+                    : mouseNearConsole;
+
+                if (ecReveal)
                 {
                     _consoleIdleTimer = 0f;
                     if (_consoleHidden)
@@ -1797,6 +1878,9 @@ namespace PitHero.UI
                         HideEventConsole();
                 }
             }
+
+            // Marker is only shown once the panel has fully slid off-screen, and never during farm modes.
+            _consoleMarker?.SetVisible(_consoleHidden && !_consoleAnimating && !ecFarmActive);
 
             if (!_consoleAnimating) return;
 

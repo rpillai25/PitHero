@@ -1262,6 +1262,9 @@ namespace PitHero.ECS.Scenes
 
             _settingsUI = new SettingsUI(Core.Instance);
             _settingsUI.InitializeUI(uiCanvas.Stage);
+            // Create auto-hide marker entities on THIS scene. During Scene.Initialize() (where this
+            // runs) Core.Scene still points at the previous scene, so pass the scene explicitly.
+            _settingsUI.CreateMarkers(this);
             Core.Services.AddService(_settingsUI);
             // Remove duplicate HeroUI creation - it's already handled by SettingsUI
             // Initialize HeroUI for pit priority management
