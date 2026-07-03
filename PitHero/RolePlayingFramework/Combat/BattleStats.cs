@@ -42,7 +42,7 @@ namespace RolePlayingFramework.Combat
     public static BattleStats CalculateForMonster(IEnemy enemy)
     {
         // Attack = Strength (monsters have no weapon bonus)
-        int attack = enemy.Stats.Strength * 20;
+        int attack = enemy.Stats.Strength;
 
         // Defense = Agility/2 (monsters have no armor bonus)
         int defense = enemy.Stats.Agility / 2;
