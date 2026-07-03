@@ -851,12 +851,9 @@ namespace PitHero.AI
                 var recruited = alliedMonsterMgr.TryRecruit(enemy);
                 if (recruited != null)
                 {
+                    // The recruitment console event is emitted from AlliedMonsterManager.TryRecruit so it
+                    // exactly matches the popup notification message.
                     Debug.Log($"[AttackMonster] {enemy.Name} recruited as '{recruited.Name}'");
-                    var evtSvc = Core.Services.GetService<GameEventService>();
-                    evtSvc?.EmitLocalized(EventPriority.High, UITextKey.ConsoleMonsterRecruited,
-                        (hero.Name, GameConfig.ConsoleColorHeroName),
-                        (recruited.Name, GameConfig.ConsoleColorEnemyName),
-                        (evtSvc?.MonsterName(enemy.Name) ?? enemy.Name, GameConfig.ConsoleColorEnemyName));
                 }
             }
         }
