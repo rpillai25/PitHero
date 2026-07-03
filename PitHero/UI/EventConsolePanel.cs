@@ -22,9 +22,10 @@ namespace PitHero.UI
         private readonly GameEventService _eventService;
         private bool _scrollToBottom;
         private float _layoutWidth = 480f;
+        private float _layoutHeight = 120f;
 
-        /// <summary>Fires whenever a new event is added to the log, including while hidden.</summary>
-        public event Action OnNewEvent;
+        /// <summary>Fires whenever a new event is added to the log, including while hidden. Carries the event priority.</summary>
+        public event Action<EventPriority> OnNewEvent;
 
         private float _baseX;
         private float _baseY;
@@ -34,6 +35,11 @@ namespace PitHero.UI
         public float BaseX => _baseX;
         /// <summary>The resting Y position before any slide offset is applied.</summary>
         public float BaseY => _baseY;
+
+        /// <summary>The actual rendered width (layout width times the current display scale).</summary>
+        public float VisualWidth => _layoutWidth * GetScaleX();
+        /// <summary>The actual rendered height (layout height times the current display scale).</summary>
+        public float VisualHeight => _layoutHeight * GetScaleY();
 
         public EventConsolePanel(Skin skin, GameEventService eventService) : base()
         {
@@ -62,6 +68,7 @@ namespace PitHero.UI
         {
             bool widthChanged = width != _layoutWidth;
             _layoutWidth = width;
+            _layoutHeight = height;
             _scrollPaneCell.Width(width).Height(height);
             SetSize(width, height);
             InvalidateHierarchy();
@@ -103,7 +110,7 @@ namespace PitHero.UI
             _eventService.OnEvent -= OnEventReceived;
         }
 
-        private void OnEventReceived(ConsoleSegment[] segments)
+        private void OnEventReceived(ConsoleSegment[] segments, EventPriority priority)
         {
             if (_events.Count >= MaxEvents)
             {
@@ -118,7 +125,7 @@ namespace PitHero.UI
             }
 
             _scrollToBottom = true;
-            OnNewEvent?.Invoke();
+            OnNewEvent?.Invoke(priority);
         }
 
         /// <summary>Scrolls to the bottom after layout has been validated so _maxY is current.</summary>

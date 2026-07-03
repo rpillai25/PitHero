@@ -1805,15 +1805,25 @@ namespace PitHero.ECS.Scenes
             // Anchor the visual bottom edge 16px above the screen bottom.
             float panelY = GameConfig.VirtualHeight - 16f - visualH;
 
+            // Lower bound for panelX so the console never overlaps the shortcut bar.
             float halfShift = halfMode ? -96f : 0f;
-            float panelX = barRightEdge + oneSlotPadding + halfShift;
+            float minPanelX = barRightEdge + oneSlotPadding + halfShift;
 
-            // In half mode, fill from panelX to the right screen edge so the scrollbar is always
-            // visible and text wraps within the available space. Divide by displayScale because
-            // the Group transform scales the layout back up visually.
-            float layoutW = halfMode
-                ? (GameConfig.VirtualWidth - panelX) / displayScale
-                : 480f;
+            // Anchor the console's right edge flush against the right screen edge (issue #279).
+            // Normal mode keeps the fixed 480px layout width; half mode stretches to fill the space
+            // from panelX to the right edge (divided by displayScale since the Group transform scales
+            // the layout back up visually).
+            float panelX, layoutW;
+            if (halfMode)
+            {
+                panelX = minPanelX;
+                layoutW = (GameConfig.VirtualWidth - panelX) / displayScale;
+            }
+            else
+            {
+                layoutW = 480f;
+                panelX = System.Math.Max(minPanelX, GameConfig.VirtualWidth - layoutW * displayScale);
+            }
 
             _eventConsolePanel.SetDisplayScale(displayScale);
             _eventConsolePanel.SetLayoutSize(layoutW, panelH);
