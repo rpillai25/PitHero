@@ -853,7 +853,7 @@ namespace PitHero.AI
                 {
                     Debug.Log($"[AttackMonster] {enemy.Name} recruited as '{recruited.Name}'");
                     var evtSvc = Core.Services.GetService<GameEventService>();
-                    evtSvc?.EmitLocalized(UITextKey.ConsoleMonsterRecruited,
+                    evtSvc?.EmitLocalized(EventPriority.High, UITextKey.ConsoleMonsterRecruited,
                         (hero.Name, GameConfig.ConsoleColorHeroName),
                         (recruited.Name, GameConfig.ConsoleColorEnemyName),
                         (evtSvc?.MonsterName(enemy.Name) ?? enemy.Name, GameConfig.ConsoleColorEnemyName));
@@ -992,7 +992,7 @@ namespace PitHero.AI
 
                     var evtSvcSkillDeath = Core.Services.GetService<GameEventService>();
                     if (evtSvcSkillDeath != null)
-                        evtSvcSkillDeath.EmitLocalized(UITextKey.ConsoleMonsterDied,
+                        evtSvcSkillDeath.EmitLocalized(enemy.IsBoss ? EventPriority.High : EventPriority.Normal, UITextKey.ConsoleMonsterDied,
                             (evtSvcSkillDeath.MonsterName(enemy.Name), GameConfig.ConsoleColorEnemyName));
 
                     validMonsters.Remove(monsterEntity);
@@ -1045,7 +1045,7 @@ namespace PitHero.AI
 
                     var evtSvcDeath = Core.Services.GetService<GameEventService>();
                     if (evtSvcDeath != null)
-                        evtSvcDeath.EmitLocalized(UITextKey.ConsoleMonsterDied,
+                        evtSvcDeath.EmitLocalized(targetEnemy.IsBoss ? EventPriority.High : EventPriority.Normal, UITextKey.ConsoleMonsterDied,
                             (evtSvcDeath.MonsterName(targetEnemy.Name), GameConfig.ConsoleColorEnemyName));
 
                     validMonsters.Remove(targetMonster);
@@ -1193,7 +1193,7 @@ namespace PitHero.AI
 
                         var evtSvcAtkSkillDeath = Core.Services.GetService<GameEventService>();
                         if (evtSvcAtkSkillDeath != null)
-                            evtSvcAtkSkillDeath.EmitLocalized(UITextKey.ConsoleMonsterDied,
+                            evtSvcAtkSkillDeath.EmitLocalized(sEnemy.IsBoss ? EventPriority.High : EventPriority.Normal, UITextKey.ConsoleMonsterDied,
                                 (evtSvcAtkSkillDeath.MonsterName(sEnemy.Name), GameConfig.ConsoleColorEnemyName));
 
                         validMonsters.Remove(sMonsterEntity);
@@ -1262,7 +1262,7 @@ namespace PitHero.AI
 
                     var evtSvcMercDeath = Core.Services.GetService<GameEventService>();
                     if (evtSvcMercDeath != null)
-                        evtSvcMercDeath.EmitLocalized(UITextKey.ConsoleMonsterDied,
+                        evtSvcMercDeath.EmitLocalized(targetEnemy.IsBoss ? EventPriority.High : EventPriority.Normal, UITextKey.ConsoleMonsterDied,
                             (evtSvcMercDeath.MonsterName(targetEnemy.Name), GameConfig.ConsoleColorEnemyName));
 
                     validMonsters.Remove(paTarget);
