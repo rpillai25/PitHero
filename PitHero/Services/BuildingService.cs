@@ -91,6 +91,15 @@ namespace PitHero.Services
             return false;
         }
 
+        /// <summary>Returns the placed building with the given UniqueId, or null if none exists.</summary>
+        public PlacedBuilding GetBuildingById(int uniqueId)
+        {
+            for (int i = 0; i < _buildings.Count; i++)
+                if (_buildings[i].UniqueId == uniqueId)
+                    return _buildings[i];
+            return null;
+        }
+
         /// <summary>Returns the placed building whose footprint covers the given tile, or null.</summary>
         public PlacedBuilding GetBuildingAtTile(int tileX, int tileY)
         {

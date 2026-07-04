@@ -732,6 +732,16 @@ namespace PitHero.ECS.Components
             if (elapsedTimeInState < GameConfig.HarvestDepositSeconds)
                 return;
 
+            // The storage may have been moved while the worker was hidden inside — reappear at the
+            // building's current doorway rather than the now-empty original spot.
+            var storage = _buildingService?.GetBuildingById(_harvestBuildingId);
+            if (storage != null)
+            {
+                var door = Util.BuildingConfig.GetDoorTile(storage.Type,
+                    new Point(storage.TileX, storage.TileY));
+                Entity.Transform.Position = TileCenter(door) + new Vector2(0f, -GameConfig.TileSize);
+            }
+
             BodyAnimator?.SetEnabled(true);
             CurrentState = FarmingMonsterState.Idle;
         }
