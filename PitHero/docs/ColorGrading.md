@@ -1,8 +1,10 @@
-# Color Grading — Post-Processing & Day/Night System
+# Color Grading — Tilemap Day/Night System
 
 ## Overview
 
-A full-screen color grading pass runs every frame via `ColorGradingPostProcessor`. It cross-fades between two LUT textures (LUT A and LUT B) using a GPU-side `BlendFactor` uniform, so all transitions happen on the shader with no CPU overhead beyond computing the blend value.
+Day/night color grading is applied to the **tilemap terrain layers** (Base, Detail, Top) plus a few **environment sprites** (pit walls, and placed buildings — MonsterHouse & CropStorage) by attaching a shared `Material` (backed by `ColorGradingEffect`) to their renderers. It cross-fades between two LUT textures (LUT A and LUT B) using a GPU-side `BlendFactor` uniform, so all transitions happen on the shader with no CPU overhead beyond computing the blend value.
+
+Because the grade lives on individual renderers' material rather than a full-screen post-processor, **actors, monsters, dropped items, the FogOfWar layer, and the UI are NOT tinted** — they keep their normal daytime colors at all times of day. `ColorGradingController` owns the effect, the three LUTs, and the shared material, and drives `UpdateTimeOfDay()` each frame. It is registered as a Nez service so any spawner (e.g. `PitGenerator`, `BuildingModeOverlay`) can fetch `ColorGradingController.Material` and `SetMaterial` it onto the sprites it wants graded.
 
 ## LUT Files
 
@@ -41,17 +43,19 @@ The ±30-minute windows around the 6 AM and 6 PM boundaries (5:30–6:30) ensure
 | `PitHero/Content/Shaders/ColorGrading.fxb` | Compiled binary — regenerate via `compileShadersFNA.bat` from that directory |
 | `PitHero/Content/Shaders/compileShadersFNA.bat` | Calls `fxc.exe /T fx_2_0 ColorGrading.fx /Fo ColorGrading.fxb` |
 | `PitHero/Graphics/Effects/ColorGradingEffect.cs` | Effect wrapper — exposes `LookUpTableA`, `LookUpTableB`, `BlendFactor`, `Size`, `SizeRoot` |
-| `PitHero/Graphics/Effects/ColorGradingPostProcessor.cs` | `PostProcessor<ColorGradingEffect>` — loads all 3 LUTs, implements `UpdateTimeOfDay()` |
-| `PitHero/ECS/Scenes/MainGameScene.cs` | Instantiates the PostProcessor; calls `_colorGrading?.UpdateTimeOfDay()` each frame after `InGameTimeService.Update()` |
+| `PitHero/Graphics/Effects/ColorGradingController.cs` | Owns the effect, all 3 LUTs, and the shared `Material`; implements `UpdateTimeOfDay()` |
+| `PitHero/ECS/Scenes/MainGameScene.cs` | Creates the controller in `LoadMap()`, `SetMaterial`s it onto the Base/Detail/Top renderers; calls `_colorGrading?.UpdateTimeOfDay()` each frame after `InGameTimeService.Update()`; disposes it in `Unload()` |
 
 All files are in namespace `PitHero.Rendering` (not `PitHero.Graphics`, which collides with `Nez.Graphics`).
 
 ## How the Shader Works
 
-The pixel shader (`ColorGrading.fx`) reads the scene from `InputSampler : register(s0)` (bound automatically by the Nez `Batcher`). For each pixel it performs a trilinear LUT lookup on both `LUTSamplerA` and `LUTSamplerB`:
+The pixel shader (`ColorGrading.fx`) reads the sampled tile texel from `InputSampler : register(s0)` (bound automatically by the Nez `Batcher` — the tile atlas when used as a sprite material). For each pixel it performs a trilinear LUT lookup on both `LUTSamplerA` and `LUTSamplerB`:
 - Hardware bilinear handles red+green interpolation within a blue-slice.
 - Manual `lerp` between adjacent blue-slices handles the blue axis.
 - A final `lerp(gradedA, gradedB, BlendFactor)` cross-fades the two results.
+
+Because it runs as a **per-sprite material** (not a full-screen pass over an opaque frame), the shader preserves the source alpha and applies the vertex color: `return float4(graded, src.a) * input.Color;`. This keeps transparent tile pixels transparent and honors per-layer opacity. Pixel-art tiles have hard (binary) alpha, so this is correct whether textures are premultiplied or not; if soft/antialiased edges ever show color halos, switch to the premultiplied form `float4(graded * src.a, src.a) * input.Color`.
 
 `InvLUTSize = 1 / (SizeRoot × Size)` is updated from C# whenever `Size` or `SizeRoot` change and stays constant otherwise.
 
@@ -59,12 +63,14 @@ The pixel shader (`ColorGrading.fx`) reads the scene from `InputSampler : regist
 
 **Adding a new LUT phase** (e.g., an indoor or cave look):
 1. Drop a matching 64×64 PNG in `Content/Shaders/`.
-2. Load it in `ColorGradingPostProcessor.OnAddedToScene()` and store as a field.
+2. Load it in the `ColorGradingController` constructor and store as a field.
 3. Add branches to `UpdateTimeOfDay()` as needed.
-4. Dispose it in `Unload()`.
+4. Dispose it in `Dispose()`.
 
 **Adjusting timing constants**: All time boundaries are plain float literals in `UpdateTimeOfDay()` — edit in place. Hours are fractional (e.g. 17.5f = 5:30 PM).
 
-**Disabling the effect**: `_colorGrading.Enabled = false` at runtime, or comment out the `AddPostProcessor` call in `MainGameScene.Initialize()`.
+**Changing which layers are graded**: In `MainGameScene.LoadMap()`, the shared `_colorGrading.Material` is assigned to `baseLayerRenderer`, `detailLayerRenderer`, and `topLayerRenderer`. Add `fogLayerRenderer.SetMaterial(...)` to include FogOfWar, or drop a `SetMaterial` call to exclude a layer.
+
+**Disabling the effect**: skip the three `SetMaterial(...)` calls in `MainGameScene.LoadMap()` (the terrain renderers then draw with no material).
 
 **Recompiling the shader**: Run `compileShadersFNA.bat` from `PitHero/Content/Shaders/` after any `.fx` edit. The `.fxb` must be recompiled before the change takes effect.

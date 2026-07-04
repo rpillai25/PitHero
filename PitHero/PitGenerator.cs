@@ -701,6 +701,10 @@ namespace PitHero
                         {
                             var renderer = entity.AddComponent(new YSortSpriteRenderer(wallSprite));
                             renderer.SetRenderLayer(GameConfig.RenderLayerSingleTileObject);
+                            // Pit walls follow the day/night color grade like the terrain they sit on.
+                            var colorGrading = Core.Services.GetService<Rendering.ColorGradingController>();
+                            if (colorGrading?.Material != null)
+                                renderer.SetMaterial(colorGrading.Material);
                         }
                         else
                         {

@@ -290,6 +290,7 @@ namespace PitHero.UI
 
             var renderer = entity.AddComponent(new SpriteRenderer(sprite));
             renderer.SetRenderLayer(GameConfig.RenderLayerBuilding);
+            ApplyDayNightGrading(renderer);
 
             Core.Services.GetService<BuildingService>()?.AddBuilding(new PlacedBuilding
             {
@@ -299,6 +300,17 @@ namespace PitHero.UI
                 UniqueId    = uniqueId,
                 WorldEntity = entity
             });
+        }
+
+        /// <summary>
+        /// Attaches the shared day/night grading material (if present) so placed buildings
+        /// tint with the terrain. Ghost/preview sprites are intentionally left ungraded.
+        /// </summary>
+        private void ApplyDayNightGrading(SpriteRenderer renderer)
+        {
+            var colorGrading = Core.Services.GetService<Rendering.ColorGradingController>();
+            if (colorGrading?.Material != null)
+                renderer.SetMaterial(colorGrading.Material);
         }
 
         // ── Ghost management ──────────────────────────────────────────────────────
@@ -339,6 +351,7 @@ namespace PitHero.UI
 
             var renderer = entity.AddComponent(new SpriteRenderer(sprite));
             renderer.SetRenderLayer(GameConfig.RenderLayerBuilding);
+            ApplyDayNightGrading(renderer);
 
             entity.AddComponent(new BuildingFallAnimator(finalPos.Y));
 

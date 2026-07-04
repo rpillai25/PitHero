@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Nez;
@@ -5,34 +6,41 @@ using PitHero.Services;
 
 namespace PitHero.Rendering
 {
-    public class ColorGradingPostProcessor : PostProcessor<ColorGradingEffect>
+    /// <summary>
+    /// Owns the day/night LUT grading <see cref="ColorGradingEffect"/> and a shared
+    /// <see cref="Material"/> that is attached to the tilemap terrain renderers. Unlike the
+    /// old full-screen post-processor, this grades only the layers whose renderers use
+    /// <see cref="Material"/>, leaving actors/monsters/objects/UI untinted.
+    /// </summary>
+    public class ColorGradingController : IDisposable
     {
+        /// <summary>Shared material to assign to the tilemap terrain renderers via SetMaterial.</summary>
+        public Material Material { get; private set; }
+
+        ColorGradingEffect _effect;
+
         Texture2D _lutDay;
         Texture2D _lutDuskDawn;
         Texture2D _lutNight;
 
-        public ColorGradingPostProcessor(int executionOrder) : base(executionOrder)
+        public ColorGradingController()
         {
-        }
-
-        public override void OnAddedToScene(Scene scene)
-        {
-            base.OnAddedToScene(scene);
-            Effect = new ColorGradingEffect();
+            _effect = new ColorGradingEffect();
+            Material = new Material(_effect);
 
             _lutDay      = LoadLUTFromPath("Content/Shaders/lut_default.png");
             _lutDuskDawn = LoadLUTFromPath("Content/Shaders/lut_dusk_dawn.png");
             _lutNight    = LoadLUTFromPath("Content/Shaders/lut_night.png");
 
-            Effect.LookUpTableA = _lutDay;
-            Effect.LookUpTableB = _lutDay;
-            Effect.BlendFactor  = 0f;
+            _effect.LookUpTableA = _lutDay;
+            _effect.LookUpTableB = _lutDay;
+            _effect.BlendFactor  = 0f;
         }
 
         public void UpdateTimeOfDay()
         {
             var ts = Core.Services.GetService<InGameTimeService>();
-            if (ts == null || Effect == null) return;
+            if (ts == null || _effect == null) return;
 
             float h = ts.Hour + ts.Minute / 60f;
 
@@ -48,19 +56,18 @@ namespace PitHero.Rendering
             else if (h >= 19f   && h < 21f)   { lutA = _lutDuskDawn; lutB = _lutNight;    blend = (h - 19f) / 2f; }
             else                               { lutA = _lutNight;    lutB = _lutNight;    blend = 0f; }
 
-            Effect.LookUpTableA = lutA;
-            Effect.LookUpTableB = lutB;
-            Effect.BlendFactor  = blend;
+            _effect.LookUpTableA = lutA;
+            _effect.LookUpTableB = lutB;
+            _effect.BlendFactor  = blend;
         }
 
-        public override void Unload()
+        public void Dispose()
         {
-            Effect?.Dispose();
-            Effect = null;
+            Material = null;
+            _effect?.Dispose();      _effect = null;
             _lutDay?.Dispose();      _lutDay = null;
             _lutDuskDawn?.Dispose(); _lutDuskDawn = null;
             _lutNight?.Dispose();    _lutNight = null;
-            base.Unload();
         }
 
         static Texture2D LoadLUTFromPath(string contentPath)

@@ -39,15 +39,18 @@ struct PSInput
 
 float4 PSApplyLUT(PSInput input) : COLOR0
 {
-    float4 color = tex2D(InputSampler, input.TexCoord);
+    // As a sprite Material this samples each tile's atlas texture, so we must preserve
+    // the source alpha (transparent tile pixels stay transparent) and honor the vertex
+    // color (layer opacity / tint). LUT indexing still runs on the source RGB.
+    float4 src = tex2D(InputSampler, input.TexCoord);
 
-    float blue      = color.b * (Size - 1);
+    float blue      = src.b * (Size - 1);
     float blueFloor = floor(blue);
     float blueFrac  = frac(blue);
     float blueNext  = min(blueFloor + 1, Size - 1);
 
-    float red   = color.r * (Size - 1);
-    float green = color.g * (Size - 1);
+    float red   = src.r * (Size - 1);
+    float green = src.g * (Size - 1);
 
     float col0 = fmod(blueFloor, SizeRoot);
     float row0 = floor(blueFloor / SizeRoot);
@@ -65,7 +68,11 @@ float4 PSApplyLUT(PSInput input) : COLOR0
 
     float4 gradedA = lerp(tex2D(LUTSamplerA, uv0), tex2D(LUTSamplerA, uv1), blueFrac);
     float4 gradedB = lerp(tex2D(LUTSamplerB, uv0), tex2D(LUTSamplerB, uv1), blueFrac);
-    return lerp(gradedA, gradedB, BlendFactor);
+    float3 graded  = lerp(gradedA, gradedB, BlendFactor).rgb;
+
+    // Keep the source alpha and apply the vertex tint so transparency and layer
+    // opacity survive when this runs as a per-sprite tilemap material.
+    return float4(graded, src.a) * input.Color;
 }
 
 technique ApplyLUT

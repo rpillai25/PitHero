@@ -47,7 +47,7 @@ namespace PitHero.ECS.Scenes
         private Entity _mercenaryNameLabelEntity; // Entity for rendering name above hovered mercenary
         private Services.HeroPromotionService _heroPromotionService; // Manages hero crystal promotion after death
         private EventConsolePanel _eventConsolePanel; // MMO-style event log panel in the lower-right corner
-        private ColorGradingPostProcessor _colorGrading;
+        private Rendering.ColorGradingController _colorGrading;
         private TillModeOverlay _tillModeOverlay;
         private Label _tillingLabel;
         private bool _wasInTillMode;
@@ -147,8 +147,6 @@ namespace PitHero.ECS.Scenes
             AddSceneComponent<YSortManager>();
 
             SetupUIOverlay();
-
-            _colorGrading = AddPostProcessor(new ColorGradingPostProcessor(0));
         }
 
         /// <summary>
@@ -157,6 +155,9 @@ namespace PitHero.ECS.Scenes
         /// </summary>
         public override void Unload()
         {
+            Core.Services.RemoveService(typeof(Rendering.ColorGradingController));
+            _colorGrading?.Dispose();
+            _colorGrading = null;
             _eventConsolePanel?.Dispose();
             Core.Content.UnloadAsset<TmxMap>(_mapPath);
             Core.Services.RemoveService(typeof(Services.GameEventService));
@@ -751,6 +752,17 @@ namespace PitHero.ECS.Scenes
             var fogLayerRenderer = tiledEntity.AddComponent(new TiledMapRenderer(_tmxMap));
             fogLayerRenderer.SetLayerToRender("FogOfWar");
             fogLayerRenderer.SetRenderLayer(GameConfig.RenderLayerFogOfWar);
+
+            // Day/night color grading applies to the terrain tilemap layers plus a few
+            // environment sprites (pit walls, placed buildings) via a shared material, so
+            // actors/monsters/dropped items/UI keep their normal daytime colors. FogOfWar is
+            // intentionally left ungraded. Registered as a service so PitGenerator and
+            // BuildingModeOverlay can attach the same material to the sprites they create.
+            _colorGrading = new Rendering.ColorGradingController();
+            Core.Services.AddService(_colorGrading);
+            baseLayerRenderer.SetMaterial(_colorGrading.Material);
+            detailLayerRenderer.SetMaterial(_colorGrading.Material);
+            topLayerRenderer.SetMaterial(_colorGrading.Material);
 
             _cameraController?.ConfigureZoomForMap(_mapPath);
 
