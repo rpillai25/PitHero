@@ -80,7 +80,11 @@ namespace PitHero.Services
             _alliedMonsters.Add(allied);
             var textService = Core.Services?.GetService<TextService>();
             var enemyDisplayName = textService?.DisplayText(PitHero.TextType.Monster, enemy.Name) ?? enemy.Name;
-            _pendingNotifications.Enqueue($"{enemyDisplayName} {firstName} was recruited!");
+            var recruitMessage = $"{enemyDisplayName} {firstName} was recruited!";
+            _pendingNotifications.Enqueue(recruitMessage);
+            // Mirror the popup notification into the event console as a High-priority event so it
+            // auto-shows anywhere (single-sourced here so the two messages can never diverge).
+            Core.Services?.GetService<GameEventService>()?.Emit(recruitMessage, EventPriority.High);
             Debug.Log($"[AlliedMonsterManager] {enemy.Name} joined as '{firstName}'! Fishing:{fishing} Cooking:{cooking} Farming:{farming}");
             return allied;
         }

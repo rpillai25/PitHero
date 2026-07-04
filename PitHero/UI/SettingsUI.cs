@@ -222,11 +222,33 @@ namespace PitHero.UI
                 _eventConsolePanel.OnNewEvent += OnConsoleNewEvent;
         }
 
-        private void OnConsoleNewEvent()
+        private void OnConsoleNewEvent(EventPriority priority)
         {
+            // The console auto-hides only when both the global auto-hide and the per-console "Hide Event
+            // Console" options are on. When either is off the console is always visible, so the new
+            // auto-show gating is irrelevant and a new event brings it up exactly as before (issue #279).
+            bool autoHideActive = _autoHideEnabled && _hideEventConsole;
+            bool autoShowAllowed = !autoHideActive
+                || priority == EventPriority.High                        // High-priority events auto-show anywhere
+                || (!WindowManager.IsHalfHeightMode() && IsPitInView()); // otherwise only full-screen + pit in view
+            if (!autoShowAllowed)
+                return;
+
             _consoleIdleTimer = 0f;
             if (_consoleHidden)
                 ShowEventConsole();
+        }
+
+        /// <summary>Returns true when the current pit's world bounds intersect the camera viewport.</summary>
+        private bool IsPitInView()
+        {
+            var scene = Core.Scene;
+            var pitWidthManager = Core.Services?.GetService<PitWidthManager>();
+            if (scene?.Camera == null || pitWidthManager == null)
+                return false;
+
+            var p = pitWidthManager.CalculateCurrentPitWorldBounds();
+            return scene.Camera.Bounds.Intersects(new RectangleF(p.X, p.Y, p.Width, p.Height));
         }
 
         // Window size modes
@@ -1825,8 +1847,13 @@ namespace PitHero.UI
         {
             if (_eventConsolePanel == null) return;
 
+            // Use the panel's actual rendered footprint so marker placement and hover proximity are
+            // correct in both normal and half-window (2x) modes.
+            float visW = _eventConsolePanel.VisualWidth;
+            float visH = _eventConsolePanel.VisualHeight;
+
             // Marker sits flush against the bottom edge, centered on the event console footprint.
-            float ecCX = _eventConsolePanel.BaseX + 480f * 0.5f;
+            float ecCX = _eventConsolePanel.BaseX + visW * 0.5f;
             float ecCY = _stage.GetHeight() - 16f; // 32px sprite half-height => bottom edge flush
             _consoleMarker?.SetCenter(ecCX, ecCY);
 
@@ -1851,13 +1878,11 @@ namespace PitHero.UI
                 const float consolePad = 16f;
                 float baseX = _eventConsolePanel.BaseX;
                 float baseY = _eventConsolePanel.BaseY;
-                const float consoleW = 480f;
-                const float consoleH = 120f;
                 bool mouseNearConsole = mouseInWindow &&
                                         stageMX >= baseX - consolePad &&
-                                        stageMX <= baseX + consoleW + consolePad &&
+                                        stageMX <= baseX + visW + consolePad &&
                                         stageMY >= baseY - consolePad &&
-                                        stageMY <= baseY + consoleH + consolePad;
+                                        stageMY <= baseY + visH + consolePad;
 
                 // While hidden, reveal only when hovering the marker (tight); while visible, use the
                 // existing footprint proximity to keep the idle timer reset.

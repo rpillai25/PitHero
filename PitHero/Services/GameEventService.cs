@@ -5,6 +5,14 @@ using PitHero;
 
 namespace PitHero.Services
 {
+    /// <summary>Priority of a game event. Normal events only auto-show the console under certain
+    /// conditions; High events auto-show anywhere regardless of window mode or camera view.</summary>
+    public enum EventPriority
+    {
+        Normal,
+        High
+    }
+
     /// <summary>A text segment with an associated display color, used for colored console rows.</summary>
     public readonly struct ConsoleSegment
     {
@@ -56,28 +64,32 @@ namespace PitHero.Services
             _textService = textService;
         }
 
-        /// <summary>Fired whenever a game event is emitted. Each element is a colored text segment.</summary>
-        public event Action<ConsoleSegment[]> OnEvent;
+        /// <summary>Fired whenever a game event is emitted. Carries the colored text segments and the event priority.</summary>
+        public event Action<ConsoleSegment[], EventPriority> OnEvent;
 
         /// <summary>Broadcasts a plain white message.</summary>
-        public void Emit(string message)
+        public void Emit(string message, EventPriority priority = EventPriority.Normal)
         {
-            OnEvent?.Invoke(new[] { new ConsoleSegment(message, Color.White) });
+            OnEvent?.Invoke(new[] { new ConsoleSegment(message, Color.White) }, priority);
         }
 
         /// <summary>Broadcasts a colored segment array built via <see cref="ConsoleSegment.Build"/>.</summary>
-        public void Emit(ConsoleSegment[] segments)
+        public void Emit(ConsoleSegment[] segments, EventPriority priority = EventPriority.Normal)
         {
-            OnEvent?.Invoke(segments);
+            OnEvent?.Invoke(segments, priority);
         }
 
-        /// <summary>Looks up the UI localized format for key and emits a colored segment row.</summary>
+        /// <summary>Looks up the UI localized format for key and emits a Normal-priority colored segment row.</summary>
         public void EmitLocalized(string key, params (string text, Color color)[] args)
+            => EmitLocalized(EventPriority.Normal, key, args);
+
+        /// <summary>Looks up the UI localized format for key and emits a colored segment row at the given priority.</summary>
+        public void EmitLocalized(EventPriority priority, string key, params (string text, Color color)[] args)
         {
             string format = _textService.DisplayText(TextType.UI, key);
             Emit(args.Length == 0
                 ? new[] { new ConsoleSegment(format, Color.White) }
-                : ConsoleSegment.Build(format, args));
+                : ConsoleSegment.Build(format, args), priority);
         }
 
         /// <summary>Resolves a localized monster name for use as an EmitLocalized argument.</summary>
