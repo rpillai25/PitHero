@@ -22,6 +22,16 @@ namespace PitHero.Services
         /// <summary>Fired after the set of placed buildings changes (placement or restore).</summary>
         public System.Action BuildingsChanged;
 
+        /// <summary>
+        /// Fired when an already-placed building is relocated (its TileX/TileY changed but UniqueId
+        /// is preserved). Lets in-flight workers (e.g. a farming monster carrying a crop to a Crop
+        /// Storage) reactively retarget the building's new location.
+        /// </summary>
+        public System.Action<PlacedBuilding> BuildingMoved;
+
+        /// <summary>Raises <see cref="BuildingMoved"/> for a building whose tile position just changed.</summary>
+        public void NotifyBuildingMoved(PlacedBuilding b) => BuildingMoved?.Invoke(b);
+
         /// <summary>Next ID to allocate. Persisted in the save file so IDs are never reused.</summary>
         public int NextId { get => _nextId; set => _nextId = value; }
 

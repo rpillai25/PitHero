@@ -200,6 +200,9 @@ namespace PitHero.UI
                     moved.WorldEntity.SetPosition(finalPos.X, finalPos.Y);
                     moved.WorldEntity.SetEnabled(true);
                 }
+
+                // Notify in-flight workers (e.g. a monster carrying a crop here) to retarget.
+                Core.Services.GetService<BuildingService>()?.NotifyBuildingMoved(moved);
             }
 
             EndMove();

@@ -24,6 +24,7 @@ namespace PitHero.ECS.Components
         private TilledTileService _tilledTileService;
         private CropGrowthService _cropGrowthService;
         private WetTileService _wetTileService;
+        private BuildingService _buildingService;
 
         /// <summary>Animator for the ForkedHoe swing; assigned by the coordinator at spawn.</summary>
         public PausableSpriteAnimator HoeAnimator;
@@ -100,8 +101,49 @@ namespace PitHero.ECS.Components
             _tilledTileService = Core.Services.GetService<TilledTileService>();
             _cropGrowthService = Core.Services.GetService<CropGrowthService>();
             _wetTileService = Core.Services.GetService<WetTileService>();
+            _buildingService = Core.Services.GetService<BuildingService>();
+            if (_buildingService != null)
+                _buildingService.BuildingMoved += OnBuildingMoved;
 
             InitialState = FarmingMonsterState.EmergeFromHouse;
+        }
+
+        public override void OnRemovedFromEntity()
+        {
+            if (_buildingService != null)
+                _buildingService.BuildingMoved -= OnBuildingMoved;
+            base.OnRemovedFromEntity();
+        }
+
+        /// <summary>
+        /// Reacts to a Crop Storage relocating while this worker is carrying a harvested crop to it.
+        /// Retargets the storage's new doorway so the worker follows it instead of walking to the now-empty
+        /// old spot. Falls back to the nearest storage with room if the new location is unreachable.
+        /// </summary>
+        private void OnBuildingMoved(Services.PlacedBuilding building)
+        {
+            if (building == null || !_harvestPickedUp || building.UniqueId != _harvestBuildingId)
+                return;
+
+            _harvestDoorTile = Util.BuildingConfig.GetDoorTile(building.Type,
+                new Point(building.TileX, building.TileY));
+
+            // Only actively re-path when already en route; earlier phases (e.g. the apple jump) will
+            // read the refreshed door tile when they transition into CarryHarvestToStorage.
+            if (CurrentState != FarmingMonsterState.CarryHarvestToStorage)
+                return;
+
+            if (TryWalkToStorageDoor())
+                return;
+
+            // New location unreachable — redirect to any storage that still has room.
+            if (_coordinator.TryFindNearestStorageWithCapacity(_mover.CurrentTile, _harvestCropType,
+                    out var fallback, out var fallbackDoor))
+            {
+                _harvestBuildingId = fallback.UniqueId;
+                _harvestDoorTile = fallbackDoor;
+                TryWalkToStorageDoor();
+            }
         }
 
         public override void Update()
