@@ -17,6 +17,16 @@ namespace PitHero.Util
         };
 
         /// <summary>
+        /// Inclusive tile-offset bounds of a building's footprint relative to its anchor tile.
+        /// Used to compute the world-space rectangle for the hover outline.
+        /// </summary>
+        public static (int dxMin, int dxMax, int dyMin, int dyMax) GetFootprintBounds(BuildingType t) => t switch
+        {
+            BuildingType.MonsterHouse => (-2, 2, -2, 2),
+            _                         => (-1, 1, -2, 1),
+        };
+
+        /// <summary>
         /// World position for the entity pivot given the anchor tile.
         /// MonsterHouse (5×5, odd×odd): pivot at tile centre.
         /// CropStorage  (3×4, odd×even): pivot X at tile centre, pivot Y at tile TOP edge so the

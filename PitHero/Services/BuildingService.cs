@@ -58,11 +58,19 @@ namespace PitHero.Services
             BuildingsChanged?.Invoke();
         }
 
-        public bool IsTileOccupied(int tileX, int tileY)
+        public bool IsTileOccupied(int tileX, int tileY) => IsTileOccupied(tileX, tileY, null);
+
+        /// <summary>
+        /// True if any placed building (other than <paramref name="ignore"/>) covers the tile.
+        /// The ignore parameter lets a building being moved overlap its own current footprint.
+        /// </summary>
+        public bool IsTileOccupied(int tileX, int tileY, PlacedBuilding ignore)
         {
             for (int i = 0; i < _buildings.Count; i++)
             {
                 var b = _buildings[i];
+                if (b == ignore)
+                    continue;
                 var fp = BuildingConfig.GetFootprint(b.Type);
                 for (int j = 0; j < fp.Length; j++)
                 {
@@ -71,6 +79,22 @@ namespace PitHero.Services
                 }
             }
             return false;
+        }
+
+        /// <summary>Returns the placed building whose footprint covers the given tile, or null.</summary>
+        public PlacedBuilding GetBuildingAtTile(int tileX, int tileY)
+        {
+            for (int i = 0; i < _buildings.Count; i++)
+            {
+                var b = _buildings[i];
+                var fp = BuildingConfig.GetFootprint(b.Type);
+                for (int j = 0; j < fp.Length; j++)
+                {
+                    if (b.TileX + fp[j].dx == tileX && b.TileY + fp[j].dy == tileY)
+                        return b;
+                }
+            }
+            return null;
         }
 
         public void Clear() => _buildings.Clear();

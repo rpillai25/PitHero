@@ -28,6 +28,12 @@ namespace PitHero.UI
         private BuildingType _selectedType;
         private bool _savedAutoScroll;
 
+        // ── Move state (relocating an already-placed building) ─────────────────────
+        private bool _moveActive;
+        private PlacedBuilding _movingBuilding;
+        private bool _savedMoveAutoScroll;
+        private bool _moveJustEnded;
+
         // ── Ghost entity ──────────────────────────────────────────────────────────
         private Entity _ghostEntity;
         private SpriteRenderer _ghostRenderer;
@@ -61,6 +67,23 @@ namespace PitHero.UI
         }
 
         public bool IsInPlacingState => _state == PlacementState.Placing;
+
+        /// <summary>True while an already-placed building is being relocated via the context menu.</summary>
+        public bool IsMoving => _moveActive;
+
+        /// <summary>
+        /// Returns true exactly once on the frame a move finished (confirm or cancel), then resets.
+        /// Lets the click handler ignore the same left-click that confirmed a move.
+        /// </summary>
+        public bool ConsumeMoveJustEnded()
+        {
+            if (_moveJustEnded)
+            {
+                _moveJustEnded = false;
+                return true;
+            }
+            return false;
+        }
 
         /// <summary>Fired when the Cancel button is clicked; caller should invoke FarmUI.ExitBuildingMode().</summary>
         public event System.Action RequestExitBuildingMode;
@@ -97,8 +120,104 @@ namespace PitHero.UI
 
         public void Update()
         {
+            if (_moveActive)
+            {
+                UpdateMoveState();
+                return;
+            }
             if (_state == PlacementState.Placing)
                 UpdatePlacingState();
+        }
+
+        // ── Move flow ─────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Enters relocation mode for an already-placed building. Reuses the placement ghost/preview;
+        /// the original building is hidden until the move is confirmed or cancelled.
+        /// </summary>
+        public void BeginMove(PlacedBuilding building)
+        {
+            if (building == null)
+                return;
+
+            _movingBuilding = building;
+            _selectedType   = building.Type;
+            _moveActive     = true;
+
+            _savedMoveAutoScroll = UIWindowManager.AutoScrollToHeroEnabled;
+            UIWindowManager.SetAutoScrollToHero(false);
+
+            building.WorldEntity?.SetEnabled(false);
+            CreateGhost(building.Type);
+
+            // Seed the ghost at the building's current spot so it doesn't flash at the world origin
+            // before the first UpdateMoveState() positions it under the cursor.
+            var startPos = BuildingConfig.GetWorldPos(building.TileX, building.TileY, building.Type);
+            _ghostEntity?.SetPosition(startPos.X, startPos.Y);
+        }
+
+        private void UpdateMoveState()
+        {
+            // Cancel via Escape or right-click, restoring the building at its original location.
+            if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape) || Input.RightMouseButtonPressed)
+            {
+                CancelMove();
+                return;
+            }
+
+            if (_stage.Hit(_stage.GetMousePosition()) != null)
+                return;
+
+            var worldPos = _scene.Camera.MouseToWorldPoint();
+            int tileX = (int)(worldPos.X / GameConfig.TileSize);
+            int tileY = (int)(worldPos.Y / GameConfig.TileSize);
+
+            var ghostPos = BuildingConfig.GetWorldPos(tileX, tileY, _selectedType);
+            bool valid   = IsValidPlacement(tileX, tileY, _selectedType, _movingBuilding);
+
+            if (_ghostEntity != null)
+            {
+                _ghostEntity.SetPosition(ghostPos.X, ghostPos.Y);
+                if (_ghostRenderer != null)
+                    _ghostRenderer.Color = valid
+                        ? new Color(0, 255, 0, 180)
+                        : new Color(255, 0, 0, 180);
+            }
+
+            if (Input.LeftMouseButtonPressed && valid)
+                ConfirmMove(tileX, tileY, ghostPos);
+        }
+
+        private void ConfirmMove(int tileX, int tileY, Vector2 finalPos)
+        {
+            var moved = _movingBuilding;
+            if (moved != null)
+            {
+                moved.TileX = tileX;
+                moved.TileY = tileY;
+                if (moved.WorldEntity != null)
+                {
+                    moved.WorldEntity.SetPosition(finalPos.X, finalPos.Y);
+                    moved.WorldEntity.SetEnabled(true);
+                }
+            }
+
+            EndMove();
+        }
+
+        private void CancelMove()
+        {
+            _movingBuilding?.WorldEntity?.SetEnabled(true);
+            EndMove();
+        }
+
+        private void EndMove()
+        {
+            DestroyGhost();
+            _moveActive = false;
+            _movingBuilding = null;
+            _moveJustEnded = true;
+            UIWindowManager.SetAutoScrollToHero(_savedMoveAutoScroll);
         }
 
         // ── Inventory window ──────────────────────────────────────────────────────
@@ -247,7 +366,9 @@ namespace PitHero.UI
                 ConfirmPlacement(tileX, tileY, _selectedType, ghostPos);
         }
 
-        private bool IsValidPlacement(int tx, int ty, BuildingType type)
+        private bool IsValidPlacement(int tx, int ty, BuildingType type) => IsValidPlacement(tx, ty, type, null);
+
+        private bool IsValidPlacement(int tx, int ty, BuildingType type, PlacedBuilding ignore)
         {
             var tileService     = Core.Services.GetService<TileStateService>();
             var buildingService = Core.Services.GetService<BuildingService>();
@@ -268,7 +389,7 @@ namespace PitHero.UI
                     if (tileService.HasFlag(tile, TileStateFlag.Tilled))      return false;
                 }
 
-                if (buildingService != null && buildingService.IsTileOccupied(fx, fy))
+                if (buildingService != null && buildingService.IsTileOccupied(fx, fy, ignore))
                     return false;
             }
             return true;

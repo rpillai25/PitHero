@@ -31,6 +31,9 @@ namespace PitHero.UI
         private const float WinPad   = 16f;
         private const int   Columns  = 8;
 
+        // When >= 0, only this Crop Storage building's slots are shown (UniqueId).
+        private int _filterBuildingId = -1;
+
         /// <summary>Fired when the player dismisses the viewer; caller should exit harvested-crops mode.</summary>
         public event System.Action RequestExitHarvestedCropsMode;
 
@@ -67,6 +70,16 @@ namespace PitHero.UI
         {
             _inventoryWindow?.SetVisible(false);
             _descWindow?.SetVisible(false);
+            _filterBuildingId = -1;
+        }
+
+        /// <summary>
+        /// Restricts the next viewer open to a single Crop Storage building (by UniqueId). Cleared
+        /// automatically when the viewer exits. Set before entering harvested-crops mode.
+        /// </summary>
+        public void SetBuildingFilter(int buildingId)
+        {
+            _filterBuildingId = buildingId;
         }
 
         // ── Inventory window ──────────────────────────────────────────────────────
@@ -109,8 +122,13 @@ namespace PitHero.UI
             var all = buildingService.GetAll();
             var storageBuildings = new System.Collections.Generic.List<PlacedBuilding>();
             for (int i = 0; i < all.Count; i++)
-                if (all[i].Type == BuildingType.CropStorage)
-                    storageBuildings.Add(all[i]);
+            {
+                if (all[i].Type != BuildingType.CropStorage)
+                    continue;
+                if (_filterBuildingId >= 0 && all[i].UniqueId != _filterBuildingId)
+                    continue;
+                storageBuildings.Add(all[i]);
+            }
             storageBuildings.Sort((a, b) => a.UniqueId.CompareTo(b.UniqueId));
 
             int col = 0;

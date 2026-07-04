@@ -2,6 +2,9 @@ ButtonYes,Yes
 ButtonNo,No
 ButtonCancel,Cancel
 ButtonClose,Close
+ButtonMove,Move
+ButtonShowMonsters,Show Monsters
+ButtonShowCrops,Show Crops
 ButtonSave,Save
 ButtonLoad,Load
 ButtonNew,New
