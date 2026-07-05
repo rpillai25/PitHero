@@ -19,6 +19,22 @@ namespace PitHero.Services
             _defeated.Add(enemyId);
         }
 
+        /// <summary>
+        /// Records a defeat from a monster type name (bare "Slime" or localized "Monster_Slime").
+        /// No-op if the name does not map to a known <see cref="EnemyId"/>. Used to retroactively
+        /// reconcile the defeated set from the allied roster on load (an allied monster can only
+        /// exist if its type was defeated at least once).
+        /// </summary>
+        public void MarkDefeatedByTypeName(string monsterTypeName)
+        {
+            if (string.IsNullOrEmpty(monsterTypeName)) return;
+            var bare = monsterTypeName.StartsWith("Monster_")
+                ? monsterTypeName.Substring("Monster_".Length)
+                : monsterTypeName;
+            if (System.Enum.TryParse(bare, out EnemyId id))
+                _defeated.Add(id);
+        }
+
         /// <summary>True if the given monster type has been defeated at least once.</summary>
         public bool IsDefeated(EnemyId enemyId) => _defeated.Contains(enemyId);
 

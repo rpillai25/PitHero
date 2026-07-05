@@ -513,7 +513,19 @@ namespace PitHero.ECS.Scenes
             }
 
             // Restore defeated-monster record (issue #283)
-            Core.Services.GetService<DefeatedMonsterService>()?.LoadFrom(pendingData.DefeatedMonsterTypes);
+            var defeatedMonsterService = Core.Services.GetService<DefeatedMonsterService>();
+            if (defeatedMonsterService != null)
+            {
+                defeatedMonsterService.LoadFrom(pendingData.DefeatedMonsterTypes);
+                // Reconcile from the allied roster: any monster living in a house must have been
+                // defeated at least once, so retroactively mark its type (covers pre-#283 saves).
+                if (alliedManager != null)
+                {
+                    var roster = alliedManager.AlliedMonsters;
+                    for (int i = 0; i < roster.Count; i++)
+                        defeatedMonsterService.MarkDefeatedByTypeName(roster[i].MonsterTypeName);
+                }
+            }
 
             // Restore hired mercenaries
             var mercManager = Core.Services.GetService<MercenaryManager>();

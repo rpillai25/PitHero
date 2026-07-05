@@ -78,6 +78,34 @@ namespace PitHero.Tests
 
         [TestMethod]
         [TestCategory("DefeatedMonsters")]
+        public void MarkDefeatedByTypeName_AcceptsBareAndLocalizedNames()
+        {
+            var service = new DefeatedMonsterService();
+
+            service.MarkDefeatedByTypeName("Slime");            // bare
+            service.MarkDefeatedByTypeName("Monster_Orc");      // localized key form
+
+            Assert.IsTrue(service.IsDefeated(EnemyId.Slime));
+            Assert.IsTrue(service.IsDefeated(EnemyId.Orc));
+            Assert.AreEqual(2, service.GetAll().Count);
+        }
+
+        [TestMethod]
+        [TestCategory("DefeatedMonsters")]
+        public void MarkDefeatedByTypeName_IgnoresUnknownOrEmpty()
+        {
+            var service = new DefeatedMonsterService();
+
+            service.MarkDefeatedByTypeName("NotARealMonster");
+            service.MarkDefeatedByTypeName("Monster_Nonsense");
+            service.MarkDefeatedByTypeName("");
+            service.MarkDefeatedByTypeName(null);
+
+            Assert.AreEqual(0, service.GetAll().Count);
+        }
+
+        [TestMethod]
+        [TestCategory("DefeatedMonsters")]
         public void LoadFrom_NullList_ClearsSet()
         {
             var service = new DefeatedMonsterService();
