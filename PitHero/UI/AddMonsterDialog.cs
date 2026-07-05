@@ -189,6 +189,10 @@ namespace PitHero.UI
             var style = new ImageButtonStyle { ImageUp = new SpriteDrawable(sprite) };
             var btn = new HoverableImageButton(style, typeDisplayName);
             btn.GetImageCell().Size(SlotSize, SlotSize);
+            // Show sprites at their natural size (centered in the 64×64 slot); only scale down the
+            // ones that are actually larger than the slot. Avoids blowing small sprites up to 64×64.
+            bool oversized = sprite.SourceRect.Width > SlotSize || sprite.SourceRect.Height > SlotSize;
+            btn.GetImage().SetScaling(oversized ? Scaling.Fit : Scaling.None);
             btn.SetDisabled(remaining <= 0);
             btn.OnClicked += (_) => PromptPurchase(enemy, typeDisplayName);
             return btn;
