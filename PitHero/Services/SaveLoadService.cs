@@ -325,6 +325,11 @@ namespace PitHero.Services
                 }
             }
 
+            // Defeated-monster record (issue #283)
+            var defeatedMonsterService = Core.Services.GetService<DefeatedMonsterService>();
+            if (defeatedMonsterService != null)
+                data.DefeatedMonsterTypes = defeatedMonsterService.ToNames();
+
             // Hired mercenaries
             var mercManager = Core.Services.GetService<MercenaryManager>();
             if (mercManager != null)

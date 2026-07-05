@@ -61,6 +61,7 @@ namespace PitHero.ECS.Scenes
         private HarvestedCropsModeOverlay _harvestedCropsModeOverlay;
         private bool _wasInHarvestedCropsMode;
         private BuildingContextMenu _buildingContextMenu; // Popup shown when a placed building is clicked
+        private AddMonsterDialog _addMonsterDialog; // Dialog for manually adding monsters to a house (issue #283)
         private Services.PlacedBuilding _hoveredBuilding; // Building currently under the cursor (hover outline)
         private Entity _buildingHoverOutlineEntity; // Entity rendering the white hover outline
         private Label _plantingCropsLabel;
@@ -511,6 +512,21 @@ namespace PitHero.ECS.Scenes
                 }
             }
 
+            // Restore defeated-monster record (issue #283)
+            var defeatedMonsterService = Core.Services.GetService<DefeatedMonsterService>();
+            if (defeatedMonsterService != null)
+            {
+                defeatedMonsterService.LoadFrom(pendingData.DefeatedMonsterTypes);
+                // Reconcile from the allied roster: any monster living in a house must have been
+                // defeated at least once, so retroactively mark its type (covers pre-#283 saves).
+                if (alliedManager != null)
+                {
+                    var roster = alliedManager.AlliedMonsters;
+                    for (int i = 0; i < roster.Count; i++)
+                        defeatedMonsterService.MarkDefeatedByTypeName(roster[i].MonsterTypeName);
+                }
+            }
+
             // Restore hired mercenaries
             var mercManager = Core.Services.GetService<MercenaryManager>();
             if (mercManager != null && pendingData.HiredMercenaries != null && pendingData.HiredMercenaries.Count > 0)
@@ -818,6 +834,10 @@ namespace PitHero.ECS.Scenes
                     _settingsUI?.EnterHarvestedCropsMode();
                 }
             };
+
+            // Add Monsters dialog — opened from the Monster House context menu (issue #283).
+            _addMonsterDialog = new AddMonsterDialog(UI.PitHeroSkin.CreateSkin(), _uiStage);
+            _buildingContextMenu.OnAddMonsters += (pb) => _addMonsterDialog?.ShowForHouse(pb.UniqueId);
 
             // Initialize pit width manager after map and services are set up
             SetupPitWidthManager();

@@ -28,6 +28,7 @@ namespace PitHero
             Services.AddService(new PitMerchantVault());
             Services.AddService(new SecondChanceMerchantVault());
             Services.AddService(new GameStateService());
+            Services.AddService(new DefeatedMonsterService());
             Services.AddService(new InGameTimeService());
             Services.AddService(new HairstyleQueueService(GameConfig.MaleHeroHairstyleCount));
             Services.AddService(new HeroDesignService());

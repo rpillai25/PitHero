@@ -8,14 +8,17 @@ namespace PitHero.UI
 {
     /// <summary>
     /// Small popup shown when a placed building is clicked. Offers Move and a type-specific
-    /// "Show" action (Show Monsters for a Monster House, Show Crops for a Crop Storage). Pauses the
+    /// "Show" action (Show Monsters for a Monster House, Show Crops for a Crop Storage), plus an
+    /// "Add Monsters" action for a Monster House that still has room (issue #283). Pauses the
     /// game while open, mirroring <see cref="MercenaryHireDialog"/>.
     /// </summary>
     public class BuildingContextMenu : Window
     {
+        private readonly Table _content;
         private readonly Label _titleLabel;
         private readonly TextButton _moveButton;
         private readonly TextButton _showButton;
+        private readonly TextButton _addMonstersButton;
         private readonly TextButton _cancelButton;
         private PlacedBuilding _building;
         private bool _isVisible;
@@ -27,6 +30,9 @@ namespace PitHero.UI
         /// <summary>Fired when the player chooses the Show action for the current building.</summary>
         public event System.Action<PlacedBuilding> OnShow;
 
+        /// <summary>Fired when the player chooses Add Monsters for a Monster House.</summary>
+        public event System.Action<PlacedBuilding> OnAddMonsters;
+
         /// <summary>Whether the context menu is currently visible.</summary>
         public bool IsVisible => _isVisible;
 
@@ -35,29 +41,26 @@ namespace PitHero.UI
             SetMovable(false);
             SetResizable(false);
 
-            var content = new Table();
-            content.Pad(12f);
+            _content = new Table();
+            _content.Pad(12f);
 
+            // Buttons are created once (so their handlers stay wired) and re-added to the content
+            // table in Show() based on the building type and capacity.
             _titleLabel = new Label("", skin, "ph-default");
-            content.Add(_titleLabel).SetPadBottom(8f);
-            content.Row();
 
             _moveButton = new TextButton(GetText(UITextKey.ButtonMove), skin, "ph-default");
             _moveButton.OnClicked += (_) => OnMoveClicked();
-            content.Add(_moveButton).Width(140f).SetPadBottom(4f);
-            content.Row();
 
             _showButton = new TextButton(GetText(UITextKey.ButtonShowMonsters), skin, "ph-default");
             _showButton.OnClicked += (_) => OnShowClicked();
-            content.Add(_showButton).Width(140f).SetPadBottom(4f);
-            content.Row();
+
+            _addMonstersButton = new TextButton(GetText(UITextKey.ButtonAddMonsters), skin, "ph-default");
+            _addMonstersButton.OnClicked += (_) => OnAddMonstersClicked();
 
             _cancelButton = new TextButton(GetText(UITextKey.ButtonCancel), skin, "ph-default");
             _cancelButton.OnClicked += (_) => Hide();
-            content.Add(_cancelButton).Width(140f);
 
-            Add(content).Expand().Fill();
-            Pack();
+            Add(_content).Expand().Fill();
             SetVisible(false);
         }
 
@@ -69,10 +72,29 @@ namespace PitHero.UI
 
             _building = building;
 
-            _titleLabel.SetText(GetText(BuildingConfig.GetDisplayNameKey(building.Type)));
-            _showButton.SetText(building.Type == BuildingType.MonsterHouse
+            bool isMonsterHouse = building.Type == BuildingType.MonsterHouse;
+            _showButton.SetText(isMonsterHouse
                 ? GetText(UITextKey.ButtonShowMonsters)
                 : GetText(UITextKey.ButtonShowCrops));
+
+            // Offer "Add Monsters" only for a Monster House that still has room.
+            bool showAddMonsters = isMonsterHouse && !IsHouseFull(building.UniqueId);
+
+            // Rebuild the content rows so hidden buttons don't reserve layout space.
+            _content.Clear();
+            _titleLabel.SetText(GetText(BuildingConfig.GetDisplayNameKey(building.Type)));
+            _content.Add(_titleLabel).SetPadBottom(8f);
+            _content.Row();
+            _content.Add(_moveButton).Width(140f).SetPadBottom(4f);
+            _content.Row();
+            _content.Add(_showButton).Width(140f).SetPadBottom(4f);
+            _content.Row();
+            if (showAddMonsters)
+            {
+                _content.Add(_addMonstersButton).Width(140f).SetPadBottom(4f);
+                _content.Row();
+            }
+            _content.Add(_cancelButton).Width(140f);
 
             Pack();
             float w = GetWidth();
@@ -105,6 +127,12 @@ namespace PitHero.UI
             Core.Services.GetService<PauseService>()?.Unpause();
         }
 
+        private bool IsHouseFull(int uniqueId)
+        {
+            var allied = Core.Services?.GetService<AlliedMonsterManager>();
+            return allied != null && allied.IsHouseFull(uniqueId);
+        }
+
         private void OnMoveClicked()
         {
             var b = _building;
@@ -117,6 +145,13 @@ namespace PitHero.UI
             var b = _building;
             Hide();
             OnShow?.Invoke(b);
+        }
+
+        private void OnAddMonstersClicked()
+        {
+            var b = _building;
+            Hide();
+            OnAddMonsters?.Invoke(b);
         }
 
         private string GetText(string key)

@@ -47,14 +47,7 @@ namespace PitHero.Services
             {
                 var building = allBuildings[b];
                 if (building.Type != Util.BuildingType.MonsterHouse) continue;
-                int linkedCount = 0;
-                for (int m = 0; m < _alliedMonsters.Count; m++)
-                {
-                    var am = _alliedMonsters[m];
-                    if (am.MonsterHouseId == building.UniqueId)
-                        linkedCount++;
-                }
-                if (linkedCount < 16)
+                if (!IsHouseFull(building.UniqueId))
                 {
                     targetHouse = building;
                     break;
@@ -99,6 +92,45 @@ namespace PitHero.Services
         public void AddAlliedMonster(AlliedMonster ally)
         {
             _alliedMonsters.Add(ally);
+        }
+
+        /// <summary>Number of allied monsters currently linked to the given Monster House (by UniqueId).</summary>
+        public int GetLinkedMonsterCount(int houseUniqueId)
+        {
+            int linkedCount = 0;
+            for (int m = 0; m < _alliedMonsters.Count; m++)
+            {
+                if (_alliedMonsters[m].MonsterHouseId == houseUniqueId)
+                    linkedCount++;
+            }
+            return linkedCount;
+        }
+
+        /// <summary>True if the given Monster House has reached <see cref="GameConfig.MonsterHouseCapacity"/>.</summary>
+        public bool IsHouseFull(int houseUniqueId)
+        {
+            return GetLinkedMonsterCount(houseUniqueId) >= GameConfig.MonsterHouseCapacity;
+        }
+
+        /// <summary>
+        /// Manually adds a monster to a house in exchange for gold (issue #283). Bypasses the join
+        /// roll but produces the same shape as a natural recruit (random name + 1–9 proficiencies,
+        /// Job=None). Returns the new monster, or null if the house is full. Gold is handled by the
+        /// caller.
+        /// </summary>
+        public AlliedMonster AddPurchasedMonster(IEnemy enemy, int houseUniqueId)
+        {
+            if (enemy == null || IsHouseFull(houseUniqueId)) return null;
+
+            string firstName = Util.NameGenerator.GenerateFirstName();
+            int fishing = Nez.Random.Range(1, 10);
+            int cooking = Nez.Random.Range(1, 10);
+            int farming = Nez.Random.Range(1, 10);
+
+            var allied = new AlliedMonster(firstName, enemy.Name, fishing, cooking, farming, houseUniqueId);
+            _alliedMonsters.Add(allied);
+            Debug.Log($"[AlliedMonsterManager] {enemy.Name} manually added as '{firstName}' to house {houseUniqueId}");
+            return allied;
         }
     }
 }

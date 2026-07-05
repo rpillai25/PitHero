@@ -845,6 +845,11 @@ namespace PitHero.AI
                 Debug.Log($"[AttackMonster] Earned {enemy.ExperienceYield} XP, {enemy.JPYield} JP, {enemy.SPYield} SP, {enemy.GoldYield} Gold");
             }
 
+            // Record that this monster type has been defeated so it can be manually added later
+            // through a Monster House (issue #283). Recorded for every defeated enemy; the
+            // recruitable filter is applied only when listing addable monsters.
+            Core.Services.GetService<PitHero.Services.DefeatedMonsterService>()?.MarkDefeated(enemy.EnemyId);
+
             var alliedMonsterMgr = Core.Services.GetService<PitHero.Services.AlliedMonsterManager>();
             if (alliedMonsterMgr != null)
             {

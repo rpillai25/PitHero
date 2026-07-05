@@ -133,6 +133,43 @@ namespace PitHero.Tests
             }
         }
 
+        /// <summary>Verifies the defeated-monster set round-trips through save/load (issue #283, v11).</summary>
+        [TestMethod]
+        public void SaveData_DefeatedMonsterTypes_RoundTrip()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_test_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+
+                var original = new SaveData();
+                original.DefeatedMonsterTypes = new List<string> { "Slime", "Orc", "GhostMiner" };
+
+                dataStore.Save("defeated_save.bin", original);
+
+                var loaded = new SaveData();
+                dataStore.Load("defeated_save.bin", loaded);
+
+                CollectionAssert.AreEqual(original.DefeatedMonsterTypes, loaded.DefeatedMonsterTypes);
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
+        /// <summary>A fresh SaveData defaults DefeatedMonsterTypes to an empty (non-null) list.</summary>
+        [TestMethod]
+        public void SaveData_DefeatedMonsterTypes_DefaultsEmpty()
+        {
+            var data = new SaveData();
+            Assert.IsNotNull(data.DefeatedMonsterTypes);
+            Assert.AreEqual(0, data.DefeatedMonsterTypes.Count);
+        }
+
         /// <summary>Verifies SaveData handles empty/minimal data correctly.</summary>
         [TestMethod]
         public void SaveData_PersistAndRecover_HandlesEmptyData()
