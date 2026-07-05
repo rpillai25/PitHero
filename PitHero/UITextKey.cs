@@ -7,6 +7,9 @@ namespace PitHero
         public const string ButtonNo = "ButtonNo";
         public const string ButtonCancel = "ButtonCancel";
         public const string ButtonClose = "ButtonClose";
+        public const string ButtonMove = "ButtonMove";
+        public const string ButtonShowMonsters = "ButtonShowMonsters";
+        public const string ButtonShowCrops = "ButtonShowCrops";
         public const string ButtonSave = "ButtonSave";
         public const string ButtonLoad = "ButtonLoad";
         public const string ButtonNew = "ButtonNew";

@@ -31,6 +31,9 @@ namespace PitHero.UI
         private enum MonsterMode { Normal, Half }
         private MonsterMode _currentMonsterMode = MonsterMode.Normal;
 
+        // When >= 0, the roster is filtered to monsters living in this Monster House (UniqueId).
+        private int _houseFilterId = -1;
+
         private const float SpriteSize = 32f;
         private static readonly Color BrownColor = new Color(71, 36, 7);
         private static LabelStyle BrownStyle() => new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = BrownColor };
@@ -118,12 +121,35 @@ namespace PitHero.UI
         /// </summary>
         public void TriggerToggle()
         {
+            // Normal toggle always shows the full roster.
+            _houseFilterId = -1;
+
             // Properly close Settings UI if it's open (single window policy)
             _settingsUI?.ForceCloseSettings();
             _secondChanceShopUI?.ForceCloseWindow();
             _heroUI?.ForceCloseWindow();
             _farmUI?.DismissSubButtons();
             ToggleMonsterWindow();
+        }
+
+        /// <summary>
+        /// Opens the roster filtered to the monsters living in the given Monster House (by UniqueId).
+        /// Looks identical to the full monster window; only the listed subset differs.
+        /// </summary>
+        public void ShowForHouse(int houseId)
+        {
+            _houseFilterId = houseId;
+
+            // Enforce single window policy (same set of closes as the normal toggle).
+            _settingsUI?.ForceCloseSettings();
+            _secondChanceShopUI?.ForceCloseWindow();
+            _heroUI?.ForceCloseWindow();
+            _farmUI?.DismissSubButtons();
+
+            if (!_windowVisible)
+                ToggleMonsterWindow();
+            else
+                RefreshMonsterList();
         }
 
         private void CreateMonsterWindow(Skin skin)
@@ -164,6 +190,7 @@ namespace PitHero.UI
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null)
                     pauseService.IsPaused = false;
+                _houseFilterId = -1;
             }
         }
 
@@ -171,7 +198,21 @@ namespace PitHero.UI
         {
             _monsterListTable.Clear();
             var manager = Core.Services.GetService<AlliedMonsterManager>();
-            if (manager == null || manager.Count == 0)
+
+            // Count how many monsters will actually be shown (respecting any house filter).
+            int visibleCount = 0;
+            if (manager != null)
+            {
+                var roster = manager.AlliedMonsters;
+                for (int i = 0; i < roster.Count; i++)
+                {
+                    if (_houseFilterId >= 0 && roster[i].MonsterHouseId != _houseFilterId)
+                        continue;
+                    visibleCount++;
+                }
+            }
+
+            if (manager == null || visibleCount == 0)
             {
                 _monsterListTable.Add(new Label("No allied monsters yet.", BrownStyle())).Left().SetPadBottom(4f);
                 _monsterListTable.Row();
@@ -205,6 +246,10 @@ namespace PitHero.UI
             for (int i = 0; i < monsters.Count; i++)
             {
                 var monster = monsters[i];
+
+                // Skip monsters that don't live in the filtered house (when a filter is active).
+                if (_houseFilterId >= 0 && monster.MonsterHouseId != _houseFilterId)
+                    continue;
 
                 // Build a row: [48x48 sprite cell] [textTable] [jobTable]
                 var rowTable = new Table();
@@ -381,6 +426,7 @@ namespace PitHero.UI
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null)
                     pauseService.IsPaused = false;
+                _houseFilterId = -1;
                 Debug.Log("[MonsterUI] Monster window force closed by single window policy");
             }
         }

@@ -192,6 +192,12 @@ namespace PitHero.UI
         /// <summary>Exits the Harvested Crops viewer — called by the overlay's Close button or Escape.</summary>
         public void ExitHarvestedCropsModeViaFarm() => _farmUI?.ExitHarvestedCropsMode();
 
+        /// <summary>Opens the monster roster filtered to a single Monster House (by UniqueId).</summary>
+        public void ShowMonstersForHouse(int houseId) => _monsterUI?.ShowForHouse(houseId);
+
+        /// <summary>Opens the Harvested Crops viewer programmatically (used by Crop Storage context menu).</summary>
+        public void EnterHarvestedCropsMode() => _farmUI?.EnterHarvestedCropsMode();
+
         /// <summary>Dismisses sub-buttons and exits all farm sub-modes at once.</summary>
         private void DismissAllFarmUI()
         {

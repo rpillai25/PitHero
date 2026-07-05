@@ -60,6 +60,9 @@ namespace PitHero.ECS.Scenes
         private bool _wasInRemoveCropsMode;
         private HarvestedCropsModeOverlay _harvestedCropsModeOverlay;
         private bool _wasInHarvestedCropsMode;
+        private BuildingContextMenu _buildingContextMenu; // Popup shown when a placed building is clicked
+        private Services.PlacedBuilding _hoveredBuilding; // Building currently under the cursor (hover outline)
+        private Entity _buildingHoverOutlineEntity; // Entity rendering the white hover outline
         private Label _plantingCropsLabel;
         private Nez.UI.Stage _uiStage;
         private int _lastInGameHour = -1;
@@ -799,6 +802,22 @@ namespace PitHero.ECS.Scenes
             // Harvested Crops viewer — read-only storage grid on the same stage.
             _harvestedCropsModeOverlay = new HarvestedCropsModeOverlay(this, _uiStage);
             _harvestedCropsModeOverlay.RequestExitHarvestedCropsMode += () => _settingsUI?.ExitHarvestedCropsModeViaFarm();
+
+            // Building context menu — shown when a placed building is clicked (Move / Show ...).
+            _buildingContextMenu = new BuildingContextMenu(UI.PitHeroSkin.CreateSkin());
+            _buildingContextMenu.OnMove += (pb) => _buildingModeOverlay?.BeginMove(pb);
+            _buildingContextMenu.OnShow += (pb) =>
+            {
+                if (pb.Type == Util.BuildingType.MonsterHouse)
+                {
+                    _settingsUI?.ShowMonstersForHouse(pb.UniqueId);
+                }
+                else
+                {
+                    _harvestedCropsModeOverlay?.SetBuildingFilter(pb.UniqueId);
+                    _settingsUI?.EnterHarvestedCropsMode();
+                }
+            };
 
             // Initialize pit width manager after map and services are set up
             SetupPitWidthManager();
@@ -1953,6 +1972,8 @@ namespace PitHero.ECS.Scenes
             }
             if (inBuildingMode)
                 _buildingModeOverlay?.Update();
+            else if (_buildingModeOverlay?.IsMoving == true)
+                _buildingModeOverlay.Update(); // relocating a placed building (independent of farm build mode)
 
             bool inSeedMode = _settingsUI?.IsSeedModeActive ?? false;
             if (inSeedMode != _wasInSeedMode)
@@ -2059,6 +2080,10 @@ namespace PitHero.ECS.Scenes
             // Handle mercenary hover and click detection
             HandleMercenaryHover();
             HandleMercenaryClicks();
+
+            // Handle placed-building hover outline and click-to-open context menu
+            HandleBuildingHover();
+            HandleBuildingClicks();
         }
 
         /// <summary>
@@ -2231,6 +2256,99 @@ namespace PitHero.ECS.Scenes
                     break;
                 }
             }
+        }
+
+        /// <summary>
+        /// True when placed-building hover/click interactions should be suppressed — while relocating,
+        /// during any farm sub-mode, when the context menu is already open, or when the pointer is
+        /// over UI.
+        /// </summary>
+        private bool BuildingInteractionsBlocked()
+        {
+            if (_buildingModeOverlay?.IsMoving == true)
+                return true;
+            if (_buildingContextMenu?.IsVisible == true)
+                return true;
+            if (_settingsUI != null &&
+                (_settingsUI.IsFarmSubMenuOpen || _settingsUI.IsTillModeActive || _settingsUI.IsBuildingModeActive ||
+                 _settingsUI.IsSeedModeActive || _settingsUI.IsRemoveCropsModeActive || _settingsUI.IsHarvestedCropsModeActive))
+                return true;
+            if (_uiStage != null && _uiStage.Hit(_uiStage.GetMousePosition()) != null)
+                return true;
+            return false;
+        }
+
+        /// <summary>Returns the placed building under the cursor, or null (respecting interaction guards).</summary>
+        private Services.PlacedBuilding GetBuildingUnderCursor()
+        {
+            var buildingService = Core.Services.GetService<Services.BuildingService>();
+            if (buildingService == null)
+                return null;
+
+            var worldPos = Camera.MouseToWorldPoint();
+            int tileX = (int)(worldPos.X / GameConfig.TileSize);
+            int tileY = (int)(worldPos.Y / GameConfig.TileSize);
+            return buildingService.GetBuildingAtTile(tileX, tileY);
+        }
+
+        /// <summary>Draws a white outline around the placed building under the cursor to signal it is clickable.</summary>
+        private void HandleBuildingHover()
+        {
+            Services.PlacedBuilding hovered = BuildingInteractionsBlocked() ? null : GetBuildingUnderCursor();
+
+            if (hovered == _hoveredBuilding)
+                return;
+
+            _hoveredBuilding = hovered;
+
+            if (hovered == null)
+            {
+                _buildingHoverOutlineEntity?.SetEnabled(false);
+                return;
+            }
+
+            if (_buildingHoverOutlineEntity == null)
+            {
+                _buildingHoverOutlineEntity = CreateEntity("building-hover-outline");
+                var outline = _buildingHoverOutlineEntity.AddComponent(new BuildingOutlineRenderComponent());
+                outline.SetRenderLayer(GameConfig.RenderLayerTop);
+                outline.SetColor(Color.White);
+            }
+
+            var bounds = Util.BuildingConfig.GetFootprintBounds(hovered.Type);
+            float left = (hovered.TileX + bounds.dxMin) * GameConfig.TileSize;
+            float top  = (hovered.TileY + bounds.dyMin) * GameConfig.TileSize;
+            float w = (bounds.dxMax - bounds.dxMin + 1) * GameConfig.TileSize;
+            float h = (bounds.dyMax - bounds.dyMin + 1) * GameConfig.TileSize;
+
+            _buildingHoverOutlineEntity.GetComponent<BuildingOutlineRenderComponent>()?.SetSize(w, h);
+            _buildingHoverOutlineEntity.SetPosition(left, top);
+            _buildingHoverOutlineEntity.SetEnabled(true);
+        }
+
+        /// <summary>Opens the building context menu when a placed building is clicked.</summary>
+        private void HandleBuildingClicks()
+        {
+            // Always consume so the flag never lingers past the frame a move ended.
+            bool moveJustEnded = _buildingModeOverlay != null && _buildingModeOverlay.ConsumeMoveJustEnded();
+
+            if (!Input.LeftMouseButtonPressed)
+                return;
+            // Ignore the same click that just confirmed a relocation.
+            if (moveJustEnded)
+                return;
+            if (BuildingInteractionsBlocked())
+                return;
+
+            var building = GetBuildingUnderCursor();
+            if (building == null)
+                return;
+
+            // Clear the hover outline before the menu opens.
+            _hoveredBuilding = null;
+            _buildingHoverOutlineEntity?.SetEnabled(false);
+
+            _buildingContextMenu?.Show(_uiStage, building, _uiStage.GetMousePosition());
         }
     }
 }

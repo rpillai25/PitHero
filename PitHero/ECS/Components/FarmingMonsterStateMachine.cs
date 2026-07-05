@@ -16,7 +16,7 @@ namespace PitHero.ECS.Components
     {
         private readonly AlliedMonster _monster;
         private readonly FarmTaskCoordinator _coordinator;
-        private readonly Point _houseAnchorTile;
+        private Point _houseAnchorTile; // updated reactively if this worker's monster house is moved
 
         private FarmMonsterMover _mover;
         private ActorFacingComponent _facing;
@@ -24,6 +24,7 @@ namespace PitHero.ECS.Components
         private TilledTileService _tilledTileService;
         private CropGrowthService _cropGrowthService;
         private WetTileService _wetTileService;
+        private BuildingService _buildingService;
 
         /// <summary>Animator for the ForkedHoe swing; assigned by the coordinator at spawn.</summary>
         public PausableSpriteAnimator HoeAnimator;
@@ -100,8 +101,91 @@ namespace PitHero.ECS.Components
             _tilledTileService = Core.Services.GetService<TilledTileService>();
             _cropGrowthService = Core.Services.GetService<CropGrowthService>();
             _wetTileService = Core.Services.GetService<WetTileService>();
+            _buildingService = Core.Services.GetService<BuildingService>();
+            if (_buildingService != null)
+                _buildingService.BuildingMoved += OnBuildingMoved;
 
             InitialState = FarmingMonsterState.EmergeFromHouse;
+        }
+
+        public override void OnRemovedFromEntity()
+        {
+            if (_buildingService != null)
+                _buildingService.BuildingMoved -= OnBuildingMoved;
+            base.OnRemovedFromEntity();
+        }
+
+        /// <summary>
+        /// Reacts to a building relocating: a Crop Storage this worker is delivering to, or this
+        /// worker's own Monster House. Building UniqueIds are globally unique, so id matches are
+        /// unambiguous across types.
+        /// </summary>
+        private void OnBuildingMoved(Services.PlacedBuilding building)
+        {
+            if (building == null)
+                return;
+
+            // Crop Storage we're carrying a harvest to has moved — follow it to the new doorway.
+            if (_harvestPickedUp && building.UniqueId == _harvestBuildingId)
+            {
+                RetargetMovedStorage(building);
+                return;
+            }
+
+            // This worker's Monster House has moved — update its home anchor and re-path if needed.
+            if (building.UniqueId == _monster.MonsterHouseId)
+            {
+                _houseAnchorTile = new Point(building.TileX, building.TileY);
+                OnHomeRelocated();
+            }
+        }
+
+        /// <summary>Retargets the moved Crop Storage's new doorway (with a nearest-with-room fallback).</summary>
+        private void RetargetMovedStorage(Services.PlacedBuilding building)
+        {
+            _harvestDoorTile = Util.BuildingConfig.GetDoorTile(building.Type,
+                new Point(building.TileX, building.TileY));
+
+            // Only actively re-path when already en route; earlier phases (e.g. the apple jump) will
+            // read the refreshed door tile when they transition into CarryHarvestToStorage.
+            if (CurrentState != FarmingMonsterState.CarryHarvestToStorage)
+                return;
+
+            if (TryWalkToStorageDoor())
+                return;
+
+            // New location unreachable — redirect to any storage that still has room.
+            if (_coordinator.TryFindNearestStorageWithCapacity(_mover.CurrentTile, _harvestCropType,
+                    out var fallback, out var fallbackDoor))
+            {
+                _harvestBuildingId = fallback.UniqueId;
+                _harvestDoorTile = fallbackDoor;
+                TryWalkToStorageDoor();
+            }
+        }
+
+        /// <summary>
+        /// Handles this worker's Monster House relocating. A worker still emerging is repositioned to
+        /// the new doorway; a worker walking home re-paths to the new house. Other states just adopt
+        /// the refreshed anchor and use it the next time they head home.
+        /// </summary>
+        private void OnHomeRelocated()
+        {
+            if (CurrentState == FarmingMonsterState.EmergeFromHouse)
+            {
+                // Pop out at the new doorway instead of the old, now-empty spot.
+                Entity.Transform.Position = TileCenter(DoorTile);
+                _mover.Stop();
+                if (_coordinator.Pathfinder.IsPassable(ExitTile))
+                    _mover.SetSingleTarget(TileCenter(ExitTile));
+            }
+            else if (CurrentState == FarmingMonsterState.ReturnHome)
+            {
+                // Restart the walk-home sequence toward the new house exit.
+                _returnReachedExit = false;
+                if (!TrySetPathTo(ExitTile))
+                    Entity.Destroy();
+            }
         }
 
         public override void Update()
@@ -689,6 +773,16 @@ namespace PitHero.ECS.Components
             // Worker is "inside" the storage building; reappear after the wait.
             if (elapsedTimeInState < GameConfig.HarvestDepositSeconds)
                 return;
+
+            // The storage may have been moved while the worker was hidden inside — reappear at the
+            // building's current doorway rather than the now-empty original spot.
+            var storage = _buildingService?.GetBuildingById(_harvestBuildingId);
+            if (storage != null)
+            {
+                var door = Util.BuildingConfig.GetDoorTile(storage.Type,
+                    new Point(storage.TileX, storage.TileY));
+                Entity.Transform.Position = TileCenter(door) + new Vector2(0f, -GameConfig.TileSize);
+            }
 
             BodyAnimator?.SetEnabled(true);
             CurrentState = FarmingMonsterState.Idle;

@@ -285,6 +285,21 @@ namespace PitHero.UI
             IsInHarvestedCropsMode = false;
         }
 
+        /// <summary>
+        /// Opens the Harvested Crops viewer programmatically (e.g. from a Crop Storage context menu),
+        /// applying the same mutual exclusion as the Farm sub-button.
+        /// </summary>
+        public void EnterHarvestedCropsMode()
+        {
+            if (IsInHarvestedCropsMode)
+                return;
+            ExitTillMode();         // mutual exclusion
+            ExitBuildingMode();     // mutual exclusion
+            ExitSeedMode();         // mutual exclusion
+            ExitRemoveCropsMode();  // mutual exclusion
+            IsInHarvestedCropsMode = true;
+        }
+
         private void ToggleSubButtons()
         {
             _subButtonsVisible = !_subButtonsVisible;
