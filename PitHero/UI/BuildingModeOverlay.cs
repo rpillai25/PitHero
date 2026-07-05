@@ -38,6 +38,9 @@ namespace PitHero.UI
         private Entity _ghostEntity;
         private SpriteRenderer _ghostRenderer;
 
+        // Red-tinted copy shown at a moving building's original spot until the move is confirmed/cancelled.
+        private Entity _originGhostEntity;
+
         // ── Inventory window ──────────────────────────────────────────────────────
         private Window _inventoryWindow;
 
@@ -147,12 +150,16 @@ namespace PitHero.UI
             _savedMoveAutoScroll = UIWindowManager.AutoScrollToHeroEnabled;
             UIWindowManager.SetAutoScrollToHero(false);
 
+            // Hide the real (day/night-graded) building and show a red-tinted copy in its place so the
+            // original spot stays visible until the player commits to (or cancels) the new location.
             building.WorldEntity?.SetEnabled(false);
+            var startPos = BuildingConfig.GetWorldPos(building.TileX, building.TileY, building.Type);
+            CreateOriginGhost(building.Type, startPos);
+
             CreateGhost(building.Type);
 
-            // Seed the ghost at the building's current spot so it doesn't flash at the world origin
-            // before the first UpdateMoveState() positions it under the cursor.
-            var startPos = BuildingConfig.GetWorldPos(building.TileX, building.TileY, building.Type);
+            // Seed the moving ghost at the building's current spot so it doesn't flash at the world
+            // origin before the first UpdateMoveState() positions it under the cursor.
             _ghostEntity?.SetPosition(startPos.X, startPos.Y);
         }
 
@@ -217,6 +224,7 @@ namespace PitHero.UI
         private void EndMove()
         {
             DestroyGhost();
+            DestroyOriginGhost();
             _moveActive = false;
             _movingBuilding = null;
             _moveJustEnded = true;
@@ -454,6 +462,24 @@ namespace PitHero.UI
             _ghostEntity?.Destroy();
             _ghostEntity   = null;
             _ghostRenderer = null;
+        }
+
+        /// <summary>Creates the stationary red-tinted marker at a moving building's original location.</summary>
+        private void CreateOriginGhost(BuildingType type, Vector2 worldPos)
+        {
+            DestroyOriginGhost();
+            var sprite = _cropsAtlas.GetSprite(BuildingConfig.GetSpriteName(type));
+            _originGhostEntity = _scene.CreateEntity("building-origin-ghost");
+            _originGhostEntity.SetPosition(worldPos.X, worldPos.Y);
+            var renderer = _originGhostEntity.AddComponent(new SpriteRenderer(sprite));
+            renderer.SetRenderLayer(GameConfig.RenderLayerTop);
+            renderer.Color = new Color(255, 0, 0, 180);
+        }
+
+        private void DestroyOriginGhost()
+        {
+            _originGhostEntity?.Destroy();
+            _originGhostEntity = null;
         }
 
         // ── Placement confirmation ────────────────────────────────────────────────
