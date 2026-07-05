@@ -230,21 +230,16 @@ namespace PitHero.Services
             Debug.Log($"[FarmTaskCoordinator] Spawned farming monster '{monster.Name}' ({typeName}) at house {house.UniqueId}");
         }
 
-        // Capacity limit matches AlliedMonsterManager.TryRecruit (16 monsters per house)
+        // Capacity limit matches AlliedMonsterManager (GameConfig.MonsterHouseCapacity per house)
         private PlacedBuilding FindMonsterHouseWithCapacity()
         {
-            var roster = _alliedMonsters.AlliedMonsters;
             var all = _buildingService.GetAll();
             for (int i = 0; i < all.Count; i++)
             {
                 var b = all[i];
                 if (b.Type != BuildingType.MonsterHouse)
                     continue;
-                int linked = 0;
-                for (int m = 0; m < roster.Count; m++)
-                    if (roster[m].MonsterHouseId == b.UniqueId)
-                        linked++;
-                if (linked < 16)
+                if (!_alliedMonsters.IsHouseFull(b.UniqueId))
                     return b;
             }
             return null;

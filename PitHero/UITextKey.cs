@@ -10,6 +10,7 @@ namespace PitHero
         public const string ButtonMove = "ButtonMove";
         public const string ButtonShowMonsters = "ButtonShowMonsters";
         public const string ButtonShowCrops = "ButtonShowCrops";
+        public const string ButtonAddMonsters = "ButtonAddMonsters";
         public const string ButtonSave = "ButtonSave";
         public const string ButtonLoad = "ButtonLoad";
         public const string ButtonNew = "ButtonNew";
@@ -286,5 +287,10 @@ namespace PitHero
         public const string TabSeeds = "TabSeeds";
         public const string SecondChanceOwnedCount = "SecondChanceOwnedCount";
         public const string ConsoleSeedsFound = "ConsoleSeedsFound";
+        public const string AddMonsterWindowTitle = "AddMonsterWindowTitle";
+        public const string AddMonsterRemainingSpace = "AddMonsterRemainingSpace";
+        public const string AddMonsterDaytimeLabel = "AddMonsterDaytimeLabel";
+        public const string AddMonsterNocturnalLabel = "AddMonsterNocturnalLabel";
+        public const string AddMonsterConfirmPrompt = "AddMonsterConfirmPrompt";
     }
 }

@@ -207,5 +207,69 @@ namespace PitHero.Tests
 
             Assert.AreEqual(1, allied.MonsterHouseId, "MonsterHouseId should be 1");
         }
+
+        /// <summary>GetLinkedMonsterCount only counts monsters linked to the given house id.</summary>
+        [TestMethod]
+        [TestCategory("AlliedMonsters")]
+        public void GetLinkedMonsterCount_CountsOnlyMatchingHouse()
+        {
+            var manager = new AlliedMonsterManager();
+            manager.AddAlliedMonster(new AlliedMonster("A", "Slime", 5, 5, 5, monsterHouseId: 1));
+            manager.AddAlliedMonster(new AlliedMonster("B", "Slime", 5, 5, 5, monsterHouseId: 1));
+            manager.AddAlliedMonster(new AlliedMonster("C", "Slime", 5, 5, 5, monsterHouseId: 2));
+
+            Assert.AreEqual(2, manager.GetLinkedMonsterCount(1));
+            Assert.AreEqual(1, manager.GetLinkedMonsterCount(2));
+            Assert.AreEqual(0, manager.GetLinkedMonsterCount(3));
+        }
+
+        /// <summary>IsHouseFull becomes true at GameConfig.MonsterHouseCapacity linked monsters.</summary>
+        [TestMethod]
+        [TestCategory("AlliedMonsters")]
+        public void IsHouseFull_TrueAtCapacity()
+        {
+            var manager = new AlliedMonsterManager();
+            for (int i = 0; i < GameConfig.MonsterHouseCapacity - 1; i++)
+                manager.AddAlliedMonster(new AlliedMonster("M" + i, "Slime", 5, 5, 5, monsterHouseId: 7));
+
+            Assert.IsFalse(manager.IsHouseFull(7), "Should not be full one below capacity");
+
+            manager.AddAlliedMonster(new AlliedMonster("Last", "Slime", 5, 5, 5, monsterHouseId: 7));
+            Assert.IsTrue(manager.IsHouseFull(7), "Should be full at capacity");
+        }
+
+        /// <summary>AddPurchasedMonster adds a monster with the enemy's type name and target house.</summary>
+        [TestMethod]
+        [TestCategory("AlliedMonsters")]
+        public void AddPurchasedMonster_AddsWithTypeNameAndHouseId()
+        {
+            var manager = new AlliedMonsterManager();
+            var enemy = new MockEnemy(MonsterTextKey.Monster_Slime, 1f);
+
+            var added = manager.AddPurchasedMonster(enemy, houseUniqueId: 4);
+
+            Assert.IsNotNull(added, "Should add a monster when the house has room");
+            Assert.AreEqual(1, manager.Count);
+            Assert.AreEqual(MonsterTextKey.Monster_Slime, added.MonsterTypeName);
+            Assert.AreEqual(4, added.MonsterHouseId);
+            Assert.IsFalse(string.IsNullOrEmpty(added.Name), "Purchased monster should get a name");
+            Assert.AreEqual(MonsterJob.None, added.Job, "Purchased monster should start with no job");
+        }
+
+        /// <summary>AddPurchasedMonster returns null and adds nothing when the house is full.</summary>
+        [TestMethod]
+        [TestCategory("AlliedMonsters")]
+        public void AddPurchasedMonster_FullHouse_ReturnsNull()
+        {
+            var manager = new AlliedMonsterManager();
+            for (int i = 0; i < GameConfig.MonsterHouseCapacity; i++)
+                manager.AddAlliedMonster(new AlliedMonster("M" + i, "Slime", 5, 5, 5, monsterHouseId: 9));
+
+            var enemy = new MockEnemy(MonsterTextKey.Monster_Slime, 1f);
+            var added = manager.AddPurchasedMonster(enemy, houseUniqueId: 9);
+
+            Assert.IsNull(added, "Should not add to a full house");
+            Assert.AreEqual(GameConfig.MonsterHouseCapacity, manager.GetLinkedMonsterCount(9));
+        }
     }
 }

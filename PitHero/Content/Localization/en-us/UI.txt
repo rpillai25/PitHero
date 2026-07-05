@@ -283,3 +283,11 @@ ConsoleWelcome,Welcome, {0}!
 ConsoleWelcomePhrase1,Good luck on your adventure.
 ConsoleWelcomePhrase2,Go forth and pursue strength and wealth.
 ConsoleWelcomePhrase3,May you get many returns today!
+
+# Add Monsters (Monster House)
+ButtonAddMonsters,Add Monsters
+AddMonsterWindowTitle,Add Monsters
+AddMonsterRemainingSpace,Remaining Space: {0}
+AddMonsterDaytimeLabel,Daytime
+AddMonsterNocturnalLabel,Nocturnal
+AddMonsterConfirmPrompt,Add {0} for {1} Gold

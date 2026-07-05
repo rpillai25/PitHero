@@ -174,38 +174,40 @@ namespace PitHero
         /// </summary>
         private (IEnemy enemy, Color color) CreateEnemyById(EnemyId enemyId, int level)
         {
-            int clampedLevel = Math.Clamp(level, 1, 99);
-
-            return enemyId switch
+            // Instance creation is centralized in EnemyFactory (shared with the "Add Monsters"
+            // flow, issue #283); PitGenerator only owns the per-type fallback tint below.
+            var enemy = EnemyFactory.Create(enemyId, level);
+            var color = enemyId switch
             {
-                EnemyId.Slime => (new Slime(clampedLevel), Color.LightGreen),
-                EnemyId.Bat => (new Bat(clampedLevel), Color.Purple),
-                EnemyId.Rat => (new Rat(clampedLevel), Color.Brown),
-                EnemyId.CaveMushroom => (new CaveMushroom(clampedLevel), Color.SaddleBrown),
-                EnemyId.StoneBeetle => (new StoneBeetle(clampedLevel), Color.Gray),
-                EnemyId.Goblin => (new Goblin(clampedLevel), Color.Green),
-                EnemyId.Spider => (new Spider(clampedLevel), Color.DarkGray),
-                EnemyId.Snake => (new Snake(clampedLevel), Color.Yellow),
-                EnemyId.ShadowImp => (new ShadowImp(clampedLevel), Color.DarkMagenta),
-                EnemyId.TunnelWorm => (new TunnelWorm(clampedLevel), Color.Pink),
-                EnemyId.FireLizard => (new FireLizard(clampedLevel), Color.Orange),
-                EnemyId.Skeleton => (new Skeleton(clampedLevel), Color.White),
-                EnemyId.Orc => (new Orc(clampedLevel), Color.DarkGreen),
-                EnemyId.Wraith => (new Wraith(clampedLevel), Color.Blue),
-                EnemyId.MagmaOoze => (new MagmaOoze(clampedLevel), Color.OrangeRed),
-                EnemyId.CrystalGolem => (new CrystalGolem(clampedLevel), Color.Cyan),
-                EnemyId.CaveTroll => (new CaveTroll(clampedLevel), Color.DarkGray),
-                EnemyId.GhostMiner => (new GhostMiner(clampedLevel), Color.LightBlue),
-                EnemyId.ShadowBeast => (new ShadowBeast(clampedLevel), Color.Black),
-                EnemyId.LavaDrake => (new LavaDrake(clampedLevel), Color.Red),
-                EnemyId.StoneWyrm => (new StoneWyrm(clampedLevel), Color.SlateGray),
-                EnemyId.StoneGuardian => (new StoneGuardian(clampedLevel), Color.DarkGray),
-                EnemyId.EarthElemental => (new EarthElemental(clampedLevel), Color.Brown),
-                EnemyId.MoltenTitan => (new MoltenTitan(clampedLevel), Color.DarkRed),
-                EnemyId.AncientWyrm => (new AncientWyrm(clampedLevel), Color.DarkRed),
-                EnemyId.PitLord => (new PitLord(clampedLevel), Color.Red),
-                _ => (new Slime(clampedLevel), Color.LightGreen)
+                EnemyId.Slime => Color.LightGreen,
+                EnemyId.Bat => Color.Purple,
+                EnemyId.Rat => Color.Brown,
+                EnemyId.CaveMushroom => Color.SaddleBrown,
+                EnemyId.StoneBeetle => Color.Gray,
+                EnemyId.Goblin => Color.Green,
+                EnemyId.Spider => Color.DarkGray,
+                EnemyId.Snake => Color.Yellow,
+                EnemyId.ShadowImp => Color.DarkMagenta,
+                EnemyId.TunnelWorm => Color.Pink,
+                EnemyId.FireLizard => Color.Orange,
+                EnemyId.Skeleton => Color.White,
+                EnemyId.Orc => Color.DarkGreen,
+                EnemyId.Wraith => Color.Blue,
+                EnemyId.MagmaOoze => Color.OrangeRed,
+                EnemyId.CrystalGolem => Color.Cyan,
+                EnemyId.CaveTroll => Color.DarkGray,
+                EnemyId.GhostMiner => Color.LightBlue,
+                EnemyId.ShadowBeast => Color.Black,
+                EnemyId.LavaDrake => Color.Red,
+                EnemyId.StoneWyrm => Color.SlateGray,
+                EnemyId.StoneGuardian => Color.DarkGray,
+                EnemyId.EarthElemental => Color.Brown,
+                EnemyId.MoltenTitan => Color.DarkRed,
+                EnemyId.AncientWyrm => Color.DarkRed,
+                EnemyId.PitLord => Color.Red,
+                _ => Color.LightGreen
             };
+            return (enemy, color);
         }
 
         /// <summary>

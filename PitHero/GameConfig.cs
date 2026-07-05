@@ -77,6 +77,11 @@ namespace PitHero
         public const float BaseMonsterJoinChance = 0.10f;
         public const float MercenaryMaxSpawnIntervalSeconds = 300f; // 9th mercenary spawns after 5 minutes (300 seconds)
 
+        // Monster house configuration
+        public const int MonsterHouseCapacity = 16; // Max allied monsters that can live in one Monster House
+        public const int DaytimeMonsterAddCostGold = 500;  // Gold to manually add a Daytime monster (issue #283)
+        public const int NocturnalMonsterAddCostGold = 700; // Gold to manually add a Nocturnal monster (issue #283)
+
         // Inn configuration
         public const int InnkeeperTileX = 69; // Innkeeper stands at (69, 3)
         public const int InnkeeperTileY = 3;

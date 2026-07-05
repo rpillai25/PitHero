@@ -234,7 +234,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 10;
+        public const int CurrentVersion = 11;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -433,6 +433,10 @@ namespace PitHero.Services
         /// <summary>Harvested-crop inventories, one per Crop Storage building.</summary>
         public List<SavedCropStorageInventory> CropStorageInventories;
 
+        // Defeated Monsters
+        /// <summary>Bare enum names of monster types the player has defeated in battle (version 11+).</summary>
+        public List<string> DefeatedMonsterTypes;
+
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
         {
@@ -461,6 +465,7 @@ namespace PitHero.Services
             NextBuildingId = 1;
             CropGrowthStates = new List<SavedCropGrowthState>();
             CropStorageInventories = new List<SavedCropStorageInventory>();
+            DefeatedMonsterTypes = new List<string>();
         }
 
         /// <summary>Writes all game state to the persistence writer.</summary>
@@ -765,6 +770,12 @@ namespace PitHero.Services
                     writer.Write(inv.Slots[s].Count);
                 }
             }
+
+            // 27. Defeated Monster Types (version 11+)
+            int defeatedCount = DefeatedMonsterTypes != null ? DefeatedMonsterTypes.Count : 0;
+            writer.Write(defeatedCount);
+            for (int i = 0; i < defeatedCount; i++)
+                writer.Write(DefeatedMonsterTypes[i] ?? string.Empty);
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -1156,6 +1167,19 @@ namespace PitHero.Services
             else
             {
                 CropStorageInventories = new List<SavedCropStorageInventory>();
+            }
+
+            // 27. Defeated Monster Types (version 11+)
+            if (fileVersion >= 11)
+            {
+                int defeatedCount = reader.ReadInt();
+                DefeatedMonsterTypes = new List<string>(defeatedCount);
+                for (int i = 0; i < defeatedCount; i++)
+                    DefeatedMonsterTypes.Add(reader.ReadString());
+            }
+            else
+            {
+                DefeatedMonsterTypes = new List<string>();
             }
         }
 
