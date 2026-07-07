@@ -88,14 +88,16 @@ namespace PitHero.UI
         private void LayoutButtonRow()
         {
             _buttonRow.Clear();
+            var storage = Core.Services.GetService<CropStorageInventoryService>();
+            var buildingService = Core.Services.GetService<BuildingService>();
             if (_filterBuildingId < 0)
             {
-                _buttonRow.Add(_sellAllButton).Width(120f).SetPadRight(8f);
+                // Aggregate view: offer "Sell all" only when at least one storage holds crops.
+                if (AnyStorageHasCrops(storage, buildingService))
+                    _buttonRow.Add(_sellAllButton).Width(120f).SetPadRight(8f);
             }
             else
             {
-                var storage = Core.Services.GetService<CropStorageInventoryService>();
-                var buildingService = Core.Services.GetService<BuildingService>();
                 bool hasCrops = storage != null && !storage.IsEmpty(_filterBuildingId);
                 bool otherStorageExists = (buildingService?.CropStorageCount ?? 0) > 1;
 
@@ -105,6 +107,18 @@ namespace PitHero.UI
                     _buttonRow.Add(_sellStorageButton).Width(120f).SetPadRight(8f);
             }
             _buttonRow.Add(_closeButton).Width(100f);
+        }
+
+        /// <summary>True if any Crop Storage building currently holds at least one harvested crop.</summary>
+        private static bool AnyStorageHasCrops(CropStorageInventoryService storage, BuildingService buildingService)
+        {
+            if (storage == null || buildingService == null)
+                return false;
+            var all = buildingService.GetAll();
+            for (int b = 0; b < all.Count; b++)
+                if (all[b].Type == BuildingType.CropStorage && !storage.IsEmpty(all[b].UniqueId))
+                    return true;
+            return false;
         }
 
         /// <summary>Redistributes this storage's crops across the other storages (with confirmation).</summary>
@@ -191,6 +205,7 @@ namespace PitHero.UI
                         if (all[b].Type == BuildingType.CropStorage)
                             storage.ClearBuilding(all[b].UniqueId);
                     _descWindow?.SetVisible(false);
+                    LayoutButtonRow();
                     RebuildSlots();
                     ShowInventoryWindow();
                 });
