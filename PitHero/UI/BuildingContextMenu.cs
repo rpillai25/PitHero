@@ -19,8 +19,6 @@ namespace PitHero.UI
         private readonly TextButton _moveButton;
         private readonly TextButton _showButton;
         private readonly TextButton _addMonstersButton;
-        private readonly TextButton _moveAllCropsButton;
-        private readonly TextButton _sellAllCropsButton;
         private readonly TextButton _sellBuildingButton;
         private readonly TextButton _cancelButton;
         private PlacedBuilding _building;
@@ -35,12 +33,6 @@ namespace PitHero.UI
 
         /// <summary>Fired when the player chooses Add Monsters for a Monster House.</summary>
         public event System.Action<PlacedBuilding> OnAddMonsters;
-
-        /// <summary>Fired when the player chooses Move all crops for a Crop Storage.</summary>
-        public event System.Action<PlacedBuilding> OnMoveAllCrops;
-
-        /// <summary>Fired when the player chooses Sell all crops for a Crop Storage.</summary>
-        public event System.Action<PlacedBuilding> OnSellAllCrops;
 
         /// <summary>Fired when the player chooses Sell building for an (empty) Crop Storage.</summary>
         public event System.Action<PlacedBuilding> OnSellBuilding;
@@ -68,12 +60,6 @@ namespace PitHero.UI
 
             _addMonstersButton = new TextButton(GetText(UITextKey.ButtonAddMonsters), skin, "ph-default");
             _addMonstersButton.OnClicked += (_) => OnAddMonstersClicked();
-
-            _moveAllCropsButton = new TextButton(GetText(UITextKey.ButtonMoveAllCrops), skin, "ph-default");
-            _moveAllCropsButton.OnClicked += (_) => OnActionClicked(OnMoveAllCrops);
-
-            _sellAllCropsButton = new TextButton(GetText(UITextKey.ButtonSellAllCrops), skin, "ph-default");
-            _sellAllCropsButton.OnClicked += (_) => OnActionClicked(OnSellAllCrops);
 
             _sellBuildingButton = new TextButton(GetText(UITextKey.ButtonSellBuilding), skin, "ph-default");
             _sellBuildingButton.OnClicked += (_) => OnActionClicked(OnSellBuilding);
@@ -116,27 +102,12 @@ namespace PitHero.UI
                 _content.Row();
             }
 
-            // Crop-Storage-only options: redistribute, sell crops, and (when empty) sell the building.
-            if (!isMonsterHouse)
+            // Crop-Storage-only option: sell the building once it is empty of crops. (Move/Sell all
+            // crops live in the Harvested Crops viewer, opened via "Show Crops".)
+            if (!isMonsterHouse && IsStorageEmpty(building.UniqueId))
             {
-                bool storageEmpty = IsStorageEmpty(building.UniqueId);
-                bool otherStorageExists = CropStorageCount() > 1;
-
-                if (!storageEmpty && otherStorageExists)
-                {
-                    _content.Add(_moveAllCropsButton).Width(140f).SetPadBottom(4f);
-                    _content.Row();
-                }
-                if (!storageEmpty)
-                {
-                    _content.Add(_sellAllCropsButton).Width(140f).SetPadBottom(4f);
-                    _content.Row();
-                }
-                if (storageEmpty)
-                {
-                    _content.Add(_sellBuildingButton).Width(140f).SetPadBottom(4f);
-                    _content.Row();
-                }
+                _content.Add(_sellBuildingButton).Width(140f).SetPadBottom(4f);
+                _content.Row();
             }
 
             _content.Add(_cancelButton).Width(140f);
@@ -182,12 +153,6 @@ namespace PitHero.UI
         {
             var storage = Core.Services?.GetService<CropStorageInventoryService>();
             return storage == null || storage.IsEmpty(uniqueId);
-        }
-
-        private int CropStorageCount()
-        {
-            var buildings = Core.Services?.GetService<BuildingService>();
-            return buildings?.CropStorageCount ?? 0;
         }
 
         /// <summary>Hides the menu, then fires the given action for the current building.</summary>

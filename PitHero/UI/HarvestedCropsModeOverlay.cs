@@ -33,8 +33,11 @@ namespace PitHero.UI
         private CropType _descCropType;
         private int _descCount;
 
-        // Aggregate "Sell all crops" button — only shown when viewing all storages (no filter).
-        private TextButton _sellAllButton;
+        // Bottom-row buttons. "Sell all" (aggregate) shows only in the all-storages view; "Move all"
+        // and "Sell all" (this storage) show only in the per-storage view.
+        private TextButton _sellAllButton;      // aggregate — sells across every storage
+        private TextButton _moveAllButton;      // per-storage — redistribute to other storages
+        private TextButton _sellStorageButton;  // per-storage — sell this storage's crops
         private TextButton _closeButton;
         private Table _buttonRow;
 
@@ -78,15 +81,82 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Rebuilds the bottom button row. "Sell all crops" only appears in the aggregate view (all
-        /// storages); in the per-storage view the building context menu covers that action.
+        /// Rebuilds the bottom button row. The all-storages (aggregate) view offers "Sell all crops"
+        /// across every storage; the per-storage view offers "Move all crops" (when another storage
+        /// exists) and "Sell all crops" for that one storage — both only while it holds crops.
         /// </summary>
         private void LayoutButtonRow()
         {
             _buttonRow.Clear();
             if (_filterBuildingId < 0)
+            {
                 _buttonRow.Add(_sellAllButton).Width(120f).SetPadRight(8f);
+            }
+            else
+            {
+                var storage = Core.Services.GetService<CropStorageInventoryService>();
+                var buildingService = Core.Services.GetService<BuildingService>();
+                bool hasCrops = storage != null && !storage.IsEmpty(_filterBuildingId);
+                bool otherStorageExists = (buildingService?.CropStorageCount ?? 0) > 1;
+
+                if (hasCrops && otherStorageExists)
+                    _buttonRow.Add(_moveAllButton).Width(120f).SetPadRight(8f);
+                if (hasCrops)
+                    _buttonRow.Add(_sellStorageButton).Width(120f).SetPadRight(8f);
+            }
             _buttonRow.Add(_closeButton).Width(100f);
+        }
+
+        /// <summary>Redistributes this storage's crops across the other storages (with confirmation).</summary>
+        private void OnMoveAllStorageClicked()
+        {
+            int buildingId = _filterBuildingId;
+            if (buildingId < 0)
+                return;
+
+            var dialog = new ConfirmationDialog(GetText(UITextKey.ButtonMoveAllCrops),
+                GetText(UITextKey.DialogMoveCropsPrompt), PitHeroSkin.CreateSkin(),
+                onYes: () =>
+                {
+                    Core.Services.GetService<CropStorageInventoryService>()
+                        ?.MoveAllCropsToOtherStorages(buildingId);
+                    _descWindow?.SetVisible(false);
+                    LayoutButtonRow();
+                    RebuildSlots();
+                    ShowInventoryWindow();
+                });
+            dialog.Show(_stage);
+        }
+
+        /// <summary>Sells every harvested crop in this one storage (with confirmation).</summary>
+        private void OnSellStorageClicked()
+        {
+            int buildingId = _filterBuildingId;
+            var storage = Core.Services.GetService<CropStorageInventoryService>();
+            if (buildingId < 0 || storage == null)
+                return;
+
+            var slots = storage.GetSlots(buildingId);
+            int gold = 0;
+            for (int s = 0; s < slots.Count; s++)
+                if (!slots[s].IsEmpty)
+                    gold += CropConfig.GetHarvestStackSellPrice(slots[s].Type, slots[s].Count);
+
+            int totalGold = gold;
+            string prompt = string.Format(GetText(UITextKey.DialogSellStorageCropsPrompt), totalGold);
+            var dialog = new ConfirmationDialog(GetText(UITextKey.ButtonSellAllCrops), prompt,
+                PitHeroSkin.CreateSkin(),
+                onYes: () =>
+                {
+                    var gameState = Core.Services.GetService<GameStateService>();
+                    if (gameState != null) gameState.Funds += totalGold;
+                    storage.ClearBuilding(buildingId);
+                    _descWindow?.SetVisible(false);
+                    LayoutButtonRow();
+                    RebuildSlots();
+                    ShowInventoryWindow();
+                });
+            dialog.Show(_stage);
         }
 
         /// <summary>Sells every harvested crop across all Crop Storage buildings (with confirmation).</summary>
@@ -165,6 +235,10 @@ namespace PitHero.UI
             _buttonRow = new Table();
             _sellAllButton = new TextButton(GetText(UITextKey.ButtonSellAllCrops), skin, "ph-default");
             _sellAllButton.OnClicked += (_) => OnSellAllClicked();
+            _moveAllButton = new TextButton(GetText(UITextKey.ButtonMoveAllCrops), skin, "ph-default");
+            _moveAllButton.OnClicked += (_) => OnMoveAllStorageClicked();
+            _sellStorageButton = new TextButton(GetText(UITextKey.ButtonSellAllCrops), skin, "ph-default");
+            _sellStorageButton.OnClicked += (_) => OnSellStorageClicked();
             _closeButton = new TextButton(GetText(UITextKey.ButtonClose), skin, "ph-default");
             _closeButton.OnClicked += (_) => RequestExitHarvestedCropsMode?.Invoke();
             outer.Add(_buttonRow).SetPadTop(8f);
@@ -314,6 +388,7 @@ namespace PitHero.UI
                     if (gameState != null) gameState.Funds += gold;
                     storage?.ClearSlot(buildingId, slotIndex);
                     _descWindow.SetVisible(false);
+                    LayoutButtonRow();
                     RebuildSlots();
                     ShowInventoryWindow();
                 });
