@@ -678,6 +678,24 @@ namespace PitHero.Services
                 }
             }
 
+            // Dropped crops awaiting pickup
+            var droppedCropService = Core.Services.GetService<DroppedCropService>();
+            if (droppedCropService != null)
+            {
+                data.DroppedCrops = new List<SavedDroppedCrop>();
+                var drops = droppedCropService.GetAll();
+                for (int i = 0; i < drops.Count; i++)
+                {
+                    data.DroppedCrops.Add(new SavedDroppedCrop
+                    {
+                        CropTypeId = (int)drops[i].Type,
+                        Count      = drops[i].Count,
+                        TileX      = drops[i].Tile.X,
+                        TileY      = drops[i].Tile.Y,
+                    });
+                }
+            }
+
             return data;
         }
 

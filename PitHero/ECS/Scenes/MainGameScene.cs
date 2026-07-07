@@ -148,6 +148,11 @@ namespace PitHero.ECS.Scenes
             Core.Services.AddService(new Services.CropStorageInventoryService(
                 Core.Services.GetService<Services.BuildingService>()));
 
+            // Register dropped-crop tracking so unstorable crops fall to the ground for later pickup.
+            var droppedCropService = new Services.DroppedCropService();
+            droppedCropService.SetScene(this);
+            Core.Services.AddService(droppedCropService);
+
             AddSceneComponent<YSortManager>();
 
             SetupUIOverlay();
@@ -169,6 +174,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.BuildingService));
             Core.Services.RemoveService(typeof(Services.CropPlantingService));
             Core.Services.RemoveService(typeof(Services.CropStorageInventoryService));
+            Core.Services.RemoveService(typeof(Services.DroppedCropService));
             Core.Services.RemoveService(typeof(Services.TilledTileService));
             Core.Services.RemoveService(typeof(Services.WetTileService));
             Core.Services.RemoveService(typeof(Services.CropGrowthService));
@@ -223,6 +229,7 @@ namespace PitHero.ECS.Scenes
                 Core.Services.GetService<Services.BuildingService>(),
                 _tmxMap.Width, _tmxMap.Height, alliedMonsterManager,
                 Core.Services.GetService<Services.TilledTileService>());
+            farmTaskCoordinator.SetDroppedCropService(Core.Services.GetService<Services.DroppedCropService>());
             farmTaskCoordinator.Initialize(this);
             Core.Services.AddService(farmTaskCoordinator);
 
@@ -330,6 +337,22 @@ namespace PitHero.ECS.Scenes
                             }
                         }
                         cropStorageService.RestoreInventory(inv.BuildingUniqueId, arr);
+                    }
+                }
+            }
+
+            // Restore dropped crops awaiting pickup (respawns ground entities)
+            var droppedCropService = Core.Services.GetService<Services.DroppedCropService>();
+            if (droppedCropService != null)
+            {
+                droppedCropService.Clear();
+                if (pendingData.DroppedCrops != null)
+                {
+                    for (int i = 0; i < pendingData.DroppedCrops.Count; i++)
+                    {
+                        var d = pendingData.DroppedCrops[i];
+                        droppedCropService.Restore((Farming.CropType)d.CropTypeId, d.Count,
+                            new Microsoft.Xna.Framework.Point(d.TileX, d.TileY));
                     }
                 }
             }
@@ -835,12 +858,73 @@ namespace PitHero.ECS.Scenes
                 }
             };
 
+            // Crop Storage options (issue #285): redistribute, sell all crops, sell the building.
+            _buildingContextMenu.OnMoveAllCrops += (pb) =>
+            {
+                var textSvc = Core.Services.GetService<Services.TextService>();
+                var dialog = new ConfirmationDialog(
+                    textSvc?.DisplayText(TextType.UI, UITextKey.ButtonMoveAllCrops),
+                    textSvc?.DisplayText(TextType.UI, UITextKey.DialogMoveCropsPrompt),
+                    UI.PitHeroSkin.CreateSkin(),
+                    onYes: () => Core.Services.GetService<Services.CropStorageInventoryService>()
+                        ?.MoveAllCropsToOtherStorages(pb.UniqueId));
+                dialog.Show(_uiStage);
+            };
+            _buildingContextMenu.OnSellAllCrops += (pb) =>
+            {
+                int gold = ComputeStorageSellTotal(pb.UniqueId);
+                var textSvc = Core.Services.GetService<Services.TextService>();
+                var dialog = new ConfirmationDialog(
+                    textSvc?.DisplayText(TextType.UI, UITextKey.ButtonSellAllCrops),
+                    string.Format(textSvc?.DisplayText(TextType.UI, UITextKey.DialogSellStorageCropsPrompt) ?? "{0}", gold),
+                    UI.PitHeroSkin.CreateSkin(),
+                    onYes: () =>
+                    {
+                        var storage = Core.Services.GetService<Services.CropStorageInventoryService>();
+                        var gameState = Core.Services.GetService<Services.GameStateService>();
+                        if (gameState != null) gameState.Funds += gold;
+                        storage?.ClearBuilding(pb.UniqueId);
+                    });
+                dialog.Show(_uiStage);
+            };
+            _buildingContextMenu.OnSellBuilding += (pb) =>
+            {
+                int gold = Util.BuildingConfig.GetCost(pb.Type) / 2;
+                var textSvc = Core.Services.GetService<Services.TextService>();
+                var dialog = new ConfirmationDialog(
+                    textSvc?.DisplayText(TextType.UI, UITextKey.ButtonSellBuilding),
+                    string.Format(textSvc?.DisplayText(TextType.UI, UITextKey.DialogSellBuildingPrompt) ?? "{0}", gold),
+                    UI.PitHeroSkin.CreateSkin(),
+                    onYes: () =>
+                    {
+                        var gameState = Core.Services.GetService<Services.GameStateService>();
+                        if (gameState != null) gameState.Funds += gold;
+                        pb.WorldEntity?.Destroy();
+                        Core.Services.GetService<Services.BuildingService>()?.RemoveBuilding(pb);
+                    });
+                dialog.Show(_uiStage);
+            };
+
             // Add Monsters dialog — opened from the Monster House context menu (issue #283).
             _addMonsterDialog = new AddMonsterDialog(UI.PitHeroSkin.CreateSkin(), _uiStage);
             _buildingContextMenu.OnAddMonsters += (pb) => _addMonsterDialog?.ShowForHouse(pb.UniqueId);
 
             // Initialize pit width manager after map and services are set up
             SetupPitWidthManager();
+        }
+
+        /// <summary>Total gold value of all harvested crops currently stored in one Crop Storage building.</summary>
+        private int ComputeStorageSellTotal(int buildingId)
+        {
+            var storage = Core.Services.GetService<Services.CropStorageInventoryService>();
+            if (storage == null)
+                return 0;
+            var slots = storage.GetSlots(buildingId);
+            int total = 0;
+            for (int i = 0; i < slots.Count; i++)
+                if (!slots[i].IsEmpty)
+                    total += Util.CropConfig.GetHarvestStackSellPrice(slots[i].Type, slots[i].Count);
+            return total;
         }
 
         private void SetupPitWidthManager()

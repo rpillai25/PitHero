@@ -291,3 +291,14 @@ AddMonsterRemainingSpace,Remaining Space: {0}
 AddMonsterDaytimeLabel,Daytime
 AddMonsterNocturnalLabel,Nocturnal
 AddMonsterConfirmPrompt,Add {0} for {1} Gold
+
+# Crop Storage options (issue #285)
+ButtonMoveAllCrops,Move all crops
+ButtonSellAllCrops,Sell all crops
+ButtonSellBuilding,Sell building
+ButtonSell,Sell
+DialogMoveCropsPrompt,Really move and redistribute crops to other storages?
+DialogSellStorageCropsPrompt,Really sell all crops in this storage for {0} gold?
+DialogSellBuildingPrompt,Really sell this building for {0} gold?
+DialogSellCropStackPrompt,Really sell {0} stack for {1} gold?
+DialogSellAllCropsPrompt,Really sell ALL of your crops for {0} gold? You will be left with no crops.

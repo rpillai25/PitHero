@@ -66,9 +66,17 @@ namespace PitHero.Services
         /// Any remainder that doesn't fit (all slots full) is dropped.
         /// </summary>
         public bool TryDeposit(int buildingId, CropType crop, int amount = 1)
+            => DepositReturningStored(buildingId, crop, amount) > 0;
+
+        /// <summary>
+        /// Adds up to <paramref name="amount"/> harvested crops to the building, spilling across
+        /// existing non-full stacks (topped off first) then empty slots. Returns the number of units
+        /// actually stored (0..amount); any remainder that doesn't fit is not stored.
+        /// </summary>
+        public int DepositReturningStored(int buildingId, CropType crop, int amount)
         {
             if (amount <= 0)
-                return false;
+                return 0;
 
             var slots = GetOrCreate(buildingId);
             int max = CropConfig.GetMaxHarvestStack(crop);
@@ -98,11 +106,80 @@ namespace PitHero.Services
                 }
             }
 
-            return remaining < amount;
+            return amount - remaining;
         }
 
         /// <summary>Returns the slot array for a building (creating an empty one if needed). Read-only view for UI.</summary>
         public IReadOnlyList<HarvestSlot> GetSlots(int buildingId) => GetOrCreate(buildingId);
+
+        /// <summary>True if every slot in the building is empty (no harvested crops stored).</summary>
+        public bool IsEmpty(int buildingId)
+        {
+            var slots = GetOrCreate(buildingId);
+            for (int i = 0; i < slots.Length; i++)
+                if (!slots[i].IsEmpty)
+                    return false;
+            return true;
+        }
+
+        /// <summary>Empties a single slot (used when a stack is sold).</summary>
+        public void ClearSlot(int buildingId, int slotIndex)
+        {
+            var slots = GetOrCreate(buildingId);
+            if (slotIndex >= 0 && slotIndex < slots.Length)
+                slots[slotIndex] = default;
+        }
+
+        /// <summary>Empties every slot in the building (used when all crops are sold).</summary>
+        public void ClearBuilding(int buildingId)
+        {
+            var slots = GetOrCreate(buildingId);
+            for (int i = 0; i < slots.Length; i++)
+                slots[i] = default;
+        }
+
+        /// <summary>
+        /// Moves all crops out of the source building and redistributes them across the other Crop
+        /// Storage buildings, merging into existing stacks and spilling into empty slots, filling each
+        /// destination before moving to the next. Any crops that don't fit anywhere are left in the
+        /// source building. Returns the number of units moved out.
+        /// </summary>
+        public int MoveAllCropsToOtherStorages(int sourceId)
+        {
+            if (_buildingService == null)
+                return 0;
+
+            var sourceSlots = GetOrCreate(sourceId);
+            var all = _buildingService.GetAll();
+            int totalMoved = 0;
+
+            for (int s = 0; s < sourceSlots.Length; s++)
+            {
+                if (sourceSlots[s].IsEmpty)
+                    continue;
+
+                var crop = sourceSlots[s].Type;
+                int remaining = sourceSlots[s].Count;
+
+                for (int b = 0; b < all.Count && remaining > 0; b++)
+                {
+                    var dest = all[b];
+                    if (dest.Type != BuildingType.CropStorage || dest.UniqueId == sourceId)
+                        continue;
+                    int stored = DepositReturningStored(dest.UniqueId, crop, remaining);
+                    remaining -= stored;
+                    totalMoved += stored;
+                }
+
+                // Write back leftover (clears the slot when fully moved).
+                if (remaining <= 0)
+                    sourceSlots[s] = default;
+                else
+                    sourceSlots[s].Count = remaining;
+            }
+
+            return totalMoved;
+        }
 
         // ── Save / restore ────────────────────────────────────────────────────────
 

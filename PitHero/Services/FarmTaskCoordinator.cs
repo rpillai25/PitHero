@@ -44,10 +44,18 @@ namespace PitHero.Services
         private readonly Deque<FarmAction> _harvestQueue = new Deque<FarmAction>(64);
         private readonly HashSet<Point> _harvestTracked = new HashSet<Point>();
 
+        // Pickup queue — crops dropped on the ground awaiting recovery to storage
+        private readonly Deque<FarmAction> _pickupQueue = new Deque<FarmAction>(16);
+        private readonly HashSet<Point> _pickupTracked = new HashSet<Point>();
+
         private TilledTileService _tilledTileService;
+        private DroppedCropService _droppedCropService;
 
         private readonly List<ActiveWorker> _workers = new List<ActiveWorker>(16);
         private Scene _scene;
+
+        /// <summary>Provides the dropped-crop service used to recover crops dropped on the ground.</summary>
+        public void SetDroppedCropService(DroppedCropService service) => _droppedCropService = service;
 
         /// <summary>Shared A* grid for all farming monsters.</summary>
         public FarmPathfinder Pathfinder { get; }
@@ -286,6 +294,10 @@ namespace PitHero.Services
         /// </summary>
         public bool TryClaimAction(float queuePick, out FarmAction action)
         {
+            // Priority 0: recover dropped crops back into storage before starting new work
+            PopulatePickupQueue();
+            if (TryClaimFromQueue(_pickupQueue, _pickupTracked, queuePick, ValidatePickup, out action))
+                return true;
             // Priority 1: Till
             if (TryClaimFromQueue(_queue, _tracked, queuePick, ValidateTill, out action))
                 return true;
@@ -368,6 +380,15 @@ namespace PitHero.Services
             return TryFindNearestStorageWithCapacity(tile, cropType.Value, out _, out _);
         }
 
+        private bool ValidatePickup(Point tile)
+        {
+            if (_droppedCropService == null || !_droppedCropService.TryGetAt(tile, out var drop))
+                return false;
+            // Only claim if some Crop Storage can actually accept the dropped crop; otherwise the
+            // drop stays on the ground until a storage frees up.
+            return TryFindNearestStorageWithCapacity(tile, drop.Type, out _, out _);
+        }
+
         /// <summary>
         /// Finds the Crop Storage building (with room for this crop) whose door is nearest the crop
         /// tile. Returns false when none exists or none has capacity.
@@ -429,6 +450,12 @@ namespace PitHero.Services
 
         /// <summary>Returns a claimed harvest action to the front of the queue.</summary>
         public void ReleaseHarvestAction(in FarmAction action) => _harvestQueue.AddFront(action);
+
+        /// <summary>Marks a claimed pickup action finished (the drop was recovered or removed).</summary>
+        public void CompletePickupAction(in FarmAction action) => _pickupTracked.Remove(action.TargetTile);
+
+        /// <summary>Returns a claimed pickup action to the front of the queue (worker gave up).</summary>
+        public void ReleasePickupAction(in FarmAction action) => _pickupQueue.AddFront(action);
 
         /// <summary>Reports a claimed action as unreachable; retried when buildings change.</summary>
         public void ReportBlocked(in FarmAction action)
@@ -517,6 +544,24 @@ namespace PitHero.Services
                     continue;
                 if (_harvestTracked.Add(tile))
                     _harvestQueue.AddBack(new FarmAction { Type = FarmActionType.Harvest, TargetTile = tile });
+            }
+        }
+
+        /// <summary>
+        /// Enqueues PickupDrop actions for all ground drops not already tracked. Called from
+        /// TryClaimAction (cheap scan, mirrors PopulateHarvestQueue).
+        /// </summary>
+        public void PopulatePickupQueue()
+        {
+            if (_droppedCropService == null)
+                return;
+
+            var all = _droppedCropService.GetAll();
+            for (int i = 0; i < all.Count; i++)
+            {
+                var tile = all[i].Tile;
+                if (_pickupTracked.Add(tile))
+                    _pickupQueue.AddBack(new FarmAction { Type = FarmActionType.PickupDrop, TargetTile = tile });
             }
         }
 

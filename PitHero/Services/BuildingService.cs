@@ -29,6 +29,12 @@ namespace PitHero.Services
         /// </summary>
         public System.Action<PlacedBuilding> BuildingMoved;
 
+        /// <summary>
+        /// Fired when a building is removed from the map (e.g. a Crop Storage sold by the player).
+        /// Lets in-flight workers targeting it react before the building object is discarded.
+        /// </summary>
+        public System.Action<PlacedBuilding> BuildingRemoved;
+
         /// <summary>Raises <see cref="BuildingMoved"/> for a building whose tile position just changed.</summary>
         public void NotifyBuildingMoved(PlacedBuilding b) => BuildingMoved?.Invoke(b);
 
@@ -65,6 +71,20 @@ namespace PitHero.Services
         public void AddBuilding(PlacedBuilding b)
         {
             _buildings.Add(b);
+            BuildingsChanged?.Invoke();
+        }
+
+        /// <summary>
+        /// Removes a placed building from the map. Fires <see cref="BuildingRemoved"/> (so in-flight
+        /// workers can retarget) then <see cref="BuildingsChanged"/> (so subscribers like
+        /// CropStorageInventoryService prune their per-building state). The caller is responsible for
+        /// destroying the building's <see cref="PlacedBuilding.WorldEntity"/>.
+        /// </summary>
+        public void RemoveBuilding(PlacedBuilding b)
+        {
+            if (b == null || !_buildings.Remove(b))
+                return;
+            BuildingRemoved?.Invoke(b);
             BuildingsChanged?.Invoke();
         }
 
