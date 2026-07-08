@@ -667,6 +667,7 @@ This guide provides a comprehensive framework for creating balanced equipment in
 - `MonsterBalanceGuide.md` - Monster balancing guidelines
 - `Gear.cs` - Equipment class definition
 - Existing equipment implementations in `/PitHero/RolePlayingFramework/Equipment/`
+- `EconomyBalanceGuide.md` - Sell-price rules for gear and crops (rarity-scaled fractions, consumable exception, crop rate formula)
 
 **For Questions or Balance Feedback:**
 - File an issue on GitHub
