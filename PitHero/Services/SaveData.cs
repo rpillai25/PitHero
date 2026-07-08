@@ -198,6 +198,15 @@ namespace PitHero.Services
         public List<SavedHarvestSlot> Slots;
     }
 
+    /// <summary>A harvested-crop stack dropped on the ground awaiting pickup (save version 12+).</summary>
+    public struct SavedDroppedCrop
+    {
+        public int CropTypeId;
+        public int Count;
+        public int TileX;
+        public int TileY;
+    }
+
     /// <summary>Lightweight struct representing a saved allied monster.</summary>
     public struct SavedAlliedMonster
     {
@@ -234,7 +243,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 11;
+        public const int CurrentVersion = 12;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -433,6 +442,9 @@ namespace PitHero.Services
         /// <summary>Harvested-crop inventories, one per Crop Storage building.</summary>
         public List<SavedCropStorageInventory> CropStorageInventories;
 
+        /// <summary>Harvested crops dropped on the ground awaiting pickup (version 12+).</summary>
+        public List<SavedDroppedCrop> DroppedCrops;
+
         // Defeated Monsters
         /// <summary>Bare enum names of monster types the player has defeated in battle (version 11+).</summary>
         public List<string> DefeatedMonsterTypes;
@@ -465,6 +477,7 @@ namespace PitHero.Services
             NextBuildingId = 1;
             CropGrowthStates = new List<SavedCropGrowthState>();
             CropStorageInventories = new List<SavedCropStorageInventory>();
+            DroppedCrops = new List<SavedDroppedCrop>();
             DefeatedMonsterTypes = new List<string>();
         }
 
@@ -776,6 +789,17 @@ namespace PitHero.Services
             writer.Write(defeatedCount);
             for (int i = 0; i < defeatedCount; i++)
                 writer.Write(DefeatedMonsterTypes[i] ?? string.Empty);
+
+            // 28. Dropped crops awaiting pickup (version 12+)
+            int droppedCount = DroppedCrops != null ? DroppedCrops.Count : 0;
+            writer.Write(droppedCount);
+            for (int i = 0; i < droppedCount; i++)
+            {
+                writer.Write(DroppedCrops[i].CropTypeId);
+                writer.Write(DroppedCrops[i].Count);
+                writer.Write(DroppedCrops[i].TileX);
+                writer.Write(DroppedCrops[i].TileY);
+            }
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -1180,6 +1204,26 @@ namespace PitHero.Services
             else
             {
                 DefeatedMonsterTypes = new List<string>();
+            }
+
+            // 28. Dropped crops awaiting pickup (version 12+)
+            if (fileVersion >= 12)
+            {
+                int droppedCount = reader.ReadInt();
+                DroppedCrops = new List<SavedDroppedCrop>(droppedCount);
+                for (int i = 0; i < droppedCount; i++)
+                {
+                    SavedDroppedCrop drop;
+                    drop.CropTypeId = reader.ReadInt();
+                    drop.Count      = reader.ReadInt();
+                    drop.TileX      = reader.ReadInt();
+                    drop.TileY      = reader.ReadInt();
+                    DroppedCrops.Add(drop);
+                }
+            }
+            else
+            {
+                DroppedCrops = new List<SavedDroppedCrop>();
             }
         }
 

@@ -19,6 +19,7 @@ namespace PitHero.UI
         private readonly TextButton _moveButton;
         private readonly TextButton _showButton;
         private readonly TextButton _addMonstersButton;
+        private readonly TextButton _sellBuildingButton;
         private readonly TextButton _cancelButton;
         private PlacedBuilding _building;
         private bool _isVisible;
@@ -32,6 +33,9 @@ namespace PitHero.UI
 
         /// <summary>Fired when the player chooses Add Monsters for a Monster House.</summary>
         public event System.Action<PlacedBuilding> OnAddMonsters;
+
+        /// <summary>Fired when the player chooses Sell building for an (empty) Crop Storage.</summary>
+        public event System.Action<PlacedBuilding> OnSellBuilding;
 
         /// <summary>Whether the context menu is currently visible.</summary>
         public bool IsVisible => _isVisible;
@@ -56,6 +60,9 @@ namespace PitHero.UI
 
             _addMonstersButton = new TextButton(GetText(UITextKey.ButtonAddMonsters), skin, "ph-default");
             _addMonstersButton.OnClicked += (_) => OnAddMonstersClicked();
+
+            _sellBuildingButton = new TextButton(GetText(UITextKey.ButtonSellBuilding), skin, "ph-default");
+            _sellBuildingButton.OnClicked += (_) => OnActionClicked(OnSellBuilding);
 
             _cancelButton = new TextButton(GetText(UITextKey.ButtonCancel), skin, "ph-default");
             _cancelButton.OnClicked += (_) => Hide();
@@ -94,6 +101,15 @@ namespace PitHero.UI
                 _content.Add(_addMonstersButton).Width(140f).SetPadBottom(4f);
                 _content.Row();
             }
+
+            // Crop-Storage-only option: sell the building once it is empty of crops. (Move/Sell all
+            // crops live in the Harvested Crops viewer, opened via "Show Crops".)
+            if (!isMonsterHouse && IsStorageEmpty(building.UniqueId))
+            {
+                _content.Add(_sellBuildingButton).Width(140f).SetPadBottom(4f);
+                _content.Row();
+            }
+
             _content.Add(_cancelButton).Width(140f);
 
             Pack();
@@ -131,6 +147,20 @@ namespace PitHero.UI
         {
             var allied = Core.Services?.GetService<AlliedMonsterManager>();
             return allied != null && allied.IsHouseFull(uniqueId);
+        }
+
+        private bool IsStorageEmpty(int uniqueId)
+        {
+            var storage = Core.Services?.GetService<CropStorageInventoryService>();
+            return storage == null || storage.IsEmpty(uniqueId);
+        }
+
+        /// <summary>Hides the menu, then fires the given action for the current building.</summary>
+        private void OnActionClicked(System.Action<PlacedBuilding> action)
+        {
+            var b = _building;
+            Hide();
+            action?.Invoke(b);
         }
 
         private void OnMoveClicked()

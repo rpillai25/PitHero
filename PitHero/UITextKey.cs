@@ -11,6 +11,10 @@ namespace PitHero
         public const string ButtonShowMonsters = "ButtonShowMonsters";
         public const string ButtonShowCrops = "ButtonShowCrops";
         public const string ButtonAddMonsters = "ButtonAddMonsters";
+        public const string ButtonMoveAllCrops = "ButtonMoveAllCrops";
+        public const string ButtonSellAllCrops = "ButtonSellAllCrops";
+        public const string ButtonSellBuilding = "ButtonSellBuilding";
+        public const string ButtonSell = "ButtonSell";
         public const string ButtonSave = "ButtonSave";
         public const string ButtonLoad = "ButtonLoad";
         public const string ButtonNew = "ButtonNew";
@@ -97,6 +101,11 @@ namespace PitHero
         public const string WindowLoadGame = "WindowLoadGame";
         public const string DialogReallyQuit = "DialogReallyQuit";
         public const string DialogReallyDiscard = "DialogReallyDiscard";
+        public const string DialogMoveCropsPrompt = "DialogMoveCropsPrompt";
+        public const string DialogSellStorageCropsPrompt = "DialogSellStorageCropsPrompt";
+        public const string DialogSellBuildingPrompt = "DialogSellBuildingPrompt";
+        public const string DialogSellCropStackPrompt = "DialogSellCropStackPrompt";
+        public const string DialogSellAllCropsPrompt = "DialogSellAllCropsPrompt";
         public const string DialogConfirmPurchase = "DialogConfirmPurchase";
         public const string DialogConfirmSave = "DialogConfirmSave";
         public const string DialogConfirmLoad = "DialogConfirmLoad";

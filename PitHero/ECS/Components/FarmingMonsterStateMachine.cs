@@ -58,6 +58,7 @@ namespace PitHero.ECS.Components
 
         // Harvest state
         private Farming.CropType _harvestCropType;
+        private int _harvestCarryCount;       // units currently carried (harvest yield, or a picked-up drop's count)
         private int _harvestBuildingId;
         private Point _harvestDoorTile;
         private bool _harvestPickedUp;        // crop has been removed/reverted and is now carried
@@ -103,7 +104,10 @@ namespace PitHero.ECS.Components
             _wetTileService = Core.Services.GetService<WetTileService>();
             _buildingService = Core.Services.GetService<BuildingService>();
             if (_buildingService != null)
+            {
                 _buildingService.BuildingMoved += OnBuildingMoved;
+                _buildingService.BuildingRemoved += OnBuildingRemoved;
+            }
 
             InitialState = FarmingMonsterState.EmergeFromHouse;
         }
@@ -111,7 +115,10 @@ namespace PitHero.ECS.Components
         public override void OnRemovedFromEntity()
         {
             if (_buildingService != null)
+            {
                 _buildingService.BuildingMoved -= OnBuildingMoved;
+                _buildingService.BuildingRemoved -= OnBuildingRemoved;
+            }
             base.OnRemovedFromEntity();
         }
 
@@ -162,6 +169,34 @@ namespace PitHero.ECS.Components
                 _harvestDoorTile = fallbackDoor;
                 TryWalkToStorageDoor();
             }
+        }
+
+        /// <summary>
+        /// Reacts to a Crop Storage being removed (sold). If this worker is carrying a harvest to it,
+        /// redirect to another storage with room; if none has room, drop the crop on the ground (it
+        /// will be picked up once a storage frees up) and return to normal work.
+        /// </summary>
+        private void OnBuildingRemoved(Services.PlacedBuilding building)
+        {
+            if (building == null || !_harvestPickedUp || building.UniqueId != _harvestBuildingId)
+                return;
+
+            if (_coordinator.TryFindNearestStorageWithCapacity(_mover.CurrentTile, _harvestCropType,
+                    out var fallback, out var fallbackDoor))
+            {
+                _harvestBuildingId = fallback.UniqueId;
+                _harvestDoorTile = fallbackDoor;
+                if (CurrentState == FarmingMonsterState.CarryHarvestToStorage)
+                    TryWalkToStorageDoor();
+                return;
+            }
+
+            // Nowhere left to deliver — drop the carried crop and resume other work.
+            Core.Services.GetService<DroppedCropService>()?.Drop(_harvestCropType, _harvestCarryCount, _mover.CurrentTile);
+            _mover.Stop();
+            ResetHarvestVisuals();
+            _harvestPickedUp = false;
+            CurrentState = FarmingMonsterState.Idle;
         }
 
         /// <summary>
@@ -272,6 +307,22 @@ namespace PitHero.ECS.Components
                     {
                         // Unreachable for now — drop it; PopulateHarvestQueue re-adds it later
                         _coordinator.CompleteHarvestAction(in _currentAction);
+                        _hasAction = false;
+                    }
+                    return;
+                }
+
+                // Pickup a dropped crop: walk exactly onto the drop tile, then carry it to storage
+                if (_currentAction.Type == FarmActionType.PickupDrop)
+                {
+                    if (TrySetPathTo(_currentAction.TargetTile))
+                    {
+                        CurrentState = FarmingMonsterState.MoveToDroppedCrop;
+                    }
+                    else
+                    {
+                        // Unreachable for now — release it; PopulatePickupQueue re-adds it later
+                        _coordinator.CompletePickupAction(in _currentAction);
                         _hasAction = false;
                     }
                     return;
@@ -664,6 +715,58 @@ namespace PitHero.ECS.Components
             }
         }
 
+        // ---------------------------------------------------------------- MoveToDroppedCrop
+
+        private void MoveToDroppedCrop_Tick()
+        {
+            if (_goHome)
+            {
+                _coordinator.ReleasePickupAction(in _currentAction);
+                _hasAction = false;
+                CurrentState = FarmingMonsterState.ReturnHome;
+                return;
+            }
+
+            if (_mover.IsMoving)
+                return;
+
+            var tile = _currentAction.TargetTile;
+            _coordinator.CompletePickupAction(in _currentAction);
+            _hasAction = false;
+
+            var dropped = Core.Services.GetService<DroppedCropService>();
+            if (dropped == null || !dropped.TryGetAt(tile, out var drop))
+            {
+                // Drop vanished (recovered by another worker) — nothing to carry.
+                CurrentState = FarmingMonsterState.Idle;
+                return;
+            }
+
+            // Pick it up and reuse the storage-delivery flow.
+            _harvestCropType = drop.Type;
+            _harvestCarryCount = drop.Count;
+            dropped.RemoveAt(tile);
+            ShowCarrySprite();
+            _harvestPickedUp = true;
+
+            if (_coordinator.TryFindNearestStorageWithCapacity(_mover.CurrentTile, _harvestCropType,
+                    out var building, out var door))
+            {
+                _harvestBuildingId = building.UniqueId;
+                _harvestDoorTile = door;
+                TryWalkToStorageDoor();
+                CurrentState = FarmingMonsterState.CarryHarvestToStorage;
+            }
+            else
+            {
+                // Storage disappeared between claim and arrival — put the crop back on the ground.
+                dropped.Drop(_harvestCropType, _harvestCarryCount, _mover.CurrentTile);
+                ResetHarvestVisuals();
+                _harvestPickedUp = false;
+                CurrentState = FarmingMonsterState.Idle;
+            }
+        }
+
         // ---------------------------------------------------------------- CarryHarvestToStorage
 
         private void CarryHarvestToStorage_Tick()
@@ -704,6 +807,7 @@ namespace PitHero.ECS.Components
 
             _harvestBuildingId = building.UniqueId;
             _harvestDoorTile = door;
+            _harvestCarryCount = Util.CropConfig.GetHarvestYield(_harvestCropType);
             ApplyHarvestResult(tile);
             ShowCarrySprite();
             _harvestPickedUp = true;
@@ -738,22 +842,28 @@ namespace PitHero.ECS.Components
         private void DepositAndFinish()
         {
             var storage = Core.Services.GetService<CropStorageInventoryService>();
-            int yield = Util.CropConfig.GetHarvestYield(_harvestCropType);
-            bool deposited = storage != null && storage.TryDeposit(_harvestBuildingId, _harvestCropType, yield);
+            int carried = _harvestCarryCount;
+            int stored = storage != null ? storage.DepositReturningStored(_harvestBuildingId, _harvestCropType, carried) : 0;
+            int remaining = carried - stored;
 
-            if (!deposited && storage != null)
+            if (remaining > 0 && storage != null)
             {
-                // Destination filled while we walked — redirect to any storage with room
+                // Destination filled (or was sold) while we walked — redirect to any storage with room
                 if (_coordinator.TryFindNearestStorageWithCapacity(_mover.CurrentTile, _harvestCropType,
                         out var building, out var door))
                 {
                     _harvestBuildingId = building.UniqueId;
+                    _harvestCarryCount = remaining;
                     _harvestDoorTile = door;
                     if (TryWalkToStorageDoor())
-                        return; // keep carrying to the new destination
-                    storage.TryDeposit(_harvestBuildingId, _harvestCropType, yield); // adjacent fallback
+                        return; // keep carrying the remainder to the new destination
+                    stored = storage.DepositReturningStored(_harvestBuildingId, _harvestCropType, remaining); // adjacent fallback
+                    remaining -= stored;
                 }
-                // else: nowhere to put it — crop is dropped (rare)
+
+                // Still holding crops with nowhere to go — drop them on the ground for later pickup.
+                if (remaining > 0)
+                    Core.Services.GetService<DroppedCropService>()?.Drop(_harvestCropType, remaining, _mover.CurrentTile);
             }
 
             // Delivered: the crop and the worker both vanish "into" the storage building.

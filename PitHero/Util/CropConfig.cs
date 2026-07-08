@@ -277,6 +277,53 @@ namespace PitHero.Util
         }
 
         /// <summary>
+        /// Relative growth-time tier used by the harvest sell-price formula. Higher tiers (slower
+        /// crops) pay more per harvested unit. Revisit if grow times are rebalanced; the rest of the
+        /// sell formula stays unchanged. See issue #285.
+        /// </summary>
+        public static float GetGrowthTier(CropType crop)
+        {
+            return crop switch
+            {
+                CropType.Wheat      => 0.85f,
+                CropType.Lettuce    => 0.90f,
+                CropType.Sugarcane  => 0.90f,
+                CropType.Turnip     => 0.90f,
+                CropType.Onion      => 1.00f,
+                CropType.Potato     => 1.00f,
+                CropType.Eggplant   => 1.20f,
+                CropType.Tomato     => 1.20f,
+                CropType.Corn       => 1.30f,
+                CropType.Grapes     => 1.40f,
+                CropType.Pumpkin    => 1.40f,
+                CropType.Watermelon => 1.40f,
+                CropType.AppleTree  => 1.80f,
+                _                   => 1.00f,
+            };
+        }
+
+        /// <summary>
+        /// Sell value of a single harvested unit of this crop:
+        /// <c>max((seed_price × growth_tier × 1.25) / harvest_yield, 5)</c>. The 1.25 profit scalar
+        /// gives a tier-1.0 crop +25% ROI on a full harvest; the floor of 5 guards against unusual
+        /// seed/yield combos. See issue #285.
+        /// </summary>
+        public static float GetHarvestUnitSellPrice(CropType crop)
+        {
+            float raw = (GetSeedPrice(crop) * GetGrowthTier(crop) * 1.25f) / GetHarvestYield(crop);
+            return raw < 5f ? 5f : raw;
+        }
+
+        /// <summary>
+        /// Gold paid for selling a stack of <paramref name="count"/> harvested units:
+        /// <c>ceil(unit_sell_price × count)</c>.
+        /// </summary>
+        public static int GetHarvestStackSellPrice(CropType crop, int count)
+        {
+            return (int)System.Math.Ceiling(GetHarvestUnitSellPrice(crop) * count);
+        }
+
+        /// <summary>
         /// Localization key (UI text) for a crop's flavor description, shown in the Harvested Crops
         /// viewer. Resolve via TextService.
         /// </summary>
