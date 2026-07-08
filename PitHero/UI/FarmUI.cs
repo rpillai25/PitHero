@@ -159,8 +159,13 @@ namespace PitHero.UI
                 _subButtons[i].SetVisible(false);
             }
 
-            // Wire Harvested Crops button (index 0)
-            _subButtons[0].OnClicked += (_) => ToggleHarvestedCropsMode();
+            // Wire Harvested Crops button (index 0). Dismiss its hover text on click so it doesn't
+            // linger over the Harvested Crops viewer that opens on top of the still-hovered button.
+            _subButtons[0].OnClicked += (_) =>
+            {
+                _subButtons[0].DismissHoverText();
+                ToggleHarvestedCropsMode();
+            };
 
             // Wire Till button (index 1)
             _subButtons[1].OnClicked += (_) => ToggleTillMode();

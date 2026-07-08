@@ -128,5 +128,17 @@ namespace PitHero.UI
         {
             _hoverText = hoverText;
         }
+
+        /// <summary>
+        /// Immediately dismisses this button's hover text — useful right after a click opens a
+        /// full-screen UI over the button, where the mouse never "leaves" so the normal hover-exit
+        /// path in Draw never fires. Leaves <c>_wasMouseOver</c> true so the text does not instantly
+        /// reappear; it shows again only after the mouse actually leaves and re-enters the button.
+        /// </summary>
+        public void DismissHoverText()
+        {
+            if (_wasMouseOver)
+                HoverTextManager.HideHoverText();
+        }
     }
 }
