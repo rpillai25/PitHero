@@ -336,6 +336,9 @@ namespace PitHero.UI
             var cropPlantingService = Core.Services?.GetService<CropPlantingService>();
             if (cropPlantingService == null) return;
 
+            var gameState = Core.Services?.GetService<GameStateService>();
+            if (gameState == null) return;
+
             int unitPrice = CropConfig.GetSeedPrice(crop);
             int ownedCount = cropPlantingService.SeedInventory != null
                 ? cropPlantingService.SeedInventory[(int)crop]
@@ -351,8 +354,6 @@ namespace PitHero.UI
                 _skin,
                 onConfirm: (qty) =>
                 {
-                    var gameState = Core.Services?.GetService<GameStateService>();
-                    if (gameState == null) return;
                     int totalPrice = unitPrice * qty;
                     if (gameState.Funds < totalPrice) return;
                     gameState.Funds -= totalPrice;
@@ -360,7 +361,7 @@ namespace PitHero.UI
                 },
                 onCancel: null,
                 ownedCount: ownedCount,
-                wrapQuantity: true);
+                availableFunds: gameState.Funds);
             qtyDialog.Show(_stage);
         }
 
@@ -755,7 +756,8 @@ namespace PitHero.UI
                 string itemName = vaultStack.ItemTemplate?.Name ?? "";
                 var qtyDialog = new VaultBuyQuantityDialog(shopTitle, itemName, unitPrice, maxQty, _skin,
                     onConfirm: (qty) => ExecuteItemPurchase(vaultStack, destSlot, qty, unitPrice, vault, gameState),
-                    onCancel:  cancelAction);
+                    onCancel:  cancelAction,
+                    availableFunds: gameState.Funds);
                 qtyDialog.Show(_stage);
             }
         }

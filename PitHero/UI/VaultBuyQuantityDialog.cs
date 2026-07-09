@@ -1,3 +1,4 @@
+using Microsoft.Xna.Framework;
 using Nez;
 using Nez.UI;
 using PitHero.Services;
@@ -8,6 +9,8 @@ namespace PitHero.UI
     /// A confirmation dialog for vault item purchases that includes a < qty > selector
     /// when the vault stack contains more than one item.  The player can raise or lower
     /// the quantity (1 … maxQty) before confirming; the total gold cost updates live.
+    /// When availableFunds is provided, the selectable quantity is additionally capped at
+    /// what the player can afford, and the arrow buttons grey out at the limits.
     /// When maxQty == 1 the selector row is hidden and the dialog behaves like a plain
     /// ConfirmationDialog.
     /// </summary>
@@ -19,9 +22,11 @@ namespace PitHero.UI
         private int _quantity = 1;
         private readonly int _unitPrice;
         private readonly int _maxQty;
-        private readonly bool _wrapQuantity;
+        private readonly bool _canAffordAny;
         private Label _quantityLabel;
         private Label _totalCostLabel;
+        private TextButton _decreaseBtn;
+        private TextButton _increaseBtn;
         private readonly System.Action<int> _onConfirm;
 
         /// <param name="title">Window title text.</param>
@@ -35,9 +40,10 @@ namespace PitHero.UI
         /// When &gt;= 0, an "Owned: N" row is rendered above the quantity selector.
         /// Pass -1 (default) to omit the row; existing call sites are unaffected.
         /// </param>
-        /// <param name="wrapQuantity">
-        /// When true, the quantity selector wraps around (1 → maxQty when decremented, maxQty → 1 when
-        /// incremented) instead of clamping. Defaults to false so existing call sites keep clamping.
+        /// <param name="availableFunds">
+        /// When &gt;= 0, the selectable quantity is capped at availableFunds / unitPrice and the
+        /// Yes button is disabled when the player cannot afford even one unit. Pass -1 (default)
+        /// to skip the affordability cap.
         /// </param>
         public VaultBuyQuantityDialog(
             string title,
@@ -48,15 +54,29 @@ namespace PitHero.UI
             System.Action<int> onConfirm,
             System.Action onCancel = null,
             int ownedCount = -1,
-            bool wrapQuantity = false)
+            int availableFunds = -1)
             : base(title, skin)
         {
             _unitPrice = unitPrice;
-            _maxQty    = maxQty > 1 ? maxQty : 1;
-            _wrapQuantity = wrapQuantity;
             _onConfirm = onConfirm;
 
+            int affordableMax = (availableFunds >= 0 && unitPrice > 0)
+                ? availableFunds / unitPrice
+                : int.MaxValue;
+            _canAffordAny = affordableMax >= 1;
+            int cap = maxQty < affordableMax ? maxQty : affordableMax;
+            _maxQty = cap > 1 ? cap : 1;
+
             var textService = Core.Services.GetService<TextService>();
+
+            // Buttons need a disabled visual; ph-default has none, and shared styles must never
+            // be mutated — clone it and grey the disabled font. Clone() skips the pressed
+            // offsets, so restore them by hand.
+            var baseStyle = skin.Get<TextButtonStyle>("ph-default");
+            var buttonStyle = baseStyle.Clone();
+            buttonStyle.PressedOffsetX = baseStyle.PressedOffsetX;
+            buttonStyle.PressedOffsetY = baseStyle.PressedOffsetY;
+            buttonStyle.DisabledFontColor = Color.Gray;
 
             bool showOwned = ownedCount >= 0;
             int extraHeight = showOwned ? 30 : 0;
@@ -91,16 +111,16 @@ namespace PitHero.UI
             {
                 var qtyTable = new Table();
 
-                var decreaseBtn = new TextButton("<", skin, "ph-default");
-                decreaseBtn.OnClicked += (b) => ChangeQuantity(-1);
-                qtyTable.Add(decreaseBtn).Width(40).SetMinHeight(ButtonHeight).SetPadRight(8);
+                _decreaseBtn = new TextButton("<", buttonStyle);
+                _decreaseBtn.OnClicked += (b) => ChangeQuantity(-1);
+                qtyTable.Add(_decreaseBtn).Width(40).SetMinHeight(ButtonHeight).SetPadRight(8);
 
                 _quantityLabel = new Label("1", skin);
                 qtyTable.Add(_quantityLabel).Width(40);
 
-                var increaseBtn = new TextButton(">", skin, "ph-default");
-                increaseBtn.OnClicked += (b) => ChangeQuantity(1);
-                qtyTable.Add(increaseBtn).Width(40).SetMinHeight(ButtonHeight).SetPadLeft(8);
+                _increaseBtn = new TextButton(">", buttonStyle);
+                _increaseBtn.OnClicked += (b) => ChangeQuantity(1);
+                qtyTable.Add(_increaseBtn).Width(40).SetMinHeight(ButtonHeight).SetPadLeft(8);
 
                 dialogTable.Add(qtyTable).SetPadBottom(8);
                 dialogTable.Row();
@@ -127,9 +147,12 @@ namespace PitHero.UI
             // ── Yes / No buttons ────────────────────────────────────────────────
             var buttonTable = new Table();
 
-            var yesButton = new TextButton(textService.DisplayText(TextType.UI, UITextKey.ButtonYes), skin, "ph-default");
+            var yesButton = new TextButton(textService.DisplayText(TextType.UI, UITextKey.ButtonYes), buttonStyle);
+            yesButton.SetDisabled(!_canAffordAny);
             yesButton.OnClicked += (b) =>
             {
+                if (!_canAffordAny)
+                    return;
                 _onConfirm?.Invoke(_quantity);
                 Remove();
             };
@@ -146,6 +169,8 @@ namespace PitHero.UI
             dialogTable.Add(buttonTable);
 
             Add(dialogTable).Expand().Fill();
+
+            UpdateArrowStates();
         }
 
         /// <summary>Shows the dialog centred on the given stage.</summary>
@@ -163,20 +188,13 @@ namespace PitHero.UI
         private void ChangeQuantity(int delta)
         {
             int next = _quantity + delta;
-            if (_wrapQuantity)
-            {
-                if (next < 1) next = _maxQty;
-                else if (next > _maxQty) next = 1;
-            }
-            else
-            {
-                if (next < 1) next = 1;
-                if (next > _maxQty) next = _maxQty;
-            }
+            if (next < 1) next = 1;
+            if (next > _maxQty) next = _maxQty;
             if (next == _quantity) return;
 
             _quantity = next;
             _quantityLabel?.SetText(_quantity.ToString());
+            UpdateArrowStates();
 
             if (_totalCostLabel != null)
             {
@@ -186,6 +204,13 @@ namespace PitHero.UI
                     _unitPrice * _quantity);
                 _totalCostLabel.SetText(totalText);
             }
+        }
+
+        /// <summary>Greys out an arrow when the quantity can move no further in its direction.</summary>
+        private void UpdateArrowStates()
+        {
+            _decreaseBtn?.SetDisabled(_quantity <= 1);
+            _increaseBtn?.SetDisabled(_quantity >= _maxQty || !_canAffordAny);
         }
     }
 }
