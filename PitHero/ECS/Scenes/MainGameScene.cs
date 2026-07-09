@@ -292,8 +292,9 @@ namespace PitHero.ECS.Scenes
                 cropGrowthService.RestoreAll(pendingData.CropGrowthStates, this, cropsAtlas);
             }
 
-            // Rebuild plant/water queues from restored state
-            Core.Services.GetService<Services.FarmTaskCoordinator>()?.RescanForPlanting();
+            // Rebuild the water queue from restored crop growth state. The plant queue is rebuilt
+            // later, after crop plans are restored — RescanForPlanting here would see an empty
+            // CropPlantingService and orphan plans on already-tilled tiles.
             Core.Services.GetService<Services.FarmTaskCoordinator>()?.PopulateWaterQueue();
 
             // Restore placed buildings
@@ -372,6 +373,9 @@ namespace PitHero.ECS.Scenes
                     _seedModeOverlay.SpawnRestoredCropPlan((Farming.CropType)cp.CropTypeId, cp.TileX, cp.TileY);
                 }
             }
+
+            // Rebuild the plant queue now that both tile states and crop plans are restored
+            Core.Services.GetService<Services.FarmTaskCoordinator>()?.RescanForPlanting();
 
             // Restore in-game time so Color Grading reflects the correct time of day
             if (pendingData.InGameTimeAccumulatedSeconds > 0)
