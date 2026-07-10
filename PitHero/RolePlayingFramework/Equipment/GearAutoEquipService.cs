@@ -144,6 +144,7 @@ namespace RolePlayingFramework.Equipment
                     {
                         bag.Remove(gear);
                         Debug.Log($"[GearAutoEquip] Equipped {gear.Name} to hero's Accessory1 slot");
+                        PitHero.Services.Analytics.AnalyticsService.LogGearEquipped(hero, EquipmentSlot.Accessory1, gear);
                         return true;
                     }
                 }
@@ -153,6 +154,7 @@ namespace RolePlayingFramework.Equipment
                     {
                         bag.Remove(gear);
                         Debug.Log($"[GearAutoEquip] Equipped {gear.Name} to hero's Accessory2 slot");
+                        PitHero.Services.Analytics.AnalyticsService.LogGearEquipped(hero, EquipmentSlot.Accessory2, gear);
                         return true;
                     }
                 }
@@ -167,6 +169,7 @@ namespace RolePlayingFramework.Equipment
                 {
                     bag.Remove(gear);
                     Debug.Log($"[GearAutoEquip] Equipped {gear.Name} to hero's {slot} slot (empty)");
+                    PitHero.Services.Analytics.AnalyticsService.LogGearEquipped(hero, slot, gear);
                     return true;
                 }
                 return false;
@@ -180,6 +183,7 @@ namespace RolePlayingFramework.Equipment
                     bag.TryAdd(currentGear);
                     displacedGear = currentGear;
                     Debug.Log($"[GearAutoEquip] Swapped {currentGear.Name} with {gear.Name} in hero's {slot} slot");
+                    PitHero.Services.Analytics.AnalyticsService.LogGearEquipped(hero, slot, gear);
                     return true;
                 }
             }
@@ -213,6 +217,7 @@ namespace RolePlayingFramework.Equipment
                     {
                         heroBag.Remove(gear);
                         Debug.Log($"[GearAutoEquip] Equipped {gear.Name} to {merc.Name}'s Accessory1 slot");
+                        PitHero.Services.Analytics.AnalyticsService.LogGearEquipped(merc, EquipmentSlot.Accessory1, gear);
                         return true;
                     }
                 }
@@ -222,6 +227,7 @@ namespace RolePlayingFramework.Equipment
                     {
                         heroBag.Remove(gear);
                         Debug.Log($"[GearAutoEquip] Equipped {gear.Name} to {merc.Name}'s Accessory2 slot");
+                        PitHero.Services.Analytics.AnalyticsService.LogGearEquipped(merc, EquipmentSlot.Accessory2, gear);
                         return true;
                     }
                 }
@@ -236,6 +242,7 @@ namespace RolePlayingFramework.Equipment
                 {
                     heroBag.Remove(gear);
                     Debug.Log($"[GearAutoEquip] Equipped {gear.Name} to {merc.Name}'s {slot} slot (empty)");
+                    PitHero.Services.Analytics.AnalyticsService.LogGearEquipped(merc, slot, gear);
                     return true;
                 }
                 return false;
@@ -249,6 +256,7 @@ namespace RolePlayingFramework.Equipment
                     heroBag.TryAdd(currentGear);
                     displacedGear = currentGear;
                     Debug.Log($"[GearAutoEquip] Swapped {currentGear.Name} with {gear.Name} in {merc.Name}'s {slot} slot");
+                    PitHero.Services.Analytics.AnalyticsService.LogGearEquipped(merc, slot, gear);
                     return true;
                 }
             }

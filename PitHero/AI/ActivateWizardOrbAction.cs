@@ -52,6 +52,8 @@ namespace PitHero.AI
             // Clear all remaining fog first so player sees fully cleared pit
             ClearAllFogOfWarInPit();
 
+            int pitLevelBeforeOrb = Core.Services.GetService<PitWidthManager>()?.CurrentPitLevel ?? 0;
+
             QueueNextPitLevel();
 
             // Regenerate the queued pit level immediately
@@ -85,6 +87,10 @@ namespace PitHero.AI
 
             Debug.Log($"[ActivateWizardOrb] BossDefeated set to {hero.BossDefeated} for new pit level {newPitLevel}");
             Debug.Log("[ActivateWizardOrb] Wizard orb activation complete - pit regenerated and hero repositioned");
+
+            Services.Analytics.AnalyticsService.LogOrbActivated(pitLevelBeforeOrb, newPitLevel, hero.LinkedHero?.Level ?? 0);
+            Services.Analytics.AnalyticsService.LogPartySnapshot("orb", hero.LinkedHero);
+
             return true; // Action complete
         }
 

@@ -300,6 +300,9 @@ namespace PitHero.AI
             {
                 Debug.Log($"[OpenChest] Added {containedItem.Name} to hero's main bag. Bag contents:");
 
+                Services.Analytics.AnalyticsService.LogItemAcquired(containedItem,
+                    Core.Services.GetService<PitWidthManager>()?.CurrentPitLevel ?? 0, treasureComponent.Level);
+
                 Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleItemFound,
                     (hero.LinkedHero.Name, GameConfig.ConsoleColorHeroName),
                     (containedItem.Name, RarityUtils.GetRarityColor(containedItem.Rarity)));

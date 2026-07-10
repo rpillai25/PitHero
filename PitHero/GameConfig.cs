@@ -82,6 +82,12 @@ namespace PitHero
         public const int DaytimeMonsterAddCostGold = 500;  // Gold to manually add a Daytime monster (issue #283)
         public const int NocturnalMonsterAddCostGold = 700; // Gold to manually add a Nocturnal monster (issue #283)
 
+        // Analytics configuration (issue #289; debug builds only)
+        public const bool AnalyticsEnabled = true; // Master switch for analytics logging in debug builds
+        public const float AnalyticsFlushIntervalSeconds = 15f; // How often buffered analytics events are written to disk
+        public const int AnalyticsFlushThresholdChars = 65536; // Buffer size that forces an immediate analytics flush
+        public const string AnalyticsDirectoryName = "analytics"; // Subfolder under %LOCALAPPDATA%\PitHero for analytics logs
+
         // Inn configuration
         public const int InnkeeperTileX = 69; // Innkeeper stands at (69, 3)
         public const int InnkeeperTileY = 3;

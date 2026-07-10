@@ -43,6 +43,11 @@ namespace PitHero
             soundEffectManager.Init(Content);
             RegisterGlobalManager(soundEffectManager);
 
+#if DEBUG
+            // Analytics for game balancing (issue #289) - debug builds only
+            RegisterGlobalManager(new Services.Analytics.AnalyticsManager());
+#endif
+
             // Disable pausing when focus is lost - essential for idle game behavior
             PauseOnFocusLost = false;
 
@@ -69,6 +74,9 @@ namespace PitHero
         {
             if (disposing)
             {
+                PitHero.Services.Analytics.AnalyticsService.LogSessionEnd();
+                PitHero.Services.Analytics.AnalyticsService.Shutdown();
+
                 var soundEffectManager = GetGlobalManager<SoundEffectManager>();
                 soundEffectManager?.Dispose();
             }

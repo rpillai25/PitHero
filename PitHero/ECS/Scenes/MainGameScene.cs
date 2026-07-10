@@ -110,6 +110,14 @@ namespace PitHero.ECS.Scenes
         public override void Initialize()
         {
             base.Initialize();
+
+            // Log session start before any scene setup so it is the first analytics event
+            // (pit generation and mercenary spawns fire during initialization below).
+            // Funds are already restored by SaveLoadService.ApplyLoadedState at load time.
+            Services.Analytics.AnalyticsService.LogSessionStart(
+                SaveLoadService.PendingLoadData != null ? "load" : "new_game",
+                Core.Services.GetService<GameStateService>()?.Funds ?? 0);
+
             SetDesignResolution(GameConfig.VirtualWidth, GameConfig.VirtualHeight, SceneResolutionPolicy.BestFit);
             ClearColor = Color.Transparent;
 
@@ -875,7 +883,7 @@ namespace PitHero.ECS.Scenes
                     onYes: () =>
                     {
                         var gameState = Core.Services.GetService<Services.GameStateService>();
-                        if (gameState != null) gameState.Funds += gold;
+                        gameState?.AddFunds(gold, "sell_building");
                         pb.WorldEntity?.Destroy();
                         Core.Services.GetService<Services.BuildingService>()?.RemoveBuilding(pb);
                     });

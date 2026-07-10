@@ -817,13 +817,17 @@ namespace PitHero.UI
             if (destSlot.SlotData.SlotType == InventorySlotType.MercenaryEquipment && destSlot.SlotData.EquipmentSlot.HasValue)
             {
                 // Mercenary equip slots always receive exactly 1 item
-                destSlot.SlotData.MercenaryRef?.SetEquipmentSlot(destSlot.SlotData.EquipmentSlot.Value, item);
+                var equipMerc = destSlot.SlotData.MercenaryRef;
+                if (equipMerc != null && equipMerc.SetEquipmentSlot(destSlot.SlotData.EquipmentSlot.Value, item))
+                    Services.Analytics.AnalyticsService.LogGearEquipped(equipMerc, destSlot.SlotData.EquipmentSlot.Value, item);
                 vault.RemoveQuantity(vaultStack, 1);
             }
             else if (destSlot.SlotData.SlotType == InventorySlotType.Equipment && destSlot.SlotData.EquipmentSlot.HasValue)
             {
                 // Hero equip slots always receive exactly 1 item
-                heroComp.LinkedHero?.SetEquipmentSlot(destSlot.SlotData.EquipmentSlot.Value, item);
+                var equipHero = heroComp.LinkedHero;
+                if (equipHero != null && equipHero.SetEquipmentSlot(destSlot.SlotData.EquipmentSlot.Value, item))
+                    Services.Analytics.AnalyticsService.LogGearEquipped(equipHero, destSlot.SlotData.EquipmentSlot.Value, item);
                 vault.RemoveQuantity(vaultStack, 1);
             }
             else if (destSlot.SlotData.SlotType == InventorySlotType.Inventory && destSlot.SlotData.BagIndex.HasValue)
@@ -1051,7 +1055,7 @@ namespace PitHero.UI
             if (!placed)
             {
                 // Inventory full — refund gold
-                gameState.Funds += price;
+                gameState.AddFunds(price, "refund");
                 InventoryDragManager.CancelDrag();
                 _vaultCrystalGrid?.ShowAllCrystalSprites();
                 return;

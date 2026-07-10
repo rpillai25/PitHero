@@ -60,6 +60,14 @@ namespace PitHero.AI
                 var endTile = currentTile;
                 Debug.Log($"[JumpIntoPit] Hero tile position at end of execution: X={endTile.X}, Y={endTile.Y}");
                 Debug.Log("[JumpIntoPit] Jump completed successfully");
+
+                if (hero.LinkedHero != null)
+                {
+                    var analyticsPitLevel = Core.Services.GetService<PitWidthManager>()?.CurrentPitLevel ?? 0;
+                    Services.Analytics.AnalyticsService.LogPitJump(analyticsPitLevel, hero.LinkedHero);
+                    Services.Analytics.AnalyticsService.LogPartySnapshot("pit_jump", hero.LinkedHero);
+                }
+
                 return true; // Action complete
             }
 
