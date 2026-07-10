@@ -649,6 +649,31 @@ namespace RolePlayingFramework.Balance
             return System.Math.Max(1, damage);
         }
 
+        /// <summary>HP restored per point of the caster's Magic stat by healing skills.</summary>
+        public const float SkillHealMagicFactor = 2f;
+
+        /// <summary>
+        /// Calculates the effective HP restored by a healing skill.
+        /// </summary>
+        /// <param name="baseAmount">The skill's base HP restore amount (its HPRestoreAmount).</param>
+        /// <param name="casterMagic">The caster's total Magic stat (including gear/synergy).</param>
+        /// <param name="healPowerBonus">The caster's heal power bonus (e.g. 0.25 from Mender).</param>
+        /// <remarks>
+        /// Formula: (base + Magic × SkillHealMagicFactor) × (1 + healPowerBonus)
+        ///
+        /// Example values for priest.heal (base 25):
+        /// - Magic 11: 47 HP (matches the pre-scaling flat 50 in the early game)
+        /// - Magic 18: 61 HP (76 with Mender) — keeps pace with pit 17-18 monster hits
+        /// - Magic 30: 85 HP
+        /// - Magic 99: 223 HP
+        ///
+        /// Matches the scaling convention used by synergy heals (AuraHeal: 25 + Magic × 2.5).
+        /// </remarks>
+        public static int CalculateSkillHealAmount(int baseAmount, int casterMagic, float healPowerBonus)
+        {
+            return (int)((baseAmount + casterMagic * SkillHealMagicFactor) * (1f + healPowerBonus));
+        }
+
         /// <summary>
         /// Calculates evasion value for hit chance calculations.
         /// </summary>

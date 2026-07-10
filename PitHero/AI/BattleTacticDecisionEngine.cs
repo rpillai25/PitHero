@@ -339,7 +339,7 @@ namespace PitHero.AI
 
                     case HeroHealPriority.HealingSkill:
                         if (heroComponent.HealingSkillExhausted) continue;
-                        var skill = FindBestHealingSkill(healSkills, hero.CurrentMP,
+                        var skill = FindBestHealingSkill(healSkills, hero, hero.CurrentMP,
                             targetCurrentHP, targetMaxHP, targetIsHero);
                         if (skill != null)
                         {
@@ -378,7 +378,7 @@ namespace PitHero.AI
                 return false;
 
             // 1. Try healing skill (no restrictions for mercenaries)
-            var skill = FindBestHealingSkill(healSkills, merc.CurrentMP,
+            var skill = FindBestHealingSkill(healSkills, merc, merc.CurrentMP,
                 targetCurrentHP, targetMaxHP, object.ReferenceEquals(healTarget, merc));
             if (skill != null)
             {
@@ -603,10 +603,10 @@ namespace PitHero.AI
         /// <summary>
         /// Finds the best healing skill for the given target deficit.
         /// Prefers skills that match the target context (Self for self, SingleAlly for ally, AllAllies).
-        /// Picks the skill whose HPRestoreAmount best matches the deficit (least waste).
+        /// Picks the skill whose caster-scaled heal amount best matches the deficit (least waste).
         /// </summary>
         private static ISkill FindBestHealingSkill(
-            List<ISkill> healSkills, int currentMP,
+            List<ISkill> healSkills, object caster, int currentMP,
             int targetCurrentHP, int targetMaxHP, bool targetIsSelf)
         {
             int hpNeeded = targetMaxHP - targetCurrentHP;
@@ -634,7 +634,7 @@ namespace PitHero.AI
 
                 if (!compatible) continue;
 
-                int waste = System.Math.Abs(skill.HPRestoreAmount - hpNeeded);
+                int waste = System.Math.Abs(SkillHealCalculator.GetAmount(skill, caster) - hpNeeded);
 
                 if (waste < bestWaste)
                 {

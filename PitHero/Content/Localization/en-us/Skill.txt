@@ -35,7 +35,7 @@ Skill_Priest_CalmSpirit_Desc,Increases MP regeneration by 1 per turn cycle.
 Skill_Priest_DefenseUp_Name,Defense Up
 Skill_Priest_DefenseUp_Desc,Temporarily increase defense by 1. Effect stacks with multiple uses.
 Skill_Priest_Heal_Name,Heal
-Skill_Priest_Heal_Desc,Restore 50 HP.
+Skill_Priest_Heal_Desc,Restore HP based on Magic stat.
 Skill_Priest_Mender_Name,Mender
 Skill_Priest_Mender_Desc,Increases all healing effects by 25%.
 Skill_Synergy_ArrowFlurry_Name,Arrow Flurry

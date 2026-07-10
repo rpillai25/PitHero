@@ -731,32 +731,34 @@ namespace PitHero.AI
         /// Applies a healing skill's HP/MP restore effects and displays the heal digit.
         /// The caller is responsible for spending MP before calling this method.
         /// </summary>
-        private System.Collections.IEnumerator ApplyHealingSkillEffectsAndDisplay(ISkill skill, object healTarget, bool targetsHero, HeroComponent heroComponent, List<Entity> validMercenaries, string casterName)
+        private System.Collections.IEnumerator ApplyHealingSkillEffectsAndDisplay(ISkill skill, object caster, object healTarget, bool targetsHero, HeroComponent heroComponent, List<Entity> validMercenaries, string casterName)
         {
             if (skill.HPRestoreAmount > 0)
             {
+                int healAmount = SkillHealCalculator.GetAmount(skill, caster);
+
                 bool healed = false;
                 if (healTarget is Hero hpHero)
-                    healed = hpHero.RestoreHP(skill.HPRestoreAmount);
+                    healed = hpHero.RestoreHP(healAmount);
                 else if (healTarget is Mercenary hpMerc)
-                    healed = hpMerc.RestoreHP(skill.HPRestoreAmount);
+                    healed = hpMerc.RestoreHP(healAmount);
 
                 if (healed)
                 {
                     var targetEntity = FindTargetEntity(healTarget, targetsHero, heroComponent, validMercenaries);
                     SoundEffectManager sfx = Core.GetGlobalManager<SoundEffectManager>();
                     sfx?.PlaySound(SoundEffectType.Restorative);
-                    yield return ShowHealDigitOnEntity(targetEntity, skill.HPRestoreAmount);
+                    yield return ShowHealDigitOnEntity(targetEntity, healAmount);
 
                     string targetName = healTarget is Hero th ? th.Name : ((Mercenary)healTarget).Name;
                     Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleHealSkill,
                         (casterName, GameConfig.ConsoleColorHeroName),
                         (skill.Name, Color.White),
                         (targetName, GameConfig.ConsoleColorHeroName),
-                        (skill.HPRestoreAmount.ToString(), Color.White));
+                        (healAmount.ToString(), Color.White));
 
                     int healHpAfter = healTarget is Hero hpAfterHero ? hpAfterHero.CurrentHP : ((Mercenary)healTarget).CurrentHP;
-                    PitHero.Services.Analytics.AnalyticsService.LogHeal(casterName, skill.Id, targetName, skill.HPRestoreAmount, healHpAfter);
+                    PitHero.Services.Analytics.AnalyticsService.LogHeal(casterName, skill.Id, targetName, healAmount, healHpAfter);
                 }
             }
 
@@ -945,7 +947,7 @@ namespace PitHero.AI
                     {
                         hero.SpendMP(skill.MPCost);
                         var healTarget = queuedAction.Target ?? hero;
-                        yield return ApplyHealingSkillEffectsAndDisplay(skill, healTarget, queuedAction.TargetsHero, heroComponent, validMercenaries, hero.Name);
+                        yield return ApplyHealingSkillEffectsAndDisplay(skill, hero, healTarget, queuedAction.TargetsHero, heroComponent, validMercenaries, hero.Name);
                         Debug.Log($"[AttackMonster] Used healing skill {skill.Name}");
                     }
                     else
@@ -1136,7 +1138,7 @@ namespace PitHero.AI
                         mercenary.UseMP(healSkill.MPCost);
                         mercComponent.ActionQueueVisualization?.ShowAction(new QueuedAction(healSkill));
                         var healTarget = mercDecision.Target ?? hero;
-                        yield return ApplyHealingSkillEffectsAndDisplay(healSkill, healTarget, mercDecision.TargetsHero, heroComponent, validMercenaries, mercenary.Name);
+                        yield return ApplyHealingSkillEffectsAndDisplay(healSkill, mercenary, healTarget, mercDecision.TargetsHero, heroComponent, validMercenaries, mercenary.Name);
                         Debug.Log($"[AttackMonster] {mercenary.Name} used {healSkill.Name}");
                     }
                     break;
