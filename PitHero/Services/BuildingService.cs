@@ -35,8 +35,17 @@ namespace PitHero.Services
         /// </summary>
         public System.Action<PlacedBuilding> BuildingRemoved;
 
-        /// <summary>Raises <see cref="BuildingMoved"/> for a building whose tile position just changed.</summary>
-        public void NotifyBuildingMoved(PlacedBuilding b) => BuildingMoved?.Invoke(b);
+        /// <summary>
+        /// Raises <see cref="BuildingsChanged"/> then <see cref="BuildingMoved"/> for a building whose
+        /// tile position just changed. BuildingsChanged must fire first: it rebuilds the farm
+        /// pathfinder's walls, so workers re-pathing from BuildingMoved see the new location instead
+        /// of stale walls at the old one.
+        /// </summary>
+        public void NotifyBuildingMoved(PlacedBuilding b)
+        {
+            BuildingsChanged?.Invoke();
+            BuildingMoved?.Invoke(b);
+        }
 
         /// <summary>Next ID to allocate. Persisted in the save file so IDs are never reused.</summary>
         public int NextId { get => _nextId; set => _nextId = value; }

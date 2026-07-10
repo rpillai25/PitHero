@@ -277,41 +277,64 @@ namespace PitHero.Util
         }
 
         /// <summary>
-        /// Relative growth-time tier used by the harvest sell-price formula. Higher tiers (slower
-        /// crops) pay more per harvested unit. Revisit if grow times are rebalanced; the rest of the
-        /// sell formula stays unchanged. See issue #285.
+        /// Gold-rate multiplier for the harvest sell-price formula. The base rate is
+        /// <see cref="HarvestGoldPerGrowthHour"/> × tier per in-game growth hour. See issue #287.
         /// </summary>
         public static float GetGrowthTier(CropType crop)
         {
             return crop switch
             {
-                CropType.Wheat      => 0.85f,
-                CropType.Lettuce    => 0.90f,
-                CropType.Sugarcane  => 0.90f,
-                CropType.Turnip     => 0.90f,
-                CropType.Onion      => 1.00f,
-                CropType.Potato     => 1.00f,
-                CropType.Eggplant   => 1.20f,
-                CropType.Tomato     => 1.20f,
-                CropType.Corn       => 1.30f,
-                CropType.Grapes     => 1.40f,
-                CropType.Pumpkin    => 1.40f,
-                CropType.Watermelon => 1.40f,
-                CropType.AppleTree  => 1.80f,
+                CropType.Wheat      => 0.70f,
+                CropType.Lettuce    => 0.75f,
+                CropType.Turnip     => 0.75f,
+                CropType.Sugarcane  => 0.80f,
+                CropType.Onion      => 0.85f,
+                CropType.Potato     => 0.85f,
+                CropType.Tomato     => 0.95f,
+                CropType.Corn       => 1.00f,
+                CropType.Eggplant   => 1.05f,
+                CropType.Grapes     => 1.10f,
+                CropType.Pumpkin    => 1.15f,
+                CropType.Watermelon => 1.20f,
+                CropType.AppleTree  => 1.30f,
                 _                   => 1.00f,
             };
         }
 
+        /// <summary>Base gold paid per in-game growth hour at rate tier 1.0 (0.5 g/hr = 30 g per real hour). See issue #287.</summary>
+        public const float HarvestGoldPerGrowthHour = 0.5f;
+
+        /// <summary>Minimum sell value of a single harvested unit (guards degenerate future data combos).</summary>
+        public const float HarvestUnitSellFloor = 1f;
+
+        /// <summary>
+        /// In-game hours of growth paid for by one harvest: the steady-state regrow cycle for
+        /// repeat-harvest crops, or full seed-to-mature growth for one-shot crops.
+        /// </summary>
+        public static float GetIncomeCycleHours(CropType crop)
+        {
+            int lastFrame = GetFrameCount(crop);
+            if (IsRepeatHarvest(crop))
+            {
+                int revert = GetRevertFrame(crop);
+                if (revert < 1) revert = 1;   // matches CropGrowthService.RevertCropForRegrowth clamp
+                return (lastFrame - revert) * GetHoursPerStage(crop) * GetRegrowthRateMultiplier(crop);
+            }
+            return (lastFrame - 1) * GetHoursPerStage(crop);
+        }
+
         /// <summary>
         /// Sell value of a single harvested unit of this crop:
-        /// <c>max((seed_price × growth_tier × 1.25) / harvest_yield, 5)</c>. The 1.25 profit scalar
-        /// gives a tier-1.0 crop +25% ROI on a full harvest; the floor of 5 guards against unusual
-        /// seed/yield combos. See issue #285.
+        /// <c>(HarvestGoldPerGrowthHour × tier × cycle_hours [+ seed_price for one-shot]) / yield</c>,
+        /// with a floor of <see cref="HarvestUnitSellFloor"/>. See issue #287.
         /// </summary>
         public static float GetHarvestUnitSellPrice(CropType crop)
         {
-            float raw = (GetSeedPrice(crop) * GetGrowthTier(crop) * 1.25f) / GetHarvestYield(crop);
-            return raw < 5f ? 5f : raw;
+            float cycleGold = HarvestGoldPerGrowthHour * GetGrowthTier(crop) * GetIncomeCycleHours(crop);
+            if (!IsRepeatHarvest(crop))
+                cycleGold += GetSeedPrice(crop);   // one-shot crops recover their seed each cycle
+            float unit = cycleGold / GetHarvestYield(crop);
+            return unit < HarvestUnitSellFloor ? HarvestUnitSellFloor : unit;
         }
 
         /// <summary>

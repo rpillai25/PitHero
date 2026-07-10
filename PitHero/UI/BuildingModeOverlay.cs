@@ -55,6 +55,7 @@ namespace PitHero.UI
         // ── Constants ─────────────────────────────────────────────────────────────
         private const int TillMinTileX = 120;
         private const int TillMinTileY = 0;
+        private const int MaxTileY     = 11;   // bottom row of the 12-row surface map
         private const float FallStartOffset = -600f;
         private const float SlotSize = 100f;
         private const float WinPad = 16f;
@@ -384,6 +385,12 @@ namespace PitHero.UI
             var tileService     = Core.Services.GetService<TileStateService>();
             var buildingService = Core.Services.GetService<BuildingService>();
             var footprint       = BuildingConfig.GetFootprint(type);
+
+            // A Crop Storage's approach tile (one below the footprint) must exist on the map,
+            // or harvest deliveries can never path to it.
+            if (type == BuildingType.CropStorage &&
+                BuildingConfig.GetDoorTile(type, new Point(tx, ty)).Y > MaxTileY)
+                return false;
 
             for (int i = 0; i < footprint.Length; i++)
             {

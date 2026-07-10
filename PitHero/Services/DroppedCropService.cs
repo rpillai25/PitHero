@@ -106,6 +106,21 @@ namespace PitHero.Services
             _drops.Clear();
         }
 
+        /// <summary>
+        /// Relocates a drop to a new tile and respawns its ground entity there. Used when the
+        /// drop's tile can't be targeted for pickup (covered by a building footprint or otherwise
+        /// impassable — e.g. drops from older saves, or a building placed on top of a drop).
+        /// </summary>
+        public void MoveDrop(DroppedCrop drop, Point newTile)
+        {
+            if (drop == null || drop.Tile == newTile)
+                return;
+            drop.Tile = newTile;
+            drop.GroundEntity?.Destroy();
+            drop.GroundEntity = null;
+            SpawnEntity(drop);
+        }
+
         /// <summary>Restores a drop from saved data (respawns its ground entity).</summary>
         public void Restore(CropType crop, int count, Point tile)
         {
