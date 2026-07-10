@@ -163,7 +163,7 @@ namespace PitHero.UI
                 onYes: () =>
                 {
                     var gameState = Core.Services.GetService<GameStateService>();
-                    if (gameState != null) gameState.Funds += totalGold;
+                    gameState?.AddFunds(totalGold, "sell_crops");
                     storage.ClearBuilding(buildingId);
                     _descWindow?.SetVisible(false);
                     LayoutButtonRow();
@@ -200,7 +200,7 @@ namespace PitHero.UI
                 onYes: () =>
                 {
                     var gameState = Core.Services.GetService<GameStateService>();
-                    if (gameState != null) gameState.Funds += totalGold;
+                    gameState?.AddFunds(totalGold, "sell_crops");
                     for (int b = 0; b < all.Count; b++)
                         if (all[b].Type == BuildingType.CropStorage)
                             storage.ClearBuilding(all[b].UniqueId);
@@ -400,7 +400,7 @@ namespace PitHero.UI
                 {
                     var storage = Core.Services.GetService<CropStorageInventoryService>();
                     var gameState = Core.Services.GetService<GameStateService>();
-                    if (gameState != null) gameState.Funds += gold;
+                    gameState?.AddFunds(gold, "sell_crops");
                     storage?.ClearSlot(buildingId, slotIndex);
                     _descWindow.SetVisible(false);
                     LayoutButtonRow();

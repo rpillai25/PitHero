@@ -258,6 +258,8 @@ namespace PitHero.AI
                     _hasPaidInnkeeper = true;
                     soundEffectManager.PlaySound(SoundEffectType.PayGold);
                     Debug.Log($"[SleepInBedAction] Paid {GameConfig.InnCostGold} gold to innkeeper. Remaining funds: {gameState.Funds}");
+
+                    Services.Analytics.AnalyticsService.LogInnSleep(GameConfig.InnCostGold, gameState.Funds);
                 }
                 else
                 {
@@ -272,6 +274,9 @@ namespace PitHero.AI
             else
             {
                 Debug.Log("[SleepInBedAction] Night sleep — innkeeper stay is free");
+
+                Services.Analytics.AnalyticsService.LogInnSleep(0,
+                    Core.Services.GetService<GameStateService>()?.Funds ?? 0);
             }
 
             // Step 4: Walk to bed (73, 3)

@@ -370,6 +370,8 @@ namespace PitHero
             Debug.Log($"[PitGenerator]   Min Obstacles: {minObstacles}");
             Debug.Log($"[PitGenerator]   Max Obstacles: {maxObstacles}, Actual: {obstacleCount}");
 
+            Services.Analytics.AnalyticsService.LogPitGenerated(level, isBossFloor, monsterCount, chestCount);
+
             InitializeCollisionTiles(validMinX, validMinY, validMaxX, validMaxY);
 
             var maxAttempts = 10;
@@ -789,6 +791,10 @@ namespace PitHero
                     Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
 
                     Debug.Log($"[PitGenerator] Created treasure level {treasureComponent.Level} at tile ({tilePos.X},{tilePos.Y})");
+
+                    Services.Analytics.AnalyticsService.LogChestSpawned(currentPitLevel, tilePos.X, tilePos.Y,
+                        treasureComponent.Level, treasureComponent.ContainedItem,
+                        treasureComponent.ContainedSeedType?.ToString(), treasureComponent.ContainedSeedCount);
                 }
                 else if (tag == GameConfig.TAG_WIZARD_ORB)
                 {
@@ -833,6 +839,8 @@ namespace PitHero
 
                     var enemyComponent = entity.AddComponent(new EnemyComponent(enemy, isStationary: enemy.IsBoss));
                     Debug.Log($"[PitGenerator] Created {enemy.Name} enemy (Level {enemy.Level}, HP {enemy.CurrentHP}, IsBoss {enemy.IsBoss}) at tile ({tilePos.X},{tilePos.Y})");
+
+                    Services.Analytics.AnalyticsService.LogMonsterSpawned(pitLevel, tilePos.X, tilePos.Y, enemy);
 
                     // Add animation component using atlas sprite animations for all monster types
                     EnemyAnimationComponent enemyAnimation;

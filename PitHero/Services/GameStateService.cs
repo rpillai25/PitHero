@@ -11,6 +11,13 @@ namespace PitHero.Services
         /// <summary>Gold currency that persists across all heroes.</summary>
         public int Funds { get; set; }
 
+        /// <summary>Adds gold to Funds and records the gain with its source for balance analytics.</summary>
+        public void AddFunds(int amount, string source)
+        {
+            Funds += amount;
+            Analytics.AnalyticsService.LogGoldGained(amount, source, Funds);
+        }
+
         /// <summary>Discovered stencils mapped by pattern ID to discovery source.</summary>
         public Dictionary<string, StencilDiscoverySource> DiscoveredStencils { get; } = new();
 

@@ -155,6 +155,7 @@ All formulas live in `BalanceConfig.cs`. Caps are enforced via `StatConstants`:
 Design docs under `PitHero/docs/` (kept as standalone references — don't duplicate their content into agent files or skills):
 
 **Balance / data:**
+- `PitHero/docs/AnalyticsSchema.md` — debug-only balance analytics: JSONL event schema, output location, interpretation caveats
 - `PitHero/docs/EquipmentBalanceGuide.md`
 - `PitHero/docs/MonsterBalanceGuide.md`
 - `PitHero/docs/JobStatCurves.md`

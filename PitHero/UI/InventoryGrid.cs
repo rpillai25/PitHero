@@ -832,7 +832,7 @@ namespace PitHero.UI
                 vault?.AddItem(item);
 
                 var gameState = Core.Services?.GetService<PitHero.Services.GameStateService>();
-                if (gameState != null) gameState.Funds += gold;
+                gameState?.AddFunds(gold, "sell_item");
 
                 _heroComponent.Bag.SetSlotItem(bagIndex, null);
                 Debug.Log($"Sold {item.Name} x{qty} for {gold}G");
@@ -1368,7 +1368,10 @@ namespace PitHero.UI
             if (heroEquipment == null) return true;
             var d = slot.SlotData;
             if (d.SlotType != InventorySlotType.Equipment || !d.EquipmentSlot.HasValue) return true;
-            return heroEquipment.SetEquipmentSlot(d.EquipmentSlot.Value, d.Item);
+            var equipped = heroEquipment.SetEquipmentSlot(d.EquipmentSlot.Value, d.Item);
+            if (equipped && d.Item != null)
+                Services.Analytics.AnalyticsService.LogGearEquipped(heroEquipment, d.EquipmentSlot.Value, d.Item);
+            return equipped;
         }
 
         /// <summary>Updates mercenary equipment when a mercenary equipment slot changed.</summary>
@@ -1378,7 +1381,8 @@ namespace PitHero.UI
             if (d.SlotType != InventorySlotType.MercenaryEquipment || !d.EquipmentSlot.HasValue) return;
             var merc = d.MercenaryRef;
             if (merc == null) return;
-            merc.SetEquipmentSlot(d.EquipmentSlot.Value, d.Item);
+            if (merc.SetEquipmentSlot(d.EquipmentSlot.Value, d.Item) && d.Item != null)
+                Services.Analytics.AnalyticsService.LogGearEquipped(merc, d.EquipmentSlot.Value, d.Item);
         }
 
         /// <summary>finds the first empty bag slot (shortcut or inventory).</summary>

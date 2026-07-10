@@ -191,6 +191,8 @@ namespace PitHero.Services
             var mercenary = new Mercenary(name, job, mercLevel, baseStats);
             mercenary.LearnAllJobSkills();
 
+            Analytics.AnalyticsService.LogMercArrived(mercenary, BalanceConfig.CalculateMercenaryHireCost(mercLevel));
+
             // Create entity at spawn position
             var spawnWorldPos = new Vector2(
                 SpawnPosition.X * GameConfig.TileSize + GameConfig.TileSize / 2,
@@ -516,13 +518,15 @@ namespace PitHero.Services
         }
 
         /// <summary>Removes a mercenary from the game</summary>
-        private void RemoveMercenary(Entity mercEntity)
+        private void RemoveMercenary(Entity mercEntity, string reason = "tavern_left")
         {
             var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
             if (mercComponent != null)
             {
                 _occupiedTavernPositions.Remove(mercComponent.TavernPosition);
                 Debug.Log($"[MercenaryManager] Removed mercenary {mercComponent.LinkedMercenary.Name}");
+
+                Analytics.AnalyticsService.LogMercLeft(mercComponent.LinkedMercenary?.Name, reason);
             }
 
             _mercenaryEntities.Remove(mercEntity);
@@ -582,7 +586,7 @@ namespace PitHero.Services
             ReassignFollowTargetsAfterDismissal(mercEntity);
 
             // Remove and destroy
-            RemoveMercenary(mercEntity);
+            RemoveMercenary(mercEntity, "dismissed");
         }
 
         /// <summary>
