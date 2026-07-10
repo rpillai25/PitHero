@@ -57,6 +57,11 @@ namespace PitHero.Services
         /// <summary>Provides the dropped-crop service used to recover crops dropped on the ground.</summary>
         public void SetDroppedCropService(DroppedCropService service) => _droppedCropService = service;
 
+        // Core.Services requires a running game instance; headless tests construct the coordinator
+        // without one, so validation/populate paths resolve services through this null-safe lookup.
+        private static T GetService<T>() where T : class
+            => Core.Instance != null ? Core.Services.GetService<T>() : null;
+
         /// <summary>Shared A* grid for all farming monsters.</summary>
         public FarmPathfinder Pathfinder { get; }
 
@@ -350,15 +355,15 @@ namespace PitHero.Services
 
         private bool ValidatePlant(Point tile)
         {
-            var cropPlanting = Core.Services.GetService<CropPlantingService>();
-            var cropGrowth = Core.Services.GetService<CropGrowthService>();
+            var cropPlanting = GetService<CropPlantingService>();
+            var cropGrowth = GetService<CropGrowthService>();
             return cropPlanting != null && cropPlanting.HasPlan(tile)
                 && (cropGrowth == null || !cropGrowth.HasCrop(tile));
         }
 
         private bool ValidateWater(Point tile)
         {
-            var cropGrowth = Core.Services.GetService<CropGrowthService>();
+            var cropGrowth = GetService<CropGrowthService>();
             return cropGrowth != null && cropGrowth.HasCrop(tile)
                 && !_tileState.HasFlag(tile, TileStateFlag.Wet)
                 // Skip fully-grown crops: watering does nothing for them, so workers prioritize
@@ -368,7 +373,7 @@ namespace PitHero.Services
 
         private bool ValidateHarvest(Point tile)
         {
-            var cropGrowth = Core.Services.GetService<CropGrowthService>();
+            var cropGrowth = GetService<CropGrowthService>();
             if (cropGrowth == null)
                 return false;
             var cropType = cropGrowth.GetCropType(tile);
@@ -399,7 +404,7 @@ namespace PitHero.Services
             building = null;
             doorTile = default;
 
-            var storage = Core.Services.GetService<CropStorageInventoryService>();
+            var storage = GetService<CropStorageInventoryService>();
             var all = _buildingService.GetAll();
             long best = long.MaxValue;
             for (int i = 0; i < all.Count; i++)
@@ -471,7 +476,7 @@ namespace PitHero.Services
         /// </summary>
         public void NotifyPlanAddedOnTilledTile(Point tile)
         {
-            var cropGrowth = Core.Services.GetService<CropGrowthService>();
+            var cropGrowth = GetService<CropGrowthService>();
             if (cropGrowth != null && cropGrowth.HasCrop(tile))
                 return;
             if (_plantTracked.Add(tile))
@@ -484,8 +489,8 @@ namespace PitHero.Services
         /// </summary>
         public void RescanForPlanting()
         {
-            var cropPlanting = Core.Services.GetService<CropPlantingService>();
-            var cropGrowth = Core.Services.GetService<CropGrowthService>();
+            var cropPlanting = GetService<CropPlantingService>();
+            var cropGrowth = GetService<CropGrowthService>();
             if (cropPlanting == null)
                 return;
 
@@ -511,7 +516,7 @@ namespace PitHero.Services
         /// </summary>
         public void PopulateWaterQueue()
         {
-            var cropGrowth = Core.Services.GetService<CropGrowthService>();
+            var cropGrowth = GetService<CropGrowthService>();
             if (cropGrowth == null)
                 return;
 
@@ -534,7 +539,7 @@ namespace PitHero.Services
         /// </summary>
         public void PopulateHarvestQueue()
         {
-            var cropGrowth = Core.Services.GetService<CropGrowthService>();
+            var cropGrowth = GetService<CropGrowthService>();
             if (cropGrowth == null)
                 return;
 
@@ -559,10 +564,52 @@ namespace PitHero.Services
             var all = _droppedCropService.GetAll();
             for (int i = 0; i < all.Count; i++)
             {
-                var tile = all[i].Tile;
+                var drop = all[i];
+                var tile = drop.Tile;
+
+                // Drops can sit on tiles a pickup can't target — dropped at the worker's
+                // inside-the-building deposit position (older saves), or a building placed on top.
+                // Relocate them to the nearest reachable tile so they don't stall in the queue forever.
+                if (_buildingService.IsTileOccupied(tile.X, tile.Y) || !Pathfinder.IsPassable(tile))
+                {
+                    if (!TryFindDropRelocationTile(tile, out tile))
+                        continue; // fully enclosed — retried next poll (e.g. after a building moves)
+                    _droppedCropService.MoveDrop(drop, tile);
+                }
+
                 if (_pickupTracked.Add(tile))
                     _pickupQueue.AddBack(new FarmAction { Type = FarmActionType.PickupDrop, TargetTile = tile });
             }
+        }
+
+        /// <summary>
+        /// Ring-searches outward for the nearest tile a pickup can target: passable, not covered
+        /// by a building, and not already holding another drop.
+        /// </summary>
+        private bool TryFindDropRelocationTile(Point origin, out Point result)
+        {
+            for (int r = 1; r < 8; r++)
+            {
+                for (int dy = -r; dy <= r; dy++)
+                {
+                    for (int dx = -r; dx <= r; dx++)
+                    {
+                        if (System.Math.Abs(dx) != r && System.Math.Abs(dy) != r)
+                            continue; // ring perimeter only
+                        var t = new Point(origin.X + dx, origin.Y + dy);
+                        if (!Pathfinder.IsPassable(t))
+                            continue;
+                        if (_buildingService.IsTileOccupied(t.X, t.Y))
+                            continue;
+                        if (_droppedCropService.TryGetAt(t, out _))
+                            continue;
+                        result = t;
+                        return true;
+                    }
+                }
+            }
+            result = origin;
+            return false;
         }
 
         /// <summary>
@@ -610,7 +657,7 @@ namespace PitHero.Services
 
         private void HandleTileTilled(Point tile)
         {
-            var cropPlanting = Core.Services.GetService<CropPlantingService>();
+            var cropPlanting = GetService<CropPlantingService>();
             if (cropPlanting == null || !cropPlanting.HasPlan(tile))
                 return;
             if (_plantTracked.Add(tile))

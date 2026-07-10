@@ -862,8 +862,10 @@ namespace PitHero.ECS.Components
                 }
 
                 // Still holding crops with nowhere to go — drop them on the ground for later pickup.
+                // Drop at the approach tile, not CurrentTile: the worker stands one tile inside the
+                // building footprint here, and drops on footprint tiles can never be picked up.
                 if (remaining > 0)
-                    Core.Services.GetService<DroppedCropService>()?.Drop(_harvestCropType, remaining, _mover.CurrentTile);
+                    Core.Services.GetService<DroppedCropService>()?.Drop(_harvestCropType, remaining, _harvestDoorTile);
             }
 
             // Delivered: the crop and the worker both vanish "into" the storage building.
