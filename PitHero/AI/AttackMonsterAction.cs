@@ -416,21 +416,7 @@ namespace PitHero.AI
                     validMonsters[i].AddComponent(new MonsterHPBarComponent());
 
                 for (int i = 0; i < validMercenaries.Count; i++)
-                {
-                    var mercEntity = validMercenaries[i];
-                    if (!mercEntity.HasComponent<BouncyDigitComponent>())
-                    {
-                        var bouncyDigit = mercEntity.AddComponent<BouncyDigitComponent>();
-                        bouncyDigit.SetRenderLayer(GameConfig.RenderLayerLowest);
-                        bouncyDigit.SetEnabled(false);
-                    }
-                    if (!mercEntity.HasComponent<BouncyTextComponent>())
-                    {
-                        var bouncyText = mercEntity.AddComponent<BouncyTextComponent>();
-                        bouncyText.SetRenderLayer(GameConfig.RenderLayerLowest);
-                        bouncyText.SetEnabled(false);
-                    }
-                }
+                    AddMercenaryBattleUIComponents(validMercenaries[i]);
 
                 turnIndicatorEntity = Core.Scene.CreateEntity("battle-turn-indicator");
                 var turnIndicator = turnIndicatorEntity.AddComponent(new BattleTurnIndicatorComponent());
@@ -442,6 +428,10 @@ namespace PitHero.AI
                        && validMonsters.Any(m => m.GetComponent<EnemyComponent>()?.Enemy.CurrentHP > 0))
                 {
                     yield return WaitWhilePaused();
+
+                    // Mercenaries that entered the pit after the battle started (e.g. still
+                    // descending when it began) join at the start of the next round
+                    RecruitLateArrivingMercenaries(participants, validMercenaries);
 
                     CalculateAllTurnValues(participants, hero, heroComponent, validMonsters, validMercenaries);
                     participants.Sort((a, b) => b.TurnValue.CompareTo(a.TurnValue));
@@ -533,6 +523,47 @@ namespace PitHero.AI
                         if (bouncyText != null) mercEntity.RemoveComponent(bouncyText);
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Adds any hired mercenary that is now in the pit but not yet part of the battle
+        /// to the participant list, so late arrivals can act and be targeted.
+        /// </summary>
+        private void RecruitLateArrivingMercenaries(List<BattleParticipant> participants, List<Entity> validMercenaries)
+        {
+            var mercenariesInPit = FindMercenariesInPit();
+            for (int i = 0; i < mercenariesInPit.Count; i++)
+            {
+                var mercEntity = mercenariesInPit[i];
+                if (validMercenaries.Contains(mercEntity))
+                    continue;
+
+                var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
+                if (mercComponent?.LinkedMercenary == null || mercComponent.LinkedMercenary.CurrentHP <= 0)
+                    continue;
+
+                participants.Add(new BattleParticipant(mercEntity, true));
+                validMercenaries.Add(mercEntity);
+                AddMercenaryBattleUIComponents(mercEntity);
+                Debug.Log($"[AttackMonster] {mercComponent.LinkedMercenary.Name} (Lv.{mercComponent.LinkedMercenary.Level}) joins the battle!");
+            }
+        }
+
+        /// <summary>Ensures a mercenary has the damage/miss popup components used during battle.</summary>
+        private static void AddMercenaryBattleUIComponents(Entity mercEntity)
+        {
+            if (!mercEntity.HasComponent<BouncyDigitComponent>())
+            {
+                var bouncyDigit = mercEntity.AddComponent<BouncyDigitComponent>();
+                bouncyDigit.SetRenderLayer(GameConfig.RenderLayerLowest);
+                bouncyDigit.SetEnabled(false);
+            }
+            if (!mercEntity.HasComponent<BouncyTextComponent>())
+            {
+                var bouncyText = mercEntity.AddComponent<BouncyTextComponent>();
+                bouncyText.SetRenderLayer(GameConfig.RenderLayerLowest);
+                bouncyText.SetEnabled(false);
             }
         }
 
@@ -1454,7 +1485,7 @@ namespace PitHero.AI
 
                     PitHero.Services.Analytics.AnalyticsService.LogCharacterKilled(targetMercenary, enemy);
 
-                    HandleMercenaryDeath(targetEntity, heroComponent, validMercenaries, enemy.Name);
+                    HandleMercenaryDeath(targetEntity, heroComponent, enemy.Name);
                     validMercenaries.Remove(targetEntity);
                     yield return FadeOutAndDestroyMercenary(targetEntity);
                 }
@@ -1471,7 +1502,7 @@ namespace PitHero.AI
         /// Handle mercenary death by removing them permanently and reassigning followers if needed.
         /// Emits a mercenary-death console event with the killer's name.
         /// </summary>
-        private void HandleMercenaryDeath(Entity mercenaryEntity, HeroComponent heroComponent, List<Entity> validMercenaries, string killerName)
+        private void HandleMercenaryDeath(Entity mercenaryEntity, HeroComponent heroComponent, string killerName)
         {
             var mercComponent = mercenaryEntity.GetComponent<MercenaryComponent>();
             if (mercComponent == null) return;
@@ -1505,37 +1536,31 @@ namespace PitHero.AI
                 Debug.Warn("[AttackMonster] SecondChanceMerchantVault service not found - mercenary gear lost");
             }
 
-            // Check if this mercenary was following the hero
-            bool wasFollowingHero = mercComponent.FollowTarget?.GetComponent<HeroComponent>() != null;
-
-            // If this mercenary was following the hero, reassign another mercenary to follow
-            if (wasFollowingHero && validMercenaries.Count > 0)
+            // Reassign any mercenary that was following the one that died. Scan ALL hired
+            // mercenaries, not just battle participants — a follower may not have joined
+            // the battle yet (e.g. still descending into the pit when it started).
+            var mercManager = Core.Services.GetService<MercenaryManager>();
+            if (mercManager != null)
             {
-                // Find another living mercenary to follow the hero
-                Entity nextFollower = null;
+                // Followers inherit the dying mercenary's own follow target so the
+                // chain stays rooted at the hero
+                var inheritedTarget = mercComponent.FollowTarget;
+                if (inheritedTarget == null || inheritedTarget.IsDestroyed)
+                    inheritedTarget = heroComponent.Entity;
 
-                foreach (var otherMerc in validMercenaries)
+                var hiredMercs = mercManager.GetHiredMercenaries();
+                for (int i = 0; i < hiredMercs.Count; i++)
                 {
-                    if (otherMerc == mercenaryEntity) continue; // Skip the dying mercenary
+                    var otherEntity = hiredMercs[i];
+                    if (otherEntity == mercenaryEntity || otherEntity.IsDestroyed)
+                        continue;
 
-                    var otherMercComp = otherMerc.GetComponent<MercenaryComponent>();
-                    if (otherMercComp != null && otherMercComp.LinkedMercenary.CurrentHP > 0)
-                    {
-                        nextFollower = otherMerc;
-                        break;
-                    }
-                }
+                    var otherComp = otherEntity.GetComponent<MercenaryComponent>();
+                    if (otherComp == null || otherComp.FollowTarget != mercenaryEntity)
+                        continue;
 
-                // Assign the next mercenary to follow the hero
-                if (nextFollower != null)
-                {
-                    var nextMercComp = nextFollower.GetComponent<MercenaryComponent>();
-                    nextMercComp.FollowTarget = heroComponent.Entity;
-                    Debug.Log($"[AttackMonster] {nextMercComp.LinkedMercenary.Name} is now following the hero");
-                }
-                else
-                {
-                    Debug.Log("[AttackMonster] No other living mercenaries to reassign");
+                    otherComp.FollowTarget = inheritedTarget == otherEntity ? heroComponent.Entity : inheritedTarget;
+                    Debug.Log($"[AttackMonster] {otherComp.LinkedMercenary.Name} is now following {otherComp.FollowTarget.Name}");
                 }
             }
         }
@@ -1662,8 +1687,7 @@ namespace PitHero.AI
             var mercenaryManager = Core.Services.GetService<MercenaryManager>();
             if (mercenaryManager != null)
             {
-                // The mercenary manager has a private RemoveMercenary method, but we can just remove from the global list
-                mercenaryManager.GetAllMercenaries().Remove(mercenaryEntity);
+                mercenaryManager.UntrackMercenary(mercenaryEntity);
             }
 
             mercenaryEntity.Destroy();

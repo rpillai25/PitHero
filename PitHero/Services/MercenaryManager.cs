@@ -976,6 +976,15 @@ namespace PitHero.Services
             return new List<Entity>(_mercenaryEntities);
         }
 
+        /// <summary>
+        /// Removes a mercenary entity from tracking without tavern bookkeeping or analytics.
+        /// Used when a mercenary dies in battle (death is logged separately as char_killed).
+        /// </summary>
+        public void UntrackMercenary(Entity mercEntity)
+        {
+            _mercenaryEntities.Remove(mercEntity);
+        }
+
         /// <summary>Gets a random job for mercenary generation</summary>
         private IJob GetRandomJob()
         {

@@ -62,6 +62,24 @@ namespace PitHero.AI
             if (_mercenary == null)
                 return;
 
+            // Recover if the follow target was destroyed (e.g. the mercenary ahead in the
+            // follow chain died in battle) — fall back to following the hero and replan
+            if (_mercenary.FollowTarget != null && _mercenary.FollowTarget.IsDestroyed)
+            {
+                _mercenary.FollowTarget = Entity.Scene?.FindEntity("hero");
+                Debug.Log($"[MercenaryStateMachine] {Entity.Name} follow target was destroyed, falling back to hero");
+
+                _currentAction = null;
+                _actionPlan = null;
+                if (_mercenary.FollowTarget != null)
+                {
+                    if (CurrentState != ActorState.Idle)
+                        CurrentState = ActorState.Idle;   // Idle_Enter replans with the new target
+                    else
+                        Idle_Enter();                     // already Idle — replan directly
+                }
+            }
+
             // Allow update during promotion
             if (!_mercenary.IsBeingPromoted && (!_mercenary.IsHired || _mercenary.FollowTarget == null))
             {
