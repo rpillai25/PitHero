@@ -193,7 +193,7 @@ balance analysis.
 
 - **`VirtualHeroController.BossDefeated`** — computed from `!world.HasLivingBoss()` (was hardcoded `true`).
 
-- **`VirtualHeroStateMachine`** — `BattleRunner` property; after each `TeleportTo` in wander/connectivity phases, `HandleTrapAtTile` + `RunAdjacentBattlesIfAny` are called.  `ExecuteActivateWizardOrbAction` gates on `!HasLivingBoss()` and navigates to any surviving boss before the gate check.
+- **`VirtualHeroStateMachine`** — `BattleRunner` property; after each `TeleportTo` in wander/connectivity phases, `HandleTrapAtTile` + `RunAdjacentBattlesIfAny` are called.  A third wander phase sweeps any remaining living monsters (teleport adjacent + battle) before exploration is declared complete, mirroring the live Battle priority.  `ExecuteActivateWizardOrbAction` gates on `!HasLivingBoss()` and navigates to any surviving boss before the gate check.
 
 - **`VirtualGameSimulation`** — `ConfigureHero`, `ConfigureMercenaries`, `RunPitLevel(int)`, `World`, `Metrics` properties. `RunPitLevel` uses `VirtualPitGenerator` to populate real `IEnemy` instances, builds a `VirtualBattleRunner`, runs the state machine, and accumulates battle metrics into `VirtualRunMetrics`.
 
@@ -204,6 +204,19 @@ balance analysis.
 ### Boss-mapping fix side-effect
 
 `CaveBiomeBalanceTests.CaveBiome_BossEncounters_ValidateAllFiveBosses` expected old wrong display strings.  Updated to MonsterTextKey values matching live mapping.
+
+## Deterministic Seeding (Phase C, issue #296)
+
+- `new VirtualGameSimulation(rngSeed)` calls `Nez.Random.SetSeed(rngSeed)` so **all combat
+  rolls** (turn order, evasion/variance, target picks, crit/deflect) are reproducible.
+  The default constructor captures the ambient `Nez.Random.GetSeed()` instead.
+- The seed is recorded in `VirtualRunMetrics.RngSeed` so every balance report can cite it.
+- Pit **layout** randomness is separate and already deterministic per level
+  (`VirtualPitGenerator`/`VirtualWorldState` use a local `Random(level)`).
+- `VirtualRunMetrics.HpLossPercent` = damage taken ÷ party max-HP pool at level start.
+- `PitHero.Tests/VirtualBalanceTraversalTests.cs` (`[TestCategory("BalanceTraversal")]`)
+  runs a seeded sampled traversal over levels 1/5/10/15/20/25 (all Cave boss floors),
+  prints the per-level CSV table, and pins the same-seed ⇒ identical-CSV contract.
 
 ## Future Enhancements
 
@@ -219,14 +232,14 @@ This virtual game logic layer provides GitHub Copilot with the exact testing cap
 
 ## Delta Plan — Unmirrored features
 
-The following game features added after the initial virtual layer implementation have **no virtual mirror** and are not simulated in `VirtualGameSimulation` or `VirtualTiledMapService`:
+All previously listed gaps are now closed:
 
-### Traps (Phase 6)
-- **What exists:** `TrapComponent` spawns hidden trap entities in the pit. They trigger chip damage when the hero steps on them, or are auto-disarmed when revealed by a party member with `TrapSense`.
-- **What is not mirrored:** The virtual layer has no concept of trap entities, trap tile positions, or TrapSense passive resolution during fog clearing.
-- **What would be needed to add virtual coverage:**
-  1. Extend `VirtualWorldState` to track trap tile positions (a `HashSet<Point>` of trap locations).
-  2. Add trap spawning to `VirtualWorldState.RegeneratePit` following `GameConfig.TrapMinPerFloor`/`TrapMaxPerFloor`.
-  3. Add a `CheckTrapSense(VirtualHero hero)` helper called from `VirtualTiledMapService.ClearFogOfWarAroundTile` when fog is removed over a trap tile and any party member has `TrapSense`.
-  4. Add a `TriggerTrap(Point tile, VirtualHero hero)` that reduces `VirtualHero.HP` by the formula `5 + pitLevel * 2` (clamped to 1 HP minimum) for testing the damage path.
-  5. Add tests in `VirtualGameSimulationTests` covering trap triggering and TrapSense disarm.
+- **Combat** — mirrored as of issue #296 Phase B (see "Delta Plan — Phase B" above).
+- **Traps (Phase 6)** — mirrored as of issue #296 Phase B: `VirtualWorldState.TrapTiles`
+  spawned by `VirtualPitGenerator`, `TriggerTrap` chip damage (`5 + pitLevel * 2`,
+  1-HP floor, live `TrapComponent` parity) applied via
+  `VirtualBattleRunner.ApplyTrapDamageToHero`, TrapSense auto-disarm via `DisarmTrap`.
+  Covered by `VirtualBattleSimulationTests`.
+
+New live-layer features should be checked against this document and added here when
+they lack a virtual counterpart.

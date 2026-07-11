@@ -33,24 +33,31 @@ Critical test classes for balance:
 
 ## Driving the Simulation
 
-The simulation is invoked from C# test code. Typical pattern:
+The simulation is invoked from C# test code. Canonical pattern (real combat via the
+shared `BattleEngine`, issue #296):
 
 ```csharp
-var sim = new VirtualGameSimulation();
-sim.SetJob(Job.Knight);
-sim.SetStartingPitLevel(1);
-sim.SetMaxPitLevel(100);
+// Seeded constructor => deterministic combat rolls (turn order, evasion/variance,
+// target picks, crit/deflect). Pit layout is already deterministic per level.
+var sim = new VirtualGameSimulation(rngSeed: 12345);
 
-while (sim.IsRunning)
-{
-    sim.Tick();
-    // Capture metrics — HP, XP, drops, elemental matchups, etc.
-}
+// Hero level should track BalanceConfig.EstimatePlayerLevelForPitLevel(pitLevel);
+// stats scale with level automatically via GrowthCurveCalculator.
+sim.ConfigureHero(new Knight(), level: 8, new StatBlock(10, 8, 10, 4));
+sim.ConfigureMercenaries(mercList); // optional, up to 2 real Mercenary instances
 
-var report = sim.GetSummaryReport();
+var metrics = sim.RunPitLevel(5);   // full traversal: explore, fight, boss gate, orb
+
+// metrics: BattleCount, TotalRounds, DamageDealt/Taken, HpLossPercent,
+//          HealingConsumed, PartyDeaths, Wiped, RngSeed, JobName
+VirtualRunMetrics.WriteCsvHeader(writer);
+metrics.WriteRow(writer);
 ```
 
-(Exact API may vary — check the current `VirtualGameSimulation` for the canonical entry points before writing test code.)
+See `PitHero.Tests/VirtualBalanceTraversalTests.cs` for a working sampled traversal
+(levels 1/5/10/15/20/25 including all Cave boss floors) and the same-seed
+reproducibility contract. Run it with:
+`dotnet test PitHero.Tests/PitHero.Tests.csproj --filter "TestCategory=BalanceTraversal"`
 
 ## When Coverage is Missing
 

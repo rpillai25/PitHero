@@ -294,8 +294,24 @@ namespace PitHero.VirtualGame
                 return false; // Continue connectivity checks
             }
 
-            // Both phases complete
-            Console.WriteLine("[VirtualStateMachine] Wander exploration and connectivity verification complete");
+            // Third phase: sweep any remaining living monsters before declaring exploration
+            // complete (mirrors the live Battle priority — fog clearing can reveal monsters
+            // the hero never landed adjacent to during wandering).
+            if (BattleRunner != null && BattleRunner.HeroAlive && _world.HasLivingMonsters())
+            {
+                var monsterPos = _world.GetNearestLivingMonsterPosition(_hero.Position);
+                if (monsterPos.HasValue)
+                {
+                    _hero.TeleportTo(monsterPos.Value);
+                    Console.WriteLine($"[VirtualStateMachine] Monster sweep: engaging monster at ({monsterPos.Value.X},{monsterPos.Value.Y})");
+                    HandleTrapAtTile(monsterPos.Value);
+                    RunAdjacentBattlesIfAny();
+                    return false; // Re-check next tick for further remaining monsters
+                }
+            }
+
+            // All phases complete
+            Console.WriteLine("[VirtualStateMachine] Wander exploration, connectivity verification, and monster sweep complete");
             return true;
         }
 

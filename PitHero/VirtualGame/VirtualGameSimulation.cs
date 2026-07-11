@@ -37,7 +37,29 @@ namespace PitHero.VirtualGame
             _tickCount = 0;
             _random = new Random(42); // Deterministic seed for testing
             _mercenaries = new List<Mercenary>(0);
+            RngSeed = Nez.Random.GetSeed();
         }
+
+        /// <summary>
+        /// Creates a simulation with a deterministic combat RNG seed.
+        /// Seeds the global <c>Nez.Random</c> (used by all combat rolls: turn order,
+        /// evasion/variance, target picks, crit/deflect) so before/after balance runs
+        /// with the same seed are reproducible.  Pit LAYOUT is already deterministic
+        /// per level (local <c>Random(level)</c> in the generators) independent of this seed.
+        /// </summary>
+        /// <param name="rngSeed">Seed applied to <c>Nez.Random</c> for combat rolls.</param>
+        public VirtualGameSimulation(int rngSeed) : this()
+        {
+            Nez.Random.SetSeed(rngSeed);
+            RngSeed = rngSeed;
+        }
+
+        /// <summary>
+        /// The combat RNG seed for this run: the value passed to the seeded constructor,
+        /// or the ambient <c>Nez.Random</c> seed captured at construction.  Recorded into
+        /// <see cref="VirtualRunMetrics.RngSeed"/> so every balance report can cite it.
+        /// </summary>
+        public int RngSeed { get; }
 
         /// <summary>Public access to the hero for tests.</summary>
         public VirtualHero Hero => _hero;
@@ -100,8 +122,14 @@ namespace PitHero.VirtualGame
                 PitLevel      = pitLevel,
                 JobName       = jobName,
                 LevelRangeMin = _hero.LinkedHero.Level,
-                LevelRangeMax = _hero.LinkedHero.Level
+                LevelRangeMax = _hero.LinkedHero.Level,
+                RngSeed       = RngSeed
             };
+
+            // Party max-HP pool at level start, for the HP-loss percentage
+            int partyMaxHPPool = _hero.LinkedHero.MaxHP;
+            for (int i = 0; i < _mercenaries.Count; i++)
+                partyMaxHPPool += _mercenaries[i].MaxHP;
 
             // Step 1: Set up pit geometry (fog, collision, pit bounds, PitLevel property)
             _world.RegeneratePit(pitLevel);
@@ -150,6 +178,8 @@ namespace PitHero.VirtualGame
                 _runMetrics.AccumulateBattle(allBattles[i]);
 
             _runMetrics.Wiped = !_battleRunner.HeroAlive;
+            if (partyMaxHPPool > 0)
+                _runMetrics.HpLossPercent = (float)_runMetrics.DamageTaken / partyMaxHPPool;
 
             _currentAction = "RunPitLevel_Complete";
             return _runMetrics;
