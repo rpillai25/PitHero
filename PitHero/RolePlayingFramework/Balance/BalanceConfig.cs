@@ -667,7 +667,8 @@ namespace RolePlayingFramework.Balance
         /// - Magic 30: 85 HP
         /// - Magic 99: 223 HP
         ///
-        /// Matches the scaling convention used by synergy heals (AuraHeal: 25 + Magic × 2.5).
+        /// Uses the normalized factor of ×2 (SkillHealMagicFactor = 2f); synergy heals that
+        /// previously used ×2.5 were normalized to ×2 during the heal-scaling pass.
         /// </remarks>
         public static int CalculateSkillHealAmount(int baseAmount, int casterMagic, float healPowerBonus)
         {

@@ -283,6 +283,8 @@ ConsoleWelcome,Welcome, {0}!
 ConsoleWelcomePhrase1,Good luck on your adventure.
 ConsoleWelcomePhrase2,Go forth and pursue strength and wealth.
 ConsoleWelcomePhrase3,May you get many returns today!
+ConsoleTrapTriggered,{0} triggered a trap for {1} damage!
+ConsoleTrapDisarmed,Trap disarmed!
 
 # Add Monsters (Monster House)
 ButtonAddMonsters,Add Monsters

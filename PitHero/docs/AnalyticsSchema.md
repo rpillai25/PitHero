@@ -48,6 +48,8 @@ interpretation caveats that are not obvious from the raw data.
 | `pit_generated` | `pitLevel`, `isBossFloor`, `monsterCount`, `chestCount` | Fires on every pit (re)generation, including the initial load-time generation. `isBossFloor` comes from `CaveBiomeConfig.IsBossFloor` — see caveat below. |
 | `chest_spawned` | `pitLevel`, `x`, `y`, `chestLevel` (1–5), `item`, `kind`, `rarity`, optional `seedType` + `seedCount` | Contents decided at spawn time. `item` is `null` for seed chests. |
 | `monster_spawned` | `pitLevel`, `x`, `y`, `name`, `enemyId`, `level`, `maxHP`, `isBoss` | `level` is the enemy's own level (often a per-type preset — see caveats). |
+| `trap_triggered` | `pitLevel`, `x`, `y`, `damage` | Hero stepped on a hidden trap. `damage` is the clamped value actually applied (hero's HP is never reduced below 1 out-of-battle). Formula: `5 + pitLevel * 2` before clamping. |
+| `trap_disarmed` | `pitLevel`, `x`, `y` | A party member with the TrapSense passive auto-disarmed a trap when fog was cleared over it. No damage dealt. |
 | `orb_activated` | `fromPitLevel`, `toPitLevel`, `heroLevel` | Wizard orb → next pit level. Followed by a `party_snapshot` with `reason:"orb"`. |
 | `pit_jump` | `pitLevel`, `heroLevel`, `heroHP`, `heroMaxHP` | Hero jumped into the pit. Followed by a `party_snapshot` with `reason:"pit_jump"`. |
 | `party_snapshot` | `reason`, `members[]` | Each member: `name`, `type` (`"hero"`/`"merc"`), `job`, `level`, `str/agi/vit/mag` (total stats incl. gear/synergy), `maxHP`, `curHP`, `maxMP`, `skills[]` (skill ids), `gear{}` (slot→item name; keys `weapon`, `armor`, `hat`, `shield`, `acc1`, `acc2`; empty slots omitted). |
@@ -69,7 +71,7 @@ interpretation caveats that are not obvious from the raw data.
 ### Battle
 | `e` | Fields | Notes |
 |---|---|---|
-| `attack` | `actor`, `actorType` (`"hero"`/`"merc"`/`"monster"`), `action`, `target`, `targetType`, `dmg`, `hpBefore`, `hpAfter`, `killed` | `action` is `"physical"` or a skill id (e.g. `knight.heavy_strike`). `hpBefore`/`hpAfter` are the **target's** HP; `hpBefore − dmg = hpAfter` (floored at 0). AoE skills emit one line per target hit. Misses are not logged. Monsters only have physical attacks. |
+| `attack` | `actor`, `actorType` (`"hero"`/`"merc"`/`"monster"`), `action`, `target`, `targetType`, `dmg`, `hpBefore`, `hpAfter`, `killed` | `action` is `"physical"`, a skill id (e.g. `knight.heavy_strike`), `"counter"` (hero/merc retaliation after taking a hit — requires monk.counter passive), or `"<skillId>.dot"` (end-of-round damage-over-time tick from a skill such as `synergy.poison_arrow.dot`). `hpBefore`/`hpAfter` are the **target's** HP; `hpBefore − dmg = hpAfter` (floored at 0). AoE skills emit one line per target hit. Misses are not logged. Monsters only have physical attacks. Counter attacks and DoT ticks never produce miss events. |
 | `heal` | `actor`, `source` (skill id or item name), `target`, `amount`, `hpAfter` | Battle heals (skills and consumables). |
 | `monster_defeated` | `name`, `enemyId`, `level`, `isBoss`, `pitLevel`, `xp`, `jp`, `gold` | One per kill regardless of killer; the matching `gold_gained` (`source:"battle"`) follows. |
 | `char_killed` | full victim snapshot (same shape as a `party_snapshot` member) + `killer{name, enemyId, level, str/agi/vit/mag, maxHP}` | Hero or mercenary killed by a monster. |

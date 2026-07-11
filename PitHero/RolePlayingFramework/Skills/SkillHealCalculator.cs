@@ -1,6 +1,5 @@
 using RolePlayingFramework.Balance;
-using RolePlayingFramework.Heroes;
-using RolePlayingFramework.Mercenaries;
+using RolePlayingFramework.Combat;
 
 namespace RolePlayingFramework.Skills
 {
@@ -10,25 +9,20 @@ namespace RolePlayingFramework.Skills
     /// </summary>
     public static class SkillHealCalculator
     {
-        /// <summary>Effective HP restored when the hero casts the skill.</summary>
-        public static int GetAmount(ISkill skill, Hero caster)
+        /// <summary>Effective HP restored when <paramref name="caster"/> uses the skill.</summary>
+        public static int GetAmount(ISkill skill, ICombatant caster)
         {
             return BalanceConfig.CalculateSkillHealAmount(skill.HPRestoreAmount, caster.GetTotalStats().Magic, caster.HealPowerBonus);
         }
 
-        /// <summary>Effective HP restored when a mercenary casts the skill.</summary>
-        public static int GetAmount(ISkill skill, Mercenary caster)
-        {
-            return BalanceConfig.CalculateSkillHealAmount(skill.HPRestoreAmount, caster.GetTotalStats().Magic, caster.HealPowerBonus);
-        }
-
-        /// <summary>Effective HP restored for a caster that may be a hero or a mercenary.</summary>
+        /// <summary>
+        /// Effective HP restored for a caster held as a reference-typed object.
+        /// Checks for ICombatant at runtime; returns base amount if caster does not implement it.
+        /// </summary>
         public static int GetAmount(ISkill skill, object caster)
         {
-            if (caster is Hero hero)
-                return GetAmount(skill, hero);
-            if (caster is Mercenary mercenary)
-                return GetAmount(skill, mercenary);
+            if (caster is ICombatant c)
+                return GetAmount(skill, c);
             return skill.HPRestoreAmount;
         }
     }

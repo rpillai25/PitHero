@@ -48,7 +48,7 @@ namespace PitHero.Tests
             Assert.AreEqual(2, hero.GetJobLevel(), "Job level should be 2");
             
             // Check passive is applied
-            Assert.AreEqual(2, hero.PassiveDefenseBonus, "Heavy Armor passive should be active");
+            Assert.AreEqual(2, hero.HeavyArmorDefenseBonus, "Heavy Armor passive should set HeavyArmorDefenseBonus to 2");
             
             // Purchase Spin Slash (120 JP, Level 2)
             bool success3 = hero.TryPurchaseSkill(knight.Skills[2]);

@@ -134,12 +134,12 @@ namespace PitHero.AI
                 return healAction;
 
             // AoE check first
-            var aoeResult = TryAoESkill(_attackSkillBuffer, hero.CurrentMP, livingMonsters);
+            var aoeResult = TryAoESkill(_attackSkillBuffer, hero.CurrentMP, hero.MPCostReduction, livingMonsters);
             if (aoeResult.Skill != null)
                 return CreateAttackSkillAction(aoeResult.Skill, aoeResult.TargetEntity);
 
             // Best single-target attack skill (prefer elemental advantage, then highest MP cost)
-            var bestSkill = FindBestAttackSkill(_attackSkillBuffer, hero.CurrentMP, livingMonsters, true);
+            var bestSkill = FindBestAttackSkill(_attackSkillBuffer, hero.CurrentMP, hero.MPCostReduction, livingMonsters, true);
             if (bestSkill.Skill != null)
                 return CreateAttackSkillAction(bestSkill.Skill, bestSkill.TargetEntity);
 
@@ -162,11 +162,11 @@ namespace PitHero.AI
                 return healAction;
 
             // 2. Attack (prefer elemental advantage, then lowest MP cost)
-            var aoeResult = TryAoESkill(_attackSkillBuffer, hero.CurrentMP, livingMonsters);
+            var aoeResult = TryAoESkill(_attackSkillBuffer, hero.CurrentMP, hero.MPCostReduction, livingMonsters);
             if (aoeResult.Skill != null)
                 return CreateAttackSkillAction(aoeResult.Skill, aoeResult.TargetEntity);
 
-            var bestSkill = FindBestAttackSkill(_attackSkillBuffer, hero.CurrentMP, livingMonsters, false);
+            var bestSkill = FindBestAttackSkill(_attackSkillBuffer, hero.CurrentMP, hero.MPCostReduction, livingMonsters, false);
             if (bestSkill.Skill != null)
                 return CreateAttackSkillAction(bestSkill.Skill, bestSkill.TargetEntity);
 
@@ -188,16 +188,16 @@ namespace PitHero.AI
                 return healAction;
 
             // 2. Apply buff if available
-            var buffSkill = FindBestBuffSkill(_buffSkillBuffer, hero.CurrentMP);
+            var buffSkill = FindBestBuffSkill(_buffSkillBuffer, hero.CurrentMP, hero);
             if (buffSkill != null)
                 return CreateHealingSkillAction(buffSkill, hero, true);
 
             // 3. Attack (still attack even if not all allies are at 60% — nothing else to do)
-            var aoeResult = TryAoESkill(_attackSkillBuffer, hero.CurrentMP, livingMonsters);
+            var aoeResult = TryAoESkill(_attackSkillBuffer, hero.CurrentMP, hero.MPCostReduction, livingMonsters);
             if (aoeResult.Skill != null)
                 return CreateAttackSkillAction(aoeResult.Skill, aoeResult.TargetEntity);
 
-            var bestSkill = FindBestAttackSkill(_attackSkillBuffer, hero.CurrentMP, livingMonsters, false);
+            var bestSkill = FindBestAttackSkill(_attackSkillBuffer, hero.CurrentMP, hero.MPCostReduction, livingMonsters, false);
             if (bestSkill.Skill != null)
                 return CreateAttackSkillAction(bestSkill.Skill, bestSkill.TargetEntity);
 
@@ -221,11 +221,11 @@ namespace PitHero.AI
                     GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
 
-            var aoeResult = TryAoESkill(_attackSkillBuffer, merc.CurrentMP, livingMonsters);
+            var aoeResult = TryAoESkill(_attackSkillBuffer, merc.CurrentMP, merc.MPCostReduction, livingMonsters);
             if (aoeResult.Skill != null)
                 return CreateAttackSkillAction(aoeResult.Skill, aoeResult.TargetEntity);
 
-            var bestSkill = FindBestAttackSkill(_attackSkillBuffer, merc.CurrentMP, livingMonsters, true);
+            var bestSkill = FindBestAttackSkill(_attackSkillBuffer, merc.CurrentMP, merc.MPCostReduction, livingMonsters, true);
             if (bestSkill.Skill != null)
                 return CreateAttackSkillAction(bestSkill.Skill, bestSkill.TargetEntity);
 
@@ -264,7 +264,7 @@ namespace PitHero.AI
                 return healAction;
 
             // 2. Buff
-            var buffSkill = FindBestBuffSkill(_buffSkillBuffer, merc.CurrentMP);
+            var buffSkill = FindBestBuffSkill(_buffSkillBuffer, merc.CurrentMP, merc);
             if (buffSkill != null)
                 return CreateHealingSkillAction(buffSkill, merc, false);
 
@@ -275,11 +275,11 @@ namespace PitHero.AI
         /// <summary>Mercenary attack fallback: AoE check then best single-target or physical.</summary>
         private static BattleAction MercAttack(Mercenary merc, List<Entity> livingMonsters)
         {
-            var aoeResult = TryAoESkill(_attackSkillBuffer, merc.CurrentMP, livingMonsters);
+            var aoeResult = TryAoESkill(_attackSkillBuffer, merc.CurrentMP, merc.MPCostReduction, livingMonsters);
             if (aoeResult.Skill != null)
                 return CreateAttackSkillAction(aoeResult.Skill, aoeResult.TargetEntity);
 
-            var bestSkill = FindBestAttackSkill(_attackSkillBuffer, merc.CurrentMP, livingMonsters, false);
+            var bestSkill = FindBestAttackSkill(_attackSkillBuffer, merc.CurrentMP, merc.MPCostReduction, livingMonsters, false);
             if (bestSkill.Skill != null)
                 return CreateAttackSkillAction(bestSkill.Skill, bestSkill.TargetEntity);
 
@@ -498,13 +498,24 @@ namespace PitHero.AI
         }
 
         /// <summary>
+        /// Returns the effective MP cost of a skill after applying the combatant's MPCostReduction.
+        /// Mirrors the formula in ICombatant.GetEffectiveMPCost (floor of 1 when rawCost &gt; 0).
+        /// </summary>
+        private static int EffectiveMPCost(int rawCost, float mpCostReduction)
+        {
+            if (rawCost <= 0) return 0;
+            int reduced = (int)(rawCost * (1f - mpCostReduction));
+            return reduced < 1 ? 1 : reduced;
+        }
+
+        /// <summary>
         /// Finds the best single-target attack skill from the buffer.
         /// When preferHighMP is true (Blitz), prefers higher MP cost (stronger).
         /// When false (Strategic/Defensive), prefers lower MP cost (efficient).
         /// Always prioritizes elemental advantage.
         /// </summary>
         private static SkillResult FindBestAttackSkill(
-            List<ISkill> attackSkills, int currentMP,
+            List<ISkill> attackSkills, int currentMP, float mpCostReduction,
             List<Entity> livingMonsters, bool preferHighMP)
         {
             var result = new SkillResult();
@@ -515,7 +526,7 @@ namespace PitHero.AI
                 var skill = attackSkills[i];
                 if (skill.Kind != SkillKind.Active) continue;
                 if (skill.TargetType != SkillTargetType.SingleEnemy) continue;
-                if (skill.MPCost > currentMP) continue;
+                if (EffectiveMPCost(skill.MPCost, mpCostReduction) > currentMP) continue;
 
                 // Find best monster target for this skill's element
                 Entity targetEntity = FindBestMonsterTarget(livingMonsters, skill.Element);
@@ -550,7 +561,7 @@ namespace PitHero.AI
         /// AoE is only used when multiple enemies exist and the majority are not resistant.
         /// </summary>
         private static SkillResult TryAoESkill(
-            List<ISkill> attackSkills, int currentMP, List<Entity> livingMonsters)
+            List<ISkill> attackSkills, int currentMP, float mpCostReduction, List<Entity> livingMonsters)
         {
             var result = new SkillResult();
             if (livingMonsters.Count < 2) return result;
@@ -563,7 +574,7 @@ namespace PitHero.AI
                 var skill = attackSkills[i];
                 if (skill.Kind != SkillKind.Active) continue;
                 if (skill.TargetType != SkillTargetType.SurroundingEnemies) continue;
-                if (skill.MPCost > currentMP) continue;
+                if (EffectiveMPCost(skill.MPCost, mpCostReduction) > currentMP) continue;
 
                 // Count how many enemies resist this element
                 int resistCount = 0;
@@ -615,10 +626,11 @@ namespace PitHero.AI
             ISkill bestSkill = null;
             int bestWaste = int.MaxValue;
 
+            float healerMPCostReduction = (caster as ICombatant)?.MPCostReduction ?? 0f;
             for (int i = 0; i < healSkills.Count; i++)
             {
                 var skill = healSkills[i];
-                if (skill.MPCost > currentMP) continue;
+                if (EffectiveMPCost(skill.MPCost, healerMPCostReduction) > currentMP) continue;
                 if (skill.HPRestoreAmount <= 0) continue;
 
                 // Check target type compatibility
@@ -648,15 +660,36 @@ namespace PitHero.AI
 
         /// <summary>
         /// Finds a buff skill (Self or SingleAlly target, no heal/MP restore) that can be cast.
-        /// Returns the first available buff skill, or null if none.
+        /// Skips skills where the target already has all buff stacks (MaxStacks reached).
+        /// Returns the first castable buff skill, or null if none.
         /// </summary>
-        private static ISkill FindBestBuffSkill(List<ISkill> buffSkills, int currentMP)
+        private static ISkill FindBestBuffSkill(List<ISkill> buffSkills, int currentMP, ICombatant target)
         {
             for (int i = 0; i < buffSkills.Count; i++)
             {
                 var skill = buffSkills[i];
-                if (skill.MPCost <= currentMP)
-                    return skill;
+                if (EffectiveMPCost(skill.MPCost, target.MPCostReduction) > currentMP)
+                    continue;
+
+                // Phase 3: skip if the target's stacks are already capped for every buff this skill grants
+                bool allCapped = false;
+                if (skill.GrantedBuffs.Count > 0)
+                {
+                    allCapped = true;
+                    for (int b = 0; b < skill.GrantedBuffs.Count; b++)
+                    {
+                        var grantedBuff = skill.GrantedBuffs[b];
+                        // Check stacks for this specific buff type (fixes multi-buff skills like FadeSkill).
+                        if (target.GetBuffStacks(skill.Id, grantedBuff.Type) < grantedBuff.MaxStacks)
+                        {
+                            allCapped = false;
+                            break;
+                        }
+                    }
+                }
+                if (allCapped) continue;
+
+                return skill;
             }
             return null;
         }
@@ -777,7 +810,7 @@ namespace PitHero.AI
         {
             if (skill.Kind != SkillKind.Active) return;
 
-            // Healing skill: restores HP
+            // Healing skill: restores HP (may also grant buffs — those apply in ApplyHealingSkillEffectsAndDisplay)
             if (skill.HPRestoreAmount > 0)
             {
                 healSkills.Add(skill);
@@ -792,7 +825,14 @@ namespace PitHero.AI
                 return;
             }
 
-            // Buff skill: targets self or ally without healing
+            // Phase 3: data-driven buff skill — has GrantedBuffs and no HP restore
+            if (skill.GrantedBuffs.Count > 0 && skill.HPRestoreAmount == 0)
+            {
+                buffSkills.Add(skill);
+                return;
+            }
+
+            // Fallback: non-healing self/ally skill (CleansesDebuffs-only or future kinds)
             if (skill.TargetType == SkillTargetType.Self ||
                 skill.TargetType == SkillTargetType.SingleAlly)
             {

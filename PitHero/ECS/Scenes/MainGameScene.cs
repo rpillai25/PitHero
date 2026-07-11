@@ -111,6 +111,15 @@ namespace PitHero.ECS.Scenes
         {
             base.Initialize();
 
+            // Grant new-game starting gold before session-start analytics so the event records it.
+            // Loads skip this — SaveLoadService.ApplyLoadedState already restored Funds.
+            if (SaveLoadService.PendingLoadData == null)
+            {
+                var newGameState = Core.Services.GetService<GameStateService>();
+                if (newGameState != null)
+                    newGameState.Funds = GameConfig.NewGameStartingGold;
+            }
+
             // Log session start before any scene setup so it is the first analytics event
             // (pit generation and mercenary spawns fire during initialization below).
             // Funds are already restored by SaveLoadService.ApplyLoadedState at load time.
@@ -493,10 +502,9 @@ namespace PitHero.ECS.Scenes
             if (hpDiff > 0)
                 hero.TakeDamage(hpDiff);
             
-            // Adjust MP from max to saved value
-            int mpDiff = hero.MaxMP - pendingData.CurrentMP;
-            if (mpDiff > 0)
-                hero.SpendMP(mpDiff);
+            // Adjust MP from max to saved value using SetCurrentMP (not SpendMP) so
+            // MPCostReduction is NOT applied to the delta — state-restore must land exactly at saved value.
+            hero.SetCurrentMP(pendingData.CurrentMP);
             
             // Assign reconstructed hero to the component
             heroComp.LinkedHero = hero;
@@ -1069,6 +1077,10 @@ namespace PitHero.ECS.Scenes
 
                 // Create the linked Hero from the crystal
                 heroComponent.LinkedHero = new RolePlayingFramework.Heroes.Hero(design.Name, heroJob, 1, baseStats, heroCrystal);
+
+                // Starting items are granted only for a brand-new game — loads restore their saved
+                // inventory instead, and death-respawns (needsCrystal) keep the existing bag.
+                heroComponent.GrantNewGameStartingItems = SaveLoadService.PendingLoadData == null;
 
                 Debug.Log($"[MainGameScene] Created hero '{design.Name}' with Level {heroComponent.LinkedHero.Level}, HP {heroComponent.LinkedHero.CurrentHP}/{heroComponent.LinkedHero.MaxHP}");
             }

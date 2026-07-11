@@ -62,7 +62,8 @@ namespace PitHero.VirtualGame
         public bool ClearFogOfWarAroundTile(int centerTileX, int centerTileY, HeroComponent heroComponent)
         {
             var fogLayer = _virtualMap.GetVirtualLayer("FogOfWar");
-            int radius = heroComponent?.UncoverRadius ?? 1;
+            // Phase 4: mirror Eagle Eye SightRangeBonus from the linked hero (mirrors TiledMapService)
+            int radius = (heroComponent?.UncoverRadius ?? 1) + (heroComponent?.LinkedHero?.SightRangeBonus ?? 0);
             if (fogLayer != null)
             {
                 bool anyCleared = false;

@@ -301,5 +301,7 @@ namespace PitHero
         public const string AddMonsterDaytimeLabel = "AddMonsterDaytimeLabel";
         public const string AddMonsterNocturnalLabel = "AddMonsterNocturnalLabel";
         public const string AddMonsterConfirmPrompt = "AddMonsterConfirmPrompt";
+        public const string ConsoleTrapTriggered = "ConsoleTrapTriggered";
+        public const string ConsoleTrapDisarmed = "ConsoleTrapDisarmed";
     }
 }

@@ -4,7 +4,10 @@ using RolePlayingFramework.Enemies;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Jobs.Primary;
+using RolePlayingFramework.Mercenaries;
+using RolePlayingFramework.Skills;
 using RolePlayingFramework.Stats;
+using System.Collections.Generic;
 
 namespace PitHero.Tests
 {
@@ -226,18 +229,96 @@ namespace PitHero.Tests
             var attackerStats = new BattleStats(attack: 20, defense: 10, evasion: 0);
             var defenderStats = new BattleStats(attack: 15, defense: 10, evasion: 0);
             var defenderProps = new ElementalProperties(ElementType.Fire);
-            
+
             // Neutral vs Fire should deal 1.0x damage (no relationship)
-            var result = resolver.Resolve(attackerStats, defenderStats, DamageKind.Physical, 
+            var result = resolver.Resolve(attackerStats, defenderStats, DamageKind.Physical,
                 ElementType.Neutral, defenderProps);
-            
+
             int baseDamage = 20 * 2 - 10; // 30 base damage
             int expectedMin = (int)(baseDamage * 1.0f * 0.9f); // Account for variance
             int expectedMax = (int)(baseDamage * 1.0f * 1.1f);
-            
+
             Assert.IsTrue(result.Hit);
-            Assert.IsTrue(result.Damage >= expectedMin && result.Damage <= expectedMax, 
+            Assert.IsTrue(result.Damage >= expectedMin && result.Damage <= expectedMax,
                 $"Expected damage between {expectedMin}-{expectedMax}, got {result.Damage}");
+        }
+
+        // ── ResolveHit elemental multiplier integration ───────────────────────────────
+
+        /// <summary>
+        /// Verifies that the elemental multiplier flows all the way through
+        /// BaseSkill.ResolveHit when using EnhancedAttackResolver.
+        /// A Fire skill should deal more to a Water enemy (2× advantage) than to a
+        /// Fire enemy (0.5× resistance) — even accounting for ±10% variance.
+        /// </summary>
+        [TestMethod]
+        [TestCategory("Combat")]
+        public void ResolveHit_ViaFireSkill_ElementalMultiplierApplied()
+        {
+            var resolver = new EnhancedAttackResolver();
+
+            // High attack so elemental difference is large vs ±10% variance.
+            // Knight job + StatBlock(50,0,10,2) gives plenty of attack without weapon.
+            var merc = new Mercenary("Mage", new Knight(), 1, new StatBlock(50, 0, 10, 2));
+            var skill = new FireSkill(); // Element = Fire
+
+            // Accumulate damage over multiple rounds to smooth variance
+            long waterDamageTotal = 0;
+            long fireDamageTotal = 0;
+            const int trials = 20;
+
+            for (int t = 0; t < trials; t++)
+            {
+                // Water enemy: Fire has 2× advantage
+                var waterEnemy = new ElementalEnemy(ElementType.Water, hp: 5000);
+                skill.Execute(merc, waterEnemy, new List<IEnemy>(), resolver, null);
+                waterDamageTotal += 5000 - waterEnemy.CurrentHP;
+
+                // Fire enemy: Fire has 0.5× resistance
+                var fireEnemy = new ElementalEnemy(ElementType.Fire, hp: 5000);
+                skill.Execute(merc, fireEnemy, new List<IEnemy>(), resolver, null);
+                fireDamageTotal += 5000 - fireEnemy.CurrentHP;
+            }
+
+            Assert.IsTrue(waterDamageTotal > fireDamageTotal,
+                $"Fire skill should deal more to Water enemy (2× advantage) than Fire enemy (0.5× resistance). " +
+                $"Water total={waterDamageTotal}, Fire total={fireDamageTotal} over {trials} trials");
+        }
+
+        /// <summary>Minimal test enemy with configurable element and zero evasion.</summary>
+        private sealed class ElementalEnemy : IEnemy
+        {
+            private int _hp;
+            public ElementalEnemy(ElementType element, int hp = 1000)
+            {
+                Element = element;
+                ElementalProps = new ElementalProperties(element);
+                _hp = hp;
+                MaxHP = hp;
+            }
+            public string Name => "ElementalEnemy";
+            public EnemyId EnemyId => EnemyId.Slime;
+            public int Level => 1;
+            public StatBlock Stats => new StatBlock(5, 0, 5, 5); // Agility=0 → near-zero evasion
+            public DamageKind AttackKind => DamageKind.Physical;
+            public ElementType Element { get; }
+            public ElementalProperties ElementalProps { get; }
+            public int MaxHP { get; }
+            public int CurrentHP => _hp;
+            public int ExperienceYield => 0;
+            public int JPYield => 0;
+            public int SPYield => 0;
+            public int GoldYield => 0;
+            public float JoinPercentageModifier => 1.0f;
+            public bool IsBoss => false;
+            public bool IsRecruitable => false;
+            public bool TakeDamage(int amount)
+            {
+                if (amount <= 0) return false;
+                _hp -= amount;
+                if (_hp < 0) _hp = 0;
+                return _hp == 0;
+            }
         }
     }
 }

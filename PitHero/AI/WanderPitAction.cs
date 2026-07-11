@@ -88,10 +88,11 @@ namespace PitHero.AI
             context.LogDebug($"[WanderPitAction] Executing at tile ({currentTile.X},{currentTile.Y})");
 
             // Clear fog of war around this tile using hero's UncoverRadius
+            // Phase 4: also add Eagle Eye SightRangeBonus when set on VirtualHero
             int uncoverRadius = 1; // default
             if (context is VirtualGoapContext virtualContext)
             {
-                uncoverRadius = virtualContext.VirtualHero.UncoverRadius;
+                uncoverRadius = virtualContext.VirtualHero.UncoverRadius + virtualContext.VirtualHero.SightRangeBonus;
             }
 
             context.WorldState.ClearFogOfWar(currentTile, uncoverRadius);
