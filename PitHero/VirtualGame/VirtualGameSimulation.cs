@@ -1,5 +1,10 @@
 using Microsoft.Xna.Framework;
 using PitHero.AI;
+using RolePlayingFramework.Heroes;
+using RolePlayingFramework.Inventory;
+using RolePlayingFramework.Jobs;
+using RolePlayingFramework.Mercenaries;
+using RolePlayingFramework.Stats;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,6 +23,11 @@ namespace PitHero.VirtualGame
         private int _tickCount;
         private readonly Random _random;
 
+        // ── Phase B: combat simulation state ──────────────────────────────────────
+        private VirtualBattleRunner _battleRunner;
+        private VirtualRunMetrics   _runMetrics;
+        private IReadOnlyList<Mercenary> _mercenaries;
+
         public VirtualGameSimulation()
         {
             _world = new VirtualWorldState();
@@ -26,12 +36,124 @@ namespace PitHero.VirtualGame
             _currentAction = "None";
             _tickCount = 0;
             _random = new Random(42); // Deterministic seed for testing
+            _mercenaries = new List<Mercenary>(0);
+        }
+
+        /// <summary>Public access to the hero for tests.</summary>
+        public VirtualHero Hero => _hero;
+
+        /// <summary>Public read-only access to the virtual world state.</summary>
+        public VirtualWorldState World => _world;
+
+        /// <summary>
+        /// Run metrics accumulated by the last <see cref="RunPitLevel"/> call.
+        /// Null until <see cref="RunPitLevel"/> has been called at least once.
+        /// </summary>
+        public VirtualRunMetrics Metrics => _runMetrics;
+
+        // ── Phase B: simulation configuration API ─────────────────────────────────
+
+        /// <summary>
+        /// Creates and links a real <see cref="Hero"/> to the virtual hero so that
+        /// combat simulation reflects the correct job, level, and stat totals.
+        /// </summary>
+        /// <param name="job">Job class (Warrior, Mage, Priest, etc.).</param>
+        /// <param name="level">Hero level (1–99).</param>
+        /// <param name="baseStats">Base stat block (Str / Agi / Vit / Mag).</param>
+        public void ConfigureHero(IJob job, int level, in StatBlock baseStats)
+        {
+            _hero.ConfigureHero(job, level, in baseStats);
         }
 
         /// <summary>
-        /// Public access to the hero for tests
+        /// Sets the mercenary roster to use for combat simulation.
+        /// Pass an empty list to run solo (hero only).
         /// </summary>
-        public VirtualHero Hero => _hero;
+        /// <param name="mercenaries">Up to 2 hired mercenaries.</param>
+        public void ConfigureMercenaries(IReadOnlyList<Mercenary> mercenaries)
+        {
+            _mercenaries = mercenaries ?? new List<Mercenary>(0);
+        }
+
+        /// <summary>
+        /// Runs a complete pit level: generates the pit, explores it using the virtual
+        /// state machine, fights all monsters, activates the wizard orb, and returns
+        /// accumulated <see cref="VirtualRunMetrics"/>.
+        /// </summary>
+        /// <remarks>
+        /// Requires <see cref="ConfigureHero"/> to have been called first.
+        /// Mercenaries are optional — call <see cref="ConfigureMercenaries"/> before
+        /// this if the scenario needs hired party members.
+        /// </remarks>
+        /// <param name="pitLevel">Pit level to simulate (1–25 for Cave biome).</param>
+        /// <returns>Per-level aggregated metrics.</returns>
+        public VirtualRunMetrics RunPitLevel(int pitLevel)
+        {
+            if (_hero.LinkedHero == null)
+                throw new InvalidOperationException("Call ConfigureHero before RunPitLevel.");
+
+            // Use Type.Name to avoid requiring the Nez text service in headless tests
+            string jobName = _hero.LinkedHero.Job?.GetType().Name ?? "Unknown";
+
+            _runMetrics = new VirtualRunMetrics
+            {
+                PitLevel      = pitLevel,
+                JobName       = jobName,
+                LevelRangeMin = _hero.LinkedHero.Level,
+                LevelRangeMax = _hero.LinkedHero.Level
+            };
+
+            // Step 1: Set up pit geometry (fog, collision, pit bounds, PitLevel property)
+            _world.RegeneratePit(pitLevel);
+
+            // Step 2: Use VirtualPitGenerator to populate real IEnemy instances and traps.
+            // The generator calls ClearAllEntities() internally, which preserves fog/collision
+            // set by RegeneratePit, then repopulates entities with cave-biome aware content.
+            var tiledMapService = new VirtualTiledMapService(_world);
+            // VirtualPitWidthManager is uninitialized here (no tiled map layers available
+            // headlessly); CurrentPitRightEdge returns 0, so the generator falls back to
+            // default PitRectX + PitRectWidth - 3 for the valid placement area.
+            var pitWidthManager = new VirtualPitWidthManager(tiledMapService);
+            var generator       = new VirtualPitGenerator(_world, tiledMapService, pitWidthManager);
+            generator.RegenerateForLevel(pitLevel);
+
+            // Build the battle runner with the real hero + mercs
+            var bag       = new ItemBag();
+            var partyView = new VirtualBattlePartyView(_hero.LinkedHero, bag);
+            _battleRunner = new VirtualBattleRunner(_world, partyView);
+            _battleRunner.SetHeroAlly(_hero.LinkedHero);
+            _battleRunner.SetMercenaries(_mercenaries);
+
+            // Place hero at pit start
+            var pitStart = new Point(_world.PitBounds.X + 1, _world.PitBounds.Y + 1);
+            _hero.TeleportTo(pitStart);
+            _hero.InsidePit = true;
+
+            // Run the state machine until exploration + orb activation completes
+            var stateMachine = new VirtualHeroStateMachine(_hero, _world);
+            stateMachine.BattleRunner = _battleRunner;
+
+            int maxTicks = 2000;
+            int tick = 0;
+            while (tick < maxTicks)
+            {
+                stateMachine.Update();
+                tick++;
+
+                if (_hero.ActivatedWizardOrb || !_battleRunner.HeroAlive)
+                    break;
+            }
+
+            // Accumulate battle metrics gathered during exploration
+            var allBattles = _battleRunner.AllBattleMetrics;
+            for (int i = 0; i < allBattles.Count; i++)
+                _runMetrics.AccumulateBattle(allBattles[i]);
+
+            _runMetrics.Wiped = !_battleRunner.HeroAlive;
+
+            _currentAction = "RunPitLevel_Complete";
+            return _runMetrics;
+        }
 
         /// <summary>
         /// Run a complete simulation cycle as described in the comment

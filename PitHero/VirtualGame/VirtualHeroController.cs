@@ -22,7 +22,21 @@ namespace PitHero.VirtualGame
         public bool ExploredPit { get; set; }
         public bool FoundWizardOrb { get; set; }
         public bool ActivatedWizardOrb { get; set; }
-        public bool BossDefeated { get; set; } = true;
+        // Backing field used as fallback when _worldState is not a VirtualWorldState,
+        // and as storage for the IHeroController setter.
+        private bool _bossDefeatedFallback = true;
+
+        /// <summary>
+        /// True when no living boss remains in the virtual world state.
+        /// The getter prefers the live <see cref="VirtualWorldState.HasLivingBoss"/> value;
+        /// it falls back to the stored field when the world is not a VirtualWorldState.
+        /// The setter stores to the backing field for interface compliance.
+        /// </summary>
+        public bool BossDefeated
+        {
+            get => !(_worldState as VirtualWorldState)?.HasLivingBoss() ?? _bossDefeatedFallback;
+            set => _bossDefeatedFallback = value;
+        }
 
         public VirtualHeroController(IWorldState worldState)
         {

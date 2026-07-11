@@ -165,6 +165,46 @@ The virtual game simulation includes comprehensive tests for:
 - ✅ Visual representation rendering
 - ✅ Edge cases and error handling
 
+## Delta Plan — Phase B: Combat + Traps Mirrored (issue #296)
+
+Phase B wires up the headless `BattleEngine` (extracted in Phase A) to the virtual
+exploration loop so that pit traversal is now a complete simulation: monsters are
+fought, traps are triggered or disarmed, and aggregated metrics are exported for
+balance analysis.
+
+### New files added (all in `PitHero.VirtualGame`)
+
+| File | Responsibility |
+|------|---------------|
+| `VirtualBattleAlly.cs` | `IBattleAlly` over a real `Hero` or `Mercenary`; `IsPresent` always true (mirrors `LiveHeroAlly`) |
+| `VirtualBattlePartyView.cs` | `IBattlePartyView` replicating `HeroComponent` burst/critical-HP math using the same `GameConfig` constants |
+| `VirtualBattleSink.cs` | `BattleEventSinkBase` that accumulates `VirtualBattleMetrics` and removes defeated monsters from `VirtualWorldState` in `ShowMonsterDeath` |
+| `VirtualBattleRunner.cs` | Owns `BattleEngine` + `VirtualBattleSink` + a persistent `ActionQueue`; exposes `RunAdjacentBattle()`, `ApplyTrapDamageToHero()`, `PartyHasTrapSense()` |
+| `VirtualBattleMetrics.cs` | Per-battle: rounds, damageDealt/Taken, healing, potions, heroDied, mercDeaths, monstersDefeated, XP/gold |
+| `VirtualRunMetrics.cs` | Per-pit-level aggregate with `WriteCsv(TextWriter)` for balance reporting |
+
+### Key modifications
+
+- **`VirtualWorldState`** — adds `Dictionary<Point, IEnemy>` + reverse map, `HashSet<Point> TrapTiles`, `AddMonster(Point, IEnemy)` overload (auto-routes to `AddBossMonster` when `IsBoss=true`), adjacency query, `HasLivingBoss/Monsters`, trap methods `AddTrapTile / TriggerTrap / DisarmTrap`.  `ClearAllEntities()` clears the new collections.
+
+- **`VirtualPitGenerator`** — boss mapping fixed to live `PitGenerator.cs` (5=StoneGuardian, 10=EarthElemental, 15=AncientWyrm, 20=PitLord, 25=MoltenTitan).  All monsters are created via `EnemyFactory.Create()` as real `IEnemy` instances, then stored through the new `AddMonster(Point, IEnemy)` overload.  Traps spawned per `GameConfig.TrapMin/MaxPerFloor`.
+
+- **`VirtualHero`** — exposes `LinkedHero` and `ConfigureHero(IJob, int, StatBlock)`.  `AreAllMonstersDefeated` now checks `VirtualWorldState.HasLivingMonsters()`.
+
+- **`VirtualHeroController.BossDefeated`** — computed from `!world.HasLivingBoss()` (was hardcoded `true`).
+
+- **`VirtualHeroStateMachine`** — `BattleRunner` property; after each `TeleportTo` in wander/connectivity phases, `HandleTrapAtTile` + `RunAdjacentBattlesIfAny` are called.  `ExecuteActivateWizardOrbAction` gates on `!HasLivingBoss()` and navigates to any surviving boss before the gate check.
+
+- **`VirtualGameSimulation`** — `ConfigureHero`, `ConfigureMercenaries`, `RunPitLevel(int)`, `World`, `Metrics` properties. `RunPitLevel` uses `VirtualPitGenerator` to populate real `IEnemy` instances, builds a `VirtualBattleRunner`, runs the state machine, and accumulates battle metrics into `VirtualRunMetrics`.
+
+- **`VirtualGoapContext`** — `BattleRunner { get; set; }` property.
+
+- **`AttackMonsterAction.Execute(IGoapContext)`** — stub replaced: if context is `VirtualGoapContext` with a `BattleRunner`, calls `RunAdjacentBattle()` and logs results; otherwise falls through to the original exploration-only no-op.
+
+### Boss-mapping fix side-effect
+
+`CaveBiomeBalanceTests.CaveBiome_BossEncounters_ValidateAllFiveBosses` expected old wrong display strings.  Updated to MonsterTextKey values matching live mapping.
+
 ## Future Enhancements
 
 Potential extensions to the virtual layer:

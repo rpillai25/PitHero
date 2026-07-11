@@ -143,10 +143,12 @@ namespace PitHero.VirtualGame
                 if (bossPos.HasValue)
                 {
                     usedPositions.Add(bossPos.Value);
-                    string bossType = GetBossTypeForLevel(level);
-                    _worldState.AddBossMonster(bossPos.Value, bossType);
+                    EnemyId bossId = GetBossEnemyIdForLevel(level);
+                    IEnemy bossEnemy = EnemyFactory.Create(bossId, caveScaledEnemyLevel);
+                    // AddMonster(Point, IEnemy) routes to AddBossMonster internally when IsBoss=true
+                    _worldState.AddMonster(bossPos.Value, bossEnemy);
                     monsterCount--;
-                    Console.WriteLine($"[VirtualPitGenerator] Cave boss floor at level {level} with {bossType} (scaled level {caveScaledEnemyLevel})");
+                    Console.WriteLine($"[VirtualPitGenerator] Cave boss floor at level {level} with {bossEnemy.Name} (scaled level {caveScaledEnemyLevel})");
                 }
             }
 
@@ -160,8 +162,11 @@ namespace PitHero.VirtualGame
                     if (pos.HasValue)
                     {
                         usedPositions.Add(pos.Value);
-                        string monsterType = enemyPool.Length > 0 ? enemyPool[random.Next(enemyPool.Length)].ToString() : EnemyId.Slime.ToString();
-                        _worldState.AddMonster(pos.Value, monsterType);
+                        EnemyId pickedId = enemyPool.Length > 0
+                            ? enemyPool[random.Next(enemyPool.Length)]
+                            : EnemyId.Slime;
+                        IEnemy enemy = EnemyFactory.Create(pickedId, caveScaledEnemyLevel);
+                        _worldState.AddMonster(pos.Value, enemy);
                     }
                 }
             }
@@ -174,34 +179,47 @@ namespace PitHero.VirtualGame
                     if (pos.HasValue)
                     {
                         usedPositions.Add(pos.Value);
-                        _worldState.AddMonster(pos.Value, EnemyId.Slime.ToString());
+                        IEnemy enemy = EnemyFactory.Create(EnemyId.Slime, caveScaledEnemyLevel);
+                        _worldState.AddMonster(pos.Value, enemy);
                     }
                 }
+            }
+
+            // Spawn traps per GameConfig.TrapMin/MaxPerFloor
+            // Boss floors never have traps (the boss is the hazard)
+            if (!isCaveBossFloor)
+            {
+                int trapCount = random.Next(GameConfig.TrapMinPerFloor, GameConfig.TrapMaxPerFloor + 1);
+                for (int i = 0; i < trapCount; i++)
+                {
+                    var pos = GetRandomPosition(minX, minY, maxX, maxY, usedPositions, random);
+                    if (pos.HasValue)
+                    {
+                        usedPositions.Add(pos.Value);
+                        _worldState.AddTrapTile(pos.Value);
+                    }
+                }
+                Console.WriteLine($"[VirtualPitGenerator] Spawned {trapCount} trap(s) for level {level}");
             }
 
             Console.WriteLine($"[VirtualPitGenerator] Generated {obstacles.Count} obstacles, {chestCount} treasures, {monsterCount} monsters, and 1 wizard orb");
         }
 
         /// <summary>
-        /// Gets the boss type for a specific Cave Biome boss floor.
+        /// Returns the <see cref="EnemyId"/> for the Cave Biome boss at the given pit level.
+        /// Mirrors the live <c>PitGenerator</c> boss mapping exactly:
+        /// 5 = StoneGuardian, 10 = EarthElemental, 15 = AncientWyrm, 20 = PitLord, 25 = MoltenTitan.
         /// </summary>
-        private string GetBossTypeForLevel(int level)
+        private EnemyId GetBossEnemyIdForLevel(int level)
         {
-            // Cave biome boss progression: unique bosses at each major milestone
             switch (level)
             {
-                case 5:
-                    return "Stone Guardian";
-                case 10:
-                    return "Pit Lord";
-                case 15:
-                    return "Earth Elemental";
-                case 20:
-                    return "Molten Titan";
-                case 25:
-                    return "Ancient Wyrm";
-                default:
-                    return "Pit Lord";
+                case 5:  return EnemyId.StoneGuardian;
+                case 10: return EnemyId.EarthElemental;
+                case 15: return EnemyId.AncientWyrm;
+                case 20: return EnemyId.PitLord;
+                case 25: return EnemyId.MoltenTitan;
+                default: return EnemyId.PitLord;
             }
         }
 

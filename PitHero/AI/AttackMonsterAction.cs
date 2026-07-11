@@ -111,12 +111,30 @@ namespace PitHero.AI
         {
             context.LogDebug("[AttackMonster] Starting monster attack with interface-based context");
 
-            // Get current tile position
             var heroTile = context.HeroController.CurrentTilePosition;
             context.LogDebug($"[AttackMonster] Hero at tile ({heroTile.X},{heroTile.Y})");
 
-            // Note: Virtual implementation would handle monster removal from virtual world state
-            context.LogDebug("[AttackMonster] Attack completed in virtual context");
+            // When called from the virtual layer with a BattleRunner wired up,
+            // run the real headless battle.  This path is exercised by
+            // VirtualHeroStateMachine.RunAdjacentBattlesIfAny() and by tests.
+            if (context is PitHero.VirtualGame.VirtualGoapContext virtualCtx
+                && virtualCtx.BattleRunner != null)
+            {
+                var metrics = virtualCtx.BattleRunner.RunAdjacentBattle();
+                if (metrics != null)
+                {
+                    context.LogDebug($"[AttackMonster] Virtual battle complete: " +
+                        $"{metrics.MonstersDefeated} monster(s) defeated in {metrics.Rounds} round(s)");
+                }
+                else
+                {
+                    context.LogDebug("[AttackMonster] No adjacent monsters found; skipping battle");
+                }
+                return true;
+            }
+
+            // Fallback no-op for contexts without a runner (exploration-only tests)
+            context.LogDebug("[AttackMonster] Attack completed in virtual context (no BattleRunner)");
             return true;
         }
 

@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using PitHero.AI;
 using PitHero.AI.Interfaces;
+using RolePlayingFramework.Enemies;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -18,6 +19,20 @@ namespace PitHero.VirtualGame
         private readonly bool[,] _fogOfWar;
         private readonly bool[,] _collisionMap;
         private readonly Dictionary<string, List<Point>> _entities;
+
+        // ── Phase B: real IEnemy instance tracking ─────────────────────────────────
+        // Parallel to the string-list tracking in _entities["Monsters"];
+        // both are kept in sync so parity tests still pass.
+        private readonly Dictionary<Point, IEnemy> _monsterInstances = new Dictionary<Point, IEnemy>(16);
+        private readonly Dictionary<IEnemy, Point> _monsterPositions  = new Dictionary<IEnemy, Point>(16);
+
+        // ── Phase B: trap tile set ─────────────────────────────────────────────────
+        /// <summary>
+        /// Set of tile positions that contain hidden traps.  Populated by
+        /// <see cref="VirtualPitGenerator"/> according to
+        /// <see cref="GameConfig.TrapMinPerFloor"/> / <see cref="GameConfig.TrapMaxPerFloor"/>.
+        /// </summary>
+        public HashSet<Point> TrapTiles { get; } = new HashSet<Point>();
 
         public Point WorldSizeTiles { get; } = new Point(WORLD_WIDTH_TILES, WORLD_HEIGHT_TILES);
         public Point HeroPosition { get; private set; }
@@ -203,6 +218,166 @@ namespace PitHero.VirtualGame
             AddMonster(position, monsterType);
         }
 
+        // ── Phase B: IEnemy-backed monster methods ─────────────────────────────────
+
+        /// <summary>
+        /// Adds a real <see cref="IEnemy"/> instance at the given tile position,
+        /// updating both the string-list tracking (for parity tests) and the
+        /// instance dictionaries (for combat simulation).
+        /// </summary>
+        public void AddMonster(Point position, IEnemy enemy)
+        {
+            if (enemy == null) return;
+            _monsterInstances[position] = enemy;
+            _monsterPositions[enemy]    = position;
+
+            // Route through the correct string-based method so that
+            // LastGeneratedBossMonsterCount and the "BossMonsters" entity key
+            // are populated when the enemy is a boss.
+            //
+            // Key point: parity tests compare monster-type strings against
+            // EnemyId.ToString() (e.g. "Bat", "Slime") for regular monsters,
+            // and MonsterTextKey strings (e.g. "Monster_StoneGuardian") for bosses.
+            // We must use different string sources:
+            //   boss    → enemy.Name  (the MonsterTextKey)
+            //   regular → enemy.GetType().Name  (matches EnemyId.ToString() exactly)
+            if (enemy.IsBoss)
+                AddBossMonster(position, enemy.Name);
+            else
+                AddMonster(position, enemy.GetType().Name);
+        }
+
+        /// <summary>
+        /// Fills <paramref name="buffer"/> with all living monsters whose tile position
+        /// is within Chebyshev distance 1 (8-adjacency) of <paramref name="heroPos"/>.
+        /// </summary>
+        public void GetLivingMonstersAdjacentTo(Point heroPos, List<IEnemy> buffer)
+        {
+            foreach (var kvp in _monsterInstances)
+            {
+                var pos = kvp.Key;
+                if (System.Math.Abs(pos.X - heroPos.X) <= 1 &&
+                    System.Math.Abs(pos.Y - heroPos.Y) <= 1 &&
+                    kvp.Value.CurrentHP > 0)
+                {
+                    buffer.Add(kvp.Value);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Tries to get the monster instance at the given tile, returning false when
+        /// the tile has no monster or the monster is dead.
+        /// </summary>
+        public bool TryGetMonsterAt(Point position, out IEnemy enemy)
+        {
+            if (_monsterInstances.TryGetValue(position, out enemy))
+                return enemy != null && enemy.CurrentHP > 0;
+            enemy = null;
+            return false;
+        }
+
+        /// <summary>
+        /// Removes a defeated monster from both the instance dictionaries and the
+        /// <c>_entities["Monsters"]</c> position list so the world state stays consistent.
+        /// </summary>
+        public void RemoveMonster(IEnemy enemy)
+        {
+            if (enemy == null) return;
+            if (!_monsterPositions.TryGetValue(enemy, out Point pos)) return;
+
+            _monsterPositions.Remove(enemy);
+            _monsterInstances.Remove(pos);
+
+            // Remove from the string-based position list
+            if (_entities.TryGetValue("Monsters", out var monsterPosList))
+                monsterPosList.Remove(pos);
+        }
+
+        /// <summary>
+        /// Returns true when at least one monster in the instance dictionary is alive
+        /// and flagged as a boss (<see cref="IEnemy.IsBoss"/>).
+        /// </summary>
+        public bool HasLivingBoss()
+        {
+            foreach (var enemy in _monsterInstances.Values)
+            {
+                if (enemy.IsBoss && enemy.CurrentHP > 0) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Returns true when at least one monster in the instance dictionary is alive.
+        /// </summary>
+        public bool HasLivingMonsters()
+        {
+            foreach (var enemy in _monsterInstances.Values)
+            {
+                if (enemy.CurrentHP > 0) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Returns the tile position of the nearest living monster to
+        /// <paramref name="heroPos"/>, or null when no monsters remain.
+        /// Uses Manhattan distance as the proximity metric.
+        /// </summary>
+        public Point? GetNearestLivingMonsterPosition(Point heroPos)
+        {
+            Point? best    = null;
+            int    bestDist = int.MaxValue;
+            foreach (var kvp in _monsterInstances)
+            {
+                if (kvp.Value.CurrentHP <= 0) continue;
+                int dist = System.Math.Abs(kvp.Key.X - heroPos.X) +
+                           System.Math.Abs(kvp.Key.Y - heroPos.Y);
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    best     = kvp.Key;
+                }
+            }
+            return best;
+        }
+
+        // ── Phase B: trap methods ──────────────────────────────────────────────────
+
+        /// <summary>
+        /// Registers a trap at <paramref name="tile"/>.
+        /// Called by <see cref="VirtualPitGenerator"/> during pit generation.
+        /// </summary>
+        public void AddTrapTile(Point tile)
+        {
+            TrapTiles.Add(tile);
+        }
+
+        /// <summary>
+        /// Triggers a trap: removes it from <see cref="TrapTiles"/> and returns the
+        /// raw damage that should be applied to the hero.
+        /// Formula mirrors <c>TrapComponent.Damage</c>: <c>5 + PitLevel * 2</c>.
+        /// Clamped to at least 1 for safety.
+        /// The caller is responsible for clamping damage so the hero survives with ≥ 1 HP
+        /// (matching <c>TrapComponent.Trigger</c> behaviour).
+        /// Returns 0 when no trap exists at <paramref name="tile"/>.
+        /// </summary>
+        public int TriggerTrap(Point tile)
+        {
+            if (!TrapTiles.Contains(tile)) return 0;
+            TrapTiles.Remove(tile);
+            return System.Math.Max(1, 5 + PitLevel * 2);
+        }
+
+        /// <summary>
+        /// Disarms a trap without dealing damage.
+        /// Mirrors <c>TrapComponent.Disarm()</c> triggered by TrapSense.
+        /// </summary>
+        public void DisarmTrap(Point tile)
+        {
+            TrapTiles.Remove(tile);
+        }
+
         public void ClearAllEntities()
         {
             _entities.Clear();
@@ -211,6 +386,9 @@ namespace PitHero.VirtualGame
             LastGeneratedTreasureLevels.Clear();
             LastGeneratedMonsterTypes.Clear();
             LastGeneratedEquipmentTypes.Clear();
+            _monsterInstances.Clear();
+            _monsterPositions.Clear();
+            TrapTiles.Clear();
 
             // Clear collision map except for pit boundaries
             for (int x = 0; x < WORLD_WIDTH_TILES; x++)

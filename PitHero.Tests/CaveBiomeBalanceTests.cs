@@ -100,7 +100,10 @@ namespace PitHero.Tests
             _balanceReport.AppendLine();
 
             int[] expectedBossLevels = { 5, 10, 15, 20, 25 };
-            string[] expectedBosses = { "Stone Guardian", "Pit Lord", "Earth Elemental", "Molten Titan", "Ancient Wyrm" };
+            // Boss names are enemy.Name (MonsterTextKey localization keys), and the mapping
+            // now mirrors live PitGenerator.cs exactly: 5=StoneGuardian, 10=EarthElemental,
+            // 15=AncientWyrm, 20=PitLord, 25=MoltenTitan.
+            string[] expectedBosses = { "Monster_StoneGuardian", "Monster_EarthElemental", "Monster_AncientWyrm", "Monster_PitLord", "Monster_MoltenTitan" };
 
             for (int i = 0; i < expectedBossLevels.Length; i++)
             {

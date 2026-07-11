@@ -19,9 +19,16 @@ namespace PitHero.VirtualGame
         public IPitWidthManager PitWidthManager { get; }
 
         /// <summary>
-        /// Access to the virtual hero for configuration properties like UncoverRadius
+        /// Access to the virtual hero for configuration properties like UncoverRadius.
         /// </summary>
         public VirtualHero VirtualHero => _virtualHero;
+
+        /// <summary>
+        /// Optional headless battle runner.  When set, <see cref="AttackMonsterAction"/>
+        /// will call <see cref="VirtualBattleRunner.RunAdjacentBattle"/> instead of the
+        /// stub no-op path.
+        /// </summary>
+        public VirtualBattleRunner BattleRunner { get; set; }
 
         private readonly VirtualWorldState _virtualWorld;
         private readonly VirtualHero _virtualHero;

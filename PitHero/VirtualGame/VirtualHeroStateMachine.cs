@@ -17,6 +17,14 @@ namespace PitHero.VirtualGame
         private readonly VirtualPathfinder _pathfinder;
         private readonly HashSet<Point> _failedWanderTargets;
 
+        // ── Phase B: optional combat integration ──────────────────────────────────
+        /// <summary>
+        /// When set, the state machine will run headless battles after each hero movement
+        /// step and handle trap logic on every tile the hero lands on.
+        /// Leave null for pure-exploration tests that don't exercise combat.
+        /// </summary>
+        public VirtualBattleRunner BattleRunner { get; set; }
+
         // State machine states
         public enum VirtualActorState
         {
@@ -247,6 +255,10 @@ namespace PitHero.VirtualGame
                     _hero.TeleportTo(target);
                     _world.ClearFogOfWar(target, 2);
                     Console.WriteLine($"[VirtualStateMachine] Wandered to and explored ({target.X},{target.Y})");
+
+                    // Phase B: handle traps and adjacent combat on each landing
+                    HandleTrapAtTile(target);
+                    RunAdjacentBattlesIfAny();
                 }
                 catch (Exception ex)
                 {
@@ -268,6 +280,10 @@ namespace PitHero.VirtualGame
                 {
                     _hero.TeleportTo(target);
                     Console.WriteLine($"[VirtualStateMachine] Connectivity verified for column {target.X}");
+
+                    // Phase B: handle traps and combat during connectivity sweep
+                    HandleTrapAtTile(target);
+                    RunAdjacentBattlesIfAny();
                 }
                 catch (Exception ex)
                 {
@@ -399,6 +415,23 @@ namespace PitHero.VirtualGame
 
         private bool ExecuteActivateWizardOrbAction()
         {
+            // Phase B: boss must be defeated before the orb can be activated.
+            // The wander phase normally triggers boss combat when the hero passes adjacent;
+            // this gate handles the edge case where the fog-clear radius cleared the boss
+            // tile before the hero stepped onto an adjacent tile.
+            if (_world.HasLivingBoss())
+            {
+                Console.WriteLine("[VirtualStateMachine] Cannot activate orb — boss still alive; navigating to boss");
+                Point? bossPos = _world.GetNearestLivingMonsterPosition(_hero.Position);
+                if (bossPos.HasValue)
+                {
+                    // Teleport directly to the boss tile so 8-adjacency check picks it up
+                    _hero.TeleportTo(bossPos.Value);
+                    RunAdjacentBattlesIfAny();
+                }
+                if (_world.HasLivingBoss()) return false; // come back next tick
+            }
+
             if (_world.WizardOrbPosition.HasValue && _hero.Position == _world.WizardOrbPosition.Value)
             {
                 _world.ActivateWizardOrb();
@@ -416,11 +449,62 @@ namespace PitHero.VirtualGame
                 {
                     var target = path.Last();
                     _hero.TeleportTo(target); // Use teleport for action execution
+                    HandleTrapAtTile(target);
+                    RunAdjacentBattlesIfAny();
                     Console.WriteLine($"[VirtualStateMachine] Moving to wizard orb at ({target.X},{target.Y})");
                 }
             }
 
             return false; // Continue until at orb
+        }
+
+        // ── Phase B: combat and trap helpers ──────────────────────────────────────
+
+        /// <summary>
+        /// Checks whether the hero landed on a trap tile and handles it.
+        /// If the party has TrapSense, the trap is disarmed silently.
+        /// Otherwise the trap is triggered and raw damage is applied to the hero
+        /// (clamped by <see cref="VirtualBattleRunner.ApplyTrapDamageToHero"/> so
+        /// the hero always survives with at least 1 HP).
+        /// No-op when <see cref="BattleRunner"/> is null (exploration-only tests).
+        /// </summary>
+        private void HandleTrapAtTile(Point tile)
+        {
+            if (BattleRunner == null) return;
+            if (!_world.TrapTiles.Contains(tile)) return;
+
+            if (BattleRunner.PartyHasTrapSense())
+            {
+                _world.DisarmTrap(tile);
+                Console.WriteLine($"[VirtualStateMachine] TrapSense: disarmed trap at ({tile.X},{tile.Y})");
+            }
+            else
+            {
+                int damage = _world.TriggerTrap(tile);
+                BattleRunner.ApplyTrapDamageToHero(damage);
+                Console.WriteLine($"[VirtualStateMachine] Trap triggered at ({tile.X},{tile.Y}), {damage} damage applied to hero");
+            }
+        }
+
+        /// <summary>
+        /// Runs one headless adjacent battle if any living monsters are adjacent to the hero.
+        /// Repeats until no adjacent monsters remain (all battles in one step are resolved).
+        /// No-op when <see cref="BattleRunner"/> is null.
+        /// </summary>
+        private void RunAdjacentBattlesIfAny()
+        {
+            if (BattleRunner == null) return;
+            if (!BattleRunner.HeroAlive) return;
+
+            VirtualBattleMetrics metrics;
+            int safetyLimit = 32; // guard against an infinite loop
+            int count = 0;
+            while ((metrics = BattleRunner.RunAdjacentBattle()) != null && count++ < safetyLimit)
+            {
+                Console.WriteLine($"[VirtualStateMachine] Battle complete: {metrics.MonstersDefeated} defeated, " +
+                                  $"rounds={metrics.Rounds}, heroDied={metrics.HeroDied}");
+                if (!BattleRunner.HeroAlive) break;
+            }
         }
 
         private bool ExecuteJumpOutOfPitForInnAction()
