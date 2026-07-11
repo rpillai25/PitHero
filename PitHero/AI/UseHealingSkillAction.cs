@@ -249,10 +249,12 @@ namespace PitHero.AI
                 return;
             }
 
-            int waste = skill.HPRestoreAmount - hpNeeded;
+            // Compare using the caster-scaled heal amount so skill choice reflects actual healing
+            int effectiveHeal = RolePlayingFramework.Skills.SkillHealCalculator.GetAmount(skill, caster);
+            int waste = effectiveHeal - hpNeeded;
 
             // If this skill can fully heal and has less waste than current best, use it
-            if (skill.HPRestoreAmount >= hpNeeded && waste < bestWaste)
+            if (effectiveHeal >= hpNeeded && waste < bestWaste)
             {
                 bestCaster = caster;
                 bestSkill = skill;
@@ -261,7 +263,7 @@ namespace PitHero.AI
                 bestMPCost = skill.MPCost;
             }
             // If waste is equal, prefer the skill with lower MP cost
-            else if (skill.HPRestoreAmount >= hpNeeded && waste == bestWaste && skill.MPCost < bestMPCost)
+            else if (effectiveHeal >= hpNeeded && waste == bestWaste && skill.MPCost < bestMPCost)
             {
                 bestCaster = caster;
                 bestSkill = skill;
@@ -269,7 +271,7 @@ namespace PitHero.AI
                 bestMPCost = skill.MPCost;
             }
             // Partial heal fallback: pick the skill that heals the most (least negative waste)
-            else if (skill.HPRestoreAmount < hpNeeded &&
+            else if (effectiveHeal < hpNeeded &&
                      (bestSkill == null || (bestWaste < 0 && waste > bestWaste) || (bestWaste < 0 && waste == bestWaste && skill.MPCost < bestMPCost)))
             {
                 bestCaster = caster;
@@ -321,8 +323,8 @@ namespace PitHero.AI
                 return false;
             }
 
-            // Restore target's HP
-            int healAmount = skill.HPRestoreAmount;
+            // Restore target's HP (scaled by the caster's Magic and heal power bonus)
+            int healAmount = RolePlayingFramework.Skills.SkillHealCalculator.GetAmount(skill, caster);
             bool healed = false;
             string targetName;
             int currentHP = 0;
