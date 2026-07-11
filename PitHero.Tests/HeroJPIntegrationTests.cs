@@ -109,7 +109,7 @@ namespace PitHero.Tests
             
             hero.TryPurchaseSkill(heavyArmorSkill);
             
-            Assert.AreEqual(2, hero.PassiveDefenseBonus, "Defense bonus should be 2 after purchasing Heavy Armor");
+            Assert.AreEqual(2, hero.HeavyArmorDefenseBonus, "HeavyArmorDefenseBonus should be 2 after purchasing Heavy Armor");
         }
 
         [TestMethod]

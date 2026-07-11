@@ -423,6 +423,39 @@ namespace PitHero.Services.Analytics
 #endif
         }
 
+        /// <summary>Logs a trap triggered by the hero (out-of-battle chip damage).</summary>
+        [Conditional("DEBUG")]
+        public static void LogTrapTriggered(int pitLevel, int x, int y, int damage)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("trap_triggered"))
+                return;
+            _json.Field("pitLevel", pitLevel);
+            _json.Field("x", x);
+            _json.Field("y", y);
+            _json.Field("damage", damage);
+            EndEvent();
+#endif
+        }
+
+        /// <summary>Logs a trap auto-disarmed by the TrapSense passive before the hero stepped on it.</summary>
+        [Conditional("DEBUG")]
+        public static void LogTrapDisarmed(int pitLevel, int x, int y)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("trap_disarmed"))
+                return;
+            _json.Field("pitLevel", pitLevel);
+            _json.Field("x", x);
+            _json.Field("y", y);
+            EndEvent();
+#endif
+        }
+
         /// <summary>Logs a monster defeated by the party.</summary>
         [Conditional("DEBUG")]
         public static void LogMonsterDefeated(IEnemy enemy)

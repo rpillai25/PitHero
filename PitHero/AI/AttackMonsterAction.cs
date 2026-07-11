@@ -370,7 +370,10 @@ namespace PitHero.AI
 
                 var hero = heroComponent.LinkedHero;
                 var attackResolver = new EnhancedAttackResolver();
-                var heroBattleStats = BattleStats.CalculateForHero(hero);
+
+                // Phase 3: battle-scoped buff/context setup
+                var battleContext = new BattleContext();
+                hero.ClearBattleState();
 
                 // Build participant list
                 var participants = new List<BattleParticipant>();
@@ -385,6 +388,7 @@ namespace PitHero.AI
                     {
                         participants.Add(new BattleParticipant(mercEntity, true));
                         validMercenaries.Add(mercEntity);
+                        mercComponent.LinkedMercenary.ClearBattleState(); // Phase 3: clear any leaked buff state
                         Debug.Log($"[AttackMonster] {mercComponent.LinkedMercenary.Name} (Lv.{mercComponent.LinkedMercenary.Level}) joins the battle!");
                     }
                 }
@@ -469,11 +473,11 @@ namespace PitHero.AI
 
                         // Execute participant's turn
                         if (participant.Type == BattleParticipant.ParticipantType.Hero)
-                            yield return ExecuteHeroTurn(heroComponent, hero, validMonsters, validMercenaries, heroBattleStats, attackResolver);
+                            yield return ExecuteHeroTurn(heroComponent, hero, validMonsters, validMercenaries, attackResolver, battleContext);
                         else if (participant.Type == BattleParticipant.ParticipantType.Mercenary)
-                            yield return ExecuteMercenaryTurn(participant, heroComponent, hero, validMonsters, validMercenaries, attackResolver);
+                            yield return ExecuteMercenaryTurn(participant, heroComponent, hero, validMonsters, validMercenaries, attackResolver, battleContext);
                         else
-                            yield return ExecuteMonsterTurn(participant, heroComponent, hero, heroBattleStats, validMercenaries, attackResolver);
+                            yield return ExecuteMonsterTurn(participant, heroComponent, hero, validMonsters, validMercenaries, attackResolver);
 
                         yield return WaitForSecondsRespectingPause(GameConfig.BattleTurnWait);
 
@@ -485,6 +489,23 @@ namespace PitHero.AI
                             break;
                         }
                     }
+
+                    // Phase 3: end-of-round ticks — regen, buff durations, and enemy DoTs
+                    if (hero.CurrentHP > 0)
+                    {
+                        hero.TickRegeneration();
+                        hero.TickBuffDurations();
+                    }
+                    for (int i = 0; i < validMercenaries.Count; i++)
+                    {
+                        var mc = validMercenaries[i]?.GetComponent<MercenaryComponent>();
+                        if (mc?.LinkedMercenary != null && mc.LinkedMercenary.CurrentHP > 0)
+                        {
+                            mc.LinkedMercenary.TickRegeneration();
+                            mc.LinkedMercenary.TickBuffDurations();
+                        }
+                    }
+                    yield return TickDoTsAndHandleDeaths(battleContext, validMonsters, validMercenaries, hero, heroComponent);
 
                     yield return WaitForSecondsRespectingPause(GameConfig.BattleTurnWait);
                 }
@@ -498,6 +519,19 @@ namespace PitHero.AI
             {
                 HeroStateMachine.IsBattleInProgress = false;
                 existingMultiParticipantBattleCoroutine = null;
+
+                // Phase 3: clear all battle buffs so they never leak out of battle
+                var heroForClean = heroComponent?.LinkedHero;
+                if (heroForClean != null) heroForClean.ClearBattleState();
+
+                if (validMercenaries != null)
+                {
+                    for (int i = 0; i < validMercenaries.Count; i++)
+                    {
+                        var mc = validMercenaries[i]?.GetComponent<MercenaryComponent>();
+                        mc?.LinkedMercenary?.ClearBattleState();
+                    }
+                }
 
                 if (turnIndicatorEntity != null)
                     turnIndicatorEntity.Destroy();
@@ -712,6 +746,63 @@ namespace PitHero.AI
         }
 
         /// <summary>
+        /// Displays a "Deflect" text on an entity and waits for the bounce animation.
+        /// Used when a combatant's DeflectChance passive triggers (Phase 3).
+        /// </summary>
+        private System.Collections.IEnumerator ShowDeflectTextOnEntity(Entity entity, Color textColor)
+        {
+            var bouncyText = entity?.GetComponent<BouncyTextComponent>();
+            if (bouncyText != null)
+            {
+                bouncyText.Init("Deflect", textColor);
+                bouncyText.SetEnabled(true);
+                yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+            }
+        }
+
+        /// <summary>
+        /// Displays a "Crit" text on an entity and waits for the bounce animation.
+        /// Used when a Quickdraw first-attack critical hit triggers (Phase 4).
+        /// </summary>
+        private System.Collections.IEnumerator ShowCritTextOnEntity(Entity entity, Color textColor)
+        {
+            var bouncyText = entity?.GetComponent<BouncyTextComponent>();
+            if (bouncyText != null)
+            {
+                bouncyText.Init("Crit", textColor);
+                bouncyText.SetEnabled(true);
+                yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+            }
+        }
+
+        /// <summary>
+        /// Displays a short buff label (e.g. "DEF+1") on an entity and waits for the bounce animation.
+        /// Used when GrantedBuffs are applied to a combatant via a skill (Phase 3).
+        /// </summary>
+        private System.Collections.IEnumerator ShowBuffTextOnEntity(Entity entity, string label, Color textColor)
+        {
+            var bouncyText = entity?.GetComponent<BouncyTextComponent>();
+            if (bouncyText != null)
+            {
+                bouncyText.Init(label, textColor);
+                bouncyText.SetEnabled(true);
+                yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
+            }
+        }
+
+        /// <summary>
+        /// Returns a short display label for a buff grant, e.g. "DEF+1" or "EVA+40".
+        /// Used for the bounce-text overlay when a buff is applied (Phase 3).
+        /// </summary>
+        private static string GetBuffLabel(BuffType type, int magnitude)
+        {
+            if (type == BuffType.DefenseUp) return "DEF+" + magnitude;
+            if (type == BuffType.EvasionUp) return "EVA+" + magnitude;
+            if (type == BuffType.MPRegen)   return "MP+" + magnitude;
+            return type.ToString() + "+" + magnitude;
+        }
+
+        /// <summary>
         /// Displays a green heal number on an entity and waits for the bounce animation.
         /// </summary>
         private System.Collections.IEnumerator ShowHealDigitOnEntity(Entity entity, int amount)
@@ -728,7 +819,8 @@ namespace PitHero.AI
         // ─── Shared action application helpers ───────────────────────────────────
 
         /// <summary>
-        /// Applies a healing skill's HP/MP restore effects and displays the heal digit.
+        /// Applies a healing skill's HP/MP restore effects, GrantedBuffs, and CleansesDebuffs flag,
+        /// then displays the appropriate heal digit / buff text.
         /// The caller is responsible for spending MP before calling this method.
         /// </summary>
         private System.Collections.IEnumerator ApplyHealingSkillEffectsAndDisplay(ISkill skill, object caster, object healTarget, bool targetsHero, HeroComponent heroComponent, List<Entity> validMercenaries, string casterName)
@@ -768,6 +860,29 @@ namespace PitHero.AI
                     mpHero.RestoreMP(skill.MPRestoreAmount);
                 else if (healTarget is Mercenary mpMerc)
                     mpMerc.RestoreMP(skill.MPRestoreAmount);
+            }
+
+            // Phase 3: CleansesDebuffs — seam for a future debuff system (no debuffs exist yet)
+            // When Phase 5+ adds debuff types, call combatantTarget.ClearDebuffs() here.
+
+            // Phase 3: apply GrantedBuffs to the target combatant
+            var combatantTarget = healTarget as ICombatant;
+            if (combatantTarget != null && skill.GrantedBuffs.Count > 0)
+            {
+                var targetEntity2 = FindTargetEntity(healTarget, targetsHero, heroComponent, validMercenaries);
+                for (int b = 0; b < skill.GrantedBuffs.Count; b++)
+                {
+                    var grantedBuff = skill.GrantedBuffs[b];
+                    // Count stacks for this specific buff type so multi-buff skills (e.g. FadeSkill
+                    // granting EvasionUp + MPRegen) don't block their second type when the first is capped.
+                    int currentStacks = combatantTarget.GetBuffStacks(skill.Id, grantedBuff.Type);
+                    if (currentStacks >= grantedBuff.MaxStacks)
+                        continue;
+
+                    combatantTarget.AddBattleBuff(new BattleBuff(grantedBuff.Type, grantedBuff.Magnitude, grantedBuff.DurationTurns, skill.Id));
+                    string buffLabel = GetBuffLabel(grantedBuff.Type, grantedBuff.Magnitude);
+                    yield return ShowBuffTextOnEntity(targetEntity2, buffLabel, Color.Cyan);
+                }
             }
         }
 
@@ -909,7 +1024,7 @@ namespace PitHero.AI
         /// Executes the hero's turn: dequeues and re-evaluates their queued action,
         /// then dispatches to the appropriate action handler.
         /// </summary>
-        private System.Collections.IEnumerator ExecuteHeroTurn(HeroComponent heroComponent, Hero hero, List<Entity> validMonsters, List<Entity> validMercenaries, BattleStats heroBattleStats, EnhancedAttackResolver attackResolver)
+        private System.Collections.IEnumerator ExecuteHeroTurn(HeroComponent heroComponent, Hero hero, List<Entity> validMonsters, List<Entity> validMercenaries, EnhancedAttackResolver attackResolver, BattleContext battleContext)
         {
             if (!heroComponent.InsidePit)
                 yield break;
@@ -936,9 +1051,10 @@ namespace PitHero.AI
                 var skill = queuedAction.Skill;
                 Debug.Log($"[AttackMonster] Using queued skill: {skill.Name}");
 
-                if (hero.CurrentMP >= skill.MPCost)
+                if (hero.CurrentMP >= hero.GetEffectiveMPCost(skill.MPCost))
                 {
                     bool isHealingSkill = skill.HPRestoreAmount > 0 || skill.MPRestoreAmount > 0 ||
+                        skill.GrantedBuffs.Count > 0 ||
                         skill.TargetType == SkillTargetType.Self ||
                         skill.TargetType == SkillTargetType.SingleAlly ||
                         skill.TargetType == SkillTargetType.AllAllies;
@@ -952,7 +1068,7 @@ namespace PitHero.AI
                     }
                     else
                     {
-                        yield return ExecuteHeroAttackSkill(skill, hero, heroComponent, validMonsters, validMercenaries, attackResolver);
+                        yield return ExecuteHeroAttackSkill(skill, hero, heroComponent, validMonsters, validMercenaries, attackResolver, battleContext);
                     }
                 }
                 else
@@ -962,19 +1078,73 @@ namespace PitHero.AI
             }
             else if (queuedAction.ActionType == QueuedActionType.Attack)
             {
-                yield return ExecuteHeroPhysicalAttack(queuedAction, hero, heroComponent, validMonsters, validMercenaries, heroBattleStats, attackResolver);
+                yield return ExecuteHeroPhysicalAttack(queuedAction, hero, heroComponent, validMonsters, validMercenaries, attackResolver, battleContext);
             }
         }
 
         /// <summary>
         /// Executes the hero's attack skill against living monsters.
+        /// Delegates to the shared <see cref="ExecuteCombatantAttackSkill"/> coroutine.
         /// </summary>
-        private System.Collections.IEnumerator ExecuteHeroAttackSkill(ISkill skill, Hero hero, HeroComponent heroComponent, List<Entity> validMonsters, List<Entity> validMercenaries, EnhancedAttackResolver attackResolver)
+        private System.Collections.IEnumerator ExecuteHeroAttackSkill(ISkill skill, Hero hero, HeroComponent heroComponent, List<Entity> validMonsters, List<Entity> validMercenaries, EnhancedAttackResolver attackResolver, BattleContext battleContext)
+        {
+            hero.SpendMP(skill.MPCost);
+            Debug.Log($"[AttackMonster] Successfully used {skill.Name}, consumed {skill.MPCost} MP");
+            yield return ExecuteCombatantAttackSkill(skill, hero, "hero", validMonsters, validMercenaries, hero, heroComponent, heroComponent, attackResolver, battleContext);
+        }
+
+        /// <summary>
+        /// Reorders <paramref name="livingMonsters"/> so that <paramref name="preferredEntity"/>
+        /// (if alive and present) is at index 0. All other entries shift right.
+        /// When preferred is null, already at index 0, or not in the list, the list is unchanged.
+        /// Extracted as a testable static helper for Fix 3 (merc single-target targeting).
+        /// </summary>
+        public static void SelectPrimaryTarget(List<Entity> livingMonsters, Entity preferredEntity)
+        {
+            if (preferredEntity == null || livingMonsters.Count == 0) return;
+            for (int i = 1; i < livingMonsters.Count; i++)
+            {
+                if (livingMonsters[i] == preferredEntity)
+                {
+                    // Swap preferred to index 0
+                    var tmp = livingMonsters[0];
+                    livingMonsters[0] = livingMonsters[i];
+                    livingMonsters[i] = tmp;
+                    return;
+                }
+            }
+            // preferred not found (already [0], died, or not in list) — no change needed
+        }
+
+        /// <summary>
+        /// Shared battle-skill execution coroutine for both the hero and mercenaries.
+        /// Snapshots HP before <see cref="ISkill.Execute"/> runs, then diffs per-monster
+        /// damage for display, analytics, rewards and boss handling.
+        /// </summary>
+        /// <param name="rewardHeroComponent">
+        /// Passed to <see cref="AwardEnemyDeathRewards"/>. Pass the real heroComponent for
+        /// hero kills (resets InnExhausted); pass null for mercenary kills (preserves the
+        /// original behaviour where mercs did not reset InnExhausted).
+        /// </param>
+        /// <param name="preferredTargetEntity">
+        /// When non-null, this entity is moved to index 0 of livingMonsters (becomes the primary
+        /// target). Pass <see langword="null"/> for the hero path (random primary). Mercs pass
+        /// <c>decision.TargetEntity</c> so the decision engine's chosen target is honoured.
+        /// </param>
+        private System.Collections.IEnumerator ExecuteCombatantAttackSkill(
+            ISkill skill, ICombatant caster, string actorType,
+            List<Entity> validMonsters, List<Entity> validMercenaries,
+            Hero hero, HeroComponent heroComponent, HeroComponent rewardHeroComponent,
+            EnhancedAttackResolver attackResolver, BattleContext battleContext = null,
+            Entity preferredTargetEntity = null)
         {
             var livingMonsters = GetLivingMonsters(validMonsters);
             if (livingMonsters.Count == 0) yield break;
 
-            // Snapshot HP before the skill executes so we can calculate per-monster damage
+            // Honour the merc's chosen target: move preferred entity to index 0 so it becomes primary.
+            SelectPrimaryTarget(livingMonsters, preferredTargetEntity);
+
+            // Snapshot HP before skill executes so we can calculate per-monster damage
             var monsterHPBefore = new Dictionary<RolePlayingFramework.Enemies.IEnemy, int>();
             for (int i = 0; i < livingMonsters.Count; i++)
             {
@@ -983,7 +1153,8 @@ namespace PitHero.AI
                     monsterHPBefore[enemyComp.Enemy] = enemyComp.Enemy.CurrentHP;
             }
 
-            var primaryTarget = livingMonsters[0].GetComponent<EnemyComponent>()?.Enemy;
+            var primaryMonsterEntity = livingMonsters[0];
+            var primaryTarget = primaryMonsterEntity.GetComponent<EnemyComponent>()?.Enemy;
             var surroundingTargets = new List<RolePlayingFramework.Enemies.IEnemy>();
             for (int i = 1; i < livingMonsters.Count; i++)
             {
@@ -992,11 +1163,36 @@ namespace PitHero.AI
                     surroundingTargets.Add(enemyComp.Enemy);
             }
 
-            skill.Execute(hero, primaryTarget, surroundingTargets, attackResolver);
-            hero.SpendMP(skill.MPCost);
-            Debug.Log($"[AttackMonster] Successfully used {skill.Name}, consumed {skill.MPCost} MP");
+            // Phase 4: Quickdraw — check first-action crit BEFORE Execute so SneakAttack (which also
+            // reads IsFirstOffensiveAction) and the crit roll both see the unmodified "first action" flag.
+            bool isCrit = BattleReactionHelper.RollFirstAttackCrit(caster,
+                battleContext != null && battleContext.IsFirstOffensiveAction(caster),
+                Nez.Random.NextFloat());
+
+            skill.Execute(caster, primaryTarget, surroundingTargets, attackResolver, battleContext);
+
+            // Phase 4: Quickdraw crit — apply a second damage pass equal to the initial damage dealt
+            // to each living monster (doubles final damage on the first offensive action).
+            if (isCrit)
+            {
+                for (int ci = 0; ci < livingMonsters.Count; ci++)
+                {
+                    var critComp = livingMonsters[ci].GetComponent<EnemyComponent>();
+                    if (critComp?.Enemy == null) continue;
+                    var critE = critComp.Enemy;
+                    if (!monsterHPBefore.TryGetValue(critE, out int critHpB)) continue;
+                    int firstPassDmg = critHpB - critE.CurrentHP;
+                    if (firstPassDmg > 0 && critE.CurrentHP > 0)
+                        critE.TakeDamage(firstPassDmg);
+                }
+            }
+
+            // Phase 4: MarkActed after Execute so SneakAttack's own IsFirstOffensiveAction check
+            // inside Execute() is still accurate.
+            battleContext?.MarkActed(caster);
 
             // Display damage and handle deaths for all affected monsters
+            bool critTextShown = false;
             for (int i = livingMonsters.Count - 1; i >= 0; i--)
             {
                 var monsterEntity = livingMonsters[i];
@@ -1007,20 +1203,36 @@ namespace PitHero.AI
                 if (!monsterHPBefore.TryGetValue(enemy, out int hpBefore)) continue;
 
                 int damage = hpBefore - enemy.CurrentHP;
-                if (damage <= 0) continue;
+                if (damage <= 0)
+                {
+                    // Fix 6: show "Miss" on the primary target only when the skill executed but dealt 0 damage.
+                    // Surrounding targets that are unaffected (e.g. AoE single-target) don't get miss text.
+                    if (monsterEntity == primaryMonsterEntity && enemy.CurrentHP > 0)
+                        yield return ShowMissTextOnEntity(monsterEntity, BouncyTextComponent.EnemyMissColor);
+                    continue;
+                }
 
                 Debug.Log($"[AttackMonster] {skill.Name} dealt {damage} damage to {enemy.Name}. Enemy HP: {enemy.CurrentHP}/{enemy.MaxHP}");
 
-                var evtSvcSkill = Core.Services.GetService<GameEventService>();
-                if (evtSvcSkill != null)
-                    evtSvcSkill.EmitLocalized(UITextKey.ConsoleSkillAttack,
-                        (hero.Name, GameConfig.ConsoleColorHeroName),
+                var evtSvc = Core.Services.GetService<GameEventService>();
+                if (evtSvc != null)
+                    evtSvc.EmitLocalized(UITextKey.ConsoleSkillAttack,
+                        (caster.Name, GameConfig.ConsoleColorHeroName),
                         (skill.Name, Color.White),
-                        (evtSvcSkill.MonsterName(enemy.Name), GameConfig.ConsoleColorEnemyName),
+                        (evtSvc.MonsterName(enemy.Name), GameConfig.ConsoleColorEnemyName),
                         (damage.ToString(), Color.White));
 
-                PitHero.Services.Analytics.AnalyticsService.LogAttack(hero.Name, "hero", skill.Id,
+                // Phase 4: log with ".crit" suffix when Quickdraw critical hit fires
+                string analyticsSkillId = isCrit ? (skill.Id + ".crit") : skill.Id;
+                PitHero.Services.Analytics.AnalyticsService.LogAttack(caster.Name, actorType, analyticsSkillId,
                     enemy.Name, "monster", damage, hpBefore, enemy.CurrentHP, enemy.CurrentHP <= 0);
+
+                // Phase 4: show "Crit" text on the first affected monster
+                if (isCrit && !critTextShown)
+                {
+                    yield return ShowCritTextOnEntity(monsterEntity, Color.Yellow);
+                    critTextShown = true;
+                }
 
                 var enemyBouncyDigit = monsterEntity.GetComponent<BouncyDigitComponent>();
                 if (enemyBouncyDigit != null)
@@ -1032,13 +1244,13 @@ namespace PitHero.AI
                 if (enemy.CurrentHP <= 0)
                 {
                     Debug.Log($"[AttackMonster] {enemy.Name} defeated by {skill.Name}!");
-                    AwardEnemyDeathRewards(hero, enemy, heroComponent, validMercenaries);
+                    AwardEnemyDeathRewards(hero, enemy, rewardHeroComponent, validMercenaries);
                     HandleBossDefeated(enemy, heroComponent);
 
-                    var evtSvcSkillDeath = Core.Services.GetService<GameEventService>();
-                    if (evtSvcSkillDeath != null)
-                        evtSvcSkillDeath.EmitLocalized(enemy.IsBoss ? EventPriority.High : EventPriority.Normal, UITextKey.ConsoleMonsterDied,
-                            (evtSvcSkillDeath.MonsterName(enemy.Name), GameConfig.ConsoleColorEnemyName));
+                    var evtSvcDeath = Core.Services.GetService<GameEventService>();
+                    if (evtSvcDeath != null)
+                        evtSvcDeath.EmitLocalized(enemy.IsBoss ? EventPriority.High : EventPriority.Normal, UITextKey.ConsoleMonsterDied,
+                            (evtSvcDeath.MonsterName(enemy.Name), GameConfig.ConsoleColorEnemyName));
 
                     validMonsters.Remove(monsterEntity);
                 }
@@ -1050,8 +1262,10 @@ namespace PitHero.AI
 
         /// <summary>
         /// Executes the hero's physical attack against a random living monster.
+        /// Hero battle stats are computed fresh to reflect any active buffs.
+        /// Phase 4: accepts <paramref name="battleContext"/> for first-attack crit (Quickdraw) and MarkActed.
         /// </summary>
-        private System.Collections.IEnumerator ExecuteHeroPhysicalAttack(QueuedAction queuedAction, Hero hero, HeroComponent heroComponent, List<Entity> validMonsters, List<Entity> validMercenaries, BattleStats heroBattleStats, EnhancedAttackResolver attackResolver)
+        private System.Collections.IEnumerator ExecuteHeroPhysicalAttack(QueuedAction queuedAction, Hero hero, HeroComponent heroComponent, List<Entity> validMonsters, List<Entity> validMercenaries, EnhancedAttackResolver attackResolver, BattleContext battleContext = null)
         {
             var livingMonsters = GetLivingMonsters(validMonsters);
             if (livingMonsters.Count == 0) yield break;
@@ -1060,8 +1274,18 @@ namespace PitHero.AI
             var targetEnemy = targetMonster.GetComponent<EnemyComponent>().Enemy;
             var targetBattleStats = BattleStats.CalculateForMonster(targetEnemy);
 
+            // Phase 3: compute fresh to reflect live buffs (e.g. DefenseUp already applies here
+            // only to defense; attack isn't buffed yet — still accurate for the attacker side)
+            var heroBattleStats = hero.GetBattleStats();
+
             Debug.Log($"[AttackMonster] Hero's turn - attacking {targetEnemy.Name}");
             var heroAttackResult = attackResolver.Resolve(heroBattleStats, targetBattleStats, DamageKind.Physical);
+
+            // Phase 4: Quickdraw — roll first-attack crit before dealing damage
+            bool isCrit = BattleReactionHelper.RollFirstAttackCrit(hero,
+                battleContext != null && battleContext.IsFirstOffensiveAction(hero),
+                Nez.Random.NextFloat());
+            battleContext?.MarkActed(hero);
 
             if (queuedAction.WeaponItem == null)
             {
@@ -1072,19 +1296,25 @@ namespace PitHero.AI
             if (heroAttackResult.Hit)
             {
                 int heroTargetHpBefore = targetEnemy.CurrentHP;
-                bool enemyDied = targetEnemy.TakeDamage(heroAttackResult.Damage);
-                Debug.Log($"[AttackMonster] Hero deals {heroAttackResult.Damage} damage to {targetEnemy.Name}. Enemy HP: {targetEnemy.CurrentHP}/{targetEnemy.MaxHP}");
+                int finalDamage = isCrit ? heroAttackResult.Damage * 2 : heroAttackResult.Damage;
+                bool enemyDied = targetEnemy.TakeDamage(finalDamage);
+                Debug.Log($"[AttackMonster] Hero deals {finalDamage} damage to {targetEnemy.Name}. Enemy HP: {targetEnemy.CurrentHP}/{targetEnemy.MaxHP}");
 
-                PitHero.Services.Analytics.AnalyticsService.LogAttack(hero.Name, "hero", "physical",
-                    targetEnemy.Name, "monster", heroAttackResult.Damage, heroTargetHpBefore, targetEnemy.CurrentHP, enemyDied);
+                string physAction = isCrit ? "physical.crit" : "physical";
+                PitHero.Services.Analytics.AnalyticsService.LogAttack(hero.Name, "hero", physAction,
+                    targetEnemy.Name, "monster", finalDamage, heroTargetHpBefore, targetEnemy.CurrentHP, enemyDied);
 
                 var evtSvc = Core.Services.GetService<GameEventService>();
                 evtSvc?.EmitLocalized(UITextKey.ConsoleAttack,
                     (hero.Name, GameConfig.ConsoleColorHeroName),
                     (evtSvc?.MonsterName(targetEnemy.Name) ?? targetEnemy.Name, GameConfig.ConsoleColorEnemyName),
-                    (heroAttackResult.Damage.ToString(), Color.White));
+                    (finalDamage.ToString(), Color.White));
 
-                yield return ShowDamageDigitOnEntity(targetMonster, heroAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor);
+                // Phase 4: show "Crit" text on the target monster before the damage digit
+                if (isCrit)
+                    yield return ShowCritTextOnEntity(targetMonster, Color.Yellow);
+
+                yield return ShowDamageDigitOnEntity(targetMonster, finalDamage, BouncyDigitComponent.EnemyDigitColor);
 
                 if (enemyDied)
                 {
@@ -1114,7 +1344,7 @@ namespace PitHero.AI
         /// Executes a mercenary's turn: decides their action and dispatches to the
         /// appropriate handler.
         /// </summary>
-        private System.Collections.IEnumerator ExecuteMercenaryTurn(BattleParticipant participant, HeroComponent heroComponent, Hero hero, List<Entity> validMonsters, List<Entity> validMercenaries, EnhancedAttackResolver attackResolver)
+        private System.Collections.IEnumerator ExecuteMercenaryTurn(BattleParticipant participant, HeroComponent heroComponent, Hero hero, List<Entity> validMonsters, List<Entity> validMercenaries, EnhancedAttackResolver attackResolver, BattleContext battleContext)
         {
             var mercComponent = participant.MercenaryEntity.GetComponent<MercenaryComponent>();
             if (mercComponent?.LinkedMercenary == null || mercComponent.LinkedMercenary.CurrentHP <= 0) yield break;
@@ -1133,7 +1363,7 @@ namespace PitHero.AI
                 case BattleAction.ActionKind.UseHealingSkill:
                 {
                     var healSkill = mercDecision.Skill;
-                    if (mercenary.CurrentMP >= healSkill.MPCost)
+                    if (mercenary.CurrentMP >= mercenary.GetEffectiveMPCost(healSkill.MPCost))
                     {
                         mercenary.UseMP(healSkill.MPCost);
                         mercComponent.ActionQueueVisualization?.ShowAction(new QueuedAction(healSkill));
@@ -1153,125 +1383,65 @@ namespace PitHero.AI
 
                 case BattleAction.ActionKind.UseAttackSkill:
                 {
-                    yield return ExecuteMercenaryAttackSkill(mercDecision, mercenary, mercComponent, mercBattleStats, participant, validMonsters, validMercenaries, hero, heroComponent, attackResolver);
+                    yield return ExecuteMercenaryAttackSkill(mercDecision, mercenary, mercComponent, mercBattleStats, participant, validMonsters, validMercenaries, hero, heroComponent, attackResolver, battleContext);
                     break;
                 }
 
                 case BattleAction.ActionKind.PhysicalAttack:
                 default:
                 {
-                    yield return ExecuteMercenaryPhysicalAttack(mercDecision, mercenary, mercComponent, mercBattleStats, participant, validMonsters, validMercenaries, hero, heroComponent, attackResolver);
+                    yield return ExecuteMercenaryPhysicalAttack(mercDecision, mercenary, mercComponent, mercBattleStats, participant, validMonsters, validMercenaries, hero, heroComponent, attackResolver, battleContext);
                     break;
                 }
             }
         }
 
         /// <summary>
-        /// Executes a mercenary's attack skill against living monsters.
+        /// Executes a mercenary's attack skill against living monsters using the real
+        /// skill formula via <see cref="ExecuteCombatantAttackSkill"/>.
         /// </summary>
-        private System.Collections.IEnumerator ExecuteMercenaryAttackSkill(BattleAction decision, Mercenary mercenary, MercenaryComponent mercComponent, BattleStats mercBattleStats, BattleParticipant participant, List<Entity> validMonsters, List<Entity> validMercenaries, Hero hero, HeroComponent heroComponent, EnhancedAttackResolver attackResolver)
+        private System.Collections.IEnumerator ExecuteMercenaryAttackSkill(BattleAction decision, Mercenary mercenary, MercenaryComponent mercComponent, BattleStats mercBattleStats, BattleParticipant participant, List<Entity> validMonsters, List<Entity> validMercenaries, Hero hero, HeroComponent heroComponent, EnhancedAttackResolver attackResolver, BattleContext battleContext = null)
         {
             var atkSkill = decision.Skill;
-            if (mercenary.CurrentMP < atkSkill.MPCost)
+
+            // SpendMP applies MPCostReduction and returns false when insufficient
+            if (!mercenary.SpendMP(atkSkill.MPCost))
             {
                 Debug.Log($"[AttackMonster] {mercenary.Name} not enough MP for {atkSkill.Name}");
                 yield break;
             }
 
-            mercenary.UseMP(atkSkill.MPCost);
             mercComponent.ActionQueueVisualization?.ShowAction(new QueuedAction(atkSkill));
 
-            var skillDamageKind = atkSkill.Element != ElementType.Neutral ? DamageKind.Magical : DamageKind.Physical;
             var skillLiving = GetLivingMonsters(validMonsters);
             if (skillLiving.Count == 0) yield break;
 
-            bool isAoE = atkSkill.TargetType == SkillTargetType.SurroundingEnemies;
-            int startIndex = 0;
-            int endIndex = isAoE ? skillLiving.Count : 1;
-
-            if (!isAoE && decision.TargetEntity != null)
+            // Face the preferred target if alive; otherwise face the first living monster.
+            Entity faceTarget = skillLiving[0];
+            if (decision.TargetEntity != null)
             {
-                for (int si = 0; si < skillLiving.Count; si++)
+                for (int fi = 0; fi < skillLiving.Count; fi++)
                 {
-                    if (skillLiving[si] == decision.TargetEntity)
+                    if (skillLiving[fi] == decision.TargetEntity)
                     {
-                        startIndex = si;
-                        endIndex = si + 1;
+                        faceTarget = decision.TargetEntity;
                         break;
                     }
                 }
             }
+            FaceTarget(participant.MercenaryEntity, faceTarget.Transform.Position);
 
-            for (int si = startIndex; si < endIndex && si < skillLiving.Count; si++)
-            {
-                var sMonsterEntity = skillLiving[si];
-                var sEnemyComp = sMonsterEntity.GetComponent<EnemyComponent>();
-                if (sEnemyComp?.Enemy == null || sEnemyComp.Enemy.CurrentHP <= 0) continue;
-
-                var sEnemy = sEnemyComp.Enemy;
-                var sTargetStats = BattleStats.CalculateForMonster(sEnemy);
-                var sResult = attackResolver.Resolve(mercBattleStats, sTargetStats, skillDamageKind);
-
-                FaceTarget(participant.MercenaryEntity, sMonsterEntity.Transform.Position);
-
-                if (sResult.Hit)
-                {
-                    int sHpBefore = sEnemy.CurrentHP;
-                    bool sEnemyDied = sEnemy.TakeDamage(sResult.Damage);
-                    Debug.Log($"[AttackMonster] {mercenary.Name}'s {atkSkill.Name} dealt {sResult.Damage} to {sEnemy.Name}. HP: {sEnemy.CurrentHP}/{sEnemy.MaxHP}");
-
-                    PitHero.Services.Analytics.AnalyticsService.LogAttack(mercenary.Name, "merc", atkSkill.Id,
-                        sEnemy.Name, "monster", sResult.Damage, sHpBefore, sEnemy.CurrentHP, sEnemyDied);
-
-                    var evtSvcAtkSkill = Core.Services.GetService<GameEventService>();
-                    if (evtSvcAtkSkill != null)
-                        evtSvcAtkSkill.EmitLocalized(UITextKey.ConsoleSkillAttack,
-                            (mercenary.Name, GameConfig.ConsoleColorHeroName),
-                            (atkSkill.Name, Color.White),
-                            (evtSvcAtkSkill.MonsterName(sEnemy.Name), GameConfig.ConsoleColorEnemyName),
-                            (sResult.Damage.ToString(), Color.White));
-
-                    var sDigit = sMonsterEntity.GetComponent<BouncyDigitComponent>();
-                    if (sDigit != null)
-                    {
-                        sDigit.Init(sResult.Damage, BouncyDigitComponent.EnemyDigitColor, false);
-                        sDigit.SetEnabled(true);
-                    }
-
-                    if (sEnemyDied)
-                    {
-                        Debug.Log($"[AttackMonster] {sEnemy.Name} defeated by {mercenary.Name}'s {atkSkill.Name}!");
-                        AwardEnemyDeathRewards(hero, sEnemy, null, validMercenaries);
-                        HandleBossDefeated(sEnemy, heroComponent);
-
-                        var evtSvcAtkSkillDeath = Core.Services.GetService<GameEventService>();
-                        if (evtSvcAtkSkillDeath != null)
-                            evtSvcAtkSkillDeath.EmitLocalized(sEnemy.IsBoss ? EventPriority.High : EventPriority.Normal, UITextKey.ConsoleMonsterDied,
-                                (evtSvcAtkSkillDeath.MonsterName(sEnemy.Name), GameConfig.ConsoleColorEnemyName));
-
-                        validMonsters.Remove(sMonsterEntity);
-                    }
-                }
-                else
-                {
-                    Debug.Log($"[AttackMonster] {mercenary.Name}'s {atkSkill.Name} missed {sEnemy.Name}!");
-                    var sMissText = sMonsterEntity.GetComponent<BouncyTextComponent>();
-                    if (sMissText != null)
-                    {
-                        sMissText.Init("Miss", BouncyTextComponent.EnemyMissColor);
-                        sMissText.SetEnabled(true);
-                    }
-                }
-            }
-
-            yield return WaitForSecondsRespectingPause(GameConfig.BattleDigitBounceWait);
-            yield return FadeOutDeadMonsters(skillLiving);
+            // Delegate to the shared coroutine; rewardHeroComponent=null preserves original
+            // behaviour where merc kills did not reset InnExhausted on the hero.
+            // Pass decision.TargetEntity so the merc's chosen target becomes the primary.
+            yield return ExecuteCombatantAttackSkill(atkSkill, mercenary, "merc", validMonsters, validMercenaries, hero, heroComponent, null, attackResolver, battleContext, decision.TargetEntity);
         }
 
         /// <summary>
         /// Executes a mercenary's physical attack against a target monster.
+        /// Phase 4: accepts <paramref name="battleContext"/> for first-attack crit (Quickdraw) and MarkActed.
         /// </summary>
-        private System.Collections.IEnumerator ExecuteMercenaryPhysicalAttack(BattleAction decision, Mercenary mercenary, MercenaryComponent mercComponent, BattleStats mercBattleStats, BattleParticipant participant, List<Entity> validMonsters, List<Entity> validMercenaries, Hero hero, HeroComponent heroComponent, EnhancedAttackResolver attackResolver)
+        private System.Collections.IEnumerator ExecuteMercenaryPhysicalAttack(BattleAction decision, Mercenary mercenary, MercenaryComponent mercComponent, BattleStats mercBattleStats, BattleParticipant participant, List<Entity> validMonsters, List<Entity> validMercenaries, Hero hero, HeroComponent heroComponent, EnhancedAttackResolver attackResolver, BattleContext battleContext = null)
         {
             var paTarget = decision.TargetEntity;
             if (paTarget == null || paTarget.GetComponent<EnemyComponent>()?.Enemy?.CurrentHP <= 0)
@@ -1290,26 +1460,38 @@ namespace PitHero.AI
 
             var mercAttackResult = attackResolver.Resolve(mercBattleStats, targetBattleStats, DamageKind.Physical);
 
+            // Phase 4: Quickdraw — roll first-attack crit before dealing damage
+            bool isCrit = BattleReactionHelper.RollFirstAttackCrit(mercenary,
+                battleContext != null && battleContext.IsFirstOffensiveAction(mercenary),
+                Nez.Random.NextFloat());
+            battleContext?.MarkActed(mercenary);
+
             SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
             soundEffectManager?.PlaySound(SoundEffectType.Punch);
 
             if (mercAttackResult.Hit)
             {
                 int mercTargetHpBefore = targetEnemy.CurrentHP;
-                bool enemyDied = targetEnemy.TakeDamage(mercAttackResult.Damage);
-                Debug.Log($"[AttackMonster] {mercenary.Name} deals {mercAttackResult.Damage} damage to {targetEnemy.Name}. Enemy HP: {targetEnemy.CurrentHP}/{targetEnemy.MaxHP}");
+                int finalDamage = isCrit ? mercAttackResult.Damage * 2 : mercAttackResult.Damage;
+                bool enemyDied = targetEnemy.TakeDamage(finalDamage);
+                Debug.Log($"[AttackMonster] {mercenary.Name} deals {finalDamage} damage to {targetEnemy.Name}. Enemy HP: {targetEnemy.CurrentHP}/{targetEnemy.MaxHP}");
 
-                PitHero.Services.Analytics.AnalyticsService.LogAttack(mercenary.Name, "merc", "physical",
-                    targetEnemy.Name, "monster", mercAttackResult.Damage, mercTargetHpBefore, targetEnemy.CurrentHP, enemyDied);
+                string mercPhysAction = isCrit ? "physical.crit" : "physical";
+                PitHero.Services.Analytics.AnalyticsService.LogAttack(mercenary.Name, "merc", mercPhysAction,
+                    targetEnemy.Name, "monster", finalDamage, mercTargetHpBefore, targetEnemy.CurrentHP, enemyDied);
 
                 var evtSvcMerc = Core.Services.GetService<GameEventService>();
                 if (evtSvcMerc != null)
                     evtSvcMerc.EmitLocalized(UITextKey.ConsoleAttack,
                         (mercenary.Name, GameConfig.ConsoleColorHeroName),
                         (evtSvcMerc.MonsterName(targetEnemy.Name), GameConfig.ConsoleColorEnemyName),
-                        (mercAttackResult.Damage.ToString(), Color.White));
+                        (finalDamage.ToString(), Color.White));
 
-                yield return ShowDamageDigitOnEntity(paTarget, mercAttackResult.Damage, BouncyDigitComponent.EnemyDigitColor);
+                // Phase 4: show "Crit" text on the target before the damage digit
+                if (isCrit)
+                    yield return ShowCritTextOnEntity(paTarget, Color.Yellow);
+
+                yield return ShowDamageDigitOnEntity(paTarget, finalDamage, BouncyDigitComponent.EnemyDigitColor);
 
                 if (enemyDied)
                 {
@@ -1338,7 +1520,7 @@ namespace PitHero.AI
         /// <summary>
         /// Executes a monster's turn: selects a random valid ally target and attacks.
         /// </summary>
-        private System.Collections.IEnumerator ExecuteMonsterTurn(BattleParticipant participant, HeroComponent heroComponent, Hero hero, BattleStats heroBattleStats, List<Entity> validMercenaries, EnhancedAttackResolver attackResolver)
+        private System.Collections.IEnumerator ExecuteMonsterTurn(BattleParticipant participant, HeroComponent heroComponent, Hero hero, List<Entity> validMonsters, List<Entity> validMercenaries, EnhancedAttackResolver attackResolver)
         {
             var enemyComponent = participant.MonsterEntity.GetComponent<EnemyComponent>();
             if (enemyComponent?.Enemy == null || enemyComponent.Enemy.CurrentHP <= 0) yield break;
@@ -1367,6 +1549,32 @@ namespace PitHero.AI
                 yield break;
             }
 
+            // Phase 4: Vanish — filter out untargetable allies; anti-stall guard skips filtering
+            // when every living ally is untargetable (prevents the monster from doing nothing forever).
+            int untargetableCount = 0;
+            for (int ui = 0; ui < possibleTargets.Count; ui++)
+            {
+                ICombatant utTarget = possibleTargets[ui].isHero
+                    ? (ICombatant)hero
+                    : possibleTargets[ui].entity.GetComponent<MercenaryComponent>()?.LinkedMercenary;
+                if (utTarget != null && utTarget.GetBuffTotal(BuffType.Untargetable) > 0)
+                    untargetableCount++;
+            }
+            if (untargetableCount > 0 && untargetableCount < possibleTargets.Count)
+            {
+                for (int ui = possibleTargets.Count - 1; ui >= 0; ui--)
+                {
+                    ICombatant utTarget = possibleTargets[ui].isHero
+                        ? (ICombatant)hero
+                        : possibleTargets[ui].entity.GetComponent<MercenaryComponent>()?.LinkedMercenary;
+                    if (utTarget != null && utTarget.GetBuffTotal(BuffType.Untargetable) > 0)
+                    {
+                        Debug.Log($"[AttackMonster] {enemy.Name} cannot target {utTarget.Name} (Vanish/Untargetable)");
+                        possibleTargets.RemoveAt(ui);
+                    }
+                }
+            }
+
             var targetChoice = possibleTargets[Nez.Random.Range(0, possibleTargets.Count)];
             var targetEntity = targetChoice.entity;
 
@@ -1383,17 +1591,31 @@ namespace PitHero.AI
                 yield return monsterAnim.PlayAttackAnimation();
 
             if (targetChoice.isHero)
-                yield return ExecuteMonsterAttackHero(enemy, enemyBattleStats, heroComponent, hero, heroBattleStats, attackResolver);
+                yield return ExecuteMonsterAttackHero(enemy, enemyBattleStats, participant.MonsterEntity, heroComponent, hero, validMonsters, validMercenaries, attackResolver);
             else
-                yield return ExecuteMonsterAttackMercenary(enemy, enemyBattleStats, targetEntity, heroComponent, validMercenaries, attackResolver);
+                yield return ExecuteMonsterAttackMercenary(enemy, enemyBattleStats, participant.MonsterEntity, targetEntity, heroComponent, validMonsters, validMercenaries, attackResolver);
         }
 
         /// <summary>
         /// Executes a monster's attack against the hero.
+        /// Phase 3: computes fresh hero battle stats (includes live buffs), checks deflect before
+        /// resolving the hit, and fires a counter-attack if the hero has Counter enabled and survived.
         /// </summary>
-        private System.Collections.IEnumerator ExecuteMonsterAttackHero(RolePlayingFramework.Enemies.IEnemy enemy, BattleStats enemyBattleStats, HeroComponent heroComponent, Hero hero, BattleStats heroBattleStats, EnhancedAttackResolver attackResolver)
+        private System.Collections.IEnumerator ExecuteMonsterAttackHero(RolePlayingFramework.Enemies.IEnemy enemy, BattleStats enemyBattleStats, Entity monsterEntity, HeroComponent heroComponent, Hero hero, List<Entity> validMonsters, List<Entity> validMercenaries, EnhancedAttackResolver attackResolver)
         {
             Debug.Log($"[AttackMonster] {enemy.Name}'s turn - attacking {hero.Name}");
+
+            // Phase 3: compute fresh hero stats so live buffs (DefenseUp, EvasionUp) count
+            var heroBattleStats = hero.GetBattleStats();
+
+            // Phase 3: deflect check — if the hero deflects, no hit, no counter
+            if (BattleReactionHelper.RollDeflect(hero, Nez.Random.NextFloat()))
+            {
+                Debug.Log($"[AttackMonster] {hero.Name} deflected {enemy.Name}'s attack!");
+                yield return ShowDeflectTextOnEntity(heroComponent.Entity, BouncyTextComponent.HeroMissColor);
+                yield break;
+            }
+
             var enemyAttackResult = attackResolver.Resolve(enemyBattleStats, heroBattleStats, enemy.AttackKind);
 
             if (enemyAttackResult.Hit)
@@ -1431,6 +1653,50 @@ namespace PitHero.AI
                         deathComponent = heroComponent.Entity.AddComponent(new HeroDeathComponent());
                     deathComponent.StartDeathAnimation(enemy.Name);
                 }
+                else if (BattleReactionHelper.ShouldCounter(hero))
+                {
+                    // Phase 3: hero counter-attack
+                    Debug.Log($"[AttackMonster] {hero.Name} counters {enemy.Name}!");
+                    var counterStats = hero.GetBattleStats();
+                    var counterResult = attackResolver.Resolve(counterStats, enemyBattleStats, DamageKind.Physical);
+                    if (counterResult.Hit)
+                    {
+                        int counterHpBefore = enemy.CurrentHP;
+                        bool counterKill = enemy.TakeDamage(counterResult.Damage);
+                        Debug.Log($"[AttackMonster] Counter: {hero.Name} deals {counterResult.Damage} to {enemy.Name}");
+
+                        PitHero.Services.Analytics.AnalyticsService.LogAttack(hero.Name, "hero", "counter",
+                            enemy.Name, "monster", counterResult.Damage, counterHpBefore, enemy.CurrentHP, counterKill);
+
+                        var evtSvcCounter = Core.Services.GetService<GameEventService>();
+                        evtSvcCounter?.EmitLocalized(UITextKey.ConsoleAttack,
+                            (hero.Name, GameConfig.ConsoleColorHeroName),
+                            (evtSvcCounter?.MonsterName(enemy.Name) ?? enemy.Name, GameConfig.ConsoleColorEnemyName),
+                            (counterResult.Damage.ToString(), Color.White));
+
+                        yield return ShowDamageDigitOnEntity(monsterEntity, counterResult.Damage, BouncyDigitComponent.EnemyDigitColor);
+
+                        if (counterKill)
+                        {
+                            Debug.Log($"[AttackMonster] {enemy.Name} defeated by counter! Starting fade out");
+                            AwardEnemyDeathRewards(hero, enemy, heroComponent, validMercenaries);
+                            HandleBossDefeated(enemy, heroComponent);
+
+                            var evtSvcCounterDeath = Core.Services.GetService<GameEventService>();
+                            if (evtSvcCounterDeath != null)
+                                evtSvcCounterDeath.EmitLocalized(enemy.IsBoss ? EventPriority.High : EventPriority.Normal,
+                                    UITextKey.ConsoleMonsterDied,
+                                    (evtSvcCounterDeath.MonsterName(enemy.Name), GameConfig.ConsoleColorEnemyName));
+
+                            validMonsters.Remove(monsterEntity);
+                            yield return FadeOutAndDestroyMonster(monsterEntity);
+                        }
+                    }
+                    else
+                    {
+                        yield return ShowMissTextOnEntity(monsterEntity, BouncyTextComponent.EnemyMissColor);
+                    }
+                }
             }
             else
             {
@@ -1441,8 +1707,11 @@ namespace PitHero.AI
 
         /// <summary>
         /// Executes a monster's attack against a mercenary.
+        /// Phase 3: computes fresh mercenary battle stats (includes live buffs), checks deflect
+        /// before resolving the hit, and fires a counter-attack if the mercenary has Counter enabled
+        /// and survived.
         /// </summary>
-        private System.Collections.IEnumerator ExecuteMonsterAttackMercenary(RolePlayingFramework.Enemies.IEnemy enemy, BattleStats enemyBattleStats, Entity targetEntity, HeroComponent heroComponent, List<Entity> validMercenaries, EnhancedAttackResolver attackResolver)
+        private System.Collections.IEnumerator ExecuteMonsterAttackMercenary(RolePlayingFramework.Enemies.IEnemy enemy, BattleStats enemyBattleStats, Entity monsterEntity, Entity targetEntity, HeroComponent heroComponent, List<Entity> validMonsters, List<Entity> validMercenaries, EnhancedAttackResolver attackResolver)
         {
             var targetMercComp = targetEntity.GetComponent<MercenaryComponent>();
             if (targetMercComp?.LinkedMercenary == null)
@@ -1452,9 +1721,20 @@ namespace PitHero.AI
             }
 
             var targetMercenary = targetMercComp.LinkedMercenary;
-            var targetMercBattleStats = BattleStats.CalculateForMercenary(targetMercenary);
+
+            // Phase 3: compute fresh stats so live buffs count
+            var targetMercBattleStats = targetMercenary.GetBattleStats();
 
             Debug.Log($"[AttackMonster] {enemy.Name}'s turn - attacking {targetMercenary.Name}");
+
+            // Phase 3: deflect check — if the mercenary deflects, no hit, no counter
+            if (BattleReactionHelper.RollDeflect(targetMercenary, Nez.Random.NextFloat()))
+            {
+                Debug.Log($"[AttackMonster] {targetMercenary.Name} deflected {enemy.Name}'s attack!");
+                yield return ShowDeflectTextOnEntity(targetEntity, BouncyTextComponent.HeroMissColor);
+                yield break;
+            }
+
             var enemyAttackResult = attackResolver.Resolve(enemyBattleStats, targetMercBattleStats, enemy.AttackKind);
 
             if (enemyAttackResult.Hit)
@@ -1490,6 +1770,51 @@ namespace PitHero.AI
                     HandleMercenaryDeath(targetEntity, heroComponent, enemy.Name);
                     validMercenaries.Remove(targetEntity);
                     yield return FadeOutAndDestroyMercenary(targetEntity);
+                }
+                else if (BattleReactionHelper.ShouldCounter(targetMercenary))
+                {
+                    // Phase 3: mercenary counter-attack
+                    Debug.Log($"[AttackMonster] {targetMercenary.Name} counters {enemy.Name}!");
+                    var counterStats = targetMercenary.GetBattleStats();
+                    var counterResult = attackResolver.Resolve(counterStats, enemyBattleStats, DamageKind.Physical);
+                    if (counterResult.Hit)
+                    {
+                        int counterHpBefore = enemy.CurrentHP;
+                        bool counterKill = enemy.TakeDamage(counterResult.Damage);
+                        Debug.Log($"[AttackMonster] Counter: {targetMercenary.Name} deals {counterResult.Damage} to {enemy.Name}");
+
+                        PitHero.Services.Analytics.AnalyticsService.LogAttack(targetMercenary.Name, "merc", "counter",
+                            enemy.Name, "monster", counterResult.Damage, counterHpBefore, enemy.CurrentHP, counterKill);
+
+                        var evtSvcCounter = Core.Services.GetService<GameEventService>();
+                        evtSvcCounter?.EmitLocalized(UITextKey.ConsoleAttack,
+                            (targetMercenary.Name, GameConfig.ConsoleColorHeroName),
+                            (evtSvcCounter?.MonsterName(enemy.Name) ?? enemy.Name, GameConfig.ConsoleColorEnemyName),
+                            (counterResult.Damage.ToString(), Color.White));
+
+                        yield return ShowDamageDigitOnEntity(monsterEntity, counterResult.Damage, BouncyDigitComponent.EnemyDigitColor);
+
+                        if (counterKill)
+                        {
+                            Debug.Log($"[AttackMonster] {enemy.Name} defeated by counter! Starting fade out");
+                            // Rewards credited to the hero (merc counters still award the party)
+                            AwardEnemyDeathRewards(heroComponent.LinkedHero, enemy, null, validMercenaries);
+                            HandleBossDefeated(enemy, heroComponent);
+
+                            var evtSvcCounterDeath = Core.Services.GetService<GameEventService>();
+                            if (evtSvcCounterDeath != null)
+                                evtSvcCounterDeath.EmitLocalized(enemy.IsBoss ? EventPriority.High : EventPriority.Normal,
+                                    UITextKey.ConsoleMonsterDied,
+                                    (evtSvcCounterDeath.MonsterName(enemy.Name), GameConfig.ConsoleColorEnemyName));
+
+                            validMonsters.Remove(monsterEntity);
+                            yield return FadeOutAndDestroyMonster(monsterEntity);
+                        }
+                    }
+                    else
+                    {
+                        yield return ShowMissTextOnEntity(monsterEntity, BouncyTextComponent.EnemyMissColor);
+                    }
                 }
             }
             else
@@ -1695,6 +2020,62 @@ namespace PitHero.AI
             mercenaryEntity.Destroy();
         }
 
+
+        /// <summary>
+        /// Ticks all active DoT entries in the battle context, shows damage digits on the
+        /// affected monster entities, logs analytics, and routes kills through the shared
+        /// reward/death helpers.
+        /// Called once per round after all participant turns complete.
+        /// </summary>
+        private System.Collections.IEnumerator TickDoTsAndHandleDeaths(BattleContext battleContext, List<Entity> validMonsters, List<Entity> validMercenaries, Hero hero, HeroComponent heroComponent)
+        {
+            var tickResults = battleContext.TickDoTs();
+            for (int i = 0; i < tickResults.Count; i++)
+            {
+                var result = tickResults[i];
+                if (result.Damage <= 0) continue;
+
+                // Find the entity for this enemy (search validMonsters by IEnemy reference)
+                Entity monsterEntity = null;
+                for (int m = 0; m < validMonsters.Count; m++)
+                {
+                    var ec = validMonsters[m]?.GetComponent<EnemyComponent>();
+                    if (ec != null && ReferenceEquals(ec.Enemy, result.Target))
+                    {
+                        monsterEntity = validMonsters[m];
+                        break;
+                    }
+                }
+
+                if (monsterEntity == null) continue;
+
+                Debug.Log($"[AttackMonster] DoT {result.SourceSkillId}: {result.Damage} dmg to {result.Target.Name}. HP: {result.Target.CurrentHP}/{result.Target.MaxHP}");
+
+                PitHero.Services.Analytics.AnalyticsService.LogAttack(
+                    result.ActorName, result.ActorType, result.SourceSkillId + ".dot",
+                    result.Target.Name, "monster",
+                    result.Damage, result.Target.CurrentHP + result.Damage, result.Target.CurrentHP,
+                    result.TargetDied);
+
+                yield return ShowDamageDigitOnEntity(monsterEntity, result.Damage, BouncyDigitComponent.EnemyDigitColor);
+
+                if (result.TargetDied)
+                {
+                    Debug.Log($"[AttackMonster] {result.Target.Name} defeated by DoT ({result.SourceSkillId})! Starting fade out");
+                    AwardEnemyDeathRewards(hero, result.Target, heroComponent, validMercenaries);
+                    HandleBossDefeated(result.Target, heroComponent);
+
+                    var evtSvcDotDeath = Core.Services.GetService<GameEventService>();
+                    if (evtSvcDotDeath != null)
+                        evtSvcDotDeath.EmitLocalized(result.Target.IsBoss ? EventPriority.High : EventPriority.Normal,
+                            UITextKey.ConsoleMonsterDied,
+                            (evtSvcDotDeath.MonsterName(result.Target.Name), GameConfig.ConsoleColorEnemyName));
+
+                    validMonsters.Remove(monsterEntity);
+                    yield return FadeOutAndDestroyMonster(monsterEntity);
+                }
+            }
+        }
 
         /// <summary>Awards experience to all mercenaries in the battle.</summary>
         private static void AwardMercenaryExperience(List<Entity> mercenaries, int xpAmount)

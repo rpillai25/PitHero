@@ -1,6 +1,5 @@
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Enemies;
-using RolePlayingFramework.Heroes;
 using System.Collections.Generic;
 
 namespace RolePlayingFramework.Skills
@@ -28,10 +27,26 @@ namespace RolePlayingFramework.Skills
         /// <summary>Fixed amount of MP restored by this skill (0 if skill doesn't restore MP).</summary>
         int MPRestoreAmount { get; }
 
-        /// <summary>Applies passive modifiers at aggregation time (no side effects).</summary>
-        void ApplyPassive(Hero hero);
+        /// <summary>
+        /// Buffs this skill grants to its target when used as a healing/self skill.
+        /// Empty for attack-only skills. Applied by the battle loop's healing path.
+        /// </summary>
+        IReadOnlyList<SkillBuff> GrantedBuffs { get; }
 
-        /// <summary>Execute active effect (stateless). Returns descriptive tag for logging.</summary>
-        string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver);
+        /// <summary>
+        /// When true the healing path removes any ally-side debuffs from the target after
+        /// applying HP/MP/buffs (leave as false until a debuff system is added in a later phase).
+        /// </summary>
+        bool CleansesDebuffs { get; }
+
+        /// <summary>Applies passive modifiers to the combatant at aggregation time (no side effects).</summary>
+        void ApplyPassive(ICombatant c);
+
+        /// <summary>
+        /// Executes the active effect (stateless). Returns a descriptive tag for logging.
+        /// <paramref name="battle"/> is null when the skill is invoked outside of a battle.
+        /// </summary>
+        string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding,
+            IAttackResolver resolver, IBattleContext battle);
     }
 }

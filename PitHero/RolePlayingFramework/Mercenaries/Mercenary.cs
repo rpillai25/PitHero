@@ -8,7 +8,7 @@ using System.Collections.Generic;
 namespace RolePlayingFramework.Mercenaries
 {
     /// <summary>Runtime mercenary instance with equipment, skills and derived stats (no crystal or synergies).</summary>
-    public sealed class Mercenary
+    public sealed class Mercenary : ICombatant
     {
         public string Name { get; }
         public IJob Job { get; }
@@ -28,6 +28,19 @@ namespace RolePlayingFramework.Mercenaries
         public float HealPowerBonus { get; set; }
         public float FireDamageBonus { get; set; }
         public float MPCostReduction { get; set; }
+
+        // Future-phase passive fields (Phase 1 plumbing; default 0 until wired in later phases)
+        public int EvasionBonus { get; set; }
+        public int SightRangeBonus { get; set; }
+        public float FirstAttackCritChance { get; set; }
+        public int HeavyArmorDefenseBonus { get; set; }
+        public bool TrapSense { get; set; }
+
+        // Extra equip permissions granted by learned passives (e.g. knight.light_armor allows robes)
+        private readonly HashSet<ItemKind> _extraEquipPermissions = new HashSet<ItemKind>();
+
+        // Battle-scoped buff state — delegated to shared BattleBuffSet
+        private readonly BattleBuffSet _buffSet = new BattleBuffSet();
 
         public IGear? WeaponShield1 { get; private set; }
         public IGear? Armor { get; private set; }
@@ -85,13 +98,21 @@ namespace RolePlayingFramework.Mercenaries
         /// <summary>Gets required XP for the next level.</summary>
         public int RequiredExpForNextLevel() => Level * 100;
 
-        /// <summary>Checks whether this mercenary can equip the given item based on job restrictions.</summary>
+        /// <summary>Grants permission to equip items of the given kind outside normal job restrictions.</summary>
+        public void AddExtraEquipPermission(ItemKind kind)
+        {
+            _extraEquipPermissions.Add(kind);
+        }
+
+        /// <summary>Checks whether this mercenary can equip the given item based on job and extra permissions.</summary>
         public bool CanEquipItem(IItem item)
         {
             if (item == null) return false;
             if (item is IGear gear)
             {
-                return (gear.AllowedJobs & Job.JobFlag) != 0;
+                if ((gear.AllowedJobs & Job.JobFlag) != 0) return true;
+                if (_extraEquipPermissions.Contains(gear.Kind)) return true;
+                return false;
             }
             return false;
         }
@@ -297,7 +318,9 @@ namespace RolePlayingFramework.Mercenaries
             if (CurrentMP > MaxMP) CurrentMP = MaxMP;
         }
 
-        /// <summary>Computes battle stats for combat calculations.</summary>
+        /// <summary>
+        /// Computes battle stats for combat calculations, including any active battle buffs.
+        /// </summary>
         public BattleStats GetBattleStats()
         {
             var effectiveStats = GetTotalStats();
@@ -307,12 +330,21 @@ namespace RolePlayingFramework.Mercenaries
             if (WeaponShield2 != null) atk += WeaponShield2.AttackBonus;
 
             int def = effectiveStats.Vitality + PassiveDefenseBonus;
-            if (Armor != null) def += Armor.DefenseBonus;
+            if (Armor != null)
+            {
+                def += Armor.DefenseBonus;
+                if (Armor.Kind == ItemKind.ArmorMail)
+                    def += HeavyArmorDefenseBonus;
+            }
             if (Hat != null) def += Hat.DefenseBonus;
             if (WeaponShield1 != null) def += WeaponShield1.DefenseBonus;
             if (WeaponShield2 != null) def += WeaponShield2.DefenseBonus;
+            def += GetBuffTotal(BuffType.DefenseUp);
 
-            int evasion = RolePlayingFramework.Balance.BalanceConfig.CalculateEvasion(effectiveStats.Agility, Level);
+            int baseEvasion = RolePlayingFramework.Balance.BalanceConfig.CalculateEvasion(effectiveStats.Agility, Level);
+            int evasion = baseEvasion + EvasionBonus + GetBuffTotal(BuffType.EvasionUp);
+            if (evasion > 255) evasion = 255;
+            if (evasion < 0) evasion = 0;
 
             return new BattleStats(atk, def, evasion);
         }
@@ -336,37 +368,69 @@ namespace RolePlayingFramework.Mercenaries
             return true;
         }
 
-        /// <summary>Restores MP for the specified amount.</summary>
-        public void RestoreMP(int amount)
+        /// <summary>Restores MP up to MaxMP. Returns true if MP was actually restored.</summary>
+        public bool RestoreMP(int amount)
         {
-            if (amount <= 0) return;
+            if (amount <= 0) return false;
+            if (CurrentMP >= MaxMP) return false;
             CurrentMP += amount;
             if (CurrentMP > MaxMP) CurrentMP = MaxMP;
-        }
-
-        /// <summary>Uses MP for skill casting. Returns true if successful.</summary>
-        public bool UseMP(int amount)
-        {
-            if (amount <= 0) return true;
-            if (CurrentMP < amount) return false;
-            CurrentMP -= amount;
             return true;
         }
 
-        /// <summary>Teaches the mercenary a skill. Returns true if learned successfully.</summary>
+        /// <summary>
+        /// Directly sets CurrentMP to a saved value, clamped to [0, MaxMP].
+        /// Use this for state-restore paths (save/load) so MPCostReduction is NOT applied.
+        /// </summary>
+        public void SetCurrentMP(int value)
+        {
+            CurrentMP = value < 0 ? 0 : (value > MaxMP ? MaxMP : value);
+        }
+
+        /// <summary>
+        /// Returns the effective MP cost after applying MPCostReduction (floor of 1 when rawCost &gt; 0).
+        /// This is the exact amount SpendMP will deduct; use it in affordability checks.
+        /// </summary>
+        public int GetEffectiveMPCost(int rawCost)
+        {
+            if (rawCost <= 0) return 0;
+            int reduced = (int)(rawCost * (1f - MPCostReduction));
+            return reduced < 1 ? 1 : reduced;
+        }
+
+        /// <summary>Spends MP applying MPCostReduction. Returns true on success.</summary>
+        public bool SpendMP(int amount)
+        {
+            if (amount <= 0) return true;
+            int reduced = GetEffectiveMPCost(amount);
+            if (CurrentMP < reduced) return false;
+            CurrentMP -= reduced;
+            return true;
+        }
+
+        /// <summary>Thin alias for SpendMP — preserves call sites that predate the ICombatant unification.</summary>
+        public bool UseMP(int amount) => SpendMP(amount);
+
+        /// <summary>Teaches the mercenary a skill and recomputes passive effects. Returns true if learned.</summary>
         public bool LearnSkill(ISkill skill)
         {
             if (skill == null || _learnedSkills.ContainsKey(skill.Id))
                 return false;
             _learnedSkills[skill.Id] = skill;
+            ApplyPassiveSkills();
             return true;
         }
 
-        /// <summary>Removes a learned skill by Id. Returns true if removed.</summary>
+        /// <summary>Removes a learned skill by Id and recomputes passive effects. Returns true if removed.</summary>
         public bool ForgetSkill(string skillId)
         {
             if (skillId == null) return false;
-            return _learnedSkills.Remove(skillId);
+            if (_learnedSkills.Remove(skillId))
+            {
+                ApplyPassiveSkills();
+                return true;
+            }
+            return false;
         }
 
         /// <summary>Learns all skills from the mercenary's job and applies passive effects.</summary>
@@ -380,48 +444,48 @@ namespace RolePlayingFramework.Mercenaries
             ApplyPassiveSkills();
         }
 
-        /// <summary>Applies passive skill effects to mercenary properties.</summary>
+        /// <summary>Per-turn passive MP regen (called at the end of each battle round), including MPRegen buffs.</summary>
+        public void TickRegeneration()
+        {
+            int totalRegen = MPTickRegen + GetBuffTotal(BuffType.MPRegen);
+            if (totalRegen > 0)
+            {
+                CurrentMP += totalRegen;
+                if (CurrentMP > MaxMP) CurrentMP = MaxMP;
+            }
+        }
+
+        // ── Battle-scoped buff system — delegates to shared BattleBuffSet ────────────────
+
+        /// <summary>Adds a battle buff. Each buff is tracked individually to support stacks.</summary>
+        public void AddBattleBuff(in BattleBuff buff) => _buffSet.AddBattleBuff(buff);
+
+        /// <summary>Returns the summed magnitude of all active buffs of the given type.</summary>
+        public int GetBuffTotal(BuffType type) => _buffSet.GetBuffTotal(type);
+
+        /// <summary>
+        /// Returns the number of active buff stacks from the given source skill AND of the given type.
+        /// Filtering by both skill id and buff type prevents multi-buff skills from blocking their
+        /// second buff type when the first type is already at max stacks.
+        /// </summary>
+        public int GetBuffStacks(string sourceSkillId, BuffType type)
+            => _buffSet.GetBuffStacks(sourceSkillId, type);
+
+        /// <summary>Decrements finite-duration buffs and removes expired ones.</summary>
+        public void TickBuffDurations() => _buffSet.TickBuffDurations();
+
+        /// <summary>Clears all battle buffs. Called at battle start and in the battle finally block.</summary>
+        public void ClearBattleState() => _buffSet.Clear();
+
+        /// <summary>
+        /// Resets all passive fields and re-applies them from the current learned-skill set.
+        /// Uses CombatantPassiveApplier so the reset list stays identical to Hero.
+        /// </summary>
         private void ApplyPassiveSkills()
         {
-            PassiveDefenseBonus = 0;
-            DeflectChance = 0f;
-            EnableCounter = false;
-            MPTickRegen = 0;
-            HealPowerBonus = 0f;
-            FireDamageBonus = 0f;
-            MPCostReduction = 0f;
-
-            var skills = Job.Skills;
-            for (int i = 0; i < skills.Count; i++)
-            {
-                var skill = skills[i];
-                if (skill.Kind != SkillKind.Passive) continue;
-
-                switch (skill.Id)
-                {
-                    case "knight.heavy_armor":
-                        PassiveDefenseBonus += 2;
-                        break;
-                    case "mage.heart_fire":
-                        FireDamageBonus += 0.25f;
-                        break;
-                    case "mage.economist":
-                        MPCostReduction += 0.15f;
-                        break;
-                    case "priest.calm_spirit":
-                        MPTickRegen += 1;
-                        break;
-                    case "priest.mender":
-                        HealPowerBonus += 0.25f;
-                        break;
-                    case "monk.counter":
-                        EnableCounter = true;
-                        break;
-                    case "monk.deflect":
-                        DeflectChance = 0.15f;
-                        break;
-                }
-            }
+            // Extra-equip permissions are rebuilt from scratch on every re-application
+            _extraEquipPermissions.Clear();
+            CombatantPassiveApplier.ResetAndApply(this, _learnedSkills);
         }
     }
 }

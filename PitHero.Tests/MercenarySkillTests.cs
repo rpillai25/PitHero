@@ -1,4 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using RolePlayingFramework.Combat;
+using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Jobs.Primary;
 using RolePlayingFramework.Mercenaries;
@@ -116,11 +118,12 @@ namespace PitHero.Tests
         #region Passive Skill Application Tests
 
         [TestMethod]
-        public void LearnAllJobSkills_Knight_AppliesPassiveDefenseBonus()
+        public void LearnAllJobSkills_Knight_AppliesHeavyArmorDefenseBonus()
         {
             var merc = new Mercenary("Test", new Knight(), 5, new StatBlock(5, 5, 5, 5));
             merc.LearnAllJobSkills();
-            Assert.AreEqual(2, merc.PassiveDefenseBonus, "Knight passive should give +2 defense bonus");
+            Assert.AreEqual(2, merc.HeavyArmorDefenseBonus, "Knight heavy_armor passive should set HeavyArmorDefenseBonus to 2");
+            Assert.AreEqual(0, merc.PassiveDefenseBonus, "PassiveDefenseBonus should remain 0; bonus is gated on ArmorMail");
         }
 
         [TestMethod]
@@ -304,6 +307,149 @@ namespace PitHero.Tests
 
             bool mpSpent = merc.UseMP(healSkill.MPCost);
             Assert.IsFalse(mpSpent, "Mercenary should not be able to spend MP when insufficient");
+        }
+
+        #endregion
+
+        #region LightArmor Extra Equip Permission Tests
+
+        [TestMethod]
+        public void KnightMerc_WithLightArmorSkill_CanEquipRobe()
+        {
+            var merc = new Mercenary("Test", new Knight(), 5, new StatBlock(5, 5, 5, 5));
+            var robe = new Gear("TestRobe", ItemKind.ArmorRobe, ItemRarity.Normal, "Test", 100, new StatBlock(0, 0, 0, 0));
+
+            // Without skill: ArmorRobe defaults to Mage|Priest only, Knight cannot equip
+            Assert.IsFalse(merc.CanEquipItem(robe), "Knight without light_armor should not be able to equip a robe");
+
+            merc.LearnSkill(new LightArmorPassive());
+
+            Assert.IsTrue(merc.CanEquipItem(robe), "Knight with light_armor should be able to equip a robe via extra permission");
+        }
+
+        [TestMethod]
+        public void KnightMerc_ForgetLightArmorSkill_CanNoLongerEquipRobe()
+        {
+            var merc = new Mercenary("Test", new Knight(), 5, new StatBlock(5, 5, 5, 5));
+            merc.LearnSkill(new LightArmorPassive());
+            var robe = new Gear("TestRobe", ItemKind.ArmorRobe, ItemRarity.Normal, "Test", 100, new StatBlock(0, 0, 0, 0));
+
+            Assert.IsTrue(merc.CanEquipItem(robe), "Knight with light_armor should be able to equip a robe");
+
+            merc.ForgetSkill("knight.light_armor");
+
+            Assert.IsFalse(merc.CanEquipItem(robe), "After forgetting light_armor, knight should no longer be able to equip a robe");
+        }
+
+        #endregion
+
+        #region SpendMP Economist Reduction Tests
+
+        [TestMethod]
+        public void MageMerc_WithEconomistSkill_SpendMP_AppliesReduction()
+        {
+            var merc = new Mercenary("Test", new Mage(), 10, new StatBlock(5, 5, 5, 10));
+            merc.LearnAllJobSkills();
+
+            // MPCostReduction should be 0.15f from EconomistPassive
+            Assert.AreEqual(0.15f, merc.MPCostReduction, 0.001f, "Economist passive should set 15% MP cost reduction");
+
+            int mpBefore = merc.CurrentMP;
+            // SpendMP(10) with 15% reduction: reduced = (int)(10 * 0.85f) = 8
+            bool spent = merc.SpendMP(10);
+
+            Assert.IsTrue(spent, "SpendMP should succeed when enough MP is available");
+            Assert.AreEqual(mpBefore - 8, merc.CurrentMP, "SpendMP(10) with 15% reduction should cost 8 MP");
+        }
+
+        [TestMethod]
+        public void MageMerc_WithEconomistSkill_UseMP_AlsoAppliesReduction()
+        {
+            var merc = new Mercenary("Test", new Mage(), 10, new StatBlock(5, 5, 5, 10));
+            merc.LearnAllJobSkills();
+
+            int mpBefore = merc.CurrentMP;
+            merc.UseMP(10);
+
+            // UseMP is an alias for SpendMP, so same reduction applies
+            Assert.AreEqual(mpBefore - 8, merc.CurrentMP, "UseMP(10) with 15% reduction should cost 8 MP (UseMP aliases SpendMP)");
+        }
+
+        #endregion
+
+        #region ForgetSkill Passive Removal Tests
+
+        [TestMethod]
+        public void ForgetSkill_RemovesHeavyArmorDefenseBonus()
+        {
+            var merc = new Mercenary("Test", new Knight(), 5, new StatBlock(5, 5, 5, 5));
+            merc.LearnSkill(new HeavyArmorPassive());
+
+            Assert.AreEqual(2, merc.HeavyArmorDefenseBonus, "Heavy armor passive should set HeavyArmorDefenseBonus to 2");
+
+            merc.ForgetSkill("knight.heavy_armor");
+
+            Assert.AreEqual(0, merc.HeavyArmorDefenseBonus, "After forgetting heavy_armor, HeavyArmorDefenseBonus should return to 0");
+        }
+
+        [TestMethod]
+        public void ForgetSkill_RemovesFireDamageBonus()
+        {
+            var merc = new Mercenary("Test", new Mage(), 5, new StatBlock(5, 5, 5, 5));
+            merc.LearnAllJobSkills();
+
+            Assert.IsTrue(merc.FireDamageBonus > 0f, "Mage should have fire damage bonus after learning all skills");
+
+            merc.ForgetSkill("mage.heart_fire");
+
+            Assert.AreEqual(0f, merc.FireDamageBonus, 0.001f, "After forgetting heart_fire passive, fire damage bonus should return to 0");
+        }
+
+        [TestMethod]
+        public void ForgetSkill_NonExistentSkill_ReturnsFalseAndDoesNotThrow()
+        {
+            var merc = new Mercenary("Test", new Knight(), 5, new StatBlock(5, 5, 5, 5));
+            bool result = merc.ForgetSkill("nonexistent.skill");
+            Assert.IsFalse(result, "ForgetSkill should return false for a skill that was never learned");
+        }
+
+        [TestMethod]
+        public void ForgetSkill_AfterLearnAndForget_PassivesMatchFreshMerc()
+        {
+            var merc = new Mercenary("Test", new Monk(), 5, new StatBlock(5, 5, 5, 5));
+            merc.LearnAllJobSkills();
+
+            Assert.IsTrue(merc.EnableCounter, "Monk with counter passive should have counter enabled");
+            Assert.AreEqual(0.15f, merc.DeflectChance, 0.001f, "Monk with deflect passive should have deflect chance");
+
+            merc.ForgetSkill("monk.counter");
+            merc.ForgetSkill("monk.deflect");
+
+            Assert.IsFalse(merc.EnableCounter, "After forgetting counter, EnableCounter should be false");
+            Assert.AreEqual(0f, merc.DeflectChance, 0.001f, "After forgetting deflect, DeflectChance should be 0");
+        }
+
+        #endregion
+
+        #region HeavyArmor Conditional Defense Tests
+
+        [TestMethod]
+        public void Merc_HeavyArmor_WithRobeArmor_DoesNotAddDefenseBonus()
+        {
+            // Knight with light_armor can equip robes; heavy armor bonus should NOT apply to robes
+            var merc = new Mercenary("Test", new Knight(), 5, new StatBlock(5, 5, 5, 5));
+            merc.LearnSkill(new HeavyArmorPassive());
+            merc.LearnSkill(new LightArmorPassive());
+
+            var robe = new Gear("TestRobe", ItemKind.ArmorRobe, ItemRarity.Normal, "Test", 100, new StatBlock(0, 0, 0, 0), def: 0);
+            bool equipped = merc.Equip(robe);
+            Assert.IsTrue(equipped, "Knight with light_armor should equip a robe");
+
+            int def = merc.GetBattleStats().Defense;
+            var stats = merc.GetTotalStats();
+            int expected = stats.Vitality + merc.PassiveDefenseBonus; // HeavyArmorDefenseBonus NOT added
+            Assert.AreEqual(expected, def,
+                "HeavyArmorDefenseBonus should not apply when ArmorRobe is equipped instead of ArmorMail");
         }
 
         #endregion

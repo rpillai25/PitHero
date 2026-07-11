@@ -140,7 +140,7 @@ namespace PitHero.Tests
             Assert.IsFalse(healSkill.BattleOnly, "Heal skill should be usable outside of battle");
             
             // Act - Use skill outside of battle (manually spend MP as would happen in battle)
-            healSkill.Execute(hero, null, new System.Collections.Generic.List<RolePlayingFramework.Enemies.IEnemy>(), null);
+            healSkill.Execute(hero, null, new System.Collections.Generic.List<RolePlayingFramework.Enemies.IEnemy>(), null, null);
             hero.SpendMP(healSkill.MPCost);
             
             // Assert

@@ -259,12 +259,14 @@ namespace PitHero
             var treasures = _scene.FindEntitiesWithTag(GameConfig.TAG_TREASURE);
             var monsters = _scene.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
             var wizardOrbs = _scene.FindEntitiesWithTag(GameConfig.TAG_WIZARD_ORB);
+            var traps = _scene.FindEntitiesWithTag(GameConfig.TAG_TRAP);
 
             // Add all found entities to removal list
             entitiesToRemove.AddRange(obstacles);
             entitiesToRemove.AddRange(treasures);
             entitiesToRemove.AddRange(monsters);
             entitiesToRemove.AddRange(wizardOrbs);
+            entitiesToRemove.AddRange(traps);
 
             // Remove entities by calling Destroy on each
             for (int i = 0; i < entitiesToRemove.Count; i++)
@@ -403,16 +405,25 @@ namespace PitHero
 
                 if (validObstacles.Count > 0 || targetPositions.Count == 0)
                 {
+                    // Spawn traps after layout validation so they use remaining free tiles.
+                    // Traps must not overlap obstacles/treasures/monsters/orbs (all in usedPositions).
+                    // They are NOT added to targetPositions because they require no reachability guarantee
+                    // from the pit entry — traps are passively encountered by the wandering hero.
+                    int trapCount = Nez.Random.Range(GameConfig.TrapMinPerFloor, GameConfig.TrapMaxPerFloor + 1);
+                    var trapPositions = GenerateEntityPositions(trapCount, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "traps");
+
                     var wizardOrbColor = isBossFloor ? Color.Red : Color.White;
                     CreateEntitiesAtPositions(validObstacles, GameConfig.TAG_OBSTACLE, Color.Gray, "obstacle", level);
                     CreateEntitiesAtPositions(treasures, GameConfig.TAG_TREASURE, Color.Yellow, "treasure", level);
                     CreateEntitiesAtPositions(monsters, GameConfig.TAG_MONSTER, Color.White, "monster", level);
                     CreateEntitiesAtPositions(wizardOrbs, GameConfig.TAG_WIZARD_ORB, wizardOrbColor, "wizard_orb", level);
+                    CreateTrapEntitiesAtPositions(trapPositions, level);
 
                     validLayoutGenerated = true;
                     Debug.Log($"[PitGenerator] Valid layout generated on attempt {attempt}");
-                    Debug.Log($"[PitGenerator] Generated {validObstacles.Count + targetPositions.Count} entities total in pit");
+                    Debug.Log($"[PitGenerator] Generated {validObstacles.Count + targetPositions.Count + trapPositions.Count} entities total in pit");
                     Debug.Log($"[PitGenerator] Final obstacle count: {validObstacles.Count} (removed {obstacles.Count - validObstacles.Count} problematic obstacles)");
+                    Debug.Log($"[PitGenerator] Spawned {trapPositions.Count} traps");
                 }
                 else
                 {
@@ -1019,6 +1030,35 @@ namespace PitHero
             }
 
             Debug.Log("[PitGenerator] Fallback layout created with guaranteed paths");
+        }
+
+        /// <summary>
+        /// Creates hidden trap entities at the given tile positions.
+        /// Traps use a trigger collider on PhysicsHeroWorldLayer so the hero's trigger system
+        /// detects them. They are invisible (no renderer) — the hero encounters them by stepping on them.
+        /// </summary>
+        private void CreateTrapEntitiesAtPositions(List<Point> positions, int pitLevel)
+        {
+            for (int i = 0; i < positions.Count; i++)
+            {
+                var tilePos = positions[i];
+                var worldPos = new Vector2(
+                    tilePos.X * GameConfig.TileSize + GameConfig.TileSize / 2,
+                    tilePos.Y * GameConfig.TileSize + GameConfig.TileSize / 2
+                );
+
+                var entity = _scene.CreateEntity("trap");
+                entity.SetTag(GameConfig.TAG_TRAP);
+                entity.SetPosition(worldPos);
+
+                entity.AddComponent(new ECS.Components.TrapComponent(pitLevel));
+
+                var collider = entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
+                collider.IsTrigger = true;
+                Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
+
+                Debug.Log($"[PitGenerator] Created trap at tile ({tilePos.X},{tilePos.Y}), damage={5 + pitLevel * 2}");
+            }
         }
 
         private Point GetRandomUnusedPosition(int minX, int minY, int maxX, int maxY, HashSet<Point> usedPositions)

@@ -119,7 +119,8 @@ namespace PitHero.Util
         public bool ClearFogOfWarAroundTile(int centerTileX, int centerTileY, HeroComponent heroComponent)
         {
             bool anyFogCleared = false;
-            int radius = heroComponent?.UncoverRadius ?? 1;
+            // Phase 4: add Eagle Eye SightRangeBonus from the linked hero to the base uncover radius
+            int radius = (heroComponent?.UncoverRadius ?? 1) + (heroComponent?.LinkedHero?.SightRangeBonus ?? 0);
             if (heroComponent.ExploredPit || heroComponent.OutsidePit)
             {
                 return false;

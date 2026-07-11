@@ -206,6 +206,15 @@ namespace PitHero
         public const int TAG_MERCENARY = 8; // Tag for mercenary entities
         public const int TAG_HERO_STATUE = 9; // Tag for hero statue entity
         public const int TAG_INNKEEPER = 10; // Tag for innkeeper entity
+        public const int TAG_TRAP = 11; // Tag for hidden trap entities
+
+        // Trap configuration (Phase 6 — minimal trap system)
+        public const int TrapMinPerFloor = 0; // Minimum traps spawned per pit floor
+        public const int TrapMaxPerFloor = 2; // Maximum traps spawned per pit floor
+
+        // New-game starting resources
+        public const int NewGameStartingGold = 200; // Gold the player starts with in a new game
+        public const int NewGameStartingHPPotions = 5; // HPPotions in the hero's bag at new game start
 
         // Render Layers (the lower the number, the higher the layer)
 

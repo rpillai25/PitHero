@@ -22,6 +22,13 @@ namespace PitHero.VirtualGame
 
         // Hero configuration properties
         public int UncoverRadius { get; set; } = 1;
+
+        /// <summary>
+        /// Tile-radius sight bonus from Eagle Eye passive (Phase 4).
+        /// Added to <see cref="UncoverRadius"/> when clearing fog of war.
+        /// Set this in virtual test setup when simulating a hero with Eagle Eye learned.
+        /// </summary>
+        public int SightRangeBonus { get; set; } = 0;
         public HeroPitPriority Priority1 { get; set; } = HeroPitPriority.Treasure;
         public HeroPitPriority Priority2 { get; set; } = HeroPitPriority.Battle;
         public HeroPitPriority Priority3 { get; set; } = HeroPitPriority.Advance;

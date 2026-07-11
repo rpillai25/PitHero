@@ -176,3 +176,17 @@ Potential extensions to the virtual layer:
 - **Interactive Mode**: Step-by-step execution for debugging
 
 This virtual game logic layer provides GitHub Copilot with the exact testing capability requested, enabling independent verification of the complete GOAP workflow without graphics dependencies.
+
+## Delta Plan — Unmirrored features
+
+The following game features added after the initial virtual layer implementation have **no virtual mirror** and are not simulated in `VirtualGameSimulation` or `VirtualTiledMapService`:
+
+### Traps (Phase 6)
+- **What exists:** `TrapComponent` spawns hidden trap entities in the pit. They trigger chip damage when the hero steps on them, or are auto-disarmed when revealed by a party member with `TrapSense`.
+- **What is not mirrored:** The virtual layer has no concept of trap entities, trap tile positions, or TrapSense passive resolution during fog clearing.
+- **What would be needed to add virtual coverage:**
+  1. Extend `VirtualWorldState` to track trap tile positions (a `HashSet<Point>` of trap locations).
+  2. Add trap spawning to `VirtualWorldState.RegeneratePit` following `GameConfig.TrapMinPerFloor`/`TrapMaxPerFloor`.
+  3. Add a `CheckTrapSense(VirtualHero hero)` helper called from `VirtualTiledMapService.ClearFogOfWarAroundTile` when fog is removed over a trap tile and any party member has `TrapSense`.
+  4. Add a `TriggerTrap(Point tile, VirtualHero hero)` that reduces `VirtualHero.HP` by the formula `5 + pitLevel * 2` (clamped to 1 HP minimum) for testing the damage path.
+  5. Add tests in `VirtualGameSimulationTests` covering trap triggering and TrapSense disarm.

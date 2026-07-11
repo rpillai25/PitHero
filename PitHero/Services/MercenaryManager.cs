@@ -841,8 +841,9 @@ namespace PitHero.Services
             // Adjust HP/MP to saved values
             int hpDiff = mercenary.MaxHP - saved.CurrentHP;
             if (hpDiff > 0) mercenary.TakeDamage(hpDiff);
-            int mpDiff = mercenary.MaxMP - saved.CurrentMP;
-            if (mpDiff > 0) mercenary.UseMP(mpDiff);
+            // Use SetCurrentMP (not UseMP/SpendMP) so MPCostReduction is NOT applied to the delta —
+            // a state-restore must land at exactly saved.CurrentMP regardless of passives.
+            mercenary.SetCurrentMP(saved.CurrentMP);
 
             // Position near hero
             var heroPos = heroEntity.Transform.Position;
@@ -953,6 +954,24 @@ namespace PitHero.Services
                 var comp = m.GetComponent<MercenaryComponent>();
                 return comp != null && comp.IsHired;
             }).ToList();
+        }
+
+        /// <summary>
+        /// Returns true if any hired mercenary has the TrapSense passive.
+        /// Non-allocating: iterates the internal list with a for loop and early-exits.
+        /// Use this instead of calling GetHiredMercenaries() in hot paths (e.g. fog-clear step).
+        /// </summary>
+        public bool AnyHiredMercenaryHasTrapSense()
+        {
+            for (int i = 0; i < _mercenaryEntities.Count; i++)
+            {
+                var comp = _mercenaryEntities[i].GetComponent<MercenaryComponent>();
+                if (comp == null || !comp.IsHired) continue;
+                var merc = comp.LinkedMercenary;
+                if (merc != null && merc.TrapSense)
+                    return true;
+            }
+            return false;
         }
 
         /// <summary>

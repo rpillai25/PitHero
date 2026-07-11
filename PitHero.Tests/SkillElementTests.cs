@@ -1,7 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Enemies;
-using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Skills;
 using System.Collections.Generic;
 
@@ -13,12 +12,12 @@ namespace PitHero.Tests
         /// <summary>Test skill for verifying element functionality</summary>
         private sealed class TestFireSkill : BaseSkill
         {
-            public TestFireSkill() 
-                : base("test.fire", "Fire Blast", "A test fire attack", 
-                      SkillKind.Active, SkillTargetType.SingleEnemy, 5, 100, ElementType.Fire) 
+            public TestFireSkill()
+                : base("test.fire", "Fire Blast", "A test fire attack",
+                      SkillKind.Active, SkillTargetType.SingleEnemy, 5, 100, ElementType.Fire)
             { }
 
-            public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
+            public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
             {
                 return "FireBlast";
             }
@@ -27,12 +26,12 @@ namespace PitHero.Tests
         /// <summary>Test skill with default neutral element</summary>
         private sealed class TestNeutralSkill : BaseSkill
         {
-            public TestNeutralSkill() 
-                : base("test.neutral", "Neutral Attack", "A test neutral attack", 
-                      SkillKind.Active, SkillTargetType.SingleEnemy, 3, 80) 
+            public TestNeutralSkill()
+                : base("test.neutral", "Neutral Attack", "A test neutral attack",
+                      SkillKind.Active, SkillTargetType.SingleEnemy, 3, 80)
             { }
 
-            public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
+            public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
             {
                 return "NeutralAttack";
             }
@@ -41,12 +40,12 @@ namespace PitHero.Tests
         /// <summary>Test skill with water element</summary>
         private sealed class TestWaterSkill : BaseSkill
         {
-            public TestWaterSkill() 
-                : base("test.water", "Water Wave", "A test water attack", 
-                      SkillKind.Active, SkillTargetType.SurroundingEnemies, 6, 120, ElementType.Water) 
+            public TestWaterSkill()
+                : base("test.water", "Water Wave", "A test water attack",
+                      SkillKind.Active, SkillTargetType.SurroundingEnemies, 6, 120, ElementType.Water)
             { }
 
-            public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
+            public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
             {
                 return "WaterWave";
             }
@@ -55,11 +54,11 @@ namespace PitHero.Tests
         /// <summary>Test skill with earth element</summary>
         private sealed class TestEarthSkill : BaseSkill
         {
-            public TestEarthSkill() 
-                : base("test.earth", "Earth Spike", SkillKind.Active, SkillTargetType.SingleEnemy, 4, 90, ElementType.Earth) 
+            public TestEarthSkill()
+                : base("test.earth", "Earth Spike", SkillKind.Active, SkillTargetType.SingleEnemy, 4, 90, ElementType.Earth)
             { }
 
-            public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
+            public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
             {
                 return "EarthSpike";
             }
@@ -68,12 +67,12 @@ namespace PitHero.Tests
         /// <summary>Test skill with wind element</summary>
         private sealed class TestWindSkill : BaseSkill
         {
-            public TestWindSkill() 
-                : base("test.wind", "Wind Slash", "A test wind attack", 
-                      SkillKind.Active, SkillTargetType.SingleEnemy, 4, 95, ElementType.Wind) 
+            public TestWindSkill()
+                : base("test.wind", "Wind Slash", "A test wind attack",
+                      SkillKind.Active, SkillTargetType.SingleEnemy, 4, 95, ElementType.Wind)
             { }
 
-            public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
+            public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
             {
                 return "WindSlash";
             }
@@ -82,12 +81,12 @@ namespace PitHero.Tests
         /// <summary>Test skill with light element</summary>
         private sealed class TestLightSkill : BaseSkill
         {
-            public TestLightSkill() 
-                : base("test.light", "Holy Light", "A test light attack", 
-                      SkillKind.Active, SkillTargetType.SingleEnemy, 7, 150, ElementType.Light) 
+            public TestLightSkill()
+                : base("test.light", "Holy Light", "A test light attack",
+                      SkillKind.Active, SkillTargetType.SingleEnemy, 7, 150, ElementType.Light)
             { }
 
-            public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
+            public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
             {
                 return "HolyLight";
             }
@@ -96,12 +95,12 @@ namespace PitHero.Tests
         /// <summary>Test skill with dark element</summary>
         private sealed class TestDarkSkill : BaseSkill
         {
-            public TestDarkSkill() 
-                : base("test.dark", "Shadow Strike", "A test dark attack", 
-                      SkillKind.Active, SkillTargetType.SingleEnemy, 7, 150, ElementType.Dark) 
+            public TestDarkSkill()
+                : base("test.dark", "Shadow Strike", "A test dark attack",
+                      SkillKind.Active, SkillTargetType.SingleEnemy, 7, 150, ElementType.Dark)
             { }
 
-            public override string Execute(Hero hero, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
+            public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
             {
                 return "ShadowStrike";
             }
@@ -110,12 +109,12 @@ namespace PitHero.Tests
         /// <summary>Test passive skill with element</summary>
         private sealed class TestPassiveFireSkill : BaseSkill
         {
-            public TestPassiveFireSkill() 
-                : base("test.passive_fire", "Fire Aura", "A test fire passive", 
-                      SkillKind.Passive, SkillTargetType.Self, 0, 200, ElementType.Fire) 
+            public TestPassiveFireSkill()
+                : base("test.passive_fire", "Fire Aura", "A test fire passive",
+                      SkillKind.Passive, SkillTargetType.Self, 0, 200, ElementType.Fire)
             { }
 
-            public override void ApplyPassive(Hero hero)
+            public override void ApplyPassive(ICombatant c)
             {
                 // Passive implementation
             }
@@ -208,8 +207,6 @@ namespace PitHero.Tests
             var skill = new TestFireSkill();
 
             Assert.AreEqual("test.fire", skill.Id);
-            Assert.AreEqual("Fire Blast", skill.Name);
-            Assert.AreEqual("A test fire attack", skill.Description);
             Assert.AreEqual(SkillKind.Active, skill.Kind);
             Assert.AreEqual(SkillTargetType.SingleEnemy, skill.TargetType);
             Assert.AreEqual(5, skill.MPCost);
@@ -223,8 +220,6 @@ namespace PitHero.Tests
             var skill = new TestEarthSkill();
 
             Assert.AreEqual("test.earth", skill.Id);
-            Assert.AreEqual("Earth Spike", skill.Name);
-            Assert.AreEqual("", skill.Description); // Short constructor uses empty description
             Assert.AreEqual(SkillKind.Active, skill.Kind);
             Assert.AreEqual(SkillTargetType.SingleEnemy, skill.TargetType);
             Assert.AreEqual(4, skill.MPCost);

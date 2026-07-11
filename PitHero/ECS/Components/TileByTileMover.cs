@@ -167,6 +167,7 @@ namespace PitHero.ECS.Components
                 {
                     heroComponent.TriggerFogCooldown();
                     RefreshMonsterFogVisibility(tms);
+                    CheckTrapSenseDisarm(heroComponent, tms);
                 }
             }
             else if (tms != null)
@@ -186,6 +187,48 @@ namespace PitHero.ECS.Components
 
             IsMoving = false;
             CurrentDirection = null;
+        }
+
+        /// <summary>
+        /// Checks all trap entities that are now visible (fog cleared) and auto-disarms them if any
+        /// living party member carries the TrapSense passive. Called after the hero clears fog.
+        /// Only inspects traps whose tiles are no longer fogged — traps already armed and fogged are
+        /// left untouched until they are revealed or stepped on.
+        /// No LINQ used; all party members checked via indexed for loops.
+        /// </summary>
+        private static void CheckTrapSenseDisarm(HeroComponent heroComponent, TiledMapService tms)
+        {
+            // Determine whether any party member has TrapSense (hero or hired merc).
+            bool hasTrapSense = heroComponent.LinkedHero?.TrapSense == true;
+
+            if (!hasTrapSense)
+            {
+                var mercManager = Core.Services?.GetService<MercenaryManager>();
+                // Non-allocating check — no LINQ, no new list
+                if (mercManager != null && mercManager.AnyHiredMercenaryHasTrapSense())
+                    hasTrapSense = true;
+            }
+
+            if (!hasTrapSense)
+                return;
+
+            // Iterate the static TrapComponent registry instead of FindEntitiesWithTag
+            // (avoids per-step allocation; registry is maintained by TrapComponent itself).
+            var activeTraps = TrapComponent.ActiveTraps;
+            for (int i = activeTraps.Count - 1; i >= 0; i--)
+            {
+                var trapComp = activeTraps[i];
+                if (trapComp?.Entity == null) continue;
+
+                var pos = trapComp.Entity.Transform.Position;
+                int tileX = (int)System.Math.Floor(pos.X / GameConfig.TileSize);
+                int tileY = (int)System.Math.Floor(pos.Y / GameConfig.TileSize);
+
+                if (!tms.IsFogOfWarTile(tileX, tileY))
+                {
+                    trapComp.Disarm();
+                }
+            }
         }
 
         /// <summary>
@@ -245,6 +288,7 @@ namespace PitHero.ECS.Components
                 if (fogCleared)
                 {
                     heroComponent.TriggerFogCooldown();
+                    CheckTrapSenseDisarm(heroComponent, tms);
                 }
             }
 

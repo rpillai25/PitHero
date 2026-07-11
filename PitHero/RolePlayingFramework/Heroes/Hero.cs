@@ -10,7 +10,7 @@ using System.Collections.Generic;
 namespace RolePlayingFramework.Heroes
 {
     /// <summary>Runtime hero instance with equipment, skills and derived stats.</summary>
-    public sealed class Hero
+    public sealed class Hero : ICombatant
     {
         public string Name { get; }
         public IJob Job { get; }
@@ -32,11 +32,21 @@ namespace RolePlayingFramework.Heroes
         public float FireDamageBonus { get; set; }
         public float MPCostReduction { get; set; }
 
+        // Future-phase passive fields (Phase 1 plumbing; default 0 until wired in later phases)
+        public int EvasionBonus { get; set; }
+        public int SightRangeBonus { get; set; }
+        public float FirstAttackCritChance { get; set; }
+        public int HeavyArmorDefenseBonus { get; set; }
+        public bool TrapSense { get; set; }
+
         // Synergy-based stat modifiers (internal for synergy effect access)
         internal StatBlock _synergyStatBonus = new StatBlock(0, 0, 0, 0);
         internal int _synergyHPBonus = 0;
         internal int _synergyMPBonus = 0;
         internal int _synergyCounterEnablers = 0; // Reference count for counter-enabling synergies
+
+        // Battle-scoped buff state — delegated to shared BattleBuffSet
+        private readonly BattleBuffSet _buffSet = new BattleBuffSet();
 
         // Equipment
         public IItem? WeaponShield1 { get; private set; }
@@ -200,12 +210,31 @@ namespace RolePlayingFramework.Heroes
             return CurrentHP == 0;
         }
 
+        /// <summary>
+        /// Directly sets CurrentMP to a saved value, clamped to [0, MaxMP].
+        /// Use this for state-restore paths (save/load) so MPCostReduction is NOT applied.
+        /// </summary>
+        public void SetCurrentMP(int value)
+        {
+            CurrentMP = value < 0 ? 0 : (value > MaxMP ? MaxMP : value);
+        }
+
+        /// <summary>
+        /// Returns the effective MP cost after applying MPCostReduction (floor of 1 when rawCost &gt; 0).
+        /// This is the exact amount SpendMP will deduct; use it in affordability checks.
+        /// </summary>
+        public int GetEffectiveMPCost(int rawCost)
+        {
+            if (rawCost <= 0) return 0;
+            int reduced = (int)(rawCost * (1f - MPCostReduction));
+            return reduced < 1 ? 1 : reduced;
+        }
+
         /// <summary>Spend MP if sufficient (includes passive cost reduction).</summary>
         public bool SpendMP(int amount)
         {
             if (amount <= 0) return true;
-            var reduced = (int)(amount * (1f - MPCostReduction));
-            if (reduced < 1) reduced = 1;
+            int reduced = GetEffectiveMPCost(amount);
             if (CurrentMP < reduced) return false;
             CurrentMP -= reduced;
             return true;
@@ -221,15 +250,38 @@ namespace RolePlayingFramework.Heroes
             return true;
         }
 
-        /// <summary>Per-turn passive MP regen.</summary>
+        /// <summary>Per-turn passive MP regen, including any active MPRegen buffs.</summary>
         public void TickRegeneration()
         {
-            if (MPTickRegen > 0)
+            int totalRegen = MPTickRegen + GetBuffTotal(BuffType.MPRegen);
+            if (totalRegen > 0)
             {
-                CurrentMP += MPTickRegen;
+                CurrentMP += totalRegen;
                 if (CurrentMP > MaxMP) CurrentMP = MaxMP;
             }
         }
+
+        // ── Battle-scoped buff system — delegates to shared BattleBuffSet ────────────────
+
+        /// <summary>Adds a battle buff. Each buff is tracked individually to support stacks.</summary>
+        public void AddBattleBuff(in BattleBuff buff) => _buffSet.AddBattleBuff(buff);
+
+        /// <summary>Returns the summed magnitude of all active buffs of the given type.</summary>
+        public int GetBuffTotal(BuffType type) => _buffSet.GetBuffTotal(type);
+
+        /// <summary>
+        /// Returns the number of active buff stacks from the given source skill AND of the given type.
+        /// Filtering by both skill id and buff type prevents multi-buff skills from blocking their
+        /// second buff type when the first type is already at max stacks.
+        /// </summary>
+        public int GetBuffStacks(string sourceSkillId, BuffType type)
+            => _buffSet.GetBuffStacks(sourceSkillId, type);
+
+        /// <summary>Decrements finite-duration buffs and removes expired ones.</summary>
+        public void TickBuffDurations() => _buffSet.TickBuffDurations();
+
+        /// <summary>Clears all battle buffs. Called at battle start and in the battle finally block.</summary>
+        public void ClearBattleState() => _buffSet.Clear();
 
         /// <summary>Equips an item into the appropriate slot based on item type and job restrictions.</summary>
         public bool TryEquip(IItem item)
@@ -396,7 +448,12 @@ namespace RolePlayingFramework.Heroes
         public int GetEquipmentDefenseBonus()
         {
             int def = PassiveDefenseBonus;
-            if (Armor is IGear armorGear) def += armorGear.DefenseBonus;
+            if (Armor is IGear armorGear)
+            {
+                def += armorGear.DefenseBonus;
+                if (armorGear.Kind == ItemKind.ArmorMail)
+                    def += HeavyArmorDefenseBonus;
+            }
             if (Hat is IGear helmGear) def += helmGear.DefenseBonus;
             if (WeaponShield2 is IGear shieldGear) def += shieldGear.DefenseBonus;
             if (Accessory1 is IGear acc1Gear) def += acc1Gear.DefenseBonus;
@@ -430,41 +487,60 @@ namespace RolePlayingFramework.Heroes
             return mp;
         }
 
+        /// <summary>
+        /// Computes battle stats for the hero, including any active battle buffs.
+        /// Called per-attack in the battle loop to ensure live buffs (DefenseUp, EvasionUp) count.
+        /// </summary>
+        public BattleStats GetBattleStats()
+        {
+            var totalStats = GetTotalStats();
+
+            int attack = totalStats.Strength + GetEquipmentAttackBonus();
+
+            int defense = totalStats.Agility / 2 + GetEquipmentDefenseBonus()
+                          + GetBuffTotal(BuffType.DefenseUp);
+
+            int baseEvasion = RolePlayingFramework.Balance.BalanceConfig.CalculateEvasion(totalStats.Agility, Level);
+            int evasion = baseEvasion + EvasionBonus + GetBuffTotal(BuffType.EvasionUp);
+            if (evasion > 255) evasion = 255;
+            if (evasion < 0) evasion = 0;
+
+            return new BattleStats(attack, defense, evasion);
+        }
+
         private void ApplyPassiveSkills()
         {
-            PassiveDefenseBonus = 0;
-            DeflectChance = 0;
-            EnableCounter = false;
-            MPTickRegen = 0;
-            HealPowerBonus = 0f;
-            FireDamageBonus = 0f;
-            MPCostReduction = 0f;
-            foreach (var kv in _learnedSkills)
-            {
-                if (kv.Value.Kind == SkillKind.Passive)
-                    kv.Value.ApplyPassive(this);
-            }
+            // Extra-equip permissions are rebuilt from scratch on every passive re-application
+            _extraEquipPermissions.Clear();
+            CombatantPassiveApplier.ResetAndApply(this, _learnedSkills);
+            ReapplySynergyPassiveEffects();
         }
 
-        public ISkill? ChooseActiveSkillForBattle()
+        /// <summary>
+        /// Re-applies active synergy group effects to passive fields after a skill reset.
+        /// Resets _synergyCounterEnablers first to prevent accumulation across repeated calls.
+        /// </summary>
+        private void ReapplySynergyPassiveEffects()
         {
-            ISkill? best = null;
-            int bestCost = -1;
-            foreach (var kv in _learnedSkills)
+            _synergyCounterEnablers = 0;
+            for (int i = 0; i < _activeSynergyGroups.Count; i++)
             {
-                var s = kv.Value;
-                if (s.Kind != SkillKind.Active) continue;
-                if (s.MPCost > CurrentMP) continue;
-                if (s.MPCost > bestCost) { best = s; bestCost = s.MPCost; }
+                var group = _activeSynergyGroups[i];
+                var effects = group.Pattern.Effects;
+                float multiplier = group.TotalMultiplier;
+                for (int j = 0; j < effects.Count; j++)
+                {
+                    // Only re-apply effects whose target fields were wiped by the passive reset
+                    // (PassiveDefenseBonus, DeflectChance, EnableCounter, MPTickRegen, HealPowerBonus,
+                    // FireDamageBonus, MPCostReduction). StatBonusEffect must NOT be re-applied: it
+                    // accumulates into _synergyStatBonus/_synergyHPBonus/_synergyMPBonus, which the
+                    // passive reset does not touch — re-applying it compounds stats on every
+                    // level-up/skill purchase (seen in play as a thief capping STR/AGI at 99 by L10).
+                    var effect = effects[j];
+                    if (effect is Synergies.PassiveAbilityEffect || effect is Synergies.SkillModifierEffect)
+                        effect.Apply(this, multiplier);
+                }
             }
-            return best;
-        }
-
-        public string? TryUseSkill(ISkill skill, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver)
-        {
-            if (skill.Kind != SkillKind.Active) return null;
-            if (!SpendMP(skill.MPCost)) return null;
-            return skill.Execute(this, primary, surrounding, resolver);
         }
 
         /// <summary>Earns JP for the bound crystal (if any).</summary>

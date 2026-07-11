@@ -549,6 +549,12 @@ namespace PitHero.ECS.Components
         public System.Collections.Generic.List<SavedItem> PendingInventoryItems { get; set; }
 
         /// <summary>
+        /// When true, the hero receives new-game starting items after Bag initialization.
+        /// Set by the scene only for a brand-new game (never on load or death-respawn).
+        /// </summary>
+        public bool GrantNewGameStartingItems { get; set; }
+
+        /// <summary>
         /// Action queue for battle actions
         /// </summary>
         public ActionQueue BattleActionQueue { get; private set; }
@@ -622,6 +628,14 @@ namespace PitHero.ECS.Components
                     }
                 }
                 PendingInventoryItems = null;
+            }
+
+            // Grant new-game starting items (stacked automatically by ItemBag.TryAdd)
+            if (GrantNewGameStartingItems)
+            {
+                for (int i = 0; i < GameConfig.NewGameStartingHPPotions; i++)
+                    TryAddItem(PotionItems.HPPotion());
+                GrantNewGameStartingItems = false;
             }
 
             // Initialize battle action queue
@@ -996,6 +1010,15 @@ namespace PitHero.ECS.Components
             {
                 Debug.Log("[HeroComponent] Detected pit trigger entry");
                 HandlePitTriggerEnter();
+                return;
+            }
+
+            // Handle trap tile: step-on trigger deals chip damage and destroys the trap
+            if (other.Entity.Tag == GameConfig.TAG_TRAP)
+            {
+                Debug.Log("[HeroComponent] Detected trap trigger");
+                var trapComponent = other.Entity.GetComponent<TrapComponent>();
+                trapComponent?.Trigger(this);
                 return;
             }
 
