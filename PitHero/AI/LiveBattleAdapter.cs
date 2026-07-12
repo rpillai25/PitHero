@@ -397,16 +397,40 @@ namespace PitHero.AI
                 evt.TargetName, evt.TargetType,
                 evt.Damage, evt.HpBefore, evt.HpAfter, evt.Killed, evt.Missed);
 
-            // Misses are analytics-only — the floating "Miss" label covers the display
-            if (evt.Missed)
-                return;
-
             // DoT ticks logged analytics-only in the original — no console line
             if (evt.Action != null && evt.Action.EndsWith(".dot"))
                 return;
 
             var evtSvc = Core.Services.GetService<GameEventService>();
             if (evtSvc == null) return;
+
+            if (evt.Missed)
+            {
+                if (evt.SkillName != null)
+                {
+                    evtSvc.EmitLocalized(UITextKey.ConsoleSkillAttackMiss,
+                        (evt.ActorName, GameConfig.ConsoleColorHeroName),
+                        (evt.SkillName, Color.White),
+                        (evtSvc.MonsterName(evt.TargetName), GameConfig.ConsoleColorEnemyName));
+                }
+                else if (evt.ActorType == "monster")
+                {
+                    evtSvc.EmitLocalized(UITextKey.ConsoleAttackMiss,
+                        (evtSvc.MonsterName(evt.ActorName), GameConfig.ConsoleColorEnemyName),
+                        (evt.TargetName, GameConfig.ConsoleColorHeroName));
+                }
+                else
+                {
+                    evtSvc.EmitLocalized(UITextKey.ConsoleAttackMiss,
+                        (evt.ActorName, GameConfig.ConsoleColorHeroName),
+                        (evtSvc.MonsterName(evt.TargetName), GameConfig.ConsoleColorEnemyName));
+                }
+                return;
+            }
+
+            // Crit callout precedes the normal hit line (analytics carries it via the ".crit" action suffix)
+            if (evt.Action != null && evt.Action.EndsWith(".crit"))
+                evtSvc.EmitLocalized(UITextKey.ConsoleCritical);
 
             if (evt.SkillName != null)
             {

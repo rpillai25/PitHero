@@ -262,6 +262,9 @@ ConsoleBattleHealConsumable,{0} uses {1} on {2}. Restored {3} HP.
 ConsoleOutBattleHealConsumable,{0} used {1}. Restored {2} HP.
 ConsoleHealSkill,{0} uses {1} on {2}. Restored {3} HP.
 ConsoleBuffSkill,{0} casts {1} on {2}. {3}!
+ConsoleAttackMiss,{0} attacks {1} but misses!
+ConsoleSkillAttackMiss,{0} uses {1} on {2} but misses!
+ConsoleCritical,Critical!
 ConsoleMercenaryDied,{0} was killed by {1}.
 ConsoleHeroDied,{0} has ended {1}'s run. {2}
 ConsoleHeroDiedPhrase1,Better luck next time...
