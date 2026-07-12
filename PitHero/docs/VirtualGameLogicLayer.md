@@ -230,6 +230,75 @@ Potential extensions to the virtual layer:
 
 This virtual game logic layer provides GitHub Copilot with the exact testing capability requested, enabling independent verification of the complete GOAP workflow without graphics dependencies.
 
+## Delta Plan — Phase C: Chest loot + auto-equip (issue #296 follow-up)
+
+Phase C gives virtual chest positions real `IItem` instances, opens them during
+traversal, adds items to the party bag, and auto-equips gear exactly like the live
+`OpenChestAction` flow.
+
+### New APIs
+
+**`VirtualWorldState`** — Phase C adds a `Dictionary<Point, IItem> _treasureInstances`
+running in parallel with the string-based parity lists
+(`LastGeneratedTreasureLevels` / `LastGeneratedEquipmentTypes`):
+
+| Method | Behaviour |
+|--------|-----------|
+| `AddTreasure(Point, IItem)` | Stores the real item; infers treasure level from rarity (Normal→1, Uncommon→2, Rare→3, Epic→4, Legendary→5); calls the string-based overload for parity-list parity |
+| `TryGetTreasureAt(Point, out IItem)` | Non-destructive lookup |
+| `RemoveTreasure(Point)` | Clears both `_treasureInstances` and the `_entities["Treasures"]` position list |
+| `HasUnopenedTreasures()` | True when any chest remains unvisited |
+| `GetNearestTreasurePosition(Point)` | Manhattan-distance nearest chest |
+
+**`VirtualBattleRunner`** — new chest-loot surface:
+
+| Member | Behaviour |
+|--------|-----------|
+| `AutoEquipHero` (`bool`, default `true`) | Mirrors `HeroComponent.AutoEquipHero` |
+| `AutoEquipMercenaries` (`bool`, default `true`) | Mirrors `HeroComponent.AutoEquipMercenaries` |
+| `TreasuresOpened` (`int`) | Incremented by each `CollectChestItem` call |
+| `GearEquipped` (`int`) | Incremented each time a piece of gear is slotted |
+| `BagCount()` | Returns current `Bag.Count` for test observability |
+| `CollectChestItem(IItem)` | Adds to bag → if gear: `TryAutoEquipOnHero` → per-merc with hand-me-down cascade |
+
+**`VirtualHeroStateMachine`** — new fourth wander phase:
+1. Fog sweep (existing phase 1)
+2. Connectivity sweep (existing phase 2)
+3. Monster sweep (existing phase 3)
+4. **Chest sweep** — teleports to each remaining chest one at a time (one per tick);
+   calls `CollectChestItem` + `RemoveTreasure` on the hero's tile, then
+   `CollectAdjacentTreasures()` for Chebyshev-1 neighbours.
+   Only returns `true` (action complete) once `HasUnopenedTreasures()` is false.
+
+`CollectAdjacentTreasures()` is also called after every `TeleportTo` in the fog,
+connectivity, and monster phases so nearby chests are collected opportunistically.
+
+### Deterministic item generation
+
+`TreasureComponent` gains `internal static` deterministic overloads:
+
+- `GenerateCaveItemForTreasureLevelDeterministic(int treasureLevel, System.Random rng)` — mirrors `GenerateCaveItemForTreasureLevel` but uses `rng.NextDouble()` / `rng.Next()` instead of `Nez.Random`.  Pool-selection switch bodies are shared via private `Get*ItemAtIndex(int)` helpers.
+- `GenerateItemForTreasureLevelDeterministic(int treasureLevel, System.Random rng)` — for non-cave levels (Normal/Mid/Full potions by treasure level).
+
+`VirtualPitGenerator.RegenerateForLevel` now calls these overloads with the per-level
+`new Random(level)` instance, so loot is deterministic per level just like mob spawns.
+
+### Metrics
+
+`VirtualRunMetrics` adds `TreasuresOpened` and `GearEquipped` fields; both are written
+to the CSV export (`treasures,gearEquipped` columns).  `VirtualGameSimulation.RunPitLevel`
+copies them from the runner after the state machine completes.
+
+### Test coverage
+
+Three new tests in `VirtualBattleSimulationTests`:
+
+| Test | Assertion |
+|------|-----------|
+| `ChestAdjacentToHero_WhenCollected_ItemLandsInBag` | Bag grows by 1 after `CollectChestItem`; `TreasuresOpened` = 1 |
+| `GearChestItem_BetterThanHeroSlot_GetsAutoEquipped` | `GearEquipped` = 1; `hero.WeaponShield1` is non-null after auto-equip |
+| `RunPitLevel1_AllChestsCollected_MetricsMatch` | `HasUnopenedTreasures()` false; `metrics.TreasuresOpened == LastGeneratedTreasureLevels.Count` |
+
 ## Delta Plan — Unmirrored features
 
 All previously listed gaps are now closed:
@@ -240,6 +309,7 @@ All previously listed gaps are now closed:
   1-HP floor, live `TrapComponent` parity) applied via
   `VirtualBattleRunner.ApplyTrapDamageToHero`, TrapSense auto-disarm via `DisarmTrap`.
   Covered by `VirtualBattleSimulationTests`.
+- **Chest loot + auto-equip** — mirrored as of issue #296 Phase C (see above).
 
 New live-layer features should be checked against this document and added here when
 they lack a virtual counterpart.

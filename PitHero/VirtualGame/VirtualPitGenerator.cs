@@ -3,6 +3,7 @@ using PitHero.AI.Interfaces;
 using PitHero.Config;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Enemies;
+using RolePlayingFramework.Equipment;
 using System;
 using System.Collections.Generic;
 
@@ -17,6 +18,13 @@ namespace PitHero.VirtualGame
         private readonly VirtualWorldState _worldState;
         private readonly VirtualTiledMapService _tiledMapService;
         private readonly VirtualPitWidthManager _pitWidthManager;
+
+        /// <summary>
+        /// Party job context used to bias chest gear toward equipable kinds, mirroring
+        /// the live PitGenerator.BuildLootJobContext weighting.  Leave default (empty)
+        /// for flat pool selection (matches live behavior with no party present).
+        /// </summary>
+        public LootJobContext LootContext { get; set; }
 
         public VirtualPitGenerator(VirtualWorldState worldState, VirtualTiledMapService tiledMapService, VirtualPitWidthManager pitWidthManager)
         {
@@ -106,30 +114,32 @@ namespace PitHero.VirtualGame
                 }
             }
 
-            // Generate treasures with Cave Biome progression
+            // Generate treasures with Cave Biome progression.
+            // Live code uses Nez.Random (global); here we use the local deterministic
+            // Random(level) so pit layout and loot are both reproducible per level,
+            // independent of the combat RNG seed passed to VirtualGameSimulation.
             for (int i = 0; i < chestCount; i++)
             {
                 var pos = GetRandomPosition(minX, minY, maxX, maxY, usedPositions, random);
                 if (pos.HasValue)
                 {
                     usedPositions.Add(pos.Value);
-                    
-                    // Use Cave Biome treasure level if in cave range, otherwise use default
-                    int treasureLevel;
-                    string equipmentType;
+                    IItem item;
                     if (CaveBiomeConfig.IsCaveLevel(level))
                     {
                         float roll = (float)random.NextDouble();
-                        treasureLevel = CaveBiomeConfig.DetermineCaveTreasureLevel(level, roll);
-                        equipmentType = GetRandomEquipmentType(level, treasureLevel, random);
+                        int treasureLevel = CaveBiomeConfig.DetermineCaveTreasureLevel(level, roll);
+                        var lootCtx = LootContext;
+                        item = TreasureComponent.GenerateCaveItemForTreasureLevelDeterministic(treasureLevel, in lootCtx, random);
                     }
                     else
                     {
-                        treasureLevel = TreasureComponent.DetermineTreasureLevel(level);
-                        equipmentType = "GenericEquipment";
+                        float roll = (float)random.NextDouble();
+                        int treasureLevel = DetermineNonCaveTreasureLevelDeterministic(level, roll);
+                        item = TreasureComponent.GenerateItemForTreasureLevelDeterministic(treasureLevel, random);
                     }
-                    
-                    _worldState.AddTreasure(pos.Value, equipmentType, treasureLevel);
+                    // AddTreasure(Point, IItem) stores the instance and keeps parity lists in sync.
+                    _worldState.AddTreasure(pos.Value, item);
                 }
             }
 
@@ -224,38 +234,33 @@ namespace PitHero.VirtualGame
         }
 
         /// <summary>
-        /// Gets a random equipment type from appropriate Cave Biome spawn pool.
-        /// Virtual stub - actual equipment pool logic will be implemented by Principal Game Engineer.
+        /// Determines a treasure level for non-cave pit levels using the same probability
+        /// distribution as <see cref="TreasureComponent.DetermineTreasureLevel"/> but with
+        /// the caller-supplied <see cref="System.Random"/> instead of <c>Nez.Random</c>.
+        /// Mirrors the live switch table exactly so balance matches the live game.
         /// </summary>
-        private string GetRandomEquipmentType(int level, int treasureLevel, Random random)
+        private static int DetermineNonCaveTreasureLevelDeterministic(int pitLevel, float roll)
         {
-            // Simplified equipment pool logic - stub implementation for virtual layer
-            // Actual implementation will have 135 equipment pieces with spawn windows
-            
-            // Equipment categories
-            string[] categories = { "Sword", "Axe", "Dagger", "Spear", "Hammer", "Staff", 
-                                   "Armor", "Shield", "Helm" };
-            
-            // Select random category
-            string category = categories[random.Next(categories.Length)];
-            
-            // Determine rarity suffix based on treasure level
-            string raritySuffix = treasureLevel == 1 ? "Normal" : "Uncommon";
-            
-            // Determine pit tier for equipment naming
-            string tierPrefix;
-            if (level <= 5)
-                tierPrefix = "Early";
-            else if (level <= 10)
-                tierPrefix = "Mid";
-            else if (level <= 15)
-                tierPrefix = "Late";
-            else if (level <= 20)
-                tierPrefix = "Advanced";
-            else
-                tierPrefix = "Elite";
-            
-            return $"{tierPrefix}{category}_{raritySuffix}";
+            if (pitLevel <= 10) return 1;
+            if (pitLevel <= 30) return roll < 0.8f ? 1 : 2;
+            if (pitLevel <= 60)
+            {
+                if (roll < 0.7f) return 1;
+                if (roll < 0.9f) return 2;
+                return 3;
+            }
+            if (pitLevel <= 90)
+            {
+                if (roll < 0.55f) return 1;
+                if (roll < 0.8f)  return 2;
+                if (roll < 0.95f) return 3;
+                return 4;
+            }
+            if (roll < 0.4f)  return 1;
+            if (roll < 0.7f)  return 2;
+            if (roll < 0.9f)  return 3;
+            if (roll < 0.99f) return 4;
+            return 5;
         }
 
         private Point? GetRandomPosition(int minX, int minY, int maxX, int maxY, HashSet<Point> usedPositions, Random random)

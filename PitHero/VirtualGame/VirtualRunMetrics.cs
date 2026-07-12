@@ -42,6 +42,12 @@ namespace PitHero.VirtualGame
         /// <summary>True when the hero was wiped out before completing the level.</summary>
         public bool Wiped;
 
+        /// <summary>Total treasure chests opened (items collected) on this pit level.</summary>
+        public int TreasuresOpened;
+
+        /// <summary>Total gear pieces auto-equipped (hero or mercenaries) on this pit level.</summary>
+        public int GearEquipped;
+
         // ── Run summary fields (populated once per simulation run) ──────────────────
 
         /// <summary>RNG seed used for this run (placeholder for Phase C).</summary>
@@ -81,7 +87,7 @@ namespace PitHero.VirtualGame
         /// </summary>
         public static void WriteCsvHeader(TextWriter writer)
         {
-            writer.WriteLine("pitLevel,battles,rounds,dmgDealt,dmgTaken,hpLossPct,healing,deaths,wiped");
+            writer.WriteLine("pitLevel,battles,rounds,dmgDealt,dmgTaken,hpLossPct,healing,deaths,wiped,treasures,gearEquipped");
         }
 
         /// <summary>
@@ -91,7 +97,8 @@ namespace PitHero.VirtualGame
         {
             writer.WriteLine(
                 $"{PitLevel},{BattleCount},{TotalRounds},{DamageDealt},{DamageTaken}," +
-                $"{HpLossPercent:F4},{HealingConsumed},{PartyDeaths},{(Wiped ? 1 : 0)}");
+                $"{HpLossPercent:F4},{HealingConsumed},{PartyDeaths},{(Wiped ? 1 : 0)}," +
+                $"{TreasuresOpened},{GearEquipped}");
         }
 
         /// <summary>

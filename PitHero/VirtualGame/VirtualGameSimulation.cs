@@ -106,6 +106,26 @@ namespace PitHero.VirtualGame
         }
 
         /// <summary>
+        /// Builds the chest-loot job context from the configured party, mirroring
+        /// PitGenerator.BuildLootJobContext so virtual chest gear is biased toward
+        /// equipable kinds exactly as in live play.
+        /// </summary>
+        private PitHero.ECS.Components.LootJobContext BuildLootJobContext()
+        {
+            if (_hero.LinkedHero == null)
+                return PitHero.ECS.Components.LootJobContext.Empty;
+
+            var ctx = new PitHero.ECS.Components.LootJobContext();
+            ctx.HeroJob = _hero.LinkedHero.Job.JobFlag;
+            for (int i = 0; i < _mercenaries.Count; i++)
+            {
+                if (_mercenaries[i] != null)
+                    ctx.MercJobs |= _mercenaries[i].Job.JobFlag;
+            }
+            return ctx;
+        }
+
+        /// <summary>
         /// Runs a complete pit level: generates the pit, explores it using the virtual
         /// state machine, fights all monsters, activates the wizard orb, and returns
         /// accumulated <see cref="VirtualRunMetrics"/>.
@@ -151,6 +171,7 @@ namespace PitHero.VirtualGame
             // default PitRectX + PitRectWidth - 3 for the valid placement area.
             var pitWidthManager = new VirtualPitWidthManager(tiledMapService);
             var generator       = new VirtualPitGenerator(_world, tiledMapService, pitWidthManager);
+            generator.LootContext = BuildLootJobContext();
             generator.RegenerateForLevel(pitLevel);
 
             // Build the battle runner with the real hero + mercs
@@ -184,7 +205,9 @@ namespace PitHero.VirtualGame
             for (int i = 0; i < allBattles.Count; i++)
                 _runMetrics.AccumulateBattle(allBattles[i]);
 
-            _runMetrics.Wiped = !_battleRunner.HeroAlive;
+            _runMetrics.Wiped           = !_battleRunner.HeroAlive;
+            _runMetrics.TreasuresOpened = _battleRunner.TreasuresOpened;
+            _runMetrics.GearEquipped    = _battleRunner.GearEquipped;
             if (partyMaxHPPool > 0)
                 _runMetrics.HpLossPercent = (float)_runMetrics.DamageTaken / partyMaxHPPool;
 

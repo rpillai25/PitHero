@@ -438,9 +438,30 @@ namespace PitHero.ECS.Components
             if (ctx.IsEmpty)
                 return Nez.Random.NextInt(poolKinds.Length);
 
-            int totalWeight = 0;
             var weights = new int[poolKinds.Length];
+            int totalWeight = ComputePoolWeights(poolKinds, in ctx, weights);
+            return WalkWeightedIndex(weights, Nez.Random.NextInt(totalWeight));
+        }
 
+        /// <summary>
+        /// Deterministic variant of <see cref="SelectWeightedPoolIndex"/> for the virtual
+        /// layer: identical job-bias weights, but the roll comes from a caller-supplied
+        /// <see cref="System.Random"/> instead of the global <c>Nez.Random</c>.
+        /// </summary>
+        internal static int SelectWeightedPoolIndexDeterministic(ItemKind[] poolKinds, in LootJobContext ctx, System.Random rng)
+        {
+            if (ctx.IsEmpty)
+                return rng.Next(poolKinds.Length);
+
+            var weights = new int[poolKinds.Length];
+            int totalWeight = ComputePoolWeights(poolKinds, in ctx, weights);
+            return WalkWeightedIndex(weights, rng.Next(totalWeight));
+        }
+
+        /// <summary>Fills <paramref name="weights"/> with the party-job bias per pool entry; returns the total.</summary>
+        private static int ComputePoolWeights(ItemKind[] poolKinds, in LootJobContext ctx, int[] weights)
+        {
+            int totalWeight = 0;
             for (int i = 0; i < poolKinds.Length; i++)
             {
                 JobType allowed = Gear.GetDefaultAllowedJobs(poolKinds[i]);
@@ -458,8 +479,12 @@ namespace PitHero.ECS.Components
                 weights[i] = weight;
                 totalWeight += weight;
             }
+            return totalWeight;
+        }
 
-            int roll = Nez.Random.NextInt(totalWeight);
+        /// <summary>Walks the cumulative weights and returns the index the roll lands in.</summary>
+        private static int WalkWeightedIndex(int[] weights, int roll)
+        {
             int cumulative = 0;
             for (int i = 0; i < weights.Length; i++)
             {
@@ -467,8 +492,7 @@ namespace PitHero.ECS.Components
                 if (roll < cumulative)
                     return i;
             }
-
-            return poolKinds.Length - 1;
+            return weights.Length - 1;
         }
 
         /// <summary>
@@ -477,6 +501,12 @@ namespace PitHero.ECS.Components
         private static IItem GenerateCaveCommonEquipment(LootJobContext ctx = default)
         {
             int index = SelectWeightedPoolIndex(_commonPoolKinds, ctx);
+            return GetCaveCommonItemAtIndex(index);
+        }
+
+        /// <summary>Returns the cave common (Normal-rarity) item at the given pool index (0–77).</summary>
+        private static IItem GetCaveCommonItemAtIndex(int index)
+        {
             switch (index)
             {
                 // Swords (Normal) — 0..10
@@ -580,6 +610,12 @@ namespace PitHero.ECS.Components
         private static IItem GenerateCaveUncommonEquipment(LootJobContext ctx = default)
         {
             int index = SelectWeightedPoolIndex(_uncommonPoolKinds, ctx);
+            return GetCaveUncommonItemAtIndex(index);
+        }
+
+        /// <summary>Returns the cave uncommon (Uncommon-rarity) item at the given pool index (0–38).</summary>
+        private static IItem GetCaveUncommonItemAtIndex(int index)
+        {
             switch (index)
             {
                 // Swords (Uncommon) — 0..4
@@ -638,34 +674,128 @@ namespace PitHero.ECS.Components
         private static IItem GenerateCaveRareEquipment(LootJobContext ctx = default)
         {
             int index = SelectWeightedPoolIndex(_rarePoolKinds, ctx);
-            return index switch
+            return GetCaveRareItemAtIndex(index);
+        }
+
+        /// <summary>Returns the cave rare (Rare-rarity) item at the given pool index (0–11).</summary>
+        private static IItem GetCaveRareItemAtIndex(int index)
+        {
+            switch (index)
             {
-                0  => GearItems.AbyssFang(),
-                1  => GearItems.DiamondEdge(),
-                2  => GearItems.MagmaBlade(),
-                3  => GearItems.AbyssPlate(),
-                4  => GearItems.DiamondMail(),
-                5  => GearItems.MagmaBlastPlate(),
-                6  => GearItems.AbyssWall(),
-                7  => GearItems.DiamondBarrier(),
-                8  => GearItems.MagmaWall(),
-                9  => GearItems.AbyssHelm(),
-                10 => GearItems.DiamondCirclet(),
-                _  => GearItems.MagmaHelm(),
-            };
+                case 0:  return GearItems.AbyssFang();
+                case 1:  return GearItems.DiamondEdge();
+                case 2:  return GearItems.MagmaBlade();
+                case 3:  return GearItems.AbyssPlate();
+                case 4:  return GearItems.DiamondMail();
+                case 5:  return GearItems.MagmaBlastPlate();
+                case 6:  return GearItems.AbyssWall();
+                case 7:  return GearItems.DiamondBarrier();
+                case 8:  return GearItems.MagmaWall();
+                case 9:  return GearItems.AbyssHelm();
+                case 10: return GearItems.DiamondCirclet();
+                default: return GearItems.MagmaHelm();
+            }
         }
 
         /// <summary>Generate cave epic equipment from all Epic-rarity cave gear items (4 items).</summary>
         private static IItem GenerateCaveEpicEquipment(LootJobContext ctx = default)
         {
             int index = SelectWeightedPoolIndex(_epicPoolKinds, ctx);
-            return index switch
+            return GetCaveEpicItemAtIndex(index);
+        }
+
+        /// <summary>Returns the cave epic (Epic-rarity) item at the given pool index (0–3).</summary>
+        private static IItem GetCaveEpicItemAtIndex(int index)
+        {
+            switch (index)
             {
-                0 => GearItems.PitLordsSword(),
-                1 => GearItems.PitLordsArmor(),
-                2 => GearItems.PitLordsAegis(),
-                _ => GearItems.PitLordsCrown(),
-            };
+                case 0: return GearItems.PitLordsSword();
+                case 1: return GearItems.PitLordsArmor();
+                case 2: return GearItems.PitLordsAegis();
+                default: return GearItems.PitLordsCrown();
+            }
+        }
+
+        // ── Virtual-layer deterministic generation ────────────────────────────────
+        // The live item-generation paths use Nez.Random (global, non-deterministic per
+        // level). The virtual layer uses a local System.Random seeded per level so that
+        // pit layout + loot are both reproducible independently of the combat RNG seed.
+
+        /// <summary>
+        /// Generates a cave biome item for the given treasure level using a caller-supplied
+        /// <see cref="System.Random"/> (deterministic per pit level) instead of
+        /// <c>Nez.Random</c>.  Used exclusively by <c>VirtualPitGenerator</c>.
+        /// Mirrors <see cref="GenerateCaveItemForTreasureLevel"/> but without a job context
+        /// (virtual layer uses flat pool selection).
+        /// </summary>
+        internal static IItem GenerateCaveItemForTreasureLevelDeterministic(int treasureLevel, in LootJobContext ctx, System.Random rng)
+        {
+            if (treasureLevel == 1)
+            {
+                bool isConsumable = rng.NextDouble() < BalanceConfig.CaveConsumableDropRate;
+                if (isConsumable)
+                    return GenerateNormalPotionDeterministic(rng);
+                return GetCaveCommonItemAtIndex(SelectWeightedPoolIndexDeterministic(_commonPoolKinds, in ctx, rng));
+            }
+            switch (treasureLevel)
+            {
+                case 2:  return GetCaveUncommonItemAtIndex(SelectWeightedPoolIndexDeterministic(_uncommonPoolKinds, in ctx, rng));
+                case 3:  return GetCaveRareItemAtIndex(SelectWeightedPoolIndexDeterministic(_rarePoolKinds, in ctx, rng));
+                default: return GetCaveEpicItemAtIndex(SelectWeightedPoolIndexDeterministic(_epicPoolKinds, in ctx, rng));
+            }
+        }
+
+        /// <summary>
+        /// Generates a non-cave item for the given treasure level using a caller-supplied
+        /// <see cref="System.Random"/>.  Used exclusively by <c>VirtualPitGenerator</c>
+        /// for non-cave pit levels.  Mirrors <see cref="GenerateItemForTreasureLevel"/>
+        /// (non-cave chests always yield potions, rarity scales with treasure level).
+        /// </summary>
+        internal static IItem GenerateItemForTreasureLevelDeterministic(int treasureLevel, System.Random rng)
+        {
+            switch (treasureLevel)
+            {
+                case 1:
+                case 2:
+                    return GenerateNormalPotionDeterministic(rng);
+                case 3:
+                    return GenerateMidPotionDeterministic(rng);
+                default:
+                    return GenerateFullPotionDeterministic(rng);
+            }
+        }
+
+        /// <summary>Deterministic normal potion selection using caller-supplied RNG.</summary>
+        private static IItem GenerateNormalPotionDeterministic(System.Random rng)
+        {
+            switch (rng.Next(3))
+            {
+                case 0:  return PotionItems.HPPotion();
+                case 1:  return PotionItems.MPPotion();
+                default: return PotionItems.MixPotion();
+            }
+        }
+
+        /// <summary>Deterministic mid potion selection using caller-supplied RNG.</summary>
+        private static IItem GenerateMidPotionDeterministic(System.Random rng)
+        {
+            switch (rng.Next(3))
+            {
+                case 0:  return PotionItems.MidHPPotion();
+                case 1:  return PotionItems.MidMPPotion();
+                default: return PotionItems.MidMixPotion();
+            }
+        }
+
+        /// <summary>Deterministic full potion selection using caller-supplied RNG.</summary>
+        private static IItem GenerateFullPotionDeterministic(System.Random rng)
+        {
+            switch (rng.Next(3))
+            {
+                case 0:  return PotionItems.FullHPPotion();
+                case 1:  return PotionItems.FullMPPotion();
+                default: return PotionItems.FullMixPotion();
+            }
         }
 
         /// <summary>

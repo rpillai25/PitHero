@@ -1,8 +1,12 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Xna.Framework;
 using PitHero.AI;
+using PitHero.Config;
+using PitHero.ECS.Components;
 using PitHero.VirtualGame;
+using RolePlayingFramework.Balance;
 using RolePlayingFramework.Enemies;
+using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Inventory;
 using RolePlayingFramework.Jobs.Primary;
@@ -243,6 +247,106 @@ namespace PitHero.Tests
                 "Trap tile should be removed after TrapSense disarm");
             Assert.AreEqual(startHP, hero.CurrentHP,
                 "Hero HP should be unchanged after TrapSense disarm");
+        }
+
+        // ── Test 7: Adjacent chest opened → item in bag ───────────────────────────
+
+        /// <summary>
+        /// A chest placed on a tile adjacent to the hero is collected by
+        /// <see cref="VirtualBattleRunner.CollectChestItem"/> and its item appears in
+        /// the party bag.
+        /// </summary>
+        [TestMethod]
+        public void ChestAdjacentToHero_WhenCollected_ItemLandsInBag()
+        {
+            var (world, runner, hero) = CreateRunner(heroLevel: 5,
+                str: 8, agi: 8, vit: 8, mag: 4);
+
+            // Place an HP Potion in a chest adjacent to the hero's starting position
+            var heroPos  = world.HeroPosition;
+            var chestPos = new Point(heroPos.X + 1, heroPos.Y);
+            IItem potion = PotionItems.HPPotion();
+            world.AddTreasure(chestPos, potion);
+
+            Assert.IsTrue(world.HasUnopenedTreasures(), "Treasure should be registered");
+            Assert.IsTrue(world.TryGetTreasureAt(chestPos, out IItem registered),
+                "TryGetTreasureAt should find the chest item");
+            Assert.AreEqual(potion, registered, "Registered item should be the potion placed");
+
+            int bagCountBefore = runner.BagCount();
+
+            // Simulate the state machine collecting the adjacent chest
+            runner.CollectChestItem(potion);
+            world.RemoveTreasure(chestPos);
+
+            Assert.IsFalse(world.HasUnopenedTreasures(), "Chest should be removed after collection");
+            Assert.AreEqual(1, runner.TreasuresOpened, "TreasuresOpened must be incremented");
+            Assert.IsTrue(runner.BagCount() > bagCountBefore, "Item must land in the party bag");
+        }
+
+        // ── Test 8: Gear chest auto-equips → hero stats change ────────────────────
+
+        /// <summary>
+        /// When the collected chest item is a piece of gear that beats the hero's current
+        /// slot, the hero's equipment slot changes and <see cref="VirtualBattleRunner.GearEquipped"/>
+        /// is incremented.
+        /// </summary>
+        [TestMethod]
+        public void GearChestItem_BetterThanHeroSlot_GetsAutoEquipped()
+        {
+            var (world, runner, hero) = CreateRunner(heroLevel: 5,
+                str: 8, agi: 8, vit: 8, mag: 4);
+
+            // Hero starts naked (no weapon equipped)
+            Assert.IsNull(hero.WeaponShield1 as IGear,
+                "Hero should start with no weapon equipped");
+
+            // Place a sword in a chest
+            IItem sword = GearItems.ShortSword();
+            var chestPos = new Point(world.HeroPosition.X + 1, world.HeroPosition.Y);
+            world.AddTreasure(chestPos, sword);
+
+            runner.CollectChestItem(sword);
+            world.RemoveTreasure(chestPos);
+
+            Assert.AreEqual(1, runner.TreasuresOpened,
+                "TreasuresOpened should be 1 after collecting one chest");
+            Assert.AreEqual(1, runner.GearEquipped,
+                "GearEquipped should be 1 — sword fits the empty weapon slot");
+            Assert.IsNotNull(hero.WeaponShield1 as IGear,
+                "Hero weapon slot should now be filled after auto-equip");
+        }
+
+        // ── Test 9: Full RunPitLevel opens all generated chests ───────────────────
+
+        /// <summary>
+        /// A complete <see cref="VirtualGameSimulation.RunPitLevel"/> traversal should
+        /// result in all generated chests being opened: <c>HasUnopenedTreasures</c> must
+        /// be false at completion and <c>metrics.TreasuresOpened</c> must equal the number
+        /// of chests generated for that level.
+        /// </summary>
+        [TestMethod]
+        public void RunPitLevel1_AllChestsCollected_MetricsMatch()
+        {
+            var sim = new VirtualGameSimulation(rngSeed: 99999);
+            sim.ConfigureHero(new Knight(), level: 3, new StatBlock(10, 8, 10, 4));
+
+            // Stock potions so the hero can survive
+            for (int i = 0; i < 5; i++)
+                sim.Bag.TryAdd(PotionItems.HPPotion());
+
+            var metrics = sim.RunPitLevel(1);
+
+            // After traversal all chests must have been swept
+            Assert.IsFalse(sim.World.HasUnopenedTreasures(),
+                "All generated chests must be collected by end of pit-level traversal");
+
+            // The number of chests generated is captured in LastGeneratedTreasureLevels
+            int chestCount = sim.World.LastGeneratedTreasureLevels.Count;
+            Assert.IsTrue(chestCount > 0,
+                "At least one chest should have been generated for pit level 1");
+            Assert.AreEqual(chestCount, metrics.TreasuresOpened,
+                "TreasuresOpened must equal the number of chests generated");
         }
     }
 }

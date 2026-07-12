@@ -2,7 +2,9 @@ using PitHero.AI;
 using PitHero.Combat;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Enemies;
+using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Heroes;
+using RolePlayingFramework.Inventory;
 using RolePlayingFramework.Mercenaries;
 using System.Collections.Generic;
 
@@ -78,6 +80,38 @@ namespace PitHero.VirtualGame
             for (int i = 0; i < mercs.Count; i++)
                 _mercAllyInterfaces.Add(new VirtualBattleAlly(mercs[i], isHero: false));
         }
+
+        // ── Configuration: auto-equip flags ──────────────────────────────────────
+
+        /// <summary>
+        /// When true (default), <see cref="CollectChestItem"/> attempts to auto-equip
+        /// gear on the hero, mirroring <c>HeroComponent.AutoEquipHero</c>.
+        /// </summary>
+        public bool AutoEquipHero { get; set; } = true;
+
+        /// <summary>
+        /// When true (default), <see cref="CollectChestItem"/> attempts to auto-equip
+        /// gear on hired mercenaries (including hand-me-downs), mirroring
+        /// <c>HeroComponent.AutoEquipMercenaries</c>.
+        /// </summary>
+        public bool AutoEquipMercenaries { get; set; } = true;
+
+        // ── Per-level counters ────────────────────────────────────────────────────
+
+        /// <summary>Number of chest items collected via <see cref="CollectChestItem"/> since this runner was created.</summary>
+        public int TreasuresOpened { get; private set; }
+
+        /// <summary>Number of gear pieces successfully auto-equipped (hero or mercenary) since this runner was created.</summary>
+        public int GearEquipped { get; private set; }
+
+        // ── Bag access ───────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Returns the current number of items in the party bag.
+        /// Exposed for tests that need to observe bag growth after chest collection
+        /// without holding a direct reference to the <see cref="ItemBag"/>.
+        /// </summary>
+        public int BagCount() => _partyView.Bag.Count;
 
         // ── State ─────────────────────────────────────────────────────────────────
 
@@ -162,6 +196,90 @@ namespace PitHero.VirtualGame
             int clampedDamage = System.Math.Min(rawDamage, hero.CurrentHP - 1);
             if (clampedDamage > 0)
                 hero.TakeDamage(clampedDamage);
+        }
+
+        // ── Chest loot ────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Opens a chest item: adds it to the party bag and, when the item is gear,
+        /// attempts auto-equip on the hero then mercenaries (with hand-me-down cascading),
+        /// exactly mirroring the live <c>OpenChestAction.HandleItemPickup</c> +
+        /// <c>TryAutoEquipFromChest</c> flow.
+        /// Console events (sound, animations) are skipped in the headless layer.
+        /// Increments <see cref="TreasuresOpened"/> unconditionally; increments
+        /// <see cref="GearEquipped"/> each time a piece of gear is successfully slotted.
+        /// </summary>
+        public void CollectChestItem(IItem item)
+        {
+            if (item == null) return;
+            TreasuresOpened++;
+
+            ItemBag bag = _partyView.Bag;
+            // Mirrors hero.TryAddItem (which is just Bag.TryAdd with consumable stacking).
+            if (!bag.TryAdd(item))
+            {
+                System.Console.WriteLine($"[VirtualBattleRunner] Bag full — could not collect {item.Name}");
+                return;
+            }
+
+            // Reset HealingItemExhausted when a healing consumable arrives (mirrors live).
+            if (item is Consumable consumable && consumable.HPRestoreAmount > 0)
+                _partyView.HealingItemExhausted = false;
+
+            IGear gear = item as IGear;
+            if (gear == null) return;
+
+            Hero hero = _partyView.Hero;
+            if (hero == null) return;
+
+            if (AutoEquipHero)
+            {
+                if (GearAutoEquipService.TryAutoEquipOnHero(hero, bag, gear, out IGear heroDisplaced))
+                {
+                    GearEquipped++;
+                    if (heroDisplaced != null && AutoEquipMercenaries)
+                        TryHandMeDownToMercs(bag, heroDisplaced, 0);
+                    return;
+                }
+            }
+
+            if (!AutoEquipMercenaries) return;
+
+            for (int i = 0; i < _mercAllyInterfaces.Count; i++)
+            {
+                Mercenary merc = _mercAllyInterfaces[i].Combatant as Mercenary;
+                if (merc == null) continue;
+
+                if (GearAutoEquipService.TryAutoEquipOnMercenary(merc, bag, gear, out IGear mercDisplaced))
+                {
+                    GearEquipped++;
+                    if (mercDisplaced != null)
+                        TryHandMeDownToMercs(bag, mercDisplaced, i + 1);
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Offers displaced gear to mercenaries starting at <paramref name="startIndex"/>.
+        /// Mirrors <c>OpenChestAction.TryHandMeDownToMercs</c>: if a merc takes the gear
+        /// and displaces their own, that displaced piece cascades to subsequent mercs.
+        /// </summary>
+        private void TryHandMeDownToMercs(ItemBag bag, IGear displacedGear, int startIndex)
+        {
+            for (int i = startIndex; i < _mercAllyInterfaces.Count; i++)
+            {
+                Mercenary merc = _mercAllyInterfaces[i].Combatant as Mercenary;
+                if (merc == null) continue;
+
+                if (GearAutoEquipService.TryAutoEquipOnMercenary(merc, bag, displacedGear, out IGear chainDisplaced))
+                {
+                    GearEquipped++;
+                    if (chainDisplaced != null)
+                        TryHandMeDownToMercs(bag, chainDisplaced, i + 1);
+                    return;
+                }
+            }
         }
     }
 }

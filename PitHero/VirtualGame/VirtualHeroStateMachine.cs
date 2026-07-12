@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using PitHero.AI;
+using RolePlayingFramework.Equipment;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -256,9 +257,10 @@ namespace PitHero.VirtualGame
                     _world.ClearFogOfWar(target, 2);
                     Console.WriteLine($"[VirtualStateMachine] Wandered to and explored ({target.X},{target.Y})");
 
-                    // Phase B: handle traps and adjacent combat on each landing
+                    // Phase B: handle traps, adjacent combat, and adjacent chest collection on each landing
                     HandleTrapAtTile(target);
                     RunAdjacentBattlesIfAny();
+                    CollectAdjacentTreasures();
                 }
                 catch (Exception ex)
                 {
@@ -281,9 +283,10 @@ namespace PitHero.VirtualGame
                     _hero.TeleportTo(target);
                     Console.WriteLine($"[VirtualStateMachine] Connectivity verified for column {target.X}");
 
-                    // Phase B: handle traps and combat during connectivity sweep
+                    // Phase B: handle traps, combat, and chest collection during connectivity sweep
                     HandleTrapAtTile(target);
                     RunAdjacentBattlesIfAny();
+                    CollectAdjacentTreasures();
                 }
                 catch (Exception ex)
                 {
@@ -306,12 +309,35 @@ namespace PitHero.VirtualGame
                     Console.WriteLine($"[VirtualStateMachine] Monster sweep: engaging monster at ({monsterPos.Value.X},{monsterPos.Value.Y})");
                     HandleTrapAtTile(monsterPos.Value);
                     RunAdjacentBattlesIfAny();
+                    CollectAdjacentTreasures();
                     return false; // Re-check next tick for further remaining monsters
                 }
             }
 
+            // Fourth phase: chest sweep — collect any remaining unopened treasures that the
+            // wander/connectivity/monster phases did not reach adjacently.  One chest per
+            // tick mirrors the live OpenChestAction cadence (one action at a time).
+            if (BattleRunner != null && _world.HasUnopenedTreasures())
+            {
+                var chestPos = _world.GetNearestTreasurePosition(_hero.Position);
+                if (chestPos.HasValue)
+                {
+                    _hero.TeleportTo(chestPos.Value);
+                    Console.WriteLine($"[VirtualStateMachine] Chest sweep: collecting chest at ({chestPos.Value.X},{chestPos.Value.Y})");
+                    // Collect the chest at the hero's current tile (direct position, not adjacency).
+                    if (_world.TryGetTreasureAt(chestPos.Value, out IItem directItem))
+                    {
+                        BattleRunner.CollectChestItem(directItem);
+                        _world.RemoveTreasure(chestPos.Value);
+                    }
+                    // Also sweep any additional chests in the 8 surrounding tiles.
+                    CollectAdjacentTreasures();
+                    return false; // Re-check next tick for further remaining chests
+                }
+            }
+
             // All phases complete
-            Console.WriteLine("[VirtualStateMachine] Wander exploration, connectivity verification, and monster sweep complete");
+            Console.WriteLine("[VirtualStateMachine] Wander exploration, connectivity verification, monster sweep, and chest sweep complete");
             return true;
         }
 
@@ -499,6 +525,33 @@ namespace PitHero.VirtualGame
                 int damage = _world.TriggerTrap(tile);
                 BattleRunner.ApplyTrapDamageToHero(damage);
                 Console.WriteLine($"[VirtualStateMachine] Trap triggered at ({tile.X},{tile.Y}), {damage} damage applied to hero");
+            }
+        }
+
+        /// <summary>
+        /// Collects any unopened chest items in the 8 tiles surrounding the hero's current
+        /// position (Chebyshev distance 1), mirroring the adjacency check used for combat.
+        /// Calls <see cref="VirtualBattleRunner.CollectChestItem"/> and removes each
+        /// collected chest from <see cref="VirtualWorldState"/>.
+        /// No-op when <see cref="BattleRunner"/> is null.
+        /// </summary>
+        private void CollectAdjacentTreasures()
+        {
+            if (BattleRunner == null) return;
+            var heroPos = _hero.Position;
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    if (dx == 0 && dy == 0) continue; // hero's own tile handled separately in chest sweep
+                    var tile = new Point(heroPos.X + dx, heroPos.Y + dy);
+                    if (_world.TryGetTreasureAt(tile, out IItem item))
+                    {
+                        Console.WriteLine($"[VirtualStateMachine] Collecting adjacent chest at ({tile.X},{tile.Y}): {item.Name}");
+                        BattleRunner.CollectChestItem(item);
+                        _world.RemoveTreasure(tile);
+                    }
+                }
             }
         }
 

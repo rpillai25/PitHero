@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using PitHero.AI;
 using PitHero.AI.Interfaces;
 using RolePlayingFramework.Enemies;
+using RolePlayingFramework.Equipment;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -25,6 +26,12 @@ namespace PitHero.VirtualGame
         // both are kept in sync so parity tests still pass.
         private readonly Dictionary<Point, IEnemy> _monsterInstances = new Dictionary<Point, IEnemy>(16);
         private readonly Dictionary<IEnemy, Point> _monsterPositions  = new Dictionary<IEnemy, Point>(16);
+
+        // ── Phase C: real IItem treasure instance tracking ─────────────────────────
+        // Parallel to the position list in _entities["Treasures"] and the parity lists
+        // LastGeneratedTreasureLevels / LastGeneratedEquipmentTypes.
+        // AddTreasure(Point, IItem) keeps all four in sync automatically.
+        private readonly Dictionary<Point, IItem> _treasureInstances = new Dictionary<Point, IItem>(16);
 
         // ── Phase B: trap tile set ─────────────────────────────────────────────────
         /// <summary>
@@ -175,6 +182,81 @@ namespace PitHero.VirtualGame
             LastGeneratedTreasureLevels.Add(treasureLevel);
             LastGeneratedEquipmentTypes.Add(equipmentType);
             Console.WriteLine($"[VirtualWorld] Added {equipmentType} treasure (level {treasureLevel}) at ({position.X},{position.Y})");
+        }
+
+        /// <summary>
+        /// Adds a real <see cref="IItem"/> instance at the given tile position,
+        /// updating both the instance dictionary and the string-based parity tracking lists.
+        /// The treasure level is inferred from the item's rarity (Normal→1, Uncommon→2,
+        /// Rare→3, Epic→4, Legendary→5), which is accurate for all Cave-biome items.
+        /// </summary>
+        public void AddTreasure(Point position, IItem item)
+        {
+            if (item == null) return;
+            _treasureInstances[position] = item;
+            int inferredLevel = GetTreasureLevelFromRarity(item.Rarity);
+            AddTreasure(position, item.Name, inferredLevel);
+        }
+
+        /// <summary>
+        /// Returns the <see cref="IItem"/> at the given tile without removing it,
+        /// or false when no unopened treasure exists there.
+        /// </summary>
+        public bool TryGetTreasureAt(Point position, out IItem item)
+        {
+            return _treasureInstances.TryGetValue(position, out item) && item != null;
+        }
+
+        /// <summary>
+        /// Removes a collected treasure from both the instance dictionary and the
+        /// <c>_entities["Treasures"]</c> position list so the world state stays consistent.
+        /// </summary>
+        public void RemoveTreasure(Point position)
+        {
+            _treasureInstances.Remove(position);
+            if (_entities.TryGetValue("Treasures", out var list))
+                list.Remove(position);
+        }
+
+        /// <summary>Returns true when at least one unopened treasure chest remains.</summary>
+        public bool HasUnopenedTreasures()
+        {
+            return _treasureInstances.Count > 0;
+        }
+
+        /// <summary>
+        /// Returns the tile position of the nearest unopened treasure to
+        /// <paramref name="heroPos"/>, or null when no treasures remain.
+        /// Uses Manhattan distance as the proximity metric.
+        /// </summary>
+        public Point? GetNearestTreasurePosition(Point heroPos)
+        {
+            Point? best     = null;
+            int    bestDist = int.MaxValue;
+            foreach (var kvp in _treasureInstances)
+            {
+                int dist = System.Math.Abs(kvp.Key.X - heroPos.X) +
+                           System.Math.Abs(kvp.Key.Y - heroPos.Y);
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    best     = kvp.Key;
+                }
+            }
+            return best;
+        }
+
+        /// <summary>Maps item rarity to the corresponding treasure level (1–5).</summary>
+        private static int GetTreasureLevelFromRarity(RolePlayingFramework.Equipment.ItemRarity rarity)
+        {
+            switch (rarity)
+            {
+                case RolePlayingFramework.Equipment.ItemRarity.Uncommon:  return 2;
+                case RolePlayingFramework.Equipment.ItemRarity.Rare:      return 3;
+                case RolePlayingFramework.Equipment.ItemRarity.Epic:      return 4;
+                case RolePlayingFramework.Equipment.ItemRarity.Legendary: return 5;
+                default:                                                   return 1;
+            }
         }
 
         public void AddMonster(Point position)
@@ -389,6 +471,7 @@ namespace PitHero.VirtualGame
             _monsterInstances.Clear();
             _monsterPositions.Clear();
             TrapTiles.Clear();
+            _treasureInstances.Clear();
 
             // Clear collision map except for pit boundaries
             for (int x = 0; x < WORLD_WIDTH_TILES; x++)
