@@ -33,8 +33,13 @@ Critical test classes for balance:
 
 ## Driving the Simulation
 
-The simulation is invoked from C# test code. Canonical pattern (real combat via the
-shared `BattleEngine`, issue #296):
+The simulation is invoked from C# test code. **Read the Quick Start + gotchas in
+`PitHero/docs/VirtualGameLogicLayer.md` first** — in particular the "fully-equipped party"
+requirements (hero needs a JP-loaded `HeroCrystal` + purchased skills; manually-built
+mercs need `LearnAllJobSkills()`; stock potions in `sim.Bag`) or results will show
+`healing=0` and understate survivability.
+
+Canonical single-level pattern (real combat via the shared `BattleEngine`, issue #296):
 
 ```csharp
 // Seeded constructor => deterministic combat rolls (turn order, evasion/variance,
@@ -43,19 +48,29 @@ var sim = new VirtualGameSimulation(rngSeed: 12345);
 
 // Hero level should track BalanceConfig.EstimatePlayerLevelForPitLevel(pitLevel);
 // stats scale with level automatically via GrowthCurveCalculator.
-sim.ConfigureHero(new Knight(), level: 8, new StatBlock(10, 8, 10, 4));
+sim.ConfigureHero(new Knight(), level: 8, new StatBlock(10, 8, 10, 4), crystal);
 sim.ConfigureMercenaries(mercList); // optional, up to 2 real Mercenary instances
 
-var metrics = sim.RunPitLevel(5);   // full traversal: explore, fight, boss gate, orb
-
-// metrics: BattleCount, TotalRounds, DamageDealt/Taken, HpLossPercent,
-//          HealingConsumed, PartyDeaths, Wiped, RngSeed, JobName
-VirtualRunMetrics.WriteCsvHeader(writer);
-metrics.WriteRow(writer);
+var metrics = sim.RunPitLevel(5);   // full traversal: explore, fight, loot, boss gate, orb
 ```
 
-See `PitHero.Tests/VirtualBalanceTraversalTests.cs` for a working sampled traversal
-(levels 1/5/10/15/20/25 including all Cave boss floors) and the same-seed
+Preferred for balance curves — a persistent full-game run (gold economy: auto-hire up to
+2 mercs + inn rest between levels, chest loot + auto-equip during levels):
+
+```csharp
+var sim = new VirtualGameSimulation(rngSeed: 12345);
+sim.ConfigureHero(new Knight(), level: 1, new StatBlock(10, 8, 10, 4), crystal);
+for (int i = 0; i < 5; i++) sim.Bag.TryAdd(PotionItems.HPPotion());
+List<VirtualRunMetrics> perLevel = sim.RunLevelRange(1, 25); // stops early on wipe
+
+VirtualRunMetrics.WriteCsvHeader(writer);
+for (int i = 0; i < perLevel.Count; i++) perLevel[i].WriteRow(writer);
+// Columns: pitLevel,battles,rounds,dmgDealt,dmgTaken,hpLossPct,healing,deaths,wiped,
+//          treasures,gearEquipped,goldEarned,wallet,innRested,mercsHired
+```
+
+See `PitHero.Tests/VirtualBalanceTraversalTests.cs` for working examples of all three
+configurations (solo / party / persistent run) and the same-seed ⇒ identical-CSV
 reproducibility contract. Run it with:
 `dotnet test PitHero.Tests/PitHero.Tests.csproj --filter "TestCategory=BalanceTraversal"`
 
@@ -65,9 +80,14 @@ If the virtual layer **doesn't support** a piece of functionality you need to te
 
 ## Repeatability
 
-- Use a **deterministic seed** for `Nez.Random` when running tests so runs are reproducible.
-- Capture seed + job + traversal range at the top of every balance report.
-- Re-run the same seed after rebalance changes to verify the fix.
+- Use the **seeded constructor** — `new VirtualGameSimulation(rngSeed)` — which seeds
+  `Nez.Random` for all combat and hire rolls. Pit layout/loot is separately deterministic
+  per level (local `Random(level)`). Same seed ⇒ byte-identical metrics CSV (pinned by test).
+- The seed is recorded in `VirtualRunMetrics.RngSeed` — capture seed + job + traversal
+  range at the top of every balance report.
+- Re-run the same seed after rebalance changes to verify the fix (before/after diff).
+- Test-suite baseline: **12 known pre-existing failures** in `dotnet test` — anything
+  above that is a regression introduced by the change under test.
 
 ## Performance Note
 
