@@ -2,7 +2,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PitHero.VirtualGame;
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Jobs.Primary;
+using RolePlayingFramework.Mercenaries;
 using RolePlayingFramework.Stats;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
@@ -29,45 +31,67 @@ namespace PitHero.Tests
         /// Runs one pit level with a fresh seeded simulation and a reference Knight
         /// whose level tracks the expected player level for that pit level.
         /// Stats scale with level automatically via GrowthCurveCalculator.
+        /// With <paramref name="withParty"/>, two level-appropriate mercenaries join:
+        /// a Priest (exercises the heal path) and an Archer (extra damage).
+        /// Fresh mercenaries are created per level so each level is independent
+        /// (no inn-rest simulation exists between levels yet).
         /// </summary>
-        private static VirtualRunMetrics RunLevel(int seed, int pitLevel)
+        private static VirtualRunMetrics RunLevel(int seed, int pitLevel, bool withParty = false)
         {
             var sim = new VirtualGameSimulation(seed);
             int heroLevel = BalanceConfig.EstimatePlayerLevelForPitLevel(pitLevel);
             sim.ConfigureHero(new Knight(), heroLevel, new StatBlock(10, 8, 10, 4));
+
+            if (withParty)
+            {
+                sim.ConfigureMercenaries(new List<Mercenary>
+                {
+                    new Mercenary("Cleric", new Priest(), heroLevel, new StatBlock(6, 8, 8, 12)),
+                    new Mercenary("Scout",  new Archer(), heroLevel, new StatBlock(9, 12, 8, 5))
+                });
+            }
+
             return sim.RunPitLevel(pitLevel);
         }
 
-        /// <summary>Runs all sample levels and returns the combined CSV report.</summary>
+        /// <summary>
+        /// Runs all sample levels for both configurations (solo Knight, then
+        /// Knight + Priest + Archer party) and returns the combined CSV report.
+        /// </summary>
         private static string RunTraversalCsv(int seed)
         {
-            var sb = new StringBuilder(512);
+            var sb = new StringBuilder(1024);
             using (var writer = new StringWriter(sb))
             {
+                writer.WriteLine("# solo Knight");
                 VirtualRunMetrics.WriteCsvHeader(writer);
                 for (int i = 0; i < SampleLevels.Length; i++)
-                {
-                    var metrics = RunLevel(seed, SampleLevels[i]);
-                    metrics.WriteRow(writer);
-                }
+                    RunLevel(seed, SampleLevels[i]).WriteRow(writer);
+
+                writer.WriteLine("# party: Knight + Priest + Archer");
+                VirtualRunMetrics.WriteCsvHeader(writer);
+                for (int i = 0; i < SampleLevels.Length; i++)
+                    RunLevel(seed, SampleLevels[i], withParty: true).WriteRow(writer);
             }
             return sb.ToString();
         }
 
         /// <summary>
-        /// Traverses the sampled Cave levels with a level-appropriate Knight and prints
-        /// the per-level metrics table (pitLevel, battles, rounds, dmgDealt, dmgTaken,
-        /// hpLossPct, healing, deaths, wiped).  Sanity: every sampled level must produce
-        /// battles (monsters are real now) and pit level 1 must be beatable.
+        /// Traverses the sampled Cave levels with a level-appropriate Knight — solo and
+        /// with a Priest + Archer party — and prints both per-level metrics tables
+        /// (pitLevel, battles, rounds, dmgDealt, dmgTaken, hpLossPct, healing, deaths,
+        /// wiped).  Sanity: every sampled level must produce battles in both
+        /// configurations and pit level 1 must be beatable.
         /// </summary>
         [TestMethod]
         [TestCategory("BalanceTraversal")]
         public void BalanceTraversal_SampledCaveLevels_ProducesPerLevelMetrics()
         {
-            var sb = new StringBuilder(512);
+            var sb = new StringBuilder(1024);
             using var writer = new StringWriter(sb);
-            VirtualRunMetrics.WriteCsvHeader(writer);
 
+            writer.WriteLine("# solo Knight");
+            VirtualRunMetrics.WriteCsvHeader(writer);
             for (int i = 0; i < SampleLevels.Length; i++)
             {
                 int pitLevel = SampleLevels[i];
@@ -82,12 +106,28 @@ namespace PitHero.Tests
                     $"Pit {pitLevel}: allies must deal damage in real combat");
             }
 
-            // The balance-report table — visible in test output for the pit-balance-test skill
+            writer.WriteLine("# party: Knight + Priest + Archer");
+            VirtualRunMetrics.WriteCsvHeader(writer);
+            for (int i = 0; i < SampleLevels.Length; i++)
+            {
+                int pitLevel = SampleLevels[i];
+                var metrics = RunLevel(Seed, pitLevel, withParty: true);
+                metrics.WriteRow(writer);
+
+                Assert.IsTrue(metrics.BattleCount > 0,
+                    $"Pit {pitLevel} (party): traversal must fight at least one battle");
+                Assert.IsTrue(metrics.DamageDealt > 0,
+                    $"Pit {pitLevel} (party): allies must deal damage in real combat");
+            }
+
+            // The balance-report tables — visible in test output for the pit-balance-test skill
             System.Console.WriteLine(sb.ToString());
 
-            // Acceptance floor: a level-appropriate hero must clear pit level 1
-            var level1 = RunLevel(Seed, 1);
-            Assert.IsFalse(level1.Wiped, "A level-appropriate Knight must clear pit level 1");
+            // Acceptance floor: a level-appropriate hero must clear pit level 1 either way
+            Assert.IsFalse(RunLevel(Seed, 1).Wiped,
+                "A level-appropriate solo Knight must clear pit level 1");
+            Assert.IsFalse(RunLevel(Seed, 1, withParty: true).Wiped,
+                "A level-appropriate party must clear pit level 1");
         }
 
         /// <summary>
