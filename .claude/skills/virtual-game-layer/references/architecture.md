@@ -7,11 +7,15 @@ Authoritative deep-dive: `PitHero/docs/VirtualGameLogicLayer.md`. Below is a qui
 ```
 PitHero/VirtualGame/
 ├── VirtualGameSimulation.cs   — headless harness, the main entry point
-├── VirtualHeroStateMachine.cs — virtual GOAP + FSM
+├── VirtualHeroStateMachine.cs — virtual GOAP + FSM (wander/monster/chest sweeps)
 ├── VirtualGoapContext.cs      — IGoapContext implementation for tests
 ├── VirtualHeroController.cs   — virtual hero control surface
 ├── VirtualPathfinder.cs       — virtual A* implementation
+├── VirtualBattle*.cs          — combat: runner/sink/party view/allies/metrics
 └── ...                        — additional virtual components added per feature
+
+PitHero/Combat/                — the SHARED headless BattleEngine + sink interfaces
+                                 (used by both live play and the virtual layer)
 ```
 
 ## State Mirroring
@@ -42,9 +46,15 @@ When adding a new virtual class:
 
 ## Determinism Rules
 
-- **Seeded RNG only.** `Nez.Random.SetSeed(seed)` at simulation start; never use `System.Random`.
+- **Two sanctioned RNG streams** (see the determinism model in `VirtualGameLogicLayer.md`):
+  combat/hire rolls use the global `Nez.Random`, seeded via `new VirtualGameSimulation(rngSeed)`;
+  pit layout + loot contents use a local `Random(level)` inside the generators
+  (deterministic per level). Don't introduce a third source of randomness.
 - **No wall-clock time.** `Time.DeltaTime` is fine because the virtual layer advances it manually in `VirtualGameSimulation.Tick()`.
-- **No coroutines** for headless tests — the virtual layer ticks synchronously. If an action uses coroutines for visual animation (e.g. jump arcs), gate them with a virtual-mode check or short-circuit them in the virtual context.
+- **Coroutines**: the shared `BattleEngine` is a coroutine drained synchronously by
+  `HeadlessCoroutineRunner.RunToCompletion` (the virtual sink returns null for every
+  display/timing hook). Follow that pattern for shared live/virtual logic; for
+  virtual-only code, tick synchronously and short-circuit visual-animation coroutines.
 
 ## Validating Changes
 
