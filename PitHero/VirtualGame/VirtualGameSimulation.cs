@@ -82,10 +82,18 @@ namespace PitHero.VirtualGame
         /// <param name="job">Job class (Warrior, Mage, Priest, etc.).</param>
         /// <param name="level">Hero level (1–99).</param>
         /// <param name="baseStats">Base stat block (Str / Agi / Vit / Mag).</param>
-        public void ConfigureHero(IJob job, int level, in StatBlock baseStats)
+        /// <param name="crystal">Optional bound crystal enabling skill purchases (see VirtualHero.ConfigureHero).</param>
+        public void ConfigureHero(IJob job, int level, in StatBlock baseStats, HeroCrystal crystal = null)
         {
-            _hero.ConfigureHero(job, level, in baseStats);
+            _hero.ConfigureHero(job, level, in baseStats, crystal);
         }
+
+        /// <summary>
+        /// Consumable bag used by the party in virtual battles.  Stock it with potions
+        /// before <see cref="RunPitLevel"/> to mirror a real playthrough (a live new game
+        /// starts with HP Potions); it persists across levels like the live hero's bag.
+        /// </summary>
+        public ItemBag Bag { get; } = new ItemBag();
 
         /// <summary>
         /// Sets the mercenary roster to use for combat simulation.
@@ -146,8 +154,7 @@ namespace PitHero.VirtualGame
             generator.RegenerateForLevel(pitLevel);
 
             // Build the battle runner with the real hero + mercs
-            var bag       = new ItemBag();
-            var partyView = new VirtualBattlePartyView(_hero.LinkedHero, bag);
+            var partyView = new VirtualBattlePartyView(_hero.LinkedHero, Bag);
             _battleRunner = new VirtualBattleRunner(_world, partyView);
             _battleRunner.SetHeroAlly(_hero.LinkedHero);
             _battleRunner.SetMercenaries(_mercenaries);

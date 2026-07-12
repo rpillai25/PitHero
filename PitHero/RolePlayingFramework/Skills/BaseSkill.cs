@@ -19,7 +19,9 @@ namespace RolePlayingFramework.Skills
 
         private TextService GetTextService()
         {
-            if (_textService == null)
+            // Core.Instance is null in headless hosts (unit tests, virtual balance runs);
+            // Core.Services would throw there, so fall back to the raw text key instead.
+            if (_textService == null && Core.Instance != null)
                 _textService = Core.Services?.GetService<TextService>();
             return _textService;
         }

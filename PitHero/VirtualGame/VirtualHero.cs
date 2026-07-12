@@ -73,9 +73,15 @@ namespace PitHero.VirtualGame
         /// <param name="job">Job class determining skill pool and combat role.</param>
         /// <param name="level">Hero level (clamped to 1–99 by the Hero constructor).</param>
         /// <param name="baseStats">Base stat block (Str / Agi / Vit / Mag).</param>
-        public void ConfigureHero(IJob job, int level, in StatBlock baseStats)
+        /// <param name="crystal">
+        /// Optional bound crystal.  Without one the hero can never learn skills
+        /// (skills are learned via JP purchases against the crystal), so balance runs
+        /// that should reflect a real playthrough must pass a crystal and purchase the
+        /// job's skills on the returned hero.
+        /// </param>
+        public void ConfigureHero(IJob job, int level, in StatBlock baseStats, HeroCrystal crystal = null)
         {
-            LinkedHero = new Hero("VirtualHero", job, level, in baseStats);
+            LinkedHero = new Hero("VirtualHero", job, level, in baseStats, crystal);
         }
 
         /// <summary>

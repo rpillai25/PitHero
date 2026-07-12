@@ -1,6 +1,8 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PitHero.VirtualGame;
 using RolePlayingFramework.Balance;
+using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Jobs.Primary;
 using RolePlayingFramework.Mercenaries;
 using RolePlayingFramework.Stats;
@@ -40,15 +42,31 @@ namespace PitHero.Tests
         {
             var sim = new VirtualGameSimulation(seed);
             int heroLevel = BalanceConfig.EstimatePlayerLevelForPitLevel(pitLevel);
-            sim.ConfigureHero(new Knight(), heroLevel, new StatBlock(10, 8, 10, 4));
+
+            // Live heroes know their purchased job skills (JP via bound crystal) — mirror
+            // that with a JP-loaded crystal and buy the full Knight kit.
+            var crystal = new HeroCrystal("RefCrystal", new Knight(), heroLevel, new StatBlock(10, 8, 10, 4));
+            crystal.EarnJP(1_000_000);
+            sim.ConfigureHero(new Knight(), heroLevel, new StatBlock(10, 8, 10, 4), crystal);
+
+            var hero = sim.Hero.LinkedHero;
+            var jobSkills = hero.Job.Skills;
+            for (int i = 0; i < jobSkills.Count; i++)
+                hero.TryPurchaseSkill(jobSkills[i]);
+
+            // A live new game starts with HP Potions — stock the shared bag
+            for (int i = 0; i < 5; i++)
+                sim.Bag.TryAdd(PotionItems.HPPotion());
 
             if (withParty)
             {
-                sim.ConfigureMercenaries(new List<Mercenary>
-                {
-                    new Mercenary("Cleric", new Priest(), heroLevel, new StatBlock(6, 8, 8, 12)),
-                    new Mercenary("Scout",  new Archer(), heroLevel, new StatBlock(9, 12, 8, 5))
-                });
+                // Live tavern mercs always know their full job kit (MercenaryManager
+                // calls LearnAllJobSkills on spawn and on save-restore) — mirror that.
+                var cleric = new Mercenary("Cleric", new Priest(), heroLevel, new StatBlock(6, 8, 8, 12));
+                cleric.LearnAllJobSkills();
+                var scout = new Mercenary("Scout", new Archer(), heroLevel, new StatBlock(9, 12, 8, 5));
+                scout.LearnAllJobSkills();
+                sim.ConfigureMercenaries(new List<Mercenary> { cleric, scout });
             }
 
             return sim.RunPitLevel(pitLevel);
