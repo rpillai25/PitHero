@@ -1,5 +1,8 @@
 using Microsoft.Xna.Framework;
 using PitHero.AI;
+using RolePlayingFramework.Heroes;
+using RolePlayingFramework.Jobs;
+using RolePlayingFramework.Stats;
 using System;
 using System.Collections.Generic;
 
@@ -19,6 +22,13 @@ namespace PitHero.VirtualGame
         public bool ExploredPit { get; set; }
         public bool FoundWizardOrb { get; set; }
         public bool ActivatedWizardOrb { get; set; }
+
+        // ── Phase B: linked real Hero instance ────────────────────────────────────
+        /// <summary>
+        /// The real <see cref="Hero"/> instance that drives combat stats for virtual battles.
+        /// Null until <see cref="ConfigureHero"/> is called.
+        /// </summary>
+        public Hero LinkedHero { get; private set; }
 
         // Hero configuration properties
         public int UncoverRadius { get; set; } = 1;
@@ -54,6 +64,24 @@ namespace PitHero.VirtualGame
         {
             _world = world;
             UpdatePositionStates();
+        }
+
+        /// <summary>
+        /// Creates and links a real <see cref="Hero"/> for use in virtual combat simulation.
+        /// The hero name defaults to "VirtualHero" (not displayed during headless runs).
+        /// </summary>
+        /// <param name="job">Job class determining skill pool and combat role.</param>
+        /// <param name="level">Hero level (clamped to 1–99 by the Hero constructor).</param>
+        /// <param name="baseStats">Base stat block (Str / Agi / Vit / Mag).</param>
+        /// <param name="crystal">
+        /// Optional bound crystal.  Without one the hero can never learn skills
+        /// (skills are learned via JP purchases against the crystal), so balance runs
+        /// that should reflect a real playthrough must pass a crystal and purchase the
+        /// job's skills on the returned hero.
+        /// </param>
+        public void ConfigureHero(IJob job, int level, in StatBlock baseStats, HeroCrystal crystal = null)
+        {
+            LinkedHero = new Hero("VirtualHero", job, level, in baseStats, crystal);
         }
 
         /// <summary>
@@ -366,13 +394,21 @@ namespace PitHero.VirtualGame
         }
 
         /// <summary>
-        /// Check if all reachable tiles are uncovered and all monsters are defeated
+        /// Check if all reachable tiles are uncovered and all monsters are defeated.
+        /// Fog check mirrors <see cref="CheckMapExplored"/>; monster check uses
+        /// <see cref="VirtualWorldState.HasLivingMonsters"/> when available.
         /// </summary>
         private bool AreAllReachableTilesUncoveredAndAllMonstersDefeated()
         {
-            // For virtual world, assume satisfied if no monsters exist
-            // TODO: Implement proper monster tracking in virtual world
-            return true; // Placeholder
+            // Fog must be fully cleared
+            if (!CheckMapExplored()) return false;
+
+            // If the world exposes a real monster tracker, use it
+            if (_world is VirtualWorldState vws)
+                return !vws.HasLivingMonsters();
+
+            // Fallback for worlds without combat tracking
+            return true;
         }
     }
 }

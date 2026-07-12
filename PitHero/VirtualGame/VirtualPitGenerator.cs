@@ -3,6 +3,7 @@ using PitHero.AI.Interfaces;
 using PitHero.Config;
 using PitHero.ECS.Components;
 using RolePlayingFramework.Enemies;
+using RolePlayingFramework.Equipment;
 using System;
 using System.Collections.Generic;
 
@@ -17,6 +18,13 @@ namespace PitHero.VirtualGame
         private readonly VirtualWorldState _worldState;
         private readonly VirtualTiledMapService _tiledMapService;
         private readonly VirtualPitWidthManager _pitWidthManager;
+
+        /// <summary>
+        /// Party job context used to bias chest gear toward equipable kinds, mirroring
+        /// the live PitGenerator.BuildLootJobContext weighting.  Leave default (empty)
+        /// for flat pool selection (matches live behavior with no party present).
+        /// </summary>
+        public LootJobContext LootContext { get; set; }
 
         public VirtualPitGenerator(VirtualWorldState worldState, VirtualTiledMapService tiledMapService, VirtualPitWidthManager pitWidthManager)
         {
@@ -106,30 +114,32 @@ namespace PitHero.VirtualGame
                 }
             }
 
-            // Generate treasures with Cave Biome progression
+            // Generate treasures with Cave Biome progression.
+            // Live code uses Nez.Random (global); here we use the local deterministic
+            // Random(level) so pit layout and loot are both reproducible per level,
+            // independent of the combat RNG seed passed to VirtualGameSimulation.
             for (int i = 0; i < chestCount; i++)
             {
                 var pos = GetRandomPosition(minX, minY, maxX, maxY, usedPositions, random);
                 if (pos.HasValue)
                 {
                     usedPositions.Add(pos.Value);
-                    
-                    // Use Cave Biome treasure level if in cave range, otherwise use default
-                    int treasureLevel;
-                    string equipmentType;
+                    IItem item;
                     if (CaveBiomeConfig.IsCaveLevel(level))
                     {
                         float roll = (float)random.NextDouble();
-                        treasureLevel = CaveBiomeConfig.DetermineCaveTreasureLevel(level, roll);
-                        equipmentType = GetRandomEquipmentType(level, treasureLevel, random);
+                        int treasureLevel = CaveBiomeConfig.DetermineCaveTreasureLevel(level, roll);
+                        var lootCtx = LootContext;
+                        item = TreasureComponent.GenerateCaveItemForTreasureLevelDeterministic(treasureLevel, in lootCtx, random);
                     }
                     else
                     {
-                        treasureLevel = TreasureComponent.DetermineTreasureLevel(level);
-                        equipmentType = "GenericEquipment";
+                        float roll = (float)random.NextDouble();
+                        int treasureLevel = DetermineNonCaveTreasureLevelDeterministic(level, roll);
+                        item = TreasureComponent.GenerateItemForTreasureLevelDeterministic(treasureLevel, random);
                     }
-                    
-                    _worldState.AddTreasure(pos.Value, equipmentType, treasureLevel);
+                    // AddTreasure(Point, IItem) stores the instance and keeps parity lists in sync.
+                    _worldState.AddTreasure(pos.Value, item);
                 }
             }
 
@@ -143,10 +153,12 @@ namespace PitHero.VirtualGame
                 if (bossPos.HasValue)
                 {
                     usedPositions.Add(bossPos.Value);
-                    string bossType = GetBossTypeForLevel(level);
-                    _worldState.AddBossMonster(bossPos.Value, bossType);
+                    EnemyId bossId = GetBossEnemyIdForLevel(level);
+                    IEnemy bossEnemy = EnemyFactory.Create(bossId, caveScaledEnemyLevel);
+                    // AddMonster(Point, IEnemy) routes to AddBossMonster internally when IsBoss=true
+                    _worldState.AddMonster(bossPos.Value, bossEnemy);
                     monsterCount--;
-                    Console.WriteLine($"[VirtualPitGenerator] Cave boss floor at level {level} with {bossType} (scaled level {caveScaledEnemyLevel})");
+                    Console.WriteLine($"[VirtualPitGenerator] Cave boss floor at level {level} with {bossEnemy.Name} (scaled level {caveScaledEnemyLevel})");
                 }
             }
 
@@ -160,8 +172,11 @@ namespace PitHero.VirtualGame
                     if (pos.HasValue)
                     {
                         usedPositions.Add(pos.Value);
-                        string monsterType = enemyPool.Length > 0 ? enemyPool[random.Next(enemyPool.Length)].ToString() : EnemyId.Slime.ToString();
-                        _worldState.AddMonster(pos.Value, monsterType);
+                        EnemyId pickedId = enemyPool.Length > 0
+                            ? enemyPool[random.Next(enemyPool.Length)]
+                            : EnemyId.Slime;
+                        IEnemy enemy = EnemyFactory.Create(pickedId, caveScaledEnemyLevel);
+                        _worldState.AddMonster(pos.Value, enemy);
                     }
                 }
             }
@@ -174,70 +189,78 @@ namespace PitHero.VirtualGame
                     if (pos.HasValue)
                     {
                         usedPositions.Add(pos.Value);
-                        _worldState.AddMonster(pos.Value, EnemyId.Slime.ToString());
+                        IEnemy enemy = EnemyFactory.Create(EnemyId.Slime, caveScaledEnemyLevel);
+                        _worldState.AddMonster(pos.Value, enemy);
                     }
                 }
+            }
+
+            // Spawn traps per GameConfig.TrapMin/MaxPerFloor
+            // Boss floors never have traps (the boss is the hazard)
+            if (!isCaveBossFloor)
+            {
+                int trapCount = random.Next(GameConfig.TrapMinPerFloor, GameConfig.TrapMaxPerFloor + 1);
+                for (int i = 0; i < trapCount; i++)
+                {
+                    var pos = GetRandomPosition(minX, minY, maxX, maxY, usedPositions, random);
+                    if (pos.HasValue)
+                    {
+                        usedPositions.Add(pos.Value);
+                        _worldState.AddTrapTile(pos.Value);
+                    }
+                }
+                Console.WriteLine($"[VirtualPitGenerator] Spawned {trapCount} trap(s) for level {level}");
             }
 
             Console.WriteLine($"[VirtualPitGenerator] Generated {obstacles.Count} obstacles, {chestCount} treasures, {monsterCount} monsters, and 1 wizard orb");
         }
 
         /// <summary>
-        /// Gets the boss type for a specific Cave Biome boss floor.
+        /// Returns the <see cref="EnemyId"/> for the Cave Biome boss at the given pit level.
+        /// Mirrors the live <c>PitGenerator</c> boss mapping exactly:
+        /// 5 = StoneGuardian, 10 = EarthElemental, 15 = AncientWyrm, 20 = PitLord, 25 = MoltenTitan.
         /// </summary>
-        private string GetBossTypeForLevel(int level)
+        private EnemyId GetBossEnemyIdForLevel(int level)
         {
-            // Cave biome boss progression: unique bosses at each major milestone
             switch (level)
             {
-                case 5:
-                    return "Stone Guardian";
-                case 10:
-                    return "Pit Lord";
-                case 15:
-                    return "Earth Elemental";
-                case 20:
-                    return "Molten Titan";
-                case 25:
-                    return "Ancient Wyrm";
-                default:
-                    return "Pit Lord";
+                case 5:  return EnemyId.StoneGuardian;
+                case 10: return EnemyId.EarthElemental;
+                case 15: return EnemyId.AncientWyrm;
+                case 20: return EnemyId.PitLord;
+                case 25: return EnemyId.MoltenTitan;
+                default: return EnemyId.PitLord;
             }
         }
 
         /// <summary>
-        /// Gets a random equipment type from appropriate Cave Biome spawn pool.
-        /// Virtual stub - actual equipment pool logic will be implemented by Principal Game Engineer.
+        /// Determines a treasure level for non-cave pit levels using the same probability
+        /// distribution as <see cref="TreasureComponent.DetermineTreasureLevel"/> but with
+        /// the caller-supplied <see cref="System.Random"/> instead of <c>Nez.Random</c>.
+        /// Mirrors the live switch table exactly so balance matches the live game.
         /// </summary>
-        private string GetRandomEquipmentType(int level, int treasureLevel, Random random)
+        private static int DetermineNonCaveTreasureLevelDeterministic(int pitLevel, float roll)
         {
-            // Simplified equipment pool logic - stub implementation for virtual layer
-            // Actual implementation will have 135 equipment pieces with spawn windows
-            
-            // Equipment categories
-            string[] categories = { "Sword", "Axe", "Dagger", "Spear", "Hammer", "Staff", 
-                                   "Armor", "Shield", "Helm" };
-            
-            // Select random category
-            string category = categories[random.Next(categories.Length)];
-            
-            // Determine rarity suffix based on treasure level
-            string raritySuffix = treasureLevel == 1 ? "Normal" : "Uncommon";
-            
-            // Determine pit tier for equipment naming
-            string tierPrefix;
-            if (level <= 5)
-                tierPrefix = "Early";
-            else if (level <= 10)
-                tierPrefix = "Mid";
-            else if (level <= 15)
-                tierPrefix = "Late";
-            else if (level <= 20)
-                tierPrefix = "Advanced";
-            else
-                tierPrefix = "Elite";
-            
-            return $"{tierPrefix}{category}_{raritySuffix}";
+            if (pitLevel <= 10) return 1;
+            if (pitLevel <= 30) return roll < 0.8f ? 1 : 2;
+            if (pitLevel <= 60)
+            {
+                if (roll < 0.7f) return 1;
+                if (roll < 0.9f) return 2;
+                return 3;
+            }
+            if (pitLevel <= 90)
+            {
+                if (roll < 0.55f) return 1;
+                if (roll < 0.8f)  return 2;
+                if (roll < 0.95f) return 3;
+                return 4;
+            }
+            if (roll < 0.4f)  return 1;
+            if (roll < 0.7f)  return 2;
+            if (roll < 0.9f)  return 3;
+            if (roll < 0.99f) return 4;
+            return 5;
         }
 
         private Point? GetRandomPosition(int minX, int minY, int maxX, int maxY, HashSet<Point> usedPositions, Random random)

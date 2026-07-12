@@ -1,7 +1,7 @@
-using Nez;
-using PitHero.ECS.Components;
+using PitHero.Combat;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Enemies;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Inventory;
 using RolePlayingFramework.Mercenaries;
@@ -40,13 +40,15 @@ namespace PitHero.AI
         /// <summary>True if the target is the hero.</summary>
         public bool TargetsHero;
 
-        /// <summary>Entity of the target monster (for attack actions) or null.</summary>
-        public Entity TargetEntity;
+        /// <summary>Preferred enemy target for attack actions (null = no preference).</summary>
+        public IEnemy TargetEnemy;
     }
 
     /// <summary>
     /// Provides static methods for AI battle decisions based on the selected battle tactic.
     /// Does not execute actions — only returns what action the AI recommends.
+    /// Operates on <see cref="IBattlePartyView"/> and <see cref="IEnemy"/> interfaces rather
+    /// than Nez entities, so it can be used in both live and headless execution contexts.
     /// </summary>
     public static class BattleTacticDecisionEngine
     {
@@ -67,25 +69,25 @@ namespace PitHero.AI
         /// Decides what the hero should do this turn based on the current battle tactic.
         /// </summary>
         public static BattleAction DecideHeroAction(
-            HeroComponent heroComponent,
-            List<Entity> livingMonsters,
-            List<Entity> livingMercenaries)
+            IBattlePartyView party,
+            List<IEnemy> livingMonsters,
+            List<Mercenary> livingMercenaries)
         {
-            var hero = heroComponent.LinkedHero;
+            var hero = party.Hero;
             if (hero == null || livingMonsters == null || livingMonsters.Count == 0)
                 return CreatePhysicalAttack(null);
 
-            switch (heroComponent.CurrentBattleTactic)
+            switch (party.CurrentBattleTactic)
             {
                 case BattleTactic.Blitz:
-                    return DecideBlitz(heroComponent, hero, livingMonsters, livingMercenaries);
+                    return DecideBlitz(party, hero, livingMonsters, livingMercenaries);
 
                 case BattleTactic.Defensive:
-                    return DecideDefensive(heroComponent, hero, livingMonsters, livingMercenaries);
+                    return DecideDefensive(party, hero, livingMonsters, livingMercenaries);
 
                 case BattleTactic.Strategic:
                 default:
-                    return DecideStrategic(heroComponent, hero, livingMonsters, livingMercenaries);
+                    return DecideStrategic(party, hero, livingMonsters, livingMercenaries);
             }
         }
 
@@ -94,26 +96,25 @@ namespace PitHero.AI
         /// Follows the hero's current battle tactic with mercenary-specific targeting restrictions.
         /// </summary>
         public static BattleAction DecideMercenaryAction(
-            MercenaryComponent mercComponent,
-            HeroComponent heroComponent,
-            List<Entity> livingMonsters,
-            List<Entity> livingMercenaries)
+            Mercenary merc,
+            IBattlePartyView party,
+            List<IEnemy> livingMonsters,
+            List<Mercenary> livingMercenaries)
         {
-            var merc = mercComponent.LinkedMercenary;
             if (merc == null || livingMonsters == null || livingMonsters.Count == 0)
                 return CreatePhysicalAttack(null);
 
-            switch (heroComponent.CurrentBattleTactic)
+            switch (party.CurrentBattleTactic)
             {
                 case BattleTactic.Blitz:
-                    return DecideMercBlitz(merc, mercComponent, heroComponent, livingMonsters, livingMercenaries);
+                    return DecideMercBlitz(merc, party, livingMonsters, livingMercenaries);
 
                 case BattleTactic.Defensive:
-                    return DecideMercDefensive(merc, mercComponent, heroComponent, livingMonsters, livingMercenaries);
+                    return DecideMercDefensive(merc, party, livingMonsters, livingMercenaries);
 
                 case BattleTactic.Strategic:
                 default:
-                    return DecideMercStrategic(merc, mercComponent, heroComponent, livingMonsters, livingMercenaries);
+                    return DecideMercStrategic(merc, party, livingMonsters, livingMercenaries);
             }
         }
 
@@ -123,25 +124,25 @@ namespace PitHero.AI
 
         /// <summary>Blitz: aggressive attacks but perform heal/restore like Strategic; prefer high-MP attacks.</summary>
         private static BattleAction DecideBlitz(
-            HeroComponent heroComponent, Hero hero, List<Entity> livingMonsters, List<Entity> livingMercenaries)
+            IBattlePartyView party, Hero hero, List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries)
         {
             CollectHeroSkills(hero, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
             // 1. Heal/restore check (use same thresholds as Strategic)
             BattleAction healAction;
-            if (TryHeroHealAction(heroComponent, hero, livingMercenaries,
+            if (TryHeroHealAction(party, hero, livingMercenaries,
                     GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
 
             // AoE check first
             var aoeResult = TryAoESkill(_attackSkillBuffer, hero.CurrentMP, hero.MPCostReduction, livingMonsters);
             if (aoeResult.Skill != null)
-                return CreateAttackSkillAction(aoeResult.Skill, aoeResult.TargetEntity);
+                return CreateAttackSkillAction(aoeResult.Skill, aoeResult.TargetEnemy);
 
             // Best single-target attack skill (prefer elemental advantage, then highest MP cost)
             var bestSkill = FindBestAttackSkill(_attackSkillBuffer, hero.CurrentMP, hero.MPCostReduction, livingMonsters, true);
             if (bestSkill.Skill != null)
-                return CreateAttackSkillAction(bestSkill.Skill, bestSkill.TargetEntity);
+                return CreateAttackSkillAction(bestSkill.Skill, bestSkill.TargetEnemy);
 
             // Fall back to physical attack
             var weaponElement = GetWeaponElementFromHero(hero);
@@ -150,25 +151,25 @@ namespace PitHero.AI
 
         /// <summary>Strategic: heal at 40%, restore MP at 20%, efficient attacks.</summary>
         private static BattleAction DecideStrategic(
-            HeroComponent heroComponent, Hero hero,
-            List<Entity> livingMonsters, List<Entity> livingMercenaries)
+            IBattlePartyView party, Hero hero,
+            List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries)
         {
             CollectHeroSkills(hero, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
             // 1. Heal/restore check (HP < 40% OR MP < 20%)
             BattleAction healAction;
-            if (TryHeroHealAction(heroComponent, hero, livingMercenaries,
+            if (TryHeroHealAction(party, hero, livingMercenaries,
                     GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
 
             // 2. Attack (prefer elemental advantage, then lowest MP cost)
             var aoeResult = TryAoESkill(_attackSkillBuffer, hero.CurrentMP, hero.MPCostReduction, livingMonsters);
             if (aoeResult.Skill != null)
-                return CreateAttackSkillAction(aoeResult.Skill, aoeResult.TargetEntity);
+                return CreateAttackSkillAction(aoeResult.Skill, aoeResult.TargetEnemy);
 
             var bestSkill = FindBestAttackSkill(_attackSkillBuffer, hero.CurrentMP, hero.MPCostReduction, livingMonsters, false);
             if (bestSkill.Skill != null)
-                return CreateAttackSkillAction(bestSkill.Skill, bestSkill.TargetEntity);
+                return CreateAttackSkillAction(bestSkill.Skill, bestSkill.TargetEnemy);
 
             var weaponElement = GetWeaponElementFromHero(hero);
             return CreatePhysicalAttack(FindBestMonsterTarget(livingMonsters, weaponElement));
@@ -176,14 +177,14 @@ namespace PitHero.AI
 
         /// <summary>Defensive: heal at 60%, restore MP at 30%, buff, then attack only when safe.</summary>
         private static BattleAction DecideDefensive(
-            HeroComponent heroComponent, Hero hero,
-            List<Entity> livingMonsters, List<Entity> livingMercenaries)
+            IBattlePartyView party, Hero hero,
+            List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries)
         {
             CollectHeroSkills(hero, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
             // 1. Heal/restore check (HP < 60% OR MP < 30%)
             BattleAction healAction;
-            if (TryHeroHealAction(heroComponent, hero, livingMercenaries,
+            if (TryHeroHealAction(party, hero, livingMercenaries,
                     DefensiveHealThreshold, DefensiveMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
 
@@ -195,11 +196,11 @@ namespace PitHero.AI
             // 3. Attack (still attack even if not all allies are at 60% — nothing else to do)
             var aoeResult = TryAoESkill(_attackSkillBuffer, hero.CurrentMP, hero.MPCostReduction, livingMonsters);
             if (aoeResult.Skill != null)
-                return CreateAttackSkillAction(aoeResult.Skill, aoeResult.TargetEntity);
+                return CreateAttackSkillAction(aoeResult.Skill, aoeResult.TargetEnemy);
 
             var bestSkill = FindBestAttackSkill(_attackSkillBuffer, hero.CurrentMP, hero.MPCostReduction, livingMonsters, false);
             if (bestSkill.Skill != null)
-                return CreateAttackSkillAction(bestSkill.Skill, bestSkill.TargetEntity);
+                return CreateAttackSkillAction(bestSkill.Skill, bestSkill.TargetEnemy);
 
             var weaponElement = GetWeaponElementFromHero(hero);
             return CreatePhysicalAttack(FindBestMonsterTarget(livingMonsters, weaponElement));
@@ -211,23 +212,23 @@ namespace PitHero.AI
 
         /// <summary>Blitz tactic for mercenary: aggressive attacks but perform heal/restore like Strategic.</summary>
         private static BattleAction DecideMercBlitz(
-            Mercenary merc, MercenaryComponent mercComponent, HeroComponent heroComponent, List<Entity> livingMonsters, List<Entity> livingMercenaries)
+            Mercenary merc, IBattlePartyView party, List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries)
         {
             CollectMercenarySkills(merc, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
             // 1. Heal/restore check (use same thresholds as Strategic)
             BattleAction healAction;
-            if (TryMercHealAction(merc, heroComponent, livingMercenaries, mercComponent,
+            if (TryMercHealAction(merc, party, livingMercenaries,
                     GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
 
             var aoeResult = TryAoESkill(_attackSkillBuffer, merc.CurrentMP, merc.MPCostReduction, livingMonsters);
             if (aoeResult.Skill != null)
-                return CreateAttackSkillAction(aoeResult.Skill, aoeResult.TargetEntity);
+                return CreateAttackSkillAction(aoeResult.Skill, aoeResult.TargetEnemy);
 
             var bestSkill = FindBestAttackSkill(_attackSkillBuffer, merc.CurrentMP, merc.MPCostReduction, livingMonsters, true);
             if (bestSkill.Skill != null)
-                return CreateAttackSkillAction(bestSkill.Skill, bestSkill.TargetEntity);
+                return CreateAttackSkillAction(bestSkill.Skill, bestSkill.TargetEnemy);
 
             var weaponElement = merc.WeaponShield1?.ElementalProps?.Element ?? ElementType.Neutral;
             return CreatePhysicalAttack(FindBestMonsterTarget(livingMonsters, weaponElement));
@@ -235,14 +236,14 @@ namespace PitHero.AI
 
         /// <summary>Strategic tactic for mercenary: heal, then efficient attack.</summary>
         private static BattleAction DecideMercStrategic(
-            Mercenary merc, MercenaryComponent mercComponent, HeroComponent heroComponent,
-            List<Entity> livingMonsters, List<Entity> livingMercenaries)
+            Mercenary merc, IBattlePartyView party,
+            List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries)
         {
             CollectMercenarySkills(merc, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
             // 1. Heal/restore check (HP < 40% OR MP < 20%) — skills are unrestricted
             BattleAction healAction;
-            if (TryMercHealAction(merc, heroComponent, livingMercenaries, mercComponent,
+            if (TryMercHealAction(merc, party, livingMercenaries,
                     GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
 
@@ -252,14 +253,14 @@ namespace PitHero.AI
 
         /// <summary>Defensive tactic for mercenary: heal at 60%, buff, then attack.</summary>
         private static BattleAction DecideMercDefensive(
-            Mercenary merc, MercenaryComponent mercComponent, HeroComponent heroComponent,
-            List<Entity> livingMonsters, List<Entity> livingMercenaries)
+            Mercenary merc, IBattlePartyView party,
+            List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries)
         {
             CollectMercenarySkills(merc, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
             // 1. Heal/restore check (HP < 60% OR MP < 30%)
             BattleAction healAction;
-            if (TryMercHealAction(merc, heroComponent, livingMercenaries, mercComponent,
+            if (TryMercHealAction(merc, party, livingMercenaries,
                     DefensiveHealThreshold, DefensiveMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
 
@@ -273,15 +274,15 @@ namespace PitHero.AI
         }
 
         /// <summary>Mercenary attack fallback: AoE check then best single-target or physical.</summary>
-        private static BattleAction MercAttack(Mercenary merc, List<Entity> livingMonsters)
+        private static BattleAction MercAttack(Mercenary merc, List<IEnemy> livingMonsters)
         {
             var aoeResult = TryAoESkill(_attackSkillBuffer, merc.CurrentMP, merc.MPCostReduction, livingMonsters);
             if (aoeResult.Skill != null)
-                return CreateAttackSkillAction(aoeResult.Skill, aoeResult.TargetEntity);
+                return CreateAttackSkillAction(aoeResult.Skill, aoeResult.TargetEnemy);
 
             var bestSkill = FindBestAttackSkill(_attackSkillBuffer, merc.CurrentMP, merc.MPCostReduction, livingMonsters, false);
             if (bestSkill.Skill != null)
-                return CreateAttackSkillAction(bestSkill.Skill, bestSkill.TargetEntity);
+                return CreateAttackSkillAction(bestSkill.Skill, bestSkill.TargetEnemy);
 
             var weaponElement = merc.WeaponShield1?.ElementalProps?.Element ?? ElementType.Neutral;
             return CreatePhysicalAttack(FindBestMonsterTarget(livingMonsters, weaponElement));
@@ -297,7 +298,7 @@ namespace PitHero.AI
         /// Returns true and sets healAction if healing was decided.
         /// </summary>
         private static bool TryHeroHealAction(
-            HeroComponent heroComponent, Hero hero, List<Entity> livingMercenaries,
+            IBattlePartyView party, Hero hero, List<Mercenary> livingMercenaries,
             float hpThreshold, float mpThreshold, List<ISkill> healSkills, out BattleAction healAction)
         {
             healAction = default;
@@ -308,12 +309,12 @@ namespace PitHero.AI
             int targetMaxHP;
             int targetCurrentMP;
             int targetMaxMP;
-            if (!GetHealTarget(hero, heroComponent, livingMercenaries, hpThreshold, mpThreshold,
+            if (!GetHealTarget(hero, party, livingMercenaries, hpThreshold, mpThreshold,
                     out healTarget, out targetIsHero, out targetCurrentHP, out targetMaxHP,
                     out targetCurrentMP, out targetMaxMP))
                 return false;
 
-            var priorities = heroComponent.GetHealPrioritiesInOrder();
+            var priorities = party.GetHealPrioritiesInOrder();
             for (int p = 0; p < priorities.Length; p++)
             {
                 switch (priorities[p])
@@ -323,12 +324,12 @@ namespace PitHero.AI
                         continue;
 
                     case HeroHealPriority.HealingItem:
-                        if (heroComponent.HealingItemExhausted) continue;
+                        if (party.HealingItemExhausted) continue;
                         // Check consumable targeting permission
-                        if (!targetIsHero && !heroComponent.UseConsumablesOnMercenaries) continue;
+                        if (!targetIsHero && !party.UseConsumablesOnMercenaries) continue;
                         Consumable bestItem;
                         int bestIdx;
-                        if (PotionSelectionEngine.SelectBattlePotion(heroComponent.Bag,
+                        if (PotionSelectionEngine.SelectBattlePotion(party.Bag,
                             targetCurrentHP, targetMaxHP, targetCurrentMP, targetMaxMP,
                             out bestItem, out bestIdx))
                         {
@@ -338,7 +339,7 @@ namespace PitHero.AI
                         continue;
 
                     case HeroHealPriority.HealingSkill:
-                        if (heroComponent.HealingSkillExhausted) continue;
+                        if (party.HealingSkillExhausted) continue;
                         var skill = FindBestHealingSkill(healSkills, hero, hero.CurrentMP,
                             targetCurrentHP, targetMaxHP, targetIsHero);
                         if (skill != null)
@@ -359,12 +360,12 @@ namespace PitHero.AI
         /// Uses PotionSelectionEngine battle rules for unified HP/MP potion scoring.
         /// </summary>
         private static bool TryMercHealAction(
-            Mercenary merc, HeroComponent heroComponent, List<Entity> livingMercenaries,
-            MercenaryComponent selfComp, float hpThreshold, float mpThreshold, List<ISkill> healSkills,
+            Mercenary merc, IBattlePartyView party, List<Mercenary> livingMercenaries,
+            float hpThreshold, float mpThreshold, List<ISkill> healSkills,
             out BattleAction healAction)
         {
             healAction = default;
-            var hero = heroComponent.LinkedHero;
+            var hero = party.Hero;
 
             object healTarget;
             bool targetIsHero;
@@ -372,7 +373,7 @@ namespace PitHero.AI
             int targetMaxHP;
             int targetCurrentMP;
             int targetMaxMP;
-            if (!GetHealTarget(hero, heroComponent, livingMercenaries, hpThreshold, mpThreshold,
+            if (!GetHealTarget(hero, party, livingMercenaries, hpThreshold, mpThreshold,
                     out healTarget, out targetIsHero, out targetCurrentHP, out targetMaxHP,
                     out targetCurrentMP, out targetMaxMP))
                 return false;
@@ -389,16 +390,16 @@ namespace PitHero.AI
             // 2. Try consumable (with restrictions)
             bool canUseConsumable;
             if (targetIsHero)
-                canUseConsumable = heroComponent.MercenariesCanUseConsumables;
+                canUseConsumable = party.MercenariesCanUseConsumables;
             else
-                canUseConsumable = heroComponent.MercenariesCanUseConsumables &&
-                                   heroComponent.UseConsumablesOnMercenaries;
+                canUseConsumable = party.MercenariesCanUseConsumables &&
+                                   party.UseConsumablesOnMercenaries;
 
             if (canUseConsumable)
             {
                 Consumable bestItem;
                 int bestIdx;
-                if (PotionSelectionEngine.SelectBattlePotion(heroComponent.Bag,
+                if (PotionSelectionEngine.SelectBattlePotion(party.Bag,
                     targetCurrentHP, targetMaxHP, targetCurrentMP, targetMaxMP,
                     out bestItem, out bestIdx))
                 {
@@ -412,12 +413,12 @@ namespace PitHero.AI
 
         /// <summary>
         /// Finds the ally (hero or mercenary) most in need of healing or MP restoration
-        /// below the given thresholds. Also considers active burst damage flags via heroComponent
+        /// below the given thresholds. Also considers active burst damage flags via the party view
         /// so that a burst-damaged character triggers healing even if HP is above the raw threshold.
         /// Returns true if a target was found.
         /// </summary>
         private static bool GetHealTarget(
-            Hero hero, HeroComponent heroComponent, List<Entity> livingMercenaries,
+            Hero hero, IBattlePartyView party, List<Mercenary> livingMercenaries,
             float hpThreshold, float mpThreshold,
             out object target, out bool isHero, out int currentHP, out int maxHP,
             out int currentMP, out int maxMP)
@@ -435,7 +436,7 @@ namespace PitHero.AI
             {
                 float heroHPPercent = (float)hero.CurrentHP / hero.MaxHP;
                 float heroMPPercent = hero.MaxMP > 0 ? (float)hero.CurrentMP / hero.MaxMP : 1f;
-                bool hpCritical = heroHPPercent < hpThreshold || heroComponent.IsHeroHPCritical();
+                bool hpCritical = heroHPPercent < hpThreshold || party.IsHeroHPCritical();
                 bool mpCritical = heroMPPercent < mpThreshold;
                 float minPercent = System.Math.Min(heroHPPercent, heroMPPercent);
 
@@ -456,15 +457,12 @@ namespace PitHero.AI
             {
                 for (int i = 0; i < livingMercenaries.Count; i++)
                 {
-                    var mercEntity = livingMercenaries[i];
-                    var mercComp = mercEntity.GetComponent<MercenaryComponent>();
-                    if (mercComp == null) continue;
-                    var merc = mercComp.LinkedMercenary;
+                    var merc = livingMercenaries[i];
                     if (merc == null || merc.MaxHP <= 0) continue;
 
                     float mercHPPercent = (float)merc.CurrentHP / merc.MaxHP;
                     float mercMPPercent = merc.MaxMP > 0 ? (float)merc.CurrentMP / merc.MaxMP : 1f;
-                    bool hpCritical = mercHPPercent < hpThreshold || heroComponent.IsMercenaryHPCritical(mercEntity, mercComp);
+                    bool hpCritical = mercHPPercent < hpThreshold || party.IsMercenaryHPCritical(merc);
                     bool mpCritical = mercMPPercent < mpThreshold;
                     float minPercent = System.Math.Min(mercHPPercent, mercMPPercent);
 
@@ -494,7 +492,7 @@ namespace PitHero.AI
         private struct SkillResult
         {
             public ISkill Skill;
-            public Entity TargetEntity;
+            public IEnemy TargetEnemy;
         }
 
         /// <summary>
@@ -516,7 +514,7 @@ namespace PitHero.AI
         /// </summary>
         private static SkillResult FindBestAttackSkill(
             List<ISkill> attackSkills, int currentMP, float mpCostReduction,
-            List<Entity> livingMonsters, bool preferHighMP)
+            List<IEnemy> livingMonsters, bool preferHighMP)
         {
             var result = new SkillResult();
             float bestScore = -1f;
@@ -529,14 +527,11 @@ namespace PitHero.AI
                 if (EffectiveMPCost(skill.MPCost, mpCostReduction) > currentMP) continue;
 
                 // Find best monster target for this skill's element
-                Entity targetEntity = FindBestMonsterTarget(livingMonsters, skill.Element);
-                if (targetEntity == null) continue;
-
-                var enemyComp = targetEntity.GetComponent<EnemyComponent>();
-                if (enemyComp == null) continue;
+                IEnemy targetEnemy = FindBestMonsterTarget(livingMonsters, skill.Element);
+                if (targetEnemy == null) continue;
 
                 float multiplier = ElementalProperties.GetElementalMultiplier(
-                    skill.Element, enemyComp.Enemy.Element);
+                    skill.Element, targetEnemy.Element);
 
                 // Score: elemental advantage weighted heavily, then MP cost
                 float mpFactor = preferHighMP
@@ -548,7 +543,7 @@ namespace PitHero.AI
                 {
                     bestScore = score;
                     result.Skill = skill;
-                    result.TargetEntity = targetEntity;
+                    result.TargetEnemy = targetEnemy;
                 }
             }
 
@@ -561,7 +556,7 @@ namespace PitHero.AI
         /// AoE is only used when multiple enemies exist and the majority are not resistant.
         /// </summary>
         private static SkillResult TryAoESkill(
-            List<ISkill> attackSkills, int currentMP, float mpCostReduction, List<Entity> livingMonsters)
+            List<ISkill> attackSkills, int currentMP, float mpCostReduction, List<IEnemy> livingMonsters)
         {
             var result = new SkillResult();
             if (livingMonsters.Count < 2) return result;
@@ -580,10 +575,8 @@ namespace PitHero.AI
                 int resistCount = 0;
                 for (int m = 0; m < livingMonsters.Count; m++)
                 {
-                    var ec = livingMonsters[m].GetComponent<EnemyComponent>();
-                    if (ec == null) continue;
                     float mult = ElementalProperties.GetElementalMultiplier(
-                        skill.Element, ec.Enemy.Element);
+                        skill.Element, livingMonsters[m].Element);
                     if (mult < 1f) resistCount++;
                 }
 
@@ -602,7 +595,7 @@ namespace PitHero.AI
             {
                 result.Skill = bestAoE;
                 // Target the first monster as a representative
-                result.TargetEntity = livingMonsters[0];
+                result.TargetEnemy = livingMonsters[0];
             }
             return result;
         }
@@ -708,27 +701,23 @@ namespace PitHero.AI
         /// Finds the best monster to target with the given attack element.
         /// Prefers elementally weak targets, then lowest HP as tiebreaker.
         /// </summary>
-        private static Entity FindBestMonsterTarget(List<Entity> livingMonsters, ElementType attackElement)
+        private static IEnemy FindBestMonsterTarget(List<IEnemy> livingMonsters, ElementType attackElement)
         {
             if (livingMonsters == null || livingMonsters.Count == 0) return null;
 
-            Entity bestTarget = null;
+            IEnemy bestTarget = null;
             float bestMultiplier = -1f;
             int lowestHP = int.MaxValue;
 
             for (int i = 0; i < livingMonsters.Count; i++)
             {
-                var entity = livingMonsters[i];
-                var enemyComp = entity.GetComponent<EnemyComponent>();
-                if (enemyComp == null) continue;
-
-                var enemy = enemyComp.Enemy;
+                var enemy = livingMonsters[i];
                 float multiplier = ElementalProperties.GetElementalMultiplier(attackElement, enemy.Element);
 
                 if (multiplier > bestMultiplier ||
                     (multiplier == bestMultiplier && enemy.CurrentHP < lowestHP))
                 {
-                    bestTarget = entity;
+                    bestTarget = enemy;
                     bestMultiplier = multiplier;
                     lowestHP = enemy.CurrentHP;
                 }
@@ -810,7 +799,7 @@ namespace PitHero.AI
         {
             if (skill.Kind != SkillKind.Active) return;
 
-            // Healing skill: restores HP (may also grant buffs — those apply in ApplyHealingSkillEffectsAndDisplay)
+            // Healing skill: restores HP (may also grant buffs — those apply in BattleEngine healing path)
             if (skill.HPRestoreAmount > 0)
             {
                 healSkills.Add(skill);
@@ -844,24 +833,24 @@ namespace PitHero.AI
         // ACTION FACTORY HELPERS
         // ====================================================================
 
-        /// <summary>Creates a physical attack action targeting the given monster entity.</summary>
-        private static BattleAction CreatePhysicalAttack(Entity targetEntity)
+        /// <summary>Creates a physical attack action targeting the given monster (or null for any).</summary>
+        private static BattleAction CreatePhysicalAttack(IEnemy targetEnemy)
         {
             return new BattleAction
             {
                 Kind = BattleAction.ActionKind.PhysicalAttack,
-                TargetEntity = targetEntity
+                TargetEnemy = targetEnemy
             };
         }
 
-        /// <summary>Creates an attack skill action targeting the given monster entity.</summary>
-        private static BattleAction CreateAttackSkillAction(ISkill skill, Entity targetEntity)
+        /// <summary>Creates an attack skill action targeting the given monster.</summary>
+        private static BattleAction CreateAttackSkillAction(ISkill skill, IEnemy targetEnemy)
         {
             return new BattleAction
             {
                 Kind = BattleAction.ActionKind.UseAttackSkill,
                 Skill = skill,
-                TargetEntity = targetEntity
+                TargetEnemy = targetEnemy
             };
         }
 

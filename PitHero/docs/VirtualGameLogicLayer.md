@@ -165,6 +165,59 @@ The virtual game simulation includes comprehensive tests for:
 - ✅ Visual representation rendering
 - ✅ Edge cases and error handling
 
+## Delta Plan — Phase B: Combat + Traps Mirrored (issue #296)
+
+Phase B wires up the headless `BattleEngine` (extracted in Phase A) to the virtual
+exploration loop so that pit traversal is now a complete simulation: monsters are
+fought, traps are triggered or disarmed, and aggregated metrics are exported for
+balance analysis.
+
+### New files added (all in `PitHero.VirtualGame`)
+
+| File | Responsibility |
+|------|---------------|
+| `VirtualBattleAlly.cs` | `IBattleAlly` over a real `Hero` or `Mercenary`; `IsPresent` always true (mirrors `LiveHeroAlly`) |
+| `VirtualBattlePartyView.cs` | `IBattlePartyView` replicating `HeroComponent` burst/critical-HP math using the same `GameConfig` constants |
+| `VirtualBattleSink.cs` | `BattleEventSinkBase` that accumulates `VirtualBattleMetrics` and removes defeated monsters from `VirtualWorldState` in `ShowMonsterDeath` |
+| `VirtualBattleRunner.cs` | Owns `BattleEngine` + `VirtualBattleSink` + a persistent `ActionQueue`; exposes `RunAdjacentBattle()`, `ApplyTrapDamageToHero()`, `PartyHasTrapSense()` |
+| `VirtualBattleMetrics.cs` | Per-battle: rounds, damageDealt/Taken, healing, potions, heroDied, mercDeaths, monstersDefeated, XP/gold |
+| `VirtualRunMetrics.cs` | Per-pit-level aggregate with `WriteCsv(TextWriter)` for balance reporting |
+
+### Key modifications
+
+- **`VirtualWorldState`** — adds `Dictionary<Point, IEnemy>` + reverse map, `HashSet<Point> TrapTiles`, `AddMonster(Point, IEnemy)` overload (auto-routes to `AddBossMonster` when `IsBoss=true`), adjacency query, `HasLivingBoss/Monsters`, trap methods `AddTrapTile / TriggerTrap / DisarmTrap`.  `ClearAllEntities()` clears the new collections.
+
+- **`VirtualPitGenerator`** — boss mapping fixed to live `PitGenerator.cs` (5=StoneGuardian, 10=EarthElemental, 15=AncientWyrm, 20=PitLord, 25=MoltenTitan).  All monsters are created via `EnemyFactory.Create()` as real `IEnemy` instances, then stored through the new `AddMonster(Point, IEnemy)` overload.  Traps spawned per `GameConfig.TrapMin/MaxPerFloor`.
+
+- **`VirtualHero`** — exposes `LinkedHero` and `ConfigureHero(IJob, int, StatBlock)`.  `AreAllMonstersDefeated` now checks `VirtualWorldState.HasLivingMonsters()`.
+
+- **`VirtualHeroController.BossDefeated`** — computed from `!world.HasLivingBoss()` (was hardcoded `true`).
+
+- **`VirtualHeroStateMachine`** — `BattleRunner` property; after each `TeleportTo` in wander/connectivity phases, `HandleTrapAtTile` + `RunAdjacentBattlesIfAny` are called.  A third wander phase sweeps any remaining living monsters (teleport adjacent + battle) before exploration is declared complete, mirroring the live Battle priority.  `ExecuteActivateWizardOrbAction` gates on `!HasLivingBoss()` and navigates to any surviving boss before the gate check.
+
+- **`VirtualGameSimulation`** — `ConfigureHero`, `ConfigureMercenaries`, `RunPitLevel(int)`, `World`, `Metrics` properties. `RunPitLevel` uses `VirtualPitGenerator` to populate real `IEnemy` instances, builds a `VirtualBattleRunner`, runs the state machine, and accumulates battle metrics into `VirtualRunMetrics`.
+
+- **`VirtualGoapContext`** — `BattleRunner { get; set; }` property.
+
+- **`AttackMonsterAction.Execute(IGoapContext)`** — stub replaced: if context is `VirtualGoapContext` with a `BattleRunner`, calls `RunAdjacentBattle()` and logs results; otherwise falls through to the original exploration-only no-op.
+
+### Boss-mapping fix side-effect
+
+`CaveBiomeBalanceTests.CaveBiome_BossEncounters_ValidateAllFiveBosses` expected old wrong display strings.  Updated to MonsterTextKey values matching live mapping.
+
+## Deterministic Seeding (Phase C, issue #296)
+
+- `new VirtualGameSimulation(rngSeed)` calls `Nez.Random.SetSeed(rngSeed)` so **all combat
+  rolls** (turn order, evasion/variance, target picks, crit/deflect) are reproducible.
+  The default constructor captures the ambient `Nez.Random.GetSeed()` instead.
+- The seed is recorded in `VirtualRunMetrics.RngSeed` so every balance report can cite it.
+- Pit **layout** randomness is separate and already deterministic per level
+  (`VirtualPitGenerator`/`VirtualWorldState` use a local `Random(level)`).
+- `VirtualRunMetrics.HpLossPercent` = damage taken ÷ party max-HP pool at level start.
+- `PitHero.Tests/VirtualBalanceTraversalTests.cs` (`[TestCategory("BalanceTraversal")]`)
+  runs a seeded sampled traversal over levels 1/5/10/15/20/25 (all Cave boss floors),
+  prints the per-level CSV table, and pins the same-seed ⇒ identical-CSV contract.
+
 ## Future Enhancements
 
 Potential extensions to the virtual layer:
@@ -177,16 +230,180 @@ Potential extensions to the virtual layer:
 
 This virtual game logic layer provides GitHub Copilot with the exact testing capability requested, enabling independent verification of the complete GOAP workflow without graphics dependencies.
 
+## Delta Plan — Phase C: Chest loot + auto-equip (issue #296 follow-up)
+
+Phase C gives virtual chest positions real `IItem` instances, opens them during
+traversal, adds items to the party bag, and auto-equips gear exactly like the live
+`OpenChestAction` flow.
+
+### New APIs
+
+**`VirtualWorldState`** — Phase C adds a `Dictionary<Point, IItem> _treasureInstances`
+running in parallel with the string-based parity lists
+(`LastGeneratedTreasureLevels` / `LastGeneratedEquipmentTypes`):
+
+| Method | Behaviour |
+|--------|-----------|
+| `AddTreasure(Point, IItem)` | Stores the real item; infers treasure level from rarity (Normal→1, Uncommon→2, Rare→3, Epic→4, Legendary→5); calls the string-based overload for parity-list parity |
+| `TryGetTreasureAt(Point, out IItem)` | Non-destructive lookup |
+| `RemoveTreasure(Point)` | Clears both `_treasureInstances` and the `_entities["Treasures"]` position list |
+| `HasUnopenedTreasures()` | True when any chest remains unvisited |
+| `GetNearestTreasurePosition(Point)` | Manhattan-distance nearest chest |
+
+**`VirtualBattleRunner`** — new chest-loot surface:
+
+| Member | Behaviour |
+|--------|-----------|
+| `AutoEquipHero` (`bool`, default `true`) | Mirrors `HeroComponent.AutoEquipHero` |
+| `AutoEquipMercenaries` (`bool`, default `true`) | Mirrors `HeroComponent.AutoEquipMercenaries` |
+| `TreasuresOpened` (`int`) | Incremented by each `CollectChestItem` call |
+| `GearEquipped` (`int`) | Incremented each time a piece of gear is slotted |
+| `BagCount()` | Returns current `Bag.Count` for test observability |
+| `CollectChestItem(IItem)` | Adds to bag → if gear: `TryAutoEquipOnHero` → per-merc with hand-me-down cascade |
+
+**`VirtualHeroStateMachine`** — new fourth wander phase:
+1. Fog sweep (existing phase 1)
+2. Connectivity sweep (existing phase 2)
+3. Monster sweep (existing phase 3)
+4. **Chest sweep** — teleports to each remaining chest one at a time (one per tick);
+   calls `CollectChestItem` + `RemoveTreasure` on the hero's tile, then
+   `CollectAdjacentTreasures()` for Chebyshev-1 neighbours.
+   Only returns `true` (action complete) once `HasUnopenedTreasures()` is false.
+
+`CollectAdjacentTreasures()` is also called after every `TeleportTo` in the fog,
+connectivity, and monster phases so nearby chests are collected opportunistically.
+
+### Deterministic item generation
+
+`TreasureComponent` gains `internal static` deterministic overloads:
+
+- `GenerateCaveItemForTreasureLevelDeterministic(int treasureLevel, System.Random rng)` — mirrors `GenerateCaveItemForTreasureLevel` but uses `rng.NextDouble()` / `rng.Next()` instead of `Nez.Random`.  Pool-selection switch bodies are shared via private `Get*ItemAtIndex(int)` helpers.
+- `GenerateItemForTreasureLevelDeterministic(int treasureLevel, System.Random rng)` — for non-cave levels (Normal/Mid/Full potions by treasure level).
+
+`VirtualPitGenerator.RegenerateForLevel` now calls these overloads with the per-level
+`new Random(level)` instance, so loot is deterministic per level just like mob spawns.
+
+### Metrics
+
+`VirtualRunMetrics` adds `TreasuresOpened` and `GearEquipped` fields; both are written
+to the CSV export (`treasures,gearEquipped` columns).  `VirtualGameSimulation.RunPitLevel`
+copies them from the runner after the state machine completes.
+
+### Test coverage
+
+Three new tests in `VirtualBattleSimulationTests`:
+
+| Test | Assertion |
+|------|-----------|
+| `ChestAdjacentToHero_WhenCollected_ItemLandsInBag` | Bag grows by 1 after `CollectChestItem`; `TreasuresOpened` = 1 |
+| `GearChestItem_BetterThanHeroSlot_GetsAutoEquipped` | `GearEquipped` = 1; `hero.WeaponShield1` is non-null after auto-equip |
+| `RunPitLevel1_AllChestsCollected_MetricsMatch` | `HasUnopenedTreasures()` false; `metrics.TreasuresOpened == LastGeneratedTreasureLevels.Count` |
+
+## Gold Economy (issue #296 persistent-run phase)
+
+This section documents the spendable-gold layer added in the persistent-run phase, which
+enables realistic multi-level balance runs without re-creating the simulation per level.
+
+### Wallet
+
+`VirtualGameSimulation.Gold` starts at `GameConfig.NewGameStartingGold` (200 gold) — the
+same amount the live game grants via `GameStateService.Funds` on a fresh save
+(`MainGameScene.cs` line ~120).  Override with `ConfigureStartingGold(int)` to mirror a
+mid-game save state.
+
+After each `RunPitLevel` call, `Gold` is credited with the level's total `GoldEarned`
+(summed from `VirtualBattleMetrics.GoldEarned` per battle via
+`VirtualBattleSink.OnEnemyDefeated → enemy.GoldYield`).  The end-of-level balance is
+recorded in `VirtualRunMetrics.Wallet`.
+
+### Inn Rest
+
+`TryInnRest()` mirrors `SleepInBedAction` (lines ~255–500):
+
+| Live action | Virtual mirror |
+|-------------|----------------|
+| `gameState.Funds >= GameConfig.InnCostGold` (10 g) | `Gold >= GameConfig.InnCostGold` |
+| `gameState.Funds -= GameConfig.InnCostGold` | `Gold -= GameConfig.InnCostGold` |
+| `hero.RestoreHP(MaxHP − CurrentHP)` | `hero.RestoreHP(hero.MaxHP)` |
+| `hero.RestoreMP(-1)` (full restore) | `hero.RestoreMP(-1)` |
+| `mercComp.LinkedMercenary.RestoreHP(MaxHP)` | `merc.RestoreHP(merc.MaxHP)` |
+| `mercComp.LinkedMercenary.RestoreMP(maxMP − currentMP)` | `merc.RestoreMP(merc.MaxMP)` |
+| `hero.HealingItemExhausted = false` | `_lastPartyView.HealingItemExhausted = false` |
+| `hero.HealingSkillExhausted = false` | `_lastPartyView.HealingSkillExhausted = false` |
+
+Walking animations and coroutine delay are skipped (virtual: instant).
+
+Returns `false` when `Gold < InnCostGold`, mirroring the live `InnExhausted` flag set in
+`JumpOutOfPitForInnAction.Execute` (line ~103).
+
+### Mercenary Hiring
+
+`TryHireRandomMercenary()` mirrors `MercenaryManager.SpawnMercenary` + `HireMercenary`:
+
+| Live | Virtual |
+|------|---------|
+| `DetermineMercenaryLevel(heroLevel)` using `Nez.Random` | Identical copy in `VirtualMercenaryLevelRoller` |
+| `GetRandomJob()` → 6 jobs, `Nez.Random.Range(0, 6)` | `VirtualMercenaryLevelRoller.GetRandomJob()` (switch, not `Activator.CreateInstance`, for AOT) |
+| `new StatBlock(4, 3, 5, 1)` | Same |
+| `mercenary.LearnAllJobSkills()` | Same |
+| `BalanceConfig.CalculateMercenaryHireCost(mercLevel)` | Same |
+| `MaxHiredMercenaries = 2` | Constant 2 (same value) |
+
+Mercenary names are deterministic (`"Merc1"`, `"Merc2"`, …) instead of random names since
+the virtual layer has no `NameGenerator` dependency.
+
+The `_mercenaries` field (previously `IReadOnlyList`) was changed to `List<Mercenary>` so
+`TryHireRandomMercenary` can append and `RunLevelRange` can prune dead entries.
+
+### `RunLevelRange` Policy
+
+`RunLevelRange(fromLevel, toLevel)` runs a persistent traversal, sharing the same hero,
+merc roster, bag, and wallet across all levels.  Between levels the surface policy is:
+
+1. **Prune dead mercs** — any `Mercenary` with `CurrentHP <= 0` is removed (the
+   `BattleEngine` removes the `IBattleAlly` wrapper in-place; the RPG object's HP lands
+   at 0).
+2. **Hire** — `TryHireRandomMercenary()` until roster has 2 members or gold runs out.
+3. **Inn rest** — `TryInnRest()` when any party member is below full HP or MP.
+
+The number of mercs hired and whether inn rest occurred are written into the **next** level's
+`VirtualRunMetrics.MercsHired` / `VirtualRunMetrics.InnRested` (since they happen before
+that level starts).  Traversal stops early on a wipe; the wipe level's metrics are included.
+
+### New CSV columns
+
+`VirtualRunMetrics.WriteCsvHeader` / `WriteRow` now emit four additional columns:
+
+| Column | Source |
+|--------|--------|
+| `goldEarned` | Sum of `enemy.GoldYield` over all battles on this level |
+| `wallet` | `Gold` balance after crediting `goldEarned` (before next-level spending) |
+| `innRested` | 1 if inn rest was taken before this level (`RunLevelRange` only) |
+| `mercsHired` | Count of mercs hired before this level (`RunLevelRange` only) |
+
+### What is still unmirrored
+
+| Live feature | Gap |
+|--------------|-----|
+| Walking time (hero → tavern → inn) | Skipped; inn/hire is instant in virtual layer |
+| Mercenary walk-to-tavern animation / leave animation | No entity system headlessly |
+| Night sleep (free rest at specific time-of-day) | No `InGameTimeService` headlessly |
+| `SecondChanceMerchantVault` on merc dismissal | Dismissed mercs drop their gear silently |
+| Analytics events (`LogInnSleep`, `LogMercArrived`) | Skipped (no analytics service headlessly) |
+| Tavern seat management / `_occupiedTavernPositions` | Not needed (no entity system) |
+| `DeferredMercenary` (hired while sleeping) | Not applicable in virtual layer |
+
 ## Delta Plan — Unmirrored features
 
-The following game features added after the initial virtual layer implementation have **no virtual mirror** and are not simulated in `VirtualGameSimulation` or `VirtualTiledMapService`:
+All previously listed gaps are now closed:
 
-### Traps (Phase 6)
-- **What exists:** `TrapComponent` spawns hidden trap entities in the pit. They trigger chip damage when the hero steps on them, or are auto-disarmed when revealed by a party member with `TrapSense`.
-- **What is not mirrored:** The virtual layer has no concept of trap entities, trap tile positions, or TrapSense passive resolution during fog clearing.
-- **What would be needed to add virtual coverage:**
-  1. Extend `VirtualWorldState` to track trap tile positions (a `HashSet<Point>` of trap locations).
-  2. Add trap spawning to `VirtualWorldState.RegeneratePit` following `GameConfig.TrapMinPerFloor`/`TrapMaxPerFloor`.
-  3. Add a `CheckTrapSense(VirtualHero hero)` helper called from `VirtualTiledMapService.ClearFogOfWarAroundTile` when fog is removed over a trap tile and any party member has `TrapSense`.
-  4. Add a `TriggerTrap(Point tile, VirtualHero hero)` that reduces `VirtualHero.HP` by the formula `5 + pitLevel * 2` (clamped to 1 HP minimum) for testing the damage path.
-  5. Add tests in `VirtualGameSimulationTests` covering trap triggering and TrapSense disarm.
+- **Combat** — mirrored as of issue #296 Phase B (see "Delta Plan — Phase B" above).
+- **Traps (Phase 6)** — mirrored as of issue #296 Phase B: `VirtualWorldState.TrapTiles`
+  spawned by `VirtualPitGenerator`, `TriggerTrap` chip damage (`5 + pitLevel * 2`,
+  1-HP floor, live `TrapComponent` parity) applied via
+  `VirtualBattleRunner.ApplyTrapDamageToHero`, TrapSense auto-disarm via `DisarmTrap`.
+  Covered by `VirtualBattleSimulationTests`.
+- **Chest loot + auto-equip** — mirrored as of issue #296 Phase C (see above).
+
+New live-layer features should be checked against this document and added here when
+they lack a virtual counterpart.

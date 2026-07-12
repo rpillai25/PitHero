@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using PitHero.AI;
+using RolePlayingFramework.Equipment;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,6 +17,14 @@ namespace PitHero.VirtualGame
         private readonly VirtualWorldState _world;
         private readonly VirtualPathfinder _pathfinder;
         private readonly HashSet<Point> _failedWanderTargets;
+
+        // ── Phase B: optional combat integration ──────────────────────────────────
+        /// <summary>
+        /// When set, the state machine will run headless battles after each hero movement
+        /// step and handle trap logic on every tile the hero lands on.
+        /// Leave null for pure-exploration tests that don't exercise combat.
+        /// </summary>
+        public VirtualBattleRunner BattleRunner { get; set; }
 
         // State machine states
         public enum VirtualActorState
@@ -247,6 +256,11 @@ namespace PitHero.VirtualGame
                     _hero.TeleportTo(target);
                     _world.ClearFogOfWar(target, 2);
                     Console.WriteLine($"[VirtualStateMachine] Wandered to and explored ({target.X},{target.Y})");
+
+                    // Phase B: handle traps, adjacent combat, and adjacent chest collection on each landing
+                    HandleTrapAtTile(target);
+                    RunAdjacentBattlesIfAny();
+                    CollectAdjacentTreasures();
                 }
                 catch (Exception ex)
                 {
@@ -268,6 +282,11 @@ namespace PitHero.VirtualGame
                 {
                     _hero.TeleportTo(target);
                     Console.WriteLine($"[VirtualStateMachine] Connectivity verified for column {target.X}");
+
+                    // Phase B: handle traps, combat, and chest collection during connectivity sweep
+                    HandleTrapAtTile(target);
+                    RunAdjacentBattlesIfAny();
+                    CollectAdjacentTreasures();
                 }
                 catch (Exception ex)
                 {
@@ -278,8 +297,47 @@ namespace PitHero.VirtualGame
                 return false; // Continue connectivity checks
             }
 
-            // Both phases complete
-            Console.WriteLine("[VirtualStateMachine] Wander exploration and connectivity verification complete");
+            // Third phase: sweep any remaining living monsters before declaring exploration
+            // complete (mirrors the live Battle priority — fog clearing can reveal monsters
+            // the hero never landed adjacent to during wandering).
+            if (BattleRunner != null && BattleRunner.HeroAlive && _world.HasLivingMonsters())
+            {
+                var monsterPos = _world.GetNearestLivingMonsterPosition(_hero.Position);
+                if (monsterPos.HasValue)
+                {
+                    _hero.TeleportTo(monsterPos.Value);
+                    Console.WriteLine($"[VirtualStateMachine] Monster sweep: engaging monster at ({monsterPos.Value.X},{monsterPos.Value.Y})");
+                    HandleTrapAtTile(monsterPos.Value);
+                    RunAdjacentBattlesIfAny();
+                    CollectAdjacentTreasures();
+                    return false; // Re-check next tick for further remaining monsters
+                }
+            }
+
+            // Fourth phase: chest sweep — collect any remaining unopened treasures that the
+            // wander/connectivity/monster phases did not reach adjacently.  One chest per
+            // tick mirrors the live OpenChestAction cadence (one action at a time).
+            if (BattleRunner != null && _world.HasUnopenedTreasures())
+            {
+                var chestPos = _world.GetNearestTreasurePosition(_hero.Position);
+                if (chestPos.HasValue)
+                {
+                    _hero.TeleportTo(chestPos.Value);
+                    Console.WriteLine($"[VirtualStateMachine] Chest sweep: collecting chest at ({chestPos.Value.X},{chestPos.Value.Y})");
+                    // Collect the chest at the hero's current tile (direct position, not adjacency).
+                    if (_world.TryGetTreasureAt(chestPos.Value, out IItem directItem))
+                    {
+                        BattleRunner.CollectChestItem(directItem);
+                        _world.RemoveTreasure(chestPos.Value);
+                    }
+                    // Also sweep any additional chests in the 8 surrounding tiles.
+                    CollectAdjacentTreasures();
+                    return false; // Re-check next tick for further remaining chests
+                }
+            }
+
+            // All phases complete
+            Console.WriteLine("[VirtualStateMachine] Wander exploration, connectivity verification, monster sweep, and chest sweep complete");
             return true;
         }
 
@@ -399,6 +457,23 @@ namespace PitHero.VirtualGame
 
         private bool ExecuteActivateWizardOrbAction()
         {
+            // Phase B: boss must be defeated before the orb can be activated.
+            // The wander phase normally triggers boss combat when the hero passes adjacent;
+            // this gate handles the edge case where the fog-clear radius cleared the boss
+            // tile before the hero stepped onto an adjacent tile.
+            if (_world.HasLivingBoss())
+            {
+                Console.WriteLine("[VirtualStateMachine] Cannot activate orb — boss still alive; navigating to boss");
+                Point? bossPos = _world.GetNearestLivingMonsterPosition(_hero.Position);
+                if (bossPos.HasValue)
+                {
+                    // Teleport directly to the boss tile so 8-adjacency check picks it up
+                    _hero.TeleportTo(bossPos.Value);
+                    RunAdjacentBattlesIfAny();
+                }
+                if (_world.HasLivingBoss()) return false; // come back next tick
+            }
+
             if (_world.WizardOrbPosition.HasValue && _hero.Position == _world.WizardOrbPosition.Value)
             {
                 _world.ActivateWizardOrb();
@@ -416,11 +491,89 @@ namespace PitHero.VirtualGame
                 {
                     var target = path.Last();
                     _hero.TeleportTo(target); // Use teleport for action execution
+                    HandleTrapAtTile(target);
+                    RunAdjacentBattlesIfAny();
                     Console.WriteLine($"[VirtualStateMachine] Moving to wizard orb at ({target.X},{target.Y})");
                 }
             }
 
             return false; // Continue until at orb
+        }
+
+        // ── Phase B: combat and trap helpers ──────────────────────────────────────
+
+        /// <summary>
+        /// Checks whether the hero landed on a trap tile and handles it.
+        /// If the party has TrapSense, the trap is disarmed silently.
+        /// Otherwise the trap is triggered and raw damage is applied to the hero
+        /// (clamped by <see cref="VirtualBattleRunner.ApplyTrapDamageToHero"/> so
+        /// the hero always survives with at least 1 HP).
+        /// No-op when <see cref="BattleRunner"/> is null (exploration-only tests).
+        /// </summary>
+        private void HandleTrapAtTile(Point tile)
+        {
+            if (BattleRunner == null) return;
+            if (!_world.TrapTiles.Contains(tile)) return;
+
+            if (BattleRunner.PartyHasTrapSense())
+            {
+                _world.DisarmTrap(tile);
+                Console.WriteLine($"[VirtualStateMachine] TrapSense: disarmed trap at ({tile.X},{tile.Y})");
+            }
+            else
+            {
+                int damage = _world.TriggerTrap(tile);
+                BattleRunner.ApplyTrapDamageToHero(damage);
+                Console.WriteLine($"[VirtualStateMachine] Trap triggered at ({tile.X},{tile.Y}), {damage} damage applied to hero");
+            }
+        }
+
+        /// <summary>
+        /// Collects any unopened chest items in the 8 tiles surrounding the hero's current
+        /// position (Chebyshev distance 1), mirroring the adjacency check used for combat.
+        /// Calls <see cref="VirtualBattleRunner.CollectChestItem"/> and removes each
+        /// collected chest from <see cref="VirtualWorldState"/>.
+        /// No-op when <see cref="BattleRunner"/> is null.
+        /// </summary>
+        private void CollectAdjacentTreasures()
+        {
+            if (BattleRunner == null) return;
+            var heroPos = _hero.Position;
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                for (int dy = -1; dy <= 1; dy++)
+                {
+                    if (dx == 0 && dy == 0) continue; // hero's own tile handled separately in chest sweep
+                    var tile = new Point(heroPos.X + dx, heroPos.Y + dy);
+                    if (_world.TryGetTreasureAt(tile, out IItem item))
+                    {
+                        Console.WriteLine($"[VirtualStateMachine] Collecting adjacent chest at ({tile.X},{tile.Y}): {item.Name}");
+                        BattleRunner.CollectChestItem(item);
+                        _world.RemoveTreasure(tile);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Runs one headless adjacent battle if any living monsters are adjacent to the hero.
+        /// Repeats until no adjacent monsters remain (all battles in one step are resolved).
+        /// No-op when <see cref="BattleRunner"/> is null.
+        /// </summary>
+        private void RunAdjacentBattlesIfAny()
+        {
+            if (BattleRunner == null) return;
+            if (!BattleRunner.HeroAlive) return;
+
+            VirtualBattleMetrics metrics;
+            int safetyLimit = 32; // guard against an infinite loop
+            int count = 0;
+            while ((metrics = BattleRunner.RunAdjacentBattle()) != null && count++ < safetyLimit)
+            {
+                Console.WriteLine($"[VirtualStateMachine] Battle complete: {metrics.MonstersDefeated} defeated, " +
+                                  $"rounds={metrics.Rounds}, heroDied={metrics.HeroDied}");
+                if (!BattleRunner.HeroAlive) break;
+            }
         }
 
         private bool ExecuteJumpOutOfPitForInnAction()
