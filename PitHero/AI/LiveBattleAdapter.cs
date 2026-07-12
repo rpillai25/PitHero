@@ -354,18 +354,8 @@ namespace PitHero.AI
         {
             var entity = GetEntityForAlly(ally);
             if (entity == null) return null;
-            Core.GetGlobalManager<ParticleEffectManager>()?.SpawnEffect(
-                ParticleEffectType.HealPotion, entity, densityScale: GetPotionEffectDensity(consumable));
+            Core.GetGlobalManager<ParticleEffectManager>()?.SpawnPotionHealEffect(consumable, entity);
             return ShowDamageDigitOnEntity(entity, amount, Color.Green);
-        }
-
-        /// <summary>Stronger potions emit denser particles: base potions (100 HP) 1x,
-        /// mid potions (500 HP) 2x, full-restore potions (negative amount) 3x.</summary>
-        private static float GetPotionEffectDensity(RolePlayingFramework.Equipment.Consumable consumable)
-        {
-            if (consumable.HPRestoreAmount < 0) return 3f;
-            if (consumable.HPRestoreAmount >= 500) return 2f;
-            return 1f;
         }
 
         /// <inheritdoc/>

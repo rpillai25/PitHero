@@ -74,6 +74,22 @@ namespace PitHero.Util
         }
 
         /// <summary>
+        /// Spawns the potion-heal effect (rising green particles) on the target, denser
+        /// for stronger potions: base potions 1x, mid potions (500+ HP) 2x, full-restore
+        /// potions (negative amount) 3x. Shared by battle and out-of-battle potion paths.
+        /// </summary>
+        public ParticleEmitter SpawnPotionHealEffect(RolePlayingFramework.Equipment.Consumable consumable, Entity target)
+        {
+            if (consumable == null)
+                return null;
+
+            float densityScale = consumable.HPRestoreAmount < 0 ? 3f
+                : consumable.HPRestoreAmount >= 500 ? 2f
+                : 1f;
+            return SpawnEffect(ParticleEffectType.HealPotion, target, densityScale: densityScale);
+        }
+
+        /// <summary>
         /// Fire-and-forget effect at a world position for effects not tied to an actor
         /// (e.g. dust when jumping into the pit). Creates a throwaway entity that is
         /// destroyed once all particles expire.
