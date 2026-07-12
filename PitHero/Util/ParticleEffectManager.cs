@@ -9,8 +9,12 @@ namespace PitHero.Util
     /// <summary>Particle effects that can be spawned via ParticleEffectManager.</summary>
     public enum ParticleEffectType
     {
-        /// <summary>Green clump spreading outward while fading; plays on heal targets.</summary>
-        Heal
+        /// <summary>Green clump spreading outward while fading; plays on heal-spell targets.</summary>
+        Heal,
+
+        /// <summary>Green particles rising vertically while fading; plays on potion-heal targets.
+        /// Density scales with potion strength via SpawnEffect's densityScale.</summary>
+        HealPotion
     }
 
     /// <summary>
@@ -18,7 +22,8 @@ namespace PitHero.Util
     /// To add a new effect: drop a .pex in Content/Particles, add a ParticleEffectType member,
     /// load it in Init, then call SpawnEffect at the trigger site.
     /// Registry configs are shared instances — never mutate one at spawn time; a per-spawn
-    /// variant needs its own enum member and .pex file.
+    /// variant needs its own enum member and .pex file, or a CloneConfig-based knob like
+    /// SpawnEffect's densityScale.
     /// Only finite-duration configs belong here: a Duration of -1 never fires
     /// OnAllParticlesExpired, so the emitter would never clean itself up.
     /// </summary>
@@ -34,7 +39,8 @@ namespace PitHero.Util
             {
                 _configs = new Dictionary<ParticleEffectType, ParticleEmitterConfig>
                 {
-                    { ParticleEffectType.Heal, content.LoadParticleEmitterConfig("Content/Particles/heal.pex") }
+                    { ParticleEffectType.Heal, content.LoadParticleEmitterConfig("Content/Particles/heal.pex") },
+                    { ParticleEffectType.HealPotion, content.LoadParticleEmitterConfig("Content/Particles/heal_potion.pex") }
                 };
 
                 Initialized = true;
@@ -44,12 +50,21 @@ namespace PitHero.Util
         /// <summary>
         /// Fire-and-forget effect attached to an entity; the emitter removes itself
         /// once all particles expire. Returns null if uninitialized or target is null.
+        /// densityScale multiplies particle count and emission rate (1 = as authored);
+        /// values != 1 spawn from a private clone so the shared registry config stays pristine.
         /// </summary>
         public ParticleEmitter SpawnEffect(ParticleEffectType type, Entity target,
-            int renderLayer = GameConfig.RenderLayerLowest)
+            int renderLayer = GameConfig.RenderLayerLowest, float densityScale = 1f)
         {
             if (_configs == null || target == null || !_configs.TryGetValue(type, out var config))
                 return null;
+
+            if (densityScale != 1f)
+            {
+                config = CloneConfig(config);
+                config.MaxParticles = (uint)(config.MaxParticles * densityScale);
+                config.EmissionRate *= densityScale;
+            }
 
             var emitter = target.AddComponent(new ParticleEmitter(config));
             emitter.SimulateInWorldSpace = true;
@@ -76,6 +91,56 @@ namespace PitHero.Util
             emitter.RenderLayer = renderLayer;
             emitter.OnAllParticlesExpired += DestroyEmitterEntity;
             return emitter;
+        }
+
+        /// <summary>
+        /// Field-by-field copy so per-spawn tweaks never touch the shared registry config.
+        /// The Sprite reference is shared intentionally — clones must never be disposed.
+        /// </summary>
+        private static ParticleEmitterConfig CloneConfig(ParticleEmitterConfig source)
+        {
+            return new ParticleEmitterConfig
+            {
+                Sprite = source.Sprite,
+                SimulateInWorldSpace = source.SimulateInWorldSpace,
+                BlendFuncSource = source.BlendFuncSource,
+                BlendFuncDestination = source.BlendFuncDestination,
+                SourcePosition = source.SourcePosition,
+                SourcePositionVariance = source.SourcePositionVariance,
+                Speed = source.Speed,
+                SpeedVariance = source.SpeedVariance,
+                ParticleLifespan = source.ParticleLifespan,
+                ParticleLifespanVariance = source.ParticleLifespanVariance,
+                Angle = source.Angle,
+                AngleVariance = source.AngleVariance,
+                Gravity = source.Gravity,
+                RadialAcceleration = source.RadialAcceleration,
+                RadialAccelVariance = source.RadialAccelVariance,
+                TangentialAcceleration = source.TangentialAcceleration,
+                TangentialAccelVariance = source.TangentialAccelVariance,
+                StartColor = source.StartColor,
+                StartColorVariance = source.StartColorVariance,
+                FinishColor = source.FinishColor,
+                FinishColorVariance = source.FinishColorVariance,
+                MaxParticles = source.MaxParticles,
+                StartParticleSize = source.StartParticleSize,
+                StartParticleSizeVariance = source.StartParticleSizeVariance,
+                FinishParticleSize = source.FinishParticleSize,
+                FinishParticleSizeVariance = source.FinishParticleSizeVariance,
+                Duration = source.Duration,
+                EmitterType = source.EmitterType,
+                RotationStart = source.RotationStart,
+                RotationStartVariance = source.RotationStartVariance,
+                RotationEnd = source.RotationEnd,
+                RotationEndVariance = source.RotationEndVariance,
+                EmissionRate = source.EmissionRate,
+                MaxRadius = source.MaxRadius,
+                MaxRadiusVariance = source.MaxRadiusVariance,
+                MinRadius = source.MinRadius,
+                MinRadiusVariance = source.MinRadiusVariance,
+                RotatePerSecond = source.RotatePerSecond,
+                RotatePerSecondVariance = source.RotatePerSecondVariance
+            };
         }
 
         private static void RemoveEmitterComponent(ParticleEmitter emitter)

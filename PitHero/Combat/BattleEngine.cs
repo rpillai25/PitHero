@@ -1180,7 +1180,7 @@ namespace PitHero.Combat
                     var targetAlly = FindAllyForTarget(target, targetsHero);
                     if (targetAlly != null)
                     {
-                        var rh = _sink.ShowHealOnAlly(targetAlly, healAmount);
+                        var rh = _sink.ShowItemHealOnAlly(targetAlly, healAmount, consumable);
                         if (rh != null) yield return rh;
                     }
                 }

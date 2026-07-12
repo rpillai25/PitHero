@@ -81,8 +81,13 @@ namespace PitHero.Combat
         /// <summary>Shows a "Crit" label over a monster.</summary>
         IEnumerator ShowCritOnMonster(IEnemy enemy);
 
-        /// <summary>Shows a heal number over an ally.</summary>
+        /// <summary>Shows a heal number over an ally (skill/spell heals).</summary>
         IEnumerator ShowHealOnAlly(IBattleAlly ally, int amount);
+
+        /// <summary>Shows a heal number over an ally for a consumable heal; the consumable
+        /// lets the live sink pick a potion-specific visual (e.g. denser particles for
+        /// stronger potions).</summary>
+        IEnumerator ShowItemHealOnAlly(IBattleAlly ally, int amount, RolePlayingFramework.Equipment.Consumable consumable);
 
         /// <summary>Shows a buff label (e.g. "DEF+1") over an ally.</summary>
         IEnumerator ShowBuffOnAlly(IBattleAlly ally, string label);

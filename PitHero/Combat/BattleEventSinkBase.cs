@@ -63,6 +63,9 @@ namespace PitHero.Combat
         public virtual IEnumerator ShowHealOnAlly(IBattleAlly ally, int amount) { return null; }
 
         /// <inheritdoc/>
+        public virtual IEnumerator ShowItemHealOnAlly(IBattleAlly ally, int amount, RolePlayingFramework.Equipment.Consumable consumable) { return null; }
+
+        /// <inheritdoc/>
         public virtual IEnumerator ShowBuffOnAlly(IBattleAlly ally, string label) { return null; }
 
         /// <inheritdoc/>
