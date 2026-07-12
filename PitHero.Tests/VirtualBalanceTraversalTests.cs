@@ -74,7 +74,11 @@ namespace PitHero.Tests
 
         /// <summary>
         /// Runs all sample levels for both configurations (solo Knight, then
-        /// Knight + Priest + Archer party) and returns the combined CSV report.
+        /// Knight + Priest + Archer party) plus ONE persistent-run simulation
+        /// covering pit levels 1–25 with the gold-economy policy (auto-hire + inn),
+        /// and returns the combined CSV report.
+        /// The persistent block is seeded identically to the others, making all three
+        /// blocks reproducible under the same-seed contract.
         /// </summary>
         private static string RunTraversalCsv(int seed)
         {
@@ -90,8 +94,43 @@ namespace PitHero.Tests
                 VirtualRunMetrics.WriteCsvHeader(writer);
                 for (int i = 0; i < SampleLevels.Length; i++)
                     RunLevel(seed, SampleLevels[i], withParty: true).WriteRow(writer);
+
+                writer.WriteLine("# persistent run: Knight, auto-hire + inn");
+                VirtualRunMetrics.WriteCsvHeader(writer);
+                var persistent = RunPersistentRange(seed);
+                for (int i = 0; i < persistent.Count; i++)
+                    persistent[i].WriteRow(writer);
             }
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// Runs a persistent pit-1-to-25 traversal with a fresh level-1 crystal-equipped
+        /// Knight using the live starting gold and gold-economy policy (auto-hire + inn).
+        /// Level-ups accumulate naturally from battle XP exactly as in live play.
+        /// </summary>
+        private static List<VirtualRunMetrics> RunPersistentRange(int seed)
+        {
+            var sim = new VirtualGameSimulation(seed);
+
+            // Mirror live new-game setup: crystal with all JP, full Knight skill kit
+            var crystal = new HeroCrystal("RefCrystal", new Knight(), 1, new StatBlock(10, 8, 10, 4));
+            crystal.EarnJP(1_000_000);
+            sim.ConfigureHero(new Knight(), 1, new StatBlock(10, 8, 10, 4), crystal);
+
+            var hero     = sim.Hero.LinkedHero;
+            var jobSkills = hero.Job.Skills;
+            for (int i = 0; i < jobSkills.Count; i++)
+                hero.TryPurchaseSkill(jobSkills[i]);
+
+            // Live new game grants 5 HP Potions (GameConfig.NewGameStartingHPPotions)
+            for (int i = 0; i < 5; i++)
+                sim.Bag.TryAdd(PotionItems.HPPotion());
+
+            // Gold wallet defaults to GameConfig.NewGameStartingGold (200) — no override needed.
+            // No ConfigureMercenaries call: roster starts empty; RunLevelRange hires on demand.
+
+            return sim.RunLevelRange(1, 25);
         }
 
         /// <summary>
@@ -138,6 +177,13 @@ namespace PitHero.Tests
                     $"Pit {pitLevel} (party): allies must deal damage in real combat");
             }
 
+            // ── Persistent run block: level-1 Knight with gold economy, pit 1-25 ──
+            writer.WriteLine("# persistent run: Knight, auto-hire + inn");
+            VirtualRunMetrics.WriteCsvHeader(writer);
+            var persistent = RunPersistentRange(Seed);
+            for (int i = 0; i < persistent.Count; i++)
+                persistent[i].WriteRow(writer);
+
             // The balance-report tables — visible in test output for the pit-balance-test skill
             System.Console.WriteLine(sb.ToString());
 
@@ -146,6 +192,24 @@ namespace PitHero.Tests
                 "A level-appropriate solo Knight must clear pit level 1");
             Assert.IsFalse(RunLevel(Seed, 1, withParty: true).Wiped,
                 "A level-appropriate party must clear pit level 1");
+
+            // Persistent-run sanity: at least 1 level traversed; if hero survived all 25, all rows present
+            Assert.IsTrue(persistent.Count >= 1,
+                "Persistent run must traverse at least 1 level");
+            var lastPersistent = persistent[persistent.Count - 1];
+            if (!lastPersistent.Wiped)
+            {
+                Assert.AreEqual(25, persistent.Count,
+                    "If the persistent-run hero was not wiped, all 25 level rows must be present");
+            }
+
+            // Every traversed level must actually be played: battles fought on each level
+            // (guards against per-level GOAP flags leaking across levels and skipping levels).
+            for (int i = 0; i < persistent.Count; i++)
+            {
+                Assert.IsTrue(persistent[i].BattleCount > 0,
+                    $"Persistent run pit {persistent[i].PitLevel}: must fight at least one battle");
+            }
         }
 
         /// <summary>

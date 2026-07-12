@@ -299,6 +299,100 @@ Three new tests in `VirtualBattleSimulationTests`:
 | `GearChestItem_BetterThanHeroSlot_GetsAutoEquipped` | `GearEquipped` = 1; `hero.WeaponShield1` is non-null after auto-equip |
 | `RunPitLevel1_AllChestsCollected_MetricsMatch` | `HasUnopenedTreasures()` false; `metrics.TreasuresOpened == LastGeneratedTreasureLevels.Count` |
 
+## Gold Economy (issue #296 persistent-run phase)
+
+This section documents the spendable-gold layer added in the persistent-run phase, which
+enables realistic multi-level balance runs without re-creating the simulation per level.
+
+### Wallet
+
+`VirtualGameSimulation.Gold` starts at `GameConfig.NewGameStartingGold` (200 gold) — the
+same amount the live game grants via `GameStateService.Funds` on a fresh save
+(`MainGameScene.cs` line ~120).  Override with `ConfigureStartingGold(int)` to mirror a
+mid-game save state.
+
+After each `RunPitLevel` call, `Gold` is credited with the level's total `GoldEarned`
+(summed from `VirtualBattleMetrics.GoldEarned` per battle via
+`VirtualBattleSink.OnEnemyDefeated → enemy.GoldYield`).  The end-of-level balance is
+recorded in `VirtualRunMetrics.Wallet`.
+
+### Inn Rest
+
+`TryInnRest()` mirrors `SleepInBedAction` (lines ~255–500):
+
+| Live action | Virtual mirror |
+|-------------|----------------|
+| `gameState.Funds >= GameConfig.InnCostGold` (10 g) | `Gold >= GameConfig.InnCostGold` |
+| `gameState.Funds -= GameConfig.InnCostGold` | `Gold -= GameConfig.InnCostGold` |
+| `hero.RestoreHP(MaxHP − CurrentHP)` | `hero.RestoreHP(hero.MaxHP)` |
+| `hero.RestoreMP(-1)` (full restore) | `hero.RestoreMP(-1)` |
+| `mercComp.LinkedMercenary.RestoreHP(MaxHP)` | `merc.RestoreHP(merc.MaxHP)` |
+| `mercComp.LinkedMercenary.RestoreMP(maxMP − currentMP)` | `merc.RestoreMP(merc.MaxMP)` |
+| `hero.HealingItemExhausted = false` | `_lastPartyView.HealingItemExhausted = false` |
+| `hero.HealingSkillExhausted = false` | `_lastPartyView.HealingSkillExhausted = false` |
+
+Walking animations and coroutine delay are skipped (virtual: instant).
+
+Returns `false` when `Gold < InnCostGold`, mirroring the live `InnExhausted` flag set in
+`JumpOutOfPitForInnAction.Execute` (line ~103).
+
+### Mercenary Hiring
+
+`TryHireRandomMercenary()` mirrors `MercenaryManager.SpawnMercenary` + `HireMercenary`:
+
+| Live | Virtual |
+|------|---------|
+| `DetermineMercenaryLevel(heroLevel)` using `Nez.Random` | Identical copy in `VirtualMercenaryLevelRoller` |
+| `GetRandomJob()` → 6 jobs, `Nez.Random.Range(0, 6)` | `VirtualMercenaryLevelRoller.GetRandomJob()` (switch, not `Activator.CreateInstance`, for AOT) |
+| `new StatBlock(4, 3, 5, 1)` | Same |
+| `mercenary.LearnAllJobSkills()` | Same |
+| `BalanceConfig.CalculateMercenaryHireCost(mercLevel)` | Same |
+| `MaxHiredMercenaries = 2` | Constant 2 (same value) |
+
+Mercenary names are deterministic (`"Merc1"`, `"Merc2"`, …) instead of random names since
+the virtual layer has no `NameGenerator` dependency.
+
+The `_mercenaries` field (previously `IReadOnlyList`) was changed to `List<Mercenary>` so
+`TryHireRandomMercenary` can append and `RunLevelRange` can prune dead entries.
+
+### `RunLevelRange` Policy
+
+`RunLevelRange(fromLevel, toLevel)` runs a persistent traversal, sharing the same hero,
+merc roster, bag, and wallet across all levels.  Between levels the surface policy is:
+
+1. **Prune dead mercs** — any `Mercenary` with `CurrentHP <= 0` is removed (the
+   `BattleEngine` removes the `IBattleAlly` wrapper in-place; the RPG object's HP lands
+   at 0).
+2. **Hire** — `TryHireRandomMercenary()` until roster has 2 members or gold runs out.
+3. **Inn rest** — `TryInnRest()` when any party member is below full HP or MP.
+
+The number of mercs hired and whether inn rest occurred are written into the **next** level's
+`VirtualRunMetrics.MercsHired` / `VirtualRunMetrics.InnRested` (since they happen before
+that level starts).  Traversal stops early on a wipe; the wipe level's metrics are included.
+
+### New CSV columns
+
+`VirtualRunMetrics.WriteCsvHeader` / `WriteRow` now emit four additional columns:
+
+| Column | Source |
+|--------|--------|
+| `goldEarned` | Sum of `enemy.GoldYield` over all battles on this level |
+| `wallet` | `Gold` balance after crediting `goldEarned` (before next-level spending) |
+| `innRested` | 1 if inn rest was taken before this level (`RunLevelRange` only) |
+| `mercsHired` | Count of mercs hired before this level (`RunLevelRange` only) |
+
+### What is still unmirrored
+
+| Live feature | Gap |
+|--------------|-----|
+| Walking time (hero → tavern → inn) | Skipped; inn/hire is instant in virtual layer |
+| Mercenary walk-to-tavern animation / leave animation | No entity system headlessly |
+| Night sleep (free rest at specific time-of-day) | No `InGameTimeService` headlessly |
+| `SecondChanceMerchantVault` on merc dismissal | Dismissed mercs drop their gear silently |
+| Analytics events (`LogInnSleep`, `LogMercArrived`) | Skipped (no analytics service headlessly) |
+| Tavern seat management / `_occupiedTavernPositions` | Not needed (no entity system) |
+| `DeferredMercenary` (hired while sleeping) | Not applicable in virtual layer |
+
 ## Delta Plan — Unmirrored features
 
 All previously listed gaps are now closed:

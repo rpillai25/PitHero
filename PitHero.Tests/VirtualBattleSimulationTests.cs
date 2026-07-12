@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Xna.Framework;
+using PitHero;
 using PitHero.AI;
 using PitHero.Config;
 using PitHero.ECS.Components;
@@ -315,6 +316,188 @@ namespace PitHero.Tests
                 "GearEquipped should be 1 — sword fits the empty weapon slot");
             Assert.IsNotNull(hero.WeaponShield1 as IGear,
                 "Hero weapon slot should now be filled after auto-equip");
+        }
+
+        // ── Gold economy tests (issue #296 persistent-run phase) ─────────────────
+
+        // ── Test 10: TryInnRest restores HP/MP and deducts gold ──────────────────
+
+        /// <summary>
+        /// TryInnRest with sufficient gold: hero and merc are restored to full HP/MP,
+        /// gold is deducted by GameConfig.InnCostGold (10). TryInnRest returns false
+        /// when the wallet is empty (no restore happens).
+        /// </summary>
+        [TestMethod]
+        public void TryInnRest_WithSufficientGold_RestoresPartyAndDeductsGold()
+        {
+            var sim = new VirtualGameSimulation(rngSeed: 11111);
+            sim.ConfigureHero(new Knight(), level: 5, new StatBlock(10, 8, 10, 4));
+
+            var hero = sim.Hero.LinkedHero;
+
+            // Attach a merc
+            var merc = new Mercenary("TestMerc", new Priest(), level: 5,
+                                     new StatBlock(6, 8, 8, 10));
+            merc.LearnAllJobSkills();
+            sim.ConfigureMercenaries(new List<Mercenary> { merc });
+
+            // Damage hero and drain some MP
+            hero.TakeDamage(5);
+            hero.SetCurrentMP(0);
+
+            // Damage merc
+            merc.TakeDamage(3);
+
+            int heroHPBefore   = hero.CurrentHP;
+            int heroMPBefore   = hero.CurrentMP;
+            int mercHPBefore   = merc.CurrentHP;
+            int goldBefore     = sim.Gold;
+
+            Assert.IsTrue(heroHPBefore < hero.MaxHP,  "Hero HP should be below max before inn rest");
+            Assert.IsTrue(heroMPBefore < hero.MaxMP,  "Hero MP should be below max before inn rest");
+            Assert.IsTrue(mercHPBefore < merc.MaxHP,  "Merc HP should be below max before inn rest");
+            Assert.IsTrue(goldBefore   >= GameConfig.InnCostGold, "Should have enough gold to rest");
+
+            bool result = sim.TryInnRest();
+
+            Assert.IsTrue(result, "TryInnRest must return true when gold is sufficient");
+            Assert.AreEqual(hero.MaxHP, hero.CurrentHP, "Hero HP must be fully restored");
+            Assert.AreEqual(hero.MaxMP, hero.CurrentMP, "Hero MP must be fully restored");
+            Assert.AreEqual(merc.MaxHP, merc.CurrentHP, "Merc HP must be fully restored");
+            Assert.AreEqual(goldBefore - GameConfig.InnCostGold, sim.Gold,
+                "Gold must be reduced by InnCostGold (10)");
+        }
+
+        /// <summary>
+        /// TryInnRest returns false when gold is insufficient and does not modify HP/MP.
+        /// </summary>
+        [TestMethod]
+        public void TryInnRest_WithInsufficientGold_ReturnsFalseAndLeavesPartyUnchanged()
+        {
+            var sim = new VirtualGameSimulation(rngSeed: 22222);
+            sim.ConfigureHero(new Knight(), level: 5, new StatBlock(10, 8, 10, 4));
+            sim.ConfigureStartingGold(0); // Empty wallet
+
+            var hero = sim.Hero.LinkedHero;
+            hero.TakeDamage(5);
+            int hpBefore = hero.CurrentHP;
+
+            bool result = sim.TryInnRest();
+
+            Assert.IsFalse(result, "TryInnRest must return false when gold < InnCostGold");
+            Assert.AreEqual(hpBefore, hero.CurrentHP, "Hero HP must be unchanged when inn rest fails");
+            Assert.AreEqual(0, sim.Gold, "Wallet must remain at 0 when inn rest fails");
+        }
+
+        // ── Test 11: TryHireRandomMercenary ──────────────────────────────────────
+
+        /// <summary>
+        /// TryHireRandomMercenary with sufficient gold and a non-full roster:
+        /// roster grows, gold deducted by the live formula, hired merc knows its job skills.
+        /// Returns null when roster is full (2 mercs) or gold is insufficient.
+        /// </summary>
+        [TestMethod]
+        public void TryHireRandomMercenary_WithSufficientGold_AddsToRoster()
+        {
+            // Use a fixed seed so rolled levels are deterministic.
+            // Set a large starting gold (10 000) so any possible rolled level is affordable,
+            // making the test independent of the exact rolled level.
+            var sim = new VirtualGameSimulation(rngSeed: 33333);
+            sim.ConfigureHero(new Knight(), level: 10, new StatBlock(12, 10, 12, 5));
+            sim.ConfigureStartingGold(10_000);
+
+            int goldBefore = sim.Gold;
+
+            // First hire — must succeed with ample gold
+            var merc1 = sim.TryHireRandomMercenary();
+            Assert.IsNotNull(merc1, "First hire should succeed with 10 000 gold");
+
+            // Verify hire cost was deducted by the correct live formula
+            int cost1 = BalanceConfig.CalculateMercenaryHireCost(merc1.Level);
+            Assert.AreEqual(goldBefore - cost1, sim.Gold,
+                "Gold must be reduced by the calculated hire cost");
+
+            // Hired merc should have job skills (LearnAllJobSkills was called)
+            Assert.IsTrue(merc1.LearnedSkills.Count > 0,
+                "Hired merc must know its job skills");
+
+            // Second hire
+            var merc2 = sim.TryHireRandomMercenary();
+            Assert.IsNotNull(merc2, "Second hire should succeed with ample gold");
+
+            // Roster is now full (2) — third hire must be refused
+            var merc3 = sim.TryHireRandomMercenary();
+            Assert.IsNull(merc3, "TryHireRandomMercenary must return null when roster is full (2)");
+        }
+
+        /// <summary>
+        /// TryHireRandomMercenary returns null when the wallet is insufficient for any hire.
+        /// </summary>
+        [TestMethod]
+        public void TryHireRandomMercenary_WithInsufficientGold_ReturnsNull()
+        {
+            var sim = new VirtualGameSimulation(rngSeed: 44444);
+            sim.ConfigureHero(new Knight(), level: 1, new StatBlock(10, 8, 10, 4));
+            sim.ConfigureStartingGold(0); // Empty wallet
+
+            var merc = sim.TryHireRandomMercenary();
+
+            Assert.IsNull(merc, "TryHireRandomMercenary must return null when wallet is empty");
+            Assert.AreEqual(0, sim.Gold, "Wallet must remain 0 after failed hire");
+        }
+
+        // ── Test 12: RunLevelRange wallet evolution and hire policy ───────────────
+
+        /// <summary>
+        /// RunLevelRange(1, 5) with a configured hero and live starting gold:
+        /// produces one metrics entry per level attempted, wallet evolves, and at least
+        /// one level has MercsHired &gt; 0 (starting gold 200 &gt; 50 cost per level-1 merc).
+        /// </summary>
+        [TestMethod]
+        public void RunLevelRange_1to5_WalletEvolvesAndHiresOccur()
+        {
+            const int seed = 55555;
+            var sim = new VirtualGameSimulation(seed);
+
+            // A reasonably strong level-5 hero so wipe on pit 1 is unlikely
+            sim.ConfigureHero(new Knight(), level: 5, new StatBlock(14, 10, 14, 5));
+            for (int i = 0; i < 5; i++)
+                sim.Bag.TryAdd(PotionItems.HPPotion());
+
+            // Default live starting gold (200) — no ConfigureStartingGold call needed
+            // Start with empty merc roster (no ConfigureMercenaries call)
+
+            var results = sim.RunLevelRange(1, 5);
+
+            // At least one level entry must be returned
+            Assert.IsTrue(results.Count >= 1,
+                "RunLevelRange must return at least one metrics entry");
+
+            // First entry must be for pit level 1 with zero between-level actions
+            Assert.AreEqual(1, results[0].PitLevel,
+                "First metrics entry must be for pit level 1");
+            Assert.AreEqual(0, results[0].MercsHired,
+                "First level has no between-level transition, so MercsHired must be 0");
+            Assert.IsFalse(results[0].InnRested,
+                "First level has no between-level transition, so InnRested must be false");
+
+            // Wallet must not go negative
+            for (int i = 0; i < results.Count; i++)
+                Assert.IsTrue(results[i].Wallet >= 0, $"Wallet must not go negative at level {results[i].PitLevel}");
+
+            // With starting gold 200 and a level-5 hero (merc level likely low, cost ~50-75),
+            // at least one transition should trigger a hire
+            bool anyHires = false;
+            for (int i = 0; i < results.Count; i++)
+            {
+                if (results[i].MercsHired > 0)
+                {
+                    anyHires = true;
+                    break;
+                }
+            }
+            Assert.IsTrue(anyHires,
+                "Starting with 200 gold and a low-level merc cost (~50), at least one hire must occur");
         }
 
         // ── Test 9: Full RunPitLevel opens all generated chests ───────────────────

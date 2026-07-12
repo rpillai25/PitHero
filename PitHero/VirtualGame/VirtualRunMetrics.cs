@@ -48,6 +48,28 @@ namespace PitHero.VirtualGame
         /// <summary>Total gear pieces auto-equipped (hero or mercenaries) on this pit level.</summary>
         public int GearEquipped;
 
+        /// <summary>Total gold earned from defeated monsters on this pit level.</summary>
+        public int GoldEarned;
+
+        /// <summary>
+        /// Gold wallet balance at the end of this pit level, after crediting <see cref="GoldEarned"/>.
+        /// In a <see cref="VirtualGameSimulation.RunLevelRange"/> run, between-level spending
+        /// (inn rest, mercenary hire) reduces the wallet before the <em>next</em> level's entry.
+        /// </summary>
+        public int Wallet;
+
+        /// <summary>
+        /// True when the party rested at the inn immediately before entering this pit level.
+        /// Only meaningful in a <see cref="VirtualGameSimulation.RunLevelRange"/> run.
+        /// </summary>
+        public bool InnRested;
+
+        /// <summary>
+        /// Number of mercenaries hired before entering this pit level.
+        /// Only meaningful in a <see cref="VirtualGameSimulation.RunLevelRange"/> run.
+        /// </summary>
+        public int MercsHired;
+
         // ── Run summary fields (populated once per simulation run) ──────────────────
 
         /// <summary>RNG seed used for this run (placeholder for Phase C).</summary>
@@ -77,6 +99,7 @@ namespace PitHero.VirtualGame
             HealingConsumed += battle.HealingDone;
             PartyDeaths    += battle.MercDeaths;
             if (battle.HeroDied) PartyDeaths++;
+            GoldEarned     += battle.GoldEarned;
         }
 
         // ── CSV output ─────────────────────────────────────────────────────────────
@@ -87,7 +110,7 @@ namespace PitHero.VirtualGame
         /// </summary>
         public static void WriteCsvHeader(TextWriter writer)
         {
-            writer.WriteLine("pitLevel,battles,rounds,dmgDealt,dmgTaken,hpLossPct,healing,deaths,wiped,treasures,gearEquipped");
+            writer.WriteLine("pitLevel,battles,rounds,dmgDealt,dmgTaken,hpLossPct,healing,deaths,wiped,treasures,gearEquipped,goldEarned,wallet,innRested,mercsHired");
         }
 
         /// <summary>
@@ -98,7 +121,7 @@ namespace PitHero.VirtualGame
             writer.WriteLine(
                 $"{PitLevel},{BattleCount},{TotalRounds},{DamageDealt},{DamageTaken}," +
                 $"{HpLossPercent:F4},{HealingConsumed},{PartyDeaths},{(Wiped ? 1 : 0)}," +
-                $"{TreasuresOpened},{GearEquipped}");
+                $"{TreasuresOpened},{GearEquipped},{GoldEarned},{Wallet},{(InnRested ? 1 : 0)},{MercsHired}");
         }
 
         /// <summary>
