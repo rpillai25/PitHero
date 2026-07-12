@@ -31,11 +31,12 @@ namespace PitHero.Tests
             var totalStats = hero.GetTotalStats();
             var expectedAttack = totalStats.Strength + hero.GetEquipmentAttackBonus();
             var expectedDefense = totalStats.Agility / 2 + hero.GetEquipmentDefenseBonus();
-            var expectedEvasion = System.Math.Min(255, totalStats.Agility * 2 + hero.Level);
+            var expectedEvasion = System.Math.Min(255, totalStats.Agility * 2 + hero.Level / 2);
 
             Assert.AreEqual(expectedAttack, battleStats.Attack, "Hero Attack calculation is incorrect");
             Assert.AreEqual(expectedDefense, battleStats.Defense, "Hero Defense calculation is incorrect");
             Assert.AreEqual(expectedEvasion, battleStats.Evasion, "Hero Evasion calculation is incorrect");
+            Assert.AreEqual(expectedEvasion, battleStats.Accuracy, "Hero Accuracy should equal base evasion (no gear/buff bonuses)");
         }
 
         /// <summary>Tests that BattleStats are calculated correctly for monsters</summary>
@@ -52,11 +53,12 @@ namespace PitHero.Tests
             // Assert
             var expectedAttack = slime.Stats.Strength;
             var expectedDefense = slime.Stats.Agility / 2;
-            var expectedEvasion = System.Math.Min(255, slime.Stats.Agility * 2 + slime.Level);
+            var expectedEvasion = System.Math.Min(255, slime.Stats.Agility * 2 + slime.Level / 2);
 
             Assert.AreEqual(expectedAttack, battleStats.Attack, "Monster Attack calculation is incorrect");
             Assert.AreEqual(expectedDefense, battleStats.Defense, "Monster Defense calculation is incorrect");
             Assert.AreEqual(expectedEvasion, battleStats.Evasion, "Monster Evasion calculation is incorrect");
+            Assert.AreEqual(expectedEvasion, battleStats.Accuracy, "Monster Accuracy should equal base evasion");
         }
 
         /// <summary>Tests the new damage calculation formula</summary>
@@ -82,34 +84,34 @@ namespace PitHero.Tests
             Assert.AreEqual(1, damage3, "Minimum damage should be 1");
         }
 
-        /// <summary>Tests the evasion calculation with different evasion values</summary>
+        /// <summary>Tests the dodge roll with different effective dodge chances</summary>
         [TestMethod]
         [TestCategory("Combat")]
-        public void EnhancedAttackResolver_CalculateEvasion_ReturnsExpectedProbabilities()
+        public void EnhancedAttackResolver_RollDodge_ReturnsExpectedProbabilities()
         {
             // Arrange
             var resolver = new EnhancedAttackResolver();
             const int trials = 1000;
 
-            // Test with high evasion (should evade most attacks)
+            // Test with high dodge chance (should evade most attacks)
             int evadeCount = 0;
             for (int i = 0; i < trials; i++)
             {
-                if (resolver.CalculateEvasion(200)) // High evasion
+                if (resolver.RollDodge(200)) // High dodge chance (~78%)
                     evadeCount++;
             }
             double evadeRate = (double)evadeCount / trials;
-            Assert.IsTrue(evadeRate > 0.6, $"High evasion should result in >60% evasion rate, got {evadeRate:P}");
+            Assert.IsTrue(evadeRate > 0.6, $"High dodge chance should result in >60% evasion rate, got {evadeRate:P}");
 
-            // Test with low evasion (should evade few attacks)
+            // Test with low dodge chance (should evade few attacks)
             evadeCount = 0;
             for (int i = 0; i < trials; i++)
             {
-                if (resolver.CalculateEvasion(50)) // Low evasion
+                if (resolver.RollDodge(50)) // Low dodge chance (~20%)
                     evadeCount++;
             }
             evadeRate = (double)evadeCount / trials;
-            Assert.IsTrue(evadeRate < 0.4, $"Low evasion should result in <40% evasion rate, got {evadeRate:P}");
+            Assert.IsTrue(evadeRate < 0.4, $"Low dodge chance should result in <40% evasion rate, got {evadeRate:P}");
         }
 
         /// <summary>Tests that enhanced attack resolver correctly handles hits and misses</summary>
@@ -117,10 +119,10 @@ namespace PitHero.Tests
         [TestCategory("Combat")]
         public void EnhancedAttackResolver_Resolve_HandlesHitsAndMisses()
         {
-            // Arrange
+            // Arrange — dodge chance = clamp(13 + 200 − 50) = 163 (~64%): both outcomes frequent
             var resolver = new EnhancedAttackResolver();
-            var attackerStats = new BattleStats(attack: 20, defense: 10, evasion: 50);
-            var defenderStats = new BattleStats(attack: 15, defense: 8, evasion: 200); // High evasion
+            var attackerStats = new BattleStats(attack: 20, defense: 10, evasion: 50, accuracy: 50);
+            var defenderStats = new BattleStats(attack: 15, defense: 8, evasion: 200, accuracy: 200); // High evasion
 
             // Act - Try multiple attacks to test both hits and misses
             int hitCount = 0;
@@ -146,6 +148,23 @@ namespace PitHero.Tests
             Assert.IsTrue(hitCount > 0, "Should have some hits");
             Assert.IsTrue(missCount > 0, "Should have some misses with high evasion");
             Assert.AreEqual(trials, hitCount + missCount, "Total results should equal trials");
+        }
+
+        /// <summary>Magical attacks bypass physical evasion entirely — even a max-evasion defender is always hit</summary>
+        [TestMethod]
+        [TestCategory("Combat")]
+        public void EnhancedAttackResolver_MagicalAttack_BypassesEvasion()
+        {
+            var resolver = new EnhancedAttackResolver();
+            var attackerStats = new BattleStats(attack: 20, defense: 10, evasion: 0, accuracy: 0);
+            var defenderStats = new BattleStats(attack: 15, defense: 8, evasion: 255, accuracy: 255);
+
+            for (int i = 0; i < 100; i++)
+            {
+                var result = resolver.Resolve(attackerStats, defenderStats, DamageKind.Magical);
+                Assert.IsTrue(result.Hit, "Magical attacks must never be dodged by physical evasion");
+                Assert.IsTrue(result.Damage > 0, "Magical hits must deal positive damage");
+            }
         }
 
         /// <summary>Tests backwards compatibility with legacy attack resolver interface</summary>
@@ -180,12 +199,14 @@ namespace PitHero.Tests
         public void EnhancedAttackResolver_WithElementalAdvantage_DealsBonusDamage()
         {
             var resolver = new EnhancedAttackResolver();
-            var attackerStats = new BattleStats(attack: 20, defense: 10, evasion: 0);
-            var defenderStats = new BattleStats(attack: 15, defense: 10, evasion: 0);
+            var attackerStats = new BattleStats(attack: 20, defense: 10, evasion: 0, accuracy: 0);
+            var defenderStats = new BattleStats(attack: 15, defense: 10, evasion: 0, accuracy: 0);
             var defenderProps = new ElementalProperties(ElementType.Water);
-            
-            // Fire vs Water should deal 2x damage (Fire opposes Water)
-            var result = resolver.Resolve(attackerStats, defenderStats, DamageKind.Physical, 
+
+            // Fire vs Water should deal 2x damage (Fire opposes Water).
+            // Magical kind bypasses the dodge roll (physical has a 5% whiff floor),
+            // keeping this damage-math assertion deterministic.
+            var result = resolver.Resolve(attackerStats, defenderStats, DamageKind.Magical,
                 ElementType.Fire, defenderProps);
             
             int baseDamage = 20 * 2 - 10; // 30 base damage
@@ -203,12 +224,13 @@ namespace PitHero.Tests
         public void EnhancedAttackResolver_WithElementalDisadvantage_DealsReducedDamage()
         {
             var resolver = new EnhancedAttackResolver();
-            var attackerStats = new BattleStats(attack: 20, defense: 10, evasion: 0);
-            var defenderStats = new BattleStats(attack: 15, defense: 10, evasion: 0);
+            var attackerStats = new BattleStats(attack: 20, defense: 10, evasion: 0, accuracy: 0);
+            var defenderStats = new BattleStats(attack: 15, defense: 10, evasion: 0, accuracy: 0);
             var defenderProps = new ElementalProperties(ElementType.Fire);
-            
-            // Fire vs Fire should deal 0.5x damage (same element = resistance)
-            var result = resolver.Resolve(attackerStats, defenderStats, DamageKind.Physical, 
+
+            // Fire vs Fire should deal 0.5x damage (same element = resistance).
+            // Magical kind bypasses the dodge roll — deterministic hit for the damage assertion.
+            var result = resolver.Resolve(attackerStats, defenderStats, DamageKind.Magical,
                 ElementType.Fire, defenderProps);
             
             int baseDamage = 20 * 2 - 10; // 30 base damage
@@ -226,12 +248,13 @@ namespace PitHero.Tests
         public void EnhancedAttackResolver_WithNeutralElement_DealsNormalDamage()
         {
             var resolver = new EnhancedAttackResolver();
-            var attackerStats = new BattleStats(attack: 20, defense: 10, evasion: 0);
-            var defenderStats = new BattleStats(attack: 15, defense: 10, evasion: 0);
+            var attackerStats = new BattleStats(attack: 20, defense: 10, evasion: 0, accuracy: 0);
+            var defenderStats = new BattleStats(attack: 15, defense: 10, evasion: 0, accuracy: 0);
             var defenderProps = new ElementalProperties(ElementType.Fire);
 
-            // Neutral vs Fire should deal 1.0x damage (no relationship)
-            var result = resolver.Resolve(attackerStats, defenderStats, DamageKind.Physical,
+            // Neutral vs Fire should deal 1.0x damage (no relationship).
+            // Magical kind bypasses the dodge roll — deterministic hit for the damage assertion.
+            var result = resolver.Resolve(attackerStats, defenderStats, DamageKind.Magical,
                 ElementType.Neutral, defenderProps);
 
             int baseDamage = 20 * 2 - 10; // 30 base damage

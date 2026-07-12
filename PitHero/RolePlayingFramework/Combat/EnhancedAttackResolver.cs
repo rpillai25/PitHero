@@ -11,11 +11,15 @@ namespace RolePlayingFramework.Combat
     /// </remarks>
     public sealed class EnhancedAttackResolver : IAttackResolver
     {
-        /// <summary>Calculate if an attack is evaded based on target's evasion</summary>
-        public bool CalculateEvasion(int targetEvasion)
+        /// <summary>
+        /// Rolls the dodge check for the given effective dodge chance (0-255 space).
+        /// The roll is ALWAYS consumed — even when dodgeChance is 0 — to keep the
+        /// Nez.Random call sequence identical regardless of damage kind (RNG contract).
+        /// </summary>
+        public bool RollDodge(int dodgeChance)
         {
             int roll = Random.Range(0, 256); // 0-255 inclusive
-            return roll < targetEvasion; // True = evaded/missed
+            return roll < dodgeChance; // True = evaded/missed
         }
 
         /// <summary>Calculate damage using BalanceConfig formula</summary>
@@ -38,8 +42,12 @@ namespace RolePlayingFramework.Combat
         public AttackResult Resolve(BattleStats attackerBattleStats, BattleStats defenderBattleStats,
             DamageKind kind, ElementType attackElement, ElementalProperties defenderProps)
         {
-            // Check for evasion first
-            if (CalculateEvasion(defenderBattleStats.Evasion))
+            // Dodge check first: relative to the attacker's accuracy, clamped so nothing
+            // is unhittable. Magical attacks bypass physical evasion entirely.
+            int dodgeChance = kind == DamageKind.Magical
+                ? 0
+                : BalanceConfig.CalculateDodgeChance(defenderBattleStats.Evasion, attackerBattleStats.Accuracy);
+            if (RollDodge(dodgeChance))
             {
                 return new AttackResult(false, 0);
             }
@@ -72,17 +80,21 @@ namespace RolePlayingFramework.Combat
             DamageKind kind, int attackerLevel, int defenderLevel,
             ElementType attackElement, ElementalProperties defenderProps)
         {
-            // Convert to battle stats
+            // Convert to battle stats (evasion and accuracy share the base formula)
+            int attackerRating = BalanceConfig.CalculateEvasion(attackerStats.Agility, attackerLevel);
             var attackerBattle = new BattleStats(
                 attackerStats.Strength,
                 attackerStats.Agility / 2,
-                BalanceConfig.CalculateEvasion(attackerStats.Agility, attackerLevel)
+                attackerRating,
+                attackerRating
             );
 
+            int defenderRating = BalanceConfig.CalculateEvasion(defenderStats.Agility, defenderLevel);
             var defenderBattle = new BattleStats(
                 defenderStats.Strength,
                 defenderStats.Agility / 2,
-                BalanceConfig.CalculateEvasion(defenderStats.Agility, defenderLevel)
+                defenderRating,
+                defenderRating
             );
 
             return Resolve(attackerBattle, defenderBattle, kind, attackElement, defenderProps);

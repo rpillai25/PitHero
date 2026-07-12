@@ -709,31 +709,59 @@ namespace RolePlayingFramework.Balance
         }
 
         /// <summary>
-        /// Calculates evasion value for hit chance calculations.
+        /// Calculates the evasion/accuracy value used for hit chance calculations.
+        /// The same formula is used for both sides: a defender's evasion and an
+        /// attacker's accuracy, so the level term cancels in same-level fights.
         /// </summary>
         /// <param name="agility">Character's agility stat.</param>
         /// <param name="level">Character's level.</param>
-        /// <returns>Evasion value (0-255 range).</returns>
+        /// <returns>Evasion/accuracy value (0-255 range).</returns>
         /// <remarks>
-        /// Formula: min(255, Agility * 2 + Level)
-        /// 
-        /// Hit determination: random(0-255) &lt; Evasion = Hit Evaded
-        /// 
-        /// Example evasion values:
-        /// - Agility 10, Level 5: 25 evasion (~10% evade chance)
-        /// - Agility 25, Level 10: 60 evasion (~23% evade chance)
-        /// - Agility 50, Level 30: 130 evasion (~51% evade chance)
-        /// - Agility 75, Level 50: 200 evasion (~78% evade chance)
-        /// - Agility 99, Level 99: 255 evasion (capped, ~100% evade chance)
-        /// 
-        /// This formula is already implemented in BattleStats.
-        /// 
+        /// Formula: min(255, Agility * 2 + Level / 2)
+        ///
+        /// The level coefficient is deliberately gentle (x0.5) so pit-tier scaled
+        /// monster levels don't run away from party accuracy — hit rates should be
+        /// governed primarily by the AGILITY difference, not raw level difference.
+        ///
+        /// Hit determination happens in <see cref="CalculateDodgeChance"/>:
+        /// the DIFFERENCE between defender evasion and attacker accuracy sets the
+        /// dodge chance, clamped so nobody is unhittable and nothing always hits.
+        ///
         /// Tuning: Adjust multipliers if evasion feels too strong/weak.
         /// High agility characters should have meaningful but not overwhelming evasion.
         /// </remarks>
         public static int CalculateEvasion(int agility, int level)
         {
-            return System.Math.Min(255, agility * 2 + level);
+            return System.Math.Min(255, agility * 2 + level / 2);
+        }
+
+        /// <summary>Base dodge chance (out of 256) added before the evasion/accuracy difference. ~5%.</summary>
+        public const int BaseDodgeChance = 13;
+
+        /// <summary>Minimum effective dodge chance (out of 256). ~5% — physical attacks always have some whiff risk.</summary>
+        public const int MinDodgeChance = 13;
+
+        /// <summary>Maximum effective dodge chance (out of 256). 192 = 75% — nothing is unhittable (25% hit floor).</summary>
+        public const int MaxDodgeChance = 192;
+
+        /// <summary>
+        /// Calculates the effective dodge chance (out of 256) for a physical attack,
+        /// relative to the attacker: dodge = clamp(Base + defenderEvasion − attackerAccuracy).
+        /// </summary>
+        /// <param name="defenderEvasion">Defender's evasion (base formula + gear/buff bonuses).</param>
+        /// <param name="attackerAccuracy">Attacker's accuracy (base evasion formula, no gear/buff bonuses).</param>
+        /// <returns>Dodge chance in the 0-255 roll space, clamped to [MinDodgeChance, MaxDodgeChance].</returns>
+        /// <remarks>
+        /// Same-level, same-agility combatants land ~95% of attacks; a defender that vastly
+        /// out-speeds the attacker caps at 75% dodge so battles can never soft-lock.
+        /// Magical attacks bypass this entirely (see EnhancedAttackResolver).
+        /// </remarks>
+        public static int CalculateDodgeChance(int defenderEvasion, int attackerAccuracy)
+        {
+            int dodge = BaseDodgeChance + defenderEvasion - attackerAccuracy;
+            if (dodge < MinDodgeChance) dodge = MinDodgeChance;
+            if (dodge > MaxDodgeChance) dodge = MaxDodgeChance;
+            return dodge;
         }
 
         /// <summary>

@@ -395,7 +395,11 @@ namespace PitHero.AI
             PitHero.Services.Analytics.AnalyticsService.LogAttack(
                 evt.ActorName, evt.ActorType, evt.Action,
                 evt.TargetName, evt.TargetType,
-                evt.Damage, evt.HpBefore, evt.HpAfter, evt.Killed);
+                evt.Damage, evt.HpBefore, evt.HpAfter, evt.Killed, evt.Missed);
+
+            // Misses are analytics-only — the floating "Miss" label covers the display
+            if (evt.Missed)
+                return;
 
             // DoT ticks logged analytics-only in the original — no console line
             if (evt.Action != null && evt.Action.EndsWith(".dot"))

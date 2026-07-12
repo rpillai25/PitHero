@@ -433,20 +433,57 @@ namespace PitHero.Tests
         [TestMethod]
         public void CalculateEvasion_Formula_MatchesExpected()
         {
-            // Formula: min(255, agility * 2 + level)
+            // Formula: min(255, agility * 2 + level / 2) — gentle level term so
+            // pit-tier scaled monster levels don't run away from party accuracy
             var evasion = BalanceConfig.CalculateEvasion(50, 30);
-            var expected = System.Math.Min(255, 50 * 2 + 30); // 130
-            
+            var expected = System.Math.Min(255, 50 * 2 + 30 / 2); // 115
+
             Assert.AreEqual(expected, evasion, "Evasion formula should match specification");
         }
 
         [TestMethod]
         public void CalculateEvasion_CapsAt255()
         {
-            // Very high agility/level should cap at 255
-            var evasion = BalanceConfig.CalculateEvasion(99, 99);
-            
+            // Values beyond the roll space cap at 255 (unreachable with legal 99/99
+            // stats since the level-term halving: 99*2 + 99/2 = 247)
+            var evasion = BalanceConfig.CalculateEvasion(150, 50);
+
             Assert.AreEqual(255, evasion, "Evasion should cap at 255");
+        }
+
+        [TestMethod]
+        public void CalculateDodgeChance_SameStats_NearMinimum()
+        {
+            // Equal accuracy and evasion → dodge = clamp(Base + 0) = 13 (~5%)
+            var dodge = BalanceConfig.CalculateDodgeChance(100, 100);
+            Assert.AreEqual(BalanceConfig.BaseDodgeChance, dodge,
+                "Evenly matched combatants should land ~95% of attacks");
+        }
+
+        [TestMethod]
+        public void CalculateDodgeChance_FastDefender_CapsAt75Percent()
+        {
+            // Level-64 FastFragile monster (evasion 230) vs level-14 party (accuracy ~95):
+            // huge gap, but the cap guarantees a 25% hit floor — nothing is unhittable
+            var dodge = BalanceConfig.CalculateDodgeChance(255, 20);
+            Assert.AreEqual(BalanceConfig.MaxDodgeChance, dodge, "Dodge must cap at 192/256 (75%)");
+        }
+
+        [TestMethod]
+        public void CalculateDodgeChance_SlowDefender_FloorsAtMinimum()
+        {
+            // Fast attacker vs slow defender still whiffs ~5% of physicals
+            var dodge = BalanceConfig.CalculateDodgeChance(20, 255);
+            Assert.AreEqual(BalanceConfig.MinDodgeChance, dodge, "Dodge must floor at 13/256 (~5%)");
+        }
+
+        [TestMethod]
+        public void CalculateDodgeChance_ModerateGap_ScalesLinearly()
+        {
+            // Between the clamps, dodge = Base + (evasion − accuracy)
+            var dodge = BalanceConfig.CalculateDodgeChance(150, 100);
+            Assert.AreEqual(BalanceConfig.BaseDodgeChance + 50, dodge,
+                "Dodge should scale with the evasion/accuracy gap between the clamps");
         }
 
         [TestMethod]

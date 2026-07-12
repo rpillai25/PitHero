@@ -505,7 +505,8 @@ namespace RolePlayingFramework.Heroes
             if (evasion > 255) evasion = 255;
             if (evasion < 0) evasion = 0;
 
-            return new BattleStats(attack, defense, evasion);
+            // Accuracy = base formula only — evasion gear/buffs don't help land hits
+            return new BattleStats(attack, defense, evasion, baseEvasion);
         }
 
         private void ApplyPassiveSkills()

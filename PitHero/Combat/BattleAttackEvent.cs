@@ -41,12 +41,15 @@ namespace PitHero.Combat
         /// </summary>
         public readonly string SkillName;
 
+        /// <summary>True when the attack was dodged: Damage is 0 and HpBefore == HpAfter.</summary>
+        public readonly bool Missed;
+
         /// <summary>Initialises all fields.</summary>
         public BattleAttackEvent(
             string actorName, string actorType, string action,
             string targetName, string targetType,
             int damage, int hpBefore, int hpAfter, bool killed,
-            string skillName = null)
+            string skillName = null, bool missed = false)
         {
             ActorName  = actorName;
             ActorType  = actorType;
@@ -58,6 +61,7 @@ namespace PitHero.Combat
             HpAfter    = hpAfter;
             Killed     = killed;
             SkillName  = skillName;
+            Missed     = missed;
         }
     }
 }

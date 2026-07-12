@@ -594,6 +594,10 @@ namespace PitHero.Combat
             else
             {
                 Debug.Log($"[BattleEngine] Hero missed {targetEnemy.Name}!");
+                var missEvt = new BattleAttackEvent(hero.Name, "hero", "physical",
+                    targetEnemy.Name, "monster", 0, targetEnemy.CurrentHP, targetEnemy.CurrentHP, false,
+                    missed: true);
+                _sink.OnAttackResolved(in missEvt);
                 var rm = _sink.ShowMissOnMonster(targetEnemy);
                 if (rm != null) yield return rm;
             }
@@ -749,6 +753,10 @@ namespace PitHero.Combat
             else
             {
                 Debug.Log($"[BattleEngine] {mercenary.Name} missed {paTarget.Name}!");
+                var missEvt = new BattleAttackEvent(mercenary.Name, "merc", "physical",
+                    paTarget.Name, "monster", 0, paTarget.CurrentHP, paTarget.CurrentHP, false,
+                    missed: true);
+                _sink.OnAttackResolved(in missEvt);
                 var rm = _sink.ShowMissOnMonster(paTarget);
                 if (rm != null) yield return rm;
             }
@@ -822,6 +830,10 @@ namespace PitHero.Combat
                     // Show "Miss" on primary target only when skill executed but dealt 0 damage
                     if (enemy == primaryTarget && enemy.CurrentHP > 0)
                     {
+                        var missEvt = new BattleAttackEvent(caster.Name, actorType, skill.Id,
+                            enemy.Name, "monster", 0, enemy.CurrentHP, enemy.CurrentHP, false,
+                            skill.Name, missed: true);
+                        _sink.OnAttackResolved(in missEvt);
                         var rm = _sink.ShowMissOnMonster(enemy);
                         if (rm != null) yield return rm;
                     }
@@ -1025,6 +1037,11 @@ namespace PitHero.Combat
                     }
                     else
                     {
+                        var ctrMissEvt = new BattleAttackEvent(target.Name,
+                            targetAlly.IsHero ? "hero" : "merc", "counter",
+                            enemy.Name, "monster", 0, enemy.CurrentHP, enemy.CurrentHP, false,
+                            missed: true);
+                        _sink.OnAttackResolved(in ctrMissEvt);
                         var rcm = _sink.ShowMissOnMonster(enemy);
                         if (rcm != null) yield return rcm;
                     }
@@ -1033,6 +1050,11 @@ namespace PitHero.Combat
             else
             {
                 Debug.Log($"[BattleEngine] {enemy.Name} missed {target.Name}!");
+                var missEvt = new BattleAttackEvent(enemy.Name, "monster", "physical",
+                    target.Name, targetAlly.IsHero ? "hero" : "merc",
+                    0, target.CurrentHP, target.CurrentHP, false,
+                    missed: true);
+                _sink.OnAttackResolved(in missEvt);
                 var rm = _sink.ShowMissOnAlly(targetAlly);
                 if (rm != null) yield return rm;
             }

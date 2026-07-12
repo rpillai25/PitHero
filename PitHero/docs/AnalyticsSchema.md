@@ -71,7 +71,7 @@ interpretation caveats that are not obvious from the raw data.
 ### Battle
 | `e` | Fields | Notes |
 |---|---|---|
-| `attack` | `actor`, `actorType` (`"hero"`/`"merc"`/`"monster"`), `action`, `target`, `targetType`, `dmg`, `hpBefore`, `hpAfter`, `killed` | `action` is `"physical"`, a skill id (e.g. `knight.heavy_strike`), `"counter"` (hero/merc retaliation after taking a hit — requires monk.counter passive), or `"<skillId>.dot"` (end-of-round damage-over-time tick from a skill such as `synergy.poison_arrow.dot`). `hpBefore`/`hpAfter` are the **target's** HP; `hpBefore − dmg = hpAfter` (floored at 0). AoE skills emit one line per target hit. Misses are not logged. Monsters only have physical attacks. Counter attacks and DoT ticks never produce miss events. |
+| `attack` | `actor`, `actorType` (`"hero"`/`"merc"`/`"monster"`), `action`, `target`, `targetType`, `dmg`, `hpBefore`, `hpAfter`, `killed`, `missed` (only present when `true`) | `action` is `"physical"`, a skill id (e.g. `knight.heavy_strike`), `"counter"` (hero/merc retaliation after taking a hit — requires monk.counter passive), or `"<skillId>.dot"` (end-of-round damage-over-time tick from a skill such as `synergy.poison_arrow.dot`). `hpBefore`/`hpAfter` are the **target's** HP; `hpBefore − dmg = hpAfter` (floored at 0). AoE skills emit one line per target hit. Dodged attacks log `missed: true` with `dmg: 0` and `hpBefore == hpAfter` (skill misses log only against the primary target). Monsters only have physical attacks. DoT ticks never miss. |
 | `heal` | `actor`, `source` (skill id or item name), `target`, `amount`, `hpAfter` | Battle heals (skills and consumables). |
 | `buff` | `actor`, `source` (skill id), `target`, `buffType`, `magnitude`, `durationTurns` | One row per granted buff actually applied (a multi-buff skill like `synergy.fade` logs one row per buff). Buffs skipped by the MaxStacks at-cap guard are not logged. `durationTurns: -1` = until battle end. `buffType` is the `BuffType` enum name (`DefenseUp`, `EvasionUp`, `MPRegen`, `Untargetable`). |
 | `monster_defeated` | `name`, `enemyId`, `level`, `isBoss`, `pitLevel`, `pitTier`, `xp`, `jp`, `gold` | One per kill regardless of killer; the matching `gold_gained` (`source:"battle"`) follows. |
@@ -93,7 +93,7 @@ interpretation caveats that are not obvious from the raw data.
   `pit_generated`/`chest_spawned`/`monster_spawned` burst right after `session_start`
   reflects the restored pit, and one `merc_arrived` fires for the initial tavern spawn.
 - **Not instrumented:** gold spends (except via `goldAfter`/`currentGold`), out-of-battle
-  healing GOAP actions, missed attacks, the virtual game layer (`PitHero.VirtualGame` has no
+  healing GOAP actions, the virtual game layer (`PitHero.VirtualGame` has no
   combat simulation).
 
 ## Typical analysis joins

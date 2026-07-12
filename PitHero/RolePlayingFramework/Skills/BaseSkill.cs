@@ -112,7 +112,7 @@ namespace RolePlayingFramework.Skills
                 var fullTargetStats = BattleStats.CalculateForMonster(target);
                 // Build a modified target with reduced defense
                 var piercedDefense = (int)(fullTargetStats.Defense * defensePierceFraction);
-                var piercedStats = new BattleStats(fullTargetStats.Attack, piercedDefense, fullTargetStats.Evasion);
+                var piercedStats = new BattleStats(fullTargetStats.Attack, piercedDefense, fullTargetStats.Evasion, fullTargetStats.Accuracy);
                 return enhanced.Resolve(casterBattleStats, piercedStats, kind, Element, target.ElementalProps);
             }
 
