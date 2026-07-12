@@ -131,28 +131,39 @@ namespace PitHero.Tests
 
         [TestMethod]
         [TestCategory("Buffs")]
-        public void DefenseUpSkill_StacksToThreeAndCapsBeyond()
+        public void DefenseUpSkill_SingleCastCapsUntilExpiry()
         {
             var hero = MakeHero();
             var skill = new RolePlayingFramework.Skills.DefenseUpSkill();
 
-            // Apply three times — each should land because MaxStacks=3
-            for (int cast = 0; cast < 3; cast++)
-            {
-                for (int b = 0; b < skill.GrantedBuffs.Count; b++)
-                {
-                    var grantedBuff = skill.GrantedBuffs[b];
-                    int currentStacks = hero.GetBuffStacks(skill.Id, grantedBuff.Type);
-                    if (currentStacks < grantedBuff.MaxStacks)
-                        hero.AddBattleBuff(new BattleBuff(grantedBuff.Type, grantedBuff.Magnitude, grantedBuff.DurationTurns, skill.Id));
-                }
-            }
+            // One cast grants the full +3 for 3 turns (single stack)
+            ApplyGrantedBuffsRespectingCap(hero, skill);
+            Assert.AreEqual(1, hero.GetBuffStacks(skill.Id, BuffType.DefenseUp),
+                "DefenseUp should be a single stack per target");
+            Assert.AreEqual(3, hero.GetBuffTotal(BuffType.DefenseUp),
+                "A single DefenseUp cast should grant +3 defense");
 
-            Assert.AreEqual(3, hero.GetBuffStacks(skill.Id, BuffType.DefenseUp),
-                "DefenseUp should allow up to 3 stacks");
+            // Second cast while active: at cap — should not add more
+            ApplyGrantedBuffsRespectingCap(hero, skill);
+            Assert.AreEqual(1, hero.GetBuffStacks(skill.Id, BuffType.DefenseUp),
+                "Re-cast while active should not exceed the single-stack cap");
+            Assert.AreEqual(3, hero.GetBuffTotal(BuffType.DefenseUp));
 
-            // Fourth cast: already at cap — should not add more
-            int stacksBefore = hero.GetBuffStacks(skill.Id, BuffType.DefenseUp);
+            // After 3 duration ticks the buff expires and can be re-cast
+            hero.TickBuffDurations();
+            hero.TickBuffDurations();
+            hero.TickBuffDurations();
+            Assert.AreEqual(0, hero.GetBuffStacks(skill.Id, BuffType.DefenseUp),
+                "DefenseUp should expire after 3 turns");
+
+            ApplyGrantedBuffsRespectingCap(hero, skill);
+            Assert.AreEqual(1, hero.GetBuffStacks(skill.Id, BuffType.DefenseUp),
+                "DefenseUp should be re-castable after expiry");
+        }
+
+        // Replicates the at-cap guard used by ApplyHealingSkillEffectsAndDisplay
+        private static void ApplyGrantedBuffsRespectingCap(Hero hero, RolePlayingFramework.Skills.ISkill skill)
+        {
             for (int b = 0; b < skill.GrantedBuffs.Count; b++)
             {
                 var grantedBuff = skill.GrantedBuffs[b];
@@ -160,9 +171,6 @@ namespace PitHero.Tests
                 if (currentStacks < grantedBuff.MaxStacks)
                     hero.AddBattleBuff(new BattleBuff(grantedBuff.Type, grantedBuff.Magnitude, grantedBuff.DurationTurns, skill.Id));
             }
-
-            Assert.AreEqual(stacksBefore, hero.GetBuffStacks(skill.Id, BuffType.DefenseUp),
-                "Fourth cast should not exceed the DefenseUp MaxStacks cap of 3");
         }
 
         [TestMethod]

@@ -67,7 +67,7 @@ The `Hero` class now supports JP mechanics through its bound crystal:
   1. Calm Spirit (Passive, JP: 50, Level: 1) - +1 AP/tick regen
   2. Mender (Passive, JP: 80, Level: 2) - +25% healing
   3. Heal (Active, JP: 100, Level: 2) - AP: 3, restores HP
-  4. Defense Up (Active, JP: 160, Level: 3) - AP: 4, +1 defense buff
+  4. Defense Up (Active, JP: 160, Level: 3) - AP: 4, +3 defense buff on an ally for 3 turns
 
 ### Monk
 - **Base Stats**: STR 3, AGI 1, VIT 3, MAG 0

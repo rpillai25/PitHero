@@ -41,20 +41,31 @@ namespace PitHero.Tests
 
         [TestMethod]
         [TestCategory("SkillBuffData")]
-        public void DefenseUpSkill_GrantedBuff_HasBattleEndDuration()
+        public void DefenseUpSkill_GrantedBuff_LastsThreeTurns()
         {
             var skill = new DefenseUpSkill();
-            Assert.AreEqual(-1, skill.GrantedBuffs[0].DurationTurns,
-                "DefenseUp should last until battle end (DurationTurns=-1)");
+            Assert.AreEqual(3, skill.GrantedBuffs[0].DurationTurns,
+                "DefenseUp should last 3 turns");
         }
 
         [TestMethod]
         [TestCategory("SkillBuffData")]
-        public void DefenseUpSkill_GrantedBuff_MaxStacksIsThree()
+        public void DefenseUpSkill_GrantedBuff_SingleStackOfThree()
         {
             var skill = new DefenseUpSkill();
-            Assert.AreEqual(3, skill.GrantedBuffs[0].MaxStacks,
-                "DefenseUpSkill should allow up to 3 stacks");
+            Assert.AreEqual(1, skill.GrantedBuffs[0].MaxStacks,
+                "DefenseUpSkill should be a single stack per target");
+            Assert.AreEqual(3, skill.GrantedBuffs[0].Magnitude,
+                "A single DefenseUp cast should grant +3 defense");
+        }
+
+        [TestMethod]
+        [TestCategory("SkillBuffData")]
+        public void DefenseUpSkill_TargetsSingleAlly()
+        {
+            var skill = new DefenseUpSkill();
+            Assert.AreEqual(SkillTargetType.SingleAlly, skill.TargetType,
+                "DefenseUp should be castable on any party member, not just the caster");
         }
 
         [TestMethod]

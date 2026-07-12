@@ -191,9 +191,9 @@ namespace PitHero.ECS.Components
             {
                 if (action.ActionType == QueuedActionType.UseItem && action.Consumable != null)
                 {
-                    // For items, use the item name as sprite key with empty background
+                    // For items, use the sprite key with empty background
                     backgroundSprite = skillsAtlas.GetSprite("base.empty");
-                    sprite = itemsAtlas.GetSprite(action.Consumable.Name);
+                    sprite = itemsAtlas.GetSprite(action.Consumable.SpriteName);
                 }
                 else if (action.ActionType == QueuedActionType.UseSkill && action.Skill != null)
                 {
@@ -205,9 +205,10 @@ namespace PitHero.ECS.Components
                     // For attacks, use weapon sprite if equipped, otherwise use "base.punch" sprite
                     if (action.WeaponItem != null)
                     {
-                        // Use weapon item sprite from items atlas with empty background
+                        // Use weapon item sprite from items atlas with empty background.
+                        // SpriteName, not Name — tiered weapons ("DepthsReaver+2") aren't atlas keys.
                         backgroundSprite = skillsAtlas.GetSprite("base.empty");
-                        sprite = itemsAtlas.GetSprite(action.WeaponItem.Name);
+                        sprite = itemsAtlas.GetSprite(action.WeaponItem.SpriteName);
                     }
                     else
                     {

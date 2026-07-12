@@ -67,11 +67,16 @@ namespace PitHero.AI
 
         /// <summary>
         /// Decides what the hero should do this turn based on the current battle tactic.
+        /// <paramref name="roundNumber"/> is the 1-based battle round (Blitz casts a buff opener in round 1 only).
+        /// <paramref name="battleCriticalReached"/> latches once any ally hits critical HP (or dies) this
+        /// battle; Strategic uses it to buff reactively in fights that have proven dangerous.
         /// </summary>
         public static BattleAction DecideHeroAction(
             IBattlePartyView party,
             List<IEnemy> livingMonsters,
-            List<Mercenary> livingMercenaries)
+            List<Mercenary> livingMercenaries,
+            int roundNumber,
+            bool battleCriticalReached)
         {
             var hero = party.Hero;
             if (hero == null || livingMonsters == null || livingMonsters.Count == 0)
@@ -80,26 +85,31 @@ namespace PitHero.AI
             switch (party.CurrentBattleTactic)
             {
                 case BattleTactic.Blitz:
-                    return DecideBlitz(party, hero, livingMonsters, livingMercenaries);
+                    return DecideBlitz(party, hero, livingMonsters, livingMercenaries, roundNumber);
 
                 case BattleTactic.Defensive:
                     return DecideDefensive(party, hero, livingMonsters, livingMercenaries);
 
                 case BattleTactic.Strategic:
                 default:
-                    return DecideStrategic(party, hero, livingMonsters, livingMercenaries);
+                    return DecideStrategic(party, hero, livingMonsters, livingMercenaries, battleCriticalReached);
             }
         }
 
         /// <summary>
         /// Decides what a mercenary should do during their turn.
         /// Follows the hero's current battle tactic with mercenary-specific targeting restrictions.
+        /// <paramref name="roundNumber"/> is the 1-based battle round (Blitz casts a buff opener in round 1 only).
+        /// <paramref name="battleCriticalReached"/> latches once any ally hits critical HP (or dies) this
+        /// battle; Strategic uses it to buff reactively in fights that have proven dangerous.
         /// </summary>
         public static BattleAction DecideMercenaryAction(
             Mercenary merc,
             IBattlePartyView party,
             List<IEnemy> livingMonsters,
-            List<Mercenary> livingMercenaries)
+            List<Mercenary> livingMercenaries,
+            int roundNumber,
+            bool battleCriticalReached)
         {
             if (merc == null || livingMonsters == null || livingMonsters.Count == 0)
                 return CreatePhysicalAttack(null);
@@ -107,14 +117,14 @@ namespace PitHero.AI
             switch (party.CurrentBattleTactic)
             {
                 case BattleTactic.Blitz:
-                    return DecideMercBlitz(merc, party, livingMonsters, livingMercenaries);
+                    return DecideMercBlitz(merc, party, livingMonsters, livingMercenaries, roundNumber);
 
                 case BattleTactic.Defensive:
                     return DecideMercDefensive(merc, party, livingMonsters, livingMercenaries);
 
                 case BattleTactic.Strategic:
                 default:
-                    return DecideMercStrategic(merc, party, livingMonsters, livingMercenaries);
+                    return DecideMercStrategic(merc, party, livingMonsters, livingMercenaries, battleCriticalReached);
             }
         }
 
@@ -122,9 +132,11 @@ namespace PitHero.AI
         // HERO TACTIC IMPLEMENTATIONS
         // ====================================================================
 
-        /// <summary>Blitz: aggressive attacks but perform heal/restore like Strategic; prefer high-MP attacks.</summary>
+        /// <summary>Blitz: aggressive attacks but perform heal/restore like Strategic; prefer high-MP attacks.
+        /// Round 1 only: one self-buff opener cast, then pure aggression (issue #294).</summary>
         private static BattleAction DecideBlitz(
-            IBattlePartyView party, Hero hero, List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries)
+            IBattlePartyView party, Hero hero, List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries,
+            int roundNumber)
         {
             CollectHeroSkills(hero, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
@@ -133,6 +145,15 @@ namespace PitHero.AI
             if (TryHeroHealAction(party, hero, livingMercenaries,
                     GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
+
+            // 2. Round-1 opener: one buff cast, then pure aggression
+            if (roundNumber <= 1)
+            {
+                var buffSkill = FindBestBuffSkill(_buffSkillBuffer, hero, party, livingMercenaries,
+                    allowSelfBuffs: true, allowAllyBuffs: true, out var buffTarget);
+                if (buffSkill != null)
+                    return CreateBuffAction(buffSkill, buffTarget, party);
+            }
 
             // AoE check first
             var aoeResult = TryAoESkill(_attackSkillBuffer, hero.CurrentMP, hero.MPCostReduction, livingMonsters);
@@ -149,20 +170,34 @@ namespace PitHero.AI
             return CreatePhysicalAttack(FindBestMonsterTarget(livingMonsters, weaponElement));
         }
 
-        /// <summary>Strategic: heal at 40%, restore MP at 20%, efficient attacks.</summary>
+        /// <summary>Strategic: heal at 40%, restore MP at 20%, reactive buffs once the battle has
+        /// proven dangerous (an ally hit critical HP), efficient attacks.</summary>
         private static BattleAction DecideStrategic(
             IBattlePartyView party, Hero hero,
-            List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries)
+            List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries,
+            bool battleCriticalReached)
         {
             CollectHeroSkills(hero, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
-            // 1. Heal/restore check (HP < 40% OR MP < 20%)
+            // 1. Heal/restore check (HP < 40% OR MP < 20%) — healing always wins over buffing
             BattleAction healAction;
             if (TryHeroHealAction(party, hero, livingMercenaries,
                     GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
 
-            // 2. Attack (prefer elemental advantage, then lowest MP cost)
+            // 2. Reactive buffs (issue #294): once any ally has hit critical HP this battle the
+            //    fight has proven dangerous — spend free turns spreading ally-targetable buffs.
+            //    Strictly-self buffs still require the caster themself to be critical.
+            bool heroCritical = party.IsHeroHPCritical();
+            if (battleCriticalReached || heroCritical)
+            {
+                var buffSkill = FindBestBuffSkill(_buffSkillBuffer, hero, party, livingMercenaries,
+                    allowSelfBuffs: heroCritical, allowAllyBuffs: battleCriticalReached, out var buffTarget);
+                if (buffSkill != null)
+                    return CreateBuffAction(buffSkill, buffTarget, party);
+            }
+
+            // 3. Attack (prefer elemental advantage, then lowest MP cost)
             var aoeResult = TryAoESkill(_attackSkillBuffer, hero.CurrentMP, hero.MPCostReduction, livingMonsters);
             if (aoeResult.Skill != null)
                 return CreateAttackSkillAction(aoeResult.Skill, aoeResult.TargetEnemy);
@@ -189,9 +224,12 @@ namespace PitHero.AI
                 return healAction;
 
             // 2. Apply buff if available
-            var buffSkill = FindBestBuffSkill(_buffSkillBuffer, hero.CurrentMP, hero);
-            if (buffSkill != null)
-                return CreateHealingSkillAction(buffSkill, hero, true);
+            {
+                var buffSkill = FindBestBuffSkill(_buffSkillBuffer, hero, party, livingMercenaries,
+                    allowSelfBuffs: true, allowAllyBuffs: true, out var buffTarget);
+                if (buffSkill != null)
+                    return CreateBuffAction(buffSkill, buffTarget, party);
+            }
 
             // 3. Attack (still attack even if not all allies are at 60% — nothing else to do)
             var aoeResult = TryAoESkill(_attackSkillBuffer, hero.CurrentMP, hero.MPCostReduction, livingMonsters);
@@ -210,9 +248,11 @@ namespace PitHero.AI
         // MERCENARY TACTIC IMPLEMENTATIONS
         // ====================================================================
 
-        /// <summary>Blitz tactic for mercenary: aggressive attacks but perform heal/restore like Strategic.</summary>
+        /// <summary>Blitz tactic for mercenary: aggressive attacks but perform heal/restore like Strategic.
+        /// Round 1 only: one self-buff opener cast, then pure aggression (issue #294).</summary>
         private static BattleAction DecideMercBlitz(
-            Mercenary merc, IBattlePartyView party, List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries)
+            Mercenary merc, IBattlePartyView party, List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries,
+            int roundNumber)
         {
             CollectMercenarySkills(merc, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
@@ -221,6 +261,15 @@ namespace PitHero.AI
             if (TryMercHealAction(merc, party, livingMercenaries,
                     GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
+
+            // 2. Round-1 opener: one buff cast, then pure aggression
+            if (roundNumber <= 1)
+            {
+                var buffSkill = FindBestBuffSkill(_buffSkillBuffer, merc, party, livingMercenaries,
+                    allowSelfBuffs: true, allowAllyBuffs: true, out var buffTarget);
+                if (buffSkill != null)
+                    return CreateBuffAction(buffSkill, buffTarget, party);
+            }
 
             var aoeResult = TryAoESkill(_attackSkillBuffer, merc.CurrentMP, merc.MPCostReduction, livingMonsters);
             if (aoeResult.Skill != null)
@@ -234,20 +283,33 @@ namespace PitHero.AI
             return CreatePhysicalAttack(FindBestMonsterTarget(livingMonsters, weaponElement));
         }
 
-        /// <summary>Strategic tactic for mercenary: heal, then efficient attack.</summary>
+        /// <summary>Strategic tactic for mercenary: heal, reactive buffs once the battle has
+        /// proven dangerous (an ally hit critical HP), then efficient attack.</summary>
         private static BattleAction DecideMercStrategic(
             Mercenary merc, IBattlePartyView party,
-            List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries)
+            List<IEnemy> livingMonsters, List<Mercenary> livingMercenaries,
+            bool battleCriticalReached)
         {
             CollectMercenarySkills(merc, _attackSkillBuffer, _healSkillBuffer, _buffSkillBuffer);
 
-            // 1. Heal/restore check (HP < 40% OR MP < 20%) — skills are unrestricted
+            // 1. Heal/restore check (HP < 40% OR MP < 20%) — healing always wins over buffing
             BattleAction healAction;
             if (TryMercHealAction(merc, party, livingMercenaries,
                     GameConfig.HeroCriticalHPPercent, StrategicMPThreshold, _healSkillBuffer, out healAction))
                 return healAction;
 
-            // 2. Attack
+            // 2. Reactive buffs (issue #294): ally-targetable buffs once the battle-critical flag
+            //    is latched; strictly-self buffs only when this merc themself is critical.
+            bool mercCritical = party.IsMercenaryHPCritical(merc);
+            if (battleCriticalReached || mercCritical)
+            {
+                var buffSkill = FindBestBuffSkill(_buffSkillBuffer, merc, party, livingMercenaries,
+                    allowSelfBuffs: mercCritical, allowAllyBuffs: battleCriticalReached, out var buffTarget);
+                if (buffSkill != null)
+                    return CreateBuffAction(buffSkill, buffTarget, party);
+            }
+
+            // 3. Attack
             return MercAttack(merc, livingMonsters);
         }
 
@@ -265,9 +327,12 @@ namespace PitHero.AI
                 return healAction;
 
             // 2. Buff
-            var buffSkill = FindBestBuffSkill(_buffSkillBuffer, merc.CurrentMP, merc);
-            if (buffSkill != null)
-                return CreateHealingSkillAction(buffSkill, merc, false);
+            {
+                var buffSkill = FindBestBuffSkill(_buffSkillBuffer, merc, party, livingMercenaries,
+                    allowSelfBuffs: true, allowAllyBuffs: true, out var buffTarget);
+                if (buffSkill != null)
+                    return CreateBuffAction(buffSkill, buffTarget, party);
+            }
 
             // 3. Attack
             return MercAttack(merc, livingMonsters);
@@ -652,39 +717,97 @@ namespace PitHero.AI
         }
 
         /// <summary>
-        /// Finds a buff skill (Self or SingleAlly target, no heal/MP restore) that can be cast.
-        /// Skips skills where the target already has all buff stacks (MaxStacks reached).
-        /// Returns the first castable buff skill, or null if none.
+        /// Finds a buff skill (Self or SingleAlly target, no heal/MP restore) that can be cast,
+        /// and selects its target. Self skills target the caster; SingleAlly skills target the
+        /// neediest (lowest HP%) living party member not already at the skill's stack cap, so a
+        /// buffer spreads multi-turn buffs across the party instead of re-casting on one member.
+        /// <paramref name="allowSelfBuffs"/>/<paramref name="allowAllyBuffs"/> filter by target
+        /// kind (Strategic gates them differently; Defensive/Blitz pass both true).
+        /// Returns the first castable buff skill (with <paramref name="buffTarget"/> set), or null.
         /// </summary>
-        private static ISkill FindBestBuffSkill(List<ISkill> buffSkills, int currentMP, ICombatant target)
+        private static ISkill FindBestBuffSkill(List<ISkill> buffSkills, ICombatant caster,
+            IBattlePartyView party, List<Mercenary> livingMercenaries,
+            bool allowSelfBuffs, bool allowAllyBuffs, out ICombatant buffTarget)
         {
+            buffTarget = null;
             for (int i = 0; i < buffSkills.Count; i++)
             {
                 var skill = buffSkills[i];
-                if (EffectiveMPCost(skill.MPCost, target.MPCostReduction) > currentMP)
+                bool isAllyTargetable = skill.TargetType == SkillTargetType.SingleAlly;
+                if (isAllyTargetable ? !allowAllyBuffs : !allowSelfBuffs)
                     continue;
 
-                // Phase 3: skip if the target's stacks are already capped for every buff this skill grants
-                bool allCapped = false;
-                if (skill.GrantedBuffs.Count > 0)
-                {
-                    allCapped = true;
-                    for (int b = 0; b < skill.GrantedBuffs.Count; b++)
-                    {
-                        var grantedBuff = skill.GrantedBuffs[b];
-                        // Check stacks for this specific buff type (fixes multi-buff skills like FadeSkill).
-                        if (target.GetBuffStacks(skill.Id, grantedBuff.Type) < grantedBuff.MaxStacks)
-                        {
-                            allCapped = false;
-                            break;
-                        }
-                    }
-                }
-                if (allCapped) continue;
+                if (EffectiveMPCost(skill.MPCost, caster.MPCostReduction) > caster.CurrentMP)
+                    continue;
 
+                var target = isAllyTargetable
+                    ? FindNeediestUncappedAlly(skill, party, livingMercenaries)
+                    : (HasUncappedBuff(skill, caster) ? caster : null);
+                if (target == null) continue;
+
+                buffTarget = target;
                 return skill;
             }
             return null;
+        }
+
+        /// <summary>
+        /// True if the target still has stack headroom for at least one buff this skill grants
+        /// (checked per (skill id, buff type) pair — fixes multi-buff skills like FadeSkill).
+        /// </summary>
+        private static bool HasUncappedBuff(ISkill skill, ICombatant target)
+        {
+            if (skill.GrantedBuffs.Count == 0) return true;
+            for (int b = 0; b < skill.GrantedBuffs.Count; b++)
+            {
+                var grantedBuff = skill.GrantedBuffs[b];
+                if (target.GetBuffStacks(skill.Id, grantedBuff.Type) < grantedBuff.MaxStacks)
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Picks the living party member (hero or mercenary) with the lowest HP% among those
+        /// not at the skill's stack cap. Hero wins ties so the run-critical character is buffed first.
+        /// </summary>
+        private static ICombatant FindNeediestUncappedAlly(ISkill skill, IBattlePartyView party,
+            List<Mercenary> livingMercenaries)
+        {
+            ICombatant best = null;
+            float bestHpPct = float.MaxValue;
+
+            var hero = party.Hero;
+            if (hero != null && hero.CurrentHP > 0 && HasUncappedBuff(skill, hero))
+            {
+                best = hero;
+                bestHpPct = hero.CurrentHP / (float)hero.MaxHP;
+            }
+
+            if (livingMercenaries != null)
+            {
+                for (int i = 0; i < livingMercenaries.Count; i++)
+                {
+                    var merc = livingMercenaries[i];
+                    if (merc == null || merc.CurrentHP <= 0 || !HasUncappedBuff(skill, merc))
+                        continue;
+                    float hpPct = merc.CurrentHP / (float)merc.MaxHP;
+                    if (hpPct < bestHpPct)
+                    {
+                        best = merc;
+                        bestHpPct = hpPct;
+                    }
+                }
+            }
+
+            return best;
+        }
+
+        /// <summary>Wraps a chosen buff (skill, target) pair into a UseHealingSkill action.</summary>
+        private static BattleAction CreateBuffAction(ISkill skill, ICombatant target, IBattlePartyView party)
+        {
+            bool targetsHero = ReferenceEquals(target, party.Hero);
+            return CreateHealingSkillAction(skill, target, targetsHero);
         }
 
         // ====================================================================

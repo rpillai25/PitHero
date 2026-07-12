@@ -57,17 +57,19 @@ namespace PitHero.ECS.Components
             try
             {
                 var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
-                var itemSprite = itemsAtlas?.GetSprite(_item.Name);
+                // SpriteName, not Name — tier-scaled gear display names carry a "+N" suffix
+                // ("TatteredCloth+2") that is not an atlas key.
+                var itemSprite = itemsAtlas?.GetSprite(_item.SpriteName);
 
                 if (itemSprite != null)
                 {
                     _renderer = Entity.AddComponent(new SpriteRenderer(itemSprite));
                     _renderer.SetRenderLayer(GameConfig.RenderLayerPickupItem);
-                    Debug.Log($"[ItemPickupAnimation] Loaded sprite '{_item.Name}' from Items.atlas");
+                    Debug.Log($"[ItemPickupAnimation] Loaded sprite '{_item.SpriteName}' from Items.atlas");
                 }
                 else
                 {
-                    Debug.Warn($"[ItemPickupAnimation] Sprite '{_item.Name}' not found in Items.atlas");
+                    Debug.Warn($"[ItemPickupAnimation] Sprite '{_item.SpriteName}' not found in Items.atlas");
                     // Fallback to prototype renderer
                     var prototypeRenderer = Entity.AddComponent(new PrototypeSpriteRenderer(GameConfig.TileSize, GameConfig.TileSize));
                     prototypeRenderer.Color = Color.Yellow; // Fallback color for missing sprites

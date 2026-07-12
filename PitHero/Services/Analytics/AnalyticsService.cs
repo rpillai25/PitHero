@@ -483,9 +483,9 @@ namespace PitHero.Services.Analytics
 #endif
         }
 
-        /// <summary>Logs a single attack or offensive skill use with target and damage.</summary>
+        /// <summary>Logs a single attack or offensive skill use with target and damage (missed attacks log dmg 0 + missed:true).</summary>
         [Conditional("DEBUG")]
-        public static void LogAttack(string actor, string actorType, string action, string target, string targetType, int damage, int hpBefore, int hpAfter, bool killed)
+        public static void LogAttack(string actor, string actorType, string action, string target, string targetType, int damage, int hpBefore, int hpAfter, bool killed, bool missed = false)
         {
 #if DEBUG
             if (!_enabled)
@@ -501,6 +501,8 @@ namespace PitHero.Services.Analytics
             _json.Field("hpBefore", hpBefore);
             _json.Field("hpAfter", hpAfter);
             _json.Field("killed", killed);
+            if (missed)
+                _json.Field("missed", true);
             EndEvent();
 #endif
         }
@@ -519,6 +521,25 @@ namespace PitHero.Services.Analytics
             _json.Field("target", target);
             _json.Field("amount", amount);
             _json.Field("hpAfter", hpAfter);
+            EndEvent();
+#endif
+        }
+
+        /// <summary>Logs a battle buff applied by a skill (one row per granted buff; at-cap skips are not logged).</summary>
+        [Conditional("DEBUG")]
+        public static void LogBuff(string actor, string source, string target, string buffType, int magnitude, int durationTurns)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("buff"))
+                return;
+            _json.Field("actor", actor);
+            _json.Field("source", source);
+            _json.Field("target", target);
+            _json.Field("buffType", buffType);
+            _json.Field("magnitude", magnitude);
+            _json.Field("durationTurns", durationTurns);
             EndEvent();
 #endif
         }

@@ -32,6 +32,8 @@ namespace PitHero.Combat
         private List<IBattleAlly> _mercenaries;
         private List<IEnemy> _monsters;
         private ActionQueue _heroActionQueue;
+        private int _currentRound;
+        private bool _criticalReachedThisBattle;
 
         // Pre-allocated temp buffers — reused across rounds (no per-round heap alloc)
         private readonly List<Participant> _participants = new List<Participant>(16);
@@ -107,6 +109,8 @@ namespace PitHero.Combat
             _mercenaries     = mercenaries;
             _monsters        = monsters;
             _heroActionQueue = heroActionQueue;
+            _currentRound    = 0;
+            _criticalReachedThisBattle = false;
 
             var battleContext = new BattleContext();
 
@@ -131,6 +135,10 @@ namespace PitHero.Combat
                 // ── Battle loop ────────────────────────────────────────────────────
                 while (HasValidAlliesInPit() && HasLivingMonsters())
                 {
+                    // 1-based round counter fed to the decision engine (Blitz round-1 buff opener).
+                    // Late-arriving allies (round >= 2) intentionally never see round 1.
+                    _currentRound++;
+
                     r = _sink.WaitWhilePaused();
                     if (r != null) yield return r;
 
@@ -350,6 +358,33 @@ namespace PitHero.Combat
         }
 
         /// <summary>
+        /// Latches the once-per-battle "critical HP was reached" flag when any living ally is
+        /// currently at critical HP. Checked before every decision; also set directly when an
+        /// ally dies. Feeds reactive buffing under the Strategic tactic.
+        /// </summary>
+        private void LatchBattleCritical()
+        {
+            if (_criticalReachedThisBattle) return;
+
+            if (_hero.Combatant.CurrentHP > 0 && _partyView.IsHeroHPCritical())
+            {
+                _criticalReachedThisBattle = true;
+                return;
+            }
+
+            for (int i = 0; i < _mercenaries.Count; i++)
+            {
+                var ally = _mercenaries[i];
+                if (ally.Combatant.CurrentHP > 0 && ally.Combatant is Mercenary merc &&
+                    _partyView.IsMercenaryHPCritical(merc))
+                {
+                    _criticalReachedThisBattle = true;
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
         /// Queues the hero's action for this round when the queue is empty.
         /// Mirrors QueueHeroActionForRound from AttackMonsterAction.
         /// </summary>
@@ -357,7 +392,8 @@ namespace PitHero.Combat
         {
             if (_heroActionQueue.HasActions()) return;
 
-            var decision = BattleTacticDecisionEngine.DecideHeroAction(_partyView, _tempLivingEnemies, _tempMercs);
+            LatchBattleCritical();
+            var decision = BattleTacticDecisionEngine.DecideHeroAction(_partyView, _tempLivingEnemies, _tempMercs, _currentRound, _criticalReachedThisBattle);
             switch (decision.Kind)
             {
                 case BattleAction.ActionKind.UseAttackSkill:
@@ -391,7 +427,8 @@ namespace PitHero.Combat
 
             if (!isQueuedOffensiveAction) return queuedAction;
 
-            var reEvaluatedDecision = BattleTacticDecisionEngine.DecideHeroAction(_partyView, _tempLivingEnemies, _tempMercs);
+            LatchBattleCritical();
+            var reEvaluatedDecision = BattleTacticDecisionEngine.DecideHeroAction(_partyView, _tempLivingEnemies, _tempMercs, _currentRound, _criticalReachedThisBattle);
 
             if (reEvaluatedDecision.Kind == BattleAction.ActionKind.UseHealingSkill ||
                 reEvaluatedDecision.Kind == BattleAction.ActionKind.UseConsumable)
@@ -557,6 +594,10 @@ namespace PitHero.Combat
             else
             {
                 Debug.Log($"[BattleEngine] Hero missed {targetEnemy.Name}!");
+                var missEvt = new BattleAttackEvent(hero.Name, "hero", "physical",
+                    targetEnemy.Name, "monster", 0, targetEnemy.CurrentHP, targetEnemy.CurrentHP, false,
+                    missed: true);
+                _sink.OnAttackResolved(in missEvt);
                 var rm = _sink.ShowMissOnMonster(targetEnemy);
                 if (rm != null) yield return rm;
             }
@@ -574,8 +615,9 @@ namespace PitHero.Combat
             if (_tempLivingEnemies.Count == 0) yield break;
 
             BuildMercList();
+            LatchBattleCritical();
             var mercDecision = BattleTacticDecisionEngine.DecideMercenaryAction(
-                mercenary, _partyView, _tempLivingEnemies, _tempMercs);
+                mercenary, _partyView, _tempLivingEnemies, _tempMercs, _currentRound, _criticalReachedThisBattle);
 
             switch (mercDecision.Kind)
             {
@@ -711,6 +753,10 @@ namespace PitHero.Combat
             else
             {
                 Debug.Log($"[BattleEngine] {mercenary.Name} missed {paTarget.Name}!");
+                var missEvt = new BattleAttackEvent(mercenary.Name, "merc", "physical",
+                    paTarget.Name, "monster", 0, paTarget.CurrentHP, paTarget.CurrentHP, false,
+                    missed: true);
+                _sink.OnAttackResolved(in missEvt);
                 var rm = _sink.ShowMissOnMonster(paTarget);
                 if (rm != null) yield return rm;
             }
@@ -784,6 +830,10 @@ namespace PitHero.Combat
                     // Show "Miss" on primary target only when skill executed but dealt 0 damage
                     if (enemy == primaryTarget && enemy.CurrentHP > 0)
                     {
+                        var missEvt = new BattleAttackEvent(caster.Name, actorType, skill.Id,
+                            enemy.Name, "monster", 0, enemy.CurrentHP, enemy.CurrentHP, false,
+                            skill.Name, missed: true);
+                        _sink.OnAttackResolved(in missEvt);
                         var rm = _sink.ShowMissOnMonster(enemy);
                         if (rm != null) yield return rm;
                     }
@@ -940,6 +990,7 @@ namespace PitHero.Combat
                 if (targetDied)
                 {
                     Debug.Log($"[BattleEngine] {target.Name} died in battle.");
+                    _criticalReachedThisBattle = true; // a death definitely marks the battle as dangerous
                     _sink.OnAllyKilled(targetAlly, enemy);
 
                     // Dead mercenaries leave the roster (original: validMercenaries.Remove on death)
@@ -986,6 +1037,11 @@ namespace PitHero.Combat
                     }
                     else
                     {
+                        var ctrMissEvt = new BattleAttackEvent(target.Name,
+                            targetAlly.IsHero ? "hero" : "merc", "counter",
+                            enemy.Name, "monster", 0, enemy.CurrentHP, enemy.CurrentHP, false,
+                            missed: true);
+                        _sink.OnAttackResolved(in ctrMissEvt);
                         var rcm = _sink.ShowMissOnMonster(enemy);
                         if (rcm != null) yield return rcm;
                     }
@@ -994,6 +1050,11 @@ namespace PitHero.Combat
             else
             {
                 Debug.Log($"[BattleEngine] {enemy.Name} missed {target.Name}!");
+                var missEvt = new BattleAttackEvent(enemy.Name, "monster", "physical",
+                    target.Name, targetAlly.IsHero ? "hero" : "merc",
+                    0, target.CurrentHP, target.CurrentHP, false,
+                    missed: true);
+                _sink.OnAttackResolved(in missEvt);
                 var rm = _sink.ShowMissOnAlly(targetAlly);
                 if (rm != null) yield return rm;
             }
@@ -1053,6 +1114,8 @@ namespace PitHero.Combat
             var combatantTarget = healTarget as ICombatant;
             if (combatantTarget != null && skill.GrantedBuffs.Count > 0)
             {
+                string buffTargetName = combatantTarget.Name;
+
                 for (int b = 0; b < skill.GrantedBuffs.Count; b++)
                 {
                     var grantedBuff = skill.GrantedBuffs[b];
@@ -1062,7 +1125,13 @@ namespace PitHero.Combat
 
                     combatantTarget.AddBattleBuff(new BattleBuff(grantedBuff.Type, grantedBuff.Magnitude,
                         grantedBuff.DurationTurns, skill.Id));
+
                     string buffLabel = GetBuffLabel(grantedBuff.Type, grantedBuff.Magnitude);
+
+                    var buffEvt = new BattleBuffEvent(casterName, skill.Id, buffTargetName,
+                        grantedBuff.Type.ToString(), grantedBuff.Magnitude, grantedBuff.DurationTurns,
+                        skill.Name, buffLabel);
+                    _sink.OnBuffApplied(in buffEvt);
                     if (targetAlly != null)
                     {
                         var rb = _sink.ShowBuffOnAlly(targetAlly, buffLabel);

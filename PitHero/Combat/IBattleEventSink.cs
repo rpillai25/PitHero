@@ -109,6 +109,14 @@ namespace PitHero.Combat
         /// </summary>
         void OnHealApplied(in BattleHealEvent evt);
 
+        /// <summary>
+        /// Called after every battle buff is applied (one call per granted buff;
+        /// at-cap-skipped buffs fire nothing).
+        /// Live sink forwards to AnalyticsService.LogBuff.
+        /// Virtual sink accumulates per-battle metrics.
+        /// </summary>
+        void OnBuffApplied(in BattleBuffEvent evt);
+
         /// <summary>Called after a consumable item is used from the bag.</summary>
         void OnItemConsumed();
 

@@ -395,7 +395,7 @@ namespace PitHero.AI
             PitHero.Services.Analytics.AnalyticsService.LogAttack(
                 evt.ActorName, evt.ActorType, evt.Action,
                 evt.TargetName, evt.TargetType,
-                evt.Damage, evt.HpBefore, evt.HpAfter, evt.Killed);
+                evt.Damage, evt.HpBefore, evt.HpAfter, evt.Killed, evt.Missed);
 
             // DoT ticks logged analytics-only in the original — no console line
             if (evt.Action != null && evt.Action.EndsWith(".dot"))
@@ -403,6 +403,34 @@ namespace PitHero.AI
 
             var evtSvc = Core.Services.GetService<GameEventService>();
             if (evtSvc == null) return;
+
+            if (evt.Missed)
+            {
+                if (evt.SkillName != null)
+                {
+                    evtSvc.EmitLocalized(UITextKey.ConsoleSkillAttackMiss,
+                        (evt.ActorName, GameConfig.ConsoleColorHeroName),
+                        (evt.SkillName, Color.White),
+                        (evtSvc.MonsterName(evt.TargetName), GameConfig.ConsoleColorEnemyName));
+                }
+                else if (evt.ActorType == "monster")
+                {
+                    evtSvc.EmitLocalized(UITextKey.ConsoleAttackMiss,
+                        (evtSvc.MonsterName(evt.ActorName), GameConfig.ConsoleColorEnemyName),
+                        (evt.TargetName, GameConfig.ConsoleColorHeroName));
+                }
+                else
+                {
+                    evtSvc.EmitLocalized(UITextKey.ConsoleAttackMiss,
+                        (evt.ActorName, GameConfig.ConsoleColorHeroName),
+                        (evtSvc.MonsterName(evt.TargetName), GameConfig.ConsoleColorEnemyName));
+                }
+                return;
+            }
+
+            // Crit callout precedes the normal hit line (analytics carries it via the ".crit" action suffix)
+            if (evt.Action != null && evt.Action.EndsWith(".crit"))
+                evtSvc.EmitLocalized(UITextKey.ConsoleCritical);
 
             if (evt.SkillName != null)
             {
@@ -446,6 +474,25 @@ namespace PitHero.AI
 
             PitHero.Services.Analytics.AnalyticsService.LogHeal(
                 evt.ActorName, evt.Source, evt.TargetName, evt.Amount, evt.HpAfter);
+        }
+
+        /// <inheritdoc/>
+        public void OnBuffApplied(in BattleBuffEvent evt)
+        {
+            // Console line first (matching OnHealApplied's console-then-analytics order),
+            // showing the skill's display name and the same effect label as the floating text.
+            var evtSvc = Core.Services.GetService<GameEventService>();
+            if (evtSvc != null)
+            {
+                evtSvc.EmitLocalized(UITextKey.ConsoleBuffSkill,
+                    (evt.CasterName, GameConfig.ConsoleColorHeroName),
+                    (evt.SourceDisplayName ?? evt.Source, Color.White),
+                    (evt.TargetName, GameConfig.ConsoleColorHeroName),
+                    (evt.EffectLabel ?? evt.BuffTypeName, Color.White));
+            }
+
+            PitHero.Services.Analytics.AnalyticsService.LogBuff(
+                evt.CasterName, evt.Source, evt.TargetName, evt.BuffTypeName, evt.Magnitude, evt.DurationTurns);
         }
 
         /// <inheritdoc/>

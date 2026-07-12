@@ -33,7 +33,7 @@ Skill_Monk_Roundhouse_Desc,A spinning kick that hits all surrounding enemies wit
 Skill_Priest_CalmSpirit_Name,Calm Spirit
 Skill_Priest_CalmSpirit_Desc,Increases MP regeneration by 1 per turn cycle.
 Skill_Priest_DefenseUp_Name,Defense Up
-Skill_Priest_DefenseUp_Desc,Temporarily increase defense by 1. Stacks up to 3 times; lasts until battle ends.
+Skill_Priest_DefenseUp_Desc,Increase an ally's defense by 3 for 3 turns.
 Skill_Priest_Heal_Name,Heal
 Skill_Priest_Heal_Desc,Restore HP based on Magic stat.
 Skill_Priest_Mender_Name,Mender
