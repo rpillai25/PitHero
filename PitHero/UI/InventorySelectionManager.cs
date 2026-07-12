@@ -82,12 +82,13 @@ namespace PitHero.UI
                 var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
                 if (itemA != null)
                 {
-                    var sA = itemsAtlas.GetSprite(itemA.Name);
+                    // SpriteName, not Name — tiered gear names carry a "+N" suffix
+                    var sA = itemsAtlas.GetSprite(itemA.SpriteName);
                     if (sA != null) drawableA = new SpriteDrawable(sA);
                 }
                 if (itemB != null)
                 {
-                    var sB = itemsAtlas.GetSprite(itemB.Name);
+                    var sB = itemsAtlas.GetSprite(itemB.SpriteName);
                     if (sB != null) drawableB = new SpriteDrawable(sB);
                 }
             }
