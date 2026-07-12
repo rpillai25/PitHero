@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using PitHero.AI;
+using PitHero.Config;
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Inventory;
@@ -32,6 +33,13 @@ namespace PitHero.VirtualGame
         // Mutable roster: ConfigureMercenaries copies in; TryHireRandomMercenary appends;
         // RunLevelRange prunes dead mercs between levels.
         private readonly List<Mercenary> _mercenaries = new List<Mercenary>(2);
+
+        // ── Pit-tier state ─────────────────────────────────────────────────────────
+        // Persistent VirtualPitWidthManager used by the sim to track tier and tierBaseLevel
+        // across RunPitLevel calls (separate from the per-level generator manager which
+        // handles layout only).  TiledMapService is null since we only need tier tracking,
+        // not actual pit-width extension in the headless context.
+        private readonly VirtualPitWidthManager _simPitWidthManager = new VirtualPitWidthManager(null);
 
         // ── Gold economy state ─────────────────────────────────────────────────────
         // Counter for deterministic virtual merc names ("Merc1", "Merc2", ...)
@@ -74,6 +82,33 @@ namespace PitHero.VirtualGame
         /// <see cref="VirtualRunMetrics.RngSeed"/> so every balance report can cite it.
         /// </summary>
         public int RngSeed { get; }
+
+        /// <summary>
+        /// Current pit tier tracked by this simulation's persistent pit-width manager.
+        /// Starts at 1; increments automatically in <see cref="RunLevelRange"/> when the
+        /// cumulative depth crosses a tier boundary.
+        /// </summary>
+        public int CurrentPitTier => _simPitWidthManager.CurrentPitTier;
+
+        /// <summary>
+        /// Hero level recorded at the most recent tier increment.  Stays at 1 until the
+        /// simulation first crosses into tier 2.  Used by <see cref="TryHireRandomMercenary"/>
+        /// as the minimum level floor for newly hired mercenaries in higher tiers.
+        /// </summary>
+        public int TierBaseLevel => _simPitWidthManager.TierBaseLevel;
+
+        /// <summary>
+        /// Seeds the internal pit-width manager with the specified tier and tier base level.
+        /// Call this before <see cref="RunLevelRange"/> to restore a save-loaded mid-game
+        /// state (e.g. hero respawning in tier 2 after a wipe).
+        /// </summary>
+        /// <param name="tier">Pit tier to restore (≥ 1, clamped to <see cref="Config.BiomeProgressionConfig.MaxPitTier"/>).</param>
+        /// <param name="tierBaseLevel">Hero level recorded at the tier entry (≥ 1).</param>
+        public void ConfigurePitTier(int tier, int tierBaseLevel)
+        {
+            _simPitWidthManager.SetPitTier(tier);
+            _simPitWidthManager.SetTierBaseLevel(tierBaseLevel);
+        }
 
         /// <summary>Public access to the hero for tests.</summary>
         public VirtualHero Hero => _hero;
@@ -177,7 +212,11 @@ namespace PitHero.VirtualGame
             if (_mercenaries.Count >= maxHiredMercenaries) return null;
 
             int heroLevel = _hero.LinkedHero?.Level ?? 1;
-            int mercLevel = VirtualMercenaryLevelRoller.DetermineMercenaryLevel(heroLevel);
+            // Tier ≥ 2: pass the tier base level as minLevel, mirroring live MercenaryManager.SpawnMercenary.
+            // This ensures mercenaries hired in higher tiers are at least as strong as the party entered with.
+            int currentTier = _simPitWidthManager.CurrentPitTier;
+            int minLevel    = currentTier >= 2 ? _simPitWidthManager.TierBaseLevel : 1;
+            int mercLevel = VirtualMercenaryLevelRoller.DetermineMercenaryLevel(heroLevel, minLevel: minLevel);
             int hireCost  = BalanceConfig.CalculateMercenaryHireCost(mercLevel);
 
             if (Gold < hireCost) return null;
@@ -227,6 +266,17 @@ namespace PitHero.VirtualGame
 
             for (int level = fromLevel; level <= toLevel; level++)
             {
+                // ── Tier boundary detection (before surface policy so hiring uses the updated tier) ─
+                // The tier for a cumulative depth is purely deterministic from the depth value.
+                int depthTier = BiomeProgressionConfig.GetTierForDepth(level);
+                if (depthTier > _simPitWidthManager.CurrentPitTier)
+                {
+                    // Crossed into a new tier — record the current hero level as the tier base level
+                    // so mercenary hiring in this tier is floored at a sensible minimum.
+                    int heroLevelAtEntry = _hero.LinkedHero?.Level ?? 1;
+                    _simPitWidthManager.IncrementPitTier(heroLevelAtEntry);
+                }
+
                 // ── Between-level surface policy (skip for the very first level) ─────
                 if (level > fromLevel)
                 {
@@ -354,11 +404,13 @@ namespace PitHero.VirtualGame
 
             _runMetrics = new VirtualRunMetrics
             {
-                PitLevel      = pitLevel,
-                JobName       = jobName,
-                LevelRangeMin = _hero.LinkedHero.Level,
-                LevelRangeMax = _hero.LinkedHero.Level,
-                RngSeed       = RngSeed
+                PitLevel       = pitLevel,
+                DisplayedLevel = BiomeProgressionConfig.GetDisplayedLevelForDepth(pitLevel),
+                PitTier        = BiomeProgressionConfig.GetTierForDepth(pitLevel),
+                JobName        = jobName,
+                LevelRangeMin  = _hero.LinkedHero.Level,
+                LevelRangeMax  = _hero.LinkedHero.Level,
+                RngSeed        = RngSeed
             };
 
             // Party max-HP pool at level start, for the HP-loss percentage
@@ -429,6 +481,7 @@ namespace PitHero.VirtualGame
             // InnRested / MercsHired are 0/false here; RunLevelRange stamps them after.
             Gold                  += _runMetrics.GoldEarned;
             _runMetrics.Wallet     = Gold;
+            _runMetrics.HeroLevel  = _hero.LinkedHero.Level;
 
             _currentAction = "RunPitLevel_Complete";
             return _runMetrics;
@@ -563,8 +616,8 @@ namespace PitHero.VirtualGame
             _world.ActivateWizardOrb();
             _hero.ActivatedWizardOrb = true;
 
-            // Queue next pit level (current + 10)
-            var nextLevel = _world.PitLevel + 10;
+            // Queue next pit level (current + 1; wrap to level 1 and increment tier when past MaxBiomeLevel)
+            var nextLevel = _world.PitLevel + 1;
             _pitQueue.QueueLevel(nextLevel);
 
             _tickCount++;

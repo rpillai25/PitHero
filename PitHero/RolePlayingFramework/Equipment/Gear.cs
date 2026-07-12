@@ -1,6 +1,7 @@
 using Nez;
 using PitHero;
 using PitHero.Services;
+using RolePlayingFramework.Balance;
 using RolePlayingFramework.Combat;
 using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Stats;
@@ -10,6 +11,7 @@ namespace RolePlayingFramework.Equipment
     /// <summary>
     /// Simple gear item with stat and flat bonuses.
     /// Supports elemental types and resistances for integration with the elemental combat system.
+    /// Supports pit-tier scaling: a tier-N copy has higher stats and a "+N" suffix on its display name.
     /// </summary>
     /// <remarks>
     /// Elemental System Integration:
@@ -18,24 +20,24 @@ namespace RolePlayingFramework.Equipment
     /// - Defensive gear (armor/shields/helms) can have custom resistances
     /// - Resistances are percentage-based (0.25 = 25% damage reduction, -0.15 = 15% extra damage)
     /// - Defensive gear typically resists its own element and is weak to opposing element
-    /// 
+    ///
     /// Current Equipment Elemental Assignments:
     /// Weapons:
     ///   - ShortSword: Neutral
     ///   - LongSword: Fire
-    /// 
+    ///
     /// Armor:
     ///   - LeatherArmor: Neutral
     ///   - IronArmor: Earth (25% Earth resist, -15% Wind weakness)
-    /// 
+    ///
     /// Shields:
     ///   - WoodenShield: Neutral
     ///   - IronShield: Water (30% Water resist, -15% Fire weakness)
-    /// 
+    ///
     /// Helms:
     ///   - SquireHelm: Neutral
     ///   - IronHelm: Earth (20% Earth resist, -10% Wind weakness)
-    /// 
+    ///
     /// Accessories:
     ///   - RingOfPower: Neutral
     ///   - NecklaceOfHealth: Light
@@ -49,6 +51,14 @@ namespace RolePlayingFramework.Equipment
         private readonly string _spriteName;
         private TextService _textService;
 
+        // ── Tier-scaling state ────────────────────────────────────────────────────────
+        private readonly int _tier;
+        // Tier suffix cached at construction ("" for tier 1, "+2" for tier 2, etc.)
+        private readonly string _tierSuffix;
+        // Fully composed "BaseName+N" string cached once TextService resolves.
+        // null = not yet resolved; assigned on first Name access when tier >= 2.
+        private string _cachedTieredName;
+
         private TextService GetTextService()
         {
             // Core.Instance is null in headless hosts (unit tests, virtual balance runs);
@@ -58,7 +68,22 @@ namespace RolePlayingFramework.Equipment
             return _textService;
         }
 
-        public string Name => GetTextService()?.DisplayText(TextType.Inventory, _nameKey) ?? _nameKey;
+        public string Name
+        {
+            get
+            {
+                if (_tier <= 1)
+                    return GetTextService()?.DisplayText(TextType.Inventory, _nameKey) ?? _nameKey;
+
+                // Tier >= 2: compose once and cache to avoid per-frame allocation.
+                if (_cachedTieredName != null)
+                    return _cachedTieredName;
+
+                string baseName = GetTextService()?.DisplayText(TextType.Inventory, _nameKey) ?? _nameKey;
+                _cachedTieredName = baseName + _tierSuffix;
+                return _cachedTieredName;
+            }
+        }
 
         /// <summary>Sprite name used to look up the item's sprite in the Items atlas. Derived from the item class name.</summary>
         public string SpriteName => _spriteName;
@@ -76,6 +101,11 @@ namespace RolePlayingFramework.Equipment
         public JobType AllowedJobs { get; }
 
         /// <summary>
+        /// Pit tier this gear belongs to.  1 = base; 2+ = tier-scaled copy with bonus stats and a "+N" name suffix.
+        /// </summary>
+        public int Tier => _tier;
+
+        /// <summary>
         /// Creates a new Gear item with specified properties.
         /// </summary>
         /// <param name="name">Display name of the gear item</param>
@@ -90,7 +120,8 @@ namespace RolePlayingFramework.Equipment
         /// <param name="mp">Flat MP bonus</param>
         /// <param name="elementalProps">Elemental properties with type and optional resistances. Defaults to Neutral if not specified.</param>
         /// <param name="allowedJobs">Bitflag of job classes that can equip this gear. Defaults based on ItemKind if not specified.</param>
-        public Gear(string name, ItemKind kind, ItemRarity rarity, string description, int price, in StatBlock stats, int atk = 0, int def = 0, int hp = 0, int mp = 0, ElementalProperties elementalProps = null, JobType? allowedJobs = null)
+        /// <param name="tier">Pit tier (1 = base, 2+ = scaled copy). Default 1 keeps all existing call sites unchanged.</param>
+        public Gear(string name, ItemKind kind, ItemRarity rarity, string description, int price, in StatBlock stats, int atk = 0, int def = 0, int hp = 0, int mp = 0, ElementalProperties elementalProps = null, JobType? allowedJobs = null, int tier = 1)
         {
             _nameKey = name;
             _descKey = description;
@@ -109,6 +140,47 @@ namespace RolePlayingFramework.Equipment
             MPBonus = mp;
             ElementalProps = elementalProps ?? new ElementalProperties(ElementType.Neutral);
             AllowedJobs = allowedJobs ?? GetDefaultAllowedJobs(kind);
+            _tier = tier < 1 ? 1 : tier;
+            _tierSuffix = _tier >= 2 ? ("+" + _tier) : string.Empty;
+        }
+
+        /// <summary>
+        /// Returns a new Gear with stats scaled for the given pit tier and depth delta.
+        /// For tier ≤ 1 returns source unchanged (no allocation).
+        /// </summary>
+        /// <param name="source">Base gear to scale from.</param>
+        /// <param name="tier">Target pit tier (must be ≥ 2 to produce a new instance).</param>
+        /// <param name="depthDelta">Additional effective depth beyond tier-1 baseline (e.g. (tier-1) * MaxBiomeLevel).</param>
+        public static Gear CreateTierScaledCopy(Gear source, int tier, int depthDelta)
+        {
+            if (source == null) return null;
+            if (tier <= 1) return source;
+
+            int atkDelta  = BalanceConfig.CalculateEquipmentAttackBonusDelta(depthDelta, source.Rarity);
+            int defDelta  = BalanceConfig.CalculateEquipmentDefenseBonusDelta(depthDelta, source.Rarity);
+            int statDelta = BalanceConfig.CalculateEquipmentStatBonusDelta(depthDelta, source.Rarity);
+
+            var scaledStats = new StatBlock(
+                source.StatBonus.Strength  + statDelta,
+                source.StatBonus.Agility   + statDelta,
+                source.StatBonus.Vitality  + statDelta,
+                source.StatBonus.Magic     + statDelta);
+
+            // HP/MP: no dedicated delta formula — scale linearly with tier.
+            return new Gear(
+                source._nameKey,
+                source.Kind,
+                source.Rarity,
+                source._descKey,
+                source.Price * tier,
+                in scaledStats,
+                atk:          source.AttackBonus  + atkDelta,
+                def:          source.DefenseBonus + defDelta,
+                hp:           source.HPBonus  * tier,
+                mp:           source.MPBonus  * tier,
+                elementalProps: source.ElementalProps,
+                allowedJobs:  source.AllowedJobs,
+                tier:         tier);
         }
 
         /// <summary>Returns the default allowed jobs for a given ItemKind.</summary>

@@ -131,15 +131,19 @@ namespace PitHero.Services
             var heroName = heroComponent.LinkedHero?.Name
                 ?? Core.Services.GetService<HeroDesignService>()?.GetDesign().Name
                 ?? "Hero";
+            // When tier ≥ 2 the hero starts at least at the recorded tier base level.
+            var pitWidthManagerForSpawn = Core.Services.GetService<PitWidthManager>();
+            int tierBaseLevel = pitWidthManagerForSpawn?.TierBaseLevel ?? 1;
+            int spawnLevel = nextCrystal.Level > tierBaseLevel ? nextCrystal.Level : tierBaseLevel;
             heroComponent.LinkedHero = new RolePlayingFramework.Heroes.Hero(
                 heroName,
                 nextCrystal.Job,
-                nextCrystal.Level,
+                spawnLevel,
                 nextCrystal.BaseStats,
                 nextCrystal
             );
 
-            Debug.Log($"[HeroPromotionService] Hero granted crystal: {nextCrystal.Job.Name} Level {nextCrystal.Level}");
+            Debug.Log($"[HeroPromotionService] Hero granted crystal: {nextCrystal.Job.Name} Level {spawnLevel} (crystal={nextCrystal.Level}, tierBase={tierBaseLevel})");
 
             Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleCrystalPromotion,
                 (heroComponent.LinkedHero.Name, GameConfig.ConsoleColorHeroName),
@@ -476,15 +480,19 @@ namespace PitHero.Services
 
             // Get next crystal for hero (from pending, queue, or random)
             var nextCrystal = GetNextCrystalForHero();
+            // When tier ≥ 2 the promoted hero starts at least at the recorded tier base level.
+            var pitWidthManagerForPromotion = Core.Services.GetService<PitWidthManager>();
+            int promotionTierBase = pitWidthManagerForPromotion?.TierBaseLevel ?? 1;
+            int promotionSpawnLevel = nextCrystal.Level > promotionTierBase ? nextCrystal.Level : promotionTierBase;
             heroComponent.LinkedHero = new RolePlayingFramework.Heroes.Hero(
                 mercComponent.LinkedMercenary.Name,
                 nextCrystal.Job,
-                nextCrystal.Level,
+                promotionSpawnLevel,
                 nextCrystal.BaseStats,
                 nextCrystal
             );
 
-            Debug.Log($"[HeroPromotionService] Created new hero {heroComponent.LinkedHero.Name} with Level {heroComponent.LinkedHero.Level}, HP {heroComponent.LinkedHero.CurrentHP}/{heroComponent.LinkedHero.MaxHP}");
+            Debug.Log($"[HeroPromotionService] Created new hero {heroComponent.LinkedHero.Name} with Level {heroComponent.LinkedHero.Level} (crystal={nextCrystal.Level}, tierBase={promotionTierBase}), HP {heroComponent.LinkedHero.CurrentHP}/{heroComponent.LinkedHero.MaxHP}");
 
             Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleCrystalPromotion,
                 (heroComponent.LinkedHero.Name, GameConfig.ConsoleColorHeroName),

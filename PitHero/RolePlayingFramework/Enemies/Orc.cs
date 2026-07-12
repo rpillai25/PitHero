@@ -29,9 +29,8 @@ namespace RolePlayingFramework.Enemies
 
         public Orc(int level = 6)
         {
-            // Always use the preset level for Orcs regardless of requested level
             var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.Orc);
-            Level = presetLevel;
+            Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats
             var archetype = BalanceConfig.MonsterArchetype.Tank;

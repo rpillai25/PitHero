@@ -1,6 +1,9 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using PitHero;
+using PitHero.Config;
+using RolePlayingFramework.Balance;
+using RolePlayingFramework.Enemies;
 
 namespace PitHero.Tests
 {
@@ -159,6 +162,50 @@ namespace PitHero.Tests
                         $"Level {level} should generate enemies between level 1 and scaled level {expected}");
                 }
             }
+        }
+
+        /// <summary>
+        /// Validates that CreateEnemyForPitLevel with a tier argument produces a monster whose
+        /// level is within ±2 of EstimatePlayerLevelForPitLevel(effectiveDepth).  This covers
+        /// both tier-1 and tier-2 samples.  The ±2 window accommodates the boss-floor +2 spike.
+        /// </summary>
+        [TestMethod]
+        public void CreateEnemyForPitLevel_Tier2Samples_MonsterLevelWithinRange()
+        {
+            var generator = new PitGenerator((Nez.Scene)null!);
+
+            // Samples: (displayedLevel, tier, isBoss)
+            int[] displayedLevels = { 7, 16, 24,  1, 15, 20, 25 };
+            int[] tiers           = { 1,  1,  1,  2,  2,  2,  2 };
+
+            for (int s = 0; s < displayedLevels.Length; s++)
+            {
+                int pitLevel   = displayedLevels[s];
+                int pitTier    = tiers[s];
+                int effectiveDepth = BiomeProgressionConfig.GetEffectiveDepth(pitLevel, pitTier);
+                int expectedPlayerLevel = BalanceConfig.EstimatePlayerLevelForPitLevel(effectiveDepth);
+
+                var result = generator.CreateEnemyForPitLevel(pitLevel, pitTier);
+
+                Assert.IsTrue(
+                    Math.Abs(result.enemy.Level - expectedPlayerLevel) <= 2,
+                    $"(pitLevel={pitLevel}, tier={pitTier}): enemy level {result.enemy.Level} " +
+                    $"should be within ±2 of expectedPlayerLevel {expectedPlayerLevel} " +
+                    $"(effectiveDepth={effectiveDepth})");
+            }
+        }
+
+        /// <summary>
+        /// Validates that CreateEnemyForPitLevel(20, 2) returns a PitLord — the boss keyed
+        /// to displayed level 20 is the same regardless of tier.
+        /// </summary>
+        [TestMethod]
+        public void CreateEnemyForPitLevel_Tier2BossFloor20_ReturnsPitLord()
+        {
+            var generator = new PitGenerator((Nez.Scene)null!);
+            var result = generator.CreateEnemyForPitLevel(pitLevel: 20, pitTier: 2);
+            Assert.IsTrue(result.enemy is PitLord,
+                $"Tier-2 boss floor 20 must spawn PitLord; got {result.enemy.GetType().Name}");
         }
 
         [TestMethod]

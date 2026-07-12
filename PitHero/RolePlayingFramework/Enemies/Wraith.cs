@@ -29,9 +29,8 @@ namespace RolePlayingFramework.Enemies
 
         public Wraith(int level = 6)
         {
-            // Always use the preset level for Wraiths regardless of requested level
             var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.Wraith);
-            Level = presetLevel;
+            Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats
             var archetype = BalanceConfig.MonsterArchetype.FastFragile;

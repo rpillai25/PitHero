@@ -70,6 +70,26 @@ namespace PitHero.VirtualGame
         /// </summary>
         public int MercsHired;
 
+        /// <summary>
+        /// Pit tier this level belongs to (1 = first loop, 2 = second, …).
+        /// Derived from <see cref="PitLevel"/> via <see cref="Config.BiomeProgressionConfig.GetTierForDepth"/>.
+        /// </summary>
+        public int PitTier;
+
+        /// <summary>
+        /// Biome-local displayed pit level (1–25) for this row.
+        /// For tier-1 runs this equals <see cref="PitLevel"/>; for tier-2+ it wraps back to 1 at each loop.
+        /// Derived from <see cref="PitLevel"/> via <see cref="Config.BiomeProgressionConfig.GetDisplayedLevelForDepth"/>.
+        /// </summary>
+        public int DisplayedLevel;
+
+        /// <summary>
+        /// Hero level at the end of this pit level (after battle XP is applied).
+        /// Lets balance reports compare natural leveling pace against the
+        /// <see cref="RolePlayingFramework.Balance.BalanceConfig.EstimatePlayerLevelForPitLevel"/> curve.
+        /// </summary>
+        public int HeroLevel;
+
         // ── Run summary fields (populated once per simulation run) ──────────────────
 
         /// <summary>RNG seed used for this run (placeholder for Phase C).</summary>
@@ -110,7 +130,7 @@ namespace PitHero.VirtualGame
         /// </summary>
         public static void WriteCsvHeader(TextWriter writer)
         {
-            writer.WriteLine("pitLevel,battles,rounds,dmgDealt,dmgTaken,hpLossPct,healing,deaths,wiped,treasures,gearEquipped,goldEarned,wallet,innRested,mercsHired");
+            writer.WriteLine("pitLevel,battles,rounds,dmgDealt,dmgTaken,hpLossPct,healing,deaths,wiped,treasures,gearEquipped,goldEarned,wallet,innRested,mercsHired,pitTier,displayedLevel,heroLevel");
         }
 
         /// <summary>
@@ -121,7 +141,8 @@ namespace PitHero.VirtualGame
             writer.WriteLine(
                 $"{PitLevel},{BattleCount},{TotalRounds},{DamageDealt},{DamageTaken}," +
                 $"{HpLossPercent:F4},{HealingConsumed},{PartyDeaths},{(Wiped ? 1 : 0)}," +
-                $"{TreasuresOpened},{GearEquipped},{GoldEarned},{Wallet},{(InnRested ? 1 : 0)},{MercsHired}");
+                $"{TreasuresOpened},{GearEquipped},{GoldEarned},{Wallet},{(InnRested ? 1 : 0)},{MercsHired}," +
+                $"{PitTier},{DisplayedLevel},{HeroLevel}");
         }
 
         /// <summary>

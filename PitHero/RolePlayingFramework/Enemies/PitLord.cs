@@ -29,9 +29,8 @@ namespace RolePlayingFramework.Enemies
 
         public PitLord(int level = 10)
         {
-            // Always use the preset level for Pit Lords regardless of requested level
             var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.PitLord);
-            Level = presetLevel;
+            Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats
             var archetype = BalanceConfig.MonsterArchetype.Tank;

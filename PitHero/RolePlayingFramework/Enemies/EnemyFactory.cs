@@ -9,40 +9,46 @@ namespace RolePlayingFramework.Enemies
     /// </summary>
     public static class EnemyFactory
     {
-        /// <summary>Creates an enemy instance for the given id. Level is clamped to 1–99.</summary>
-        public static IEnemy Create(EnemyId enemyId, int level = 1)
+        /// <summary>
+        /// Creates an enemy instance for the given id.
+        /// When <paramref name="level"/> is 0 or negative the constructor falls back to its
+        /// configured preset level.  Positive values are clamped to 1–99 and honoured directly.
+        /// </summary>
+        public static IEnemy Create(EnemyId enemyId, int level = 0)
         {
-            int clampedLevel = Math.Clamp(level, 1, 99);
+            // Pass 0 through unchanged so constructors can detect "no level specified" and
+            // fall back to their preset.  Only clamp positive requests.
+            int levelToPass = level > 0 ? Math.Clamp(level, 1, 99) : 0;
 
             return enemyId switch
             {
-                EnemyId.Slime => new Slime(clampedLevel),
-                EnemyId.Bat => new Bat(clampedLevel),
-                EnemyId.Rat => new Rat(clampedLevel),
-                EnemyId.CaveMushroom => new CaveMushroom(clampedLevel),
-                EnemyId.StoneBeetle => new StoneBeetle(clampedLevel),
-                EnemyId.Goblin => new Goblin(clampedLevel),
-                EnemyId.Spider => new Spider(clampedLevel),
-                EnemyId.Snake => new Snake(clampedLevel),
-                EnemyId.ShadowImp => new ShadowImp(clampedLevel),
-                EnemyId.TunnelWorm => new TunnelWorm(clampedLevel),
-                EnemyId.FireLizard => new FireLizard(clampedLevel),
-                EnemyId.Skeleton => new Skeleton(clampedLevel),
-                EnemyId.Orc => new Orc(clampedLevel),
-                EnemyId.Wraith => new Wraith(clampedLevel),
-                EnemyId.MagmaOoze => new MagmaOoze(clampedLevel),
-                EnemyId.CrystalGolem => new CrystalGolem(clampedLevel),
-                EnemyId.CaveTroll => new CaveTroll(clampedLevel),
-                EnemyId.GhostMiner => new GhostMiner(clampedLevel),
-                EnemyId.ShadowBeast => new ShadowBeast(clampedLevel),
-                EnemyId.LavaDrake => new LavaDrake(clampedLevel),
-                EnemyId.StoneWyrm => new StoneWyrm(clampedLevel),
-                EnemyId.StoneGuardian => new StoneGuardian(clampedLevel),
-                EnemyId.EarthElemental => new EarthElemental(clampedLevel),
-                EnemyId.MoltenTitan => new MoltenTitan(clampedLevel),
-                EnemyId.AncientWyrm => new AncientWyrm(clampedLevel),
-                EnemyId.PitLord => new PitLord(clampedLevel),
-                _ => new Slime(clampedLevel)
+                EnemyId.Slime => new Slime(levelToPass),
+                EnemyId.Bat => new Bat(levelToPass),
+                EnemyId.Rat => new Rat(levelToPass),
+                EnemyId.CaveMushroom => new CaveMushroom(levelToPass),
+                EnemyId.StoneBeetle => new StoneBeetle(levelToPass),
+                EnemyId.Goblin => new Goblin(levelToPass),
+                EnemyId.Spider => new Spider(levelToPass),
+                EnemyId.Snake => new Snake(levelToPass),
+                EnemyId.ShadowImp => new ShadowImp(levelToPass),
+                EnemyId.TunnelWorm => new TunnelWorm(levelToPass),
+                EnemyId.FireLizard => new FireLizard(levelToPass),
+                EnemyId.Skeleton => new Skeleton(levelToPass),
+                EnemyId.Orc => new Orc(levelToPass),
+                EnemyId.Wraith => new Wraith(levelToPass),
+                EnemyId.MagmaOoze => new MagmaOoze(levelToPass),
+                EnemyId.CrystalGolem => new CrystalGolem(levelToPass),
+                EnemyId.CaveTroll => new CaveTroll(levelToPass),
+                EnemyId.GhostMiner => new GhostMiner(levelToPass),
+                EnemyId.ShadowBeast => new ShadowBeast(levelToPass),
+                EnemyId.LavaDrake => new LavaDrake(levelToPass),
+                EnemyId.StoneWyrm => new StoneWyrm(levelToPass),
+                EnemyId.StoneGuardian => new StoneGuardian(levelToPass),
+                EnemyId.EarthElemental => new EarthElemental(levelToPass),
+                EnemyId.MoltenTitan => new MoltenTitan(levelToPass),
+                EnemyId.AncientWyrm => new AncientWyrm(levelToPass),
+                EnemyId.PitLord => new PitLord(levelToPass),
+                _ => new Slime(levelToPass)
             };
         }
     }

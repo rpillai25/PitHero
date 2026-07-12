@@ -1,9 +1,11 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Persistence.Binary;
+using PitHero.Config;
 using PitHero.ECS.Scenes;
 using PitHero.Services;
 using PitHero.Util;
+using RolePlayingFramework.Equipment;
 
 namespace PitHero
 {
@@ -18,6 +20,10 @@ namespace PitHero
         protected override void Initialize()
         {
             base.Initialize();
+
+            // Synchronize ItemRegistry tier stride with the biome loop length so that
+            // tier-scaled gear names ("Item+2", "Item+3", …) resolve correctly on load.
+            ItemRegistry.TierDepthStride = BiomeProgressionConfig.MaxBiomeLevel;
 
             Graphics.Instance.BitmapFont = Content.LoadBitmapFont(GameConfig.FontMainUI);
 

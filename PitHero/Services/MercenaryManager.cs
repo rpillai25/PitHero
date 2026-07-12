@@ -175,8 +175,15 @@ namespace PitHero.Services
             var heroComponent = heroEntity?.GetComponent<HeroComponent>();
             var heroLevel = heroComponent?.LinkedHero?.Level ?? 1;
 
+            // Tier ≥ 2: tavern mercenaries are floored at the tier base level so they stay
+            // relevant for the hero's current progression loop.
+            var pitWidthManagerForMerc = Core.Services.GetService<PitWidthManager>();
+            int mercMinLevel = pitWidthManagerForMerc != null && pitWidthManagerForMerc.CurrentPitTier >= 2
+                ? pitWidthManagerForMerc.TierBaseLevel
+                : 1;
+
             // Determine mercenary level from distribution
-            var mercLevel = DetermineMercenaryLevel(heroLevel);
+            var mercLevel = DetermineMercenaryLevel(heroLevel, mercMinLevel);
 
             // Generate random job
             var job = GetRandomJob();
@@ -655,7 +662,9 @@ namespace PitHero.Services
         }
 
         /// <summary>Determines mercenary level using a weighted distribution based on hero level.</summary>
-        public static int DetermineMercenaryLevel(int heroLevel)
+        /// <param name="heroLevel">Current hero level (distribution anchor).</param>
+        /// <param name="minLevel">Minimum level floor — tier base level when tier ≥ 2, otherwise 1.</param>
+        public static int DetermineMercenaryLevel(int heroLevel, int minLevel = 1)
         {
             if (heroLevel < 1) heroLevel = 1;
 
@@ -695,7 +704,8 @@ namespace PitHero.Services
                 level = heroLevel;
             }
 
-            return level < 1 ? 1 : level;
+            int raw = level < 1 ? 1 : level;
+            return raw < minLevel ? minLevel : raw;
         }
 
         /// <summary>Hires a mercenary</summary>

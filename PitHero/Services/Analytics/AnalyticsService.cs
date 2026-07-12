@@ -170,6 +170,7 @@ namespace PitHero.Services.Analytics
             if (!BeginEvent("pit_generated"))
                 return;
             _json.Field("pitLevel", pitLevel);
+            _json.Field("pitTier", GetCurrentPitTier());
             _json.Field("isBossFloor", isBossFloor);
             _json.Field("monsterCount", monsterCount);
             _json.Field("chestCount", chestCount);
@@ -187,6 +188,7 @@ namespace PitHero.Services.Analytics
             if (!BeginEvent("chest_spawned"))
                 return;
             _json.Field("pitLevel", pitLevel);
+            _json.Field("pitTier", GetCurrentPitTier());
             _json.Field("x", x);
             _json.Field("y", y);
             _json.Field("chestLevel", chestLevel);
@@ -212,6 +214,7 @@ namespace PitHero.Services.Analytics
             if (!BeginEvent("monster_spawned"))
                 return;
             _json.Field("pitLevel", pitLevel);
+            _json.Field("pitTier", GetCurrentPitTier());
             _json.Field("x", x);
             _json.Field("y", y);
             _json.Field("name", enemy.Name);
@@ -234,6 +237,7 @@ namespace PitHero.Services.Analytics
                 return;
             _json.Field("fromPitLevel", fromPitLevel);
             _json.Field("toPitLevel", toPitLevel);
+            _json.Field("pitTier", GetCurrentPitTier());
             _json.Field("heroLevel", heroLevel);
             EndEvent();
 #endif
@@ -471,6 +475,7 @@ namespace PitHero.Services.Analytics
             _json.Field("level", enemy.Level);
             _json.Field("isBoss", enemy.IsBoss);
             _json.Field("pitLevel", GetCurrentPitLevel());
+            _json.Field("pitTier", GetCurrentPitTier());
             _json.Field("xp", enemy.ExperienceYield);
             _json.Field("jp", enemy.JPYield);
             _json.Field("gold", enemy.GoldYield);
@@ -604,6 +609,15 @@ namespace PitHero.Services.Analytics
                 return 0;
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
             return pitWidthManager?.CurrentPitLevel ?? 0;
+        }
+
+        /// <summary>Writes the current pit tier fetched from the PitWidthManager service (1 when unavailable).</summary>
+        private static int GetCurrentPitTier()
+        {
+            if (Core.Instance == null)
+                return 1;
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            return pitWidthManager?.CurrentPitTier ?? 1;
         }
 
         /// <summary>Writes name/job/level/stats/skills/gear fields for a hero into the current object.</summary>

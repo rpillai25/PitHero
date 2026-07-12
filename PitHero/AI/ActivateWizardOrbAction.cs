@@ -5,6 +5,7 @@ using PitHero.Config;
 using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.Util;
+using PitHero.VirtualGame;
 using System.Collections;
 
 namespace PitHero.AI
@@ -53,8 +54,9 @@ namespace PitHero.AI
             ClearAllFogOfWarInPit();
 
             int pitLevelBeforeOrb = Core.Services.GetService<PitWidthManager>()?.CurrentPitLevel ?? 0;
+            int heroLevel = hero.LinkedHero?.Level ?? 1;
 
-            QueueNextPitLevel();
+            QueueNextPitLevel(heroLevel);
 
             // Regenerate the queued pit level immediately
             if (!RegenerateQueuedPitLevel())
@@ -106,8 +108,22 @@ namespace PitHero.AI
             var nextLevel = context.PitLevelManager.DequeueLevel();
             if (nextLevel.HasValue)
             {
-                context.PitGenerator.RegenerateForLevel(nextLevel.Value);
-                context.LogDebug($"[ActivateWizardOrbAction] Generated pit level {nextLevel.Value}");
+                // Normalize tier state when the depth exceeds the single-biome boundary.
+                // The level value itself is passed through unchanged for now (step 4 will
+                // teach RegenerateForLevel to interpret it as cumulative depth).
+                int dequeued = nextLevel.Value;
+                if (dequeued > BiomeProgressionConfig.MaxBiomeLevel)
+                {
+                    int newTier = BiomeProgressionConfig.GetTierForDepth(dequeued);
+                    if (newTier > context.PitWidthManager.CurrentPitTier)
+                    {
+                        var vManager = context.PitWidthManager as VirtualPitWidthManager;
+                        vManager?.SetPitTier(newTier);
+                        context.LogDebug($"[ActivateWizardOrbAction] Tier advanced to {newTier} for depth {dequeued}");
+                    }
+                }
+                context.PitGenerator.RegenerateForLevel(dequeued);
+                context.LogDebug($"[ActivateWizardOrbAction] Generated pit level {dequeued}");
             }
             else
             {
@@ -170,8 +186,8 @@ namespace PitHero.AI
             return wizardOrbEntities[0]; // Should only be one wizard orb
         }
 
-        /// <summary>Queue next pit level for regeneration.</summary>
-        private void QueueNextPitLevel()
+        /// <summary>Queue next pit level for regeneration, wrapping to tier 1 when past MaxBiomeLevel.</summary>
+        private void QueueNextPitLevel(int heroLevel)
         {
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
             if (pitWidthManager == null)
@@ -180,8 +196,14 @@ namespace PitHero.AI
                 return;
             }
 
-            // Queue the next level (current level + 1)
             var nextLevel = pitWidthManager.CurrentPitLevel + 1;
+            if (nextLevel > BiomeProgressionConfig.MaxBiomeLevel)
+            {
+                // Wrap: increment tier then queue level 1. IncrementPitTier is idempotent at tier cap 99.
+                pitWidthManager.IncrementPitTier(heroLevel);
+                nextLevel = 1;
+                Debug.Log($"[ActivateWizardOrb] Pit wrapped — tier now {pitWidthManager.CurrentPitTier}, queuing level 1");
+            }
             QueuePitLevel(nextLevel);
 
             Debug.Log($"[ActivateWizardOrb] Queued pit level {nextLevel} for regeneration");

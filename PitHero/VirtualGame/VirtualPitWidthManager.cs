@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using PitHero.AI.Interfaces;
+using PitHero.Config;
 using PitHero.Util;
 using System;
 using System.Collections.Generic;
@@ -16,6 +17,8 @@ namespace PitHero.VirtualGame
 
         // State tracking (same as real PitWidthManager)
         private int _currentPitLevel = 1;
+        private int _currentPitTier = 1;
+        private int _tierBaseLevel = 1;
         private int _currentPitRightEdge;
         private bool _isInitialized = false;
 
@@ -35,6 +38,8 @@ namespace PitHero.VirtualGame
         }
 
         public int CurrentPitLevel => _currentPitLevel;
+        public int CurrentPitTier => _currentPitTier;
+        public int TierBaseLevel => _tierBaseLevel;
         public int CurrentPitRightEdge => _currentPitRightEdge;
 
         public int CurrentPitRectWidthTiles => _isInitialized
@@ -125,6 +130,42 @@ namespace PitHero.VirtualGame
             Console.WriteLine($"[VirtualPitWidthManager] {patternName} total: {dictionary.Count} tiles, {nonZeroCount} non-zero");
         }
 
+        /// <summary>
+        /// Sets the pit tier, clamped to [1, MaxPitTier].
+        /// </summary>
+        public void SetPitTier(int tier)
+        {
+            int clamped = tier < 1 ? 1 : (tier > BiomeProgressionConfig.MaxPitTier ? BiomeProgressionConfig.MaxPitTier : tier);
+            _currentPitTier = clamped;
+            Console.WriteLine($"[VirtualPitWidthManager] PitTier set to {_currentPitTier}");
+        }
+
+        /// <summary>
+        /// Sets the tier base level (clamped to ≥1, monotonic non-decreasing — lower values are ignored).
+        /// </summary>
+        public void SetTierBaseLevel(int heroLevel)
+        {
+            int clamped = heroLevel < 1 ? 1 : heroLevel;
+            if (clamped > _tierBaseLevel)
+            {
+                _tierBaseLevel = clamped;
+                Console.WriteLine($"[VirtualPitWidthManager] TierBaseLevel updated to {_tierBaseLevel}");
+            }
+        }
+
+        /// <summary>
+        /// Increments the pit tier by 1 (clamped at MaxPitTier) and records the hero level as the new tier base level.
+        /// </summary>
+        public void IncrementPitTier(int heroLevelAtEntry)
+        {
+            int newTier = _currentPitTier + 1;
+            if (newTier > BiomeProgressionConfig.MaxPitTier)
+                newTier = BiomeProgressionConfig.MaxPitTier;
+            _currentPitTier = newTier;
+            SetTierBaseLevel(heroLevelAtEntry);
+            Console.WriteLine($"[VirtualPitWidthManager] PitTier incremented to {_currentPitTier}, TierBaseLevel={_tierBaseLevel}");
+        }
+
         public void SetPitLevel(int newLevel)
         {
             if (!_isInitialized)
@@ -156,11 +197,12 @@ namespace PitHero.VirtualGame
                 return;
             }
 
-            // Calculate how many inner floor tiles to extend (same logic as real PitWidthManager)
-            // Cap expansion at level 100 - pit stops expanding beyond level 100
-            int expansionLevel = Math.Min(_currentPitLevel, 100);
+            // Calculate how many inner floor tiles to extend (same logic as real PitWidthManager).
+            // Use effective depth so expansion continues across tiers, capped at depth 100.
+            int effectiveDepth = BiomeProgressionConfig.GetEffectiveDepth(_currentPitLevel, _currentPitTier);
+            int expansionLevel = Math.Min(effectiveDepth, 100);
             int innerFloorTilesToExtend = ((int)(expansionLevel / 10)) * 2;
-            Console.WriteLine($"[VirtualPitWidthManager] Level {_currentPitLevel}: extending pit by {innerFloorTilesToExtend} inner floor tiles");
+            Console.WriteLine($"[VirtualPitWidthManager] Level {_currentPitLevel} Tier {_currentPitTier} (effectiveDepth={effectiveDepth}): extending pit by {innerFloorTilesToExtend} inner floor tiles");
 
             if (innerFloorTilesToExtend <= 0)
             {

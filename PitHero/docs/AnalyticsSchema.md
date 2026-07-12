@@ -45,12 +45,12 @@ interpretation caveats that are not obvious from the raw data.
 ### Pit
 | `e` | Fields | Notes |
 |---|---|---|
-| `pit_generated` | `pitLevel`, `isBossFloor`, `monsterCount`, `chestCount` | Fires on every pit (re)generation, including the initial load-time generation. `isBossFloor` comes from `CaveBiomeConfig.IsBossFloor` — see caveat below. |
-| `chest_spawned` | `pitLevel`, `x`, `y`, `chestLevel` (1–5), `item`, `kind`, `rarity`, optional `seedType` + `seedCount` | Contents decided at spawn time. `item` is `null` for seed chests. |
-| `monster_spawned` | `pitLevel`, `x`, `y`, `name`, `enemyId`, `level`, `maxHP`, `isBoss` | `level` is the enemy's own level (often a per-type preset — see caveats). |
-| `trap_triggered` | `pitLevel`, `x`, `y`, `damage` | Hero stepped on a hidden trap. `damage` is the clamped value actually applied (hero's HP is never reduced below 1 out-of-battle). Formula: `5 + pitLevel * 2` before clamping. |
+| `pit_generated` | `pitLevel`, `pitTier`, `isBossFloor`, `monsterCount`, `chestCount` | Fires on every pit (re)generation, including the initial load-time generation. `isBossFloor` comes from `CaveBiomeConfig.IsBossFloor` — see caveat below. `pitTier` is 1 until the player completes pit 25, after which it increments and `pitLevel` resets to 1 for the new tier. |
+| `chest_spawned` | `pitLevel`, `pitTier`, `x`, `y`, `chestLevel` (1–5), `item`, `kind`, `rarity`, optional `seedType` + `seedCount` | Contents decided at spawn time. `item` is `null` for seed chests. |
+| `monster_spawned` | `pitLevel`, `pitTier`, `x`, `y`, `name`, `enemyId`, `level`, `maxHP`, `isBoss` | `level` is the enemy's own level (often a per-type preset — see caveats). |
+| `trap_triggered` | `pitLevel`, `x`, `y`, `damage` | Hero stepped on a hidden trap. `damage` is the clamped value actually applied (hero's HP is never reduced below 1 out-of-battle). Formula: `5 + (tier-1)*25*2 + pitLevel * 2` (effective depth scaling) before clamping. |
 | `trap_disarmed` | `pitLevel`, `x`, `y` | A party member with the TrapSense passive auto-disarmed a trap when fog was cleared over it. No damage dealt. |
-| `orb_activated` | `fromPitLevel`, `toPitLevel`, `heroLevel` | Wizard orb → next pit level. Followed by a `party_snapshot` with `reason:"orb"`. |
+| `orb_activated` | `fromPitLevel`, `toPitLevel`, `pitTier`, `heroLevel` | Wizard orb → next pit level. `pitTier` is the tier **at the moment of activation** (i.e. the tier about to be left when the orb advances into a new tier). Followed by a `party_snapshot` with `reason:"orb"`. |
 | `pit_jump` | `pitLevel`, `heroLevel`, `heroHP`, `heroMaxHP` | Hero jumped into the pit. Followed by a `party_snapshot` with `reason:"pit_jump"`. |
 | `party_snapshot` | `reason`, `members[]` | Each member: `name`, `type` (`"hero"`/`"merc"`), `job`, `level`, `str/agi/vit/mag` (total stats incl. gear/synergy), `maxHP`, `curHP`, `maxMP`, `skills[]` (skill ids), `gear{}` (slot→item name; keys `weapon`, `armor`, `hat`, `shield`, `acc1`, `acc2`; empty slots omitted). |
 
@@ -73,7 +73,7 @@ interpretation caveats that are not obvious from the raw data.
 |---|---|---|
 | `attack` | `actor`, `actorType` (`"hero"`/`"merc"`/`"monster"`), `action`, `target`, `targetType`, `dmg`, `hpBefore`, `hpAfter`, `killed` | `action` is `"physical"`, a skill id (e.g. `knight.heavy_strike`), `"counter"` (hero/merc retaliation after taking a hit — requires monk.counter passive), or `"<skillId>.dot"` (end-of-round damage-over-time tick from a skill such as `synergy.poison_arrow.dot`). `hpBefore`/`hpAfter` are the **target's** HP; `hpBefore − dmg = hpAfter` (floored at 0). AoE skills emit one line per target hit. Misses are not logged. Monsters only have physical attacks. Counter attacks and DoT ticks never produce miss events. |
 | `heal` | `actor`, `source` (skill id or item name), `target`, `amount`, `hpAfter` | Battle heals (skills and consumables). |
-| `monster_defeated` | `name`, `enemyId`, `level`, `isBoss`, `pitLevel`, `xp`, `jp`, `gold` | One per kill regardless of killer; the matching `gold_gained` (`source:"battle"`) follows. |
+| `monster_defeated` | `name`, `enemyId`, `level`, `isBoss`, `pitLevel`, `pitTier`, `xp`, `jp`, `gold` | One per kill regardless of killer; the matching `gold_gained` (`source:"battle"`) follows. |
 | `char_killed` | full victim snapshot (same shape as a `party_snapshot` member) + `killer{name, enemyId, level, str/agi/vit/mag, maxHP}` | Hero or mercenary killed by a monster. |
 
 ## Interpretation caveats
@@ -83,9 +83,11 @@ interpretation caveats that are not obvious from the raw data.
   localized display names (English by default). Strip the prefixes for readability.
 - **Damage is post-mitigation.** `dmg` is the applied damage (includes the debug
   `DEBUG_DAMAGE_MULT` multiplier in `AttackMonsterAction`, normally 1).
-- **Enemy `level` may not track `pitLevel`.** Enemy constructors use per-type preset levels
-  (`EnemyLevelConfig.GetPresetLevel`) outside the Cave biome — see issues #290/#291 for the
-  known post-cave flattening this exposes.
+- **Enemy `level` tracks effective depth inside the Cave biome.** As of issue #291, enemy
+  constructors honour `pitLevel` passed by `CaveBiomeConfig`; the per-type preset path
+  (`EnemyLevelConfig.GetPresetLevel`) is still used for non-Cave content. Use `pitTier` and
+  `pitLevel` together to recover effective depth: `effectiveDepth = (pitTier-1)*25 + pitLevel`.
+  Trap damage scales with this same depth formula: `5 + effectiveDepth * 2` before clamping.
 - **Load-time replay:** on `mode:"load"`, the pit is regenerated, so the first
   `pit_generated`/`chest_spawned`/`monster_spawned` burst right after `session_start`
   reflects the restored pit, and one `merc_arrived` fires for the initial tavern spawn.
