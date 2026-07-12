@@ -848,13 +848,17 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// Initialize this treasure chest for a specific pit level
+        /// Initialize this treasure chest for a specific pit level.
         /// </summary>
-        public void InitializeForPitLevel(int pitLevel, LootJobContext jobContext = default)
+        /// <param name="pitLevel">Displayed pit level (1–25, biome-local).</param>
+        /// <param name="jobContext">Party job composition for biased loot.</param>
+        /// <param name="pitTier">Pit tier — gear drops at tier ≥ 2 are upgraded via <see cref="RolePlayingFramework.Equipment.Gear.CreateTierScaledCopy"/>.</param>
+        public void InitializeForPitLevel(int pitLevel, LootJobContext jobContext = default, int pitTier = 1)
         {
             Level = DetermineTreasureLevel(pitLevel);
 
             // Seed drop: any uncommon (level-2) chest has a chance to yield seeds instead of normal loot.
+            // Seeds are not tier-scaled (they are consumables, not gear).
             if (Level == 2 && Nez.Random.NextFloat() < BalanceConfig.SeedChestDropRate)
             {
                 ContainedSeedType  = (CropType)Nez.Random.NextInt(CropTypeInfo.Count);
@@ -866,10 +870,18 @@ namespace PitHero.ECS.Components
             if (CaveBiomeConfig.IsCaveLevel(pitLevel))
             {
                 ContainedItem = GenerateCaveItemForTreasureLevel(Level, jobContext);
-                return;
+            }
+            else
+            {
+                ContainedItem = GenerateItemForTreasureLevel(Level);
             }
 
-            ContainedItem = GenerateItemForTreasureLevel(Level);
+            // Apply tier scaling to gear drops.  Potions/consumables are not Gear and pass through untouched.
+            if (pitTier >= 2 && ContainedItem is RolePlayingFramework.Equipment.Gear g)
+            {
+                int depthDelta = (pitTier - 1) * BiomeProgressionConfig.MaxBiomeLevel;
+                ContainedItem = RolePlayingFramework.Equipment.Gear.CreateTierScaledCopy(g, pitTier, depthDelta);
+            }
         }
     }
 }

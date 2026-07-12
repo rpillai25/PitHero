@@ -29,9 +29,8 @@ namespace RolePlayingFramework.Enemies
 
         public Skeleton(int level = 6)
         {
-            // Always use the preset level for Skeletons regardless of requested level
             var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.Skeleton);
-            Level = presetLevel;
+            Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats
             var archetype = BalanceConfig.MonsterArchetype.Tank;

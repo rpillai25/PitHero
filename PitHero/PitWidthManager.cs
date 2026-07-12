@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.AI.Interfaces;
+using PitHero.Config;
 using PitHero.ECS.Scenes;
 using PitHero.Util;
 using System;
@@ -42,6 +43,8 @@ namespace PitHero
 
         // Track current pit state
         private int _currentPitLevel = 1;
+        private int _currentPitTier = 1;
+        private int _tierBaseLevel = 1;
         private int _currentPitRightEdge; // The rightmost x coordinate of the current pit
         private bool _isInitialized = false;
 
@@ -49,6 +52,8 @@ namespace PitHero
         private ITiledMapService _tiledMapService;
 
         public int CurrentPitLevel => _currentPitLevel;
+        public int CurrentPitTier => _currentPitTier;
+        public int TierBaseLevel => _tierBaseLevel;
         public int CurrentPitRightEdge => _currentPitRightEdge;
 
         public PitWidthManager(ITiledMapService tiledMapService = null)
@@ -211,6 +216,43 @@ namespace PitHero
         }
 
         /// <summary>
+        /// Sets the pit tier, clamped to [1, MaxPitTier]. Called on save load or explicit tier override.
+        /// </summary>
+        public void SetPitTier(int tier)
+        {
+            int clamped = tier < 1 ? 1 : (tier > BiomeProgressionConfig.MaxPitTier ? BiomeProgressionConfig.MaxPitTier : tier);
+            _currentPitTier = clamped;
+            Debug.Log($"[PitWidthManager] PitTier set to {_currentPitTier}");
+        }
+
+        /// <summary>
+        /// Sets the tier base level (clamped to ≥1, monotonic non-decreasing — lower values are ignored).
+        /// </summary>
+        public void SetTierBaseLevel(int heroLevel)
+        {
+            int clamped = heroLevel < 1 ? 1 : heroLevel;
+            if (clamped > _tierBaseLevel)
+            {
+                _tierBaseLevel = clamped;
+                Debug.Log($"[PitWidthManager] TierBaseLevel updated to {_tierBaseLevel}");
+            }
+        }
+
+        /// <summary>
+        /// Increments the pit tier by 1 (clamped at MaxPitTier) and records the hero level as the new tier base level.
+        /// Called when the pit level wraps from MaxBiomeLevel back to 1.
+        /// </summary>
+        public void IncrementPitTier(int heroLevelAtEntry)
+        {
+            int newTier = _currentPitTier + 1;
+            if (newTier > BiomeProgressionConfig.MaxPitTier)
+                newTier = BiomeProgressionConfig.MaxPitTier;
+            _currentPitTier = newTier;
+            SetTierBaseLevel(heroLevelAtEntry);
+            Debug.Log($"[PitWidthManager] PitTier incremented to {_currentPitTier}, TierBaseLevel={_tierBaseLevel}");
+        }
+
+        /// <summary>
         /// Set the pit level and regenerate the pit width accordingly
         /// </summary>
         public void SetPitLevel(int newLevel)
@@ -235,8 +277,9 @@ namespace PitHero
 
             // Calculate new right edge
             int initialRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth;
-            // Cap expansion at level 100 - pit stops expanding beyond level 100
-            int expansionLevel = Math.Min(_currentPitLevel, 100);
+            // Cap expansion at effective depth 100 - pit stops expanding beyond effective depth 100.
+            // Tier 1 behaviour is identical to before (effectiveDepth == pitLevel).
+            int expansionLevel = Math.Min(BiomeProgressionConfig.GetEffectiveDepth(_currentPitLevel, _currentPitTier), 100);
             int innerFloorTilesToExtend = ((int)(expansionLevel / 10)) * 2;
             int newRightEdge = initialRightEdge + innerFloorTilesToExtend + (innerFloorTilesToExtend > 0 ? 2 : 0); // +2 for inner wall and outer floor
 
@@ -325,15 +368,16 @@ namespace PitHero
                 return;
             }
 
-            // Calculate how many inner floor tiles to extend
-            // Cap expansion at level 100 - pit stops expanding beyond level 100
-            int expansionLevel = Math.Min(_currentPitLevel, 100);
+            // Calculate how many inner floor tiles to extend.
+            // Use effective depth so expansion continues across tiers, capped at depth 100.
+            int effectiveDepth = BiomeProgressionConfig.GetEffectiveDepth(_currentPitLevel, _currentPitTier);
+            int expansionLevel = Math.Min(effectiveDepth, 100);
             int innerFloorTilesToExtend = ((int)(expansionLevel / 10)) * 2;
-            Debug.Log($"[PitWidthManager] Level {_currentPitLevel}: extending pit by {innerFloorTilesToExtend} inner floor tiles");
+            Debug.Log($"[PitWidthManager] Level {_currentPitLevel} Tier {_currentPitTier} (effectiveDepth={effectiveDepth}): extending pit by {innerFloorTilesToExtend} inner floor tiles");
 
-            if (_currentPitLevel > 100)
+            if (effectiveDepth > 100)
             {
-                Debug.Log("[PitWidthManager] Expansion capped at level 100. No further width increases beyond level 100.");
+                Debug.Log("[PitWidthManager] Expansion capped at effective depth 100. No further width increases.");
             }
 
             if (innerFloorTilesToExtend <= 0)

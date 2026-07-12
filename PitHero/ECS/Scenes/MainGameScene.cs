@@ -33,6 +33,7 @@ namespace PitHero.ECS.Scenes
         private Label _fundsLabel; // UI label showing total funds
         private Label _clockLabel; // UI label showing in-game time
         private int _lastDisplayedPitLevel = -1; // Track last displayed level to avoid string churn
+        private int _lastDisplayedPitTier = -1; // Track last displayed tier to avoid string churn
         private int _lastDisplayedFunds = -1; // Track last displayed funds to avoid string churn
         private ShortcutBar _shortcutBar; // Shortcut bar displayed at bottom center
         private GraphicalHUD _graphicalHUD; // Graphical HUD component for HP/MP/Level display
@@ -222,7 +223,12 @@ namespace PitHero.ECS.Scenes
             // ClearExistingPitEntities cannot find, producing a conflicting dual-state pit.
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
             if (pitWidthManager != null && SaveLoadService.PendingLoadData == null)
+            {
+                // New game — ensure tier state is clean before setting the initial level.
+                pitWidthManager.SetPitTier(1);
+                pitWidthManager.SetTierBaseLevel(1);
                 pitWidthManager.SetPitLevel(1);
+            }
 
             SpawnHero();
             SpawnHeroStatue();
@@ -531,12 +537,13 @@ namespace PitHero.ECS.Scenes
             heroComp.UseConsumablesOnMercenaries = pendingData.UseConsumablesOnMercenaries;
             heroComp.MercenariesCanUseConsumables = pendingData.MercenariesCanUseConsumables;
             
-            // Restore pit level (always call SetPitLevel so the pit is generated once
-            // from saved state; the initial SetPitLevel(1) in Begin is skipped when
-            // pending load data exists to prevent a conflicting dual-state pit)
+            // Restore pit tier and base level BEFORE pit level so that width-regen uses
+            // the correct effective depth (tier 1 behaviour is identical to before).
             var pitManager = Core.Services.GetService<PitWidthManager>();
             if (pitManager != null)
             {
+                pitManager.SetPitTier(pendingData.PitTier);
+                pitManager.SetTierBaseLevel(pendingData.TierBaseLevel);
                 pitManager.SetPitLevel(Math.Max(1, pendingData.PitLevel));
             }
             
@@ -1527,7 +1534,7 @@ namespace PitHero.ECS.Scenes
         }
 
         /// <summary>
-        /// Update pit level label text when the pit level changes
+        /// Update pit level label text when the pit level or tier changes
         /// </summary>
         private void UpdatePitLevelLabel()
         {
@@ -1539,10 +1546,15 @@ namespace PitHero.ECS.Scenes
                 return;
 
             var currentLevel = pitWidthManager.CurrentPitLevel;
-            if (currentLevel != _lastDisplayedPitLevel)
+            var currentTier = pitWidthManager.CurrentPitTier;
+            if (currentLevel != _lastDisplayedPitLevel || currentTier != _lastDisplayedPitTier)
             {
-                _pitLevelLabel.SetText($"Pit Lv. {currentLevel}");
+                if (currentTier >= 2)
+                    _pitLevelLabel.SetText($"Pit Lv. {currentLevel}({currentTier})");
+                else
+                    _pitLevelLabel.SetText($"Pit Lv. {currentLevel}");
                 _lastDisplayedPitLevel = currentLevel;
+                _lastDisplayedPitTier = currentTier;
             }
         }
 

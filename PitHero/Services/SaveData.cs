@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez.Persistence.Binary;
+using PitHero.Config;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Stats;
@@ -243,7 +244,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 12;
+        public const int CurrentVersion = 13;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -352,8 +353,14 @@ namespace PitHero.Services
         public Dictionary<string, int> DiscoveredStencils;
 
         // Pit State
-        /// <summary>Current pit level.</summary>
+        /// <summary>Current pit level (biome-local, 1–MaxBiomeLevel).</summary>
         public int PitLevel;
+
+        /// <summary>Current pit tier (1–99, permanent, never decreases). Version 13+.</summary>
+        public int PitTier = 1;
+
+        /// <summary>Hero level at which the tier first incremented; respawned heroes start here. Version 13+.</summary>
+        public int TierBaseLevel = 1;
 
         // Priorities (stored as ints, cast from HeroPitPriority / HeroHealPriority)
         /// <summary>First pit priority.</summary>
@@ -800,6 +807,10 @@ namespace PitHero.Services
                 writer.Write(DroppedCrops[i].TileX);
                 writer.Write(DroppedCrops[i].TileY);
             }
+
+            // 29. Pit tier (version 13+)
+            writer.Write(PitTier);
+            writer.Write(TierBaseLevel);
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -1224,6 +1235,24 @@ namespace PitHero.Services
             else
             {
                 DroppedCrops = new List<SavedDroppedCrop>();
+            }
+
+            // 29. Pit tier (version 13+)
+            // Migration: old saves whose PitLevel exceeded MaxBiomeLevel (e.g. pit 119) are
+            // decoded into the correct tier and displayed level so the game never sees a raw
+            // depth value in PitLevel. Level (hero level) is read earlier in section 4.
+            if (fileVersion >= 13)
+            {
+                PitTier = reader.ReadInt();
+                TierBaseLevel = reader.ReadInt();
+            }
+            else
+            {
+                // Infer tier from the raw pit level (which may be cumulative depth on old saves).
+                PitTier = BiomeProgressionConfig.GetTierForDepth(PitLevel);
+                TierBaseLevel = PitTier >= 2 ? (Level > 0 ? Level : 1) : 1;
+                // Normalise PitLevel to biome-local range so the rest of the game sees [1..MaxBiomeLevel].
+                PitLevel = BiomeProgressionConfig.GetDisplayedLevelForDepth(PitLevel);
             }
         }
 

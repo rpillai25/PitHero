@@ -218,6 +218,12 @@ namespace PitHero.VirtualGame
                 list.Remove(position);
         }
 
+        /// <summary>
+        /// Read-only view of all treasure items currently placed in the world, keyed by tile position.
+        /// Use this in tests to inspect item types and tier-scaling without consuming treasures.
+        /// </summary>
+        public IReadOnlyDictionary<Point, IItem> TreasureInstances => _treasureInstances;
+
         /// <summary>Returns true when at least one unopened treasure chest remains.</summary>
         public bool HasUnopenedTreasures()
         {

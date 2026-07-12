@@ -29,9 +29,8 @@ namespace RolePlayingFramework.Enemies
 
         public Bat(int level = 1)
         {
-            // Always use the preset level for Bats regardless of requested level
             var presetLevel = PitHero.Config.EnemyLevelConfig.GetPresetLevel(EnemyId.Bat);
-            Level = presetLevel;
+            Level = StatConstants.ClampLevel(level > 0 ? level : presetLevel);
 
             // Use BalanceConfig for stats
             var archetype = BalanceConfig.MonsterArchetype.FastFragile;

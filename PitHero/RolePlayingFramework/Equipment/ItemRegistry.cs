@@ -9,6 +9,15 @@ namespace RolePlayingFramework.Equipment
         private static Dictionary<string, Func<IItem>> _registry;
         private static bool _initialized;
 
+        /// <summary>
+        /// Depth stride per pit tier — used when reconstructing tier-scaled gear names of the
+        /// form "BaseName+N" (N = tier).  Defaults to 25; overridden at game startup from
+        /// BiomeProgressionConfig.MaxBiomeLevel so the value stays in sync with the biome loop.
+        /// Assign this from the PitHero side before any TryCreateItem call that may encounter
+        /// a tier-scaled name; RolePlayingFramework must not reference PitHero.Config directly.
+        /// </summary>
+        public static int TierDepthStride = 25;
+
         /// <summary>Returns the registry, initializing on first access.</summary>
         private static Dictionary<string, Func<IItem>> Registry
         {
@@ -203,13 +212,36 @@ namespace RolePlayingFramework.Equipment
 
         }
 
-        /// <summary>Attempts to create an item by name. Returns true if found.</summary>
+        /// <summary>
+        /// Attempts to create an item by name.  Returns true if found.
+        /// Also handles tier-scaled names of the form "BaseName+N" (N &gt; 1):
+        /// strips the suffix, looks up the base item, and if found as Gear returns a
+        /// tier-scaled copy via <see cref="Gear.CreateTierScaledCopy"/>.
+        /// </summary>
         public static bool TryCreateItem(string name, out IItem item)
         {
             if (Registry.TryGetValue(name, out var factory))
             {
                 item = factory();
                 return true;
+            }
+
+            // ── Tier-scaled name parsing ("BaseName+N", N > 1) ───────────────────────
+            int plusIdx = name.LastIndexOf('+');
+            if (plusIdx > 0)
+            {
+                string suffix  = name.Substring(plusIdx + 1);
+                string baseName = name.Substring(0, plusIdx);
+                if (int.TryParse(suffix, out int tier) && tier > 1
+                    && Registry.TryGetValue(baseName, out var baseFactory))
+                {
+                    IItem baseItem = baseFactory();
+                    if (baseItem is Gear baseGear)
+                    {
+                        item = Gear.CreateTierScaledCopy(baseGear, tier, (tier - 1) * TierDepthStride);
+                        return true;
+                    }
+                }
             }
 
             item = null;

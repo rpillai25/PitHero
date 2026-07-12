@@ -299,10 +299,14 @@ namespace PitHero.Services
                 stencilEnumerator.Dispose();
             }
 
-            // Pit level
+            // Pit level, tier, and base level
             var pitManager = Core.Services.GetService<PitWidthManager>();
             if (pitManager != null)
+            {
                 data.PitLevel = pitManager.CurrentPitLevel;
+                data.PitTier = pitManager.CurrentPitTier;
+                data.TierBaseLevel = pitManager.TierBaseLevel;
+            }
 
             // Allied monsters
             var alliedManager = Core.Services.GetService<AlliedMonsterManager>();

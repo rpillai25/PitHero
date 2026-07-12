@@ -550,6 +550,39 @@ namespace RolePlayingFramework.Balance
             return (int)(baseStat * rarityMultiplier);
         }
 
+        // ── Tier-scaling delta helpers ─────────────────────────────────────────────────
+        // These produce the ADDITIONAL stat bonus a piece of gear gains when promoted to
+        // a higher pit tier.  The divisors match the base Calculate* functions so a +25
+        // depth delta ≈ the difference between the base formula at (pitLevel) and at
+        // (pitLevel + 25).  Rounding is truncated (int cast) for parity with the base formulas.
+
+        /// <summary>
+        /// Additional attack bonus per depthDelta levels of effective depth (mirrors CalculateEquipmentAttackBonus divisor = 2).
+        /// </summary>
+        public static int CalculateEquipmentAttackBonusDelta(int depthDelta, ItemRarity rarity)
+        {
+            float rarityMultiplier = GetRarityMultiplier(rarity);
+            return (int)((depthDelta / 2f) * rarityMultiplier);
+        }
+
+        /// <summary>
+        /// Additional defense bonus per depthDelta levels of effective depth (mirrors CalculateEquipmentDefenseBonus divisor = 3).
+        /// </summary>
+        public static int CalculateEquipmentDefenseBonusDelta(int depthDelta, ItemRarity rarity)
+        {
+            float rarityMultiplier = GetRarityMultiplier(rarity);
+            return (int)((depthDelta / 3f) * rarityMultiplier);
+        }
+
+        /// <summary>
+        /// Additional stat bonus per depthDelta levels of effective depth (mirrors CalculateEquipmentStatBonus divisor = 5).
+        /// </summary>
+        public static int CalculateEquipmentStatBonusDelta(int depthDelta, ItemRarity rarity)
+        {
+            float rarityMultiplier = GetRarityMultiplier(rarity);
+            return (int)((depthDelta / 5f) * rarityMultiplier);
+        }
+
         #endregion
 
         #region Elemental Damage Multipliers

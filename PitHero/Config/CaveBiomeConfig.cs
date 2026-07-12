@@ -56,9 +56,13 @@ namespace PitHero.Config
         /// <summary>
         /// Gets enemy spawn level for Cave progression, with a boss bonus on boss floors.
         /// </summary>
-        public static int GetScaledEnemyLevelForPitLevel(int pitLevel)
+        /// <param name="pitLevel">Displayed pit level (1–25, biome-local).</param>
+        /// <param name="pitTier">Pit tier (1 = first loop; default keeps all existing call sites at tier 1).</param>
+        public static int GetScaledEnemyLevelForPitLevel(int pitLevel, int pitTier = 1)
         {
-            int baseLevel = BalanceConfig.EstimatePlayerLevelForPitLevel(pitLevel);
+            // Use effective cumulative depth so tier-2+ enemies are stronger than tier-1 at the same displayed level.
+            int effectiveDepth = BiomeProgressionConfig.GetEffectiveDepth(pitLevel, pitTier);
+            int baseLevel = BalanceConfig.EstimatePlayerLevelForPitLevel(effectiveDepth);
             // Boss floors get a small +2 spike to preserve milestone difficulty without changing the base curve.
             int bossBonus = IsBossFloor(pitLevel) ? 2 : 0;
             // Clamp keeps levels in the global 1-99 bounds for safety at all call sites.

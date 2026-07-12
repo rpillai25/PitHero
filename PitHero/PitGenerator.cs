@@ -99,12 +99,17 @@ namespace PitHero
         /// <summary>
         /// Create a random enemy appropriate for the given pit level.
         /// Cave levels 1-25 use explicit mapping with boss floors at 5/10/15/20/25.
+        /// Biome pool selection uses the displayed pitLevel; enemy scaling uses the effective depth via pitTier.
         /// </summary>
-        public (IEnemy enemy, Color color) CreateEnemyForPitLevel(int pitLevel)
+        /// <param name="pitLevel">Displayed pit level (1–25, biome-local).</param>
+        /// <param name="pitTier">Pit tier (default 1 keeps all existing call sites at tier-1 behaviour).</param>
+        public (IEnemy enemy, Color color) CreateEnemyForPitLevel(int pitLevel, int pitTier = 1)
         {
             if (CaveBiomeConfig.IsCaveLevel(pitLevel))
             {
-                int scaledLevel = CaveBiomeConfig.GetScaledEnemyLevelForPitLevel(pitLevel);
+                // Pool keying and boss checks use the DISPLAYED pitLevel (biome-local 1–25).
+                // Enemy level scaling uses the effective cumulative depth so tier-2+ enemies are stronger.
+                int scaledLevel = CaveBiomeConfig.GetScaledEnemyLevelForPitLevel(pitLevel, pitTier);
                 if (CaveBiomeConfig.IsBossFloor(pitLevel))
                 {
                     // Spawn unique boss for each boss floor
@@ -129,11 +134,11 @@ namespace PitHero
                 return CreateEnemyById(enemyPool[choice], scaledLevel);
             }
 
-            // Fallback mapping outside cave
+            // Fallback mapping outside cave — uses effective depth for enemy level.
+            int effectiveDepth = Math.Clamp(BiomeProgressionConfig.GetEffectiveDepth(pitLevel, pitTier), 1, 99);
             if (pitLevel % 5 == 0)
             {
-                int bossLevel = Math.Clamp(pitLevel, 1, 99);
-                return (new PitLord(bossLevel), Color.Red);
+                return (new PitLord(effectiveDepth), Color.Red);
             }
 
             if (pitLevel >= 7)
@@ -141,9 +146,9 @@ namespace PitHero
                 int choice = Nez.Random.Range(0, 3);
                 return choice switch
                 {
-                    0 => (new Skeleton(Math.Clamp(pitLevel, 1, 99)), Color.White),
-                    1 => (new Orc(Math.Clamp(pitLevel, 1, 99)), Color.DarkGreen),
-                    _ => (new Wraith(Math.Clamp(pitLevel, 1, 99)), Color.Blue)
+                    0 => (new Skeleton(effectiveDepth), Color.White),
+                    1 => (new Orc(effectiveDepth), Color.DarkGreen),
+                    _ => (new Wraith(effectiveDepth), Color.Blue)
                 };
             }
 
@@ -153,9 +158,9 @@ namespace PitHero
                 int choice = Nez.Random.Range(0, 3);
                 return choice switch
                 {
-                    0 => (new Goblin(Math.Clamp(pitLevel, 1, 99)), Color.Green),
-                    1 => (new Spider(Math.Clamp(pitLevel, 1, 99)), Color.DarkGray),
-                    _ => (new Snake(Math.Clamp(pitLevel, 1, 99)), Color.Yellow)
+                    0 => (new Goblin(effectiveDepth), Color.Green),
+                    1 => (new Spider(effectiveDepth), Color.DarkGray),
+                    _ => (new Snake(effectiveDepth), Color.Yellow)
                 };
             }
 
@@ -163,9 +168,9 @@ namespace PitHero
             int lowLevelChoice = Nez.Random.Range(0, 3);
             return lowLevelChoice switch
             {
-                0 => (new Slime(Math.Clamp(pitLevel, 1, 99)), Color.LightGreen),
-                1 => (new Bat(Math.Clamp(pitLevel, 1, 99)), Color.Purple),
-                _ => (new Rat(Math.Clamp(pitLevel, 1, 99)), Color.Brown)
+                0 => (new Slime(effectiveDepth), Color.LightGreen),
+                1 => (new Bat(effectiveDepth), Color.Purple),
+                _ => (new Rat(effectiveDepth), Color.Brown)
             };
         }
 
@@ -332,6 +337,9 @@ namespace PitHero
         {
             var pitWidthManager = Core.Services?.GetService<PitWidthManager>();
 
+            // Read current pit tier for enemy/loot scaling.
+            int currentPitTier = pitWidthManager?.CurrentPitTier ?? 1;
+
             // Calculate pit bounds using PitWidthManager if available
             int validMinX, validMinY, validMaxX, validMaxY;
 
@@ -413,11 +421,11 @@ namespace PitHero
                     var trapPositions = GenerateEntityPositions(trapCount, validMinX, validMinY, validMaxX, validMaxY, usedPositions, "traps");
 
                     var wizardOrbColor = isBossFloor ? Color.Red : Color.White;
-                    CreateEntitiesAtPositions(validObstacles, GameConfig.TAG_OBSTACLE, Color.Gray, "obstacle", level);
-                    CreateEntitiesAtPositions(treasures, GameConfig.TAG_TREASURE, Color.Yellow, "treasure", level);
-                    CreateEntitiesAtPositions(monsters, GameConfig.TAG_MONSTER, Color.White, "monster", level);
-                    CreateEntitiesAtPositions(wizardOrbs, GameConfig.TAG_WIZARD_ORB, wizardOrbColor, "wizard_orb", level);
-                    CreateTrapEntitiesAtPositions(trapPositions, level);
+                    CreateEntitiesAtPositions(validObstacles, GameConfig.TAG_OBSTACLE, Color.Gray, "obstacle", level, currentPitTier);
+                    CreateEntitiesAtPositions(treasures, GameConfig.TAG_TREASURE, Color.Yellow, "treasure", level, currentPitTier);
+                    CreateEntitiesAtPositions(monsters, GameConfig.TAG_MONSTER, Color.White, "monster", level, currentPitTier);
+                    CreateEntitiesAtPositions(wizardOrbs, GameConfig.TAG_WIZARD_ORB, wizardOrbColor, "wizard_orb", level, currentPitTier);
+                    CreateTrapEntitiesAtPositions(trapPositions, level, currentPitTier);
 
                     validLayoutGenerated = true;
                     Debug.Log($"[PitGenerator] Valid layout generated on attempt {attempt}");
@@ -691,7 +699,7 @@ namespace PitHero
             return positions;
         }
 
-        private void CreateEntitiesAtPositions(List<Point> positions, int tag, Color color, string entityTypeName, int pitLevel = 1)
+        private void CreateEntitiesAtPositions(List<Point> positions, int tag, Color color, string entityTypeName, int pitLevel = 1, int pitTier = 1)
         {
             for (int i = 0; i < positions.Count; i++)
             {
@@ -795,7 +803,8 @@ namespace PitHero
 
                     var treasureComponent = entity.AddComponent(new TreasureComponent());
                     var lootCtx = BuildLootJobContext();
-                    treasureComponent.InitializeForPitLevel(currentPitLevel, lootCtx);
+                    // Pass pitTier so gear drops in tier-2+ are upgraded via CreateTierScaledCopy.
+                    treasureComponent.InitializeForPitLevel(currentPitLevel, lootCtx, pitTier);
 
                     var collider = entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
                     collider.IsTrigger = true;
@@ -845,8 +854,8 @@ namespace PitHero
                     collider.IsTrigger = true;
                     Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
 
-                    // Create appropriate enemy for pit level
-                    var (enemy, enemyColor) = CreateEnemyForPitLevel(pitLevel);
+                    // Create appropriate enemy for pit level — pass pitTier for effective-depth scaling.
+                    var (enemy, enemyColor) = CreateEnemyForPitLevel(pitLevel, pitTier);
 
                     var enemyComponent = entity.AddComponent(new EnemyComponent(enemy, isStationary: enemy.IsBoss));
                     Debug.Log($"[PitGenerator] Created {enemy.Name} enemy (Level {enemy.Level}, HP {enemy.CurrentHP}, IsBoss {enemy.IsBoss}) at tile ({tilePos.X},{tilePos.Y})");
@@ -1036,9 +1045,13 @@ namespace PitHero
         /// Creates hidden trap entities at the given tile positions.
         /// Traps use a trigger collider on PhysicsHeroWorldLayer so the hero's trigger system
         /// detects them. They are invisible (no renderer) — the hero encounters them by stepping on them.
+        /// Trap damage scales with effective cumulative depth (not just the displayed pit level) so
+        /// tier-2+ traps hit proportionally harder than tier-1 traps at the same displayed level.
         /// </summary>
-        private void CreateTrapEntitiesAtPositions(List<Point> positions, int pitLevel)
+        private void CreateTrapEntitiesAtPositions(List<Point> positions, int pitLevel, int pitTier = 1)
         {
+            // Effective depth drives the TrapComponent damage formula (5 + effectiveDepth * 2).
+            int effectiveDepth = BiomeProgressionConfig.GetEffectiveDepth(pitLevel, pitTier);
             for (int i = 0; i < positions.Count; i++)
             {
                 var tilePos = positions[i];
@@ -1051,13 +1064,13 @@ namespace PitHero
                 entity.SetTag(GameConfig.TAG_TRAP);
                 entity.SetPosition(worldPos);
 
-                entity.AddComponent(new ECS.Components.TrapComponent(pitLevel));
+                entity.AddComponent(new ECS.Components.TrapComponent(effectiveDepth));
 
                 var collider = entity.AddComponent(new BoxCollider(GameConfig.TileSize, GameConfig.TileSize));
                 collider.IsTrigger = true;
                 Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
 
-                Debug.Log($"[PitGenerator] Created trap at tile ({tilePos.X},{tilePos.Y}), damage={5 + pitLevel * 2}");
+                Debug.Log($"[PitGenerator] Created trap at tile ({tilePos.X},{tilePos.Y}), damage={5 + effectiveDepth * 2}");
             }
         }
 

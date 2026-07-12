@@ -215,6 +215,26 @@ New live-layer features should be checked against this document (see the
 Full suite: `dotnet test PitHero.Tests/PitHero.Tests.csproj`. Baseline: **12 known
 pre-existing failures** (environment-dependent tests) — anything above that is a regression.
 
+## Depth Semantics and Pit Tiers (issue #291)
+
+`VirtualPitGenerator.RegenerateForLevel` and `VirtualGameSimulation.RunPitLevel` /
+`RunLevelRange` accept a **cumulative depth** argument — the absolute depth since the start of
+the game, not a per-tier counter.
+
+- Depths **≤ 25** are tier 1 and behave identically to the pre-#291 behaviour.
+- Crossing depth 25 (i.e. the argument is 26) causes the simulation to auto-increment its
+  internal tier counter and record the tier base level (`TierBaseLevel = 26`). Subsequent
+  levels continue counting up, with enemy scaling derived from the full cumulative depth.
+- `RunLevelRange(1, 50)` therefore spans tier 1 (depths 1–25) and tier 2 (depths 26–50)
+  without any special configuration.
+- The mercenary hire floor activates at tier ≥ 2: `RunLevelRange` will attempt to hire
+  mercenaries from depth 26 onward even if the party is already full from tier 1, because
+  mercenaries from earlier tiers may have died or been dismissed.
+
+The effective depth formula used for balance joins is `(tier-1)*25 + pitLevel`, where
+`pitLevel` is the within-tier counter (1–25). Both values are present in analytics events
+(see `AnalyticsSchema.md`).
+
 ## Legacy Exploration Harness
 
 `RunCompleteSimulation()` and the ASCII visualization (`GetVisualRepresentation()`)

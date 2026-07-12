@@ -490,5 +490,110 @@ namespace PitHero.Tests
                     Directory.Delete(tempDir, true);
             }
         }
+
+        /// <summary>Verifies PitTier and TierBaseLevel round-trip through save v13.</summary>
+        [TestMethod]
+        public void SaveData_V13_PitTier_RoundTrip()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_tier_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+
+                var original = new SaveData();
+                original.PitLevel = 7;
+                original.PitTier = 5;
+                original.TierBaseLevel = 30;
+
+                dataStore.Save("tier_save.bin", original);
+
+                var loaded = new SaveData();
+                dataStore.Load("tier_save.bin", loaded);
+
+                Assert.AreEqual(7, loaded.PitLevel, "PitLevel should round-trip");
+                Assert.AreEqual(5, loaded.PitTier, "PitTier should round-trip");
+                Assert.AreEqual(30, loaded.TierBaseLevel, "TierBaseLevel should round-trip");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
+        /// <summary>
+        /// Verifies that a SaveData with default tier values (tier=1, base=1) round-trips correctly.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V13_DefaultTierValues_RoundTrip()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_defaulttier_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+
+                var original = new SaveData();
+                // Default values: PitTier = 1, TierBaseLevel = 1.
+                Assert.AreEqual(1, original.PitTier, "Default PitTier should be 1");
+                Assert.AreEqual(1, original.TierBaseLevel, "Default TierBaseLevel should be 1");
+
+                dataStore.Save("default_tier.bin", original);
+
+                var loaded = new SaveData();
+                dataStore.Load("default_tier.bin", loaded);
+
+                Assert.AreEqual(1, loaded.PitTier, "Loaded PitTier should default to 1");
+                Assert.AreEqual(1, loaded.TierBaseLevel, "Loaded TierBaseLevel should default to 1");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
+        /// <summary>
+        /// Migration test: saves created before v13 (where PitLevel was cumulative depth) are
+        /// decoded into the correct tier + displayed level.  We simulate a v12-era save whose
+        /// PitLevel field holds cumulative depth 119 (tier 5, displayed level 19).
+        /// </summary>
+        [TestMethod]
+        public void SaveData_Migration_PitLevel119_DecodesAsTier5_Level19()
+        {
+            // SaveData.Recover normalises PitLevel from cumulative depth to biome-local when
+            // fileVersion < 13.  We can't write a true v12 binary from a unit test without
+            // down-grading CurrentVersion, so we validate the helper logic directly.
+            var data = new SaveData();
+            data.PitLevel = 119;
+            data.Level = 40; // hero level used for TierBaseLevel migration
+
+            // Apply the same migration formula as Recover does for fileVersion < 13:
+            int rawPitLevel = data.PitLevel;
+            int migratedTier = PitHero.Config.BiomeProgressionConfig.GetTierForDepth(rawPitLevel);
+            int migratedBaseLevel = migratedTier >= 2 ? (data.Level > 0 ? data.Level : 1) : 1;
+            int migratedLevel = PitHero.Config.BiomeProgressionConfig.GetDisplayedLevelForDepth(rawPitLevel);
+
+            Assert.AreEqual(5, migratedTier, "Depth 119 should decode to tier 5");
+            Assert.AreEqual(19, migratedLevel, "Depth 119 should decode to level 19");
+            Assert.AreEqual(40, migratedBaseLevel, "TierBaseLevel should equal saved hero level when tier >= 2");
+        }
+
+        /// <summary>
+        /// Migration: a v12 save with PitLevel ≤ 25 (already a normal level) should decode to tier 1.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_Migration_PitLevel7_DecodesAsTier1()
+        {
+            int rawPitLevel = 7;
+            int migratedTier = PitHero.Config.BiomeProgressionConfig.GetTierForDepth(rawPitLevel);
+            int migratedLevel = PitHero.Config.BiomeProgressionConfig.GetDisplayedLevelForDepth(rawPitLevel);
+
+            Assert.AreEqual(1, migratedTier, "PitLevel 7 should map to tier 1");
+            Assert.AreEqual(7, migratedLevel, "PitLevel 7 should remain 7 after migration");
+        }
     }
 }

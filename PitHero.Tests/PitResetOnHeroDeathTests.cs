@@ -1,4 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using PitHero.Config;
 using PitHero.VirtualGame;
 
 namespace PitHero.Tests
@@ -73,6 +74,95 @@ namespace PitHero.Tests
 
             pitManager.SetPitLevel(1);
             Assert.AreEqual(1, pitManager.CurrentPitLevel, "Pit level should be 1 after reset");
+        }
+
+        // ── Tier state ────────────────────────────────────────────────────────────
+
+        [TestMethod]
+        public void TierAndBaseLevel_SurviveSetPitLevel1()
+        {
+            // Tier and base level must NOT reset when the pit resets to level 1 on hero death.
+            var pitManager = CreatePitManager();
+            pitManager.Initialize();
+            pitManager.SetPitTier(3);
+            pitManager.SetTierBaseLevel(20);
+
+            pitManager.SetPitLevel(1);
+
+            Assert.AreEqual(3, pitManager.CurrentPitTier, "PitTier must survive death reset");
+            Assert.AreEqual(20, pitManager.TierBaseLevel, "TierBaseLevel must survive death reset");
+            Assert.AreEqual(1, pitManager.CurrentPitLevel, "PitLevel should be 1 after reset");
+        }
+
+        [TestMethod]
+        public void IncrementPitTier_IncreasesCounterAndSetsBaseLevel()
+        {
+            var pitManager = CreatePitManager();
+            pitManager.Initialize();
+
+            Assert.AreEqual(1, pitManager.CurrentPitTier);
+            Assert.AreEqual(1, pitManager.TierBaseLevel);
+
+            pitManager.IncrementPitTier(heroLevelAtEntry: 30);
+
+            Assert.AreEqual(2, pitManager.CurrentPitTier);
+            Assert.AreEqual(30, pitManager.TierBaseLevel);
+        }
+
+        [TestMethod]
+        public void IncrementPitTier_Monotonic_BaseLevelNeverDecreases()
+        {
+            var pitManager = CreatePitManager();
+            pitManager.Initialize();
+            pitManager.IncrementPitTier(heroLevelAtEntry: 40);
+            Assert.AreEqual(40, pitManager.TierBaseLevel);
+
+            // Incrementing again with a LOWER hero level must not decrease base level.
+            pitManager.IncrementPitTier(heroLevelAtEntry: 20);
+            Assert.AreEqual(40, pitManager.TierBaseLevel, "TierBaseLevel must never decrease");
+            Assert.AreEqual(3, pitManager.CurrentPitTier);
+        }
+
+        [TestMethod]
+        public void IncrementPitTier_CapsAt99()
+        {
+            var pitManager = CreatePitManager();
+            pitManager.Initialize();
+            pitManager.SetPitTier(BiomeProgressionConfig.MaxPitTier); // 99
+
+            pitManager.IncrementPitTier(heroLevelAtEntry: 1);
+
+            Assert.AreEqual(BiomeProgressionConfig.MaxPitTier, pitManager.CurrentPitTier, "Tier must not exceed 99");
+        }
+
+        [TestMethod]
+        public void SetTierBaseLevel_IsMonotonicNonDecreasing()
+        {
+            var pitManager = CreatePitManager();
+            pitManager.Initialize();
+            pitManager.SetTierBaseLevel(50);
+            Assert.AreEqual(50, pitManager.TierBaseLevel);
+
+            // Lower value is silently ignored.
+            pitManager.SetTierBaseLevel(30);
+            Assert.AreEqual(50, pitManager.TierBaseLevel, "Lower base level should be ignored");
+
+            // Higher value is accepted.
+            pitManager.SetTierBaseLevel(60);
+            Assert.AreEqual(60, pitManager.TierBaseLevel);
+        }
+
+        [TestMethod]
+        public void SetPitTier_ClampsToValidRange()
+        {
+            var pitManager = CreatePitManager();
+            pitManager.Initialize();
+
+            pitManager.SetPitTier(0);
+            Assert.AreEqual(1, pitManager.CurrentPitTier, "Tier below 1 should clamp to 1");
+
+            pitManager.SetPitTier(200);
+            Assert.AreEqual(BiomeProgressionConfig.MaxPitTier, pitManager.CurrentPitTier, "Tier above 99 should clamp to 99");
         }
     }
 }
