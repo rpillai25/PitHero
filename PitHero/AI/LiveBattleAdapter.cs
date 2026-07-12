@@ -345,6 +345,7 @@ namespace PitHero.AI
         {
             var entity = GetEntityForAlly(ally);
             if (entity == null) return null;
+            Core.GetGlobalManager<ParticleEffectManager>()?.SpawnEffect(ParticleEffectType.Heal, entity);
             return ShowDamageDigitOnEntity(entity, amount, Color.Green);
         }
 
