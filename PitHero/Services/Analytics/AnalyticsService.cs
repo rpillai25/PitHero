@@ -523,6 +523,25 @@ namespace PitHero.Services.Analytics
 #endif
         }
 
+        /// <summary>Logs a battle buff applied by a skill (one row per granted buff; at-cap skips are not logged).</summary>
+        [Conditional("DEBUG")]
+        public static void LogBuff(string actor, string source, string target, string buffType, int magnitude, int durationTurns)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("buff"))
+                return;
+            _json.Field("actor", actor);
+            _json.Field("source", source);
+            _json.Field("target", target);
+            _json.Field("buffType", buffType);
+            _json.Field("magnitude", magnitude);
+            _json.Field("durationTurns", durationTurns);
+            EndEvent();
+#endif
+        }
+
         /// <summary>Logs the hero being killed by a monster, with full hero details and killer stats.</summary>
         [Conditional("DEBUG")]
         public static void LogCharacterKilled(Hero victim, IEnemy killer)

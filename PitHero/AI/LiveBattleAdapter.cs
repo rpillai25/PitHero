@@ -449,6 +449,25 @@ namespace PitHero.AI
         }
 
         /// <inheritdoc/>
+        public void OnBuffApplied(in BattleBuffEvent evt)
+        {
+            // Console line first (matching OnHealApplied's console-then-analytics order),
+            // showing the skill's display name and the same effect label as the floating text.
+            var evtSvc = Core.Services.GetService<GameEventService>();
+            if (evtSvc != null)
+            {
+                evtSvc.EmitLocalized(UITextKey.ConsoleBuffSkill,
+                    (evt.CasterName, GameConfig.ConsoleColorHeroName),
+                    (evt.SourceDisplayName ?? evt.Source, Color.White),
+                    (evt.TargetName, GameConfig.ConsoleColorHeroName),
+                    (evt.EffectLabel ?? evt.BuffTypeName, Color.White));
+            }
+
+            PitHero.Services.Analytics.AnalyticsService.LogBuff(
+                evt.CasterName, evt.Source, evt.TargetName, evt.BuffTypeName, evt.Magnitude, evt.DurationTurns);
+        }
+
+        /// <inheritdoc/>
         public void OnConsumableHealApplied(RolePlayingFramework.Equipment.Consumable consumable, in BattleHealEvent evt)
         {
             // ConsoleBattleHealConsumable with the item name in its rarity colour (original :919-925)

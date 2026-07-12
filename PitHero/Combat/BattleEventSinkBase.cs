@@ -78,6 +78,9 @@ namespace PitHero.Combat
         public virtual void OnHealApplied(in BattleHealEvent evt) { }
 
         /// <inheritdoc/>
+        public virtual void OnBuffApplied(in BattleBuffEvent evt) { }
+
+        /// <inheritdoc/>
         public virtual void OnItemConsumed() { }
 
         /// <inheritdoc/>

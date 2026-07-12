@@ -66,6 +66,7 @@ namespace PitHero.Tests
         public List<IEnemy> DefeatedEnemies { get; } = new List<IEnemy>();
         public List<IBattleAlly> KilledAllies { get; } = new List<IBattleAlly>();
         public List<BattleAttackEvent> AttackEvents { get; } = new List<BattleAttackEvent>();
+        public List<BattleBuffEvent> BuffEvents { get; } = new List<BattleBuffEvent>();
 
         public override void OnEnemyDefeated(IEnemy enemy, bool heroKill)
             => DefeatedEnemies.Add(enemy);
@@ -75,6 +76,9 @@ namespace PitHero.Tests
 
         public override void OnAttackResolved(in BattleAttackEvent evt)
             => AttackEvents.Add(evt);
+
+        public override void OnBuffApplied(in BattleBuffEvent evt)
+            => BuffEvents.Add(evt);
     }
 
     // ── Tests ──────────────────────────────────────────────────────────────────
@@ -303,6 +307,49 @@ namespace PitHero.Tests
             // Either hero wins or loses; just verify the battle ends
             Assert.AreNotEqual(BattleOutcome.InProgress, engine.Outcome,
                 "Battle must always reach a terminal outcome");
+        }
+
+        // ── Buff casting under Blitz/Strategic (issue #294) ───────────────────
+
+        private static Hero MakeThiefWithVanish()
+        {
+            var crystal = new RolePlayingFramework.Heroes.HeroCrystal(
+                "TestCrystal", new RolePlayingFramework.Jobs.Primary.Thief(), 25, new StatBlock(30, 10, 20, 5));
+            crystal.EarnJP(1_000_000);
+            var hero = new Hero("Hero", new RolePlayingFramework.Jobs.Primary.Thief(), 25,
+                new StatBlock(30, 10, 20, 5), crystal);
+            Assert.IsTrue(hero.TryPurchaseSkill(new RolePlayingFramework.Skills.VanishSkill()));
+            return hero;
+        }
+
+        [TestMethod]
+        [TestCategory("BattleEngine")]
+        public void Blitz_HeroWithVanish_CastsOpenerBuffAndWins()
+        {
+            var hero = MakeThiefWithVanish();
+            var monsters = new List<IEnemy> { MakeSlime(3) };
+
+            var (engine, sink) = RunBattle(hero, monsters, tactic: BattleTactic.Blitz, seed: 99);
+
+            Assert.AreNotEqual(BattleOutcome.InProgress, engine.Outcome, "Battle must complete");
+            Assert.IsTrue(sink.BuffEvents.Count >= 1, "Blitz round-1 opener must apply a buff");
+            Assert.AreEqual("thief.vanish", sink.BuffEvents[0].Source);
+            Assert.AreEqual("Untargetable", sink.BuffEvents[0].BuffTypeName);
+        }
+
+        [TestMethod]
+        [TestCategory("BattleEngine")]
+        public void Strategic_HealthyHeroWithVanish_NeverBuffs()
+        {
+            // Strong hero vs weak slime: HP never goes critical, so no buff should fire
+            var hero = MakeThiefWithVanish();
+            var monsters = new List<IEnemy> { MakeSlime(1) };
+
+            var (engine, sink) = RunBattle(hero, monsters, tactic: BattleTactic.Strategic, seed: 99);
+
+            Assert.AreEqual(BattleOutcome.MonstersCleared, engine.Outcome);
+            Assert.AreEqual(0, sink.BuffEvents.Count,
+                "Strategic must not buff while the hero is healthy");
         }
     }
 }

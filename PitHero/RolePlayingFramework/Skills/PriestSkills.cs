@@ -17,17 +17,18 @@ namespace RolePlayingFramework.Skills
 
     /// <summary>
     /// DefenseUp — data-driven buff skill (Phase 3).
-    /// Grants DefenseUp +1 until battle end, up to 3 stacks.
+    /// Grants DefenseUp +3 to a single ally for 3 turns (single stack per target),
+    /// so the caster buffs one party member per cast and moves to the next unbuffed one.
     /// The Execute override is removed; the healing/buff path in ApplyHealingSkillEffectsAndDisplay
     /// reads GrantedBuffs and applies the buff automatically.
     /// </summary>
     public sealed class DefenseUpSkill : BaseSkill
     {
-        public DefenseUpSkill() : base("priest.defup", SkillTextKey.Skill_Priest_DefenseUp_Name, SkillTextKey.Skill_Priest_DefenseUp_Desc, SkillKind.Active, SkillTargetType.Self, 4, 160, ElementType.Neutral)
+        public DefenseUpSkill() : base("priest.defup", SkillTextKey.Skill_Priest_DefenseUp_Name, SkillTextKey.Skill_Priest_DefenseUp_Desc, SkillKind.Active, SkillTargetType.SingleAlly, 4, 160, ElementType.Neutral)
         {
             GrantedBuffs = new SkillBuff[]
             {
-                new SkillBuff(BuffType.DefenseUp, magnitude: 1, durationTurns: -1, maxStacks: 3)
+                new SkillBuff(BuffType.DefenseUp, magnitude: 3, durationTurns: 3, maxStacks: 1)
             };
         }
     }

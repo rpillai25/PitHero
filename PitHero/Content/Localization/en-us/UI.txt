@@ -162,7 +162,7 @@ BehaviorBattleTactics,Battle Tactics
 BehaviorTacticBlitz,Blitz
 BehaviorTacticStrategic,Strategic
 BehaviorTacticDefensive,Defensive
-BehaviorTacticBlitzDesc,  Max damage, ignore healing
+BehaviorTacticBlitzDesc,  Max damage, deprioritize healing
 BehaviorTacticStrategicDesc,  Balanced attacks and healing
 BehaviorTacticDefensiveDesc,  Prioritize survival, heal at 60%
 BehaviorConsumableOptions,Consumable Options
@@ -261,6 +261,7 @@ ConsoleSkillAttack,{0} uses {1} on {2} for {3} damage!
 ConsoleBattleHealConsumable,{0} uses {1} on {2}. Restored {3} HP.
 ConsoleOutBattleHealConsumable,{0} used {1}. Restored {2} HP.
 ConsoleHealSkill,{0} uses {1} on {2}. Restored {3} HP.
+ConsoleBuffSkill,{0} casts {1} on {2}. {3}!
 ConsoleMercenaryDied,{0} was killed by {1}.
 ConsoleHeroDied,{0} has ended {1}'s run. {2}
 ConsoleHeroDiedPhrase1,Better luck next time...

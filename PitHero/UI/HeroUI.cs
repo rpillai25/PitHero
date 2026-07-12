@@ -625,21 +625,21 @@ namespace PitHero.UI
             var blitzTable = new Table();
             blitzTable.Add(_blitzButton).Left();
             blitzTable.Row();
-            blitzTable.Add(new Label("  Max damage, ignore healing", skin, "ph-default")).Left().SetPadLeft(20);
+            blitzTable.Add(new Label(GetText(TextType.UI, UITextKey.BehaviorTacticBlitzDesc), skin, "ph-default")).Left().SetPadLeft(20);
             container.Add(blitzTable).Left().SetPadBottom(8);
             container.Row();
 
             var strategicTable = new Table();
             strategicTable.Add(_strategicButton).Left();
             strategicTable.Row();
-            strategicTable.Add(new Label("  Balanced attacks and healing", skin, "ph-default")).Left().SetPadLeft(20);
+            strategicTable.Add(new Label(GetText(TextType.UI, UITextKey.BehaviorTacticStrategicDesc), skin, "ph-default")).Left().SetPadLeft(20);
             container.Add(strategicTable).Left().SetPadBottom(8);
             container.Row();
 
             var defensiveTable = new Table();
             defensiveTable.Add(_defensiveButton).Left();
             defensiveTable.Row();
-            defensiveTable.Add(new Label("  Prioritize survival, heal at 60%", skin, "ph-default")).Left().SetPadLeft(20);
+            defensiveTable.Add(new Label(GetText(TextType.UI, UITextKey.BehaviorTacticDefensiveDesc), skin, "ph-default")).Left().SetPadLeft(20);
             container.Add(defensiveTable).Left().SetPadBottom(15);
             container.Row();
 
