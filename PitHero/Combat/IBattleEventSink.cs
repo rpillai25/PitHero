@@ -79,12 +79,13 @@ namespace PitHero.Combat
         IEnumerator ShowDeflectOnAlly(IBattleAlly ally);
 
         /// <summary>
-        /// Plays a projectile/cast visual for an attack skill travelling from the caster to
-        /// the primary target (e.g. the mage's fireball), yielded by the engine BEFORE damage
-        /// digits appear so the impact lands first. Return null when the skill has no visual.
+        /// Plays a cast visual for an attack skill — a projectile from caster to the primary
+        /// target (mage Fire) or an area effect over the enemy group (mage Firestorm).
+        /// Yielded by the engine BEFORE damage digits appear so the impact lands first.
+        /// Return null when the skill has no visual.
         /// </summary>
-        IEnumerator ShowSkillProjectileOnMonster(RolePlayingFramework.Combat.ICombatant caster,
-            RolePlayingFramework.Skills.ISkill skill, IEnemy target);
+        IEnumerator ShowSkillEffectOnMonsters(RolePlayingFramework.Combat.ICombatant caster,
+            RolePlayingFramework.Skills.ISkill skill, IEnemy primaryTarget, List<IEnemy> surroundingTargets);
 
         /// <summary>Shows a "Crit" label over a monster.</summary>
         IEnumerator ShowCritOnMonster(IEnemy enemy);

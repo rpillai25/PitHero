@@ -18,7 +18,11 @@ namespace PitHero.Util
 
         /// <summary>Spinning ball of fire; launched from caster to target as a projectile
         /// (spawn via SpawnEffectAtPosition, move the entity, PauseEmission on impact).</summary>
-        Fireball
+        Fireball,
+
+        /// <summary>Wide band of large fire particles raining down; spawned above the
+        /// enemy group's center for the mage Firestorm AoE.</summary>
+        Firestorm
     }
 
     /// <summary>
@@ -45,7 +49,8 @@ namespace PitHero.Util
                 {
                     { ParticleEffectType.Heal, content.LoadParticleEmitterConfig("Content/Particles/heal.pex") },
                     { ParticleEffectType.HealPotion, content.LoadParticleEmitterConfig("Content/Particles/heal_potion.pex") },
-                    { ParticleEffectType.Fireball, content.LoadParticleEmitterConfig("Content/Particles/fireball.pex") }
+                    { ParticleEffectType.Fireball, content.LoadParticleEmitterConfig("Content/Particles/fireball.pex") },
+                    { ParticleEffectType.Firestorm, content.LoadParticleEmitterConfig("Content/Particles/firestorm.pex") }
                 };
 
                 Initialized = true;

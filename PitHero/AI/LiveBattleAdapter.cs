@@ -344,26 +344,73 @@ namespace PitHero.AI
         /// <summary>World-space pixels per second a skill projectile travels.</summary>
         private const float SkillProjectileSpeed = 340f;
 
-        /// <summary>Attack skills with a projectile visual. Adding one = pex file + enum
-        /// member + Init load line in ParticleEffectManager + an entry here.</summary>
-        private static readonly Dictionary<string, ParticleEffectType> _skillProjectileEffects
-            = new Dictionary<string, ParticleEffectType>
-            {
-                { "mage.fire", ParticleEffectType.Fireball }
-            };
+        /// <summary>How far above the enemy group's center an area rain effect spawns.</summary>
+        private const float AreaRainSpawnHeight = 70f;
+
+        /// <summary>How long the engine waits on an area rain effect before damage shows.</summary>
+        private const float AreaRainImpactDelay = 0.5f;
 
         /// <inheritdoc/>
-        public IEnumerator ShowSkillProjectileOnMonster(ICombatant caster, ISkill skill, IEnemy target)
+        /// <remarks>Adding a skill visual = pex file + enum member + Init load line in
+        /// ParticleEffectManager + a case here.</remarks>
+        public IEnumerator ShowSkillEffectOnMonsters(ICombatant caster, ISkill skill,
+            IEnemy primaryTarget, List<IEnemy> surroundingTargets)
         {
-            if (!_skillProjectileEffects.TryGetValue(skill.Id, out var effectType))
-                return null;
+            switch (skill.Id)
+            {
+                case "mage.fire":
+                {
+                    var casterEntity = GetEntityForCombatant(caster);
+                    var targetEntity = GetEntityForEnemy(primaryTarget);
+                    if (casterEntity == null || targetEntity == null)
+                        return null;
+                    return FlyProjectileEffect(ParticleEffectType.Fireball,
+                        casterEntity.Position, targetEntity.Position);
+                }
 
-            var casterEntity = GetEntityForCombatant(caster);
-            var targetEntity = GetEntityForEnemy(target);
-            if (casterEntity == null || targetEntity == null)
-                return null;
+                case "mage.firestorm":
+                {
+                    var center = GetCenterOfEnemyGroup(primaryTarget, surroundingTargets);
+                    if (center == null)
+                        return null;
+                    return RainEffectOverPosition(ParticleEffectType.Firestorm, center.Value);
+                }
 
-            return FlyProjectileEffect(effectType, casterEntity.Position, targetEntity.Position);
+                default:
+                    return null;
+            }
+        }
+
+        /// <summary>Averages the entity positions of the primary and surrounding targets;
+        /// null when no target has a live entity.</summary>
+        private Vector2? GetCenterOfEnemyGroup(IEnemy primaryTarget, List<IEnemy> surroundingTargets)
+        {
+            var sum = Vector2.Zero;
+            int count = 0;
+
+            var primaryEntity = GetEntityForEnemy(primaryTarget);
+            if (primaryEntity != null) { sum += primaryEntity.Position; count++; }
+
+            if (surroundingTargets != null)
+            {
+                for (int i = 0; i < surroundingTargets.Count; i++)
+                {
+                    var e = GetEntityForEnemy(surroundingTargets[i]);
+                    if (e != null) { sum += e.Position; count++; }
+                }
+            }
+
+            return count > 0 ? sum / count : (Vector2?)null;
+        }
+
+        private IEnumerator RainEffectOverPosition(ParticleEffectType type, Vector2 groundCenter)
+        {
+            var spawnPos = groundCenter - new Vector2(0f, AreaRainSpawnHeight);
+            Core.GetGlobalManager<ParticleEffectManager>()?.SpawnEffectAtPosition(type, spawnPos, Core.Scene);
+
+            // Let the rain visibly fall onto the group before damage digits appear;
+            // the emitter finishes and cleans itself up on its own after this returns.
+            yield return WaitForSecondsRespectingPause(AreaRainImpactDelay);
         }
 
         private Entity GetEntityForCombatant(ICombatant combatant)
