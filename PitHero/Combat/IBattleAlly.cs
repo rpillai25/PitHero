@@ -20,5 +20,12 @@ namespace PitHero.Combat
         /// Virtual: combatant is alive (CurrentHP &gt; 0).
         /// </summary>
         bool IsPresent { get; }
+
+        /// <summary>
+        /// Player-requested action queue for this ally (may be null).
+        /// The engine consumes it on a mercenary's turn before falling back to AI;
+        /// the hero's queue is still supplied separately to <c>BattleEngine.Run</c>.
+        /// </summary>
+        PitHero.AI.ActionQueue PlayerActionQueue { get; }
     }
 }

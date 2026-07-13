@@ -44,16 +44,94 @@ namespace PitHero.Tests
             // Arrange
             var skill = new KnightSkills.SpinSlashSkill();
             var shortcutData = ShortcutSlotData.CreateSkillReference(skill);
-            
+
             // Act
             shortcutData.Clear();
-            
+
             // Assert
             Assert.AreEqual(ShortcutSlotType.Empty, shortcutData.SlotType);
             Assert.IsNull(shortcutData.ReferencedSlot);
             Assert.IsNull(shortcutData.ReferencedSkill);
         }
+
+        [TestMethod]
+        public void ShortcutSlotData_CreateSkillReference_DefaultsToHeroOwner()
+        {
+            // Arrange
+            var skill = new KnightSkills.SpinSlashSkill();
+
+            // Act
+            var shortcutData = ShortcutSlotData.CreateSkillReference(skill);
+
+            // Assert
+            Assert.IsNull(shortcutData.OwnerMercenary);
+        }
+
+        [TestMethod]
+        public void ShortcutSlotData_CreateSkillReference_WithMercenary_SetsOwner()
+        {
+            // Arrange
+            var skill = new KnightSkills.SpinSlashSkill();
+            var merc = new RolePlayingFramework.Mercenaries.Mercenary(
+                "Fynn Swift", new RolePlayingFramework.Jobs.Primary.Knight(), 5,
+                new RolePlayingFramework.Stats.StatBlock(10, 10, 10, 5));
+
+            // Act
+            var shortcutData = ShortcutSlotData.CreateSkillReference(skill, merc);
+
+            // Assert
+            Assert.AreEqual(ShortcutSlotType.Skill, shortcutData.SlotType);
+            Assert.AreEqual(skill, shortcutData.ReferencedSkill);
+            Assert.AreEqual(merc, shortcutData.OwnerMercenary);
+        }
+
+        [TestMethod]
+        public void ShortcutSlotData_Clear_ResetsOwnerMercenary()
+        {
+            // Arrange
+            var skill = new KnightSkills.SpinSlashSkill();
+            var merc = new RolePlayingFramework.Mercenaries.Mercenary(
+                "Fynn Swift", new RolePlayingFramework.Jobs.Primary.Knight(), 5,
+                new RolePlayingFramework.Stats.StatBlock(10, 10, 10, 5));
+            var shortcutData = ShortcutSlotData.CreateSkillReference(skill, merc);
+
+            // Act
+            shortcutData.Clear();
+
+            // Assert
+            Assert.AreEqual(ShortcutSlotType.Empty, shortcutData.SlotType);
+            Assert.IsNull(shortcutData.OwnerMercenary);
+        }
         
+        [TestMethod]
+        public void ShortcutBar_ConnectToDragManager_IsIdempotent()
+        {
+            // ReconnectUIToHero (crystal ceremony after hero death) calls ConnectToDragManager a
+            // second time on the same bar. A duplicate subscription runs the skill-drop handler twice:
+            // the second run, after EndDrag cleared DragSkillOwner, overwrote merc-owned slots as hero-owned.
+            var previousDrop = InventoryDragManager.OnDropRequested;
+            var previousSkillDrop = InventoryDragManager.OnSkillDropRequested;
+            try
+            {
+                InventoryDragManager.OnDropRequested = null;
+                InventoryDragManager.OnSkillDropRequested = null;
+
+                var bar = new ShortcutBar();
+                bar.ConnectToDragManager();
+                bar.ConnectToDragManager();
+
+                Assert.AreEqual(1, InventoryDragManager.OnDropRequested.GetInvocationList().Length,
+                    "Repeated ConnectToDragManager must not stack item-drop handlers");
+                Assert.AreEqual(1, InventoryDragManager.OnSkillDropRequested.GetInvocationList().Length,
+                    "Repeated ConnectToDragManager must not stack skill-drop handlers");
+            }
+            finally
+            {
+                InventoryDragManager.OnDropRequested = previousDrop;
+                InventoryDragManager.OnSkillDropRequested = previousSkillDrop;
+            }
+        }
+
         [TestMethod]
         public void ActiveSkill_HasCorrectKind()
         {

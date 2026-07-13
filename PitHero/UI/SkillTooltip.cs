@@ -59,13 +59,16 @@ namespace PitHero.UI
             return service?.DisplayText(type, key) ?? key.ToString();
         }
 
-        public void ShowSkill(ISkill skill, bool isLearned, Hero hero, bool isSynergySkill = false, int synergyCurrentPoints = 0, int synergyRequiredPoints = 0, bool showCostAndStatus = true)
+        public void ShowSkill(ISkill skill, bool isLearned, Hero hero, bool isSynergySkill = false, int synergyCurrentPoints = 0, int synergyRequiredPoints = 0, bool showCostAndStatus = true, string ownerName = null)
         {
             _contentTable.Clear();
 
-            // Skill name
+            // Skill name, optionally suffixed with the owning character's name, e.g. "Fire (Fynn Swift)"
+            var nameText = ownerName != null
+                ? string.Format(GetText(TextType.UI, UITextKey.SkillOwnerFormat), skill.Name, ownerName)
+                : skill.Name;
             var nameColor = isLearned ? Color.Green : BrownFontColor;
-            var nameLabel = new Label(skill.Name, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = nameColor });
+            var nameLabel = new Label(nameText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = nameColor });
             _contentTable.Add(nameLabel).Left();
             _contentTable.Row();
 

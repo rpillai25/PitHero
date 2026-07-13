@@ -1,3 +1,4 @@
+using RolePlayingFramework.Mercenaries;
 using RolePlayingFramework.Skills;
 
 namespace PitHero.UI
@@ -14,12 +15,16 @@ namespace PitHero.UI
         /// <summary>Referenced skill (if SlotType is Skill).</summary>
         public ISkill ReferencedSkill { get; set; }
 
+        /// <summary>Mercenary that owns the referenced skill (null when the hero owns it).</summary>
+        public Mercenary OwnerMercenary { get; set; }
+
         /// <summary>Creates an empty shortcut slot.</summary>
         public ShortcutSlotData()
         {
             SlotType = ShortcutSlotType.Empty;
             ReferencedSlot = null;
             ReferencedSkill = null;
+            OwnerMercenary = null;
         }
 
         /// <summary>Creates a shortcut slot referencing an item.</summary>
@@ -33,14 +38,21 @@ namespace PitHero.UI
             };
         }
 
-        /// <summary>Creates a shortcut slot referencing a skill.</summary>
+        /// <summary>Creates a shortcut slot referencing a hero-owned skill.</summary>
         public static ShortcutSlotData CreateSkillReference(ISkill skill)
+        {
+            return CreateSkillReference(skill, null);
+        }
+
+        /// <summary>Creates a shortcut slot referencing a skill owned by a mercenary (null owner = hero).</summary>
+        public static ShortcutSlotData CreateSkillReference(ISkill skill, Mercenary ownerMercenary)
         {
             return new ShortcutSlotData
             {
                 SlotType = ShortcutSlotType.Skill,
                 ReferencedSlot = null,
-                ReferencedSkill = skill
+                ReferencedSkill = skill,
+                OwnerMercenary = ownerMercenary
             };
         }
 
@@ -50,6 +62,7 @@ namespace PitHero.UI
             SlotType = ShortcutSlotType.Empty;
             ReferencedSlot = null;
             ReferencedSkill = null;
+            OwnerMercenary = null;
         }
     }
 

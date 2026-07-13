@@ -41,9 +41,6 @@ namespace PitHero.AI
 
             var jumpOutOfPit = new MercenaryJumpOutOfPitAction();
             _planner.AddAction(jumpOutOfPit);
-
-            var walkToStatue = new WalkToHeroStatueAction();
-            _planner.AddAction(walkToStatue);
         }
 
         public override void OnAddedToEntity()
@@ -80,8 +77,7 @@ namespace PitHero.AI
                 }
             }
 
-            // Allow update during promotion
-            if (!_mercenary.IsBeingPromoted && (!_mercenary.IsHired || _mercenary.FollowTarget == null))
+            if (!_mercenary.IsHired || _mercenary.FollowTarget == null)
             {
                 return;
             }
@@ -260,23 +256,12 @@ namespace PitHero.AI
             state.Set(GoapConstants.TargetInsidePit, targetInPit);
             state.Set(GoapConstants.MercenaryAtPitEdge, atPitEdge);
 
-            // Add promotion state
-            state.Set(GoapConstants.IsBeingPromotedToHero, _mercenary?.IsBeingPromoted ?? false);
-            state.Set(GoapConstants.HasArrivedAtHeroStatue, _mercenary?.HasArrivedAtStatue ?? false);
-
             return state;
         }
 
         private WorldState GetGoalState()
         {
             var goal = WorldState.Create(_planner);
-
-            // If being promoted, goal is to arrive at hero statue
-            if (_mercenary?.IsBeingPromoted == true)
-            {
-                goal.Set(GoapConstants.HasArrivedAtHeroStatue, true);
-                return goal;
-            }
 
             bool targetInPit = IsTargetInsidePit();
             

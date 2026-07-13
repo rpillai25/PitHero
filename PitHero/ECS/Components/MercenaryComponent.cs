@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using PitHero.AI;
 using RolePlayingFramework.Mercenaries;
 
 namespace PitHero.ECS.Components
@@ -39,9 +40,6 @@ namespace PitHero.ECS.Components
         /// <summary>The last tile position this mercenary was on (for chain following)</summary>
         public Point LastTilePosition { get; set; }
 
-        /// <summary>True if this mercenary is being promoted to hero</summary>
-        public bool IsBeingPromoted { get; set; }
-
         /// <summary>Skin/body color used for rendering (saved for persistence).</summary>
         public Color SkinColor { get; set; }
 
@@ -54,14 +52,14 @@ namespace PitHero.ECS.Components
         /// <summary>Shirt color used for rendering (saved for persistence).</summary>
         public Color ShirtColor { get; set; }
 
-    /// <summary>True if this mercenary has arrived at the hero statue during promotion</summary>
-    public bool HasArrivedAtStatue { get; set; }
-
     /// <summary>True if this mercenary is inside the pit</summary>
     public bool InsidePit { get; set; }
 
     /// <summary>Reference to the screen-space action queue visualization for this mercenary</summary>
     public ActionQueueVisualizationComponent ActionQueueVisualization { get; set; }
+
+    /// <summary>Action queue for player-requested battle actions (mirrors HeroComponent.BattleActionQueue)</summary>
+    public ActionQueue BattleActionQueue { get; } = new ActionQueue();
 
     public void Update()
     {

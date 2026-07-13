@@ -52,6 +52,7 @@ namespace PitHero.Tests
         public ICombatant Combatant { get; }
         public bool IsHero { get; }
         public bool IsPresent => Combatant.CurrentHP > 0;
+        public ActionQueue PlayerActionQueue { get; set; }
 
         public TestBattleAlly(ICombatant combatant, bool isHero)
         {
@@ -67,6 +68,7 @@ namespace PitHero.Tests
         public List<IBattleAlly> KilledAllies { get; } = new List<IBattleAlly>();
         public List<BattleAttackEvent> AttackEvents { get; } = new List<BattleAttackEvent>();
         public List<BattleBuffEvent> BuffEvents { get; } = new List<BattleBuffEvent>();
+        public List<BattleHealEvent> HealEvents { get; } = new List<BattleHealEvent>();
 
         public override void OnEnemyDefeated(IEnemy enemy, bool heroKill)
             => DefeatedEnemies.Add(enemy);
@@ -79,6 +81,9 @@ namespace PitHero.Tests
 
         public override void OnBuffApplied(in BattleBuffEvent evt)
             => BuffEvents.Add(evt);
+
+        public override void OnHealApplied(in BattleHealEvent evt)
+            => HealEvents.Add(evt);
     }
 
     // ── Tests ──────────────────────────────────────────────────────────────────
@@ -350,6 +355,209 @@ namespace PitHero.Tests
             Assert.AreEqual(BattleOutcome.MonstersCleared, engine.Outcome);
             Assert.AreEqual(0, sink.BuffEvents.Count,
                 "Strategic must not buff while the hero is healthy");
+        }
+
+        // ── Player-queued mercenary skills (issue #303) ────────────────────────
+
+        private static Mercenary MakeKnightMerc(int level = 15)
+        {
+            var merc = new Mercenary("Fynn Swift", new Knight(), level, new StatBlock(20, 15, 15, 10));
+            merc.LearnAllJobSkills();
+            return merc;
+        }
+
+        // Run a battle with a single mercenary whose PlayerActionQueue can be set (null allowed)
+        private static (BattleEngine engine, RecordingSink sink) RunBattleWithMerc(
+            Hero hero, List<IEnemy> monsters, Mercenary merc, ActionQueue mercQueue, int seed)
+        {
+            Nez.Random.SetSeed(seed);
+
+            var party  = new TestPartyView(hero, BattleTactic.Blitz);
+            var sink   = new RecordingSink();
+            var engine = new BattleEngine(party, sink);
+
+            var heroAlly = new TestBattleAlly(hero, isHero: true);
+            var mercAlly = new TestBattleAlly(merc, isHero: false) { PlayerActionQueue = mercQueue };
+            var mercAllies = new List<IBattleAlly> { mercAlly };
+
+            HeadlessCoroutineRunner.RunToCompletion(
+                engine.Run(heroAlly, mercAllies, monsters, new ActionQueue()));
+
+            return (engine, sink);
+        }
+
+        [TestMethod]
+        [TestCategory("BattleEngine")]
+        public void MercQueuedSkill_ConsumedAndExecutedOnMercTurn()
+        {
+            var hero = MakeHero(str: 8, agi: 10, vit: 15, mag: 5);
+            var merc = MakeKnightMerc();
+            var monsters = new List<IEnemy> { MakeSlime(5), MakeSlime(5) };
+
+            var queue = new ActionQueue();
+            Assert.IsTrue(queue.EnqueueSkill(merc.LearnedSkills["knight.heavy_strike"]),
+                "Skill should enqueue on an empty queue");
+
+            var (engine, sink) = RunBattleWithMerc(hero, monsters, merc, queue, seed: 4242);
+
+            Assert.AreEqual(0, queue.Count, "Player-queued action must be consumed");
+            bool mercUsedQueuedSkill = false;
+            for (int i = 0; i < sink.AttackEvents.Count; i++)
+            {
+                var evt = sink.AttackEvents[i];
+                if (evt.ActorType == "merc" && evt.Action.StartsWith("knight.heavy_strike"))
+                {
+                    mercUsedQueuedSkill = true;
+                    break;
+                }
+            }
+            Assert.IsTrue(mercUsedQueuedSkill, "Mercenary must execute the player-queued skill");
+        }
+
+        [TestMethod]
+        [TestCategory("BattleEngine")]
+        public void MercQueuedSkill_InsufficientMP_FallsBackToAI()
+        {
+            var hero = MakeHero(str: 8, agi: 10, vit: 15, mag: 5);
+            var merc = MakeKnightMerc();
+            merc.SetCurrentMP(0); // cannot afford any skill (plain Knight has no MP regen)
+            var monsters = new List<IEnemy> { MakeSlime(5), MakeSlime(5) };
+
+            var queue = new ActionQueue();
+            queue.EnqueueSkill(merc.LearnedSkills["knight.heavy_strike"]);
+
+            var (engine, sink) = RunBattleWithMerc(hero, monsters, merc, queue, seed: 4242);
+
+            Assert.AreEqual(0, queue.Count, "Queued action is consumed even when MP is insufficient");
+            for (int i = 0; i < sink.AttackEvents.Count; i++)
+            {
+                var evt = sink.AttackEvents[i];
+                Assert.IsFalse(evt.ActorType == "merc" && evt.Action.StartsWith("knight.heavy_strike"),
+                    "Mercenary must not cast the queued skill without MP");
+            }
+            Assert.AreNotEqual(BattleOutcome.InProgress, engine.Outcome, "Battle must complete via the AI path");
+        }
+
+        [TestMethod]
+        [TestCategory("BattleEngine")]
+        public void MercQueuedHealSkill_NoTarget_HealsMostWoundedAlly()
+        {
+            // Wounded hero + full-HP priest merc: the shortcut-queued heal (which carries
+            // no target) must land on the hero, not silently self-target the full-HP caster
+            var hero = MakeHero(str: 20, agi: 10, vit: 20, mag: 5);
+            hero.TakeDamage(hero.MaxHP / 2);
+            int heroHpBeforeBattle = hero.CurrentHP;
+
+            var merc = new Mercenary("Aldric Keen", new RolePlayingFramework.Jobs.Primary.Priest(),
+                15, new StatBlock(10, 12, 12, 20));
+            merc.LearnAllJobSkills();
+
+            var monsters = new List<IEnemy> { MakeSlime(5) };
+
+            var queue = new ActionQueue();
+            Assert.IsTrue(queue.EnqueueSkill(merc.LearnedSkills["priest.heal"]),
+                "Heal skill should enqueue on an empty queue");
+
+            var (engine, sink) = RunBattleWithMerc(hero, monsters, merc, queue, seed: 777);
+
+            Assert.AreEqual(0, queue.Count, "Player-queued heal must be consumed");
+            bool heroHealed = false;
+            for (int i = 0; i < sink.HealEvents.Count; i++)
+            {
+                var evt = sink.HealEvents[i];
+                if (evt.Source == "priest.heal" && evt.TargetName == hero.Name && evt.Amount > 0)
+                {
+                    heroHealed = true;
+                    break;
+                }
+            }
+            Assert.IsTrue(heroHealed,
+                $"Queued priest.heal must heal the wounded hero (hero was {heroHpBeforeBattle}/{hero.MaxHP} entering battle)");
+        }
+
+        [TestMethod]
+        [TestCategory("BattleEngine")]
+        public void RedirectableHeals_AreDeclaredSingleAlly()
+        {
+            // Heals the AI can redirect to any ally must be SingleAlly; Self now means self-only
+            Assert.AreEqual(RolePlayingFramework.Skills.SkillTargetType.SingleAlly,
+                new RolePlayingFramework.Skills.HealSkill().TargetType, "priest.heal");
+            Assert.AreEqual(RolePlayingFramework.Skills.SkillTargetType.SingleAlly,
+                new RolePlayingFramework.Skills.AuraHealSkill().TargetType, "synergy.aura_heal");
+            Assert.AreEqual(RolePlayingFramework.Skills.SkillTargetType.SingleAlly,
+                new RolePlayingFramework.Skills.PurifySkill().TargetType, "synergy.purify");
+            Assert.AreEqual(RolePlayingFramework.Skills.SkillTargetType.SingleAlly,
+                new RolePlayingFramework.Skills.SoulWardSkill().TargetType, "synergy.soul_ward");
+
+            // Genuine self-only skill keeps its Self declaration
+            Assert.AreEqual(RolePlayingFramework.Skills.SkillTargetType.Self,
+                new RolePlayingFramework.Skills.VanishSkill().TargetType, "thief.vanish");
+        }
+
+        [TestMethod]
+        [TestCategory("BattleEngine")]
+        public void MercQueuedSelfBuff_TargetsCasterNotWoundedAlly()
+        {
+            // Wounded hero + thief merc queuing Vanish (Self buff): the buff must land on
+            // the caster, not be redirected to the most-wounded ally
+            var hero = MakeHero(str: 20, agi: 10, vit: 20, mag: 5);
+            hero.TakeDamage(hero.MaxHP / 2);
+
+            var merc = new Mercenary("Sly Fox", new RolePlayingFramework.Jobs.Primary.Thief(),
+                15, new StatBlock(12, 15, 12, 15));
+            merc.LearnAllJobSkills();
+
+            var monsters = new List<IEnemy> { MakeSlime(5) };
+
+            var queue = new ActionQueue();
+            Assert.IsTrue(queue.EnqueueSkill(merc.LearnedSkills["thief.vanish"]),
+                "Vanish should enqueue on an empty queue");
+
+            var (engine, sink) = RunBattleWithMerc(hero, monsters, merc, queue, seed: 321);
+
+            Assert.AreEqual(0, queue.Count, "Player-queued buff must be consumed");
+            bool buffedCaster = false;
+            for (int i = 0; i < sink.BuffEvents.Count; i++)
+            {
+                var evt = sink.BuffEvents[i];
+                if (evt.Source == "thief.vanish")
+                {
+                    Assert.AreEqual(merc.Name, evt.TargetName,
+                        "Self-declared buff must target the caster, never a wounded ally");
+                    buffedCaster = true;
+                }
+            }
+            Assert.IsTrue(buffedCaster, "Queued Vanish must apply its buff to the casting mercenary");
+        }
+
+        [TestMethod]
+        [TestCategory("BattleEngine")]
+        public void MercQueue_EmptyOrNull_ProducesIdenticalBattle()
+        {
+            const int seed = 8888;
+
+            // Run 1: null player queue (pre-#303 behavior)
+            var hero1 = MakeHero(str: 15, agi: 10, vit: 12, mag: 5);
+            var merc1 = MakeKnightMerc();
+            var monsters1 = new List<IEnemy> { MakeSlime(4), MakeSlime(4) };
+            var (engine1, sink1) = RunBattleWithMerc(hero1, monsters1, merc1, null, seed);
+
+            // Run 2: empty player queue — must consume identical RNG
+            var hero2 = MakeHero(str: 15, agi: 10, vit: 12, mag: 5);
+            var merc2 = MakeKnightMerc();
+            var monsters2 = new List<IEnemy> { MakeSlime(4), MakeSlime(4) };
+            var (engine2, sink2) = RunBattleWithMerc(hero2, monsters2, merc2, new ActionQueue(), seed);
+
+            Assert.AreEqual(engine1.Outcome, engine2.Outcome, "Outcome must match (RNG parity)");
+            Assert.AreEqual(hero1.CurrentHP, hero2.CurrentHP, "Hero HP must match (RNG parity)");
+            Assert.AreEqual(merc1.CurrentHP, merc2.CurrentHP, "Merc HP must match (RNG parity)");
+            Assert.AreEqual(sink1.AttackEvents.Count, sink2.AttackEvents.Count, "Event count must match (RNG parity)");
+            for (int i = 0; i < sink1.AttackEvents.Count; i++)
+            {
+                Assert.AreEqual(sink1.AttackEvents[i].ActorName, sink2.AttackEvents[i].ActorName, $"Event {i} actor must match");
+                Assert.AreEqual(sink1.AttackEvents[i].Action, sink2.AttackEvents[i].Action, $"Event {i} action must match");
+                Assert.AreEqual(sink1.AttackEvents[i].Damage, sink2.AttackEvents[i].Damage, $"Event {i} damage must match");
+            }
         }
     }
 }

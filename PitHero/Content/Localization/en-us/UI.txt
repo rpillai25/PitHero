@@ -214,6 +214,7 @@ SkillEffectsLabel,Effects:
 SkillActivePatternNote,(Active only while pattern is formed)
 SkillProgress,Progress: {0} / {1} SP
 SkillJpCost,Cost: {0} JP
+SkillOwnerFormat,{0} ({1})
 SkillActiveMultiplier,Active: {0}x (Multiplier: {1}x)
 EquipPreviewChanges,Changes
 TabCrystals,Crystals

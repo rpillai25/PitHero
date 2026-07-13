@@ -231,6 +231,7 @@ namespace PitHero
         public const string SkillActivePatternNote = "SkillActivePatternNote";
         public const string SkillProgress = "SkillProgress";
         public const string SkillJpCost = "SkillJpCost";
+        public const string SkillOwnerFormat = "SkillOwnerFormat";
         public const string SkillActiveMultiplier = "SkillActiveMultiplier";
         public const string EquipPreviewChanges = "EquipPreviewChanges";
         public const string TabCrystals = "TabCrystals";

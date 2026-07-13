@@ -406,14 +406,14 @@ namespace PitHero.Tests
                 // Set up shortcut slots: empty, item, skill, item, empty, skill, empty, empty
                 saveData.ShortcutSlots = new List<SavedShortcutSlot>
                 {
-                    new SavedShortcutSlot { SlotType = 0 },                                    // Empty
-                    new SavedShortcutSlot { SlotType = 1, ItemBagIndex = 5 },                   // Item at bag index 5
-                    new SavedShortcutSlot { SlotType = 2, SkillId = "knight.light_armor" },      // Skill
-                    new SavedShortcutSlot { SlotType = 1, ItemBagIndex = 42 },                  // Item at bag index 42
-                    new SavedShortcutSlot { SlotType = 0 },                                    // Empty
-                    new SavedShortcutSlot { SlotType = 2, SkillId = "mage.fire" },              // Skill
-                    new SavedShortcutSlot { SlotType = 0 },                                    // Empty
-                    new SavedShortcutSlot { SlotType = 0 },                                    // Empty
+                    new SavedShortcutSlot { SlotType = 0 },                                                        // Empty
+                    new SavedShortcutSlot { SlotType = 1, ItemBagIndex = 5 },                                       // Item at bag index 5
+                    new SavedShortcutSlot { SlotType = 2, SkillId = "knight.light_armor", OwnerMercIndex = -1 },     // Hero-owned skill
+                    new SavedShortcutSlot { SlotType = 1, ItemBagIndex = 42 },                                      // Item at bag index 42
+                    new SavedShortcutSlot { SlotType = 0 },                                                        // Empty
+                    new SavedShortcutSlot { SlotType = 2, SkillId = "mage.fire", OwnerMercIndex = 1 },               // Merc-owned skill
+                    new SavedShortcutSlot { SlotType = 0 },                                                        // Empty
+                    new SavedShortcutSlot { SlotType = 0 },                                                        // Empty
                 };
 
                 var dataStore = new FileDataStore(tempDir);
@@ -431,9 +431,10 @@ namespace PitHero.Tests
                 Assert.AreEqual(1, loaded.ShortcutSlots[1].SlotType, "Slot 1 should be item");
                 Assert.AreEqual(5, loaded.ShortcutSlots[1].ItemBagIndex, "Slot 1 should reference bag index 5");
 
-                // Slot 2: Skill
+                // Slot 2: Skill (hero-owned)
                 Assert.AreEqual(2, loaded.ShortcutSlots[2].SlotType, "Slot 2 should be skill");
                 Assert.AreEqual("knight.light_armor", loaded.ShortcutSlots[2].SkillId, "Slot 2 should reference knight.light_armor");
+                Assert.AreEqual(-1, loaded.ShortcutSlots[2].OwnerMercIndex, "Slot 2 should be hero-owned");
 
                 // Slot 3: Item at bag index 42
                 Assert.AreEqual(1, loaded.ShortcutSlots[3].SlotType, "Slot 3 should be item");
@@ -442,9 +443,10 @@ namespace PitHero.Tests
                 // Slot 4: Empty
                 Assert.AreEqual(0, loaded.ShortcutSlots[4].SlotType, "Slot 4 should be empty");
 
-                // Slot 5: Skill
+                // Slot 5: Skill (merc-owned)
                 Assert.AreEqual(2, loaded.ShortcutSlots[5].SlotType, "Slot 5 should be skill");
                 Assert.AreEqual("mage.fire", loaded.ShortcutSlots[5].SkillId, "Slot 5 should reference mage.fire");
+                Assert.AreEqual(1, loaded.ShortcutSlots[5].OwnerMercIndex, "Slot 5 should be owned by merc index 1");
 
                 // Slots 6-7: Empty
                 Assert.AreEqual(0, loaded.ShortcutSlots[6].SlotType, "Slot 6 should be empty");

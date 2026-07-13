@@ -7,6 +7,7 @@ using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.Util;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Mercenaries;
 using RolePlayingFramework.Skills;
 using System.Collections.Generic;
 
@@ -36,6 +37,9 @@ namespace PitHero.UI
         private readonly FastList<ShortcutSlotVisual> _visualSlots;
 
         private HeroComponent _heroComponent;
+
+        /// <summary>Tooltip shown when hovering a skill shortcut (created via EnableTooltips).</summary>
+        private SkillTooltip _skillTooltip;
 
         /// <summary>Shortcut slot index currently showing hover effect during drag.</summary>
         private int _dragHoveredIndex = -1;
@@ -149,13 +153,22 @@ namespace PitHero.UI
             SetPosition(_baseX + _offsetX, _baseY + _slideOffsetY);
         }
 
-        /// <summary>Connects shortcut bar to hero and inventory grid.</summary>
+        /// <summary>Creates the hover tooltip for skill shortcuts (call once during scene setup).</summary>
+        public void EnableTooltips(Skin skin)
+        {
+            var dummyTarget = new Element();
+            dummyTarget.SetSize(0, 0);
+            _skillTooltip = new SkillTooltip(dummyTarget, skin);
+        }
+
+        /// <summary>Connects shortcut bar to hero and inventory grid. Idempotent — ReconnectUIToHero calls this again after the crystal ceremony that follows a hero death.</summary>
         public void ConnectToHero(HeroComponent heroComponent, InventoryGrid inventoryGrid = null)
         {
             _heroComponent = heroComponent;
             _inventoryGrid = inventoryGrid;
 
-            // Subscribe to inventory changes to refresh visual display
+            // Subscribe to inventory changes to refresh visual display (unsubscribe first — the event is static)
+            InventorySelectionManager.OnInventoryChanged -= RefreshVisualSlots;
             InventorySelectionManager.OnInventoryChanged += RefreshVisualSlots;
         }
 
@@ -178,17 +191,23 @@ namespace PitHero.UI
             RefreshVisualSlots();
         }
 
-        /// <summary>Sets a reference to a skill at the specified shortcut index.</summary>
+        /// <summary>Sets a reference to a hero-owned skill at the specified shortcut index.</summary>
         public void SetShortcutSkill(int shortcutIndex, ISkill skill)
+        {
+            SetShortcutSkill(shortcutIndex, skill, null);
+        }
+
+        /// <summary>Sets a reference to a skill at the specified shortcut index (null owner = hero).</summary>
+        public void SetShortcutSkill(int shortcutIndex, ISkill skill, Mercenary ownerMercenary)
         {
             if (shortcutIndex < 0 || shortcutIndex >= SHORTCUT_COUNT)
                 return;
 
-            _shortcutSlots[shortcutIndex] = ShortcutSlotData.CreateSkillReference(skill);
+            _shortcutSlots[shortcutIndex] = ShortcutSlotData.CreateSkillReference(skill, ownerMercenary);
             _referencedItems[shortcutIndex] = null;
 
-            // Reset HealingSkillExhausted if a healing skill is moved to shortcut bar
-            if (_heroComponent != null && skill != null && skill.HPRestoreAmount > 0)
+            // Reset HealingSkillExhausted if a hero healing skill is moved to shortcut bar (flag drives hero AI only)
+            if (_heroComponent != null && ownerMercenary == null && skill != null && skill.HPRestoreAmount > 0)
             {
                 _heroComponent.HealingSkillExhausted = false;
                 Debug.Log($"[ShortcutBar] Reset HealingSkillExhausted flag (healing skill added to shortcut bar)");
@@ -285,9 +304,17 @@ namespace PitHero.UI
                 }
                 else if (saved.SlotType == 2) // Skill
                 {
-                    // Find the skill by ID in the hero's learned skills
-                    if (_heroComponent.LinkedHero != null && !string.IsNullOrEmpty(saved.SkillId))
+                    if (string.IsNullOrEmpty(saved.SkillId))
+                        continue;
+
+                    if (saved.OwnerMercIndex >= 0)
                     {
+                        // Mercenary-owned skill: look up the owner by hired-roster index
+                        RestoreMercenarySkillShortcut(i, saved);
+                    }
+                    else if (_heroComponent.LinkedHero != null)
+                    {
+                        // Hero-owned skill: find the skill by ID in the hero's learned skills
                         ISkill skill = null;
                         if (_heroComponent.LinkedHero.LearnedSkills.TryGetValue(saved.SkillId, out skill))
                         {
@@ -303,6 +330,37 @@ namespace PitHero.UI
             }
         }
 
+        /// <summary>Restores a mercenary-owned skill shortcut by hired-roster index (save version 14+).</summary>
+        private void RestoreMercenarySkillShortcut(int shortcutIndex, SavedShortcutSlot saved)
+        {
+            var mercManager = Core.Services.GetService<MercenaryManager>();
+            var hired = mercManager?.GetHiredMercenaries();
+            if (hired == null || saved.OwnerMercIndex >= hired.Count)
+            {
+                Debug.Warn("[ShortcutBar] Owner index " + saved.OwnerMercIndex + " out of range for shortcut " + shortcutIndex);
+                return;
+            }
+
+            var mercComp = hired[saved.OwnerMercIndex].GetComponent<MercenaryComponent>();
+            var merc = mercComp?.LinkedMercenary;
+            if (merc == null)
+            {
+                Debug.Warn("[ShortcutBar] No mercenary at owner index " + saved.OwnerMercIndex + " for shortcut " + shortcutIndex);
+                return;
+            }
+
+            ISkill skill = null;
+            if (merc.LearnedSkills.TryGetValue(saved.SkillId, out skill))
+            {
+                SetShortcutSkill(shortcutIndex, skill, merc);
+                Debug.Log("[ShortcutBar] Restored shortcut " + shortcutIndex + " as skill '" + saved.SkillId + "' owned by " + merc.Name);
+            }
+            else
+            {
+                Debug.Warn("[ShortcutBar] Mercenary " + merc.Name + " does not know skill '" + saved.SkillId + "' for shortcut " + shortcutIndex);
+            }
+        }
+
         /// <summary>Refreshes all visual slots to display referenced items or skills.</summary>
         private void RefreshVisualSlots()
         {
@@ -311,6 +369,9 @@ namespace PitHero.UI
 
             // First, update slot references to track item movements
             UpdateSlotReferences();
+
+            // Clear skill slots whose owning mercenary has left the party
+            ValidateMercenaryOwnedSlots();
 
             for (int i = 0; i < SHORTCUT_COUNT; i++)
             {
@@ -341,6 +402,43 @@ namespace PitHero.UI
                         visualSlot.SetReferencedSkill(null);
                         visualSlot.SetStackCount(0);
                     }
+                }
+            }
+        }
+
+        /// <summary>Clears skill slots whose owning mercenary is no longer in the hired party.</summary>
+        private void ValidateMercenaryOwnedSlots()
+        {
+            var mercManager = Core.Services.GetService<MercenaryManager>();
+            if (mercManager == null)
+                return;
+
+            List<Entity> hired = null;
+            for (int i = 0; i < SHORTCUT_COUNT; i++)
+            {
+                var slotData = _shortcutSlots[i];
+                if (slotData.SlotType != ShortcutSlotType.Skill || slotData.OwnerMercenary == null)
+                    continue;
+
+                // Fetch the hired roster once, only when a merc-owned slot exists
+                hired ??= mercManager.GetHiredMercenaries();
+
+                bool stillHired = false;
+                for (int j = 0; j < hired.Count; j++)
+                {
+                    var comp = hired[j].GetComponent<MercenaryComponent>();
+                    if (comp != null && comp.LinkedMercenary == slotData.OwnerMercenary)
+                    {
+                        stillHired = true;
+                        break;
+                    }
+                }
+
+                if (!stillHired)
+                {
+                    Debug.Log($"[ShortcutBar] Shortcut {i + 1} owner '{slotData.OwnerMercenary.Name}' left the party, clearing reference");
+                    slotData.Clear();
+                    _referencedItems[i] = null;
                 }
             }
         }
@@ -426,7 +524,39 @@ namespace PitHero.UI
             if (shortcutData.SlotType == ShortcutSlotType.Item && shortcutData.ReferencedSlot?.SlotData?.Item != null)
                 OnItemHovered?.Invoke(shortcutData.ReferencedSlot.SlotData.Item);
             else if (shortcutData.SlotType == ShortcutSlotType.Skill && shortcutData.ReferencedSkill != null)
+            {
                 OnSkillHovered?.Invoke(shortcutData.ReferencedSkill);
+                ShowSkillTooltip(shortcutData);
+            }
+        }
+
+        /// <summary>Shows the skill tooltip as "SkillName (Owner Name)" near the mouse cursor.</summary>
+        private void ShowSkillTooltip(ShortcutSlotData shortcutData)
+        {
+            if (_skillTooltip == null)
+                return;
+
+            var stage = GetStage();
+            if (stage == null)
+                return;
+
+            var ownerName = shortcutData.OwnerMercenary?.Name ?? _heroComponent?.LinkedHero?.Name;
+            _skillTooltip.ShowSkill(shortcutData.ReferencedSkill, true, null, false, 0, 0,
+                showCostAndStatus: false, ownerName: ownerName);
+            if (_skillTooltip.GetContainer().GetParent() == null)
+            {
+                stage.AddElement(_skillTooltip.GetContainer());
+            }
+
+            var mousePos = stage.GetMousePosition();
+            _skillTooltip.PositionWithinBounds(mousePos, stage);
+            _skillTooltip.GetContainer().ToFront();
+        }
+
+        /// <summary>Hides the skill tooltip if it is showing.</summary>
+        private void HideSkillTooltip()
+        {
+            _skillTooltip?.GetContainer().Remove();
         }
 
         private void HandleSlotUnhovered(int index)
@@ -434,6 +564,7 @@ namespace PitHero.UI
             var visualSlot = _visualSlots.Buffer[index];
             visualSlot?.SetItemSpriteOffsetY(0f);
             OnItemUnhovered?.Invoke();
+            HideSkillTooltip();
         }
 
         /// <summary>Gets the item referenced by the shortcut slot at the given index, or null if none.</summary>
@@ -466,6 +597,9 @@ namespace PitHero.UI
         {
             var stage = slot.GetStage();
             if (stage == null) return;
+
+            // Dismiss tooltip while dragging
+            HideSkillTooltip();
 
             _dragSourceIndex = index;
 
@@ -572,9 +706,17 @@ namespace PitHero.UI
             _dragSourceIndex = -1;
         }
 
-        /// <summary>Subscribes to InventoryDragManager to handle inventory-to-shortcut and skill-list-to-shortcut drops.</summary>
+        /// <summary>
+        /// Subscribes to InventoryDragManager to handle inventory-to-shortcut and skill-list-to-shortcut drops.
+        /// Idempotent — the events are static and ReconnectUIToHero calls this again after the crystal
+        /// ceremony that follows a hero death; a duplicate subscription would run the drop handler twice,
+        /// and the second run (after EndDrag cleared DragSkillOwner) would overwrite a mercenary-owned
+        /// skill slot as hero-owned.
+        /// </summary>
         public void ConnectToDragManager()
         {
+            InventoryDragManager.OnDropRequested -= HandleInventoryDropOnShortcut;
+            InventoryDragManager.OnSkillDropRequested -= HandleSkillDropOnShortcut;
             InventoryDragManager.OnDropRequested += HandleInventoryDropOnShortcut;
             InventoryDragManager.OnSkillDropRequested += HandleSkillDropOnShortcut;
         }
@@ -585,6 +727,11 @@ namespace PitHero.UI
         /// </summary>
         private void HandleInventoryDropOnShortcut(InventorySlot inventorySource, Vector2 stagePos)
         {
+            // Ignore drops when this bar is not live on a stage or the drag already ended
+            // (protects against stale scene instances still subscribed to the static event)
+            if (GetStage() == null || !InventoryDragManager.IsDragging)
+                return;
+
             int index = GetShortcutIndexAtStagePosition(stagePos);
             if (index < 0)
                 return;
@@ -601,9 +748,14 @@ namespace PitHero.UI
             InventoryDragManager.EndDrag();
         }
 
-        /// <summary>Handles a skill dragged from the hero skill list dropped onto a shortcut slot.</summary>
+        /// <summary>Handles a skill dragged from a skill list dropped onto a shortcut slot.</summary>
         private void HandleSkillDropOnShortcut(ISkill skill, Vector2 stagePos)
         {
+            // Ignore drops when this bar is not live on a stage or the drag already ended
+            // (protects against stale scene instances still subscribed to the static event)
+            if (GetStage() == null || !InventoryDragManager.IsDragging)
+                return;
+
             int index = GetShortcutIndexAtStagePosition(stagePos);
             if (index < 0)
             {
@@ -611,7 +763,8 @@ namespace PitHero.UI
                 return;
             }
 
-            SetShortcutSkill(index, skill);
+            var owner = InventoryDragManager.DragSkillOwner;
+            SetShortcutSkill(index, skill, owner);
             InventoryDragManager.EndDrag();
         }
 
@@ -784,9 +937,10 @@ namespace PitHero.UI
             return mpPct;
         }
 
-        /// <summary>Uses a skill from the shortcut bar.</summary>
-        private void UseSkill(ISkill skill)
+        /// <summary>Uses a skill from the shortcut bar, routing to the owning character's battle queue.</summary>
+        private void UseSkill(ShortcutSlotData slotData, int slotIndex)
         {
+            var skill = slotData?.ReferencedSkill;
             if (skill == null)
                 return;
 
@@ -800,9 +954,15 @@ namespace PitHero.UI
             // Check if hero is in battle
             bool inBattle = PitHero.AI.HeroStateMachine.IsBattleInProgress;
 
-            // If in battle, queue the action
+            // If in battle, queue the action on the owning character's queue
             if (inBattle)
             {
+                if (slotData.OwnerMercenary != null)
+                {
+                    UseMercenarySkill(slotData, slotIndex, skill);
+                    return;
+                }
+
                 Debug.Log($"[ShortcutBar] Queueing skill {skill.Name} for battle");
                 if (!_heroComponent.BattleActionQueue.EnqueueSkill(skill))
                 {
@@ -821,6 +981,50 @@ namespace PitHero.UI
             // For non-battle skills used outside of battle, we would need to implement immediate execution
             // This depends on the specific skill's Execute method and requires a context (no enemies)
             Debug.Log($"[ShortcutBar] Cannot use {skill.Name} outside of battle (not yet implemented)");
+        }
+
+        /// <summary>Queues a mercenary-owned skill on that mercenary's battle queue (in-battle only).</summary>
+        private void UseMercenarySkill(ShortcutSlotData slotData, int slotIndex, ISkill skill)
+        {
+            var mercComponent = FindHiredMercenaryComponent(slotData.OwnerMercenary);
+            if (mercComponent == null)
+            {
+                Debug.Log($"[ShortcutBar] Owner of {skill.Name} is no longer in the party, clearing shortcut {slotIndex + 1}");
+                ClearShortcutReference(slotIndex);
+                return;
+            }
+
+            if (slotData.OwnerMercenary.CurrentHP <= 0)
+            {
+                Debug.Log($"[ShortcutBar] Cannot queue {skill.Name}: {slotData.OwnerMercenary.Name} is down");
+                return;
+            }
+
+            Debug.Log($"[ShortcutBar] Queueing skill {skill.Name} for {slotData.OwnerMercenary.Name}");
+            if (!mercComponent.BattleActionQueue.EnqueueSkill(skill))
+            {
+                Debug.Log($"[ShortcutBar] Cannot queue {skill.Name}: Queue is full");
+            }
+        }
+
+        /// <summary>Finds the hired mercenary component linked to the given mercenary, or null if not in the party.</summary>
+        private MercenaryComponent FindHiredMercenaryComponent(Mercenary mercenary)
+        {
+            if (mercenary == null)
+                return null;
+
+            var mercManager = Core.Services.GetService<MercenaryManager>();
+            if (mercManager == null)
+                return null;
+
+            var hired = mercManager.GetHiredMercenaries();
+            for (int i = 0; i < hired.Count; i++)
+            {
+                var comp = hired[i].GetComponent<MercenaryComponent>();
+                if (comp != null && comp.LinkedMercenary == mercenary)
+                    return comp;
+            }
+            return null;
         }
 
         /// <summary>Public method to refresh visual slots (called externally when inventory changes).</summary>
@@ -861,7 +1065,7 @@ namespace PitHero.UI
                     if (skill != null)
                     {
                         Debug.Log($"[ShortcutBar] Activated shortcut slot {keyOffset + 1} with skill: {skill.Name}");
-                        UseSkill(skill);
+                        UseSkill(shortcutData, keyOffset);
                     }
                 }
 
