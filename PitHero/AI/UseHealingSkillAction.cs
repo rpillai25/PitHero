@@ -4,6 +4,7 @@ using PitHero;
 using PitHero.AI.Interfaces;
 using PitHero.ECS.Components;
 using PitHero.Services;
+using PitHero.Util;
 using RolePlayingFramework.Skills;
 using System;
 using System.Collections.Generic;
@@ -83,7 +84,7 @@ namespace PitHero.AI
             }
 
             // Use the healing skill (caster spends MP, target gets healed)
-            bool success = UseHealingSkillOnTarget(healingSkill, caster, isCasterHero, target, isTargetHero);
+            bool success = UseHealingSkillOnTarget(healingSkill, caster, isCasterHero, target, isTargetHero, targetEntity);
             if (!success)
             {
                 Debug.Warn("[UseHealingSkillAction] Failed to use healing skill");
@@ -285,7 +286,7 @@ namespace PitHero.AI
         /// <summary>
         /// Use the healing skill: caster spends their own MP, target gets healed
         /// </summary>
-        private bool UseHealingSkillOnTarget(ISkill skill, object caster, bool isCasterHero, object target, bool isTargetHero)
+        private bool UseHealingSkillOnTarget(ISkill skill, object caster, bool isCasterHero, object target, bool isTargetHero, Entity targetEntity)
         {
             if (skill == null || caster == null || target == null) return false;
 
@@ -349,6 +350,8 @@ namespace PitHero.AI
 
             if (healed)
             {
+                Core.GetGlobalManager<ParticleEffectManager>()?.SpawnEffect(ParticleEffectType.Heal, targetEntity);
+
                 int casterMP = isCasterHero ? ((RolePlayingFramework.Heroes.Hero)caster).CurrentMP : ((RolePlayingFramework.Mercenaries.Mercenary)caster).CurrentMP;
                 int casterMaxMP = isCasterHero ? ((RolePlayingFramework.Heroes.Hero)caster).MaxMP : ((RolePlayingFramework.Mercenaries.Mercenary)caster).MaxMP;
                 Debug.Log($"[UseHealingSkillAction] {casterName} healed {targetName} for {healAmount} HP using {skill.Name}. Target HP: {currentHP}/{maxHP}, Caster MP: {casterMP}/{casterMaxMP}");

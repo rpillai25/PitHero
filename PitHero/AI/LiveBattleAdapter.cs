@@ -12,6 +12,7 @@ using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Inventory;
 using RolePlayingFramework.Mercenaries;
+using RolePlayingFramework.Skills;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -340,11 +341,125 @@ namespace PitHero.AI
             return entity != null ? ShowTextOnEntity(entity, "Crit", Color.Yellow) : null;
         }
 
+        /// <summary>World-space pixels per second a skill projectile travels.</summary>
+        private const float SkillProjectileSpeed = 340f;
+
+        /// <summary>How far above the enemy group's center an area rain effect spawns.</summary>
+        private const float AreaRainSpawnHeight = 70f;
+
+        /// <summary>How long the engine waits on an area rain effect before damage shows.</summary>
+        private const float AreaRainImpactDelay = 0.5f;
+
+        /// <inheritdoc/>
+        /// <remarks>Adding a skill visual = pex file + enum member + Init load line in
+        /// ParticleEffectManager + a case here.</remarks>
+        public IEnumerator ShowSkillEffectOnMonsters(ICombatant caster, ISkill skill,
+            IEnemy primaryTarget, List<IEnemy> surroundingTargets)
+        {
+            switch (skill.Id)
+            {
+                case "mage.fire":
+                {
+                    var casterEntity = GetEntityForCombatant(caster);
+                    var targetEntity = GetEntityForEnemy(primaryTarget);
+                    if (casterEntity == null || targetEntity == null)
+                        return null;
+                    return FlyProjectileEffect(ParticleEffectType.Fireball,
+                        casterEntity.Position, targetEntity.Position);
+                }
+
+                case "mage.firestorm":
+                {
+                    var center = GetCenterOfEnemyGroup(primaryTarget, surroundingTargets);
+                    if (center == null)
+                        return null;
+                    return RainEffectOverPosition(ParticleEffectType.Firestorm, center.Value);
+                }
+
+                default:
+                    return null;
+            }
+        }
+
+        /// <summary>Averages the entity positions of the primary and surrounding targets;
+        /// null when no target has a live entity.</summary>
+        private Vector2? GetCenterOfEnemyGroup(IEnemy primaryTarget, List<IEnemy> surroundingTargets)
+        {
+            var sum = Vector2.Zero;
+            int count = 0;
+
+            var primaryEntity = GetEntityForEnemy(primaryTarget);
+            if (primaryEntity != null) { sum += primaryEntity.Position; count++; }
+
+            if (surroundingTargets != null)
+            {
+                for (int i = 0; i < surroundingTargets.Count; i++)
+                {
+                    var e = GetEntityForEnemy(surroundingTargets[i]);
+                    if (e != null) { sum += e.Position; count++; }
+                }
+            }
+
+            return count > 0 ? sum / count : (Vector2?)null;
+        }
+
+        private IEnumerator RainEffectOverPosition(ParticleEffectType type, Vector2 groundCenter)
+        {
+            var spawnPos = groundCenter - new Vector2(0f, AreaRainSpawnHeight);
+            Core.GetGlobalManager<ParticleEffectManager>()?.SpawnEffectAtPosition(type, spawnPos, Core.Scene);
+
+            // Let the rain visibly fall onto the group before damage digits appear;
+            // the emitter finishes and cleans itself up on its own after this returns.
+            yield return WaitForSecondsRespectingPause(AreaRainImpactDelay);
+        }
+
+        private Entity GetEntityForCombatant(ICombatant combatant)
+        {
+            if (combatant is Hero)
+                return _heroComponent.Entity;
+            if (combatant is Mercenary merc && _mercMap.TryGetValue(merc, out var m))
+                return m.e;
+            return null;
+        }
+
+        private IEnumerator FlyProjectileEffect(ParticleEffectType type, Vector2 from, Vector2 to)
+        {
+            var emitter = Core.GetGlobalManager<ParticleEffectManager>()
+                ?.SpawnEffectAtPosition(type, from, Core.Scene);
+            if (emitter == null)
+                yield break;
+
+            var projectile = emitter.Entity;
+            float duration = Mathf.Clamp(Vector2.Distance(from, to) / SkillProjectileSpeed, 0.15f, 0.6f);
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.DeltaTime;
+                projectile.SetPosition(Vector2.Lerp(from, to, Mathf.Clamp01(elapsed / duration)));
+                yield return null;
+            }
+
+            // Impact: stop emitting and let the trail fade; the entity destroys itself via
+            // the OnAllParticlesExpired handler subscribed at spawn. The config's finite
+            // duration is the leak-safe fallback if this coroutine is torn down mid-flight.
+            emitter.PauseEmission();
+        }
+
         /// <inheritdoc/>
         public IEnumerator ShowHealOnAlly(IBattleAlly ally, int amount)
         {
             var entity = GetEntityForAlly(ally);
             if (entity == null) return null;
+            Core.GetGlobalManager<ParticleEffectManager>()?.SpawnEffect(ParticleEffectType.Heal, entity);
+            return ShowDamageDigitOnEntity(entity, amount, Color.Green);
+        }
+
+        /// <inheritdoc/>
+        public IEnumerator ShowItemHealOnAlly(IBattleAlly ally, int amount, RolePlayingFramework.Equipment.Consumable consumable)
+        {
+            var entity = GetEntityForAlly(ally);
+            if (entity == null) return null;
+            Core.GetGlobalManager<ParticleEffectManager>()?.SpawnPotionHealEffect(consumable, entity);
             return ShowDamageDigitOnEntity(entity, amount, Color.Green);
         }
 

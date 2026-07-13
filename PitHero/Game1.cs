@@ -49,6 +49,10 @@ namespace PitHero
             soundEffectManager.Init(Content);
             RegisterGlobalManager(soundEffectManager);
 
+            ParticleEffectManager particleEffectManager = new ParticleEffectManager();
+            particleEffectManager.Init(Content);
+            RegisterGlobalManager(particleEffectManager);
+
 #if DEBUG
             // Analytics for game balancing (issue #289) - debug builds only
             RegisterGlobalManager(new Services.Analytics.AnalyticsManager());

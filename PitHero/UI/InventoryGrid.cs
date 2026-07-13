@@ -7,6 +7,7 @@ using Nez.Sprites;
 using Nez.UI;
 using PitHero.ECS.Components;
 using PitHero.Services;
+using PitHero.Util;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Mercenaries;
 using RolePlayingFramework.Synergies;
@@ -789,9 +790,13 @@ namespace PitHero.UI
             }
 
             // Try to consume the item
+            int hpBefore = hero.CurrentHP;
             if (consumable.Consume(hero))
             {
                 Debug.Log($"Used {item.Name}");
+
+                if (hero.CurrentHP > hpBefore)
+                    Core.GetGlobalManager<ParticleEffectManager>()?.SpawnPotionHealEffect(consumable, _heroComponent.Entity);
 
                 // Reset HealingSkillExhausted if MP restoration item is used
                 if (_heroComponent != null && consumable.MPRestoreAmount > 0)

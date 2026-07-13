@@ -57,10 +57,17 @@ namespace PitHero.Combat
         public virtual IEnumerator ShowDeflectOnAlly(IBattleAlly ally) { return null; }
 
         /// <inheritdoc/>
+        public virtual IEnumerator ShowSkillEffectOnMonsters(RolePlayingFramework.Combat.ICombatant caster,
+            RolePlayingFramework.Skills.ISkill skill, IEnemy primaryTarget, List<IEnemy> surroundingTargets) { return null; }
+
+        /// <inheritdoc/>
         public virtual IEnumerator ShowCritOnMonster(IEnemy enemy) { return null; }
 
         /// <inheritdoc/>
         public virtual IEnumerator ShowHealOnAlly(IBattleAlly ally, int amount) { return null; }
+
+        /// <inheritdoc/>
+        public virtual IEnumerator ShowItemHealOnAlly(IBattleAlly ally, int amount, RolePlayingFramework.Equipment.Consumable consumable) { return null; }
 
         /// <inheritdoc/>
         public virtual IEnumerator ShowBuffOnAlly(IBattleAlly ally, string label) { return null; }

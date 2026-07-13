@@ -817,6 +817,10 @@ namespace PitHero.Combat
             // Phase 4: MarkActed AFTER Execute
             battleContext.MarkActed(caster);
 
+            // Skill cast visual (mage fireball projectile, firestorm rain) plays before any damage shows
+            var rproj = _sink.ShowSkillEffectOnMonsters(caster, skill, primaryTarget, _surroundingTargets);
+            if (rproj != null) yield return rproj;
+
             // Display damage and handle deaths for all affected monsters
             bool critTextShown = false;
             for (int i = _tempLivingEnemies.Count - 1; i >= 0; i--)
@@ -1180,7 +1184,7 @@ namespace PitHero.Combat
                     var targetAlly = FindAllyForTarget(target, targetsHero);
                     if (targetAlly != null)
                     {
-                        var rh = _sink.ShowHealOnAlly(targetAlly, healAmount);
+                        var rh = _sink.ShowItemHealOnAlly(targetAlly, healAmount, consumable);
                         if (rh != null) yield return rh;
                     }
                 }

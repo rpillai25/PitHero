@@ -94,7 +94,7 @@ namespace PitHero.AI
                     hero.Bag, currentHP, maxHP, currentMP, maxMP,
                     out bestConsumable, out bestIndex))
                 {
-                    bool success = UseHealingItemFromBag(bestConsumable, bestIndex, target, isHero, hero);
+                    bool success = UseHealingItemFromBag(bestConsumable, bestIndex, target, isHero, hero, targetEntity);
                     if (success)
                     {
                         Debug.Log($"[UseHealingItemAction] Successfully used {bestConsumable.Name} on {targetName} from inventory");
@@ -186,7 +186,7 @@ namespace PitHero.AI
         /// Use the healing item from bag on the target (hero or mercenary)
         /// Similar to InventoryGrid.UseConsumable but works for both Hero and Mercenary targets
         /// </summary>
-        private bool UseHealingItemFromBag(Consumable consumable, int bagIndex, object target, bool isHero, HeroComponent heroComponent)
+        private bool UseHealingItemFromBag(Consumable consumable, int bagIndex, object target, bool isHero, HeroComponent heroComponent, Entity targetEntity)
         {
             if (consumable == null || target == null || bagIndex < 0) return false;
 
@@ -225,6 +225,8 @@ namespace PitHero.AI
 
                 if (hpRestored > 0)
                 {
+                    Core.GetGlobalManager<ParticleEffectManager>()?.SpawnPotionHealEffect(consumable, targetEntity);
+
                     Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleOutBattleHealConsumable,
                         (targetName, GameConfig.ConsoleColorHeroName),
                         (consumable.Name, RarityUtils.GetRarityColor(consumable.Rarity)),

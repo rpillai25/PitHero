@@ -5,6 +5,7 @@ using Nez.Textures;
 using Nez.UI;
 using PitHero.ECS.Components;
 using PitHero.Services;
+using PitHero.Util;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Skills;
 using System.Collections.Generic;
@@ -656,18 +657,28 @@ namespace PitHero.UI
             // Determine the target: most critical party member when the option is enabled,
             // otherwise always the hero.
             object target = hero;
+            Entity targetEntity = _heroComponent.Entity;
             if (_heroComponent.UseConsumablesOnMercenaries)
             {
-                target = FindMostCriticalTargetForConsumable(consumable);
+                target = FindMostCriticalTargetForConsumable(consumable, out targetEntity);
             }
 
             // Try to consume the item immediately (out of battle)
+            int hpBefore = target is RolePlayingFramework.Heroes.Hero preHero
+                ? preHero.CurrentHP
+                : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentHP;
             if (consumable.Consume(target))
             {
                 string targetName = target is RolePlayingFramework.Heroes.Hero h
                     ? h.Name
                     : ((RolePlayingFramework.Mercenaries.Mercenary)target).Name;
                 Debug.Log($"[ShortcutBar] Used {item.Name} on {targetName}");
+
+                int hpAfter = target is RolePlayingFramework.Heroes.Hero postHero
+                    ? postHero.CurrentHP
+                    : ((RolePlayingFramework.Mercenaries.Mercenary)target).CurrentHP;
+                if (hpAfter > hpBefore)
+                    Core.GetGlobalManager<ParticleEffectManager>()?.SpawnPotionHealEffect(consumable, targetEntity);
 
                 // Reset HealingSkillExhausted if MP restoration item is used
                 if (_heroComponent != null && consumable.MPRestoreAmount > 0)
@@ -700,12 +711,13 @@ namespace PitHero.UI
         /// potions), restricted to targets the potion can actually help. Falls back to the
         /// hero if nobody has any missing resources of the relevant type.
         /// </summary>
-        private object FindMostCriticalTargetForConsumable(Consumable consumable)
+        private object FindMostCriticalTargetForConsumable(Consumable consumable, out Entity targetEntity)
         {
             bool restoresHP = consumable.HPRestoreAmount != 0;
             bool restoresMP = consumable.MPRestoreAmount != 0;
 
             object bestTarget = null;
+            targetEntity = _heroComponent.Entity;
             float lowestPercent = 1f;
 
             // Evaluate hero
@@ -721,6 +733,7 @@ namespace PitHero.UI
                     if (relevantPct < lowestPercent)
                     {
                         bestTarget = heroObj;
+                        targetEntity = _heroComponent.Entity;
                         lowestPercent = relevantPct;
                     }
                 }
@@ -748,6 +761,7 @@ namespace PitHero.UI
                         if (relevantPct < lowestPercent)
                         {
                             bestTarget = mercenary;
+                            targetEntity = merc;
                             lowestPercent = relevantPct;
                         }
                     }
@@ -755,6 +769,8 @@ namespace PitHero.UI
             }
 
             // Fall back to hero — Consume() will return false gracefully if at full HP/MP
+            if (bestTarget == null)
+                targetEntity = _heroComponent.Entity;
             return bestTarget ?? _heroComponent.LinkedHero;
         }
 
