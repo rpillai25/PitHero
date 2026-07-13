@@ -173,7 +173,7 @@ Design docs under `PitHero/docs/` (kept as standalone references — don't dupli
 - `PitHero/docs/ColorGrading.md` — dual-LUT post-processor, day/night schedule, shader recompile steps
 - `PitHero/docs/DynamicPit.md` — `PitWidthManager` + expansion cadence
 - `PitHero/docs/Permadeath.md` — Hero death, crystal vault, sell-value formula
-- `PitHero/docs/HeroPromotion.md` — Mercenary→hero conversion via crystal/statue
+- `PitHero/docs/CrystalCeremony.md` — Post-death hero respawn and crystal imbuement at the statue
 
 **Per-feature docs:**
 - `features/`

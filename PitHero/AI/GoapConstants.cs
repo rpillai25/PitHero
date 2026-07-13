@@ -25,8 +25,6 @@
         public const string TargetInsidePit = "TargetInsidePit";
         public const string MercenaryFollowingTarget = "MercenaryFollowingTarget";
         public const string MercenaryAtPitEdge = "MercenaryAtPitEdge";
-        public const string IsBeingPromotedToHero = "IsBeingPromotedToHero";
-        public const string HasArrivedAtHeroStatue = "HasArrivedAtHeroStatue";
 
         // Hero crystal promotion states (hero respawning without crystal)
         public const string NeedsCrystal = "NeedsCrystal";
@@ -56,7 +54,6 @@
         public const string MercenaryJumpIntoPitAction = "MercenaryJumpIntoPitAction";
         public const string MercenaryJumpOutOfPitAction = "MercenaryJumpOutOfPitAction";
         public const string WalkToPitEdgeAction = "WalkToPitEdgeAction";
-        public const string WalkToHeroStatueAction = "WalkToHeroStatueAction";
 
         // Hero crystal promotion actions
         public const string WalkToStatueForCrystalAction = "WalkToStatueForCrystalAction";
