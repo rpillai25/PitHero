@@ -33,6 +33,10 @@ namespace PitHero.VirtualGame
         /// </remarks>
         public bool IsPresent => true;
 
+        /// <inheritdoc/>
+        /// <remarks>Stays empty in headless runs, so the engine always takes the AI path.</remarks>
+        public PitHero.AI.ActionQueue PlayerActionQueue { get; } = new PitHero.AI.ActionQueue();
+
         /// <summary>
         /// Creates a virtual battle ally wrapping the given combatant.
         /// </summary>

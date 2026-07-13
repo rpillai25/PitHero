@@ -55,6 +55,29 @@ namespace PitHero.Services
             return SaveFilePrefix + slotIndex + SaveFileExtension;
         }
 
+        /// <summary>
+        /// Finds the index a hired mercenary occupies in SaveData.HiredMercenaries, or -1 if not hired.
+        /// Must mirror the hired-mercenary save loop: same roster order, skipping null LinkedMercenary.
+        /// </summary>
+        private static int FindSavedMercIndex(MercenaryManager mercManager, RolePlayingFramework.Mercenaries.Mercenary owner)
+        {
+            if (mercManager == null || owner == null)
+                return -1;
+
+            var hiredMercs = mercManager.GetHiredMercenaries();
+            int savedIndex = 0;
+            for (int i = 0; i < hiredMercs.Count; i++)
+            {
+                var mercComp = hiredMercs[i].GetComponent<MercenaryComponent>();
+                if (mercComp?.LinkedMercenary == null) continue;
+
+                if (mercComp.LinkedMercenary == owner)
+                    return savedIndex;
+                savedIndex++;
+            }
+            return -1;
+        }
+
         /// <summary>Checks if a save file exists for the given slot.</summary>
         public bool SlotHasData(int slotIndex)
         {
@@ -404,11 +427,23 @@ namespace PitHero.Services
                     {
                         saved.SlotType = 2;
                         saved.SkillId = slotData.ReferencedSkill?.Id;
-                        if (!string.IsNullOrEmpty(saved.SkillId))
+                        saved.OwnerMercIndex = -1; // hero-owned by default
+                        if (slotData.OwnerMercenary != null)
                         {
-                            Debug.Log("[SaveLoadService] Saving shortcut " + i + " as skill '" + saved.SkillId + "'");
+                            // Resolve the owner's index within data.HiredMercenaries (same roster,
+                            // same order, same null-LinkedMercenary skip rule as the block above)
+                            saved.OwnerMercIndex = FindSavedMercIndex(mercManager, slotData.OwnerMercenary);
+                            if (saved.OwnerMercIndex < 0)
+                            {
+                                Debug.Log("[SaveLoadService] Shortcut " + i + " skill owner no longer hired, saving as empty");
+                                saved.SlotType = 0;
+                            }
                         }
-                        else
+                        if (saved.SlotType == 2 && !string.IsNullOrEmpty(saved.SkillId))
+                        {
+                            Debug.Log("[SaveLoadService] Saving shortcut " + i + " as skill '" + saved.SkillId + "' (owner index " + saved.OwnerMercIndex + ")");
+                        }
+                        else if (saved.SlotType == 2)
                         {
                             saved.SlotType = 0; // No valid skill ID, treat as empty
                         }

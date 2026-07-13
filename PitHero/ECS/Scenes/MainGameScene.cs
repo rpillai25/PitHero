@@ -1464,6 +1464,7 @@ namespace PitHero.ECS.Scenes
 
             // Shortcut bar at bottom center
             _shortcutBar = new ShortcutBar();
+            _shortcutBar.EnableTooltips(PitHeroSkin.CreateSkin());
             uiCanvas.Stage.AddElement(_shortcutBar);
             PositionShortcutBar();
 
@@ -1734,6 +1735,7 @@ namespace PitHero.ECS.Scenes
                     if (_merc1ActionQueueViz != null)
                     {
                         merc1Component.ActionQueueVisualization = _merc1ActionQueueViz;
+                        _merc1ActionQueueViz.SetMercenaryComponent(merc1Component);
                         _merc1ActionQueueViz.SetEnabled(true);
                     }
                 }
@@ -1773,6 +1775,7 @@ namespace PitHero.ECS.Scenes
                     if (_merc2ActionQueueViz != null)
                     {
                         merc2Component.ActionQueueVisualization = _merc2ActionQueueViz;
+                        _merc2ActionQueueViz.SetMercenaryComponent(merc2Component);
                         _merc2ActionQueueViz.SetEnabled(true);
                     }
                 }

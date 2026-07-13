@@ -26,8 +26,9 @@ namespace PitHero.ECS.Components
 
     /// <summary>
     /// Renders the action queue as sprites displayed over the HUD head during battle.
-    /// For hero: shows up to 5 queued actions and animates completed ones floating up.
-    /// For mercenaries: shows the current action floating up when triggered via ShowAction().
+    /// Monitors the hero's or a mercenary's BattleActionQueue: shows up to 5 queued actions
+    /// and animates completed ones floating up. ShowAction() triggers a one-off animation
+    /// for actions that never pass through the monitored queue (e.g. mercenary AI actions).
     /// </summary>
     public class ActionQueueVisualizationComponent : RenderableComponent, IUpdatable
     {
@@ -37,6 +38,7 @@ namespace PitHero.ECS.Components
         private const float SlideDistance = SpriteSize + SpriteSpacing; // Distance to slide up (34 pixels)
 
         private HeroComponent _heroComponent;
+        private MercenaryComponent _mercenaryComponent;
         private object _itemsAtlas;
         private object _skillsAtlas;
 
@@ -47,10 +49,22 @@ namespace PitHero.ECS.Components
         public override float Width => SpriteSize;
         public override float Height => SpriteSize * ActionQueue.MaxQueueSize + SpriteSpacing * (ActionQueue.MaxQueueSize - 1);
 
+        /// <summary>The action queue this component monitors and renders (hero's or mercenary's).</summary>
+        private ActionQueue MonitoredQueue =>
+            _heroComponent != null ? _heroComponent.BattleActionQueue : _mercenaryComponent?.BattleActionQueue;
+
         /// <summary>Set the hero component to continuously monitor its action queue for automatic animation triggers.</summary>
         public void SetHeroComponent(HeroComponent heroComponent)
         {
             _heroComponent = heroComponent;
+            _mercenaryComponent = null;
+        }
+
+        /// <summary>Set the mercenary component to continuously monitor its action queue (player-queued shortcut skills).</summary>
+        public void SetMercenaryComponent(MercenaryComponent mercenaryComponent)
+        {
+            _mercenaryComponent = mercenaryComponent;
+            _heroComponent = null;
         }
 
         /// <summary>Show a single action animation (used for mercenaries and external triggers).</summary>
@@ -82,10 +96,11 @@ namespace PitHero.ECS.Components
                 return;
             }
 
-            // Hero queue monitoring: detect when an action is dequeued
-            if (_heroComponent != null && _heroComponent.BattleActionQueue != null)
+            // Queue monitoring: detect when an action is dequeued
+            var monitoredQueue = MonitoredQueue;
+            if (monitoredQueue != null)
             {
-                var actions = _heroComponent.BattleActionQueue.GetAll();
+                var actions = monitoredQueue.GetAll();
                 int currentQueueCount = actions?.Length ?? 0;
 
                 // Detect when an action is completed (queue count decreased)
@@ -165,10 +180,11 @@ namespace PitHero.ECS.Components
                 RenderAction(animating.Action, batcher, itemsAtlas, skillsAtlas, startX, startY, animating.YOffset, animating.ElapsedTime);
             }
 
-            // Render active queue actions (hero mode only)
-            if (_heroComponent != null && _heroComponent.BattleActionQueue != null)
+            // Render active queue actions (hero or monitored mercenary)
+            var monitoredQueue = MonitoredQueue;
+            if (monitoredQueue != null)
             {
-                var actions = _heroComponent.BattleActionQueue.GetAll();
+                var actions = monitoredQueue.GetAll();
                 if (actions != null && actions.Length > 0)
                 {
                     for (int i = 0; i < actions.Length; i++)

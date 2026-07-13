@@ -4,6 +4,7 @@ using Nez.UI;
 using PitHero.Services;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Heroes;
+using RolePlayingFramework.Mercenaries;
 using RolePlayingFramework.Skills;
 
 namespace PitHero.UI
@@ -18,6 +19,7 @@ namespace PitHero.UI
         private static InventorySlot _sourceSlot;
         private static IItem _dragItem;
         private static ISkill _dragSkill;
+        private static Mercenary _dragSkillOwner;
         private static CrystalSlotElement _sourceCrystalSlot;
         private static HeroCrystal _dragCrystal;
         private static DragDropOverlay _overlay;
@@ -36,6 +38,9 @@ namespace PitHero.UI
 
         /// <summary>Gets the skill being dragged from the skill list (null when dragging an item).</summary>
         public static ISkill DragSkill => _dragSkill;
+
+        /// <summary>Gets the mercenary that owns the skill being dragged (null when the hero owns it).</summary>
+        public static Mercenary DragSkillOwner => _dragSkillOwner;
 
         /// <summary>Gets the crystal slot element that the drag originated from.</summary>
         public static CrystalSlotElement SourceCrystalSlot => _sourceCrystalSlot;
@@ -76,6 +81,7 @@ namespace PitHero.UI
             _sourceSlot = null;
             _dragItem = source?.ItemTemplate;
             _dragSkill = null;
+            _dragSkillOwner = null;
             _sourceCrystalSlot = null;
             _dragCrystal = null;
             _stage = stage;
@@ -111,6 +117,7 @@ namespace PitHero.UI
             _sourceSlot = null;
             _dragItem = null;
             _dragSkill = null;
+            _dragSkillOwner = null;
             _sourceCrystalSlot = null;
             _dragCrystal = crystal;
             _stage = stage;
@@ -146,6 +153,7 @@ namespace PitHero.UI
             _sourceSlot = null;
             _dragItem = null;
             _dragSkill = null;
+            _dragSkillOwner = null;
             _stage = stage;
             _isDragging = true;
 
@@ -177,6 +185,7 @@ namespace PitHero.UI
             _sourceSlot = source;
             _dragItem = source?.SlotData?.Item;
             _dragSkill = null;
+            _dragSkillOwner = null;
             _stage = stage;
             _isDragging = true;
 
@@ -203,11 +212,18 @@ namespace PitHero.UI
         /// <summary>Begins a drag from the hero skill list (not from a shortcut slot).</summary>
         public static void BeginSkillDrag(ISkill skill, Stage stage)
         {
+            BeginSkillDrag(skill, null, stage);
+        }
+
+        /// <summary>Begins a drag from a skill list, tracking the owning mercenary (null owner = hero).</summary>
+        public static void BeginSkillDrag(ISkill skill, Mercenary owner, Stage stage)
+        {
             if (_isDragging) return;
 
             _sourceSlot = null;
             _dragItem = null;
             _dragSkill = skill;
+            _dragSkillOwner = owner;
             _stage = stage;
             _isDragging = true;
 
@@ -252,6 +268,7 @@ namespace PitHero.UI
             _sourceSlot = null;
             _dragItem = null;
             _dragSkill = null;
+            _dragSkillOwner = null;
             _sourceCrystalSlot = null;
             _dragCrystal = null;
             _sourceVaultStack = null;
@@ -269,6 +286,7 @@ namespace PitHero.UI
             _sourceSlot = null;
             _dragItem = null;
             _dragSkill = null;
+            _dragSkillOwner = null;
             _sourceCrystalSlot = null;
             _dragCrystal = null;
             _sourceVaultStack = null;

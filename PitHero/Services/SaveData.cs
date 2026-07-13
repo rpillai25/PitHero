@@ -34,6 +34,8 @@ namespace PitHero.Services
         public int ItemBagIndex;
         /// <summary>Skill ID string (only valid when SlotType == 2).</summary>
         public string SkillId;
+        /// <summary>Index into HiredMercenaries of the skill's owner, or -1 for the hero (SlotType == 2, version 14+).</summary>
+        public int OwnerMercIndex;
     }
 
     /// <summary>Lightweight struct representing a saved hero crystal.</summary>
@@ -244,7 +246,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 13;
+        public const int CurrentVersion = 14;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -637,6 +639,7 @@ namespace PitHero.Services
                 else if (slot.SlotType == 2) // Skill
                 {
                     writer.Write(slot.SkillId ?? string.Empty);
+                    writer.Write(slot.OwnerMercIndex); // version 14+: -1 = hero
                 }
             }
 
@@ -974,6 +977,7 @@ namespace PitHero.Services
                 slot.SlotType = reader.ReadInt();
                 slot.ItemBagIndex = 0;
                 slot.SkillId = null;
+                slot.OwnerMercIndex = -1;
                 if (slot.SlotType == 1) // Item
                 {
                     slot.ItemBagIndex = reader.ReadInt();
@@ -981,6 +985,8 @@ namespace PitHero.Services
                 else if (slot.SlotType == 2) // Skill
                 {
                     slot.SkillId = reader.ReadString();
+                    if (fileVersion >= 14)
+                        slot.OwnerMercIndex = reader.ReadInt(); // pre-14 saves default to hero (-1)
                 }
                 ShortcutSlots.Add(slot);
             }

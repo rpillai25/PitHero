@@ -691,16 +691,10 @@ namespace PitHero.AI
                 if (EffectiveMPCost(skill.MPCost, healerMPCostReduction) > currentMP) continue;
                 if (skill.HPRestoreAmount <= 0) continue;
 
-                // Check target type compatibility
-                // Self-targeted healing skills can also be used on allies during battle
-                // (the AI redirects the heal to the target in battle execution)
-                bool compatible = false;
-                if (skill.TargetType == SkillTargetType.Self)
-                    compatible = true;
-                if (skill.TargetType == SkillTargetType.SingleAlly)
-                    compatible = true;
-                if (skill.TargetType == SkillTargetType.AllAllies)
-                    compatible = true;
+                // Only ally-targetable heals may be redirected to the chosen target;
+                // a Self-declared heal is genuinely self-only
+                bool compatible = skill.TargetType == SkillTargetType.SingleAlly ||
+                                  skill.TargetType == SkillTargetType.AllAllies;
 
                 if (!compatible) continue;
 

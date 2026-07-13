@@ -255,6 +255,14 @@ namespace PitHero.UI
                 btn.OnHover += OnSkillHover;
                 btn.OnUnhover += OnSkillUnhover;
 
+                // Allow dragging learned Active skills to the shortcut bar, tagged with the owning mercenary
+                if (isLearned && skill.Kind == SkillKind.Active)
+                {
+                    btn.OnDragStarted += (s, pos) => HandleSkillButtonDragStarted(s, merc, pos);
+                    btn.OnDragMoved += HandleSkillButtonDragMoved;
+                    btn.OnDragDropped += HandleSkillButtonDragDropped;
+                }
+
                 _skillButtons.Add(btn);
                 grid.Add(btn).Size(32f, 32f);
 
@@ -290,6 +298,34 @@ namespace PitHero.UI
             _skillTooltip.GetContainer().Remove();
         }
 
+        /// <summary>Handles drag start on a mercenary skill button — begins a global skill drag tagged with the owner.</summary>
+        private void HandleSkillButtonDragStarted(ISkill skill, Mercenary owner, Vector2 stagePos)
+        {
+            if (_stage == null) return;
+            // Dismiss tooltip while dragging
+            _skillTooltip.GetContainer().Remove();
+            InventoryDragManager.BeginSkillDrag(skill, owner, _stage);
+            InventoryDragManager.UpdateDrag(stagePos);
+        }
+
+        /// <summary>Handles drag movement on a mercenary skill button — updates the overlay position.</summary>
+        private void HandleSkillButtonDragMoved(ISkill skill, Vector2 stagePos)
+        {
+            InventoryDragManager.UpdateDrag(stagePos);
+        }
+
+        /// <summary>Handles drag drop on a mercenary skill button — notifies subscribers (ShortcutBar) of the drop.</summary>
+        private void HandleSkillButtonDragDropped(ISkill skill, Vector2 stagePos)
+        {
+            if (InventoryDragManager.IsDragging)
+            {
+                InventoryDragManager.NotifySkillDropRequested(skill, stagePos);
+                // Cancel in case no subscriber handled the drop
+                if (InventoryDragManager.IsDragging)
+                    InventoryDragManager.CancelDrag();
+            }
+        }
+
         /// <summary>Simplified skill button for mercenary job skills (display-only, no purchase).</summary>
         private class MercSkillButton : Element, IInputListener
         {
@@ -299,8 +335,20 @@ namespace PitHero.UI
             private SpriteDrawable _selectBoxDrawable;
             private bool _isHovered;
 
+            // Drag detection
+            private bool _mouseDown;
+            private Vector2 _mousePressPos;
+            private bool _isDragging;
+
             public event System.Action<ISkill, bool> OnHover;
             public event System.Action OnUnhover;
+
+            /// <summary>Fired when drag starts. Passes skill and stage-space mouse position.</summary>
+            public event System.Action<ISkill, Vector2> OnDragStarted;
+            /// <summary>Fired when dragging. Passes skill and stage-space mouse position.</summary>
+            public event System.Action<ISkill, Vector2> OnDragMoved;
+            /// <summary>Fired when drag ends (mouse released). Passes skill and stage-space mouse position.</summary>
+            public event System.Action<ISkill, Vector2> OnDragDropped;
 
             public MercSkillButton(ISkill skill, bool isLearned)
             {
@@ -354,10 +402,45 @@ namespace PitHero.UI
                 OnUnhover?.Invoke();
             }
 
-            void IInputListener.OnMouseMoved(Vector2 mousePos) { }
-            bool IInputListener.OnLeftMousePressed(Vector2 mousePos) => true;
+            void IInputListener.OnMouseMoved(Vector2 mousePos)
+            {
+                // Only allow drag on learned Active skills
+                if (!_mouseDown || !_isLearned || _skill.Kind != SkillKind.Active) return;
+
+                if (!_isDragging)
+                {
+                    float threshold = GameConfig.DragThresholdPixels;
+                    if (Vector2.DistanceSquared(mousePos, _mousePressPos) >= threshold * threshold)
+                    {
+                        _isDragging = true;
+                        OnDragStarted?.Invoke(_skill, LocalToStageCoordinates(mousePos));
+                    }
+                }
+
+                if (_isDragging)
+                    OnDragMoved?.Invoke(_skill, LocalToStageCoordinates(mousePos));
+            }
+
+            bool IInputListener.OnLeftMousePressed(Vector2 mousePos)
+            {
+                _mouseDown = true;
+                _mousePressPos = mousePos;
+                _isDragging = false;
+                return true;
+            }
+
             bool IInputListener.OnRightMousePressed(Vector2 mousePos) => false;
-            void IInputListener.OnLeftMouseUp(Vector2 mousePos) { }
+
+            void IInputListener.OnLeftMouseUp(Vector2 mousePos)
+            {
+                bool wasDragging = _isDragging;
+                _mouseDown = false;
+                _isDragging = false;
+
+                if (wasDragging)
+                    OnDragDropped?.Invoke(_skill, LocalToStageCoordinates(mousePos));
+            }
+
             void IInputListener.OnRightMouseUp(Vector2 mousePos) { }
             bool IInputListener.OnMouseScrolled(int mouseWheelDelta) => false;
 

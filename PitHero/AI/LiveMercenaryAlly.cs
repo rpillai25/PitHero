@@ -35,6 +35,9 @@ namespace PitHero.AI
             _component.LinkedMercenary != null &&
             _component.InsidePit;
 
+        /// <inheritdoc/>
+        public ActionQueue PlayerActionQueue => _component.BattleActionQueue;
+
         /// <summary>The underlying Nez entity (accessible to the live adapter for display).</summary>
         public Entity Entity => _entity;
 

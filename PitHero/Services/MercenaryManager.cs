@@ -538,6 +538,9 @@ namespace PitHero.Services
 
             _mercenaryEntities.Remove(mercEntity);
             mercEntity.Destroy();
+
+            // Clear any shortcut bar slots that referenced this mercenary's skills
+            Core.Services.GetService<ShortcutBarService>()?.ShortcutBar?.RefreshItems();
         }
 
         /// <summary>
@@ -1012,6 +1015,9 @@ namespace PitHero.Services
         public void UntrackMercenary(Entity mercEntity)
         {
             _mercenaryEntities.Remove(mercEntity);
+
+            // Clear any shortcut bar slots that referenced this mercenary's skills
+            Core.Services.GetService<ShortcutBarService>()?.ShortcutBar?.RefreshItems();
         }
 
         /// <summary>Gets a random job for mercenary generation</summary>
@@ -1056,6 +1062,9 @@ namespace PitHero.Services
             {
                 Debug.Warn("[MercenaryManager] Cannot remove tavern position - MercenaryComponent not found on promoted entity");
             }
+
+            // Clear any shortcut bar slots that referenced the promoted mercenary's skills
+            Core.Services.GetService<ShortcutBarService>()?.ShortcutBar?.RefreshItems();
         }
 
         /// <summary>Blocks mercenary hiring (called when hero dies)</summary>

@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Nez;
+using PitHero.AI;
 using RolePlayingFramework.Mercenaries;
 
 namespace PitHero.ECS.Components
@@ -62,6 +63,9 @@ namespace PitHero.ECS.Components
 
     /// <summary>Reference to the screen-space action queue visualization for this mercenary</summary>
     public ActionQueueVisualizationComponent ActionQueueVisualization { get; set; }
+
+    /// <summary>Action queue for player-requested battle actions (mirrors HeroComponent.BattleActionQueue)</summary>
+    public ActionQueue BattleActionQueue { get; } = new ActionQueue();
 
     public void Update()
     {

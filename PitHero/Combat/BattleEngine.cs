@@ -501,7 +501,9 @@ namespace PitHero.Combat
                     {
                         // Hero uses SpendMP (applies MPCostReduction)
                         hero.SpendMP(skill.MPCost);
-                        var healTarget = queuedAction.Target ?? (object)hero;
+                        // AI-queued heals always carry a target; a null target means a
+                        // shortcut-queued heal — pick the most-wounded ally
+                        var healTarget = queuedAction.Target ?? SelectPlayerQueuedSupportTarget(skill, hero);
                         bool targetIsHero = queuedAction.TargetsHero || healTarget == (object)hero;
                         var targetAlly = FindAllyForTarget(healTarget, targetIsHero);
                         yield return ApplyHealingSkillEffectsAndDisplay(skill, hero, healTarget, targetAlly, hero.Name);
@@ -613,6 +615,59 @@ namespace PitHero.Combat
             var mercenary = (Mercenary)mercAlly.Combatant;
             BuildLivingEnemyList();
             if (_tempLivingEnemies.Count == 0) yield break;
+
+            // Player-queued action (from the shortcut bar) takes precedence over the AI decision.
+            // When the queue is empty or null this block is a no-op, so the default path
+            // consumes RNG identically to the pre-queue behavior (balance-sim parity).
+            var playerQueue = mercAlly.PlayerActionQueue;
+            if (playerQueue != null && playerQueue.HasActions())
+            {
+                var queuedAction = playerQueue.Dequeue();
+                if (queuedAction != null && queuedAction.ActionType == QueuedActionType.UseSkill && queuedAction.Skill != null)
+                {
+                    var playerSkill = queuedAction.Skill;
+                    if (mercenary.CurrentMP >= mercenary.GetEffectiveMPCost(playerSkill.MPCost))
+                    {
+                        bool isHealingSkill = playerSkill.HPRestoreAmount > 0 || playerSkill.MPRestoreAmount > 0 ||
+                            playerSkill.GrantedBuffs.Count > 0 ||
+                            playerSkill.TargetType == SkillTargetType.Self ||
+                            playerSkill.TargetType == SkillTargetType.SingleAlly ||
+                            playerSkill.TargetType == SkillTargetType.AllAllies;
+
+                        if (isHealingSkill)
+                        {
+                            // Merc uses UseMP (which calls SpendMP internally)
+                            mercenary.UseMP(playerSkill.MPCost);
+                            _sink.OnMercenaryActionShown(mercAlly, queuedAction);
+                            // Shortcut-queued heals carry no target: pick the most-wounded ally
+                            var healTarget = queuedAction.Target ?? SelectPlayerQueuedSupportTarget(playerSkill, mercenary);
+                            bool targetIsHero = queuedAction.TargetsHero || healTarget == (object)_partyView.Hero;
+                            var targetAlly = FindAllyForTarget(healTarget, targetIsHero);
+                            yield return ApplyHealingSkillEffectsAndDisplay(playerSkill, mercenary, healTarget,
+                                targetAlly, mercenary.Name);
+                            Debug.Log($"[BattleEngine] {mercenary.Name} used player-queued skill {playerSkill.Name}");
+                        }
+                        else
+                        {
+                            if (!mercenary.SpendMP(playerSkill.MPCost))
+                                yield break;
+
+                            _sink.OnMercenaryActionShown(mercAlly, queuedAction);
+
+                            BuildLivingEnemyList();
+                            if (_tempLivingEnemies.Count == 0) yield break;
+                            _sink.FaceAllyToward(mercAlly, _tempLivingEnemies[0]);
+
+                            yield return ExecuteCombatantAttackSkill(playerSkill, mercenary, "merc", battleContext,
+                                preferredTarget: null, heroKill: false);
+                        }
+
+                        yield break;
+                    }
+
+                    Debug.Log($"[BattleEngine] {mercenary.Name} not enough MP for player-queued {playerSkill.Name} — falling back to AI");
+                }
+            }
 
             BuildMercList();
             LatchBattleCritical();
@@ -1287,6 +1342,44 @@ namespace PitHero.Combat
         }
 
         // ── Misc helpers ──────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Picks the target for a player-queued support skill (heal/buff) that carries no
+        /// explicit target: Self-declared skills stay on the caster (declarations are
+        /// authoritative — all redirectable heals are SingleAlly); otherwise the living
+        /// ally with the lowest HP% (hero wins ties, mirroring the AI's heal targeting).
+        /// Never consumes RNG — player-queued actions must not disturb the sim's RNG stream.
+        /// </summary>
+        private object SelectPlayerQueuedSupportTarget(ISkill skill, ICombatant caster)
+        {
+            if (skill.TargetType == SkillTargetType.Self)
+                return caster;
+
+            ICombatant best = null;
+            float bestPct = float.MaxValue;
+
+            var hero = _partyView.Hero;
+            if (hero != null && hero.CurrentHP > 0)
+            {
+                best = hero;
+                bestPct = hero.CurrentHP / (float)hero.MaxHP;
+            }
+
+            for (int i = 0; i < _mercenaries.Count; i++)
+            {
+                if (_mercenaries[i].Combatant is Mercenary merc && merc.CurrentHP > 0)
+                {
+                    float pct = merc.CurrentHP / (float)merc.MaxHP;
+                    if (pct < bestPct)
+                    {
+                        best = merc;
+                        bestPct = pct;
+                    }
+                }
+            }
+
+            return best ?? (object)caster;
+        }
 
         /// <summary>Finds the IBattleAlly wrapper for the given heal target object.</summary>
         private IBattleAlly FindAllyForTarget(object target, bool targetsHero)

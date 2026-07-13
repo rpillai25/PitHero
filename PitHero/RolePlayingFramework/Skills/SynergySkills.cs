@@ -159,7 +159,7 @@ namespace RolePlayingFramework.Skills
     /// </summary>
     public sealed class AuraHealSkill : BaseSkill
     {
-        public AuraHealSkill() : base("synergy.aura_heal", SkillTextKey.Skill_Synergy_AuraHeal_Name, SkillTextKey.Skill_Synergy_AuraHeal_Desc, SkillKind.Active, SkillTargetType.Self, 6, 200, ElementType.Light, battleOnly: true, hpRestoreAmount: 25)
+        public AuraHealSkill() : base("synergy.aura_heal", SkillTextKey.Skill_Synergy_AuraHeal_Name, SkillTextKey.Skill_Synergy_AuraHeal_Desc, SkillKind.Active, SkillTargetType.SingleAlly, 6, 200, ElementType.Light, battleOnly: true, hpRestoreAmount: 25)
         {
             GrantedBuffs = new SkillBuff[]
             {
@@ -174,7 +174,7 @@ namespace RolePlayingFramework.Skills
     /// </summary>
     public sealed class PurifySkill : BaseSkill
     {
-        public PurifySkill() : base("synergy.purify", SkillTextKey.Skill_Synergy_Purify_Name, SkillTextKey.Skill_Synergy_Purify_Desc, SkillKind.Active, SkillTargetType.Self, 5, 180, ElementType.Light, battleOnly: true, hpRestoreAmount: 15)
+        public PurifySkill() : base("synergy.purify", SkillTextKey.Skill_Synergy_Purify_Name, SkillTextKey.Skill_Synergy_Purify_Desc, SkillKind.Active, SkillTargetType.SingleAlly, 5, 180, ElementType.Light, battleOnly: true, hpRestoreAmount: 15)
         {
             CleansesDebuffs = true;
         }
@@ -473,7 +473,7 @@ namespace RolePlayingFramework.Skills
     /// </summary>
     public sealed class SoulWardSkill : BaseSkill
     {
-        public SoulWardSkill() : base("synergy.soul_ward", SkillTextKey.Skill_Synergy_SoulWard_Name, SkillTextKey.Skill_Synergy_SoulWard_Desc, SkillKind.Active, SkillTargetType.Self, 8, 300, ElementType.Light, battleOnly: true, hpRestoreAmount: 30)
+        public SoulWardSkill() : base("synergy.soul_ward", SkillTextKey.Skill_Synergy_SoulWard_Name, SkillTextKey.Skill_Synergy_SoulWard_Desc, SkillKind.Active, SkillTargetType.SingleAlly, 8, 300, ElementType.Light, battleOnly: true, hpRestoreAmount: 30)
         {
             GrantedBuffs = new SkillBuff[]
             {

@@ -32,6 +32,10 @@ namespace PitHero.AI
             !_component.Entity.IsDestroyed &&
             _component.InsidePit;
 
+        /// <inheritdoc/>
+        /// <remarks>The engine drives the hero's queue via the <c>Run</c> parameter, not this property.</remarks>
+        public ActionQueue PlayerActionQueue => _component.BattleActionQueue;
+
         /// <summary>The underlying Nez entity (accessible to the live adapter for display).</summary>
         public Entity Entity => _component.Entity;
 
