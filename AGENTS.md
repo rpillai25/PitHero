@@ -165,6 +165,7 @@ Design docs under `PitHero/docs/` (kept as standalone references — don't dupli
 
 **Architecture / subsystems:**
 - `PitHero/docs/RenderingSystem.md` — render layer stack, Y-sort, MultiSpriteAnimator / StaticSpriteCompositor / YSortSpriteRenderer
+- `PitHero/docs/ParticleEffects.md` — ParticleEffectManager, .pex authoring quirks, sizing rules, effect patterns (attached/projectile/AoE), battle + out-of-battle wiring map
 - `PitHero/docs/RolePlayingFramework.md`
 - `PitHero/docs/VirtualGameLogicLayer.md`
 - `PitHero/docs/JpSystem.md` — Job Points, skill purchase flow, mastery
