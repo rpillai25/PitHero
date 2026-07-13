@@ -654,7 +654,7 @@ namespace PitHero.UI
                     UIWindowManager.SetPersistentWindowSize(UIWindowManager.WindowSizeMode.Half);
                     _desiredWindowSize = WindowSizeMode.Half;
                     _zoomSlider?.SetValueAndCommit(GameConfig.CameraHalfSizeWindowZoom);
-                    Debug.Log("[SettingsUI] Selected Half window size; applied 8x zoom");
+                    Debug.Log($"[SettingsUI] Selected Half window size; applied {GameConfig.CameraHalfSizeWindowZoom}x zoom");
                 }
             };
 
