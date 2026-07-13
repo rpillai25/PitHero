@@ -14,7 +14,11 @@ namespace PitHero.Util
 
         /// <summary>Green particles rising vertically while fading; plays on potion-heal targets.
         /// Density scales with potion strength via SpawnEffect's densityScale.</summary>
-        HealPotion
+        HealPotion,
+
+        /// <summary>Spinning ball of fire; launched from caster to target as a projectile
+        /// (spawn via SpawnEffectAtPosition, move the entity, PauseEmission on impact).</summary>
+        Fireball
     }
 
     /// <summary>
@@ -40,7 +44,8 @@ namespace PitHero.Util
                 _configs = new Dictionary<ParticleEffectType, ParticleEmitterConfig>
                 {
                     { ParticleEffectType.Heal, content.LoadParticleEmitterConfig("Content/Particles/heal.pex") },
-                    { ParticleEffectType.HealPotion, content.LoadParticleEmitterConfig("Content/Particles/heal_potion.pex") }
+                    { ParticleEffectType.HealPotion, content.LoadParticleEmitterConfig("Content/Particles/heal_potion.pex") },
+                    { ParticleEffectType.Fireball, content.LoadParticleEmitterConfig("Content/Particles/fireball.pex") }
                 };
 
                 Initialized = true;

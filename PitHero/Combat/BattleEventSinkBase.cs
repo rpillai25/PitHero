@@ -57,6 +57,10 @@ namespace PitHero.Combat
         public virtual IEnumerator ShowDeflectOnAlly(IBattleAlly ally) { return null; }
 
         /// <inheritdoc/>
+        public virtual IEnumerator ShowSkillProjectileOnMonster(RolePlayingFramework.Combat.ICombatant caster,
+            RolePlayingFramework.Skills.ISkill skill, IEnemy target) { return null; }
+
+        /// <inheritdoc/>
         public virtual IEnumerator ShowCritOnMonster(IEnemy enemy) { return null; }
 
         /// <inheritdoc/>

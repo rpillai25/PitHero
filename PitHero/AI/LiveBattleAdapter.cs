@@ -12,6 +12,7 @@ using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Inventory;
 using RolePlayingFramework.Mercenaries;
+using RolePlayingFramework.Skills;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -338,6 +339,63 @@ namespace PitHero.AI
         {
             var entity = GetEntityForEnemy(enemy);
             return entity != null ? ShowTextOnEntity(entity, "Crit", Color.Yellow) : null;
+        }
+
+        /// <summary>World-space pixels per second a skill projectile travels.</summary>
+        private const float SkillProjectileSpeed = 340f;
+
+        /// <summary>Attack skills with a projectile visual. Adding one = pex file + enum
+        /// member + Init load line in ParticleEffectManager + an entry here.</summary>
+        private static readonly Dictionary<string, ParticleEffectType> _skillProjectileEffects
+            = new Dictionary<string, ParticleEffectType>
+            {
+                { "mage.fire", ParticleEffectType.Fireball }
+            };
+
+        /// <inheritdoc/>
+        public IEnumerator ShowSkillProjectileOnMonster(ICombatant caster, ISkill skill, IEnemy target)
+        {
+            if (!_skillProjectileEffects.TryGetValue(skill.Id, out var effectType))
+                return null;
+
+            var casterEntity = GetEntityForCombatant(caster);
+            var targetEntity = GetEntityForEnemy(target);
+            if (casterEntity == null || targetEntity == null)
+                return null;
+
+            return FlyProjectileEffect(effectType, casterEntity.Position, targetEntity.Position);
+        }
+
+        private Entity GetEntityForCombatant(ICombatant combatant)
+        {
+            if (combatant is Hero)
+                return _heroComponent.Entity;
+            if (combatant is Mercenary merc && _mercMap.TryGetValue(merc, out var m))
+                return m.e;
+            return null;
+        }
+
+        private IEnumerator FlyProjectileEffect(ParticleEffectType type, Vector2 from, Vector2 to)
+        {
+            var emitter = Core.GetGlobalManager<ParticleEffectManager>()
+                ?.SpawnEffectAtPosition(type, from, Core.Scene);
+            if (emitter == null)
+                yield break;
+
+            var projectile = emitter.Entity;
+            float duration = Mathf.Clamp(Vector2.Distance(from, to) / SkillProjectileSpeed, 0.15f, 0.6f);
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.DeltaTime;
+                projectile.SetPosition(Vector2.Lerp(from, to, Mathf.Clamp01(elapsed / duration)));
+                yield return null;
+            }
+
+            // Impact: stop emitting and let the trail fade; the entity destroys itself via
+            // the OnAllParticlesExpired handler subscribed at spawn. The config's finite
+            // duration is the leak-safe fallback if this coroutine is torn down mid-flight.
+            emitter.PauseEmission();
         }
 
         /// <inheritdoc/>

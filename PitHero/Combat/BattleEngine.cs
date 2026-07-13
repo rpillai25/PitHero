@@ -817,6 +817,10 @@ namespace PitHero.Combat
             // Phase 4: MarkActed AFTER Execute
             battleContext.MarkActed(caster);
 
+            // Skill cast/projectile visual (e.g. mage fireball) flies before any damage shows
+            var rproj = _sink.ShowSkillProjectileOnMonster(caster, skill, primaryTarget);
+            if (rproj != null) yield return rproj;
+
             // Display damage and handle deaths for all affected monsters
             bool critTextShown = false;
             for (int i = _tempLivingEnemies.Count - 1; i >= 0; i--)
