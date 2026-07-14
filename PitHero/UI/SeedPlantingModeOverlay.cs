@@ -412,22 +412,25 @@ namespace PitHero.UI
             if (!readyOrTilled)
                 return false;
 
-            // Invalid only when the effective type at the tile already matches the selection:
-            // same plan type is a no-op; a same-type crop with no plan is re-placeable (cancels
-            // any pending destroy). A different plan or different crop is always replaceable.
-            var cropGrowthService = Core.Services.GetService<CropGrowthService>();
-            var effective = cropService?.GetPlanType(tile) ?? cropGrowthService?.GetCropType(tile);
-            if (effective.HasValue && effective.Value == _selectedCrop)
+            // Validation looks ONLY at the crop plan, never at real growing crops: plans govern
+            // the future state of the field, and any underlying crop will be destroyed/harvested
+            // before the plan is carried out. Invalid only when the same plan type already exists
+            // here (a no-op); a plan-less tile is fair game even while a crop grows on it, and a
+            // same-type placement over a plan-less crop re-plans it (cancels a pending destroy).
+            var planType = cropService?.GetPlanType(tile);
+            if (planType.HasValue && planType.Value == _selectedCrop)
                 return false;
 
-            // Reject if any of the 8 neighboring tiles has a different crop type (planned or planted)
+            // Reject if any of the 8 neighboring tiles has a PLANNED crop of a different type.
+            // Real growing crops are ignored: a plan-less crop is pending destroy/no-replant, so
+            // it doesn't constrain the planned layout.
             for (int dy = -1; dy <= 1; dy++)
             {
                 for (int dx = -1; dx <= 1; dx++)
                 {
                     if (dx == 0 && dy == 0) continue;
                     var neighbor = new Microsoft.Xna.Framework.Point(tx + dx, ty + dy);
-                    var neighborType = cropService?.GetPlanType(neighbor) ?? cropGrowthService?.GetCropType(neighbor);
+                    var neighborType = cropService?.GetPlanType(neighbor);
                     if (neighborType.HasValue && neighborType.Value != _selectedCrop)
                         return false;
                 }
