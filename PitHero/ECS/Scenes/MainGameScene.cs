@@ -196,6 +196,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.TilledTileService));
             Core.Services.RemoveService(typeof(Services.WetTileService));
             Core.Services.RemoveService(typeof(Services.CropGrowthService));
+            Core.Services.RemoveService(typeof(Services.AutoSeedPurchaseService));
             Core.Services.GetService<Services.FarmTaskCoordinator>()?.Detach();
             Core.Services.RemoveService(typeof(Services.FarmTaskCoordinator));
             Core.Services.RemoveService(typeof(MercenaryManager));
