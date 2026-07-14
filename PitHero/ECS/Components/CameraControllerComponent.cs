@@ -24,9 +24,10 @@ namespace PitHero.ECS.Components
         private Entity _heroEntity; // cached reference to hero entity
 
         /// <summary>
-        /// Gets whether this component should respect the global pause state.
+        /// Gets whether this component should respect the manual pause state.
         /// We shouldn't modify camera size or zoom while paused from menu.
-        /// We'll have separate menu controls that handle this.
+        /// The farm-mode pause gate is deliberately ignored so the player can pan/zoom the map
+        /// while planning crops over a wide area.
         /// </summary>
         public bool ShouldPause => true;
 
@@ -50,8 +51,10 @@ namespace PitHero.ECS.Components
             if (_camera == null)
                 return;
 
+            // Only the manual (menu) pause freezes the camera; the farm-mode pause keeps camera
+            // controls live so the player can right-mouse pan while planning crops.
             var pauseService = Core.Services.GetService<PauseService>();
-            if (pauseService?.IsPaused == true && ShouldPause)
+            if (pauseService?.IsManuallyPaused == true && ShouldPause)
                 return;
 
             // Cache hero entity reference if not already cached, or clear if hero is destroyed/dead

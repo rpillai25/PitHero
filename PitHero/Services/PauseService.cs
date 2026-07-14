@@ -31,6 +31,13 @@ namespace PitHero.Services
         }
 
         /// <summary>
+        /// True only when the manual pause flag is set (settings menu, dialogs). Excludes the
+        /// farm-mode gate, so components like the camera controller can stay interactive while
+        /// the player is planning crops.
+        /// </summary>
+        public bool IsManuallyPaused => _isPaused;
+
+        /// <summary>
         /// Activates or deactivates the farm-mode pause gate. While true, IsPaused returns
         /// true regardless of the manual pause flag, stopping workers and crop growth.
         /// </summary>

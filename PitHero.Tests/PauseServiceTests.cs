@@ -149,5 +149,23 @@ namespace PitHero.Tests
             // The farm flag is untouched, so IsPaused is still true
             Assert.IsTrue(_pauseService.IsPaused, "IsPaused setter does not clear the farm-mode flag");
         }
+
+        [TestMethod]
+        public void IsManuallyPaused_ReflectsOnlyManualFlag_NotFarmGate()
+        {
+            // Farm pause alone: IsPaused true, but not manually paused (camera stays interactive)
+            _pauseService.SetFarmModePause(true);
+            Assert.IsTrue(_pauseService.IsPaused);
+            Assert.IsFalse(_pauseService.IsManuallyPaused, "Farm gate alone must not count as manual pause");
+
+            // Manual pause on top: both report true
+            _pauseService.IsPaused = true;
+            Assert.IsTrue(_pauseService.IsManuallyPaused, "Manual flag set → manually paused");
+
+            // Releasing the farm gate leaves the manual pause in effect
+            _pauseService.SetFarmModePause(false);
+            Assert.IsTrue(_pauseService.IsManuallyPaused);
+            Assert.IsTrue(_pauseService.IsPaused);
+        }
     }
 }
