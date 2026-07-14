@@ -116,8 +116,8 @@ namespace PitHero
         public const int TownBuildingHeight = 48;
 
         // Farming Configuration
-        /// <summary>Fraction of total growth at which a repeat-harvest crop is eligible for early destroy/swap (e.g. 0.2 = 20%).</summary>
-        public const float CropSwapDestroyProgressThreshold = 0.2f;
+        /// <summary>Fraction of total growth below which any crop is eligible for early destroy/swap (e.g. 0.5 = 50%).</summary>
+        public const float CropSwapDestroyProgressThreshold = 0.5f;
         /// <summary>Alpha value (0–255) for translucent plan-preview sprites shown in farm mode.</summary>
         public const int CropPlanPreviewAlpha = 153;
         public const int TillZerothGid = 122;            // GIDs 122-137 are the 16 tilled-tile bitmask variants

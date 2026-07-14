@@ -375,10 +375,10 @@ namespace PitHero.Services
         }
 
         /// <summary>
-        /// Returns true when a repeat-harvest crop at the tile is a candidate for early removal:
-        /// the plan is absent or designates a different crop type, and the crop is less than the
-        /// swap-destroy threshold grown (so destroying and replanting is cheaper than waiting to
-        /// harvest). Null-safe for headless tests.
+        /// Returns true when a crop at the tile is a candidate for early removal: the plan is
+        /// absent or designates a different crop type, and the crop is less than the swap-destroy
+        /// threshold grown (so destroying and replanting is cheaper than waiting to harvest).
+        /// Crops past the threshold are left to be harvested first. Null-safe for headless tests.
         /// </summary>
         private bool ValidateDestroy(Point tile)
         {
@@ -388,10 +388,6 @@ namespace PitHero.Services
 
             var cropType = cropGrowth.GetCropType(tile);
             if (!cropType.HasValue)
-                return false;
-
-            // Only early-destroy repeat-harvest crops; one-shot crops are never destroyed early
-            if (!CropConfig.IsRepeatHarvest(cropType.Value))
                 return false;
 
             // No-op when the plan matches the growing crop (no swap pending)
@@ -591,7 +587,7 @@ namespace PitHero.Services
         }
 
         /// <summary>
-        /// Enqueues DestroyCrop actions for repeat-harvest crops that are less than
+        /// Enqueues DestroyCrop actions for crops that are less than
         /// <see cref="GameConfig.CropSwapDestroyProgressThreshold"/> grown and whose plan is absent
         /// or designates a different crop type. Called from TryClaimAction (cheap scan).
         /// </summary>

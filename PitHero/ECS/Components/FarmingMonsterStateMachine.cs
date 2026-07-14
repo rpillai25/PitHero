@@ -442,7 +442,6 @@ namespace PitHero.ECS.Components
                         ? _cropGrowthService.GetGrowthProgress(tile)
                         : -1f;
                     bool stillValid = cropTypeAtTile.HasValue
-                        && Util.CropConfig.IsRepeatHarvest(cropTypeAtTile.Value)
                         && !planMatches
                         && arrivalProgress >= 0f
                         && arrivalProgress < GameConfig.CropSwapDestroyProgressThreshold;
