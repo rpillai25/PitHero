@@ -289,8 +289,9 @@ namespace PitHero.UI
         /// <summary>Populates the Seeds tab with a 4-per-row grid of purchasable crop seed slots.</summary>
         private void PopulateSeedsTab(Tab tab, Skin skin)
         {
-            var cropsAtlas       = Core.Content?.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
+            var cropsAtlas          = Core.Content?.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
             var cropPlantingService = Core.Services?.GetService<CropPlantingService>();
+            var cropGrowthService   = Core.Services?.GetService<CropGrowthService>();
 
             var grid = new Table();
             grid.Top().Left().Pad(4f);
@@ -306,7 +307,7 @@ namespace PitHero.UI
                 int price       = CropConfig.GetSeedPrice(crop);
                 string tooltip  = cropName + " - " + price + "G";
 
-                var slot = new SeedShopSlot(sprite, crop, cropPlantingService, tooltip);
+                var slot = new SeedShopSlot(sprite, crop, cropPlantingService, cropGrowthService, tooltip);
                 slot.OnBuyClicked += HandleSeedBuyClicked;
 
                 grid.Add(slot).Size(40f, 40f).Pad(2f);
@@ -358,6 +359,7 @@ namespace PitHero.UI
                     if (gameState.Funds < totalPrice) return;
                     gameState.Funds -= totalPrice;
                     cropPlantingService.AddSeeds(crop, qty);
+                    Core.Services?.GetService<FarmTaskCoordinator>()?.RescanForPlanting();
                 },
                 onCancel: null,
                 ownedCount: ownedCount,
@@ -1208,15 +1210,20 @@ namespace PitHero.UI
         /// A single slot in the Seeds shop grid.  Draws the crop's fully-grown sprite, overlays
         /// a live owned-count badge (read each frame so it updates immediately after a purchase),
         /// shows a hover tooltip with crop name and price, and fires OnBuyClicked on left-mouse-up.
+        /// When the player has fewer seeds than unplanted plans, the slot background is tinted green.
         /// </summary>
         private class SeedShopSlot : Element, IInputListener
         {
             // Inventory-slot background drawn at the same translucency as the inventory UI.
-            private static readonly Color SlotBgColor = new Color(255, 255, 255, 100);
-            private readonly Sprite          _sprite;
-            private readonly CropType        _crop;
+            private static readonly Color SlotBgColor       = new Color(255, 255, 255, 100);
+            // Green tint used when seeds are needed to fulfil outstanding plans.
+            private static readonly Color GreenHighlightColor = new Color(0, 255, 0, 128);
+
+            private readonly Sprite              _sprite;
+            private readonly CropType            _crop;
             private readonly CropPlantingService _cropService;
-            private readonly SpriteDrawable  _draw;
+            private readonly CropGrowthService   _cropGrowth;
+            private readonly SpriteDrawable      _draw;
             private SpriteDrawable _background;
             private Sprite _selectBox;
             private bool   _hovered;
@@ -1225,11 +1232,12 @@ namespace PitHero.UI
             /// <summary>Fired when the player left-clicks this slot.</summary>
             public event System.Action<CropType> OnBuyClicked;
 
-            public SeedShopSlot(Sprite sprite, CropType crop, CropPlantingService cropService, string tooltipText)
+            public SeedShopSlot(Sprite sprite, CropType crop, CropPlantingService cropService, CropGrowthService cropGrowth, string tooltipText)
             {
                 _sprite      = sprite;
                 _crop        = crop;
                 _cropService = cropService;
+                _cropGrowth  = cropGrowth;
                 _tooltipText = tooltipText;
                 _draw        = sprite != null ? new SpriteDrawable(sprite) : null;
                 SetTouchable(Touchable.Enabled);
@@ -1249,7 +1257,18 @@ namespace PitHero.UI
 
             public override void Draw(Batcher batcher, float parentAlpha)
             {
-                _background?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), SlotBgColor);
+                // Resolve live seed count up front so it can drive both the background tint and badge.
+                int count = _cropService?.SeedInventory != null
+                    ? _cropService.SeedInventory[(int)_crop]
+                    : 0;
+
+                // Green highlight when there are more unplanted plans than owned seeds.
+                int needed = (_cropService != null && _cropGrowth != null)
+                    ? _cropService.CountUnplantedPlans(_crop, _cropGrowth)
+                    : 0;
+                Color bgColor = needed > count ? GreenHighlightColor : SlotBgColor;
+
+                _background?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), bgColor);
 
                 _draw?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
 
@@ -1257,10 +1276,7 @@ namespace PitHero.UI
                     new SpriteDrawable(_selectBox).Draw(
                         batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
 
-                // Live count from seed inventory (read each frame — auto-updates after purchase)
-                int count = _cropService?.SeedInventory != null
-                    ? _cropService.SeedInventory[(int)_crop]
-                    : 0;
+                // Live count badge (read each frame — auto-updates after purchase)
                 var font = Nez.Graphics.Instance?.BitmapFont;
                 if (font != null)
                 {

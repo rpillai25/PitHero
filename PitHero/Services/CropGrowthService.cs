@@ -28,6 +28,8 @@ namespace PitHero.Services
 
         private readonly Dictionary<Point, ActiveCropData> _crops = new Dictionary<Point, ActiveCropData>();
         private readonly CropPlantingService _cropPlantingService;
+        // When false, all crop world entities are hidden (farm UI is open)
+        private bool _cropsVisible = true;
 
         public CropGrowthService(CropPlantingService cropPlantingService)
         {
@@ -46,15 +48,14 @@ namespace PitHero.Services
         }
 
         /// <summary>
-        /// Plants a seed at the tile: removes the plan-preview entity, creates the frame-1 crop
-        /// entity, and registers the crop for growth tracking.
+        /// Plants a seed at the tile: creates the frame-1 crop entity and registers the crop for
+        /// growth tracking. The plan-preview entity is NOT removed here — plans are permanent
+        /// blueprints and their visuals are managed separately by the farm-mode gate.
         /// </summary>
         public void PlantCrop(Point tile, CropType type, Scene scene, SpriteAtlas atlas)
         {
             if (_crops.ContainsKey(tile))
                 return;
-
-            _cropPlantingService?.RemovePlan(tile);
 
             var sprite = atlas?.GetSprite(CropConfig.GetFrameSpriteName(type, 1));
             float sprH = sprite != null ? sprite.SourceRect.Height : GameConfig.TileSize;
@@ -68,6 +69,8 @@ namespace PitHero.Services
                 entity.SetPosition(wx, wy);
                 var renderer = entity.AddComponent(new SpriteRenderer(sprite));
                 renderer.SetRenderLayer(GameConfig.RenderLayerSingleTileObject - 1);
+                if (!_cropsVisible)
+                    entity.SetEnabled(false);
             }
 
             _crops[tile] = new ActiveCropData
@@ -194,6 +197,8 @@ namespace PitHero.Services
                     entity.SetPosition(wx, wy);
                     var renderer = entity.AddComponent(new SpriteRenderer(sprite));
                     renderer.SetRenderLayer(GameConfig.RenderLayerSingleTileObject - 1);
+                    if (!_cropsVisible)
+                        entity.SetEnabled(false);
                 }
 
                 _crops[tile] = new ActiveCropData
@@ -204,6 +209,44 @@ namespace PitHero.Services
                     WorldEntity = entity,
                     RegrowthRateMultiplier = s.RegrowthRateMultiplier <= 0f ? 1f : s.RegrowthRateMultiplier,
                 };
+            }
+        }
+
+        /// <summary>
+        /// Returns the growth progress of a crop at the given tile as a value in [0, 1], where
+        /// 0 is freshly planted and 1 is fully grown. Returns -1 when no crop exists at the tile.
+        /// Uses the crop's regrowth-rate multiplier so post-harvest regrowth progress is accurate.
+        /// </summary>
+        public float GetGrowthProgress(Point tile)
+        {
+            if (!_crops.TryGetValue(tile, out var data))
+                return -1f;
+
+            int maxFrame = CropConfig.GetFrameCount(data.Type);
+            float hoursPerStage = CropConfig.GetHoursPerStage(data.Type);
+            float multiplier = data.RegrowthRateMultiplier <= 0f ? 1f : data.RegrowthRateMultiplier;
+            float totalHours = (maxFrame - 1) * hoursPerStage * multiplier;
+            if (totalHours <= 0f)
+                return 1f;
+            float progress = data.AccumulatedHours / totalHours;
+            if (progress < 0f) progress = 0f;
+            if (progress > 1f) progress = 1f;
+            return progress;
+        }
+
+        /// <summary>
+        /// Shows or hides all crop world entities. Called when the Farm UI opens (false) or closes
+        /// (true) so real crops are not visible behind the translucent plan overlays. The state is
+        /// persisted and applied to entities created by PlantCrop and RestoreAll.
+        /// </summary>
+        public void SetCropsVisible(bool visible)
+        {
+            _cropsVisible = visible;
+            var keys = new List<Point>(_crops.Keys);
+            for (int i = 0; i < keys.Count; i++)
+            {
+                if (_crops.TryGetValue(keys[i], out var data))
+                    data.WorldEntity?.SetEnabled(visible);
             }
         }
 

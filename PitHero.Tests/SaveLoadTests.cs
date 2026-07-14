@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using PitHero;
+using System.Text;
 
 namespace PitHero.Tests
 {
@@ -596,6 +597,85 @@ namespace PitHero.Tests
 
             Assert.AreEqual(1, migratedTier, "PitLevel 7 should map to tier 1");
             Assert.AreEqual(7, migratedLevel, "PitLevel 7 should remain 7 after migration");
+        }
+
+        /// <summary>
+        /// Verifies that AutomateSeedPurchases and AutoShopGoldBuffer round-trip correctly through
+        /// Persist/Recover in save version 15.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V15_AutoShopOptions_RoundTrip()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_v15_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+
+                var original = new SaveData();
+                original.AutomateSeedPurchases = true;
+                original.AutoShopGoldBuffer = 500;
+
+                dataStore.Save("v15_autoshop.bin", original);
+
+                var loaded = new SaveData();
+                dataStore.Load("v15_autoshop.bin", loaded);
+
+                Assert.AreEqual(true, loaded.AutomateSeedPurchases, "AutomateSeedPurchases should round-trip");
+                Assert.AreEqual(500, loaded.AutoShopGoldBuffer, "AutoShopGoldBuffer should round-trip");
+                Assert.AreEqual(15, loaded.LoadedFileVersion, "LoadedFileVersion should be 15");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
+        /// <summary>
+        /// Verifies that a save stream written without v15 fields yields the correct defaults
+        /// (AutomateSeedPurchases = false, AutoShopGoldBuffer = 200) when recovered.
+        /// The "older-version stream" is simulated by writing a v15 binary, patching the version
+        /// bytes to 14, and stripping the two v15 fields (bool + int = 5 bytes) from the tail.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_OlderVersion_AutoShopOptions_DefaultValues()
+        {
+            // Write a full v15 SaveData to a MemoryStream
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+            {
+                var original = new SaveData();
+                // Use non-default values so we can confirm they are NOT loaded
+                original.AutomateSeedPurchases = true;
+                original.AutoShopGoldBuffer = 999;
+                writer.Write(original);
+            }
+
+            byte[] bytes = ms.ToArray();
+
+            // Patch bytes [0-3] from version 15 to version 14 (little-endian int)
+            bytes[0] = 14;
+            bytes[1] = 0;
+            bytes[2] = 0;
+            bytes[3] = 0;
+
+            // Strip the last 5 bytes (section 30: bool AutomateSeedPurchases + int AutoShopGoldBuffer)
+            int trimmedLength = bytes.Length - 5;
+            var trimmed = new byte[trimmedLength];
+            Array.Copy(bytes, trimmed, trimmedLength);
+
+            // Recover from the modified stream (version 14, no v15 fields)
+            var loaded = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(trimmed)))
+            {
+                rdr.ReadPersistableInto(loaded);
+            }
+
+            Assert.AreEqual(14, loaded.LoadedFileVersion, "Should detect version 14");
+            Assert.AreEqual(false, loaded.AutomateSeedPurchases, "Default: AutomateSeedPurchases should be false for pre-v15 saves");
+            Assert.AreEqual(200, loaded.AutoShopGoldBuffer, "Default: AutoShopGoldBuffer should be 200 for pre-v15 saves");
         }
     }
 }

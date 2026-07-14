@@ -101,6 +101,50 @@ namespace PitHero.Services
             return plan.Type;
         }
 
+        /// <summary>Returns true if at least one seed of the given type is in the inventory.</summary>
+        public bool HasSeeds(CropType crop)
+        {
+            if (SeedInventory == null)
+                return false;
+            return SeedInventory[(int)crop] > 0;
+        }
+
+        /// <summary>
+        /// Decrements the seed inventory by one and returns true. Returns false without
+        /// modifying the inventory when there are no seeds or the array is not yet assigned.
+        /// </summary>
+        public bool ConsumeSeed(CropType crop)
+        {
+            if (SeedInventory == null)
+                return false;
+            int idx = (int)crop;
+            if (SeedInventory[idx] <= 0)
+                return false;
+            SeedInventory[idx]--;
+            return true;
+        }
+
+        /// <summary>
+        /// Counts plans of the given type whose tile does NOT have a same-type growing crop
+        /// (i.e. plans that still require a seed to be planted). A different-type crop on the
+        /// same tile is excluded: it counts as needing a future seed for the swap.
+        /// </summary>
+        public int CountUnplantedPlans(CropType crop, CropGrowthService growth)
+        {
+            int count = 0;
+            for (int i = 0; i < _plans.Count; i++)
+            {
+                if (_plans[i].Type != crop)
+                    continue;
+                var tile = new Microsoft.Xna.Framework.Point(_plans[i].TileX, _plans[i].TileY);
+                // Skip tiles that already have the same-type crop growing
+                if (growth != null && growth.GetCropType(tile) == crop)
+                    continue;
+                count++;
+            }
+            return count;
+        }
+
         /// <summary>
         /// Adds the given number of seeds for the specified crop to the seed inventory.
         /// Safe to call before the overlay assigns the array — allocates a fallback if needed.

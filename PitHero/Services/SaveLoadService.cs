@@ -735,6 +735,14 @@ namespace PitHero.Services
                 }
             }
 
+            // Auto shop options (v15+)
+            var autoSeedPurchaseService = Core.Services.GetService<AutoSeedPurchaseService>();
+            if (autoSeedPurchaseService != null)
+            {
+                data.AutomateSeedPurchases = autoSeedPurchaseService.Enabled;
+                data.AutoShopGoldBuffer    = autoSeedPurchaseService.GoldBuffer;
+            }
+
             return data;
         }
 

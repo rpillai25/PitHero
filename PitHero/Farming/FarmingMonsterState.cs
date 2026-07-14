@@ -11,6 +11,7 @@ namespace PitHero.Farming
         PerformWater,
         FillWateringCan,
         PerformHarvest,
+        PerformDestroyCrop,
         MoveToDroppedCrop,
         CarryHarvestToStorage,
         DepositHarvest,

@@ -25,6 +25,7 @@ namespace PitHero.UI
         private Tab _windowTab;
         private Tab _sessionTab;
         private Tab _buttonsTab;
+        private Tab _autoShopTab;
 
         // Window positioning controls
         private EnhancedSlider _yOffsetSlider;
@@ -57,6 +58,11 @@ namespace PitHero.UI
         private EnhancedSlider _replenishMPSlider;
         private Label _replenishHPThresholdLabel;
         private Label _replenishMPThresholdLabel;
+
+        // Auto Shop tab controls
+        private HoverableCheckBox _automateSeedsCheckBox;
+        private EnhancedSlider _goldBufferSlider;
+        private HoverableLabel _goldBufferLabel;
 
         // Confirmation dialogs
         private Window _exitConfirmationDialog;
@@ -474,11 +480,14 @@ namespace PitHero.UI
             PopulateWindowTab(_windowTab, skin);
             PopulateSessionTab(_sessionTab, skin);
             PopulateButtonsTab(_buttonsTab, skin);
+            _autoShopTab = new Tab(GetText(TextType.UI, UITextKey.TabAutoShop), tabStyle);
+            PopulateAutoShopTab(_autoShopTab, skin);
 
             // Add tabs to TabPane
             _tabPane.AddTab(_windowTab);
             _tabPane.AddTab(_sessionTab);
             _tabPane.AddTab(_buttonsTab);
+            _tabPane.AddTab(_autoShopTab);
 
             // Add TabPane to settings window
             _settingsWindow.Add(_tabPane).Expand().Fill().Pad(0); // No cell padding - tabs flush with window edges
@@ -826,6 +835,69 @@ namespace PitHero.UI
             buttonsTable.Add(_hideEventConsoleCheckBox).Left();
 
             buttonsTab.Add(buttonsTable).Expand().Top().Left();
+        }
+
+        /// <summary>Populates the Auto Shop tab with seed-purchase automation controls.</summary>
+        private void PopulateAutoShopTab(Tab autoShopTab, Skin skin)
+        {
+            var autoShopTable = new Table();
+            autoShopTable.Pad(20);
+
+            string checkboxTooltip = GetText(TextType.UI, UITextKey.SettingsAutomateSeedPurchasesTooltip);
+            _automateSeedsCheckBox = new HoverableCheckBox(
+                GetText(TextType.UI, UITextKey.SettingsAutomateSeedPurchases),
+                skin,
+                checkboxTooltip,
+                _stage);
+            _automateSeedsCheckBox.IsChecked = false;
+            _automateSeedsCheckBox.OnChanged += (isChecked) =>
+            {
+                var svc = Core.Services?.GetService<AutoSeedPurchaseService>();
+                if (svc != null) svc.Enabled = isChecked;
+            };
+            autoShopTable.Add(_automateSeedsCheckBox).Left().SetPadBottom(15f);
+            autoShopTable.Row();
+
+            string bufferTooltip = GetText(TextType.UI, UITextKey.SettingsAutoShopGoldBufferTooltip);
+            _goldBufferLabel = new HoverableLabel(
+                string.Format(GetText(TextType.UI, UITextKey.SettingsAutoShopGoldBuffer), 200),
+                skin, "ph-default", bufferTooltip, _stage);
+            autoShopTable.Add(_goldBufferLabel).Left().SetPadBottom(8f);
+            autoShopTable.Row();
+
+            _goldBufferSlider = new EnhancedSlider(0, 100000, 200, false, skin, null, false);
+            _goldBufferSlider.SetValueAndCommit(200);
+            _goldBufferSlider.OnChanged += (value) =>
+            {
+                _goldBufferLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsAutoShopGoldBuffer), (int)value));
+            };
+            _goldBufferSlider.OnValueCommitted += (value) =>
+            {
+                var svc = Core.Services?.GetService<AutoSeedPurchaseService>();
+                if (svc != null) svc.GoldBuffer = (int)value;
+            };
+            autoShopTable.Add(_goldBufferSlider).Width(240).Left().SetPadBottom(15f);
+
+            autoShopTab.Add(autoShopTable).Expand().Top().Left();
+        }
+
+        /// <summary>
+        /// Reads AutoSeedPurchaseService state and syncs the Auto Shop tab controls.
+        /// Called after load to reflect persisted settings.
+        /// </summary>
+        public void SyncAutoShopControlsFromService()
+        {
+            var svc = Core.Services?.GetService<AutoSeedPurchaseService>();
+            if (svc == null) return;
+
+            if (_automateSeedsCheckBox != null)
+                _automateSeedsCheckBox.IsChecked = svc.Enabled;
+
+            if (_goldBufferSlider != null)
+                _goldBufferSlider.SetValueAndCommit(svc.GoldBuffer);
+
+            if (_goldBufferLabel != null)
+                _goldBufferLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsAutoShopGoldBuffer), svc.GoldBuffer));
         }
 
         /// <summary>

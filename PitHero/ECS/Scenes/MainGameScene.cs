@@ -256,6 +256,15 @@ namespace PitHero.ECS.Scenes
             farmTaskCoordinator.Initialize(this);
             Core.Services.AddService(farmTaskCoordinator);
 
+            // Auto seed purchase service buys seeds automatically to fulfil unplanted plans.
+            // Registered after the coordinator so its rescan hook is wired up.
+            var autoSeedPurchaseService = new Services.AutoSeedPurchaseService(
+                Core.Services.GetService<Services.CropPlantingService>(),
+                Core.Services.GetService<Services.CropGrowthService>(),
+                Core.Services.GetService<Services.GameStateService>(),
+                farmTaskCoordinator);
+            Core.Services.AddService(autoSeedPurchaseService);
+
             // Initialize hero promotion service (handles mercenary promotions and hero crystal ceremonies after death)
             _heroPromotionService = new Services.HeroPromotionService(this);
             Core.Services.AddService(_heroPromotionService);
@@ -396,6 +405,46 @@ namespace PitHero.ECS.Scenes
                     _seedModeOverlay.SpawnRestoredCropPlan((Farming.CropType)cp.CropTypeId, cp.TileX, cp.TileY);
                 }
             }
+
+            // v14 → v15 migration: old saves charged a seed at plan placement; new model pays at
+            // plant time, so refund each plan whose tile has no same-type growing crop, and infer
+            // plans for any growing crops that have no plan (so they aren't treated as pending-destroy).
+            if (pendingData.LoadedFileVersion < 15)
+            {
+                // (a) Refund +1 seed per plan whose tile lacks a same-type growing crop
+                if (pendingData.CropPlans != null && cropPlantingService != null && cropGrowthService != null)
+                {
+                    for (int i = 0; i < pendingData.CropPlans.Count; i++)
+                    {
+                        var cp       = pendingData.CropPlans[i];
+                        var planType = (Farming.CropType)cp.CropTypeId;
+                        var tile     = new Microsoft.Xna.Framework.Point(cp.TileX, cp.TileY);
+                        if (cropGrowthService.GetCropType(tile) != planType)
+                            cropPlantingService.AddSeeds(planType, 1);
+                    }
+                }
+
+                // (b) Infer plans for growing crops that have no plan (prevents pending-destroy treatment)
+                if (pendingData.CropGrowthStates != null && cropPlantingService != null && _seedModeOverlay != null)
+                {
+                    for (int i = 0; i < pendingData.CropGrowthStates.Count; i++)
+                    {
+                        var gs   = pendingData.CropGrowthStates[i];
+                        var tile = new Microsoft.Xna.Framework.Point(gs.TileX, gs.TileY);
+                        if (!cropPlantingService.HasPlan(tile))
+                            _seedModeOverlay.SpawnRestoredCropPlan((Farming.CropType)gs.CropTypeId, gs.TileX, gs.TileY);
+                    }
+                }
+            }
+
+            // Apply auto shop settings from save data and sync the settings UI controls
+            var autoSeedSvc = Core.Services.GetService<Services.AutoSeedPurchaseService>();
+            if (autoSeedSvc != null)
+            {
+                autoSeedSvc.Enabled    = pendingData.AutomateSeedPurchases;
+                autoSeedSvc.GoldBuffer = pendingData.AutoShopGoldBuffer;
+            }
+            _settingsUI?.SyncAutoShopControlsFromService();
 
             // Rebuild the plant queue now that both tile states and crop plans are restored
             Core.Services.GetService<Services.FarmTaskCoordinator>()?.RescanForPlanting();
@@ -2105,13 +2154,16 @@ namespace PitHero.ECS.Scenes
                 _wasInHarvestedCropsMode = inHarvestedCropsMode;
             }
 
-            // Show tilled-tile overlays and grayscale crop plans whenever the farm menu is open
-            // (sub-buttons visible or any sub-mode active). Also manages auto-scroll suppression.
+            // Show tilled-tile overlays and translucent crop plans whenever the farm menu is open
+            // (sub-buttons visible or any sub-mode active). Also manages pause gate, crop visibility,
+            // auto-scroll suppression, and post-close rescan for planting.
             bool inFarmMode = (_settingsUI?.IsFarmSubMenuOpen ?? false) || inTillMode || inBuildingMode || inSeedMode || inRemoveCropsMode || inHarvestedCropsMode;
             if (inFarmMode != _wasInFarmMode)
             {
                 if (inFarmMode)
                 {
+                    pauseService?.SetFarmModePause(true);
+                    Core.Services.GetService<Services.CropGrowthService>()?.SetCropsVisible(false);
                     _savedFarmAutoScroll = UIWindowManager.AutoScrollToHeroEnabled;
                     UIWindowManager.SetAutoScrollToHero(false);
                     if (!inTillMode)
@@ -2120,6 +2172,9 @@ namespace PitHero.ECS.Scenes
                 }
                 else
                 {
+                    pauseService?.SetFarmModePause(false);
+                    Core.Services.GetService<Services.CropGrowthService>()?.SetCropsVisible(true);
+                    Core.Services.GetService<Services.FarmTaskCoordinator>()?.RescanForPlanting();
                     UIWindowManager.SetAutoScrollToHero(_savedFarmAutoScroll);
                     if (!inTillMode)
                         _tillModeOverlay?.HideTilledOverlays();
@@ -2174,6 +2229,7 @@ namespace PitHero.ECS.Scenes
                 var cropsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
                 Core.Services.GetService<Services.CropGrowthService>()?.Update(
                     Core.Services.GetService<TileStateService>(), cropsAtlas);
+                Core.Services.GetService<Services.AutoSeedPurchaseService>()?.Update();
             }
 
             // Check if a living hero who respawned without a crystal has arrived at the statue

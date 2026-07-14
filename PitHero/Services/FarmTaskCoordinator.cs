@@ -44,6 +44,10 @@ namespace PitHero.Services
         private readonly Deque<FarmAction> _harvestQueue = new Deque<FarmAction>(64);
         private readonly HashSet<Point> _harvestTracked = new HashSet<Point>();
 
+        // Destroy queue — repeat-harvest crops that are <20% grown with a missing/different plan
+        private readonly Deque<FarmAction> _destroyQueue = new Deque<FarmAction>(64);
+        private readonly HashSet<Point> _destroyTracked = new HashSet<Point>();
+
         // Pickup queue — crops dropped on the ground awaiting recovery to storage
         private readonly Deque<FarmAction> _pickupQueue = new Deque<FarmAction>(16);
         private readonly HashSet<Point> _pickupTracked = new HashSet<Point>();
@@ -287,12 +291,12 @@ namespace PitHero.Services
             enumerator.Dispose();
         }
 
-        /// <summary>Claims the next valid action from the queues (priority: Till > Plant > Water).</summary>
+        /// <summary>Claims the next valid action from the queues (priority: Pickup > Till > Destroy > Plant > Harvest > Water).</summary>
         public bool TryClaimAction(out FarmAction action) => TryClaimAction(0f, out action);
 
         /// <summary>
         /// Pops the next valid action near the given normalized queue position (0 = front,
-        /// 1 = back), with priority: Till first, then Plant, then Water.
+        /// 1 = back), with priority: Pickup > Till > Destroy > Plant > Harvest > Water.
         /// Workers are given different positions so they spread across the field instead of clustering.
         /// A returned action is considered claimed until Complete/Release/ReportBlocked.
         /// Returns false when all queues are empty.
@@ -306,15 +310,20 @@ namespace PitHero.Services
             // Priority 1: Till
             if (TryClaimFromQueue(_queue, _tracked, queuePick, ValidateTill, out action))
                 return true;
-            // Priority 2: Plant
+            // Priority 2: Destroy — remove repeat crops whose plan changed (frees tile for swap-plant)
+            PopulateDestroyQueue();
+            if (TryClaimFromQueue(_destroyQueue, _destroyTracked, queuePick, ValidateDestroy, out action))
+                return true;
+            // Priority 3: Plant
             if (TryClaimFromQueue(_plantQueue, _plantTracked, queuePick, ValidatePlant, out action))
                 return true;
-            // Priority 3: Harvest — collect fully-grown crops before watering still-growing ones
+            // Priority 4: Harvest — collect fully-grown crops before watering still-growing ones
             PopulateHarvestQueue();
             if (TryClaimFromQueue(_harvestQueue, _harvestTracked, queuePick, ValidateHarvest, out action))
                 return true;
-            // Priority 4: Water — only when no plant work remains (queued or in-progress)
-            if (_plantTracked.Count == 0)
+            // Priority 5: Water — only when no plant or destroy work remains (queued or in-progress);
+            // guards against watering a crop that is about to be destroyed for a swap.
+            if (_plantTracked.Count == 0 && _destroyTracked.Count == 0)
             {
                 PopulateWaterQueue();
                 if (TryClaimFromQueue(_waterQueue, _waterTracked, queuePick, ValidateWater, out action))
@@ -357,8 +366,46 @@ namespace PitHero.Services
         {
             var cropPlanting = GetService<CropPlantingService>();
             var cropGrowth = GetService<CropGrowthService>();
-            return cropPlanting != null && cropPlanting.HasPlan(tile)
-                && (cropGrowth == null || !cropGrowth.HasCrop(tile));
+            if (cropPlanting == null || !cropPlanting.HasPlan(tile))
+                return false;
+            if (cropGrowth != null && cropGrowth.HasCrop(tile))
+                return false;
+            var planType = cropPlanting.GetPlanType(tile);
+            return planType.HasValue && cropPlanting.HasSeeds(planType.Value);
+        }
+
+        /// <summary>
+        /// Returns true when a repeat-harvest crop at the tile is a candidate for early removal:
+        /// the plan is absent or designates a different crop type, and the crop is less than the
+        /// swap-destroy threshold grown (so destroying and replanting is cheaper than waiting to
+        /// harvest). Null-safe for headless tests.
+        /// </summary>
+        private bool ValidateDestroy(Point tile)
+        {
+            var cropGrowth = GetService<CropGrowthService>();
+            if (cropGrowth == null)
+                return false;
+
+            var cropType = cropGrowth.GetCropType(tile);
+            if (!cropType.HasValue)
+                return false;
+
+            // Only early-destroy repeat-harvest crops; one-shot crops are never destroyed early
+            if (!CropConfig.IsRepeatHarvest(cropType.Value))
+                return false;
+
+            // No-op when the plan matches the growing crop (no swap pending)
+            var cropPlanting = GetService<CropPlantingService>();
+            var planType = cropPlanting?.GetPlanType(tile);
+            if (planType.HasValue && planType.Value == cropType.Value)
+                return false;
+
+            // Only eligible while the crop is less than the threshold fraction grown
+            float progress = cropGrowth.GetGrowthProgress(tile);
+            if (progress < 0f || progress >= GameConfig.CropSwapDestroyProgressThreshold)
+                return false;
+
+            return true;
         }
 
         private bool ValidateWater(Point tile)
@@ -456,6 +503,12 @@ namespace PitHero.Services
         /// <summary>Returns a claimed harvest action to the front of the queue.</summary>
         public void ReleaseHarvestAction(in FarmAction action) => _harvestQueue.AddFront(action);
 
+        /// <summary>Marks a claimed destroy-crop action finished.</summary>
+        public void CompleteDestroyAction(in FarmAction action) => _destroyTracked.Remove(action.TargetTile);
+
+        /// <summary>Returns a claimed destroy-crop action to the front of the queue.</summary>
+        public void ReleaseDestroyAction(in FarmAction action) => _destroyQueue.AddFront(action);
+
         /// <summary>Marks a claimed pickup action finished (the drop was recovered or removed).</summary>
         public void CompletePickupAction(in FarmAction action) => _pickupTracked.Remove(action.TargetTile);
 
@@ -471,13 +524,17 @@ namespace PitHero.Services
         }
 
         /// <summary>
-        /// Called when a crop plan is placed on a tile that is already Tilled.
-        /// In that case HandleTileTilled won't fire again, so we enqueue the Plant action here.
+        /// Called when a crop plan is placed on a tile that is already Tilled, or after a destroy/
+        /// harvest completes to schedule the waiting plan. Guards against duplicate enqueues and
+        /// no-op calls (no plan, crop still present). Safe to call unconditionally.
         /// </summary>
         public void NotifyPlanAddedOnTilledTile(Point tile)
         {
             var cropGrowth = GetService<CropGrowthService>();
             if (cropGrowth != null && cropGrowth.HasCrop(tile))
+                return;
+            var cropPlanting = GetService<CropPlantingService>();
+            if (cropPlanting == null || !cropPlanting.HasPlan(tile))
                 return;
             if (_plantTracked.Add(tile))
                 _plantQueue.AddBack(new FarmAction { Type = FarmActionType.Plant, TargetTile = tile });
@@ -530,6 +587,26 @@ namespace PitHero.Services
                     continue;
                 if (_waterTracked.Add(tile))
                     _waterQueue.AddBack(new FarmAction { Type = FarmActionType.Water, TargetTile = tile });
+            }
+        }
+
+        /// <summary>
+        /// Enqueues DestroyCrop actions for repeat-harvest crops that are less than
+        /// <see cref="GameConfig.CropSwapDestroyProgressThreshold"/> grown and whose plan is absent
+        /// or designates a different crop type. Called from TryClaimAction (cheap scan).
+        /// </summary>
+        public void PopulateDestroyQueue()
+        {
+            var cropGrowth = GetService<CropGrowthService>();
+            if (cropGrowth == null)
+                return;
+
+            foreach (var tile in cropGrowth.GetAllCropTiles())
+            {
+                if (!ValidateDestroy(tile))
+                    continue;
+                if (_destroyTracked.Add(tile))
+                    _destroyQueue.AddBack(new FarmAction { Type = FarmActionType.DestroyCrop, TargetTile = tile });
             }
         }
 
