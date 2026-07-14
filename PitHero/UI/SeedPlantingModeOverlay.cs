@@ -129,6 +129,7 @@ namespace PitHero.UI
         public void OnEnterRemoveCropsMode()
         {
             _state = PlacementState.Removing;
+            _lastDragTile = NoTile;
             CreateTileIndicator();
         }
 
@@ -245,9 +246,25 @@ namespace PitHero.UI
                             : new Color(255, 0, 0, 128);
                 }
 
-                // Single click to remove (no drag, no seed refund — plans are now free to place)
-                if (Input.LeftMouseButtonPressed && hasPlan)
-                    cropService.RemovePlan(tile);
+                // Shift + held click: drag-remove plans continuously across tiles.
+                // Plain click: remove a single plan per press. No seed refund either way.
+                bool shiftHeld = Input.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.LeftShift)
+                              || Input.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.RightShift);
+                if (shiftHeld && Input.LeftMouseButtonDown)
+                {
+                    if (tile != _lastDragTile)
+                    {
+                        _lastDragTile = tile;
+                        if (hasPlan)
+                            cropService.RemovePlan(tile);
+                    }
+                }
+                else
+                {
+                    _lastDragTile = NoTile;
+                    if (Input.LeftMouseButtonPressed && hasPlan)
+                        cropService.RemovePlan(tile);
+                }
             }
         }
 
