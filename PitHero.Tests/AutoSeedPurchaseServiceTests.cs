@@ -158,6 +158,26 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void TryPurchasePass_StopsAtSeedInventoryCap()
+        {
+            // Planned demand exceeds the per-crop cap while owned sits 2 below it — only the
+            // 2 seeds of headroom may be bought; the rest would be clamped away and waste gold.
+            _service.GoldBuffer = 0;
+            int plans = GameConfig.SeedInventoryMaxPerCrop + 6;
+            for (int i = 0; i < plans; i++)
+                _cropPlanting.AddPlan(new PlacedCropPlan { Type = CropType.Wheat, TileX = i % 100, TileY = i / 100 });
+            _cropPlanting.SeedInventory[(int)CropType.Wheat] = GameConfig.SeedInventoryMaxPerCrop - 2;
+            _gameState.Funds = 100000;
+
+            _service.TryPurchasePass();
+
+            Assert.AreEqual(GameConfig.SeedInventoryMaxPerCrop, _cropPlanting.SeedInventory[(int)CropType.Wheat],
+                "Seed count should stop exactly at the per-crop cap");
+            Assert.AreEqual(100000 - 2 * 25, _gameState.Funds,
+                "Only the 2 seeds of headroom should have been paid for");
+        }
+
+        [TestMethod]
         public void TryPurchasePass_AlreadyCoveredByExistingCrop_BuysNothing()
         {
             // Plan exists but the same-type crop is already growing → CountUnplantedPlans = 0

@@ -122,6 +122,8 @@ namespace PitHero
         public const int CropPlanPreviewAlpha = 153;
         /// <summary>Maximum seed quantity purchasable in one Second Chance Shop transaction.</summary>
         public const int SeedShopMaxPurchaseQuantity = 99;
+        /// <summary>Maximum seeds of a single crop type the player can hold.</summary>
+        public const int SeedInventoryMaxPerCrop = 999;
         /// <summary>Scale amplitude of the attention pulse on seed shop slots with unmet planned demand (0.1 = ±10%).</summary>
         public const float SeedShopPulseAmplitude = 0.1f;
         /// <summary>Angular speed (radians/sec) of the seed shop attention pulse.</summary>

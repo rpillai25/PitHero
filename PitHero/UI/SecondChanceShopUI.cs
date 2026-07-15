@@ -355,11 +355,19 @@ namespace PitHero.UI
                 : 0;
             if (plannedDeficit < 0) plannedDeficit = 0;
 
+            // Cap the transaction at both the per-purchase limit and the remaining headroom
+            // below the per-crop inventory cap; at cap there is nothing to buy.
+            int headroom = GameConfig.SeedInventoryMaxPerCrop - ownedCount;
+            int maxQty = GameConfig.SeedShopMaxPurchaseQuantity < headroom
+                ? GameConfig.SeedShopMaxPurchaseQuantity
+                : headroom;
+            if (maxQty <= 0) return;
+
             var qtyDialog = new VaultBuyQuantityDialog(
                 shopTitle,
                 cropName,
                 unitPrice,
-                GameConfig.SeedShopMaxPurchaseQuantity,
+                maxQty,
                 _skin,
                 onConfirm: (qty) =>
                 {

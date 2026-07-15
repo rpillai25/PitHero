@@ -146,14 +146,18 @@ namespace PitHero.Services
         }
 
         /// <summary>
-        /// Adds the given number of seeds for the specified crop to the seed inventory.
-        /// Safe to call before the overlay assigns the array — allocates a fallback if needed.
+        /// Adds the given number of seeds for the specified crop to the seed inventory, clamped
+        /// at GameConfig.SeedInventoryMaxPerCrop. Safe to call before the overlay assigns the
+        /// array — allocates a fallback if needed.
         /// </summary>
         public void AddSeeds(CropType crop, int count)
         {
             if (SeedInventory == null)
                 SeedInventory = new int[CropTypeInfo.Count];
-            SeedInventory[(int)crop] += count;
+            int next = SeedInventory[(int)crop] + count;
+            if (next > GameConfig.SeedInventoryMaxPerCrop)
+                next = GameConfig.SeedInventoryMaxPerCrop;
+            SeedInventory[(int)crop] = next;
         }
 
         /// <summary>Destroys all world entities and clears the plan registry.</summary>

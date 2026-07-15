@@ -120,6 +120,31 @@ namespace PitHero.Tests
             Assert.IsFalse(_service.HasSeeds(CropType.Potato));
         }
 
+        // ── AddSeeds cap ─────────────────────────────────────────────────────
+
+        [TestMethod]
+        public void AddSeeds_ClampsAtPerCropMax()
+        {
+            _service.SeedInventory = new int[CropTypeInfo.Count];
+            _service.SeedInventory[(int)CropType.Wheat] = GameConfig.SeedInventoryMaxPerCrop - 4;
+
+            _service.AddSeeds(CropType.Wheat, 10);
+
+            Assert.AreEqual(GameConfig.SeedInventoryMaxPerCrop, _service.SeedInventory[(int)CropType.Wheat],
+                "Seed count must clamp at the per-crop maximum");
+        }
+
+        [TestMethod]
+        public void AddSeeds_BelowCap_AddsNormally()
+        {
+            _service.SeedInventory = new int[CropTypeInfo.Count];
+            _service.SeedInventory[(int)CropType.Wheat] = 100;
+
+            _service.AddSeeds(CropType.Wheat, 10);
+
+            Assert.AreEqual(110, _service.SeedInventory[(int)CropType.Wheat]);
+        }
+
         // ── RemovePlan ───────────────────────────────────────────────────────
 
         [TestMethod]

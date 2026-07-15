@@ -8,7 +8,8 @@ namespace PitHero.UI
     /// <summary>
     /// A confirmation dialog for vault item purchases that includes a < qty > selector
     /// when the vault stack contains more than one item.  The player can raise or lower
-    /// the quantity (1 … maxQty) before confirming; the total gold cost updates live.
+    /// the quantity (1 … maxQty; lowering below 1 wraps around to the purchasable max)
+    /// before confirming; the total gold cost updates live.
     /// When availableFunds is provided, the selectable quantity is additionally capped at
     /// what the player can afford, and the arrow buttons grey out at the limits.
     /// When maxQty == 1 the selector row is hidden and the dialog behaves like a plain
@@ -216,7 +217,9 @@ namespace PitHero.UI
         private void ChangeQuantity(int delta)
         {
             int next = _quantity + delta;
-            if (next < 1) next = 1;
+            // "<" below 1 wraps around to the purchasable max (stock cap and affordable
+            // funds already folded into _maxQty); ">" clamps at the max as before.
+            if (next < 1) next = _maxQty;
             if (next > _maxQty) next = _maxQty;
             if (next == _quantity) return;
 
@@ -246,10 +249,11 @@ namespace PitHero.UI
             }
         }
 
-        /// <summary>Greys out an arrow when the quantity can move no further in its direction.</summary>
+        /// <summary>Greys out an arrow when it can have no effect. The decrease arrow stays
+        /// enabled at quantity 1 so it can wrap around to the purchasable max.</summary>
         private void UpdateArrowStates()
         {
-            _decreaseBtn?.SetDisabled(_quantity <= 1);
+            _decreaseBtn?.SetDisabled(_maxQty <= 1);
             _increaseBtn?.SetDisabled(_quantity >= _maxQty || !_canAffordAny);
         }
     }

@@ -74,6 +74,10 @@ namespace PitHero.Services
 
                 int needed = _cropPlanting.CountUnplantedPlans(crop, _cropGrowth);
                 if (needed <= 0) continue;
+                // Never buy past the per-crop inventory cap — AddSeeds would clamp the
+                // overflow away and the gold would be wasted.
+                if (needed > GameConfig.SeedInventoryMaxPerCrop)
+                    needed = GameConfig.SeedInventoryMaxPerCrop;
 
                 int owned = _cropPlanting.SeedInventory != null
                     ? _cropPlanting.SeedInventory[(int)crop]
