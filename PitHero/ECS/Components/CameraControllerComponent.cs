@@ -267,9 +267,9 @@ namespace PitHero.ECS.Components
             var currentMousePosition = Input.ScaledMousePosition;
             bool shiftDown = Input.IsKeyDown(Keys.LeftShift) || Input.IsKeyDown(Keys.RightShift);
 
-            if (Input.RightMouseButtonPressed && IsMouseInsideWindow())
+            if (Input.MiddleMouseButtonPressed && IsMouseInsideWindow())
             {
-                // Do not start panning if this press is used for SHIFT+Right-Click reset
+                // Do not start panning if this press is used for SHIFT+Middle-Click reset
                 if (shiftDown)
                 {
                     _isPanning = false;
@@ -278,16 +278,16 @@ namespace PitHero.ECS.Components
 
                 _isPanning = true;
                 _lastMousePosition = currentMousePosition;
-                
+
                 // Switch to manual control mode
                 SwitchToManualControl();
             }
-            else if (Input.RightMouseButtonReleased)
+            else if (Input.MiddleMouseButtonReleased)
             {
                 _isPanning = false;
             }
 
-            if (_isPanning && Input.RightMouseButtonDown)
+            if (_isPanning && Input.MiddleMouseButtonDown)
             {
                 var mouseDelta = currentMousePosition - _lastMousePosition;
                 var panDelta = -mouseDelta * GameConfig.CameraPanSpeed / _camera.RawZoom;
@@ -306,7 +306,7 @@ namespace PitHero.ECS.Components
 
         /// <summary>
         /// Returns true when the window has OS focus and the raw cursor is within the client area.
-        /// Used to gate the start of right-mouse panning so scrolling doesn't begin while the
+        /// Used to gate the start of middle-mouse panning so scrolling doesn't begin while the
         /// cursor is outside the game window.
         /// </summary>
         private static bool IsMouseInsideWindow()
@@ -457,13 +457,27 @@ namespace PitHero.ECS.Components
         /// </summary>
         public void ResetZoomToDefault()
         {
+            SetZoomPreservingFocus(GameConfig.CameraDefaultZoom, "ResetZoomToDefault");
+        }
+
+        /// <summary>
+        /// Applies the half-window default zoom while keeping the camera centered on the world
+        /// position it is currently looking at (clamped to the new zoom's bounds).
+        /// </summary>
+        public void ApplyHalfWindowZoom()
+        {
+            SetZoomPreservingFocus(GameConfig.CameraHalfSizeWindowZoom, "ApplyHalfWindowZoom");
+        }
+
+        private void SetZoomPreservingFocus(float zoom, string logContext)
+        {
             if (_camera == null)
                 return;
             var focus = _camera.Position;
-            _camera.RawZoom = GameConfig.CameraDefaultZoom;
+            _camera.RawZoom = zoom;
             _camera.Position = ConstrainCameraPosition(focus);
             QuantizeCameraPosition();
-            Debug.Log($"[CameraController] ResetZoomToDefault zoom={_camera.RawZoom} positionX={_camera.Position.X} positionY={_camera.Position.Y}");
+            Debug.Log($"[CameraController] {logContext} zoom={_camera.RawZoom} positionX={_camera.Position.X} positionY={_camera.Position.Y}");
         }
 
         /// <summary>
