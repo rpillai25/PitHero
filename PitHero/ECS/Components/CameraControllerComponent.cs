@@ -21,6 +21,7 @@ namespace PitHero.ECS.Components
 
         private bool _isFollowingHero = true; // camera auto-follows hero by default
         private float _manualControlTimer = 0f; // tracks time since last manual control input
+        private float _keyboardPanHeldTime = 0f; // continuous seconds arrow/WASD pan keys have been held
         private Entity _heroEntity; // cached reference to hero entity
 
         /// <summary>
@@ -311,14 +312,18 @@ namespace PitHero.ECS.Components
 
         /// <summary>
         /// Smoothly scrolls the camera while arrow keys or WASD are held — an alternative panning
-        /// method to the middle-mouse drag. Skipped while SHIFT/CTRL are held so modifier-based
-        /// shortcuts (e.g. SHIFT+S) and zoom controls don't also pan the camera.
+        /// method to the middle-mouse drag. Speed ramps from the starting to the top pan speed the
+        /// longer keys are held continuously, so long trips get faster. Skipped while SHIFT/CTRL are
+        /// held so modifier-based shortcuts (e.g. SHIFT+S) and zoom controls don't also pan the camera.
         /// </summary>
         private void HandleKeyboardPanInput()
         {
             if (Input.IsKeyDown(Keys.LeftShift) || Input.IsKeyDown(Keys.RightShift) ||
                 Input.IsKeyDown(Keys.LeftControl) || Input.IsKeyDown(Keys.RightControl))
+            {
+                _keyboardPanHeldTime = 0f;
                 return;
+            }
 
             var direction = Vector2.Zero;
             if (Input.IsKeyDown(Keys.Left) || Input.IsKeyDown(Keys.A))
@@ -331,13 +336,21 @@ namespace PitHero.ECS.Components
                 direction.Y += 1f;
 
             if (direction == Vector2.Zero)
+            {
+                _keyboardPanHeldTime = 0f;
                 return;
+            }
 
             direction.Normalize();
             SwitchToManualControl();
 
+            // Accelerate from starting to top speed over the ramp duration while keys stay held
+            _keyboardPanHeldTime += Time.DeltaTime;
+            var ramp = MathHelper.Clamp(_keyboardPanHeldTime / GameConfig.CameraKeyboardPanAccelSeconds, 0f, 1f);
+            var speed = MathHelper.Lerp(GameConfig.CameraKeyboardPanSpeed, GameConfig.CameraKeyboardPanMaxSpeed, ramp);
+
             // Divide by zoom so on-screen scroll speed stays consistent at every zoom level
-            var panDelta = direction * GameConfig.CameraKeyboardPanSpeed * Time.DeltaTime / _camera.RawZoom;
+            var panDelta = direction * speed * Time.DeltaTime / _camera.RawZoom;
             _camera.Position = ConstrainCameraPosition(_camera.Position + panDelta);
             QuantizeCameraPosition();
             _manualControlTimer = 0f;
