@@ -255,6 +255,7 @@ SecondChanceBuyTotal,Total: {0} gold
 SecondChanceNoGold,Not enough gold!
 SecondChanceSellPrompt,Sell for {0} gold?
 SecondChanceOwnedCount,Owned: {0}
+SecondChanceNeedCount,Need: {0}
 
 # Event Console Messages
 ConsoleAttack,{0} attacks {1} for {2} damage!

@@ -347,11 +347,19 @@ namespace PitHero.UI
             string shopTitle = GetText(TextType.UI, UITextKey.WindowSecondChanceShop);
             string cropName  = GetText(TextType.UI, CropConfig.GetDisplayNameKey(crop));
 
+            // Outstanding planned demand not yet covered by owned seeds — drives the
+            // "Need: N" row in the quantity dialog (omitted when zero).
+            var cropGrowthService = Core.Services?.GetService<CropGrowthService>();
+            int plannedDeficit = cropGrowthService != null
+                ? cropPlantingService.CountUnplantedPlans(crop, cropGrowthService) - ownedCount
+                : 0;
+            if (plannedDeficit < 0) plannedDeficit = 0;
+
             var qtyDialog = new VaultBuyQuantityDialog(
                 shopTitle,
                 cropName,
                 unitPrice,
-                9,
+                GameConfig.SeedShopMaxPurchaseQuantity,
                 _skin,
                 onConfirm: (qty) =>
                 {
@@ -363,7 +371,8 @@ namespace PitHero.UI
                 },
                 onCancel: null,
                 ownedCount: ownedCount,
-                availableFunds: gameState.Funds);
+                availableFunds: gameState.Funds,
+                plannedCount: plannedDeficit);
             qtyDialog.Show(_stage);
         }
 
@@ -1210,19 +1219,20 @@ namespace PitHero.UI
         /// A single slot in the Seeds shop grid.  Draws the crop's fully-grown sprite, overlays
         /// a live owned-count badge (read each frame so it updates immediately after a purchase),
         /// shows a hover tooltip with crop name and price, and fires OnBuyClicked on left-mouse-up.
-        /// When the player has fewer seeds than unplanted plans, the slot background is tinted green.
+        /// When the player has fewer seeds than unplanted plans, the crop sprite gently pulses
+        /// in size to draw attention to the purchase.
         /// </summary>
         private class SeedShopSlot : Element, IInputListener
         {
             // Inventory-slot background drawn at the same translucency as the inventory UI.
             private static readonly Color SlotBgColor       = new Color(255, 255, 255, 100);
-            // Green tint used when seeds are needed to fulfil outstanding plans.
-            private static readonly Color GreenHighlightColor = new Color(0, 255, 0, 128);
 
-            private readonly Sprite              _sprite;
-            private readonly CropType            _crop;
-            private readonly CropPlantingService _cropService;
-            private readonly CropGrowthService   _cropGrowth;
+            private readonly Sprite   _sprite;
+            private readonly CropType _crop;
+            // Not readonly: the slot is built during Scene.Initialize(), before LoadMap registers
+            // CropGrowthService, so null services are re-resolved lazily on draw.
+            private CropPlantingService _cropService;
+            private CropGrowthService   _cropGrowth;
             private readonly SpriteDrawable      _draw;
             private SpriteDrawable _background;
             private Sprite _selectBox;
@@ -1257,20 +1267,37 @@ namespace PitHero.UI
 
             public override void Draw(Batcher batcher, float parentAlpha)
             {
-                // Resolve live seed count up front so it can drive both the background tint and badge.
+                // Services may not have existed at construction time — resolve lazily.
+                if (_cropService == null)
+                    _cropService = Core.Services?.GetService<CropPlantingService>();
+                if (_cropGrowth == null)
+                    _cropGrowth = Core.Services?.GetService<CropGrowthService>();
+
+                // Resolve live seed count up front so it can drive both the attention pulse and badge.
                 int count = _cropService?.SeedInventory != null
                     ? _cropService.SeedInventory[(int)_crop]
                     : 0;
 
-                // Green highlight when there are more unplanted plans than owned seeds.
+                // Attention pulse when there are more unplanted plans than owned seeds: the crop
+                // sprite gently scales up and down around the slot center.
                 int needed = (_cropService != null && _cropGrowth != null)
                     ? _cropService.CountUnplantedPlans(_crop, _cropGrowth)
                     : 0;
-                Color bgColor = needed > count ? GreenHighlightColor : SlotBgColor;
 
-                _background?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), bgColor);
+                _background?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), SlotBgColor);
 
-                _draw?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+                float spriteX = GetX(), spriteY = GetY(), spriteW = GetWidth(), spriteH = GetHeight();
+                if (needed > count)
+                {
+                    float pulse = 1f + GameConfig.SeedShopPulseAmplitude * Mathf.Sin(Time.TotalTime * GameConfig.SeedShopPulseSpeed);
+                    float pw = spriteW * pulse;
+                    float ph = spriteH * pulse;
+                    spriteX += (spriteW - pw) * 0.5f;
+                    spriteY += (spriteH - ph) * 0.5f;
+                    spriteW = pw;
+                    spriteH = ph;
+                }
+                _draw?.Draw(batcher, spriteX, spriteY, spriteW, spriteH, Color.White);
 
                 if (_hovered && _selectBox != null)
                     new SpriteDrawable(_selectBox).Draw(

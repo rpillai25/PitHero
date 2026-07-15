@@ -120,6 +120,12 @@ namespace PitHero
         public const float CropSwapDestroyProgressThreshold = 0.5f;
         /// <summary>Alpha value (0–255) for translucent plan-preview sprites shown in farm mode.</summary>
         public const int CropPlanPreviewAlpha = 153;
+        /// <summary>Maximum seed quantity purchasable in one Second Chance Shop transaction.</summary>
+        public const int SeedShopMaxPurchaseQuantity = 99;
+        /// <summary>Scale amplitude of the attention pulse on seed shop slots with unmet planned demand (0.1 = ±10%).</summary>
+        public const float SeedShopPulseAmplitude = 0.1f;
+        /// <summary>Angular speed (radians/sec) of the seed shop attention pulse.</summary>
+        public const float SeedShopPulseSpeed = 4f;
         public const int TillZerothGid = 122;            // GIDs 122-137 are the 16 tilled-tile bitmask variants
         public const int WetZeroTileIndex = 154;         // GIDs 154-169 are the 16 wet-tile bitmask variants
         public const float WaterBaseDurationSeconds = 3f;  // watering time at FarmingProficiency 1

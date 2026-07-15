@@ -23,8 +23,10 @@ namespace PitHero.UI
         private readonly int _unitPrice;
         private readonly int _maxQty;
         private readonly bool _canAffordAny;
+        private readonly int _plannedCount;
         private Label _quantityLabel;
         private Label _totalCostLabel;
+        private Label _plannedLabel;
         private TextButton _decreaseBtn;
         private TextButton _increaseBtn;
         private readonly System.Action<int> _onConfirm;
@@ -45,6 +47,12 @@ namespace PitHero.UI
         /// Yes button is disabled when the player cannot afford even one unit. Pass -1 (default)
         /// to skip the affordability cap.
         /// </param>
+        /// <param name="plannedCount">
+        /// When &gt; 0, a "Need: N" label is rendered to the right of the Owned row showing
+        /// how many planned crops remain uncovered after buying the current quantity
+        /// (max(0, plannedCount - quantity)); the label hides once the quantity covers them all.
+        /// Pass 0 (default) to omit it; existing call sites are unaffected.
+        /// </param>
         public VaultBuyQuantityDialog(
             string title,
             string itemName,
@@ -54,11 +62,13 @@ namespace PitHero.UI
             System.Action<int> onConfirm,
             System.Action onCancel = null,
             int ownedCount = -1,
-            int availableFunds = -1)
+            int availableFunds = -1,
+            int plannedCount = 0)
             : base(title, skin)
         {
             _unitPrice = unitPrice;
             _onConfirm = onConfirm;
+            _plannedCount = plannedCount > 0 ? plannedCount : 0;
 
             int affordableMax = (availableFunds >= 0 && unitPrice > 0)
                 ? availableFunds / unitPrice
@@ -102,7 +112,25 @@ namespace PitHero.UI
                     textService.DisplayText(TextType.UI, UITextKey.SecondChanceOwnedCount),
                     ownedCount);
                 var ownedLabel = new Label(ownedText, skin);
-                dialogTable.Add(ownedLabel).Width(330f).SetPadBottom(8);
+
+                var ownedRow = new Table();
+                ownedRow.Left();
+                ownedRow.Add(ownedLabel);
+
+                // Planned demand label (seeds with outstanding plan coverage only).
+                if (_plannedCount > 0)
+                {
+                    int remaining = _plannedCount - _quantity;
+                    if (remaining < 0) remaining = 0;
+                    string plannedText = string.Format(
+                        textService.DisplayText(TextType.UI, UITextKey.SecondChanceNeedCount),
+                        remaining);
+                    _plannedLabel = new Label(plannedText, skin);
+                    _plannedLabel.SetVisible(remaining > 0);
+                    ownedRow.Add(_plannedLabel).SetPadLeft(24f);
+                }
+
+                dialogTable.Add(ownedRow).Width(330f).SetPadBottom(8);
                 dialogTable.Row();
             }
 
@@ -203,6 +231,18 @@ namespace PitHero.UI
                     textService.DisplayText(TextType.UI, UITextKey.SecondChanceBuyTotal),
                     _unitPrice * _quantity);
                 _totalCostLabel.SetText(totalText);
+            }
+
+            if (_plannedLabel != null)
+            {
+                int remaining = _plannedCount - _quantity;
+                if (remaining < 0) remaining = 0;
+                var textService = Core.Services.GetService<TextService>();
+                string plannedText = string.Format(
+                    textService.DisplayText(TextType.UI, UITextKey.SecondChanceNeedCount),
+                    remaining);
+                _plannedLabel.SetText(plannedText);
+                _plannedLabel.SetVisible(remaining > 0);
             }
         }
 

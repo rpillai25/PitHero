@@ -300,6 +300,7 @@ namespace PitHero
         public const string ConsoleWelcomePhrase3 = "ConsoleWelcomePhrase3";
         public const string TabSeeds = "TabSeeds";
         public const string SecondChanceOwnedCount = "SecondChanceOwnedCount";
+        public const string SecondChanceNeedCount = "SecondChanceNeedCount";
         public const string ConsoleSeedsFound = "ConsoleSeedsFound";
         public const string AddMonsterWindowTitle = "AddMonsterWindowTitle";
         public const string AddMonsterRemainingSpace = "AddMonsterRemainingSpace";
