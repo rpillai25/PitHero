@@ -22,6 +22,7 @@ namespace PitHero.ECS.Components
         private bool _isFollowingHero = true; // camera auto-follows hero by default
         private float _manualControlTimer = 0f; // tracks time since last manual control input
         private float _keyboardPanHeldTime = 0f; // continuous seconds arrow/WASD pan keys have been held
+        private Vector2 _keyboardPanRemainder; // banked sub-pixel movement released in whole-pixel steps
         private Entity _heroEntity; // cached reference to hero entity
 
         /// <summary>
@@ -322,6 +323,7 @@ namespace PitHero.ECS.Components
                 Input.IsKeyDown(Keys.LeftControl) || Input.IsKeyDown(Keys.RightControl))
             {
                 _keyboardPanHeldTime = 0f;
+                _keyboardPanRemainder = Vector2.Zero;
                 return;
             }
 
@@ -338,6 +340,7 @@ namespace PitHero.ECS.Components
             if (direction == Vector2.Zero)
             {
                 _keyboardPanHeldTime = 0f;
+                _keyboardPanRemainder = Vector2.Zero;
                 return;
             }
 
@@ -349,11 +352,23 @@ namespace PitHero.ECS.Components
             var ramp = MathHelper.Clamp(_keyboardPanHeldTime / GameConfig.CameraKeyboardPanAccelSeconds, 0f, 1f);
             var speed = MathHelper.Lerp(GameConfig.CameraKeyboardPanSpeed, GameConfig.CameraKeyboardPanMaxSpeed, ramp);
 
-            // Divide by zoom so on-screen scroll speed stays consistent at every zoom level
-            var panDelta = direction * speed * Time.DeltaTime / _camera.RawZoom;
-            _camera.Position = ConstrainCameraPosition(_camera.Position + panDelta);
-            QuantizeCameraPosition();
+            // Divide by zoom so on-screen scroll speed stays consistent at every zoom level.
+            // Movement is released only in whole screen-pixel steps (banking the fractional part
+            // in a remainder) so the camera never lands on sub-pixel positions mid-scroll, which
+            // reads as blur/shimmer. At 1x zoom this is exactly integer world-position snapping.
+            float pixelStep = 1f / _camera.RawZoom; // world units per screen pixel
+            var desired = direction * speed * Time.DeltaTime / _camera.RawZoom + _keyboardPanRemainder;
+            var applied = new Vector2(
+                (float)System.Math.Truncate(desired.X / pixelStep) * pixelStep,
+                (float)System.Math.Truncate(desired.Y / pixelStep) * pixelStep);
+            _keyboardPanRemainder = desired - applied;
             _manualControlTimer = 0f;
+
+            if (applied == Vector2.Zero)
+                return;
+
+            _camera.Position = ConstrainCameraPosition(_camera.Position + applied);
+            QuantizeCameraPosition();
         }
 
         /// <summary>
