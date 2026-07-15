@@ -21,7 +21,15 @@ namespace PitHero.ECS.Components
 
         private bool _isFollowingHero = true; // camera auto-follows hero by default
         private float _manualControlTimer = 0f; // tracks time since last manual control input
+        private float _keyboardPanHeldTime = 0f; // continuous seconds arrow/WASD pan keys have been held
+        private Vector2 _keyboardPanRemainder; // banked sub-pixel movement released in whole-pixel steps
         private Entity _heroEntity; // cached reference to hero entity
+
+        /// <summary>
+        /// Optional hook set by the scene; returns true when the pointer is over a UI element.
+        /// Gates the modifier-less wheel zoom so scrolling a UI list doesn't also zoom the camera.
+        /// </summary>
+        public System.Func<bool> IsPointerOverUI;
 
         /// <summary>
         /// Gets whether this component should respect the manual pause state.
@@ -86,6 +94,7 @@ namespace PitHero.ECS.Components
 
             HandleZoomInput();
             HandlePanInput();
+            HandleKeyboardPanInput();
             HandleHeroFollowing();
         }
 
@@ -107,13 +116,10 @@ namespace PitHero.ECS.Components
                 return;
             }
 
-            // SHIFT + Middle-Click: Reset zoom (preserve current window size)
+            // SHIFT + Middle-Click: Reset zoom (preserve current window size and camera location)
             if (shiftDown && Input.MiddleMouseButtonPressed)
             {
-                _camera.RawZoom = GameConfig.CameraDefaultZoom;
-                _camera.Position = ConstrainCameraPosition(_defaultCameraPosition);
-                QuantizeCameraPosition();
-                Debug.Log($"[CameraController] SHIFT+MiddleClick reset zoom={_camera.RawZoom} positionX={_camera.Position.X} positionY={_camera.Position.Y}");
+                SetZoomPreservingFocus(GameConfig.CameraDefaultZoom, "SHIFT+MiddleClick reset");
                 return;
             }
 
@@ -121,15 +127,16 @@ namespace PitHero.ECS.Components
             if (wheelDelta == 0)
                 return;
 
-            // SHIFT + scroll: camera zoom only
-            if (shiftDown)
-            {
-                HandleCameraOnlyZoom(wheelDelta);
-            }
             // CTRL + scroll: window resize
-            else if (ctrlDown)
+            if (ctrlDown)
             {
                 HandleWindowResizeZoom(wheelDelta);
+            }
+            // Plain or SHIFT + scroll: camera zoom. The modifier-less path is skipped while the
+            // pointer is over UI so scrolling a UI list doesn't also zoom the camera underneath.
+            else if (shiftDown || IsPointerOverUI?.Invoke() != true)
+            {
+                HandleCameraOnlyZoom(wheelDelta);
             }
         }
 
@@ -267,9 +274,9 @@ namespace PitHero.ECS.Components
             var currentMousePosition = Input.ScaledMousePosition;
             bool shiftDown = Input.IsKeyDown(Keys.LeftShift) || Input.IsKeyDown(Keys.RightShift);
 
-            if (Input.RightMouseButtonPressed && IsMouseInsideWindow())
+            if (Input.MiddleMouseButtonPressed && IsMouseInsideWindow())
             {
-                // Do not start panning if this press is used for SHIFT+Right-Click reset
+                // Do not start panning if this press is used for SHIFT+Middle-Click reset
                 if (shiftDown)
                 {
                     _isPanning = false;
@@ -278,16 +285,16 @@ namespace PitHero.ECS.Components
 
                 _isPanning = true;
                 _lastMousePosition = currentMousePosition;
-                
+
                 // Switch to manual control mode
                 SwitchToManualControl();
             }
-            else if (Input.RightMouseButtonReleased)
+            else if (Input.MiddleMouseButtonReleased)
             {
                 _isPanning = false;
             }
 
-            if (_isPanning && Input.RightMouseButtonDown)
+            if (_isPanning && Input.MiddleMouseButtonDown)
             {
                 var mouseDelta = currentMousePosition - _lastMousePosition;
                 var panDelta = -mouseDelta * GameConfig.CameraPanSpeed / _camera.RawZoom;
@@ -305,8 +312,68 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
+        /// Smoothly scrolls the camera while arrow keys or WASD are held — an alternative panning
+        /// method to the middle-mouse drag. Speed ramps from the starting to the top pan speed the
+        /// longer keys are held continuously, so long trips get faster. Skipped while SHIFT/CTRL are
+        /// held so modifier-based shortcuts (e.g. SHIFT+S) and zoom controls don't also pan the camera.
+        /// </summary>
+        private void HandleKeyboardPanInput()
+        {
+            if (Input.IsKeyDown(Keys.LeftShift) || Input.IsKeyDown(Keys.RightShift) ||
+                Input.IsKeyDown(Keys.LeftControl) || Input.IsKeyDown(Keys.RightControl))
+            {
+                _keyboardPanHeldTime = 0f;
+                _keyboardPanRemainder = Vector2.Zero;
+                return;
+            }
+
+            var direction = Vector2.Zero;
+            if (Input.IsKeyDown(Keys.Left) || Input.IsKeyDown(Keys.A))
+                direction.X -= 1f;
+            if (Input.IsKeyDown(Keys.Right) || Input.IsKeyDown(Keys.D))
+                direction.X += 1f;
+            if (Input.IsKeyDown(Keys.Up) || Input.IsKeyDown(Keys.W))
+                direction.Y -= 1f;
+            if (Input.IsKeyDown(Keys.Down) || Input.IsKeyDown(Keys.S))
+                direction.Y += 1f;
+
+            if (direction == Vector2.Zero)
+            {
+                _keyboardPanHeldTime = 0f;
+                _keyboardPanRemainder = Vector2.Zero;
+                return;
+            }
+
+            direction.Normalize();
+            SwitchToManualControl();
+
+            // Accelerate from starting to top speed over the ramp duration while keys stay held
+            _keyboardPanHeldTime += Time.DeltaTime;
+            var ramp = MathHelper.Clamp(_keyboardPanHeldTime / GameConfig.CameraKeyboardPanAccelSeconds, 0f, 1f);
+            var speed = MathHelper.Lerp(GameConfig.CameraKeyboardPanSpeed, GameConfig.CameraKeyboardPanMaxSpeed, ramp);
+
+            // Divide by zoom so on-screen scroll speed stays consistent at every zoom level.
+            // Movement is released only in whole screen-pixel steps (banking the fractional part
+            // in a remainder) so the camera never lands on sub-pixel positions mid-scroll, which
+            // reads as blur/shimmer. At 1x zoom this is exactly integer world-position snapping.
+            float pixelStep = 1f / _camera.RawZoom; // world units per screen pixel
+            var desired = direction * speed * Time.DeltaTime / _camera.RawZoom + _keyboardPanRemainder;
+            var applied = new Vector2(
+                (float)System.Math.Truncate(desired.X / pixelStep) * pixelStep,
+                (float)System.Math.Truncate(desired.Y / pixelStep) * pixelStep);
+            _keyboardPanRemainder = desired - applied;
+            _manualControlTimer = 0f;
+
+            if (applied == Vector2.Zero)
+                return;
+
+            _camera.Position = ConstrainCameraPosition(_camera.Position + applied);
+            QuantizeCameraPosition();
+        }
+
+        /// <summary>
         /// Returns true when the window has OS focus and the raw cursor is within the client area.
-        /// Used to gate the start of right-mouse panning so scrolling doesn't begin while the
+        /// Used to gate the start of middle-mouse panning so scrolling doesn't begin while the
         /// cursor is outside the game window.
         /// </summary>
         private static bool IsMouseInsideWindow()
@@ -457,13 +524,27 @@ namespace PitHero.ECS.Components
         /// </summary>
         public void ResetZoomToDefault()
         {
+            SetZoomPreservingFocus(GameConfig.CameraDefaultZoom, "ResetZoomToDefault");
+        }
+
+        /// <summary>
+        /// Applies the half-window default zoom while keeping the camera centered on the world
+        /// position it is currently looking at (clamped to the new zoom's bounds).
+        /// </summary>
+        public void ApplyHalfWindowZoom()
+        {
+            SetZoomPreservingFocus(GameConfig.CameraHalfSizeWindowZoom, "ApplyHalfWindowZoom");
+        }
+
+        private void SetZoomPreservingFocus(float zoom, string logContext)
+        {
             if (_camera == null)
                 return;
             var focus = _camera.Position;
-            _camera.RawZoom = GameConfig.CameraDefaultZoom;
+            _camera.RawZoom = zoom;
             _camera.Position = ConstrainCameraPosition(focus);
             QuantizeCameraPosition();
-            Debug.Log($"[CameraController] ResetZoomToDefault zoom={_camera.RawZoom} positionX={_camera.Position.X} positionY={_camera.Position.Y}");
+            Debug.Log($"[CameraController] {logContext} zoom={_camera.RawZoom} positionX={_camera.Position.X} positionY={_camera.Position.Y}");
         }
 
         /// <summary>

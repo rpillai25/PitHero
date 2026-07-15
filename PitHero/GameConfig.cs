@@ -151,10 +151,13 @@ namespace PitHero
         public const float CameraDefaultZoom = 1f; // default zoom level
         public const float CameraMinimumZoom = 0.5f; // can't zoom out past default for normal maps
         public const float CameraMaximumZoom = 3f; // can zoom in really close
-        public const float CameraHalfSizeWindowZoom = 1.5f; // default zoom applied automatically when switching to Half Size window (4 zoom-slider levels in from 1x)
+        public const float CameraHalfSizeWindowZoom = 1.25f; // default zoom applied automatically when switching to Half Size window (2 zoom-slider levels in from 1x)
         public const float CameraMinimumZoomLargeMap = 0.25f; // can zoom out to 0.5x for large maps (clean divisor)
         public const float CameraZoomSpeed = 0.001f; // zoom sensitivity per mouse wheel notch
         public const float CameraPanSpeed = 1f; // pan speed multiplier
+        public const float CameraKeyboardPanSpeed = 300f; // starting screen pixels per second scrolled when an arrow/WASD key is first held
+        public const float CameraKeyboardPanMaxSpeed = 1200f; // top screen pixels per second reached after holding pan keys continuously
+        public const float CameraKeyboardPanAccelSeconds = 1.5f; // seconds of continuous key-hold to ramp pan speed from starting to top
         public const float CameraFollowLerpSpeed = 5f; // speed at which camera lerps to hero position
         public const float CameraManualControlTimeout = 7f; // seconds of inactivity before auto-following resumes (paused when player interacts with selectables)
         public const bool CameraAutoScrollToHeroDefault = true; // default value for auto-scroll to hero setting

@@ -1300,6 +1300,7 @@ namespace PitHero.UI
 
         /// <summary>
         /// Processes keyboard shortcut presses and dispatches to the appropriate UI actions.
+        /// Letter shortcuts require SHIFT; bare letters are reserved for WASD camera panning.
         /// </summary>
         private void HandleKeyboardShortcuts()
         {
@@ -1314,31 +1315,37 @@ namespace PitHero.UI
             bool JustPressed(Microsoft.Xna.Framework.Input.Keys key)
                 => currentKeyState.IsKeyDown(key) && !_prevKeyboardState.IsKeyDown(key);
 
-            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.R))
+            // Letter shortcuts require SHIFT so bare WASD keys stay free for camera panning
+            bool shiftDown = currentKeyState.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.LeftShift)
+                          || currentKeyState.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.RightShift);
+            bool ShortcutPressed(Microsoft.Xna.Framework.Input.Keys key)
+                => shiftDown && JustPressed(key);
+
+            if (ShortcutPressed(Microsoft.Xna.Framework.Input.Keys.R))
                 _replenishUI?.TriggerReplenish();
 
-            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.S))
+            if (ShortcutPressed(Microsoft.Xna.Framework.Input.Keys.S))
                 _stopAdventuringUI?.TriggerToggle();
 
-            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.F))
+            if (ShortcutPressed(Microsoft.Xna.Framework.Input.Keys.F))
                 _fastFUI?.TriggerToggle();
 
-            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.E))
+            if (ShortcutPressed(Microsoft.Xna.Framework.Input.Keys.E))
                 ToggleSettingsVisibility();
 
-            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.H))
+            if (ShortcutPressed(Microsoft.Xna.Framework.Input.Keys.H))
                 _heroUI?.TriggerToggle();
 
-            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.I))
+            if (ShortcutPressed(Microsoft.Xna.Framework.Input.Keys.I))
                 _heroUI?.OpenToInventoryTab();
 
-            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.N))
+            if (ShortcutPressed(Microsoft.Xna.Framework.Input.Keys.N))
                 _heroUI?.OpenToHeroInfoTab();
 
-            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.B))
+            if (ShortcutPressed(Microsoft.Xna.Framework.Input.Keys.B))
                 _heroUI?.OpenToBehaviorTab();
 
-            if (JustPressed(Microsoft.Xna.Framework.Input.Keys.M))
+            if (ShortcutPressed(Microsoft.Xna.Framework.Input.Keys.M))
                 _monsterUI?.TriggerToggle();
 
             if (JustPressed(Microsoft.Xna.Framework.Input.Keys.Tab))

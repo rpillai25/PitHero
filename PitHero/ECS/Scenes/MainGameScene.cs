@@ -56,6 +56,7 @@ namespace PitHero.ECS.Scenes
         private bool _wasInBuildingMode;
         private bool _wasInFarmMode;
         private bool _savedFarmAutoScroll;
+        private bool _farmModeRestoreHalfZoom;
         private SeedPlantingModeOverlay _seedModeOverlay;
         private bool _wasInSeedMode;
         private bool _wasInRemoveCropsMode;
@@ -134,6 +135,8 @@ namespace PitHero.ECS.Scenes
             var cameraEntity = CreateEntity("camera-controller");
             cameraEntity.AddComponent(Camera);
             _cameraController = cameraEntity.AddComponent(new CameraControllerComponent());
+            // Delegate reads _uiStage at call time, so it is safe to wire before the stage exists
+            _cameraController.IsPointerOverUI = () => _uiStage != null && _uiStage.Hit(_uiStage.GetMousePosition()) != null;
 
             // Load HUD fonts (normal, 2x, 4x for shrink levels)
             _hudFontNormal = Content.LoadBitmapFont(GameConfig.FontPathHud);
@@ -2167,6 +2170,7 @@ namespace PitHero.ECS.Scenes
                     // and default zoom while the farm UI is open; OnUIWindowClosing re-applies
                     // the player's half-size preference on dismissal.
                     bool wasHalfSize = WindowManager.IsHalfHeightMode();
+                    _farmModeRestoreHalfZoom = wasHalfSize;
                     UIWindowManager.OnUIWindowOpening();
                     if (wasHalfSize)
                         _cameraController?.ResetZoomToDefault();
@@ -2181,6 +2185,11 @@ namespace PitHero.ECS.Scenes
                 else
                 {
                     UIWindowManager.OnUIWindowClosing();
+                    // Restore the half-window default zoom that was reset when the farm UI opened
+                    // (skip if the persistent size changed to Normal while the farm UI was open)
+                    if (_farmModeRestoreHalfZoom && WindowManager.IsHalfHeightMode())
+                        _cameraController?.ApplyHalfWindowZoom();
+                    _farmModeRestoreHalfZoom = false;
                     pauseService?.SetFarmModePause(false);
                     Core.Services.GetService<Services.CropGrowthService>()?.SetCropsVisible(true);
                     Core.Services.GetService<Services.FarmTaskCoordinator>()?.RescanForPlanting();
