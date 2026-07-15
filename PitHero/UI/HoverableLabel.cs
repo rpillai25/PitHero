@@ -12,6 +12,7 @@ namespace PitHero.UI
         private readonly string _tooltipText;
         private readonly Stage _stage;
         private Window _tooltipWindow;
+        private bool _hovered;
 
         public HoverableLabel(string text, Skin skin, string styleName, string tooltipText, Stage stage)
             : base(text, skin, styleName)
@@ -41,6 +42,7 @@ namespace PitHero.UI
 
         void IInputListener.OnMouseEnter()
         {
+            _hovered = true;
             if (_tooltipWindow == null) return;
             PositionTooltip(_stage.GetMousePosition());
             _tooltipWindow.SetVisible(true);
@@ -49,13 +51,33 @@ namespace PitHero.UI
 
         void IInputListener.OnMouseMoved(Vector2 mousePos)
         {
-            if (_tooltipWindow == null || !_tooltipWindow.IsVisible()) return;
-            PositionTooltip(_stage.GetMousePosition());
+            // Nez only dispatches this while a mouse button is held (drag tracking), so the
+            // per-frame follow happens in Draw instead.
         }
 
         void IInputListener.OnMouseExit()
         {
+            _hovered = false;
             _tooltipWindow?.SetVisible(false);
+        }
+
+        public override void Draw(Batcher batcher, float parentAlpha)
+        {
+            base.Draw(batcher, parentAlpha);
+
+            if (_tooltipWindow == null) return;
+
+            // Hide whenever the label's own hierarchy is invisible (e.g. settings window closed)
+            if (!IsVisible())
+            {
+                _tooltipWindow.SetVisible(false);
+                _hovered = false;
+                return;
+            }
+
+            // Follow the cursor each frame while hovered
+            if (_hovered && _tooltipWindow.IsVisible())
+                PositionTooltip(_stage.GetMousePosition());
         }
 
         private void PositionTooltip(Vector2 mousePos)
