@@ -2163,6 +2163,13 @@ namespace PitHero.ECS.Scenes
             {
                 if (inFarmMode)
                 {
+                    // Farm work is easier at full window size — temporarily restore full size
+                    // and default zoom while the farm UI is open; OnUIWindowClosing re-applies
+                    // the player's half-size preference on dismissal.
+                    bool wasHalfSize = WindowManager.IsHalfHeightMode();
+                    UIWindowManager.OnUIWindowOpening();
+                    if (wasHalfSize)
+                        _cameraController?.ResetZoomToDefault();
                     pauseService?.SetFarmModePause(true);
                     Core.Services.GetService<Services.CropGrowthService>()?.SetCropsVisible(false);
                     _savedFarmAutoScroll = UIWindowManager.AutoScrollToHeroEnabled;
@@ -2173,6 +2180,7 @@ namespace PitHero.ECS.Scenes
                 }
                 else
                 {
+                    UIWindowManager.OnUIWindowClosing();
                     pauseService?.SetFarmModePause(false);
                     Core.Services.GetService<Services.CropGrowthService>()?.SetCropsVisible(true);
                     Core.Services.GetService<Services.FarmTaskCoordinator>()?.RescanForPlanting();

@@ -452,6 +452,21 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
+        /// Resets camera zoom to the default while keeping the camera centered on the world
+        /// position it is currently looking at (clamped to the new zoom's bounds).
+        /// </summary>
+        public void ResetZoomToDefault()
+        {
+            if (_camera == null)
+                return;
+            var focus = _camera.Position;
+            _camera.RawZoom = GameConfig.CameraDefaultZoom;
+            _camera.Position = ConstrainCameraPosition(focus);
+            QuantizeCameraPosition();
+            Debug.Log($"[CameraController] ResetZoomToDefault zoom={_camera.RawZoom} positionX={_camera.Position.X} positionY={_camera.Position.Y}");
+        }
+
+        /// <summary>
         /// Configure zoom limits based on the map being loaded
         /// </summary>
         public void ConfigureZoomForMap(string mapPath)
