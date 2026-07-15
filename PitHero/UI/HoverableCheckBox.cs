@@ -4,22 +4,22 @@ using Nez.UI;
 
 namespace PitHero.UI
 {
-    /// <summary>Label that shows a windowed tooltip at the mouse cursor when hovered.</summary>
-    public class HoverableLabel : Label, IInputListener
+    /// <summary>A CheckBox that shows a windowed tooltip at the mouse cursor when hovered,
+    /// matching the HoverableTextButton / HoverableLabel tooltip styling.</summary>
+    public class HoverableCheckBox : CheckBox
     {
         private static readonly Color BrownFontColor = new Color(71, 36, 7);
 
         private readonly string _tooltipText;
         private readonly Stage _stage;
         private Window _tooltipWindow;
-        private bool _hovered;
+        private bool _wasMouseOver;
 
-        public HoverableLabel(string text, Skin skin, string styleName, string tooltipText, Stage stage)
-            : base(text, skin, styleName)
+        public HoverableCheckBox(string text, Skin skin, string tooltipText, Stage stage)
+            : base(text, skin, "ph-default")
         {
             _tooltipText = tooltipText;
             _stage = stage;
-            SetTouchable(Touchable.Enabled);
 
             if (_stage != null && !string.IsNullOrEmpty(_tooltipText))
                 BuildTooltipWindow(skin);
@@ -33,32 +33,11 @@ namespace PitHero.UI
             _tooltipWindow.SetKeepWithinStage(false);
             _tooltipWindow.SetColor(GameConfig.TransparentMenu);
 
-            var label = new Label(_tooltipText, new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = BrownFontColor });
+            var label = new Label(_tooltipText, new LabelStyle { Font = Nez.Graphics.Instance.BitmapFont, FontColor = BrownFontColor });
             _tooltipWindow.Add(label).Pad(6f);
             _tooltipWindow.Pack();
             _tooltipWindow.SetVisible(false);
             _stage.AddElement(_tooltipWindow);
-        }
-
-        void IInputListener.OnMouseEnter()
-        {
-            _hovered = true;
-            if (_tooltipWindow == null) return;
-            PositionTooltip(_stage.GetMousePosition());
-            _tooltipWindow.SetVisible(true);
-            _tooltipWindow.ToFront();
-        }
-
-        void IInputListener.OnMouseMoved(Vector2 mousePos)
-        {
-            // Nez only dispatches this while a mouse button is held (drag tracking), so the
-            // per-frame follow happens in Draw instead.
-        }
-
-        void IInputListener.OnMouseExit()
-        {
-            _hovered = false;
-            _tooltipWindow?.SetVisible(false);
         }
 
         public override void Draw(Batcher batcher, float parentAlpha)
@@ -67,23 +46,32 @@ namespace PitHero.UI
 
             if (_tooltipWindow == null) return;
 
-            // Hide whenever the label's own hierarchy is invisible (e.g. settings window closed)
+            // Hide whenever the checkbox's own hierarchy is invisible
             if (!IsVisible())
             {
                 _tooltipWindow.SetVisible(false);
-                _hovered = false;
+                _wasMouseOver = false;
                 return;
             }
 
-            // Follow the cursor each frame while hovered
-            if (_hovered && _tooltipWindow.IsVisible())
+            bool isOver = _mouseOver;
+
+            if (!isOver && _wasMouseOver)
+            {
+                _tooltipWindow.SetVisible(false);
+            }
+            else if (isOver)
+            {
                 PositionTooltip(_stage.GetMousePosition());
+                _tooltipWindow.SetVisible(true);
+                _tooltipWindow.ToFront();
+            }
+
+            _wasMouseOver = isOver;
         }
 
         private void PositionTooltip(Vector2 mousePos)
         {
-            if (_tooltipWindow == null || _stage == null) return;
-
             float w = _tooltipWindow.GetWidth();
             float h = _tooltipWindow.GetHeight();
             float sw = _stage.GetWidth();
@@ -97,11 +85,5 @@ namespace PitHero.UI
 
             _tooltipWindow.SetPosition(x, y);
         }
-
-        bool IInputListener.OnLeftMousePressed(Vector2 mousePos) => false;
-        bool IInputListener.OnRightMousePressed(Vector2 mousePos) => false;
-        void IInputListener.OnLeftMouseUp(Vector2 mousePos) { }
-        void IInputListener.OnRightMouseUp(Vector2 mousePos) { }
-        bool IInputListener.OnMouseScrolled(int mouseWheelDelta) => false;
     }
 }

@@ -246,7 +246,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 14;
+        public const int CurrentVersion = 15;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -457,6 +457,16 @@ namespace PitHero.Services
         // Defeated Monsters
         /// <summary>Bare enum names of monster types the player has defeated in battle (version 11+).</summary>
         public List<string> DefeatedMonsterTypes;
+
+        // Auto Shop Options (version 15+)
+        /// <summary>Whether automatic seed purchasing is enabled (version 15+).</summary>
+        public bool AutomateSeedPurchases = false;
+
+        /// <summary>Gold buffer threshold: no purchase fires when Funds - price &lt; this value (version 15+).</summary>
+        public int AutoShopGoldBuffer = 200;
+
+        /// <summary>The save file version number read during Recover; 0 for a brand-new in-memory instance.</summary>
+        public int LoadedFileVersion;
 
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
@@ -814,6 +824,10 @@ namespace PitHero.Services
             // 29. Pit tier (version 13+)
             writer.Write(PitTier);
             writer.Write(TierBaseLevel);
+
+            // 30. Auto shop options (v15+)
+            writer.Write(AutomateSeedPurchases);
+            writer.Write(AutoShopGoldBuffer);
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -821,6 +835,7 @@ namespace PitHero.Services
         {
             // 1. File Version
             int fileVersion = reader.ReadInt();
+            LoadedFileVersion = fileVersion;
 
             // 2. Total Time Played
             TotalTimePlayed = reader.ReadFloat();
@@ -1260,6 +1275,14 @@ namespace PitHero.Services
                 // Normalise PitLevel to biome-local range so the rest of the game sees [1..MaxBiomeLevel].
                 PitLevel = BiomeProgressionConfig.GetDisplayedLevelForDepth(PitLevel);
             }
+
+            // 30. Auto shop options (version 15+)
+            if (fileVersion >= 15)
+            {
+                AutomateSeedPurchases = reader.ReadBool();
+                AutoShopGoldBuffer    = reader.ReadInt();
+            }
+            // else keep defaults: AutomateSeedPurchases = false, AutoShopGoldBuffer = 200
         }
 
         /// <summary>Writes a Color as four individual int components (R, G, B, A).</summary>

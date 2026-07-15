@@ -62,6 +62,7 @@ Game1 (Nez.Core)
 - Use `Nez.Time.DeltaTime` for all timing (respects `timeScale` for pausing); use `Time.TotalTime` or `Time.UnscaledDeltaTime` for absolute time
 - Use `Nez.Random` instead of `System.Random`
 - Register/retrieve services: `Core.Services.AddService<T>()` / `Core.Services.GetService<T>()`
+- **Every service registered in `MainGameScene` (`Begin()` or `LoadMap`) needs a matching `RemoveService` in `MainGameScene.Unload()`** — loading a save tears down the scene and re-runs `Begin()`; a missing removal crashes `AddService` with a duplicate-key `ArgumentException`. Also mind registration order within `Begin()`: a service that captures another in its constructor must be registered after its dependency (e.g. `AutoSeedPurchaseService` after `FarmTaskCoordinator`)
 - Add GOAP conditions to `GoapConstants` for strong typing
 - Keep `Program.cs` as standard Nez boilerplate
 - Components inherit from `Nez.Component`; rendering via `Nez.RenderableComponent` (or custom)

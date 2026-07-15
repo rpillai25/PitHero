@@ -336,7 +336,12 @@ namespace PitHero.ECS.Components
                 }
                 else
                 {
-                    _coordinator.ReportBlocked(in _currentAction);
+                    // DestroyCrop tiles are released back to the queue (retried later) rather than
+                    // added to the building-change retry list which is only for till actions.
+                    if (_currentAction.Type == FarmActionType.DestroyCrop)
+                        _coordinator.ReleaseDestroyAction(in _currentAction);
+                    else
+                        _coordinator.ReportBlocked(in _currentAction);
                     _hasAction = false;
                 }
                 return;
@@ -424,6 +429,32 @@ namespace PitHero.ECS.Components
                     CurrentState = FarmingMonsterState.PerformHarvest;
                     break;
                 }
+                case FarmActionType.DestroyCrop:
+                {
+                    // Revalidate: crop still a swap candidate (plan may have been re-placed same-type,
+                    // or the crop may have grown past the threshold while walking).
+                    var cropPlanning = Core.Services.GetService<CropPlantingService>();
+                    var cropTypeAtTile = _cropGrowthService?.GetCropType(tile);
+                    bool planMatches = cropTypeAtTile.HasValue
+                        && cropPlanning != null
+                        && cropPlanning.GetPlanType(tile) == cropTypeAtTile.Value;
+                    float arrivalProgress = _cropGrowthService != null
+                        ? _cropGrowthService.GetGrowthProgress(tile)
+                        : -1f;
+                    bool stillValid = cropTypeAtTile.HasValue
+                        && !planMatches
+                        && arrivalProgress >= 0f
+                        && arrivalProgress < GameConfig.CropSwapDestroyProgressThreshold;
+                    if (!stillValid)
+                    {
+                        _coordinator.CompleteDestroyAction(in _currentAction);
+                        _hasAction = false;
+                        CurrentState = FarmingMonsterState.Idle;
+                        return;
+                    }
+                    CurrentState = FarmingMonsterState.PerformDestroyCrop;
+                    break;
+                }
                 default:
                     _coordinator.CompleteAction(in _currentAction);
                     _hasAction = false;
@@ -471,6 +502,65 @@ namespace PitHero.ECS.Components
             HoeAnimator?.SetEnabled(false);
         }
 
+        // ---------------------------------------------------------------- PerformDestroyCrop
+
+        private void PerformDestroyCrop_Enter()
+        {
+            _facing?.SetFacing(_standRight ? Direction.Left : Direction.Right);
+
+            float proficiencyScale = 1f - GameConfig.TillProficiencySpeedStep * (_monster.FarmingProficiency - 1);
+            _tillDuration = GameConfig.TillBaseDurationSeconds * proficiencyScale;
+
+            if (HoeAnimator != null)
+            {
+                float quadrant = GameConfig.TileSize / 4f;
+                HoeAnimator.SetLocalOffset(new Vector2(_standRight ? -quadrant : quadrant, quadrant));
+                HoeAnimator.FlipX = !_standRight;
+                if (BodyAnimator != null)
+                    HoeAnimator.SetLayerDepth(BodyAnimator.LayerDepth - 0.0001f);
+                HoeAnimator.SetEnabled(true);
+                HoeAnimator.Play("ForkedHoe", Nez.Sprites.SpriteAnimator.LoopMode.Loop);
+            }
+        }
+
+        private void PerformDestroyCrop_Tick()
+        {
+            if (elapsedTimeInState < _tillDuration)
+                return;
+
+            var tile = _currentAction.TargetTile;
+
+            // Re-check whether this tile still needs a destroy. If a same-type plan was placed
+            // while we were hoeing, leave the crop in place and just complete the action.
+            var cropPlanning = Core.Services.GetService<CropPlantingService>();
+            var cropTypeAtTile = _cropGrowthService?.GetCropType(tile);
+            bool planNowMatches = cropTypeAtTile.HasValue
+                && cropPlanning != null
+                && cropPlanning.GetPlanType(tile) == cropTypeAtTile.Value;
+
+            if (!planNowMatches && cropTypeAtTile.HasValue)
+            {
+                var tileState = Core.Services.GetService<TileStateService>();
+                _cropGrowthService?.RemoveCrop(tile);
+                tileState?.ClearFlag(tile, TileStateFlag.CropGrown);
+                tileState?.ClearFlag(tile, TileStateFlag.CropGrowing);
+                tileState?.ClearFlag(tile, TileStateFlag.Wet);
+                _wetTileService?.ClearWet(tile);
+            }
+
+            _coordinator.CompleteDestroyAction(in _currentAction);
+            _hasAction = false;
+            // Always notify: if crop was destroyed this schedules the waiting plan; if abort,
+            // HasCrop guard in NotifyPlanAddedOnTilledTile makes it a no-op.
+            _coordinator.NotifyPlanAddedOnTilledTile(tile);
+            CurrentState = FarmingMonsterState.Idle;
+        }
+
+        private void PerformDestroyCrop_Exit()
+        {
+            HoeAnimator?.SetEnabled(false);
+        }
+
         // ---------------------------------------------------------------- PerformPlant
 
         private void PerformPlant_Enter()
@@ -486,11 +576,29 @@ namespace PitHero.ECS.Components
 
             var tile = _currentAction.TargetTile;
             var cropPlanting = Core.Services.GetService<CropPlantingService>();
-            var cropType = cropPlanting?.GetPlanType(tile) ?? Farming.CropType.Wheat;
+            var planType = cropPlanting?.GetPlanType(tile);
 
-            // Load the crops atlas to get crop sprites
+            // Abort if the plan was removed while we were walking or waiting
+            if (!planType.HasValue)
+            {
+                _coordinator.CompletePlantAction(in _currentAction);
+                _hasAction = false;
+                CurrentState = FarmingMonsterState.Idle;
+                return;
+            }
+
+            // Abort if seeds ran out before we got here (another worker may have consumed them)
+            if (cropPlanting == null || !cropPlanting.ConsumeSeed(planType.Value))
+            {
+                _coordinator.CompletePlantAction(in _currentAction);
+                _hasAction = false;
+                CurrentState = FarmingMonsterState.Idle;
+                return;
+            }
+
+            // Load the crops atlas to get crop sprites; plan is kept after planting (permanent blueprint)
             var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
-            _cropGrowthService?.PlantCrop(tile, cropType, Entity.Scene, atlas);
+            _cropGrowthService?.PlantCrop(tile, planType.Value, Entity.Scene, atlas);
 
             _coordinator.CompletePlantAction(in _currentAction);
             _hasAction = false;
@@ -818,24 +926,41 @@ namespace PitHero.ECS.Components
         {
             EnsureCropsAtlas();
             var tileState = Core.Services.GetService<TileStateService>();
+            var cropPlanting = Core.Services.GetService<CropPlantingService>();
 
             if (Util.CropConfig.IsRepeatHarvest(_harvestCropType))
             {
-                int revertFrame = Util.CropConfig.GetRevertFrame(_harvestCropType);
-                float mult = Util.CropConfig.GetRegrowthRateMultiplier(_harvestCropType);
-                _cropGrowthService?.RevertCropForRegrowth(tile, revertFrame, mult, _cropsAtlas);
-                tileState?.ClearFlag(tile, TileStateFlag.CropGrown);
-                tileState?.SetFlag(tile, TileStateFlag.CropGrowing);
-                // Soil dries out; the crop must be re-watered to regrow (re-enters the water queue)
-                tileState?.ClearFlag(tile, TileStateFlag.Wet);
-                _wetTileService?.ClearWet(tile);
+                // Only revert for regrowth when the plan still designates the same crop type.
+                // A different-type plan or no plan means the next cycle should be a swap/removal;
+                // taking the removal branch here ("after next harvest") is the cheapest path.
+                var planType = cropPlanting?.GetPlanType(tile);
+                if (planType.HasValue && planType.Value == _harvestCropType)
+                {
+                    int revertFrame = Util.CropConfig.GetRevertFrame(_harvestCropType);
+                    float mult = Util.CropConfig.GetRegrowthRateMultiplier(_harvestCropType);
+                    _cropGrowthService?.RevertCropForRegrowth(tile, revertFrame, mult, _cropsAtlas);
+                    tileState?.ClearFlag(tile, TileStateFlag.CropGrown);
+                    tileState?.SetFlag(tile, TileStateFlag.CropGrowing);
+                    // Soil dries out; the crop must be re-watered to regrow (re-enters the water queue)
+                    tileState?.ClearFlag(tile, TileStateFlag.Wet);
+                    _wetTileService?.ClearWet(tile);
+                }
+                else
+                {
+                    // Plan absent or changed — remove the repeat crop and schedule whatever comes next
+                    _cropGrowthService?.RemoveCrop(tile);
+                    tileState?.ClearFlag(tile, TileStateFlag.CropGrown);
+                    tileState?.ClearFlag(tile, TileStateFlag.CropGrowing);
+                    _coordinator.NotifyPlanAddedOnTilledTile(tile);
+                }
             }
             else
             {
-                // Regular crops are permanently removed — clean tilled slate for replanting
+                // One-shot crops are permanently removed — clean tilled slate for replanting
                 _cropGrowthService?.RemoveCrop(tile);
                 tileState?.ClearFlag(tile, TileStateFlag.CropGrown);
                 tileState?.ClearFlag(tile, TileStateFlag.CropGrowing);
+                _coordinator.NotifyPlanAddedOnTilledTile(tile);
             }
         }
 
@@ -1008,6 +1133,9 @@ namespace PitHero.ECS.Components
                     break;
                 case FarmActionType.Harvest:
                     _coordinator.ReleaseHarvestAction(in _currentAction);
+                    break;
+                case FarmActionType.DestroyCrop:
+                    _coordinator.ReleaseDestroyAction(in _currentAction);
                     break;
                 default:
                     _coordinator.ReleaseAction(in _currentAction);

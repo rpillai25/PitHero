@@ -300,6 +300,7 @@ namespace PitHero
         public const string ConsoleWelcomePhrase3 = "ConsoleWelcomePhrase3";
         public const string TabSeeds = "TabSeeds";
         public const string SecondChanceOwnedCount = "SecondChanceOwnedCount";
+        public const string SecondChanceNeedCount = "SecondChanceNeedCount";
         public const string ConsoleSeedsFound = "ConsoleSeedsFound";
         public const string AddMonsterWindowTitle = "AddMonsterWindowTitle";
         public const string AddMonsterRemainingSpace = "AddMonsterRemainingSpace";
@@ -308,5 +309,10 @@ namespace PitHero
         public const string AddMonsterConfirmPrompt = "AddMonsterConfirmPrompt";
         public const string ConsoleTrapTriggered = "ConsoleTrapTriggered";
         public const string ConsoleTrapDisarmed = "ConsoleTrapDisarmed";
+        public const string TabAutoShop = "TabAutoShop";
+        public const string SettingsAutomateSeedPurchases = "SettingsAutomateSeedPurchases";
+        public const string SettingsAutoShopGoldBuffer = "SettingsAutoShopGoldBuffer";
+        public const string SettingsAutomateSeedPurchasesTooltip = "SettingsAutomateSeedPurchasesTooltip";
+        public const string SettingsAutoShopGoldBufferTooltip = "SettingsAutoShopGoldBufferTooltip";
     }
 }

@@ -289,8 +289,9 @@ namespace PitHero.UI
         /// <summary>Populates the Seeds tab with a 4-per-row grid of purchasable crop seed slots.</summary>
         private void PopulateSeedsTab(Tab tab, Skin skin)
         {
-            var cropsAtlas       = Core.Content?.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
+            var cropsAtlas          = Core.Content?.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
             var cropPlantingService = Core.Services?.GetService<CropPlantingService>();
+            var cropGrowthService   = Core.Services?.GetService<CropGrowthService>();
 
             var grid = new Table();
             grid.Top().Left().Pad(4f);
@@ -306,7 +307,7 @@ namespace PitHero.UI
                 int price       = CropConfig.GetSeedPrice(crop);
                 string tooltip  = cropName + " - " + price + "G";
 
-                var slot = new SeedShopSlot(sprite, crop, cropPlantingService, tooltip);
+                var slot = new SeedShopSlot(sprite, crop, cropPlantingService, cropGrowthService, tooltip);
                 slot.OnBuyClicked += HandleSeedBuyClicked;
 
                 grid.Add(slot).Size(40f, 40f).Pad(2f);
@@ -346,11 +347,27 @@ namespace PitHero.UI
             string shopTitle = GetText(TextType.UI, UITextKey.WindowSecondChanceShop);
             string cropName  = GetText(TextType.UI, CropConfig.GetDisplayNameKey(crop));
 
+            // Outstanding planned demand not yet covered by owned seeds — drives the
+            // "Need: N" row in the quantity dialog (omitted when zero).
+            var cropGrowthService = Core.Services?.GetService<CropGrowthService>();
+            int plannedDeficit = cropGrowthService != null
+                ? cropPlantingService.CountUnplantedPlans(crop, cropGrowthService) - ownedCount
+                : 0;
+            if (plannedDeficit < 0) plannedDeficit = 0;
+
+            // Cap the transaction at both the per-purchase limit and the remaining headroom
+            // below the per-crop inventory cap; at cap there is nothing to buy.
+            int headroom = GameConfig.SeedInventoryMaxPerCrop - ownedCount;
+            int maxQty = GameConfig.SeedShopMaxPurchaseQuantity < headroom
+                ? GameConfig.SeedShopMaxPurchaseQuantity
+                : headroom;
+            if (maxQty <= 0) return;
+
             var qtyDialog = new VaultBuyQuantityDialog(
                 shopTitle,
                 cropName,
                 unitPrice,
-                9,
+                maxQty,
                 _skin,
                 onConfirm: (qty) =>
                 {
@@ -358,10 +375,12 @@ namespace PitHero.UI
                     if (gameState.Funds < totalPrice) return;
                     gameState.Funds -= totalPrice;
                     cropPlantingService.AddSeeds(crop, qty);
+                    Core.Services?.GetService<FarmTaskCoordinator>()?.RescanForPlanting();
                 },
                 onCancel: null,
                 ownedCount: ownedCount,
-                availableFunds: gameState.Funds);
+                availableFunds: gameState.Funds,
+                plannedCount: plannedDeficit);
             qtyDialog.Show(_stage);
         }
 
@@ -1208,15 +1227,21 @@ namespace PitHero.UI
         /// A single slot in the Seeds shop grid.  Draws the crop's fully-grown sprite, overlays
         /// a live owned-count badge (read each frame so it updates immediately after a purchase),
         /// shows a hover tooltip with crop name and price, and fires OnBuyClicked on left-mouse-up.
+        /// When the player has fewer seeds than unplanted plans, the crop sprite gently pulses
+        /// in size to draw attention to the purchase.
         /// </summary>
         private class SeedShopSlot : Element, IInputListener
         {
             // Inventory-slot background drawn at the same translucency as the inventory UI.
-            private static readonly Color SlotBgColor = new Color(255, 255, 255, 100);
-            private readonly Sprite          _sprite;
-            private readonly CropType        _crop;
-            private readonly CropPlantingService _cropService;
-            private readonly SpriteDrawable  _draw;
+            private static readonly Color SlotBgColor       = new Color(255, 255, 255, 100);
+
+            private readonly Sprite   _sprite;
+            private readonly CropType _crop;
+            // Not readonly: the slot is built during Scene.Initialize(), before LoadMap registers
+            // CropGrowthService, so null services are re-resolved lazily on draw.
+            private CropPlantingService _cropService;
+            private CropGrowthService   _cropGrowth;
+            private readonly SpriteDrawable      _draw;
             private SpriteDrawable _background;
             private Sprite _selectBox;
             private bool   _hovered;
@@ -1225,11 +1250,12 @@ namespace PitHero.UI
             /// <summary>Fired when the player left-clicks this slot.</summary>
             public event System.Action<CropType> OnBuyClicked;
 
-            public SeedShopSlot(Sprite sprite, CropType crop, CropPlantingService cropService, string tooltipText)
+            public SeedShopSlot(Sprite sprite, CropType crop, CropPlantingService cropService, CropGrowthService cropGrowth, string tooltipText)
             {
                 _sprite      = sprite;
                 _crop        = crop;
                 _cropService = cropService;
+                _cropGrowth  = cropGrowth;
                 _tooltipText = tooltipText;
                 _draw        = sprite != null ? new SpriteDrawable(sprite) : null;
                 SetTouchable(Touchable.Enabled);
@@ -1249,18 +1275,43 @@ namespace PitHero.UI
 
             public override void Draw(Batcher batcher, float parentAlpha)
             {
+                // Services may not have existed at construction time — resolve lazily.
+                if (_cropService == null)
+                    _cropService = Core.Services?.GetService<CropPlantingService>();
+                if (_cropGrowth == null)
+                    _cropGrowth = Core.Services?.GetService<CropGrowthService>();
+
+                // Resolve live seed count up front so it can drive both the attention pulse and badge.
+                int count = _cropService?.SeedInventory != null
+                    ? _cropService.SeedInventory[(int)_crop]
+                    : 0;
+
+                // Attention pulse when there are more unplanted plans than owned seeds: the crop
+                // sprite gently scales up and down around the slot center.
+                int needed = (_cropService != null && _cropGrowth != null)
+                    ? _cropService.CountUnplantedPlans(_crop, _cropGrowth)
+                    : 0;
+
                 _background?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), SlotBgColor);
 
-                _draw?.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
+                float spriteX = GetX(), spriteY = GetY(), spriteW = GetWidth(), spriteH = GetHeight();
+                if (needed > count)
+                {
+                    float pulse = 1f + GameConfig.SeedShopPulseAmplitude * Mathf.Sin(Time.TotalTime * GameConfig.SeedShopPulseSpeed);
+                    float pw = spriteW * pulse;
+                    float ph = spriteH * pulse;
+                    spriteX += (spriteW - pw) * 0.5f;
+                    spriteY += (spriteH - ph) * 0.5f;
+                    spriteW = pw;
+                    spriteH = ph;
+                }
+                _draw?.Draw(batcher, spriteX, spriteY, spriteW, spriteH, Color.White);
 
                 if (_hovered && _selectBox != null)
                     new SpriteDrawable(_selectBox).Draw(
                         batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
 
-                // Live count from seed inventory (read each frame — auto-updates after purchase)
-                int count = _cropService?.SeedInventory != null
-                    ? _cropService.SeedInventory[(int)_crop]
-                    : 0;
+                // Live count badge (read each frame — auto-updates after purchase)
                 var font = Nez.Graphics.Instance?.BitmapFont;
                 if (font != null)
                 {

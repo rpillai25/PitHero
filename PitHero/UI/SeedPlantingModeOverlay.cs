@@ -48,10 +48,6 @@ namespace PitHero.UI
         private static readonly Point NoTile = new Point(int.MinValue, int.MinValue);
         private Point _lastDragTile = NoTile;
 
-        // ── Growing-crop overlays (shown in all farm sub-modes, separate from plans) ──
-        private readonly System.Collections.Generic.List<Entity> _growingCropOverlays =
-            new System.Collections.Generic.List<Entity>();
-
         // ── Constants ─────────────────────────────────────────────────────────────
         private const float SlotSize   = 40f;
         private const float WinPad     = 16f;
@@ -117,24 +113,23 @@ namespace PitHero.UI
             _lastDragTile = NoTile;
         }
 
-        /// <summary>Creates grayscale world entities for all plans and planted crops. Called when any farm sub-mode is entered.</summary>
+        /// <summary>Creates translucent world entities for all plans. Called when any farm sub-mode is entered.</summary>
         public void ShowPlanVisuals()
         {
             RestorePlanVisuals();
-            RestoreGrowingCropOverlays();
         }
 
-        /// <summary>Destroys grayscale world entities for all plans and planted-crop overlays. Called when all farm sub-modes are exited.</summary>
+        /// <summary>Destroys translucent plan world entities. Called when all farm sub-modes are exited.</summary>
         public void HidePlanVisuals()
         {
             Core.Services.GetService<CropPlantingService>()?.DestroyPlanVisuals();
-            DestroyGrowingCropOverlays();
         }
 
         /// <summary>Called when the player enters remove-crops mode; creates the tile indicator.</summary>
         public void OnEnterRemoveCropsMode()
         {
             _state = PlacementState.Removing;
+            _lastDragTile = NoTile;
             CreateTileIndicator();
         }
 
@@ -200,17 +195,37 @@ namespace PitHero.UI
                     _stackCountLabel.SetVisible(true);
                 }
 
-                // Place crop on valid click / drag
-                var tile = new Point(tileX, tileY);
-                if (Input.LeftMouseButtonDown && tile != _lastDragTile)
+                // Shift-click: delete the plan on a tile without refunding seeds
+                bool shiftHeld = Input.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.LeftShift)
+                              || Input.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.RightShift);
+                if (shiftHeld)
                 {
-                    _lastDragTile = tile;
-                    if (IsValidPlacement(tileX, tileY))
-                        PlaceCrop(tileX, tileY);
+                    var shiftTile = new Point(tileX, tileY);
+                    // Mark the hovered tile as already-dragged so releasing shift with the button
+                    // still held doesn't immediately place a plan on it.
+                    _lastDragTile = shiftTile;
+                    var shiftCropService = Core.Services.GetService<CropPlantingService>();
+                    if (Input.LeftMouseButtonPressed
+                        && shiftCropService != null
+                        && shiftCropService.HasPlan(shiftTile))
+                    {
+                        shiftCropService.RemovePlan(shiftTile); // destroys entity inside RemovePlan; no refund
+                    }
                 }
-                else if (!Input.LeftMouseButtonDown)
+                else
                 {
-                    _lastDragTile = NoTile;
+                    // Place crop on valid click / drag
+                    var tile = new Point(tileX, tileY);
+                    if (Input.LeftMouseButtonDown && tile != _lastDragTile)
+                    {
+                        _lastDragTile = tile;
+                        if (IsValidPlacement(tileX, tileY))
+                            PlaceCrop(tileX, tileY);
+                    }
+                    else if (!Input.LeftMouseButtonDown)
+                    {
+                        _lastDragTile = NoTile;
+                    }
                 }
             }
             else // Removing
@@ -231,12 +246,24 @@ namespace PitHero.UI
                             : new Color(255, 0, 0, 128);
                 }
 
-                // Single click to remove (no drag)
-                if (Input.LeftMouseButtonPressed && hasPlan)
+                // Shift + held click: drag-remove plans continuously across tiles.
+                // Plain click: remove a single plan per press. No seed refund either way.
+                bool shiftHeld = Input.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.LeftShift)
+                              || Input.IsKeyDown(Microsoft.Xna.Framework.Input.Keys.RightShift);
+                if (shiftHeld && Input.LeftMouseButtonDown)
                 {
-                    var removed = cropService.RemovePlan(tile);
-                    if (removed.HasValue)
-                        _seedInventory[(int)removed.Value]++;
+                    if (tile != _lastDragTile)
+                    {
+                        _lastDragTile = tile;
+                        if (hasPlan)
+                            cropService.RemovePlan(tile);
+                    }
+                }
+                else
+                {
+                    _lastDragTile = NoTile;
+                    if (Input.LeftMouseButtonPressed && hasPlan)
+                        cropService.RemovePlan(tile);
                 }
             }
         }
@@ -282,8 +309,8 @@ namespace PitHero.UI
         // ── Plan visual helpers ───────────────────────────────────────────────────
 
         /// <summary>
-        /// Recreates world-space grayscale entities for any plans whose entity was destroyed
-        /// on the previous OnExitSeedMode call.  Does not re-register plans with the service.
+        /// Recreates world-space translucent entities for any plans whose entity was destroyed
+        /// on the previous farm-mode exit. Does not re-register plans with the service.
         /// </summary>
         private void RestorePlanVisuals()
         {
@@ -307,49 +334,10 @@ namespace PitHero.UI
                 entity.SetPosition(wx, wy);
                 var renderer = entity.AddComponent(new SpriteRenderer(sprite));
                 renderer.SetRenderLayer(GameConfig.RenderLayerSingleTileObject - 1);
-                renderer.SetMaterial(new Material(new GrayscaleEffect()));
+                renderer.Color = new Color(255, 255, 255, GameConfig.CropPlanPreviewAlpha);
 
                 service.SetPlanEntity(new Microsoft.Xna.Framework.Point(plan.TileX, plan.TileY), entity);
             }
-        }
-
-        /// <summary>
-        /// Spawns grayscale overlays for all actively planted crops so players can identify crop
-        /// types while in any farm planning sub-mode. Destroyed on HidePlanVisuals.
-        /// </summary>
-        private void RestoreGrowingCropOverlays()
-        {
-            DestroyGrowingCropOverlays();
-
-            var cropGrowthService = Core.Services.GetService<CropGrowthService>();
-            if (cropGrowthService == null)
-                return;
-
-            foreach (var kvp in cropGrowthService.GetAllData())
-            {
-                var tile = kvp.Key;
-                var cropType = kvp.Value.Type;
-
-                var sprite = _cropsAtlas.GetSprite(CropConfig.GetFullyGrownSpriteName(cropType));
-                float sprH = sprite != null ? sprite.SourceRect.Height : GameConfig.TileSize;
-                float wx = tile.X * GameConfig.TileSize + GameConfig.TileSize / 2f;
-                float wy = tile.Y * GameConfig.TileSize + GameConfig.TileSize - sprH / 2f;
-
-                var entity = _scene.CreateEntity("growing-crop-overlay-" + tile.X + "-" + tile.Y);
-                entity.SetPosition(wx, wy);
-                var renderer = entity.AddComponent(new SpriteRenderer(sprite));
-                renderer.SetRenderLayer(GameConfig.RenderLayerSingleTileObject - 1);
-                renderer.SetMaterial(new Material(new GrayscaleEffect()));
-
-                _growingCropOverlays.Add(entity);
-            }
-        }
-
-        private void DestroyGrowingCropOverlays()
-        {
-            for (int i = 0; i < _growingCropOverlays.Count; i++)
-                _growingCropOverlays[i]?.Destroy();
-            _growingCropOverlays.Clear();
         }
 
         // ── Inventory window ──────────────────────────────────────────────────────
@@ -388,12 +376,12 @@ namespace PitHero.UI
 
         private void ShowInventoryWindow()
         {
-            // Rebuild slot table every time: skip zero-count crops and show live counts.
+            // Rebuild slot table every time: show all crops with live counts (plans are now free
+            // to place, so zero-seed crops are still selectable for blueprint placement).
             _slotTable.Clear();
             int col = 0;
             for (int i = 0; i < CropTypeInfo.Count; i++)
             {
-                if (_seedInventory[i] <= 0) continue;
                 var cropType = (CropType)i;
                 var sprite   = _cropsAtlas.GetSprite(CropConfig.GetFullyGrownSpriteName(cropType));
                 var slot     = new CropSlotButton(sprite, GetText(CropConfig.GetDisplayNameKey(cropType)), _seedInventory, i);
@@ -441,24 +429,25 @@ namespace PitHero.UI
             if (!readyOrTilled)
                 return false;
 
-            // Reject if a plan already exists or a crop is already planted/growing/grown
-            if (cropService != null && cropService.HasPlan(tile))
-                return false;
-            var cropGrowthService = Core.Services.GetService<CropGrowthService>();
-            if (cropGrowthService != null && cropGrowthService.HasCrop(tile))
+            // Validation looks ONLY at the crop plan, never at real growing crops: plans govern
+            // the future state of the field, and any underlying crop will be destroyed/harvested
+            // before the plan is carried out. Invalid only when the same plan type already exists
+            // here (a no-op); a plan-less tile is fair game even while a crop grows on it, and a
+            // same-type placement over a plan-less crop re-plans it (cancels a pending destroy).
+            var planType = cropService?.GetPlanType(tile);
+            if (planType.HasValue && planType.Value == _selectedCrop)
                 return false;
 
-            if (_seedInventory[(int)_selectedCrop] <= 0)
-                return false;
-
-            // Reject if any of the 8 neighboring tiles has a different crop type (planned or planted)
+            // Reject if any of the 8 neighboring tiles has a PLANNED crop of a different type.
+            // Real growing crops are ignored: a plan-less crop is pending destroy/no-replant, so
+            // it doesn't constrain the planned layout.
             for (int dy = -1; dy <= 1; dy++)
             {
                 for (int dx = -1; dx <= 1; dx++)
                 {
                     if (dx == 0 && dy == 0) continue;
                     var neighbor = new Microsoft.Xna.Framework.Point(tx + dx, ty + dy);
-                    var neighborType = cropService?.GetPlanType(neighbor) ?? cropGrowthService?.GetCropType(neighbor);
+                    var neighborType = cropService?.GetPlanType(neighbor);
                     if (neighborType.HasValue && neighborType.Value != _selectedCrop)
                         return false;
                 }
@@ -469,7 +458,13 @@ namespace PitHero.UI
 
         private void PlaceCrop(int tileX, int tileY)
         {
-            _seedInventory[(int)_selectedCrop]--;
+            var tile = new Point(tileX, tileY);
+            var cropService = Core.Services.GetService<CropPlantingService>();
+
+            // If a different-type plan already exists, remove it first before placing the new one
+            // (validation guarantees the existing plan, if any, is of a different type).
+            if (cropService != null && cropService.HasPlan(tile))
+                cropService.RemovePlan(tile);
 
             var sprite = _cropsAtlas.GetSprite(CropConfig.GetFullyGrownSpriteName(_selectedCrop));
             float spriteH = sprite != null ? sprite.SourceRect.Height : GameConfig.TileSize;
@@ -482,10 +477,9 @@ namespace PitHero.UI
 
             var renderer = entity.AddComponent(new SpriteRenderer(sprite));
             renderer.SetRenderLayer(GameConfig.RenderLayerSingleTileObject - 1);
-            renderer.SetMaterial(new Material(new GrayscaleEffect()));
+            renderer.Color = new Color(255, 255, 255, GameConfig.CropPlanPreviewAlpha);
 
-            var tile = new Point(tileX, tileY);
-            Core.Services.GetService<CropPlantingService>()?.AddPlan(new PlacedCropPlan
+            cropService?.AddPlan(new PlacedCropPlan
             {
                 Type        = _selectedCrop,
                 TileX       = tileX,
@@ -497,16 +491,6 @@ namespace PitHero.UI
             var tileStateService = Core.Services.GetService<TileStateService>();
             if (tileStateService != null && tileStateService.HasFlag(tile, TileStateFlag.Tilled))
                 Core.Services.GetService<FarmTaskCoordinator>()?.NotifyPlanAddedOnTilledTile(tile);
-
-            // If seeds are exhausted, return to the inventory window
-            if (_seedInventory[(int)_selectedCrop] <= 0)
-            {
-                DestroyGhost();
-                DestroyTileIndicator();
-                HideStackCountLabel();
-                ShowInventoryWindow();
-                _state = PlacementState.Choosing;
-            }
         }
 
         // ── Ghost management ──────────────────────────────────────────────────────
@@ -518,8 +502,7 @@ namespace PitHero.UI
             _ghostEntity   = _scene.CreateEntity("seed-ghost");
             _ghostRenderer = _ghostEntity.AddComponent(new SpriteRenderer(sprite));
             _ghostRenderer.SetRenderLayer(GameConfig.RenderLayerTop);
-            _ghostRenderer.Color = Color.White;
-            _ghostRenderer.SetMaterial(new Material(new GrayscaleEffect()));
+            _ghostRenderer.Color = new Color(255, 255, 255, GameConfig.CropPlanPreviewAlpha);
         }
 
         private void DestroyGhost()

@@ -24,9 +24,10 @@ namespace PitHero.ECS.Components
         private Entity _heroEntity; // cached reference to hero entity
 
         /// <summary>
-        /// Gets whether this component should respect the global pause state.
+        /// Gets whether this component should respect the manual pause state.
         /// We shouldn't modify camera size or zoom while paused from menu.
-        /// We'll have separate menu controls that handle this.
+        /// The farm-mode pause gate is deliberately ignored so the player can pan/zoom the map
+        /// while planning crops over a wide area.
         /// </summary>
         public bool ShouldPause => true;
 
@@ -50,8 +51,10 @@ namespace PitHero.ECS.Components
             if (_camera == null)
                 return;
 
+            // Only the manual (menu) pause freezes the camera; the farm-mode pause keeps camera
+            // controls live so the player can right-mouse pan while planning crops.
             var pauseService = Core.Services.GetService<PauseService>();
-            if (pauseService?.IsPaused == true && ShouldPause)
+            if (pauseService?.IsManuallyPaused == true && ShouldPause)
                 return;
 
             // Cache hero entity reference if not already cached, or clear if hero is destroyed/dead
@@ -446,6 +449,21 @@ namespace PitHero.ECS.Components
                 desiredPosition.Y = MathHelper.Clamp(desiredPosition.Y, minY, maxY);
 
             return desiredPosition;
+        }
+
+        /// <summary>
+        /// Resets camera zoom to the default while keeping the camera centered on the world
+        /// position it is currently looking at (clamped to the new zoom's bounds).
+        /// </summary>
+        public void ResetZoomToDefault()
+        {
+            if (_camera == null)
+                return;
+            var focus = _camera.Position;
+            _camera.RawZoom = GameConfig.CameraDefaultZoom;
+            _camera.Position = ConstrainCameraPosition(focus);
+            QuantizeCameraPosition();
+            Debug.Log($"[CameraController] ResetZoomToDefault zoom={_camera.RawZoom} positionX={_camera.Position.X} positionY={_camera.Position.Y}");
         }
 
         /// <summary>
