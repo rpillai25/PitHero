@@ -24,6 +24,12 @@ namespace PitHero.ECS.Components
         private Entity _heroEntity; // cached reference to hero entity
 
         /// <summary>
+        /// Optional hook set by the scene; returns true when the pointer is over a UI element.
+        /// Gates the modifier-less wheel zoom so scrolling a UI list doesn't also zoom the camera.
+        /// </summary>
+        public System.Func<bool> IsPointerOverUI;
+
+        /// <summary>
         /// Gets whether this component should respect the manual pause state.
         /// We shouldn't modify camera size or zoom while paused from menu.
         /// The farm-mode pause gate is deliberately ignored so the player can pan/zoom the map
@@ -107,13 +113,10 @@ namespace PitHero.ECS.Components
                 return;
             }
 
-            // SHIFT + Middle-Click: Reset zoom (preserve current window size)
+            // SHIFT + Middle-Click: Reset zoom (preserve current window size and camera location)
             if (shiftDown && Input.MiddleMouseButtonPressed)
             {
-                _camera.RawZoom = GameConfig.CameraDefaultZoom;
-                _camera.Position = ConstrainCameraPosition(_defaultCameraPosition);
-                QuantizeCameraPosition();
-                Debug.Log($"[CameraController] SHIFT+MiddleClick reset zoom={_camera.RawZoom} positionX={_camera.Position.X} positionY={_camera.Position.Y}");
+                SetZoomPreservingFocus(GameConfig.CameraDefaultZoom, "SHIFT+MiddleClick reset");
                 return;
             }
 
@@ -121,15 +124,16 @@ namespace PitHero.ECS.Components
             if (wheelDelta == 0)
                 return;
 
-            // SHIFT + scroll: camera zoom only
-            if (shiftDown)
-            {
-                HandleCameraOnlyZoom(wheelDelta);
-            }
             // CTRL + scroll: window resize
-            else if (ctrlDown)
+            if (ctrlDown)
             {
                 HandleWindowResizeZoom(wheelDelta);
+            }
+            // Plain or SHIFT + scroll: camera zoom. The modifier-less path is skipped while the
+            // pointer is over UI so scrolling a UI list doesn't also zoom the camera underneath.
+            else if (shiftDown || IsPointerOverUI?.Invoke() != true)
+            {
+                HandleCameraOnlyZoom(wheelDelta);
             }
         }
 

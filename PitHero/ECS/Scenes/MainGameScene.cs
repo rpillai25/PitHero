@@ -135,6 +135,8 @@ namespace PitHero.ECS.Scenes
             var cameraEntity = CreateEntity("camera-controller");
             cameraEntity.AddComponent(Camera);
             _cameraController = cameraEntity.AddComponent(new CameraControllerComponent());
+            // Delegate reads _uiStage at call time, so it is safe to wire before the stage exists
+            _cameraController.IsPointerOverUI = () => _uiStage != null && _uiStage.Hit(_uiStage.GetMousePosition()) != null;
 
             // Load HUD fonts (normal, 2x, 4x for shrink levels)
             _hudFontNormal = Content.LoadBitmapFont(GameConfig.FontPathHud);
