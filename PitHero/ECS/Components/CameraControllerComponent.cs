@@ -92,6 +92,7 @@ namespace PitHero.ECS.Components
 
             HandleZoomInput();
             HandlePanInput();
+            HandleKeyboardPanInput();
             HandleHeroFollowing();
         }
 
@@ -306,6 +307,40 @@ namespace PitHero.ECS.Components
                 // Reset manual control timer on active panning
                 _manualControlTimer = 0f;
             }
+        }
+
+        /// <summary>
+        /// Smoothly scrolls the camera while arrow keys or WASD are held — an alternative panning
+        /// method to the middle-mouse drag. Skipped while SHIFT/CTRL are held so modifier-based
+        /// shortcuts (e.g. SHIFT+S) and zoom controls don't also pan the camera.
+        /// </summary>
+        private void HandleKeyboardPanInput()
+        {
+            if (Input.IsKeyDown(Keys.LeftShift) || Input.IsKeyDown(Keys.RightShift) ||
+                Input.IsKeyDown(Keys.LeftControl) || Input.IsKeyDown(Keys.RightControl))
+                return;
+
+            var direction = Vector2.Zero;
+            if (Input.IsKeyDown(Keys.Left) || Input.IsKeyDown(Keys.A))
+                direction.X -= 1f;
+            if (Input.IsKeyDown(Keys.Right) || Input.IsKeyDown(Keys.D))
+                direction.X += 1f;
+            if (Input.IsKeyDown(Keys.Up) || Input.IsKeyDown(Keys.W))
+                direction.Y -= 1f;
+            if (Input.IsKeyDown(Keys.Down) || Input.IsKeyDown(Keys.S))
+                direction.Y += 1f;
+
+            if (direction == Vector2.Zero)
+                return;
+
+            direction.Normalize();
+            SwitchToManualControl();
+
+            // Divide by zoom so on-screen scroll speed stays consistent at every zoom level
+            var panDelta = direction * GameConfig.CameraKeyboardPanSpeed * Time.DeltaTime / _camera.RawZoom;
+            _camera.Position = ConstrainCameraPosition(_camera.Position + panDelta);
+            QuantizeCameraPosition();
+            _manualControlTimer = 0f;
         }
 
         /// <summary>
