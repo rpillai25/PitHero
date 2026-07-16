@@ -246,7 +246,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 15;
+        public const int CurrentVersion = 16;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -464,6 +464,12 @@ namespace PitHero.Services
 
         /// <summary>Gold buffer threshold: no purchase fires when Funds - price &lt; this value (version 15+).</summary>
         public int AutoShopGoldBuffer = 200;
+
+        /// <summary>Whether automatic crop selling at max stack size is enabled (version 16+).</summary>
+        public bool AutoSellCrops = false;
+
+        /// <summary>Per-crop auto-sell designations indexed by CropType (version 16+). Null until Recover normalizes it.</summary>
+        public bool[] AutoSellCropDesignations;
 
         /// <summary>The save file version number read during Recover; 0 for a brand-new in-memory instance.</summary>
         public int LoadedFileVersion;
@@ -828,6 +834,13 @@ namespace PitHero.Services
             // 30. Auto shop options (v15+)
             writer.Write(AutomateSeedPurchases);
             writer.Write(AutoShopGoldBuffer);
+
+            // 31. Auto-sell crops (v16+)
+            writer.Write(AutoSellCrops);
+            int designationCount = AutoSellCropDesignations != null ? AutoSellCropDesignations.Length : 0;
+            writer.Write(designationCount);
+            for (int i = 0; i < designationCount; i++)
+                writer.Write(AutoSellCropDesignations[i]);
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -1283,6 +1296,24 @@ namespace PitHero.Services
                 AutoShopGoldBuffer    = reader.ReadInt();
             }
             // else keep defaults: AutomateSeedPurchases = false, AutoShopGoldBuffer = 200
+
+            // 31. Auto-sell crops (version 16+). Designations default to all-true so pre-v16 saves
+            // (and crop types added after the save was written) behave like a fresh enable.
+            AutoSellCropDesignations = new bool[Farming.CropTypeInfo.Count];
+            for (int i = 0; i < AutoSellCropDesignations.Length; i++)
+                AutoSellCropDesignations[i] = true;
+            if (fileVersion >= 16)
+            {
+                AutoSellCrops = reader.ReadBool();
+                int designationCount = reader.ReadInt();
+                for (int i = 0; i < designationCount; i++)
+                {
+                    bool designated = reader.ReadBool();
+                    if (i < AutoSellCropDesignations.Length)
+                        AutoSellCropDesignations[i] = designated;
+                }
+            }
+            // else keep defaults: AutoSellCrops = false, all designations true
         }
 
         /// <summary>Writes a Color as four individual int components (R, G, B, A).</summary>

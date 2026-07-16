@@ -624,7 +624,7 @@ namespace PitHero.Tests
 
                 Assert.AreEqual(true, loaded.AutomateSeedPurchases, "AutomateSeedPurchases should round-trip");
                 Assert.AreEqual(500, loaded.AutoShopGoldBuffer, "AutoShopGoldBuffer should round-trip");
-                Assert.AreEqual(15, loaded.LoadedFileVersion, "LoadedFileVersion should be 15");
+                Assert.AreEqual(SaveData.CurrentVersion, loaded.LoadedFileVersion, "LoadedFileVersion should be the current version");
             }
             finally
             {
@@ -676,6 +676,95 @@ namespace PitHero.Tests
             Assert.AreEqual(14, loaded.LoadedFileVersion, "Should detect version 14");
             Assert.AreEqual(false, loaded.AutomateSeedPurchases, "Default: AutomateSeedPurchases should be false for pre-v15 saves");
             Assert.AreEqual(200, loaded.AutoShopGoldBuffer, "Default: AutoShopGoldBuffer should be 200 for pre-v15 saves");
+        }
+
+        /// <summary>
+        /// Verifies that AutoSellCrops and AutoSellCropDesignations round-trip correctly through
+        /// Persist/Recover in save version 16.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V16_AutoSellCrops_RoundTrip()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_v16_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+
+                var original = new SaveData();
+                original.AutoSellCrops = true;
+                original.AutoSellCropDesignations = new bool[PitHero.Farming.CropTypeInfo.Count];
+                for (int i = 0; i < original.AutoSellCropDesignations.Length; i++)
+                    original.AutoSellCropDesignations[i] = true;
+                original.AutoSellCropDesignations[0] = false; // mixed values to prove real round-trip
+
+                dataStore.Save("v16_autosell.bin", original);
+
+                var loaded = new SaveData();
+                dataStore.Load("v16_autosell.bin", loaded);
+
+                Assert.AreEqual(true, loaded.AutoSellCrops, "AutoSellCrops should round-trip");
+                Assert.IsNotNull(loaded.AutoSellCropDesignations, "Designations should be recovered");
+                Assert.AreEqual(false, loaded.AutoSellCropDesignations[0], "Designation[0]=false should round-trip");
+                for (int i = 1; i < PitHero.Farming.CropTypeInfo.Count; i++)
+                    Assert.AreEqual(true, loaded.AutoSellCropDesignations[i], $"Designation[{i}]=true should round-trip");
+                Assert.AreEqual(SaveData.CurrentVersion, loaded.LoadedFileVersion, "LoadedFileVersion should be the current version");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
+        /// <summary>
+        /// Verifies that a save stream written without v16 fields yields the correct defaults
+        /// (AutoSellCrops = false, all designations true) when recovered.
+        /// The "older-version stream" is simulated by writing a v16 binary, patching the version
+        /// bytes to 15, and stripping the v16 fields (bool + int count + 13 bools = 18 bytes)
+        /// from the tail.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_OlderVersion_AutoSellCrops_DefaultValues()
+        {
+            // Write a full v16 SaveData to a MemoryStream
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+            {
+                var original = new SaveData();
+                // Use non-default values so we can confirm they are NOT loaded
+                original.AutoSellCrops = true;
+                original.AutoSellCropDesignations = new bool[PitHero.Farming.CropTypeInfo.Count]; // all false
+                writer.Write(original);
+            }
+
+            byte[] bytes = ms.ToArray();
+
+            // Patch bytes [0-3] from version 16 to version 15 (little-endian int)
+            bytes[0] = 15;
+            bytes[1] = 0;
+            bytes[2] = 0;
+            bytes[3] = 0;
+
+            // Strip section 31 from the tail: bool AutoSellCrops (1) + int count (4) + 13 bools (13)
+            int trimmedLength = bytes.Length - (1 + 4 + PitHero.Farming.CropTypeInfo.Count);
+            var trimmed = new byte[trimmedLength];
+            Array.Copy(bytes, trimmed, trimmedLength);
+
+            // Recover from the modified stream (version 15, no v16 fields)
+            var loaded = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(trimmed)))
+            {
+                rdr.ReadPersistableInto(loaded);
+            }
+
+            Assert.AreEqual(15, loaded.LoadedFileVersion, "Should detect version 15");
+            Assert.AreEqual(false, loaded.AutoSellCrops, "Default: AutoSellCrops should be false for pre-v16 saves");
+            Assert.IsNotNull(loaded.AutoSellCropDesignations, "Designations should be normalized for pre-v16 saves");
+            for (int i = 0; i < PitHero.Farming.CropTypeInfo.Count; i++)
+                Assert.AreEqual(true, loaded.AutoSellCropDesignations[i],
+                    $"Default: designation {i} should be true for pre-v16 saves");
         }
     }
 }

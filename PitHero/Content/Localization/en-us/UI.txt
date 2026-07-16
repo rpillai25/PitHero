@@ -303,6 +303,10 @@ SettingsAutomateSeedPurchases,Automate Seed Purchases
 SettingsAutoShopGoldBuffer,Gold Buffer: {0}
 SettingsAutomateSeedPurchasesTooltip,Buy seeds for planned crops as soon as gold is available
 SettingsAutoShopGoldBufferTooltip,No auto purchases will be made when gold is below this value
+SettingsAutoSellCrops,Auto-Sell Crops
+SettingsAutoSellCropsTooltip,When a crop reaches max stack quantity, sell it automatically
+ButtonDesignateCrops,Designate Crops
+WindowAutoSellCropTypes,Auto-Sell Crop Types
 AddMonsterConfirmPrompt,Add {0} for {1} Gold
 
 # Crop Storage options (issue #285)
