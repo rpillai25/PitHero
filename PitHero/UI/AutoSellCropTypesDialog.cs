@@ -81,9 +81,20 @@ namespace PitHero.UI
             content.Add(grid);
             content.Row();
 
+            var buttonRow = new Table();
+            var selectAllButton = new TextButton(GetText(UITextKey.ButtonSelectAll), skin, "ph-default");
+            selectAllButton.OnClicked += (_) => SetAllDesignations(true);
+            buttonRow.Add(selectAllButton).Width(110f).SetPadRight(8f);
+
+            var deselectAllButton = new TextButton(GetText(UITextKey.ButtonDeselectAll), skin, "ph-default");
+            deselectAllButton.OnClicked += (_) => SetAllDesignations(false);
+            buttonRow.Add(deselectAllButton).Width(110f).SetPadRight(8f);
+
             var closeButton = new TextButton(GetText(UITextKey.ButtonClose), skin, "ph-default");
             closeButton.OnClicked += (_) => Hide();
-            content.Add(closeButton).Width(100f).SetPadTop(12f);
+            buttonRow.Add(closeButton).Width(100f);
+
+            content.Add(buttonRow).SetPadTop(12f);
 
             _window.Add(content).Expand().Fill();
             _window.SetVisible(false);
@@ -106,6 +117,22 @@ namespace PitHero.UI
         public void Hide()
         {
             _window?.SetVisible(false);
+        }
+
+        /// <summary>
+        /// Sets every crop's designation and checkbox state. Commits to the service directly:
+        /// programmatic IsChecked assignment does not fire OnChanged (ProgrammaticChangeEvents is off).
+        /// </summary>
+        private void SetAllDesignations(bool designated)
+        {
+            var svc = Core.Services?.GetService<AutoCropSellService>();
+            for (int i = 0; i < _cropChecks.Length; i++)
+            {
+                if (svc != null)
+                    svc.Designations[i] = designated;
+                if (_cropChecks[i] != null)
+                    _cropChecks[i].IsChecked = designated;
+            }
         }
 
         /// <summary>Copies the service's current designations into the checkbox states.</summary>

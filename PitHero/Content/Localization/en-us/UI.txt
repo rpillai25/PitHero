@@ -307,6 +307,8 @@ SettingsAutoSellCrops,Auto-Sell Crops
 SettingsAutoSellCropsTooltip,When a crop reaches max stack quantity, sell it automatically
 ButtonDesignateCrops,Designate Crops
 WindowAutoSellCropTypes,Auto-Sell Crop Types
+ButtonSelectAll,Select All
+ButtonDeselectAll,Deselect All
 AddMonsterConfirmPrompt,Add {0} for {1} Gold
 
 # Crop Storage options (issue #285)

@@ -318,5 +318,7 @@ namespace PitHero
         public const string SettingsAutoSellCropsTooltip = "SettingsAutoSellCropsTooltip";
         public const string ButtonDesignateCrops = "ButtonDesignateCrops";
         public const string WindowAutoSellCropTypes = "WindowAutoSellCropTypes";
+        public const string ButtonSelectAll = "ButtonSelectAll";
+        public const string ButtonDeselectAll = "ButtonDeselectAll";
     }
 }
