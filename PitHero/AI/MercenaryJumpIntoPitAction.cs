@@ -29,6 +29,14 @@ namespace PitHero.AI
             SetPostcondition(GoapConstants.MercenaryFollowingTarget, true);
         }
 
+        /// <summary>A jump is a short atomic animation — never interrupt it mid-air (the movement
+        /// coroutine cannot be cancelled and would fight any replanned movement). Only applies
+        /// while airborne; a jump that has not started yet remains interruptible.</summary>
+        public override bool ShouldNotOverride()
+        {
+            return _isJumping;
+        }
+
         public override bool Execute(MercenaryComponent mercenary)
         {
             if (_isJumping)
@@ -43,7 +51,12 @@ namespace PitHero.AI
 
                 if (currentTile.X != _plannedTargetTile.X || currentTile.Y != _plannedTargetTile.Y)
                 {
-                    Debug.Warn($"[MercenaryJumpIntoPit] Jump finished flag set but mercenary at {currentTile.X},{currentTile.Y} not at planned target {_plannedTargetTile.X},{_plannedTargetTile.Y}. Waiting one more frame.");
+                    // Stale state from a jump that was interrupted mid-air (the coroutine finished
+                    // but the mercenary has since been moved elsewhere). Waiting cannot resolve this —
+                    // reset so the next Execute starts a fresh jump from the actual position.
+                    Debug.Warn($"[MercenaryJumpIntoPit] Jump finished flag set but mercenary at {currentTile.X},{currentTile.Y} not at planned target {_plannedTargetTile.X},{_plannedTargetTile.Y}. Restarting jump from current tile.");
+                    _isJumping = false;
+                    _jumpFinished = false;
                     return false;
                 }
 

@@ -14,6 +14,14 @@ namespace PitHero.AI
         }
 
         /// <summary>
+        /// When true, the state machine will not interrupt this action mid-execution to replan.
+        /// </summary>
+        public virtual bool ShouldNotOverride()
+        {
+            return false;
+        }
+
+        /// <summary>
         /// Execute the action for the given mercenary
         /// </summary>
         /// <returns>True if action is complete, false if still in progress</returns>
