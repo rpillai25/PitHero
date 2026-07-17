@@ -4,6 +4,7 @@ using Nez;
 using Nez.Sprites;
 using Nez.Textures;
 using PitHero.Farming;
+using PitHero.Services.Analytics;
 using PitHero.Util;
 
 namespace PitHero.Services
@@ -55,6 +56,7 @@ namespace PitHero.Services
             if (existing != null && existing.Type == crop)
             {
                 existing.Count += count;
+                AnalyticsService.LogCropDropped(crop.ToString(), count, tile.X, tile.Y);
                 return;
             }
             if (existing != null)
@@ -63,6 +65,7 @@ namespace PitHero.Services
             var drop = new DroppedCrop { Type = crop, Count = count, Tile = tile };
             SpawnEntity(drop);
             _drops.Add(drop);
+            AnalyticsService.LogCropDropped(crop.ToString(), count, drop.Tile.X, drop.Tile.Y);
         }
 
         /// <summary>Returns the drop at a tile, or null.</summary>

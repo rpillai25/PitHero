@@ -195,6 +195,137 @@ namespace PitHero.Tests
             gameState.AddFunds(25, "battle");
             Assert.AreEqual(35, gameState.Funds);
         }
+
+        [TestMethod]
+        public void LogFarmingLifecycleEvents_WriteExpectedTypesAndFields()
+        {
+            AnalyticsService.Initialize(_tempDir);
+            AnalyticsService.LogCropPlanted("Turnip", 3, 4, "Slime A", "Slime");
+            AnalyticsService.LogCropGrown("Turnip", 3, 4);
+            AnalyticsService.LogCropWatered("Turnip", 3, 4, "Slime A", "Slime", 7);
+            AnalyticsService.LogCropHarvested("Turnip", 3, 4, 5, "Slime A", "Slime");
+            AnalyticsService.LogCropStored("Turnip", 5, "Slime A", "Slime");
+            AnalyticsService.LogCropDropped("Turnip", 2, 6, 9);
+            AnalyticsService.LogCropDestroyed("Turnip", 3, 4, "Slime A", "Slime");
+
+            var lines = ReadAllEventLines();
+            Assert.AreEqual(7, lines.Length);
+
+            var expectedTypes = new[] { "crop_planted", "crop_grown", "crop_watered", "crop_harvested",
+                "crop_stored", "crop_dropped", "crop_destroyed" };
+            for (int i = 0; i < lines.Length; i++)
+            {
+                using var lineDoc = JsonDocument.Parse(lines[i]);
+                Assert.AreEqual(expectedTypes[i], lineDoc.RootElement.GetProperty("e").GetString());
+                Assert.AreEqual("Turnip", lineDoc.RootElement.GetProperty("crop").GetString());
+            }
+
+            using var planted = JsonDocument.Parse(lines[0]);
+            Assert.AreEqual(3, planted.RootElement.GetProperty("x").GetInt32());
+            Assert.AreEqual(4, planted.RootElement.GetProperty("y").GetInt32());
+            Assert.AreEqual("Slime A", planted.RootElement.GetProperty("monster").GetString());
+            Assert.AreEqual("Slime", planted.RootElement.GetProperty("monsterType").GetString());
+
+            using var watered = JsonDocument.Parse(lines[2]);
+            Assert.AreEqual(7, watered.RootElement.GetProperty("waterLeft").GetInt32());
+
+            using var harvested = JsonDocument.Parse(lines[3]);
+            Assert.AreEqual(5, harvested.RootElement.GetProperty("qty").GetInt32());
+
+            using var stored = JsonDocument.Parse(lines[4]);
+            Assert.AreEqual(5, stored.RootElement.GetProperty("qty").GetInt32());
+
+            using var dropped = JsonDocument.Parse(lines[5]);
+            Assert.AreEqual(2, dropped.RootElement.GetProperty("qty").GetInt32());
+            Assert.AreEqual(6, dropped.RootElement.GetProperty("x").GetInt32());
+            Assert.AreEqual(9, dropped.RootElement.GetProperty("y").GetInt32());
+        }
+
+        [TestMethod]
+        public void LogCropWatered_NullCrop_WritesNullCropField()
+        {
+            AnalyticsService.Initialize(_tempDir);
+            AnalyticsService.LogCropWatered(null, 1, 2, "Slime A", "Slime", 3);
+
+            var lines = ReadAllEventLines();
+            using var doc = JsonDocument.Parse(lines[0]);
+            Assert.AreEqual("crop_watered", doc.RootElement.GetProperty("e").GetString());
+            Assert.AreEqual(JsonValueKind.Null, doc.RootElement.GetProperty("crop").ValueKind);
+        }
+
+        [TestMethod]
+        public void LogSeedPurchasedAndCropSold_WriteSourceAndGoldFields()
+        {
+            AnalyticsService.Initialize(_tempDir);
+            AnalyticsService.LogSeedPurchased("Turnip", 4, 80, "manual", 920);
+            AnalyticsService.LogSeedPurchased("Wheat", 2, 30, "auto", 890);
+            AnalyticsService.LogCropSold("Turnip", 10, 250, "manual");
+            AnalyticsService.LogCropSold("Wheat", 8, 120, "auto");
+
+            var lines = ReadAllEventLines();
+            Assert.AreEqual(4, lines.Length);
+
+            using var manualBuy = JsonDocument.Parse(lines[0]);
+            Assert.AreEqual("seed_purchased", manualBuy.RootElement.GetProperty("e").GetString());
+            Assert.AreEqual("Turnip", manualBuy.RootElement.GetProperty("crop").GetString());
+            Assert.AreEqual(4, manualBuy.RootElement.GetProperty("qty").GetInt32());
+            Assert.AreEqual(80, manualBuy.RootElement.GetProperty("goldSpent").GetInt32());
+            Assert.AreEqual("manual", manualBuy.RootElement.GetProperty("source").GetString());
+            Assert.AreEqual(920, manualBuy.RootElement.GetProperty("currentGold").GetInt32());
+
+            using var autoBuy = JsonDocument.Parse(lines[1]);
+            Assert.AreEqual("auto", autoBuy.RootElement.GetProperty("source").GetString());
+
+            using var manualSell = JsonDocument.Parse(lines[2]);
+            Assert.AreEqual("crop_sold", manualSell.RootElement.GetProperty("e").GetString());
+            Assert.AreEqual(10, manualSell.RootElement.GetProperty("qty").GetInt32());
+            Assert.AreEqual(250, manualSell.RootElement.GetProperty("gold").GetInt32());
+            Assert.AreEqual("manual", manualSell.RootElement.GetProperty("source").GetString());
+
+            using var autoSell = JsonDocument.Parse(lines[3]);
+            Assert.AreEqual("auto", autoSell.RootElement.GetProperty("source").GetString());
+        }
+
+        [TestMethod]
+        public void LogBuildingEvents_WriteCoordinatesAndType()
+        {
+            AnalyticsService.Initialize(_tempDir);
+            AnalyticsService.LogBuildingCreated("CropStorage", 10, 5, 500);
+            AnalyticsService.LogBuildingMoved("MonsterHouse", 3, 4, 8, 9);
+
+            var lines = ReadAllEventLines();
+            Assert.AreEqual(2, lines.Length);
+
+            using var created = JsonDocument.Parse(lines[0]);
+            Assert.AreEqual("building_created", created.RootElement.GetProperty("e").GetString());
+            Assert.AreEqual("CropStorage", created.RootElement.GetProperty("buildingType").GetString());
+            Assert.AreEqual(10, created.RootElement.GetProperty("x").GetInt32());
+            Assert.AreEqual(5, created.RootElement.GetProperty("y").GetInt32());
+            Assert.AreEqual(500, created.RootElement.GetProperty("cost").GetInt32());
+
+            using var moved = JsonDocument.Parse(lines[1]);
+            Assert.AreEqual("building_moved", moved.RootElement.GetProperty("e").GetString());
+            Assert.AreEqual("MonsterHouse", moved.RootElement.GetProperty("buildingType").GetString());
+            Assert.AreEqual(3, moved.RootElement.GetProperty("fromX").GetInt32());
+            Assert.AreEqual(4, moved.RootElement.GetProperty("fromY").GetInt32());
+            Assert.AreEqual(8, moved.RootElement.GetProperty("toX").GetInt32());
+            Assert.AreEqual(9, moved.RootElement.GetProperty("toY").GetInt32());
+        }
+
+        [TestMethod]
+        public void LogWateringCanFilled_WritesMonsterAndLocation()
+        {
+            AnalyticsService.Initialize(_tempDir);
+            AnalyticsService.LogWateringCanFilled("Slime A", "Slime", 118, 5);
+
+            var lines = ReadAllEventLines();
+            using var doc = JsonDocument.Parse(lines[0]);
+            Assert.AreEqual("watering_can_filled", doc.RootElement.GetProperty("e").GetString());
+            Assert.AreEqual("Slime A", doc.RootElement.GetProperty("monster").GetString());
+            Assert.AreEqual("Slime", doc.RootElement.GetProperty("monsterType").GetString());
+            Assert.AreEqual(118, doc.RootElement.GetProperty("x").GetInt32());
+            Assert.AreEqual(5, doc.RootElement.GetProperty("y").GetInt32());
+        }
     }
 }
 #endif
