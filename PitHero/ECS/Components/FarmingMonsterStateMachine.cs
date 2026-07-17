@@ -3,6 +3,7 @@ using Nez;
 using Nez.AI.FSM;
 using PitHero.Farming;
 using PitHero.Services;
+using PitHero.Services.Analytics;
 using RolePlayingFramework.AlliedMonsters;
 
 namespace PitHero.ECS.Components
@@ -546,6 +547,7 @@ namespace PitHero.ECS.Components
                 tileState?.ClearFlag(tile, TileStateFlag.CropGrowing);
                 tileState?.ClearFlag(tile, TileStateFlag.Wet);
                 _wetTileService?.ClearWet(tile);
+                AnalyticsService.LogCropDestroyed(cropTypeAtTile.Value.ToString(), tile.X, tile.Y, _monster.Name, _monster.MonsterTypeName);
             }
 
             _coordinator.CompleteDestroyAction(in _currentAction);
@@ -599,6 +601,7 @@ namespace PitHero.ECS.Components
             // Load the crops atlas to get crop sprites; plan is kept after planting (permanent blueprint)
             var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
             _cropGrowthService?.PlantCrop(tile, planType.Value, Entity.Scene, atlas);
+            AnalyticsService.LogCropPlanted(planType.Value.ToString(), tile.X, tile.Y, _monster.Name, _monster.MonsterTypeName);
 
             _coordinator.CompletePlantAction(in _currentAction);
             _hasAction = false;
@@ -644,6 +647,9 @@ namespace PitHero.ECS.Components
 
             _wetTileService?.SetWet(_currentAction.TargetTile);
             _wateringCanCharges--;
+            AnalyticsService.LogCropWatered(_cropGrowthService?.GetCropType(_currentAction.TargetTile)?.ToString(),
+                _currentAction.TargetTile.X, _currentAction.TargetTile.Y,
+                _monster.Name, _monster.MonsterTypeName, _wateringCanCharges);
             _coordinator.CompleteWaterAction(in _currentAction);
             _hasAction = false;
             CurrentState = FarmingMonsterState.Idle;
@@ -699,6 +705,8 @@ namespace PitHero.ECS.Components
                 return;
 
             _wateringCanCharges = GameConfig.WateringCanMaxCharges;
+            AnalyticsService.LogWateringCanFilled(_monster.Name, _monster.MonsterTypeName,
+                _mover.CurrentTile.X, _mover.CurrentTile.Y);
 
             if (TryPathToStandTile())
             {
@@ -917,6 +925,7 @@ namespace PitHero.ECS.Components
             _harvestDoorTile = door;
             _harvestCarryCount = Util.CropConfig.GetHarvestYield(_harvestCropType);
             ApplyHarvestResult(tile);
+            AnalyticsService.LogCropHarvested(_harvestCropType.ToString(), tile.X, tile.Y, _harvestCarryCount, _monster.Name, _monster.MonsterTypeName);
             ShowCarrySprite();
             _harvestPickedUp = true;
             return true;
@@ -970,6 +979,8 @@ namespace PitHero.ECS.Components
             int carried = _harvestCarryCount;
             int stored = storage != null ? storage.DepositReturningStored(_harvestBuildingId, _harvestCropType, carried) : 0;
             int remaining = carried - stored;
+            if (stored > 0)
+                AnalyticsService.LogCropStored(_harvestCropType.ToString(), stored, _monster.Name, _monster.MonsterTypeName);
 
             if (remaining > 0 && storage != null)
             {
@@ -984,6 +995,8 @@ namespace PitHero.ECS.Components
                         return; // keep carrying the remainder to the new destination
                     stored = storage.DepositReturningStored(_harvestBuildingId, _harvestCropType, remaining); // adjacent fallback
                     remaining -= stored;
+                    if (stored > 0)
+                        AnalyticsService.LogCropStored(_harvestCropType.ToString(), stored, _monster.Name, _monster.MonsterTypeName);
                 }
 
                 // Still holding crops with nowhere to go — drop them on the ground for later pickup.

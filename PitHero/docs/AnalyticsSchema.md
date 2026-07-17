@@ -66,7 +66,7 @@ interpretation caveats that are not obvious from the raw data.
 |---|---|---|
 | `item_acquired` | `item`, `kind`, `rarity`, `pitLevel`, `chestLevel` | Item actually collected from a chest. Pair with `chest_spawned` (availability) — they answer different questions. |
 | `gear_equipped` | `character`, `charType`, `slot`, `item`, `rarity`, `str/agi/vit/mag`, `maxHP`, `maxMP` | Stats are the character's **resulting totals after** the equip. Save-restore re-equips are deliberately not logged. |
-| `gold_gained` | `amount`, `source`, `sessionTotal`, `currentGold` | `source`: `"battle"`, `"sell_item"`, `"sell_building"`, `"sell_crops"`, `"refund"`. `sessionTotal` resets each `session_start`. Spends are not logged; infer from `currentGold` deltas (e.g. `inn_sleep.goldAfter`). |
+| `gold_gained` | `amount`, `source`, `sessionTotal`, `currentGold` | `source`: `"battle"`, `"sell_item"`, `"sell_building"`, `"sell_crops"`, `"refund"`. `sessionTotal` resets each `session_start`. Spends are mostly not logged; infer from `currentGold` deltas (e.g. `inn_sleep.goldAfter`). Exceptions: `seed_purchased` and `building_created` (below) record their own spends. `source:"sell_crops"` lines pair with per-stack `crop_sold` detail lines. |
 
 ### Battle
 | `e` | Fields | Notes |
@@ -76,6 +76,27 @@ interpretation caveats that are not obvious from the raw data.
 | `buff` | `actor`, `source` (skill id), `target`, `buffType`, `magnitude`, `durationTurns` | One row per granted buff actually applied (a multi-buff skill like `synergy.fade` logs one row per buff). Buffs skipped by the MaxStacks at-cap guard are not logged. `durationTurns: -1` = until battle end. `buffType` is the `BuffType` enum name (`DefenseUp`, `EvasionUp`, `MPRegen`, `Untargetable`). |
 | `monster_defeated` | `name`, `enemyId`, `level`, `isBoss`, `pitLevel`, `pitTier`, `xp`, `jp`, `gold` | One per kill regardless of killer; the matching `gold_gained` (`source:"battle"`) follows. |
 | `char_killed` | full victim snapshot (same shape as a `party_snapshot` member) + `killer{name, enemyId, level, str/agi/vit/mag, maxHP}` | Hero or mercenary killed by a monster. |
+
+### Farming (issue #312)
+
+All farming work is performed by allied monsters; `monster` is the worker's display name and
+`monsterType` its species name. `crop` is always the `CropType` enum name (`AppleTree`,
+`Turnip`, …), **not** the localized display name. `x`/`y` are tile coordinates.
+
+| `e` | Fields | Notes |
+|---|---|---|
+| `crop_planted` | `crop`, `x`, `y`, `monster`, `monsterType` | Seed consumed and crop entity spawned on a planned tile. |
+| `crop_grown` | `crop`, `x`, `y` | Crop reached full size (CropGrown set) and is ready to harvest. No monster — growth is time/water driven. Re-fires on every regrowth cycle of repeat-harvest crops; not replayed on save load. |
+| `crop_harvested` | `crop`, `x`, `y`, `qty`, `monster`, `monsterType` | `qty` is the harvest yield picked up. Fires when the worker commits to carrying (storage with room was found). Picking a dropped stack back up is **not** a harvest. |
+| `crop_stored` | `crop`, `qty`, `monster`, `monsterType` | `qty` is the units actually accepted by the Crop Storage. Can appear **twice for one harvest** when a deposit is split across two storages (destination filled mid-walk). |
+| `crop_dropped` | `crop`, `qty`, `x`, `y` | Carried crops dropped on the ground because no storage had room (or the target storage was sold mid-carry). `x`/`y` is the **final placement tile**, which may be relocated to the nearest drop-free tile if another drop occupied the intended one. Save-restore of existing drops is not logged. |
+| `crop_destroyed` | `crop`, `x`, `y`, `monster`, `monsterType` | Worker removed a crop whose plan was swapped/removed (issue #305 destroy flow). |
+| `crop_watered` | `crop`, `x`, `y`, `monster`, `monsterType`, `waterLeft` | `waterLeft` is the watering-can charges remaining **after** this pour. `crop` is `null` when the crop vanished before the pour landed. |
+| `watering_can_filled` | `monster`, `monsterType`, `x`, `y` | Worker refilled its can to `GameConfig.WateringCanMaxCharges` at a pond tile. |
+| `seed_purchased` | `crop`, `qty`, `goldSpent`, `source`, `currentGold` | `source`: `"manual"` (shop dialog) or `"auto"` (AutoSeedPurchaseService; one aggregate line per crop per pass). `currentGold` is funds **after** the spend. First instrumented gold spend. |
+| `crop_sold` | `crop`, `qty`, `gold`, `source` | One line **per stack sold**; `source`: `"manual"` or `"auto"`. The gold itself arrives via the paired `gold_gained (source:"sell_crops")`. In bulk manual sells the per-stack `gold` sum can deviate from the paired `gold_gained.amount` if auto-sell emptied slots while the confirm dialog was open (pre-existing quirk; the detail lines reflect what was actually cleared). |
+| `building_created` | `buildingType`, `x`, `y`, `cost` | `buildingType`: `"MonsterHouse"` or `"CropStorage"`. Player placements only — never fired on save restore. `cost` is the gold spent. |
+| `building_moved` | `buildingType`, `fromX`, `fromY`, `toX`, `toY` | Player moved an existing building. |
 
 ## Interpretation caveats
 
@@ -92,9 +113,9 @@ interpretation caveats that are not obvious from the raw data.
 - **Load-time replay:** on `mode:"load"`, the pit is regenerated, so the first
   `pit_generated`/`chest_spawned`/`monster_spawned` burst right after `session_start`
   reflects the restored pit, and one `merc_arrived` fires for the initial tavern spawn.
-- **Not instrumented:** gold spends (except via `goldAfter`/`currentGold`), out-of-battle
-  healing GOAP actions, the virtual game layer (`PitHero.VirtualGame` has no
-  combat simulation).
+- **Not instrumented:** gold spends other than `seed_purchased` and `building_created`
+  (infer the rest via `goldAfter`/`currentGold`), out-of-battle healing GOAP actions,
+  the virtual game layer (`PitHero.VirtualGame` has no combat simulation or farming).
 
 ## Typical analysis joins
 

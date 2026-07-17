@@ -5,6 +5,7 @@ using Nez.UI;
 using PitHero.ECS.Components;
 using PitHero.Farming;
 using PitHero.Services;
+using PitHero.Services.Analytics;
 using PitHero.Util;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Heroes;
@@ -375,6 +376,7 @@ namespace PitHero.UI
                     if (gameState.Funds < totalPrice) return;
                     gameState.Funds -= totalPrice;
                     cropPlantingService.AddSeeds(crop, qty);
+                    AnalyticsService.LogSeedPurchased(crop.ToString(), qty, totalPrice, "manual", gameState.Funds);
                     Core.Services?.GetService<FarmTaskCoordinator>()?.RescanForPlanting();
                 },
                 onCancel: null,

@@ -1,5 +1,6 @@
 using Nez;
 using PitHero.Farming;
+using PitHero.Services.Analytics;
 using PitHero.Util;
 
 namespace PitHero.Services
@@ -83,6 +84,7 @@ namespace PitHero.Services
                     ? _cropPlanting.SeedInventory[(int)crop]
                     : 0;
 
+                int ownedBefore = owned;
                 while (owned < needed && _gameState.Funds - price >= GoldBuffer)
                 {
                     _gameState.Funds -= price;
@@ -90,6 +92,9 @@ namespace PitHero.Services
                     owned++;
                     boughtAnything = true;
                 }
+                if (owned > ownedBefore)
+                    AnalyticsService.LogSeedPurchased(crop.ToString(), owned - ownedBefore,
+                        (owned - ownedBefore) * price, "auto", _gameState.Funds);
             }
 
             if (boughtAnything)

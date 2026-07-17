@@ -6,6 +6,7 @@ using Nez.UI;
 using PitHero.ECS.Components;
 using PitHero.Farming;
 using PitHero.Services;
+using PitHero.Services.Analytics;
 using PitHero.Util;
 
 namespace PitHero.UI
@@ -201,6 +202,7 @@ namespace PitHero.UI
             var moved = _movingBuilding;
             if (moved != null)
             {
+                AnalyticsService.LogBuildingMoved(moved.Type.ToString(), moved.TileX, moved.TileY, tileX, tileY);
                 moved.TileX = tileX;
                 moved.TileY = tileY;
                 if (moved.WorldEntity != null)
@@ -522,6 +524,7 @@ namespace PitHero.UI
                 UniqueId    = newId,
                 WorldEntity = entity
             });
+            AnalyticsService.LogBuildingCreated(type.ToString(), tileX, tileY, _pendingCost);
 
             // Return to Choosing so the player can place more
             ShowInventoryWindow();

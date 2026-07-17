@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.Sprites;
 using PitHero.Farming;
+using PitHero.Services.Analytics;
 using PitHero.Util;
 
 namespace PitHero.Services
@@ -156,6 +157,7 @@ namespace PitHero.Services
                 {
                     tileState.SetFlag(tile, TileStateFlag.CropGrown);
                     tileState.ClearFlag(tile, TileStateFlag.CropGrowing);
+                    AnalyticsService.LogCropGrown(data.Type.ToString(), tile.X, tile.Y);
                 }
 
                 _crops[tile] = data;

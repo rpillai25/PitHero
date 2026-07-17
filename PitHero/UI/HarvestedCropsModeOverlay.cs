@@ -5,6 +5,7 @@ using Nez.Textures;
 using Nez.UI;
 using PitHero.Farming;
 using PitHero.Services;
+using PitHero.Services.Analytics;
 using PitHero.Util;
 
 namespace PitHero.UI
@@ -164,6 +165,15 @@ namespace PitHero.UI
                 {
                     var gameState = Core.Services.GetService<GameStateService>();
                     gameState?.AddFunds(totalGold, "sell_crops");
+#if DEBUG
+                    // Per-stack detail lines for the analytics log; re-read live slots because
+                    // auto-sell may have emptied some while the dialog was open.
+                    var liveSlots = storage.GetSlots(buildingId);
+                    for (int s = 0; s < liveSlots.Count; s++)
+                        if (!liveSlots[s].IsEmpty)
+                            AnalyticsService.LogCropSold(liveSlots[s].Type.ToString(), liveSlots[s].Count,
+                                CropConfig.GetHarvestStackSellPrice(liveSlots[s].Type, liveSlots[s].Count), "manual");
+#endif
                     storage.ClearBuilding(buildingId);
                     _descWindow?.SetVisible(false);
                     LayoutButtonRow();
@@ -201,6 +211,20 @@ namespace PitHero.UI
                 {
                     var gameState = Core.Services.GetService<GameStateService>();
                     gameState?.AddFunds(totalGold, "sell_crops");
+#if DEBUG
+                    // Per-stack detail lines for the analytics log; re-read live slots because
+                    // auto-sell may have emptied some while the dialog was open.
+                    for (int b = 0; b < all.Count; b++)
+                    {
+                        if (all[b].Type != BuildingType.CropStorage)
+                            continue;
+                        var liveSlots = storage.GetSlots(all[b].UniqueId);
+                        for (int s = 0; s < liveSlots.Count; s++)
+                            if (!liveSlots[s].IsEmpty)
+                                AnalyticsService.LogCropSold(liveSlots[s].Type.ToString(), liveSlots[s].Count,
+                                    CropConfig.GetHarvestStackSellPrice(liveSlots[s].Type, liveSlots[s].Count), "manual");
+                    }
+#endif
                     for (int b = 0; b < all.Count; b++)
                         if (all[b].Type == BuildingType.CropStorage)
                             storage.ClearBuilding(all[b].UniqueId);
@@ -406,6 +430,7 @@ namespace PitHero.UI
                     {
                         int liveGold = CropConfig.GetHarvestStackSellPrice(liveSlot.Type, liveSlot.Count);
                         gameState?.AddFunds(liveGold, "sell_crops");
+                        AnalyticsService.LogCropSold(liveSlot.Type.ToString(), liveSlot.Count, liveGold, "manual");
                         storage?.ClearSlot(buildingId, slotIndex);
                     }
                     _descWindow.SetVisible(false);

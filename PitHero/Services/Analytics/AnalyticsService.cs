@@ -574,6 +574,217 @@ namespace PitHero.Services.Analytics
 #endif
         }
 
+        /// <summary>Logs a crop being planted at a tile by a farming monster.</summary>
+        [Conditional("DEBUG")]
+        public static void LogCropPlanted(string crop, int x, int y, string monster, string monsterType)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("crop_planted"))
+                return;
+            _json.Field("crop", crop);
+            _json.Field("x", x);
+            _json.Field("y", y);
+            _json.Field("monster", monster);
+            _json.Field("monsterType", monsterType);
+            EndEvent();
+#endif
+        }
+
+        /// <summary>Logs a crop reaching full size and becoming ready to harvest (re-fires on each regrowth cycle).</summary>
+        [Conditional("DEBUG")]
+        public static void LogCropGrown(string crop, int x, int y)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("crop_grown"))
+                return;
+            _json.Field("crop", crop);
+            _json.Field("x", x);
+            _json.Field("y", y);
+            EndEvent();
+#endif
+        }
+
+        /// <summary>Logs a crop being harvested by a farming monster, with the yield taken.</summary>
+        [Conditional("DEBUG")]
+        public static void LogCropHarvested(string crop, int x, int y, int qty, string monster, string monsterType)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("crop_harvested"))
+                return;
+            _json.Field("crop", crop);
+            _json.Field("x", x);
+            _json.Field("y", y);
+            _json.Field("qty", qty);
+            _json.Field("monster", monster);
+            _json.Field("monsterType", monsterType);
+            EndEvent();
+#endif
+        }
+
+        /// <summary>Logs harvested crops accepted into a Crop Storage building (may fire twice for a split deposit).</summary>
+        [Conditional("DEBUG")]
+        public static void LogCropStored(string crop, int qty, string monster, string monsterType)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("crop_stored"))
+                return;
+            _json.Field("crop", crop);
+            _json.Field("qty", qty);
+            _json.Field("monster", monster);
+            _json.Field("monsterType", monsterType);
+            EndEvent();
+#endif
+        }
+
+        /// <summary>Logs harvested crops dropped on the ground because no storage had room; x/y is the final placement tile.</summary>
+        [Conditional("DEBUG")]
+        public static void LogCropDropped(string crop, int qty, int x, int y)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("crop_dropped"))
+                return;
+            _json.Field("crop", crop);
+            _json.Field("qty", qty);
+            _json.Field("x", x);
+            _json.Field("y", y);
+            EndEvent();
+#endif
+        }
+
+        /// <summary>Logs a crop destroyed by a farming monster because its plan was swapped or removed.</summary>
+        [Conditional("DEBUG")]
+        public static void LogCropDestroyed(string crop, int x, int y, string monster, string monsterType)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("crop_destroyed"))
+                return;
+            _json.Field("crop", crop);
+            _json.Field("x", x);
+            _json.Field("y", y);
+            _json.Field("monster", monster);
+            _json.Field("monsterType", monsterType);
+            EndEvent();
+#endif
+        }
+
+        /// <summary>Logs a tile being watered by a farming monster; waterLeft is charges remaining after the pour.</summary>
+        [Conditional("DEBUG")]
+        public static void LogCropWatered(string crop, int x, int y, string monster, string monsterType, int waterLeft)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("crop_watered"))
+                return;
+            _json.Field("crop", crop);
+            _json.Field("x", x);
+            _json.Field("y", y);
+            _json.Field("monster", monster);
+            _json.Field("monsterType", monsterType);
+            _json.Field("waterLeft", waterLeft);
+            EndEvent();
+#endif
+        }
+
+        /// <summary>Logs a seed purchase (manual shop buy or auto-purchase pass); currentGold is funds after the spend.</summary>
+        [Conditional("DEBUG")]
+        public static void LogSeedPurchased(string crop, int qty, int goldSpent, string source, int currentGold)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("seed_purchased"))
+                return;
+            _json.Field("crop", crop);
+            _json.Field("qty", qty);
+            _json.Field("goldSpent", goldSpent);
+            _json.Field("source", source);
+            _json.Field("currentGold", currentGold);
+            EndEvent();
+#endif
+        }
+
+        /// <summary>Logs a harvested crop stack being sold (manual or auto); the matching gold_gained is emitted separately.</summary>
+        [Conditional("DEBUG")]
+        public static void LogCropSold(string crop, int qty, int gold, string source)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("crop_sold"))
+                return;
+            _json.Field("crop", crop);
+            _json.Field("qty", qty);
+            _json.Field("gold", gold);
+            _json.Field("source", source);
+            EndEvent();
+#endif
+        }
+
+        /// <summary>Logs a farming monster refilling its watering can at a pond tile.</summary>
+        [Conditional("DEBUG")]
+        public static void LogWateringCanFilled(string monster, string monsterType, int x, int y)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("watering_can_filled"))
+                return;
+            _json.Field("monster", monster);
+            _json.Field("monsterType", monsterType);
+            _json.Field("x", x);
+            _json.Field("y", y);
+            EndEvent();
+#endif
+        }
+
+        /// <summary>Logs a building placed by the player (never fired on save restore).</summary>
+        [Conditional("DEBUG")]
+        public static void LogBuildingCreated(string buildingType, int x, int y, int cost)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("building_created"))
+                return;
+            _json.Field("buildingType", buildingType);
+            _json.Field("x", x);
+            _json.Field("y", y);
+            _json.Field("cost", cost);
+            EndEvent();
+#endif
+        }
+
+        /// <summary>Logs a building moved by the player to a new tile.</summary>
+        [Conditional("DEBUG")]
+        public static void LogBuildingMoved(string buildingType, int fromX, int fromY, int toX, int toY)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("building_moved"))
+                return;
+            _json.Field("buildingType", buildingType);
+            _json.Field("fromX", fromX);
+            _json.Field("fromY", fromY);
+            _json.Field("toX", toX);
+            _json.Field("toY", toY);
+            EndEvent();
+#endif
+        }
+
 #if DEBUG
         /// <summary>Opens a new event object with timestamp, in-game time and event type. Returns false if output is unavailable.</summary>
         private static bool BeginEvent(string eventType)
