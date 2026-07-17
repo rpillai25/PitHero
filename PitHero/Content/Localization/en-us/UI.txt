@@ -299,10 +299,18 @@ AddMonsterRemainingSpace,Remaining Space: {0}
 AddMonsterDaytimeLabel,Daytime
 AddMonsterNocturnalLabel,Nocturnal
 TabAutoShop,Auto Shop
-SettingsAutomateSeedPurchases,Automate Seed Purchases
+SettingsAutomateSeedPurchases,Auto-Purchase Seeds
 SettingsAutoShopGoldBuffer,Gold Buffer: {0}
 SettingsAutomateSeedPurchasesTooltip,Buy seeds for planned crops as soon as gold is available
 SettingsAutoShopGoldBufferTooltip,No auto purchases will be made when gold is below this value
+SettingsAutoSellCrops,Auto-Sell Crops
+SettingsAutoSellCropsTooltip,When a crop reaches max stack quantity, sell it automatically
+ButtonDesignateCrops,Designate Crops
+WindowAutoSellCropTypes,Auto-Sell Crop Types
+ButtonSelectAll,Select All
+ButtonDeselectAll,Deselect All
+SettingsAutoSellKeepStacks,Keep Stacks: {0}
+SettingsAutoSellKeepStacksTooltip,Keep this many stacks of a crop before selling.
 AddMonsterConfirmPrompt,Add {0} for {1} Gold
 
 # Crop Storage options (issue #285)

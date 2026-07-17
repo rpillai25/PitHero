@@ -400,8 +400,14 @@ namespace PitHero.UI
                 {
                     var storage = Core.Services.GetService<CropStorageInventoryService>();
                     var gameState = Core.Services.GetService<GameStateService>();
-                    gameState?.AddFunds(gold, "sell_crops");
-                    storage?.ClearSlot(buildingId, slotIndex);
+                    // Re-read the slot: auto-sell may have emptied it while the dialog was open.
+                    var liveSlot = storage != null ? storage.GetSlots(buildingId)[slotIndex] : default;
+                    if (!liveSlot.IsEmpty && liveSlot.Type == _descCropType)
+                    {
+                        int liveGold = CropConfig.GetHarvestStackSellPrice(liveSlot.Type, liveSlot.Count);
+                        gameState?.AddFunds(liveGold, "sell_crops");
+                        storage?.ClearSlot(buildingId, slotIndex);
+                    }
                     _descWindow.SetVisible(false);
                     LayoutButtonRow();
                     RebuildSlots();

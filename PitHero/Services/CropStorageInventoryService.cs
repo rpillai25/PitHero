@@ -186,6 +186,14 @@ namespace PitHero.Services
         /// <summary>Enumerates all building inventories for serialization.</summary>
         public IEnumerable<KeyValuePair<int, HarvestSlot[]>> GetAllInventories() => _byBuilding;
 
+        /// <summary>Copies all building ids that have an inventory into <paramref name="dest"/> (cleared first).</summary>
+        public void CopyBuildingIds(List<int> dest)
+        {
+            dest.Clear();
+            foreach (var kvp in _byBuilding)
+                dest.Add(kvp.Key);
+        }
+
         /// <summary>Replaces a building's inventory from saved data.</summary>
         public void RestoreInventory(int buildingId, HarvestSlot[] slots)
         {

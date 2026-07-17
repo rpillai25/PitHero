@@ -314,5 +314,13 @@ namespace PitHero
         public const string SettingsAutoShopGoldBuffer = "SettingsAutoShopGoldBuffer";
         public const string SettingsAutomateSeedPurchasesTooltip = "SettingsAutomateSeedPurchasesTooltip";
         public const string SettingsAutoShopGoldBufferTooltip = "SettingsAutoShopGoldBufferTooltip";
+        public const string SettingsAutoSellCrops = "SettingsAutoSellCrops";
+        public const string SettingsAutoSellCropsTooltip = "SettingsAutoSellCropsTooltip";
+        public const string ButtonDesignateCrops = "ButtonDesignateCrops";
+        public const string WindowAutoSellCropTypes = "WindowAutoSellCropTypes";
+        public const string ButtonSelectAll = "ButtonSelectAll";
+        public const string ButtonDeselectAll = "ButtonDeselectAll";
+        public const string SettingsAutoSellKeepStacks = "SettingsAutoSellKeepStacks";
+        public const string SettingsAutoSellKeepStacksTooltip = "SettingsAutoSellKeepStacksTooltip";
     }
 }

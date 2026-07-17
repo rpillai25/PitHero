@@ -200,6 +200,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.WetTileService));
             Core.Services.RemoveService(typeof(Services.CropGrowthService));
             Core.Services.RemoveService(typeof(Services.AutoSeedPurchaseService));
+            Core.Services.RemoveService(typeof(Services.AutoCropSellService));
             Core.Services.GetService<Services.FarmTaskCoordinator>()?.Detach();
             Core.Services.RemoveService(typeof(Services.FarmTaskCoordinator));
             Core.Services.RemoveService(typeof(MercenaryManager));
@@ -268,6 +269,12 @@ namespace PitHero.ECS.Scenes
                 Core.Services.GetService<Services.GameStateService>(),
                 farmTaskCoordinator);
             Core.Services.AddService(autoSeedPurchaseService);
+
+            // Auto crop sell service sells designated crop stacks once they reach max stack size.
+            var autoCropSellService = new Services.AutoCropSellService(
+                Core.Services.GetService<Services.CropStorageInventoryService>(),
+                Core.Services.GetService<Services.GameStateService>());
+            Core.Services.AddService(autoCropSellService);
 
             // Initialize hero promotion service (handles mercenary promotions and hero crystal ceremonies after death)
             _heroPromotionService = new Services.HeroPromotionService(this);
@@ -447,6 +454,20 @@ namespace PitHero.ECS.Scenes
             {
                 autoSeedSvc.Enabled    = pendingData.AutomateSeedPurchases;
                 autoSeedSvc.GoldBuffer = pendingData.AutoShopGoldBuffer;
+            }
+            var autoCropSellSvc = Core.Services.GetService<Services.AutoCropSellService>();
+            if (autoCropSellSvc != null)
+            {
+                autoCropSellSvc.Enabled = pendingData.AutoSellCrops;
+                autoCropSellSvc.KeepStacks = pendingData.AutoSellKeepStacks;
+                if (pendingData.AutoSellCropDesignations != null)
+                {
+                    int count = pendingData.AutoSellCropDesignations.Length < Farming.CropTypeInfo.Count
+                        ? pendingData.AutoSellCropDesignations.Length
+                        : Farming.CropTypeInfo.Count;
+                    for (int i = 0; i < count; i++)
+                        autoCropSellSvc.Designations[i] = pendingData.AutoSellCropDesignations[i];
+                }
             }
             _settingsUI?.SyncAutoShopControlsFromService();
 
@@ -2248,6 +2269,7 @@ namespace PitHero.ECS.Scenes
                 Core.Services.GetService<Services.CropGrowthService>()?.Update(
                     Core.Services.GetService<TileStateService>(), cropsAtlas);
                 Core.Services.GetService<Services.AutoSeedPurchaseService>()?.Update();
+                Core.Services.GetService<Services.AutoCropSellService>()?.Update();
             }
 
             // Check if a living hero who respawned without a crystal has arrived at the statue

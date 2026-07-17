@@ -63,6 +63,9 @@ namespace PitHero.UI
         private HoverableCheckBox _automateSeedsCheckBox;
         private EnhancedSlider _goldBufferSlider;
         private HoverableLabel _goldBufferLabel;
+        private HoverableCheckBox _autoSellCropsCheckBox;
+        private TextButton _designateCropsButton;
+        private AutoSellCropTypesDialog _autoSellCropTypesDialog;
 
         // Confirmation dialogs
         private Window _exitConfirmationDialog;
@@ -877,6 +880,35 @@ namespace PitHero.UI
                 if (svc != null) svc.GoldBuffer = (int)value;
             };
             autoShopTable.Add(_goldBufferSlider).Width(240).Left().SetPadBottom(15f);
+            autoShopTable.Row();
+
+            string autoSellTooltip = GetText(TextType.UI, UITextKey.SettingsAutoSellCropsTooltip);
+            _autoSellCropsCheckBox = new HoverableCheckBox(
+                GetText(TextType.UI, UITextKey.SettingsAutoSellCrops),
+                skin,
+                autoSellTooltip,
+                _stage);
+            _autoSellCropsCheckBox.IsChecked = false;
+            _autoSellCropsCheckBox.OnChanged += (isChecked) =>
+            {
+                var svc = Core.Services?.GetService<AutoCropSellService>();
+                if (svc != null) svc.Enabled = isChecked;
+                _designateCropsButton?.SetVisible(isChecked);
+                if (!isChecked)
+                    _autoSellCropTypesDialog?.Hide();
+            };
+            autoShopTable.Add(_autoSellCropsCheckBox).Left().SetPadBottom(8f);
+            autoShopTable.Row();
+
+            _designateCropsButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonDesignateCrops), skin, "ph-default");
+            _designateCropsButton.OnClicked += (_) =>
+            {
+                if (_autoSellCropTypesDialog == null)
+                    _autoSellCropTypesDialog = new AutoSellCropTypesDialog(_stage);
+                _autoSellCropTypesDialog.Show();
+            };
+            _designateCropsButton.SetVisible(false);
+            autoShopTable.Add(_designateCropsButton).Left().Width(140f);
 
             autoShopTab.Add(autoShopTable).Expand().Top().Left();
         }
@@ -898,6 +930,15 @@ namespace PitHero.UI
 
             if (_goldBufferLabel != null)
                 _goldBufferLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsAutoShopGoldBuffer), svc.GoldBuffer));
+
+            var cropSellSvc = Core.Services?.GetService<AutoCropSellService>();
+            if (cropSellSvc != null)
+            {
+                if (_autoSellCropsCheckBox != null)
+                    _autoSellCropsCheckBox.IsChecked = cropSellSvc.Enabled;
+                _designateCropsButton?.SetVisible(cropSellSvc.Enabled);
+                _autoSellCropTypesDialog?.SyncFromService();
+            }
         }
 
         /// <summary>

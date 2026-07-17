@@ -743,6 +743,17 @@ namespace PitHero.Services
                 data.AutoShopGoldBuffer    = autoSeedPurchaseService.GoldBuffer;
             }
 
+            // Auto-sell crops (v16+)
+            var autoCropSellService = Core.Services.GetService<AutoCropSellService>();
+            if (autoCropSellService != null)
+            {
+                data.AutoSellCrops = autoCropSellService.Enabled;
+                data.AutoSellCropDesignations = new bool[Farming.CropTypeInfo.Count];
+                for (int i = 0; i < data.AutoSellCropDesignations.Length; i++)
+                    data.AutoSellCropDesignations[i] = autoCropSellService.Designations[i];
+                data.AutoSellKeepStacks = autoCropSellService.KeepStacks;
+            }
+
             return data;
         }
 
