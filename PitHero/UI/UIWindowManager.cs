@@ -140,10 +140,19 @@ namespace PitHero.UI
             _openUIWindowCount++;
             Debug.Log($"[UIWindowManager] UI window opening (count: {_openUIWindowCount})");
 
-            // Always store the current window state as persistent BEFORE any changes
-            var currentActualSize = GetCurrentWindowSize();
-            _persistentWindowSize = currentActualSize;
-            Debug.Log($"[UIWindowManager] Stored persistent size: {_persistentWindowSize}");
+            // Store the current window state as persistent only when this is the first UI
+            // window opening. When another UI window is already open (e.g. Settings pressed
+            // while the farm UI is up), the window is already at the temporary Normal size —
+            // capturing it here would clobber the player's real Half preference.
+            if (_openUIWindowCount == 1)
+            {
+                _persistentWindowSize = GetCurrentWindowSize();
+                Debug.Log($"[UIWindowManager] Stored persistent size: {_persistentWindowSize}");
+            }
+            else
+            {
+                Debug.Log($"[UIWindowManager] Another UI window already open, keeping persistent size: {_persistentWindowSize}");
+            }
 
             // Temporarily restore to normal size for UI viewing
             if (WindowManager.IsHalfHeightMode())
@@ -194,10 +203,18 @@ namespace PitHero.UI
             // Decrement open window counter
             _openUIWindowCount = Math.Max(0, _openUIWindowCount - 1);
             Debug.Log($"[UIWindowManager] UI window closing (count: {_openUIWindowCount})");
-            Debug.Log($"[UIWindowManager] Applying persistent size: {_persistentWindowSize}");
 
-            // Apply persistent window size when closing UI
-            ApplyPersistentWindowSize();
+            // Only re-apply the persistent size once the last UI window closes; while other
+            // UI windows remain open the window must stay at the temporary Normal size.
+            if (_openUIWindowCount == 0)
+            {
+                Debug.Log($"[UIWindowManager] Applying persistent size: {_persistentWindowSize}");
+                ApplyPersistentWindowSize();
+            }
+            else
+            {
+                Debug.Log("[UIWindowManager] Other UI windows still open, deferring persistent size restore");
+            }
         }
 
         /// <summary>
