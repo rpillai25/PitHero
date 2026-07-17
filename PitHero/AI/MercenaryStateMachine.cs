@@ -138,7 +138,7 @@ namespace PitHero.AI
 
             // Check if world state has changed significantly (e.g., target jumped into/out of pit)
             // This allows us to interrupt continuous actions like FollowTargetAction
-            if (ShouldReplan())
+            if (ShouldReplan() && !_currentAction.ShouldNotOverride())
             {
                 Debug.Log($"[MercenaryStateMachine] {Entity.Name} world state changed, interrupting {_currentAction.Name} and replanning");
                 _currentAction = null;

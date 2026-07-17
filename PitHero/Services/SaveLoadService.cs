@@ -101,14 +101,23 @@ namespace PitHero.Services
         {
             for (int i = 0; i < MaxSlots; i++)
             {
-                var data = new SaveData();
-                _fileDataStore.Load(GetFilename(i), data);
+                try
+                {
+                    var data = new SaveData();
+                    _fileDataStore.Load(GetFilename(i), data);
 
-                // If HeroName was populated by Load, the file existed and had valid data
-                if (data.HeroName != null)
-                    _slotPreviews[i] = data;
-                else
+                    // If HeroName was populated by Load, the file existed and had valid data
+                    if (data.HeroName != null)
+                        _slotPreviews[i] = data;
+                    else
+                        _slotPreviews[i] = null;
+                }
+                catch (System.Exception ex)
+                {
+                    // Incompatible version or corrupt file — treat the slot as empty
+                    Debug.Log("SaveLoadService: Slot " + i + " unreadable (" + ex.Message + ")");
                     _slotPreviews[i] = null;
+                }
             }
         }
 
@@ -136,8 +145,18 @@ namespace PitHero.Services
                 return null;
             }
 
-            var data = new SaveData();
-            _fileDataStore.Load(GetFilename(slotIndex), data);
+            SaveData data;
+            try
+            {
+                data = new SaveData();
+                _fileDataStore.Load(GetFilename(slotIndex), data);
+            }
+            catch (System.Exception ex)
+            {
+                // Incompatible version or corrupt file — treat the slot as empty
+                Debug.Log("SaveLoadService: Slot " + slotIndex + " unreadable (" + ex.Message + ")");
+                return null;
+            }
 
             if (data.HeroName == null)
             {

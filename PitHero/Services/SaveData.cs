@@ -1,6 +1,5 @@
 using Microsoft.Xna.Framework;
 using Nez.Persistence.Binary;
-using PitHero.Config;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Jobs;
 using RolePlayingFramework.Stats;
@@ -34,7 +33,7 @@ namespace PitHero.Services
         public int ItemBagIndex;
         /// <summary>Skill ID string (only valid when SlotType == 2).</summary>
         public string SkillId;
-        /// <summary>Index into HiredMercenaries of the skill's owner, or -1 for the hero (SlotType == 2, version 14+).</summary>
+        /// <summary>Index into HiredMercenaries of the skill's owner, or -1 for the hero (SlotType == 2).</summary>
         public int OwnerMercIndex;
     }
 
@@ -182,7 +181,7 @@ namespace PitHero.Services
         public int CropTypeId;
         public float AccumulatedHours;
         public int CurrentFrame;
-        /// <summary>Per-stage time multiplier (1 normally, &gt;1 while a repeat crop regrows). Save version 10+.</summary>
+        /// <summary>Per-stage time multiplier (1 normally, &gt;1 while a repeat crop regrows).</summary>
         public float RegrowthRateMultiplier;
     }
 
@@ -194,14 +193,14 @@ namespace PitHero.Services
         public int Count;
     }
 
-    /// <summary>Harvested-crop inventory for one Crop Storage building (save version 10+).</summary>
+    /// <summary>Harvested-crop inventory for one Crop Storage building.</summary>
     public struct SavedCropStorageInventory
     {
         public int BuildingUniqueId;
         public List<SavedHarvestSlot> Slots;
     }
 
-    /// <summary>A harvested-crop stack dropped on the ground awaiting pickup (save version 12+).</summary>
+    /// <summary>A harvested-crop stack dropped on the ground awaiting pickup.</summary>
     public struct SavedDroppedCrop
     {
         public int CropTypeId;
@@ -358,10 +357,10 @@ namespace PitHero.Services
         /// <summary>Current pit level (biome-local, 1–MaxBiomeLevel).</summary>
         public int PitLevel;
 
-        /// <summary>Current pit tier (1–99, permanent, never decreases). Version 13+.</summary>
+        /// <summary>Current pit tier (1–99, permanent, never decreases).</summary>
         public int PitTier = 1;
 
-        /// <summary>Hero level at which the tier first incremented; respawned heroes start here. Version 13+.</summary>
+        /// <summary>Hero level at which the tier first incremented; respawned heroes start here.</summary>
         public int TierBaseLevel = 1;
 
         // Priorities (stored as ints, cast from HeroPitPriority / HeroHealPriority)
@@ -451,31 +450,28 @@ namespace PitHero.Services
         /// <summary>Harvested-crop inventories, one per Crop Storage building.</summary>
         public List<SavedCropStorageInventory> CropStorageInventories;
 
-        /// <summary>Harvested crops dropped on the ground awaiting pickup (version 12+).</summary>
+        /// <summary>Harvested crops dropped on the ground awaiting pickup.</summary>
         public List<SavedDroppedCrop> DroppedCrops;
 
         // Defeated Monsters
-        /// <summary>Bare enum names of monster types the player has defeated in battle (version 11+).</summary>
+        /// <summary>Bare enum names of monster types the player has defeated in battle.</summary>
         public List<string> DefeatedMonsterTypes;
 
-        // Auto Shop Options (version 15+)
-        /// <summary>Whether automatic seed purchasing is enabled (version 15+).</summary>
+        // Auto Shop Options
+        /// <summary>Whether automatic seed purchasing is enabled.</summary>
         public bool AutomateSeedPurchases = false;
 
-        /// <summary>Gold buffer threshold: no purchase fires when Funds - price &lt; this value (version 15+).</summary>
+        /// <summary>Gold buffer threshold: no purchase fires when Funds - price &lt; this value.</summary>
         public int AutoShopGoldBuffer = 200;
 
-        /// <summary>Whether automatic crop selling at max stack size is enabled (version 16+).</summary>
+        /// <summary>Whether automatic crop selling at max stack size is enabled.</summary>
         public bool AutoSellCrops = false;
 
-        /// <summary>Per-crop auto-sell designations indexed by CropType (version 16+). Null until Recover normalizes it.</summary>
+        /// <summary>Per-crop auto-sell designations indexed by CropType. Null until Recover normalizes it.</summary>
         public bool[] AutoSellCropDesignations;
 
-        /// <summary>Number of full stacks of each crop to keep before auto-selling (version 17+).</summary>
+        /// <summary>Number of full stacks of each crop to keep before auto-selling.</summary>
         public int AutoSellKeepStacks = 0;
-
-        /// <summary>The save file version number read during Recover; 0 for a brand-new in-memory instance.</summary>
-        public int LoadedFileVersion;
 
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
@@ -658,7 +654,7 @@ namespace PitHero.Services
                 else if (slot.SlotType == 2) // Skill
                 {
                     writer.Write(slot.SkillId ?? string.Empty);
-                    writer.Write(slot.OwnerMercIndex); // version 14+: -1 = hero
+                    writer.Write(slot.OwnerMercIndex); // -1 = hero
                 }
             }
 
@@ -753,7 +749,7 @@ namespace PitHero.Services
                 writer.Write(TileStates[i].Flags);
             }
 
-            // 21. Placed Buildings (version 5+)
+            // 21. Placed Buildings
             int buildingCount = PlacedBuildings != null ? PlacedBuildings.Count : 0;
             writer.Write(buildingCount);
             for (int i = 0; i < buildingCount; i++)
@@ -764,13 +760,13 @@ namespace PitHero.Services
                 writer.Write(PlacedBuildings[i].UniqueId);
             }
 
-            // 22. Seed Inventory (version 6+)
+            // 22. Seed Inventory
             int seedCount = SeedInventory != null ? SeedInventory.Length : 0;
             writer.Write(seedCount);
             for (int i = 0; i < seedCount; i++)
                 writer.Write(SeedInventory[i]);
 
-            // 23. Crop Plans (version 6+)
+            // 23. Crop Plans
             int cropPlanCount = CropPlans != null ? CropPlans.Count : 0;
             writer.Write(cropPlanCount);
             for (int i = 0; i < cropPlanCount; i++)
@@ -780,10 +776,10 @@ namespace PitHero.Services
                 writer.Write(CropPlans[i].TileY);
             }
 
-            // 24. Next Building ID (version 8+)
+            // 24. Next Building ID
             writer.Write(NextBuildingId);
 
-            // 25. Crop Growth States (version 9+; RegrowthRateMultiplier added in version 10)
+            // 25. Crop Growth States
             int cropGrowthCount = CropGrowthStates != null ? CropGrowthStates.Count : 0;
             writer.Write(cropGrowthCount);
             for (int i = 0; i < cropGrowthCount; i++)
@@ -796,7 +792,7 @@ namespace PitHero.Services
                 writer.Write(CropGrowthStates[i].RegrowthRateMultiplier);
             }
 
-            // 26. Crop Storage harvested-crop inventories (version 10+)
+            // 26. Crop Storage harvested-crop inventories
             int storageInvCount = CropStorageInventories != null ? CropStorageInventories.Count : 0;
             writer.Write(storageInvCount);
             for (int i = 0; i < storageInvCount; i++)
@@ -813,13 +809,13 @@ namespace PitHero.Services
                 }
             }
 
-            // 27. Defeated Monster Types (version 11+)
+            // 27. Defeated Monster Types
             int defeatedCount = DefeatedMonsterTypes != null ? DefeatedMonsterTypes.Count : 0;
             writer.Write(defeatedCount);
             for (int i = 0; i < defeatedCount; i++)
                 writer.Write(DefeatedMonsterTypes[i] ?? string.Empty);
 
-            // 28. Dropped crops awaiting pickup (version 12+)
+            // 28. Dropped crops awaiting pickup
             int droppedCount = DroppedCrops != null ? DroppedCrops.Count : 0;
             writer.Write(droppedCount);
             for (int i = 0; i < droppedCount; i++)
@@ -830,22 +826,22 @@ namespace PitHero.Services
                 writer.Write(DroppedCrops[i].TileY);
             }
 
-            // 29. Pit tier (version 13+)
+            // 29. Pit tier
             writer.Write(PitTier);
             writer.Write(TierBaseLevel);
 
-            // 30. Auto shop options (v15+)
+            // 30. Auto shop options
             writer.Write(AutomateSeedPurchases);
             writer.Write(AutoShopGoldBuffer);
 
-            // 31. Auto-sell crops (v16+)
+            // 31. Auto-sell crops
             writer.Write(AutoSellCrops);
             int designationCount = AutoSellCropDesignations != null ? AutoSellCropDesignations.Length : 0;
             writer.Write(designationCount);
             for (int i = 0; i < designationCount; i++)
                 writer.Write(AutoSellCropDesignations[i]);
 
-            // 32. Auto-sell keep stacks (v17+)
+            // 32. Auto-sell keep stacks
             writer.Write(AutoSellKeepStacks);
         }
 
@@ -854,12 +850,12 @@ namespace PitHero.Services
         {
             // 1. File Version
             int fileVersion = reader.ReadInt();
-            LoadedFileVersion = fileVersion;
+            if (fileVersion != CurrentVersion)
+                throw new System.IO.InvalidDataException($"Unsupported save file version {fileVersion} (expected {CurrentVersion})");
 
             // 2. Total Time Played
             TotalTimePlayed = reader.ReadFloat();
-            if (fileVersion >= 3)
-                InGameTimeAccumulatedSeconds = reader.ReadFloat();
+            InGameTimeAccumulatedSeconds = reader.ReadFloat();
 
             // 3. Hero Design
             HeroName = reader.ReadString();
@@ -982,23 +978,8 @@ namespace PitHero.Services
                 monster.FishingProficiency = reader.ReadInt();
                 monster.CookingProficiency = reader.ReadInt();
                 monster.FarmingProficiency = reader.ReadInt();
-                if (fileVersion >= 8)
-                {
-                    monster.MonsterJobId = reader.ReadInt();
-                    monster.MonsterHouseId = reader.ReadInt();
-                }
-                else if (fileVersion >= 7)
-                {
-                    monster.MonsterJobId = reader.ReadInt();
-                    reader.ReadInt(); // discard old MonsterHouseTileX
-                    reader.ReadInt(); // discard old MonsterHouseTileY
-                    monster.MonsterHouseId = -1;
-                }
-                else
-                {
-                    monster.MonsterHouseId = 0;
-                    monster.MonsterJobId = 0;
-                }
+                monster.MonsterJobId = reader.ReadInt();
+                monster.MonsterHouseId = reader.ReadInt();
                 AlliedMonsters.Add(monster);
             }
 
@@ -1019,8 +1000,7 @@ namespace PitHero.Services
                 else if (slot.SlotType == 2) // Skill
                 {
                     slot.SkillId = reader.ReadString();
-                    if (fileVersion >= 14)
-                        slot.OwnerMercIndex = reader.ReadInt(); // pre-14 saves default to hero (-1)
+                    slot.OwnerMercIndex = reader.ReadInt();
                 }
                 ShortcutSlots.Add(slot);
             }
@@ -1092,241 +1072,144 @@ namespace PitHero.Services
             bool hasForgeB = reader.ReadBool();
             ForgeSlotB = hasForgeB ? ReadCrystal(reader) : (SavedHeroCrystal?)null;
 
-            // 19. Second Chance Vault Items (version 2+)
-            if (fileVersion >= 2)
+            // 19. Second Chance Vault Items
+            int vaultItemCount = reader.ReadInt();
+            SecondChanceVaultItems = new List<SavedVaultItem>(vaultItemCount);
+            for (int i = 0; i < vaultItemCount; i++)
             {
-                int vaultItemCount = reader.ReadInt();
-                SecondChanceVaultItems = new List<SavedVaultItem>(vaultItemCount);
-                for (int i = 0; i < vaultItemCount; i++)
+                SavedVaultItem vi;
+                vi.Name = reader.ReadString();
+                vi.IsConsumable = reader.ReadBool();
+                vi.Quantity = reader.ReadInt();
+                SecondChanceVaultItems.Add(vi);
+            }
+
+            // 20. Tile States
+            int tileStateCount = reader.ReadInt();
+            TileStates = new List<SavedTileState>(tileStateCount);
+            for (int i = 0; i < tileStateCount; i++)
+            {
+                SavedTileState ts;
+                ts.X = reader.ReadInt();
+                ts.Y = reader.ReadInt();
+                ts.Flags = reader.ReadInt();
+                TileStates.Add(ts);
+            }
+
+            // 21. Placed Buildings
+            int buildingCount = reader.ReadInt();
+            PlacedBuildings = new List<SavedBuilding>(buildingCount);
+            for (int i = 0; i < buildingCount; i++)
+            {
+                SavedBuilding b;
+                b.BuildingTypeId = reader.ReadInt();
+                b.TileX          = reader.ReadInt();
+                b.TileY          = reader.ReadInt();
+                b.UniqueId       = reader.ReadInt();
+                PlacedBuildings.Add(b);
+            }
+
+            // 22. Seed Inventory. Crop types added after the save was written default to 16 seeds.
+            int seedCount = reader.ReadInt();
+            SeedInventory = new int[Farming.CropTypeInfo.Count];
+            for (int i = 0; i < seedCount && i < Farming.CropTypeInfo.Count; i++)
+                SeedInventory[i] = reader.ReadInt();
+            for (int i = seedCount; i < Farming.CropTypeInfo.Count; i++)
+                SeedInventory[i] = 16;
+
+            // 23. Crop Plans
+            int cropPlanCount = reader.ReadInt();
+            CropPlans = new List<SavedCropPlan>(cropPlanCount);
+            for (int i = 0; i < cropPlanCount; i++)
+            {
+                SavedCropPlan cp;
+                cp.CropTypeId = reader.ReadInt();
+                cp.TileX      = reader.ReadInt();
+                cp.TileY      = reader.ReadInt();
+                CropPlans.Add(cp);
+            }
+
+            // 24. Next Building ID
+            NextBuildingId = reader.ReadInt();
+
+            // 25. Crop Growth States
+            int cropGrowthCount = reader.ReadInt();
+            CropGrowthStates = new List<SavedCropGrowthState>(cropGrowthCount);
+            for (int i = 0; i < cropGrowthCount; i++)
+            {
+                SavedCropGrowthState cgs;
+                cgs.TileX            = reader.ReadInt();
+                cgs.TileY            = reader.ReadInt();
+                cgs.CropTypeId       = reader.ReadInt();
+                cgs.AccumulatedHours = reader.ReadFloat();
+                cgs.CurrentFrame     = reader.ReadInt();
+                cgs.RegrowthRateMultiplier = reader.ReadFloat();
+                CropGrowthStates.Add(cgs);
+            }
+
+            // 26. Crop Storage harvested-crop inventories
+            int storageInvCount = reader.ReadInt();
+            CropStorageInventories = new List<SavedCropStorageInventory>(storageInvCount);
+            for (int i = 0; i < storageInvCount; i++)
+            {
+                SavedCropStorageInventory inv;
+                inv.BuildingUniqueId = reader.ReadInt();
+                int slotCount = reader.ReadInt();
+                inv.Slots = new List<SavedHarvestSlot>(slotCount);
+                for (int s = 0; s < slotCount; s++)
                 {
-                    SavedVaultItem vi;
-                    vi.Name = reader.ReadString();
-                    vi.IsConsumable = reader.ReadBool();
-                    vi.Quantity = reader.ReadInt();
-                    SecondChanceVaultItems.Add(vi);
+                    SavedHarvestSlot slot;
+                    slot.SlotIndex  = reader.ReadInt();
+                    slot.CropTypeId = reader.ReadInt();
+                    slot.Count      = reader.ReadInt();
+                    inv.Slots.Add(slot);
                 }
-            }
-            else
-            {
-                SecondChanceVaultItems = new List<SavedVaultItem>();
+                CropStorageInventories.Add(inv);
             }
 
-            // 20. Tile States (version 4+)
-            if (fileVersion >= 4)
+            // 27. Defeated Monster Types
+            int defeatedCount = reader.ReadInt();
+            DefeatedMonsterTypes = new List<string>(defeatedCount);
+            for (int i = 0; i < defeatedCount; i++)
+                DefeatedMonsterTypes.Add(reader.ReadString());
+
+            // 28. Dropped crops awaiting pickup
+            int droppedCount = reader.ReadInt();
+            DroppedCrops = new List<SavedDroppedCrop>(droppedCount);
+            for (int i = 0; i < droppedCount; i++)
             {
-                int tileStateCount = reader.ReadInt();
-                TileStates = new List<SavedTileState>(tileStateCount);
-                for (int i = 0; i < tileStateCount; i++)
-                {
-                    SavedTileState ts;
-                    ts.X = reader.ReadInt();
-                    ts.Y = reader.ReadInt();
-                    ts.Flags = reader.ReadInt();
-                    TileStates.Add(ts);
-                }
-            }
-            else
-            {
-                TileStates = new List<SavedTileState>();
+                SavedDroppedCrop drop;
+                drop.CropTypeId = reader.ReadInt();
+                drop.Count      = reader.ReadInt();
+                drop.TileX      = reader.ReadInt();
+                drop.TileY      = reader.ReadInt();
+                DroppedCrops.Add(drop);
             }
 
-            // 21. Placed Buildings (version 5+)
-            if (fileVersion >= 5)
-            {
-                int buildingCount = reader.ReadInt();
-                PlacedBuildings = new List<SavedBuilding>(buildingCount);
-                for (int i = 0; i < buildingCount; i++)
-                {
-                    SavedBuilding b;
-                    b.BuildingTypeId = reader.ReadInt();
-                    b.TileX          = reader.ReadInt();
-                    b.TileY          = reader.ReadInt();
-                    if (fileVersion >= 8)
-                        b.UniqueId = reader.ReadInt();
-                    else
-                        b.UniqueId = i + 1; // assign sequential IDs for old saves
-                    PlacedBuildings.Add(b);
-                }
-                if (fileVersion < 8)
-                    NextBuildingId = PlacedBuildings.Count + 1;
-            }
-            else
-            {
-                PlacedBuildings = new List<SavedBuilding>();
-            }
+            // 29. Pit tier
+            PitTier = reader.ReadInt();
+            TierBaseLevel = reader.ReadInt();
 
-            // 22. Seed Inventory (version 6+)
-            if (fileVersion >= 6)
-            {
-                int seedCount = reader.ReadInt();
-                SeedInventory = new int[Farming.CropTypeInfo.Count];
-                for (int i = 0; i < seedCount && i < Farming.CropTypeInfo.Count; i++)
-                    SeedInventory[i] = reader.ReadInt();
-                for (int i = seedCount; i < Farming.CropTypeInfo.Count; i++)
-                    SeedInventory[i] = 16;
-            }
-            else
-            {
-                SeedInventory = new int[Farming.CropTypeInfo.Count];
-                for (int i = 0; i < Farming.CropTypeInfo.Count; i++)
-                    SeedInventory[i] = 16;
-            }
+            // 30. Auto shop options
+            AutomateSeedPurchases = reader.ReadBool();
+            AutoShopGoldBuffer    = reader.ReadInt();
 
-            // 23. Crop Plans (version 6+)
-            if (fileVersion >= 6)
-            {
-                int cropPlanCount = reader.ReadInt();
-                CropPlans = new List<SavedCropPlan>(cropPlanCount);
-                for (int i = 0; i < cropPlanCount; i++)
-                {
-                    SavedCropPlan cp;
-                    cp.CropTypeId = reader.ReadInt();
-                    cp.TileX      = reader.ReadInt();
-                    cp.TileY      = reader.ReadInt();
-                    CropPlans.Add(cp);
-                }
-            }
-            else
-            {
-                CropPlans = new List<SavedCropPlan>();
-            }
-
-            // 24. Next Building ID (version 8+)
-            if (fileVersion >= 8)
-                NextBuildingId = reader.ReadInt();
-
-            // 25. Crop Growth States (version 9+; RegrowthRateMultiplier added in version 10)
-            if (fileVersion >= 9)
-            {
-                int cropGrowthCount = reader.ReadInt();
-                CropGrowthStates = new List<SavedCropGrowthState>(cropGrowthCount);
-                for (int i = 0; i < cropGrowthCount; i++)
-                {
-                    SavedCropGrowthState cgs;
-                    cgs.TileX            = reader.ReadInt();
-                    cgs.TileY            = reader.ReadInt();
-                    cgs.CropTypeId       = reader.ReadInt();
-                    cgs.AccumulatedHours = reader.ReadFloat();
-                    cgs.CurrentFrame     = reader.ReadInt();
-                    cgs.RegrowthRateMultiplier = fileVersion >= 10 ? reader.ReadFloat() : 1f;
-                    CropGrowthStates.Add(cgs);
-                }
-            }
-            else
-            {
-                CropGrowthStates = new List<SavedCropGrowthState>();
-            }
-
-            // 26. Crop Storage harvested-crop inventories (version 10+)
-            if (fileVersion >= 10)
-            {
-                int storageInvCount = reader.ReadInt();
-                CropStorageInventories = new List<SavedCropStorageInventory>(storageInvCount);
-                for (int i = 0; i < storageInvCount; i++)
-                {
-                    SavedCropStorageInventory inv;
-                    inv.BuildingUniqueId = reader.ReadInt();
-                    int slotCount = reader.ReadInt();
-                    inv.Slots = new List<SavedHarvestSlot>(slotCount);
-                    for (int s = 0; s < slotCount; s++)
-                    {
-                        SavedHarvestSlot slot;
-                        slot.SlotIndex  = reader.ReadInt();
-                        slot.CropTypeId = reader.ReadInt();
-                        slot.Count      = reader.ReadInt();
-                        inv.Slots.Add(slot);
-                    }
-                    CropStorageInventories.Add(inv);
-                }
-            }
-            else
-            {
-                CropStorageInventories = new List<SavedCropStorageInventory>();
-            }
-
-            // 27. Defeated Monster Types (version 11+)
-            if (fileVersion >= 11)
-            {
-                int defeatedCount = reader.ReadInt();
-                DefeatedMonsterTypes = new List<string>(defeatedCount);
-                for (int i = 0; i < defeatedCount; i++)
-                    DefeatedMonsterTypes.Add(reader.ReadString());
-            }
-            else
-            {
-                DefeatedMonsterTypes = new List<string>();
-            }
-
-            // 28. Dropped crops awaiting pickup (version 12+)
-            if (fileVersion >= 12)
-            {
-                int droppedCount = reader.ReadInt();
-                DroppedCrops = new List<SavedDroppedCrop>(droppedCount);
-                for (int i = 0; i < droppedCount; i++)
-                {
-                    SavedDroppedCrop drop;
-                    drop.CropTypeId = reader.ReadInt();
-                    drop.Count      = reader.ReadInt();
-                    drop.TileX      = reader.ReadInt();
-                    drop.TileY      = reader.ReadInt();
-                    DroppedCrops.Add(drop);
-                }
-            }
-            else
-            {
-                DroppedCrops = new List<SavedDroppedCrop>();
-            }
-
-            // 29. Pit tier (version 13+)
-            // Migration: old saves whose PitLevel exceeded MaxBiomeLevel (e.g. pit 119) are
-            // decoded into the correct tier and displayed level so the game never sees a raw
-            // depth value in PitLevel. Level (hero level) is read earlier in section 4.
-            if (fileVersion >= 13)
-            {
-                PitTier = reader.ReadInt();
-                TierBaseLevel = reader.ReadInt();
-            }
-            else
-            {
-                // Infer tier from the raw pit level (which may be cumulative depth on old saves).
-                PitTier = BiomeProgressionConfig.GetTierForDepth(PitLevel);
-                TierBaseLevel = PitTier >= 2 ? (Level > 0 ? Level : 1) : 1;
-                // Normalise PitLevel to biome-local range so the rest of the game sees [1..MaxBiomeLevel].
-                PitLevel = BiomeProgressionConfig.GetDisplayedLevelForDepth(PitLevel);
-            }
-
-            // 30. Auto shop options (version 15+)
-            if (fileVersion >= 15)
-            {
-                AutomateSeedPurchases = reader.ReadBool();
-                AutoShopGoldBuffer    = reader.ReadInt();
-            }
-            // else keep defaults: AutomateSeedPurchases = false, AutoShopGoldBuffer = 200
-
-            // 31. Auto-sell crops (version 16+). Designations default to all-true so pre-v16 saves
-            // (and crop types added after the save was written) behave like a fresh enable.
+            // 31. Auto-sell crops. Designations default to all-true so crop types added after
+            // the save was written behave like a fresh enable.
             AutoSellCropDesignations = new bool[Farming.CropTypeInfo.Count];
             for (int i = 0; i < AutoSellCropDesignations.Length; i++)
                 AutoSellCropDesignations[i] = true;
-            if (fileVersion >= 16)
+            AutoSellCrops = reader.ReadBool();
+            int designationCount = reader.ReadInt();
+            for (int i = 0; i < designationCount; i++)
             {
-                AutoSellCrops = reader.ReadBool();
-                int designationCount = reader.ReadInt();
-                for (int i = 0; i < designationCount; i++)
-                {
-                    bool designated = reader.ReadBool();
-                    if (i < AutoSellCropDesignations.Length)
-                        AutoSellCropDesignations[i] = designated;
-                }
+                bool designated = reader.ReadBool();
+                if (i < AutoSellCropDesignations.Length)
+                    AutoSellCropDesignations[i] = designated;
             }
-            // else keep defaults: AutoSellCrops = false, all designations true
 
-            // 32. Auto-sell keep stacks (version 17+)
-            if (fileVersion >= 17)
-            {
-                AutoSellKeepStacks = reader.ReadInt();
-            }
-            // else keep default: AutoSellKeepStacks = 0
+            // 32. Auto-sell keep stacks
+            AutoSellKeepStacks = reader.ReadInt();
         }
 
         /// <summary>Writes a Color as four individual int components (R, G, B, A).</summary>

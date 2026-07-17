@@ -417,37 +417,6 @@ namespace PitHero.ECS.Scenes
                 }
             }
 
-            // v14 → v15 migration: old saves charged a seed at plan placement; new model pays at
-            // plant time, so refund each plan whose tile has no same-type growing crop, and infer
-            // plans for any growing crops that have no plan (so they aren't treated as pending-destroy).
-            if (pendingData.LoadedFileVersion < 15)
-            {
-                // (a) Refund +1 seed per plan whose tile lacks a same-type growing crop
-                if (pendingData.CropPlans != null && cropPlantingService != null && cropGrowthService != null)
-                {
-                    for (int i = 0; i < pendingData.CropPlans.Count; i++)
-                    {
-                        var cp       = pendingData.CropPlans[i];
-                        var planType = (Farming.CropType)cp.CropTypeId;
-                        var tile     = new Microsoft.Xna.Framework.Point(cp.TileX, cp.TileY);
-                        if (cropGrowthService.GetCropType(tile) != planType)
-                            cropPlantingService.AddSeeds(planType, 1);
-                    }
-                }
-
-                // (b) Infer plans for growing crops that have no plan (prevents pending-destroy treatment)
-                if (pendingData.CropGrowthStates != null && cropPlantingService != null && _seedModeOverlay != null)
-                {
-                    for (int i = 0; i < pendingData.CropGrowthStates.Count; i++)
-                    {
-                        var gs   = pendingData.CropGrowthStates[i];
-                        var tile = new Microsoft.Xna.Framework.Point(gs.TileX, gs.TileY);
-                        if (!cropPlantingService.HasPlan(tile))
-                            _seedModeOverlay.SpawnRestoredCropPlan((Farming.CropType)gs.CropTypeId, gs.TileX, gs.TileY);
-                    }
-                }
-            }
-
             // Apply auto shop settings from save data and sync the settings UI controls
             var autoSeedSvc = Core.Services.GetService<Services.AutoSeedPurchaseService>();
             if (autoSeedSvc != null)

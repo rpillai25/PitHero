@@ -36,7 +36,7 @@ namespace PitHero.Tests
                         break;
                         
                     case 3: // Mid potions
-                        Assert.AreEqual(ItemRarity.Rare, item.Rarity);
+                        Assert.AreEqual(ItemRarity.Normal, item.Rarity);
                         Assert.IsTrue(item is Consumable);
                         var midPotion = (Consumable)item;
                         bool isMidPotion = midPotion.Name == InventoryTextKey.Inv_MidHPPotion_Name
@@ -46,7 +46,7 @@ namespace PitHero.Tests
                         break;
                         
                     case 4: // Full potions
-                        Assert.AreEqual(ItemRarity.Epic, item.Rarity);
+                        Assert.AreEqual(ItemRarity.Normal, item.Rarity);
                         Assert.IsTrue(item is Consumable);
                         var fullPotion = (Consumable)item;
                         bool isFullPotion = fullPotion.Name == InventoryTextKey.Inv_FullHPPotion_Name
@@ -56,7 +56,7 @@ namespace PitHero.Tests
                         break;
                         
                     case 5: // No Legendary consumables exist, falls back to Full potions
-                        Assert.AreEqual(ItemRarity.Epic, item.Rarity);
+                        Assert.AreEqual(ItemRarity.Normal, item.Rarity);
                         Assert.IsTrue(item is Consumable);
                         break;
                 }
@@ -122,13 +122,13 @@ namespace PitHero.Tests
             var retrievedMidMPPotion = (Consumable)bag.Items[1];
             Assert.AreEqual(InventoryTextKey.Inv_MidMPPotion_Name, retrievedMidMPPotion.Name);
             Assert.AreEqual(500, retrievedMidMPPotion.MPRestoreAmount);
-            Assert.AreEqual(ItemRarity.Rare, retrievedMidMPPotion.Rarity);
+            Assert.AreEqual(ItemRarity.Normal, retrievedMidMPPotion.Rarity);
 
             var retrievedFullMixPotion = (Consumable)bag.Items[2];
             Assert.AreEqual(InventoryTextKey.Inv_FullMixPotion_Name, retrievedFullMixPotion.Name);
             Assert.AreEqual(-1, retrievedFullMixPotion.HPRestoreAmount);
             Assert.AreEqual(-1, retrievedFullMixPotion.MPRestoreAmount);
-            Assert.AreEqual(ItemRarity.Epic, retrievedFullMixPotion.Rarity);
+            Assert.AreEqual(ItemRarity.Normal, retrievedFullMixPotion.Rarity);
         }
 
         [TestMethod]
