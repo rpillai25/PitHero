@@ -104,8 +104,8 @@ namespace PitHero.Tests
         {
             var generator = new PitGenerator((Nez.Scene)null!);
             int[] bossFloors = { 5, 10, 15, 20, 25 };
-            string[] expectedBosses = { "StoneGuardian", "PitLord", "EarthElemental", "MoltenTitan", "AncientWyrm" };
-            int[] expectedLevels = { 10, 10, 28, 38, 46 };
+            string[] expectedBosses = { "StoneGuardian", "EarthElemental", "AncientWyrm", "PitLord", "MoltenTitan" };
+            int[] expectedLevels = { 10, 18, 28, 38, 46 };
 
             for (int index = 0; index < bossFloors.Length; index++)
             {

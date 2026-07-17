@@ -12,7 +12,7 @@ namespace PitHero.Tests
     public class TilledTileServiceTests
     {
         private TmxMap _map;
-        private TmxLayer _detailLayer;
+        private TmxLayer _baseLayer;
         private TileStateService _tileState;
         private TilledTileService _service;
 
@@ -33,22 +33,22 @@ namespace PitHero.Tests
                 FirstGid = 1,
                 Tiles = new Dictionary<int, TmxTilesetTile>()
             });
-            _detailLayer = new TmxLayer
+            _baseLayer = new TmxLayer
             {
-                Name = "Detail",
+                Name = "Base",
                 Map = _map,
                 Width = W,
                 Height = H,
                 Grid = new uint[W * H],
                 Tiles = new Dictionary<uint, TmxLayerTile>()
             };
-            _map.Layers.Add(_detailLayer);
+            _map.Layers.Add(_baseLayer);
 
             _tileState = new TileStateService();
             _service = new TilledTileService(_map, _tileState);
         }
 
-        private int GidAt(int x, int y) => (int)_detailLayer.Grid[x + y * W];
+        private int GidAt(int x, int y) => (int)_baseLayer.Grid[x + y * W];
 
         [TestMethod]
         public void TillTile_SetsTilledFlag_AndClearsReadyToTill()
