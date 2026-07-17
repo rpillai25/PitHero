@@ -2176,8 +2176,11 @@ namespace PitHero.ECS.Scenes
                 {
                     UIWindowManager.OnUIWindowClosing();
                     // Restore the half-window default zoom that was reset when the farm UI opened
-                    // (skip if the persistent size changed to Normal while the farm UI was open)
-                    if (_farmModeRestoreHalfZoom && WindowManager.IsHalfHeightMode())
+                    // (skip if the persistent size changed to Normal while the farm UI was open).
+                    // Check the persistent preference, not the live window state: when another UI
+                    // (e.g. Settings) is still open the window is temporarily Normal here, but it
+                    // returns to Half once that UI closes and the zoom must be ready for it.
+                    if (_farmModeRestoreHalfZoom && UIWindowManager.PersistentWindowSize == UIWindowManager.WindowSizeMode.Half)
                         _cameraController?.ApplyHalfWindowZoom();
                     _farmModeRestoreHalfZoom = false;
                     pauseService?.SetFarmModePause(false);
