@@ -2033,12 +2033,24 @@ namespace PitHero.UI
             // Marker is only shown once the panel has fully slid off-screen, and never during farm modes.
             _consoleMarker?.SetVisible(_consoleHidden && !_consoleAnimating && !ecFarmActive);
 
-            if (!_consoleAnimating) return;
-
             float stageH = _stage.GetHeight();
             float consolePanelBaseY = _eventConsolePanel.BaseY;
             // Push the panel far enough below the bottom edge to fully clear it.
             float hideOffset = (stageH - consolePanelBaseY) + 4f;
+
+            if (!_consoleAnimating)
+            {
+                // Keep a hidden console pinned at the correct off-screen offset. A window-mode
+                // switch repositions the panel (BaseY and visual height change), which would
+                // otherwise leave a stale hide offset half-revealing the panel.
+                if (_consoleHidden && _consoleSlideY != hideOffset)
+                {
+                    _consoleSlideY = hideOffset;
+                    _eventConsolePanel.SetSlideOffsetY(_consoleSlideY);
+                }
+                return;
+            }
+
             float targetOffsetY = _consoleHidden ? hideOffset : 0f;
             float delta = targetOffsetY - _consoleSlideY;
             float step = GameConfig.UIBarSlideSpeed * Time.UnscaledDeltaTime;
