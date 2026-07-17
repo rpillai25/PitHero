@@ -246,7 +246,7 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 16;
+        public const int CurrentVersion = 17;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -470,6 +470,9 @@ namespace PitHero.Services
 
         /// <summary>Per-crop auto-sell designations indexed by CropType (version 16+). Null until Recover normalizes it.</summary>
         public bool[] AutoSellCropDesignations;
+
+        /// <summary>Number of full stacks of each crop to keep before auto-selling (version 17+).</summary>
+        public int AutoSellKeepStacks = 0;
 
         /// <summary>The save file version number read during Recover; 0 for a brand-new in-memory instance.</summary>
         public int LoadedFileVersion;
@@ -841,6 +844,9 @@ namespace PitHero.Services
             writer.Write(designationCount);
             for (int i = 0; i < designationCount; i++)
                 writer.Write(AutoSellCropDesignations[i]);
+
+            // 32. Auto-sell keep stacks (v17+)
+            writer.Write(AutoSellKeepStacks);
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -1314,6 +1320,13 @@ namespace PitHero.Services
                 }
             }
             // else keep defaults: AutoSellCrops = false, all designations true
+
+            // 32. Auto-sell keep stacks (version 17+)
+            if (fileVersion >= 17)
+            {
+                AutoSellKeepStacks = reader.ReadInt();
+            }
+            // else keep default: AutoSellKeepStacks = 0
         }
 
         /// <summary>Writes a Color as four individual int components (R, G, B, A).</summary>

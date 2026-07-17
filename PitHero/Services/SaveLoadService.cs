@@ -751,6 +751,7 @@ namespace PitHero.Services
                 data.AutoSellCropDesignations = new bool[Farming.CropTypeInfo.Count];
                 for (int i = 0; i < data.AutoSellCropDesignations.Length; i++)
                     data.AutoSellCropDesignations[i] = autoCropSellService.Designations[i];
+                data.AutoSellKeepStacks = autoCropSellService.KeepStacks;
             }
 
             return data;

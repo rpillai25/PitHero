@@ -25,6 +25,8 @@ namespace PitHero.UI
         private readonly CheckBox[] _cropChecks = new CheckBox[CropTypeInfo.Count];
 
         private Window _window;
+        private HoverableLabel _keepStacksLabel;
+        private EnhancedSlider _keepStacksSlider;
         private TextService _textService;
 
         public AutoSellCropTypesDialog(Stage stage)
@@ -81,6 +83,28 @@ namespace PitHero.UI
             content.Add(grid);
             content.Row();
 
+            var keepStacksRow = new Table();
+            _keepStacksLabel = new HoverableLabel(
+                string.Format(GetText(UITextKey.SettingsAutoSellKeepStacks), 0),
+                skin, "ph-default", GetText(UITextKey.SettingsAutoSellKeepStacksTooltip), _stage);
+            keepStacksRow.Add(_keepStacksLabel).Left().SetPadRight(12f);
+
+            _keepStacksSlider = new EnhancedSlider(0, AutoCropSellService.MaxKeepStacks, 1, false, skin, null, false);
+            _keepStacksSlider.SetValueAndCommit(0);
+            _keepStacksSlider.OnChanged += (value) =>
+            {
+                _keepStacksLabel.SetText(string.Format(GetText(UITextKey.SettingsAutoSellKeepStacks), (int)value));
+            };
+            _keepStacksSlider.OnValueCommitted += (value) =>
+            {
+                var svc = Core.Services?.GetService<AutoCropSellService>();
+                if (svc != null) svc.KeepStacks = (int)value;
+            };
+            keepStacksRow.Add(_keepStacksSlider).Width(200f).Left();
+
+            content.Add(keepStacksRow).Left().SetPadTop(12f);
+            content.Row();
+
             var buttonRow = new Table();
             var selectAllButton = new TextButton(GetText(UITextKey.ButtonSelectAll), skin, "ph-default");
             selectAllButton.OnClicked += (_) => SetAllDesignations(true);
@@ -135,7 +159,7 @@ namespace PitHero.UI
             }
         }
 
-        /// <summary>Copies the service's current designations into the checkbox states.</summary>
+        /// <summary>Copies the service's current designations and keep-stacks value into the controls.</summary>
         public void SyncFromService()
         {
             var svc = Core.Services?.GetService<AutoCropSellService>();
@@ -143,6 +167,8 @@ namespace PitHero.UI
             for (int i = 0; i < _cropChecks.Length; i++)
                 if (_cropChecks[i] != null)
                     _cropChecks[i].IsChecked = svc.Designations[i];
+            _keepStacksSlider?.SetValueAndCommit(svc.KeepStacks);
+            _keepStacksLabel?.SetText(string.Format(GetText(UITextKey.SettingsAutoSellKeepStacks), svc.KeepStacks));
         }
     }
 }

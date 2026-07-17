@@ -459,6 +459,7 @@ namespace PitHero.ECS.Scenes
             if (autoCropSellSvc != null)
             {
                 autoCropSellSvc.Enabled = pendingData.AutoSellCrops;
+                autoCropSellSvc.KeepStacks = pendingData.AutoSellKeepStacks;
                 if (pendingData.AutoSellCropDesignations != null)
                 {
                     int count = pendingData.AutoSellCropDesignations.Length < Farming.CropTypeInfo.Count

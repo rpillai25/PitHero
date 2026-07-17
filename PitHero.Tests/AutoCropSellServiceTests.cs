@@ -163,5 +163,95 @@ namespace PitHero.Tests
 
             Assert.AreEqual(50, _gameState.Funds, "Funds should be unchanged with no stored crops");
         }
+
+        // ── KeepStacks ───────────────────────────────────────────────────────
+
+        [TestMethod]
+        public void KeepStacks_ZeroByDefault()
+        {
+            Assert.AreEqual(0, _service.KeepStacks, "KeepStacks should default to 0 (sell every full stack)");
+        }
+
+        [TestMethod]
+        public void KeepStacks_ClampsToValidRange()
+        {
+            _service.KeepStacks = -3;
+            Assert.AreEqual(0, _service.KeepStacks, "KeepStacks should clamp below at 0");
+
+            _service.KeepStacks = 99;
+            Assert.AreEqual(AutoCropSellService.MaxKeepStacks, _service.KeepStacks,
+                "KeepStacks should clamp above at MaxKeepStacks");
+        }
+
+        [TestMethod]
+        public void TrySellPass_KeepStacks_SellsOnlyStacksBeyondKeepCount()
+        {
+            int max = CropConfig.GetMaxHarvestStack(CropType.Wheat);
+            // Three full Wheat stacks in one building
+            _storage.DepositReturningStored(BuildingA, CropType.Wheat, max * 3);
+            _service.KeepStacks = 2;
+            _gameState.Funds = 0;
+
+            _service.TrySellPass();
+
+            Assert.AreEqual(CropConfig.GetHarvestStackSellPrice(CropType.Wheat, max), _gameState.Funds,
+                "Only the third full stack should be sold when KeepStacks=2");
+            var slots = _storage.GetSlots(BuildingA);
+            int fullStacksRemaining = 0;
+            for (int s = 0; s < slots.Count; s++)
+                if (!slots[s].IsEmpty && slots[s].Type == CropType.Wheat && slots[s].Count == max)
+                    fullStacksRemaining++;
+            Assert.AreEqual(2, fullStacksRemaining, "Two full Wheat stacks should be kept");
+        }
+
+        [TestMethod]
+        public void TrySellPass_KeepStacks_AtOrBelowKeepCount_SellsNothing()
+        {
+            int max = CropConfig.GetMaxHarvestStack(CropType.Wheat);
+            // Two full Wheat stacks, keep 2 — nothing to sell yet
+            _storage.DepositReturningStored(BuildingA, CropType.Wheat, max * 2);
+            _service.KeepStacks = 2;
+            _gameState.Funds = 0;
+
+            _service.TrySellPass();
+
+            Assert.AreEqual(0, _gameState.Funds, "No stacks should be sold at or below the keep count");
+        }
+
+        [TestMethod]
+        public void TrySellPass_KeepStacks_CountsPerCropAcrossBuildings()
+        {
+            int wheatMax  = CropConfig.GetMaxHarvestStack(CropType.Wheat);
+            int turnipMax = CropConfig.GetMaxHarvestStack(CropType.Turnip);
+            // Two full Wheat stacks split across buildings, one full Turnip stack
+            _storage.DepositReturningStored(BuildingA, CropType.Wheat, wheatMax);
+            _storage.DepositReturningStored(BuildingB, CropType.Wheat, wheatMax);
+            _storage.DepositReturningStored(BuildingB, CropType.Turnip, turnipMax);
+            _service.KeepStacks = 1;
+            _gameState.Funds = 0;
+
+            _service.TrySellPass();
+
+            Assert.AreEqual(CropConfig.GetHarvestStackSellPrice(CropType.Wheat, wheatMax), _gameState.Funds,
+                "One Wheat stack (the second, counted across buildings) should be sold; the Turnip stack is its crop's first and is kept");
+            Assert.AreEqual(turnipMax, _storage.GetSlots(BuildingB)[1].Count,
+                "The single full Turnip stack should be kept when KeepStacks=1");
+        }
+
+        [TestMethod]
+        public void TrySellPass_KeepStacks_KeepCountResetsBetweenPasses()
+        {
+            int max = CropConfig.GetMaxHarvestStack(CropType.Wheat);
+            _storage.DepositReturningStored(BuildingA, CropType.Wheat, max);
+            _service.KeepStacks = 1;
+            _gameState.Funds = 0;
+
+            // Two passes: the single kept stack must not be sold by the second pass's counter state
+            _service.TrySellPass();
+            _service.TrySellPass();
+
+            Assert.AreEqual(0, _gameState.Funds, "The kept stack should survive repeated passes");
+            Assert.AreEqual(max, _storage.GetSlots(BuildingA)[0].Count, "Kept stack should remain untouched");
+        }
     }
 }

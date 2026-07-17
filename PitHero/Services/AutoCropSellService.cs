@@ -14,13 +14,28 @@ namespace PitHero.Services
     {
         private const string SellSource = "sell_crops";
 
+        /// <summary>Upper bound of the Keep Stacks setting (matches the dialog slider range).</summary>
+        public const int MaxKeepStacks = 10;
+
         private readonly CropStorageInventoryService _storage;
         private readonly GameStateService _gameState;
         private readonly List<int> _idScratch = new List<int>(16);
+        private readonly int[] _fullSeenScratch = new int[CropTypeInfo.Count];
         private float _throttleTimer;
+        private int _keepStacks;
 
         /// <summary>Whether automatic crop selling is active.</summary>
         public bool Enabled { get; set; } = false;
+
+        /// <summary>
+        /// Number of full stacks of each crop to keep before selling; only full stacks beyond this
+        /// count are auto-sold. 0 (default) sells every full designated stack. Clamped to 0..10.
+        /// </summary>
+        public int KeepStacks
+        {
+            get => _keepStacks;
+            set => _keepStacks = value < 0 ? 0 : (value > MaxKeepStacks ? MaxKeepStacks : value);
+        }
 
         /// <summary>
         /// Per-crop auto-sell designations indexed by CropType. All true by default so that the
@@ -54,12 +69,15 @@ namespace PitHero.Services
 
         /// <summary>
         /// Executes one sell pass: sells every designated crop stack at max stack size across all
-        /// Crop Storage buildings. Idempotent and safe to call directly from tests, bypassing the
-        /// 1-second throttle gate.
+        /// Crop Storage buildings, keeping the first <see cref="KeepStacks"/> full stacks of each
+        /// crop. Idempotent and safe to call directly from tests, bypassing the 1-second throttle gate.
         /// </summary>
         public void TrySellPass()
         {
             if (_storage == null || _gameState == null) return;
+
+            for (int i = 0; i < _fullSeenScratch.Length; i++)
+                _fullSeenScratch[i] = 0;
 
             _storage.CopyBuildingIds(_idScratch);
             for (int b = 0; b < _idScratch.Count; b++)
@@ -72,6 +90,9 @@ namespace PitHero.Services
                     var crop = slots[s].Type;
                     if (!Designations[(int)crop]) continue;
                     if (slots[s].Count < CropConfig.GetMaxHarvestStack(crop)) continue;
+
+                    _fullSeenScratch[(int)crop]++;
+                    if (_fullSeenScratch[(int)crop] <= _keepStacks) continue;
 
                     int gold = CropConfig.GetHarvestStackSellPrice(crop, slots[s].Count);
                     _gameState.AddFunds(gold, SellSource);

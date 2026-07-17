@@ -16,3 +16,5 @@ Claude Code-specific notes for PitHero. **All project development rules live in 
 - Skills follow progressive disclosure — thin `SKILL.md` + `references/*.md` loaded on demand. Don't list skills in agent files; let description-matching discover them.
 - `.github/agents/` and `.github/skills/` are symlinks to `.claude/`. `.claude/` is the source of truth.
 - Plan mode replaces the previous `planner` and `feature-builder` agents — use it for multi-step work.
+- Do not write "Co-authored by Claude..." in commit messages
+
