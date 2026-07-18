@@ -141,6 +141,7 @@ namespace PitHero
         public const float TillProficiencySpeedStep = 0.06f;   // till duration reduced 6% per proficiency point above 1
         public const float FarmMonsterIdlePollInterval = 0.25f; // seconds between queue checks while idle
         public const int FarmWanderRadiusTiles = 4;             // idle wander stays within this radius of the nearest field tile
+        public const int FarmWanderMaxEastOffsetTiles = 5;      // idle wander goes at most this many tiles east of the rightmost farm object (building or tilled tile)
         public const float HarvestWaitSeconds = 5f;             // worker waits this long on the crop tile before harvesting
         public const float AppleHarvestWaitSeconds = 2f;        // worker waits this long under an apple tree before jumping
         public const float AppleHarvestJumpDurationSeconds = 0.6f; // duration of the apple-picking jump arc

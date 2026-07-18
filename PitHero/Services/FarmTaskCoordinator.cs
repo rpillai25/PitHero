@@ -713,6 +713,38 @@ namespace PitHero.Services
             return best != long.MaxValue;
         }
 
+        /// <summary>
+        /// Rightmost tile X occupied by any farm object — a placed building (using its footprint's
+        /// east edge) or a tilled/ready-to-till tile. Governs how far east idle monsters may wander.
+        /// Returns -1 when no farm objects exist.
+        /// </summary>
+        public int GetRightmostFarmObjectTileX()
+        {
+            int max = -1;
+
+            var buildings = _buildingService.GetAll();
+            for (int i = 0; i < buildings.Count; i++)
+            {
+                var b = buildings[i];
+                var bounds = Util.BuildingConfig.GetFootprintBounds(b.Type);
+                int right = b.TileX + bounds.dxMax;
+                if (right > max)
+                    max = right;
+            }
+
+            var enumerator = _tileState.GetAllStates().GetEnumerator();
+            while (enumerator.MoveNext())
+            {
+                if ((enumerator.Current.Value & (TileStateFlag.Tilled | TileStateFlag.ReadyToTill)) == 0)
+                    continue;
+                if (enumerator.Current.Key.X > max)
+                    max = enumerator.Current.Key.X;
+            }
+            enumerator.Dispose();
+
+            return max;
+        }
+
         private void HandleReadyToTillSet(Point tile)
         {
             if (_tracked.Add(tile))

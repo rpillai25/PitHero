@@ -212,6 +212,44 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void GetRightmostFarmObjectTileX_NoFarmObjects_ReturnsMinusOne()
+        {
+            Assert.AreEqual(-1, _coordinator.GetRightmostFarmObjectTileX());
+        }
+
+        [TestMethod]
+        public void GetRightmostFarmObjectTileX_UsesBuildingFootprintEastEdge()
+        {
+            // MonsterHouse footprint spans anchor.X-2 .. anchor.X+2
+            _buildingService.AddBuilding(new PlacedBuilding
+            {
+                Type = BuildingType.MonsterHouse,
+                TileX = 123,
+                TileY = 2,
+                UniqueId = _buildingService.AllocateId()
+            });
+
+            Assert.AreEqual(125, _coordinator.GetRightmostFarmObjectTileX());
+        }
+
+        [TestMethod]
+        public void GetRightmostFarmObjectTileX_TakesMaxAcrossBuildingsAndTilledTiles()
+        {
+            // CropStorage footprint spans anchor.X-1 .. anchor.X+1 → east edge 128
+            _buildingService.AddBuilding(new PlacedBuilding
+            {
+                Type = BuildingType.CropStorage,
+                TileX = 127,
+                TileY = 2,
+                UniqueId = _buildingService.AllocateId()
+            });
+            _tileState.SetFlag(new Point(135, 5), TileStateFlag.Tilled);
+            _tileState.SetFlag(new Point(132, 6), TileStateFlag.ReadyToTill);
+
+            Assert.AreEqual(135, _coordinator.GetRightmostFarmObjectTileX());
+        }
+
+        [TestMethod]
         public void TryGetNearestFieldTile_FalseWhenNoFieldExists()
         {
             Assert.IsFalse(_coordinator.TryGetNearestFieldTile(new Point(130, 5), out _));
