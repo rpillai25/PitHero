@@ -230,6 +230,22 @@ namespace PitHero
         // New-game starting resources
         public const int NewGameStartingGold = 200; // Gold the player starts with in a new game
         public const int NewGameStartingHPPotions = 5; // HPPotions in the hero's bag at new game start
+        public const int NewGameStartingMPPotions = 5; // MPPotions in the hero's bag at new game start
+        public const int NewGameStartingWheatSeeds = 12; // Wheat seeds in the seed inventory at new game start
+        public const int NewGameStartingTomatoSeeds = 6; // Tomato seeds in the seed inventory at new game start
+        public const int NewGameStartingAppleTreeSeeds = 2; // Apple tree seeds in the seed inventory at new game start
+
+        // New-game starting farm buildings (issue #316). Anchor tiles; footprints span
+        // MonsterHouse tiles 121-125 x 0-4 and CropStorage tiles 126-128 x 0-3.
+        public const int NewGameMonsterHouseAnchorTileX = 123;
+        public const int NewGameMonsterHouseAnchorTileY = 2;
+        public const int NewGameCropStorageAnchorTileX = 127;
+        public const int NewGameCropStorageAnchorTileY = 2;
+
+        // Starter farming Slime housed in the new-game Monster House (proficiencies 1-9)
+        public const int NewGameStarterSlimeFarmingProficiency = 7;
+        public const int NewGameStarterSlimeFishingProficiency = 3;
+        public const int NewGameStarterSlimeCookingProficiency = 3;
 
         // Render Layers (the lower the number, the higher the layer)
 

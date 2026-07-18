@@ -635,6 +635,17 @@ namespace PitHero.ECS.Components
             {
                 for (int i = 0; i < GameConfig.NewGameStartingHPPotions; i++)
                     TryAddItem(PotionItems.HPPotion());
+                for (int i = 0; i < GameConfig.NewGameStartingMPPotions; i++)
+                    TryAddItem(PotionItems.MPPotion());
+
+                // Pre-equip the job's weakest weapon (issue #316); fall back to the bag if equip fails
+                if (LinkedHero != null)
+                {
+                    var startingWeapon = JobStartingWeapons.CreateStartingWeapon(LinkedHero.Job.JobFlag);
+                    if (startingWeapon != null && !LinkedHero.TryEquip(startingWeapon))
+                        TryAddItem(startingWeapon);
+                }
+
                 GrantNewGameStartingItems = false;
             }
 
