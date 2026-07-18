@@ -1206,6 +1206,17 @@ namespace PitHero.ECS.Components
         {
             var pathfinder = _coordinator.Pathfinder;
 
+            // Idle wander is bounded east by the rightmost farm object (building or tilled tile)
+            // plus a small margin, so monsters don't roam far past the developed farm.
+            int maxWanderX = pathfinder.Width - 1;
+            var rightmostFarmObjectX = _coordinator.RightmostFarmObjectTileX;
+            if (rightmostFarmObjectX >= 0)
+            {
+                maxWanderX = rightmostFarmObjectX + GameConfig.FarmWanderMaxEastOffsetTiles;
+                if (maxWanderX < GameConfig.FarmMinWanderTileX) maxWanderX = GameConfig.FarmMinWanderTileX;
+                else if (maxWanderX > pathfinder.Width - 1) maxWanderX = pathfinder.Width - 1;
+            }
+
             // Idle monsters hang around the field rather than roaming the whole farm
             if (_coordinator.TryGetNearestFieldTile(_mover.CurrentTile, out var fieldTile))
             {
@@ -1215,7 +1226,7 @@ namespace PitHero.ECS.Components
                     int x = fieldTile.X + Nez.Random.Range(-r, r + 1);
                     int y = fieldTile.Y + Nez.Random.Range(-r, r + 1);
                     if (x < GameConfig.FarmMinWanderTileX) x = GameConfig.FarmMinWanderTileX;
-                    else if (x >= pathfinder.Width) x = pathfinder.Width - 1;
+                    else if (x > maxWanderX) x = maxWanderX;
                     if (y < 1) y = 1;
                     else if (y > pathfinder.Height - 2) y = pathfinder.Height - 2;
                     var goal = new Point(x, y);
@@ -1229,7 +1240,7 @@ namespace PitHero.ECS.Components
             // No field yet (or all nearby spots unreachable) — wander anywhere on the farm
             for (int attempt = 0; attempt < 8; attempt++)
             {
-                int x = Nez.Random.Range(GameConfig.FarmMinWanderTileX, pathfinder.Width);
+                int x = Nez.Random.Range(GameConfig.FarmMinWanderTileX, maxWanderX + 1);
                 int y = Nez.Random.Range(1, pathfinder.Height - 1);
                 var goal = new Point(x, y);
                 if (goal == _mover.CurrentTile)

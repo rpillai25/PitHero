@@ -83,7 +83,9 @@ namespace PitHero.UI
             _cropsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
 
             _seedInventory = new int[CropTypeInfo.Count];
-            _seedInventory[(int)CropType.Wheat] = 5;
+            _seedInventory[(int)CropType.Wheat]     = GameConfig.NewGameStartingWheatSeeds;
+            _seedInventory[(int)CropType.Tomato]    = GameConfig.NewGameStartingTomatoSeeds;
+            _seedInventory[(int)CropType.AppleTree] = GameConfig.NewGameStartingAppleTreeSeeds;
 
             CreateInventoryWindow();
 

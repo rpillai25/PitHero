@@ -293,6 +293,37 @@ namespace PitHero.ECS.Scenes
             _isInitializationComplete = true;
         }
 
+        /// <summary>Spawns the scripted new-game farm content: Monster House + Crop Storage + starter farming Slime (issue #316).</summary>
+        private void SetupNewGameFarmContent()
+        {
+            var buildingService = Core.Services.GetService<Services.BuildingService>();
+            if (buildingService == null || _buildingModeOverlay == null)
+                return;
+
+            var houseId = buildingService.AllocateId();
+            _buildingModeOverlay.SpawnRestoredBuilding(Util.BuildingType.MonsterHouse,
+                GameConfig.NewGameMonsterHouseAnchorTileX, GameConfig.NewGameMonsterHouseAnchorTileY, houseId);
+
+            var storageId = buildingService.AllocateId();
+            _buildingModeOverlay.SpawnRestoredBuilding(Util.BuildingType.CropStorage,
+                GameConfig.NewGameCropStorageAnchorTileX, GameConfig.NewGameCropStorageAnchorTileY, storageId);
+
+            var alliedManager = Core.Services.GetService<AlliedMonsterManager>();
+            if (alliedManager != null)
+            {
+                var starter = new AlliedMonster(NameGenerator.GenerateFirstName(), MonsterTextKey.Monster_Slime,
+                    GameConfig.NewGameStarterSlimeFishingProficiency,
+                    GameConfig.NewGameStarterSlimeCookingProficiency,
+                    GameConfig.NewGameStarterSlimeFarmingProficiency,
+                    houseId);
+                // Scripted pre-assignment unique to this starter monster; recruits/purchases stay Job=None
+                starter.Job = MonsterJob.Farming;
+                alliedManager.AddAlliedMonster(starter);
+                // A housed monster implies its type was defeated (issue #283 invariant)
+                Core.Services.GetService<DefeatedMonsterService>()?.MarkDefeatedByTypeName(MonsterTextKey.Monster_Slime);
+            }
+        }
+
         /// <summary>Applies pending save data to restore game state after scene initialization.</summary>
         private void ApplyPendingLoadData()
         {
@@ -300,6 +331,7 @@ namespace PitHero.ECS.Scenes
             if (pendingData == null)
             {
                 Core.Services.GetService<SaveLoadService>()?.ResetForNewGame();
+                SetupNewGameFarmContent();
                 return;
             }
 
@@ -354,6 +386,10 @@ namespace PitHero.ECS.Scenes
             }
             if (buildingService != null)
                 buildingService.NextId = pendingData.NextBuildingId;
+
+            // Tile flags restored from a save don't raise per-tile events, so re-derive the idle
+            // wander bound now that both buildings and tile states are in place
+            Core.Services.GetService<Services.FarmTaskCoordinator>()?.RecalculateRightmostFarmObject();
 
             // Restore harvested-crop storage inventories (keyed by building UniqueId, so after buildings)
             var cropStorageService = Core.Services.GetService<Services.CropStorageInventoryService>();
