@@ -212,15 +212,16 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void GetRightmostFarmObjectTileX_NoFarmObjects_ReturnsMinusOne()
+        public void RightmostFarmObject_NoFarmObjects_IsMinusOne()
         {
-            Assert.AreEqual(-1, _coordinator.GetRightmostFarmObjectTileX());
+            Assert.AreEqual(-1, _coordinator.RightmostFarmObjectTileX);
         }
 
         [TestMethod]
-        public void GetRightmostFarmObjectTileX_UsesBuildingFootprintEastEdge()
+        public void RightmostFarmObject_BuildingPlacement_UpdatesCacheToFootprintEastEdge()
         {
-            // MonsterHouse footprint spans anchor.X-2 .. anchor.X+2
+            // MonsterHouse footprint spans anchor.X-2 .. anchor.X+2; AddBuilding fires
+            // BuildingsChanged, which refreshes the cache — no explicit recalc needed
             _buildingService.AddBuilding(new PlacedBuilding
             {
                 Type = BuildingType.MonsterHouse,
@@ -229,11 +230,33 @@ namespace PitHero.Tests
                 UniqueId = _buildingService.AllocateId()
             });
 
-            Assert.AreEqual(125, _coordinator.GetRightmostFarmObjectTileX());
+            Assert.AreEqual(125, _coordinator.RightmostFarmObjectTileX);
         }
 
         [TestMethod]
-        public void GetRightmostFarmObjectTileX_TakesMaxAcrossBuildingsAndTilledTiles()
+        public void RightmostFarmObject_ReadyToTillDesignation_UpdatesCacheIncrementally()
+        {
+            _tileState.SetFlag(new Point(132, 6), TileStateFlag.ReadyToTill);
+            Assert.AreEqual(132, _coordinator.RightmostFarmObjectTileX);
+
+            // A designation further west must not lower the bound
+            _tileState.SetFlag(new Point(125, 6), TileStateFlag.ReadyToTill);
+            Assert.AreEqual(132, _coordinator.RightmostFarmObjectTileX);
+        }
+
+        [TestMethod]
+        public void RightmostFarmObject_ClearingRightmostDesignation_ShrinksCache()
+        {
+            _tileState.SetFlag(new Point(125, 6), TileStateFlag.ReadyToTill);
+            _tileState.SetFlag(new Point(132, 6), TileStateFlag.ReadyToTill);
+
+            _tileState.ClearFlag(new Point(132, 6), TileStateFlag.ReadyToTill);
+
+            Assert.AreEqual(125, _coordinator.RightmostFarmObjectTileX);
+        }
+
+        [TestMethod]
+        public void RecalculateRightmostFarmObject_TakesMaxAcrossBuildingsAndTilledTiles()
         {
             // CropStorage footprint spans anchor.X-1 .. anchor.X+1 → east edge 128
             _buildingService.AddBuilding(new PlacedBuilding
@@ -243,10 +266,13 @@ namespace PitHero.Tests
                 TileY = 2,
                 UniqueId = _buildingService.AllocateId()
             });
+            // Directly-set Tilled flags raise no event (the load-restore case) — the explicit
+            // recalc the load path performs must pick them up
             _tileState.SetFlag(new Point(135, 5), TileStateFlag.Tilled);
-            _tileState.SetFlag(new Point(132, 6), TileStateFlag.ReadyToTill);
 
-            Assert.AreEqual(135, _coordinator.GetRightmostFarmObjectTileX());
+            _coordinator.RecalculateRightmostFarmObject();
+
+            Assert.AreEqual(135, _coordinator.RightmostFarmObjectTileX);
         }
 
         [TestMethod]

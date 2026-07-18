@@ -1209,7 +1209,7 @@ namespace PitHero.ECS.Components
             // Idle wander is bounded east by the rightmost farm object (building or tilled tile)
             // plus a small margin, so monsters don't roam far past the developed farm.
             int maxWanderX = pathfinder.Width - 1;
-            var rightmostFarmObjectX = _coordinator.GetRightmostFarmObjectTileX();
+            var rightmostFarmObjectX = _coordinator.RightmostFarmObjectTileX;
             if (rightmostFarmObjectX >= 0)
             {
                 maxWanderX = rightmostFarmObjectX + GameConfig.FarmWanderMaxEastOffsetTiles;

@@ -387,6 +387,10 @@ namespace PitHero.ECS.Scenes
             if (buildingService != null)
                 buildingService.NextId = pendingData.NextBuildingId;
 
+            // Tile flags restored from a save don't raise per-tile events, so re-derive the idle
+            // wander bound now that both buildings and tile states are in place
+            Core.Services.GetService<Services.FarmTaskCoordinator>()?.RecalculateRightmostFarmObject();
+
             // Restore harvested-crop storage inventories (keyed by building UniqueId, so after buildings)
             var cropStorageService = Core.Services.GetService<Services.CropStorageInventoryService>();
             if (cropStorageService != null)

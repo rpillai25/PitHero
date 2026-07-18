@@ -92,6 +92,7 @@ namespace PitHero.Services
                 _tilledTileService.OnTileTilled += HandleTileTilled;
 
             RescanReadyToTill();
+            RecalculateRightmostFarmObject();
         }
 
         /// <summary>Unsubscribes from service events. Call when the scene is torn down.</summary>
@@ -716,9 +717,19 @@ namespace PitHero.Services
         /// <summary>
         /// Rightmost tile X occupied by any farm object — a placed building (using its footprint's
         /// east edge) or a tilled/ready-to-till tile. Governs how far east idle monsters may wander.
-        /// Returns -1 when no farm objects exist.
+        /// -1 when no farm objects exist. Maintained incrementally from building/tile events so the
+        /// wander logic can read it every tick without scanning.
         /// </summary>
-        public int GetRightmostFarmObjectTileX()
+        public int RightmostFarmObjectTileX => _rightmostFarmObjectTileX;
+
+        private int _rightmostFarmObjectTileX = -1;
+
+        /// <summary>
+        /// Full rescan of buildings and tilled/ready-to-till tiles. Called from the constructor,
+        /// on shrink events (building changes, rightmost designation cleared), and after a save is
+        /// loaded (tile flags restored from a save don't raise per-tile events).
+        /// </summary>
+        public void RecalculateRightmostFarmObject()
         {
             int max = -1;
 
@@ -742,11 +753,13 @@ namespace PitHero.Services
             }
             enumerator.Dispose();
 
-            return max;
+            _rightmostFarmObjectTileX = max;
         }
 
         private void HandleReadyToTillSet(Point tile)
         {
+            if (tile.X > _rightmostFarmObjectTileX)
+                _rightmostFarmObjectTileX = tile.X;
             if (_tracked.Add(tile))
                 _queue.AddBack(new FarmAction { Type = FarmActionType.Till, TargetTile = tile });
         }
@@ -758,10 +771,18 @@ namespace PitHero.Services
             bool claimed = _tracked.Contains(tile) && !IsQueued(tile);
             if (!claimed)
                 _tracked.Remove(tile);
+
+            // Only a clear at the cached east edge can shrink the wander bound; anything left of
+            // it can't change the max. (Till completion clears here then re-raises via OnTileTilled.)
+            if (tile.X >= _rightmostFarmObjectTileX)
+                RecalculateRightmostFarmObject();
         }
 
         private void HandleTileTilled(Point tile)
         {
+            if (tile.X > _rightmostFarmObjectTileX)
+                _rightmostFarmObjectTileX = tile.X;
+
             var cropPlanting = GetService<CropPlantingService>();
             if (cropPlanting == null || !cropPlanting.HasPlan(tile))
                 return;
@@ -772,6 +793,9 @@ namespace PitHero.Services
         private void HandleBuildingsChanged()
         {
             Pathfinder.RebuildWalls(_buildingService);
+
+            // Building placement/removal is rare, so a full rescan of the wander bound is fine here
+            RecalculateRightmostFarmObject();
 
             // Retry tiles that were unreachable — a new building can't help, but this also covers
             // future building moves/removals; tiles still ReadyToTill simply re-enter the queue.
