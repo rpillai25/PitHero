@@ -172,7 +172,7 @@ namespace PitHero
         public const int ServerCarryDishLimit = 2;              // cooked dishes a server can carry at once
         public const float TicketBoardPauseSeconds = 1f;        // pause at the board to post/read a ticket
         public const int KitchenFridgeParPerCrop = 4;           // runner tops the fridge up to this many of each fetched crop
-        public const float KitchenRunnerSprintMultiplier = 2f;  // runner speed multiplier while fetching ingredients
+        public const float KitchenRunnerSprintMultiplier = 3f;  // runner speed multiplier while fetching ingredients
         public const float ServerWanderPauseSeconds = 2.5f;     // idle pause between server wander hops
         // Tavern dining area bounds (server zones and wandering)
         public const int TavernAreaMinTileX = 91;
