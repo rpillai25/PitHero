@@ -67,290 +67,338 @@ Corn_8
 Corn_9
 	270,222,32,32
 	0.5,0.5
-Eggplant_1
+ApplePie_Large
 	351,148,32,32
 	0.5,0.5
-Eggplant_10
+ButteredBread_Large
 	318,181,32,32
 	0.5,0.5
-Eggplant_11
+CheesyMashedPotatoes_Large
 	405,107,32,32
 	0.5,0.5
-Eggplant_2
+ChilledWatermelonSorbet_Large
 	438,74,32,32
 	0.5,0.5
-Eggplant_3
+CornChowder_Large
 	303,214,32,32
 	0.5,0.5
-Eggplant_4
+EggplantParmesan_Large
 	351,181,32,32
 	0.5,0.5
-Eggplant_5
+GardenSalad_Large
 	384,140,32,32
 	0.5,0.5
-Eggplant_6
+GrapeJuice_Large
 	471,74,32,32
 	0.5,0.5
-Eggplant_7
+GrapeTart_Large
 	438,107,32,32
 	0.5,0.5
-Eggplant_8
+GrilledCornWithButter_Large
 	336,214,32,32
 	0.5,0.5
-Eggplant_9
+HarvestFeastPlatter_Large
 	384,173,32,32
 	0.5,0.5
-ForkedHoe_1
+PumpkinCreamSoup_Large
 	417,140,32,32
 	0.5,0.5
-ForkedHoe_2
+RoastedOnionSkewers_Large
 	471,107,32,32
 	0.5,0.5
-ForkedHoe_3
+SpicedEggplantSteak_Large
 	369,214,32,32
 	0.5,0.5
-Grapes_1
+TomatoCheeseBisque_Large
 	417,173,32,32
 	0.5,0.5
-Grapes_2
+TurnipOnionStew_Large
 	450,140,32,32
 	0.5,0.5
-Grapes_3
+Eggplant_1
 	402,206,32,32
 	0.5,0.5
-Grapes_4
+Eggplant_10
 	450,173,32,32
 	0.5,0.5
-Grapes_5
+Eggplant_11
 	435,206,32,32
 	0.5,0.5
-Grapes_6
+Eggplant_2
 	468,206,32,32
 	0.5,0.5
-Grapes_7
+Eggplant_3
 	0,235,32,32
 	0.5,0.5
-Grapes_8
+Eggplant_4
 	0,268,32,32
 	0.5,0.5
-Grapes_9
+Eggplant_5
 	33,235,32,32
 	0.5,0.5
-Apple_Harvest
+Eggplant_6
 	66,235,32,32
 	0.5,0.5
-Corn_Harvest
+Eggplant_7
 	0,301,32,32
 	0.5,0.5
-Eggplant_Harvest
+Eggplant_8
 	33,268,32,32
 	0.5,0.5
-Grapes_Harvest
+Eggplant_9
 	66,268,32,32
 	0.5,0.5
-Lettuce_Harvest
+ForkedHoe_1
 	0,334,32,32
 	0.5,0.5
-Onion_Harvest
+ForkedHoe_2
 	33,301,32,32
 	0.5,0.5
-Potato_Harvest
+ForkedHoe_3
 	99,235,32,32
 	0.5,0.5
-Pumpkin_Harvest
+Grapes_1
 	66,301,32,32
 	0.5,0.5
-Sugarcane_Harvest
+Grapes_2
 	33,334,32,32
 	0.5,0.5
-Tomato_Harvest
+Grapes_3
 	0,367,32,32
 	0.5,0.5
-Turnip_Harvest
+Grapes_4
 	99,268,32,32
 	0.5,0.5
-Watermelon_Harvest
+Grapes_5
 	132,235,32,32
 	0.5,0.5
-Wheat_Harvest
+Grapes_6
 	0,400,32,32
 	0.5,0.5
-Lettuce_1
+Grapes_7
 	99,301,32,32
 	0.5,0.5
-Lettuce_2
+Grapes_8
 	132,268,32,32
 	0.5,0.5
-Lettuce_3
+Grapes_9
 	33,367,32,32
 	0.5,0.5
-Lettuce_4
+Apple_Harvest
 	66,334,32,32
 	0.5,0.5
-Lettuce_5
+Corn_Harvest
 	165,236,32,32
 	0.5,0.5
-Onion_1
+Eggplant_Harvest
 	99,334,32,32
 	0.5,0.5
-Onion_2
+Grapes_Harvest
 	132,301,32,32
 	0.5,0.5
-Onion_3
+Lettuce_Harvest
 	33,400,32,32
 	0.5,0.5
-Onion_4
+Onion_Harvest
 	66,367,32,32
 	0.5,0.5
-Onion_5
+Potato_Harvest
 	0,433,32,32
 	0.5,0.5
-Onion_6
+Pumpkin_Harvest
 	165,269,32,32
 	0.5,0.5
-Potato_1
+Sugarcane_Harvest
 	198,255,32,32
 	0.5,0.5
-Potato_2
+Tomato_Harvest
 	99,367,32,32
 	0.5,0.5
-Potato_3
+Turnip_Harvest
 	132,334,32,32
 	0.5,0.5
-Potato_4
+Watermelon_Harvest
 	66,400,32,32
 	0.5,0.5
-Potato_5
+Wheat_Harvest
 	33,433,32,32
 	0.5,0.5
-Potato_6
+Lettuce_1
+	0,466,32,32
+	0.5,0.5
+Lettuce_2
 	165,302,32,32
 	0.5,0.5
-Potato_7
+Lettuce_3
 	198,288,32,32
 	0.5,0.5
-Sugarcane_1
+Lettuce_4
 	231,255,32,32
 	0.5,0.5
-Sugarcane_2
+Lettuce_5
+	33,466,32,32
+	0.5,0.5
+Onion_1
 	132,367,32,32
 	0.5,0.5
-Sugarcane_3
+Onion_2
 	66,433,32,32
 	0.5,0.5
-Sugarcane_4
+Onion_3
 	99,400,32,32
 	0.5,0.5
-Sugarcane_5
+Onion_4
 	165,335,32,32
 	0.5,0.5
-Sugarcane_6
+Onion_5
 	264,255,32,32
 	0.5,0.5
-Sugarcane_7
+Onion_6
 	231,288,32,32
 	0.5,0.5
-Sugarcane_8
+Potato_1
 	198,321,32,32
 	0.5,0.5
-Tomato_1
-	132,400,32,32
-	0.5,0.5
-Tomato_2
+Potato_2
 	99,433,32,32
 	0.5,0.5
-Tomato_3
+Potato_3
+	132,400,32,32
+	0.5,0.5
+Potato_4
+	66,466,32,32
+	0.5,0.5
+Potato_5
 	165,368,32,32
 	0.5,0.5
-Tomato_4
+Potato_6
 	303,247,32,32
 	0.5,0.5
-Tomato_5
+Potato_7
 	264,288,32,32
 	0.5,0.5
-Tomato_6
+Sugarcane_1
 	231,321,32,32
 	0.5,0.5
-Tomato_7
+Sugarcane_2
 	198,354,32,32
 	0.5,0.5
-Tomato_8
+Sugarcane_3
 	132,433,32,32
 	0.5,0.5
-Tomato_9
+Sugarcane_4
+	99,466,32,32
+	0.5,0.5
+Sugarcane_5
 	165,401,32,32
 	0.5,0.5
-Turnip_1
+Sugarcane_6
 	336,247,32,32
 	0.5,0.5
-Turnip_2
+Sugarcane_7
 	297,280,32,32
 	0.5,0.5
-Turnip_3
+Sugarcane_8
 	231,354,32,32
 	0.5,0.5
-Turnip_4
+Tomato_1
 	198,387,32,32
 	0.5,0.5
-Turnip_5
+Tomato_2
 	264,321,32,32
 	0.5,0.5
-Turnip_6
+Tomato_3
+	132,466,32,32
+	0.5,0.5
+Tomato_4
 	165,434,32,32
 	0.5,0.5
-Turnip_7
+Tomato_5
 	297,313,32,32
 	0.5,0.5
-Watermelon_1
+Tomato_6
 	330,280,32,32
 	0.5,0.5
-Watermelon_10
+Tomato_7
 	369,247,32,32
 	0.5,0.5
-Watermelon_11
+Tomato_8
 	264,354,32,32
 	0.5,0.5
-Watermelon_12
+Tomato_9
 	231,387,32,32
 	0.5,0.5
-Watermelon_2
+Turnip_1
 	198,420,32,32
 	0.5,0.5
-Watermelon_3
+Turnip_2
+	165,467,32,32
+	0.5,0.5
+Turnip_3
 	402,239,32,32
 	0.5,0.5
-Watermelon_4
+Turnip_4
 	363,280,32,32
 	0.5,0.5
-Watermelon_5
+Turnip_5
 	330,313,32,32
 	0.5,0.5
-Watermelon_6
+Turnip_6
 	297,346,32,32
 	0.5,0.5
-Watermelon_7
+Turnip_7
 	264,387,32,32
 	0.5,0.5
-Watermelon_8
+Watermelon_1
 	231,420,32,32
 	0.5,0.5
-Watermelon_9
+Watermelon_10
 	198,453,32,32
 	0.5,0.5
-Wheat_1
+Watermelon_11
 	402,272,32,32
 	0.5,0.5
-Wheat_2
+Watermelon_12
 	435,239,32,32
 	0.5,0.5
-Wheat_3
-	297,379,32,32
-	0.5,0.5
-Wheat_4
+Watermelon_2
 	363,313,32,32
 	0.5,0.5
-Wheat_5
+Watermelon_3
 	330,346,32,32
+	0.5,0.5
+Watermelon_4
+	297,379,32,32
+	0.5,0.5
+Watermelon_5
+	264,420,32,32
+	0.5,0.5
+Watermelon_6
+	231,453,32,32
+	0.5,0.5
+Watermelon_7
+	468,239,32,32
+	0.5,0.5
+Watermelon_8
+	435,272,32,32
+	0.5,0.5
+Watermelon_9
+	396,305,32,32
+	0.5,0.5
+Wheat_1
+	330,379,32,32
+	0.5,0.5
+Wheat_2
+	297,412,32,32
+	0.5,0.5
+Wheat_3
+	363,346,32,32
+	0.5,0.5
+Wheat_4
+	264,453,32,32
+	0.5,0.5
+Wheat_5
+	396,338,32,32
 	0.5,0.5
 Pumpkin_1
 	483,140,26,30
@@ -359,52 +407,103 @@ Pumpkin_10
 	483,171,26,30
 	0.5,0.5
 Pumpkin_11
-	264,420,26,30
+	429,305,26,30
 	0.5,0.5
 Pumpkin_2
-	231,453,26,30
+	468,272,26,30
 	0.5,0.5
 Pumpkin_3
-	468,239,26,30
+	363,379,26,30
 	0.5,0.5
 Pumpkin_4
-	435,272,26,30
+	297,445,26,30
 	0.5,0.5
 Pumpkin_5
-	396,305,26,30
+	330,412,26,30
 	0.5,0.5
 Pumpkin_6
-	363,346,26,30
+	456,305,26,30
 	0.5,0.5
 Pumpkin_7
-	330,379,26,30
+	429,336,26,30
 	0.5,0.5
 Pumpkin_8
-	297,412,26,30
+	396,371,26,30
 	0.5,0.5
 Pumpkin_9
-	258,453,26,30
+	357,412,26,30
 	0.5,0.5
 WateringCan
-	0,466,24,21
+	486,0,24,21
 	0.5,0.5
 Watering_1
-	486,0,23,32
+	486,22,23,32
 	0.5,0.5
 Watering_2
-	486,33,23,32
+	324,445,23,32
 	0.5,0.5
 Watering_3
-	423,305,23,32
+	483,303,23,32
 	0.5,0.5
 Watering_4
-	396,336,23,32
+	456,336,23,32
 	0.5,0.5
 Watering_5
-	462,272,23,32
+	348,443,23,32
 	0.5,0.5
 Watering_6
-	324,412,23,32
+	423,371,23,32
+	0.5,0.5
+ApplePie_Small
+	228,129,12,12
+	0.5,0.5
+ButteredBread_Small
+	241,129,12,12
+	0.5,0.5
+CheesyMashedPotatoes_Small
+	204,203,12,12
+	0.5,0.5
+ChilledWatermelonSorbet_Small
+	486,55,12,12
+	0.5,0.5
+CornChowder_Small
+	499,55,12,12
+	0.5,0.5
+EggplantParmesan_Small
+	198,486,12,12
+	0.5,0.5
+EmptyPlate
+	211,486,12,12
+	0.5,0.5
+GardenSalad_Small
+	224,486,12,12
+	0.5,0.5
+GrapeJuice_Small
+	237,486,12,12
+	0.5,0.5
+GrapeTart_Small
+	250,486,12,12
+	0.5,0.5
+GrilledCornWithButter_Small
+	263,486,12,12
+	0.5,0.5
+HarvestFeastPlatter_Small
+	276,486,12,12
+	0.5,0.5
+PumpkinCreamSoup_Small
+	495,272,12,12
+	0.5,0.5
+RoastedOnionSkewers_Small
+	297,476,12,12
+	0.5,0.5
+SpicedEggplantSteak_Small
+	495,285,12,12
+	0.5,0.5
+TomatoCheeseBisque_Small
+	310,476,12,12
+	0.5,0.5
+TurnipOnionStew_Small
+	384,410,12,12
 	0.5,0.5
 
 AppleTree
@@ -413,45 +512,48 @@ AppleTree
 Corn
 	15
 	13,14,15,16,17,18,19,20,21,22
+Dishes
+	15
+	23,152,24,153,25,154,26,155,27,156,28,157,158,29,159,30,160,31,161,32,162,33,163,34,164,35,165,36,166,37,167,38,168
 Eggplant
 	15
-	23,24,25,26,27,28,29,30,31,32,33
+	39,40,41,42,43,44,45,46,47,48,49
 ForkedHoe
 	15
-	34,35,36
+	50,51,52
 Grapes
 	15
-	37,38,39,40,41,42,43,44,45
+	53,54,55,56,57,58,59,60,61
 HarvestedCrops
 	15
-	46,47,48,49,50,51,52,53,54,55,56,57,58
+	62,63,64,65,66,67,68,69,70,71,72,73,74
 Lettuce
 	15
-	59,60,61,62,63
+	75,76,77,78,79
 Onion
 	15
-	64,65,66,67,68,69
+	80,81,82,83,84,85
 Potato
 	15
-	70,71,72,73,74,75,76
+	86,87,88,89,90,91,92
 Pumpkin
 	15
-	118,119,120,121,122,123,124,125,126,127,128
+	134,135,136,137,138,139,140,141,142,143,144
 Sugarcane
 	15
-	77,78,79,80,81,82,83,84
+	93,94,95,96,97,98,99,100
 Tomato
 	15
-	85,86,87,88,89,90,91,92,93
+	101,102,103,104,105,106,107,108,109
 Turnip
 	15
-	94,95,96,97,98,99,100
+	110,111,112,113,114,115,116
 Watering
 	15
-	130,131,132,133,134,135
+	146,147,148,149,150,151
 Watermelon
 	15
-	101,102,103,104,105,106,107,108,109,110,111,112
+	117,118,119,120,121,122,123,124,125,126,127,128
 Wheat
 	15
-	113,114,115,116,117
+	129,130,131,132,133
