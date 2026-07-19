@@ -73,7 +73,7 @@ interpretation caveats that are not obvious from the raw data.
 |---|---|---|
 | `attack` | `actor`, `actorType` (`"hero"`/`"merc"`/`"monster"`), `action`, `target`, `targetType`, `dmg`, `hpBefore`, `hpAfter`, `killed`, `missed` (only present when `true`) | `action` is `"physical"`, a skill id (e.g. `knight.heavy_strike`), `"counter"` (hero/merc retaliation after taking a hit — requires monk.counter passive), or `"<skillId>.dot"` (end-of-round damage-over-time tick from a skill such as `synergy.poison_arrow.dot`). Critical hits append `".crit"` (`"physical.crit"`, `"knight.heavy_strike.crit"`) — filter with `action ENDS WITH ".crit"`. `hpBefore`/`hpAfter` are the **target's** HP; `hpBefore − dmg = hpAfter` (floored at 0). AoE skills emit one line per target hit. Dodged attacks log `missed: true` with `dmg: 0` and `hpBefore == hpAfter` (skill misses log only against the primary target). Monsters only have physical attacks. DoT ticks never crit or miss; counters can miss but never crit. |
 | `heal` | `actor`, `source` (skill id or item name), `target`, `amount`, `hpAfter` | Battle heals (skills and consumables). |
-| `buff` | `actor`, `source` (skill id), `target`, `buffType`, `magnitude`, `durationTurns` | One row per granted buff actually applied (a multi-buff skill like `synergy.fade` logs one row per buff). Buffs skipped by the MaxStacks at-cap guard are not logged. `durationTurns: -1` = until battle end. `buffType` is the `BuffType` enum name (`DefenseUp`, `EvasionUp`, `MPRegen`, `Untargetable`). |
+| `buff` | `actor`, `source` (skill id), `target`, `buffType`, `magnitude`, `durationTurns` | One row per granted buff actually applied (a multi-buff skill like `synergy.fade` logs one row per buff). Buffs skipped by the MaxStacks at-cap guard are not logged. `durationTurns: -1` = until battle end. `buffType` is the `BuffType` enum name (`DefenseUp`, `EvasionUp`, `MPRegen`, `Untargetable`, `AttackUp`, `MagicUp`, `AgilityUp`, `HPRegen`). Meal buffs (issue #319) are re-injected silently at every battle start and are NOT logged here — correlate with `dish_served` instead. |
 | `monster_defeated` | `name`, `enemyId`, `level`, `isBoss`, `pitLevel`, `pitTier`, `xp`, `jp`, `gold` | One per kill regardless of killer; the matching `gold_gained` (`source:"battle"`) follows. |
 | `char_killed` | full victim snapshot (same shape as a `party_snapshot` member) + `killer{name, enemyId, level, str/agi/vit/mag, maxHP}` | Hero or mercenary killed by a monster. |
 
@@ -97,6 +97,11 @@ All farming work is performed by allied monsters; `monster` is the worker's disp
 | `crop_sold` | `crop`, `qty`, `gold`, `source` | One line **per stack sold**; `source`: `"manual"` or `"auto"`. The gold itself arrives via the paired `gold_gained (source:"sell_crops")`. In bulk manual sells the per-stack `gold` sum can deviate from the paired `gold_gained.amount` if auto-sell emptied slots while the confirm dialog was open (pre-existing quirk; the detail lines reflect what was actually cleared). |
 | `building_created` | `buildingType`, `x`, `y`, `cost` | `buildingType`: `"MonsterHouse"` or `"CropStorage"`. Player placements only — never fired on save restore. `cost` is the gold spent. |
 | `building_moved` | `buildingType`, `fromX`, `fromY`, `toX`, `toY` | Player moved an existing building. |
+
+### Tavern dining (issue #319)
+| `e` | Fields | Notes |
+|---|---|---|
+| `dish_served` | `dish`, `price`, `tip`, `isParty`, `deluxe` | One line per finished meal. `dish` is the `DishType` enum name. Patron meals (`isParty:false`) pair with `gold_gained (source:"dish_sale")` and, when `tip > 0`, `gold_gained (source:"dish_tip")`. Party meals (`isParty:true`) never tip and paid at order time (spend not logged — infer from `currentGold` deltas). A patron who leaves after cooking started (patience expiry or hired mid-dining) still pays via `gold_gained (source:"dish_sale")` but logs no `dish_served`. |
 
 ## Interpretation caveats
 

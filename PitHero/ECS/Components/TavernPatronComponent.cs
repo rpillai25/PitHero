@@ -128,13 +128,17 @@ namespace PitHero.ECS.Components
                     gameState.AddFunds(price, "dish_sale");
 
                     // Tip roll
+                    int tip = 0;
                     if (Nez.Random.Chance(GameConfig.DishTipChance))
                     {
                         float tipPct = Nez.Random.Range(GameConfig.DishTipMinPercent, GameConfig.DishTipMaxPercent);
-                        int tip = (int)Math.Ceiling(price * tipPct);
+                        tip = (int)Math.Ceiling(price * tipPct);
                         if (tip > 0)
                             gameState.AddFunds(tip, "dish_tip");
                     }
+
+                    PitHero.Services.Analytics.AnalyticsService.LogDishServed(
+                        ActiveTicket.Dish.ToString(), price, tip, false, ActiveTicket.IsDeluxe);
                 }
 
                 _coordinator?.NotifyPatronFinishedEating(ActiveTicket);

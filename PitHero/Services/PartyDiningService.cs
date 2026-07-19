@@ -336,6 +336,9 @@ namespace PitHero.Services
                 Debug.Log($"[PartyDiningService] Slot {slot} finished eating {ticket.Dish}");
             }
 
+            Analytics.AnalyticsService.LogDishServed(
+                ticket.Dish.ToString(), DishConfig.GetPrice(ticket.Dish), 0, true, ticket.IsDeluxe);
+
             _slots[slot].HasEatenToday = true;
             _slots[slot].OrderedDishId = -1;
             _slots[slot].HasPaid = false;
