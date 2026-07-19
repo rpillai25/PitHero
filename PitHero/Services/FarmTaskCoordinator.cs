@@ -74,13 +74,15 @@ namespace PitHero.Services
 
         public FarmTaskCoordinator(TileStateService tileState, BuildingService buildingService,
             int mapWidthTiles, int mapHeightTiles, AlliedMonsterManager alliedMonsters = null,
-            TilledTileService tilledTileService = null)
+            TilledTileService tilledTileService = null,
+            Nez.Tiled.TmxLayer collisionLayer = null)
         {
             _tileState = tileState;
             _buildingService = buildingService;
             _alliedMonsters = alliedMonsters;
 
             Pathfinder = new FarmPathfinder(mapWidthTiles, mapHeightTiles);
+            Pathfinder.SeedStaticWalls(collisionLayer);
             Pathfinder.RebuildWalls(buildingService);
 
             _tileState.OnReadyToTillSet += HandleReadyToTillSet;

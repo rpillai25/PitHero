@@ -84,11 +84,13 @@ namespace PitHero.Services
 
         public KitchenTaskCoordinator(AlliedMonsterManager alliedMonsters,
             BuildingService buildingService,
-            int mapWidthTiles, int mapHeightTiles)
+            int mapWidthTiles, int mapHeightTiles,
+            Nez.Tiled.TmxLayer collisionLayer = null)
         {
             _alliedMonsters = alliedMonsters;
             _buildingService = buildingService;
             Pathfinder = new FarmPathfinder(mapWidthTiles, mapHeightTiles);
+            Pathfinder.SeedStaticWalls(collisionLayer);
             if (buildingService != null)
             {
                 Pathfinder.RebuildWalls(buildingService);

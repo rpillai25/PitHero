@@ -199,6 +199,7 @@ Run-level fields: `RngSeed`, `JobName`, `LevelRangeMin/Max`.
 | `SecondChanceMerchantVault` on merc death/dismissal | Gear is not recovered virtually |
 | Analytics JSONL (`AnalyticsService`) | Virtual sink aggregates metrics instead — same event payloads, comparable columns |
 | Tavern seat management, `DeferredMercenary` | Not applicable headlessly |
+| Kitchen worker FSM (`KitchenMonsterStateMachine`) | Live-only; walk routes are verified headlessly instead (see `KitchenFlowPathTests` below) |
 
 New live-layer features should be checked against this document (see the
 `virtual-game-layer` skill) and added here when they lack a virtual counterpart.
@@ -211,9 +212,10 @@ New live-layer features should be checked against this document (see the
 | `VirtualBattleSimulationTests` | Traversal combat, boss orb-gating, wipes, merc participation, traps + TrapSense, chest collection/auto-equip, inn rest, hiring, `RunLevelRange` |
 | `VirtualBalanceTraversalTests` | Balance curves (solo / party / persistent run), CSV output, same-seed reproducibility |
 | `VirtualGameSimulationTests`, `VirtualWorldStateTests`, `CaveBiomeBalanceTests`, `InterfaceBased*Tests` | Exploration, world state, generation parity, GOAP dual execution |
+| `KitchenFlowPathTests` | Kitchen/tavern walk routes on the REAL surface map: parses `PitHero.tmx`'s Collision layer as text (no FNA), seeds `FarmPathfinder` static walls exactly like `MainGameScene`, and asserts every dining-flow leg (house exit → posts, sink → stove pickups, sink → all 12 seat tables, sink ↔ crop storage) is reachable without crossing walls |
 
-Full suite: `dotnet test PitHero.Tests/PitHero.Tests.csproj`. Baseline: **12 known
-pre-existing failures** (environment-dependent tests) — anything above that is a regression.
+Full suite: `dotnet test PitHero.Tests/PitHero.Tests.csproj`. Baseline: **0 failures**
+(since the save-format unification, PR #313) — any failure is a regression.
 
 ## Depth Semantics and Pit Tiers (issue #291)
 

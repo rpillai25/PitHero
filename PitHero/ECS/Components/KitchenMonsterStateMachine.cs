@@ -204,7 +204,7 @@ namespace PitHero.ECS.Components
                 _hasBusJob = true;
                 _busPickupPos = busJob.WorldPos;
                 Point targetTile = WorldToTile(_busPickupPos);
-                if (!TrySetPathTo(targetTile))
+                if (!TrySetPathToTileOrNeighbor(targetTile))
                     _mover.SetSingleTarget(_busPickupPos);
                 CurrentState = KitchenMonsterState.BusingPlate;
                 return;
@@ -226,7 +226,8 @@ namespace PitHero.ECS.Components
                 else
                 {
                     // Stove unknown (shouldn't happen), just walk to sink
-                    _mover.SetSingleTarget(KitchenTaskCoordinator.SinkWorldPos);
+                    if (!TrySetPathTo(KitchenTaskCoordinator.SinkTile))
+                        _mover.SetSingleTarget(KitchenTaskCoordinator.SinkWorldPos);
                     CurrentState = KitchenMonsterState.WalkToPickUpDish;
                 }
                 return;
@@ -313,7 +314,8 @@ namespace PitHero.ECS.Components
                                 _deliveryTargetPos = pos;
                                 _hasDeliveryTarget = true;
                                 Point tableTile = WorldToTile(pos);
-                                TrySetPathTo(tableTile);
+                                if (!TrySetPathToTileOrNeighbor(tableTile))
+                                    _mover.SetSingleTarget(pos);
                             }
                             else
                             {
@@ -534,8 +536,8 @@ namespace PitHero.ECS.Components
                 case KitchenRole.Server:
                     return KitchenTaskCoordinator.SinkTile;
                 case KitchenRole.Runner:
-                    // Runners idle near the sink
-                    return new Point(GameConfig.KitchenSinkTileX - 1, GameConfig.KitchenSinkTileY);
+                    // Runners idle just east of the sink (west of it is stove 3)
+                    return new Point(GameConfig.KitchenSinkTileX + 1, GameConfig.KitchenSinkTileY);
                 default:
                     return ExitTile;
             }
@@ -623,28 +625,8 @@ namespace PitHero.ECS.Components
         {
             if (TrySetPathTo(goal))
                 return true;
-            var start = _mover.CurrentTile;
-            Point best = goal;
-            int bestDist = int.MaxValue;
-            for (int i = 0; i < 4; i++)
-            {
-                var n = i switch
-                {
-                    0 => new Point(goal.X, goal.Y + 1),
-                    1 => new Point(goal.X - 1, goal.Y),
-                    2 => new Point(goal.X + 1, goal.Y),
-                    _ => new Point(goal.X, goal.Y - 1),
-                };
-                if (!_coordinator.Pathfinder.IsPassable(n))
-                    continue;
-                int dist = System.Math.Abs(n.X - start.X) + System.Math.Abs(n.Y - start.Y);
-                if (dist < bestDist)
-                {
-                    bestDist = dist;
-                    best = n;
-                }
-            }
-            return bestDist != int.MaxValue && TrySetPathTo(best);
+            return _coordinator.Pathfinder.TryFindPassableNeighbor(goal, _mover.CurrentTile, out var neighbor)
+                && TrySetPathTo(neighbor);
         }
 
         private bool TrySetPathTo(Point goal)

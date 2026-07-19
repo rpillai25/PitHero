@@ -266,7 +266,8 @@ namespace PitHero.ECS.Scenes
                 Core.Services.GetService<TileStateService>(),
                 Core.Services.GetService<Services.BuildingService>(),
                 _tmxMap.Width, _tmxMap.Height, alliedMonsterManager,
-                Core.Services.GetService<Services.TilledTileService>());
+                Core.Services.GetService<Services.TilledTileService>(),
+                _tmxMap.GetLayer<Nez.Tiled.TmxLayer>("Collision"));
             farmTaskCoordinator.SetDroppedCropService(Core.Services.GetService<Services.DroppedCropService>());
             farmTaskCoordinator.Initialize(this);
             Core.Services.AddService(farmTaskCoordinator);
@@ -293,7 +294,8 @@ namespace PitHero.ECS.Scenes
             var kitchenCoordinator = new Services.KitchenTaskCoordinator(
                 Core.Services.GetService<AlliedMonsterManager>(),
                 Core.Services.GetService<Services.BuildingService>(),
-                _tmxMap.Width, _tmxMap.Height);
+                _tmxMap.Width, _tmxMap.Height,
+                _tmxMap.GetLayer<Nez.Tiled.TmxLayer>("Collision"));
             kitchenCoordinator.Initialize(this);
             Core.Services.AddService(kitchenCoordinator);
 
