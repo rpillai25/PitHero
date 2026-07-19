@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Nez;
 using PitHero.Farming;
 using PitHero.Util;
 
@@ -231,5 +232,99 @@ namespace PitHero.Services
 
         private readonly HashSet<int> _liveIds = new HashSet<int>();
         private readonly List<int> _removeScratch = new List<int>();
+
+        // ── Kitchen withdraw / deposit helpers ────────────────────────────────────
+
+        /// <summary>Total units of <paramref name="crop"/> stored across all Crop Storage buildings.</summary>
+        public int CountTotal(Farming.CropType crop)
+        {
+            if (_buildingService == null)
+                return 0;
+
+            int total = 0;
+            var all = _buildingService.GetAll();
+            for (int b = 0; b < all.Count; b++)
+            {
+                if (all[b].Type != BuildingType.CropStorage)
+                    continue;
+                var slots = GetOrCreate(all[b].UniqueId);
+                for (int s = 0; s < slots.Length; s++)
+                {
+                    if (!slots[s].IsEmpty && slots[s].Type == crop)
+                        total += slots[s].Count;
+                }
+            }
+            return total;
+        }
+
+        /// <summary>
+        /// All-or-nothing withdrawal of <paramref name="amount"/> units of <paramref name="crop"/>
+        /// across all Crop Storage buildings. Returns false without mutating if storage is insufficient.
+        /// </summary>
+        public bool TryWithdrawAcrossBuildings(Farming.CropType crop, int amount)
+        {
+            if (amount <= 0)
+                return true;
+            if (CountTotal(crop) < amount)
+                return false;
+
+            if (_buildingService == null)
+                return false;
+
+            int remaining = amount;
+            var all = _buildingService.GetAll();
+            for (int b = 0; b < all.Count && remaining > 0; b++)
+            {
+                if (all[b].Type != BuildingType.CropStorage)
+                    continue;
+                var slots = GetOrCreate(all[b].UniqueId);
+                for (int s = 0; s < slots.Length && remaining > 0; s++)
+                {
+                    if (slots[s].IsEmpty || slots[s].Type != crop)
+                        continue;
+                    int take = slots[s].Count < remaining ? slots[s].Count : remaining;
+                    slots[s].Count -= take;
+                    if (slots[s].Count <= 0)
+                        slots[s] = default;
+                    remaining -= take;
+                }
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Refund path: deposits <paramref name="amount"/> units of <paramref name="crop"/> back into
+        /// storage across all buildings. Any units that don't fit are dropped near the first storage's
+        /// door tile via DroppedCropService — crops are never silently destroyed.
+        /// </summary>
+        public void DepositAcrossBuildings(Farming.CropType crop, int amount)
+        {
+            if (amount <= 0 || _buildingService == null)
+                return;
+
+            int remaining = amount;
+            var all = _buildingService.GetAll();
+            for (int b = 0; b < all.Count && remaining > 0; b++)
+            {
+                if (all[b].Type != BuildingType.CropStorage)
+                    continue;
+                int stored = DepositReturningStored(all[b].UniqueId, crop, remaining);
+                remaining -= stored;
+            }
+
+            if (remaining > 0)
+            {
+                // All storages full — drop near first storage door so workers can recover them
+                for (int b = 0; b < all.Count; b++)
+                {
+                    if (all[b].Type != BuildingType.CropStorage)
+                        continue;
+                    var door = Util.BuildingConfig.GetDoorTile(all[b].Type,
+                        new Microsoft.Xna.Framework.Point(all[b].TileX, all[b].TileY));
+                    Core.Services.GetService<DroppedCropService>()?.Drop(crop, remaining, door);
+                    break;
+                }
+            }
+        }
     }
 }

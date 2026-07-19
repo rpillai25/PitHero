@@ -131,21 +131,40 @@ namespace PitHero.Services
 
             if (unhiredMercenaries.Count >= MaxMercenariesInTavern)
             {
-                // Find the oldest unhired mercenary (lowest SpawnId)
-                var oldestMercenary = unhiredMercenaries
-                    .OrderBy(m => m.GetComponent<MercenaryComponent>()?.SpawnId ?? int.MaxValue)
-                    .FirstOrDefault();
-                    
+                // Find the oldest evictable unhired mercenary (lowest SpawnId) using for-loop min-scan.
+                // Skip patrons that are FoodDelivered or Eating — do not interrupt their meal.
+                Entity oldestMercenary = null;
+                int oldestSpawnId = int.MaxValue;
+                for (int i = 0; i < unhiredMercenaries.Count; i++)
+                {
+                    var comp = unhiredMercenaries[i].GetComponent<MercenaryComponent>();
+                    if (comp == null) continue;
+
+                    // Skip patrons mid-meal
+                    var patronComp = unhiredMercenaries[i].GetComponent<ECS.Components.TavernPatronComponent>();
+                    if (patronComp != null && (patronComp.State == ECS.Components.PatronState.FoodDelivered
+                        || patronComp.State == ECS.Components.PatronState.Eating))
+                        continue;
+
+                    if (comp.SpawnId < oldestSpawnId)
+                    {
+                        oldestSpawnId = comp.SpawnId;
+                        oldestMercenary = unhiredMercenaries[i];
+                    }
+                }
+
                 if (oldestMercenary != null)
                 {
                     var mercName = oldestMercenary.GetComponent<MercenaryComponent>()?.LinkedMercenary?.Name ?? "Unknown";
                     Debug.Log($"[MercenaryManager] Tavern full - oldest mercenary {mercName} will leave to make room");
-                    
+
                     // Start the walk-off-and-remove process
                     _isRemovingMercenary = true;
                     Core.StartCoroutine(WalkOffscreenAndRemove(oldestMercenary));
                     return; // Don't spawn yet - wait for removal to complete
                 }
+                // All evictable candidates are mid-meal — skip spawning this cycle
+                return;
             }
 
             // Find available tavern position
@@ -382,6 +401,15 @@ namespace PitHero.Services
 
             // Arrived at tavern position
             mercComponent.IsWaitingInTavern = true;
+
+            // Add patron component so the kitchen system can serve this merc as a dining customer.
+            // Patience starts immediately since the merc is now seated.
+            if (!mercEntity.HasComponent<ECS.Components.TavernPatronComponent>())
+            {
+                var patronComp = mercEntity.AddComponent(new ECS.Components.TavernPatronComponent());
+                patronComp.SeatTile = tavernPosition;
+            }
+
             Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} arrived at tavern");
         }
 
@@ -401,6 +429,9 @@ namespace PitHero.Services
 
             // Mark as being removed so it can't be hired during removal animation
             mercComponent.IsBeingRemoved = true;
+
+            // Cancel any outstanding kitchen ticket for this patron
+            Core.Services.GetService<KitchenTaskCoordinator>()?.CancelTicketForPatron(mercEntity);
 
             // Wait for pathfinding to initialize before calculating the exit path
             while (!pathfinding.IsPathfindingInitialized)
@@ -620,6 +651,24 @@ namespace PitHero.Services
         }
 
         /// <summary>
+        /// Called by TavernPatronComponent when an unhired merc finishes eating or patience expires.
+        /// Triggers the natural walk-off-screen animation (same as eviction). Safe to call multiple
+        /// times — guards against IsBeingRemoved flag.
+        /// </summary>
+        public void WalkOffPatron(Entity mercEntity)
+        {
+            if (mercEntity == null) return;
+            var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
+            if (mercComponent == null || mercComponent.IsHired || mercComponent.IsBeingRemoved)
+                return;
+
+            Debug.Log($"[MercenaryManager] Patron {mercComponent.LinkedMercenary?.Name} leaving after meal");
+            mercComponent.IsBeingRemoved = true;
+            _isRemovingMercenary = true;
+            Core.StartCoroutine(WalkOffscreenAndRemove(mercEntity));
+        }
+
+        /// <summary>
         /// Reassigns follow targets for any hired mercenaries that were following the
         /// dismissed entity, pointing them to the hero instead.
         /// </summary>
@@ -738,10 +787,14 @@ namespace PitHero.Services
             }
             gameState.Funds -= hireCost;
 
+            // Cancel any outstanding dining ticket and remove patron status before joining the party
+            Core.Services.GetService<KitchenTaskCoordinator>()?.CancelTicketForPatron(mercEntity);
+            mercEntity.RemoveComponent<ECS.Components.TavernPatronComponent>();
+
             // Determine follow target BEFORE marking as hired
             var heroEntity = _scene?.FindEntity("hero");
             Entity followTarget = null;
-            
+
             if (hiredCount == 0)
             {
                 // First mercenary follows hero
@@ -755,9 +808,18 @@ namespace PitHero.Services
             }
             else
             {
-                // Second mercenary follows first mercenary
-                // Get the list BEFORE marking this one as hired to avoid confusion
-                followTarget = GetHiredMercenaries().FirstOrDefault();
+                // Second mercenary follows first mercenary — for-loop scan (no LINQ)
+                Entity firstHired = null;
+                for (int i = 0; i < _mercenaryEntities.Count; i++)
+                {
+                    var c = _mercenaryEntities[i].GetComponent<MercenaryComponent>();
+                    if (c != null && c.IsHired)
+                    {
+                        firstHired = _mercenaryEntities[i];
+                        break;
+                    }
+                }
+                followTarget = firstHired;
                 if (followTarget == null)
                 {
                     Debug.Error("[MercenaryManager] Cannot hire second mercenary - first mercenary not found!");

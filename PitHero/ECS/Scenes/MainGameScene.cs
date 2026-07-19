@@ -174,6 +174,11 @@ namespace PitHero.ECS.Scenes
             droppedCropService.SetScene(this);
             Core.Services.AddService(droppedCropService);
 
+            // Register dish entity service so kitchen workers can spawn dish sprites on tables/stoves.
+            var dishEntityService = new Services.DishEntityService();
+            dishEntityService.SetScene(this);
+            Core.Services.AddService(dishEntityService);
+
             AddSceneComponent<YSortManager>();
 
             SetupUIOverlay();
@@ -204,6 +209,9 @@ namespace PitHero.ECS.Scenes
             Core.Services.GetService<Services.FarmTaskCoordinator>()?.Detach();
             Core.Services.RemoveService(typeof(Services.FarmTaskCoordinator));
             Core.Services.RemoveService(typeof(Services.MealBuffService));
+            Core.Services.GetService<Services.KitchenTaskCoordinator>()?.Detach();
+            Core.Services.RemoveService(typeof(Services.KitchenTaskCoordinator));
+            Core.Services.RemoveService(typeof(Services.DishEntityService));
             Core.Services.RemoveService(typeof(MercenaryManager));
             Core.Services.RemoveService(typeof(AlliedMonsterManager));
             Core.Services.RemoveService(typeof(HeroPromotionService));
@@ -279,6 +287,14 @@ namespace PitHero.ECS.Scenes
 
             // Meal buff service holds each party member's day-long food buffs (issue #319)
             Core.Services.AddService(new Services.MealBuffService());
+
+            // Kitchen task coordinator manages cook/server/runner workers and the ticket queue (issue #319)
+            var kitchenCoordinator = new Services.KitchenTaskCoordinator(
+                Core.Services.GetService<AlliedMonsterManager>(),
+                Core.Services.GetService<Services.BuildingService>(),
+                _tmxMap.Width, _tmxMap.Height);
+            kitchenCoordinator.Initialize(this);
+            Core.Services.AddService(kitchenCoordinator);
 
             // Initialize hero promotion service (handles mercenary promotions and hero crystal ceremonies after death)
             _heroPromotionService = new Services.HeroPromotionService(this);
@@ -2259,6 +2275,9 @@ namespace PitHero.ECS.Scenes
 
             // Sync farming monster workers with job assignments
             Core.Services.GetService<Services.FarmTaskCoordinator>()?.Update();
+
+            // Sync kitchen/tavern workers and ticket queue
+            Core.Services.GetService<Services.KitchenTaskCoordinator>()?.Update();
 
             // Morning reset: clear wet tiles and re-populate watering queue at 6AM
             var timeService = Core.Services.GetService<InGameTimeService>();
