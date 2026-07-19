@@ -241,11 +241,21 @@ namespace PitHero.Services
         public Color ShirtColor;
     }
 
+    /// <summary>One party member's tavern-dining state for the day (issue #319).</summary>
+    public struct SavedDiningRecord
+    {
+        public int OrderedDishId;   // -1 = no open order
+        public bool HasPaid;
+        public bool HasEatenToday;
+        public int MealDishId;      // -1 = no active meal buffs
+        public bool MealDeluxe;
+    }
+
     /// <summary>Central save data container implementing IPersistable for binary persistence.</summary>
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 17;
+        public const int CurrentVersion = 18;
 
         // Total Time
         /// <summary>Total time played in seconds.</summary>
@@ -473,6 +483,16 @@ namespace PitHero.Services
         /// <summary>Number of full stacks of each crop to keep before auto-selling.</summary>
         public int AutoSellKeepStacks = 0;
 
+        // Party Dining (issue #319, v18)
+        /// <summary>The hero's favorite dish chosen in the Food tab.</summary>
+        public int FavoriteDishId = 0;
+
+        /// <summary>Whether the party auto-dines at the tavern after waking each morning.</summary>
+        public bool EatAtTavern = false;
+
+        /// <summary>Per-party-slot dining records: 0 = hero, 1/2 = hired mercenaries.</summary>
+        public SavedDiningRecord[] PartyDining;
+
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
         {
@@ -505,6 +525,19 @@ namespace PitHero.Services
             CropStorageInventories = new List<SavedCropStorageInventory>();
             DroppedCrops = new List<SavedDroppedCrop>();
             DefeatedMonsterTypes = new List<string>();
+            PartyDining = CreateDefaultDiningRecords();
+        }
+
+        /// <summary>Creates the default 3-slot dining record array (no orders, no meals).</summary>
+        public static SavedDiningRecord[] CreateDefaultDiningRecords()
+        {
+            var records = new SavedDiningRecord[3];
+            for (int i = 0; i < records.Length; i++)
+            {
+                records[i].OrderedDishId = -1;
+                records[i].MealDishId = -1;
+            }
+            return records;
         }
 
         /// <summary>Writes all game state to the persistence writer.</summary>
@@ -845,6 +878,20 @@ namespace PitHero.Services
 
             // 32. Auto-sell keep stacks
             writer.Write(AutoSellKeepStacks);
+
+            // 33. Party dining (issue #319)
+            writer.Write(FavoriteDishId);
+            writer.Write(EatAtTavern);
+            int diningCount = PartyDining != null ? PartyDining.Length : 0;
+            writer.Write(diningCount);
+            for (int i = 0; i < diningCount; i++)
+            {
+                writer.Write(PartyDining[i].OrderedDishId);
+                writer.Write(PartyDining[i].HasPaid);
+                writer.Write(PartyDining[i].HasEatenToday);
+                writer.Write(PartyDining[i].MealDishId);
+                writer.Write(PartyDining[i].MealDeluxe);
+            }
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -1212,6 +1259,25 @@ namespace PitHero.Services
 
             // 32. Auto-sell keep stacks
             AutoSellKeepStacks = reader.ReadInt();
+
+            // 33. Party dining (issue #319)
+            PartyDining = CreateDefaultDiningRecords();
+            FavoriteDishId = reader.ReadInt();
+            EatAtTavern = reader.ReadBool();
+            int diningCount = reader.ReadInt();
+            for (int i = 0; i < diningCount; i++)
+            {
+                var record = new SavedDiningRecord
+                {
+                    OrderedDishId = reader.ReadInt(),
+                    HasPaid = reader.ReadBool(),
+                    HasEatenToday = reader.ReadBool(),
+                    MealDishId = reader.ReadInt(),
+                    MealDeluxe = reader.ReadBool(),
+                };
+                if (i < PartyDining.Length)
+                    PartyDining[i] = record;
+            }
         }
 
         /// <summary>Writes a Color as four individual int components (R, G, B, A).</summary>

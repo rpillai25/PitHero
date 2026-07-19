@@ -692,6 +692,10 @@ namespace PitHero.ECS.Scenes
                 }
                 Debug.Log("[MainGameScene] Restored " + pendingData.HiredMercenaries.Count + " hired mercenaries");
             }
+
+            // Restore party dining state (issue #319) — after hero + hired mercs exist so
+            // active meal buffs can be re-registered against their combatants
+            Core.Services.GetService<Services.PartyDiningService>()?.RestoreFromSave(pendingData);
             
             // Store pending shortcut slots on the shortcut bar for deferred restoration
             if (pendingData.ShortcutSlots != null && pendingData.ShortcutSlots.Count > 0 && _shortcutBar != null)

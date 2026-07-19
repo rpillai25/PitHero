@@ -62,6 +62,52 @@ namespace PitHero.Services
         /// </summary>
         public void MarkPendingReloadDining() => _pendingReloadDining = true;
 
+        /// <summary>
+        /// Restores dining state from a save (call after hero + hired mercs are restored).
+        /// Re-registers active meal buffs (no HP/MP re-restore) and, when a member has an open
+        /// order, schedules the party's return trip to the tavern. Crops were already deducted
+        /// before the save, and HasPaid guards against double payment.
+        /// </summary>
+        public void RestoreFromSave(SaveData data)
+        {
+            if (data == null)
+                return;
+
+            FavoriteDishId = data.FavoriteDishId;
+            EatAtTavern = data.EatAtTavern;
+
+            if (data.PartyDining == null)
+                return;
+
+            var mealBuffs = Core.Services.GetService<MealBuffService>();
+            bool anyOpenOrder = false;
+            for (int slot = 0; slot < PartySlots && slot < data.PartyDining.Length; slot++)
+            {
+                var saved = data.PartyDining[slot];
+                _slots[slot] = new MemberDining
+                {
+                    OrderedDishId = saved.OrderedDishId,
+                    HasPaid = saved.HasPaid,
+                    HasEatenToday = saved.HasEatenToday,
+                    MealDishId = saved.MealDishId,
+                    MealDeluxe = saved.MealDeluxe,
+                };
+
+                if (saved.MealDishId >= 0 && saved.MealDishId < DishTypeInfo.Count)
+                {
+                    var combatant = GetCombatant(slot);
+                    if (combatant != null)
+                        mealBuffs?.RestoreRecord(combatant, (DishType)saved.MealDishId, saved.MealDeluxe);
+                }
+
+                if (saved.OrderedDishId >= 0 && !saved.HasEatenToday)
+                    anyOpenOrder = true;
+            }
+
+            if (anyOpenOrder)
+                MarkPendingReloadDining();
+        }
+
         // ── Daily reset ─────────────────────────────────────────────────────────
 
         /// <summary>6 AM reset: everyone may eat again; active meal records expire separately.</summary>
