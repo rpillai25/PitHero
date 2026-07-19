@@ -329,6 +329,7 @@ TabFood,Food
 FoodFavoriteLabel,Favorite Food
 FoodEatAtTavern,Eat at tavern
 FoodEatAtTavernTooltip,When stopped at the tavern, order and eat favorite food.
+FoodMissingIngredients,Missing ingredients!
 JobNameNone,None
 JobNameFarming,Farming
 JobNameKitchen,Kitchen

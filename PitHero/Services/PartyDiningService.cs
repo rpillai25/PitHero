@@ -275,22 +275,34 @@ namespace PitHero.Services
 
             for (int slot = 0; slot < PartySlots; slot++)
             {
-                if (_slots[slot].HasEatenToday || _slots[slot].OrderedDishId >= 0 || _skippedThisSeating[slot])
+                if (_slots[slot].OrderedDishId >= 0 || _skippedThisSeating[slot])
                     continue;
-                if (GetCombatant(slot) == null)
+                var combatant = GetCombatant(slot);
+                if (combatant == null)
                     continue;
                 if (!TryGetFavorite(slot, out var favorite))
                     continue;
 
+                if (_slots[slot].HasEatenToday)
+                {
+                    _skippedThisSeating[slot] = true;
+                    Analytics.AnalyticsService.LogPartyDineSkipped(slot, combatant.Name,
+                        favorite.ToString(), "already_ate");
+                    continue;
+                }
                 if (!coordinator.CanCoverRecipe(favorite))
                 {
                     // No substitutions — this member simply doesn't eat this seating
                     _skippedThisSeating[slot] = true;
+                    Analytics.AnalyticsService.LogPartyDineSkipped(slot, combatant.Name,
+                        favorite.ToString(), "no_ingredients");
                     continue;
                 }
                 if (gameState.Funds < DishConfig.GetPrice(favorite))
                 {
                     _skippedThisSeating[slot] = true;
+                    Analytics.AnalyticsService.LogPartyDineSkipped(slot, combatant.Name,
+                        favorite.ToString(), "no_gold");
                     continue;
                 }
 

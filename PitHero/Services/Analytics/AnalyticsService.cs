@@ -751,6 +751,23 @@ namespace PitHero.Services.Analytics
 #endif
         }
 
+        /// <summary>Logs a party member skipped during a tavern seating (no order taken, no charge).</summary>
+        [Conditional("DEBUG")]
+        public static void LogPartyDineSkipped(int slot, string member, string dish, string reason)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("party_dine_skipped"))
+                return;
+            _json.Field("slot", slot);
+            _json.Field("member", member);
+            _json.Field("dish", dish);
+            _json.Field("reason", reason);
+            EndEvent();
+#endif
+        }
+
         /// <summary>Logs a farming monster refilling its watering can at a pond tile.</summary>
         [Conditional("DEBUG")]
         public static void LogWateringCanFilled(string monster, string monsterType, int x, int y)

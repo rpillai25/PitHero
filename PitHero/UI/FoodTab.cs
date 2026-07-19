@@ -18,8 +18,16 @@ namespace PitHero.UI
 
         private HoverableCheckBox _eatAtTavernCheckBox;
         private readonly CheckBox[] _dishRadios = new CheckBox[DishTypeInfo.Count];
+        private readonly Image[] _dishImages = new Image[DishTypeInfo.Count];
+        private readonly Label[] _dishNameLabels = new Label[DishTypeInfo.Count];
+        private readonly Label[] _dishEffectsLabels = new Label[DishTypeInfo.Count];
+        private readonly string[] _dishEffectsBaseText = new string[DishTypeInfo.Count];
         private ButtonGroup _dishGroup;
         private bool _refreshing;
+
+        private static readonly Color DimmedSpriteColor = new Color(110, 110, 110, 200);
+        private static readonly Color DimmedNameColor = Color.Gray;
+        private static readonly Color DimmedEffectsColor = new Color(110, 110, 110, 255);
 
         /// <summary>Creates and returns the main container for this tab.</summary>
         public Table CreateContent(Skin skin, Stage stage)
@@ -75,14 +83,21 @@ namespace PitHero.UI
 
                 var sprite = cropsAtlas?.GetSprite(def.BaseSpriteName + "_Large");
                 if (sprite != null)
-                    row.Add(new Image(sprite)).SetPadRight(8f);
+                {
+                    var image = new Image(sprite);
+                    _dishImages[i] = image;
+                    row.Add(image).SetPadRight(8f);
+                }
 
                 var infoTable = new Table();
                 var nameLabel = new Label(GetText(def.NameKey) + "  " + DishConfig.GetPrice(dish) + "g", skin, "ph-default");
+                _dishNameLabels[i] = nameLabel;
                 infoTable.Add(nameLabel).Left();
                 infoTable.Row();
-                var effectsLabel = new Label(BuildEffectsText(def), skin, "ph-default");
+                _dishEffectsBaseText[i] = BuildEffectsText(def);
+                var effectsLabel = new Label(_dishEffectsBaseText[i], skin, "ph-default");
                 effectsLabel.SetColor(Color.Gray);
+                _dishEffectsLabels[i] = effectsLabel;
                 infoTable.Add(effectsLabel).Left();
                 row.Add(infoTable).Left().SetExpandX().SetFillX();
 
@@ -97,6 +112,8 @@ namespace PitHero.UI
                 if (dining0.FavoriteDishId >= 0 && dining0.FavoriteDishId < DishTypeInfo.Count)
                     _dishRadios[dining0.FavoriteDishId].IsChecked = true;
             }
+
+            RefreshDishAvailability();
 
             var scrollPane = new ScrollPane(container, skin, "ph-default");
             scrollPane.SetScrollingDisabled(true, false);
@@ -121,6 +138,36 @@ namespace PitHero.UI
                 _dishRadios[dining.FavoriteDishId].IsChecked = true;
             }
             _refreshing = false;
+
+            RefreshDishAvailability();
+        }
+
+        /// <summary>
+        /// Dims dishes whose recipe the kitchen (fridge + storage) can't currently cover and
+        /// appends a "Missing ingredients" note. Purely informational — the dish stays
+        /// selectable as a favorite for when stock catches up.
+        /// </summary>
+        private void RefreshDishAvailability()
+        {
+            var coordinator = Core.Services.GetService<KitchenTaskCoordinator>();
+            if (coordinator == null)
+                return;
+
+            string missingNote = GetText(UITextKey.FoodMissingIngredients);
+            for (int i = 0; i < DishTypeInfo.Count; i++)
+            {
+                bool coverable = coordinator.CanCoverRecipe((DishType)i);
+
+                _dishImages[i]?.SetColor(coverable ? Color.White : DimmedSpriteColor);
+                _dishNameLabels[i]?.SetColor(coverable ? Color.White : DimmedNameColor);
+                if (_dishEffectsLabels[i] != null)
+                {
+                    _dishEffectsLabels[i].SetText(coverable
+                        ? _dishEffectsBaseText[i]
+                        : _dishEffectsBaseText[i] + "  [" + missingNote + "]");
+                    _dishEffectsLabels[i].SetColor(coverable ? Color.Gray : DimmedEffectsColor);
+                }
+            }
         }
 
         private string BuildEffectsText(DishDefinition def)

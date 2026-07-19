@@ -102,6 +102,7 @@ All farming work is performed by allied monsters; `monster` is the worker's disp
 | `e` | Fields | Notes |
 |---|---|---|
 | `dish_served` | `dish`, `price`, `tip`, `isParty`, `deluxe` | One line per finished meal. `dish` is the `DishType` enum name. Patron meals (`isParty:false`) pair with `gold_gained (source:"dish_sale")` and, when `tip > 0`, `gold_gained (source:"dish_tip")`. Party meals (`isParty:true`) never tip and paid at order time (spend not logged — infer from `currentGold` deltas). A patron who leaves after cooking started (patience expiry or hired mid-dining) still pays via `gold_gained (source:"dish_sale")` but logs no `dish_served`. |
+| `party_dine_skipped` | `slot`, `member`, `dish`, `reason` | A party member was passed over during a tavern seating — no order, no charge. `slot`: 0 = hero, 1/2 = hired mercs. `dish` is the favorite that would have been ordered. `reason`: `no_ingredients` (fridge + storage can't cover the favorite's recipe — no substitution by design), `no_gold` (funds below the dish price), or `already_ate` (member already dined today; normal after breakfast if the party stops again). At most one line per member per seating. |
 
 ## Interpretation caveats
 

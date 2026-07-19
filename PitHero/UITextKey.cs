@@ -326,6 +326,7 @@ namespace PitHero
         public const string FoodFavoriteLabel = "FoodFavoriteLabel";
         public const string FoodEatAtTavern = "FoodEatAtTavern";
         public const string FoodEatAtTavernTooltip = "FoodEatAtTavernTooltip";
+        public const string FoodMissingIngredients = "FoodMissingIngredients";
         public const string JobNameNone = "JobNameNone";
         public const string JobNameFarming = "JobNameFarming";
         public const string JobNameKitchen = "JobNameKitchen";
