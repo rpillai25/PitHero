@@ -783,8 +783,17 @@ namespace PitHero.ECS.Components
 
         // ═══════════════════════════════════ RUNNER ═══════════════════════════════
 
+        /// <summary>Runners sprint at 2× while on an ingredient run (out to storage AND back).</summary>
+        private void SetSprinting(bool sprinting)
+        {
+            if (_mover != null)
+                _mover.MoveSpeed = GameConfig.HeroMovementSpeed
+                    * (sprinting ? GameConfig.KitchenRunnerSprintMultiplier : 1f);
+        }
+
         private void RunnerIdle_Enter()
         {
+            SetSprinting(false);
             TrySetPathTo(KitchenTaskCoordinator.RunnerPostTile);
         }
 
@@ -807,6 +816,7 @@ namespace PitHero.ECS.Components
 
         private void RunnerWalkToStorage_Enter()
         {
+            SetSprinting(true);
             Point myTile = WorldToTile(Entity.Transform.Position);
             if (!_coordinator.TryFindNearestStorageDoor(myTile, out var door) || !TrySetPathTo(door))
             {
@@ -865,6 +875,7 @@ namespace PitHero.ECS.Components
         private void ReturnHome_Enter()
         {
             HideCarryDish();
+            SetSprinting(false);
             _returnReachedExit = false;
             if (!TrySetPathTo(ExitTile))
                 Entity.Destroy();
