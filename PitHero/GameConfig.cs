@@ -158,6 +158,7 @@ namespace PitHero
         public const int MaxKitchenCooks = 3;
         public const int MaxKitchenServers = 2;
         public const int MaxKitchenRunners = 2;
+        public const float KitchenHatOverlapPixels = 6f;        // how far the job hat's brim overlaps the head top
         public const float DishPriceMarkup = 1.25f;             // menu price = ingredient sell value x markup
         public const int DishPriceRoundTo = 5;                  // menu prices round to the nearest 5 gold
         public const int DishPriceMin = 10;                     // minimum menu price

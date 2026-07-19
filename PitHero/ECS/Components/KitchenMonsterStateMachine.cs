@@ -23,6 +23,8 @@ namespace PitHero.ECS.Components
         private FarmMonsterMover _mover;
         private ActorFacingComponent _facing;
         private PauseService _pauseService;
+        private KitchenHatService _hatService;
+        private Entity _hat;
 
         /// <summary>Body animator for the monster.</summary>
         public EnemyAnimationComponent BodyAnimator;
@@ -47,8 +49,6 @@ namespace PitHero.ECS.Components
 
         // Runner state
         private KitchenTicket _fetchTicket;
-        private Point _storageTargetDoor;
-        private bool _hasFetchTarget;
         private float _collectElapsed;
 
         public bool ShouldPause => true;
@@ -74,7 +74,18 @@ namespace PitHero.ECS.Components
             _mover = Entity.GetComponent<FarmMonsterMover>();
             _facing = Entity.GetComponent<ActorFacingComponent>();
             _pauseService = Core.Services.GetService<PauseService>();
+            _hatService = Core.Services.GetService<KitchenHatService>();
+            // Wear the job hat while doing kitchen work (BodyAnimator's sprite is set by now —
+            // it was added before this component, so its OnAddedToEntity already ran)
+            _hat = _hatService?.AttachHat(_role, Entity, BodyAnimator);
             InitialState = KitchenMonsterState.EmergeFromHouse;
+        }
+
+        public override void OnRemovedFromEntity()
+        {
+            _hatService?.DetachHat(_hat);
+            _hat = null;
+            base.OnRemovedFromEntity();
         }
 
         public override void Update()
@@ -435,14 +446,11 @@ namespace PitHero.ECS.Components
             if (ticket == null) return;
 
             _fetchTicket = ticket;
-            _hasFetchTarget = false;
             _collectElapsed = 0f;
 
             Point myTile = WorldToTile(Entity.Transform.Position);
             if (_coordinator.TryFindNearestStorageDoor(myTile, out var door))
             {
-                _storageTargetDoor = door;
-                _hasFetchTarget = true;
                 TrySetPathTo(door);
                 CurrentState = KitchenMonsterState.WalkToStorage;
             }

@@ -179,6 +179,11 @@ namespace PitHero.ECS.Scenes
             dishEntityService.SetScene(this);
             Core.Services.AddService(dishEntityService);
 
+            // Register kitchen hat service: pre-created job hats worn while doing kitchen work.
+            var kitchenHatService = new Services.KitchenHatService();
+            kitchenHatService.SetScene(this);
+            Core.Services.AddService(kitchenHatService);
+
             AddSceneComponent<YSortManager>();
 
             SetupUIOverlay();
@@ -213,6 +218,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.KitchenTaskCoordinator));
             Core.Services.RemoveService(typeof(Services.PartyDiningService));
             Core.Services.RemoveService(typeof(Services.DishEntityService));
+            Core.Services.RemoveService(typeof(Services.KitchenHatService));
             Core.Services.RemoveService(typeof(MercenaryManager));
             Core.Services.RemoveService(typeof(AlliedMonsterManager));
             Core.Services.RemoveService(typeof(HeroPromotionService));
