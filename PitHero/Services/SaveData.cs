@@ -257,6 +257,13 @@ namespace PitHero.Services
         /// <summary>Current save file version.</summary>
         public const int CurrentVersion = 18;
 
+        /// <summary>
+        /// Oldest save file version this build can still load. v17 files are a byte-exact
+        /// prefix of v18 (the dining section 33 was appended at the end), so they load with
+        /// default dining state.
+        /// </summary>
+        public const int MinSupportedVersion = 17;
+
         // Total Time
         /// <summary>Total time played in seconds.</summary>
         public float TotalTimePlayed;
@@ -899,8 +906,8 @@ namespace PitHero.Services
         {
             // 1. File Version
             int fileVersion = reader.ReadInt();
-            if (fileVersion != CurrentVersion)
-                throw new System.IO.InvalidDataException($"Unsupported save file version {fileVersion} (expected {CurrentVersion})");
+            if (fileVersion < MinSupportedVersion || fileVersion > CurrentVersion)
+                throw new System.IO.InvalidDataException($"Unsupported save file version {fileVersion} (expected {MinSupportedVersion}-{CurrentVersion})");
 
             // 2. Total Time Played
             TotalTimePlayed = reader.ReadFloat();
@@ -1260,23 +1267,26 @@ namespace PitHero.Services
             // 32. Auto-sell keep stacks
             AutoSellKeepStacks = reader.ReadInt();
 
-            // 33. Party dining (issue #319)
+            // 33. Party dining (issue #319, v18+). v17 files end at section 32 — defaults apply.
             PartyDining = CreateDefaultDiningRecords();
-            FavoriteDishId = reader.ReadInt();
-            EatAtTavern = reader.ReadBool();
-            int diningCount = reader.ReadInt();
-            for (int i = 0; i < diningCount; i++)
+            if (fileVersion >= 18)
             {
-                var record = new SavedDiningRecord
+                FavoriteDishId = reader.ReadInt();
+                EatAtTavern = reader.ReadBool();
+                int diningCount = reader.ReadInt();
+                for (int i = 0; i < diningCount; i++)
                 {
-                    OrderedDishId = reader.ReadInt(),
-                    HasPaid = reader.ReadBool(),
-                    HasEatenToday = reader.ReadBool(),
-                    MealDishId = reader.ReadInt(),
-                    MealDeluxe = reader.ReadBool(),
-                };
-                if (i < PartyDining.Length)
-                    PartyDining[i] = record;
+                    var record = new SavedDiningRecord
+                    {
+                        OrderedDishId = reader.ReadInt(),
+                        HasPaid = reader.ReadBool(),
+                        HasEatenToday = reader.ReadBool(),
+                        MealDishId = reader.ReadInt(),
+                        MealDeluxe = reader.ReadBool(),
+                    };
+                    if (i < PartyDining.Length)
+                        PartyDining[i] = record;
+                }
             }
         }
 
