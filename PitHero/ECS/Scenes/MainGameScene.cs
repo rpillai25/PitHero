@@ -203,6 +203,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.AutoCropSellService));
             Core.Services.GetService<Services.FarmTaskCoordinator>()?.Detach();
             Core.Services.RemoveService(typeof(Services.FarmTaskCoordinator));
+            Core.Services.RemoveService(typeof(Services.MealBuffService));
             Core.Services.RemoveService(typeof(MercenaryManager));
             Core.Services.RemoveService(typeof(AlliedMonsterManager));
             Core.Services.RemoveService(typeof(HeroPromotionService));
@@ -275,6 +276,9 @@ namespace PitHero.ECS.Scenes
                 Core.Services.GetService<Services.CropStorageInventoryService>(),
                 Core.Services.GetService<Services.GameStateService>());
             Core.Services.AddService(autoCropSellService);
+
+            // Meal buff service holds each party member's day-long food buffs (issue #319)
+            Core.Services.AddService(new Services.MealBuffService());
 
             // Initialize hero promotion service (handles mercenary promotions and hero crystal ceremonies after death)
             _heroPromotionService = new Services.HeroPromotionService(this);
@@ -2265,6 +2269,8 @@ namespace PitHero.ECS.Scenes
                 {
                     Core.Services.GetService<Services.WetTileService>()?.ClearAllWet();
                     Core.Services.GetService<Services.FarmTaskCoordinator>()?.PopulateWaterQueue();
+                    // New day: yesterday's meal buffs expire (issue #319)
+                    Core.Services.GetService<Services.MealBuffService>()?.ClearAll();
                 }
                 _lastInGameHour = currentHour;
             }
