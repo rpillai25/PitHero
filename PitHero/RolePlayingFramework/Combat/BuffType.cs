@@ -13,6 +13,18 @@ namespace RolePlayingFramework.Combat
         MPRegen,
 
         /// <summary>Combatant cannot be targeted by enemy attacks (Phase 4 — seam only in Phase 3).</summary>
-        Untargetable
+        Untargetable,
+
+        /// <summary>Raises the combatant's effective attack stat.</summary>
+        AttackUp,
+
+        /// <summary>Raises the combatant's effective Magic for skill damage/heal formulas.</summary>
+        MagicUp,
+
+        /// <summary>Raises the combatant's effective agility (cascades into defense, evasion and accuracy).</summary>
+        AgilityUp,
+
+        /// <summary>Adds HP restored per end-of-round regen tick.</summary>
+        HPRegen
     }
 }

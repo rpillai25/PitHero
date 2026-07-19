@@ -90,7 +90,7 @@ namespace RolePlayingFramework.Skills
                 return enhanced.Resolve(casterBattleStats, targetBattleStats, kind, Element, target.ElementalProps);
             }
             // Legacy fallback — no elemental multiplier (same behaviour as pre-Phase-2)
-            StatBlock casterStats = caster.GetTotalStats();
+            StatBlock casterStats = caster.GetSkillStats();
             return resolver.Resolve(casterStats, target.Stats, kind, caster.Level, target.Level);
         }
 
@@ -119,7 +119,7 @@ namespace RolePlayingFramework.Skills
             // Legacy fallback: approximate pierce by halving the defensive stats contribution.
             // Build a pierced StatBlock with Vitality and Agility halved so the legacy
             // resolver sees lower defense input, then restore Strength and Magic.
-            StatBlock casterStats = caster.GetTotalStats();
+            StatBlock casterStats = caster.GetSkillStats();
             StatBlock defenderStats = target.Stats;
             var piercedDefenderStats = new StatBlock(
                 defenderStats.Strength,

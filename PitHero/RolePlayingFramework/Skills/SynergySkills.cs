@@ -16,7 +16,7 @@ namespace RolePlayingFramework.Skills
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "HolyStrike";
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
             var res = ResolveHit(caster, primary, DamageKind.Physical, resolver);
             if (res.Hit) primary.TakeDamage(res.Damage + (int)(stats.Strength * 0.5f));
             return "HolyStrike";
@@ -43,7 +43,7 @@ namespace RolePlayingFramework.Skills
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "ShadowSlash";
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
             var res = ResolveHit(caster, primary, DamageKind.Physical, resolver);
             if (res.Hit) primary.TakeDamage(res.Damage + stats.Agility / 2);
             return "ShadowSlash";
@@ -57,7 +57,7 @@ namespace RolePlayingFramework.Skills
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "Spellblade";
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
             var res = ResolveHit(caster, primary, DamageKind.Physical, resolver);
             // Fire bonus applied to magic-derived portion (normalization fix)
             if (res.Hit) primary.TakeDamage(res.Damage + (int)(stats.Magic / 3f * (1f + caster.FireDamageBonus)));
@@ -75,7 +75,7 @@ namespace RolePlayingFramework.Skills
         public MeteorSkill() : base("synergy.meteor", SkillTextKey.Skill_Synergy_Meteor_Name, SkillTextKey.Skill_Synergy_Meteor_Desc, SkillKind.Active, SkillTargetType.SurroundingEnemies, 12, 350, ElementType.Fire) { }
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
 
             // Hit primary target first (AoE fix: primary was previously excluded)
             if (primary != null)
@@ -102,7 +102,7 @@ namespace RolePlayingFramework.Skills
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "ShadowBolt";
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
             var res = ResolveHit(caster, primary, DamageKind.Magical, resolver);
             if (res.Hit) primary.TakeDamage(res.Damage + stats.Magic / 2);
             return "ShadowBolt";
@@ -115,7 +115,7 @@ namespace RolePlayingFramework.Skills
         public ElementalVolleySkill() : base("synergy.elemental_volley", SkillTextKey.Skill_Synergy_ElementalVolley_Name, SkillTextKey.Skill_Synergy_ElementalVolley_Desc, SkillKind.Active, SkillTargetType.SurroundingEnemies, 8, 280, ElementType.Fire) { }
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
 
             // Hit primary target first (AoE fix: primary was previously excluded)
             if (primary != null)
@@ -142,7 +142,7 @@ namespace RolePlayingFramework.Skills
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "Blitz";
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
             var res = ResolveHit(caster, primary, DamageKind.Magical, resolver);
             if (res.Hit) primary.TakeDamage(res.Damage + stats.Agility / 3);
             return "Blitz";
@@ -187,7 +187,7 @@ namespace RolePlayingFramework.Skills
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "SacredStrike";
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
             var res = ResolveHit(caster, primary, DamageKind.Physical, resolver);
             if (res.Hit) primary.TakeDamage(res.Damage + stats.Magic / 4);
             return "SacredStrike";
@@ -201,7 +201,7 @@ namespace RolePlayingFramework.Skills
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "LifeLeech";
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
             var res = ResolveHit(caster, primary, DamageKind.Magical, resolver);
             if (res.Hit)
             {
@@ -224,7 +224,7 @@ namespace RolePlayingFramework.Skills
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "DragonClaw";
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
             var res = ResolveHit(caster, primary, DamageKind.Physical, resolver);
             // Fire bonus already applied — multiplies total of base + magic bonus
             if (res.Hit) primary.TakeDamage((int)((res.Damage + stats.Magic / 2) * (1f + caster.FireDamageBonus)));
@@ -238,7 +238,7 @@ namespace RolePlayingFramework.Skills
         public EnergyBurstSkill() : base("synergy.energy_burst", SkillTextKey.Skill_Synergy_EnergyBurst_Name, SkillTextKey.Skill_Synergy_EnergyBurst_Desc, SkillKind.Active, SkillTargetType.SurroundingEnemies, 8, 250, ElementType.Neutral) { }
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
 
             // Hit primary target first (AoE fix: primary was previously excluded)
             if (primary != null)
@@ -265,7 +265,7 @@ namespace RolePlayingFramework.Skills
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "DragonKick";
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
             var res = ResolveHit(caster, primary, DamageKind.Physical, resolver);
             if (res.Hit) primary.TakeDamage((int)(res.Damage * 1.2f) + stats.Agility / 3);
             return "DragonKick";
@@ -279,7 +279,7 @@ namespace RolePlayingFramework.Skills
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "SneakPunch";
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
             var res = ResolveHit(caster, primary, DamageKind.Physical, resolver);
             if (res.Hit) primary.TakeDamage(res.Damage + stats.Agility / 2);
             return "SneakPunch";
@@ -315,7 +315,7 @@ namespace RolePlayingFramework.Skills
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "PoisonArrow";
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
             var res = ResolveHit(caster, primary, DamageKind.Physical, resolver);
             if (res.Hit)
             {
@@ -390,7 +390,7 @@ namespace RolePlayingFramework.Skills
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "Lightshot";
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
             var res = ResolveHit(caster, primary, DamageKind.Physical, resolver);
             if (res.Hit) primary.TakeDamage(res.Damage + stats.Magic / 3);
             return "Lightshot";
@@ -404,7 +404,7 @@ namespace RolePlayingFramework.Skills
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "KiArrow";
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
             var res = ResolveHit(caster, primary, DamageKind.Physical, resolver);
             if (res.Hit) primary.TakeDamage(res.Damage + (stats.Strength + stats.Magic) / 4);
             return "KiArrow";
@@ -446,7 +446,7 @@ namespace RolePlayingFramework.Skills
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "SacredBlade";
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
             var res = ResolveHit(caster, primary, DamageKind.Physical, resolver);
             if (res.Hit) primary.TakeDamage(res.Damage + stats.Strength / 2 + stats.Magic / 2);
             return "SacredBlade";
@@ -460,7 +460,7 @@ namespace RolePlayingFramework.Skills
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "FlashStrike";
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
             var res = ResolveHit(caster, primary, DamageKind.Physical, resolver);
             if (res.Hit) primary.TakeDamage((int)(res.Damage * 1.5f) + stats.Agility / 2);
             return "FlashStrike";
@@ -489,7 +489,7 @@ namespace RolePlayingFramework.Skills
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "DragonBolt";
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
             var res = ResolveHit(caster, primary, DamageKind.Magical, resolver);
             // Fire bonus applied to magic-derived portion; STR component is physical, not fire-scaled
             if (res.Hit) primary.TakeDamage(res.Damage + (int)(stats.Magic * 0.5f * (1f + caster.FireDamageBonus)) + (int)(stats.Strength * 0.25f));
@@ -503,7 +503,7 @@ namespace RolePlayingFramework.Skills
         public ElementalStormSkill() : base("synergy.elemental_storm", SkillTextKey.Skill_Synergy_ElementalStorm_Name, SkillTextKey.Skill_Synergy_ElementalStorm_Desc, SkillKind.Active, SkillTargetType.SurroundingEnemies, 15, 400, ElementType.Fire) { }
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
 
             // Hit primary target first (AoE fix: primary was previously excluded)
             if (primary != null)

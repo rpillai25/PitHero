@@ -22,6 +22,12 @@ namespace RolePlayingFramework.Combat
         /// <summary>Returns current total stats (base + job + equipment + bonuses).</summary>
         StatBlock GetTotalStats();
 
+        /// <summary>
+        /// Returns total stats with battle-buff-adjusted Magic (MagicUp) for caster-side
+        /// skill damage/heal formulas. Never affects MaxMP or out-of-battle stat displays.
+        /// </summary>
+        StatBlock GetSkillStats();
+
         /// <summary>Maximum HP.</summary>
         int MaxHP { get; }
 

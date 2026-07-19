@@ -34,7 +34,7 @@ namespace RolePlayingFramework.Skills
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "FlamingFist";
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
             var res = ResolveHit(caster, primary, DamageKind.Physical, resolver);
             // Fire bonus applied to the magic-derived portion (normalization fix)
             if (res.Hit) primary.TakeDamage(res.Damage + (int)(stats.Magic * 0.5f * (1f + caster.FireDamageBonus)));

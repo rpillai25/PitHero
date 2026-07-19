@@ -1405,6 +1405,10 @@ namespace PitHero.Combat
             if (type == BuffType.DefenseUp)  return "DEF+" + magnitude;
             if (type == BuffType.EvasionUp)  return "EVA+" + magnitude;
             if (type == BuffType.MPRegen)    return "MP+"  + magnitude;
+            if (type == BuffType.AttackUp)   return "ATK+" + magnitude;
+            if (type == BuffType.MagicUp)    return "MAG+" + magnitude;
+            if (type == BuffType.AgilityUp)  return "AGI+" + magnitude;
+            if (type == BuffType.HPRegen)    return "HP+"  + magnitude;
             return type.ToString() + "+" + magnitude;
         }
     }

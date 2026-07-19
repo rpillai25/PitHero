@@ -11,7 +11,7 @@ namespace RolePlayingFramework.Skills
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
             if (primary == null) return "Fire";
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
             var res = ResolveHit(caster, primary, DamageKind.Magical, resolver);
             if (res.Hit) primary.TakeDamage(res.Damage + (int)(stats.Magic * (1f + caster.FireDamageBonus)));
             return "Fire";
@@ -23,7 +23,7 @@ namespace RolePlayingFramework.Skills
         public FireStormSkill() : base("mage.firestorm", SkillTextKey.Skill_Mage_Firestorm_Name, SkillTextKey.Skill_Mage_Firestorm_Desc, SkillKind.Active, SkillTargetType.SurroundingEnemies, 6, 200, ElementType.Fire) { }
         public override string Execute(ICombatant caster, IEnemy primary, List<IEnemy> surrounding, IAttackResolver resolver, IBattleContext battle)
         {
-            var stats = caster.GetTotalStats();
+            var stats = caster.GetSkillStats();
 
             // Hit primary target first (AoE fix: primary was previously excluded)
             if (primary != null)
