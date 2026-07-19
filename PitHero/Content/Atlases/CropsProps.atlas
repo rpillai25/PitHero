@@ -454,56 +454,65 @@ Watering_5
 Watering_6
 	423,371,23,32
 	0.5,0.5
+ServerHat
+	384,410,20,24
+	0.5,0.5
+ChefHat
+	297,476,20,21
+	0.5,0.5
+CourierHat
+	228,129,20,18
+	0.5,0.5
 ApplePie_Small
-	228,129,12,12
-	0.5,0.5
-ButteredBread_Small
-	241,129,12,12
-	0.5,0.5
-CheesyMashedPotatoes_Small
 	204,203,12,12
 	0.5,0.5
-ChilledWatermelonSorbet_Small
+ButteredBread_Small
 	486,55,12,12
 	0.5,0.5
-CornChowder_Small
+CheesyMashedPotatoes_Small
 	499,55,12,12
 	0.5,0.5
-EggplantParmesan_Small
+ChilledWatermelonSorbet_Small
 	198,486,12,12
 	0.5,0.5
-EmptyPlate
+CornChowder_Small
 	211,486,12,12
 	0.5,0.5
-GardenSalad_Small
+EggplantParmesan_Small
 	224,486,12,12
 	0.5,0.5
-GrapeJuice_Small
+EmptyPlate
 	237,486,12,12
 	0.5,0.5
-GrapeTart_Small
+GardenSalad_Small
 	250,486,12,12
 	0.5,0.5
-GrilledCornWithButter_Small
+GrapeJuice_Small
 	263,486,12,12
 	0.5,0.5
-HarvestFeastPlatter_Small
+GrapeTart_Small
 	276,486,12,12
 	0.5,0.5
-PumpkinCreamSoup_Small
+GrilledCornWithButter_Small
 	495,272,12,12
 	0.5,0.5
-RoastedOnionSkewers_Small
-	297,476,12,12
-	0.5,0.5
-SpicedEggplantSteak_Small
+HarvestFeastPlatter_Small
 	495,285,12,12
 	0.5,0.5
+PumpkinCreamSoup_Small
+	318,478,12,12
+	0.5,0.5
+RoastedOnionSkewers_Small
+	331,478,12,12
+	0.5,0.5
+SpicedEggplantSteak_Small
+	405,402,12,12
+	0.5,0.5
 TomatoCheeseBisque_Small
-	310,476,12,12
+	372,443,12,12
 	0.5,0.5
 TurnipOnionStew_Small
-	384,410,12,12
+	480,336,12,12
 	0.5,0.5
 
 AppleTree
@@ -514,7 +523,7 @@ Corn
 	13,14,15,16,17,18,19,20,21,22
 Dishes
 	15
-	23,152,24,153,25,154,26,155,27,156,28,157,158,29,159,30,160,31,161,32,162,33,163,34,164,35,165,36,166,37,167,38,168
+	23,155,24,156,25,157,26,158,27,159,28,160,161,29,162,30,163,31,164,32,165,33,166,34,167,35,168,36,169,37,170,38,171
 Eggplant
 	15
 	39,40,41,42,43,44,45,46,47,48,49
