@@ -148,6 +148,36 @@ namespace PitHero
         public const float AppleTreeTopHarvestOffsetPx = 26f;   // worker sprite centre rises to this many px below the apple-tree top
         public const float HarvestDepositSeconds = 2f;          // worker stays hidden "inside" the storage building this long after delivering
 
+        // Kitchen / Tavern Dining (issue #319)
+        public const int KitchenStove1TileX = 83;
+        public const int KitchenStove2TileX = 84;
+        public const int KitchenStove3TileX = 85;
+        public const int KitchenStoveTileY = 2;
+        public const int KitchenSinkTileX = 86;
+        public const int KitchenSinkTileY = 2;
+        public const int MaxKitchenCooks = 3;
+        public const int MaxKitchenServers = 2;
+        public const int MaxKitchenRunners = 2;
+        public const float DishPriceMarkup = 1.25f;             // menu price = ingredient sell value x markup
+        public const int DishPriceRoundTo = 5;                  // menu prices round to the nearest 5 gold
+        public const int DishPriceMin = 10;                     // minimum menu price
+        public const float CookSimpleBaseSeconds = 5f;          // cook time at CookingProficiency 1 by dish complexity
+        public const float CookStandardBaseSeconds = 7f;
+        public const float CookComplexBaseSeconds = 10f;
+        public const float CookProficiencySpeedStep = 0.06f;    // cook duration reduced 6% per proficiency point above 1
+        public const float CookDurationFloorSeconds = 5f;       // cook time never drops below 5 in-game minutes
+        public const float DeluxeChancePerProficiency = 0.05f;  // deluxe-dish chance per CookingProficiency point
+        public const float DeluxeChanceMax = 0.45f;
+        public const float DeluxeMagnitudeMultiplier = 1.5f;    // deluxe party dishes get +50% buff magnitude (rounded up)
+        public const float EatSnackSeconds = 5f;                // eat time by dish size
+        public const float EatMealSeconds = 7f;
+        public const float EatFeastSeconds = 10f;
+        public const float PatronPatiencePreOrderSeconds = 90f;   // in-game minutes a patron waits for a server to take their order
+        public const float PatronPatiencePostOrderSeconds = 300f; // in-game minutes a patron waits for ordered food to arrive
+        public const float DishTipChance = 0.5f;                // chance an unhired merc tips on finishing a meal
+        public const float DishTipMinPercent = 0.05f;           // tip is 5-15% of dish price, rounded up
+        public const float DishTipMaxPercent = 0.15f;
+
         // Camera Configuration
         public const float CameraDefaultZoom = 1f; // default zoom level
         public const float CameraMinimumZoom = 0.5f; // can't zoom out past default for normal maps
