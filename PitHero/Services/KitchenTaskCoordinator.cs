@@ -39,6 +39,7 @@ namespace PitHero.Services
         private CropStorageInventoryService _cropStorage;
         private DroppedCropService _droppedCrops;
         private DishEntityService _dishService;
+        private GameStateService _gameState;
 
         // ── Workers ─────────────────────────────────────────────────────────────
         private readonly List<ActiveWorker> _workers = new List<ActiveWorker>(8);
@@ -428,8 +429,8 @@ namespace PitHero.Services
             {
                 // Patron left after cooking started (patience expired or hired mid-dining):
                 // the crops are spent, the dish is made — payment is still collected (no tip)
-                var gameState = Core.Instance != null ? Core.Services.GetService<GameStateService>() : null;
-                gameState?.AddFunds(DishConfig.GetPrice(t.Dish), "dish_sale");
+                EnsureServices();
+                _gameState?.AddFunds(DishConfig.GetPrice(t.Dish), "dish_sale");
             }
 
             // If dish is on a table (Delivered state), enqueue a bus job
@@ -724,12 +725,27 @@ namespace PitHero.Services
 
         private void EnsureServices()
         {
+            // Core.Services requires a running game instance; headless tests inject via SetHeadlessServices.
+            if (Core.Instance == null)
+                return;
             if (_cropStorage == null)
                 _cropStorage = Core.Services.GetService<CropStorageInventoryService>();
             if (_droppedCrops == null)
                 _droppedCrops = Core.Services.GetService<DroppedCropService>();
             if (_dishService == null)
                 _dishService = Core.Services.GetService<DishEntityService>();
+            if (_gameState == null)
+                _gameState = Core.Services.GetService<GameStateService>();
+        }
+
+        /// <summary>
+        /// Injects service instances directly for headless tests (no running game instance).
+        /// The live path resolves these through Core.Services in EnsureServices.
+        /// </summary>
+        public void SetHeadlessServices(CropStorageInventoryService cropStorage, GameStateService gameState)
+        {
+            _cropStorage = cropStorage;
+            _gameState = gameState;
         }
 
         private bool HasAnyCropStorage()

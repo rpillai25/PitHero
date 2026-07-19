@@ -40,13 +40,29 @@ namespace PitHero.ECS.Components
 
         private PauseService _pauseService;
         private KitchenTaskCoordinator _coordinator;
+        private GameStateService _gameState;
         private float _elapsed;
 
         public override void OnAddedToEntity()
         {
-            _pauseService  = Core.Services.GetService<PauseService>();
-            _coordinator   = Core.Services.GetService<KitchenTaskCoordinator>();
+            // Core.Services requires a running game instance; headless tests inject via SetHeadlessServices.
+            if (Core.Instance != null)
+            {
+                _pauseService  = Core.Services.GetService<PauseService>();
+                _coordinator   = Core.Services.GetService<KitchenTaskCoordinator>();
+                _gameState     = Core.Services.GetService<GameStateService>();
+            }
             _elapsed = 0f;
+        }
+
+        /// <summary>
+        /// Injects service instances directly for headless tests (no running game instance).
+        /// The live path resolves these through Core.Services in OnAddedToEntity.
+        /// </summary>
+        public void SetHeadlessServices(KitchenTaskCoordinator coordinator, GameStateService gameState)
+        {
+            _coordinator = coordinator;
+            _gameState = gameState;
         }
 
         /// <summary>Transition to Ordered state once a server takes this patron's order.</summary>
@@ -121,11 +137,10 @@ namespace PitHero.ECS.Components
             if (ActiveTicket != null)
             {
                 // Pay for the dish
-                var gameState = Core.Services.GetService<GameStateService>();
-                if (gameState != null)
+                if (_gameState != null)
                 {
                     int price = DishConfig.GetPrice(ActiveTicket.Dish);
-                    gameState.AddFunds(price, "dish_sale");
+                    _gameState.AddFunds(price, "dish_sale");
 
                     // Tip roll
                     int tip = 0;
@@ -134,7 +149,7 @@ namespace PitHero.ECS.Components
                         float tipPct = Nez.Random.Range(GameConfig.DishTipMinPercent, GameConfig.DishTipMaxPercent);
                         tip = (int)Math.Ceiling(price * tipPct);
                         if (tip > 0)
-                            gameState.AddFunds(tip, "dish_tip");
+                            _gameState.AddFunds(tip, "dish_tip");
                     }
 
                     PitHero.Services.Analytics.AnalyticsService.LogDishServed(
@@ -145,8 +160,7 @@ namespace PitHero.ECS.Components
             }
 
             // Walk off via MercenaryManager
-            var mercManager = Core.Services.GetService<MercenaryManager>();
-            mercManager?.WalkOffPatron(Entity);
+            WalkOffViaMercenaryManager();
         }
 
         private void LeaveOnPatienceExpiry()
@@ -158,7 +172,12 @@ namespace PitHero.ECS.Components
 
             State = PatronState.FinishedEating;
 
-            var mercManager = Core.Services.GetService<MercenaryManager>();
+            WalkOffViaMercenaryManager();
+        }
+
+        private void WalkOffViaMercenaryManager()
+        {
+            var mercManager = Core.Instance != null ? Core.Services.GetService<MercenaryManager>() : null;
             mercManager?.WalkOffPatron(Entity);
         }
     }
