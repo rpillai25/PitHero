@@ -30,6 +30,7 @@ namespace PitHero.UI
         private Tab _prioritiesTab;
         private Tab _crystalTab;
         private Tab _mercenariesTab;
+        private Tab _foodTab;
         private bool _windowVisible = false;
 
         // References for single window policy enforcement
@@ -90,6 +91,7 @@ namespace PitHero.UI
 
         // Mercenaries tab component
         private MercenariesTab _mercenariesTabComponent;
+        private FoodTab _foodTabComponent;
 
         private const float HERO_WINDOW_WIDTH = 870f;
 
@@ -270,6 +272,10 @@ namespace PitHero.UI
             PopulateCrystalsCollectionTab(_crystalsCollectionTab, skin);
             _tabPane.AddTab(_crystalsCollectionTab);
 
+            _foodTab = new Tab(GetText(TextType.UI, UITextKey.TabFood), tabStyle);
+            PopulateFoodTab(_foodTab, skin);
+            _tabPane.AddTab(_foodTab);
+
             _tabPane.AddTab(_prioritiesTab);
             
             // Hook into tab button clicks to adjust window width
@@ -301,6 +307,12 @@ namespace PitHero.UI
                 newWidth = 490f;
                 // Refresh crystal slots so any crystals loaded from save are visible
                 _crystalsTabComponent?.RefreshAll();
+            }
+            else if (selectedTab == _foodTab)
+            {
+                newWidth = 490f;
+                // Sync favorite/checkbox state in case a save was loaded after UI creation
+                _foodTabComponent?.RefreshFromService();
             }
             else
             {
@@ -751,6 +763,13 @@ namespace PitHero.UI
             _mercenariesTabComponent.OnDismissRequested += OnMercenaryDismissRequested;
             var content = _mercenariesTabComponent.CreateContent(skin, _stage);
             mercenariesTab.Add(content).Expand().Fill();
+        }
+
+        private void PopulateFoodTab(Tab foodTab, Skin skin)
+        {
+            _foodTabComponent = new FoodTab();
+            var content = _foodTabComponent.CreateContent(skin, _stage);
+            foodTab.Add(content).Expand().Fill();
         }
 
         private void InitializePriorityItems()

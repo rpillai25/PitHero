@@ -211,6 +211,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.MealBuffService));
             Core.Services.GetService<Services.KitchenTaskCoordinator>()?.Detach();
             Core.Services.RemoveService(typeof(Services.KitchenTaskCoordinator));
+            Core.Services.RemoveService(typeof(Services.PartyDiningService));
             Core.Services.RemoveService(typeof(Services.DishEntityService));
             Core.Services.RemoveService(typeof(MercenaryManager));
             Core.Services.RemoveService(typeof(AlliedMonsterManager));
@@ -295,6 +296,11 @@ namespace PitHero.ECS.Scenes
                 _tmxMap.Width, _tmxMap.Height);
             kitchenCoordinator.Initialize(this);
             Core.Services.AddService(kitchenCoordinator);
+
+            // Party dining service orchestrates once-a-day tavern meals for the party (issue #319)
+            var partyDiningService = new Services.PartyDiningService();
+            kitchenCoordinator.SetPartyOrderSource(partyDiningService);
+            Core.Services.AddService(partyDiningService);
 
             // Initialize hero promotion service (handles mercenary promotions and hero crystal ceremonies after death)
             _heroPromotionService = new Services.HeroPromotionService(this);
@@ -2279,6 +2285,9 @@ namespace PitHero.ECS.Scenes
             // Sync kitchen/tavern workers and ticket queue
             Core.Services.GetService<Services.KitchenTaskCoordinator>()?.Update();
 
+            // Tick party dining (eat timers, auto-resume, reload restart)
+            Core.Services.GetService<Services.PartyDiningService>()?.Update();
+
             // Morning reset: clear wet tiles and re-populate watering queue at 6AM
             var timeService = Core.Services.GetService<InGameTimeService>();
             if (timeService != null)
@@ -2288,8 +2297,9 @@ namespace PitHero.ECS.Scenes
                 {
                     Core.Services.GetService<Services.WetTileService>()?.ClearAllWet();
                     Core.Services.GetService<Services.FarmTaskCoordinator>()?.PopulateWaterQueue();
-                    // New day: yesterday's meal buffs expire (issue #319)
+                    // New day: yesterday's meal buffs expire and everyone may eat again (issue #319)
                     Core.Services.GetService<Services.MealBuffService>()?.ClearAll();
+                    Core.Services.GetService<Services.PartyDiningService>()?.ResetDaily();
                 }
                 _lastInGameHour = currentHour;
             }

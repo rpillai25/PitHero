@@ -656,6 +656,11 @@ namespace PitHero.AI
             _isSleeping = false;
             hero.IsSleeping = false;
 
+            // Morning breakfast trip (issue #319): if "Eat at tavern" is enabled and any party
+            // member can actually order, enter Stop mode and head to the tavern
+            if (isNightSleep)
+                Core.Services.GetService<Services.PartyDiningService>()?.BeginAutoDine();
+
             Debug.Log("[SleepInBedAction] Sleep action completed, hero has left the inn");
         }
 

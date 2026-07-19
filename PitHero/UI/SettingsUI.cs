@@ -108,6 +108,9 @@ namespace PitHero.UI
         private SecondChanceShopUI _secondChanceShopUI;
         private RecruitmentNotificationUI _recruitmentNotificationUI;
         private StopAdventuringUI _stopAdventuringUI;
+
+        /// <summary>The Stop/Play toggle UI — exposed so PartyDiningService can drive Stop mode.</summary>
+        public StopAdventuringUI StopAdventuringUI { get; private set; }
         private ReplenishUI _replenishUI;
         private FarmUI _farmUI;
 
@@ -333,6 +336,7 @@ namespace PitHero.UI
 
             _stopAdventuringUI = new StopAdventuringUI();
             _stopAdventuringUI.InitializeUI(_stage);
+            StopAdventuringUI = _stopAdventuringUI;
 
             _replenishUI = new ReplenishUI();
             _replenishUI.InitializeUI(_stage);

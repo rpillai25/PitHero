@@ -127,9 +127,18 @@ namespace PitHero.UI
         /// <summary>
         /// Toggle between Stop and Continue Adventuring
         /// </summary>
-        public void TriggerToggle()
+        public void TriggerToggle() => SetStopped(!_isStoppedAdventuring);
+
+        /// <summary>
+        /// Sets Stop mode directly (idempotent). Used by the toggle button and by
+        /// PartyDiningService for auto-dine trips and auto-resume after breakfast.
+        /// </summary>
+        public void SetStopped(bool stopped)
         {
-            _isStoppedAdventuring = !_isStoppedAdventuring;
+            if (_isStoppedAdventuring == stopped)
+                return;
+
+            _isStoppedAdventuring = stopped;
 
             // Find the hero and update StoppedAdventure state
             var heroEntity = Core.Scene?.FindEntity("hero");
@@ -156,6 +165,13 @@ namespace PitHero.UI
                     Debug.Log("[StopAdventuringUI] Player resumed adventuring");
                 }
             }
+
+            // Party dining reacts to Stop-mode edges (order eligibility, early-leave fast-track)
+            var diningService = Core.Services.GetService<Services.PartyDiningService>();
+            if (_isStoppedAdventuring)
+                diningService?.OnStopped();
+            else
+                diningService?.OnResumed();
 
             // Force style update by setting _currentMode to the opposite of the desired state
             // so UpdateButtonStyleIfNeeded() detects a mismatch and applies the new style
