@@ -48,6 +48,7 @@ namespace PitHero.Services
         private readonly List<AlliedMonster> _wantedAssignments = new List<AlliedMonster>(8);
         private readonly List<KitchenRole> _wantedRoles = new List<KitchenRole>(8);
         private readonly List<int> _wantedStoves = new List<int>(8);
+        private readonly List<bool> _matchedWorkerScratch = new List<bool>(8);
 
         // ── Pathfinder ──────────────────────────────────────────────────────────
         /// <summary>Shared A* grid for all kitchen monsters.</summary>
@@ -171,11 +172,15 @@ namespace PitHero.Services
                 _wantedStoves.Add(stove);
             }
 
-            // Track which wanted monsters have a matching worker
-            var matchedWorkerBits = new bool[_workers.Count]; // stack allocation OK for small count
+            // Track which pre-existing workers keep their assignment. SpawnWorker appends to
+            // _workers mid-pass, so snapshot the count and never index past it.
+            int existingWorkerCount = _workers.Count;
+            _matchedWorkerScratch.Clear();
+            for (int wi = 0; wi < existingWorkerCount; wi++)
+                _matchedWorkerScratch.Add(false);
 
             // For monsters with an existing worker: check if (monster, role) changed
-            for (int wi = 0; wi < _workers.Count; wi++)
+            for (int wi = 0; wi < existingWorkerCount; wi++)
             {
                 var w = _workers[wi];
                 // Find this worker's monster in the wanted list
@@ -202,7 +207,7 @@ namespace PitHero.Services
                     {
                         // Assignment unchanged — cancel any pending return
                         w.Fsm.CancelReturnHome();
-                        matchedWorkerBits[wi] = true;
+                        _matchedWorkerScratch[wi] = true;
                     }
                     else
                     {
@@ -213,14 +218,15 @@ namespace PitHero.Services
                 }
             }
 
-            // Spawn workers for wanted monsters that have no matching worker
+            // Spawn workers for wanted monsters that have no matching worker. Scan only the
+            // pre-existing workers — SpawnWorker grows _workers within this loop.
             for (int j = 0; j < postCount; j++)
             {
                 var monster = _wantedAssignments[j];
                 bool hasWorker = false;
-                for (int wi = 0; wi < _workers.Count; wi++)
+                for (int wi = 0; wi < existingWorkerCount; wi++)
                 {
-                    if (matchedWorkerBits[wi] && ReferenceEquals(_workers[wi].Monster, monster))
+                    if (_matchedWorkerScratch[wi] && ReferenceEquals(_workers[wi].Monster, monster))
                     {
                         hasWorker = true;
                         break;
