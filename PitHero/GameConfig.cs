@@ -159,6 +159,27 @@ namespace PitHero
         public const int MaxKitchenServers = 2;
         public const int MaxKitchenRunners = 2;
         public const float KitchenHatOverlapPixels = 6f;        // how far the job hat's brim overlaps the head top
+        public const int KitchenTicketBoardTileX = 82;          // servers post orders / cooks read them here
+        public const int KitchenTicketBoardTileY = 2;
+        public const int KitchenFridgeTileX = 87;               // cooks grab ingredients here; runners restock it
+        public const int KitchenFridgeTileY = 2;
+        public const int KitchenServingTableTileX = 87;         // serving tables at (87,3),(87,4),(87,5)
+        public const int KitchenServingTableFirstTileY = 3;
+        public const int KitchenServingSlotCount = 3;
+        public const int KitchenRunnerPostTileX = 86;           // runner idles below the sink
+        public const int KitchenRunnerPostTileY = 3;
+        public const int ServerOrderMemoryLimit = 3;            // orders a server can hold before posting at the board
+        public const int ServerCarryDishLimit = 2;              // cooked dishes a server can carry at once
+        public const float TicketBoardPauseSeconds = 1f;        // pause at the board to post/read a ticket
+        public const int KitchenFridgeParPerCrop = 4;           // runner tops the fridge up to this many of each fetched crop
+        public const float ServerWanderPauseSeconds = 2.5f;     // idle pause between server wander hops
+        // Tavern dining area bounds (server zones and wandering)
+        public const int TavernAreaMinTileX = 91;
+        public const int TavernAreaMaxTileX = 99;
+        public const int TavernTopZoneMinTileY = 2;             // top tables (93,3)/(97,3) and their seats
+        public const int TavernTopZoneMaxTileY = 4;
+        public const int TavernBottomZoneMinTileY = 5;          // bottom tables (93,7)/(97,7) and their seats
+        public const int TavernBottomZoneMaxTileY = 8;
         public const float DishPriceMarkup = 1.25f;             // menu price = ingredient sell value x markup
         public const int DishPriceRoundTo = 5;                  // menu prices round to the nearest 5 gold
         public const int DishPriceMin = 10;                     // minimum menu price

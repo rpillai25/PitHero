@@ -139,24 +139,17 @@ namespace PitHero.Tests
         {
             var pathfinder = CreateMapPathfinder(withNewGameBuildings: false);
 
-            // Worker stand tiles are open floor
-            for (int stove = 0; stove < GameConfig.MaxKitchenCooks; stove++)
-                Assert.IsTrue(pathfinder.IsPassable(KitchenTaskCoordinator.GetStoveTile(stove)),
-                    $"stove {stove} stand tile is a wall");
+            // Worker stand/work tiles are open floor
+            for (int station = 0; station < GameConfig.MaxKitchenCooks; station++)
+                Assert.IsTrue(pathfinder.IsPassable(KitchenTaskCoordinator.GetStationTile(station)),
+                    $"cooking station {station} tile is a wall");
             Assert.IsTrue(pathfinder.IsPassable(KitchenTaskCoordinator.SinkTile), "sink tile is a wall");
-            Assert.IsTrue(pathfinder.IsPassable(
-                new Point(GameConfig.KitchenSinkTileX + 1, GameConfig.KitchenSinkTileY)),
-                "runner post tile is a wall");
-
-            // Plate tiles sit ON the counter (solid) — servers must resolve a passable neighbor
-            for (int stove = 0; stove < GameConfig.MaxKitchenCooks; stove++)
-            {
-                var plateTile = KitchenTaskCoordinator.GetPlateTile(stove);
-                Assert.IsFalse(pathfinder.IsPassable(plateTile),
-                    $"plate tile {plateTile} unexpectedly walkable — counter topology changed");
-                Assert.IsTrue(pathfinder.TryFindPassableNeighbor(plateTile, KitchenTaskCoordinator.SinkTile, out _),
-                    $"plate tile {plateTile} has no passable neighbor");
-            }
+            Assert.IsTrue(pathfinder.IsPassable(KitchenTaskCoordinator.TicketBoardTile), "ticket board tile is a wall");
+            Assert.IsTrue(pathfinder.IsPassable(KitchenTaskCoordinator.FridgeTile), "fridge tile is a wall");
+            Assert.IsTrue(pathfinder.IsPassable(KitchenTaskCoordinator.RunnerPostTile), "runner post tile is a wall");
+            for (int slot = 0; slot < GameConfig.KitchenServingSlotCount; slot++)
+                Assert.IsTrue(pathfinder.IsPassable(KitchenTaskCoordinator.GetServingTile(slot)),
+                    $"serving table tile {slot} is a wall");
 
             // The kitchen room is actually enclosed (regression guard for the wall seeding itself)
             Assert.IsFalse(pathfinder.IsPassable(new Point(81, 2)), "kitchen west wall missing");
@@ -168,13 +161,28 @@ namespace PitHero.Tests
         {
             var pathfinder = CreateMapPathfinder(withNewGameBuildings: true);
 
-            for (int stove = 0; stove < GameConfig.MaxKitchenCooks; stove++)
-                AssertRouteClear(pathfinder, HouseExitTile, KitchenTaskCoordinator.GetStoveTile(stove),
-                    $"house exit → stove {stove}");
+            AssertRouteClear(pathfinder, HouseExitTile, KitchenTaskCoordinator.TicketBoardTile,
+                "house exit → ticket board");
+            for (int station = 0; station < GameConfig.MaxKitchenCooks; station++)
+                AssertRouteClear(pathfinder, HouseExitTile, KitchenTaskCoordinator.GetStationTile(station),
+                    $"house exit → cooking station {station}");
+            AssertRouteClear(pathfinder, HouseExitTile, KitchenTaskCoordinator.FridgeTile, "house exit → fridge");
             AssertRouteClear(pathfinder, HouseExitTile, KitchenTaskCoordinator.SinkTile, "house exit → sink");
-            AssertRouteClear(pathfinder, HouseExitTile,
-                new Point(GameConfig.KitchenSinkTileX + 1, GameConfig.KitchenSinkTileY),
+            AssertRouteClear(pathfinder, HouseExitTile, KitchenTaskCoordinator.RunnerPostTile,
                 "house exit → runner post");
+            for (int slot = 0; slot < GameConfig.KitchenServingSlotCount; slot++)
+                AssertRouteClear(pathfinder, HouseExitTile, KitchenTaskCoordinator.GetServingTile(slot),
+                    $"house exit → serving table {slot}");
+
+            // Cook loop: board → fridge → station → serving table → board
+            AssertRouteClear(pathfinder, KitchenTaskCoordinator.TicketBoardTile,
+                KitchenTaskCoordinator.FridgeTile, "board → fridge");
+            AssertRouteClear(pathfinder, KitchenTaskCoordinator.FridgeTile,
+                KitchenTaskCoordinator.GetStationTile(0), "fridge → station 0");
+            AssertRouteClear(pathfinder, KitchenTaskCoordinator.GetStationTile(0),
+                KitchenTaskCoordinator.GetServingTile(0), "station 0 → serving table 0");
+            AssertRouteClear(pathfinder, KitchenTaskCoordinator.GetServingTile(0),
+                KitchenTaskCoordinator.TicketBoardTile, "serving table 0 → board");
 
             // And the walk home again
             AssertRouteClear(pathfinder, KitchenTaskCoordinator.SinkTile, HouseExitTile, "sink → house exit");
@@ -184,7 +192,7 @@ namespace PitHero.Tests
         public void Server_CanDeliverToEverySeatTable()
         {
             var pathfinder = CreateMapPathfinder(withNewGameBuildings: true);
-            var sink = KitchenTaskCoordinator.SinkTile;
+            var servingPickup = KitchenTaskCoordinator.GetServingTile(1);
 
             for (int i = 0; i < AllSeats.Length; i++)
             {
@@ -202,36 +210,32 @@ namespace PitHero.Tests
                     $"table tile {tableTile} unexpectedly walkable — table topology changed");
 
                 // The server paths to the table's nearest passable neighbor (TrySetPathToTileOrNeighbor)
-                Assert.IsTrue(pathfinder.TryFindPassableNeighbor(tableTile, sink, out var standTile),
+                Assert.IsTrue(pathfinder.TryFindPassableNeighbor(tableTile, servingPickup, out var standTile),
                     $"table {tableTile} has no passable neighbor");
-                AssertRouteClear(pathfinder, sink, standTile, $"sink → table {tableTile} (seat {seat})");
+                AssertRouteClear(pathfinder, servingPickup, standTile,
+                    $"serving pickup → table {tableTile} (seat {seat})");
+                // Canceled orders: dish goes from the table area back to the sink
+                AssertRouteClear(pathfinder, standTile, KitchenTaskCoordinator.SinkTile,
+                    $"table {tableTile} → sink");
             }
+
+            // Server order loop: dining area → ticket board → serving pickup
+            AssertRouteClear(pathfinder, new Point(95, 5), KitchenTaskCoordinator.TicketBoardTile,
+                "dining area → ticket board");
+            AssertRouteClear(pathfinder, KitchenTaskCoordinator.TicketBoardTile, servingPickup,
+                "ticket board → serving pickup");
         }
 
         [TestMethod]
-        public void Server_CanReachEveryStovePickup()
+        public void Runner_CanReachStorageDoorAndFridge()
         {
             var pathfinder = CreateMapPathfinder(withNewGameBuildings: true);
-            var sink = KitchenTaskCoordinator.SinkTile;
-
-            for (int stove = 0; stove < GameConfig.MaxKitchenCooks; stove++)
-            {
-                var plateTile = KitchenTaskCoordinator.GetPlateTile(stove);
-                Assert.IsTrue(pathfinder.TryFindPassableNeighbor(plateTile, sink, out var standTile),
-                    $"plate tile {plateTile} has no passable neighbor");
-                AssertRouteClear(pathfinder, sink, standTile, $"sink → stove {stove} pickup");
-            }
-        }
-
-        [TestMethod]
-        public void Runner_CanReachStorageDoorAndReturn()
-        {
-            var pathfinder = CreateMapPathfinder(withNewGameBuildings: true);
-            var sink = KitchenTaskCoordinator.SinkTile;
             var storageDoor = BuildingConfig.GetDoorTile(BuildingType.CropStorage, StorageAnchor);
 
-            AssertRouteClear(pathfinder, sink, storageDoor, "sink → crop storage door");
-            AssertRouteClear(pathfinder, storageDoor, sink, "crop storage door → sink");
+            AssertRouteClear(pathfinder, KitchenTaskCoordinator.RunnerPostTile, storageDoor,
+                "runner post → crop storage door");
+            AssertRouteClear(pathfinder, storageDoor, KitchenTaskCoordinator.FridgeTile,
+                "crop storage door → fridge");
         }
 
         [TestMethod]

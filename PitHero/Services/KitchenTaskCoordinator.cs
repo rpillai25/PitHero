@@ -11,8 +11,17 @@ using RolePlayingFramework.AlliedMonsters;
 namespace PitHero.Services
 {
     /// <summary>
-    /// Central coordinator for kitchen/tavern work. Manages worker lifecycles (cooks, servers,
-    /// runners), the ticket queue, crop withdrawals, and patron notifications.
+    /// Central coordinator for kitchen/tavern work. Owns the worker lifecycle (cooks, servers,
+    /// runners), the ticket board, the fridge inventory, cooking stations, serving table slots,
+    /// and patron notifications.
+    ///
+    /// Flow: a server takes up to 3 orders from patrons at its tables, posts them on the ticket
+    /// board (82,2); the shortfall of any recipe not covered by the fridge (87,2) is fetched
+    /// proactively by a runner from Crop Storage; a cook reads one ticket at a time from the
+    /// board, gathers ingredients at the fridge (waiting for the runner if short), cooks at a
+    /// free station (83-85,2), and places the dish on a serving table (87,3-5) — holding it if
+    /// all three are full. The server whose zone owns the table picks up (up to 2 dishes) and
+    /// delivers; dishes whose patron left go to the sink (86,2).
     /// </summary>
     public class KitchenTaskCoordinator
     {
@@ -24,13 +33,19 @@ namespace PitHero.Services
             public Entity Entity;
             public KitchenMonsterStateMachine Fsm;
             public KitchenRole Role;
-            public int StoveIndex; // -1 for server/runner
         }
 
         public struct BusJob
         {
-            public Entity DishEntity; // entity on the table to be bussed (may be null if already gone)
+            public Entity DishEntity; // plate entity on the table to be bussed
             public Vector2 WorldPos;  // where to pick it up from
+            public int TableTileY;    // zone filter (top tables y<=4, bottom y>=5)
+        }
+
+        private struct OrphanDish
+        {
+            public int Slot;          // serving slot the dish sits on
+            public Entity DishEntity; // dish entity on the serving table (patron left)
         }
 
         // ── Services ────────────────────────────────────────────────────────────
@@ -48,22 +63,27 @@ namespace PitHero.Services
         // Scratch arrays for role assignment (pre-allocated, reset each reconcile)
         private readonly List<AlliedMonster> _wantedAssignments = new List<AlliedMonster>(8);
         private readonly List<KitchenRole> _wantedRoles = new List<KitchenRole>(8);
-        private readonly List<int> _wantedStoves = new List<int>(8);
         private readonly List<bool> _matchedWorkerScratch = new List<bool>(8);
 
         // ── Pathfinder ──────────────────────────────────────────────────────────
         /// <summary>Shared A* grid for all kitchen monsters.</summary>
         public FarmPathfinder Pathfinder { get; }
 
-        // ── Tickets ─────────────────────────────────────────────────────────────
+        // ── Tickets / board ─────────────────────────────────────────────────────
         private readonly List<KitchenTicket> _tickets = new List<KitchenTicket>(16);
         private int _nextTicketId;
 
-        // Claim tokens (null = not claimed)
-        // CookClaim[stoveIndex] = ticket being cooked on that stove
-        private readonly KitchenTicket[] _cookClaim = new KitchenTicket[GameConfig.MaxKitchenCooks];
-        // RunnerClaim = ticket a runner is fetching for
-        private KitchenTicket _runnerClaim;
+        // ── Fridge inventory (kitchen-local crop stock) ─────────────────────────
+        private readonly Dictionary<CropType, int> _fridge = new Dictionary<CropType, int>(16);
+
+        // ── Runner fetch queue (tickets whose storage-taken share needs transport) ──
+        private readonly List<KitchenTicket> _fetchQueue = new List<KitchenTicket>(8);
+
+        // ── Cooking stations ────────────────────────────────────────────────────
+        private readonly KitchenTicket[] _stationTicket = new KitchenTicket[GameConfig.MaxKitchenCooks];
+
+        // ── Serving table orphans (cooked dishes whose patron left) ─────────────
+        private readonly List<OrphanDish> _orphanServing = new List<OrphanDish>(4);
 
         // ── Bus queue ───────────────────────────────────────────────────────────
         private readonly List<BusJob> _busJobs = new List<BusJob>(8);
@@ -72,11 +92,8 @@ namespace PitHero.Services
         private IPartyOrderSource _partyOrderSource;
 
         // ── Kitchen open/closed ─────────────────────────────────────────────────
-        // Indices into _workers for the designated post workers (set during reconcile)
         private int _cook1WorkerIdx = -1;
         private int _server1WorkerIdx = -1;
-
-        // ── Public state ────────────────────────────────────────────────────────
 
         /// <summary>True when ≥1 cook and ≥1 server are assigned and awake.</summary>
         public bool IsKitchenOpen => _cook1WorkerIdx >= 0 && _server1WorkerIdx >= 0;
@@ -103,9 +120,7 @@ namespace PitHero.Services
         public void Initialize(Scene scene)
         {
             _scene = scene;
-            _cropStorage = Core.Services.GetService<CropStorageInventoryService>();
-            _droppedCrops = Core.Services.GetService<DroppedCropService>();
-            _dishService = Core.Services.GetService<DishEntityService>();
+            EnsureServices();
         }
 
         /// <summary>Unsubscribes from service events. Call when the scene is torn down.</summary>
@@ -129,7 +144,6 @@ namespace PitHero.Services
             // Insertion sort — allocation-free, small list.
             _wantedAssignments.Clear();
             _wantedRoles.Clear();
-            _wantedStoves.Clear();
 
             var roster = _alliedMonsters.AlliedMonsters;
             for (int i = 0; i < roster.Count; i++)
@@ -140,7 +154,6 @@ namespace PitHero.Services
                 if (MonsterScheduleConfig.IsAsleep(m.MonsterTypeName, timeService))
                     continue;
 
-                // Insertion sort by CookingProficiency descending
                 int insertPos = _wantedAssignments.Count;
                 for (int j = 0; j < _wantedAssignments.Count; j++)
                 {
@@ -153,26 +166,23 @@ namespace PitHero.Services
                 _wantedAssignments.Insert(insertPos, m);
             }
 
-            // Assign roles in order: cook1(stove0), server1, runner1, cook2(stove1), server2, runner2, cook3(stove2)
-            // Max 7 workers; extras stay home.
-            // Post order: cook1, server1, runner1, cook2, server2, runner2, cook3
+            // Assign roles in order: cook1, server1, runner1, cook2, server2, runner2, cook3.
+            // Stations and zones are claimed dynamically by the FSMs.
             int postCount = _wantedAssignments.Count < 7 ? _wantedAssignments.Count : 7;
             for (int i = 0; i < postCount; i++)
             {
                 KitchenRole role;
-                int stove = -1;
                 switch (i)
                 {
-                    case 0: role = KitchenRole.Cook;   stove = 0; break;
-                    case 1: role = KitchenRole.Server;             break;
-                    case 2: role = KitchenRole.Runner;             break;
-                    case 3: role = KitchenRole.Cook;   stove = 1; break;
-                    case 4: role = KitchenRole.Server;             break;
-                    case 5: role = KitchenRole.Runner;             break;
-                    default: role = KitchenRole.Cook;  stove = 2; break;
+                    case 0: role = KitchenRole.Cook;   break;
+                    case 1: role = KitchenRole.Server; break;
+                    case 2: role = KitchenRole.Runner; break;
+                    case 3: role = KitchenRole.Cook;   break;
+                    case 4: role = KitchenRole.Server; break;
+                    case 5: role = KitchenRole.Runner; break;
+                    default: role = KitchenRole.Cook;  break;
                 }
                 _wantedRoles.Add(role);
-                _wantedStoves.Add(stove);
             }
 
             // Track which pre-existing workers keep their assignment. SpawnWorker appends to
@@ -182,11 +192,9 @@ namespace PitHero.Services
             for (int wi = 0; wi < existingWorkerCount; wi++)
                 _matchedWorkerScratch.Add(false);
 
-            // For monsters with an existing worker: check if (monster, role) changed
             for (int wi = 0; wi < existingWorkerCount; wi++)
             {
                 var w = _workers[wi];
-                // Find this worker's monster in the wanted list
                 int wantedIdx = -1;
                 for (int j = 0; j < _wantedAssignments.Count; j++)
                 {
@@ -199,30 +207,20 @@ namespace PitHero.Services
 
                 if (wantedIdx < 0 || wantedIdx >= postCount)
                 {
-                    // Monster no longer in rotation — send home
                     w.Fsm.RequestReturnHome();
+                }
+                else if (w.Role == _wantedRoles[wantedIdx])
+                {
+                    w.Fsm.CancelReturnHome();
+                    _matchedWorkerScratch[wi] = true;
                 }
                 else
                 {
-                    var wantedRole = _wantedRoles[wantedIdx];
-                    var wantedStove = _wantedStoves[wantedIdx];
-                    if (w.Role == wantedRole && w.StoveIndex == wantedStove)
-                    {
-                        // Assignment unchanged — cancel any pending return
-                        w.Fsm.CancelReturnHome();
-                        _matchedWorkerScratch[wi] = true;
-                    }
-                    else
-                    {
-                        // Role changed — send home; will be respawned next reconcile
-                        w.Fsm.RequestReturnHome();
-                        // Don't mark as matched — new worker will be spawned
-                    }
+                    // Role changed — send home; will be respawned next reconcile
+                    w.Fsm.RequestReturnHome();
                 }
             }
 
-            // Spawn workers for wanted monsters that have no matching worker. Scan only the
-            // pre-existing workers — SpawnWorker grows _workers within this loop.
             for (int j = 0; j < postCount; j++)
             {
                 var monster = _wantedAssignments[j];
@@ -236,7 +234,7 @@ namespace PitHero.Services
                     }
                 }
                 if (!hasWorker)
-                    SpawnWorker(monster, _wantedRoles[j], _wantedStoves[j]);
+                    SpawnWorker(monster, _wantedRoles[j]);
             }
 
             // Reap workers whose entities finished despawning
@@ -260,7 +258,7 @@ namespace PitHero.Services
 
         // ── Worker spawning ──────────────────────────────────────────────────────
 
-        private void SpawnWorker(AlliedMonster monster, KitchenRole role, int stoveIndex)
+        private void SpawnWorker(AlliedMonster monster, KitchenRole role)
         {
             var house = FindMonsterHouse(monster.MonsterHouseId);
             if (house == null)
@@ -287,13 +285,13 @@ namespace PitHero.Services
             entity.AddComponent(new ActorFacingComponent());
             entity.AddComponent(new FarmMonsterMover());
 
-            // Carry renderer for holding a dish while delivering
+            // Carry renderer for holding a dish or ingredients
             var carryRenderer = entity.AddComponent(new Nez.Sprites.SpriteRenderer());
             carryRenderer.SetRenderLayer(GameConfig.RenderLayerActorPropOverlay);
             carryRenderer.SetEnabled(false);
 
             var fsm = entity.AddComponent(new KitchenMonsterStateMachine(
-                monster, this, new Point(house.TileX, house.TileY), role, stoveIndex));
+                monster, this, new Point(house.TileX, house.TileY), role));
             fsm.BodyAnimator = bodyAnimator;
             fsm.CarryRenderer = carryRenderer;
 
@@ -303,11 +301,10 @@ namespace PitHero.Services
                 Entity = entity,
                 Fsm = fsm,
                 Role = role,
-                StoveIndex = stoveIndex,
             };
             _workers.Add(worker);
 
-            Debug.Log($"[KitchenTaskCoordinator] Spawned {role} monster '{monster.Name}' ({typeName}) stove={stoveIndex}");
+            Debug.Log($"[KitchenTaskCoordinator] Spawned {role} monster '{monster.Name}' ({typeName})");
         }
 
         private PlacedBuilding FindMonsterHouse(int uniqueId)
@@ -336,13 +333,76 @@ namespace PitHero.Services
             return null;
         }
 
+        // ── Server zones ─────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// The zone a server currently works: one active server works all 4 tables; with two,
+        /// the first (staffing order) works the top tables and the second the bottom tables.
+        /// Recomputed on demand, so zone handoffs on staffing changes are automatic — the
+        /// current zone owner finishes whatever the previous owner started there.
+        /// </summary>
+        public ServerZone GetServerZone(KitchenMonsterStateMachine fsm)
+        {
+            int myOrder = -1;
+            int activeServers = 0;
+            for (int i = 0; i < _workers.Count; i++)
+            {
+                if (_workers[i].Role != KitchenRole.Server || _workers[i].Fsm.IsReturningHome)
+                    continue;
+                if (ReferenceEquals(_workers[i].Fsm, fsm))
+                    myOrder = activeServers;
+                activeServers++;
+            }
+            if (activeServers <= 1)
+                return ServerZone.AllTables;
+            return myOrder == 0 ? ServerZone.TopTables : ServerZone.BottomTables;
+        }
+
+        /// <summary>True when the zone covers the given table tile.</summary>
+        public static bool ZoneContainsTable(ServerZone zone, Point tableTile)
+        {
+            switch (zone)
+            {
+                case ServerZone.TopTables:    return tableTile.Y <= GameConfig.TavernTopZoneMaxTileY;
+                case ServerZone.BottomTables: return tableTile.Y >= GameConfig.TavernBottomZoneMinTileY;
+                default:                      return true;
+            }
+        }
+
+        // ── Fridge inventory ─────────────────────────────────────────────────────
+
+        /// <summary>Units of the crop currently in the kitchen fridge.</summary>
+        public int FridgeCount(CropType crop)
+            => _fridge.TryGetValue(crop, out int n) ? n : 0;
+
+        private void FridgeAdd(CropType crop, int amount)
+        {
+            if (amount <= 0) return;
+            _fridge.TryGetValue(crop, out int n);
+            _fridge[crop] = n + amount;
+        }
+
+        private int FridgeTake(CropType crop, int amount)
+        {
+            if (amount <= 0) return 0;
+            _fridge.TryGetValue(crop, out int n);
+            int take = n < amount ? n : amount;
+            _fridge[crop] = n - take;
+            return take;
+        }
+
         // ── Ticket API ───────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Creates a ticket and withdraws the recipe crops (all-or-nothing).
-        /// Returns null if ingredients cannot be covered or the kitchen queue is full.
+        /// Creates a ticket for an order taken at <paramref name="seatTile"/>, reserving the
+        /// ingredients (fridge stock first, storage shortfall withdrawn all-or-nothing). If any
+        /// shortfall was withdrawn from storage, the ticket enters the runner fetch queue
+        /// immediately (proactive fetch — the runner starts as soon as the order is taken).
+        /// The ticket is NOT visible to cooks until the server posts it at the board.
+        /// Returns null if ingredients cannot be covered or the queue is full.
         /// </summary>
-        public KitchenTicket CreateTicket(DishType dish, bool isParty, int partySlot, Entity patronEntity)
+        public KitchenTicket CreateTicket(DishType dish, bool isParty, int partySlot,
+            Entity patronEntity, Point seatTile)
         {
             if (_tickets.Count >= 16)
                 return null;
@@ -350,52 +410,43 @@ namespace PitHero.Services
             EnsureServices();
             var def = DishConfig.GetDefinition(dish);
 
-            // All-or-nothing availability check first
+            // All-or-nothing availability check (fridge + storage; dairy is free and not in Recipe)
             for (int i = 0; i < def.Recipe.Length; i++)
             {
-                if (_cropStorage == null || _cropStorage.CountTotal(def.Recipe[i].Crop) < def.Recipe[i].Qty)
+                int available = FridgeCount(def.Recipe[i].Crop)
+                    + (_cropStorage?.CountTotal(def.Recipe[i].Crop) ?? 0);
+                if (available < def.Recipe[i].Qty)
                     return null;
             }
 
-            // Withdraw each ingredient
+            var fridgeTaken = new int[def.Recipe.Length];
+            var storageTaken = new int[def.Recipe.Length];
+            int storageTotal = 0;
+
             for (int i = 0; i < def.Recipe.Length; i++)
             {
-                if (!(_cropStorage?.TryWithdrawAcrossBuildings(def.Recipe[i].Crop, def.Recipe[i].Qty) ?? false))
+                var crop = def.Recipe[i].Crop;
+                int need = def.Recipe[i].Qty;
+                fridgeTaken[i] = FridgeTake(crop, need);
+                int shortfall = need - fridgeTaken[i];
+                if (shortfall > 0)
                 {
-                    // Partial withdrawal already happened — refund what we took
-                    for (int r = 0; r < i; r++)
-                        _cropStorage?.DepositAcrossBuildings(def.Recipe[r].Crop, def.Recipe[r].Qty);
-                    return null;
+                    if (!(_cropStorage?.TryWithdrawAcrossBuildings(crop, shortfall) ?? false))
+                    {
+                        // Availability changed mid-withdraw — roll everything back
+                        for (int r = 0; r <= i; r++)
+                        {
+                            FridgeAdd(def.Recipe[r].Crop, fridgeTaken[r]);
+                            if (storageTaken[r] > 0)
+                                _cropStorage?.DepositAcrossBuildings(def.Recipe[r].Crop, storageTaken[r]);
+                        }
+                        return null;
+                    }
+                    storageTaken[i] = shortfall;
+                    storageTotal += shortfall;
                 }
             }
 
-            var ticket = MakeTicket(dish, isParty, partySlot, patronEntity);
-
-            // If no Crop Storage buildings exist, skip runner trip
-            if (!HasAnyCropStorage())
-                ticket.IngredientsFetched = true;
-
-            if (ticket.IngredientsFetched)
-                ticket.State = TicketState.ReadyToCook;
-
-            return ticket;
-        }
-
-        /// <summary>
-        /// Creates a ticket WITHOUT withdrawing crops (save-reload path — crops already deducted).
-        /// </summary>
-        public KitchenTicket CreateTicketPreReserved(DishType dish, int partySlot)
-        {
-            if (_tickets.Count >= 16)
-                return null;
-            var ticket = MakeTicket(dish, true, partySlot, null);
-            ticket.IngredientsFetched = true;
-            ticket.State = TicketState.ReadyToCook;
-            return ticket;
-        }
-
-        private KitchenTicket MakeTicket(DishType dish, bool isParty, int partySlot, Entity patronEntity)
-        {
             var ticket = new KitchenTicket
             {
                 TicketId = ++_nextTicketId,
@@ -403,15 +454,70 @@ namespace PitHero.Services
                 IsPartyTicket = isParty,
                 PartySlot = partySlot,
                 PatronEntity = patronEntity,
-                State = TicketState.AwaitingIngredients,
+                SeatTile = seatTile,
+                TableTile = TavernSeatConfig.GetTableTile(seatTile),
+                FridgeTakenQty = fridgeTaken,
+                StorageTakenQty = storageTaken,
+                IngredientsFetched = storageTotal == 0,
+            };
+            ticket.State = ticket.IngredientsFetched
+                ? TicketState.ReadyToCook
+                : TicketState.AwaitingIngredients;
+            _tickets.Add(ticket);
+
+            // Proactive runner: queue the transport as soon as the order exists
+            if (!ticket.IngredientsFetched)
+                _fetchQueue.Add(ticket);
+
+            return ticket;
+        }
+
+        /// <summary>
+        /// Creates a ticket WITHOUT reserving ingredients (save-reload path — crops were already
+        /// deducted before the save). Enters the board immediately as ReadyToCook.
+        /// </summary>
+        public KitchenTicket CreateTicketPreReserved(DishType dish, int partySlot)
+        {
+            if (_tickets.Count >= 16)
+                return null;
+
+            var def = DishConfig.GetDefinition(dish);
+            var storageTaken = new int[def.Recipe.Length];
+            for (int i = 0; i < def.Recipe.Length; i++)
+                storageTaken[i] = def.Recipe[i].Qty; // cancel refunds the full recipe to storage
+
+            var seat = GetPartySeatTile(partySlot);
+            var ticket = new KitchenTicket
+            {
+                TicketId = ++_nextTicketId,
+                Dish = dish,
+                IsPartyTicket = true,
+                PartySlot = partySlot,
+                SeatTile = seat,
+                TableTile = TavernSeatConfig.GetTableTile(seat),
+                FridgeTakenQty = new int[def.Recipe.Length],
+                StorageTakenQty = storageTaken,
+                IngredientsFetched = true,
+                PostedToBoard = true,
+                State = TicketState.ReadyToCook,
             };
             _tickets.Add(ticket);
             return ticket;
         }
 
+        /// <summary>Server posts a taken order on the ticket board — cooks can now read it.</summary>
+        public void PostTicket(KitchenTicket t)
+        {
+            if (t == null || t.State == TicketState.Canceled)
+                return;
+            t.PostedToBoard = true;
+        }
+
         /// <summary>
-        /// Cancels a ticket. Pre-cooking: refunds crops. Plated/Delivering: marks Canceled
-        /// and leaves the dish entity in place for a server bus job.
+        /// Cancels a ticket at any stage. Pre-cooking: refunds fridge-taken units to the fridge
+        /// and storage-taken units to storage. After cooking started: the patron still pays.
+        /// A plated dish becomes an orphan the zone server carries to the sink; a delivered dish
+        /// becomes a bus job.
         /// </summary>
         public void CancelTicket(KitchenTicket t)
         {
@@ -423,42 +529,54 @@ namespace PitHero.Services
                 EnsureServices();
                 var def = DishConfig.GetDefinition(t.Dish);
                 for (int i = 0; i < def.Recipe.Length; i++)
-                    _cropStorage?.DepositAcrossBuildings(def.Recipe[i].Crop, def.Recipe[i].Qty);
+                {
+                    if (t.FridgeTakenQty != null && t.FridgeTakenQty[i] > 0)
+                        FridgeAdd(def.Recipe[i].Crop, t.FridgeTakenQty[i]);
+                    if (t.StorageTakenQty != null && t.StorageTakenQty[i] > 0)
+                        _cropStorage?.DepositAcrossBuildings(def.Recipe[i].Crop, t.StorageTakenQty[i]);
+                }
             }
             else if (!t.IsPartyTicket)
             {
                 // Patron left after cooking started (patience expired or hired mid-dining):
-                // the crops are spent, the dish is made — payment is still collected (no tip)
+                // the ingredients are spent, the dish is made — payment is still collected (no tip)
                 EnsureServices();
                 _gameState?.AddFunds(DishConfig.GetPrice(t.Dish), "dish_sale");
             }
 
-            // If dish is on a table (Delivered state), enqueue a bus job
-            if ((t.State == TicketState.Delivered || t.State == TicketState.Plated
-                || t.State == TicketState.Delivering) && t.PlatedDishEntity != null)
+            // Dish sitting on a serving table → orphan for the servers to sink (the entity may
+            // already be gone; the orphan entry still frees the slot once a server "collects" it)
+            if (t.State == TicketState.Plated && t.ServingSlot >= 0)
             {
-                Vector2 pickupPos;
-                if (t.PlatedDishEntity.IsDestroyed)
-                    pickupPos = Vector2.Zero;
-                else
-                    pickupPos = t.PlatedDishEntity.Transform.Position;
-
-                if (!t.PlatedDishEntity.IsDestroyed)
-                    _busJobs.Add(new BusJob { DishEntity = t.PlatedDishEntity, WorldPos = pickupPos });
+                var dishEntity = t.PlatedDishEntity != null && !t.PlatedDishEntity.IsDestroyed
+                    ? t.PlatedDishEntity : null;
+                _orphanServing.Add(new OrphanDish { Slot = t.ServingSlot, DishEntity = dishEntity });
+                t.PlatedDishEntity = null;
             }
+            // Dish on the patron's table → bus job
+            else if (t.State == TicketState.Delivered
+                && t.PlatedDishEntity != null && !t.PlatedDishEntity.IsDestroyed)
+            {
+                _busJobs.Add(new BusJob
+                {
+                    DishEntity = t.PlatedDishEntity,
+                    WorldPos = t.PlatedDishEntity.Transform.Position,
+                    TableTileY = t.TableTile.Y,
+                });
+                t.PlatedDishEntity = null;
+            }
+            // Delivering / carried-by-cook: the carrying FSM sees Canceled and diverts to the sink.
+
+            // Release claims
+            if (t.StationIndex >= 0 && t.StationIndex < _stationTicket.Length
+                && ReferenceEquals(_stationTicket[t.StationIndex], t))
+            {
+                _stationTicket[t.StationIndex] = null;
+            }
+            _fetchQueue.Remove(t);
 
             t.State = TicketState.Canceled;
             _tickets.Remove(t);
-
-            // Release cook claim if this stove was cooking it
-            if (t.StoveIndex >= 0 && t.StoveIndex < _cookClaim.Length
-                && ReferenceEquals(_cookClaim[t.StoveIndex], t))
-            {
-                _cookClaim[t.StoveIndex] = null;
-            }
-            // Release runner claim
-            if (ReferenceEquals(_runnerClaim, t))
-                _runnerClaim = null;
         }
 
         /// <summary>Finds and cancels the ticket belonging to the given patron entity.</summary>
@@ -476,14 +594,16 @@ namespace PitHero.Services
             }
         }
 
-        /// <summary>True if storage can cover every recipe entry for the dish.</summary>
+        /// <summary>True if fridge + storage can cover every recipe entry for the dish.</summary>
         public bool CanCoverRecipe(DishType dish)
         {
             EnsureServices();
             var def = DishConfig.GetDefinition(dish);
             for (int i = 0; i < def.Recipe.Length; i++)
             {
-                if (_cropStorage == null || _cropStorage.CountTotal(def.Recipe[i].Crop) < def.Recipe[i].Qty)
+                int available = FridgeCount(def.Recipe[i].Crop)
+                    + (_cropStorage?.CountTotal(def.Recipe[i].Crop) ?? 0);
+                if (available < def.Recipe[i].Qty)
                     return false;
             }
             return true;
@@ -501,7 +621,7 @@ namespace PitHero.Services
             }
         }
 
-        /// <summary>Registers the party order source (Phase 6).</summary>
+        /// <summary>Registers the party order source.</summary>
         public void SetPartyOrderSource(IPartyOrderSource source) => _partyOrderSource = source;
 
         /// <summary>Returns the live (non-canceled) party ticket for the given slot, or null.</summary>
@@ -518,7 +638,7 @@ namespace PitHero.Services
 
         /// <summary>
         /// Called when a patron finishes eating. Despawns the table dish entity, spawns an
-        /// EmptyPlate, and enqueues a bus job.
+        /// EmptyPlate, and enqueues a bus job for the zone server.
         /// </summary>
         public void NotifyPatronFinishedEating(KitchenTicket t)
         {
@@ -538,53 +658,43 @@ namespace PitHero.Services
             {
                 var emptyPlate = _dishService?.SpawnEmptyPlateAtWorldPos(platePos);
                 if (emptyPlate != null)
-                    _busJobs.Add(new BusJob { DishEntity = emptyPlate, WorldPos = platePos });
+                {
+                    _busJobs.Add(new BusJob
+                    {
+                        DishEntity = emptyPlate,
+                        WorldPos = platePos,
+                        TableTileY = t.TableTile.Y,
+                    });
+                }
             }
 
             _tickets.Remove(t);
         }
 
-        /// <summary>
-        /// Called when a party member finishes eating. Same as patron, different caller.
-        /// </summary>
+        /// <summary>Called when a party member finishes eating. Same as patron, different caller.</summary>
         public void NotifyPartyMemberFinishedEating(KitchenTicket t) => NotifyPatronFinishedEating(t);
 
-        // ── Internal FSM claim API ────────────────────────────────────────────────
+        // ── Cook API ─────────────────────────────────────────────────────────────
 
         /// <summary>
-        /// Cook tries to claim a ReadyToCook ticket for its stove. Party tickets have priority.
-        /// Returns null when nothing is available.
+        /// Cook reads the next unclaimed posted ticket from the board (party tickets first, then
+        /// FIFO). Only one cook holds any given ticket. Returns null when the board is empty.
         /// </summary>
-        public KitchenTicket TryClaimCookTicket(int stoveIndex)
+        public KitchenTicket TryReadNextTicket()
         {
-            if (stoveIndex < 0 || stoveIndex >= _cookClaim.Length)
-                return null;
-            if (_cookClaim[stoveIndex] != null)
-                return null; // stove already claimed
-
-            // Party tickets first
-            for (int i = 0; i < _tickets.Count; i++)
+            for (int pass = 0; pass < 2; pass++)
             {
-                var t = _tickets[i];
-                if (t.State == TicketState.ReadyToCook && t.IsPartyTicket && t.StoveIndex < 0)
+                bool wantParty = pass == 0;
+                for (int i = 0; i < _tickets.Count; i++)
                 {
-                    t.StoveIndex = stoveIndex;
-                    t.State = TicketState.Cooking;
-                    t.CropsRefundable = false;
-                    _cookClaim[stoveIndex] = t;
-                    return t;
-                }
-            }
-            // Then patron tickets (FIFO)
-            for (int i = 0; i < _tickets.Count; i++)
-            {
-                var t = _tickets[i];
-                if (t.State == TicketState.ReadyToCook && !t.IsPartyTicket && t.StoveIndex < 0)
-                {
-                    t.StoveIndex = stoveIndex;
-                    t.State = TicketState.Cooking;
-                    t.CropsRefundable = false;
-                    _cookClaim[stoveIndex] = t;
+                    var t = _tickets[i];
+                    if (t.IsPartyTicket != wantParty)
+                        continue;
+                    if (!t.PostedToBoard || t.CookClaimed || t.State == TicketState.Canceled)
+                        continue;
+                    if (t.State != TicketState.AwaitingIngredients && t.State != TicketState.ReadyToCook)
+                        continue;
+                    t.CookClaimed = true;
                     return t;
                 }
             }
@@ -592,62 +702,286 @@ namespace PitHero.Services
         }
 
         /// <summary>
-        /// Runner tries to claim an AwaitingIngredients ticket not already being fetched.
-        /// Returns null when nothing is available.
+        /// Claims the first free cooking station for the ticket. Stations are free when no other
+        /// cook is using them. Always succeeds while cooks ≤ stations; returns false otherwise.
         /// </summary>
-        public KitchenTicket TryClaimFetchTicket()
+        public bool TryClaimStation(KitchenTicket t, out int station)
         {
-            if (_runnerClaim != null)
-                return null; // runner already has a job
-
-            for (int i = 0; i < _tickets.Count; i++)
+            for (int i = 0; i < _stationTicket.Length; i++)
             {
-                var t = _tickets[i];
-                if (t.State == TicketState.AwaitingIngredients && !t.IngredientsFetched)
+                if (_stationTicket[i] == null)
                 {
-                    _runnerClaim = t;
-                    return t;
+                    _stationTicket[i] = t;
+                    t.StationIndex = i;
+                    station = i;
+                    return true;
                 }
             }
-            return null;
+            station = -1;
+            return false;
         }
 
         /// <summary>
-        /// Worker was interrupted mid-cook: release the stove claim and reset ticket to ReadyToCook
-        /// (ingredients already fetched). Runner interruption: release runner claim.
+        /// Cook abandons its claimed ticket (shift end / interruption). The ticket returns to the
+        /// board for the next cook; a mid-cook abandon resets it to ReadyToCook.
         /// </summary>
-        public void ReleaseTicket(KitchenTicket t)
+        public void ReleaseCookTicket(KitchenTicket t)
         {
             if (t == null) return;
-
+            t.CookClaimed = false;
             if (t.State == TicketState.Cooking)
-            {
                 t.State = TicketState.ReadyToCook;
-                if (t.StoveIndex >= 0 && t.StoveIndex < _cookClaim.Length)
-                    _cookClaim[t.StoveIndex] = null;
-                t.StoveIndex = -1;
+            if (t.StationIndex >= 0 && t.StationIndex < _stationTicket.Length
+                && ReferenceEquals(_stationTicket[t.StationIndex], t))
+            {
+                _stationTicket[t.StationIndex] = null;
             }
-            if (ReferenceEquals(_runnerClaim, t))
-                _runnerClaim = null;
+            t.StationIndex = -1;
+            t.ServingSlot = -1;
+        }
+
+        /// <summary>Cook starts cooking at its station: rolls deluxe, locks the reservation.</summary>
+        public void BeginCookingAtStation(KitchenTicket t, int cookProficiency)
+        {
+            if (t == null) return;
+            t.State = TicketState.Cooking;
+            t.CropsRefundable = false;
+            t.IsDeluxe = Nez.Random.Chance(DishConfig.GetDeluxeChance(cookProficiency));
+        }
+
+        /// <summary>Cook finished cooking: frees the station (the cook now holds the dish).</summary>
+        public void FinishCooking(KitchenTicket t)
+        {
+            if (t == null) return;
+            if (t.StationIndex >= 0 && t.StationIndex < _stationTicket.Length
+                && ReferenceEquals(_stationTicket[t.StationIndex], t))
+            {
+                _stationTicket[t.StationIndex] = null;
+            }
+            t.StationIndex = -1;
         }
 
         /// <summary>
-        /// Returns the next pending bus job for a server to work on.
-        /// Removes the job from the queue.
+        /// Reserves a free serving table slot for the ticket. A slot is occupied while any
+        /// ticket or orphaned dish sits on (or is headed to) it.
         /// </summary>
-        public bool TryClaimBusJob(out BusJob job)
+        public bool TryReserveServingSlot(KitchenTicket t, out int slot)
         {
-            if (_busJobs.Count == 0)
+            for (int i = 0; i < GameConfig.KitchenServingSlotCount; i++)
             {
-                job = default;
-                return false;
+                if (!IsServingSlotOccupied(i))
+                {
+                    t.ServingSlot = i;
+                    slot = i;
+                    return true;
+                }
             }
-            job = _busJobs[0];
-            _busJobs.RemoveAt(0);
-            return true;
+            slot = -1;
+            return false;
         }
 
-        /// <summary>Sink tile position for busing (carry dish here and despawn).</summary>
+        /// <summary>
+        /// Last-resort placement when a cook must go home while every slot is full: reuse the
+        /// least-loaded slot. Pickups scan tickets, not slots, so this self-heals.
+        /// </summary>
+        public int ForceReserveServingSlot(KitchenTicket t)
+        {
+            t.ServingSlot = 0;
+            return 0;
+        }
+
+        private bool IsServingSlotOccupied(int slot)
+        {
+            for (int i = 0; i < _tickets.Count; i++)
+                if (_tickets[i].ServingSlot == slot)
+                    return true;
+            for (int i = 0; i < _orphanServing.Count; i++)
+                if (_orphanServing[i].Slot == slot)
+                    return true;
+            return false;
+        }
+
+        /// <summary>Cook placed the dish entity on its reserved serving slot.</summary>
+        public void PlaceDishOnServing(KitchenTicket t, Entity dishEntity)
+        {
+            if (t == null) return;
+            t.PlatedDishEntity = dishEntity;
+            t.State = TicketState.Plated;
+        }
+
+        // ── Server API ───────────────────────────────────────────────────────────
+
+        /// <summary>True when a plated dish (or orphan) is waiting that this zone's server should handle.</summary>
+        public bool HasReadyDishForZone(ServerZone zone)
+        {
+            if (_orphanServing.Count > 0)
+                return true;
+            for (int i = 0; i < _tickets.Count; i++)
+            {
+                var t = _tickets[i];
+                if (t.State == TicketState.Plated && ZoneContainsTable(zone, t.TableTile))
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Server picks up one item from the serving tables: orphaned dishes first (to the sink),
+        /// then plated dishes for tables in the server's zone. The dish entity is despawned —
+        /// the server is now carrying it. Returns false when nothing is available.
+        /// </summary>
+        public bool TryPickupReadyDish(ServerZone zone, out KitchenTicket ticket,
+            out DishType dish, out bool toSink)
+        {
+            if (_orphanServing.Count > 0)
+            {
+                var orphan = _orphanServing[0];
+                _orphanServing.RemoveAt(0);
+                if (orphan.DishEntity != null && !orphan.DishEntity.IsDestroyed)
+                    _dishService?.Despawn(orphan.DishEntity);
+                ticket = null;
+                dish = default;
+                toSink = true;
+                return true;
+            }
+
+            for (int i = 0; i < _tickets.Count; i++)
+            {
+                var t = _tickets[i];
+                if (t.State != TicketState.Plated || !ZoneContainsTable(zone, t.TableTile))
+                    continue;
+                if (t.PlatedDishEntity != null && !t.PlatedDishEntity.IsDestroyed)
+                    _dishService?.Despawn(t.PlatedDishEntity);
+                t.PlatedDishEntity = null;
+                t.ServingSlot = -1;
+                t.State = TicketState.Delivering;
+                ticket = t;
+                dish = t.Dish;
+                toSink = false;
+                return true;
+            }
+
+            ticket = null;
+            dish = default;
+            toSink = false;
+            return false;
+        }
+
+        /// <summary>Marks the ticket Delivered and notifies party or patron.</summary>
+        public void OnTicketDelivered(KitchenTicket ticket, Entity dishEntity)
+        {
+            if (ticket == null) return;
+            ticket.State = TicketState.Delivered;
+            ticket.PlatedDishEntity = dishEntity;
+
+            if (ticket.IsPartyTicket)
+            {
+                NotifyPartyDishDelivered(ticket.PartySlot, ticket);
+            }
+            else if (ticket.PatronEntity != null && !ticket.PatronEntity.IsDestroyed)
+            {
+                var patron = ticket.PatronEntity.GetComponent<ECS.Components.TavernPatronComponent>();
+                patron?.OnDishDelivered();
+            }
+        }
+
+        /// <summary>Next pending bus job for the zone's server. Removes it from the queue.</summary>
+        public bool TryClaimBusJob(ServerZone zone, out BusJob job)
+        {
+            for (int i = 0; i < _busJobs.Count; i++)
+            {
+                var tableTile = new Point(0, _busJobs[i].TableTileY);
+                if (!ZoneContainsTable(zone, tableTile))
+                    continue;
+                job = _busJobs[i];
+                _busJobs.RemoveAt(i);
+                return true;
+            }
+            job = default;
+            return false;
+        }
+
+        // ── Runner API ───────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Runner claims the next transport job (FIFO). The claimed ticket leaves the queue so
+        /// two runners never fetch the same ingredients. Returns null when nothing is queued.
+        /// </summary>
+        public KitchenTicket TryClaimFetchJob()
+        {
+            while (_fetchQueue.Count > 0)
+            {
+                var t = _fetchQueue[0];
+                _fetchQueue.RemoveAt(0);
+                if (t.State == TicketState.Canceled || t.IngredientsFetched)
+                    continue; // stale entry
+                return t;
+            }
+            return null;
+        }
+
+        /// <summary>Runner abandons a claimed fetch (shift end) — the job re-enters the queue.</summary>
+        public void ReleaseFetchJob(KitchenTicket t)
+        {
+            if (t == null || t.State == TicketState.Canceled || t.IngredientsFetched)
+                return;
+            if (!_fetchQueue.Contains(t))
+                _fetchQueue.Add(t);
+        }
+
+        /// <summary>
+        /// Runner is at the storage door: opportunistically tops the fridge up to par for each
+        /// crop in the ticket's recipe (withdrawn atomically into the fridge — the walk back is
+        /// cosmetic, so a crash never loses crops).
+        /// </summary>
+        public void RunnerCollectAtStorage(KitchenTicket t)
+        {
+            if (t == null) return;
+            EnsureServices();
+            if (_cropStorage == null) return;
+
+            var def = DishConfig.GetDefinition(t.Dish);
+            for (int i = 0; i < def.Recipe.Length; i++)
+            {
+                var crop = def.Recipe[i].Crop;
+                int want = GameConfig.KitchenFridgeParPerCrop - FridgeCount(crop);
+                if (want <= 0)
+                    continue;
+                int available = _cropStorage.CountTotal(crop);
+                int take = want < available ? want : available;
+                if (take > 0 && _cropStorage.TryWithdrawAcrossBuildings(crop, take))
+                    FridgeAdd(crop, take);
+            }
+        }
+
+        /// <summary>
+        /// Runner arrived at the fridge: the ticket's ingredients are now complete and the
+        /// ticket becomes cookable (if posted, a cook can start immediately).
+        /// </summary>
+        public void CompleteFetch(KitchenTicket t)
+        {
+            if (t == null || t.State == TicketState.Canceled)
+                return;
+            t.IngredientsFetched = true;
+            if (t.State == TicketState.AwaitingIngredients)
+                t.State = TicketState.ReadyToCook;
+        }
+
+        // ── Static tile helpers ──────────────────────────────────────────────────
+
+        /// <summary>Ticket board tile (servers post, cooks read).</summary>
+        public static Point TicketBoardTile
+            => new Point(GameConfig.KitchenTicketBoardTileX, GameConfig.KitchenTicketBoardTileY);
+
+        /// <summary>Fridge tile (cooks gather here; runners restock it).</summary>
+        public static Point FridgeTile
+            => new Point(GameConfig.KitchenFridgeTileX, GameConfig.KitchenFridgeTileY);
+
+        /// <summary>Runner idle post (below the sink).</summary>
+        public static Point RunnerPostTile
+            => new Point(GameConfig.KitchenRunnerPostTileX, GameConfig.KitchenRunnerPostTileY);
+
+        /// <summary>Sink tile (dirty plates and orphaned dishes go here).</summary>
         public static Point SinkTile => new Point(GameConfig.KitchenSinkTileX, GameConfig.KitchenSinkTileY);
 
         /// <summary>World center of the sink tile.</summary>
@@ -655,11 +989,11 @@ namespace PitHero.Services
             GameConfig.KitchenSinkTileX * GameConfig.TileSize + GameConfig.TileSize / 2f,
             GameConfig.KitchenSinkTileY * GameConfig.TileSize + GameConfig.TileSize / 2f);
 
-        /// <summary>Returns the stove tile for the given stove index (cook stands here).</summary>
-        public static Point GetStoveTile(int stoveIndex)
+        /// <summary>Returns the cooking station tile for the given station index (cook stands here).</summary>
+        public static Point GetStationTile(int stationIndex)
         {
             int x;
-            switch (stoveIndex)
+            switch (stationIndex)
             {
                 case 0: x = GameConfig.KitchenStove1TileX; break;
                 case 1: x = GameConfig.KitchenStove2TileX; break;
@@ -668,11 +1002,20 @@ namespace PitHero.Services
             return new Point(x, GameConfig.KitchenStoveTileY);
         }
 
-        /// <summary>Returns the tile above the stove where a plated dish is placed (and server picks it up).</summary>
-        public static Point GetPlateTile(int stoveIndex)
+        /// <summary>Returns the serving table tile for the given slot index.</summary>
+        public static Point GetServingTile(int slot)
+            => new Point(GameConfig.KitchenServingTableTileX, GameConfig.KitchenServingTableFirstTileY + slot);
+
+        /// <summary>Seat tile for a party slot (0 = hero, 1/2 = hired mercs).</summary>
+        public static Point GetPartySeatTile(int partySlot)
         {
-            var stove = GetStoveTile(stoveIndex);
-            return new Point(stove.X, stove.Y - 1);
+            switch (partySlot)
+            {
+                case 0:  return new Point(GameConfig.TavernHeroSeatTileX, GameConfig.TavernHeroSeatTileY);
+                case 1:  return new Point(GameConfig.TavernMercenary1SeatTileX, GameConfig.TavernMercenary1SeatTileY);
+                case 2:  return new Point(GameConfig.TavernMercenary2SeatTileX, GameConfig.TavernMercenary2SeatTileY);
+                default: return new Point(GameConfig.TavernHeroSeatTileX, GameConfig.TavernHeroSeatTileY);
+            }
         }
 
         /// <summary>Nearest CropStorage door tile from the given origin. Returns false if none exists.</summary>
@@ -702,6 +1045,8 @@ namespace PitHero.Services
             }
             return found;
         }
+
+        // ── Party order source pass-through ──────────────────────────────────────
 
         /// <summary>True if the party order source is set and has a pending order.</summary>
         public bool TryGetNextPartyOrder(out int partySlot, out DishType dish)
@@ -748,106 +1093,9 @@ namespace PitHero.Services
             _gameState = gameState;
         }
 
-        private bool HasAnyCropStorage()
-        {
-            if (_buildingService == null) return false;
-            var all = _buildingService.GetAll();
-            for (int i = 0; i < all.Count; i++)
-                if (all[i].Type == BuildingType.CropStorage)
-                    return true;
-            return false;
-        }
-
         private void HandleBuildingsChanged()
         {
             Pathfinder.RebuildWalls(_buildingService);
-        }
-
-        /// <summary>
-        /// Called by KitchenMonsterStateMachine to mark that a plated dish entity has been
-        /// created above the stove after cooking.
-        /// </summary>
-        public void OnDishPlated(KitchenTicket ticket, Entity dishEntity)
-        {
-            if (ticket == null) return;
-            ticket.PlatedDishEntity = dishEntity;
-            ticket.State = TicketState.Plated;
-            if (ticket.StoveIndex >= 0 && ticket.StoveIndex < _cookClaim.Length)
-                _cookClaim[ticket.StoveIndex] = null;
-        }
-
-        /// <summary>
-        /// Cook claims a ticket to cook. Called by KitchenMonsterStateMachine.
-        /// Rolls the deluxe flag using the cook's proficiency.
-        /// </summary>
-        public KitchenTicket BeginCooking(int stoveIndex, int cookProficiency)
-        {
-            var ticket = TryClaimCookTicket(stoveIndex);
-            if (ticket == null) return null;
-            ticket.IsDeluxe = Nez.Random.Chance(DishConfig.GetDeluxeChance(cookProficiency));
-            return ticket;
-        }
-
-        /// <summary>
-        /// Server claims a Plated ticket to deliver. Returns null when none exists.
-        /// </summary>
-        public KitchenTicket TryClaimDeliveryTicket()
-        {
-            for (int i = 0; i < _tickets.Count; i++)
-            {
-                var t = _tickets[i];
-                if (t.State == TicketState.Plated)
-                {
-                    t.State = TicketState.Delivering;
-                    return t;
-                }
-            }
-            return null;
-        }
-
-        /// <summary>
-        /// Marks the ticket Delivered and notifies party or patron.
-        /// </summary>
-        public void OnTicketDelivered(KitchenTicket ticket, Entity dishEntity)
-        {
-            if (ticket == null) return;
-            ticket.State = TicketState.Delivered;
-            ticket.PlatedDishEntity = dishEntity;
-
-            if (ticket.IsPartyTicket)
-            {
-                NotifyPartyDishDelivered(ticket.PartySlot, ticket);
-            }
-            else if (ticket.PatronEntity != null)
-            {
-                var patron = ticket.PatronEntity.GetComponent<ECS.Components.TavernPatronComponent>();
-                patron?.OnDishDelivered();
-            }
-        }
-
-        /// <summary>
-        /// Server abandons delivery mid-walk (ticket canceled). Returns the delivery ticket
-        /// so the server can divert to the sink.
-        /// </summary>
-        public void AbortDelivery(KitchenTicket ticket)
-        {
-            if (ticket == null) return;
-            if (ticket.State == TicketState.Delivering)
-                ticket.State = TicketState.Canceled;
-            _tickets.Remove(ticket);
-        }
-
-        /// <summary>
-        /// Runner marks the ticket's ingredients as fetched and advances to ReadyToCook.
-        /// </summary>
-        public void OnIngredientsFetched(KitchenTicket ticket)
-        {
-            if (ticket == null) return;
-            ticket.IngredientsFetched = true;
-            if (ticket.State == TicketState.AwaitingIngredients)
-                ticket.State = TicketState.ReadyToCook;
-            if (ReferenceEquals(_runnerClaim, ticket))
-                _runnerClaim = null;
         }
 
         /// <summary>Exposes the DishEntityService for use by the FSM when spawning dishes.</summary>

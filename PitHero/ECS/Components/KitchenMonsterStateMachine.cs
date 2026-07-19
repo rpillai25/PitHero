@@ -9,15 +9,23 @@ using RolePlayingFramework.AlliedMonsters;
 namespace PitHero.ECS.Components
 {
     /// <summary>
-    /// Drives a single kitchen monster (cook, server, or runner): emerge from the house door,
-    /// walk to the assigned post, idle, claim and execute tasks, and return home when asked.
+    /// Drives a single kitchen monster through the tavern service loop.
+    ///
+    /// Server: take up to 3 orders from patrons at its tables (1 server works all 4 tables;
+    /// with 2 servers the first works the top pair, the second the bottom pair), post them at
+    /// the ticket board, deliver up to 2 cooked dishes from the serving tables (only for its
+    /// own tables), bus finished plates, otherwise wander its table area.
+    /// Cook: read one ticket at the board, gather ingredients at the fridge (waiting for the
+    /// runner if the fridge is short), cook at a free station, place the dish on a serving
+    /// table — holding it if all three are full.
+    /// Runner: proactively haul each order's ingredient shortfall from Crop Storage to the
+    /// fridge, one claimed job at a time.
     /// </summary>
     public class KitchenMonsterStateMachine : SimpleStateMachine<KitchenMonsterState>, IPausableComponent
     {
         private readonly AlliedMonster _monster;
         private readonly KitchenTaskCoordinator _coordinator;
         private readonly KitchenRole _role;
-        private readonly int _stoveIndex; // -1 for server/runner
 
         private Point _houseAnchorTile;
         private FarmMonsterMover _mover;
@@ -35,21 +43,33 @@ namespace PitHero.ECS.Components
         private bool _goHome;
         private bool _returnReachedExit;
 
-        // Cook state
-        private KitchenTicket _activeCookTicket;
-        private float _cookElapsed;
+        // ── Server state ────────────────────────────────────────────────────────
+        private struct CarriedDish
+        {
+            public KitchenTicket Ticket; // null for orphaned dishes headed to the sink
+            public DishType Dish;
+            public bool ToSink;
+        }
 
-        // Server state
-        private KitchenTicket _deliveryTicket;
-        private Vector2 _deliveryTargetPos; // plate world pos on the table
-        private bool _hasDeliveryTarget;
+        private readonly System.Collections.Generic.List<KitchenTicket> _takenOrders =
+            new System.Collections.Generic.List<KitchenTicket>(GameConfig.ServerOrderMemoryLimit);
+        private readonly System.Collections.Generic.List<CarriedDish> _carried =
+            new System.Collections.Generic.List<CarriedDish>(GameConfig.ServerCarryDishLimit);
+        private Entity _targetPatron;
+        private int _targetPartySlot = -1;
+        private DishType _targetPartyDish;
         private KitchenTaskCoordinator.BusJob _busJob;
-        private bool _hasBusJob;
-        private Vector2 _busPickupPos;
+        private bool _busPickedUp;
 
-        // Runner state
+        // ── Cook state ──────────────────────────────────────────────────────────
+        private KitchenTicket _cookTicket;
+        private float _cookReadElapsed;
+        private bool _cookTicketInHand; // read pause finished, station claimed
+        private float _cookElapsed;
+        private bool _cookCarryToSink;  // carried dish's ticket was canceled → sink it
+
+        // ── Runner state ────────────────────────────────────────────────────────
         private KitchenTicket _fetchTicket;
-        private float _collectElapsed;
 
         public bool ShouldPause => true;
 
@@ -60,13 +80,12 @@ namespace PitHero.ECS.Components
         private Point ExitTile => new Point(_houseAnchorTile.X, _houseAnchorTile.Y + 3);
 
         public KitchenMonsterStateMachine(AlliedMonster monster, KitchenTaskCoordinator coordinator,
-            Point houseAnchorTile, KitchenRole role, int stoveIndex)
+            Point houseAnchorTile, KitchenRole role)
         {
             _monster = monster;
             _coordinator = coordinator;
             _houseAnchorTile = houseAnchorTile;
             _role = role;
-            _stoveIndex = stoveIndex;
         }
 
         public override void OnAddedToEntity()
@@ -85,6 +104,40 @@ namespace PitHero.ECS.Components
         {
             _hatService?.DetachHat(_hat);
             _hat = null;
+
+            // Fault tolerance: never strand work when this entity dies for any reason.
+            for (int i = 0; i < _takenOrders.Count; i++)
+                _coordinator.PostTicket(_takenOrders[i]);
+            _takenOrders.Clear();
+
+            for (int i = 0; i < _carried.Count; i++)
+            {
+                var c = _carried[i];
+                if (c.Ticket == null || c.Ticket.State == TicketState.Canceled)
+                    continue; // orphan/canceled dish in hand — it's simply gone
+                // Put the dish back on a serving table so the next zone server delivers it
+                if (!_coordinator.TryReserveServingSlot(c.Ticket, out int slot))
+                    slot = _coordinator.ForceReserveServingSlot(c.Ticket);
+                var entity = _coordinator.DishService?.SpawnDishAtTile(
+                    c.Ticket.Dish, KitchenTaskCoordinator.GetServingTile(slot));
+                _coordinator.PlaceDishOnServing(c.Ticket, entity);
+            }
+            _carried.Clear();
+
+            if (_cookTicket != null && _cookTicket.State != TicketState.Canceled)
+            {
+                if (_cookTicket.State == TicketState.Cooking || !_cookTicketInHand
+                    || _cookTicket.State == TicketState.ReadyToCook
+                    || _cookTicket.State == TicketState.AwaitingIngredients)
+                {
+                    _coordinator.ReleaseCookTicket(_cookTicket);
+                }
+            }
+            _cookTicket = null;
+
+            _coordinator.ReleaseFetchJob(_fetchTicket);
+            _fetchTicket = null;
+
             base.OnRemovedFromEntity();
         }
 
@@ -106,7 +159,12 @@ namespace PitHero.ECS.Components
             if (CurrentState == KitchenMonsterState.ReturnHome)
             {
                 _mover.Stop();
-                CurrentState = KitchenMonsterState.WalkToPost;
+                switch (_role)
+                {
+                    case KitchenRole.Cook:   CurrentState = KitchenMonsterState.CookWalkToBoard; break;
+                    case KitchenRole.Server: CurrentState = KitchenMonsterState.ServerDecide;    break;
+                    default:                 CurrentState = KitchenMonsterState.RunnerIdle;      break;
+                }
             }
         }
 
@@ -121,399 +179,692 @@ namespace PitHero.ECS.Components
 
         private void EmergeFromHouse_Tick()
         {
-            if (!_mover.IsMoving)
-                CurrentState = KitchenMonsterState.WalkToPost;
-        }
-
-        // ─────────────────────────────────── WalkToPost
-
-        private void WalkToPost_Enter()
-        {
-            Point post = GetPostTile();
-            TrySetPathTo(post);
-        }
-
-        private void WalkToPost_Tick()
-        {
-            if (_goHome)
-            {
-                _mover.Stop();
-                CurrentState = KitchenMonsterState.ReturnHome;
+            if (_mover.IsMoving)
                 return;
-            }
-            if (!_mover.IsMoving)
-                CurrentState = KitchenMonsterState.IdleAtPost;
-        }
-
-        // ─────────────────────────────────── IdleAtPost
-
-        private void IdleAtPost_Tick()
-        {
-            if (_goHome)
-            {
-                CurrentState = KitchenMonsterState.ReturnHome;
-                return;
-            }
-
-            if (elapsedTimeInState < GameConfig.FarmMonsterIdlePollInterval)
-                return;
-
             switch (_role)
             {
-                case KitchenRole.Cook:    IdleAsCook();   break;
-                case KitchenRole.Server:  IdleAsServer(); break;
-                case KitchenRole.Runner:  IdleAsRunner(); break;
+                case KitchenRole.Cook:   CurrentState = KitchenMonsterState.CookWalkToBoard; break;
+                case KitchenRole.Server: CurrentState = KitchenMonsterState.ServerDecide;    break;
+                default:                 CurrentState = KitchenMonsterState.RunnerIdle;      break;
             }
         }
 
-        // ─────────────────────────────────── Cook logic
+        // ═══════════════════════════════════ SERVER ═══════════════════════════════
 
-        private void IdleAsCook()
+        private ServerZone Zone => _coordinator.GetServerZone(this);
+
+        private void ServerDecide_Tick()
         {
-            var ticket = _coordinator.BeginCooking(_stoveIndex, _monster.CookingProficiency);
-            if (ticket == null)
-                return; // nothing to cook
+            if (_carried.Count > 0)
+            {
+                BeginNextCarriedLeg();
+                return;
+            }
+            if (_goHome)
+            {
+                // Post anything still in memory so cooks aren't left waiting on us
+                for (int i = 0; i < _takenOrders.Count; i++)
+                    _coordinator.PostTicket(_takenOrders[i]);
+                _takenOrders.Clear();
+                CurrentState = KitchenMonsterState.ReturnHome;
+                return;
+            }
+            if (_takenOrders.Count > 0)
+            {
+                // Landed here with unposted orders (e.g. patron vanished mid-batch) — post them
+                CurrentState = KitchenMonsterState.ServerWalkToBoard;
+                return;
+            }
 
-            _activeCookTicket = ticket;
-            _cookElapsed = 0f;
-            _facing?.SetFacing(Direction.Up);
-            CurrentState = KitchenMonsterState.Cooking;
+            var zone = Zone;
+
+            // 1) Cooked food waiting → deliver
+            if (_coordinator.HasReadyDishForZone(zone))
+            {
+                CurrentState = KitchenMonsterState.ServerWalkToPickup;
+                return;
+            }
+            // 2) Someone at my tables needs to order
+            if (TryPickNextOrderTarget(zone))
+            {
+                CurrentState = KitchenMonsterState.ServerWalkToPatron;
+                return;
+            }
+            // 3) Dirty plates at my tables
+            if (_coordinator.TryClaimBusJob(zone, out _busJob))
+            {
+                _busPickedUp = false;
+                CurrentState = KitchenMonsterState.ServerBusPlate;
+                return;
+            }
+            // 4) Nothing to do — wander my table area
+            CurrentState = KitchenMonsterState.ServerWander;
         }
 
-        private void Cooking_Tick()
+        /// <summary>
+        /// Picks the next order target in the zone: party members first (their table must be in
+        /// this zone), then the nearest waiting patron. Sets _targetPatron/_targetPartySlot.
+        /// </summary>
+        private bool TryPickNextOrderTarget(ServerZone zone)
+        {
+            _targetPatron = null;
+            _targetPartySlot = -1;
+
+            var partyTable = TavernSeatConfig.GetTableTile(KitchenTaskCoordinator.GetPartySeatTile(0));
+            if (KitchenTaskCoordinator.ZoneContainsTable(zone, partyTable)
+                && _coordinator.TryGetNextPartyOrder(out int slot, out var dish))
+            {
+                _targetPartySlot = slot;
+                _targetPartyDish = dish;
+                return true;
+            }
+
+            _targetPatron = FindPatronNeedingOrder(zone);
+            return _targetPatron != null;
+        }
+
+        private void ServerWalkToPatron_Enter()
+        {
+            Point seat;
+            if (_targetPartySlot >= 0)
+                seat = KitchenTaskCoordinator.GetPartySeatTile(_targetPartySlot);
+            else if (_targetPatron != null && !_targetPatron.IsDestroyed)
+                seat = WorldToTile(_targetPatron.Transform.Position);
+            else
+            {
+                CurrentState = KitchenMonsterState.ServerDecide;
+                return;
+            }
+            if (!TrySetPathToTileOrNeighbor(seat))
+                CurrentState = KitchenMonsterState.ServerDecide;
+        }
+
+        private void ServerWalkToPatron_Tick()
+        {
+            if (_mover.IsMoving)
+                return;
+
+            TakeOrderAtTarget();
+
+            // Keep batching while there's memory left and someone else is waiting
+            if (_takenOrders.Count > 0 && _takenOrders.Count < GameConfig.ServerOrderMemoryLimit
+                && TryPickNextOrderTarget(Zone))
+            {
+                CurrentState = KitchenMonsterState.ServerWalkToPatron;
+                // Same-state assignment doesn't re-run Enter — do it explicitly
+                ServerWalkToPatron_Enter();
+                return;
+            }
+
+            CurrentState = _takenOrders.Count > 0
+                ? KitchenMonsterState.ServerWalkToBoard
+                : KitchenMonsterState.ServerDecide;
+        }
+
+        private void TakeOrderAtTarget()
+        {
+            if (_targetPartySlot >= 0)
+            {
+                // Re-check: zones may have shifted mid-walk and another server taken it
+                if (_coordinator.GetPartyTicket(_targetPartySlot) == null)
+                {
+                    var seat = KitchenTaskCoordinator.GetPartySeatTile(_targetPartySlot);
+                    var ticket = _coordinator.CreateTicket(_targetPartyDish, true, _targetPartySlot, null, seat);
+                    if (ticket != null)
+                    {
+                        _coordinator.NotifyPartyOrderTaken(_targetPartySlot, ticket);
+                        _takenOrders.Add(ticket);
+                    }
+                }
+                _targetPartySlot = -1;
+                return;
+            }
+
+            var patron = _targetPatron;
+            _targetPatron = null;
+            if (patron == null || patron.IsDestroyed)
+                return;
+            var comp = patron.GetComponent<TavernPatronComponent>();
+            if (comp == null || comp.State != PatronState.WaitingToOrder || comp.ActiveTicket != null)
+                return;
+
+            var orderable = new System.Collections.Generic.List<DishType>(DishTypeInfo.Count);
+            _coordinator.GetOrderableDishes(orderable);
+            if (orderable.Count == 0)
+                return;
+            var dish = orderable[Nez.Random.Range(0, orderable.Count)];
+            var t = _coordinator.CreateTicket(dish, false, -1, patron, comp.SeatTile);
+            if (t != null)
+            {
+                comp.OnOrderTaken(t);
+                _takenOrders.Add(t);
+            }
+        }
+
+        private void ServerWalkToBoard_Enter()
+        {
+            if (!TrySetPathToTileOrNeighbor(KitchenTaskCoordinator.TicketBoardTile))
+                CurrentState = KitchenMonsterState.ServerPostTickets; // board unreachable — post in place
+        }
+
+        private void ServerWalkToBoard_Tick()
+        {
+            if (!_mover.IsMoving)
+                CurrentState = KitchenMonsterState.ServerPostTickets;
+        }
+
+        private void ServerPostTickets_Tick()
+        {
+            if (elapsedTimeInState < GameConfig.TicketBoardPauseSeconds)
+                return;
+            for (int i = 0; i < _takenOrders.Count; i++)
+                _coordinator.PostTicket(_takenOrders[i]);
+            _takenOrders.Clear();
+            CurrentState = KitchenMonsterState.ServerDecide;
+        }
+
+        private void ServerWalkToPickup_Enter()
+        {
+            // Middle serving table is a fine approach point for all three
+            if (!TrySetPathToTileOrNeighbor(KitchenTaskCoordinator.GetServingTile(1)))
+                CurrentState = KitchenMonsterState.ServerDecide;
+        }
+
+        private void ServerWalkToPickup_Tick()
+        {
+            if (_mover.IsMoving)
+                return;
+
+            var zone = Zone;
+            while (_carried.Count < GameConfig.ServerCarryDishLimit
+                && _coordinator.TryPickupReadyDish(zone, out var ticket, out var dish, out bool toSink))
+            {
+                _carried.Add(new CarriedDish { Ticket = ticket, Dish = dish, ToSink = toSink });
+            }
+
+            if (_carried.Count == 0)
+            {
+                CurrentState = KitchenMonsterState.ServerDecide;
+                return;
+            }
+            BeginNextCarriedLeg();
+        }
+
+        /// <summary>Starts walking the current carried item to its destination (table or sink).</summary>
+        private void BeginNextCarriedLeg()
+        {
+            if (_carried.Count == 0)
+            {
+                HideCarryDish();
+                CurrentState = KitchenMonsterState.ServerDecide;
+                return;
+            }
+
+            var c = _carried[0];
+            bool sink = c.ToSink || c.Ticket == null || c.Ticket.State == TicketState.Canceled;
+            if (sink)
+            {
+                ShowCarrySprite(GetPlateSprite());
+                CurrentState = KitchenMonsterState.ServerWalkToSink;
+                ServerWalkToSink_Enter();
+            }
+            else
+            {
+                ShowCarryDish(c.Dish);
+                CurrentState = KitchenMonsterState.ServerDeliver;
+                ServerDeliver_Enter();
+            }
+        }
+
+        private void ServerDeliver_Enter()
+        {
+            if (_carried.Count == 0)
+            {
+                CurrentState = KitchenMonsterState.ServerDecide;
+                return;
+            }
+            var c = _carried[0];
+            if (!TrySetPathToTileOrNeighbor(c.Ticket.TableTile))
+                _mover.SetSingleTarget(TileCenter(c.Ticket.SeatTile));
+        }
+
+        private void ServerDeliver_Tick()
+        {
+            if (_carried.Count == 0)
+            {
+                CurrentState = KitchenMonsterState.ServerDecide;
+                return;
+            }
+            var c = _carried[0];
+
+            // Patron left mid-walk → divert this dish to the sink
+            if (c.Ticket == null || c.Ticket.State == TicketState.Canceled)
+            {
+                BeginNextCarriedLeg();
+                return;
+            }
+
+            if (_mover.IsMoving)
+                return;
+
+            // Arrived at the table — place the dish
+            Entity dishEntity = null;
+            if (TavernSeatConfig.TryGetPlateWorldPosition(c.Ticket.SeatTile, out var platePos))
+                dishEntity = _coordinator.DishService?.SpawnDishAtWorldPos(c.Ticket.Dish, platePos);
+            _coordinator.OnTicketDelivered(c.Ticket, dishEntity);
+            _carried.RemoveAt(0);
+            BeginNextCarriedLeg();
+        }
+
+        private void ServerWalkToSink_Enter()
+        {
+            TrySetPathTo(KitchenTaskCoordinator.SinkTile);
+        }
+
+        private void ServerWalkToSink_Tick()
+        {
+            if (_mover.IsMoving)
+                return;
+            if (_carried.Count > 0)
+                _carried.RemoveAt(0); // dish disposed at the sink
+            BeginNextCarriedLeg();
+        }
+
+        private void ServerBusPlate_Tick()
+        {
+            if (_mover.IsMoving)
+                return;
+
+            if (!_busPickedUp)
+            {
+                // First arrival trigger: walk to the plate
+                if (!TrySetPathToTileOrNeighbor(WorldToTile(_busJob.WorldPos)))
+                {
+                    CurrentState = KitchenMonsterState.ServerDecide;
+                    return;
+                }
+                _busPickedUp = true;
+                return;
+            }
+
+            // Arrived at the plate or at the sink
+            if (_busJob.DishEntity != null && !_busJob.DishEntity.IsDestroyed)
+            {
+                var sprite = _busJob.DishEntity.GetComponent<Nez.Sprites.SpriteRenderer>();
+                ShowCarrySprite(sprite?.Sprite);
+                _busJob.DishEntity.Destroy();
+                _busJob.DishEntity = null;
+                TrySetPathTo(KitchenTaskCoordinator.SinkTile);
+                return;
+            }
+
+            HideCarryDish();
+            CurrentState = KitchenMonsterState.ServerDecide;
+        }
+
+        private void ServerWander_Enter()
+        {
+            var zone = Zone;
+            int minY, maxY;
+            switch (zone)
+            {
+                case ServerZone.TopTables:
+                    minY = GameConfig.TavernTopZoneMinTileY; maxY = GameConfig.TavernTopZoneMaxTileY; break;
+                case ServerZone.BottomTables:
+                    minY = GameConfig.TavernBottomZoneMinTileY; maxY = GameConfig.TavernBottomZoneMaxTileY; break;
+                default:
+                    minY = GameConfig.TavernTopZoneMinTileY; maxY = GameConfig.TavernBottomZoneMaxTileY; break;
+            }
+
+            for (int attempt = 0; attempt < 8; attempt++)
+            {
+                var tile = new Point(
+                    Nez.Random.Range(GameConfig.TavernAreaMinTileX, GameConfig.TavernAreaMaxTileX + 1),
+                    Nez.Random.Range(minY, maxY + 1));
+                if (TrySetPathTo(tile))
+                    return;
+            }
+            // No walkable pick — just idle in place this round
+        }
+
+        private void ServerWander_Tick()
+        {
+            // Interrupt wandering the moment real work appears
+            if (_goHome || _coordinator.HasReadyDishForZone(Zone) || HasOrderWork(Zone))
+            {
+                _mover.Stop();
+                CurrentState = KitchenMonsterState.ServerDecide;
+                return;
+            }
+            if (_mover.IsMoving)
+                return;
+            if (elapsedTimeInState >= GameConfig.ServerWanderPauseSeconds)
+                CurrentState = KitchenMonsterState.ServerDecide;
+        }
+
+        private bool HasOrderWork(ServerZone zone)
+        {
+            var partyTable = TavernSeatConfig.GetTableTile(KitchenTaskCoordinator.GetPartySeatTile(0));
+            if (KitchenTaskCoordinator.ZoneContainsTable(zone, partyTable)
+                && _coordinator.TryGetNextPartyOrder(out _, out _))
+                return true;
+            return FindPatronNeedingOrder(zone) != null;
+        }
+
+        private Entity FindPatronNeedingOrder(ServerZone zone)
+        {
+            var mercManager = Core.Services.GetService<MercenaryManager>();
+            if (mercManager == null) return null;
+
+            var unhired = mercManager.GetUnhiredMercenaries();
+            Entity best = null;
+            float bestDist = float.MaxValue;
+            var myPos = Entity.Transform.Position;
+
+            for (int i = 0; i < unhired.Count; i++)
+            {
+                var e = unhired[i];
+                var comp = e.GetComponent<TavernPatronComponent>();
+                if (comp == null || comp.State != PatronState.WaitingToOrder)
+                    continue;
+                if (comp.ActiveTicket != null)
+                    continue;
+                var table = TavernSeatConfig.GetTableTile(comp.SeatTile);
+                if (!KitchenTaskCoordinator.ZoneContainsTable(zone, table))
+                    continue;
+
+                float dist = Vector2.Distance(myPos, e.Transform.Position);
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    best = e;
+                }
+            }
+            return best;
+        }
+
+        // ═══════════════════════════════════ COOK ═════════════════════════════════
+
+        private void CookWalkToBoard_Enter()
+        {
+            _cookTicketInHand = false;
+            _cookCarryToSink = false;
+            TrySetPathToTileOrNeighbor(KitchenTaskCoordinator.TicketBoardTile);
+        }
+
+        private void CookWalkToBoard_Tick()
         {
             if (_goHome)
             {
-                // Release the ticket back to ReadyToCook
-                _coordinator.ReleaseTicket(_activeCookTicket);
-                _activeCookTicket = null;
+                CurrentState = KitchenMonsterState.ReturnHome;
+                return;
+            }
+            if (!_mover.IsMoving)
+                CurrentState = KitchenMonsterState.CookAtBoard;
+        }
+
+        private void CookAtBoard_Tick()
+        {
+            if (_goHome && _cookTicket == null)
+            {
+                CurrentState = KitchenMonsterState.ReturnHome;
+                return;
+            }
+
+            if (_cookTicket == null)
+            {
+                if (elapsedTimeInState < GameConfig.FarmMonsterIdlePollInterval)
+                    return;
+                _cookTicket = _coordinator.TryReadNextTicket();
+                _cookReadElapsed = 0f;
+                return;
+            }
+
+            if (_cookTicket.State == TicketState.Canceled)
+            {
+                _cookTicket = null;
+                return;
+            }
+
+            // Reading pause at the board
+            _cookReadElapsed += Time.DeltaTime;
+            if (_cookReadElapsed < GameConfig.TicketBoardPauseSeconds)
+                return;
+
+            if (_coordinator.TryClaimStation(_cookTicket, out _))
+            {
+                _cookTicketInHand = true;
+                CurrentState = KitchenMonsterState.CookWalkToFridge;
+            }
+            // else: all stations busy (more cooks than stations shouldn't happen) — keep waiting
+        }
+
+        private void CookWalkToFridge_Enter()
+        {
+            _facing?.SetFacing(Direction.Right);
+            TrySetPathToTileOrNeighbor(KitchenTaskCoordinator.FridgeTile);
+        }
+
+        private void CookWalkToFridge_Tick()
+        {
+            if (CookAbandonIfCanceled())
+                return;
+            if (!_mover.IsMoving)
+                CurrentState = KitchenMonsterState.CookWaitIngredients;
+        }
+
+        private void CookWaitIngredients_Tick()
+        {
+            if (CookAbandonIfCanceled())
+                return;
+            if (_goHome)
+            {
+                _coordinator.ReleaseCookTicket(_cookTicket);
+                _cookTicket = null;
+                CurrentState = KitchenMonsterState.ReturnHome;
+                return;
+            }
+            // Wait for the runner to finish stocking the fridge for this ticket
+            if (_cookTicket.IngredientsFetched)
+                CurrentState = KitchenMonsterState.CookWalkToStation;
+        }
+
+        private void CookWalkToStation_Enter()
+        {
+            TrySetPathTo(KitchenTaskCoordinator.GetStationTile(_cookTicket.StationIndex));
+        }
+
+        private void CookWalkToStation_Tick()
+        {
+            if (CookAbandonIfCanceled())
+                return;
+            if (_mover.IsMoving)
+                return;
+            _coordinator.BeginCookingAtStation(_cookTicket, _monster.CookingProficiency);
+            _cookElapsed = 0f;
+            _facing?.SetFacing(Direction.Up);
+            CurrentState = KitchenMonsterState.CookCooking;
+        }
+
+        private void CookCooking_Tick()
+        {
+            if (CookAbandonIfCanceled())
+                return;
+            if (_goHome)
+            {
+                // Shift over mid-cook: put the ticket back on the board for the next cook
+                _coordinator.ReleaseCookTicket(_cookTicket);
+                _cookTicket = null;
                 CurrentState = KitchenMonsterState.ReturnHome;
                 return;
             }
 
             _cookElapsed += Time.DeltaTime;
-            float duration = DishConfig.GetCookDuration(_activeCookTicket.Dish, _monster.CookingProficiency);
+            float duration = DishConfig.GetCookDuration(_cookTicket.Dish, _monster.CookingProficiency);
             if (_cookElapsed < duration)
                 return;
 
-            // Cooking complete — spawn dish entity above the stove
-            var plateTile = KitchenTaskCoordinator.GetPlateTile(_stoveIndex);
-            var dishEntity = _coordinator.DishService?.SpawnDishAtTile(_activeCookTicket.Dish, plateTile);
-            _coordinator.OnDishPlated(_activeCookTicket, dishEntity);
-            _activeCookTicket = null;
-            CurrentState = KitchenMonsterState.IdleAtPost;
+            // Done — pick up the dish and head for a serving table
+            _coordinator.FinishCooking(_cookTicket);
+            ShowCarryDish(_cookTicket.Dish);
+            if (_coordinator.TryReserveServingSlot(_cookTicket, out _))
+                CurrentState = KitchenMonsterState.CookWalkToServing;
+            else
+                CurrentState = KitchenMonsterState.CookWaitServingSlot;
         }
 
-        // ─────────────────────────────────── Server logic
-
-        private void IdleAsServer()
+        private void CookWaitServingSlot_Tick()
         {
-            // Priority 1: bus jobs
-            if (_coordinator.TryClaimBusJob(out var busJob))
+            if (_cookTicket == null || _cookTicket.State == TicketState.Canceled)
             {
-                _busJob = busJob;
-                _hasBusJob = true;
-                _busPickupPos = busJob.WorldPos;
-                Point targetTile = WorldToTile(_busPickupPos);
-                if (!TrySetPathToTileOrNeighbor(targetTile))
-                    _mover.SetSingleTarget(_busPickupPos);
-                CurrentState = KitchenMonsterState.BusingPlate;
+                // Patron left while we hold their dish — sink it
+                _cookCarryToSink = true;
+                CurrentState = KitchenMonsterState.CookWalkToServing;
                 return;
             }
-
-            // Priority 2: deliver Plated tickets
-            var delivery = _coordinator.TryClaimDeliveryTicket();
-            if (delivery != null)
-            {
-                _deliveryTicket = delivery;
-                // Walk to pick up from above stove
-                if (delivery.StoveIndex >= 0)
-                {
-                    var pickupTile = KitchenTaskCoordinator.GetPlateTile(delivery.StoveIndex);
-                    if (!TrySetPathToTileOrNeighbor(pickupTile))
-                        _mover.SetSingleTarget(TileCenter(pickupTile));
-                    CurrentState = KitchenMonsterState.WalkToPickUpDish;
-                }
-                else
-                {
-                    // Stove unknown (shouldn't happen), just walk to sink
-                    if (!TrySetPathTo(KitchenTaskCoordinator.SinkTile))
-                        _mover.SetSingleTarget(KitchenTaskCoordinator.SinkWorldPos);
-                    CurrentState = KitchenMonsterState.WalkToPickUpDish;
-                }
-                return;
-            }
-
-            // Priority 3: party orders
-            if (_coordinator.TryGetNextPartyOrder(out int partySlot, out var partyDish))
-            {
-                // CreateTicket for party — no patron entity
-                var ticket = _coordinator.CreateTicket(partyDish, true, partySlot, null);
-                if (ticket != null)
-                {
-                    _coordinator.NotifyPartyOrderTaken(partySlot, ticket);
-                    // No walking needed for party order-taking (it's handled via the interface)
-                }
-                return;
-            }
-
-            // Priority 3b: patron orders — walk to nearest unseated patron without an order
-            var patronToOrder = FindPatronNeedingOrder();
-            if (patronToOrder != null)
-            {
-                var patronComp = patronToOrder.GetComponent<TavernPatronComponent>();
-                Point patronTile = WorldToTile(patronToOrder.Transform.Position);
-                if (TrySetPathTo(patronTile))
-                {
-                    _deliveryTicket = null; // reuse as "patron we're approaching" — store target in FSM field
-                    _hasDeliveryTarget = false;
-                    // Store patron reference in delivery slot temporarily
-                    _deliveryTargetPos = patronToOrder.Transform.Position;
-                    _hasDeliveryTarget = true;
-                    CurrentState = KitchenMonsterState.WalkToTakeOrder;
-                }
-            }
-        }
-
-        private void WalkToPickUpDish_Tick()
-        {
-            if (_goHome || (_deliveryTicket != null && _deliveryTicket.State == TicketState.Canceled))
-            {
-                // Ticket canceled mid-walk — divert to sink
-                DivertToSink();
-                return;
-            }
-
-            if (!_mover.IsMoving)
-            {
-                // Arrived at the stove — pick up the dish
-                if (_deliveryTicket != null && _deliveryTicket.PlatedDishEntity != null
-                    && !_deliveryTicket.PlatedDishEntity.IsDestroyed)
-                {
-                    _deliveryTicket.PlatedDishEntity.Destroy();
-                    _deliveryTicket.PlatedDishEntity = null;
-                    ShowCarryDish(_deliveryTicket.Dish);
-                }
-
-                // Determine where to deliver
-                if (_deliveryTicket != null)
-                {
-                    if (_deliveryTicket.IsPartyTicket)
-                    {
-                        Point seatTile = GetPartySeatTile(_deliveryTicket.PartySlot);
-                        if (TavernSeatConfig.TryGetPlateWorldPosition(seatTile, out var pos))
-                        {
-                            _deliveryTargetPos = pos;
-                            _hasDeliveryTarget = true;
-                            Point tableTile = WorldToTile(pos);
-                            if (!TrySetPathToTileOrNeighbor(tableTile))
-                                _mover.SetSingleTarget(pos);
-                        }
-                        else
-                        {
-                            DivertToSink();
-                            return;
-                        }
-                    }
-                    else if (_deliveryTicket.PatronEntity != null && !_deliveryTicket.PatronEntity.IsDestroyed)
-                    {
-                        var patronComp = _deliveryTicket.PatronEntity.GetComponent<TavernPatronComponent>();
-                        if (patronComp != null)
-                        {
-                            if (TavernSeatConfig.TryGetPlateWorldPosition(patronComp.SeatTile, out var pos))
-                            {
-                                _deliveryTargetPos = pos;
-                                _hasDeliveryTarget = true;
-                                Point tableTile = WorldToTile(pos);
-                                if (!TrySetPathToTileOrNeighbor(tableTile))
-                                    _mover.SetSingleTarget(pos);
-                            }
-                            else
-                            {
-                                DivertToSink();
-                                return;
-                            }
-                        }
-                        else
-                        {
-                            DivertToSink();
-                            return;
-                        }
-                    }
-                    else
-                    {
-                        DivertToSink();
-                        return;
-                    }
-                }
-
-                CurrentState = KitchenMonsterState.DeliveringDish;
-            }
-        }
-
-        private void DeliveringDish_Tick()
-        {
-            if (_deliveryTicket != null && _deliveryTicket.State == TicketState.Canceled)
-            {
-                // Patron left mid-delivery — go to sink
-                DivertToSink();
-                return;
-            }
-
-            if (!_mover.IsMoving)
-            {
-                // Arrived at table — place dish
-                HideCarryDish();
-                Entity dishEntity = null;
-                if (_hasDeliveryTarget && _deliveryTicket != null)
-                {
-                    dishEntity = _coordinator.DishService?.SpawnDishAtWorldPos(
-                        _deliveryTicket.Dish, _deliveryTargetPos);
-                }
-                _coordinator.OnTicketDelivered(_deliveryTicket, dishEntity);
-                _deliveryTicket = null;
-                _hasDeliveryTarget = false;
-                CurrentState = KitchenMonsterState.IdleAtPost;
-            }
-        }
-
-        private void WalkToTakeOrder_Tick()
-        {
             if (_goHome)
             {
-                CurrentState = KitchenMonsterState.ReturnHome;
+                // Never get stuck holding a dish at shift end — overflow onto a table
+                _coordinator.ForceReserveServingSlot(_cookTicket);
+                CurrentState = KitchenMonsterState.CookWalkToServing;
                 return;
             }
-
-            if (!_mover.IsMoving)
-            {
-                // Arrived near patron — try to take order
-                // Find the patron entity near our current position
-                var patron = FindPatronNeedingOrder();
-                if (patron != null)
-                {
-                    var patronComp = patron.GetComponent<TavernPatronComponent>();
-                    // Pick a random orderable dish
-                    var orderableDishes = new System.Collections.Generic.List<DishType>(DishTypeInfo.Count);
-                    _coordinator.GetOrderableDishes(orderableDishes);
-                    if (orderableDishes.Count > 0 && _coordinator.IsKitchenOpen)
-                    {
-                        int idx = Nez.Random.Range(0, orderableDishes.Count);
-                        var dish = orderableDishes[idx];
-                        var ticket = _coordinator.CreateTicket(dish, false, -1, patron);
-                        if (ticket != null)
-                        {
-                            patronComp.OnOrderTaken(ticket);
-                        }
-                    }
-                }
-                CurrentState = KitchenMonsterState.IdleAtPost;
-            }
+            if (_coordinator.TryReserveServingSlot(_cookTicket, out _))
+                CurrentState = KitchenMonsterState.CookWalkToServing;
         }
 
-        private void BusingPlate_Tick()
+        private void CookWalkToServing_Enter()
         {
-            if (!_mover.IsMoving)
-            {
-                if (_hasBusJob)
-                {
-                    // Arrived at pickup — despawn the plate entity, carrying its actual sprite
-                    if (_busJob.DishEntity != null && !_busJob.DishEntity.IsDestroyed)
-                    {
-                        var busSprite = _busJob.DishEntity.GetComponent<Nez.Sprites.SpriteRenderer>();
-                        ShowCarrySprite(busSprite?.Sprite);
-                        _busJob.DishEntity.Destroy();
-                    }
-                    _hasBusJob = false;
-
-                    // Walk to sink
-                    TrySetPathTo(KitchenTaskCoordinator.SinkTile);
-                }
-                else
-                {
-                    // Arrived at sink — despawn carry and done
-                    HideCarryDish();
-                    CurrentState = KitchenMonsterState.IdleAtPost;
-                }
-            }
+            if (_cookCarryToSink)
+                TrySetPathTo(KitchenTaskCoordinator.SinkTile);
+            else
+                TrySetPathToTileOrNeighbor(KitchenTaskCoordinator.GetServingTile(_cookTicket.ServingSlot));
         }
 
-        // ─────────────────────────────────── Runner logic
-
-        private void IdleAsRunner()
+        private void CookWalkToServing_Tick()
         {
-            var ticket = _coordinator.TryClaimFetchTicket();
-            if (ticket == null) return;
-
-            _fetchTicket = ticket;
-            _collectElapsed = 0f;
-
-            Point myTile = WorldToTile(Entity.Transform.Position);
-            if (_coordinator.TryFindNearestStorageDoor(myTile, out var door))
+            if (!_cookCarryToSink && (_cookTicket == null || _cookTicket.State == TicketState.Canceled))
             {
-                TrySetPathTo(door);
-                CurrentState = KitchenMonsterState.WalkToStorage;
+                _cookCarryToSink = true;
+                CookWalkToServing_Enter();
+                return;
+            }
+            if (_mover.IsMoving)
+                return;
+
+            if (_cookCarryToSink)
+            {
+                HideCarryDish();
+                _cookCarryToSink = false;
+                _cookTicket = null;
             }
             else
             {
-                // No storage — mark fetched immediately (ingredients are already deducted logically)
-                _coordinator.OnIngredientsFetched(_fetchTicket);
-                _fetchTicket = null;
+                var tile = KitchenTaskCoordinator.GetServingTile(_cookTicket.ServingSlot);
+                var entity = _coordinator.DishService?.SpawnDishAtTile(_cookTicket.Dish, tile);
+                _coordinator.PlaceDishOnServing(_cookTicket, entity);
+                HideCarryDish();
+                _cookTicket = null;
             }
+
+            CurrentState = _goHome ? KitchenMonsterState.ReturnHome : KitchenMonsterState.CookWalkToBoard;
         }
 
-        private void WalkToStorage_Tick()
+        /// <summary>Cook's ticket was canceled out from under it — drop everything, back to the board.</summary>
+        private bool CookAbandonIfCanceled()
+        {
+            if (_cookTicket != null && _cookTicket.State != TicketState.Canceled)
+                return false;
+            _cookTicket = null;
+            HideCarryDish();
+            CurrentState = _goHome ? KitchenMonsterState.ReturnHome : KitchenMonsterState.CookWalkToBoard;
+            return true;
+        }
+
+        // ═══════════════════════════════════ RUNNER ═══════════════════════════════
+
+        private void RunnerIdle_Enter()
+        {
+            TrySetPathTo(KitchenTaskCoordinator.RunnerPostTile);
+        }
+
+        private void RunnerIdle_Tick()
         {
             if (_goHome)
             {
-                // Release the runner claim
-                _coordinator.ReleaseTicket(_fetchTicket);
+                CurrentState = KitchenMonsterState.ReturnHome;
+                return;
+            }
+            if (_mover.IsMoving)
+                return;
+            if (elapsedTimeInState < GameConfig.FarmMonsterIdlePollInterval)
+                return;
+
+            _fetchTicket = _coordinator.TryClaimFetchJob();
+            if (_fetchTicket != null)
+                CurrentState = KitchenMonsterState.RunnerWalkToStorage;
+        }
+
+        private void RunnerWalkToStorage_Enter()
+        {
+            Point myTile = WorldToTile(Entity.Transform.Position);
+            if (!_coordinator.TryFindNearestStorageDoor(myTile, out var door) || !TrySetPathTo(door))
+            {
+                // Storage vanished mid-order — the crops were reserved at order time, so the
+                // ticket can proceed without the trip.
+                _coordinator.CompleteFetch(_fetchTicket);
+                _fetchTicket = null;
+                CurrentState = KitchenMonsterState.RunnerIdle;
+            }
+        }
+
+        private void RunnerWalkToStorage_Tick()
+        {
+            if (_fetchTicket == null || _fetchTicket.State == TicketState.Canceled)
+            {
+                _fetchTicket = null;
+                CurrentState = KitchenMonsterState.RunnerIdle;
+                return;
+            }
+            if (_goHome)
+            {
+                _coordinator.ReleaseFetchJob(_fetchTicket);
                 _fetchTicket = null;
                 CurrentState = KitchenMonsterState.ReturnHome;
                 return;
             }
-
             if (!_mover.IsMoving)
-            {
-                _collectElapsed = 0f;
-                CurrentState = KitchenMonsterState.CollectingIngredients;
-            }
+                CurrentState = KitchenMonsterState.RunnerCollect;
         }
 
-        private void CollectingIngredients_Tick()
+        private void RunnerCollect_Tick()
         {
-            _collectElapsed += Time.DeltaTime;
-            if (_collectElapsed < 1f)
+            if (elapsedTimeInState < 1f)
                 return;
-
-            // Return to kitchen (sink area)
-            var sinkTile = KitchenTaskCoordinator.SinkTile;
-            TrySetPathTo(sinkTile);
-            CurrentState = KitchenMonsterState.ReturnToKitchen;
+            // Atomic top-up into the fridge happens here; the walk back is cosmetic
+            _coordinator.RunnerCollectAtStorage(_fetchTicket);
+            CurrentState = KitchenMonsterState.RunnerWalkToFridge;
         }
 
-        private void ReturnToKitchen_Tick()
+        private void RunnerWalkToFridge_Enter()
         {
-            if (_goHome)
-            {
-                _coordinator.ReleaseTicket(_fetchTicket);
-                _fetchTicket = null;
-                CurrentState = KitchenMonsterState.ReturnHome;
-                return;
-            }
+            TrySetPathToTileOrNeighbor(KitchenTaskCoordinator.FridgeTile);
+        }
 
-            if (!_mover.IsMoving)
-            {
-                _coordinator.OnIngredientsFetched(_fetchTicket);
-                _fetchTicket = null;
-                CurrentState = KitchenMonsterState.IdleAtPost;
-            }
+        private void RunnerWalkToFridge_Tick()
+        {
+            if (_mover.IsMoving)
+                return;
+            _coordinator.CompleteFetch(_fetchTicket);
+            _fetchTicket = null;
+            CurrentState = _goHome ? KitchenMonsterState.ReturnHome : KitchenMonsterState.RunnerIdle;
         }
 
         // ─────────────────────────────────── ReturnHome
 
         private void ReturnHome_Enter()
         {
+            HideCarryDish();
             _returnReachedExit = false;
             if (!TrySetPathTo(ExitTile))
                 Entity.Destroy();
@@ -535,82 +886,17 @@ namespace PitHero.ECS.Components
 
         // ─────────────────────────────────── Helpers
 
-        private Point GetPostTile()
-        {
-            switch (_role)
-            {
-                case KitchenRole.Cook:
-                    return KitchenTaskCoordinator.GetStoveTile(_stoveIndex);
-                case KitchenRole.Server:
-                    return KitchenTaskCoordinator.SinkTile;
-                case KitchenRole.Runner:
-                    // Runners idle just east of the sink (west of it is stove 3)
-                    return new Point(GameConfig.KitchenSinkTileX + 1, GameConfig.KitchenSinkTileY);
-                default:
-                    return ExitTile;
-            }
-        }
-
-        private void DivertToSink()
-        {
-            HideCarryDish();
-            if (_deliveryTicket != null)
-            {
-                _coordinator.AbortDelivery(_deliveryTicket);
-                _deliveryTicket = null;
-            }
-            _hasDeliveryTarget = false;
-            TrySetPathTo(KitchenTaskCoordinator.SinkTile);
-            // Use BusingPlate state with no bus job so we just walk to sink and return to idle
-            _hasBusJob = false;
-            CurrentState = KitchenMonsterState.BusingPlate;
-        }
-
-        private Entity FindPatronNeedingOrder()
-        {
-            var mercManager = Core.Services.GetService<MercenaryManager>();
-            if (mercManager == null) return null;
-
-            var unhired = mercManager.GetUnhiredMercenaries();
-            Entity best = null;
-            float bestDist = float.MaxValue;
-            var myPos = Entity.Transform.Position;
-
-            for (int i = 0; i < unhired.Count; i++)
-            {
-                var e = unhired[i];
-                var comp = e.GetComponent<TavernPatronComponent>();
-                if (comp == null || comp.State != PatronState.WaitingToOrder)
-                    continue;
-                if (comp.ActiveTicket != null)
-                    continue;
-
-                float dist = Vector2.Distance(myPos, e.Transform.Position);
-                if (dist < bestDist)
-                {
-                    bestDist = dist;
-                    best = e;
-                }
-            }
-            return best;
-        }
-
-        private static Point GetPartySeatTile(int partySlot)
-        {
-            switch (partySlot)
-            {
-                case 0: return new Point(GameConfig.TavernHeroSeatTileX, GameConfig.TavernHeroSeatTileY);
-                case 1: return new Point(GameConfig.TavernMercenary1SeatTileX, GameConfig.TavernMercenary1SeatTileY);
-                case 2: return new Point(GameConfig.TavernMercenary2SeatTileX, GameConfig.TavernMercenary2SeatTileY);
-                default: return new Point(GameConfig.TavernHeroSeatTileX, GameConfig.TavernHeroSeatTileY);
-            }
-        }
-
         private void ShowCarryDish(DishType dish)
         {
             var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
             var def = DishConfig.GetDefinition(dish);
             ShowCarrySprite(atlas?.GetSprite(def.BaseSpriteName + "_Small"));
+        }
+
+        private Nez.Textures.Sprite GetPlateSprite()
+        {
+            var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
+            return atlas?.GetSprite("EmptyPlate");
         }
 
         private void ShowCarrySprite(Nez.Textures.Sprite sprite)
