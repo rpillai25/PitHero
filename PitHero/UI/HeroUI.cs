@@ -94,6 +94,9 @@ namespace PitHero.UI
         private FoodTab _foodTabComponent;
 
         private const float HERO_WINDOW_WIDTH = 870f;
+        private const float COMPACT_WINDOW_WIDTH = 490f;
+        private const float TAB_STRIP_MARGIN = 24f; // breathing room beside the tab button strip
+        private float _minTabStripWidth; // computed from the real tab buttons so new tabs can't overflow
 
         public HeroUI()
         {
@@ -285,6 +288,12 @@ namespace PitHero.UI
                 var tab = _tabPane.Tabs[i];
                 tabButton.OnClick += () => HandleTabChanged(tab);
             }
+
+            // Minimum window width that fits every tab button — measured from the real buttons
+            // so adding a tab can never push the strip outside the window again.
+            _minTabStripWidth = TAB_STRIP_MARGIN;
+            for (int i = 0; i < _tabPane.TabButtons.Count; i++)
+                _minTabStripWidth += _tabPane.TabButtons[i].PreferredWidth;
             
             _heroWindow.Add(_tabPane).Expand().Fill().Pad(0); // No cell padding - tabs flush with window edges
             _heroWindow.SetVisible(false);
@@ -303,22 +312,25 @@ namespace PitHero.UI
             }
             else if (selectedTab == _crystalsCollectionTab)
             {
-                // Crystals tab needs extra width so all 5 tab buttons fit with ≥23px side padding
-                newWidth = 490f;
+                newWidth = COMPACT_WINDOW_WIDTH;
                 // Refresh crystal slots so any crystals loaded from save are visible
                 _crystalsTabComponent?.RefreshAll();
             }
             else if (selectedTab == _foodTab)
             {
-                newWidth = 490f;
+                newWidth = COMPACT_WINDOW_WIDTH;
                 // Sync favorite/checkbox state in case a save was loaded after UI creation
                 _foodTabComponent?.RefreshFromService();
             }
             else
             {
-                // All other tabs use the same width as Crystals tab so the window looks consistent
-                newWidth = 490f;
+                // All other tabs share the compact width so the window looks consistent
+                newWidth = COMPACT_WINDOW_WIDTH;
             }
+
+            // The window must never be narrower than the tab button strip
+            if (newWidth < _minTabStripWidth)
+                newWidth = _minTabStripWidth;
 
             _heroWindow.SetSize(newWidth, 350f);
             PositionHeroWindow(); // Reposition after resize to keep it on screen
