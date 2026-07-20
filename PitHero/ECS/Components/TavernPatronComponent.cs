@@ -79,6 +79,11 @@ namespace PitHero.ECS.Components
         {
             State = PatronState.FoodDelivered;
             _elapsed = 0f;
+
+            // Turn toward the dish: the seat's registered facing points at its table
+            // (e.g. a patron seated below the table faces Up)
+            Entity?.GetComponent<ActorFacingComponent>()
+                ?.SetFacing(Config.TavernSeatConfig.GetFacing(SeatTile));
         }
 
         public void Update()
