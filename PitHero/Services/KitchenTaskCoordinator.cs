@@ -59,6 +59,7 @@ namespace PitHero.Services
         // ── Workers ─────────────────────────────────────────────────────────────
         private readonly List<ActiveWorker> _workers = new List<ActiveWorker>(8);
         private Scene _scene;
+        private float _hatCheckElapsed;
 
         // Scratch arrays for role assignment (pre-allocated, reset each reconcile)
         private readonly List<AlliedMonster> _wantedAssignments = new List<AlliedMonster>(8);
@@ -253,6 +254,15 @@ namespace PitHero.Services
                     _cook1WorkerIdx = wi;
                 if (_server1WorkerIdx < 0 && _workers[wi].Role == KitchenRole.Server && !_workers[wi].Fsm.IsReturningHome)
                     _server1WorkerIdx = wi;
+            }
+
+            // Periodic hat sweep: shift overlaps can leave a worker hatless at spawn
+            _hatCheckElapsed += Time.DeltaTime;
+            if (_hatCheckElapsed >= GameConfig.KitchenHatCheckIntervalSeconds)
+            {
+                _hatCheckElapsed = 0f;
+                for (int wi = 0; wi < _workers.Count; wi++)
+                    _workers[wi].Fsm.EnsureHat();
             }
         }
 

@@ -28,13 +28,17 @@ namespace PitHero.Services
             _scene = scene;
             _pool.Clear(); // any previous entities belonged to the old scene
             for (int i = 0; i < PoolSize; i++)
-            {
-                var hat = _scene.CreateEntity("kitchen-hat-" + i);
-                var renderer = hat.AddComponent(new SpriteRenderer());
-                renderer.SetRenderLayer(GameConfig.RenderLayerActorPropOverlay);
-                hat.SetEnabled(false);
-                _pool.Add(hat);
-            }
+                CreateHat();
+        }
+
+        private Entity CreateHat()
+        {
+            var hat = _scene.CreateEntity("kitchen-hat-" + _pool.Count);
+            var renderer = hat.AddComponent(new SpriteRenderer());
+            renderer.SetRenderLayer(GameConfig.RenderLayerActorPropOverlay);
+            hat.SetEnabled(false);
+            _pool.Add(hat);
+            return hat;
         }
 
         private SpriteAtlas CropsAtlas
@@ -72,8 +76,10 @@ namespace PitHero.Services
                     break;
                 }
             }
+            // Shift changes overlap outgoing and incoming workers, so demand can exceed the
+            // base pool — grow it rather than leaving a worker hatless
             if (hat == null)
-                return null; // pool exhausted (cannot happen at current staffing caps)
+                hat = CreateHat();
 
             var renderer = hat.GetComponent<SpriteRenderer>();
             renderer.Sprite = sprite;

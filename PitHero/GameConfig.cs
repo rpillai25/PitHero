@@ -167,6 +167,7 @@ namespace PitHero
         public const int MaxKitchenServers = 2;
         public const int MaxKitchenRunners = 2;
         public const float KitchenHatOverlapPixels = 6f;        // how far the job hat's brim overlaps the head top
+        public const float KitchenHatCheckIntervalSeconds = 5f; // how often the coordinator re-checks that workers wear hats
         public const int KitchenTicketBoardTileX = 82;          // servers post orders / cooks read them here
         public const int KitchenTicketBoardTileY = 2;
         public const int KitchenFridgeTileX = 87;               // cooks grab ingredients here; runners restock it

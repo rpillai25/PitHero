@@ -148,6 +148,20 @@ namespace PitHero.ECS.Components
             base.Update();
         }
 
+        /// <summary>True while wearing a job hat.</summary>
+        public bool HasHat => _hat != null && !_hat.IsDestroyed && _hat.Enabled;
+
+        /// <summary>
+        /// Re-attempts hat attachment — a worker can spawn hatless when a shift overlap
+        /// temporarily exhausted the pool. Called periodically by the coordinator.
+        /// </summary>
+        public void EnsureHat()
+        {
+            if (HasHat || Entity == null || Entity.IsDestroyed)
+                return;
+            _hat = _hatService?.AttachHat(_role, Entity, BodyAnimator);
+        }
+
         /// <summary>Asks the monster to finish what it's doing, walk back into its house, and despawn.</summary>
         public void RequestReturnHome() => _goHome = true;
 
