@@ -75,7 +75,8 @@ namespace PitHero
         // Mercenary configuration
         public const float MercenaryMinSpawnIntervalSeconds = 5f; // First mercenary (empty tavern) spawns after 5 seconds
         public const float BaseMonsterJoinChance = 0.10f;
-        public const float MercenarySpawnIntervalSeconds = 120f; // A new patron arrives every 2 scaled minutes while a seat is free
+        public const float MercenarySpawnIntervalMinSeconds = 60f;  // New patrons arrive every 1-2 scaled minutes...
+        public const float MercenarySpawnIntervalMaxSeconds = 120f; // ...rolled randomly per arrival
 
         // Monster house configuration
         public const int MonsterHouseCapacity = 16; // Max allied monsters that can live in one Monster House

@@ -37,6 +37,7 @@ namespace PitHero.Services
         private readonly List<Entity> _mercenaryEntities;
         private readonly HashSet<Point> _occupiedTavernPositions;
         private float _timeSinceLastSpawn;
+        private float _nextSpawnInterval; // rolled 1-2 min per arrival; 0 = roll on first use
         private Scene _scene;
         private bool _hasSpawnedInitialMercenary;
         private int _nextSpawnId; // Global spawn ID counter
@@ -80,28 +81,39 @@ namespace PitHero.Services
 
             if (_timeSinceLastSpawn >= GetSpawnInterval())
             {
-                // Only reset the timer on a successful spawn — when the tavern is full the
+                // Only reset the timer on a successful spawn — while the tavern is full the
                 // timer holds at the threshold so a patron walks in as soon as a seat frees.
                 if (TrySpawnMercenary())
+                {
                     _timeSinceLastSpawn = 0f;
+                    _nextSpawnInterval = Nez.Random.Range(
+                        GameConfig.MercenarySpawnIntervalMinSeconds,
+                        GameConfig.MercenarySpawnIntervalMaxSeconds);
+                }
             }
         }
 
         /// <summary>
         /// Spawn cadence: an empty tavern gets its first patron quickly; after that a new
-        /// patron arrives on a flat interval whenever a seat is free.
+        /// patron arrives every 1-2 scaled minutes (rolled per arrival) whenever a seat is free.
         /// </summary>
         private float GetSpawnInterval()
         {
-            return GetUnhiredMercenaries().Count == 0
-                ? GameConfig.MercenaryMinSpawnIntervalSeconds
-                : GameConfig.MercenarySpawnIntervalSeconds;
+            if (GetUnhiredMercenaries().Count == 0)
+                return GameConfig.MercenaryMinSpawnIntervalSeconds;
+            if (_nextSpawnInterval <= 0f)
+                _nextSpawnInterval = Nez.Random.Range(
+                    GameConfig.MercenarySpawnIntervalMinSeconds,
+                    GameConfig.MercenarySpawnIntervalMaxSeconds);
+            return _nextSpawnInterval;
         }
 
         /// <summary>
-        /// Attempts to spawn a new mercenary. Returns false (leaving the spawn timer pending)
-        /// when the tavern has no free seat — patrons are never evicted to make room; seats
-        /// free up when patrons finish dining, run out of patience, or get hired.
+        /// Attempts to spawn a new mercenary. When the tavern is full, a patron who has already
+        /// finished eating is sent home to make room for a fresh face (the spawn then happens on
+        /// a following frame once the seat frees); patrons who are still waiting or mid-meal are
+        /// never evicted. Returns false while no seat is available, leaving the spawn timer
+        /// pending.
         /// </summary>
         private bool TrySpawnMercenary()
         {
@@ -109,9 +121,35 @@ namespace PitHero.Services
             if (_isRemovingMercenary)
                 return false;
 
-            // Only spawn when there's still room at a table
-            if (GetUnhiredMercenaries().Count >= MaxMercenariesInTavern)
+            var unhired = GetUnhiredMercenaries();
+            if (unhired.Count >= MaxMercenariesInTavern)
+            {
+                // Fresh faces: the oldest patron who is done eating leaves right away
+                Entity doneEating = null;
+                int oldestSpawnId = int.MaxValue;
+                for (int i = 0; i < unhired.Count; i++)
+                {
+                    var comp = unhired[i].GetComponent<MercenaryComponent>();
+                    if (comp == null || comp.IsBeingRemoved)
+                        continue;
+                    var patron = unhired[i].GetComponent<ECS.Components.TavernPatronComponent>();
+                    if (patron == null || patron.State != ECS.Components.PatronState.FinishedEating)
+                        continue;
+                    if (comp.SpawnId < oldestSpawnId)
+                    {
+                        oldestSpawnId = comp.SpawnId;
+                        doneEating = unhired[i];
+                    }
+                }
+
+                if (doneEating != null)
+                {
+                    Debug.Log("[MercenaryManager] Tavern full - a finished patron is leaving to make room");
+                    WalkOffPatron(doneEating);
+                }
+                // Spawn once the seat actually frees (timer holds at the threshold)
                 return false;
+            }
 
             // Find available tavern position
             var availablePosition = GetAvailableTavernPosition();
@@ -120,7 +158,6 @@ namespace PitHero.Services
 
             // Spawn new mercenary
             SpawnMercenary(availablePosition.Value);
-            Debug.Log($"[MercenaryManager] Patron spawned. Next arrives in {GetSpawnInterval():F0}s when a seat is free");
             return true;
         }
 
