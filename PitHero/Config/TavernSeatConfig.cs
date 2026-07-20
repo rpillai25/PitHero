@@ -20,9 +20,9 @@ namespace PitHero.Config
 
         // Offset constants (spec §2): seat position relative to table → plate center offset from table top-left
         private static readonly Vector2 OffsetSeatLeft  = new Vector2(0f,  5f);   // patron left  of table, facing Right
-        private static readonly Vector2 OffsetSeatBelow = new Vector2(10f, 12f);  // patron below table,    facing Up
+        private static readonly Vector2 OffsetSeatBelow = new Vector2(14f, 16f);  // patron below table,    facing Up
         private static readonly Vector2 OffsetSeatRight = new Vector2(20f, 5f);   // patron right of table, facing Left
-        private static readonly Vector2 OffsetSeatAbove = new Vector2(10f, 0f);   // patron above table,    facing Down
+        private static readonly Vector2 OffsetSeatAbove = new Vector2(14f, 4f);   // patron above table,    facing Down
 
         // Tables in the tavern (derived from the Base TMX layer; tile 80 = table top decoration)
         // Left upper table at (93,3), right upper table at (97,3)
