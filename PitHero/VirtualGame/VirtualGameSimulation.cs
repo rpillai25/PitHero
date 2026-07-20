@@ -143,8 +143,9 @@ namespace PitHero.VirtualGame
         }
 
         /// <summary>
-        /// Mirrors <see cref="PitHero.AI.SleepInBedAction"/> (lines ~255–262 + ~465–535):
-        /// requires <see cref="Gold"/> ≥ <see cref="GameConfig.InnCostGold"/> (10 g);
+        /// Mirrors <see cref="PitHero.AI.SleepInBedAction"/> (payment + full-party heal):
+        /// requires <see cref="Gold"/> ≥ the level-scaled party cost
+        /// (<see cref="GameConfig.GetInnCostForMember"/> summed over hero + mercenaries);
         /// deducts the cost; restores the hero and every configured mercenary to full HP and
         /// MP; resets <c>HealingItemExhausted</c> and <c>HealingSkillExhausted</c> on the
         /// last-used party view — exactly as the live action does after the sleep animation.
@@ -155,11 +156,24 @@ namespace PitHero.VirtualGame
         /// <c>false</c> when there is insufficient gold (mirrors live <c>InnExhausted</c>
         /// semantics in <see cref="PitHero.AI.JumpOutOfPitForInnAction"/>).
         /// </returns>
+        /// <summary>Level-scaled inn cost for the current virtual party (same formula as live).</summary>
+        public int GetInnRestCost()
+        {
+            var hero = _hero.LinkedHero;
+            int total = hero != null
+                ? GameConfig.GetInnCostForMember(hero.Level)
+                : GameConfig.InnCostBaseGoldPerMember;
+            for (int i = 0; i < _mercenaries.Count; i++)
+                total += GameConfig.GetInnCostForMember(_mercenaries[i].Level);
+            return total;
+        }
+
         public bool TryInnRest()
         {
-            if (Gold < GameConfig.InnCostGold) return false;
+            int innCost = GetInnRestCost();
+            if (Gold < innCost) return false;
 
-            Gold -= GameConfig.InnCostGold;
+            Gold -= innCost;
 
             // Restore hero HP and MP to full (mirrors SleepInBedAction lines ~465-495)
             var hero = _hero.LinkedHero;

@@ -57,9 +57,6 @@ namespace PitHero.Dining
         public readonly bool UsesMilk;
         public readonly bool UsesCheese;
         public readonly DishBuffEntry[] Buffs;
-        public readonly int RestoreHP;
-        public readonly int RestoreMP;
-        public readonly bool RestoreFullMP;
         public readonly CookTimeClass CookClass;
         public readonly EatTimeClass EatClass;
 
@@ -70,7 +67,7 @@ namespace PitHero.Dining
         public readonly string NameKey;
 
         public DishDefinition(DishType type, RecipeEntry[] recipe, bool usesMilk, bool usesCheese,
-            DishBuffEntry[] buffs, int restoreHP, int restoreMP, bool restoreFullMP,
+            DishBuffEntry[] buffs,
             CookTimeClass cookClass, EatTimeClass eatClass, string baseSpriteName, string nameKey)
         {
             Type = type;
@@ -78,9 +75,6 @@ namespace PitHero.Dining
             UsesMilk = usesMilk;
             UsesCheese = usesCheese;
             Buffs = buffs;
-            RestoreHP = restoreHP;
-            RestoreMP = restoreMP;
-            RestoreFullMP = restoreFullMP;
             CookClass = cookClass;
             EatClass = eatClass;
             BaseSpriteName = baseSpriteName;

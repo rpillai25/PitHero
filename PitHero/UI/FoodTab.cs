@@ -181,12 +181,6 @@ namespace PitHero.UI
         private string BuildEffectsText(DishDefinition def)
         {
             var sb = new System.Text.StringBuilder(64);
-            if (def.RestoreHP > 0)
-                Append(sb, "Restores " + def.RestoreHP + " HP");
-            if (def.RestoreFullMP)
-                Append(sb, "Restores all MP");
-            else if (def.RestoreMP > 0)
-                Append(sb, "Restores " + def.RestoreMP + " MP");
             for (int b = 0; b < def.Buffs.Length; b++)
             {
                 var buff = def.Buffs[b];

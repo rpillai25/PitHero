@@ -187,14 +187,15 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
-        /// True when hero has enough gold to pay for the inn (10 gold)
+        /// True when the party has enough gold for an inn nap (level-scaled, per member).
         /// </summary>
         public bool HasEnoughInnGold
         {
             get
             {
                 var gameState = Core.Services.GetService<GameStateService>();
-                return gameState != null && gameState.Funds >= GameConfig.InnCostGold;
+                return gameState != null
+                    && gameState.Funds >= Services.InnCostCalculator.GetCurrentPartyCost(LinkedHero);
             }
         }
 

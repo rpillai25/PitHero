@@ -126,9 +126,10 @@ namespace PitHero.AI
             if (!isNightSleep)
             {
                 var gameState = Core.Services.GetService<GameStateService>();
-                if (gameState == null || gameState.Funds < GameConfig.InnCostGold)
+                int innCost = Services.InnCostCalculator.GetCurrentPartyCost(hero.LinkedHero);
+                if (gameState == null || gameState.Funds < innCost)
                 {
-                    Debug.Log($"[SleepInBedAction] Not enough gold to sleep at inn. Have {gameState?.Funds ?? 0}, need {GameConfig.InnCostGold}");
+                    Debug.Log($"[SleepInBedAction] Not enough gold to sleep at inn. Have {gameState?.Funds ?? 0}, need {innCost}");
                     return true; // Return true to mark action as "complete" so hero can try other actions
                 }
             }
@@ -252,14 +253,15 @@ namespace PitHero.AI
             if (!isNightSleep)
             {
                 var gameState = Core.Services.GetService<GameStateService>();
-                if (gameState != null && gameState.Funds >= GameConfig.InnCostGold)
+                int innCost = Services.InnCostCalculator.GetCurrentPartyCost(hero.LinkedHero);
+                if (gameState != null && gameState.Funds >= innCost)
                 {
-                    gameState.Funds -= GameConfig.InnCostGold;
+                    gameState.Funds -= innCost;
                     _hasPaidInnkeeper = true;
                     soundEffectManager.PlaySound(SoundEffectType.PayGold);
-                    Debug.Log($"[SleepInBedAction] Paid {GameConfig.InnCostGold} gold to innkeeper. Remaining funds: {gameState.Funds}");
+                    Debug.Log($"[SleepInBedAction] Paid {innCost} gold to innkeeper. Remaining funds: {gameState.Funds}");
 
-                    Services.Analytics.AnalyticsService.LogInnSleep(GameConfig.InnCostGold, gameState.Funds);
+                    Services.Analytics.AnalyticsService.LogInnSleep(innCost, gameState.Funds);
                 }
                 else
                 {

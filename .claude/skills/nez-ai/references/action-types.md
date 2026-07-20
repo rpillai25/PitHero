@@ -125,9 +125,9 @@ When an action mutates a shared service (e.g., spends gold, restores HP) between
 
 Example: `SleepInBedAction` (Inn flow)
 
-- **Precondition gate (`Execute` entry):** check `GameStateService.Funds >= GameConfig.InnCostGold`. If not satisfied, return `true` immediately so the planner picks a different action — don't enter the coroutine to discover this.
+- **Precondition gate (`Execute` entry):** check `GameStateService.Funds >= InnCostCalculator.GetCurrentPartyCost(hero.LinkedHero)` (level-scaled, per party member). If not satisfied, return `true` immediately so the planner picks a different action — don't enter the coroutine to discover this.
 - **`CalculateTargetLocation`** returns the *payment* tile (`InnPaymentTileX/Y`), not the bed tile — so GoTo walks the hero to the innkeeper first.
-- **Coroutine phases:** face innkeeper (`Direction.Right`) → 0.5s animation delay → `GameStateService.Funds -= InnCostGold` → pathfind to bed → sleep → restore HP/MP.
+- **Coroutine phases:** face innkeeper (`Direction.Right`) → 0.5s animation delay → `GameStateService.Funds -= InnCostCalculator.GetCurrentPartyCost(...)` → pathfind to bed → sleep → restore HP/MP.
 - Innkeeper entity is spawned at a fixed tile in `MainGameScene.SpawnInnkeeper()` with `TAG_INNKEEPER`; he never moves.
 
 The lesson: any action that spends a resource (gold, MP, items) must verify availability in `Execute` *before* starting visual coroutines — otherwise you can spend a frame walking to the NPC only to abort, which looks broken.

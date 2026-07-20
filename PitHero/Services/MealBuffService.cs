@@ -7,8 +7,8 @@ namespace PitHero.Services
     /// <summary>
     /// Holds each party member's active food buffs for the day (issue #319). Battle buffs are
     /// cleared at every battle boundary, so this service re-injects meal buffs at each battle
-    /// start as BattleBuffs with RemainingTurns = -1 (until battle end). HP/MP restores happen
-    /// once, when the dish is eaten. Records clear at the 6 AM daily reset.
+    /// start as BattleBuffs with RemainingTurns = -1 (until battle end). Records clear at the
+    /// 6 AM daily reset. Food grants buffs only — HP/MP recovery is the inn's job.
     /// </summary>
     public sealed class MealBuffService
     {
@@ -25,30 +25,13 @@ namespace PitHero.Services
         private readonly List<MealRecord> _records = new List<MealRecord>(3);
 
         /// <summary>
-        /// Applies a finished meal: instant HP/MP restores once, then records the dish's buffs
-        /// for injection into every battle until the next 6 AM reset.
+        /// Applies a finished meal: records the dish's buffs for injection into every battle
+        /// until the next 6 AM reset.
         /// </summary>
         public void ApplyMeal(ICombatant combatant, DishType dish, bool deluxe)
-        {
-            if (combatant == null) return;
+            => RestoreRecord(combatant, dish, deluxe);
 
-            var def = DishConfig.GetDefinition(dish);
-            if (def.RestoreHP > 0)
-                combatant.RestoreHP(def.RestoreHP);
-            if (def.RestoreFullMP)
-            {
-                int missing = combatant.MaxMP - combatant.CurrentMP;
-                if (missing > 0) combatant.RestoreMP(missing);
-            }
-            else if (def.RestoreMP > 0)
-            {
-                combatant.RestoreMP(def.RestoreMP);
-            }
-
-            RestoreRecord(combatant, dish, deluxe);
-        }
-
-        /// <summary>Records a meal's day-long buffs without re-applying instant restores (save load).</summary>
+        /// <summary>Records a meal's day-long buffs (also the save-load path).</summary>
         public void RestoreRecord(ICombatant combatant, DishType dish, bool deluxe)
         {
             if (combatant == null) return;

@@ -131,7 +131,7 @@ same-seed ⇒ identical-event-stream determinism test that catches accidental dr
 
 - **Wallet**: `Gold` starts at `GameConfig.NewGameStartingGold`; battle gold credits it
   after each level; `ConfigureStartingGold` overrides for mid-game scenarios.
-- **`TryInnRest()`** mirrors `SleepInBedAction`: `GameConfig.InnCostGold` (10 g) deducted;
+- **`TryInnRest()`** mirrors `SleepInBedAction`: the level-scaled party cost (`GameConfig.GetInnCostForMember` — base 10 g + 10 g per full 10 levels, summed over hero + mercs) is deducted;
   hero + all mercenaries restored to full HP **and MP**; `HealingItemExhausted` /
   `HealingSkillExhausted` reset. Instant — walking is not simulated. Returns false when
   unaffordable (live `InnExhausted` semantics).

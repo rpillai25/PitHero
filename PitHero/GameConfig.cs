@@ -93,7 +93,14 @@ namespace PitHero
         public const int InnkeeperTileY = 3;
         public const int InnPaymentTileX = 67; // Hero pays at (67, 3) facing right
         public const int InnPaymentTileY = 3;
-        public const int InnCostGold = 10; // Cost to sleep at inn
+        // Inn nap cost scales with the party: each member costs the base fee plus a surcharge
+        // per full 10 levels (level 30 -> 10 + 30 = 40g). Night sleep stays free.
+        public const int InnCostBaseGoldPerMember = 10;
+        public const int InnCostGoldPerTenLevels = 10;
+
+        /// <summary>Inn nap cost for one party member of the given level.</summary>
+        public static int GetInnCostForMember(int level)
+            => InnCostBaseGoldPerMember + InnCostGoldPerTenLevels * (level / 10);
         public const int CrystalBuyBackBasePrice = 100; // Base gold cost per crystal level for Second Chance Shop
 
         // Tavern seat configuration (for Stop Adventuring)

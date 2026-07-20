@@ -23,7 +23,6 @@ namespace PitHero.Dining
                 new[] { new RecipeEntry(CropType.Onion, 3) },
                 false, false,
                 new[] { new DishBuffEntry(BuffType.AttackUp, 1) },
-                0, 0, false,
                 CookTimeClass.Simple, EatTimeClass.Snack,
                 "RoastedOnionSkewers", UITextKey.DishRoastedOnionSkewers);
 
@@ -32,7 +31,6 @@ namespace PitHero.Dining
                 new[] { new RecipeEntry(CropType.Turnip, 3), new RecipeEntry(CropType.Onion, 1) },
                 false, false,
                 new[] { new DishBuffEntry(BuffType.HPRegen, 1) },
-                30, 0, false,
                 CookTimeClass.Simple, EatTimeClass.Meal,
                 "TurnipOnionStew", UITextKey.DishTurnipOnionStew);
 
@@ -40,8 +38,8 @@ namespace PitHero.Dining
                 DishType.ButteredBread,
                 new[] { new RecipeEntry(CropType.Wheat, 1) },
                 true, false,
-                System.Array.Empty<DishBuffEntry>(),
-                30, 0, false,
+                // Was restore-only; food no longer heals, so the cheapest snack gets a token buff
+                new[] { new DishBuffEntry(BuffType.DefenseUp, 1) },
                 CookTimeClass.Simple, EatTimeClass.Snack,
                 "ButteredBread", UITextKey.DishButteredBread);
 
@@ -50,7 +48,6 @@ namespace PitHero.Dining
                 new[] { new RecipeEntry(CropType.Potato, 2) },
                 true, true,
                 new[] { new DishBuffEntry(BuffType.DefenseUp, 2) },
-                40, 0, false,
                 CookTimeClass.Simple, EatTimeClass.Meal,
                 "CheesyMashedPotatoes", UITextKey.DishCheesyMashedPotatoes);
 
@@ -59,7 +56,6 @@ namespace PitHero.Dining
                 new[] { new RecipeEntry(CropType.Lettuce, 2), new RecipeEntry(CropType.Tomato, 2) },
                 false, false,
                 new[] { new DishBuffEntry(BuffType.AgilityUp, 2) },
-                0, 0, false,
                 CookTimeClass.Simple, EatTimeClass.Snack,
                 "GardenSalad", UITextKey.DishGardenSalad);
 
@@ -68,7 +64,6 @@ namespace PitHero.Dining
                 new[] { new RecipeEntry(CropType.Corn, 4) },
                 true, false,
                 new[] { new DishBuffEntry(BuffType.AttackUp, 2) },
-                0, 0, false,
                 CookTimeClass.Standard, EatTimeClass.Snack,
                 "GrilledCornWithButter", UITextKey.DishGrilledCornWithButter);
 
@@ -77,7 +72,6 @@ namespace PitHero.Dining
                 new[] { new RecipeEntry(CropType.Tomato, 5) },
                 true, true,
                 new[] { new DishBuffEntry(BuffType.EvasionUp, 10) },
-                40, 0, false,
                 CookTimeClass.Standard, EatTimeClass.Meal,
                 "TomatoCheeseBisque", UITextKey.DishTomatoCheeseBisque);
 
@@ -86,7 +80,6 @@ namespace PitHero.Dining
                 new[] { new RecipeEntry(CropType.Corn, 2), new RecipeEntry(CropType.Potato, 1), new RecipeEntry(CropType.Onion, 1) },
                 true, false,
                 new[] { new DishBuffEntry(BuffType.HPRegen, 2) },
-                0, 0, false,
                 CookTimeClass.Standard, EatTimeClass.Meal,
                 "CornChowder", UITextKey.DishCornChowder);
 
@@ -95,7 +88,6 @@ namespace PitHero.Dining
                 new[] { new RecipeEntry(CropType.Eggplant, 1), new RecipeEntry(CropType.Tomato, 3), new RecipeEntry(CropType.Wheat, 1) },
                 false, true,
                 new[] { new DishBuffEntry(BuffType.DefenseUp, 3) },
-                60, 0, false,
                 CookTimeClass.Standard, EatTimeClass.Meal,
                 "EggplantParmesan", UITextKey.DishEggplantParmesan);
 
@@ -104,7 +96,6 @@ namespace PitHero.Dining
                 new[] { new RecipeEntry(CropType.Grapes, 2), new RecipeEntry(CropType.Sugarcane, 1) },
                 false, false,
                 new[] { new DishBuffEntry(BuffType.MPRegen, 1) },
-                0, 30, false,
                 CookTimeClass.Simple, EatTimeClass.Snack,
                 "GrapeJuice", UITextKey.DishGrapeJuice);
 
@@ -113,7 +104,6 @@ namespace PitHero.Dining
                 new[] { new RecipeEntry(CropType.Grapes, 1), new RecipeEntry(CropType.Wheat, 1), new RecipeEntry(CropType.Sugarcane, 1) },
                 false, false,
                 new[] { new DishBuffEntry(BuffType.MagicUp, 6) },
-                0, 0, false,
                 CookTimeClass.Standard, EatTimeClass.Snack,
                 "GrapeTart", UITextKey.DishGrapeTart);
 
@@ -122,7 +112,6 @@ namespace PitHero.Dining
                 new[] { new RecipeEntry(CropType.Eggplant, 4), new RecipeEntry(CropType.Onion, 2) },
                 false, true,
                 new[] { new DishBuffEntry(BuffType.AttackUp, 3) },
-                0, 0, false,
                 CookTimeClass.Complex, EatTimeClass.Meal,
                 "SpicedEggplantSteak", UITextKey.DishSpicedEggplantSteak);
 
@@ -131,7 +120,6 @@ namespace PitHero.Dining
                 new[] { new RecipeEntry(CropType.AppleTree, 4), new RecipeEntry(CropType.Wheat, 2), new RecipeEntry(CropType.Sugarcane, 1) },
                 true, false,
                 new[] { new DishBuffEntry(BuffType.AttackUp, 2), new DishBuffEntry(BuffType.DefenseUp, 2) },
-                100, 0, false,
                 CookTimeClass.Complex, EatTimeClass.Meal,
                 "ApplePie", UITextKey.DishApplePie);
 
@@ -140,7 +128,6 @@ namespace PitHero.Dining
                 new[] { new RecipeEntry(CropType.Pumpkin, 1), new RecipeEntry(CropType.Onion, 1) },
                 true, false,
                 new[] { new DishBuffEntry(BuffType.DefenseUp, 4) },
-                80, 0, false,
                 CookTimeClass.Standard, EatTimeClass.Meal,
                 "PumpkinCreamSoup", UITextKey.DishPumpkinCreamSoup);
 
@@ -149,7 +136,6 @@ namespace PitHero.Dining
                 new[] { new RecipeEntry(CropType.Watermelon, 1), new RecipeEntry(CropType.Sugarcane, 2) },
                 true, false,
                 new[] { new DishBuffEntry(BuffType.MPRegen, 2) },
-                0, 0, true,
                 CookTimeClass.Standard, EatTimeClass.Snack,
                 "ChilledWatermelonSorbet", UITextKey.DishChilledWatermelonSorbet);
 
@@ -179,7 +165,6 @@ namespace PitHero.Dining
                     new DishBuffEntry(BuffType.HPRegen, 1),
                     new DishBuffEntry(BuffType.MPRegen, 1),
                 },
-                0, 0, false,
                 CookTimeClass.Complex, EatTimeClass.Feast,
                 "HarvestFeastPlatter", UITextKey.DishHarvestFeastPlatter);
 
