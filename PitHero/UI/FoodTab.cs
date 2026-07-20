@@ -90,15 +90,18 @@ namespace PitHero.UI
                 }
 
                 var infoTable = new Table();
+                infoTable.Left(); // table contents hug the left edge (Table centers by default)
                 var nameLabel = new Label(GetText(def.NameKey) + "  " + DishConfig.GetPrice(dish) + "g", skin, "ph-default");
+                nameLabel.SetWrap(true);
                 _dishNameLabels[i] = nameLabel;
-                infoTable.Add(nameLabel).Left();
+                infoTable.Add(nameLabel).Left().SetExpandX().SetFillX();
                 infoTable.Row();
                 _dishEffectsBaseText[i] = BuildEffectsText(def);
                 var effectsLabel = new Label(_dishEffectsBaseText[i], skin, "ph-default");
+                effectsLabel.SetWrap(true);
                 effectsLabel.SetColor(Color.Gray);
                 _dishEffectsLabels[i] = effectsLabel;
-                infoTable.Add(effectsLabel).Left();
+                infoTable.Add(effectsLabel).Left().SetExpandX().SetFillX();
                 row.Add(infoTable).Left().SetExpandX().SetFillX();
 
                 container.Add(row).Left().SetExpandX().SetFillX().SetPadBottom(6f);
@@ -119,7 +122,7 @@ namespace PitHero.UI
             scrollPane.SetScrollingDisabled(true, false);
             scrollPane.SetFadeScrollBars(false);
 
-            _mainContainer.Add(scrollPane).Expand().Fill().Pad(10f);
+            _mainContainer.Add(scrollPane).Expand().Fill().Pad(10f).SetPadLeft(24f).SetPadRight(16f);
             return _mainContainer;
         }
 
