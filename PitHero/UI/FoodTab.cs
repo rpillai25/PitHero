@@ -21,7 +21,9 @@ namespace PitHero.UI
         private readonly Image[] _dishImages = new Image[DishTypeInfo.Count];
         private readonly Label[] _dishNameLabels = new Label[DishTypeInfo.Count];
         private readonly Label[] _dishEffectsLabels = new Label[DishTypeInfo.Count];
-        private readonly string[] _dishEffectsBaseText = new string[DishTypeInfo.Count];
+        private readonly SineWaveLabel[] _dishMissingLabels = new SineWaveLabel[DishTypeInfo.Count];
+        private readonly Element[] _dishMissingPlaceholders = new Element[DishTypeInfo.Count];
+        private readonly Cell[] _dishMissingCells = new Cell[DishTypeInfo.Count];
         private ButtonGroup _dishGroup;
         private bool _refreshing;
 
@@ -96,12 +98,21 @@ namespace PitHero.UI
                 _dishNameLabels[i] = nameLabel;
                 infoTable.Add(nameLabel).Left().SetExpandX().SetFillX();
                 infoTable.Row();
-                _dishEffectsBaseText[i] = BuildEffectsText(def);
-                var effectsLabel = new Label(_dishEffectsBaseText[i], skin, "ph-default");
+                var effectsLabel = new Label(BuildEffectsText(def), skin, "ph-default");
                 effectsLabel.SetWrap(true);
                 effectsLabel.SetColor(Color.Gray);
                 _dishEffectsLabels[i] = effectsLabel;
                 infoTable.Add(effectsLabel).Left().SetExpandX().SetFillX();
+
+                // Red waving "Missing ingredients!" (same style as MonsterUI's Sleeping label),
+                // swapped in and out of a dedicated cell so available dishes reserve no space.
+                var missingStyle = skin.Get<LabelStyle>("ph-sleeping")
+                    ?? new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.Red };
+                _dishMissingLabels[i] = new SineWaveLabel(GetText(UITextKey.FoodMissingIngredients), missingStyle);
+                _dishMissingPlaceholders[i] = new Element();
+                infoTable.Row();
+                _dishMissingCells[i] = infoTable.Add(_dishMissingPlaceholders[i]).Left();
+
                 row.Add(infoTable).Left().SetExpandX().SetFillX();
 
                 container.Add(row).Left().SetExpandX().SetFillX().SetPadBottom(6f);
@@ -156,20 +167,14 @@ namespace PitHero.UI
             if (coordinator == null)
                 return;
 
-            string missingNote = GetText(UITextKey.FoodMissingIngredients);
             for (int i = 0; i < DishTypeInfo.Count; i++)
             {
                 bool coverable = coordinator.CanCoverRecipe((DishType)i);
 
                 _dishImages[i]?.SetColor(coverable ? Color.White : DimmedSpriteColor);
                 _dishNameLabels[i]?.SetColor(coverable ? Color.White : DimmedNameColor);
-                if (_dishEffectsLabels[i] != null)
-                {
-                    _dishEffectsLabels[i].SetText(coverable
-                        ? _dishEffectsBaseText[i]
-                        : _dishEffectsBaseText[i] + "  [" + missingNote + "]");
-                    _dishEffectsLabels[i].SetColor(coverable ? Color.Gray : DimmedEffectsColor);
-                }
+                _dishEffectsLabels[i]?.SetColor(coverable ? Color.Gray : DimmedEffectsColor);
+                _dishMissingCells[i]?.SetElement(coverable ? _dishMissingPlaceholders[i] : _dishMissingLabels[i]);
             }
         }
 
