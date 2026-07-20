@@ -172,6 +172,40 @@ namespace PitHero.Dining
             _priceCache = new int[DishTypeInfo.Count];
             for (int i = 0; i < DishTypeInfo.Count; i++)
                 _priceCache[i] = ComputePrice(_definitions[i]);
+
+            EnforceEffectMonotonicity();
+        }
+
+        /// <summary>
+        /// Guarantees that among single-buff dishes sharing a buff type, a strictly higher
+        /// magnitude always costs strictly more — ingredient values alone can't be trusted for
+        /// this (cheap crops can carry strong buffs). Runs to a fixed point on the price cache.
+        /// </summary>
+        private static void EnforceEffectMonotonicity()
+        {
+            bool changed = true;
+            while (changed)
+            {
+                changed = false;
+                for (int i = 0; i < _definitions.Length; i++)
+                {
+                    var weaker = _definitions[i];
+                    if (weaker.Buffs.Length != 1)
+                        continue;
+                    for (int j = 0; j < _definitions.Length; j++)
+                    {
+                        var stronger = _definitions[j];
+                        if (stronger.Buffs.Length != 1 || stronger.Buffs[0].Type != weaker.Buffs[0].Type)
+                            continue;
+                        if (stronger.Buffs[0].Magnitude > weaker.Buffs[0].Magnitude
+                            && _priceCache[j] <= _priceCache[i])
+                        {
+                            _priceCache[j] = _priceCache[i] + GameConfig.DishPriceRoundTo;
+                            changed = true;
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>Returns the static definition for a dish.</summary>
@@ -186,7 +220,24 @@ namespace PitHero.Dining
             for (int i = 0; i < def.Recipe.Length; i++)
                 ingredientValue += CropConfig.GetHarvestUnitSellPrice(def.Recipe[i].Crop) * def.Recipe[i].Qty;
 
-            float marked = ingredientValue * GameConfig.DishPriceMarkup;
+            // Effect premium: better buffs always cost more, independent of ingredient value
+            // (without this, cheap-ingredient strong dishes could undercut weaker ones)
+            int effectPremium = 0;
+            for (int b = 0; b < def.Buffs.Length; b++)
+            {
+                int perPoint;
+                switch (def.Buffs[b].Type)
+                {
+                    case BuffType.MagicUp:   perPoint = GameConfig.DishBuffMagicGoldPerPoint;   break;
+                    case BuffType.EvasionUp: perPoint = GameConfig.DishBuffEvasionGoldPerPoint; break;
+                    case BuffType.HPRegen:
+                    case BuffType.MPRegen:   perPoint = GameConfig.DishBuffRegenGoldPerPoint;   break;
+                    default:                 perPoint = GameConfig.DishBuffStatGoldPerPoint;    break;
+                }
+                effectPremium += perPoint * def.Buffs[b].Magnitude;
+            }
+
+            float marked = ingredientValue * GameConfig.DishPriceMarkup + effectPremium;
             int rounded = (int)System.Math.Round(marked / GameConfig.DishPriceRoundTo,
                 System.MidpointRounding.AwayFromZero) * GameConfig.DishPriceRoundTo;
             return rounded < GameConfig.DishPriceMin ? GameConfig.DishPriceMin : rounded;
@@ -247,6 +298,25 @@ namespace PitHero.Dining
                 case "Monk": return DishType.SpicedEggplantSteak;
                 case "Archer": return DishType.GrilledCornWithButter;
                 default: return DishType.RoastedOnionSkewers;
+            }
+        }
+
+        /// <summary>
+        /// Cheap fallback dishes per job class, tried in order (index 0 then 1) when the
+        /// favorite can't be made or afforded — the party member still eats something on-theme
+        /// rather than skipping the meal.
+        /// </summary>
+        public static DishType GetFallbackForJob(string jobName, int fallbackIndex)
+        {
+            switch (jobName)
+            {
+                case "Knight": return fallbackIndex == 0 ? DishType.CheesyMashedPotatoes : DishType.ButteredBread;
+                case "Mage":   return fallbackIndex == 0 ? DishType.GrapeJuice : DishType.ButteredBread;
+                case "Priest": return fallbackIndex == 0 ? DishType.GrapeJuice : DishType.TurnipOnionStew;
+                case "Thief":  return fallbackIndex == 0 ? DishType.TomatoCheeseBisque : DishType.RoastedOnionSkewers;
+                case "Monk":   return fallbackIndex == 0 ? DishType.GrilledCornWithButter : DishType.RoastedOnionSkewers;
+                case "Archer": return fallbackIndex == 0 ? DishType.RoastedOnionSkewers : DishType.GardenSalad;
+                default:       return fallbackIndex == 0 ? DishType.ButteredBread : DishType.TurnipOnionStew;
             }
         }
     }

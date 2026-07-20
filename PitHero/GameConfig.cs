@@ -189,7 +189,12 @@ namespace PitHero
         public const int TavernTopZoneMaxTileY = 4;
         public const int TavernBottomZoneMinTileY = 5;          // bottom tables (93,7)/(97,7) and their seats
         public const int TavernBottomZoneMaxTileY = 8;
-        public const float DishPriceMarkup = 1.25f;             // menu price = ingredient sell value x markup
+        public const float DishPriceMarkup = 1.25f;             // menu price = ingredient sell value x markup + effect premium
+        // Effect premium (gold per buff point) so dishes with better effects always cost more
+        public const int DishBuffStatGoldPerPoint = 15;         // ATK / DEF / AGI
+        public const int DishBuffMagicGoldPerPoint = 10;        // MAG (magnitudes run higher than physical stats)
+        public const int DishBuffEvasionGoldPerPoint = 3;       // EVA (magnitudes ~10)
+        public const int DishBuffRegenGoldPerPoint = 30;        // HP / MP regen per round
         public const int DishPriceRoundTo = 5;                  // menu prices round to the nearest 5 gold
         public const int DishPriceMin = 10;                     // minimum menu price
         public const float CookSimpleBaseSeconds = 5f;          // cook time at CookingProficiency 1 by dish complexity

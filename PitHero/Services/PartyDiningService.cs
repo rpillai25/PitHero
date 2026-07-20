@@ -290,24 +290,19 @@ namespace PitHero.Services
                         favorite.ToString(), "already_ate");
                     continue;
                 }
-                if (!coordinator.CanCoverRecipe(favorite))
-                {
-                    // No substitutions — this member simply doesn't eat this seating
-                    _skippedThisSeating[slot] = true;
-                    Analytics.AnalyticsService.LogPartyDineSkipped(slot, combatant.Name,
-                        favorite.ToString(), "no_ingredients");
-                    continue;
-                }
-                if (gameState.Funds < DishConfig.GetPrice(favorite))
+
+                // Favorite first, then the job class's two cheap fallbacks
+                if (!TryPickOrderableDish(slot, favorite, coordinator, gameState, out var chosen))
                 {
                     _skippedThisSeating[slot] = true;
+                    string reason = !coordinator.CanCoverRecipe(favorite) ? "no_ingredients" : "no_gold";
                     Analytics.AnalyticsService.LogPartyDineSkipped(slot, combatant.Name,
-                        favorite.ToString(), "no_gold");
+                        favorite.ToString(), reason);
                     continue;
                 }
 
                 partySlot = slot;
-                dish = favorite;
+                dish = chosen;
                 return true;
             }
             return false;
@@ -403,10 +398,47 @@ namespace PitHero.Services
                     continue;
                 if (!TryGetFavorite(slot, out var favorite))
                     continue;
-                if (coordinator.CanCoverRecipe(favorite) && gameState.Funds >= DishConfig.GetPrice(favorite))
+                if (TryPickOrderableDish(slot, favorite, coordinator, gameState, out _))
                     return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// Picks the dish this member would order right now: their favorite, or — when it can't
+        /// be made or afforded — the job class's two cheap fallback dishes, in order.
+        /// </summary>
+        private bool TryPickOrderableDish(int slot, DishType favorite,
+            KitchenTaskCoordinator coordinator, GameStateService gameState, out DishType dish)
+        {
+            string jobName = GetJobName(slot);
+            for (int c = 0; c < 3; c++)
+            {
+                var candidate = c == 0 ? favorite : DishConfig.GetFallbackForJob(jobName, c - 1);
+                if (c > 0 && candidate == favorite)
+                    continue; // favorite already failed — don't re-check it
+                if (!coordinator.CanCoverRecipe(candidate))
+                    continue;
+                if (gameState.Funds < DishConfig.GetPrice(candidate))
+                    continue;
+                dish = candidate;
+                return true;
+            }
+            dish = default;
+            return false;
+        }
+
+        private string GetJobName(int slot)
+        {
+            if (slot == 0)
+                return GetHeroComponent()?.LinkedHero?.Job?.Name;
+
+            var mercManager = Core.Services.GetService<MercenaryManager>();
+            var hired = mercManager?.GetHiredMercenaries();
+            int index = slot - 1;
+            if (hired == null || index >= hired.Count)
+                return null;
+            return hired[index].GetComponent<MercenaryComponent>()?.LinkedMercenary?.Job?.Name;
         }
 
         private bool TryGetFavorite(int slot, out DishType dish)
