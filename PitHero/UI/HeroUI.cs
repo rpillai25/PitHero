@@ -638,9 +638,9 @@ namespace PitHero.UI
 
             _battleTacticButtonGroup = new ButtonGroup();
 
-            _blitzButton = new CheckBox("Blitz", skin, "ph-default");
-            _strategicButton = new CheckBox("Strategic", skin, "ph-default");
-            _defensiveButton = new CheckBox("Defensive", skin, "ph-default");
+            _blitzButton = new CheckBox("Blitz", skin, "ph-radio");
+            _strategicButton = new CheckBox("Strategic", skin, "ph-radio");
+            _defensiveButton = new CheckBox("Defensive", skin, "ph-radio");
 
             _battleTacticButtonGroup.Add(_blitzButton);
             _battleTacticButtonGroup.Add(_strategicButton);

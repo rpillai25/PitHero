@@ -644,8 +644,8 @@ namespace PitHero.UI
             _windowSizeButtonGroup = new ButtonGroup();
 
             // Create radio buttons using CheckBox with "ph-default" style
-            _normalSizeButton = new CheckBox(GetText(TextType.UI, UITextKey.SettingsWindowSizeNormal), skin, "ph-default");
-            _halfSizeButton = new CheckBox(GetText(TextType.UI, UITextKey.SettingsWindowSizeHalf), skin, "ph-default");
+            _normalSizeButton = new CheckBox(GetText(TextType.UI, UITextKey.SettingsWindowSizeNormal), skin, "ph-radio");
+            _halfSizeButton = new CheckBox(GetText(TextType.UI, UITextKey.SettingsWindowSizeHalf), skin, "ph-radio");
 
             // Add buttons to ButtonGroup
             _windowSizeButtonGroup.Add(_normalSizeButton);

@@ -71,7 +71,7 @@ namespace PitHero.UI
 
                 var row = new Table();
 
-                var radio = new CheckBox("", skin, "ph-default");
+                var radio = new CheckBox("", skin, "ph-radio");
                 _dishRadios[i] = radio;
                 _dishGroup.Add(radio);
                 int dishIndex = i;
