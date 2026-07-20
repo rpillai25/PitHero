@@ -38,9 +38,9 @@ namespace PitHero.UI
 
             var container = new Table();
 
-            // "Favorite Food" header (extra top padding to clear tab buttons)
+            // "Favorite Food" header — 16px below the tab strip (10px scroll-pane pad + 6 here)
             var favoriteLabel = new Label(GetText(UITextKey.FoodFavoriteLabel), skin, "ph-default");
-            container.Add(favoriteLabel).SetAlign(Align.Left).SetPadTop(172f).SetPadBottom(5f);
+            container.Add(favoriteLabel).SetAlign(Align.Left).SetPadTop(6f).SetPadBottom(5f);
             container.Row();
 
             // "Eat at tavern" checkbox with tooltip, just below the header
