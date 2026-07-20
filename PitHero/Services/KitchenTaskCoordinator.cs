@@ -995,9 +995,9 @@ namespace PitHero.Services
         public static Point FridgeTile
             => new Point(GameConfig.KitchenFridgeTileX, GameConfig.KitchenFridgeTileY);
 
-        /// <summary>Runner idle post (below the sink).</summary>
-        public static Point RunnerPostTile
-            => new Point(GameConfig.KitchenRunnerPostTileX, GameConfig.KitchenRunnerPostTileY);
+        /// <summary>A tile inside the runners' wander area (kitchen south corridor).</summary>
+        public static Point RunnerWanderAnchorTile
+            => new Point(GameConfig.KitchenRunnerWanderMinTileX, GameConfig.KitchenRunnerWanderMinTileY + 1);
 
         /// <summary>Sink tile (dirty plates and orphaned dishes go here).</summary>
         public static Point SinkTile => new Point(GameConfig.KitchenSinkTileX, GameConfig.KitchenSinkTileY);

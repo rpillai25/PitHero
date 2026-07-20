@@ -146,7 +146,8 @@ namespace PitHero.Tests
             Assert.IsTrue(pathfinder.IsPassable(KitchenTaskCoordinator.SinkTile), "sink tile is a wall");
             Assert.IsTrue(pathfinder.IsPassable(KitchenTaskCoordinator.TicketBoardTile), "ticket board tile is a wall");
             Assert.IsTrue(pathfinder.IsPassable(KitchenTaskCoordinator.FridgeTile), "fridge tile is a wall");
-            Assert.IsTrue(pathfinder.IsPassable(KitchenTaskCoordinator.RunnerPostTile), "runner post tile is a wall");
+            Assert.IsTrue(pathfinder.IsPassable(KitchenTaskCoordinator.RunnerWanderAnchorTile),
+                "runner wander area has no walkable anchor");
             for (int slot = 0; slot < GameConfig.KitchenServingSlotCount; slot++)
                 Assert.IsTrue(pathfinder.IsPassable(KitchenTaskCoordinator.GetServingTile(slot)),
                     $"serving table tile {slot} is a wall");
@@ -168,8 +169,8 @@ namespace PitHero.Tests
                     $"house exit → cooking station {station}");
             AssertRouteClear(pathfinder, HouseExitTile, KitchenTaskCoordinator.FridgeTile, "house exit → fridge");
             AssertRouteClear(pathfinder, HouseExitTile, KitchenTaskCoordinator.SinkTile, "house exit → sink");
-            AssertRouteClear(pathfinder, HouseExitTile, KitchenTaskCoordinator.RunnerPostTile,
-                "house exit → runner post");
+            AssertRouteClear(pathfinder, HouseExitTile, KitchenTaskCoordinator.RunnerWanderAnchorTile,
+                "house exit → runner wander area");
             for (int slot = 0; slot < GameConfig.KitchenServingSlotCount; slot++)
                 AssertRouteClear(pathfinder, HouseExitTile, KitchenTaskCoordinator.GetServingTile(slot),
                     $"house exit → serving table {slot}");
@@ -232,8 +233,8 @@ namespace PitHero.Tests
             var pathfinder = CreateMapPathfinder(withNewGameBuildings: true);
             var storageDoor = BuildingConfig.GetDoorTile(BuildingType.CropStorage, StorageAnchor);
 
-            AssertRouteClear(pathfinder, KitchenTaskCoordinator.RunnerPostTile, storageDoor,
-                "runner post → crop storage door");
+            AssertRouteClear(pathfinder, KitchenTaskCoordinator.RunnerWanderAnchorTile, storageDoor,
+                "runner wander area → crop storage door");
             AssertRouteClear(pathfinder, storageDoor, KitchenTaskCoordinator.FridgeTile,
                 "crop storage door → fridge");
         }

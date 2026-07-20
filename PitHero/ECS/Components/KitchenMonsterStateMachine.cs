@@ -76,6 +76,7 @@ namespace PitHero.ECS.Components
 
         // ── Runner state ────────────────────────────────────────────────────────
         private KitchenTicket _fetchTicket;
+        private float _runnerWanderPause;
 
         public bool ShouldPause => true;
 
@@ -814,24 +815,47 @@ namespace PitHero.ECS.Components
         private void RunnerIdle_Enter()
         {
             SetSprinting(false);
-            TrySetPathTo(KitchenTaskCoordinator.RunnerPostTile);
+            PickRunnerWanderTarget();
         }
 
         private void RunnerIdle_Tick()
         {
             if (_goHome)
             {
+                _mover.Stop();
                 CurrentState = KitchenMonsterState.ReturnHome;
                 return;
             }
-            if (_mover.IsMoving)
-                return;
-            if (elapsedTimeInState < GameConfig.FarmMonsterIdlePollInterval)
-                return;
 
+            // A fetch job interrupts the wander immediately
             _fetchTicket = _coordinator.TryClaimFetchJob();
             if (_fetchTicket != null)
+            {
+                _mover.Stop();
                 CurrentState = KitchenMonsterState.RunnerWalkToStorage;
+                return;
+            }
+
+            if (_mover.IsMoving)
+                return;
+            _runnerWanderPause += Time.DeltaTime;
+            if (_runnerWanderPause >= GameConfig.ServerWanderPauseSeconds)
+                PickRunnerWanderTarget();
+        }
+
+        /// <summary>Picks a random walkable tile in the runners' wander area (kitchen south corridor).</summary>
+        private void PickRunnerWanderTarget()
+        {
+            _runnerWanderPause = 0f;
+            for (int attempt = 0; attempt < 8; attempt++)
+            {
+                var tile = new Point(
+                    Nez.Random.Range(GameConfig.KitchenRunnerWanderMinTileX, GameConfig.KitchenRunnerWanderMaxTileX + 1),
+                    Nez.Random.Range(GameConfig.KitchenRunnerWanderMinTileY, GameConfig.KitchenRunnerWanderMaxTileY + 1));
+                if (TrySetPathTo(tile))
+                    return;
+            }
+            // No walkable pick — idle in place this round
         }
 
         private void RunnerWalkToStorage_Enter()

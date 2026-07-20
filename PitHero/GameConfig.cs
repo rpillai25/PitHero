@@ -175,8 +175,11 @@ namespace PitHero
         public const int KitchenServingTableTileX = 87;         // serving tables at (87,3),(87,4),(87,5)
         public const int KitchenServingTableFirstTileY = 3;
         public const int KitchenServingSlotCount = 3;
-        public const int KitchenRunnerPostTileX = 86;           // runner idles below the sink
-        public const int KitchenRunnerPostTileY = 3;
+        // Runners wander this area (kitchen south corridor) while waiting for a fetch job
+        public const int KitchenRunnerWanderMinTileX = 83;
+        public const int KitchenRunnerWanderMinTileY = 6;
+        public const int KitchenRunnerWanderMaxTileX = 88;
+        public const int KitchenRunnerWanderMaxTileY = 8;
         public const int ServerOrderMemoryLimit = 3;            // orders a server can hold before posting at the board
         public const int ServerCarryDishLimit = 2;              // cooked dishes a server can carry at once
         public const float TicketBoardPauseSeconds = 1f;        // pause at the board to post/read a ticket
