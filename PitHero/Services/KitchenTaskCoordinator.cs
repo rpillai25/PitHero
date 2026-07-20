@@ -295,15 +295,23 @@ namespace PitHero.Services
             entity.AddComponent(new ActorFacingComponent());
             entity.AddComponent(new FarmMonsterMover());
 
-            // Carry renderer for holding a dish or ingredients
+            // Carry renderers: center dish/crop plus left/right side crops for runner hauls
             var carryRenderer = entity.AddComponent(new Nez.Sprites.SpriteRenderer());
             carryRenderer.SetRenderLayer(GameConfig.RenderLayerActorPropOverlay);
             carryRenderer.SetEnabled(false);
+            var carryLeft = entity.AddComponent(new Nez.Sprites.SpriteRenderer());
+            carryLeft.SetRenderLayer(GameConfig.RenderLayerActorPropOverlay);
+            carryLeft.SetEnabled(false);
+            var carryRight = entity.AddComponent(new Nez.Sprites.SpriteRenderer());
+            carryRight.SetRenderLayer(GameConfig.RenderLayerActorPropOverlay);
+            carryRight.SetEnabled(false);
 
             var fsm = entity.AddComponent(new KitchenMonsterStateMachine(
                 monster, this, new Point(house.TileX, house.TileY), role));
             fsm.BodyAnimator = bodyAnimator;
             fsm.CarryRenderer = carryRenderer;
+            fsm.CarryLeftRenderer = carryLeft;
+            fsm.CarryRightRenderer = carryRight;
 
             var worker = new ActiveWorker
             {

@@ -37,8 +37,14 @@ namespace PitHero.ECS.Components
         /// <summary>Body animator for the monster.</summary>
         public EnemyAnimationComponent BodyAnimator;
 
-        /// <summary>Carry renderer (dish sprite held during delivery).</summary>
+        /// <summary>Carry renderer (dish sprite held during delivery; center crop on runner hauls).</summary>
         public Nez.Sprites.SpriteRenderer CarryRenderer;
+
+        /// <summary>Extra carry renderers for runners hauling multi-crop recipes (left/right of center).</summary>
+        public Nez.Sprites.SpriteRenderer CarryLeftRenderer;
+        public Nez.Sprites.SpriteRenderer CarryRightRenderer;
+
+        private const float CarrySideOffsetX = 10f; // px offset of the side crops from the center one
 
         private bool _goHome;
         private bool _returnReachedExit;
@@ -867,6 +873,8 @@ namespace PitHero.ECS.Components
                 return;
             // Atomic top-up into the fridge happens here; the walk back is cosmetic
             _coordinator.RunnerCollectAtStorage(_fetchTicket);
+            if (_fetchTicket != null)
+                ShowCarryCrops(_fetchTicket.Dish);
             CurrentState = KitchenMonsterState.RunnerWalkToFridge;
         }
 
@@ -879,6 +887,8 @@ namespace PitHero.ECS.Components
         {
             if (_mover.IsMoving)
                 return;
+            // The held crops vanish into the fridge
+            HideCarryDish();
             _coordinator.CompleteFetch(_fetchTicket);
             _fetchTicket = null;
             CurrentState = _goHome ? KitchenMonsterState.ReturnHome : KitchenMonsterState.RunnerIdle;
@@ -934,7 +944,45 @@ namespace PitHero.ECS.Components
             CarryRenderer.SetEnabled(true);
         }
 
-        private void HideCarryDish() => CarryRenderer?.SetEnabled(false);
+        /// <summary>
+        /// Runner haul visual: shows the recipe's crops in hand — first crop centered, second
+        /// offset left, third offset right (same look as a field worker carrying a harvest).
+        /// </summary>
+        private void ShowCarryCrops(DishType dish)
+        {
+            var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
+            var recipe = DishConfig.GetDefinition(dish).Recipe;
+            ShowCarryCropAt(CarryRenderer, atlas, recipe, 0, 0f);
+            ShowCarryCropAt(CarryLeftRenderer, atlas, recipe, 1, -CarrySideOffsetX);
+            ShowCarryCropAt(CarryRightRenderer, atlas, recipe, 2, CarrySideOffsetX);
+        }
+
+        private void ShowCarryCropAt(Nez.Sprites.SpriteRenderer renderer, Nez.Sprites.SpriteAtlas atlas,
+            RecipeEntry[] recipe, int recipeIndex, float offsetX)
+        {
+            if (renderer == null)
+                return;
+            var sprite = recipeIndex < recipe.Length
+                ? atlas?.GetSprite(Util.CropConfig.GetHarvestSpriteName(recipe[recipeIndex].Crop))
+                : null;
+            if (sprite == null)
+            {
+                renderer.SetEnabled(false);
+                return;
+            }
+            renderer.Sprite = sprite;
+            renderer.SetLocalOffset(new Vector2(offsetX, 0f));
+            if (BodyAnimator != null)
+                renderer.SetLayerDepth(BodyAnimator.LayerDepth - 0.0001f);
+            renderer.SetEnabled(true);
+        }
+
+        private void HideCarryDish()
+        {
+            CarryRenderer?.SetEnabled(false);
+            CarryLeftRenderer?.SetEnabled(false);
+            CarryRightRenderer?.SetEnabled(false);
+        }
 
         /// <summary>
         /// Paths to the goal, or — when the goal itself is impassable (e.g. a table tile) —
