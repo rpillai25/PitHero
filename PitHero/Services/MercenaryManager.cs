@@ -78,110 +78,50 @@ namespace PitHero.Services
             // Use scaled time for spawn timer
             _timeSinceLastSpawn += Time.DeltaTime;
 
-            // Get current spawn interval based on number of unhired mercenaries
-            var currentInterval = GetSpawnInterval();
-
-            if (_timeSinceLastSpawn >= currentInterval)
+            if (_timeSinceLastSpawn >= GetSpawnInterval())
             {
-                _timeSinceLastSpawn = 0f;
-                TrySpawnMercenary();
+                // Only reset the timer on a successful spawn — when the tavern is full the
+                // timer holds at the threshold so a patron walks in as soon as a seat frees.
+                if (TrySpawnMercenary())
+                    _timeSinceLastSpawn = 0f;
             }
         }
 
         /// <summary>
-        /// Calculates the spawn interval based on the number of unhired mercenaries.
-        /// Progressively increases from 5 seconds (1st merc) to 300 seconds (9th merc).
+        /// Spawn cadence: an empty tavern gets its first patron quickly; after that a new
+        /// patron arrives on a flat interval whenever a seat is free.
         /// </summary>
         private float GetSpawnInterval()
         {
-            var unhiredCount = GetUnhiredMercenaries().Count;
-            
-            // Calculate interval for the NEXT mercenary to spawn
-            // If we have 0 mercenaries, the next one (1st) spawns in 5 seconds
-            // If we have 1 mercenary, the next one (2nd) spawns in 32 seconds
-            // If we have 8 mercenaries, the next one (9th) spawns in 300 seconds
-            
-            // Cap at max interval if we're at or above max capacity
-            if (unhiredCount >= MaxMercenariesInTavern)
-            {
-                return GameConfig.MercenaryMaxSpawnIntervalSeconds;
-            }
-
-            // Calculate progressive interval for the NEXT spawn
-            // Formula: linear interpolation from min to max based on unhired count
-            // unhiredCount 0 (spawning 1st merc) -> 5 seconds
-            // unhiredCount 1 (spawning 2nd merc) -> 32 seconds
-            // unhiredCount 8 (spawning 9th merc) -> 300 seconds
-            var t = unhiredCount / (float)(MaxMercenariesInTavern - 1); // 0 to 1 progression
-            var interval = GameConfig.MercenaryMinSpawnIntervalSeconds + 
-                          (t * (GameConfig.MercenaryMaxSpawnIntervalSeconds - GameConfig.MercenaryMinSpawnIntervalSeconds));
-            
-            return interval;
+            return GetUnhiredMercenaries().Count == 0
+                ? GameConfig.MercenaryMinSpawnIntervalSeconds
+                : GameConfig.MercenarySpawnIntervalSeconds;
         }
 
-        /// <summary>Attempts to spawn a new mercenary</summary>
-        private void TrySpawnMercenary()
+        /// <summary>
+        /// Attempts to spawn a new mercenary. Returns false (leaving the spawn timer pending)
+        /// when the tavern has no free seat — patrons are never evicted to make room; seats
+        /// free up when patrons finish dining, run out of patience, or get hired.
+        /// </summary>
+        private bool TrySpawnMercenary()
         {
             // Don't spawn if already in the process of removing a mercenary
             if (_isRemovingMercenary)
-                return;
+                return false;
 
-            // Count unhired mercenaries
-            var unhiredMercenaries = GetUnhiredMercenaries();
-
-            if (unhiredMercenaries.Count >= MaxMercenariesInTavern)
-            {
-                // Find the oldest evictable unhired mercenary (lowest SpawnId) using for-loop min-scan.
-                // Skip patrons that are FoodDelivered or Eating — do not interrupt their meal.
-                Entity oldestMercenary = null;
-                int oldestSpawnId = int.MaxValue;
-                for (int i = 0; i < unhiredMercenaries.Count; i++)
-                {
-                    var comp = unhiredMercenaries[i].GetComponent<MercenaryComponent>();
-                    if (comp == null) continue;
-
-                    // Skip patrons mid-meal
-                    var patronComp = unhiredMercenaries[i].GetComponent<ECS.Components.TavernPatronComponent>();
-                    if (patronComp != null && (patronComp.State == ECS.Components.PatronState.FoodDelivered
-                        || patronComp.State == ECS.Components.PatronState.Eating))
-                        continue;
-
-                    if (comp.SpawnId < oldestSpawnId)
-                    {
-                        oldestSpawnId = comp.SpawnId;
-                        oldestMercenary = unhiredMercenaries[i];
-                    }
-                }
-
-                if (oldestMercenary != null)
-                {
-                    var mercName = oldestMercenary.GetComponent<MercenaryComponent>()?.LinkedMercenary?.Name ?? "Unknown";
-                    Debug.Log($"[MercenaryManager] Tavern full - oldest mercenary {mercName} will leave to make room");
-
-                    // Start the walk-off-and-remove process
-                    _isRemovingMercenary = true;
-                    Core.StartCoroutine(WalkOffscreenAndRemove(oldestMercenary));
-                    return; // Don't spawn yet - wait for removal to complete
-                }
-                // All evictable candidates are mid-meal — skip spawning this cycle
-                return;
-            }
+            // Only spawn when there's still room at a table
+            if (GetUnhiredMercenaries().Count >= MaxMercenariesInTavern)
+                return false;
 
             // Find available tavern position
             var availablePosition = GetAvailableTavernPosition();
             if (!availablePosition.HasValue)
-            {
-                Debug.Warn("[MercenaryManager] No available tavern positions");
-                return;
-            }
+                return false;
 
             // Spawn new mercenary
             SpawnMercenary(availablePosition.Value);
-            
-            // Calculate and log the interval for the NEXT spawn
-            var nextInterval = GetSpawnInterval();
-            var nextMercenaryNumber = GetUnhiredMercenaries().Count + 1;
-            Debug.Log($"[MercenaryManager] Timer reset. Next mercenary (#{nextMercenaryNumber}) will spawn in {nextInterval:F1} seconds");
+            Debug.Log($"[MercenaryManager] Patron spawned. Next arrives in {GetSpawnInterval():F0}s when a seat is free");
+            return true;
         }
 
         /// <summary>Spawns a mercenary at the spawn position and moves them to tavern</summary>

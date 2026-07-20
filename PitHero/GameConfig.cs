@@ -73,9 +73,9 @@ namespace PitHero
         public const float HeroJumpSpeed = 4f; //Jump speed in tiles per second
 
         // Mercenary configuration
-        public const float MercenaryMinSpawnIntervalSeconds = 5f; // First mercenary spawns after 5 seconds
+        public const float MercenaryMinSpawnIntervalSeconds = 5f; // First mercenary (empty tavern) spawns after 5 seconds
         public const float BaseMonsterJoinChance = 0.10f;
-        public const float MercenaryMaxSpawnIntervalSeconds = 300f; // 9th mercenary spawns after 5 minutes (300 seconds)
+        public const float MercenarySpawnIntervalSeconds = 120f; // A new patron arrives every 2 scaled minutes while a seat is free
 
         // Monster house configuration
         public const int MonsterHouseCapacity = 16; // Max allied monsters that can live in one Monster House
@@ -202,8 +202,9 @@ namespace PitHero
         public const float EatSnackSeconds = 5f;                // eat time by dish size
         public const float EatMealSeconds = 7f;
         public const float EatFeastSeconds = 10f;
-        public const float PatronPatiencePreOrderSeconds = 90f;   // in-game minutes a patron waits for a server to take their order
-        public const float PatronPatiencePostOrderSeconds = 300f; // in-game minutes a patron waits for ordered food to arrive
+        public const float PatronPatiencePreOrderSeconds = 600f;  // scaled seconds a patron waits for a server to take their order (10 min)
+        public const float PatronPatiencePostOrderSeconds = 600f; // scaled seconds a patron waits for ordered food to arrive (10 min)
+        public const float PatronLingerAfterEatingSeconds = 300f; // scaled seconds a patron sticks around after finishing their meal (5 min)
         public const float DishTipChance = 0.5f;                // chance an unhired merc tips on finishing a meal
         public const float DishTipMinPercent = 0.05f;           // tip is 5-15% of dish price, rounded up
         public const float DishTipMaxPercent = 0.15f;

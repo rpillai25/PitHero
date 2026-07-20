@@ -42,6 +42,7 @@ namespace PitHero.ECS.Components
         private KitchenTaskCoordinator _coordinator;
         private GameStateService _gameState;
         private float _elapsed;
+        private bool _walkedOff;
 
         public override void OnAddedToEntity()
         {
@@ -125,7 +126,12 @@ namespace PitHero.ECS.Components
                     break;
 
                 case PatronState.FinishedEating:
-                    // Walk-off is triggered by FinishEating; nothing to do here
+                    // Stick around a while after the meal before heading out
+                    if (!_walkedOff && _elapsed >= GameConfig.PatronLingerAfterEatingSeconds)
+                    {
+                        _walkedOff = true;
+                        WalkOffViaMercenaryManager();
+                    }
                     break;
             }
         }
@@ -133,6 +139,7 @@ namespace PitHero.ECS.Components
         private void FinishEating()
         {
             State = PatronState.FinishedEating;
+            _elapsed = 0f; // linger timer starts now; the walk-off happens in Update
 
             if (ActiveTicket != null)
             {
@@ -158,9 +165,6 @@ namespace PitHero.ECS.Components
 
                 _coordinator?.NotifyPatronFinishedEating(ActiveTicket);
             }
-
-            // Walk off via MercenaryManager
-            WalkOffViaMercenaryManager();
         }
 
         private void LeaveOnPatienceExpiry()
@@ -172,6 +176,8 @@ namespace PitHero.ECS.Components
 
             State = PatronState.FinishedEating;
 
+            // Out of patience — no lingering, leave right away
+            _walkedOff = true;
             WalkOffViaMercenaryManager();
         }
 
