@@ -182,11 +182,11 @@ namespace PitHero.UI
         {
             var sb = new System.Text.StringBuilder(64);
             if (def.RestoreHP > 0)
-                Append(sb, "HP +" + def.RestoreHP + " now");
+                Append(sb, "Restores " + def.RestoreHP + " HP");
             if (def.RestoreFullMP)
-                Append(sb, "Full MP now");
+                Append(sb, "Restores all MP");
             else if (def.RestoreMP > 0)
-                Append(sb, "MP +" + def.RestoreMP + " now");
+                Append(sb, "Restores " + def.RestoreMP + " MP");
             for (int b = 0; b < def.Buffs.Length; b++)
             {
                 var buff = def.Buffs[b];
