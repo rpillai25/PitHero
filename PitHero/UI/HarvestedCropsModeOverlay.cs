@@ -34,17 +34,27 @@ namespace PitHero.UI
         private CropType _descCropType;
         private int _descCount;
 
-        // Bottom-row buttons. "Sell all" (aggregate) shows only in the all-storages view; "Move all"
-        // and "Sell all" (this storage) show only in the per-storage view.
+        // Bottom-row buttons. "Sell all crops" (aggregate) shows only in the all-storages view;
+        // "Move all crops" and "Sell these crops" act on the storage currently shown.
         private TextButton _sellAllButton;      // aggregate — sells across every storage
         private TextButton _moveAllButton;      // per-storage — redistribute to other storages
-        private TextButton _sellStorageButton;  // per-storage — sell this storage's crops
+        private TextButton _sellStorageButton;  // per-storage — sell the shown storage's crops
         private TextButton _closeButton;
         private Table _buttonRow;
 
-        private const float SlotSize = 40f;
-        private const float WinPad   = 16f;
-        private const int   Columns  = 8;
+        // Aggregate view only: one page per Crop Storage building. Empty in the per-building view.
+        private PagerRow _pagerRow;
+
+        private const float SlotSize     = 40f;
+        private const float WinPad       = 16f;
+        private const int   Columns      = 8;
+        private const float ButtonWidth  = 110f;
+        private const float ButtonHeight = 16f;
+        // One page is 4 rows of 44px (40px slot + 2px pad each side), so 224 fits a full storage
+        // without scrolling while keeping the window clear of the top of the screen.
+        private const float ScrollHeight = 224f;
+        // Upward nudge off centre so the window clears the bottom UI bars.
+        private const float CenterYBias  = 30f;
 
         // When >= 0, only this Crop Storage building's slots are shown (UniqueId).
         private int _filterBuildingId = -1;
@@ -76,38 +86,99 @@ namespace PitHero.UI
         /// <summary>Called when the player enters harvested-crops mode; rebuilds and shows the grid.</summary>
         public void OnEnterHarvestedCropsMode()
         {
+            RefreshViewer();
+        }
+
+        /// <summary>
+        /// Re-lays out the pager and button row for the storage now being shown, rebuilds its slot grid
+        /// and re-packs the window. The pager is laid out first because everything downstream reads the
+        /// page index, which Configure clamps.
+        /// </summary>
+        private void RefreshViewer()
+        {
+            LayoutPager();
             LayoutButtonRow();
             RebuildSlots();
             ShowInventoryWindow();
         }
 
         /// <summary>
-        /// Rebuilds the bottom button row. The all-storages (aggregate) view offers "Sell all crops"
-        /// across every storage; the per-storage view offers "Move all crops" (when another storage
-        /// exists) and "Sell all crops" for that one storage — both only while it holds crops.
+        /// Points the pager at one page per Crop Storage. Only the aggregate view is paged — the
+        /// per-building view opened from the building context menu already shows a single storage.
+        /// </summary>
+        private void LayoutPager()
+        {
+            int pageCount = _filterBuildingId >= 0
+                ? 0
+                : GetStorageBuildings(Core.Services?.GetService<BuildingService>()).Count;
+            _pagerRow.Configure(pageCount);
+        }
+
+        /// <summary>
+        /// Rebuilds the bottom button row. "Sell all crops" (every storage at once) is offered only in
+        /// the aggregate view; "Move all crops" (when another storage exists) and "Sell these crops"
+        /// act on the storage currently shown, and appear only while it holds crops.
         /// </summary>
         private void LayoutButtonRow()
         {
             _buttonRow.Clear();
             var storage = Core.Services.GetService<CropStorageInventoryService>();
             var buildingService = Core.Services.GetService<BuildingService>();
-            if (_filterBuildingId < 0)
-            {
-                // Aggregate view: offer "Sell all" only when at least one storage holds crops.
-                if (AnyStorageHasCrops(storage, buildingService))
-                    _buttonRow.Add(_sellAllButton).Width(120f).SetPadRight(8f);
-            }
-            else
-            {
-                bool hasCrops = storage != null && !storage.IsEmpty(_filterBuildingId);
-                bool otherStorageExists = (buildingService?.CropStorageCount ?? 0) > 1;
 
-                if (hasCrops && otherStorageExists)
-                    _buttonRow.Add(_moveAllButton).Width(120f).SetPadRight(8f);
-                if (hasCrops)
-                    _buttonRow.Add(_sellStorageButton).Width(120f).SetPadRight(8f);
+            if (_filterBuildingId < 0 && AnyStorageHasCrops(storage, buildingService))
+                _buttonRow.Add(_sellAllButton).Width(ButtonWidth).SetMinHeight(ButtonHeight).SetPadRight(8f);
+
+            int shownId = CurrentPageBuildingId;
+            bool hasCrops = storage != null && shownId >= 0 && !storage.IsEmpty(shownId);
+            bool otherStorageExists = (buildingService?.CropStorageCount ?? 0) > 1;
+
+            if (hasCrops && otherStorageExists)
+                _buttonRow.Add(_moveAllButton).Width(ButtonWidth).SetMinHeight(ButtonHeight).SetPadRight(8f);
+            if (hasCrops)
+                _buttonRow.Add(_sellStorageButton).Width(ButtonWidth).SetMinHeight(ButtonHeight).SetPadRight(8f);
+
+            _buttonRow.Add(_closeButton).Width(100f).SetMinHeight(ButtonHeight);
+        }
+
+        /// <summary>
+        /// Crop Storage buildings in stable UniqueId order — the order pages are numbered in. Collapses
+        /// to the single filtered storage in the per-building view.
+        /// </summary>
+        private System.Collections.Generic.List<PlacedBuilding> GetStorageBuildings(BuildingService buildingService)
+        {
+            var result = new System.Collections.Generic.List<PlacedBuilding>();
+            if (buildingService == null)
+                return result;
+
+            var all = buildingService.GetAll();
+            for (int i = 0; i < all.Count; i++)
+            {
+                if (all[i].Type != BuildingType.CropStorage)
+                    continue;
+                if (_filterBuildingId >= 0 && all[i].UniqueId != _filterBuildingId)
+                    continue;
+                result.Add(all[i]);
             }
-            _buttonRow.Add(_closeButton).Width(100f);
+            result.Sort((a, b) => a.UniqueId.CompareTo(b.UniqueId));
+            return result;
+        }
+
+        /// <summary>
+        /// UniqueId of the storage the per-storage actions apply to: the filtered building in the
+        /// per-building view, or the current page's building in the aggregate view. -1 when no storage
+        /// is being shown.
+        /// </summary>
+        private int CurrentPageBuildingId
+        {
+            get
+            {
+                if (_filterBuildingId >= 0)
+                    return _filterBuildingId;
+
+                var buildings = GetStorageBuildings(Core.Services?.GetService<BuildingService>());
+                int page = _pagerRow?.PageIndex ?? 0;
+                return (page >= 0 && page < buildings.Count) ? buildings[page].UniqueId : -1;
+            }
         }
 
         /// <summary>True if any Crop Storage building currently holds at least one harvested crop.</summary>
@@ -122,10 +193,10 @@ namespace PitHero.UI
             return false;
         }
 
-        /// <summary>Redistributes this storage's crops across the other storages (with confirmation).</summary>
+        /// <summary>Redistributes the shown storage's crops across the other storages (with confirmation).</summary>
         private void OnMoveAllStorageClicked()
         {
-            int buildingId = _filterBuildingId;
+            int buildingId = CurrentPageBuildingId;
             if (buildingId < 0)
                 return;
 
@@ -136,17 +207,15 @@ namespace PitHero.UI
                     Core.Services.GetService<CropStorageInventoryService>()
                         ?.MoveAllCropsToOtherStorages(buildingId);
                     _descWindow?.SetVisible(false);
-                    LayoutButtonRow();
-                    RebuildSlots();
-                    ShowInventoryWindow();
+                    RefreshViewer();
                 });
             dialog.Show(_stage);
         }
 
-        /// <summary>Sells every harvested crop in this one storage (with confirmation).</summary>
+        /// <summary>Sells every harvested crop in the shown storage (with confirmation).</summary>
         private void OnSellStorageClicked()
         {
-            int buildingId = _filterBuildingId;
+            int buildingId = CurrentPageBuildingId;
             var storage = Core.Services.GetService<CropStorageInventoryService>();
             if (buildingId < 0 || storage == null)
                 return;
@@ -159,7 +228,7 @@ namespace PitHero.UI
 
             int totalGold = gold;
             string prompt = string.Format(GetText(UITextKey.DialogSellStorageCropsPrompt), totalGold);
-            var dialog = new ConfirmationDialog(GetText(UITextKey.ButtonSellAllCrops), prompt,
+            var dialog = new ConfirmationDialog(GetText(UITextKey.ButtonSellTheseCrops), prompt,
                 PitHeroSkin.CreateSkin(),
                 onYes: () =>
                 {
@@ -176,9 +245,7 @@ namespace PitHero.UI
 #endif
                     storage.ClearBuilding(buildingId);
                     _descWindow?.SetVisible(false);
-                    LayoutButtonRow();
-                    RebuildSlots();
-                    ShowInventoryWindow();
+                    RefreshViewer();
                 });
             dialog.Show(_stage);
         }
@@ -229,9 +296,7 @@ namespace PitHero.UI
                         if (all[b].Type == BuildingType.CropStorage)
                             storage.ClearBuilding(all[b].UniqueId);
                     _descWindow?.SetVisible(false);
-                    LayoutButtonRow();
-                    RebuildSlots();
-                    ShowInventoryWindow();
+                    RefreshViewer();
                 });
             dialog.Show(_stage);
         }
@@ -242,6 +307,7 @@ namespace PitHero.UI
             _inventoryWindow?.SetVisible(false);
             _descWindow?.SetVisible(false);
             _filterBuildingId = -1;
+            _pagerRow?.Reset();
         }
 
         /// <summary>
@@ -268,7 +334,12 @@ namespace PitHero.UI
             _slotTable = new Table();
             var scroll = new ScrollPane(_slotTable, skin, "ph-default");
             scroll.SetScrollingDisabled(true, false);
-            outer.Add(scroll).Width(SlotSize * Columns + 48f).Height(240f);
+            outer.Add(scroll).Width(SlotSize * Columns + 48f).Height(ScrollHeight);
+            outer.Row();
+
+            _pagerRow = new PagerRow(skin);
+            _pagerRow.OnPageChanged += RefreshViewer;
+            outer.Add(_pagerRow);
             outer.Row();
 
             _buttonRow = new Table();
@@ -276,7 +347,7 @@ namespace PitHero.UI
             _sellAllButton.OnClicked += (_) => OnSellAllClicked();
             _moveAllButton = new TextButton(GetText(UITextKey.ButtonMoveAllCrops), skin, "ph-default");
             _moveAllButton.OnClicked += (_) => OnMoveAllStorageClicked();
-            _sellStorageButton = new TextButton(GetText(UITextKey.ButtonSellAllCrops), skin, "ph-default");
+            _sellStorageButton = new TextButton(GetText(UITextKey.ButtonSellTheseCrops), skin, "ph-default");
             _sellStorageButton.OnClicked += (_) => OnSellStorageClicked();
             _closeButton = new TextButton(GetText(UITextKey.ButtonClose), skin, "ph-default");
             _closeButton.OnClicked += (_) => RequestExitHarvestedCropsMode?.Invoke();
@@ -296,49 +367,38 @@ namespace PitHero.UI
             if (storage == null || buildingService == null)
                 return;
 
-            // Crop Storage buildings in stable UniqueId order so the grid layout never reshuffles.
-            var all = buildingService.GetAll();
-            var storageBuildings = new System.Collections.Generic.List<PlacedBuilding>();
-            for (int i = 0; i < all.Count; i++)
-            {
-                if (all[i].Type != BuildingType.CropStorage)
-                    continue;
-                if (_filterBuildingId >= 0 && all[i].UniqueId != _filterBuildingId)
-                    continue;
-                storageBuildings.Add(all[i]);
-            }
-            storageBuildings.Sort((a, b) => a.UniqueId.CompareTo(b.UniqueId));
+            // One storage per page, so the grid is always a single 8x4 block belonging to one building.
+            int buildingId = CurrentPageBuildingId;
+            if (buildingId < 0)
+                return;
 
+            var slots = storage.GetSlots(buildingId);
             int col = 0;
-            for (int b = 0; b < storageBuildings.Count; b++)
+            for (int s = 0; s < slots.Count; s++)
             {
-                var slots = storage.GetSlots(storageBuildings[b].UniqueId);
-                for (int s = 0; s < slots.Count; s++)
+                var slot = slots[s];
+                if (slot.IsEmpty)
                 {
-                    var slot = slots[s];
-                    if (slot.IsEmpty)
-                    {
-                        // Empty slot: render the inventory-slot background only.
-                        var blank = new HarvestSlotButton(null, slot.Type, 0, null);
-                        _slotTable.Add(blank).Size(SlotSize, SlotSize).Pad(2f);
-                    }
-                    else
-                    {
-                        var sprite = _cropsAtlas.GetSprite(CropConfig.GetHarvestSpriteName(slot.Type));
-                        var cell = new HarvestSlotButton(sprite, slot.Type, slot.Count,
-                            GetHarvestName(slot.Type));
-                        int capturedBuildingId = storageBuildings[b].UniqueId;
-                        int capturedSlot = s;
-                        var captured = slot.Type;
-                        int capturedCount = slot.Count;
-                        cell.OnClicked += () => ShowDescription(capturedBuildingId, capturedSlot, captured, capturedCount);
-                        _slotTable.Add(cell).Size(SlotSize, SlotSize).Pad(2f);
-                    }
-
-                    col++;
-                    if (col % Columns == 0)
-                        _slotTable.Row();
+                    // Empty slot: render the inventory-slot background only.
+                    var blank = new HarvestSlotButton(null, slot.Type, 0, null);
+                    _slotTable.Add(blank).Size(SlotSize, SlotSize).Pad(2f);
                 }
+                else
+                {
+                    var sprite = _cropsAtlas.GetSprite(CropConfig.GetHarvestSpriteName(slot.Type));
+                    var cell = new HarvestSlotButton(sprite, slot.Type, slot.Count,
+                        GetHarvestName(slot.Type));
+                    int capturedBuildingId = buildingId;
+                    int capturedSlot = s;
+                    var captured = slot.Type;
+                    int capturedCount = slot.Count;
+                    cell.OnClicked += () => ShowDescription(capturedBuildingId, capturedSlot, captured, capturedCount);
+                    _slotTable.Add(cell).Size(SlotSize, SlotSize).Pad(2f);
+                }
+
+                col++;
+                if (col % Columns == 0)
+                    _slotTable.Row();
             }
         }
 
@@ -348,9 +408,21 @@ namespace PitHero.UI
             _inventoryWindow.Pack();
             float w = _inventoryWindow.GetWidth();
             float h = _inventoryWindow.GetHeight();
-            _inventoryWindow.SetPosition(
-                (_stage.GetWidth()  - w) / 2f,
-                (_stage.GetHeight() - h) / 2f - 30f);
+            float stageW = _stage.GetWidth();
+            float stageH = _stage.GetHeight();
+
+            // Sits slightly above centre to clear the bottom UI bars, then is clamped to the stage so a
+            // taller window — an extra button row, a larger slot grid — can never run off the top.
+            float x = (stageW - w) / 2f;
+            float y = (stageH - h) / 2f - CenterYBias;
+            if (y + h > stageH)
+                y = stageH - h;
+            if (y < 0f)
+                y = 0f;
+            if (x < 0f)
+                x = 0f;
+
+            _inventoryWindow.SetPosition(x, y);
             _inventoryWindow.SetVisible(true);
         }
 
@@ -434,9 +506,7 @@ namespace PitHero.UI
                         storage?.ClearSlot(buildingId, slotIndex);
                     }
                     _descWindow.SetVisible(false);
-                    LayoutButtonRow();
-                    RebuildSlots();
-                    ShowInventoryWindow();
+                    RefreshViewer();
                 });
             dialog.Show(_stage);
         }

@@ -3,6 +3,7 @@ using Nez;
 using Nez.UI;
 using PitHero.Config;
 using PitHero.Services;
+using PitHero.Util;
 using RolePlayingFramework.AlliedMonsters;
 
 namespace PitHero.UI
@@ -33,6 +34,9 @@ namespace PitHero.UI
 
         // When >= 0, the roster is filtered to monsters living in this Monster House (UniqueId).
         private int _houseFilterId = -1;
+
+        // Aggregate view only: one page per Monster House. Empty in the per-house view.
+        private PagerRow _pagerRow;
 
         private const float SpriteSize = 32f;
         private static readonly Color BrownColor = new Color(71, 36, 7);
@@ -123,6 +127,7 @@ namespace PitHero.UI
         {
             // Normal toggle always shows the full roster.
             _houseFilterId = -1;
+            _pagerRow?.Reset();
 
             // Properly close Settings UI if it's open (single window policy)
             _settingsUI?.ForceCloseSettings();
@@ -155,7 +160,8 @@ namespace PitHero.UI
         private void CreateMonsterWindow(Skin skin)
         {
             _monsterWindow = new Window(GetText(TextType.UI, UITextKey.WindowMonsters), skin);
-            _monsterWindow.SetSize(460f, 280f);
+            // Nearly the full 360px virtual stage height, so the roster list fills the window.
+            _monsterWindow.SetSize(460f, 340f);
 
             _monsterListTable = new Table();
             _monsterListTable.Top().Left();
@@ -163,7 +169,18 @@ namespace PitHero.UI
             _scrollPane = new ScrollPane(_monsterListTable, skin, "ph-default");
             _scrollPane.SetScrollingDisabled(true, false);
             _scrollPane.SetFadeScrollBars(false);
-            _monsterWindow.Add(_scrollPane).Expand().Fill().Pad(4f);
+            // Content table so the pager can sit under the list without disturbing the window's title
+            // bar. The pager takes its height from the scroll pane's expanding cell, so the window keeps
+            // its fixed size whether or not there is more than one house to page through.
+            var content = new Table();
+            content.Add(_scrollPane).Expand().Fill().Pad(4f);
+            content.Row();
+
+            _pagerRow = new PagerRow(skin);
+            _pagerRow.OnPageChanged += RefreshMonsterList;
+            content.Add(_pagerRow).SetPadBottom(4f);
+
+            _monsterWindow.Add(content).Expand().Fill();
             _monsterWindow.SetVisible(false);
         }
 
@@ -191,7 +208,51 @@ namespace PitHero.UI
                 if (pauseService != null)
                     pauseService.IsPaused = false;
                 _houseFilterId = -1;
+                _pagerRow?.Reset();
             }
+        }
+
+        /// <summary>
+        /// Monster House buildings in stable UniqueId order — the order pages are numbered in.
+        /// </summary>
+        private System.Collections.Generic.List<PlacedBuilding> GetMonsterHouses()
+        {
+            var result = new System.Collections.Generic.List<PlacedBuilding>();
+            var buildingService = Core.Services?.GetService<BuildingService>();
+            if (buildingService == null)
+                return result;
+
+            var all = buildingService.GetAll();
+            for (int i = 0; i < all.Count; i++)
+                if (all[i].Type == BuildingType.MonsterHouse)
+                    result.Add(all[i]);
+
+            result.Sort((a, b) => a.UniqueId.CompareTo(b.UniqueId));
+            return result;
+        }
+
+        private static bool IsLiveHouse(System.Collections.Generic.List<PlacedBuilding> houses, int houseId)
+        {
+            for (int i = 0; i < houses.Count; i++)
+                if (houses[i].UniqueId == houseId)
+                    return true;
+            return false;
+        }
+
+        /// <summary>
+        /// Whether a monster belongs on the page currently shown. With no houses placed everything is
+        /// listed. Monsters carrying a dangling MonsterHouseId — recruited before house-linking, or
+        /// outliving a sold house, until FarmTaskCoordinator re-homes them — are folded onto page 1 so
+        /// that no monster becomes unreachable.
+        /// </summary>
+        private static bool ShouldShowMonster(AlliedMonster monster, int targetHouseId, bool foldOrphans,
+            System.Collections.Generic.List<PlacedBuilding> houses)
+        {
+            if (targetHouseId < 0)
+                return true;
+            if (monster.MonsterHouseId == targetHouseId)
+                return true;
+            return foldOrphans && !IsLiveHouse(houses, monster.MonsterHouseId);
         }
 
         private void RefreshMonsterList()
@@ -199,14 +260,32 @@ namespace PitHero.UI
             _monsterListTable.Clear();
             var manager = Core.Services.GetService<AlliedMonsterManager>();
 
-            // Count how many monsters will actually be shown (respecting any house filter).
+            // One page per Monster House in the aggregate view; the per-house view is never paged.
+            var houses = GetMonsterHouses();
+            _pagerRow.Configure(_houseFilterId >= 0 ? 0 : houses.Count);
+
+            // The house whose monsters are listed: the filtered one, or the current page's.
+            int targetHouseId = _houseFilterId;
+            bool foldOrphans = false;
+            if (targetHouseId < 0)
+            {
+                int page = _pagerRow.PageIndex;
+                if (page >= 0 && page < houses.Count)
+                {
+                    targetHouseId = houses[page].UniqueId;
+                    foldOrphans = page == 0;
+                }
+            }
+
+            // Count how many monsters will actually be shown; must match the render loop below or the
+            // "no monsters" fallback desyncs from the rows drawn.
             int visibleCount = 0;
             if (manager != null)
             {
                 var roster = manager.AlliedMonsters;
                 for (int i = 0; i < roster.Count; i++)
                 {
-                    if (_houseFilterId >= 0 && roster[i].MonsterHouseId != _houseFilterId)
+                    if (!ShouldShowMonster(roster[i], targetHouseId, foldOrphans, houses))
                         continue;
                     visibleCount++;
                 }
@@ -247,8 +326,8 @@ namespace PitHero.UI
             {
                 var monster = monsters[i];
 
-                // Skip monsters that don't live in the filtered house (when a filter is active).
-                if (_houseFilterId >= 0 && monster.MonsterHouseId != _houseFilterId)
+                // Skip monsters that don't belong to the house currently being shown.
+                if (!ShouldShowMonster(monster, targetHouseId, foldOrphans, houses))
                     continue;
 
                 // Build a row: [48x48 sprite cell] [textTable] [jobTable]
@@ -434,6 +513,7 @@ namespace PitHero.UI
                 if (pauseService != null)
                     pauseService.IsPaused = false;
                 _houseFilterId = -1;
+                _pagerRow?.Reset();
                 Debug.Log("[MonsterUI] Monster window force closed by single window policy");
             }
         }

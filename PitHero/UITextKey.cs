@@ -13,6 +13,7 @@ namespace PitHero
         public const string ButtonAddMonsters = "ButtonAddMonsters";
         public const string ButtonMoveAllCrops = "ButtonMoveAllCrops";
         public const string ButtonSellAllCrops = "ButtonSellAllCrops";
+        public const string ButtonSellTheseCrops = "ButtonSellTheseCrops";
         public const string ButtonSellBuilding = "ButtonSellBuilding";
         public const string ButtonSell = "ButtonSell";
         public const string ButtonSave = "ButtonSave";
