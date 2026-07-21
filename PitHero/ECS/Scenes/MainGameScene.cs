@@ -2351,12 +2351,16 @@ namespace PitHero.ECS.Scenes
             var mercenaries = FindEntitiesWithTag(GameConfig.TAG_MERCENARY);
             
             Entity newHoveredMercenary = null;
-            
-            for (int i = 0; i < mercenaries.Count; i++)
+
+            // Suppress hover entirely while the cursor is outside the game window so the SelectBox
+            // doesn't latch onto a mercenary the user isn't actually pointing at.
+            bool mouseInWindow = Util.MouseUtils.IsMouseInsideWindow();
+
+            for (int i = 0; mouseInWindow && i < mercenaries.Count; i++)
             {
                 var mercEntity = mercenaries[i];
                 var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
-                
+
                 // Skip hired mercenaries and mercenaries being removed
                 if (mercComponent == null || mercComponent.IsHired || mercComponent.IsBeingRemoved)
                     continue;
@@ -2470,6 +2474,10 @@ namespace PitHero.ECS.Scenes
             if (!Input.LeftMouseButtonPressed)
                 return;
 
+            // Ignore clicks made while the cursor is outside the game window (e.g. on a second monitor).
+            if (!Util.MouseUtils.IsMouseInsideWindow())
+                return;
+
             // Don't process clicks if dialog is already open
             if (_mercenaryHireDialog?.IsDialogVisible == true)
                 return;
@@ -2512,12 +2520,14 @@ namespace PitHero.ECS.Scenes
         }
 
         /// <summary>
-        /// True when placed-building hover/click interactions should be suppressed — while relocating,
-        /// during any farm sub-mode, when the context menu is already open, or when the pointer is
-        /// over UI.
+        /// True when placed-building hover/click interactions should be suppressed — while the cursor
+        /// is outside the game window, while relocating, during any farm sub-mode, when the context
+        /// menu is already open, or when the pointer is over UI.
         /// </summary>
         private bool BuildingInteractionsBlocked()
         {
+            if (!Util.MouseUtils.IsMouseInsideWindow())
+                return true;
             if (_buildingModeOverlay?.IsMoving == true)
                 return true;
             if (_buildingContextMenu?.IsVisible == true)

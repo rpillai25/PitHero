@@ -177,6 +177,10 @@ namespace PitHero.UI
             if (_stage.Hit(_stage.GetMousePosition()) != null)
                 return;
 
+            // The cursor may be outside the window (e.g. on a second monitor); don't track it there.
+            if (!MouseUtils.IsMouseInsideWindow())
+                return;
+
             var worldPos = _scene.Camera.MouseToWorldPoint();
             int tileX = (int)(worldPos.X / GameConfig.TileSize);
             int tileY = (int)(worldPos.Y / GameConfig.TileSize);
@@ -358,6 +362,10 @@ namespace PitHero.UI
         private void UpdatePlacingState()
         {
             if (_stage.Hit(_stage.GetMousePosition()) != null)
+                return;
+
+            // The cursor may be outside the window (e.g. on a second monitor); don't track it there.
+            if (!MouseUtils.IsMouseInsideWindow())
                 return;
 
             var worldPos = _scene.Camera.MouseToWorldPoint();

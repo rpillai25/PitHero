@@ -164,6 +164,14 @@ namespace PitHero.UI
                 return;
             }
 
+            // Outside the game window (e.g. on a second monitor) the raw OS position still maps onto
+            // a valid tile — ignore it rather than planting/removing there.
+            if (!MouseUtils.IsMouseInsideWindow())
+            {
+                _lastDragTile = NoTile;
+                return;
+            }
+
             if (_state == PlacementState.Placing)
             {
                 // Ghost: bottom-center of sprite aligns to bottom of tile

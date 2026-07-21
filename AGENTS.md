@@ -87,6 +87,14 @@ See `PitHero/docs/RenderingSystem.md` for the full reference.  Key rules:
 - Never call `SetFontScale()` — load a larger bitmap font asset instead
 - Never set `FontColor` on the `ph-default` style directly — create a child style that inherits from it
 
+### Input
+- Any world-space mouse pick must gate on `MouseUtils.IsMouseInsideWindow()` before acting. The OS
+  reports coordinates outside the window (negative, or past `Screen.Width/Height`) when the cursor
+  is on another monitor, and `Camera.MouseToWorldPoint()` maps those onto real tiles — so an
+  ungated pick fires on objects the user never pointed at
+- Gate hover the same way as clicks, or outlines/ghosts track a cursor that isn't there
+- `Stage.Hit(Stage.GetMousePosition())` (pointer-over-UI) is a *separate* guard — most pick sites need both
+
 ### Localization
 - All display text lives in `Content/Localization/en-US/UI.txt`, accessed via `TextService.GetText(TextKey.X)`
 - No hardcoded display strings anywhere in game code (debug logs are exempt)

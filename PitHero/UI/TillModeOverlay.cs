@@ -105,7 +105,10 @@ namespace PitHero.UI
             // GetMousePosition() already returns stage-space (virtual-screen) coords for a non-fullscreen
             // UICanvas — passing it through ScreenToStageCoordinates would apply the scrolled world camera
             // transform and produce the wrong coordinates.
-            if (_stage != null && _stage.Hit(_stage.GetMousePosition()) != null)
+            // Likewise, don't till while the cursor is outside the game window (e.g. on a second
+            // monitor) — the raw OS position still maps onto a valid tile.
+            if ((_stage != null && _stage.Hit(_stage.GetMousePosition()) != null)
+                || !MouseUtils.IsMouseInsideWindow())
             {
                 _lastMarkDragTile   = NoTile;
                 _lastUnmarkDragTile = NoTile;
