@@ -53,6 +53,8 @@ namespace PitHero.UI
         // One page is 4 rows of 44px (40px slot + 2px pad each side), so 224 fits a full storage
         // without scrolling while keeping the window clear of the top of the screen.
         private const float ScrollHeight = 224f;
+        // Upward nudge off centre so the window clears the bottom UI bars.
+        private const float CenterYBias  = 30f;
 
         // When >= 0, only this Crop Storage building's slots are shown (UniqueId).
         private int _filterBuildingId = -1;
@@ -406,9 +408,21 @@ namespace PitHero.UI
             _inventoryWindow.Pack();
             float w = _inventoryWindow.GetWidth();
             float h = _inventoryWindow.GetHeight();
-            _inventoryWindow.SetPosition(
-                (_stage.GetWidth()  - w) / 2f,
-                (_stage.GetHeight() - h) / 2f - 30f);
+            float stageW = _stage.GetWidth();
+            float stageH = _stage.GetHeight();
+
+            // Sits slightly above centre to clear the bottom UI bars, then is clamped to the stage so a
+            // taller window — an extra button row, a larger slot grid — can never run off the top.
+            float x = (stageW - w) / 2f;
+            float y = (stageH - h) / 2f - CenterYBias;
+            if (y + h > stageH)
+                y = stageH - h;
+            if (y < 0f)
+                y = 0f;
+            if (x < 0f)
+                x = 0f;
+
+            _inventoryWindow.SetPosition(x, y);
             _inventoryWindow.SetVisible(true);
         }
 
