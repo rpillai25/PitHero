@@ -316,6 +316,7 @@ AddMonsterConfirmPrompt,Add {0} for {1} Gold
 # Crop Storage options (issue #285)
 ButtonMoveAllCrops,Move all crops
 ButtonSellAllCrops,Sell all crops
+ButtonSellTheseCrops,Sell these crops
 ButtonSellBuilding,Sell building
 ButtonSell,Sell
 DialogMoveCropsPrompt,Really move and redistribute crops to other storages?
