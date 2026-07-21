@@ -15,6 +15,7 @@ namespace PitHero.Farming
     {
         private readonly AstarGridGraph _graph;
         private readonly List<Point> _smoothed = new List<Point>(32);
+        private readonly List<Point> _staticWalls = new List<Point>(256);
         private readonly int _width;
         private readonly int _height;
 
@@ -31,10 +32,38 @@ namespace PitHero.Farming
             _graph = new AstarGridGraph(mapWidthTiles, mapHeightTiles);
         }
 
-        /// <summary>Rebuilds the wall set from the bottom two footprint rows of every placed building.</summary>
+        /// <summary>
+        /// Registers a permanent wall (static map collision — town/tavern/kitchen structures).
+        /// Static walls survive every RebuildWalls call.
+        /// </summary>
+        public void AddStaticWall(Point tile)
+        {
+            if (_graph.Walls.Add(tile))
+                _staticWalls.Add(tile);
+        }
+
+        /// <summary>Seeds static walls from every occupied tile of the map's Collision layer.</summary>
+        public void SeedStaticWalls(Nez.Tiled.TmxLayer collisionLayer)
+        {
+            if (collisionLayer == null)
+                return;
+            for (int y = 0; y < _height; y++)
+                for (int x = 0; x < _width; x++)
+                    if (collisionLayer.GetTile(x, y) != null)
+                        AddStaticWall(new Point(x, y));
+        }
+
+        /// <summary>
+        /// Rebuilds the wall set from static map collision plus the bottom two footprint rows of
+        /// every placed building.
+        /// </summary>
         public void RebuildWalls(BuildingService buildings)
         {
             _graph.Walls.Clear();
+            for (int i = 0; i < _staticWalls.Count; i++)
+                _graph.Walls.Add(_staticWalls[i]);
+            if (buildings == null)
+                return;
             var all = buildings.GetAll();
             for (int i = 0; i < all.Count; i++)
             {
@@ -59,6 +88,35 @@ namespace PitHero.Farming
 
         /// <summary>Returns a 4-directional tile path from start to goal, or null when unreachable.</summary>
         public List<Point> Search(Point start, Point goal) => _graph.Search(start, goal);
+
+        /// <summary>
+        /// Finds the passable 4-neighbor of an impassable goal (e.g. a table or counter tile)
+        /// closest to <paramref name="from"/>. Returns false when all four neighbors are solid.
+        /// </summary>
+        public bool TryFindPassableNeighbor(Point goal, Point from, out Point neighbor)
+        {
+            neighbor = goal;
+            int bestDist = int.MaxValue;
+            for (int i = 0; i < 4; i++)
+            {
+                var n = i switch
+                {
+                    0 => new Point(goal.X, goal.Y + 1),
+                    1 => new Point(goal.X - 1, goal.Y),
+                    2 => new Point(goal.X + 1, goal.Y),
+                    _ => new Point(goal.X, goal.Y - 1),
+                };
+                if (!IsPassable(n))
+                    continue;
+                int dist = System.Math.Abs(n.X - from.X) + System.Math.Abs(n.Y - from.Y);
+                if (dist < bestDist)
+                {
+                    bestDist = dist;
+                    neighbor = n;
+                }
+            }
+            return bestDist != int.MaxValue;
+        }
 
         /// <summary>
         /// Greedy string-pull: keeps only the waypoints needed to maintain line-of-sight, turning a

@@ -322,5 +322,30 @@ namespace PitHero
         public const string ButtonDeselectAll = "ButtonDeselectAll";
         public const string SettingsAutoSellKeepStacks = "SettingsAutoSellKeepStacks";
         public const string SettingsAutoSellKeepStacksTooltip = "SettingsAutoSellKeepStacksTooltip";
+        public const string TabFood = "TabFood";
+        public const string FoodFavoriteLabel = "FoodFavoriteLabel";
+        public const string FoodEatAtTavern = "FoodEatAtTavern";
+        public const string FoodEatAtTavernTooltip = "FoodEatAtTavernTooltip";
+        public const string FoodMissingIngredients = "FoodMissingIngredients";
+        public const string JobNameNone = "JobNameNone";
+        public const string JobNameFarming = "JobNameFarming";
+        public const string JobNameKitchen = "JobNameKitchen";
+        public const string JobNameFishing = "JobNameFishing";
+        public const string DishRoastedOnionSkewers = "DishRoastedOnionSkewers";
+        public const string DishTurnipOnionStew = "DishTurnipOnionStew";
+        public const string DishButteredBread = "DishButteredBread";
+        public const string DishCheesyMashedPotatoes = "DishCheesyMashedPotatoes";
+        public const string DishGardenSalad = "DishGardenSalad";
+        public const string DishGrilledCornWithButter = "DishGrilledCornWithButter";
+        public const string DishTomatoCheeseBisque = "DishTomatoCheeseBisque";
+        public const string DishCornChowder = "DishCornChowder";
+        public const string DishEggplantParmesan = "DishEggplantParmesan";
+        public const string DishGrapeJuice = "DishGrapeJuice";
+        public const string DishGrapeTart = "DishGrapeTart";
+        public const string DishSpicedEggplantSteak = "DishSpicedEggplantSteak";
+        public const string DishApplePie = "DishApplePie";
+        public const string DishPumpkinCreamSoup = "DishPumpkinCreamSoup";
+        public const string DishChilledWatermelonSorbet = "DishChilledWatermelonSorbet";
+        public const string DishHarvestFeastPlatter = "DishHarvestFeastPlatter";
     }
 }

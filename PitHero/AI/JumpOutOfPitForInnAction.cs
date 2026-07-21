@@ -106,9 +106,10 @@ namespace PitHero.AI
             if (!isNightSleep)
             {
                 var gameState = Core.Services.GetService<GameStateService>();
-                if (gameState == null || gameState.Funds < GameConfig.InnCostGold)
+                int innCost = Services.InnCostCalculator.GetCurrentPartyCost(hero.LinkedHero);
+                if (gameState == null || gameState.Funds < innCost)
                 {
-                    Debug.Log($"[JumpOutOfPitForInn] Not enough gold for inn. Have {gameState?.Funds ?? 0}, need {GameConfig.InnCostGold}. Setting InnExhausted.");
+                    Debug.Log($"[JumpOutOfPitForInn] Not enough gold for inn. Have {gameState?.Funds ?? 0}, need {innCost}. Setting InnExhausted.");
                     hero.InnExhausted = true;
                     return true; // Action complete (failed due to no gold)
                 }

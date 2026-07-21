@@ -73,9 +73,10 @@ namespace PitHero
         public const float HeroJumpSpeed = 4f; //Jump speed in tiles per second
 
         // Mercenary configuration
-        public const float MercenaryMinSpawnIntervalSeconds = 5f; // First mercenary spawns after 5 seconds
+        public const float MercenaryMinSpawnIntervalSeconds = 5f; // First mercenary (empty tavern) spawns after 5 seconds
         public const float BaseMonsterJoinChance = 0.10f;
-        public const float MercenaryMaxSpawnIntervalSeconds = 300f; // 9th mercenary spawns after 5 minutes (300 seconds)
+        public const float MercenarySpawnIntervalMinSeconds = 60f;  // New patrons arrive every 1-2 scaled minutes...
+        public const float MercenarySpawnIntervalMaxSeconds = 120f; // ...rolled randomly per arrival
 
         // Monster house configuration
         public const int MonsterHouseCapacity = 16; // Max allied monsters that can live in one Monster House
@@ -93,7 +94,14 @@ namespace PitHero
         public const int InnkeeperTileY = 3;
         public const int InnPaymentTileX = 67; // Hero pays at (67, 3) facing right
         public const int InnPaymentTileY = 3;
-        public const int InnCostGold = 10; // Cost to sleep at inn
+        // Inn nap cost scales with the party: each member costs the base fee plus a surcharge
+        // per full 10 levels (level 30 -> 10 + 30 = 40g). Night sleep stays free.
+        public const int InnCostBaseGoldPerMember = 10;
+        public const int InnCostGoldPerTenLevels = 10;
+
+        /// <summary>Inn nap cost for one party member of the given level.</summary>
+        public static int GetInnCostForMember(int level)
+            => InnCostBaseGoldPerMember + InnCostGoldPerTenLevels * (level / 10);
         public const int CrystalBuyBackBasePrice = 100; // Base gold cost per crystal level for Second Chance Shop
 
         // Tavern seat configuration (for Stop Adventuring)
@@ -147,6 +155,69 @@ namespace PitHero
         public const float AppleHarvestJumpDurationSeconds = 0.6f; // duration of the apple-picking jump arc
         public const float AppleTreeTopHarvestOffsetPx = 26f;   // worker sprite centre rises to this many px below the apple-tree top
         public const float HarvestDepositSeconds = 2f;          // worker stays hidden "inside" the storage building this long after delivering
+
+        // Kitchen / Tavern Dining (issue #319)
+        public const int KitchenStove1TileX = 83;
+        public const int KitchenStove2TileX = 84;
+        public const int KitchenStove3TileX = 85;
+        public const int KitchenStoveTileY = 2;
+        public const int KitchenSinkTileX = 86;
+        public const int KitchenSinkTileY = 2;
+        public const int MaxKitchenCooks = 3;
+        public const int MaxKitchenServers = 2;
+        public const int MaxKitchenRunners = 2;
+        public const float KitchenHatOverlapPixels = 6f;        // how far the job hat's brim overlaps the head top
+        public const float KitchenHatCheckIntervalSeconds = 5f; // how often the coordinator re-checks that workers wear hats
+        public const int KitchenTicketBoardTileX = 82;          // servers post orders / cooks read them here
+        public const int KitchenTicketBoardTileY = 2;
+        public const int KitchenFridgeTileX = 87;               // cooks grab ingredients here; runners restock it
+        public const int KitchenFridgeTileY = 2;
+        public const int KitchenServingTableTileX = 87;         // serving tables at (87,3),(87,4),(87,5)
+        public const int KitchenServingTableFirstTileY = 3;
+        public const int KitchenServingSlotCount = 3;
+        // Runners wander this area (kitchen south corridor) while waiting for a fetch job
+        public const int KitchenRunnerWanderMinTileX = 83;
+        public const int KitchenRunnerWanderMinTileY = 6;
+        public const int KitchenRunnerWanderMaxTileX = 88;
+        public const int KitchenRunnerWanderMaxTileY = 8;
+        public const int ServerOrderMemoryLimit = 3;            // orders a server can hold before posting at the board
+        public const int ServerCarryDishLimit = 2;              // cooked dishes a server can carry at once
+        public const float TicketBoardPauseSeconds = 1f;        // pause at the board to post/read a ticket
+        public const int KitchenFridgeParPerCrop = 4;           // runner tops the fridge up to this many of each fetched crop
+        public const float KitchenRunnerSprintMultiplier = 3f;  // runner speed multiplier while fetching ingredients
+        public const float ServerWanderPauseSeconds = 2.5f;     // idle pause between server wander hops
+        // Tavern dining area bounds (server zones and wandering)
+        public const int TavernAreaMinTileX = 91;
+        public const int TavernAreaMaxTileX = 99;
+        public const int TavernTopZoneMinTileY = 2;             // top tables (93,3)/(97,3) and their seats
+        public const int TavernTopZoneMaxTileY = 4;
+        public const int TavernBottomZoneMinTileY = 5;          // bottom tables (93,7)/(97,7) and their seats
+        public const int TavernBottomZoneMaxTileY = 8;
+        public const float DishPriceMarkup = 1.25f;             // menu price = ingredient sell value x markup + effect premium
+        // Effect premium (gold per buff point) so dishes with better effects always cost more
+        public const int DishBuffStatGoldPerPoint = 15;         // ATK / DEF / AGI
+        public const int DishBuffMagicGoldPerPoint = 10;        // MAG (magnitudes run higher than physical stats)
+        public const int DishBuffEvasionGoldPerPoint = 3;       // EVA (magnitudes ~10)
+        public const int DishBuffRegenGoldPerPoint = 30;        // HP / MP regen per round
+        public const int DishPriceRoundTo = 5;                  // menu prices round to the nearest 5 gold
+        public const int DishPriceMin = 10;                     // minimum menu price
+        public const float CookSimpleBaseSeconds = 5f;          // cook time at CookingProficiency 1 by dish complexity
+        public const float CookStandardBaseSeconds = 7f;
+        public const float CookComplexBaseSeconds = 10f;
+        public const float CookProficiencySpeedStep = 0.06f;    // cook duration reduced 6% per proficiency point above 1
+        public const float CookDurationFloorSeconds = 5f;       // cook time never drops below 5 in-game minutes
+        public const float DeluxeChancePerProficiency = 0.05f;  // deluxe-dish chance per CookingProficiency point
+        public const float DeluxeChanceMax = 0.45f;
+        public const float DeluxeMagnitudeMultiplier = 1.5f;    // deluxe party dishes get +50% buff magnitude (rounded up)
+        public const float EatSnackSeconds = 5f;                // eat time by dish size
+        public const float EatMealSeconds = 7f;
+        public const float EatFeastSeconds = 10f;
+        public const float PatronPatiencePreOrderSeconds = 600f;  // scaled seconds a patron waits for a server to take their order (10 min)
+        public const float PatronPatiencePostOrderSeconds = 600f; // scaled seconds a patron waits for ordered food to arrive (10 min)
+        public const float PatronLingerAfterEatingSeconds = 300f; // scaled seconds a patron sticks around after finishing their meal (5 min)
+        public const float DishTipChance = 0.5f;                // chance an unhired merc tips on finishing a meal
+        public const float DishTipMinPercent = 0.05f;           // tip is 5-15% of dish price, rounded up
+        public const float DishTipMaxPercent = 0.15f;
 
         // Camera Configuration
         public const float CameraDefaultZoom = 1f; // default zoom level

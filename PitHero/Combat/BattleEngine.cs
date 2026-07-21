@@ -119,6 +119,18 @@ namespace PitHero.Combat
             for (int i = 0; i < _mercenaries.Count; i++)
                 _mercenaries[i].Combatant.ClearBattleState();
 
+            // Re-inject day-long meal buffs (issue #319). Pure list writes — consumes no
+            // battle RNG. Null-guarded: Core/services are absent in tests and VirtualGame.
+            var mealBuffs = Nez.Core.Instance != null
+                ? Nez.Core.Services.GetService<PitHero.Services.MealBuffService>()
+                : null;
+            if (mealBuffs != null)
+            {
+                mealBuffs.InjectBuffsAtBattleStart(hero.Combatant);
+                for (int i = 0; i < _mercenaries.Count; i++)
+                    mealBuffs.InjectBuffsAtBattleStart(_mercenaries[i].Combatant);
+            }
+
             // Build initial participant list: hero + mercs + monsters
             _participants.Clear();
             _participants.Add(new Participant { IsAlly = true, Ally = hero });
@@ -315,6 +327,11 @@ namespace PitHero.Combat
                 if (!already)
                 {
                     _participants.Add(new Participant { IsAlly = true, Ally = ally });
+                    // Late arrivals missed the battle-start meal-buff injection
+                    var mealBuffs = Nez.Core.Instance != null
+                        ? Nez.Core.Services.GetService<PitHero.Services.MealBuffService>()
+                        : null;
+                    mealBuffs?.InjectBuffsAtBattleStart(ally.Combatant);
                     Debug.Log($"[BattleEngine] {ally.Combatant.Name} joins the battle!");
                 }
             }
@@ -1405,6 +1422,10 @@ namespace PitHero.Combat
             if (type == BuffType.DefenseUp)  return "DEF+" + magnitude;
             if (type == BuffType.EvasionUp)  return "EVA+" + magnitude;
             if (type == BuffType.MPRegen)    return "MP+"  + magnitude;
+            if (type == BuffType.AttackUp)   return "ATK+" + magnitude;
+            if (type == BuffType.MagicUp)    return "MAG+" + magnitude;
+            if (type == BuffType.AgilityUp)  return "AGI+" + magnitude;
+            if (type == BuffType.HPRegen)    return "HP+"  + magnitude;
             return type.ToString() + "+" + magnitude;
         }
     }

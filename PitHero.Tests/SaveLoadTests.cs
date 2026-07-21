@@ -676,8 +676,8 @@ namespace PitHero.Tests
 
             byte[] bytes = ms.ToArray();
 
-            // Patch bytes [0-3] to one version below current (little-endian int)
-            bytes[0] = (byte)(SaveData.CurrentVersion - 1);
+            // Patch bytes [0-3] to one version below the supported floor (little-endian int)
+            bytes[0] = (byte)(SaveData.MinSupportedVersion - 1);
             bytes[1] = 0;
             bytes[2] = 0;
             bytes[3] = 0;
@@ -686,8 +686,61 @@ namespace PitHero.Tests
             using (var rdr = new BinaryPersistableReader(new MemoryStream(bytes)))
             {
                 Assert.ThrowsException<InvalidDataException>(() => rdr.ReadPersistableInto(loaded),
-                    "Loading a save with an older version header should throw InvalidDataException");
+                    "Loading a save older than MinSupportedVersion should throw InvalidDataException");
             }
+        }
+
+        /// <summary>
+        /// Verifies that a v17 save (a byte-exact prefix of v18 — no dining section 33) still
+        /// loads, with dining state falling back to defaults.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V17File_LoadsWithDefaultDining()
+        {
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+            {
+                var original = new SaveData();
+                original.HeroName = "LegacyHero";
+                original.FavoriteDishId = 7;
+                original.EatAtTavern = true;
+                writer.Write(original);
+            }
+            byte[] v18Bytes = ms.ToArray();
+
+            // Measure the writer's int/bool encodings so the section-33 tail length is exact
+            var probe = new MemoryStream();
+            int intSize, boolSize;
+            using (var probeWriter = new BinaryPersistableWriter(probe))
+            {
+                probeWriter.Write(0);
+                intSize = (int)probe.Length;
+                probeWriter.Write(false);
+                boolSize = (int)probe.Length - intSize;
+            }
+
+            // Section 33 = FavoriteDishId + EatAtTavern + count + 3 records of (2 ints + 3 bools)
+            int tailLength = 2 * intSize + boolSize + 3 * (2 * intSize + 3 * boolSize);
+            byte[] v17Bytes = new byte[v18Bytes.Length - tailLength];
+            System.Array.Copy(v18Bytes, v17Bytes, v17Bytes.Length);
+
+            // Patch the header to version 17 (little-endian int)
+            v17Bytes[0] = 17;
+            v17Bytes[1] = 0;
+            v17Bytes[2] = 0;
+            v17Bytes[3] = 0;
+
+            var loaded = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(v17Bytes)))
+            {
+                rdr.ReadPersistableInto(loaded);
+            }
+
+            Assert.AreEqual("LegacyHero", loaded.HeroName, "v17 body should round-trip");
+            Assert.AreEqual(0, loaded.FavoriteDishId, "v17 load should default FavoriteDishId");
+            Assert.IsFalse(loaded.EatAtTavern, "v17 load should default EatAtTavern");
+            Assert.IsNotNull(loaded.PartyDining, "v17 load should get default dining records");
+            Assert.AreEqual(-1, loaded.PartyDining[0].OrderedDishId, "default dining record expected");
         }
 
         /// <summary>
@@ -712,7 +765,7 @@ namespace PitHero.Tests
                 }
 
                 byte[] bytes = ms.ToArray();
-                bytes[0] = (byte)(SaveData.CurrentVersion - 1);
+                bytes[0] = (byte)(SaveData.MinSupportedVersion - 1);
                 bytes[1] = 0;
                 bytes[2] = 0;
                 bytes[3] = 0;

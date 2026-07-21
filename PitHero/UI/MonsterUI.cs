@@ -286,13 +286,14 @@ namespace PitHero.UI
                 textTable.Top().Left();
 
                 var monsterTypeName = GetText(TextType.Monster, monster.MonsterTypeName);
-                string jobDisplayName = monster.Job switch
+                string jobDisplayName;
+                switch (monster.Job)
                 {
-                    MonsterJob.Farming => "Farming",
-                    MonsterJob.Cooking => "Cooking",
-                    MonsterJob.Fishing => "Fishing",
-                    _ => "None"
-                };
+                    case MonsterJob.Farming: jobDisplayName = GetText(TextType.UI, UITextKey.JobNameFarming); break;
+                    case MonsterJob.Cooking: jobDisplayName = GetText(TextType.UI, UITextKey.JobNameKitchen); break;
+                    case MonsterJob.Fishing: jobDisplayName = GetText(TextType.UI, UITextKey.JobNameFishing); break;
+                    default:                 jobDisplayName = GetText(TextType.UI, UITextKey.JobNameNone);    break;
+                }
 
                 var nameLabel  = new Label($"{monster.Name} ({monsterTypeName})", BrownStyle());
                 var statsLabel = new Label($"Fish:{monster.FishingProficiency}  Cook:{monster.CookingProficiency}  Farm:{monster.FarmingProficiency}", BrownStyle());
@@ -326,7 +327,13 @@ namespace PitHero.UI
                 buttonsTable.Left();
 
                 MonsterJob[] jobs = { MonsterJob.None, MonsterJob.Farming, MonsterJob.Cooking, MonsterJob.Fishing };
-                string[] jobNames = { "None", "Farming", "Cooking", "Fishing" };
+                string[] jobNames =
+                {
+                    GetText(TextType.UI, UITextKey.JobNameNone),
+                    GetText(TextType.UI, UITextKey.JobNameFarming),
+                    GetText(TextType.UI, UITextKey.JobNameKitchen),
+                    GetText(TextType.UI, UITextKey.JobNameFishing),
+                };
                 string[] spriteNames = { "JobNone", "JobFarming", "JobCooking", "JobFishing" };
 
                 // Capture for closure

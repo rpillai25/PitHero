@@ -201,6 +201,15 @@ namespace RolePlayingFramework.Heroes
             return StatConstants.ClampStatBlock(total);
         }
 
+        /// <summary>Total stats with battle-buff-adjusted Magic (MagicUp) for caster-side skill formulas.</summary>
+        public StatBlock GetSkillStats()
+        {
+            var stats = GetTotalStats();
+            int magicUp = GetBuffTotal(BuffType.MagicUp);
+            if (magicUp == 0) return stats;
+            return new StatBlock(stats.Strength, stats.Agility, stats.Vitality, stats.Magic + magicUp);
+        }
+
         /// <summary>Inflicts damage, returns true if hero died.</summary>
         public bool TakeDamage(int amount)
         {
@@ -250,7 +259,7 @@ namespace RolePlayingFramework.Heroes
             return true;
         }
 
-        /// <summary>Per-turn passive MP regen, including any active MPRegen buffs.</summary>
+        /// <summary>Per-turn passive HP/MP regen, including any active HPRegen/MPRegen buffs.</summary>
         public void TickRegeneration()
         {
             int totalRegen = MPTickRegen + GetBuffTotal(BuffType.MPRegen);
@@ -259,6 +268,9 @@ namespace RolePlayingFramework.Heroes
                 CurrentMP += totalRegen;
                 if (CurrentMP > MaxMP) CurrentMP = MaxMP;
             }
+            int hpRegen = GetBuffTotal(BuffType.HPRegen);
+            if (hpRegen > 0)
+                RestoreHP(hpRegen);
         }
 
         // ── Battle-scoped buff system — delegates to shared BattleBuffSet ────────────────
@@ -495,12 +507,16 @@ namespace RolePlayingFramework.Heroes
         {
             var totalStats = GetTotalStats();
 
-            int attack = totalStats.Strength + GetEquipmentAttackBonus();
+            // AgilityUp cascades into defense (agi/2), evasion and accuracy (baseEvasion)
+            int agility = totalStats.Agility + GetBuffTotal(BuffType.AgilityUp);
 
-            int defense = totalStats.Agility / 2 + GetEquipmentDefenseBonus()
+            int attack = totalStats.Strength + GetEquipmentAttackBonus()
+                         + GetBuffTotal(BuffType.AttackUp);
+
+            int defense = agility / 2 + GetEquipmentDefenseBonus()
                           + GetBuffTotal(BuffType.DefenseUp);
 
-            int baseEvasion = RolePlayingFramework.Balance.BalanceConfig.CalculateEvasion(totalStats.Agility, Level);
+            int baseEvasion = RolePlayingFramework.Balance.BalanceConfig.CalculateEvasion(agility, Level);
             int evasion = baseEvasion + EvasionBonus + GetBuffTotal(BuffType.EvasionUp);
             if (evasion > 255) evasion = 255;
             if (evasion < 0) evasion = 0;

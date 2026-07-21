@@ -773,6 +773,27 @@ namespace PitHero.Services
                 data.AutoSellKeepStacks = autoCropSellService.KeepStacks;
             }
 
+            // Party dining (v18+)
+            var partyDiningService = Core.Services.GetService<PartyDiningService>();
+            if (partyDiningService != null)
+            {
+                data.FavoriteDishId = partyDiningService.FavoriteDishId;
+                data.EatAtTavern = partyDiningService.EatAtTavern;
+                data.PartyDining = SaveData.CreateDefaultDiningRecords();
+                for (int i = 0; i < data.PartyDining.Length; i++)
+                {
+                    var slot = partyDiningService.GetSlot(i);
+                    data.PartyDining[i] = new SavedDiningRecord
+                    {
+                        OrderedDishId = slot.OrderedDishId,
+                        HasPaid = slot.HasPaid,
+                        HasEatenToday = slot.HasEatenToday,
+                        MealDishId = slot.MealDishId,
+                        MealDeluxe = slot.MealDeluxe,
+                    };
+                }
+            }
+
             return data;
         }
 

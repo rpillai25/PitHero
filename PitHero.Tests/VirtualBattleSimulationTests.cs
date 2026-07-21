@@ -324,8 +324,9 @@ namespace PitHero.Tests
 
         /// <summary>
         /// TryInnRest with sufficient gold: hero and merc are restored to full HP/MP,
-        /// gold is deducted by GameConfig.InnCostGold (10). TryInnRest returns false
-        /// when the wallet is empty (no restore happens).
+        /// gold is deducted by the level-scaled party cost (base + surcharge per full
+        /// 10 levels, summed over hero + mercs). TryInnRest returns false when the
+        /// wallet is empty (no restore happens).
         /// </summary>
         [TestMethod]
         public void TryInnRest_WithSufficientGold_RestoresPartyAndDeductsGold()
@@ -356,7 +357,11 @@ namespace PitHero.Tests
             Assert.IsTrue(heroHPBefore < hero.MaxHP,  "Hero HP should be below max before inn rest");
             Assert.IsTrue(heroMPBefore < hero.MaxMP,  "Hero MP should be below max before inn rest");
             Assert.IsTrue(mercHPBefore < merc.MaxHP,  "Merc HP should be below max before inn rest");
-            Assert.IsTrue(goldBefore   >= GameConfig.InnCostGold, "Should have enough gold to rest");
+            int expectedCost = sim.GetInnRestCost();
+            // Two level-5 members: base cost each, no level surcharge yet
+            Assert.AreEqual(2 * GameConfig.InnCostBaseGoldPerMember, expectedCost,
+                "Two level-5 members must each pay the base cost");
+            Assert.IsTrue(goldBefore >= expectedCost, "Should have enough gold to rest");
 
             bool result = sim.TryInnRest();
 
@@ -364,8 +369,31 @@ namespace PitHero.Tests
             Assert.AreEqual(hero.MaxHP, hero.CurrentHP, "Hero HP must be fully restored");
             Assert.AreEqual(hero.MaxMP, hero.CurrentMP, "Hero MP must be fully restored");
             Assert.AreEqual(merc.MaxHP, merc.CurrentHP, "Merc HP must be fully restored");
-            Assert.AreEqual(goldBefore - GameConfig.InnCostGold, sim.Gold,
-                "Gold must be reduced by InnCostGold (10)");
+            Assert.AreEqual(goldBefore - expectedCost, sim.Gold,
+                "Gold must be reduced by the level-scaled party cost");
+        }
+
+        /// <summary>
+        /// Inn cost scales per member: base fee + surcharge per full 10 levels
+        /// (level 30 → 10 + 30 = 40g each).
+        /// </summary>
+        [TestMethod]
+        public void GetInnRestCost_ScalesWithPartyLevels()
+        {
+            var sim = new VirtualGameSimulation(rngSeed: 33333);
+            sim.ConfigureHero(new Knight(), level: 30, new StatBlock(10, 8, 10, 4));
+
+            var merc1 = new Mercenary("M1", new Priest(), level: 30, new StatBlock(6, 8, 8, 10));
+            var merc2 = new Mercenary("M2", new Mage(), level: 9, new StatBlock(4, 6, 5, 12));
+            merc1.LearnAllJobSkills();
+            merc2.LearnAllJobSkills();
+            sim.ConfigureMercenaries(new List<Mercenary> { merc1, merc2 });
+
+            // level 30 → 10 + 30 = 40; level 9 → 10 (no full 10 levels yet)
+            Assert.AreEqual(40, GameConfig.GetInnCostForMember(30));
+            Assert.AreEqual(10, GameConfig.GetInnCostForMember(9));
+            Assert.AreEqual(40 + 40 + 10, sim.GetInnRestCost(),
+                "Party cost must be the sum of per-member level-scaled costs");
         }
 
         /// <summary>
@@ -384,7 +412,7 @@ namespace PitHero.Tests
 
             bool result = sim.TryInnRest();
 
-            Assert.IsFalse(result, "TryInnRest must return false when gold < InnCostGold");
+            Assert.IsFalse(result, "TryInnRest must return false when gold < party inn cost");
             Assert.AreEqual(hpBefore, hero.CurrentHP, "Hero HP must be unchanged when inn rest fails");
             Assert.AreEqual(0, sim.Gold, "Wallet must remain at 0 when inn rest fails");
         }

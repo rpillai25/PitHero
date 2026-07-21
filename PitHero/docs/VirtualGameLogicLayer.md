@@ -131,7 +131,7 @@ same-seed ⇒ identical-event-stream determinism test that catches accidental dr
 
 - **Wallet**: `Gold` starts at `GameConfig.NewGameStartingGold`; battle gold credits it
   after each level; `ConfigureStartingGold` overrides for mid-game scenarios.
-- **`TryInnRest()`** mirrors `SleepInBedAction`: `GameConfig.InnCostGold` (10 g) deducted;
+- **`TryInnRest()`** mirrors `SleepInBedAction`: the level-scaled party cost (`GameConfig.GetInnCostForMember` — base 10 g + 10 g per full 10 levels, summed over hero + mercs) is deducted;
   hero + all mercenaries restored to full HP **and MP**; `HealingItemExhausted` /
   `HealingSkillExhausted` reset. Instant — walking is not simulated. Returns false when
   unaffordable (live `InnExhausted` semantics).
@@ -199,6 +199,7 @@ Run-level fields: `RngSeed`, `JobName`, `LevelRangeMin/Max`.
 | `SecondChanceMerchantVault` on merc death/dismissal | Gear is not recovered virtually |
 | Analytics JSONL (`AnalyticsService`) | Virtual sink aggregates metrics instead — same event payloads, comparable columns |
 | Tavern seat management, `DeferredMercenary` | Not applicable headlessly |
+| Kitchen worker FSM (`KitchenMonsterStateMachine`) | Live-only; walk routes are verified headlessly instead (see `KitchenFlowPathTests` below) |
 
 New live-layer features should be checked against this document (see the
 `virtual-game-layer` skill) and added here when they lack a virtual counterpart.
@@ -211,9 +212,11 @@ New live-layer features should be checked against this document (see the
 | `VirtualBattleSimulationTests` | Traversal combat, boss orb-gating, wipes, merc participation, traps + TrapSense, chest collection/auto-equip, inn rest, hiring, `RunLevelRange` |
 | `VirtualBalanceTraversalTests` | Balance curves (solo / party / persistent run), CSV output, same-seed reproducibility |
 | `VirtualGameSimulationTests`, `VirtualWorldStateTests`, `CaveBiomeBalanceTests`, `InterfaceBased*Tests` | Exploration, world state, generation parity, GOAP dual execution |
+| `KitchenFlowPathTests` | Kitchen/tavern walk routes on the REAL surface map: parses `PitHero.tmx`'s Collision layer as text (no FNA), seeds `FarmPathfinder` static walls exactly like `MainGameScene`, and asserts every dining-flow leg (house exit → posts, sink → stove pickups, sink → all 12 seat tables, sink ↔ crop storage) is reachable without crossing walls |
+| `KitchenServiceLoopTests` | Headless end-to-end tavern service loop through the real `KitchenTaskCoordinator` + `TavernPatronComponent` (injected via `SetHeadlessServices`, no Nez scene): order → ticket board post → runner fridge restock (par top-up) → cook read/station/cook → serving table slot → zone-gated server pickup → deliver → eat → pay → retired; plus board gating, one-cook-per-ticket, zone ownership (top/bottom tables), serving-slot exhaustion, orphaned-dish-to-sink, patience expiry before/after ordering (refund vs none), leave-after-cooking (payment stands), hire mid-dining, party cook priority, mid-cook and mid-fetch interrupt requeue |
 
-Full suite: `dotnet test PitHero.Tests/PitHero.Tests.csproj`. Baseline: **12 known
-pre-existing failures** (environment-dependent tests) — anything above that is a regression.
+Full suite: `dotnet test PitHero.Tests/PitHero.Tests.csproj`. Baseline: **0 failures**
+(since the save-format unification, PR #313) — any failure is a regression.
 
 ## Depth Semantics and Pit Tiers (issue #291)
 

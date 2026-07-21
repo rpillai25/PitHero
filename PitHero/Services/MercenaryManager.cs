@@ -37,6 +37,7 @@ namespace PitHero.Services
         private readonly List<Entity> _mercenaryEntities;
         private readonly HashSet<Point> _occupiedTavernPositions;
         private float _timeSinceLastSpawn;
+        private float _nextSpawnInterval; // rolled 1-2 min per arrival; 0 = roll on first use
         private Scene _scene;
         private bool _hasSpawnedInitialMercenary;
         private int _nextSpawnId; // Global spawn ID counter
@@ -78,91 +79,86 @@ namespace PitHero.Services
             // Use scaled time for spawn timer
             _timeSinceLastSpawn += Time.DeltaTime;
 
-            // Get current spawn interval based on number of unhired mercenaries
-            var currentInterval = GetSpawnInterval();
-
-            if (_timeSinceLastSpawn >= currentInterval)
+            if (_timeSinceLastSpawn >= GetSpawnInterval())
             {
-                _timeSinceLastSpawn = 0f;
-                TrySpawnMercenary();
+                // Only reset the timer on a successful spawn — while the tavern is full the
+                // timer holds at the threshold so a patron walks in as soon as a seat frees.
+                if (TrySpawnMercenary())
+                {
+                    _timeSinceLastSpawn = 0f;
+                    _nextSpawnInterval = Nez.Random.Range(
+                        GameConfig.MercenarySpawnIntervalMinSeconds,
+                        GameConfig.MercenarySpawnIntervalMaxSeconds);
+                }
             }
         }
 
         /// <summary>
-        /// Calculates the spawn interval based on the number of unhired mercenaries.
-        /// Progressively increases from 5 seconds (1st merc) to 300 seconds (9th merc).
+        /// Spawn cadence: an empty tavern gets its first patron quickly; after that a new
+        /// patron arrives every 1-2 scaled minutes (rolled per arrival) whenever a seat is free.
         /// </summary>
         private float GetSpawnInterval()
         {
-            var unhiredCount = GetUnhiredMercenaries().Count;
-            
-            // Calculate interval for the NEXT mercenary to spawn
-            // If we have 0 mercenaries, the next one (1st) spawns in 5 seconds
-            // If we have 1 mercenary, the next one (2nd) spawns in 32 seconds
-            // If we have 8 mercenaries, the next one (9th) spawns in 300 seconds
-            
-            // Cap at max interval if we're at or above max capacity
-            if (unhiredCount >= MaxMercenariesInTavern)
-            {
-                return GameConfig.MercenaryMaxSpawnIntervalSeconds;
-            }
-
-            // Calculate progressive interval for the NEXT spawn
-            // Formula: linear interpolation from min to max based on unhired count
-            // unhiredCount 0 (spawning 1st merc) -> 5 seconds
-            // unhiredCount 1 (spawning 2nd merc) -> 32 seconds
-            // unhiredCount 8 (spawning 9th merc) -> 300 seconds
-            var t = unhiredCount / (float)(MaxMercenariesInTavern - 1); // 0 to 1 progression
-            var interval = GameConfig.MercenaryMinSpawnIntervalSeconds + 
-                          (t * (GameConfig.MercenaryMaxSpawnIntervalSeconds - GameConfig.MercenaryMinSpawnIntervalSeconds));
-            
-            return interval;
+            if (GetUnhiredMercenaries().Count == 0)
+                return GameConfig.MercenaryMinSpawnIntervalSeconds;
+            if (_nextSpawnInterval <= 0f)
+                _nextSpawnInterval = Nez.Random.Range(
+                    GameConfig.MercenarySpawnIntervalMinSeconds,
+                    GameConfig.MercenarySpawnIntervalMaxSeconds);
+            return _nextSpawnInterval;
         }
 
-        /// <summary>Attempts to spawn a new mercenary</summary>
-        private void TrySpawnMercenary()
+        /// <summary>
+        /// Attempts to spawn a new mercenary. When the tavern is full, a patron who has already
+        /// finished eating is sent home to make room for a fresh face (the spawn then happens on
+        /// a following frame once the seat frees); patrons who are still waiting or mid-meal are
+        /// never evicted. Returns false while no seat is available, leaving the spawn timer
+        /// pending.
+        /// </summary>
+        private bool TrySpawnMercenary()
         {
             // Don't spawn if already in the process of removing a mercenary
             if (_isRemovingMercenary)
-                return;
+                return false;
 
-            // Count unhired mercenaries
-            var unhiredMercenaries = GetUnhiredMercenaries();
-
-            if (unhiredMercenaries.Count >= MaxMercenariesInTavern)
+            var unhired = GetUnhiredMercenaries();
+            if (unhired.Count >= MaxMercenariesInTavern)
             {
-                // Find the oldest unhired mercenary (lowest SpawnId)
-                var oldestMercenary = unhiredMercenaries
-                    .OrderBy(m => m.GetComponent<MercenaryComponent>()?.SpawnId ?? int.MaxValue)
-                    .FirstOrDefault();
-                    
-                if (oldestMercenary != null)
+                // Fresh faces: the oldest patron who is done eating leaves right away
+                Entity doneEating = null;
+                int oldestSpawnId = int.MaxValue;
+                for (int i = 0; i < unhired.Count; i++)
                 {
-                    var mercName = oldestMercenary.GetComponent<MercenaryComponent>()?.LinkedMercenary?.Name ?? "Unknown";
-                    Debug.Log($"[MercenaryManager] Tavern full - oldest mercenary {mercName} will leave to make room");
-                    
-                    // Start the walk-off-and-remove process
-                    _isRemovingMercenary = true;
-                    Core.StartCoroutine(WalkOffscreenAndRemove(oldestMercenary));
-                    return; // Don't spawn yet - wait for removal to complete
+                    var comp = unhired[i].GetComponent<MercenaryComponent>();
+                    if (comp == null || comp.IsBeingRemoved)
+                        continue;
+                    var patron = unhired[i].GetComponent<ECS.Components.TavernPatronComponent>();
+                    if (patron == null || patron.State != ECS.Components.PatronState.FinishedEating)
+                        continue;
+                    if (comp.SpawnId < oldestSpawnId)
+                    {
+                        oldestSpawnId = comp.SpawnId;
+                        doneEating = unhired[i];
+                    }
                 }
+
+                if (doneEating != null)
+                {
+                    Debug.Log("[MercenaryManager] Tavern full - a finished patron is leaving to make room");
+                    WalkOffPatron(doneEating);
+                }
+                // Spawn once the seat actually frees (timer holds at the threshold)
+                return false;
             }
 
             // Find available tavern position
             var availablePosition = GetAvailableTavernPosition();
             if (!availablePosition.HasValue)
-            {
-                Debug.Warn("[MercenaryManager] No available tavern positions");
-                return;
-            }
+                return false;
 
             // Spawn new mercenary
             SpawnMercenary(availablePosition.Value);
-            
-            // Calculate and log the interval for the NEXT spawn
-            var nextInterval = GetSpawnInterval();
-            var nextMercenaryNumber = GetUnhiredMercenaries().Count + 1;
-            Debug.Log($"[MercenaryManager] Timer reset. Next mercenary (#{nextMercenaryNumber}) will spawn in {nextInterval:F1} seconds");
+            return true;
         }
 
         /// <summary>Spawns a mercenary at the spawn position and moves them to tavern</summary>
@@ -382,6 +378,15 @@ namespace PitHero.Services
 
             // Arrived at tavern position
             mercComponent.IsWaitingInTavern = true;
+
+            // Add patron component so the kitchen system can serve this merc as a dining customer.
+            // Patience starts immediately since the merc is now seated.
+            if (!mercEntity.HasComponent<ECS.Components.TavernPatronComponent>())
+            {
+                var patronComp = mercEntity.AddComponent(new ECS.Components.TavernPatronComponent());
+                patronComp.SeatTile = tavernPosition;
+            }
+
             Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} arrived at tavern");
         }
 
@@ -401,6 +406,9 @@ namespace PitHero.Services
 
             // Mark as being removed so it can't be hired during removal animation
             mercComponent.IsBeingRemoved = true;
+
+            // Cancel any outstanding kitchen ticket for this patron
+            Core.Services.GetService<KitchenTaskCoordinator>()?.CancelTicketForPatron(mercEntity);
 
             // Wait for pathfinding to initialize before calculating the exit path
             while (!pathfinding.IsPathfindingInitialized)
@@ -620,6 +628,24 @@ namespace PitHero.Services
         }
 
         /// <summary>
+        /// Called by TavernPatronComponent when an unhired merc finishes eating or patience expires.
+        /// Triggers the natural walk-off-screen animation (same as eviction). Safe to call multiple
+        /// times — guards against IsBeingRemoved flag.
+        /// </summary>
+        public void WalkOffPatron(Entity mercEntity)
+        {
+            if (mercEntity == null) return;
+            var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
+            if (mercComponent == null || mercComponent.IsHired || mercComponent.IsBeingRemoved)
+                return;
+
+            Debug.Log($"[MercenaryManager] Patron {mercComponent.LinkedMercenary?.Name} leaving after meal");
+            mercComponent.IsBeingRemoved = true;
+            _isRemovingMercenary = true;
+            Core.StartCoroutine(WalkOffscreenAndRemove(mercEntity));
+        }
+
+        /// <summary>
         /// Reassigns follow targets for any hired mercenaries that were following the
         /// dismissed entity, pointing them to the hero instead.
         /// </summary>
@@ -738,10 +764,14 @@ namespace PitHero.Services
             }
             gameState.Funds -= hireCost;
 
+            // Cancel any outstanding dining ticket and remove patron status before joining the party
+            Core.Services.GetService<KitchenTaskCoordinator>()?.CancelTicketForPatron(mercEntity);
+            mercEntity.RemoveComponent<ECS.Components.TavernPatronComponent>();
+
             // Determine follow target BEFORE marking as hired
             var heroEntity = _scene?.FindEntity("hero");
             Entity followTarget = null;
-            
+
             if (hiredCount == 0)
             {
                 // First mercenary follows hero
@@ -755,9 +785,18 @@ namespace PitHero.Services
             }
             else
             {
-                // Second mercenary follows first mercenary
-                // Get the list BEFORE marking this one as hired to avoid confusion
-                followTarget = GetHiredMercenaries().FirstOrDefault();
+                // Second mercenary follows first mercenary — for-loop scan (no LINQ)
+                Entity firstHired = null;
+                for (int i = 0; i < _mercenaryEntities.Count; i++)
+                {
+                    var c = _mercenaryEntities[i].GetComponent<MercenaryComponent>();
+                    if (c != null && c.IsHired)
+                    {
+                        firstHired = _mercenaryEntities[i];
+                        break;
+                    }
+                }
+                followTarget = firstHired;
                 if (followTarget == null)
                 {
                     Debug.Error("[MercenaryManager] Cannot hire second mercenary - first mercenary not found!");

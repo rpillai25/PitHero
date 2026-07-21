@@ -303,6 +303,15 @@ namespace RolePlayingFramework.Mercenaries
             return StatConstants.ClampStatBlock(total);
         }
 
+        /// <summary>Total stats with battle-buff-adjusted Magic (MagicUp) for caster-side skill formulas.</summary>
+        public StatBlock GetSkillStats()
+        {
+            var stats = GetTotalStats();
+            int magicUp = GetBuffTotal(BuffType.MagicUp);
+            if (magicUp == 0) return stats;
+            return new StatBlock(stats.Strength, stats.Agility, stats.Vitality, stats.Magic + magicUp);
+        }
+
         /// <summary>Recalculates derived stats from base + job + equipment.</summary>
         private void RecalculateDerived()
         {
@@ -325,7 +334,10 @@ namespace RolePlayingFramework.Mercenaries
         {
             var effectiveStats = GetTotalStats();
 
-            int atk = effectiveStats.Strength;
+            // AgilityUp cascades into evasion and accuracy (merc defense is Vitality-based)
+            int agility = effectiveStats.Agility + GetBuffTotal(BuffType.AgilityUp);
+
+            int atk = effectiveStats.Strength + GetBuffTotal(BuffType.AttackUp);
             if (WeaponShield1 != null) atk += WeaponShield1.AttackBonus;
             if (WeaponShield2 != null) atk += WeaponShield2.AttackBonus;
 
@@ -341,7 +353,7 @@ namespace RolePlayingFramework.Mercenaries
             if (WeaponShield2 != null) def += WeaponShield2.DefenseBonus;
             def += GetBuffTotal(BuffType.DefenseUp);
 
-            int baseEvasion = RolePlayingFramework.Balance.BalanceConfig.CalculateEvasion(effectiveStats.Agility, Level);
+            int baseEvasion = RolePlayingFramework.Balance.BalanceConfig.CalculateEvasion(agility, Level);
             int evasion = baseEvasion + EvasionBonus + GetBuffTotal(BuffType.EvasionUp);
             if (evasion > 255) evasion = 255;
             if (evasion < 0) evasion = 0;
@@ -445,7 +457,7 @@ namespace RolePlayingFramework.Mercenaries
             ApplyPassiveSkills();
         }
 
-        /// <summary>Per-turn passive MP regen (called at the end of each battle round), including MPRegen buffs.</summary>
+        /// <summary>Per-turn passive HP/MP regen (called at the end of each battle round), including HPRegen/MPRegen buffs.</summary>
         public void TickRegeneration()
         {
             int totalRegen = MPTickRegen + GetBuffTotal(BuffType.MPRegen);
@@ -454,6 +466,9 @@ namespace RolePlayingFramework.Mercenaries
                 CurrentMP += totalRegen;
                 if (CurrentMP > MaxMP) CurrentMP = MaxMP;
             }
+            int hpRegen = GetBuffTotal(BuffType.HPRegen);
+            if (hpRegen > 0)
+                RestoreHP(hpRegen);
         }
 
         // ── Battle-scoped buff system — delegates to shared BattleBuffSet ────────────────

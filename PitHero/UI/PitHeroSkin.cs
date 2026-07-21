@@ -138,7 +138,9 @@ namespace PitHero.UI
                 FontScaleY = 1f
             };
 
-            skin.Add("ph-default", radioButtonStyle);
+            // Distinct name — Skin.Add keys by (type, name), so registering this as "ph-default"
+            // would silently overwrite the checkbox style above (all checkboxes turn into radios)
+            skin.Add("ph-radio", radioButtonStyle);
 
             // Tab button style (for TabPane tab buttons)
             var tabSpriteActive = uiAtlas.GetSprite("NinePatchTab_Active");

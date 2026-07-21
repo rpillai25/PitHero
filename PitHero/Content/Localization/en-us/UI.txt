@@ -323,3 +323,30 @@ DialogSellStorageCropsPrompt,Really sell all crops in this storage for {0} gold?
 DialogSellBuildingPrompt,Really sell this building for {0} gold?
 DialogSellCropStackPrompt,Really sell {0} stack for {1} gold?
 DialogSellAllCropsPrompt,Really sell ALL of your crops for {0} gold? You will be left with no crops.
+
+# Cooking & tavern dining (issue #319)
+TabFood,Food
+FoodFavoriteLabel,Favorite Food
+FoodEatAtTavern,Eat at tavern
+FoodEatAtTavernTooltip,When stopped at the tavern, order and eat favorite food.
+FoodMissingIngredients,Missing ingredients!
+JobNameNone,None
+JobNameFarming,Farming
+JobNameKitchen,Kitchen
+JobNameFishing,Fishing
+DishRoastedOnionSkewers,Roasted Onion Skewers
+DishTurnipOnionStew,Turnip & Onion Stew
+DishButteredBread,Buttered Bread
+DishCheesyMashedPotatoes,Cheesy Mashed Potatoes
+DishGardenSalad,Garden Salad
+DishGrilledCornWithButter,Grilled Corn with Butter
+DishTomatoCheeseBisque,Tomato Cheese Bisque
+DishCornChowder,Corn Chowder
+DishEggplantParmesan,Eggplant Parmesan
+DishGrapeJuice,Grape Juice
+DishGrapeTart,Grape Tart
+DishSpicedEggplantSteak,Spiced Eggplant Steak
+DishApplePie,Apple Pie
+DishPumpkinCreamSoup,Pumpkin Cream Soup
+DishChilledWatermelonSorbet,Chilled Watermelon Sorbet
+DishHarvestFeastPlatter,Harvest Feast Platter

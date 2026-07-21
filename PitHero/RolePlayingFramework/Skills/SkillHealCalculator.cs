@@ -12,7 +12,7 @@ namespace RolePlayingFramework.Skills
         /// <summary>Effective HP restored when <paramref name="caster"/> uses the skill.</summary>
         public static int GetAmount(ISkill skill, ICombatant caster)
         {
-            return BalanceConfig.CalculateSkillHealAmount(skill.HPRestoreAmount, caster.GetTotalStats().Magic, caster.HealPowerBonus);
+            return BalanceConfig.CalculateSkillHealAmount(skill.HPRestoreAmount, caster.GetSkillStats().Magic, caster.HealPowerBonus);
         }
 
         /// <summary>
