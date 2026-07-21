@@ -149,8 +149,12 @@ namespace PitHero.Tests
             Assert.IsTrue(pathfinder.IsPassable(KitchenTaskCoordinator.RunnerWanderAnchorTile),
                 "runner wander area has no walkable anchor");
             for (int slot = 0; slot < GameConfig.KitchenServingSlotCount; slot++)
+            {
                 Assert.IsTrue(pathfinder.IsPassable(KitchenTaskCoordinator.GetServingTile(slot)),
                     $"serving table tile {slot} is a wall");
+                Assert.IsTrue(pathfinder.IsPassable(KitchenTaskCoordinator.GetServingApproachTile(slot)),
+                    $"serving table {slot} approach tile is a wall");
+            }
 
             // The kitchen room is actually enclosed (regression guard for the wall seeding itself)
             Assert.IsFalse(pathfinder.IsPassable(new Point(81, 2)), "kitchen west wall missing");
@@ -172,18 +176,18 @@ namespace PitHero.Tests
             AssertRouteClear(pathfinder, HouseExitTile, KitchenTaskCoordinator.RunnerWanderAnchorTile,
                 "house exit → runner wander area");
             for (int slot = 0; slot < GameConfig.KitchenServingSlotCount; slot++)
-                AssertRouteClear(pathfinder, HouseExitTile, KitchenTaskCoordinator.GetServingTile(slot),
-                    $"house exit → serving table {slot}");
+                AssertRouteClear(pathfinder, HouseExitTile, KitchenTaskCoordinator.GetServingApproachTile(slot),
+                    $"house exit → serving table {slot} approach");
 
-            // Cook loop: board → fridge → station → serving table → board
+            // Cook loop: board → fridge → station → serving approach → board
             AssertRouteClear(pathfinder, KitchenTaskCoordinator.TicketBoardTile,
                 KitchenTaskCoordinator.FridgeTile, "board → fridge");
             AssertRouteClear(pathfinder, KitchenTaskCoordinator.FridgeTile,
                 KitchenTaskCoordinator.GetStationTile(0), "fridge → station 0");
             AssertRouteClear(pathfinder, KitchenTaskCoordinator.GetStationTile(0),
-                KitchenTaskCoordinator.GetServingTile(0), "station 0 → serving table 0");
-            AssertRouteClear(pathfinder, KitchenTaskCoordinator.GetServingTile(0),
-                KitchenTaskCoordinator.TicketBoardTile, "serving table 0 → board");
+                KitchenTaskCoordinator.GetServingApproachTile(0), "station 0 → serving table 0 approach");
+            AssertRouteClear(pathfinder, KitchenTaskCoordinator.GetServingApproachTile(0),
+                KitchenTaskCoordinator.TicketBoardTile, "serving table 0 approach → board");
 
             // And the walk home again
             AssertRouteClear(pathfinder, KitchenTaskCoordinator.SinkTile, HouseExitTile, "sink → house exit");
@@ -193,7 +197,7 @@ namespace PitHero.Tests
         public void Server_CanDeliverToEverySeatTable()
         {
             var pathfinder = CreateMapPathfinder(withNewGameBuildings: true);
-            var servingPickup = KitchenTaskCoordinator.GetServingTile(1);
+            var servingPickup = KitchenTaskCoordinator.GetServingApproachTile(1);
 
             for (int i = 0; i < AllSeats.Length; i++)
             {

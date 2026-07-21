@@ -1024,6 +1024,13 @@ namespace PitHero.Services
         public static Point GetServingTile(int slot)
             => new Point(GameConfig.KitchenServingTableTileX, GameConfig.KitchenServingTableFirstTileY + slot);
 
+        /// <summary>
+        /// Tile a worker stands on to place/take a dish at the given serving slot — one tile
+        /// left of the table so they work beside it instead of on top of it.
+        /// </summary>
+        public static Point GetServingApproachTile(int slot)
+            => new Point(GameConfig.KitchenServingTableTileX - 1, GameConfig.KitchenServingTableFirstTileY + slot);
+
         /// <summary>Seat tile for a party slot (0 = hero, 1/2 = hired mercs).</summary>
         public static Point GetPartySeatTile(int partySlot)
         {

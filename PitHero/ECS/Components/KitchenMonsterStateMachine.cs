@@ -386,8 +386,8 @@ namespace PitHero.ECS.Components
 
         private void ServerWalkToPickup_Enter()
         {
-            // Middle serving table is a fine approach point for all three
-            if (!TrySetPathToTileOrNeighbor(KitchenTaskCoordinator.GetServingTile(1)))
+            // Stand beside the middle serving table — a fine approach point for all three
+            if (!TrySetPathToTileOrNeighbor(KitchenTaskCoordinator.GetServingApproachTile(1)))
                 CurrentState = KitchenMonsterState.ServerDecide;
         }
 
@@ -396,6 +396,7 @@ namespace PitHero.ECS.Components
             if (_mover.IsMoving)
                 return;
 
+            _facing?.SetFacing(Direction.Right); // face the serving tables
             var zone = Zone;
             while (_carried.Count < GameConfig.ServerCarryDishLimit
                 && _coordinator.TryPickupReadyDish(zone, out var ticket, out var dish, out bool toSink))
@@ -759,7 +760,7 @@ namespace PitHero.ECS.Components
             if (_cookCarryToSink)
                 TrySetPathTo(KitchenTaskCoordinator.SinkTile);
             else
-                TrySetPathToTileOrNeighbor(KitchenTaskCoordinator.GetServingTile(_cookTicket.ServingSlot));
+                TrySetPathToTileOrNeighbor(KitchenTaskCoordinator.GetServingApproachTile(_cookTicket.ServingSlot));
         }
 
         private void CookWalkToServing_Tick()
@@ -781,6 +782,7 @@ namespace PitHero.ECS.Components
             }
             else
             {
+                _facing?.SetFacing(Direction.Right); // face the table while placing the dish
                 var tile = KitchenTaskCoordinator.GetServingTile(_cookTicket.ServingSlot);
                 var entity = _coordinator.DishService?.SpawnDishAtTile(_cookTicket.Dish, tile);
                 _coordinator.PlaceDishOnServing(_cookTicket, entity);
