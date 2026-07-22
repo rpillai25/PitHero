@@ -1307,9 +1307,25 @@ namespace PitHero.Services
             if (fileVersion >= 19)
                 AutomateMonsterJobs = reader.ReadBool();
 
-            // 35. Auto-dine resume (v20+). Older files end at section 34 — default false.
+            // 35. Auto-dine resume (v20+). Legacy files can't distinguish a manual Stop from a
+            // breakfast trip, so infer: a reloaded member with a meal still in progress means
+            // the party should stand up when everyone finishes — otherwise they'd sit at the
+            // tavern forever waiting for a Play press.
             if (fileVersion >= 20)
+            {
                 PartyAutoDineResume = reader.ReadBool();
+            }
+            else if (PartyDining != null)
+            {
+                for (int i = 0; i < PartyDining.Length; i++)
+                {
+                    if (PartyDining[i].OrderedDishId >= 0 && !PartyDining[i].HasEatenToday)
+                    {
+                        PartyAutoDineResume = true;
+                        break;
+                    }
+                }
+            }
         }
 
         /// <summary>Writes a Color as four individual int components (R, G, B, A).</summary>

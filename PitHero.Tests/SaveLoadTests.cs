@@ -777,6 +777,60 @@ namespace PitHero.Tests
         }
 
         /// <summary>
+        /// Verifies the legacy inference for pre-v20 saves: a reloaded member with a meal still
+        /// in progress means the party auto-resumes when done; with no open orders it does not.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_PreV20File_InfersAutoDineResumeFromOpenOrders()
+        {
+            Assert.IsTrue(LoadAsV19(openOrder: true).PartyAutoDineResume,
+                "Pre-v20 file with an open order should infer PartyAutoDineResume = true");
+            Assert.IsFalse(LoadAsV19(openOrder: false).PartyAutoDineResume,
+                "Pre-v20 file with no open orders should leave PartyAutoDineResume = false");
+        }
+
+        /// <summary>Writes a current save, truncates section 35, and patches the header to v19.</summary>
+        private static SaveData LoadAsV19(bool openOrder)
+        {
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+            {
+                var original = new SaveData();
+                if (openOrder)
+                {
+                    original.PartyDining = SaveData.CreateDefaultDiningRecords();
+                    original.PartyDining[1].OrderedDishId = 3;
+                    original.PartyDining[1].HasEatenToday = false;
+                }
+                writer.Write(original);
+            }
+            byte[] v20Bytes = ms.ToArray();
+
+            // Measure the writer's bool encoding so the section-35 tail length is exact
+            var probe = new MemoryStream();
+            int boolSize;
+            using (var probeWriter = new BinaryPersistableWriter(probe))
+            {
+                probeWriter.Write(false);
+                boolSize = (int)probe.Length;
+            }
+
+            byte[] v19Bytes = new byte[v20Bytes.Length - boolSize];
+            System.Array.Copy(v20Bytes, v19Bytes, v19Bytes.Length);
+
+            // Patch the header to version 19 (little-endian int)
+            v19Bytes[0] = 19;
+            v19Bytes[1] = 0;
+            v19Bytes[2] = 0;
+            v19Bytes[3] = 0;
+
+            var loaded = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(v19Bytes)))
+                rdr.ReadPersistableInto(loaded);
+            return loaded;
+        }
+
+        /// <summary>
         /// Verifies that AutomateMonsterJobs round-trips through Persist/Recover (issue #321).
         /// </summary>
         [TestMethod]
