@@ -692,7 +692,8 @@ namespace PitHero.Tests
 
         /// <summary>
         /// Verifies that a v17 save (a byte-exact prefix of the current format — no dining
-        /// section 33 and no automation section 34) still loads, with defaults for both.
+        /// section 33, automation section 34, or auto-dine section 35) still loads, with
+        /// defaults for all three.
         /// </summary>
         [TestMethod]
         public void SaveData_V17File_LoadsWithDefaultDining()
@@ -720,8 +721,8 @@ namespace PitHero.Tests
             }
 
             // Section 33 = FavoriteDishId + EatAtTavern + count + 3 records of (2 ints + 3 bools);
-            // section 34 = AutomateMonsterJobs (1 bool)
-            int tailLength = 2 * intSize + boolSize + 3 * (2 * intSize + 3 * boolSize) + boolSize;
+            // section 34 = AutomateMonsterJobs (1 bool); section 35 = PartyAutoDineResume (1 bool)
+            int tailLength = 2 * intSize + boolSize + 3 * (2 * intSize + 3 * boolSize) + 2 * boolSize;
             byte[] v17Bytes = new byte[currentBytes.Length - tailLength];
             System.Array.Copy(currentBytes, v17Bytes, v17Bytes.Length);
 
@@ -743,6 +744,36 @@ namespace PitHero.Tests
             Assert.IsNotNull(loaded.PartyDining, "v17 load should get default dining records");
             Assert.AreEqual(-1, loaded.PartyDining[0].OrderedDishId, "default dining record expected");
             Assert.IsFalse(loaded.AutomateMonsterJobs, "v17 load should default AutomateMonsterJobs");
+        }
+
+        /// <summary>
+        /// Verifies that PartyAutoDineResume round-trips through Persist/Recover, so a save made
+        /// mid-breakfast still auto-resumes the party after reload.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V20_PartyAutoDineResume_RoundTrip()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_v20_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+
+                var original = new SaveData();
+                original.PartyAutoDineResume = true;
+
+                dataStore.Save("v20_autodine.bin", original);
+
+                var loaded = new SaveData();
+                dataStore.Load("v20_autodine.bin", loaded);
+
+                Assert.AreEqual(true, loaded.PartyAutoDineResume, "PartyAutoDineResume should round-trip");
+            }
+            finally
+            {
+                try { Directory.Delete(tempDir, recursive: true); } catch { }
+            }
         }
 
         /// <summary>

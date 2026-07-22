@@ -255,12 +255,12 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 19;
+        public const int CurrentVersion = 20;
 
         /// <summary>
-        /// Oldest save file version this build can still load. v17 and v18 files are byte-exact
-        /// prefixes of v19 (sections 33 dining and 34 automation were appended at the end), so
-        /// they load with default state for the missing sections.
+        /// Oldest save file version this build can still load. v17–v19 files are byte-exact
+        /// prefixes of v20 (sections 33 dining, 34 automation, and 35 auto-dine resume were
+        /// appended at the end), so they load with default state for the missing sections.
         /// </summary>
         public const int MinSupportedVersion = 17;
 
@@ -503,6 +503,10 @@ namespace PitHero.Services
         // Automation (issue #321, v19)
         /// <summary>Whether automatic monster job assignment is enabled.</summary>
         public bool AutomateMonsterJobs = false;
+
+        // Auto-dine resume (v20)
+        /// <summary>Whether a breakfast trip in progress should auto-resume adventuring when done.</summary>
+        public bool PartyAutoDineResume = false;
 
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
@@ -906,6 +910,9 @@ namespace PitHero.Services
 
             // 34. Automation (issue #321)
             writer.Write(AutomateMonsterJobs);
+
+            // 35. Auto-dine resume (v20)
+            writer.Write(PartyAutoDineResume);
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -1299,6 +1306,10 @@ namespace PitHero.Services
             // 34. Automation (issue #321, v19+). Older files end at section 33 — default false.
             if (fileVersion >= 19)
                 AutomateMonsterJobs = reader.ReadBool();
+
+            // 35. Auto-dine resume (v20+). Older files end at section 34 — default false.
+            if (fileVersion >= 20)
+                PartyAutoDineResume = reader.ReadBool();
         }
 
         /// <summary>Writes a Color as four individual int components (R, G, B, A).</summary>

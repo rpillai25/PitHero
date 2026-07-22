@@ -799,6 +799,10 @@ namespace PitHero.Services
             if (autoJobAssignmentService != null)
                 data.AutomateMonsterJobs = autoJobAssignmentService.Enabled;
 
+            // Auto-dine resume (v20+)
+            if (partyDiningService != null)
+                data.PartyAutoDineResume = partyDiningService.AutoResumeWhenDone;
+
             return data;
         }
 
