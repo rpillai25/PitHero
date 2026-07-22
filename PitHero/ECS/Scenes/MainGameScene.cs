@@ -324,6 +324,11 @@ namespace PitHero.ECS.Scenes
 
             EmitWelcomeMessage();
 
+            // Clear any UI window count leaked from the previous scene (windows destroyed by a
+            // scene swap never run their close path) and re-apply the persistent window size —
+            // otherwise the deferred size restore never fires again after loading a save.
+            UI.UIWindowManager.ResetForNewScene();
+
             _isInitializationComplete = true;
         }
 
