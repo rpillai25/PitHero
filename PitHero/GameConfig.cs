@@ -182,6 +182,7 @@ namespace PitHero
         public const int KitchenRunnerWanderMaxTileY = 8;
         public const int ServerOrderMemoryLimit = 3;            // orders a server can hold before posting at the board
         public const int ServerCarryDishLimit = 2;              // cooked dishes a server can carry at once
+        public const float ServerBusPlateMaxWaitSeconds = 90f;  // a plate waiting this long jumps ahead of deliveries/orders
         public const float TicketBoardPauseSeconds = 1f;        // pause at the board to post/read a ticket
         public const int KitchenFridgeParPerCrop = 4;           // runner tops the fridge up to this many of each fetched crop
         public const float KitchenRunnerSprintMultiplier = 3f;  // runner speed multiplier while fetching ingredients

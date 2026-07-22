@@ -37,9 +37,10 @@ namespace PitHero.Services
 
         public struct BusJob
         {
-            public Entity DishEntity; // plate entity on the table to be bussed
-            public Vector2 WorldPos;  // where to pick it up from
-            public int TableTileY;    // zone filter (top tables y<=4, bottom y>=5)
+            public Entity DishEntity;  // plate entity on the table to be bussed
+            public Vector2 WorldPos;   // where to pick it up from
+            public int TableTileY;     // zone filter (top tables y<=4, bottom y>=5)
+            public float EnqueuedTime; // Time.TotalTime when queued — drives anti-starvation priority
         }
 
         private struct OrphanDish
@@ -580,6 +581,7 @@ namespace PitHero.Services
                     DishEntity = t.PlatedDishEntity,
                     WorldPos = t.PlatedDishEntity.Transform.Position,
                     TableTileY = t.TableTile.Y,
+                    EnqueuedTime = Time.TotalTime,
                 });
                 t.PlatedDishEntity = null;
             }
@@ -682,6 +684,7 @@ namespace PitHero.Services
                         DishEntity = emptyPlate,
                         WorldPos = platePos,
                         TableTileY = t.TableTile.Y,
+                        EnqueuedTime = Time.TotalTime,
                     });
                 }
             }
@@ -905,18 +908,38 @@ namespace PitHero.Services
 
         /// <summary>Next pending bus job for the zone's server. Removes it from the queue.</summary>
         public bool TryClaimBusJob(ServerZone zone, out BusJob job)
+            => TryClaimBusJob(zone, 0f, out job);
+
+        /// <summary>
+        /// Claims the oldest bus job in the zone that has waited at least minAgeSeconds
+        /// (0 = any). Removes it from the queue. The age gate lets servers bump long-waiting
+        /// plates ahead of order-taking so a busy tavern can't starve bussing forever.
+        /// </summary>
+        public bool TryClaimBusJob(ServerZone zone, float minAgeSeconds, out BusJob job)
         {
+            int oldest = -1;
+            float oldestTime = float.MaxValue;
             for (int i = 0; i < _busJobs.Count; i++)
             {
                 var tableTile = new Point(0, _busJobs[i].TableTileY);
                 if (!ZoneContainsTable(zone, tableTile))
                     continue;
-                job = _busJobs[i];
-                _busJobs.RemoveAt(i);
-                return true;
+                if (Time.TotalTime - _busJobs[i].EnqueuedTime < minAgeSeconds)
+                    continue;
+                if (_busJobs[i].EnqueuedTime < oldestTime)
+                {
+                    oldestTime = _busJobs[i].EnqueuedTime;
+                    oldest = i;
+                }
             }
-            job = default;
-            return false;
+            if (oldest < 0)
+            {
+                job = default;
+                return false;
+            }
+            job = _busJobs[oldest];
+            _busJobs.RemoveAt(oldest);
+            return true;
         }
 
         // ── Runner API ───────────────────────────────────────────────────────────

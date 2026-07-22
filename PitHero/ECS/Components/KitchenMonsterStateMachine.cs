@@ -239,6 +239,14 @@ namespace PitHero.ECS.Components
 
             var zone = Zone;
 
+            // 0) A plate that has waited too long — in a busy tavern priorities 1-2 always have
+            //    work, so without this age bump bussing starves and plates pile up on tables
+            if (_coordinator.TryClaimBusJob(zone, GameConfig.ServerBusPlateMaxWaitSeconds, out _busJob))
+            {
+                _busPickedUp = false;
+                CurrentState = KitchenMonsterState.ServerBusPlate;
+                return;
+            }
             // 1) Cooked food waiting → deliver
             if (_coordinator.HasReadyDishForZone(zone))
             {
