@@ -16,9 +16,9 @@ namespace PitHero.Tests
     public class AutoJobAssignmentServiceTests
     {
         private static AlliedMonster Monster(string name, int fishing, int cooking, int farming,
-            MonsterJob job = MonsterJob.None)
+            MonsterJob job = MonsterJob.None, string typeName = "Monster_Slime")
         {
-            var m = new AlliedMonster(name, "Monster_Slime", fishing, cooking, farming);
+            var m = new AlliedMonster(name, typeName, fishing, cooking, farming);
             m.Job = job;
             return m;
         }
@@ -94,6 +94,73 @@ namespace PitHero.Tests
             service.ReassessNow();
 
             Assert.AreEqual(MonsterJob.Fishing, roster.AlliedMonsters[0].Job);
+        }
+
+        // ── Day/night shift segregation ──────────────────────────────────────
+
+        [TestMethod]
+        public void ReassessNow_StaffsDayAndNightShiftsIndependently()
+        {
+            // Day monsters (Slime) and nocturnal monsters (Orc) never work at the same time, so
+            // each shift must field its own kitchen crew — even when the day shift has better cooks.
+            var roster = new AlliedMonsterManager();
+            roster.AddAlliedMonster(Monster("DayA", 1, 9, 1));
+            roster.AddAlliedMonster(Monster("DayB", 1, 8, 1));
+            roster.AddAlliedMonster(Monster("DayC", 1, 7, 1));
+            roster.AddAlliedMonster(Monster("DayD", 1, 6, 1));
+            roster.AddAlliedMonster(Monster("NightA", 1, 5, 1, typeName: "Monster_Orc"));
+            roster.AddAlliedMonster(Monster("NightB", 1, 4, 1, typeName: "Monster_Skeleton"));
+            roster.AddAlliedMonster(Monster("NightC", 1, 3, 1, typeName: "Monster_Orc"));
+            roster.AddAlliedMonster(Monster("NightD", 1, 2, 1, typeName: "Monster_Orc"));
+            var service = CreateHeadlessService(roster);
+
+            service.ReassessNow();
+
+            Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[0].Job, "Best day cook staffs the day kitchen");
+            Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[1].Job);
+            Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[2].Job);
+            Assert.AreEqual(MonsterJob.None, roster.AlliedMonsters[3].Job, "Fourth day monster exceeds the base crew");
+            Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[4].Job,
+                "Night shift fields its own kitchen crew despite lower cooking skill than the day shift");
+            Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[5].Job);
+            Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[6].Job);
+            Assert.AreEqual(MonsterJob.None, roster.AlliedMonsters[7].Job, "Fourth night monster exceeds the base crew");
+        }
+
+        [TestMethod]
+        public void ReassessNow_DemandClampsApplyPerShift()
+        {
+            // Kitchen base crew clamps to each shift's own size, not the whole roster's.
+            var roster = new AlliedMonsterManager();
+            roster.AddAlliedMonster(Monster("DayA", 1, 5, 1));
+            roster.AddAlliedMonster(Monster("DayB", 1, 5, 1));
+            roster.AddAlliedMonster(Monster("NightA", 1, 5, 1, typeName: "Monster_Orc"));
+            roster.AddAlliedMonster(Monster("NightB", 1, 5, 1, typeName: "Monster_Skeleton"));
+            var service = CreateHeadlessService(roster);
+
+            service.ReassessNow();
+
+            for (int i = 0; i < 4; i++)
+                Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[i].Job,
+                    $"Monster {i}: with 2 monsters per shift, the whole shift staffs the kitchen");
+        }
+
+        [TestMethod]
+        public void ReassessNow_StickyKitchenProtectionIsPerShift()
+        {
+            // A nocturnal monster already on Cooking must not shield the day shift from staffing
+            // its own kitchen, and vice versa — stickiness applies within each shift group only.
+            var roster = new AlliedMonsterManager();
+            roster.AddAlliedMonster(Monster("Day", 1, 4, 1));
+            roster.AddAlliedMonster(Monster("Night", 1, 4, 1, MonsterJob.Cooking, typeName: "Monster_Orc"));
+            var service = CreateHeadlessService(roster);
+
+            service.ReassessNow();
+
+            Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[0].Job,
+                "Day shift staffs its kitchen even though a night monster already holds a kitchen job");
+            Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[1].Job,
+                "Sticky night kitchen worker keeps the job");
         }
 
         private sealed class FixedDemandEvaluator : IJobDemandEvaluator
