@@ -167,6 +167,25 @@ namespace PitHero.UI
         }
 
         /// <summary>
+        /// Called when a new game scene begins. UI windows counted in the previous scene were
+        /// destroyed with it without ever running their close path (e.g. loading a save from the
+        /// Settings window), so a stale count would defer the persistent-size restore forever.
+        /// Clears the count and re-applies the persistent size, since a scene swap can happen
+        /// while the window is at the temporary Normal size UI viewing uses.
+        /// </summary>
+        public static void ResetForNewScene()
+        {
+            if (_openUIWindowCount != 0)
+            {
+                Debug.Log($"[UIWindowManager] Clearing leaked open-window count ({_openUIWindowCount}) on scene change");
+                _openUIWindowCount = 0;
+            }
+
+            if (_isInitialized)
+                ApplyPersistentWindowSize();
+        }
+
+        /// <summary>
         /// Gets the current window size mode
         /// </summary>
         private static WindowSizeMode GetCurrentWindowSize()
