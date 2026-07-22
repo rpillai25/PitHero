@@ -96,6 +96,73 @@ namespace PitHero.Tests
             Assert.AreEqual(MonsterJob.Fishing, roster.AlliedMonsters[0].Job);
         }
 
+        // ── Cadence and shift-boundary triggers ──────────────────────────────
+        // A lone monster with zero workload gets Cooking (kitchen base crew) when a
+        // reassessment fires, so a job change is the observable "reassess happened" signal.
+
+        [TestMethod]
+        public void TickCadence_FirstTick_InitializesWithoutReassessing()
+        {
+            var roster = new AlliedMonsterManager();
+            roster.AddAlliedMonster(Monster("Bob", 1, 5, 1, MonsterJob.Farming));
+            var service = CreateHeadlessService(roster);
+
+            service.TickCadence(100f, isNighttime: false);
+
+            Assert.AreEqual(MonsterJob.Farming, roster.AlliedMonsters[0].Job,
+                "First tick only initializes the interval; no reassessment fires");
+        }
+
+        [TestMethod]
+        public void TickCadence_ReassessesAfterInterval()
+        {
+            var roster = new AlliedMonsterManager();
+            roster.AddAlliedMonster(Monster("Bob", 1, 5, 1, MonsterJob.Farming));
+            var service = CreateHeadlessService(roster);
+
+            service.TickCadence(0f, isNighttime: false);
+            service.TickCadence(GameConfig.AutoJobReassessIntervalSeconds - 1f, isNighttime: false);
+            Assert.AreEqual(MonsterJob.Farming, roster.AlliedMonsters[0].Job, "Interval not yet elapsed");
+
+            service.TickCadence(GameConfig.AutoJobReassessIntervalSeconds, isNighttime: false);
+            Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[0].Job, "Interval elapsed — reassess fires");
+        }
+
+        [TestMethod]
+        public void TickCadence_ShiftChange_ReassessesImmediately()
+        {
+            var roster = new AlliedMonsterManager();
+            roster.AddAlliedMonster(Monster("Bob", 1, 5, 1, MonsterJob.Farming));
+            var service = CreateHeadlessService(roster);
+
+            service.TickCadence(0f, isNighttime: false);
+            service.TickCadence(30f, isNighttime: true);
+
+            Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[0].Job,
+                "Day→night boundary reassesses immediately, well before the 60-minute cadence");
+        }
+
+        [TestMethod]
+        public void TickCadence_ShiftChange_RestartsTheInterval()
+        {
+            var roster = new AlliedMonsterManager();
+            var service = CreateHeadlessService(roster);
+
+            service.TickCadence(0f, isNighttime: false);
+            service.TickCadence(50f, isNighttime: true);   // boundary reassess at t=50
+
+            // Now give the monster a job and verify the next cadence fire is 60s after the
+            // boundary (t=110), not 60s after the original init (t=60).
+            roster.AddAlliedMonster(Monster("Bob", 1, 5, 1, MonsterJob.Farming));
+            service.TickCadence(65f, isNighttime: true);
+            Assert.AreEqual(MonsterJob.Farming, roster.AlliedMonsters[0].Job,
+                "Boundary reassess restarted the interval — t=65 is too early");
+
+            service.TickCadence(50f + GameConfig.AutoJobReassessIntervalSeconds, isNighttime: true);
+            Assert.AreEqual(MonsterJob.Cooking, roster.AlliedMonsters[0].Job,
+                "Cadence fires one full interval after the boundary reassess");
+        }
+
         // ── Day/night shift segregation ──────────────────────────────────────
 
         [TestMethod]

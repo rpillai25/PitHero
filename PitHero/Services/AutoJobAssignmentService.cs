@@ -26,6 +26,7 @@ namespace PitHero.Services
         private readonly List<MonsterJob> _resultJobs = new List<MonsterJob>(64);
 
         private float _lastAssessSeconds = -1f;
+        private bool _wasNighttime;
 
         /// <summary>Whether automatic job assignment is active.</summary>
         public bool Enabled { get; set; } = false;
@@ -64,17 +65,37 @@ namespace PitHero.Services
             if (time == null)
                 return;
 
-            float now = time.AccumulatedSeconds;
-            if (_lastAssessSeconds < 0f || now < _lastAssessSeconds)
+            TickCadence(time.AccumulatedSeconds, time.IsNighttime);
+        }
+
+        /// <summary>
+        /// Cadence bookkeeping, separated from Update for headless testing: fires ReassessNow every
+        /// GameConfig.AutoJobReassessIntervalSeconds, and immediately at the day/night shift change
+        /// (6AM/10PM) so the incoming shift is right-sized to the current workload instead of
+        /// running on counts up to an hour stale.
+        /// </summary>
+        public void TickCadence(float nowSeconds, bool isNighttime)
+        {
+            if (_lastAssessSeconds < 0f || nowSeconds < _lastAssessSeconds)
             {
                 // First tick after enable/load, or time rewound by a load — restart the interval.
-                _lastAssessSeconds = now;
+                _lastAssessSeconds = nowSeconds;
+                _wasNighttime = isNighttime;
                 return;
             }
-            if (now - _lastAssessSeconds < GameConfig.AutoJobReassessIntervalSeconds)
+
+            if (isNighttime != _wasNighttime)
+            {
+                _wasNighttime = isNighttime;
+                _lastAssessSeconds = nowSeconds;
+                ReassessNow();
+                return;
+            }
+
+            if (nowSeconds - _lastAssessSeconds < GameConfig.AutoJobReassessIntervalSeconds)
                 return;
 
-            _lastAssessSeconds = now;
+            _lastAssessSeconds = nowSeconds;
             ReassessNow();
         }
 
