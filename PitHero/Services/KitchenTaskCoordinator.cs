@@ -99,6 +99,9 @@ namespace PitHero.Services
         /// <summary>True when ≥1 cook and ≥1 server are assigned and awake.</summary>
         public bool IsKitchenOpen => _cook1WorkerIdx >= 0 && _server1WorkerIdx >= 0;
 
+        /// <summary>Number of open kitchen tickets (any state) — the order backlog.</summary>
+        public int ActiveTicketCount => _tickets.Count;
+
         // ── Constructor ─────────────────────────────────────────────────────────
 
         public KitchenTaskCoordinator(AlliedMonsterManager alliedMonsters,
@@ -169,7 +172,8 @@ namespace PitHero.Services
 
             // Assign roles in order: cook1, server1, runner1, cook2, server2, runner2, cook3.
             // Stations and zones are claimed dynamically by the FSMs.
-            int postCount = _wantedAssignments.Count < 7 ? _wantedAssignments.Count : 7;
+            int postCount = _wantedAssignments.Count < GameConfig.AutoJobKitchenMaxWorkers
+                ? _wantedAssignments.Count : GameConfig.AutoJobKitchenMaxWorkers;
             for (int i = 0; i < postCount; i++)
             {
                 KitchenRole role;

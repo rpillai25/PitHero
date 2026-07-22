@@ -678,6 +678,22 @@ namespace PitHero.Services
             }).ToList();
         }
 
+        /// <summary>Number of unhired mercenaries currently seated as tavern patrons.</summary>
+        public int CountSeatedPatrons()
+        {
+            int count = 0;
+            for (int i = 0; i < _mercenaryEntities.Count; i++)
+            {
+                var entity = _mercenaryEntities[i];
+                if (entity == null)
+                    continue;
+                var comp = entity.GetComponent<MercenaryComponent>();
+                if (comp != null && !comp.IsHired && entity.HasComponent<ECS.Components.TavernPatronComponent>())
+                    count++;
+            }
+            return count;
+        }
+
         /// <summary>Gets an available tavern position</summary>
         private Point? GetAvailableTavernPosition()
         {

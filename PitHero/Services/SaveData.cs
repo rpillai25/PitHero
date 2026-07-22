@@ -255,12 +255,12 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 18;
+        public const int CurrentVersion = 19;
 
         /// <summary>
-        /// Oldest save file version this build can still load. v17 files are a byte-exact
-        /// prefix of v18 (the dining section 33 was appended at the end), so they load with
-        /// default dining state.
+        /// Oldest save file version this build can still load. v17 and v18 files are byte-exact
+        /// prefixes of v19 (sections 33 dining and 34 automation were appended at the end), so
+        /// they load with default state for the missing sections.
         /// </summary>
         public const int MinSupportedVersion = 17;
 
@@ -499,6 +499,10 @@ namespace PitHero.Services
 
         /// <summary>Per-party-slot dining records: 0 = hero, 1/2 = hired mercenaries.</summary>
         public SavedDiningRecord[] PartyDining;
+
+        // Automation (issue #321, v19)
+        /// <summary>Whether automatic monster job assignment is enabled.</summary>
+        public bool AutomateMonsterJobs = false;
 
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
@@ -899,6 +903,9 @@ namespace PitHero.Services
                 writer.Write(PartyDining[i].MealDishId);
                 writer.Write(PartyDining[i].MealDeluxe);
             }
+
+            // 34. Automation (issue #321)
+            writer.Write(AutomateMonsterJobs);
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -1288,6 +1295,10 @@ namespace PitHero.Services
                         PartyDining[i] = record;
                 }
             }
+
+            // 34. Automation (issue #321, v19+). Older files end at section 33 — default false.
+            if (fileVersion >= 19)
+                AutomateMonsterJobs = reader.ReadBool();
         }
 
         /// <summary>Writes a Color as four individual int components (R, G, B, A).</summary>

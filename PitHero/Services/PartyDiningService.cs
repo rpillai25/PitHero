@@ -122,6 +122,20 @@ namespace PitHero.Services
             }
         }
 
+        /// <summary>Party members who still intend to eat at the tavern today (0 when EatAtTavern is off).</summary>
+        public int CountPendingPartyDiners()
+        {
+            if (!EatAtTavern)
+                return 0;
+            int count = 0;
+            for (int slot = 0; slot < PartySlots; slot++)
+            {
+                if (!_slots[slot].HasEatenToday && GetCombatant(slot) != null)
+                    count++;
+            }
+            return count;
+        }
+
         // ── Entry points ────────────────────────────────────────────────────────
 
         /// <summary>

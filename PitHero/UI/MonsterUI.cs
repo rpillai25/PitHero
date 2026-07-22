@@ -259,6 +259,7 @@ namespace PitHero.UI
         {
             _monsterListTable.Clear();
             var manager = Core.Services.GetService<AlliedMonsterManager>();
+            bool jobsAutomated = Core.Services.GetService<Services.AutoJobAssignmentService>()?.Enabled ?? false;
 
             // One page per Monster House in the aggregate view; the per-house view is never paged.
             var houses = GetMonsterHouses();
@@ -439,17 +440,22 @@ namespace PitHero.UI
                             ImageUp = new SpriteDrawable(jobSprite)
                         };
                         var jobBtn = new HoverableImageButton(btnStyle, jobName);
+                        // With automation on, the system owns assignments: buttons stay visible
+                        // (active job bright, others dimmed harder) but never accept clicks.
                         jobBtn.GetImage().SetColor(isSelected
                             ? Color.White
-                            : new Color(128, 128, 128, 200));
+                            : (jobsAutomated ? new Color(80, 80, 80, 140) : new Color(128, 128, 128, 200)));
 
-                        var closuredMonster = capturedMonster;
-                        var closuredJob = jobValue;
-                        jobBtn.OnClicked += (_) =>
+                        if (!jobsAutomated)
                         {
-                            closuredMonster.Job = closuredJob;
-                            RefreshMonsterList();
-                        };
+                            var closuredMonster = capturedMonster;
+                            var closuredJob = jobValue;
+                            jobBtn.OnClicked += (_) =>
+                            {
+                                closuredMonster.Job = closuredJob;
+                                RefreshMonsterList();
+                            };
+                        }
 
                         buttonsTable.Add(jobBtn).Size(32f, 32f).Pad(1f);
                     }

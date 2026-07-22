@@ -310,7 +310,9 @@ namespace PitHero
         public const string AddMonsterConfirmPrompt = "AddMonsterConfirmPrompt";
         public const string ConsoleTrapTriggered = "ConsoleTrapTriggered";
         public const string ConsoleTrapDisarmed = "ConsoleTrapDisarmed";
-        public const string TabAutoShop = "TabAutoShop";
+        public const string TabAutomation = "TabAutomation";
+        public const string SettingsAutomateMonsterJobs = "SettingsAutomateMonsterJobs";
+        public const string SettingsAutomateMonsterJobsTooltip = "SettingsAutomateMonsterJobsTooltip";
         public const string SettingsAutomateSeedPurchases = "SettingsAutomateSeedPurchases";
         public const string SettingsAutoShopGoldBuffer = "SettingsAutoShopGoldBuffer";
         public const string SettingsAutomateSeedPurchasesTooltip = "SettingsAutomateSeedPurchasesTooltip";

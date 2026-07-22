@@ -219,6 +219,14 @@ namespace PitHero
         public const float DishTipMinPercent = 0.05f;           // tip is 5-15% of dish price, rounded up
         public const float DishTipMaxPercent = 0.15f;
 
+        // Automated monster job assignment (issue #321)
+        public const float AutoJobReassessIntervalSeconds = 60f;   // scaled seconds between reassessments (60 in-game minutes)
+        public const int AutoJobFarmTasksPerWorker = 6;            // burst demand: outstanding farm tasks each farmer can absorb
+        public const int AutoJobFarmCropsPerWorkerBaseline = 12;   // quiet-period demand: crops + plans each farmer can tend
+        public const int AutoJobKitchenBaseStaff = 3;              // cook + server + runner minimum (no runner -> fridge runs dry)
+        public const int AutoJobKitchenBacklogPerExtraWorker = 3;  // tickets/patrons per extra kitchen worker beyond base staff
+        public const int AutoJobKitchenMaxWorkers = 7;             // mirrors KitchenTaskCoordinator role-post cap
+
         // Camera Configuration
         public const float CameraDefaultZoom = 1f; // default zoom level
         public const float CameraMinimumZoom = 0.5f; // can't zoom out past default for normal maps

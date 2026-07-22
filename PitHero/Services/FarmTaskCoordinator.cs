@@ -72,6 +72,10 @@ namespace PitHero.Services
         /// <summary>Number of actions waiting in the till queue (excludes claimed actions).</summary>
         public int PendingActionCount => _queue.Count;
 
+        /// <summary>Total outstanding farm tasks across all queues (queued + claimed by workers).</summary>
+        public int OutstandingTaskCount => _tracked.Count + _plantTracked.Count + _waterTracked.Count
+            + _harvestTracked.Count + _destroyTracked.Count + _pickupTracked.Count;
+
         public FarmTaskCoordinator(TileStateService tileState, BuildingService buildingService,
             int mapWidthTiles, int mapHeightTiles, AlliedMonsterManager alliedMonsters = null,
             TilledTileService tilledTileService = null,

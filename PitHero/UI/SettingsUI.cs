@@ -25,7 +25,7 @@ namespace PitHero.UI
         private Tab _windowTab;
         private Tab _sessionTab;
         private Tab _buttonsTab;
-        private Tab _autoShopTab;
+        private Tab _automationTab;
 
         // Window positioning controls
         private EnhancedSlider _yOffsetSlider;
@@ -59,7 +59,8 @@ namespace PitHero.UI
         private Label _replenishHPThresholdLabel;
         private Label _replenishMPThresholdLabel;
 
-        // Auto Shop tab controls
+        // Automation tab controls
+        private HoverableCheckBox _automateMonsterJobsCheckBox;
         private HoverableCheckBox _automateSeedsCheckBox;
         private EnhancedSlider _goldBufferSlider;
         private HoverableLabel _goldBufferLabel;
@@ -487,14 +488,14 @@ namespace PitHero.UI
             PopulateWindowTab(_windowTab, skin);
             PopulateSessionTab(_sessionTab, skin);
             PopulateButtonsTab(_buttonsTab, skin);
-            _autoShopTab = new Tab(GetText(TextType.UI, UITextKey.TabAutoShop), tabStyle);
-            PopulateAutoShopTab(_autoShopTab, skin);
+            _automationTab = new Tab(GetText(TextType.UI, UITextKey.TabAutomation), tabStyle);
+            PopulateAutomationTab(_automationTab, skin);
 
             // Add tabs to TabPane
             _tabPane.AddTab(_windowTab);
             _tabPane.AddTab(_sessionTab);
             _tabPane.AddTab(_buttonsTab);
-            _tabPane.AddTab(_autoShopTab);
+            _tabPane.AddTab(_automationTab);
 
             // Add TabPane to settings window
             _settingsWindow.Add(_tabPane).Expand().Fill().Pad(0); // No cell padding - tabs flush with window edges
@@ -844,11 +845,31 @@ namespace PitHero.UI
             buttonsTab.Add(buttonsTable).Expand().Top().Left();
         }
 
-        /// <summary>Populates the Auto Shop tab with seed-purchase automation controls.</summary>
-        private void PopulateAutoShopTab(Tab autoShopTab, Skin skin)
+        /// <summary>Populates the Automation tab with monster-job, seed-purchase, and crop-sell automation controls.</summary>
+        private void PopulateAutomationTab(Tab automationTab, Skin skin)
         {
             var autoShopTable = new Table();
             autoShopTable.Pad(20);
+
+            string monsterJobsTooltip = GetText(TextType.UI, UITextKey.SettingsAutomateMonsterJobsTooltip);
+            _automateMonsterJobsCheckBox = new HoverableCheckBox(
+                GetText(TextType.UI, UITextKey.SettingsAutomateMonsterJobs),
+                skin,
+                monsterJobsTooltip,
+                _stage);
+            _automateMonsterJobsCheckBox.IsChecked = false;
+            _automateMonsterJobsCheckBox.OnChanged += (isChecked) =>
+            {
+                var svc = Core.Services?.GetService<AutoJobAssignmentService>();
+                if (svc != null)
+                {
+                    svc.Enabled = isChecked;
+                    if (isChecked)
+                        svc.ReassessNow();
+                }
+            };
+            autoShopTable.Add(_automateMonsterJobsCheckBox).Left().SetPadBottom(15f);
+            autoShopTable.Row();
 
             string checkboxTooltip = GetText(TextType.UI, UITextKey.SettingsAutomateSeedPurchasesTooltip);
             _automateSeedsCheckBox = new HoverableCheckBox(
@@ -914,15 +935,19 @@ namespace PitHero.UI
             _designateCropsButton.SetVisible(false);
             autoShopTable.Add(_designateCropsButton).Left().Width(140f);
 
-            autoShopTab.Add(autoShopTable).Expand().Top().Left();
+            automationTab.Add(autoShopTable).Expand().Top().Left();
         }
 
         /// <summary>
-        /// Reads AutoSeedPurchaseService state and syncs the Auto Shop tab controls.
+        /// Reads the automation services' state and syncs the Automation tab controls.
         /// Called after load to reflect persisted settings.
         /// </summary>
-        public void SyncAutoShopControlsFromService()
+        public void SyncAutomationControlsFromService()
         {
+            var autoJobSvc = Core.Services?.GetService<AutoJobAssignmentService>();
+            if (autoJobSvc != null && _automateMonsterJobsCheckBox != null)
+                _automateMonsterJobsCheckBox.IsChecked = autoJobSvc.Enabled;
+
             var svc = Core.Services?.GetService<AutoSeedPurchaseService>();
             if (svc == null) return;
 

@@ -794,6 +794,11 @@ namespace PitHero.Services
                 }
             }
 
+            // Automation (v19+)
+            var autoJobAssignmentService = Core.Services.GetService<AutoJobAssignmentService>();
+            if (autoJobAssignmentService != null)
+                data.AutomateMonsterJobs = autoJobAssignmentService.Enabled;
+
             return data;
         }
 
