@@ -39,7 +39,6 @@ namespace PitHero.Services
         {
             public Entity DishEntity;  // plate entity on the table to be bussed
             public Vector2 WorldPos;   // where to pick it up from
-            public int TableTileY;     // zone filter (top tables y<=4, bottom y>=5)
             public float EnqueuedTime; // Time.TotalTime when queued — drives anti-starvation priority
         }
 
@@ -580,7 +579,6 @@ namespace PitHero.Services
                 {
                     DishEntity = t.PlatedDishEntity,
                     WorldPos = t.PlatedDishEntity.Transform.Position,
-                    TableTileY = t.TableTile.Y,
                     EnqueuedTime = Time.TotalTime,
                 });
                 t.PlatedDishEntity = null;
@@ -683,7 +681,6 @@ namespace PitHero.Services
                     {
                         DishEntity = emptyPlate,
                         WorldPos = platePos,
-                        TableTileY = t.TableTile.Y,
                         EnqueuedTime = Time.TotalTime,
                     });
                 }
@@ -906,24 +903,22 @@ namespace PitHero.Services
             }
         }
 
-        /// <summary>Next pending bus job for the zone's server. Removes it from the queue.</summary>
-        public bool TryClaimBusJob(ServerZone zone, out BusJob job)
-            => TryClaimBusJob(zone, 0f, out job);
+        /// <summary>Next pending bus job. Removes it from the queue.</summary>
+        public bool TryClaimBusJob(out BusJob job)
+            => TryClaimBusJob(0f, out job);
 
         /// <summary>
-        /// Claims the oldest bus job in the zone that has waited at least minAgeSeconds
-        /// (0 = any). Removes it from the queue. The age gate lets servers bump long-waiting
-        /// plates ahead of order-taking so a busy tavern can't starve bussing forever.
+        /// Claims the oldest bus job that has waited at least minAgeSeconds (0 = any). Removes it
+        /// from the queue. Bussing is deliberately zone-free — any server may clear any table —
+        /// and the age gate lets servers bump long-waiting plates ahead of order-taking so a busy
+        /// tavern can't starve bussing forever. (Order-taking and delivery stay zone-restricted.)
         /// </summary>
-        public bool TryClaimBusJob(ServerZone zone, float minAgeSeconds, out BusJob job)
+        public bool TryClaimBusJob(float minAgeSeconds, out BusJob job)
         {
             int oldest = -1;
             float oldestTime = float.MaxValue;
             for (int i = 0; i < _busJobs.Count; i++)
             {
-                var tableTile = new Point(0, _busJobs[i].TableTileY);
-                if (!ZoneContainsTable(zone, tableTile))
-                    continue;
                 if (Time.TotalTime - _busJobs[i].EnqueuedTime < minAgeSeconds)
                     continue;
                 if (_busJobs[i].EnqueuedTime < oldestTime)
@@ -940,6 +935,26 @@ namespace PitHero.Services
             job = _busJobs[oldest];
             _busJobs.RemoveAt(oldest);
             return true;
+        }
+
+        /// <summary>
+        /// Claims the pending bus job whose plate sits at the given world position (within half a
+        /// tile), if any. Called by a delivering server right before it sets a new dish down, so a
+        /// new meal is never stacked on top of an un-bussed empty plate.
+        /// </summary>
+        public bool TryClaimBusJobAtPosition(Vector2 platePos, out BusJob job)
+        {
+            const float maxDistSq = 16f * 16f;
+            for (int i = 0; i < _busJobs.Count; i++)
+            {
+                if (Vector2.DistanceSquared(_busJobs[i].WorldPos, platePos) > maxDistSq)
+                    continue;
+                job = _busJobs[i];
+                _busJobs.RemoveAt(i);
+                return true;
+            }
+            job = default;
+            return false;
         }
 
         // ── Runner API ───────────────────────────────────────────────────────────
