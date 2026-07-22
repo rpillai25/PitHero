@@ -483,12 +483,15 @@ namespace PitHero.ECS.Components
             Entity dishEntity = null;
             if (TavernSeatConfig.TryGetPlateWorldPosition(c.Ticket.SeatTile, out var platePos))
             {
-                // Never stack a new meal on an un-bussed empty plate: the server clears the old
-                // plate into their tray as they set the new dish down
-                if (_coordinator.TryClaimBusJobAtPosition(platePos, out var stalePlate)
-                    && stalePlate.DishEntity != null && !stalePlate.DishEntity.IsDestroyed)
+                // Never stack a new meal on an un-bussed empty plate: the server takes the old
+                // plate in hand as they set the new dish down, then busses it to the sink once
+                // their remaining deliveries are done (a Ticket-less ToSink leg shows the plate
+                // sprite carried to the sink)
+                if (_coordinator.TryClaimBusJobAtPosition(platePos, out var stalePlate))
                 {
-                    stalePlate.DishEntity.Destroy();
+                    if (stalePlate.DishEntity != null && !stalePlate.DishEntity.IsDestroyed)
+                        stalePlate.DishEntity.Destroy();
+                    _carried.Add(new CarriedDish { Ticket = null, ToSink = true });
                 }
                 dishEntity = _coordinator.DishService?.SpawnDishAtWorldPos(c.Ticket.Dish, platePos);
             }
