@@ -71,7 +71,8 @@ namespace PitHero.Services
         public FarmPathfinder Pathfinder { get; }
 
         // ── Tickets / board ─────────────────────────────────────────────────────
-        private readonly List<KitchenTicket> _tickets = new List<KitchenTicket>(16);
+        private const int MaxOpenTickets = 16;
+        private readonly List<KitchenTicket> _tickets = new List<KitchenTicket>(MaxOpenTickets);
         private int _nextTicketId;
 
         // ── Fridge inventory (kitchen-local crop stock) ─────────────────────────
@@ -101,6 +102,25 @@ namespace PitHero.Services
 
         /// <summary>Number of open kitchen tickets (any state) — the order backlog.</summary>
         public int ActiveTicketCount => _tickets.Count;
+
+        /// <summary>True while the ticket board has room for another order.</summary>
+        public bool HasTicketCapacity => _tickets.Count < MaxOpenTickets;
+
+        /// <summary>
+        /// True when at least one dish is fully coverable from fridge + storage. Servers must
+        /// check this (and HasTicketCapacity) before walking to a waiting patron: when no order
+        /// can possibly be created, targeting the patron anyway livelocks the server standing at
+        /// the seat, re-selecting the same patron every decide pass.
+        /// </summary>
+        public bool HasAnyOrderableDish()
+        {
+            for (int d = 0; d < DishTypeInfo.Count; d++)
+            {
+                if (CanCoverRecipe((DishType)d))
+                    return true;
+            }
+            return false;
+        }
 
         // ── Constructor ─────────────────────────────────────────────────────────
 
@@ -426,7 +446,7 @@ namespace PitHero.Services
         public KitchenTicket CreateTicket(DishType dish, bool isParty, int partySlot,
             Entity patronEntity, Point seatTile)
         {
-            if (_tickets.Count >= 16)
+            if (_tickets.Count >= MaxOpenTickets)
                 return null;
 
             EnsureServices();
@@ -500,7 +520,7 @@ namespace PitHero.Services
         /// </summary>
         public KitchenTicket CreateTicketPreReserved(DishType dish, int partySlot)
         {
-            if (_tickets.Count >= 16)
+            if (_tickets.Count >= MaxOpenTickets)
                 return null;
 
             var def = DishConfig.GetDefinition(dish);

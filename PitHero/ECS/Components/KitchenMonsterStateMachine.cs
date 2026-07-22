@@ -275,11 +275,17 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Picks the next order target in the zone: party members first (their table must be in
         /// this zone), then the nearest waiting patron. Sets _targetPatron/_targetPartySlot.
+        /// Only targets someone whose order can actually be created — a full ticket board (or,
+        /// for walk-ins, an empty pantry) would make TakeOrderAtTarget fail silently and the
+        /// server would livelock standing at the seat, re-picking the same target forever.
         /// </summary>
         private bool TryPickNextOrderTarget(ServerZone zone)
         {
             _targetPatron = null;
             _targetPartySlot = -1;
+
+            if (!_coordinator.HasTicketCapacity)
+                return false;
 
             var partyTable = TavernSeatConfig.GetTableTile(KitchenTaskCoordinator.GetPartySeatTile(0));
             if (KitchenTaskCoordinator.ZoneContainsTable(zone, partyTable)
@@ -290,6 +296,8 @@ namespace PitHero.ECS.Components
                 return true;
             }
 
+            if (!_coordinator.HasAnyOrderableDish())
+                return false;
             _targetPatron = FindPatronNeedingOrder(zone);
             return _targetPatron != null;
         }
@@ -588,11 +596,15 @@ namespace PitHero.ECS.Components
 
         private bool HasOrderWork(ServerZone zone)
         {
+            // Mirrors TryPickNextOrderTarget's guards so wandering isn't interrupted for an
+            // order that could never be created (full board / empty pantry)
+            if (!_coordinator.HasTicketCapacity)
+                return false;
             var partyTable = TavernSeatConfig.GetTableTile(KitchenTaskCoordinator.GetPartySeatTile(0));
             if (KitchenTaskCoordinator.ZoneContainsTable(zone, partyTable)
                 && _coordinator.TryGetNextPartyOrder(out _, out _))
                 return true;
-            return FindPatronNeedingOrder(zone) != null;
+            return _coordinator.HasAnyOrderableDish() && FindPatronNeedingOrder(zone) != null;
         }
 
         private Entity FindPatronNeedingOrder(ServerZone zone)
