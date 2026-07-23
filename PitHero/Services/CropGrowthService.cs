@@ -40,6 +40,9 @@ namespace PitHero.Services
         /// <summary>Returns true if a crop has been planted at the given tile.</summary>
         public bool HasCrop(Point tile) => _crops.ContainsKey(tile);
 
+        /// <summary>Number of crops currently planted in the world.</summary>
+        public int CropCount => _crops.Count;
+
         /// <summary>Returns the type of the planted crop at the given tile, or null if none.</summary>
         public CropType? GetCropType(Point tile)
         {

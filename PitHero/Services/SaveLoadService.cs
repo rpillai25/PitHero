@@ -794,6 +794,15 @@ namespace PitHero.Services
                 }
             }
 
+            // Automation (v19+)
+            var autoJobAssignmentService = Core.Services.GetService<AutoJobAssignmentService>();
+            if (autoJobAssignmentService != null)
+                data.AutomateMonsterJobs = autoJobAssignmentService.Enabled;
+
+            // Auto-dine resume (v20+)
+            if (partyDiningService != null)
+                data.PartyAutoDineResume = partyDiningService.AutoResumeWhenDone;
+
             return data;
         }
 

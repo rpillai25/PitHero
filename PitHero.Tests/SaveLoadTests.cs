@@ -691,8 +691,9 @@ namespace PitHero.Tests
         }
 
         /// <summary>
-        /// Verifies that a v17 save (a byte-exact prefix of v18 — no dining section 33) still
-        /// loads, with dining state falling back to defaults.
+        /// Verifies that a v17 save (a byte-exact prefix of the current format — no dining
+        /// section 33, automation section 34, or auto-dine section 35) still loads, with
+        /// defaults for all three.
         /// </summary>
         [TestMethod]
         public void SaveData_V17File_LoadsWithDefaultDining()
@@ -706,9 +707,9 @@ namespace PitHero.Tests
                 original.EatAtTavern = true;
                 writer.Write(original);
             }
-            byte[] v18Bytes = ms.ToArray();
+            byte[] currentBytes = ms.ToArray();
 
-            // Measure the writer's int/bool encodings so the section-33 tail length is exact
+            // Measure the writer's int/bool encodings so the sections-33/34 tail length is exact
             var probe = new MemoryStream();
             int intSize, boolSize;
             using (var probeWriter = new BinaryPersistableWriter(probe))
@@ -719,10 +720,11 @@ namespace PitHero.Tests
                 boolSize = (int)probe.Length - intSize;
             }
 
-            // Section 33 = FavoriteDishId + EatAtTavern + count + 3 records of (2 ints + 3 bools)
-            int tailLength = 2 * intSize + boolSize + 3 * (2 * intSize + 3 * boolSize);
-            byte[] v17Bytes = new byte[v18Bytes.Length - tailLength];
-            System.Array.Copy(v18Bytes, v17Bytes, v17Bytes.Length);
+            // Section 33 = FavoriteDishId + EatAtTavern + count + 3 records of (2 ints + 3 bools);
+            // section 34 = AutomateMonsterJobs (1 bool); section 35 = PartyAutoDineResume (1 bool)
+            int tailLength = 2 * intSize + boolSize + 3 * (2 * intSize + 3 * boolSize) + 2 * boolSize;
+            byte[] v17Bytes = new byte[currentBytes.Length - tailLength];
+            System.Array.Copy(currentBytes, v17Bytes, v17Bytes.Length);
 
             // Patch the header to version 17 (little-endian int)
             v17Bytes[0] = 17;
@@ -741,6 +743,120 @@ namespace PitHero.Tests
             Assert.IsFalse(loaded.EatAtTavern, "v17 load should default EatAtTavern");
             Assert.IsNotNull(loaded.PartyDining, "v17 load should get default dining records");
             Assert.AreEqual(-1, loaded.PartyDining[0].OrderedDishId, "default dining record expected");
+            Assert.IsFalse(loaded.AutomateMonsterJobs, "v17 load should default AutomateMonsterJobs");
+        }
+
+        /// <summary>
+        /// Verifies that PartyAutoDineResume round-trips through Persist/Recover, so a save made
+        /// mid-breakfast still auto-resumes the party after reload.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V20_PartyAutoDineResume_RoundTrip()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_v20_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+
+                var original = new SaveData();
+                original.PartyAutoDineResume = true;
+
+                dataStore.Save("v20_autodine.bin", original);
+
+                var loaded = new SaveData();
+                dataStore.Load("v20_autodine.bin", loaded);
+
+                Assert.AreEqual(true, loaded.PartyAutoDineResume, "PartyAutoDineResume should round-trip");
+            }
+            finally
+            {
+                try { Directory.Delete(tempDir, recursive: true); } catch { }
+            }
+        }
+
+        /// <summary>
+        /// Verifies the legacy inference for pre-v20 saves: a reloaded member with a meal still
+        /// in progress means the party auto-resumes when done; with no open orders it does not.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_PreV20File_InfersAutoDineResumeFromOpenOrders()
+        {
+            Assert.IsTrue(LoadAsV19(openOrder: true).PartyAutoDineResume,
+                "Pre-v20 file with an open order should infer PartyAutoDineResume = true");
+            Assert.IsFalse(LoadAsV19(openOrder: false).PartyAutoDineResume,
+                "Pre-v20 file with no open orders should leave PartyAutoDineResume = false");
+        }
+
+        /// <summary>Writes a current save, truncates section 35, and patches the header to v19.</summary>
+        private static SaveData LoadAsV19(bool openOrder)
+        {
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+            {
+                var original = new SaveData();
+                if (openOrder)
+                {
+                    original.PartyDining = SaveData.CreateDefaultDiningRecords();
+                    original.PartyDining[1].OrderedDishId = 3;
+                    original.PartyDining[1].HasEatenToday = false;
+                }
+                writer.Write(original);
+            }
+            byte[] v20Bytes = ms.ToArray();
+
+            // Measure the writer's bool encoding so the section-35 tail length is exact
+            var probe = new MemoryStream();
+            int boolSize;
+            using (var probeWriter = new BinaryPersistableWriter(probe))
+            {
+                probeWriter.Write(false);
+                boolSize = (int)probe.Length;
+            }
+
+            byte[] v19Bytes = new byte[v20Bytes.Length - boolSize];
+            System.Array.Copy(v20Bytes, v19Bytes, v19Bytes.Length);
+
+            // Patch the header to version 19 (little-endian int)
+            v19Bytes[0] = 19;
+            v19Bytes[1] = 0;
+            v19Bytes[2] = 0;
+            v19Bytes[3] = 0;
+
+            var loaded = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(v19Bytes)))
+                rdr.ReadPersistableInto(loaded);
+            return loaded;
+        }
+
+        /// <summary>
+        /// Verifies that AutomateMonsterJobs round-trips through Persist/Recover (issue #321).
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V19_AutomateMonsterJobs_RoundTrip()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_v19_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+
+                var original = new SaveData();
+                original.AutomateMonsterJobs = true;
+
+                dataStore.Save("v19_automation.bin", original);
+
+                var loaded = new SaveData();
+                dataStore.Load("v19_automation.bin", loaded);
+
+                Assert.AreEqual(true, loaded.AutomateMonsterJobs, "AutomateMonsterJobs should round-trip");
+            }
+            finally
+            {
+                try { Directory.Delete(tempDir, recursive: true); } catch { }
+            }
         }
 
         /// <summary>

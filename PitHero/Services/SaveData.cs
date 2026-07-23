@@ -255,12 +255,12 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 18;
+        public const int CurrentVersion = 20;
 
         /// <summary>
-        /// Oldest save file version this build can still load. v17 files are a byte-exact
-        /// prefix of v18 (the dining section 33 was appended at the end), so they load with
-        /// default dining state.
+        /// Oldest save file version this build can still load. v17–v19 files are byte-exact
+        /// prefixes of v20 (sections 33 dining, 34 automation, and 35 auto-dine resume were
+        /// appended at the end), so they load with default state for the missing sections.
         /// </summary>
         public const int MinSupportedVersion = 17;
 
@@ -499,6 +499,14 @@ namespace PitHero.Services
 
         /// <summary>Per-party-slot dining records: 0 = hero, 1/2 = hired mercenaries.</summary>
         public SavedDiningRecord[] PartyDining;
+
+        // Automation (issue #321, v19)
+        /// <summary>Whether automatic monster job assignment is enabled.</summary>
+        public bool AutomateMonsterJobs = false;
+
+        // Auto-dine resume (v20)
+        /// <summary>Whether a breakfast trip in progress should auto-resume adventuring when done.</summary>
+        public bool PartyAutoDineResume = false;
 
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
@@ -899,6 +907,12 @@ namespace PitHero.Services
                 writer.Write(PartyDining[i].MealDishId);
                 writer.Write(PartyDining[i].MealDeluxe);
             }
+
+            // 34. Automation (issue #321)
+            writer.Write(AutomateMonsterJobs);
+
+            // 35. Auto-dine resume (v20)
+            writer.Write(PartyAutoDineResume);
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -1286,6 +1300,30 @@ namespace PitHero.Services
                     };
                     if (i < PartyDining.Length)
                         PartyDining[i] = record;
+                }
+            }
+
+            // 34. Automation (issue #321, v19+). Older files end at section 33 — default false.
+            if (fileVersion >= 19)
+                AutomateMonsterJobs = reader.ReadBool();
+
+            // 35. Auto-dine resume (v20+). Legacy files can't distinguish a manual Stop from a
+            // breakfast trip, so infer: a reloaded member with a meal still in progress means
+            // the party should stand up when everyone finishes — otherwise they'd sit at the
+            // tavern forever waiting for a Play press.
+            if (fileVersion >= 20)
+            {
+                PartyAutoDineResume = reader.ReadBool();
+            }
+            else if (PartyDining != null)
+            {
+                for (int i = 0; i < PartyDining.Length; i++)
+                {
+                    if (PartyDining[i].OrderedDishId >= 0 && !PartyDining[i].HasEatenToday)
+                    {
+                        PartyAutoDineResume = true;
+                        break;
+                    }
                 }
             }
         }

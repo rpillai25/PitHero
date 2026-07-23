@@ -11,7 +11,8 @@
       "Bash(Select-Object FullName)",
       "Bash(\"C:\\\\Users\\\\rpill\\\\Devroot\\\\PitHero\\\\Nez\\\\DefaultContentSource\\\\FNAShaderCompiler\\\\fxc.exe\" /T fx_2_0 ColorGrading.fx /Fo ColorGrading.fxb)",
       "PowerShell(dotnet build *)",
-      "PowerShell(dotnet test *)"
+      "PowerShell(dotnet test *)",
+      "mcp__github__update_pull_request"
     ]
   }
 }

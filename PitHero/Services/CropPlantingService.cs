@@ -40,6 +40,9 @@ namespace PitHero.Services
         /// <summary>Returns true if a planting plan exists at the given tile.</summary>
         public bool HasPlan(Point tile) => _tileIndex.ContainsKey(tile);
 
+        /// <summary>Number of crop plans currently placed (planted or awaiting planting).</summary>
+        public int PlanCount => _plans.Count;
+
         /// <summary>Returns the crop type of the plan at a tile, or null if none exists.</summary>
         public CropType? GetPlanType(Point tile)
         {

@@ -14,7 +14,8 @@ namespace PitHero.ECS.Components
     /// Server: take up to 3 orders from patrons at its tables (1 server works all 4 tables;
     /// with 2 servers the first works the top pair, the second the bottom pair), post them at
     /// the ticket board, deliver up to 2 cooked dishes from the serving tables (only for its
-    /// own tables), bus finished plates, otherwise wander its table area.
+    /// own tables), bus finished plates (any table — bussing is zone-free), otherwise wander
+    /// its table area.
     /// Cook: read one ticket at the board, gather ingredients at the fridge (waiting for the
     /// runner if the fridge is short), cook at a free station, place the dish on a serving
     /// table — holding it if all three are full.
@@ -239,6 +240,15 @@ namespace PitHero.ECS.Components
 
             var zone = Zone;
 
+            // 0) A plate that has waited too long (any table, any zone) — in a busy tavern
+            //    priorities 1-2 always have work, so without this age bump bussing starves
+            //    and plates pile up on tables
+            if (_coordinator.TryClaimBusJob(GameConfig.ServerBusPlateMaxWaitSeconds, out _busJob))
+            {
+                _busPickedUp = false;
+                CurrentState = KitchenMonsterState.ServerBusPlate;
+                return;
+            }
             // 1) Cooked food waiting → deliver
             if (_coordinator.HasReadyDishForZone(zone))
             {
@@ -251,8 +261,8 @@ namespace PitHero.ECS.Components
                 CurrentState = KitchenMonsterState.ServerWalkToPatron;
                 return;
             }
-            // 3) Dirty plates at my tables
-            if (_coordinator.TryClaimBusJob(zone, out _busJob))
+            // 3) Dirty plates — any table, any zone (only orders/deliveries are zone-bound)
+            if (_coordinator.TryClaimBusJob(out _busJob))
             {
                 _busPickedUp = false;
                 CurrentState = KitchenMonsterState.ServerBusPlate;
@@ -265,11 +275,17 @@ namespace PitHero.ECS.Components
         /// <summary>
         /// Picks the next order target in the zone: party members first (their table must be in
         /// this zone), then the nearest waiting patron. Sets _targetPatron/_targetPartySlot.
+        /// Only targets someone whose order can actually be created — a full ticket board (or,
+        /// for walk-ins, an empty pantry) would make TakeOrderAtTarget fail silently and the
+        /// server would livelock standing at the seat, re-picking the same target forever.
         /// </summary>
         private bool TryPickNextOrderTarget(ServerZone zone)
         {
             _targetPatron = null;
             _targetPartySlot = -1;
+
+            if (!_coordinator.HasTicketCapacity)
+                return false;
 
             var partyTable = TavernSeatConfig.GetTableTile(KitchenTaskCoordinator.GetPartySeatTile(0));
             if (KitchenTaskCoordinator.ZoneContainsTable(zone, partyTable)
@@ -280,6 +296,8 @@ namespace PitHero.ECS.Components
                 return true;
             }
 
+            if (!_coordinator.HasAnyOrderableDish())
+                return false;
             _targetPatron = FindPatronNeedingOrder(zone);
             return _targetPatron != null;
         }
@@ -472,7 +490,19 @@ namespace PitHero.ECS.Components
             // Arrived at the table — place the dish
             Entity dishEntity = null;
             if (TavernSeatConfig.TryGetPlateWorldPosition(c.Ticket.SeatTile, out var platePos))
+            {
+                // Never stack a new meal on an un-bussed empty plate: the server takes the old
+                // plate in hand as they set the new dish down, then busses it to the sink once
+                // their remaining deliveries are done (a Ticket-less ToSink leg shows the plate
+                // sprite carried to the sink)
+                if (_coordinator.TryClaimBusJobAtPosition(platePos, out var stalePlate))
+                {
+                    if (stalePlate.DishEntity != null && !stalePlate.DishEntity.IsDestroyed)
+                        stalePlate.DishEntity.Destroy();
+                    _carried.Add(new CarriedDish { Ticket = null, ToSink = true });
+                }
                 dishEntity = _coordinator.DishService?.SpawnDishAtWorldPos(c.Ticket.Dish, platePos);
+            }
             _coordinator.OnTicketDelivered(c.Ticket, dishEntity);
             _carried.RemoveAt(0);
             BeginNextCarriedLeg();
@@ -566,11 +596,15 @@ namespace PitHero.ECS.Components
 
         private bool HasOrderWork(ServerZone zone)
         {
+            // Mirrors TryPickNextOrderTarget's guards so wandering isn't interrupted for an
+            // order that could never be created (full board / empty pantry)
+            if (!_coordinator.HasTicketCapacity)
+                return false;
             var partyTable = TavernSeatConfig.GetTableTile(KitchenTaskCoordinator.GetPartySeatTile(0));
             if (KitchenTaskCoordinator.ZoneContainsTable(zone, partyTable)
                 && _coordinator.TryGetNextPartyOrder(out _, out _))
                 return true;
-            return FindPatronNeedingOrder(zone) != null;
+            return _coordinator.HasAnyOrderableDish() && FindPatronNeedingOrder(zone) != null;
         }
 
         private Entity FindPatronNeedingOrder(ServerZone zone)

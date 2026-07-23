@@ -184,6 +184,7 @@ Design docs under `PitHero/docs/` (kept as standalone references — don't dupli
 - `PitHero/docs/Permadeath.md` — Hero death, crystal vault, sell-value formula
 - `PitHero/docs/CrystalCeremony.md` — Post-death hero respawn and crystal imbuement at the statue
 - `PitHero/docs/TavernDiningSystem.md` — Kitchen/tavern dining: ticket lifecycle, worker FSM roles, patron + party dining flows, meal buffs, dish pricing, save v18 dining state
+- `PitHero/docs/AutoJobAssignmentSystem.md` — Automated monster job assignment: demand evaluators, pure solver, day/night shifts, reassess cadence, and the step-by-step recipe for adding a new job (e.g. fishing)
 
 **Per-feature docs:**
 - `features/`

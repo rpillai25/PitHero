@@ -217,6 +217,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.GetService<Services.KitchenTaskCoordinator>()?.Detach();
             Core.Services.RemoveService(typeof(Services.KitchenTaskCoordinator));
             Core.Services.RemoveService(typeof(Services.PartyDiningService));
+            Core.Services.RemoveService(typeof(Services.AutoJobAssignmentService));
             Core.Services.RemoveService(typeof(Services.DishEntityService));
             Core.Services.RemoveService(typeof(Services.KitchenHatService));
             Core.Services.RemoveService(typeof(MercenaryManager));
@@ -309,6 +310,16 @@ namespace PitHero.ECS.Scenes
             var partyDiningService = new Services.PartyDiningService();
             kitchenCoordinator.SetPartyOrderSource(partyDiningService);
             Core.Services.AddService(partyDiningService);
+
+            // Auto job assignment service reassigns monster jobs from workload demand (issue #321)
+            var autoJobAssignmentService = new Services.AutoJobAssignmentService(
+                alliedMonsterManager,
+                new Services.AutoJob.KitchenJobDemandEvaluator(kitchenCoordinator,
+                    mercenaryManager, partyDiningService),
+                new Services.AutoJob.FarmingJobDemandEvaluator(farmTaskCoordinator,
+                    Core.Services.GetService<Services.CropGrowthService>(),
+                    Core.Services.GetService<Services.CropPlantingService>()));
+            Core.Services.AddService(autoJobAssignmentService);
 
             // Initialize hero promotion service (handles mercenary promotions and hero crystal ceremonies after death)
             _heroPromotionService = new Services.HeroPromotionService(this);
@@ -513,7 +524,10 @@ namespace PitHero.ECS.Scenes
                         autoCropSellSvc.Designations[i] = pendingData.AutoSellCropDesignations[i];
                 }
             }
-            _settingsUI?.SyncAutoShopControlsFromService();
+            var autoJobSvc = Core.Services.GetService<Services.AutoJobAssignmentService>();
+            if (autoJobSvc != null)
+                autoJobSvc.Enabled = pendingData.AutomateMonsterJobs;
+            _settingsUI?.SyncAutomationControlsFromService();
 
             // Rebuild the plant queue now that both tile states and crop plans are restored
             Core.Services.GetService<Services.FarmTaskCoordinator>()?.RescanForPlanting();
@@ -2330,6 +2344,7 @@ namespace PitHero.ECS.Scenes
                     Core.Services.GetService<TileStateService>(), cropsAtlas);
                 Core.Services.GetService<Services.AutoSeedPurchaseService>()?.Update();
                 Core.Services.GetService<Services.AutoCropSellService>()?.Update();
+                Core.Services.GetService<Services.AutoJobAssignmentService>()?.Update();
             }
 
             // Check if a living hero who respawned without a crystal has arrived at the statue

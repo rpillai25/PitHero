@@ -298,7 +298,9 @@ AddMonsterWindowTitle,Add Monsters
 AddMonsterRemainingSpace,Remaining Space: {0}
 AddMonsterDaytimeLabel,Daytime
 AddMonsterNocturnalLabel,Nocturnal
-TabAutoShop,Auto Shop
+TabAutomation,Automation
+SettingsAutomateMonsterJobs,Automate monster jobs
+SettingsAutomateMonsterJobsTooltip,System will handle monster job assignments. Player can not assign monster jobs with this enabled
 SettingsAutomateSeedPurchases,Auto-Purchase Seeds
 SettingsAutoShopGoldBuffer,Gold Buffer: {0}
 SettingsAutomateSeedPurchasesTooltip,Buy seeds for planned crops as soon as gold is available

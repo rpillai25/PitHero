@@ -63,6 +63,17 @@ namespace PitHero.Services
         public void MarkPendingReloadDining() => _pendingReloadDining = true;
 
         /// <summary>
+        /// True while a breakfast trip should auto-resume adventuring once everyone has eaten
+        /// or been skipped. Persisted: a save made mid-breakfast must restore this, or the
+        /// reloaded party finishes eating and then sits at the tavern forever.
+        /// </summary>
+        public bool AutoResumeWhenDone
+        {
+            get => _autoResumeWhenDone;
+            set => _autoResumeWhenDone = value;
+        }
+
+        /// <summary>
         /// Restores dining state from a save (call after hero + hired mercs are restored).
         /// Re-registers active meal buffs (no HP/MP re-restore) and, when a member has an open
         /// order, schedules the party's return trip to the tavern. Crops were already deducted
@@ -75,6 +86,7 @@ namespace PitHero.Services
 
             FavoriteDishId = data.FavoriteDishId;
             EatAtTavern = data.EatAtTavern;
+            _autoResumeWhenDone = data.PartyAutoDineResume;
 
             if (data.PartyDining == null)
                 return;
@@ -120,6 +132,20 @@ namespace PitHero.Services
                 _slots[i].MealDeluxe = false;
                 _skippedThisSeating[i] = false;
             }
+        }
+
+        /// <summary>Party members who still intend to eat at the tavern today (0 when EatAtTavern is off).</summary>
+        public int CountPendingPartyDiners()
+        {
+            if (!EatAtTavern)
+                return 0;
+            int count = 0;
+            for (int slot = 0; slot < PartySlots; slot++)
+            {
+                if (!_slots[slot].HasEatenToday && GetCombatant(slot) != null)
+                    count++;
+            }
+            return count;
         }
 
         // ── Entry points ────────────────────────────────────────────────────────
@@ -360,6 +386,11 @@ namespace PitHero.Services
         private void CheckAllDone()
         {
             if (!_autoResumeWhenDone)
+                return;
+
+            // Reload-in-progress: Stop mode hasn't been re-entered yet, so the guard below
+            // would wrongly clear the restored auto-resume flag
+            if (_pendingReloadDining)
                 return;
 
             var hero = GetHeroComponent();

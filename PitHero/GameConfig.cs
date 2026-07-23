@@ -182,10 +182,15 @@ namespace PitHero
         public const int KitchenRunnerWanderMaxTileY = 8;
         public const int ServerOrderMemoryLimit = 3;            // orders a server can hold before posting at the board
         public const int ServerCarryDishLimit = 2;              // cooked dishes a server can carry at once
+        public const float ServerBusPlateMaxWaitSeconds = 90f;  // a plate waiting this long jumps ahead of deliveries/orders
         public const float TicketBoardPauseSeconds = 1f;        // pause at the board to post/read a ticket
         public const int KitchenFridgeParPerCrop = 4;           // runner tops the fridge up to this many of each fetched crop
         public const float KitchenRunnerSprintMultiplier = 3f;  // runner speed multiplier while fetching ingredients
         public const float ServerWanderPauseSeconds = 2.5f;     // idle pause between server wander hops
+        // A patron whose assigned seat still has an un-bussed plate waits here until it's cleared
+        public const int TavernDoorWaitTileX = 100;
+        public const int TavernDoorWaitTileY = 6;
+
         // Tavern dining area bounds (server zones and wandering)
         public const int TavernAreaMinTileX = 91;
         public const int TavernAreaMaxTileX = 99;
@@ -218,6 +223,14 @@ namespace PitHero
         public const float DishTipChance = 0.5f;                // chance an unhired merc tips on finishing a meal
         public const float DishTipMinPercent = 0.05f;           // tip is 5-15% of dish price, rounded up
         public const float DishTipMaxPercent = 0.15f;
+
+        // Automated monster job assignment (issue #321)
+        public const float AutoJobReassessIntervalSeconds = 60f;   // scaled seconds between reassessments (60 in-game minutes)
+        public const int AutoJobFarmTasksPerWorker = 6;            // burst demand: outstanding farm tasks each farmer can absorb
+        public const int AutoJobFarmCropsPerWorkerBaseline = 12;   // quiet-period demand: crops + plans each farmer can tend
+        public const int AutoJobKitchenBaseStaff = 3;              // cook + server + runner minimum (no runner -> fridge runs dry)
+        public const int AutoJobKitchenBacklogPerExtraWorker = 3;  // tickets/patrons per extra kitchen worker beyond base staff
+        public const int AutoJobKitchenMaxWorkers = 7;             // mirrors KitchenTaskCoordinator role-post cap
 
         // Camera Configuration
         public const float CameraDefaultZoom = 1f; // default zoom level

@@ -37,9 +37,9 @@ namespace PitHero.Services
 
         public struct BusJob
         {
-            public Entity DishEntity; // plate entity on the table to be bussed
-            public Vector2 WorldPos;  // where to pick it up from
-            public int TableTileY;    // zone filter (top tables y<=4, bottom y>=5)
+            public Entity DishEntity;  // plate entity on the table to be bussed
+            public Vector2 WorldPos;   // where to pick it up from
+            public float EnqueuedTime; // Time.TotalTime when queued — drives anti-starvation priority
         }
 
         private struct OrphanDish
@@ -71,7 +71,8 @@ namespace PitHero.Services
         public FarmPathfinder Pathfinder { get; }
 
         // ── Tickets / board ─────────────────────────────────────────────────────
-        private readonly List<KitchenTicket> _tickets = new List<KitchenTicket>(16);
+        private const int MaxOpenTickets = 16;
+        private readonly List<KitchenTicket> _tickets = new List<KitchenTicket>(MaxOpenTickets);
         private int _nextTicketId;
 
         // ── Fridge inventory (kitchen-local crop stock) ─────────────────────────
@@ -98,6 +99,28 @@ namespace PitHero.Services
 
         /// <summary>True when ≥1 cook and ≥1 server are assigned and awake.</summary>
         public bool IsKitchenOpen => _cook1WorkerIdx >= 0 && _server1WorkerIdx >= 0;
+
+        /// <summary>Number of open kitchen tickets (any state) — the order backlog.</summary>
+        public int ActiveTicketCount => _tickets.Count;
+
+        /// <summary>True while the ticket board has room for another order.</summary>
+        public bool HasTicketCapacity => _tickets.Count < MaxOpenTickets;
+
+        /// <summary>
+        /// True when at least one dish is fully coverable from fridge + storage. Servers must
+        /// check this (and HasTicketCapacity) before walking to a waiting patron: when no order
+        /// can possibly be created, targeting the patron anyway livelocks the server standing at
+        /// the seat, re-selecting the same patron every decide pass.
+        /// </summary>
+        public bool HasAnyOrderableDish()
+        {
+            for (int d = 0; d < DishTypeInfo.Count; d++)
+            {
+                if (CanCoverRecipe((DishType)d))
+                    return true;
+            }
+            return false;
+        }
 
         // ── Constructor ─────────────────────────────────────────────────────────
 
@@ -169,7 +192,8 @@ namespace PitHero.Services
 
             // Assign roles in order: cook1, server1, runner1, cook2, server2, runner2, cook3.
             // Stations and zones are claimed dynamically by the FSMs.
-            int postCount = _wantedAssignments.Count < 7 ? _wantedAssignments.Count : 7;
+            int postCount = _wantedAssignments.Count < GameConfig.AutoJobKitchenMaxWorkers
+                ? _wantedAssignments.Count : GameConfig.AutoJobKitchenMaxWorkers;
             for (int i = 0; i < postCount; i++)
             {
                 KitchenRole role;
@@ -422,7 +446,7 @@ namespace PitHero.Services
         public KitchenTicket CreateTicket(DishType dish, bool isParty, int partySlot,
             Entity patronEntity, Point seatTile)
         {
-            if (_tickets.Count >= 16)
+            if (_tickets.Count >= MaxOpenTickets)
                 return null;
 
             EnsureServices();
@@ -496,7 +520,7 @@ namespace PitHero.Services
         /// </summary>
         public KitchenTicket CreateTicketPreReserved(DishType dish, int partySlot)
         {
-            if (_tickets.Count >= 16)
+            if (_tickets.Count >= MaxOpenTickets)
                 return null;
 
             var def = DishConfig.GetDefinition(dish);
@@ -579,7 +603,7 @@ namespace PitHero.Services
                 {
                     DishEntity = t.PlatedDishEntity,
                     WorldPos = t.PlatedDishEntity.Transform.Position,
-                    TableTileY = t.TableTile.Y,
+                    EnqueuedTime = Time.TotalTime,
                 });
                 t.PlatedDishEntity = null;
             }
@@ -681,7 +705,7 @@ namespace PitHero.Services
                     {
                         DishEntity = emptyPlate,
                         WorldPos = platePos,
-                        TableTileY = t.TableTile.Y,
+                        EnqueuedTime = Time.TotalTime,
                     });
                 }
             }
@@ -903,13 +927,68 @@ namespace PitHero.Services
             }
         }
 
-        /// <summary>Next pending bus job for the zone's server. Removes it from the queue.</summary>
-        public bool TryClaimBusJob(ServerZone zone, out BusJob job)
+        /// <summary>Next pending bus job. Removes it from the queue.</summary>
+        public bool TryClaimBusJob(out BusJob job)
+            => TryClaimBusJob(0f, out job);
+
+        /// <summary>
+        /// Claims the oldest bus job that has waited at least minAgeSeconds (0 = any). Removes it
+        /// from the queue. Bussing is deliberately zone-free — any server may clear any table —
+        /// and the age gate lets servers bump long-waiting plates ahead of order-taking so a busy
+        /// tavern can't starve bussing forever. (Order-taking and delivery stay zone-restricted.)
+        /// </summary>
+        public bool TryClaimBusJob(float minAgeSeconds, out BusJob job)
         {
+            int oldest = -1;
+            float oldestTime = float.MaxValue;
             for (int i = 0; i < _busJobs.Count; i++)
             {
-                var tableTile = new Point(0, _busJobs[i].TableTileY);
-                if (!ZoneContainsTable(zone, tableTile))
+                if (Time.TotalTime - _busJobs[i].EnqueuedTime < minAgeSeconds)
+                    continue;
+                if (_busJobs[i].EnqueuedTime < oldestTime)
+                {
+                    oldestTime = _busJobs[i].EnqueuedTime;
+                    oldest = i;
+                }
+            }
+            if (oldest < 0)
+            {
+                job = default;
+                return false;
+            }
+            job = _busJobs[oldest];
+            _busJobs.RemoveAt(oldest);
+            return true;
+        }
+
+        /// <summary>
+        /// True while a pending (unclaimed) bus job's plate sits at the given world position
+        /// (within half a tile). Arriving patrons wait at the tavern door while this holds so
+        /// they never sit down at a table with a dirty plate; once a server claims the job the
+        /// plate is moments from being cleared, so the patron may start walking in.
+        /// </summary>
+        public bool HasPendingBusJobAt(Vector2 platePos)
+        {
+            const float maxDistSq = 16f * 16f;
+            for (int i = 0; i < _busJobs.Count; i++)
+            {
+                if (Vector2.DistanceSquared(_busJobs[i].WorldPos, platePos) <= maxDistSq)
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Claims the pending bus job whose plate sits at the given world position (within half a
+        /// tile), if any. Called by a delivering server right before it sets a new dish down, so a
+        /// new meal is never stacked on top of an un-bussed empty plate.
+        /// </summary>
+        public bool TryClaimBusJobAtPosition(Vector2 platePos, out BusJob job)
+        {
+            const float maxDistSq = 16f * 16f;
+            for (int i = 0; i < _busJobs.Count; i++)
+            {
+                if (Vector2.DistanceSquared(_busJobs[i].WorldPos, platePos) > maxDistSq)
                     continue;
                 job = _busJobs[i];
                 _busJobs.RemoveAt(i);
