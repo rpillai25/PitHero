@@ -63,10 +63,15 @@ evaluator exists just returns to the pool).
 
 - **Kitchen** (`Sticky = true`, listed first so its small crew staffs before farming absorbs the
   rest): base crew `AutoJobKitchenBaseStaff` = 3 — **cook + server + runner; never less, a
-  runner-less kitchen runs the fridge dry** — plus one worker per
-  `AutoJobKitchenBacklogPerExtraWorker` backlog items (open tickets + seated patrons + pending
-  party diners), capped at `AutoJobKitchenMaxWorkers` (mirrors the coordinator's role-post cap).
+  runner-less kitchen runs the fridge dry and leaves dirty plates on the tables** — plus one
+  worker per `AutoJobKitchenBacklogPerExtraWorker` backlog items (open tickets + seated patrons +
+  pending party diners), capped at `AutoJobKitchenMaxWorkers` (must mirror
+  `KitchenTaskCoordinator.MaxWorkerPosts` = 3 cooks + 2 servers + 3 runners = 8; asserted by
+  `KitchenServiceLoopTests.RoleMix_RespectsPerRoleCapsAndNeverExceedsMaxPosts`).
   `MinWorkers` = base crew only when backlog > 0.
+
+  The demand model's granularity is `MonsterJob`, not `KitchenRole` — it asks for *N kitchen
+  workers* and the coordinator decides the cook/server/runner split (`FillRoleMix`).
 - **Farming** (`Sticky = false`): `max(burst, baseline)` where burst =
   `FarmTaskCoordinator.OutstandingTaskCount / AutoJobFarmTasksPerWorker` (catches watering/harvest
   waves) and baseline = `(CropCount + PlanCount) / AutoJobFarmCropsPerWorkerBaseline` (quiet

@@ -257,11 +257,52 @@ namespace PitHero.Services
             return total;
         }
 
+        /// <summary>Units of <paramref name="crop"/> stored in one specific Crop Storage building.</summary>
+        public int CountIn(int buildingId, Farming.CropType crop)
+        {
+            var slots = GetOrCreate(buildingId);
+            int total = 0;
+            for (int s = 0; s < slots.Length; s++)
+            {
+                if (!slots[s].IsEmpty && slots[s].Type == crop)
+                    total += slots[s].Count;
+            }
+            return total;
+        }
+
+        /// <summary>
+        /// Best-effort withdrawal of up to <paramref name="max"/> units of <paramref name="crop"/>
+        /// from one specific building. Returns how many were actually taken (0 if it holds none).
+        /// Used by the kitchen runner, which collects at the storage it is standing in front of.
+        /// </summary>
+        public int WithdrawUpTo(int buildingId, Farming.CropType crop, int max)
+        {
+            if (max <= 0)
+                return 0;
+
+            var slots = GetOrCreate(buildingId);
+            int remaining = max;
+            for (int s = 0; s < slots.Length && remaining > 0; s++)
+            {
+                if (slots[s].IsEmpty || slots[s].Type != crop)
+                    continue;
+                int take = slots[s].Count < remaining ? slots[s].Count : remaining;
+                slots[s].Count -= take;
+                if (slots[s].Count <= 0)
+                    slots[s] = default;
+                remaining -= take;
+            }
+            return max - remaining;
+        }
+
         /// <summary>
         /// All-or-nothing withdrawal of <paramref name="amount"/> units of <paramref name="crop"/>
         /// across all Crop Storage buildings. Returns false without mutating if storage is insufficient.
+        /// When <paramref name="sourceBuildingIds"/> is given, each building actually drawn from is
+        /// appended to it (no duplicates) so callers can retrace where the crops came from.
         /// </summary>
-        public bool TryWithdrawAcrossBuildings(Farming.CropType crop, int amount)
+        public bool TryWithdrawAcrossBuildings(Farming.CropType crop, int amount,
+            List<int> sourceBuildingIds = null)
         {
             if (amount <= 0)
                 return true;
@@ -277,17 +318,12 @@ namespace PitHero.Services
             {
                 if (all[b].Type != BuildingType.CropStorage)
                     continue;
-                var slots = GetOrCreate(all[b].UniqueId);
-                for (int s = 0; s < slots.Length && remaining > 0; s++)
-                {
-                    if (slots[s].IsEmpty || slots[s].Type != crop)
-                        continue;
-                    int take = slots[s].Count < remaining ? slots[s].Count : remaining;
-                    slots[s].Count -= take;
-                    if (slots[s].Count <= 0)
-                        slots[s] = default;
-                    remaining -= take;
-                }
+                int took = WithdrawUpTo(all[b].UniqueId, crop, remaining);
+                if (took <= 0)
+                    continue;
+                remaining -= took;
+                if (sourceBuildingIds != null && !sourceBuildingIds.Contains(all[b].UniqueId))
+                    sourceBuildingIds.Add(all[b].UniqueId);
             }
             return true;
         }

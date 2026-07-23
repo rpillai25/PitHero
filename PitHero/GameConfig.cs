@@ -165,7 +165,7 @@ namespace PitHero
         public const int KitchenSinkTileY = 2;
         public const int MaxKitchenCooks = 3;
         public const int MaxKitchenServers = 2;
-        public const int MaxKitchenRunners = 2;
+        public const int MaxKitchenRunners = 3;         // runners also bus plates, so peak hours want a third
         public const float KitchenHatOverlapPixels = 6f;        // how far the job hat's brim overlaps the head top
         public const float KitchenHatCheckIntervalSeconds = 5f; // how often the coordinator re-checks that workers wear hats
         public const int KitchenTicketBoardTileX = 82;          // servers post orders / cooks read them here
@@ -180,9 +180,16 @@ namespace PitHero
         public const int KitchenRunnerWanderMinTileY = 6;
         public const int KitchenRunnerWanderMaxTileX = 88;
         public const int KitchenRunnerWanderMaxTileY = 8;
+        // Cooks wander this area (around the ticket board and the first two stoves) between tickets
+        public const int KitchenCookWanderMinTileX = 82;
+        public const int KitchenCookWanderMinTileY = 2;
+        public const int KitchenCookWanderMaxTileX = 84;
+        public const int KitchenCookWanderMaxTileY = 3;
+        public const int RunnerMaxStorageStops = 3;             // storages a runner tours in one ingredient trip
         public const int ServerOrderMemoryLimit = 3;            // orders a server can hold before posting at the board
         public const int ServerCarryDishLimit = 2;              // cooked dishes a server can carry at once
-        public const float ServerBusPlateMaxWaitSeconds = 90f;  // a plate waiting this long jumps ahead of deliveries/orders
+        public const float ServerBusPlateMaxWaitSeconds = 90f;  // fallback bussing only (no runner on shift): a plate waiting this long jumps ahead of deliveries/orders
+        public const int RunnerCarryPlateLimit = 3;             // empty plates a runner carries to the sink in one trip
         public const float TicketBoardPauseSeconds = 1f;        // pause at the board to post/read a ticket
         public const int KitchenFridgeParPerCrop = 4;           // runner tops the fridge up to this many of each fetched crop
         public const float KitchenRunnerSprintMultiplier = 3f;  // runner speed multiplier while fetching ingredients
@@ -230,7 +237,7 @@ namespace PitHero
         public const int AutoJobFarmCropsPerWorkerBaseline = 12;   // quiet-period demand: crops + plans each farmer can tend
         public const int AutoJobKitchenBaseStaff = 3;              // cook + server + runner minimum (no runner -> fridge runs dry)
         public const int AutoJobKitchenBacklogPerExtraWorker = 3;  // tickets/patrons per extra kitchen worker beyond base staff
-        public const int AutoJobKitchenMaxWorkers = 7;             // mirrors KitchenTaskCoordinator role-post cap
+        public const int AutoJobKitchenMaxWorkers = 8;             // mirrors KitchenTaskCoordinator.MaxWorkerPosts (3 cooks + 2 servers + 3 runners)
 
         // Camera Configuration
         public const float CameraDefaultZoom = 1f; // default zoom level

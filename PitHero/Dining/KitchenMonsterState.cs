@@ -45,6 +45,8 @@ namespace PitHero.Dining
         CookWalkToServing,
         /// <summary>All serving tables are full — cook holds the dish until a slot frees.</summary>
         CookWaitServingSlot,
+        /// <summary>Cook pottering around the board and stoves while no ticket is posted.</summary>
+        CookWander,
 
         // ── Runner ──────────────────────────────────────────────────────────────
         /// <summary>Runner idling at its post waiting for a fetch job.</summary>
@@ -55,6 +57,10 @@ namespace PitHero.Dining
         RunnerCollect,
         /// <summary>Runner carrying ingredients back to the fridge.</summary>
         RunnerWalkToFridge,
+        /// <summary>Runner sprinting to a finished plate to pick it up (batches up to 3).</summary>
+        RunnerBusPlate,
+        /// <summary>Runner sprinting its stack of empty plates to the sink.</summary>
+        RunnerWalkToSink,
     }
 
     /// <summary>Role assigned to a kitchen worker.</summary>

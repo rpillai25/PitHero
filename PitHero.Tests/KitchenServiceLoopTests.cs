@@ -52,6 +52,7 @@ namespace PitHero.Tests
         public void Cleanup()
         {
             Time.DeltaTime = 0f;
+            Time.TotalTime = 0f;
         }
 
         /// <summary>Deposits exactly enough crops in storage to cover N servings of the dish.</summary>
@@ -418,6 +419,260 @@ namespace PitHero.Tests
 
             Assert.IsTrue(KitchenTaskCoordinator.ZoneContainsTable(ServerZone.AllTables, new Point(93, 3)));
             Assert.IsTrue(KitchenTaskCoordinator.ZoneContainsTable(ServerZone.AllTables, new Point(97, 7)));
+        }
+
+        // ── Role mix (issue #327: runners bus plates, so the third one is worth staffing) ──
+
+        private static System.Collections.Generic.List<KitchenRole> RoleMix(int postCount)
+        {
+            var roles = new System.Collections.Generic.List<KitchenRole>();
+            KitchenTaskCoordinator.FillRoleMix(postCount, roles);
+            return roles;
+        }
+
+        [TestMethod]
+        public void RoleMix_GrowsCookServerRunnerAndEndsWithAThirdRunner()
+        {
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    KitchenRole.Cook, KitchenRole.Server, KitchenRole.Runner,
+                    KitchenRole.Cook, KitchenRole.Server, KitchenRole.Runner,
+                    KitchenRole.Cook, KitchenRole.Runner,
+                },
+                RoleMix(KitchenTaskCoordinator.MaxWorkerPosts));
+        }
+
+        [TestMethod]
+        public void RoleMix_FirstTwoPostsOpenTheKitchen()
+        {
+            // IsKitchenOpen needs a cook AND a server, so those must be posts 0 and 1
+            CollectionAssert.AreEqual(new[] { KitchenRole.Cook }, RoleMix(1));
+            CollectionAssert.AreEqual(new[] { KitchenRole.Cook, KitchenRole.Server }, RoleMix(2));
+            CollectionAssert.AreEqual(
+                new[] { KitchenRole.Cook, KitchenRole.Server, KitchenRole.Runner }, RoleMix(3));
+        }
+
+        [TestMethod]
+        public void RoleMix_RespectsPerRoleCapsAndNeverExceedsMaxPosts()
+        {
+            var roles = RoleMix(99);
+            Assert.AreEqual(KitchenTaskCoordinator.MaxWorkerPosts, roles.Count,
+                "role mix must clamp to the total number of posts");
+            Assert.AreEqual(GameConfig.MaxKitchenCooks, roles.FindAll(r => r == KitchenRole.Cook).Count);
+            Assert.AreEqual(GameConfig.MaxKitchenServers, roles.FindAll(r => r == KitchenRole.Server).Count);
+            Assert.AreEqual(GameConfig.MaxKitchenRunners, roles.FindAll(r => r == KitchenRole.Runner).Count);
+            Assert.AreEqual(GameConfig.AutoJobKitchenMaxWorkers, KitchenTaskCoordinator.MaxWorkerPosts,
+                "the auto-job cap must mirror the coordinator's post cap");
+        }
+
+        // ── Bus queue (issue #327: runners own plate clearing) ──
+
+        private static KitchenTaskCoordinator.BusJob MakeBusJob(Vector2 pos, float enqueuedTime)
+        {
+            var plate = new Entity("test-plate");
+            plate.SetPosition(pos);
+            return new KitchenTaskCoordinator.BusJob
+            {
+                DishEntity = plate,
+                WorldPos = pos,
+                EnqueuedTime = enqueuedTime,
+            };
+        }
+
+        [TestMethod]
+        public void BusJob_ReleasedByDepartingRunner_IsReclaimableAndStillBlocksTheSeat()
+        {
+            var pos = new Vector2(100f, 200f);
+            var job = MakeBusJob(pos, 0f);
+
+            // The runner walking to the plate is sent home before picking it up
+            _coordinator.ReleaseBusJob(job);
+            Assert.IsTrue(_coordinator.HasPendingBusJob);
+            Assert.IsTrue(_coordinator.HasPendingBusJobAt(pos),
+                "a released plate is still on the table, so arriving patrons must still see it");
+
+            Assert.IsTrue(_coordinator.TryClaimBusJob(out var reclaimed));
+            Assert.AreSame(job.DishEntity, reclaimed.DishEntity, "released bus job not reclaimable");
+            Assert.AreEqual(0f, reclaimed.EnqueuedTime,
+                "the original enqueue time must survive so the plate keeps its place in line");
+            Assert.IsFalse(_coordinator.HasPendingBusJob);
+        }
+
+        [TestMethod]
+        public void BusJob_ReleaseIsIdempotentAndIgnoresAlreadyCarriedPlates()
+        {
+            var job = MakeBusJob(new Vector2(100f, 200f), 0f);
+            _coordinator.ReleaseBusJob(job);
+            _coordinator.ReleaseBusJob(job);
+
+            Assert.IsTrue(_coordinator.TryClaimBusJob(out _));
+            Assert.IsFalse(_coordinator.TryClaimBusJob(out _), "double release must not duplicate the plate");
+
+            // A plate already in hand had its entity destroyed at pickup — nothing to put back
+            _coordinator.ReleaseBusJob(default);
+            Assert.IsFalse(_coordinator.HasPendingBusJob);
+        }
+
+        // ── Runner fetch route (issue #327 follow-up: visit the storages that hold the crops) ──
+
+        /// <summary>Adds a second Crop Storage further from the kitchen than the default one.</summary>
+        private const int FarStorageBuildingId = 3;
+
+        private void AddFarStorage()
+        {
+            _buildings.AddBuilding(new PlacedBuilding
+            {
+                Type = BuildingType.CropStorage,
+                TileX = GameConfig.NewGameCropStorageAnchorTileX + 20,
+                TileY = GameConfig.NewGameCropStorageAnchorTileY,
+                UniqueId = FarStorageBuildingId
+            });
+        }
+
+        private static Point DoorOf(int anchorX, int anchorY)
+            => Util.BuildingConfig.GetDoorTile(BuildingType.CropStorage, new Point(anchorX, anchorY));
+
+        private static Point NearStorageDoor => DoorOf(
+            GameConfig.NewGameCropStorageAnchorTileX, GameConfig.NewGameCropStorageAnchorTileY);
+
+        private static Point FarStorageDoor => DoorOf(
+            GameConfig.NewGameCropStorageAnchorTileX + 20, GameConfig.NewGameCropStorageAnchorTileY);
+
+        private System.Collections.Generic.List<KitchenTaskCoordinator.FetchStop> PlanRoute(KitchenTicket t)
+        {
+            var route = new System.Collections.Generic.List<KitchenTaskCoordinator.FetchStop>();
+            _coordinator.PlanFetchRoute(t, KitchenTaskCoordinator.FridgeTile, route);
+            return route;
+        }
+
+        [TestMethod]
+        public void FetchRoute_SkipsTheNearStorageWhenOnlyTheFarOneHoldsTheCrops()
+        {
+            AddFarStorage();
+            // Everything the recipe needs sits in the FAR storage; the near one is empty
+            var def = DishConfig.GetDefinition(Dish);
+            for (int i = 0; i < def.Recipe.Length; i++)
+                Assert.IsTrue(_storage.TryDeposit(FarStorageBuildingId, def.Recipe[i].Crop, def.Recipe[i].Qty));
+
+            var ticket = _coordinator.CreateTicket(Dish, false, -1, null, PatronSeat);
+            Assert.IsNotNull(ticket);
+            CollectionAssert.AreEqual(new[] { FarStorageBuildingId }, ticket.SourceBuildingIds,
+                "the shortfall came from the far storage, so that's what the ticket must remember");
+
+            var route = PlanRoute(ticket);
+            Assert.AreEqual(1, route.Count, "the empty near storage is not worth a stop");
+            Assert.AreEqual(FarStorageBuildingId, route[0].BuildingId);
+            Assert.AreEqual(FarStorageDoor, route[0].DoorTile);
+        }
+
+        [TestMethod]
+        public void FetchRoute_VisitsBothStoragesWhenTheRecipeIsSplitAcrossThem()
+        {
+            AddFarStorage();
+            // TurnipOnionStew is turnip + onion — one crop per storage
+            var splitDish = DishType.TurnipOnionStew;
+            var def = DishConfig.GetDefinition(splitDish);
+            Assert.IsTrue(def.Recipe.Length >= 2, "this test needs a multi-crop recipe");
+
+            // First crop only in the near storage, the rest only in the far one
+            Assert.IsTrue(_storage.TryDeposit(StorageBuildingId, def.Recipe[0].Crop, def.Recipe[0].Qty));
+            for (int i = 1; i < def.Recipe.Length; i++)
+                Assert.IsTrue(_storage.TryDeposit(FarStorageBuildingId, def.Recipe[i].Crop, def.Recipe[i].Qty));
+
+            var ticket = _coordinator.CreateTicket(splitDish, false, -1, null, PatronSeat);
+            Assert.IsNotNull(ticket);
+            CollectionAssert.AreEquivalent(new[] { StorageBuildingId, FarStorageBuildingId },
+                ticket.SourceBuildingIds);
+
+            var route = PlanRoute(ticket);
+            Assert.AreEqual(2, route.Count, "a recipe split across two storages must tour both");
+            Assert.AreEqual(StorageBuildingId, route[0].BuildingId, "nearest storage first");
+            Assert.AreEqual(NearStorageDoor, route[0].DoorTile);
+            Assert.AreEqual(FarStorageBuildingId, route[1].BuildingId);
+        }
+
+        [TestMethod]
+        public void FetchRoute_NeverExceedsTheStopCap()
+        {
+            for (int extra = 0; extra < GameConfig.RunnerMaxStorageStops + 3; extra++)
+            {
+                _buildings.AddBuilding(new PlacedBuilding
+                {
+                    Type = BuildingType.CropStorage,
+                    TileX = GameConfig.NewGameCropStorageAnchorTileX + 4 * (extra + 1),
+                    TileY = GameConfig.NewGameCropStorageAnchorTileY,
+                    UniqueId = 10 + extra
+                });
+            }
+
+            // Spread one recipe crop across every storage so they all look worth visiting
+            var def = DishConfig.GetDefinition(Dish);
+            for (int extra = 0; extra < GameConfig.RunnerMaxStorageStops + 3; extra++)
+                Assert.IsTrue(_storage.TryDeposit(10 + extra, def.Recipe[0].Crop, 1));
+            for (int i = 0; i < def.Recipe.Length; i++)
+                Assert.IsTrue(_storage.TryDeposit(StorageBuildingId, def.Recipe[i].Crop, def.Recipe[i].Qty));
+
+            var ticket = _coordinator.CreateTicket(Dish, false, -1, null, PatronSeat);
+            Assert.IsNotNull(ticket);
+            Assert.IsTrue(PlanRoute(ticket).Count <= GameConfig.RunnerMaxStorageStops,
+                "a runner must not tour every storage on the farm");
+        }
+
+        [TestMethod]
+        public void RunnerCollect_AtOneStorageOnlyDrawsOnThatBuilding()
+        {
+            AddFarStorage();
+            var crop = DishConfig.GetDefinition(Dish).Recipe[0].Crop;
+            Assert.IsTrue(_storage.TryDeposit(StorageBuildingId, crop, 2));
+            Assert.IsTrue(_storage.TryDeposit(FarStorageBuildingId, crop, 5));
+
+            StockRecipe();
+            var ticket = _coordinator.CreateTicket(Dish, false, -1, null, PatronSeat);
+            int nearBefore = _storage.CountIn(StorageBuildingId, crop);
+            int farBefore = _storage.CountIn(FarStorageBuildingId, crop);
+
+            _coordinator.RunnerCollectAtStorage(ticket, FarStorageBuildingId);
+
+            Assert.AreEqual(nearBefore, _storage.CountIn(StorageBuildingId, crop),
+                "collecting at the far storage must not teleport crops out of the near one");
+            Assert.IsTrue(_storage.CountIn(FarStorageBuildingId, crop) < farBefore,
+                "the far storage should have supplied the fridge top-up");
+        }
+
+        [TestMethod]
+        public void HasReadableTicket_MirrorsWhatACookCanClaim()
+        {
+            StockRecipe();
+            Assert.IsFalse(_coordinator.HasReadableTicket(), "no orders yet");
+
+            var ticket = _coordinator.CreateTicket(Dish, false, -1, null, PatronSeat);
+            Assert.IsFalse(_coordinator.HasReadableTicket(),
+                "an unposted ticket is invisible to cooks, so a wandering cook must stay put");
+
+            _coordinator.PostTicket(ticket);
+            Assert.IsTrue(_coordinator.HasReadableTicket(), "a posted ticket must call the cook back");
+
+            Assert.AreSame(ticket, _coordinator.TryReadNextTicket());
+            Assert.IsFalse(_coordinator.HasReadableTicket(), "a claimed ticket must not call a second cook back");
+        }
+
+        [TestMethod]
+        public void BusJob_AgeGateClaimsTheOldestWaitingPlateFirst()
+        {
+            Time.TotalTime = 1000f;
+            _coordinator.ReleaseBusJob(MakeBusJob(new Vector2(10f, 10f), 900f));  // 100s old
+            _coordinator.ReleaseBusJob(MakeBusJob(new Vector2(20f, 20f), 990f));  // 10s old
+
+            // Fallback bussing only takes plates past the age gate, oldest first
+            Assert.IsTrue(_coordinator.TryClaimBusJob(GameConfig.ServerBusPlateMaxWaitSeconds, out var aged));
+            Assert.AreEqual(900f, aged.EnqueuedTime);
+            Assert.IsFalse(_coordinator.TryClaimBusJob(GameConfig.ServerBusPlateMaxWaitSeconds, out _),
+                "the fresh plate must not pass the age gate");
+
+            // A runner (no age gate) takes it immediately
+            Assert.IsTrue(_coordinator.TryClaimBusJob(out var fresh));
+            Assert.AreEqual(990f, fresh.EnqueuedTime);
         }
     }
 }

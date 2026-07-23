@@ -96,9 +96,56 @@ namespace PitHero.Services
         // ── Kitchen open/closed ─────────────────────────────────────────────────
         private int _cook1WorkerIdx = -1;
         private int _server1WorkerIdx = -1;
+        private int _runner1WorkerIdx = -1;
 
         /// <summary>True when ≥1 cook and ≥1 server are assigned and awake.</summary>
         public bool IsKitchenOpen => _cook1WorkerIdx >= 0 && _server1WorkerIdx >= 0;
+
+        /// <summary>
+        /// True when ≥1 runner is on shift. Runners own plate bussing; servers only fall back to
+        /// it while this is false, so a cook+server-only kitchen still clears its tables.
+        /// </summary>
+        public bool HasActiveRunner => _runner1WorkerIdx >= 0;
+
+        /// <summary>Total kitchen role posts — the cap on simultaneous kitchen workers.</summary>
+        public static int MaxWorkerPosts =>
+            GameConfig.MaxKitchenCooks + GameConfig.MaxKitchenServers + GameConfig.MaxKitchenRunners;
+
+        /// <summary>
+        /// Fills <paramref name="into"/> with the role for each of the first postCount posts by
+        /// cycling Cook → Server → Runner and skipping roles that are already full, which yields
+        /// cook1, server1, runner1, cook2, server2, runner2, cook3, runner3. Ordering is what
+        /// makes the crew grow sensibly: a two-monster kitchen is a cook and a server (the pair
+        /// that opens it), the third is the runner that keeps the fridge stocked and the tables
+        /// clear. Stations and zones are then claimed dynamically by the FSMs.
+        /// </summary>
+        public static void FillRoleMix(int postCount, List<KitchenRole> into)
+        {
+            if (postCount > MaxWorkerPosts)
+                postCount = MaxWorkerPosts;
+            int cooks = 0, servers = 0, runners = 0, cursor = 0;
+            for (int i = 0; i < postCount; i++)
+            {
+                // postCount never exceeds the sum of the per-role caps, so this always resolves
+                while (true)
+                {
+                    int slot = cursor % 3;
+                    cursor++;
+                    if (slot == 0 && cooks < GameConfig.MaxKitchenCooks)
+                    {
+                        cooks++; into.Add(KitchenRole.Cook); break;
+                    }
+                    if (slot == 1 && servers < GameConfig.MaxKitchenServers)
+                    {
+                        servers++; into.Add(KitchenRole.Server); break;
+                    }
+                    if (slot == 2 && runners < GameConfig.MaxKitchenRunners)
+                    {
+                        runners++; into.Add(KitchenRole.Runner); break;
+                    }
+                }
+            }
+        }
 
         /// <summary>Number of open kitchen tickets (any state) — the order backlog.</summary>
         public int ActiveTicketCount => _tickets.Count;
@@ -190,25 +237,9 @@ namespace PitHero.Services
                 _wantedAssignments.Insert(insertPos, m);
             }
 
-            // Assign roles in order: cook1, server1, runner1, cook2, server2, runner2, cook3.
-            // Stations and zones are claimed dynamically by the FSMs.
-            int postCount = _wantedAssignments.Count < GameConfig.AutoJobKitchenMaxWorkers
-                ? _wantedAssignments.Count : GameConfig.AutoJobKitchenMaxWorkers;
-            for (int i = 0; i < postCount; i++)
-            {
-                KitchenRole role;
-                switch (i)
-                {
-                    case 0: role = KitchenRole.Cook;   break;
-                    case 1: role = KitchenRole.Server; break;
-                    case 2: role = KitchenRole.Runner; break;
-                    case 3: role = KitchenRole.Cook;   break;
-                    case 4: role = KitchenRole.Server; break;
-                    case 5: role = KitchenRole.Runner; break;
-                    default: role = KitchenRole.Cook;  break;
-                }
-                _wantedRoles.Add(role);
-            }
+            int postCount = _wantedAssignments.Count < MaxWorkerPosts
+                ? _wantedAssignments.Count : MaxWorkerPosts;
+            FillRoleMix(postCount, _wantedRoles);
 
             // Track which pre-existing workers keep their assignment. SpawnWorker appends to
             // _workers mid-pass, so snapshot the count and never index past it.
@@ -269,15 +300,20 @@ namespace PitHero.Services
                     _workers.RemoveAt(wi);
             }
 
-            // Update kitchen-open post indices (first cook, first server)
+            // Update kitchen-open post indices (first cook, first server, first runner)
             _cook1WorkerIdx = -1;
             _server1WorkerIdx = -1;
+            _runner1WorkerIdx = -1;
             for (int wi = 0; wi < _workers.Count; wi++)
             {
-                if (_cook1WorkerIdx < 0 && _workers[wi].Role == KitchenRole.Cook && !_workers[wi].Fsm.IsReturningHome)
+                if (_workers[wi].Fsm.IsReturningHome)
+                    continue;
+                if (_cook1WorkerIdx < 0 && _workers[wi].Role == KitchenRole.Cook)
                     _cook1WorkerIdx = wi;
-                if (_server1WorkerIdx < 0 && _workers[wi].Role == KitchenRole.Server && !_workers[wi].Fsm.IsReturningHome)
+                if (_server1WorkerIdx < 0 && _workers[wi].Role == KitchenRole.Server)
                     _server1WorkerIdx = wi;
+                if (_runner1WorkerIdx < 0 && _workers[wi].Role == KitchenRole.Runner)
+                    _runner1WorkerIdx = wi;
             }
 
             // Periodic hat sweep: shift overlaps can leave a worker hatless at spawn
@@ -464,6 +500,7 @@ namespace PitHero.Services
             var fridgeTaken = new int[def.Recipe.Length];
             var storageTaken = new int[def.Recipe.Length];
             int storageTotal = 0;
+            List<int> sourceBuildings = null;
 
             for (int i = 0; i < def.Recipe.Length; i++)
             {
@@ -473,7 +510,9 @@ namespace PitHero.Services
                 int shortfall = need - fridgeTaken[i];
                 if (shortfall > 0)
                 {
-                    if (!(_cropStorage?.TryWithdrawAcrossBuildings(crop, shortfall) ?? false))
+                    if (sourceBuildings == null)
+                        sourceBuildings = new List<int>(2);
+                    if (!(_cropStorage?.TryWithdrawAcrossBuildings(crop, shortfall, sourceBuildings) ?? false))
                     {
                         // Availability changed mid-withdraw — roll everything back
                         for (int r = 0; r <= i; r++)
@@ -500,6 +539,7 @@ namespace PitHero.Services
                 TableTile = TavernSeatConfig.GetTableTile(seatTile),
                 FridgeTakenQty = fridgeTaken,
                 StorageTakenQty = storageTaken,
+                SourceBuildingIds = sourceBuildings,
                 IngredientsFetched = storageTotal == 0,
             };
             ticket.State = ticket.IngredientsFetched
@@ -722,6 +762,24 @@ namespace PitHero.Services
         /// Cook reads the next unclaimed posted ticket from the board (party tickets first, then
         /// FIFO). Only one cook holds any given ticket. Returns null when the board is empty.
         /// </summary>
+        /// <summary>
+        /// True when a posted, unclaimed ticket is waiting at the board. Non-claiming peek — a
+        /// cook wandering between tickets uses it to decide when to walk back and read one, so it
+        /// must mirror TryReadNextTicket's filter exactly.
+        /// </summary>
+        public bool HasReadableTicket()
+        {
+            for (int i = 0; i < _tickets.Count; i++)
+            {
+                var t = _tickets[i];
+                if (!t.PostedToBoard || t.CookClaimed || t.State == TicketState.Canceled)
+                    continue;
+                if (t.State == TicketState.AwaitingIngredients || t.State == TicketState.ReadyToCook)
+                    return true;
+            }
+            return false;
+        }
+
         public KitchenTicket TryReadNextTicket()
         {
             for (int pass = 0; pass < 2; pass++)
@@ -962,6 +1020,27 @@ namespace PitHero.Services
         }
 
         /// <summary>
+        /// Returns a claimed bus job to the queue — the worker was sent home (or died) before it
+        /// picked the plate up. Keeps the original enqueue time so the plate stays at the head of
+        /// the queue. No-ops for a plate that was already picked up (its entity is gone) or one
+        /// that is somehow queued twice, so calling this defensively is always safe.
+        /// </summary>
+        public void ReleaseBusJob(BusJob job)
+        {
+            if (job.DishEntity == null || job.DishEntity.IsDestroyed)
+                return;
+            for (int i = 0; i < _busJobs.Count; i++)
+            {
+                if (ReferenceEquals(_busJobs[i].DishEntity, job.DishEntity))
+                    return;
+            }
+            _busJobs.Add(job);
+        }
+
+        /// <summary>True while any plate is waiting to be bussed.</summary>
+        public bool HasPendingBusJob => _busJobs.Count > 0;
+
+        /// <summary>
         /// True while a pending (unclaimed) bus job's plate sits at the given world position
         /// (within half a tile). Arriving patrons wait at the tavern door while this holds so
         /// they never sit down at a table with a dirty plate; once a server claims the job the
@@ -1026,12 +1105,127 @@ namespace PitHero.Services
                 _fetchQueue.Add(t);
         }
 
+        /// <summary>One leg of a runner's ingredient trip: the storage building and its door tile.</summary>
+        public struct FetchStop
+        {
+            public int BuildingId;
+            public Point DoorTile;
+        }
+
+        // Scratch for route planning (allocation-free; the planner runs once per fetch trip)
+        private readonly Dictionary<CropType, int> _routeNeed = new Dictionary<CropType, int>(16);
+        private readonly List<PlacedBuilding> _routeCandidates = new List<PlacedBuilding>(8);
+
         /// <summary>
-        /// Runner is at the storage door: opportunistically tops the fridge up to par for each
-        /// crop in the ticket's recipe (withdrawn atomically into the fridge — the walk back is
-        /// cosmetic, so a crash never loses crops).
+        /// Plans the runner's tour of Crop Storage buildings for a fetch job, nearest-first from
+        /// <paramref name="fromTile"/>, capped at <see cref="GameConfig.RunnerMaxStorageStops"/>.
+        ///
+        /// A building earns a stop when it either supplied this ticket's shortfall
+        /// (<see cref="KitchenTicket.SourceBuildingIds"/> — the crops are already withdrawn, so
+        /// this is the only record of where they came from) or still holds a crop the fridge needs
+        /// to reach par. Stops that no longer contribute once nearer ones are visited are dropped,
+        /// so a multi-crop recipe visits several storages but never one it has no reason to enter.
+        ///
+        /// Best-effort by design: stock can change between planning and arrival, and the ticket's
+        /// own ingredients were reserved at order time, so a short route never blocks a cook.
         /// </summary>
-        public void RunnerCollectAtStorage(KitchenTicket t)
+        public void PlanFetchRoute(KitchenTicket t, Point fromTile, List<FetchStop> route)
+        {
+            route.Clear();
+            if (t == null || _buildingService == null)
+                return;
+            EnsureServices();
+            if (_cropStorage == null)
+                return;
+
+            // Remaining fridge top-up per recipe crop
+            _routeNeed.Clear();
+            var def = DishConfig.GetDefinition(t.Dish);
+            for (int i = 0; i < def.Recipe.Length; i++)
+            {
+                var crop = def.Recipe[i].Crop;
+                if (_routeNeed.ContainsKey(crop))
+                    continue;
+                int want = GameConfig.KitchenFridgeParPerCrop - FridgeCount(crop);
+                if (want > 0)
+                    _routeNeed[crop] = want;
+            }
+
+            _routeCandidates.Clear();
+            var all = _buildingService.GetAll();
+            for (int i = 0; i < all.Count; i++)
+            {
+                if (all[i].Type == BuildingType.CropStorage)
+                    _routeCandidates.Add(all[i]);
+            }
+
+            var cursor = fromTile;
+            while (_routeCandidates.Count > 0 && route.Count < GameConfig.RunnerMaxStorageStops)
+            {
+                int nearest = -1;
+                long best = long.MaxValue;
+                Point bestDoor = default;
+                for (int i = 0; i < _routeCandidates.Count; i++)
+                {
+                    var door = Util.BuildingConfig.GetDoorTile(_routeCandidates[i].Type,
+                        new Point(_routeCandidates[i].TileX, _routeCandidates[i].TileY));
+                    long dx = door.X - cursor.X;
+                    long dy = door.Y - cursor.Y;
+                    long distSq = dx * dx + dy * dy;
+                    if (distSq < best)
+                    {
+                        best = distSq;
+                        nearest = i;
+                        bestDoor = door;
+                    }
+                }
+
+                var building = _routeCandidates[nearest];
+                _routeCandidates.RemoveAt(nearest);
+
+                bool worthStopping = t.SourceBuildingIds != null
+                    && t.SourceBuildingIds.Contains(building.UniqueId);
+                if (!worthStopping)
+                {
+                    foreach (var kvp in _routeNeed)
+                    {
+                        if (kvp.Value > 0 && _cropStorage.CountIn(building.UniqueId, kvp.Key) > 0)
+                        {
+                            worthStopping = true;
+                            break;
+                        }
+                    }
+                }
+                if (!worthStopping)
+                    continue;
+
+                route.Add(new FetchStop { BuildingId = building.UniqueId, DoorTile = bestDoor });
+                cursor = bestDoor;
+
+                // Simulate this stop's supply so a later storage isn't toured for a crop
+                // this one already covers
+                _routeScratchCrops.Clear();
+                foreach (var kvp in _routeNeed)
+                    _routeScratchCrops.Add(kvp.Key);
+                for (int i = 0; i < _routeScratchCrops.Count; i++)
+                {
+                    var crop = _routeScratchCrops[i];
+                    int have = _cropStorage.CountIn(building.UniqueId, crop);
+                    int left = _routeNeed[crop] - have;
+                    _routeNeed[crop] = left > 0 ? left : 0;
+                }
+            }
+        }
+
+        private readonly List<CropType> _routeScratchCrops = new List<CropType>(16);
+
+        /// <summary>
+        /// Runner is at a storage door: opportunistically tops the fridge up to par for each crop
+        /// in the ticket's recipe, drawing only on the building it is standing in front of (the
+        /// walk back is cosmetic, so a crash never loses crops). Pass a negative id to draw from
+        /// every storage at once — the fallback when no route could be planned.
+        /// </summary>
+        public void RunnerCollectAtStorage(KitchenTicket t, int buildingId = -1)
         {
             if (t == null) return;
             EnsureServices();
@@ -1044,6 +1238,13 @@ namespace PitHero.Services
                 int want = GameConfig.KitchenFridgeParPerCrop - FridgeCount(crop);
                 if (want <= 0)
                     continue;
+
+                if (buildingId >= 0)
+                {
+                    FridgeAdd(crop, _cropStorage.WithdrawUpTo(buildingId, crop, want));
+                    continue;
+                }
+
                 int available = _cropStorage.CountTotal(crop);
                 int take = want < available ? want : available;
                 if (take > 0 && _cropStorage.TryWithdrawAcrossBuildings(crop, take))
