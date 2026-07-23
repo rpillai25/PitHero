@@ -187,6 +187,10 @@ namespace PitHero
         public const int KitchenFridgeParPerCrop = 4;           // runner tops the fridge up to this many of each fetched crop
         public const float KitchenRunnerSprintMultiplier = 3f;  // runner speed multiplier while fetching ingredients
         public const float ServerWanderPauseSeconds = 2.5f;     // idle pause between server wander hops
+        // A patron whose assigned seat still has an un-bussed plate waits here until it's cleared
+        public const int TavernDoorWaitTileX = 100;
+        public const int TavernDoorWaitTileY = 6;
+
         // Tavern dining area bounds (server zones and wandering)
         public const int TavernAreaMinTileX = 91;
         public const int TavernAreaMaxTileX = 99;

@@ -962,6 +962,23 @@ namespace PitHero.Services
         }
 
         /// <summary>
+        /// True while a pending (unclaimed) bus job's plate sits at the given world position
+        /// (within half a tile). Arriving patrons wait at the tavern door while this holds so
+        /// they never sit down at a table with a dirty plate; once a server claims the job the
+        /// plate is moments from being cleared, so the patron may start walking in.
+        /// </summary>
+        public bool HasPendingBusJobAt(Vector2 platePos)
+        {
+            const float maxDistSq = 16f * 16f;
+            for (int i = 0; i < _busJobs.Count; i++)
+            {
+                if (Vector2.DistanceSquared(_busJobs[i].WorldPos, platePos) <= maxDistSq)
+                    return true;
+            }
+            return false;
+        }
+
+        /// <summary>
         /// Claims the pending bus job whose plate sits at the given world position (within half a
         /// tile), if any. Called by a delivering server right before it sets a new dish down, so a
         /// new meal is never stacked on top of an un-bussed empty plate.

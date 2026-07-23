@@ -295,7 +295,7 @@ namespace PitHero.Services
             var tileMover = mercEntity.GetComponent<TileByTileMover>();
             var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
             var pathfinding = mercEntity.GetComponent<PathfindingActorComponent>();
-            
+
             if (tileMover == null || mercComponent == null || pathfinding == null)
                 yield break;
 
@@ -311,43 +311,90 @@ namespace PitHero.Services
             if (mercComponent.IsBeingRemoved)
                 yield break;
 
-            // Calculate current tile position
+            // The assigned seat's table still has an un-bussed plate: wait at the tavern door
+            // until a server clears it. A server only takes orders from seated patrons, so a
+            // patron waiting at the door adds no ordering pressure while the backlog drains.
+            if (HasUnbussedPlateAtSeat(tavernPosition))
+            {
+                var doorTile = new Point(GameConfig.TavernDoorWaitTileX, GameConfig.TavernDoorWaitTileY);
+                yield return WalkMercPath(mercEntity, doorTile);
+                if (mercComponent.IsHired || mercComponent.IsBeingRemoved)
+                    yield break;
+
+                mercEntity.GetComponent<ActorFacingComponent>()?.SetFacing(Direction.Left);
+                Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} waiting at the door for a dirty table to be cleared");
+                while (HasUnbussedPlateAtSeat(tavernPosition))
+                {
+                    if (mercComponent.IsHired || mercComponent.IsBeingRemoved)
+                        yield break;
+                    yield return Coroutine.WaitForSeconds(0.25f);
+                }
+            }
+
+            yield return WalkMercPath(mercEntity, tavernPosition);
+            if (mercComponent.IsHired || mercComponent.IsBeingRemoved)
+                yield break;
+
+            // Arrived at tavern position
+            mercComponent.IsWaitingInTavern = true;
+
+            // Add patron component so the kitchen system can serve this merc as a dining customer.
+            // Patience starts immediately since the merc is now seated.
+            if (!mercEntity.HasComponent<ECS.Components.TavernPatronComponent>())
+            {
+                var patronComp = mercEntity.AddComponent(new ECS.Components.TavernPatronComponent());
+                patronComp.SeatTile = tavernPosition;
+            }
+
+            Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} arrived at tavern");
+        }
+
+        /// <summary>
+        /// Walks the mercenary tile-by-tile along an A* path to the target. Returns early
+        /// (without reaching the target) if the merc is hired or dismissed mid-walk — callers
+        /// must re-check those flags after the walk completes.
+        /// </summary>
+        private System.Collections.IEnumerator WalkMercPath(Entity mercEntity, Point targetTile)
+        {
+            var tileMover = mercEntity.GetComponent<TileByTileMover>();
+            var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
+            var pathfinding = mercEntity.GetComponent<PathfindingActorComponent>();
+            if (tileMover == null || mercComponent == null || pathfinding == null)
+                yield break;
+
             var currentPos = mercEntity.Transform.Position;
             var currentTile = new Point(
                 (int)(currentPos.X / GameConfig.TileSize),
                 (int)(currentPos.Y / GameConfig.TileSize)
             );
 
-            // Calculate A* path to tavern
-            var path = pathfinding.CalculatePath(currentTile, tavernPosition);
-            
+            var path = pathfinding.CalculatePath(currentTile, targetTile);
             if (path == null || path.Count == 0)
             {
-                Debug.Warn($"[MercenaryManager] Could not find path to tavern for {mercComponent.LinkedMercenary.Name}");
+                Debug.Warn($"[MercenaryManager] Could not find path to ({targetTile.X},{targetTile.Y}) for {mercComponent.LinkedMercenary.Name}");
                 yield break;
             }
 
             Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} found path with {path.Count} steps");
 
-            // Follow the path
             for (int i = 0; i < path.Count; i++)
             {
                 // Check if mercenary was hired or dismissed during the walk
                 if (mercComponent.IsHired || mercComponent.IsBeingRemoved)
                 {
-                    Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} was hired/dismissed during walk to tavern - stopping tavern walk");
+                    Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} was hired/dismissed during walk - stopping");
                     yield break;
                 }
 
-                var targetTile = path[i];
+                var stepTile = path[i];
                 var currentTilePos = new Point(
                     (int)(mercEntity.Transform.Position.X / GameConfig.TileSize),
                     (int)(mercEntity.Transform.Position.Y / GameConfig.TileSize)
                 );
 
                 // Determine direction to move
-                var dx = targetTile.X - currentTilePos.X;
-                var dy = targetTile.Y - currentTilePos.Y;
+                var dx = stepTile.X - currentTilePos.X;
+                var dy = stepTile.Y - currentTilePos.Y;
 
                 Direction? direction = null;
                 if (dx > 0) direction = Direction.Right;
@@ -362,10 +409,9 @@ namespace PitHero.Services
                     // Wait for movement to complete
                     while (tileMover.IsMoving)
                     {
-                        // Also check during movement if mercenary was hired or dismissed
                         if (mercComponent.IsHired || mercComponent.IsBeingRemoved)
                         {
-                            Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} was hired/dismissed during movement - stopping tavern walk");
+                            Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} was hired/dismissed during movement - stopping");
                             yield break;
                         }
                         yield return null;
@@ -375,19 +421,16 @@ namespace PitHero.Services
                 // Small delay between moves
                 yield return Coroutine.WaitForSeconds(0.05f);
             }
+        }
 
-            // Arrived at tavern position
-            mercComponent.IsWaitingInTavern = true;
-
-            // Add patron component so the kitchen system can serve this merc as a dining customer.
-            // Patience starts immediately since the merc is now seated.
-            if (!mercEntity.HasComponent<ECS.Components.TavernPatronComponent>())
-            {
-                var patronComp = mercEntity.AddComponent(new ECS.Components.TavernPatronComponent());
-                patronComp.SeatTile = tavernPosition;
-            }
-
-            Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} arrived at tavern");
+        /// <summary>True while the seat's table plate spot still holds an un-bussed empty plate.</summary>
+        private static bool HasUnbussedPlateAtSeat(Point seatTile)
+        {
+            var coordinator = Core.Services.GetService<KitchenTaskCoordinator>();
+            if (coordinator == null)
+                return false;
+            return Config.TavernSeatConfig.TryGetPlateWorldPosition(seatTile, out var platePos)
+                && coordinator.HasPendingBusJobAt(platePos);
         }
 
         /// <summary>Coroutine to walk mercenary offscreen (pathfind to exit point, then slide 64 pixels down) then remove them</summary>
