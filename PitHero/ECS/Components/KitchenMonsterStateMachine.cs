@@ -80,6 +80,9 @@ namespace PitHero.ECS.Components
         private KitchenTicket _fetchTicket;
         private float _runnerWanderPause;
         private int _platesCarried; // empty plates in hand on the current sink run
+        private readonly System.Collections.Generic.List<KitchenTaskCoordinator.FetchStop> _fetchRoute =
+            new System.Collections.Generic.List<KitchenTaskCoordinator.FetchStop>(GameConfig.RunnerMaxStorageStops);
+        private int _fetchStopIndex; // which stop of _fetchRoute the runner is headed to
 
         public bool ShouldPause => true;
 
@@ -147,6 +150,7 @@ namespace PitHero.ECS.Components
 
             _coordinator.ReleaseFetchJob(_fetchTicket);
             _fetchTicket = null;
+            EndFetchTrip();
 
             // A plate we were walking to is still on its table — put the job back. Plates already
             // in hand had their entities destroyed at pickup, so they're simply gone (same as a
@@ -687,6 +691,9 @@ namespace PitHero.ECS.Components
                     return;
                 _cookTicket = _coordinator.TryReadNextTicket();
                 _cookReadElapsed = 0f;
+                // Nothing posted — potter around the kitchen instead of standing at the board
+                if (_cookTicket == null)
+                    CurrentState = KitchenMonsterState.CookWander;
                 return;
             }
 
@@ -707,6 +714,47 @@ namespace PitHero.ECS.Components
                 CurrentState = KitchenMonsterState.CookWalkToFridge;
             }
             // else: all stations busy (more cooks than stations shouldn't happen) — keep waiting
+        }
+
+        /// <summary>
+        /// Idle loop between tickets. Standing frozen at the board looked wrong, so the cook
+        /// potters around the board and the first two stoves; a posted ticket pulls it straight
+        /// back. Claiming still happens at the board (with the read pause), never out here.
+        /// </summary>
+        private void CookWander_Enter() => PickCookWanderTarget();
+
+        private void CookWander_Tick()
+        {
+            if (_goHome)
+            {
+                _mover.Stop();
+                CurrentState = KitchenMonsterState.ReturnHome;
+                return;
+            }
+            if (_coordinator.HasReadableTicket())
+            {
+                _mover.Stop();
+                CurrentState = KitchenMonsterState.CookWalkToBoard;
+                return;
+            }
+            if (_mover.IsMoving)
+                return;
+            if (elapsedTimeInState >= GameConfig.ServerWanderPauseSeconds)
+                PickCookWanderTarget();
+        }
+
+        private void PickCookWanderTarget()
+        {
+            elapsedTimeInState = 0f;
+            for (int attempt = 0; attempt < 8; attempt++)
+            {
+                var tile = new Point(
+                    Nez.Random.Range(GameConfig.KitchenCookWanderMinTileX, GameConfig.KitchenCookWanderMaxTileX + 1),
+                    Nez.Random.Range(GameConfig.KitchenCookWanderMinTileY, GameConfig.KitchenCookWanderMaxTileY + 1));
+                if (TrySetPathTo(tile))
+                    return;
+            }
+            // No walkable pick — idle in place this round
         }
 
         private void CookWalkToFridge_Enter()
@@ -922,14 +970,31 @@ namespace PitHero.ECS.Components
         {
             SetSprinting(true);
             Point myTile = WorldToTile(Entity.Transform.Position);
-            if (!_coordinator.TryFindNearestStorageDoor(myTile, out var door) || !TrySetPathTo(door))
+
+            // Plan the tour once, at the start of the trip: the storages this order's crops were
+            // actually withdrawn from, plus any that can still top the fridge up
+            if (_fetchStopIndex == 0)
+                _coordinator.PlanFetchRoute(_fetchTicket, myTile, _fetchRoute);
+
+            if (_fetchStopIndex < _fetchRoute.Count
+                && TrySetPathTo(_fetchRoute[_fetchStopIndex].DoorTile))
+                return;
+
+            // No route (every storage gone or none worth entering) — one trip to the nearest door
+            // still reads correctly, and the crops were reserved at order time either way
+            if (_fetchRoute.Count == 0
+                && _coordinator.TryFindNearestStorageDoor(myTile, out var door)
+                && TrySetPathTo(door))
             {
-                // Storage vanished mid-order — the crops were reserved at order time, so the
-                // ticket can proceed without the trip.
-                _coordinator.CompleteFetch(_fetchTicket);
-                _fetchTicket = null;
-                CurrentState = KitchenMonsterState.RunnerIdle;
+                _fetchRoute.Add(new KitchenTaskCoordinator.FetchStop { BuildingId = -1, DoorTile = door });
+                return;
             }
+
+            // Storage vanished mid-order — the crops were reserved at order time, so the
+            // ticket can proceed without the trip.
+            _coordinator.CompleteFetch(_fetchTicket);
+            EndFetchTrip();
+            CurrentState = KitchenMonsterState.RunnerIdle;
         }
 
         private void RunnerWalkToStorage_Tick()
@@ -937,6 +1002,7 @@ namespace PitHero.ECS.Components
             if (_fetchTicket == null || _fetchTicket.State == TicketState.Canceled)
             {
                 _fetchTicket = null;
+                EndFetchTrip();
                 CurrentState = KitchenMonsterState.RunnerIdle;
                 return;
             }
@@ -944,6 +1010,7 @@ namespace PitHero.ECS.Components
             {
                 _coordinator.ReleaseFetchJob(_fetchTicket);
                 _fetchTicket = null;
+                EndFetchTrip();
                 CurrentState = KitchenMonsterState.ReturnHome;
                 return;
             }
@@ -955,10 +1022,22 @@ namespace PitHero.ECS.Components
         {
             if (elapsedTimeInState < 1f)
                 return;
-            // Atomic top-up into the fridge happens here; the walk back is cosmetic
-            _coordinator.RunnerCollectAtStorage(_fetchTicket);
+
+            // The real top-up into the fridge happens here, drawing only on the storage we're
+            // standing at; the walk back is cosmetic
+            int buildingId = _fetchStopIndex < _fetchRoute.Count
+                ? _fetchRoute[_fetchStopIndex].BuildingId : -1;
+            _coordinator.RunnerCollectAtStorage(_fetchTicket, buildingId);
             if (_fetchTicket != null)
                 ShowCarryCrops(_fetchTicket.Dish);
+
+            _fetchStopIndex++;
+            if (!_goHome && _fetchStopIndex < _fetchRoute.Count)
+            {
+                // More of this order's ingredients sit in another storage — go there next
+                CurrentState = KitchenMonsterState.RunnerWalkToStorage;
+                return;
+            }
             CurrentState = KitchenMonsterState.RunnerWalkToFridge;
         }
 
@@ -975,7 +1054,15 @@ namespace PitHero.ECS.Components
             HideCarryDish();
             _coordinator.CompleteFetch(_fetchTicket);
             _fetchTicket = null;
+            EndFetchTrip();
             CurrentState = _goHome ? KitchenMonsterState.ReturnHome : KitchenMonsterState.RunnerIdle;
+        }
+
+        /// <summary>Clears the planned storage tour so the next fetch job plans a fresh one.</summary>
+        private void EndFetchTrip()
+        {
+            _fetchRoute.Clear();
+            _fetchStopIndex = 0;
         }
 
         // ── Runner bussing ──────────────────────────────────────────────────────

@@ -156,6 +156,13 @@ namespace PitHero.Tests
                     $"serving table {slot} approach tile is a wall");
             }
 
+            // Every tile a cook can pick while pottering between tickets must be walkable,
+            // otherwise PickCookWanderTarget burns its 8 attempts and the cook freezes anyway
+            for (int x = GameConfig.KitchenCookWanderMinTileX; x <= GameConfig.KitchenCookWanderMaxTileX; x++)
+                for (int y = GameConfig.KitchenCookWanderMinTileY; y <= GameConfig.KitchenCookWanderMaxTileY; y++)
+                    Assert.IsTrue(pathfinder.IsPassable(new Point(x, y)),
+                        $"cook wander tile ({x},{y}) is a wall");
+
             // The kitchen room is actually enclosed (regression guard for the wall seeding itself)
             Assert.IsFalse(pathfinder.IsPassable(new Point(81, 2)), "kitchen west wall missing");
             Assert.IsFalse(pathfinder.IsPassable(new Point(88, 2)), "kitchen east wall missing");

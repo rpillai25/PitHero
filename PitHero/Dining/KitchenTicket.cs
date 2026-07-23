@@ -69,6 +69,14 @@ namespace PitHero.Dining
         /// <summary>Units withdrawn from Crop Storage at creation, parallel to the recipe entries (for refunds).</summary>
         public int[] StorageTakenQty;
 
+        /// <summary>
+        /// Crop Storage buildings the shortfall was actually withdrawn from, in withdraw order.
+        /// Drives the runner's fetch route so it is seen visiting the storages this order really
+        /// drew on rather than whichever one happens to be closest. Null when nothing came from
+        /// storage. Refunds don't use this — they go through DepositAcrossBuildings.
+        /// </summary>
+        public System.Collections.Generic.List<int> SourceBuildingIds;
+
         /// <summary>Cooking station index (0-2) claimed by a cook; -1 until claimed.</summary>
         public int StationIndex = -1;
 

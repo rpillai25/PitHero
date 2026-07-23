@@ -180,6 +180,12 @@ namespace PitHero
         public const int KitchenRunnerWanderMinTileY = 6;
         public const int KitchenRunnerWanderMaxTileX = 88;
         public const int KitchenRunnerWanderMaxTileY = 8;
+        // Cooks wander this area (around the ticket board and the first two stoves) between tickets
+        public const int KitchenCookWanderMinTileX = 82;
+        public const int KitchenCookWanderMinTileY = 2;
+        public const int KitchenCookWanderMaxTileX = 84;
+        public const int KitchenCookWanderMaxTileY = 3;
+        public const int RunnerMaxStorageStops = 3;             // storages a runner tours in one ingredient trip
         public const int ServerOrderMemoryLimit = 3;            // orders a server can hold before posting at the board
         public const int ServerCarryDishLimit = 2;              // cooked dishes a server can carry at once
         public const float ServerBusPlateMaxWaitSeconds = 90f;  // fallback bussing only (no runner on shift): a plate waiting this long jumps ahead of deliveries/orders

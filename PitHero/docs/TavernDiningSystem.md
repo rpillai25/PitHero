@@ -52,6 +52,7 @@ All coordinates are tiles on the surface map (`PitHero.tmx`). Static helpers liv
 | Serving tables (dish sits here) | (87,3) (87,4) (87,5) | `GetServingTile(slot)` |
 | Serving **approach** (worker stands here) | (86,3) (86,4) (86,5) | `GetServingApproachTile(slot)` |
 | Runner wander box | x 83–88, y 6–8 | `RunnerWanderAnchorTile` |
+| Cook wander box | x 82–84, y 2–3 | `GameConfig.KitchenCookWander*` |
 
 Workers never stand on a serving table: cooks/servers path to the approach tile (one tile left)
 and the dish entity spawns on the table tile.
@@ -98,11 +99,13 @@ if a mid-loop withdraw fails). `FridgeTakenQty[]` / `StorageTakenQty[]` remember
 refunds.
 
 - If everything came from the fridge → `IngredientsFetched = true`, ticket starts `ReadyToCook`.
-- Any storage shortfall → ticket starts `AwaitingIngredients` and is enqueued as a **fetch job**.
-  The runner's trip is **cosmetic** — the crops are already committed. At the storage door,
-  `RunnerCollectAtStorage` additionally tops the fridge up to par (`KitchenFridgeParPerCrop = 4`
-  per recipe crop) with an atomic withdraw+add; at the fridge, `CompleteFetch` flips
-  `IngredientsFetched`. If storage vanishes mid-run the ticket still proceeds.
+- Any storage shortfall → ticket starts `AwaitingIngredients` and is enqueued as a **fetch job**,
+  and the buildings drawn from are recorded in `SourceBuildingIds` so the runner can retrace the
+  route. The runner's trip is **cosmetic for this ticket** — the crops are already committed. At
+  each storage door, `RunnerCollectAtStorage` additionally tops the fridge up to par
+  (`KitchenFridgeParPerCrop = 4` per recipe crop) with a withdraw+add against that one building;
+  at the fridge, `CompleteFetch` flips `IngredientsFetched`. If storage vanishes mid-run the
+  ticket still proceeds.
 - Milk/cheese (`UsesMilk`/`UsesCheese`) are display-only — never in recipes, prices, or checks.
 
 **Cancellation refund rules** (`CancelTicket`): while `CropsRefundable` (pre-cooking) both
@@ -147,6 +150,12 @@ full the cook holds the dish (`CookWaitServingSlot`); at shift end `ForceReserve
 overflows onto slot 0 rather than stranding the dish (pickup scans tickets, not slots, so this
 self-heals). Deluxe roll happens at cook start: `proficiency × 5%` capped 45%.
 
+Between tickets the cook potters around the board and the first two stoves (`CookWander`,
+x 82–84 / y 2–3) instead of standing frozen at the board. `HasReadableTicket()` — a non-claiming
+peek that must mirror `TryReadNextTicket`'s filter — pulls it straight back. Claiming still
+happens only at the board, with the read pause. A cook holding a ticket while every station is
+busy waits at the board rather than wandering.
+
 **Runner loop** (`RunnerIdle`): **dirty plates first**, then ingredients — a plate left on a
 table keeps that seat out of service and parks arriving patrons at the door, which costs more
 than a slow order. Backing orders up a little is the accepted trade.
@@ -155,9 +164,20 @@ than a slow order. Backing orders up a little is the accepted trade.
   sprint to the plate → pick it up → keep claiming and collecting while under
   `RunnerCarryPlateLimit = 3` → sprint the stack to the sink. The plates show on the runner's
   three carry renderers (center / left / right), the same rig as a crop haul.
-- *Fetch*: sprint (3×) to nearest CropStorage door → 1s collect (the real fridge top-up) →
-  carry crop sprites back to the fridge → `CompleteFetch`. Never interrupted mid-trip by a
-  plate; prioritization happens at claim time only.
+- *Fetch*: `PlanFetchRoute` builds a tour of the storages that **actually hold the crops** —
+  the buildings this ticket's shortfall was withdrawn from (`KitchenTicket.SourceBuildingIds`,
+  the only record of that, since the crops left storage at order time) plus any that can still
+  top the fridge up to par. Nearest-first, dropping stops that later become redundant, capped at
+  `RunnerMaxStorageStops = 3`. Then: sprint (3×) to each door → 1s collect (`RunnerCollectAtStorage`
+  draws **only on that building** via `WithdrawUpTo`) → next stop → carry crop sprites back to
+  the fridge → `CompleteFetch`. A multi-crop recipe spread over two storages visits both; the
+  longer trip is the point. Never interrupted mid-trip by a plate; prioritization happens at
+  claim time only.
+
+  Route planning is best-effort: stock can shift between planning and arrival, and the ticket's
+  own ingredients were already reserved at order time, so a short or stale route never blocks a
+  cook. With no storage left standing the runner completes the fetch on the spot; with none
+  worth entering it still makes one trip to the nearest door (`BuildingId = -1` = draw from all).
 
 A claimed-but-not-yet-picked-up plate goes back to the queue via `ReleaseBusJob` when the runner
 despawns (it keeps its original `EnqueuedTime`, so it stays at the head of the line). Plates
@@ -265,7 +285,8 @@ entities, patron state. All of that is transient and reconciled live after load.
   Note `Entity.Destroy()` no-ops without a scene, so headless tests can't fake a picked-up plate.
 - `KitchenFlowPathTests` — parses the real TMX collision layer and asserts every walk leg
   (house exit → posts, station → serving approach, pickup → all 12 seat tables → sink,
-  storage door ↔ fridge) is passable. Update this when moving any kitchen/tavern tile.
+  storage door ↔ fridge) is passable, and that every tile in the cook wander box is walkable.
+  Update this when moving any kitchen/tavern tile.
 - `DishPricingTests` — pricing formula and monotonicity.
 - Analytics (see `AnalyticsSchema.md`): `dish_served` (price, tip, party, deluxe),
   `party_dine_skipped` (reason).

@@ -45,6 +45,8 @@ namespace PitHero.Dining
         CookWalkToServing,
         /// <summary>All serving tables are full — cook holds the dish until a slot frees.</summary>
         CookWaitServingSlot,
+        /// <summary>Cook pottering around the board and stoves while no ticket is posted.</summary>
+        CookWander,
 
         // ── Runner ──────────────────────────────────────────────────────────────
         /// <summary>Runner idling at its post waiting for a fetch job.</summary>
