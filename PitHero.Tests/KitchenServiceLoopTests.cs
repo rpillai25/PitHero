@@ -52,6 +52,7 @@ namespace PitHero.Tests
         public void Cleanup()
         {
             Time.DeltaTime = 0f;
+            Time.TotalTime = 0f;
         }
 
         /// <summary>Deposits exactly enough crops in storage to cover N servings of the dish.</summary>
@@ -418,6 +419,117 @@ namespace PitHero.Tests
 
             Assert.IsTrue(KitchenTaskCoordinator.ZoneContainsTable(ServerZone.AllTables, new Point(93, 3)));
             Assert.IsTrue(KitchenTaskCoordinator.ZoneContainsTable(ServerZone.AllTables, new Point(97, 7)));
+        }
+
+        // ── Role mix (issue #327: runners bus plates, so the third one is worth staffing) ──
+
+        private static System.Collections.Generic.List<KitchenRole> RoleMix(int postCount)
+        {
+            var roles = new System.Collections.Generic.List<KitchenRole>();
+            KitchenTaskCoordinator.FillRoleMix(postCount, roles);
+            return roles;
+        }
+
+        [TestMethod]
+        public void RoleMix_GrowsCookServerRunnerAndEndsWithAThirdRunner()
+        {
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    KitchenRole.Cook, KitchenRole.Server, KitchenRole.Runner,
+                    KitchenRole.Cook, KitchenRole.Server, KitchenRole.Runner,
+                    KitchenRole.Cook, KitchenRole.Runner,
+                },
+                RoleMix(KitchenTaskCoordinator.MaxWorkerPosts));
+        }
+
+        [TestMethod]
+        public void RoleMix_FirstTwoPostsOpenTheKitchen()
+        {
+            // IsKitchenOpen needs a cook AND a server, so those must be posts 0 and 1
+            CollectionAssert.AreEqual(new[] { KitchenRole.Cook }, RoleMix(1));
+            CollectionAssert.AreEqual(new[] { KitchenRole.Cook, KitchenRole.Server }, RoleMix(2));
+            CollectionAssert.AreEqual(
+                new[] { KitchenRole.Cook, KitchenRole.Server, KitchenRole.Runner }, RoleMix(3));
+        }
+
+        [TestMethod]
+        public void RoleMix_RespectsPerRoleCapsAndNeverExceedsMaxPosts()
+        {
+            var roles = RoleMix(99);
+            Assert.AreEqual(KitchenTaskCoordinator.MaxWorkerPosts, roles.Count,
+                "role mix must clamp to the total number of posts");
+            Assert.AreEqual(GameConfig.MaxKitchenCooks, roles.FindAll(r => r == KitchenRole.Cook).Count);
+            Assert.AreEqual(GameConfig.MaxKitchenServers, roles.FindAll(r => r == KitchenRole.Server).Count);
+            Assert.AreEqual(GameConfig.MaxKitchenRunners, roles.FindAll(r => r == KitchenRole.Runner).Count);
+            Assert.AreEqual(GameConfig.AutoJobKitchenMaxWorkers, KitchenTaskCoordinator.MaxWorkerPosts,
+                "the auto-job cap must mirror the coordinator's post cap");
+        }
+
+        // ── Bus queue (issue #327: runners own plate clearing) ──
+
+        private static KitchenTaskCoordinator.BusJob MakeBusJob(Vector2 pos, float enqueuedTime)
+        {
+            var plate = new Entity("test-plate");
+            plate.SetPosition(pos);
+            return new KitchenTaskCoordinator.BusJob
+            {
+                DishEntity = plate,
+                WorldPos = pos,
+                EnqueuedTime = enqueuedTime,
+            };
+        }
+
+        [TestMethod]
+        public void BusJob_ReleasedByDepartingRunner_IsReclaimableAndStillBlocksTheSeat()
+        {
+            var pos = new Vector2(100f, 200f);
+            var job = MakeBusJob(pos, 0f);
+
+            // The runner walking to the plate is sent home before picking it up
+            _coordinator.ReleaseBusJob(job);
+            Assert.IsTrue(_coordinator.HasPendingBusJob);
+            Assert.IsTrue(_coordinator.HasPendingBusJobAt(pos),
+                "a released plate is still on the table, so arriving patrons must still see it");
+
+            Assert.IsTrue(_coordinator.TryClaimBusJob(out var reclaimed));
+            Assert.AreSame(job.DishEntity, reclaimed.DishEntity, "released bus job not reclaimable");
+            Assert.AreEqual(0f, reclaimed.EnqueuedTime,
+                "the original enqueue time must survive so the plate keeps its place in line");
+            Assert.IsFalse(_coordinator.HasPendingBusJob);
+        }
+
+        [TestMethod]
+        public void BusJob_ReleaseIsIdempotentAndIgnoresAlreadyCarriedPlates()
+        {
+            var job = MakeBusJob(new Vector2(100f, 200f), 0f);
+            _coordinator.ReleaseBusJob(job);
+            _coordinator.ReleaseBusJob(job);
+
+            Assert.IsTrue(_coordinator.TryClaimBusJob(out _));
+            Assert.IsFalse(_coordinator.TryClaimBusJob(out _), "double release must not duplicate the plate");
+
+            // A plate already in hand had its entity destroyed at pickup — nothing to put back
+            _coordinator.ReleaseBusJob(default);
+            Assert.IsFalse(_coordinator.HasPendingBusJob);
+        }
+
+        [TestMethod]
+        public void BusJob_AgeGateClaimsTheOldestWaitingPlateFirst()
+        {
+            Time.TotalTime = 1000f;
+            _coordinator.ReleaseBusJob(MakeBusJob(new Vector2(10f, 10f), 900f));  // 100s old
+            _coordinator.ReleaseBusJob(MakeBusJob(new Vector2(20f, 20f), 990f));  // 10s old
+
+            // Fallback bussing only takes plates past the age gate, oldest first
+            Assert.IsTrue(_coordinator.TryClaimBusJob(GameConfig.ServerBusPlateMaxWaitSeconds, out var aged));
+            Assert.AreEqual(900f, aged.EnqueuedTime);
+            Assert.IsFalse(_coordinator.TryClaimBusJob(GameConfig.ServerBusPlateMaxWaitSeconds, out _),
+                "the fresh plate must not pass the age gate");
+
+            // A runner (no age gate) takes it immediately
+            Assert.IsTrue(_coordinator.TryClaimBusJob(out var fresh));
+            Assert.AreEqual(990f, fresh.EnqueuedTime);
         }
     }
 }

@@ -96,9 +96,56 @@ namespace PitHero.Services
         // ── Kitchen open/closed ─────────────────────────────────────────────────
         private int _cook1WorkerIdx = -1;
         private int _server1WorkerIdx = -1;
+        private int _runner1WorkerIdx = -1;
 
         /// <summary>True when ≥1 cook and ≥1 server are assigned and awake.</summary>
         public bool IsKitchenOpen => _cook1WorkerIdx >= 0 && _server1WorkerIdx >= 0;
+
+        /// <summary>
+        /// True when ≥1 runner is on shift. Runners own plate bussing; servers only fall back to
+        /// it while this is false, so a cook+server-only kitchen still clears its tables.
+        /// </summary>
+        public bool HasActiveRunner => _runner1WorkerIdx >= 0;
+
+        /// <summary>Total kitchen role posts — the cap on simultaneous kitchen workers.</summary>
+        public static int MaxWorkerPosts =>
+            GameConfig.MaxKitchenCooks + GameConfig.MaxKitchenServers + GameConfig.MaxKitchenRunners;
+
+        /// <summary>
+        /// Fills <paramref name="into"/> with the role for each of the first postCount posts by
+        /// cycling Cook → Server → Runner and skipping roles that are already full, which yields
+        /// cook1, server1, runner1, cook2, server2, runner2, cook3, runner3. Ordering is what
+        /// makes the crew grow sensibly: a two-monster kitchen is a cook and a server (the pair
+        /// that opens it), the third is the runner that keeps the fridge stocked and the tables
+        /// clear. Stations and zones are then claimed dynamically by the FSMs.
+        /// </summary>
+        public static void FillRoleMix(int postCount, List<KitchenRole> into)
+        {
+            if (postCount > MaxWorkerPosts)
+                postCount = MaxWorkerPosts;
+            int cooks = 0, servers = 0, runners = 0, cursor = 0;
+            for (int i = 0; i < postCount; i++)
+            {
+                // postCount never exceeds the sum of the per-role caps, so this always resolves
+                while (true)
+                {
+                    int slot = cursor % 3;
+                    cursor++;
+                    if (slot == 0 && cooks < GameConfig.MaxKitchenCooks)
+                    {
+                        cooks++; into.Add(KitchenRole.Cook); break;
+                    }
+                    if (slot == 1 && servers < GameConfig.MaxKitchenServers)
+                    {
+                        servers++; into.Add(KitchenRole.Server); break;
+                    }
+                    if (slot == 2 && runners < GameConfig.MaxKitchenRunners)
+                    {
+                        runners++; into.Add(KitchenRole.Runner); break;
+                    }
+                }
+            }
+        }
 
         /// <summary>Number of open kitchen tickets (any state) — the order backlog.</summary>
         public int ActiveTicketCount => _tickets.Count;
@@ -190,25 +237,9 @@ namespace PitHero.Services
                 _wantedAssignments.Insert(insertPos, m);
             }
 
-            // Assign roles in order: cook1, server1, runner1, cook2, server2, runner2, cook3.
-            // Stations and zones are claimed dynamically by the FSMs.
-            int postCount = _wantedAssignments.Count < GameConfig.AutoJobKitchenMaxWorkers
-                ? _wantedAssignments.Count : GameConfig.AutoJobKitchenMaxWorkers;
-            for (int i = 0; i < postCount; i++)
-            {
-                KitchenRole role;
-                switch (i)
-                {
-                    case 0: role = KitchenRole.Cook;   break;
-                    case 1: role = KitchenRole.Server; break;
-                    case 2: role = KitchenRole.Runner; break;
-                    case 3: role = KitchenRole.Cook;   break;
-                    case 4: role = KitchenRole.Server; break;
-                    case 5: role = KitchenRole.Runner; break;
-                    default: role = KitchenRole.Cook;  break;
-                }
-                _wantedRoles.Add(role);
-            }
+            int postCount = _wantedAssignments.Count < MaxWorkerPosts
+                ? _wantedAssignments.Count : MaxWorkerPosts;
+            FillRoleMix(postCount, _wantedRoles);
 
             // Track which pre-existing workers keep their assignment. SpawnWorker appends to
             // _workers mid-pass, so snapshot the count and never index past it.
@@ -269,15 +300,20 @@ namespace PitHero.Services
                     _workers.RemoveAt(wi);
             }
 
-            // Update kitchen-open post indices (first cook, first server)
+            // Update kitchen-open post indices (first cook, first server, first runner)
             _cook1WorkerIdx = -1;
             _server1WorkerIdx = -1;
+            _runner1WorkerIdx = -1;
             for (int wi = 0; wi < _workers.Count; wi++)
             {
-                if (_cook1WorkerIdx < 0 && _workers[wi].Role == KitchenRole.Cook && !_workers[wi].Fsm.IsReturningHome)
+                if (_workers[wi].Fsm.IsReturningHome)
+                    continue;
+                if (_cook1WorkerIdx < 0 && _workers[wi].Role == KitchenRole.Cook)
                     _cook1WorkerIdx = wi;
-                if (_server1WorkerIdx < 0 && _workers[wi].Role == KitchenRole.Server && !_workers[wi].Fsm.IsReturningHome)
+                if (_server1WorkerIdx < 0 && _workers[wi].Role == KitchenRole.Server)
                     _server1WorkerIdx = wi;
+                if (_runner1WorkerIdx < 0 && _workers[wi].Role == KitchenRole.Runner)
+                    _runner1WorkerIdx = wi;
             }
 
             // Periodic hat sweep: shift overlaps can leave a worker hatless at spawn
@@ -960,6 +996,27 @@ namespace PitHero.Services
             _busJobs.RemoveAt(oldest);
             return true;
         }
+
+        /// <summary>
+        /// Returns a claimed bus job to the queue — the worker was sent home (or died) before it
+        /// picked the plate up. Keeps the original enqueue time so the plate stays at the head of
+        /// the queue. No-ops for a plate that was already picked up (its entity is gone) or one
+        /// that is somehow queued twice, so calling this defensively is always safe.
+        /// </summary>
+        public void ReleaseBusJob(BusJob job)
+        {
+            if (job.DishEntity == null || job.DishEntity.IsDestroyed)
+                return;
+            for (int i = 0; i < _busJobs.Count; i++)
+            {
+                if (ReferenceEquals(_busJobs[i].DishEntity, job.DishEntity))
+                    return;
+            }
+            _busJobs.Add(job);
+        }
+
+        /// <summary>True while any plate is waiting to be bussed.</summary>
+        public bool HasPendingBusJob => _busJobs.Count > 0;
 
         /// <summary>
         /// True while a pending (unclaimed) bus job's plate sits at the given world position

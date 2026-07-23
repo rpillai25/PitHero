@@ -311,9 +311,16 @@ namespace PitHero.Services
             if (mercComponent.IsBeingRemoved)
                 yield break;
 
-            // The assigned seat's table still has an un-bussed plate: wait at the tavern door
-            // until a server clears it. A server only takes orders from seated patrons, so a
-            // patron waiting at the door adds no ordering pressure while the backlog drains.
+            // The assigned seat's table still has an un-bussed plate. Prefer any other free seat
+            // that is already cleared; only when every free seat is dirty (or there is none) do we
+            // wait at the tavern door until a plate is cleared. A server only takes orders from
+            // seated patrons, so a patron waiting at the door adds no ordering pressure meanwhile.
+            if (HasUnbussedPlateAtSeat(tavernPosition))
+            {
+                var cleared = TryReseatToClearedSeat(mercComponent, tavernPosition);
+                if (cleared.HasValue)
+                    tavernPosition = cleared.Value;
+            }
             if (HasUnbussedPlateAtSeat(tavernPosition))
             {
                 var doorTile = new Point(GameConfig.TavernDoorWaitTileX, GameConfig.TavernDoorWaitTileY);
@@ -327,6 +334,13 @@ namespace PitHero.Services
                 {
                     if (mercComponent.IsHired || mercComponent.IsBeingRemoved)
                         yield break;
+                    // A seat elsewhere may free up (or get bussed) while we wait — take it
+                    var freed = TryReseatToClearedSeat(mercComponent, tavernPosition);
+                    if (freed.HasValue)
+                    {
+                        tavernPosition = freed.Value;
+                        break;
+                    }
                     yield return Coroutine.WaitForSeconds(0.25f);
                 }
             }
@@ -737,13 +751,45 @@ namespace PitHero.Services
             return count;
         }
 
-        /// <summary>Gets an available tavern position</summary>
+        /// <summary>
+        /// Gets an available tavern position, preferring one whose table is already cleared —
+        /// a seat with an un-bussed plate would park the arriving patron at the door.
+        /// </summary>
         private Point? GetAvailableTavernPosition()
+        {
+            Point? dirtyFallback = null;
+            for (int i = 0; i < TavernPositions.Length; i++)
+            {
+                if (_occupiedTavernPositions.Contains(TavernPositions[i]))
+                    continue;
+                if (!HasUnbussedPlateAtSeat(TavernPositions[i]))
+                    return TavernPositions[i];
+                if (!dirtyFallback.HasValue)
+                    dirtyFallback = TavernPositions[i];
+            }
+            return dirtyFallback;
+        }
+
+        /// <summary>
+        /// Moves the mercenary's seat reservation to a free, already-cleared seat when its current
+        /// one still has an un-bussed plate. Returns the new seat, or null when every other free
+        /// seat is dirty too (or there is none) — only then is waiting at the door the right call.
+        /// </summary>
+        private Point? TryReseatToClearedSeat(MercenaryComponent mercComponent, Point currentSeat)
         {
             for (int i = 0; i < TavernPositions.Length; i++)
             {
-                if (!_occupiedTavernPositions.Contains(TavernPositions[i]))
-                    return TavernPositions[i];
+                var seat = TavernPositions[i];
+                if (seat == currentSeat || _occupiedTavernPositions.Contains(seat))
+                    continue;
+                if (HasUnbussedPlateAtSeat(seat))
+                    continue;
+
+                _occupiedTavernPositions.Remove(currentSeat);
+                _occupiedTavernPositions.Add(seat);
+                mercComponent.TavernPosition = seat;
+                Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} switched from dirty seat ({currentSeat.X},{currentSeat.Y}) to cleared seat ({seat.X},{seat.Y})");
+                return seat;
             }
             return null;
         }

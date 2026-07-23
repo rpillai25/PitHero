@@ -14,13 +14,14 @@ namespace PitHero.ECS.Components
     /// Server: take up to 3 orders from patrons at its tables (1 server works all 4 tables;
     /// with 2 servers the first works the top pair, the second the bottom pair), post them at
     /// the ticket board, deliver up to 2 cooked dishes from the serving tables (only for its
-    /// own tables), bus finished plates (any table — bussing is zone-free), otherwise wander
-    /// its table area.
+    /// own tables), otherwise wander its table area. Bussing is the runners' job; a server only
+    /// falls back to it when no runner is on shift.
     /// Cook: read one ticket at the board, gather ingredients at the fridge (waiting for the
     /// runner if the fridge is short), cook at a free station, place the dish on a serving
     /// table — holding it if all three are full.
-    /// Runner: proactively haul each order's ingredient shortfall from Crop Storage to the
-    /// fridge, one claimed job at a time.
+    /// Runner: bus finished plates (any table — bussing is zone-free), sprinting out and back
+    /// with up to 3 plates per trip to the sink, and — once no plate is waiting — haul each
+    /// order's ingredient shortfall from Crop Storage to the fridge, one claimed job at a time.
     /// </summary>
     public class KitchenMonsterStateMachine : SimpleStateMachine<KitchenMonsterState>, IPausableComponent
     {
@@ -78,6 +79,7 @@ namespace PitHero.ECS.Components
         // ── Runner state ────────────────────────────────────────────────────────
         private KitchenTicket _fetchTicket;
         private float _runnerWanderPause;
+        private int _platesCarried; // empty plates in hand on the current sink run
 
         public bool ShouldPause => true;
 
@@ -145,6 +147,12 @@ namespace PitHero.ECS.Components
 
             _coordinator.ReleaseFetchJob(_fetchTicket);
             _fetchTicket = null;
+
+            // A plate we were walking to is still on its table — put the job back. Plates already
+            // in hand had their entities destroyed at pickup, so they're simply gone (same as a
+            // carried orphan dish); no work is stranded either way.
+            _coordinator.ReleaseBusJob(_busJob);
+            _busJob = default;
 
             base.OnRemovedFromEntity();
         }
@@ -240,10 +248,13 @@ namespace PitHero.ECS.Components
 
             var zone = Zone;
 
-            // 0) A plate that has waited too long (any table, any zone) — in a busy tavern
-            //    priorities 1-2 always have work, so without this age bump bussing starves
-            //    and plates pile up on tables
-            if (_coordinator.TryClaimBusJob(GameConfig.ServerBusPlateMaxWaitSeconds, out _busJob))
+            // 0) Fallback bussing only: with a runner on shift the plates are theirs, and taking
+            //    them off the server was the whole point (bussing was the server bottleneck).
+            //    Without one, a plate that has waited too long still bumps ahead of everything —
+            //    in a busy tavern priorities 1-2 always have work, so plates would otherwise pile
+            //    up and block arriving patrons at the door forever.
+            if (!_coordinator.HasActiveRunner
+                && _coordinator.TryClaimBusJob(GameConfig.ServerBusPlateMaxWaitSeconds, out _busJob))
             {
                 _busPickedUp = false;
                 CurrentState = KitchenMonsterState.ServerBusPlate;
@@ -261,8 +272,8 @@ namespace PitHero.ECS.Components
                 CurrentState = KitchenMonsterState.ServerWalkToPatron;
                 return;
             }
-            // 3) Dirty plates — any table, any zone (only orders/deliveries are zone-bound)
-            if (_coordinator.TryClaimBusJob(out _busJob))
+            // 3) Dirty plates — fallback only (see 0); any table, any zone
+            if (!_coordinator.HasActiveRunner && _coordinator.TryClaimBusJob(out _busJob))
             {
                 _busPickedUp = false;
                 CurrentState = KitchenMonsterState.ServerBusPlate;
@@ -532,6 +543,9 @@ namespace PitHero.ECS.Components
                 // First arrival trigger: walk to the plate
                 if (!TrySetPathToTileOrNeighbor(WorldToTile(_busJob.WorldPos)))
                 {
+                    // Unreachable plate (broken map geometry). The job has already left the queue,
+                    // so leaving the entity behind would block that seat forever — clear it here.
+                    ClearUnreachablePlate();
                     CurrentState = KitchenMonsterState.ServerDecide;
                     return;
                 }
@@ -863,6 +877,16 @@ namespace PitHero.ECS.Components
                 return;
             }
 
+            // Dirty plates come first: an un-bussed plate keeps a seat out of service and parks
+            // arriving patrons at the door, which costs the tavern more than a slow order does.
+            if (_coordinator.TryClaimBusJob(out _busJob))
+            {
+                _mover.Stop();
+                _platesCarried = 0;
+                CurrentState = KitchenMonsterState.RunnerBusPlate;
+                return;
+            }
+
             // A fetch job interrupts the wander immediately
             _fetchTicket = _coordinator.TryClaimFetchJob();
             if (_fetchTicket != null)
@@ -954,6 +978,79 @@ namespace PitHero.ECS.Components
             CurrentState = _goHome ? KitchenMonsterState.ReturnHome : KitchenMonsterState.RunnerIdle;
         }
 
+        // ── Runner bussing ──────────────────────────────────────────────────────
+
+        private void RunnerBusPlate_Enter()
+        {
+            SetSprinting(true);
+            if (TrySetPathToTileOrNeighbor(WorldToTile(_busJob.WorldPos)))
+                return;
+            // Unreachable plate (broken map geometry). The job has already left the queue, so
+            // leaving the entity behind would block that seat forever — clear it in place and
+            // let the tick below move on to the next plate.
+            ClearUnreachablePlate();
+            _mover.Stop();
+        }
+
+        private void RunnerBusPlate_Tick()
+        {
+            if (_mover.IsMoving)
+                return;
+
+            // Arrived: take the plate in hand
+            if (_busJob.DishEntity != null && !_busJob.DishEntity.IsDestroyed)
+            {
+                _busJob.DishEntity.Destroy();
+                _platesCarried++;
+            }
+            _busJob = default;
+            ShowCarryPlates(_platesCarried);
+
+            // Grab another plate on the same trip while there's a free hand
+            if (!_goHome && _platesCarried < GameConfig.RunnerCarryPlateLimit
+                && _coordinator.TryClaimBusJob(out _busJob))
+            {
+                RunnerBusPlate_Enter(); // same-state re-entry doesn't re-run Enter
+                return;
+            }
+
+            if (_platesCarried == 0)
+            {
+                CurrentState = _goHome ? KitchenMonsterState.ReturnHome : KitchenMonsterState.RunnerIdle;
+                return;
+            }
+            CurrentState = KitchenMonsterState.RunnerWalkToSink;
+        }
+
+        private void RunnerWalkToSink_Enter()
+        {
+            SetSprinting(true);
+            TrySetPathToTileOrNeighbor(KitchenTaskCoordinator.SinkTile);
+        }
+
+        private void RunnerWalkToSink_Tick()
+        {
+            if (_mover.IsMoving)
+                return;
+            // Plates go in the sink; if the sink was unreachable they're washed where we stand —
+            // either way the tables are clear, which is what the seat gate cares about.
+            HideCarryDish();
+            _platesCarried = 0;
+            CurrentState = _goHome ? KitchenMonsterState.ReturnHome : KitchenMonsterState.RunnerIdle;
+        }
+
+        /// <summary>
+        /// Destroys the plate of the current bus job in place. Used when the plate can't be walked
+        /// to — the job is already off the queue, so the alternative is a seat blocked forever.
+        /// </summary>
+        private void ClearUnreachablePlate()
+        {
+            Debug.Warn($"[KitchenMonster] Plate at {_busJob.WorldPos} is unreachable — clearing it in place");
+            if (_busJob.DishEntity != null && !_busJob.DishEntity.IsDestroyed)
+                _busJob.DishEntity.Destroy();
+            _busJob = default;
+        }
+
         // ─────────────────────────────────── ReturnHome
 
         private void ReturnHome_Enter()
@@ -1020,11 +1117,29 @@ namespace PitHero.ECS.Components
         private void ShowCarryCropAt(Nez.Sprites.SpriteRenderer renderer, Nez.Sprites.SpriteAtlas atlas,
             RecipeEntry[] recipe, int recipeIndex, float offsetX)
         {
-            if (renderer == null)
-                return;
             var sprite = recipeIndex < recipe.Length
                 ? atlas?.GetSprite(Util.CropConfig.GetHarvestSpriteName(recipe[recipeIndex].Crop))
                 : null;
+            ShowCarrySpriteAt(renderer, sprite, offsetX);
+        }
+
+        /// <summary>
+        /// Runner bus visual: one empty plate per free hand — first centered, second offset left,
+        /// third offset right (the same three-item look as a crop haul).
+        /// </summary>
+        private void ShowCarryPlates(int count)
+        {
+            var plate = count > 0 ? GetPlateSprite() : null;
+            ShowCarrySpriteAt(CarryRenderer, count >= 1 ? plate : null, 0f);
+            ShowCarrySpriteAt(CarryLeftRenderer, count >= 2 ? plate : null, -CarrySideOffsetX);
+            ShowCarrySpriteAt(CarryRightRenderer, count >= 3 ? plate : null, CarrySideOffsetX);
+        }
+
+        private void ShowCarrySpriteAt(Nez.Sprites.SpriteRenderer renderer,
+            Nez.Textures.Sprite sprite, float offsetX)
+        {
+            if (renderer == null)
+                return;
             if (sprite == null)
             {
                 renderer.SetEnabled(false);

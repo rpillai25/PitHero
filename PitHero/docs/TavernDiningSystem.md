@@ -116,9 +116,11 @@ the sink by the carrier's FSM when it sees `Canceled`.
 
 **Staffing** (coordinator `Update`, per frame): candidates = allied monsters with
 `Job == Cooking` that are awake per `MonsterScheduleConfig.IsAsleep` (in-game time = the shift
-system), sorted by `CookingProficiency` descending. Roles fill in fixed order
-**cook1, server1, runner1, cook2, server2, runner2, cook3** (max 7 = 3 cooks + 2 servers +
-2 runners). Workers whose role/slot disappears get `RequestReturnHome()` (finish current task,
+system), sorted by `CookingProficiency` descending. `FillRoleMix` cycles Cook → Server → Runner
+skipping full roles, giving **cook1, server1, runner1, cook2, server2, runner2, cook3, runner3**
+(`MaxWorkerPosts` = 8 = 3 cooks + 2 servers + 3 runners). Change a `GameConfig.MaxKitchen*`
+constant and the order re-derives — but keep `AutoJobKitchenMaxWorkers` in sync (a test asserts
+it). Workers whose role/slot disappears get `RequestReturnHome()` (finish current task,
 walk into the house, despawn); a restored assignment calls `CancelReturnHome()`. Spawn is at
 their Monster House door (anchor +2 south); no collider/TAG_MONSTER, so workers never trigger
 battles. A 5s sweep calls `EnsureHat()` — `KitchenHatService` pools 7 hat entities
@@ -127,8 +129,12 @@ overlap exhausts it.
 
 **Server loop** (`ServerDecide`): priority is (1) deliver plated dishes for its zone,
 (2) take orders — party members first, then nearest waiting patron, batching up to
-`ServerOrderMemoryLimit = 3` before a single trip to the board, (3) bus dirty plates,
-(4) wander its table area (interruptible). Pickup: walks to the middle serving approach tile,
+`ServerOrderMemoryLimit = 3` before a single trip to the board, (3) wander its table area
+(interruptible). **Bussing belongs to the runners** — it was the server bottleneck (issue #327).
+A server only falls back to bussing while `HasActiveRunner` is false, so a cook+server-only
+kitchen still clears its tables; in that mode the old two-tier priority applies (a plate older
+than `ServerBusPlateMaxWaitSeconds = 90` bumps ahead of deliveries and orders, otherwise plates
+come after orders). Pickup: walks to the middle serving approach tile,
 grabs up to `ServerCarryDishLimit = 2` dishes for its zone, delivers each to the seat's plate
 position. One server on shift = `ServerZone.AllTables`; two = first works `TopTables`, second
 `BottomTables` (recomputed live, so zones re-shard when staffing changes).
@@ -141,14 +147,32 @@ full the cook holds the dish (`CookWaitServingSlot`); at shift end `ForceReserve
 overflows onto slot 0 rather than stranding the dish (pickup scans tickets, not slots, so this
 self-heals). Deluxe roll happens at cook start: `proficiency × 5%` capped 45%.
 
-**Runner loop**: wander the south corridor → claim fetch job → sprint (3×) to nearest
-CropStorage door → 1s collect (the real fridge top-up) → carry crop sprites back to the fridge
-→ `CompleteFetch`.
+**Runner loop** (`RunnerIdle`): **dirty plates first**, then ingredients — a plate left on a
+table keeps that seat out of service and parks arriving patrons at the door, which costs more
+than a slow order. Backing orders up a little is the accepted trade.
+
+- *Bus* (`RunnerBusPlate` → `RunnerWalkToSink`): claim a bus job (zone-free, oldest first) →
+  sprint to the plate → pick it up → keep claiming and collecting while under
+  `RunnerCarryPlateLimit = 3` → sprint the stack to the sink. The plates show on the runner's
+  three carry renderers (center / left / right), the same rig as a crop haul.
+- *Fetch*: sprint (3×) to nearest CropStorage door → 1s collect (the real fridge top-up) →
+  carry crop sprites back to the fridge → `CompleteFetch`. Never interrupted mid-trip by a
+  plate; prioritization happens at claim time only.
+
+A claimed-but-not-yet-picked-up plate goes back to the queue via `ReleaseBusJob` when the runner
+despawns (it keeps its original `EnqueuedTime`, so it stays at the head of the line). Plates
+already in hand had their entities destroyed at pickup, so they're simply gone — the tables are
+clear either way, which is all the seat gate cares about.
 
 ## Walk-in patrons
 
 `MercenaryManager` spawns unhired mercs on a 60–120s rolled interval (5s when the tavern is
-empty) into 9 fixed seats; at the seat a `TavernPatronComponent` is added. When full, the
+empty) into 9 fixed seats; at the seat a `TavernPatronComponent` is added. **A patron never sits
+down at a table that still has an un-bussed plate.** `GetAvailableTavernPosition` prefers a free
+seat that is already cleared, and `TryReseatToClearedSeat` re-checks (plates appear and get
+bussed during the walk in) — only when *every* free seat is dirty does the patron wait at the
+tavern door (100,6), retrying the reseat every 0.25s until a plate is cleared. Waiting patrons
+are unseated, so they add no ordering pressure while the backlog drains. When full, the
 oldest patron in `FinishedEating` is walked off to free a seat — never one still waiting or
 eating. `PatronState`: `WaitingToOrder → Ordered → FoodDelivered → Eating → FinishedEating`.
 Patience: 10 min pre-order and post-order (expiry cancels the ticket and leaves immediately);
@@ -226,15 +250,19 @@ entities, patron state. All of that is transient and reconciled live after load.
   dishes (force-reserving a slot if needed), releases cook tickets and fetch jobs.
 - Reservations are physical-at-creation, so crashes/despawns never lose crops; runner and
   server walks are presentation only.
-- `PostTicket`, `ReleaseFetchJob`, `ForceReserveServingSlot` are idempotent / self-healing —
-  a canceled or stale ticket is skipped everywhere.
+- `PostTicket`, `ReleaseFetchJob`, `ReleaseBusJob`, `ForceReserveServingSlot` are idempotent /
+  self-healing — a canceled or stale ticket is skipped everywhere.
+- A bus job that leaves the queue must end with its plate entity destroyed. A claimed job whose
+  plate is unreachable is cleared in place (`ClearUnreachablePlate`) rather than dropped: the
+  alternative is a seat that blocks arriving patrons forever.
 - Kitchen workers must not carry colliders or `TAG_MONSTER`.
 - Meal-buff injection must stay RNG-free.
 
 ## Tests & analytics
 
 - `KitchenServiceLoopTests` — headless end-to-end ticket logic (order → fetch → cook → plate →
-  deliver → eat), cancellation/orphans, slot exhaustion. No tiles or FSM.
+  deliver → eat), cancellation/orphans, slot exhaustion, role mix, bus queue. No tiles or FSM.
+  Note `Entity.Destroy()` no-ops without a scene, so headless tests can't fake a picked-up plate.
 - `KitchenFlowPathTests` — parses the real TMX collision layer and asserts every walk leg
   (house exit → posts, station → serving approach, pickup → all 12 seat tables → sink,
   storage door ↔ fridge) is passable. Update this when moving any kitchen/tavern tile.

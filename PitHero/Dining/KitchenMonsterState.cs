@@ -55,6 +55,10 @@ namespace PitHero.Dining
         RunnerCollect,
         /// <summary>Runner carrying ingredients back to the fridge.</summary>
         RunnerWalkToFridge,
+        /// <summary>Runner sprinting to a finished plate to pick it up (batches up to 3).</summary>
+        RunnerBusPlate,
+        /// <summary>Runner sprinting its stack of empty plates to the sink.</summary>
+        RunnerWalkToSink,
     }
 
     /// <summary>Role assigned to a kitchen worker.</summary>
