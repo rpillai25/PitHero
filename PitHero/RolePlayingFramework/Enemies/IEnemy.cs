@@ -55,6 +55,13 @@ namespace RolePlayingFramework.Enemies
         /// <summary>True if this enemy type can be recruited as an allied monster.</summary>
         bool IsRecruitable { get; }
 
+        /// <summary>
+        /// Vertical nudge (pixels, negative = raise) applied to a worn job prop (e.g. a kitchen hat)
+        /// when this monster works a job. Defaults to 0 for sprites whose head sits at the top of the
+        /// frame; types that seat the head lower override this so the prop doesn't cover the face.
+        /// </summary>
+        float HatYOffset => 0f;
+
         /// <summary>Inflicts damage, returns true if died.</summary>
         bool TakeDamage(int amount);
     }

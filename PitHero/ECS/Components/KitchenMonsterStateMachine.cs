@@ -109,7 +109,7 @@ namespace PitHero.ECS.Components
             _hatService = Core.Services.GetService<KitchenHatService>();
             // Wear the job hat while doing kitchen work (BodyAnimator's sprite is set by now —
             // it was added before this component, so its OnAddedToEntity already ran)
-            _hat = _hatService?.AttachHat(_role, Entity, BodyAnimator);
+            _hat = _hatService?.AttachHat(_role, Entity, BodyAnimator, _monster.MonsterTypeName);
             InitialState = KitchenMonsterState.EmergeFromHouse;
         }
 
@@ -179,7 +179,7 @@ namespace PitHero.ECS.Components
         {
             if (HasHat || Entity == null || Entity.IsDestroyed)
                 return;
-            _hat = _hatService?.AttachHat(_role, Entity, BodyAnimator);
+            _hat = _hatService?.AttachHat(_role, Entity, BodyAnimator, _monster.MonsterTypeName);
         }
 
         /// <summary>Asks the monster to finish what it's doing, walk back into its house, and despawn.</summary>

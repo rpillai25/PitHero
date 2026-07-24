@@ -31,6 +31,8 @@ namespace PitHero.ECS.Components
         /// <summary>Attack animation name, or null if none exists for this enemy.</summary>
         protected virtual string AnimAttack => null;
 
+        private bool _tileAnchorApplied;
+
         private Color _componentColor = Color.White;
         /// <summary>Gets the tint color for this component (default: White)</summary>
         public Color ComponentColor
@@ -76,6 +78,29 @@ namespace PitHero.ECS.Components
             }
 
             this.SetColor(ComponentColor);
+
+            ApplyTileAnchorOffset();
+        }
+
+        /// <summary>
+        /// Shifts the sprite up so its lower 32px (one tile) aligns with the entity's tile, making
+        /// medium/large monsters visually "stand" on their tile instead of floating centred on it
+        /// (their upper body then reads correctly behind top-layer overhangs like the tavern wall).
+        /// Pathfinding/collision are unaffected — they already use the entity-centred 32×32 tile.
+        /// A no-op for 32px sprites. Y-only, so it survives the FlipX offset flip; the attack
+        /// placeholder saves/restores LocalOffset.Y relative to this resting value.
+        /// </summary>
+        protected void ApplyTileAnchorOffset()
+        {
+            if (_tileAnchorApplied)
+                return;
+            var sprite = this.Sprite;
+            if (sprite == null)
+                return;
+            float dy = (GameConfig.TileSize - sprite.SourceRect.Height) / 2f;
+            if (dy != 0f)
+                LocalOffset = new Vector2(LocalOffset.X, LocalOffset.Y + dy);
+            _tileAnchorApplied = true;
         }
 
         public new void Update()

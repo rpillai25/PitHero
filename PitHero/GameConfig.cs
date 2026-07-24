@@ -351,8 +351,9 @@ namespace PitHero
         public const int RenderLayerActors = 60;
         public const int RenderLayerSingleTileObject = 61; // Single tile object layer (below actors, so single tile objects render below monsters/heroes)
         public const int RenderLayerDroppedItems = 65; // Dropped items layer
-        public const int RenderLayerBuilding = 80; // Placed buildings — above map base, below fog of war
-        public const int RenderLayerDetail = 90; // Detail tilemap layer (tilled soil, etc.) — above base, below buildings
+        // NOTE: Placed buildings (Monster House / Crop Storage) render at RenderLayerActors and are
+        // Y-sorted with monsters via YSortSpriteRenderer.YSortOffset (see IYSortOffset / YSortManager).
+        public const int RenderLayerDetail = 90; // Detail tilemap layer (tilled soil, etc.) — above base, below actors
         public const int RenderLayerBase = 100; // Background layer
 
         public const int RenderLayerActionQueue = 996; // Action queue layer (screen space, not affected by scene scaling)

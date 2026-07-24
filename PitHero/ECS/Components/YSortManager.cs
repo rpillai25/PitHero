@@ -23,8 +23,11 @@ namespace PitHero.ECS.Components
                     if (renderable == null || !renderable.Enabled) continue;
                     if (!camera.Bounds.Intersects(renderable.Bounds)) continue;
 
-                    var depth = Mathf.Clamp01(1f - renderable.Entity.Transform.Position.Y
-                                                   * GameConfig.YSortDepthScale);
+                    var sortY = renderable.Entity.Transform.Position.Y;
+                    if (renderable is IYSortOffset ySortOffset)
+                        sortY += ySortOffset.YSortOffset;
+
+                    var depth = Mathf.Clamp01(1f - sortY * GameConfig.YSortDepthScale);
                     renderable.SetLayerDepth(depth);
                 }
             }

@@ -16,7 +16,7 @@ Higher number = drawn first = further back.  Lower number = drawn later = in fro
 |---|---|---|
 | `RenderLayerTop` | 2 | Tilemap "Top" layer (tree-tops, overhangs) — covers everything |
 | `RenderLayerFogOfWar` | 40 | Tilemap fog-of-war overlay — covers actors but not the top layer |
-| `RenderLayerActors` | 60 | Heroes, mercenaries, monsters (all Y-sorted via `LayerDepth`) |
+| `RenderLayerActors` | 60 | Heroes, mercenaries, monsters, **placed buildings** (all Y-sorted via `LayerDepth`) |
 | `RenderLayerSingleTileObject` | 61 | Static 32×32 world objects: treasure chests, walls/obstacles (Y-sorted) |
 | `RenderLayerDroppedItems` | 65 | Dropped loot items |
 | `RenderLayerBase` | 100 | Tilemap base layer |
@@ -40,6 +40,30 @@ Using pixel-granular Y (not tile rows) ensures a unique depth per pixel row, eli
 the flickering that tile-row snapping caused between adjacent entities.
 
 `GameConfig.YSortDepthScale = 1f / 100000f` supports pits up to ~3 000 tiles deep.
+
+### Per-entity sort offset (`IYSortOffset`)
+
+A renderable may implement `IYSortOffset { float YSortOffset { get; } }`; `YSortManager` adds
+that offset to `entity.Y` before computing depth, moving the sort point off the entity centre.
+`YSortSpriteRenderer` exposes a settable `YSortOffset` (default 0).
+
+Used by **placed buildings** (Monster House / Crop Storage). A building's entity sits at its
+sprite centre, but its "ground / front-face" line is the bottom of its footprint — the lower
+64 px (2 tiles) that `FarmPathfinder` walls off. Setting `YSortOffset = spriteHeight / 2` puts
+the sort point at the sprite's bottom edge, so a monster walking in the walkable top rows
+*behind* the building sorts behind it (the building draws over it), while a monster standing in
+front draws over the building. Buildings therefore render at `RenderLayerActors`, not a fixed
+layer.
+
+### Monster sprite tile-anchor (large sprites)
+
+Monsters occupy a single entity-centred 32×32 tile for pathfinding/collision regardless of art
+size, but sprites use a centre origin, so a 64×64 sprite hangs 16 px below its tile. To make
+medium/large monsters visually "stand" on their tile (and sit correctly behind top-layer
+overhangs such as the tavern wall), `EnemyAnimationComponent.ApplyTileAnchorOffset` adds
+`LocalOffset.Y += (TileSize − spriteHeight) / 2` after the first sprite is assigned, aligning the
+sprite's **lower 32 px** with the tile. It is a no-op for 32×32 monsters and never touches the
+entity position, so tile logic is unchanged.
 
 ---
 
