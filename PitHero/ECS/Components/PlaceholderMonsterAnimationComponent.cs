@@ -33,6 +33,7 @@ namespace PitHero.ECS.Components
                     {
                         this.Sprite = sprite;
                         this.SetColor(ComponentColor);
+                        ApplyTileAnchorOffset();
                         Debug.Log("[PlaceholderMonsterAnimationComponent] Loaded static sprite PlaceholderMonster");
                     }
                     else

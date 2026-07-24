@@ -437,8 +437,9 @@ namespace PitHero.UI
                 "building-" + type.ToString().ToLower() + "-" + tileX + "-" + tileY);
             entity.SetPosition(finalPos.X, finalPos.Y);
 
-            var renderer = entity.AddComponent(new SpriteRenderer(sprite));
-            renderer.SetRenderLayer(GameConfig.RenderLayerBuilding);
+            var renderer = entity.AddComponent(new YSortSpriteRenderer(sprite));
+            renderer.SetRenderLayer(GameConfig.RenderLayerActors);
+            renderer.YSortOffset = sprite.SourceRect.Height / 2f; // sort at the sprite's bottom (walled 64px band)
             ApplyDayNightGrading(renderer);
 
             Core.Services.GetService<BuildingService>()?.AddBuilding(new PlacedBuilding
@@ -516,8 +517,9 @@ namespace PitHero.UI
                 "building-" + type.ToString().ToLower() + "-" + tileX + "-" + tileY);
             entity.SetPosition(finalPos.X, finalPos.Y + FallStartOffset);
 
-            var renderer = entity.AddComponent(new SpriteRenderer(sprite));
-            renderer.SetRenderLayer(GameConfig.RenderLayerBuilding);
+            var renderer = entity.AddComponent(new YSortSpriteRenderer(sprite));
+            renderer.SetRenderLayer(GameConfig.RenderLayerActors);
+            renderer.YSortOffset = sprite.SourceRect.Height / 2f; // sort at the sprite's bottom (walled 64px band)
             ApplyDayNightGrading(renderer);
 
             entity.AddComponent(new BuildingFallAnimator(finalPos.Y));
