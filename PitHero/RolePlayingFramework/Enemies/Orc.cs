@@ -26,6 +26,7 @@ namespace RolePlayingFramework.Enemies
         public float JoinPercentageModifier => 0.6f;
         public bool IsBoss => false;
         public bool IsRecruitable => true;
+        public float HatYOffset => -8f; // Orc's head seats low in-frame — raise worn hats 8px
 
         public Orc(int level = 6)
         {
