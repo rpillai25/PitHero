@@ -136,7 +136,7 @@ namespace PitHero.AI
 
             // Play jump sound effect
             SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
-            soundEffectManager.PlaySound(SoundEffectType.Jump);
+            soundEffectManager.PlaySoundAt(SoundEffectType.Jump, entity.Transform.Position);
 
             // Start the movement coroutine
             Core.StartCoroutine(JumpMovementCoroutine(entity, targetPosition, GameConfig.HeroJumpSpeed));
@@ -213,7 +213,7 @@ namespace PitHero.AI
 
             // Play land sound effect
             SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
-            soundEffectManager.PlaySound(SoundEffectType.Land);
+            soundEffectManager.PlaySoundAt(SoundEffectType.Land, entity.Transform.Position);
         }
 
         /// <summary>

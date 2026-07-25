@@ -731,25 +731,35 @@ namespace PitHero.AI
         // ── IBattleEventSink — audio ─────────────────────────────────────────────────
 
         /// <inheritdoc/>
-        public void PlaySound(BattleSound sound)
+        public void PlaySound(BattleSound sound, ICombatant source)
         {
             var sfx = Core.GetGlobalManager<SoundEffectManager>();
             if (sfx == null) return;
+
+            SoundEffectType sfxType;
             switch (sound)
             {
                 case BattleSound.Punch:
-                    sfx.PlaySound(SoundEffectType.Punch);
+                    sfxType = SoundEffectType.Punch;
                     break;
                 case BattleSound.TakeDamage:
-                    sfx.PlaySound(SoundEffectType.TakeDamage);
+                    sfxType = SoundEffectType.TakeDamage;
                     break;
                 case BattleSound.Restorative:
-                    sfx.PlaySound(SoundEffectType.Restorative);
+                    sfxType = SoundEffectType.Restorative;
                     break;
                 case BattleSound.EnemyDefeat:
-                    sfx.PlaySound(SoundEffectType.EnemyDefeat);
+                    sfxType = SoundEffectType.EnemyDefeat;
                     break;
+                default:
+                    return;
             }
+
+            var sourceEntity = source != null ? GetEntityForCombatant(source) : null;
+            if (sourceEntity != null)
+                sfx.PlaySoundAt(sfxType, sourceEntity.Transform.Position);
+            else
+                sfx.PlaySound(sfxType);
         }
 
         // ── Post-battle cleanup ──────────────────────────────────────────────────────
@@ -875,7 +885,7 @@ namespace PitHero.AI
             if (protoRenderer != null) origColorProto = protoRenderer.Color;
 #endif
 
-            PlaySound(BattleSound.EnemyDefeat);
+            Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.EnemyDefeat, monsterEntity.Transform.Position);
 
             const float fadeDuration = 0.5f;
             float elapsed = 0f;

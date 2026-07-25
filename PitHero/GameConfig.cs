@@ -67,6 +67,9 @@ namespace PitHero
         // Sound configuration (can be updated in UI)
         public static float MasterVolume = 0.5f;
 
+        /// <summary>World sounds farther than this many tiles past the nearest horizontal camera edge are inaudible and skipped</summary>
+        public const int MaxAudibleDistanceTiles = 10;
+
         // Hero movement speed
         public const float HeroMovementSpeed = 64f;  //Move speed in pixels per second (64 pixels = 2 tiles)
         public const float HeroPitMovementSpeed = 32f; //Move speed in pixels per second when in pit (32 pixels = 1 tile)

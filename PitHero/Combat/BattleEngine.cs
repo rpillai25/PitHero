@@ -578,7 +578,7 @@ namespace PitHero.Combat
             battleContext.MarkActed(hero);
 
             if (queuedAction.WeaponItem == null)
-                _sink.PlaySound(BattleSound.Punch);
+                _sink.PlaySound(BattleSound.Punch, hero);
 
             if (heroAttackResult.Hit)
             {
@@ -789,7 +789,7 @@ namespace PitHero.Combat
                 Random.NextFloat());
             battleContext.MarkActed(mercenary);
 
-            _sink.PlaySound(BattleSound.Punch);
+            _sink.PlaySound(BattleSound.Punch, mercenary);
 
             if (mercAttackResult.Hit)
             {
@@ -1042,7 +1042,7 @@ namespace PitHero.Combat
 
             if (enemyAttackResult.Hit)
             {
-                _sink.PlaySound(BattleSound.TakeDamage);
+                _sink.PlaySound(BattleSound.TakeDamage, target);
 
                 int actualDamage = enemyAttackResult.Damage * DEBUG_DAMAGE_MULT;
                 int targetHpBefore = target.CurrentHP;
@@ -1157,7 +1157,7 @@ namespace PitHero.Combat
 
                 if (healed)
                 {
-                    _sink.PlaySound(BattleSound.Restorative);
+                    _sink.PlaySound(BattleSound.Restorative, healTarget as ICombatant);
                     if (targetAlly != null)
                     {
                         var rh = _sink.ShowHealOnAlly(targetAlly, healAmount);
@@ -1252,7 +1252,7 @@ namespace PitHero.Combat
                     var evt = new BattleHealEvent(itemUserName, consumable.Name, targetName, healAmount, hpAfter);
                     _sink.OnConsumableHealApplied(consumable, in evt);
 
-                    _sink.PlaySound(BattleSound.Restorative);
+                    _sink.PlaySound(BattleSound.Restorative, target as ICombatant);
                     var targetAlly = FindAllyForTarget(target, targetsHero);
                     if (targetAlly != null)
                     {

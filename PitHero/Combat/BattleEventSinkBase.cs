@@ -106,6 +106,6 @@ namespace PitHero.Combat
         public virtual void OnAllyKilled(IBattleAlly ally, IEnemy killer) { }
 
         /// <inheritdoc/>
-        public virtual void PlaySound(BattleSound sound) { }
+        public virtual void PlaySound(BattleSound sound, RolePlayingFramework.Combat.ICombatant source) { }
     }
 }

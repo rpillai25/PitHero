@@ -163,7 +163,8 @@ namespace PitHero.Combat
 
         // ── Audio ─────────────────────────────────────────────────────────────────
 
-        /// <summary>Requests a sound effect to be played.</summary>
-        void PlaySound(BattleSound sound);
+        /// <summary>Requests a sound effect to be played. The source combatant's entity position
+        /// attenuates the sound by distance from the camera view; null plays at full volume.</summary>
+        void PlaySound(BattleSound sound, RolePlayingFramework.Combat.ICombatant source);
     }
 }
