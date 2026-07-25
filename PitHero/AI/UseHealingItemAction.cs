@@ -209,7 +209,7 @@ namespace PitHero.AI
 
                 // Play restorative sound effect
                 SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
-                soundEffectManager.PlaySound(SoundEffectType.Restorative);
+                soundEffectManager.PlaySoundAt(SoundEffectType.Restorative, heroComponent.Entity.Transform.Position);
 
                 int currentHP = isHero
                     ? ((RolePlayingFramework.Heroes.Hero)target).CurrentHP

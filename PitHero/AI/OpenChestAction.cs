@@ -69,7 +69,7 @@ namespace PitHero.AI
                         if (_treasureComponent != null && _treasureComponent.State == TreasureComponent.TreasureState.CLOSED)
                         {
                             SoundEffectManager soundEffectManager = Core.GetGlobalManager<SoundEffectManager>();
-                            soundEffectManager?.PlaySound(SoundEffectType.ChestOpen);
+                            soundEffectManager?.PlaySoundAt(SoundEffectType.ChestOpen, _chestEntity.Transform.Position);
 
                             _treasureComponent.State = TreasureComponent.TreasureState.OPEN;
                             Debug.Log("[OpenChest] Chest state changed to OPEN");

@@ -258,7 +258,7 @@ namespace PitHero.AI
                 {
                     gameState.Funds -= innCost;
                     _hasPaidInnkeeper = true;
-                    soundEffectManager.PlaySound(SoundEffectType.PayGold);
+                    soundEffectManager.PlaySoundAt(SoundEffectType.PayGold, heroEntity.Transform.Position);
                     Debug.Log($"[SleepInBedAction] Paid {innCost} gold to innkeeper. Remaining funds: {gameState.Funds}");
 
                     Services.Analytics.AnalyticsService.LogInnSleep(innCost, gameState.Funds);
@@ -461,7 +461,7 @@ namespace PitHero.AI
             }
 
             Debug.Log("[SleepInBedAction] Sleep complete, restoring HP and MP to full for hero and mercenaries");
-            soundEffectManager.PlaySound(SoundEffectType.Restorative);
+            soundEffectManager.PlaySoundAt(SoundEffectType.Restorative, heroEntity.Transform.Position);
 
             // Heal hero to full HP and MP
             if (hero.LinkedHero != null)

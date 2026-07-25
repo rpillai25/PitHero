@@ -1,4 +1,5 @@
-﻿using Microsoft.Xna.Framework.Audio;
+﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Audio;
 using Nez;
 using Nez.Systems;
 using PitHero.Util.SoundEffectTypes;
@@ -71,6 +72,27 @@ namespace PitHero.Util
         public void PlaySound(SoundEffectType soundEffectType, float volume, float pitch, float pan)
         {
             soundEffectDict[soundEffectType].Play(volume, pitch, pan);
+        }
+
+        /// <summary>Plays a world-positioned sound attenuated and panned by horizontal distance from the camera view;
+        /// skipped entirely beyond GameConfig.MaxAudibleDistanceTiles past the nearest edge. Position is sampled at play time.</summary>
+        public void PlaySoundAt(SoundEffectType soundEffectType, Vector2 sourceWorldPosition)
+        {
+            float scale = 1f;
+            float pan = 0f;
+            var camera = Core.Scene?.Camera;
+            if (camera != null)
+            {
+                var bounds = camera.Bounds;
+                float maxAudiblePx = GameConfig.MaxAudibleDistanceTiles * GameConfig.TileSize;
+                scale = PositionalAudio.CalculateVolumeScale(sourceWorldPosition.X, bounds.Left, bounds.Right, maxAudiblePx);
+                pan = PositionalAudio.CalculatePan(sourceWorldPosition.X, bounds.Left, bounds.Right, maxAudiblePx);
+            }
+
+            if (scale <= 0f)
+                return;
+
+            soundEffectDict[soundEffectType].Play(SoundVolume * scale, 0f, pan);
         }
 
         public void StopSound(SoundEffectType soundEffectType)
