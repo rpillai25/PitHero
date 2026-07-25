@@ -186,7 +186,57 @@ namespace PitHero.VirtualGame
             Console.WriteLine($"[VirtualPitWidthManager] Setting pit level from {_currentPitLevel} to {newLevel}");
             _currentPitLevel = newLevel;
 
+            // Mirror the real PitWidthManager: when sizing down, restore the old extension
+            // region first so no stale inner-wall collision column survives the shrink.
+            int newRightEdge = PitWidthManager.CalculateRightEdgeForDepth(BiomeProgressionConfig.GetEffectiveDepth(_currentPitLevel, _currentPitTier));
+            if (newRightEdge < previousRightEdge)
+            {
+                ClearTilesFromXToEnd(newRightEdge);
+            }
+
             RegeneratePitWidth();
+        }
+
+        /// <summary>
+        /// Clear tiles from a given x coordinate to x=33 to clean up when sizing down.
+        /// Mirrors the real PitWidthManager: the base pit's inner-wall (x=12) and outer-floor (x=13)
+        /// columns are restored from their recorded patterns; everything further right becomes
+        /// plain ground with no collision or fog.
+        /// </summary>
+        private void ClearTilesFromXToEnd(int startX)
+        {
+            Console.WriteLine($"[VirtualPitWidthManager] Clearing tiles from x={startX} to x=33, y=1 to y=11");
+
+            for (int x = startX - 1; x <= 33; x++)
+            {
+                for (int y = 1; y <= 11; y++)
+                {
+                    if (x == 12 || x == 13)
+                    {
+                        // Restore the base pit's own columns from their recorded patterns
+                        var basePattern = x == 12 ? _baseInnerWall : _baseOuterFloor;
+                        var collisionPattern = x == 12 ? _collisionInnerWall : _collisionOuterFloor;
+
+                        if (basePattern.TryGetValue(y, out int baseGid) && baseGid != 0)
+                            _tiledMapService.SetTile("Base", x, y, baseGid);
+
+                        if (collisionPattern.TryGetValue(y, out int colGid) && colGid != 0)
+                            _tiledMapService.SetTile("Collision", x, y, colGid);
+                        else
+                            _tiledMapService.RemoveTile("Collision", x, y);
+                    }
+                    else
+                    {
+                        if (_groundTileIndex != 0)
+                            _tiledMapService.SetTile("Base", x, y, _groundTileIndex);
+                        _tiledMapService.RemoveTile("Collision", x, y);
+                    }
+
+                    _tiledMapService.RemoveTile("FogOfWar", x, y);
+                }
+            }
+
+            Console.WriteLine($"[VirtualPitWidthManager] Cleared tiles from x={startX} to x=33");
         }
 
         public void RegeneratePitWidth()
@@ -206,7 +256,9 @@ namespace PitHero.VirtualGame
 
             if (innerFloorTilesToExtend <= 0)
             {
-                Console.WriteLine("[VirtualPitWidthManager] No extension needed for current level");
+                // No extension tiles — reset right edge to the base pit boundary (mirrors real manager)
+                _currentPitRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth;
+                Console.WriteLine($"[VirtualPitWidthManager] No extension needed for current level. Reset right edge to {_currentPitRightEdge}");
                 return;
             }
 

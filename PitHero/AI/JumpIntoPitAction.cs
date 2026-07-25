@@ -97,6 +97,16 @@ namespace PitHero.AI
                 return true; // Action failed, but complete
             }
 
+            // The state machine can fall through to executing this action in place when no path
+            // to the pit edge exists. Never jump (or claim InsidePit) unless the landing tile is
+            // actually inside the pit — otherwise the hero leaps 2 tiles through open town and
+            // corrupts the InsidePit world state, deadlocking GOAP on unreachable pit goals.
+            if (!hero.CheckInsidePit(TileToWorldPosition(targetTile.Value)))
+            {
+                Debug.Warn($"[JumpIntoPit] Landing tile ({targetTile.Value.X},{targetTile.Value.Y}) is not inside the pit - aborting jump from ({currentStartTile.X},{currentStartTile.Y})");
+                return true; // Action failed, but complete — InsidePit stays untouched
+            }
+
             _plannedTargetTile = targetTile.Value;
 
             // Start the coroutine-based movement to avoid TileMap collider issues
