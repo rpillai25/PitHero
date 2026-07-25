@@ -275,13 +275,11 @@ namespace PitHero
             Debug.Log($"[PitWidthManager] Setting pit level from {_currentPitLevel} to {newLevel}");
             _currentPitLevel = newLevel;
 
-            // Calculate new right edge
-            int initialRightEdge = GameConfig.PitRectX + GameConfig.PitRectWidth;
-            // Cap expansion at effective depth 100 - pit stops expanding beyond effective depth 100.
-            // Tier 1 behaviour is identical to before (effectiveDepth == pitLevel).
-            int expansionLevel = Math.Min(BiomeProgressionConfig.GetEffectiveDepth(_currentPitLevel, _currentPitTier), 100);
-            int innerFloorTilesToExtend = ((int)(expansionLevel / 10)) * 2;
-            int newRightEdge = initialRightEdge + innerFloorTilesToExtend + (innerFloorTilesToExtend > 0 ? 2 : 0); // +2 for inner wall and outer floor
+            // Calculate the right edge RegeneratePitWidth will actually produce for the new level.
+            // Must match its output exactly: an overestimate here skips the shrink cleanup and
+            // strands the old pit's inner-wall collision column in the map, sealing off the pit
+            // mouth (hero/mercenaries can never path back to the pit edge after a death reset).
+            int newRightEdge = CalculateRightEdgeForDepth(BiomeProgressionConfig.GetEffectiveDepth(_currentPitLevel, _currentPitTier));
 
             // If sizing down, clear tiles first
             if (newRightEdge < previousRightEdge)
@@ -290,6 +288,19 @@ namespace PitHero
             }
 
             RegeneratePitWidth();
+        }
+
+        /// <summary>
+        /// Calculates the pit right edge X that RegeneratePitWidth produces for the given effective
+        /// depth. The extension rewrites the base pit's inner-wall (x=12) and outer-floor (x=13)
+        /// columns as inner floor, so the edge grows by exactly the inner floor tile count:
+        /// edge = PitRectX + PitRectWidth + tiles. Expansion is capped at effective depth 100.
+        /// </summary>
+        public static int CalculateRightEdgeForDepth(int effectiveDepth)
+        {
+            int expansionLevel = Math.Min(effectiveDepth, 100);
+            int innerFloorTilesToExtend = (expansionLevel / 10) * 2;
+            return GameConfig.PitRectX + GameConfig.PitRectWidth + innerFloorTilesToExtend;
         }
 
         /// <summary>

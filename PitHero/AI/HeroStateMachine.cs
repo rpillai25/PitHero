@@ -340,6 +340,15 @@ namespace PitHero.AI
                     return;
                 }
 
+                // JumpIntoPitAction must execute at the pit edge — executing it in place after a
+                // pathfinding failure makes the hero jump wherever it stands and corrupts InsidePit.
+                if (_actionPlan.Count > 0 && _actionPlan.Peek().Name == GoapConstants.JumpIntoPitAction)
+                {
+                    Debug.Warn($"[HeroStateMachine] GoTo_Enter: No path to pit edge ({_targetTile.X},{_targetTile.Y}) for JumpIntoPitAction, restarting planning");
+                    CurrentState = ActorState.Idle; // Restart planning
+                    return;
+                }
+
                 CurrentState = ActorState.PerformAction;
                 return;
             }
