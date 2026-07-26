@@ -13,7 +13,8 @@
       "PowerShell(dotnet build *)",
       "PowerShell(dotnet test *)",
       "mcp__github__update_pull_request",
-      "Bash(grep -n \"public \\\\|///\" PitHero/Services/PartyDiningService.cs)"
+      "Bash(grep -n \"public \\\\|///\" PitHero/Services/PartyDiningService.cs)",
+      "mcp__github__pull_request_read"
     ]
   }
 }
