@@ -4,6 +4,7 @@ using Nez.BitmapFonts;
 using Nez.UI;
 using PitHero.Services;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Stats;
 
 namespace PitHero.UI
 {
@@ -42,13 +43,13 @@ namespace PitHero.UI
             _container.SetTouchable(Touchable.Disabled);
         }
 
-        /// <summary>Shows the tooltip comparing new gear with currently equipped gear.</summary>
+        /// <summary>Shows the tooltip comparing new gear with currently equipped gear (null = empty slot, zero baseline).</summary>
         public void ShowComparison(IGear newGear, IGear equippedGear)
         {
             _newGear = newGear;
             _equippedGear = equippedGear;
 
-            if (_newGear == null || _equippedGear == null)
+            if (_newGear == null)
             {
                 return;
             }
@@ -62,7 +63,7 @@ namespace PitHero.UI
         {
             _contentTable.Clear();
 
-            if (_newGear == null || _equippedGear == null) return;
+            if (_newGear == null) return;
 
             var font = Graphics.Instance.BitmapFont;
             float maxLineWidth = 0f;
@@ -75,9 +76,13 @@ namespace PitHero.UI
             _contentTable.Row();
             maxLineWidth = Max(maxLineWidth, Measure(font, titleText));
 
-            // Compare StatBlock bonuses
+            // Compare StatBlock bonuses (null equipped gear = empty slot, all zeros)
             var newStats = _newGear.StatBonus;
-            var equippedStats = _equippedGear.StatBonus;
+            var equippedStats = _equippedGear != null ? _equippedGear.StatBonus : default(StatBlock);
+            int eqAttack = _equippedGear != null ? _equippedGear.AttackBonus : 0;
+            int eqDefense = _equippedGear != null ? _equippedGear.DefenseBonus : 0;
+            int eqHp = _equippedGear != null ? _equippedGear.HPBonus : 0;
+            int eqMp = _equippedGear != null ? _equippedGear.MPBonus : 0;
 
             // Strength
             int strengthDiff = newStats.Strength - equippedStats.Strength;
@@ -133,7 +138,7 @@ namespace PitHero.UI
 
             // Compare flat bonuses
             // Attack
-            int attackDiff = _newGear.AttackBonus - _equippedGear.AttackBonus;
+            int attackDiff = _newGear.AttackBonus - eqAttack;
             if (attackDiff != 0)
             {
                 hasAnyChanges = true;
@@ -146,7 +151,7 @@ namespace PitHero.UI
             }
 
             // Defense
-            int defenseDiff = _newGear.DefenseBonus - _equippedGear.DefenseBonus;
+            int defenseDiff = _newGear.DefenseBonus - eqDefense;
             if (defenseDiff != 0)
             {
                 hasAnyChanges = true;
@@ -159,7 +164,7 @@ namespace PitHero.UI
             }
 
             // HP
-            int hpDiff = _newGear.HPBonus - _equippedGear.HPBonus;
+            int hpDiff = _newGear.HPBonus - eqHp;
             if (hpDiff != 0)
             {
                 hasAnyChanges = true;
@@ -172,7 +177,7 @@ namespace PitHero.UI
             }
 
             // AP (MP)
-            int apDiff = _newGear.MPBonus - _equippedGear.MPBonus;
+            int apDiff = _newGear.MPBonus - eqMp;
             if (apDiff != 0)
             {
                 hasAnyChanges = true;
@@ -205,22 +210,22 @@ namespace PitHero.UI
             return font.MeasureString(text).X;
         }
 
-        /// <summary>Checks if there are any changes to display.</summary>
+        /// <summary>Checks if there are any changes to display (null equipped gear = empty slot, zero baseline).</summary>
         public bool HasChanges()
         {
-            if (_newGear == null || _equippedGear == null) return false;
+            if (_newGear == null) return false;
 
             var newStats = _newGear.StatBonus;
-            var equippedStats = _equippedGear.StatBonus;
+            var equippedStats = _equippedGear != null ? _equippedGear.StatBonus : default(StatBlock);
 
             return newStats.Strength != equippedStats.Strength ||
                    newStats.Agility != equippedStats.Agility ||
                    newStats.Vitality != equippedStats.Vitality ||
                    newStats.Magic != equippedStats.Magic ||
-                   _newGear.AttackBonus != _equippedGear.AttackBonus ||
-                   _newGear.DefenseBonus != _equippedGear.DefenseBonus ||
-                   _newGear.HPBonus != _equippedGear.HPBonus ||
-                   _newGear.MPBonus != _equippedGear.MPBonus;
+                   _newGear.AttackBonus != (_equippedGear?.AttackBonus ?? 0) ||
+                   _newGear.DefenseBonus != (_equippedGear?.DefenseBonus ?? 0) ||
+                   _newGear.HPBonus != (_equippedGear?.HPBonus ?? 0) ||
+                   _newGear.MPBonus != (_equippedGear?.MPBonus ?? 0);
         }
     }
 }

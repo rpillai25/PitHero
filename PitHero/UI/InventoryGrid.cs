@@ -36,6 +36,8 @@ namespace PitHero.UI
         private HeroComponent _heroComponent;
         /// <summary>Slot currently showing the hover-during-drag visual effect.</summary>
         private InventorySlot _dragHoveredSlot;
+        /// <summary>Valid equip target the drag is currently over (equip preview tooltip anchor).</summary>
+        private InventorySlot _lastEquipPreviewTarget;
         private InventoryContextMenu _contextMenu;
         private Stage _stage; // Reference to stage for tooltip management
 
@@ -69,6 +71,9 @@ namespace PitHero.UI
 
         // Fired after an item is sold to the Second Chance vault
         public event System.Action OnItemSoldToVault;
+
+        /// <summary>Fired while dragging gear when the valid equip-target slot changes. Null slot = no valid target.</summary>
+        public event System.Action<InventorySlot, IGear> OnDragEquipTargetChanged;
 
         /// <summary>Fired when an item drag is released outside the grid, passing the source slot and stage drop position.</summary>
         public event System.Action<InventorySlot, Vector2> OnHeroItemDroppedOutside;
@@ -713,6 +718,22 @@ namespace PitHero.UI
                 target.SetItemSpriteOffsetY(HOVER_OFFSET_Y);
                 _dragHoveredSlot = target;
             }
+
+            // Equip-preview target detection (also fires for empty valid equip slots)
+            InventorySlot previewTarget = null;
+            var dragItem = InventoryDragManager.DragItem;
+            if (target != null && target != source && dragItem is IGear draggedGear
+                && (target.SlotData.SlotType == InventorySlotType.Equipment ||
+                    target.SlotData.SlotType == InventorySlotType.MercenaryEquipment)
+                && CanPlaceItemInSlot(draggedGear, target.SlotData))
+            {
+                previewTarget = target;
+            }
+            if (previewTarget != _lastEquipPreviewTarget)
+            {
+                _lastEquipPreviewTarget = previewTarget;
+                OnDragEquipTargetChanged?.Invoke(previewTarget, previewTarget != null ? (IGear)dragItem : null);
+            }
         }
 
         /// <summary>Handles the drop event, swapping items or cancelling if no valid target.</summary>
@@ -722,6 +743,12 @@ namespace PitHero.UI
             {
                 _dragHoveredSlot.SetItemSpriteOffsetY(0f);
                 _dragHoveredSlot = null;
+            }
+
+            if (_lastEquipPreviewTarget != null)
+            {
+                _lastEquipPreviewTarget = null;
+                OnDragEquipTargetChanged?.Invoke(null, null);
             }
 
             // Handle vault item drop specially - route to purchase flow
