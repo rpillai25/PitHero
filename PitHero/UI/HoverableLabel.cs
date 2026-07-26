@@ -25,6 +25,20 @@ namespace PitHero.UI
                 BuildTooltipWindow(skin);
         }
 
+        /// <summary>
+        /// Enables or disables the hover tooltip. Used when the label is shown in a deactivated
+        /// (grayed) state, where hovering must give no feedback.
+        /// </summary>
+        public void SetTooltipEnabled(bool enabled)
+        {
+            SetTouchable(enabled ? Touchable.Enabled : Touchable.Disabled);
+            if (enabled) return;
+
+            // OnMouseExit will not fire once the label stops accepting input, so drop the tooltip here
+            _hovered = false;
+            _tooltipWindow?.SetVisible(false);
+        }
+
         private void BuildTooltipWindow(Skin skin)
         {
             _tooltipWindow = new Window("", skin);

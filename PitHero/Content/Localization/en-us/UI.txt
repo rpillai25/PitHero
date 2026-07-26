@@ -300,14 +300,14 @@ AddMonsterDaytimeLabel,Daytime
 AddMonsterNocturnalLabel,Nocturnal
 TabAutomation,Automation
 SettingsAutomateMonsterJobs,Automate monster jobs
-SettingsAutomateMonsterJobsTooltip,System will handle monster job assignments. Player can not assign monster jobs with this enabled
+SettingsAutomateMonsterJobsTooltip,Monster job assignments are handled automatically.  Player can't assign monster jobs when this is enabled
 SettingsAutomateSeedPurchases,Auto-Purchase Seeds
 SettingsAutoShopGoldBuffer,Gold Buffer: {0}
 SettingsAutomateSeedPurchasesTooltip,Buy seeds for planned crops as soon as gold is available
 SettingsAutoShopGoldBufferTooltip,No auto purchases will be made when gold is below this value
 SettingsAutoSellCrops,Auto-Sell Crops
 SettingsAutoSellCropsTooltip,When a crop reaches max stack quantity, sell it automatically
-ButtonDesignateCrops,Designate Crops
+ButtonDesignateCrops,Choose Crops to Sell
 WindowAutoSellCropTypes,Auto-Sell Crop Types
 ButtonSelectAll,Select All
 ButtonDeselectAll,Deselect All
