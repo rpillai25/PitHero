@@ -365,6 +365,7 @@ namespace PitHero.UI
             _inventoryGrid = new InventoryGrid();
             _inventoryGrid.OnItemHovered += HandleItemHovered;
             _inventoryGrid.OnItemUnhovered += HandleItemUnhovered;
+            _inventoryGrid.OnDragEquipTargetChanged += HandleDragEquipTargetChanged;
             _inventoryGrid.OnItemSelected += HandleItemSelected;
             _inventoryGrid.OnItemDeselected += HandleItemDeselected;
             _inventoryGrid.OnStencilRemovalRequested += HandleStencilRemovalRequested;
@@ -1155,6 +1156,11 @@ namespace PitHero.UI
 
             // Note: Keyboard shortcuts are now handled by ShortcutBar in MainGameScene
 
+            // Safety net: the equip preview only exists while dragging (covers cancel paths and force-close)
+            if (_equipPreviewTooltip != null && !InventoryDragManager.IsDragging
+                && _equipPreviewTooltip.GetContainer().HasParent())
+                _equipPreviewTooltip.GetContainer().Remove();
+
             if (_windowVisible && _inventoryGrid != null)
             {
 
@@ -1174,15 +1180,6 @@ namespace PitHero.UI
                     tooltipY = Mathf.Clamp(tooltipY, 0, stageHeight - tooltipHeight);
                     
                     tooltipContainer.SetPosition(tooltipX, tooltipY);
-
-                    // Update equip preview tooltip position if visible
-                    if (_equipPreviewTooltip != null && _equipPreviewTooltip.GetContainer().HasParent())
-                    {
-                        var itemTooltipContainer = _itemTooltip.GetContainer();
-                        float previewX = itemTooltipContainer.GetX() + itemTooltipContainer.GetWidth() + 5;
-                        float previewY = itemTooltipContainer.GetY();
-                        _equipPreviewTooltip.GetContainer().SetPosition(previewX, previewY);
-                    }
                 }
 
                 // Update hero crystal tab tooltip
@@ -1231,7 +1228,8 @@ namespace PitHero.UI
 
         private void HandleItemHovered(IItem item, InventorySlot slot)
         {
-            if (item == null) return;
+            // Suppress hover tooltips during drags (PerformPeriodicHoverCheck bypasses hover events)
+            if (item == null || InventoryDragManager.IsDragging) return;
 
             // Get synergies for the hovered slot (passed directly, no search needed)
             var synergies = slot != null ? _inventoryGrid?.GetSynergiesForSlot(slot) : null;
@@ -1262,39 +1260,6 @@ namespace PitHero.UI
             
             tooltipContainer.SetPosition(tooltipX, tooltipY);
             tooltipContainer.ToFront();
-
-            // Show equip preview tooltip if item is qualifying gear
-            if (item is IGear hoveredGear)
-            {
-                // Do not show preview for accessories
-                if (hoveredGear.Kind == ItemKind.Accessory)
-                {
-                    // ensure any previous preview is removed
-                    if (_equipPreviewTooltip != null)
-                        _equipPreviewTooltip.GetContainer().Remove();
-                    return;
-                }
-                var heroComponent = GetHeroComponent();
-                if (heroComponent != null && heroComponent.LinkedHero != null)
-                {
-                    var equippedGear = GetCurrentlyEquippedGear(hoveredGear, heroComponent.LinkedHero);
-                    if (equippedGear != null)
-                    {
-                        _equipPreviewTooltip.ShowComparison(hoveredGear, equippedGear);
-                        if (_equipPreviewTooltip.GetContainer().GetParent() == null)
-                        {
-                            _stage.AddElement(_equipPreviewTooltip.GetContainer());
-                        }
-
-                        // Position equip preview tooltip to the right of item tooltip (using item tooltip's clamped Y)
-                        var itemTooltipContainer = _itemTooltip.GetContainer();
-                        float previewX = itemTooltipContainer.GetX() + itemTooltipContainer.GetWidth() + 5;
-                        float previewY = itemTooltipContainer.GetY();
-                        _equipPreviewTooltip.GetContainer().SetPosition(previewX, previewY);
-                        _equipPreviewTooltip.GetContainer().ToFront();
-                    }
-                }
-            }
         }
 
         private void HandleItemUnhovered()
@@ -1303,41 +1268,41 @@ namespace PitHero.UI
             if (!(_inventoryGrid != null && _inventoryGrid.HasAnyHoveredSlot()))
             {
                 _itemTooltip.GetContainer().Remove();
-                _equipPreviewTooltip.GetContainer().Remove();
             }
         }
 
-        /// <summary>Gets the currently equipped gear for the same slot as the hovered gear.</summary>
-        private IGear GetCurrentlyEquippedGear(IGear hoveredGear, RolePlayingFramework.Heroes.Hero hero)
+        /// <summary>Shows/hides the equip preview beside the drag's current valid equip target slot.</summary>
+        private void HandleDragEquipTargetChanged(InventorySlot targetSlot, IGear draggedGear)
         {
-            if (hoveredGear == null || hero == null) return null;
-
-            // Determine which slot this gear would equip to
-            var kind = hoveredGear.Kind;
-
-            if (kind == ItemKind.HatHelm || kind == ItemKind.HatHeadband || kind == ItemKind.HatWizard || kind == ItemKind.HatPriest)
+            if (targetSlot == null || draggedGear == null)
             {
-                return hero.Hat as IGear;
-            }
-            else if (kind == ItemKind.ArmorMail || kind == ItemKind.ArmorRobe || kind == ItemKind.ArmorGi)
-            {
-                return hero.Armor as IGear;
-            }
-            else if (kind == ItemKind.WeaponSword || kind == ItemKind.WeaponKnife || kind == ItemKind.WeaponKnuckle || kind == ItemKind.WeaponStaff || kind == ItemKind.WeaponRod || kind == ItemKind.WeaponHammer)
-            {
-                return hero.WeaponShield1 as IGear;
-            }
-            else if (kind == ItemKind.Shield)
-            {
-                return hero.WeaponShield2 as IGear;
-            }
-            else if (kind == ItemKind.Accessory)
-            {
-                // For accessories do not show preview
-                return null;
+                _equipPreviewTooltip?.GetContainer().Remove();
+                return;
             }
 
-            return null;
+            var equippedGear = targetSlot.SlotData.Item as IGear; // null = empty slot, all bonuses show as gains
+            _equipPreviewTooltip.ShowComparison(draggedGear, equippedGear);
+
+            if (!_equipPreviewTooltip.HasChanges())
+            {
+                _equipPreviewTooltip.GetContainer().Remove();
+                return;
+            }
+
+            var container = _equipPreviewTooltip.GetContainer();
+            if (container.GetParent() == null)
+                _stage.AddElement(container);
+            container.Validate();
+
+            // Anchor beside the target slot; flip to the left side if overflowing the right edge, clamp Y
+            var slotTopLeft = targetSlot.LocalToStageCoordinates(Vector2.Zero);
+            const float pad = 4f;
+            float x = slotTopLeft.X + targetSlot.GetWidth() + pad;
+            if (x + container.GetWidth() > _stage.GetWidth())
+                x = slotTopLeft.X - container.GetWidth() - pad;
+            float y = Mathf.Clamp(slotTopLeft.Y, 0f, _stage.GetHeight() - container.GetHeight());
+            container.SetPosition(x, y);
+            container.ToFront();
         }
 
         private void HandleItemSelected(IItem item)
