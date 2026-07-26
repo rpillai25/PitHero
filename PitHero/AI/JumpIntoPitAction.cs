@@ -109,6 +109,10 @@ namespace PitHero.AI
 
             _plannedTargetTile = targetTile.Value;
 
+            // Last chance to spend gold on the party before they drop in (issue #345). Runs only
+            // once the landing tile has been validated, so an aborted jump never triggers a buy.
+            Core.Services?.GetService<Services.AutoItemPurchaseService>()?.TryPurchasePass(hero);
+
             // Start the coroutine-based movement to avoid TileMap collider issues
             StartJumpMovement(hero, _plannedTargetTile);
             _isJumping = true;

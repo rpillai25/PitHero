@@ -72,9 +72,25 @@ namespace PitHero.UI
         private HoverableLabel _sellPriorityLabel;
         private ReorderableTableList<string> _sellPriorityList;
         private List<string> _sellPriorityItems;
-        private HoverableLabel _sellRaritiesLabel;
-        private CheckBox[] _sellRarityCheckBoxes;
-        private Table _sellRaritiesTable;
+        private TextButton _gearSellOptionsButton;
+        private GearFilterOptionsDialog _gearSellOptionsDialog;
+
+        // Automation tab — auto-purchase items (issue #345)
+        private HoverableCheckBox _autoPurchaseItemsCheckBox;
+        private HoverableLabel _purchasePriorityLabel;
+        private ReorderableTableList<string> _purchasePriorityList;
+        private List<string> _purchasePriorityItems;
+        private HoverableCheckBox _autoPurchaseMercGearCheckBox;
+        private TextButton _gearPurchaseOptionsButton;
+        private GearFilterOptionsDialog _gearPurchaseOptionsDialog;
+        private HoverableCheckBox _autoPurchaseConsumablesCheckBox;
+        private TextButton _consumablePurchaseOptionsButton;
+        private ConsumablePurchaseOptionsDialog _consumablePurchaseOptionsDialog;
+
+        // Automation tab — auto-equip options (moved from the Party UI Behavior tab, issue #345)
+        private HoverableLabel _autoEquipOptionsLabel;
+        private CheckBox _autoEquipHeroCheckBox;
+        private CheckBox _autoEquipMercsCheckBox;
 
         // Confirmation dialogs
         private Window _exitConfirmationDialog;
@@ -956,6 +972,8 @@ namespace PitHero.UI
                 var svc = Core.Services?.GetService<AutoSellExcessItemsService>();
                 if (svc != null) svc.Enabled = isChecked;
                 SetExcessItemControlsActive(isChecked);
+                if (!isChecked)
+                    _gearSellOptionsDialog?.Hide();
             };
             autoShopTable.Add(_autoSellExcessCheckBox).Left().SetPadTop(15f).SetPadBottom(8f);
             autoShopTable.Row();
@@ -976,41 +994,162 @@ namespace PitHero.UI
             autoShopTable.Add(_sellPriorityList).Left().Width(240f).SetPadBottom(8f);
             autoShopTable.Row();
 
-            string raritiesTooltip = GetText(TextType.UI, UITextKey.SettingsSellRaritiesTooltip);
-            _sellRaritiesLabel = new HoverableLabel(
-                GetText(TextType.UI, UITextKey.SettingsSellRarities),
-                skin, "ph-default", raritiesTooltip, _stage);
-            autoShopTable.Add(_sellRaritiesLabel).Left().SetPadBottom(4f);
-            autoShopTable.Row();
-
-            _sellRaritiesTable = new Table();
-            var rarityKeys = new[]
+            _gearSellOptionsButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonGearSellOptions), skin, "ph-default");
+            _gearSellOptionsButton.OnClicked += (_) =>
             {
-                UITextKey.RarityNormal, UITextKey.RarityUncommon, UITextKey.RarityRare,
-                UITextKey.RarityEpic, UITextKey.RarityLegendary
-            };
-            _sellRarityCheckBoxes = new CheckBox[rarityKeys.Length];
-            for (int i = 0; i < rarityKeys.Length; i++)
-            {
-                int rarityIndex = i;
-                var rarityCheckBox = new CheckBox(GetText(TextType.UI, rarityKeys[i]), skin, "ph-default");
-                rarityCheckBox.IsChecked = true;
-                rarityCheckBox.OnChanged += (isChecked) =>
+                if (_gearSellOptionsDialog == null)
                 {
-                    var svc = Core.Services?.GetService<AutoSellExcessItemsService>();
-                    if (svc != null) svc.RarityAllowed[rarityIndex] = isChecked;
-                };
-                _sellRarityCheckBoxes[i] = rarityCheckBox;
-                _sellRaritiesTable.Add(rarityCheckBox).Left().SetPadRight(12f).SetPadBottom(4f);
-
-                // Two rows (Normal/Uncommon/Rare, then Epic/Legendary) so the tab isn't widened
-                if (i == 2)
-                    _sellRaritiesTable.Row();
-            }
-            autoShopTable.Add(_sellRaritiesTable).Left();
+                    _gearSellOptionsDialog = new GearFilterOptionsDialog(_stage,
+                        UITextKey.WindowGearSellOptions,
+                        UITextKey.SettingsSellRarities, UITextKey.SettingsSellRaritiesTooltip,
+                        UITextKey.SettingsSellGearTypes, UITextKey.SettingsSellGearTypesTooltip,
+                        () => Core.Services?.GetService<AutoSellExcessItemsService>()?.RarityAllowed,
+                        () => Core.Services?.GetService<AutoSellExcessItemsService>()?.GearTypeAllowed);
+                }
+                _gearSellOptionsDialog.Show();
+            };
+            autoShopTable.Add(_gearSellOptionsButton).Left().SetMinWidth(140f).SetMinHeight(16f);
+            autoShopTable.Row();
             SetExcessItemControlsActive(_autoSellExcessCheckBox.IsChecked);
 
-            automationTab.Add(autoShopTable).Expand().Top().Left();
+            PopulateAutoPurchaseControls(autoShopTable, skin);
+            PopulateAutoEquipControls(autoShopTable, skin);
+
+            // The tab keeps growing as automation options are added, so it scrolls vertically
+            var automationScrollPane = new ScrollPane(autoShopTable, skin, "ph-default");
+            automationScrollPane.SetScrollingDisabled(true, false);
+            automationScrollPane.SetFadeScrollBars(false);
+            automationTab.Add(automationScrollPane).Expand().Fill();
+        }
+
+        /// <summary>Adds the "Auto-Purchase Items" checkbox and its sub-controls to the Automation tab.</summary>
+        private void PopulateAutoPurchaseControls(Table autoShopTable, Skin skin)
+        {
+            _autoPurchaseItemsCheckBox = new HoverableCheckBox(
+                GetText(TextType.UI, UITextKey.SettingsAutoPurchaseItems),
+                skin,
+                GetText(TextType.UI, UITextKey.SettingsAutoPurchaseItemsTooltip),
+                _stage);
+            _autoPurchaseItemsCheckBox.IsChecked = false;
+            _autoPurchaseItemsCheckBox.OnChanged += (isChecked) =>
+            {
+                var svc = Core.Services?.GetService<AutoItemPurchaseService>();
+                if (svc != null) svc.Enabled = isChecked;
+                SetItemPurchaseControlsActive(isChecked);
+                if (!isChecked)
+                {
+                    _gearPurchaseOptionsDialog?.Hide();
+                    _consumablePurchaseOptionsDialog?.Hide();
+                }
+            };
+            autoShopTable.Add(_autoPurchaseItemsCheckBox).Left().SetPadTop(15f).SetPadBottom(8f);
+            autoShopTable.Row();
+
+            _purchasePriorityLabel = new HoverableLabel(
+                GetText(TextType.UI, UITextKey.SettingsPurchasePriority),
+                skin, "ph-default", GetText(TextType.UI, UITextKey.SettingsPurchasePriorityTooltip), _stage);
+            autoShopTable.Add(_purchasePriorityLabel).Left().SetPadBottom(4f);
+            autoShopTable.Row();
+
+            // Gear outranks consumables by default (issue #345)
+            _purchasePriorityItems = new List<string>(2)
+            {
+                GetText(TextType.UI, UITextKey.SellPriorityGear),
+                GetText(TextType.UI, UITextKey.SellPriorityConsumables)
+            };
+            _purchasePriorityList = new ReorderableTableList<string>(skin, _purchasePriorityItems, OnPurchasePriorityReordered);
+            autoShopTable.Add(_purchasePriorityList).Left().Width(240f).SetPadBottom(8f);
+            autoShopTable.Row();
+
+            _autoPurchaseMercGearCheckBox = new HoverableCheckBox(
+                GetText(TextType.UI, UITextKey.SettingsAutoPurchaseMercGear),
+                skin,
+                GetText(TextType.UI, UITextKey.SettingsAutoPurchaseMercGearTooltip),
+                _stage);
+            _autoPurchaseMercGearCheckBox.IsChecked = false;
+            _autoPurchaseMercGearCheckBox.OnChanged += (isChecked) =>
+            {
+                var svc = Core.Services?.GetService<AutoItemPurchaseService>();
+                if (svc != null) svc.PurchaseMercenaryGear = isChecked;
+            };
+            autoShopTable.Add(_autoPurchaseMercGearCheckBox).Left().SetPadBottom(8f);
+            autoShopTable.Row();
+
+            _gearPurchaseOptionsButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonGearPurchaseOptions), skin, "ph-default");
+            _gearPurchaseOptionsButton.OnClicked += (_) =>
+            {
+                if (_gearPurchaseOptionsDialog == null)
+                {
+                    _gearPurchaseOptionsDialog = new GearFilterOptionsDialog(_stage,
+                        UITextKey.WindowGearPurchaseOptions,
+                        UITextKey.SettingsBuyRarities, UITextKey.SettingsBuyRaritiesTooltip,
+                        UITextKey.SettingsBuyGearTypes, UITextKey.SettingsBuyGearTypesTooltip,
+                        () => Core.Services?.GetService<AutoItemPurchaseService>()?.BuyRarityAllowed,
+                        () => Core.Services?.GetService<AutoItemPurchaseService>()?.BuyGearTypeAllowed);
+                }
+                _gearPurchaseOptionsDialog.Show();
+            };
+            autoShopTable.Add(_gearPurchaseOptionsButton).Left().SetMinWidth(140f).SetMinHeight(16f).SetPadBottom(8f);
+            autoShopTable.Row();
+
+            _autoPurchaseConsumablesCheckBox = new HoverableCheckBox(
+                GetText(TextType.UI, UITextKey.SettingsAutoPurchaseConsumables),
+                skin,
+                GetText(TextType.UI, UITextKey.SettingsAutoPurchaseConsumablesTooltip),
+                _stage);
+            _autoPurchaseConsumablesCheckBox.IsChecked = false;
+            _autoPurchaseConsumablesCheckBox.OnChanged += (isChecked) =>
+            {
+                var svc = Core.Services?.GetService<AutoItemPurchaseService>();
+                if (svc != null) svc.PurchaseConsumables = isChecked;
+                SetConsumablePurchaseControlsActive(isChecked && _autoPurchaseItemsCheckBox.IsChecked);
+                if (!isChecked)
+                    _consumablePurchaseOptionsDialog?.Hide();
+            };
+            autoShopTable.Add(_autoPurchaseConsumablesCheckBox).Left().SetPadBottom(8f);
+            autoShopTable.Row();
+
+            _consumablePurchaseOptionsButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonConsumablePurchaseOptions), skin, "ph-default");
+            _consumablePurchaseOptionsButton.OnClicked += (_) =>
+            {
+                if (_consumablePurchaseOptionsDialog == null)
+                    _consumablePurchaseOptionsDialog = new ConsumablePurchaseOptionsDialog(_stage);
+                _consumablePurchaseOptionsDialog.Show();
+            };
+            autoShopTable.Add(_consumablePurchaseOptionsButton).Left().SetMinWidth(180f).SetMinHeight(16f);
+            autoShopTable.Row();
+
+            SetItemPurchaseControlsActive(_autoPurchaseItemsCheckBox.IsChecked);
+        }
+
+        /// <summary>Adds the auto-equip toggles (moved here from the Party UI Behavior tab) to the Automation tab.</summary>
+        private void PopulateAutoEquipControls(Table autoShopTable, Skin skin)
+        {
+            _autoEquipOptionsLabel = new HoverableLabel(
+                GetText(TextType.UI, UITextKey.BehaviorAutoEquipOptions),
+                skin, "ph-default", GetText(TextType.UI, UITextKey.SettingsAutoEquipOptionsTooltip), _stage);
+            autoShopTable.Add(_autoEquipOptionsLabel).Left().SetPadTop(15f).SetPadBottom(4f);
+            autoShopTable.Row();
+
+            _autoEquipHeroCheckBox = new CheckBox(GetText(TextType.UI, UITextKey.BehaviorAutoEquipHero), skin, "ph-default");
+            _autoEquipHeroCheckBox.IsChecked = true;
+            _autoEquipHeroCheckBox.OnChanged += (isChecked) =>
+            {
+                var heroComp = GetHeroComponent();
+                if (heroComp != null) heroComp.AutoEquipHero = isChecked;
+            };
+            autoShopTable.Add(_autoEquipHeroCheckBox).Left().SetPadBottom(8f);
+            autoShopTable.Row();
+
+            _autoEquipMercsCheckBox = new CheckBox(GetText(TextType.UI, UITextKey.BehaviorAutoEquipMercenaries), skin, "ph-default");
+            _autoEquipMercsCheckBox.IsChecked = true;
+            _autoEquipMercsCheckBox.OnChanged += (isChecked) =>
+            {
+                var heroComp = GetHeroComponent();
+                if (heroComp != null) heroComp.AutoEquipMercenaries = isChecked;
+            };
+            autoShopTable.Add(_autoEquipMercsCheckBox).Left();
+            autoShopTable.Row();
         }
 
         /// <summary>
@@ -1029,16 +1168,14 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Activates or deactivates the auto-sell-excess sub-controls (sell priority list and gear
-        /// rarity checkboxes). When deactivated they stay on screen but are drawn grayed out with
-        /// tooltips, hover and click disabled.
+        /// Activates or deactivates the auto-sell-excess sub-controls (sell priority list and the
+        /// "Gear Sell Options" button). When deactivated they stay on screen but are drawn grayed
+        /// out with tooltips, hover and click disabled.
         /// </summary>
         private void SetExcessItemControlsActive(bool active)
         {
             var skin = PitHeroSkin.CreateSkin();
             var labelStyle = skin.Get<LabelStyle>(active ? "ph-default" : "ph-grayed");
-            var checkBoxStyle = skin.Get<CheckBoxStyle>(active ? "ph-default" : "ph-grayed");
-            var touchable = active ? Touchable.Enabled : Touchable.Disabled;
 
             if (_sellPriorityLabel != null)
             {
@@ -1047,26 +1184,61 @@ namespace PitHero.UI
             }
 
             _sellPriorityList?.SetGrayed(!active);
+            SetButtonActive(_gearSellOptionsButton, active, skin);
+        }
 
-            if (_sellRaritiesLabel != null)
+        /// <summary>
+        /// Activates or deactivates the auto-purchase sub-controls. The consumable options button
+        /// additionally needs its own checkbox on, so the two gates compose.
+        /// </summary>
+        private void SetItemPurchaseControlsActive(bool active)
+        {
+            var skin = PitHeroSkin.CreateSkin();
+            var labelStyle = skin.Get<LabelStyle>(active ? "ph-default" : "ph-grayed");
+            var checkBoxStyle = skin.Get<CheckBoxStyle>(active ? "ph-default" : "ph-grayed");
+            var touchable = active ? Touchable.Enabled : Touchable.Disabled;
+
+            if (_purchasePriorityLabel != null)
             {
-                _sellRaritiesLabel.SetStyle(labelStyle);
-                _sellRaritiesLabel.SetTooltipEnabled(active);
+                _purchasePriorityLabel.SetStyle(labelStyle);
+                _purchasePriorityLabel.SetTooltipEnabled(active);
             }
 
-            if (_sellRarityCheckBoxes == null)
+            _purchasePriorityList?.SetGrayed(!active);
+
+            if (_autoPurchaseMercGearCheckBox != null)
+            {
+                _autoPurchaseMercGearCheckBox.SetDisabled(!active);
+                _autoPurchaseMercGearCheckBox.SetStyle(checkBoxStyle);
+                _autoPurchaseMercGearCheckBox.SetTouchable(touchable);
+            }
+
+            if (_autoPurchaseConsumablesCheckBox != null)
+            {
+                _autoPurchaseConsumablesCheckBox.SetDisabled(!active);
+                _autoPurchaseConsumablesCheckBox.SetStyle(checkBoxStyle);
+                _autoPurchaseConsumablesCheckBox.SetTouchable(touchable);
+            }
+
+            SetButtonActive(_gearPurchaseOptionsButton, active, skin);
+            SetConsumablePurchaseControlsActive(active && (_autoPurchaseConsumablesCheckBox?.IsChecked ?? false));
+        }
+
+        /// <summary>Activates or deactivates the "Consumable Purchase Options" button.</summary>
+        private void SetConsumablePurchaseControlsActive(bool active)
+        {
+            SetButtonActive(_consumablePurchaseOptionsButton, active, PitHeroSkin.CreateSkin());
+        }
+
+        /// <summary>Grays out (or restores) a text button, disabling hover and clicks while inactive.</summary>
+        private static void SetButtonActive(TextButton button, bool active, Skin skin)
+        {
+            if (button == null)
                 return;
 
-            for (int i = 0; i < _sellRarityCheckBoxes.Length; i++)
-            {
-                var rarityCheckBox = _sellRarityCheckBoxes[i];
-                if (rarityCheckBox == null)
-                    continue;
-
-                rarityCheckBox.SetDisabled(!active);
-                rarityCheckBox.SetStyle(checkBoxStyle);
-                rarityCheckBox.SetTouchable(touchable);
-            }
+            button.SetDisabled(!active);
+            button.SetStyle(skin.Get<TextButtonStyle>(active ? "ph-default" : "ph-grayed"));
+            button.SetTouchable(active ? Touchable.Enabled : Touchable.Disabled);
         }
 
         /// <summary>Writes the reordered sell priority (top entry sells first) to the service.</summary>
@@ -1075,6 +1247,14 @@ namespace PitHero.UI
             var svc = Core.Services?.GetService<AutoSellExcessItemsService>();
             if (svc != null && _sellPriorityItems != null && _sellPriorityItems.Count > 0)
                 svc.ConsumablesFirst = _sellPriorityItems[0] == GetText(TextType.UI, UITextKey.SellPriorityConsumables);
+        }
+
+        /// <summary>Writes the reordered purchase priority (top entry buys first) to the service.</summary>
+        private void OnPurchasePriorityReordered(int from, int to, string item)
+        {
+            var svc = Core.Services?.GetService<AutoItemPurchaseService>();
+            if (svc != null && _purchasePriorityItems != null && _purchasePriorityItems.Count > 0)
+                svc.ConsumablesFirst = _purchasePriorityItems[0] == GetText(TextType.UI, UITextKey.SellPriorityConsumables);
         }
 
         /// <summary>
@@ -1122,13 +1302,62 @@ namespace PitHero.UI
                     _sellPriorityItems.Add(excessSvc.ConsumablesFirst ? gearText : consumablesText);
                     _sellPriorityList?.Rebuild();
                 }
-                if (_sellRarityCheckBoxes != null)
-                {
-                    for (int i = 0; i < _sellRarityCheckBoxes.Length && i < excessSvc.RarityAllowed.Length; i++)
-                        _sellRarityCheckBoxes[i].IsChecked = excessSvc.RarityAllowed[i];
-                }
+                _gearSellOptionsDialog?.SyncFromService();
                 SetExcessItemControlsActive(excessSvc.Enabled);
+                if (!excessSvc.Enabled)
+                    _gearSellOptionsDialog?.Hide();
             }
+
+            var purchaseSvc = Core.Services?.GetService<AutoItemPurchaseService>();
+            if (purchaseSvc != null)
+            {
+                if (_autoPurchaseItemsCheckBox != null)
+                    _autoPurchaseItemsCheckBox.IsChecked = purchaseSvc.Enabled;
+                if (_autoPurchaseMercGearCheckBox != null)
+                    _autoPurchaseMercGearCheckBox.IsChecked = purchaseSvc.PurchaseMercenaryGear;
+                if (_autoPurchaseConsumablesCheckBox != null)
+                    _autoPurchaseConsumablesCheckBox.IsChecked = purchaseSvc.PurchaseConsumables;
+
+                if (_purchasePriorityItems != null)
+                {
+                    _purchasePriorityItems.Clear();
+                    var consumablesText = GetText(TextType.UI, UITextKey.SellPriorityConsumables);
+                    var gearText = GetText(TextType.UI, UITextKey.SellPriorityGear);
+                    _purchasePriorityItems.Add(purchaseSvc.ConsumablesFirst ? consumablesText : gearText);
+                    _purchasePriorityItems.Add(purchaseSvc.ConsumablesFirst ? gearText : consumablesText);
+                    _purchasePriorityList?.Rebuild();
+                }
+
+                _gearPurchaseOptionsDialog?.SyncFromService();
+                _consumablePurchaseOptionsDialog?.SyncFromService();
+                SetItemPurchaseControlsActive(purchaseSvc.Enabled);
+                if (!purchaseSvc.Enabled)
+                {
+                    _gearPurchaseOptionsDialog?.Hide();
+                    _consumablePurchaseOptionsDialog?.Hide();
+                }
+                else if (!purchaseSvc.PurchaseConsumables)
+                {
+                    _consumablePurchaseOptionsDialog?.Hide();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Syncs the Automation tab's auto-equip checkboxes from the hero component. Separate from
+        /// <see cref="SyncAutomationControlsFromService"/> because the hero is rebuilt later in the
+        /// load sequence than the automation services.
+        /// </summary>
+        public void SyncAutoEquipControlsFromHero()
+        {
+            var heroComp = GetHeroComponent();
+            if (heroComp == null)
+                return;
+
+            if (_autoEquipHeroCheckBox != null)
+                _autoEquipHeroCheckBox.IsChecked = heroComp.AutoEquipHero;
+            if (_autoEquipMercsCheckBox != null)
+                _autoEquipMercsCheckBox.IsChecked = heroComp.AutoEquipMercenaries;
         }
 
         /// <summary>

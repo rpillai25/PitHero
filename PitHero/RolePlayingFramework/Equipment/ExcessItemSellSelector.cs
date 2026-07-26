@@ -34,23 +34,24 @@ namespace RolePlayingFramework.Equipment
         /// Selects the item to sell to free a bag slot for <paramref name="incoming"/>.
         /// Consumable pass: weakest-effect unprotected consumable stack (HP+MP restore, then sell price, then stack count).
         /// Gear pass: weakest unprotected gear across all types by gear score (then rarity, then sell price),
-        /// filtered by <paramref name="rarityAllowed"/> (gear only). <paramref name="consumablesFirst"/> picks
+        /// filtered by <paramref name="rarityAllowed"/> and <paramref name="gearTypeAllowed"/> (gear only;
+        /// null means "allow everything"). <paramref name="consumablesFirst"/> picks
         /// which pass runs first; the other pass only runs when the first finds no candidate.
         /// Bag items win ties against the incoming item.
         /// </summary>
-        public static SellSelection Select(ItemBag bag, IItem incoming, Func<int, bool> isProtectedBagIndex, Func<ItemRarity, bool> rarityAllowed, bool consumablesFirst = true)
+        public static SellSelection Select(ItemBag bag, IItem incoming, Func<int, bool> isProtectedBagIndex, Func<ItemRarity, bool> rarityAllowed, bool consumablesFirst = true, Func<ItemKind, bool> gearTypeAllowed = null)
         {
             if (bag == null)
                 return SellSelection.None;
 
             var first = consumablesFirst
                 ? SelectConsumable(bag, incoming, isProtectedBagIndex)
-                : SelectGear(bag, incoming, isProtectedBagIndex, rarityAllowed);
+                : SelectGear(bag, incoming, isProtectedBagIndex, rarityAllowed, gearTypeAllowed);
             if (first.HasSelection)
                 return first;
 
             return consumablesFirst
-                ? SelectGear(bag, incoming, isProtectedBagIndex, rarityAllowed)
+                ? SelectGear(bag, incoming, isProtectedBagIndex, rarityAllowed, gearTypeAllowed)
                 : SelectConsumable(bag, incoming, isProtectedBagIndex);
         }
 
@@ -70,17 +71,17 @@ namespace RolePlayingFramework.Equipment
             return ToSelection(bestIndex);
         }
 
-        /// <summary>Picks the weakest unprotected gear across all gear types (rarity-filtered), or none.</summary>
-        private static SellSelection SelectGear(ItemBag bag, IItem incoming, Func<int, bool> isProtectedBagIndex, Func<ItemRarity, bool> rarityAllowed)
+        /// <summary>Picks the weakest unprotected gear across all gear types (rarity- and type-filtered), or none.</summary>
+        private static SellSelection SelectGear(ItemBag bag, IItem incoming, Func<int, bool> isProtectedBagIndex, Func<ItemRarity, bool> rarityAllowed, Func<ItemKind, bool> gearTypeAllowed)
         {
             int bestIndex = -1;
             long bestKeyA = 0, bestKeyB = 0, bestKeyC = 0;
             for (int i = 0; i < bag.Capacity; i++)
             {
-                if (bag.GetSlotItem(i) is IGear g && RarityOk(rarityAllowed, g.Rarity) && !IsProtected(isProtectedBagIndex, i))
+                if (bag.GetSlotItem(i) is IGear g && RarityOk(rarityAllowed, g.Rarity) && GearTypeOk(gearTypeAllowed, g.Kind) && !IsProtected(isProtectedBagIndex, i))
                     ConsiderGear(g, i, ref bestIndex, ref bestKeyA, ref bestKeyB, ref bestKeyC);
             }
-            if (incoming is IGear incomingGear && RarityOk(rarityAllowed, incomingGear.Rarity))
+            if (incoming is IGear incomingGear && RarityOk(rarityAllowed, incomingGear.Rarity) && GearTypeOk(gearTypeAllowed, incomingGear.Kind))
                 ConsiderGear(incomingGear, IncomingIndex, ref bestIndex, ref bestKeyA, ref bestKeyB, ref bestKeyC);
 
             return ToSelection(bestIndex);
@@ -98,6 +99,9 @@ namespace RolePlayingFramework.Equipment
 
         private static bool RarityOk(Func<ItemRarity, bool> rarityAllowed, ItemRarity rarity)
             => rarityAllowed == null || rarityAllowed(rarity);
+
+        private static bool GearTypeOk(Func<ItemKind, bool> gearTypeAllowed, ItemKind kind)
+            => gearTypeAllowed == null || gearTypeAllowed(kind);
 
         /// <summary>Weakness key: restore effect, then sell price, then stack count. Lower wins; bag index breaks final ties.</summary>
         private static void ConsiderConsumable(Consumable c, int index, ref int bestIndex, ref long keyA, ref long keyB, ref long keyC)

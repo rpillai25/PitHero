@@ -20,8 +20,9 @@ namespace PitHero.Services
     /// <summary>
     /// Auto-sells the weakest excess item when the bag is full and a new chest item arrives.
     /// Call-driven (no update loop): OpenChestAction invokes TryMakeRoom before adding the item.
-    /// Items in an active synergy or under a placed stencil are never sold; gear rarities can be
-    /// excluded via RarityAllowed. ConsumablesFirst picks whether the weakest consumable or the
+    /// Items in an active synergy or under a placed stencil are never sold; gear rarities and gear
+    /// categories can be excluded via RarityAllowed / GearTypeAllowed (both edited from the
+    /// "Gear Sell Options" dialog). ConsumablesFirst picks whether the weakest consumable or the
     /// weakest gear (compared across all gear types at once) sells first.
     /// </summary>
     public class AutoSellExcessItemsService
@@ -37,10 +38,15 @@ namespace PitHero.Services
         /// <summary>Whether gear of each rarity may be auto-sold, indexed by ItemRarity. All true by default.</summary>
         public bool[] RarityAllowed { get; } = new bool[5];
 
+        /// <summary>Whether gear of each category may be auto-sold, indexed by GearCategory. All true by default.</summary>
+        public bool[] GearTypeAllowed { get; } = new bool[GearCategoryUtils.Count];
+
         public AutoSellExcessItemsService()
         {
             for (int i = 0; i < RarityAllowed.Length; i++)
                 RarityAllowed[i] = true;
+            for (int i = 0; i < GearTypeAllowed.Length; i++)
+                GearTypeAllowed[i] = true;
         }
 
         /// <summary>True when gear of the given rarity may be auto-sold. Consumables are never rarity-filtered.</summary>
@@ -48,6 +54,12 @@ namespace PitHero.Services
         {
             int i = (int)rarity;
             return i < 0 || i >= RarityAllowed.Length || RarityAllowed[i];
+        }
+
+        /// <summary>True when gear of the given kind's category may be auto-sold. Consumables are never type-filtered.</summary>
+        public bool IsGearTypeAllowed(ItemKind kind)
+        {
+            return GearCategoryUtils.IsAllowed(GearTypeAllowed, kind);
         }
 
         /// <summary>
@@ -68,7 +80,7 @@ namespace PitHero.Services
             grid?.UpdateItemsFromBag();
             System.Func<int, bool> isProtected = grid != null ? grid.IsBagIndexProtected : (System.Func<int, bool>)null;
 
-            var selection = ExcessItemSellSelector.Select(bag, incoming, isProtected, IsRarityAllowed, ConsumablesFirst);
+            var selection = ExcessItemSellSelector.Select(bag, incoming, isProtected, IsRarityAllowed, ConsumablesFirst, IsGearTypeAllowed);
             if (!selection.HasSelection)
                 return AutoSellOutcome.None;
 

@@ -365,5 +365,34 @@ namespace PitHero
         public const string RarityLegendary = "RarityLegendary";
         public const string ConsoleAutoSoldItem = "ConsoleAutoSoldItem";
         public const string ConsoleItemSentToVault = "ConsoleItemSentToVault";
+        public const string ButtonGearSellOptions = "ButtonGearSellOptions";
+        public const string WindowGearSellOptions = "WindowGearSellOptions";
+        public const string SettingsSellGearTypes = "SettingsSellGearTypes";
+        public const string SettingsSellGearTypesTooltip = "SettingsSellGearTypesTooltip";
+        public const string GearTypeWeapon = "GearTypeWeapon";
+        public const string GearTypeHelm = "GearTypeHelm";
+        public const string GearTypeShield = "GearTypeShield";
+        public const string GearTypeArmor = "GearTypeArmor";
+        public const string GearTypeAccessory = "GearTypeAccessory";
+        public const string SettingsAutoPurchaseItems = "SettingsAutoPurchaseItems";
+        public const string SettingsAutoPurchaseItemsTooltip = "SettingsAutoPurchaseItemsTooltip";
+        public const string SettingsPurchasePriority = "SettingsPurchasePriority";
+        public const string SettingsPurchasePriorityTooltip = "SettingsPurchasePriorityTooltip";
+        public const string SettingsAutoPurchaseMercGear = "SettingsAutoPurchaseMercGear";
+        public const string SettingsAutoPurchaseMercGearTooltip = "SettingsAutoPurchaseMercGearTooltip";
+        public const string ButtonGearPurchaseOptions = "ButtonGearPurchaseOptions";
+        public const string WindowGearPurchaseOptions = "WindowGearPurchaseOptions";
+        public const string SettingsBuyRarities = "SettingsBuyRarities";
+        public const string SettingsBuyRaritiesTooltip = "SettingsBuyRaritiesTooltip";
+        public const string SettingsBuyGearTypes = "SettingsBuyGearTypes";
+        public const string SettingsBuyGearTypesTooltip = "SettingsBuyGearTypesTooltip";
+        public const string SettingsAutoPurchaseConsumables = "SettingsAutoPurchaseConsumables";
+        public const string SettingsAutoPurchaseConsumablesTooltip = "SettingsAutoPurchaseConsumablesTooltip";
+        public const string ButtonConsumablePurchaseOptions = "ButtonConsumablePurchaseOptions";
+        public const string WindowConsumablePurchaseOptions = "WindowConsumablePurchaseOptions";
+        public const string SettingsConsumableStacks = "SettingsConsumableStacks";
+        public const string SettingsConsumableStacksTooltip = "SettingsConsumableStacksTooltip";
+        public const string SettingsAutoEquipOptionsTooltip = "SettingsAutoEquipOptionsTooltip";
+        public const string ConsoleAutoPurchasedItem = "ConsoleAutoPurchasedItem";
     }
 }

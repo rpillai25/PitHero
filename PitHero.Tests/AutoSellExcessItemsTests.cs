@@ -410,5 +410,86 @@ namespace PitHero.Tests
 
             Assert.AreEqual(AutoSellOutcome.None, outcome, "Disallowed rarities may never be auto-sold, incoming included");
         }
+
+        // ── Gear type filter (issue #345) ─────────────────────────────────────────
+
+        [TestMethod]
+        public void Service_AllGearTypesAllowedByDefault()
+        {
+            var svc = new AutoSellExcessItemsService();
+            for (int i = 0; i < svc.GearTypeAllowed.Length; i++)
+                Assert.IsTrue(svc.GearTypeAllowed[i], $"Gear category {i} should be allowed by default");
+            Assert.AreEqual(GearCategoryUtils.Count, svc.GearTypeAllowed.Length);
+        }
+
+        [TestMethod]
+        public void Service_GearTypeDisallowed_ProtectsGear()
+        {
+            var svc = new AutoSellExcessItemsService();
+            svc.ConsumablesFirst = false;
+            svc.GearTypeAllowed[(int)GearCategory.Weapon] = false;
+
+            var bag = new ItemBag("Test", 1);
+            bag.SetSlotItem(0, MakeGear("JunkSword", ItemKind.WeaponSword, 1));
+
+            var outcome = svc.TryMakeRoom(bag, MakeGear("BetterSword", ItemKind.WeaponSword, 50));
+
+            Assert.AreEqual(AutoSellOutcome.None, outcome, "Weapons must never be auto-sold when the Weapon type is unchecked");
+        }
+
+        [TestMethod]
+        public void Service_GearTypeDisallowed_StillSellsOtherTypes()
+        {
+            var svc = new AutoSellExcessItemsService();
+            svc.ConsumablesFirst = false;
+            svc.GearTypeAllowed[(int)GearCategory.Weapon] = false;
+
+            var bag = new ItemBag("Test", 2);
+            bag.SetSlotItem(0, MakeGear("JunkSword", ItemKind.WeaponSword, 1));    // weakest, but protected
+            bag.SetSlotItem(1, MakeGear("OkShield", ItemKind.Shield, 5));
+
+            var outcome = svc.TryMakeRoom(bag, MakeGear("NewArmor", ItemKind.ArmorMail, 50));
+
+            Assert.AreEqual(AutoSellOutcome.SoldBagItem, outcome);
+            Assert.IsNotNull(bag.GetSlotItem(0), "The protected weapon must survive");
+            Assert.IsNull(bag.GetSlotItem(1), "The weakest *allowed* gear is the one that sells");
+        }
+
+        [TestMethod]
+        public void Selector_GearTypeFilterAppliesToIncomingItem()
+        {
+            var bag = new ItemBag("Test", 1);
+            bag.SetSlotItem(0, MakeGear("GoodShield", ItemKind.Shield, 50));
+
+            // Incoming weapon is the weakest, but weapons are excluded — the shield sells instead
+            var selection = ExcessItemSellSelector.Select(bag, MakeGear("JunkSword", ItemKind.WeaponSword, 1),
+                null, null, consumablesFirst: false,
+                gearTypeAllowed: (kind) => !GearCategoryUtils.TryGetCategory(kind, out GearCategory c) || c != GearCategory.Weapon);
+
+            Assert.IsTrue(selection.HasSelection);
+            Assert.IsFalse(selection.SellIncoming, "An excluded incoming item may not be sold");
+            Assert.AreEqual(0, selection.BagIndex);
+        }
+
+        [TestMethod]
+        public void GearCategoryUtils_MapsEveryGearKind()
+        {
+            Assert.IsTrue(GearCategoryUtils.TryGetCategory(ItemKind.WeaponBow, out GearCategory bow));
+            Assert.AreEqual(GearCategory.Weapon, bow, "Bows are weapons (this kind used to be missed)");
+
+            Assert.IsTrue(GearCategoryUtils.TryGetCategory(ItemKind.HatWizard, out GearCategory hat));
+            Assert.AreEqual(GearCategory.Helm, hat);
+
+            Assert.IsTrue(GearCategoryUtils.TryGetCategory(ItemKind.ArmorRobe, out GearCategory armor));
+            Assert.AreEqual(GearCategory.Armor, armor);
+
+            Assert.IsTrue(GearCategoryUtils.TryGetCategory(ItemKind.Shield, out GearCategory shield));
+            Assert.AreEqual(GearCategory.Shield, shield);
+
+            Assert.IsTrue(GearCategoryUtils.TryGetCategory(ItemKind.Accessory, out GearCategory accessory));
+            Assert.AreEqual(GearCategory.Accessory, accessory);
+
+            Assert.IsFalse(GearCategoryUtils.TryGetCategory(ItemKind.Consumable, out _), "Consumables have no gear category");
+        }
     }
 }
