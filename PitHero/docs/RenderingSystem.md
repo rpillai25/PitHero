@@ -15,11 +15,20 @@ Higher number = drawn first = further back.  Lower number = drawn later = in fro
 | Constant | Value | What lives here |
 |---|---|---|
 | `RenderLayerTop` | 2 | Tilemap "Top" layer (tree-tops, overhangs) — covers everything |
-| `RenderLayerFogOfWar` | 40 | Tilemap fog-of-war overlay — covers actors but not the top layer |
 | `RenderLayerActors` | 60 | Heroes, mercenaries, monsters, **placed buildings** (all Y-sorted via `LayerDepth`) |
 | `RenderLayerSingleTileObject` | 61 | Static 32×32 world objects: treasure chests, walls/obstacles (Y-sorted) |
 | `RenderLayerDroppedItems` | 65 | Dropped loot items |
+| `RenderLayerFogOfWar` | 70 | Tilemap fog-of-war overlay — renders **behind** actors/objects (#337) |
 | `RenderLayerBase` | 100 | Tilemap base layer |
+
+Fog of war renders behind actors so the party is never partially covered when walking next
+to fogged tiles. Pit entities that spawn under covered fog are instead hidden per-entity:
+`FogHideableComponent` (treasure chests, walls/obstacles, wizard orb) disables its target
+renderable while the entity's tile is fogged, and `TiledMapService.RefreshFogHiddenEntities`
+— called automatically after any fog clear — re-enables revealed statics and monster
+animators. Monsters additionally self-hide/self-reveal when they move between fogged and
+clear tiles (`EnemyAnimationComponent.CheckFogVisibility` / `TileByTileMover.CompleteMove`).
+Heroes and mercenaries are never fog-hidden.
 
 UI / HUD layers (screen-space, unaffected by camera): `RenderLayerActionQueue` (996),
 `RenderLayerGraphicalHUD` (997), `RenderLayerUI` (998), `TransparentPauseOverlay` (999).

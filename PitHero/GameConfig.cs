@@ -348,12 +348,14 @@ namespace PitHero
         public const int RenderLayerPickupItem = 1; // Pickup items layer
         public const int RenderLayerTop = 2;
 
-        public const int RenderLayerFogOfWar = 40;   // Fog of war layer above most things, except hero
-        public const int RenderLayerActorPropOverlay = 41; // Actor prop overlay layer (above actors, below fog of war).  Useful for things like watering can, water, harvested crops that display over monster workers.
+        public const int RenderLayerActorPropOverlay = 41; // Actor prop overlay layer (above actors).  Useful for things like watering can, water, harvested crops that display over monster workers.
         // Actors layer — heroes, mercenaries, monsters, and treasures. Y-sorted within layer via LayerDepth.
         public const int RenderLayerActors = 60;
         public const int RenderLayerSingleTileObject = 61; // Single tile object layer (below actors, so single tile objects render below monsters/heroes)
         public const int RenderLayerDroppedItems = 65; // Dropped items layer
+        // Fog of war renders BEHIND actors so the party is never partially hidden by adjacent fog (#337).
+        // Pit statics/monsters under covered fog are hidden via FogHideableComponent / EnemyAnimationComponent instead.
+        public const int RenderLayerFogOfWar = 70;
         // NOTE: Placed buildings (Monster House / Crop Storage) render at RenderLayerActors and are
         // Y-sorted with monsters via YSortSpriteRenderer.YSortOffset (see IYSortOffset / YSortManager).
         public const int RenderLayerDetail = 90; // Detail tilemap layer (tilled soil, etc.) — above base, below actors
