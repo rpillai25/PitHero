@@ -29,6 +29,7 @@ namespace PitHero.UI
         private bool _isStoppedAdventuring = false;
         private bool _styleChanged = false;
         private bool _isHiddenForPromotion = false;
+        private bool _barTouchDisabled = false;   // true while the top UI bar is hidden off-screen (issue #335)
         private bool _isHiddenForSleep = false;
 
         public StopAdventuringUI()
@@ -278,37 +279,39 @@ namespace PitHero.UI
             return false;
         }
 
+        /// <summary>Enables/disables hit-testing; disabled while the top UI bar is hidden off-screen.</summary>
+        public void SetTouchable(Touchable touchable)
+        {
+            _barTouchDisabled = touchable == Touchable.Disabled;
+            ApplyEffectiveTouchable();
+        }
+
+        /// <summary>
+        /// The button is touchable only when neither the bar-hide nor the promotion/sleep hides want it disabled.
+        /// </summary>
+        private void ApplyEffectiveTouchable()
+        {
+            if (_button == null)
+                return;
+            bool enabled = !_barTouchDisabled && !_isHiddenForPromotion && !_isHiddenForSleep;
+            _button.SetTouchable(enabled ? Touchable.Enabled : Touchable.Disabled);
+        }
+
         /// <summary>
         /// Applies button visibility based on whether the hero promotion is in progress.
         /// Also sets _styleChanged so SettingsUI triggers a layout reflow (GetWidth/GetHeight return 0 while hidden).
         /// </summary>
         private void ApplyPromotionVisibility(bool hidden)
         {
-            if (hidden)
-            {
-                _button.SetVisible(false);
-                _button.SetTouchable(Touchable.Disabled);
-            }
-            else
-            {
-                _button.SetVisible(true);
-                _button.SetTouchable(Touchable.Enabled);
-            }
+            _button.SetVisible(!hidden);
+            ApplyEffectiveTouchable();
             _styleChanged = true; // Triggers SettingsUI layout reflow via ConsumeStyleChangedFlag
         }
 
         private void ApplySleepVisibility(bool hidden)
         {
-            if (hidden)
-            {
-                _button.SetVisible(false);
-                _button.SetTouchable(Touchable.Disabled);
-            }
-            else
-            {
-                _button.SetVisible(true);
-                _button.SetTouchable(Touchable.Enabled);
-            }
+            _button.SetVisible(!hidden);
+            ApplyEffectiveTouchable();
             _styleChanged = true;
         }
 

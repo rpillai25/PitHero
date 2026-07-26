@@ -1139,6 +1139,9 @@ namespace PitHero.UI
         }
 
         public void SetPosition(float x, float y) => _heroButton?.SetPosition(x, y);
+
+        /// <summary>Enables/disables hit-testing; disabled while the top UI bar is hidden off-screen.</summary>
+        public void SetTouchable(Touchable touchable) => _heroButton?.SetTouchable(touchable);
         public float GetX() => _heroButton?.GetX() ?? 0f;
         public float GetY() => _heroButton?.GetY() ?? 0f;
         public float GetWidth() => _heroButton?.GetWidth() ?? 0f;
