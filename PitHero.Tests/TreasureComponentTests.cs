@@ -442,5 +442,74 @@ namespace PitHero.Tests
             Assert.AreEqual(1, BalanceConfig.LootWeightNoPartyJob);
             Assert.AreEqual(2, BalanceConfig.LootWeightAllJobs);
         }
+
+        // #337: chest color must match contents — consumables/seeds are always brown (level 1),
+        // gear chests match the gear's rarity.
+
+        [TestMethod]
+        public void InitializeForPitLevel_ConsumableAlwaysBrownChest()
+        {
+            int[] pitLevels = { 1, 3, 11, 22, 25 };
+            foreach (var pitLevel in pitLevels)
+            {
+                for (int i = 0; i < 300; i++)
+                {
+                    var component = new TreasureComponent();
+                    component.InitializeForPitLevel(pitLevel);
+                    if (component.ContainedItem is Consumable)
+                        Assert.AreEqual(1, component.Level,
+                            $"Consumable ({component.ContainedItem.Name}) at pit level {pitLevel} must be in a brown (level 1) chest but chest level was {component.Level}");
+                }
+            }
+        }
+
+        [TestMethod]
+        public void InitializeForPitLevel_GearChestColorMatchesRarity()
+        {
+            int[] pitLevels = { 1, 11, 22, 25 };
+            foreach (var pitLevel in pitLevels)
+            {
+                for (int i = 0; i < 300; i++)
+                {
+                    var component = new TreasureComponent();
+                    component.InitializeForPitLevel(pitLevel);
+                    if (component.ContainedItem is Gear gear)
+                        Assert.AreEqual(RarityUtils.GetTreasureLevelForRarity(gear.Rarity), component.Level,
+                            $"Gear ({gear.Name}, {gear.Rarity}) at pit level {pitLevel} must be in a chest matching its rarity but chest level was {component.Level}");
+                }
+            }
+        }
+
+        [TestMethod]
+        public void InitializeForPitLevel_Tier2GearChestColorMatchesScaledRarity()
+        {
+            for (int i = 0; i < 300; i++)
+            {
+                var component = new TreasureComponent();
+                component.InitializeForPitLevel(22, default, pitTier: 2);
+                if (component.ContainedItem is Gear gear)
+                    Assert.AreEqual(RarityUtils.GetTreasureLevelForRarity(gear.Rarity), component.Level,
+                        $"Tier-2 gear ({gear.Name}, {gear.Rarity}) must be in a chest matching its rarity but chest level was {component.Level}");
+            }
+        }
+
+        [TestMethod]
+        public void InitializeForPitLevel_SeedChestIsBrown()
+        {
+            int seedChestsFound = 0;
+            for (int i = 0; i < 5000 && seedChestsFound < 10; i++)
+            {
+                var component = new TreasureComponent();
+                component.InitializeForPitLevel(22);
+                if (component.ContainedSeedType != null)
+                {
+                    seedChestsFound++;
+                    Assert.AreEqual(1, component.Level,
+                        $"Seed chest ({component.ContainedSeedType}) must be brown (level 1) but chest level was {component.Level}");
+                    Assert.IsNull(component.ContainedItem, "Seed chest must not also contain an item");
+                }
+            }
+            Assert.IsTrue(seedChestsFound > 0, "Expected at least one seed chest in 5000 rolls at pit level 22");
+        }
     }
 }

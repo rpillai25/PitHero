@@ -154,6 +154,9 @@ namespace PitHero.Util
                 }
             }
 
+            if (anyFogCleared)
+                RefreshFogHiddenEntities();
+
             return anyFogCleared;
         }
 
@@ -197,7 +200,34 @@ namespace PitHero.Util
                 }
             }
 
+            if (anyFogCleared)
+                RefreshFogHiddenEntities();
+
             return anyFogCleared;
+        }
+
+        /// <summary>
+        /// Re-enables monsters and fog-hidden statics (chests, walls, wizard orb) whose tiles are no
+        /// longer fogged. Called automatically after any fog clear so every uncover path (hero step,
+        /// warp, wander, orb activation, pit jumps) reveals entities consistently.
+        /// </summary>
+        public void RefreshFogHiddenEntities()
+        {
+            FogHideableComponent.RevealUnfogged(this);
+
+            var monsters = Core.Scene?.FindEntitiesWithTag(GameConfig.TAG_MONSTER);
+            if (monsters == null)
+                return;
+            for (int i = 0; i < monsters.Count; i++)
+            {
+                var mover = monsters[i].GetComponent<TileByTileMover>();
+                var anim = monsters[i].GetComponent<EnemyAnimationComponent>();
+                if (mover == null || anim == null || anim.Enabled)
+                    continue;
+                var tile = mover.GetCurrentTileCoordinates();
+                if (!IsFogOfWarTile(tile.X, tile.Y))
+                    anim.SetEnabled(true);
+            }
         }
 
         /// <summary>

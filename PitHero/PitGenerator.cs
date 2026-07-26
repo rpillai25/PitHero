@@ -728,6 +728,8 @@ namespace PitHero
                             var colorGrading = Core.Services.GetService<Rendering.ColorGradingController>();
                             if (colorGrading?.Material != null)
                                 renderer.SetMaterial(colorGrading.Material);
+                            // Walls render above the FogOfWar layer, so hide them while their tile is fogged.
+                            entity.AddComponent(new FogHideableComponent(renderer));
                         }
                         else
                         {
@@ -827,6 +829,8 @@ namespace PitHero
                             var renderer = entity.AddComponent(new YSortSpriteRenderer(wizardOrbSprite));
                             renderer.Color = color;
                             renderer.SetRenderLayer(GameConfig.RenderLayerActors);
+                            // The orb only counts as "found" once its tile is unfogged — keep it hidden until then.
+                            entity.AddComponent(new FogHideableComponent(renderer));
                         }
                         else
                         {

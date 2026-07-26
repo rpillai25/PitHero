@@ -38,6 +38,7 @@ namespace PitHero.ECS.Components
         private int _level = 1;
         private SpriteRenderer _baseRenderer;
         private SpriteRenderer _woodRenderer;
+        private StaticSpriteCompositor _compositor;
         private SpriteAtlas _actorsAtlas;
         private IItem _containedItem;
 
@@ -130,12 +131,15 @@ namespace PitHero.ECS.Components
             // Composite both layers into a single 32×32 render target so the chest
             // always occupies exactly one render layer with no z-order inconsistency.
             // Treasure sprites are 32×32 with center origin — pivot maps entity pos to RT center.
-            var compositor = Entity.AddComponent(new StaticSpriteCompositor(
+            _compositor = Entity.AddComponent(new StaticSpriteCompositor(
                 new Nez.Sprites.SpriteRenderer[] { _baseRenderer, _woodRenderer },
                 GameConfig.TileSize,
                 GameConfig.TileSize,
                 new Microsoft.Xna.Framework.Vector2(GameConfig.TileSize / 2f, GameConfig.TileSize / 2f)));
-            compositor.SetRenderLayer(GameConfig.RenderLayerSingleTileObject);
+            _compositor.SetRenderLayer(GameConfig.RenderLayerSingleTileObject);
+
+            // Chests render above the FogOfWar layer, so hide the composite while their tile is fogged.
+            Entity.AddComponent(new FogHideableComponent(_compositor));
         }
 
         private void UpdateSprites()
@@ -857,13 +861,14 @@ namespace PitHero.ECS.Components
         {
             Level = DetermineTreasureLevel(pitLevel);
 
-            // Seed drop: any uncommon (level-2) chest has a chance to yield seeds instead of normal loot.
+            // Seed drop: any uncommon (level-2) roll has a chance to yield seeds instead of normal loot.
             // Seeds are not tier-scaled (they are consumables, not gear).
             if (Level == 2 && Nez.Random.NextFloat() < BalanceConfig.SeedChestDropRate)
             {
                 ContainedSeedType  = (CropType)Nez.Random.NextInt(CropTypeInfo.Count);
                 ContainedSeedCount = Nez.Random.NextInt(3) + 1; // 1..3
                 ContainedItem = null;
+                Level = 1; // seeds are consumables — always a brown chest (#337)
                 return;
             }
 
@@ -882,6 +887,12 @@ namespace PitHero.ECS.Components
                 int depthDelta = (pitTier - 1) * BiomeProgressionConfig.MaxBiomeLevel;
                 ContainedItem = RolePlayingFramework.Equipment.Gear.CreateTierScaledCopy(g, pitTier, depthDelta);
             }
+
+            // Chest color must match contents (#337): gear rarity drives color; consumables are always brown.
+            if (ContainedItem is RolePlayingFramework.Equipment.Gear finalGear)
+                Level = RarityUtils.GetTreasureLevelForRarity(finalGear.Rarity);
+            else if (ContainedItem != null)
+                Level = 1;
         }
     }
 }
