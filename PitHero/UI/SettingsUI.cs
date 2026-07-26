@@ -1737,6 +1737,7 @@ namespace PitHero.UI
             _uiBarHidden = false;
             _uiBarIdleTimer = 0f;
             _uiBarAnimating = true;
+            SetTopBarButtonsTouchable(true);
         }
 
         /// <summary>Slides the UI bar up off the top of the screen.</summary>
@@ -1745,6 +1746,25 @@ namespace PitHero.UI
             _uiBarHidden = true;
             _uiBarAnimating = true;
             _farmUI?.DismissSubButtons();
+            SetTopBarButtonsTouchable(false);
+        }
+
+        /// <summary>
+        /// Enables/disables hit-testing on every top bar button. While the bar is hidden it sits above
+        /// the window top, but raw mouse clicks above the client area still hit-test at negative stage Y,
+        /// so hidden buttons must be made untouchable (issue #335).
+        /// </summary>
+        private void SetTopBarButtonsTouchable(bool touchable)
+        {
+            var t = touchable ? Touchable.Enabled : Touchable.Disabled;
+            _gearButton?.SetTouchable(t);
+            _replenishUI?.SetTouchable(t);
+            _stopAdventuringUI?.SetTouchable(t);
+            _fastFUI?.SetTouchable(t);
+            _heroUI?.SetTouchable(t);
+            _monsterUI?.SetTouchable(t);
+            _secondChanceShopUI?.SetTouchable(t);
+            _farmUI?.SetTouchable(t);
         }
 
         /// <summary>

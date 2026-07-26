@@ -503,6 +503,9 @@ namespace PitHero.UI
             if (_windowVisible) PositionWindow();
         }
 
+        /// <summary>Enables/disables hit-testing; disabled while the top UI bar is hidden off-screen.</summary>
+        public void SetTouchable(Touchable touchable) => _monsterButton?.SetTouchable(touchable);
+
         /// <summary>Returns the width of the monster icon button.</summary>
         public float GetWidth() => _monsterButton?.GetWidth() ?? 0f;
 

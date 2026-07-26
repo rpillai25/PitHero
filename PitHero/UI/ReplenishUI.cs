@@ -138,6 +138,12 @@ namespace PitHero.UI
             _button?.SetPosition(x, y);
         }
 
+        /// <summary>Enables/disables hit-testing; disabled while the top UI bar is hidden off-screen.</summary>
+        public void SetTouchable(Touchable touchable)
+        {
+            _button?.SetTouchable(touchable);
+        }
+
         /// <summary>
         /// Get the button width
         /// </summary>

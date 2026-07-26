@@ -363,6 +363,17 @@ namespace PitHero.UI
             }
         }
 
+        /// <summary>Enables/disables hit-testing; disabled while the top UI bar is hidden off-screen.</summary>
+        public void SetTouchable(Touchable touchable)
+        {
+            _farmButton?.SetTouchable(touchable);
+            if (_subButtons != null)
+            {
+                for (int i = 0; i < _subButtons.Length; i++)
+                    _subButtons[i].SetTouchable(touchable);
+            }
+        }
+
         public float GetWidth()  => _farmButton?.GetWidth()  ?? 0f;
         public float GetHeight() => _farmButton?.GetHeight() ?? 0f;
 

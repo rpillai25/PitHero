@@ -186,6 +186,12 @@ namespace PitHero.UI
             _fastFButton?.SetPosition(x, y);
         }
 
+        /// <summary>Enables/disables hit-testing; disabled while the top UI bar is hidden off-screen.</summary>
+        public void SetTouchable(Touchable touchable)
+        {
+            _fastFButton?.SetTouchable(touchable);
+        }
+
         /// <summary>
         /// Get the button width
         /// </summary>

@@ -39,6 +39,7 @@ namespace PitHero.UI
         private ImageButtonStyle _shopHalfStyle;
         private bool _styleChanged = false;
         private bool _isHiddenForPromotion = false;
+        private bool _barTouchDisabled = false;   // true while the top UI bar is hidden off-screen (issue #335)
         private SettingsUI _settingsUI;
         private HeroUI _heroUI;
         private MonsterUI _monsterUI;
@@ -634,14 +635,31 @@ namespace PitHero.UI
                     ForceCloseWindow();
 
                 _shopButton.SetVisible(false);
-                _shopButton.SetTouchable(Touchable.Disabled);
             }
             else
             {
                 _shopButton.SetVisible(true);
-                _shopButton.SetTouchable(Touchable.Enabled);
             }
+            ApplyEffectiveTouchable();
             _styleChanged = true; // Triggers SettingsUI layout reflow
+        }
+
+        /// <summary>Enables/disables hit-testing; disabled while the top UI bar is hidden off-screen.</summary>
+        public void SetTouchable(Touchable touchable)
+        {
+            _barTouchDisabled = touchable == Touchable.Disabled;
+            ApplyEffectiveTouchable();
+        }
+
+        /// <summary>
+        /// The button is touchable only when neither the bar-hide nor the promotion hide wants it disabled.
+        /// </summary>
+        private void ApplyEffectiveTouchable()
+        {
+            if (_shopButton == null)
+                return;
+            bool enabled = !_barTouchDisabled && !_isHiddenForPromotion;
+            _shopButton.SetTouchable(enabled ? Touchable.Enabled : Touchable.Disabled);
         }
 
         // ──────────────────────────────────────────────────────────────────────────
