@@ -104,6 +104,23 @@ namespace PitHero.VirtualGame
         /// <summary>Number of gear pieces successfully auto-equipped (hero or mercenary) since this runner was created.</summary>
         public int GearEquipped { get; private set; }
 
+        // ── Configuration: auto-sell excess items ────────────────────────────────
+
+        /// <summary>
+        /// When true, <see cref="CollectChestItem"/> mirrors <c>AutoSellExcessItemsService</c>:
+        /// on a full bag the weakest item (consumables first, then gear across all types) is
+        /// sold to make room. Off by default to preserve existing balance baselines.
+        /// The virtual layer has no synergy/stencil model, so nothing is protected and all
+        /// rarities are sellable (documented Delta-Plan gap).
+        /// </summary>
+        public bool AutoSellExcessItems { get; set; } = false;
+
+        /// <summary>Number of items auto-sold to make room since this runner was created.</summary>
+        public int ItemsAutoSold { get; private set; }
+
+        /// <summary>Gold earned from auto-selling excess items since this runner was created.</summary>
+        public int AutoSellGold { get; private set; }
+
         // ── Bag access ───────────────────────────────────────────────────────────
 
         /// <summary>
@@ -218,8 +235,29 @@ namespace PitHero.VirtualGame
             // Mirrors hero.TryAddItem (which is just Bag.TryAdd with consumable stacking).
             if (!bag.TryAdd(item))
             {
-                System.Console.WriteLine($"[VirtualBattleRunner] Bag full — could not collect {item.Name}");
-                return;
+                bool added = false;
+                if (AutoSellExcessItems)
+                {
+                    var selection = ExcessItemSellSelector.Select(bag, item, null, null);
+                    if (selection.SellIncoming)
+                    {
+                        ItemsAutoSold++;
+                        AutoSellGold += SellValue(item);
+                        return; // the incoming item was the weakest and was sold directly
+                    }
+                    if (selection.BagIndex >= 0)
+                    {
+                        ItemsAutoSold++;
+                        AutoSellGold += SellValue(bag.GetSlotItem(selection.BagIndex));
+                        bag.SetSlotItem(selection.BagIndex, null);
+                        added = bag.TryAdd(item);
+                    }
+                }
+                if (!added)
+                {
+                    System.Console.WriteLine($"[VirtualBattleRunner] Bag full — could not collect {item.Name}");
+                    return;
+                }
             }
 
             // Reset HealingItemExhausted when a healing consumable arrives (mirrors live).
@@ -259,6 +297,10 @@ namespace PitHero.VirtualGame
                 }
             }
         }
+
+        /// <summary>Sell value of an item: sell price times stack count for consumables (mirrors ItemSellHelper).</summary>
+        private static int SellValue(IItem item)
+            => item.GetSellPrice() * ((item is Consumable c) ? c.StackCount : 1);
 
         /// <summary>
         /// Offers displaced gear to mercenaries starting at <paramref name="startIndex"/>.

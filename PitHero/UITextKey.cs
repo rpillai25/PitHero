@@ -350,5 +350,16 @@ namespace PitHero
         public const string DishPumpkinCreamSoup = "DishPumpkinCreamSoup";
         public const string DishChilledWatermelonSorbet = "DishChilledWatermelonSorbet";
         public const string DishHarvestFeastPlatter = "DishHarvestFeastPlatter";
+        public const string SettingsAutoSellExcessItems = "SettingsAutoSellExcessItems";
+        public const string SettingsAutoSellExcessItemsTooltip = "SettingsAutoSellExcessItemsTooltip";
+        public const string SettingsSellRarities = "SettingsSellRarities";
+        public const string SettingsSellRaritiesTooltip = "SettingsSellRaritiesTooltip";
+        public const string RarityNormal = "RarityNormal";
+        public const string RarityUncommon = "RarityUncommon";
+        public const string RarityRare = "RarityRare";
+        public const string RarityEpic = "RarityEpic";
+        public const string RarityLegendary = "RarityLegendary";
+        public const string ConsoleAutoSoldItem = "ConsoleAutoSoldItem";
+        public const string ConsoleItemSentToVault = "ConsoleItemSentToVault";
     }
 }

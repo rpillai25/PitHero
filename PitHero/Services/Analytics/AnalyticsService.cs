@@ -371,6 +371,25 @@ namespace PitHero.Services.Analytics
 #endif
         }
 
+        /// <summary>Logs an item sold to the Second Chance vault (manually or by auto-sell).</summary>
+        [Conditional("DEBUG")]
+        public static void LogItemSold(IItem item, int qty, int gold, string source)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("item_sold"))
+                return;
+            _json.Field("item", item.Name);
+            _json.Field("kind", item.Kind.ToString());
+            _json.Field("rarity", item.Rarity.ToString());
+            _json.Field("qty", qty);
+            _json.Field("gold", gold);
+            _json.Field("source", source);
+            EndEvent();
+#endif
+        }
+
         /// <summary>Logs gear equipped on the hero along with the hero's resulting stats.</summary>
         [Conditional("DEBUG")]
         public static void LogGearEquipped(Hero hero, EquipmentSlot slot, IItem item)

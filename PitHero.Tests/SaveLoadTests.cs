@@ -630,6 +630,80 @@ namespace PitHero.Tests
         }
 
         /// <summary>
+        /// Verifies that AutoSellExcessItems and AutoSellRarityAllowed (v21) round-trip through
+        /// Persist/Recover with non-default values.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V21_AutoSellExcessItems_RoundTrip()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_v21_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+
+                var original = new SaveData();
+                original.AutoSellExcessItems = false;               // non-default (defaults to true)
+                original.AutoSellRarityAllowed = new bool[] { true, true, true, false, false };
+
+                dataStore.Save("v21_autosellexcess.bin", original);
+
+                var loaded = new SaveData();
+                dataStore.Load("v21_autosellexcess.bin", loaded);
+
+                Assert.AreEqual(false, loaded.AutoSellExcessItems, "AutoSellExcessItems=false should round-trip");
+                Assert.IsNotNull(loaded.AutoSellRarityAllowed, "RarityAllowed should be recovered");
+                Assert.AreEqual(5, loaded.AutoSellRarityAllowed.Length);
+                Assert.AreEqual(true, loaded.AutoSellRarityAllowed[(int)ItemRarity.Normal]);
+                Assert.AreEqual(false, loaded.AutoSellRarityAllowed[(int)ItemRarity.Epic], "Unchecked Epic should round-trip");
+                Assert.AreEqual(false, loaded.AutoSellRarityAllowed[(int)ItemRarity.Legendary], "Unchecked Legendary should round-trip");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
+        /// <summary>
+        /// Verifies the v21 defaults: auto-sell excess items is ON with all rarities allowed,
+        /// including when the saved rarity array is absent (older files / null array writes count 0).
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V21_AutoSellExcessItems_Defaults()
+        {
+            Assert.AreEqual(true, new SaveData().AutoSellExcessItems, "Auto-sell excess items defaults to ON");
+
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_v21d_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+
+                // Null rarity array persists a zero count; Recover must normalize to all-true.
+                var original = new SaveData();
+                original.AutoSellRarityAllowed = null;
+
+                dataStore.Save("v21_defaults.bin", original);
+
+                var loaded = new SaveData();
+                dataStore.Load("v21_defaults.bin", loaded);
+
+                Assert.AreEqual(true, loaded.AutoSellExcessItems);
+                Assert.IsNotNull(loaded.AutoSellRarityAllowed);
+                for (int i = 0; i < loaded.AutoSellRarityAllowed.Length; i++)
+                    Assert.AreEqual(true, loaded.AutoSellRarityAllowed[i], $"Rarity {i} should default to allowed");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
+        /// <summary>
         /// Verifies that AutoSellKeepStacks round-trips through Persist/Recover.
         /// </summary>
         [TestMethod]

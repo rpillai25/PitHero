@@ -35,9 +35,10 @@ namespace RolePlayingFramework.Inventory
         /// <summary>Adds an item to first empty slot.</summary>
         public bool TryAdd(IItem item)
         {
-            if (item == null || IsFull) return false;
+            if (item == null) return false;
 
-            // If it's a consumable, try to stack it first
+            // If it's a consumable, try to stack it first — absorbing into an existing
+            // stack needs no empty slot, so this must run even when the bag is full
             if (item is Consumable consumable)
             {
                 // Look for an existing stack of the same item that isn't maxed out
@@ -53,6 +54,8 @@ namespace RolePlayingFramework.Inventory
                     }
                 }
             }
+
+            if (IsFull) return false;
 
             // If not stackable or no existing stack found, add to first empty slot
             for (int i = 0; i < _slots.Length; i++)

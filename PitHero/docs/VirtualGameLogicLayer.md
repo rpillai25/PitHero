@@ -153,6 +153,12 @@ same-seed ⇒ identical-event-stream determinism test that catches accidental dr
   consumable stacking, `HealingItemExhausted` reset on healing pickups, auto-equip hero
   first then mercenaries (`GearAutoEquipService`), with the recursive hand-me-down cascade
   for displaced gear. Toggles: `AutoEquipHero` / `AutoEquipMercenaries` (default true).
+- **Auto-sell excess items**: `AutoSellExcessItems` (default **false** to preserve balance
+  baselines) mirrors the live `AutoSellExcessItemsService` — on a full bag the weakest item
+  (consumables by restore effect first, then gear across all types by gear score, via the
+  shared `ExcessItemSellSelector`) is sold and the gold lands in `AutoSellGold`/the wallet.
+  Delta-Plan gap: the virtual layer has no synergy/stencil model, so nothing is protected
+  and all rarities are sellable; selling consumes no RNG, so parity is unaffected either way.
 
 ## Metrics & CSV Reference
 
@@ -170,6 +176,7 @@ same-seed ⇒ identical-event-stream determinism test that catches accidental dr
 | `wiped` | 1 when the hero died before completing the level |
 | `treasures` / `gearEquipped` | Chests opened / gear pieces auto-equipped |
 | `goldEarned` / `wallet` | Gold from kills this level / balance after crediting |
+| `itemsAutoSold` / `autoSellGold` | Items auto-sold to make bag room / gold they earned (0 unless `AutoSellExcessItems` is on) |
 | `innRested` / `mercsHired` | Between-level actions taken **before** this level (`RunLevelRange` only) |
 
 Run-level fields: `RngSeed`, `JobName`, `LevelRangeMin/Max`.

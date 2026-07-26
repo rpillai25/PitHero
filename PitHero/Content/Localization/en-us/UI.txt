@@ -353,3 +353,14 @@ DishApplePie,Apple Pie
 DishPumpkinCreamSoup,Pumpkin Cream Soup
 DishChilledWatermelonSorbet,Chilled Watermelon Sorbet
 DishHarvestFeastPlatter,Harvest Feast Platter
+SettingsAutoSellExcessItems,Auto-Sell Excess Items
+SettingsAutoSellExcessItemsTooltip,Auto-Sell items to make room for new loot
+SettingsSellRarities,Gear Rarities to Sell
+SettingsSellRaritiesTooltip,Gear of unchecked rarities will never be auto-sold
+RarityNormal,Normal
+RarityUncommon,Uncommon
+RarityRare,Rare
+RarityEpic,Epic
+RarityLegendary,Legendary
+ConsoleAutoSoldItem,Auto-sold {0} for {1}G to make room.
+ConsoleItemSentToVault,Bag full! {0} was sent to the Second Chance shop.

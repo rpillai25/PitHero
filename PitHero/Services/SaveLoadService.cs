@@ -803,6 +803,16 @@ namespace PitHero.Services
             if (partyDiningService != null)
                 data.PartyAutoDineResume = partyDiningService.AutoResumeWhenDone;
 
+            // Auto-sell excess items (v21+)
+            var autoSellExcessService = Core.Services.GetService<AutoSellExcessItemsService>();
+            if (autoSellExcessService != null)
+            {
+                data.AutoSellExcessItems = autoSellExcessService.Enabled;
+                data.AutoSellRarityAllowed = new bool[autoSellExcessService.RarityAllowed.Length];
+                for (int i = 0; i < data.AutoSellRarityAllowed.Length; i++)
+                    data.AutoSellRarityAllowed[i] = autoSellExcessService.RarityAllowed[i];
+            }
+
             return data;
         }
 
