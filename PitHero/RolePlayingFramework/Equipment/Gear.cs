@@ -160,11 +160,25 @@ namespace RolePlayingFramework.Equipment
             int defDelta  = BalanceConfig.CalculateEquipmentDefenseBonusDelta(depthDelta, source.Rarity);
             int statDelta = BalanceConfig.CalculateEquipmentStatBonusDelta(depthDelta, source.Rarity);
 
-            var scaledStats = new StatBlock(
-                source.StatBonus.Strength  + statDelta,
-                source.StatBonus.Agility   + statDelta,
-                source.StatBonus.Vitality  + statDelta,
-                source.StatBonus.Magic     + statDelta);
+            // Only stats the base item actually has get scaled (issue #341) — a +N copy is a
+            // stronger version of the same item, not an everything-boosted one. Save/load
+            // reconstructs +N gear from its name alone, so this must stay deterministic.
+            int str = source.StatBonus.Strength > 0 ? source.StatBonus.Strength + statDelta : 0;
+            int agi = source.StatBonus.Agility  > 0 ? source.StatBonus.Agility  + statDelta : 0;
+            int vit = source.StatBonus.Vitality > 0 ? source.StatBonus.Vitality + statDelta : 0;
+            int mag = source.StatBonus.Magic    > 0 ? source.StatBonus.Magic    + statDelta : 0;
+
+            // One small kind-based bonus stat; everything-boosting is reserved for special gear.
+            int bonus = System.Math.Max(1, statDelta / 5);
+            switch (GetTierBonusStat(source.Kind))
+            {
+                case BalanceConfig.StatType.Strength: str += bonus; break;
+                case BalanceConfig.StatType.Agility:  agi += bonus; break;
+                case BalanceConfig.StatType.Vitality: vit += bonus; break;
+                case BalanceConfig.StatType.Magic:    mag += bonus; break;
+            }
+
+            var scaledStats = new StatBlock(str, agi, vit, mag);
 
             // HP/MP: no dedicated delta formula — scale linearly with tier.
             return new Gear(
@@ -174,13 +188,38 @@ namespace RolePlayingFramework.Equipment
                 source._descKey,
                 source.Price * tier,
                 in scaledStats,
-                atk:          source.AttackBonus  + atkDelta,
-                def:          source.DefenseBonus + defDelta,
+                atk:          source.AttackBonus  > 0 ? source.AttackBonus  + atkDelta : 0,
+                def:          source.DefenseBonus > 0 ? source.DefenseBonus + defDelta : 0,
                 hp:           source.HPBonus  * tier,
                 mp:           source.MPBonus  * tier,
                 elementalProps: source.ElementalProps,
                 allowedJobs:  source.AllowedJobs,
                 tier:         tier);
+        }
+
+        /// <summary>The single stat a +N tier-scaled copy receives a minimal bonus to, chosen by gear kind.</summary>
+        public static BalanceConfig.StatType? GetTierBonusStat(ItemKind kind)
+        {
+            switch (kind)
+            {
+                case ItemKind.WeaponSword:
+                case ItemKind.WeaponKnuckle:
+                case ItemKind.WeaponHammer: return BalanceConfig.StatType.Strength;
+                case ItemKind.WeaponKnife:
+                case ItemKind.WeaponBow:
+                case ItemKind.Accessory: return BalanceConfig.StatType.Agility;
+                case ItemKind.WeaponStaff:
+                case ItemKind.WeaponRod: return BalanceConfig.StatType.Magic;
+                case ItemKind.ArmorMail:
+                case ItemKind.ArmorGi:
+                case ItemKind.ArmorRobe:
+                case ItemKind.HatHelm:
+                case ItemKind.HatHeadband:
+                case ItemKind.HatWizard:
+                case ItemKind.HatPriest:
+                case ItemKind.Shield: return BalanceConfig.StatType.Vitality;
+                default: return null;
+            }
         }
 
         /// <summary>Returns the default allowed jobs for a given ItemKind.</summary>
