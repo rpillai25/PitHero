@@ -13,6 +13,12 @@ namespace PitHero.UI
     {
         private static Skin _cachedSkin;
 
+        /// <summary>Multiplied into drawables of the "ph-grayed" styles to fade deactivated controls.</summary>
+        private static readonly Color GrayedTint = new Color(180, 180, 180, 180);
+
+        /// <summary>Washed-out version of the brown font color used by the "ph-grayed" styles.</summary>
+        private static readonly Color GrayedFontColor = new Color(146, 128, 111);
+
         /// <summary>
         /// Creates or returns the cached PitHero skin with custom window background.
         /// </summary>
@@ -48,6 +54,9 @@ namespace PitHero.UI
             // does not affect any other text.
             skin.Add("ph-sleeping", new LabelStyle(defaultFont, Color.Red));
 
+            // Washed-out label style for controls that are visible but deactivated
+            skin.Add("ph-grayed", new LabelStyle(defaultFont, GrayedFontColor));
+
             // Create custom text button style to use brown color
             var textButtonStyle = new TextButtonStyle
             {
@@ -78,7 +87,24 @@ namespace PitHero.UI
             };
             phTextButtonStyle.Up.SetPadding(0, 0, 25, 25); //Force centered text
             skin.Add("ph-default", phTextButtonStyle);
-            
+
+            // Grayed ("deactivated") button variant: same nine patch faded out, with every state
+            // drawn identically so hover/press give no feedback. Created after SetPadding above so
+            // the tinted copy inherits the centering padding.
+            var ninePatchGrayed = ninePatchUp.NewTintedDrawable(GrayedTint);
+            var phGrayedTextButtonStyle = new TextButtonStyle
+            {
+                Up = ninePatchGrayed,
+                Down = ninePatchGrayed,
+                Over = ninePatchGrayed,
+                Disabled = ninePatchGrayed,
+                FontColor = GrayedFontColor,
+                DownFontColor = GrayedFontColor,
+                OverFontColor = GrayedFontColor,
+                DisabledFontColor = GrayedFontColor
+            };
+            skin.Add("ph-grayed", phGrayedTextButtonStyle);
+
             // Window background
             var ninepatchSprite = uiAtlas.GetSprite("NinepatchWindowBackground");
             var ninePatch = new NinePatchSprite(ninepatchSprite, 24, 24, 24, 24);
@@ -103,10 +129,13 @@ namespace PitHero.UI
             else
                 checkboxUncheckedHover = checkboxChecked; // Fallback to checked sprite for hover feedback
 
+            var checkboxOffDrawable = new SpriteDrawable(checkboxUnchecked);
+            var checkboxOnDrawable = new SpriteDrawable(checkboxChecked);
+
             var checkboxStyle = new CheckBoxStyle
             {
-                CheckboxOff = new SpriteDrawable(checkboxUnchecked),
-                CheckboxOn = new SpriteDrawable(checkboxChecked),
+                CheckboxOff = checkboxOffDrawable,
+                CheckboxOn = checkboxOnDrawable,
                 CheckboxOver = new SpriteDrawable(checkboxUncheckedHover), // Hover when unchecked only
                 Font = labelStyle.Font,
                 FontColor = brownFontColor,
@@ -115,6 +144,24 @@ namespace PitHero.UI
             };
 
             skin.Add("ph-default", checkboxStyle);
+
+            // Grayed ("deactivated") checkbox variant. Over reuses the faded off/on sprites so
+            // hovering gives no feedback while the control is deactivated.
+            var checkboxOffGrayed = checkboxOffDrawable.NewTintedDrawable(GrayedTint);
+            var checkboxOnGrayed = checkboxOnDrawable.NewTintedDrawable(GrayedTint);
+            skin.Add("ph-grayed", new CheckBoxStyle
+            {
+                CheckboxOff = checkboxOffGrayed,
+                CheckboxOn = checkboxOnGrayed,
+                CheckboxOver = checkboxOffGrayed,
+                CheckboxOffDisabled = checkboxOffGrayed,
+                CheckboxOnDisabled = checkboxOnGrayed,
+                Font = labelStyle.Font,
+                FontColor = GrayedFontColor,
+                DisabledFontColor = GrayedFontColor,
+                FontScaleX = 1f,
+                FontScaleY = 1f
+            });
 
             // Radio button style (for mutually exclusive options)
             var radioButtonUnselected = uiAtlas.GetSprite("UIRadioButton_Unselected");

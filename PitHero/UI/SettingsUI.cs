@@ -926,7 +926,7 @@ namespace PitHero.UI
             {
                 var svc = Core.Services?.GetService<AutoCropSellService>();
                 if (svc != null) svc.Enabled = isChecked;
-                _designateCropsButton?.SetVisible(isChecked);
+                SetDesignateCropsActive(isChecked);
                 if (!isChecked)
                     _autoSellCropTypesDialog?.Hide();
             };
@@ -940,9 +940,9 @@ namespace PitHero.UI
                     _autoSellCropTypesDialog = new AutoSellCropTypesDialog(_stage);
                 _autoSellCropTypesDialog.Show();
             };
-            _designateCropsButton.SetVisible(false);
-            autoShopTable.Add(_designateCropsButton).Left().Width(140f);
+            autoShopTable.Add(_designateCropsButton).Left().SetMinWidth(140f).SetMinHeight(16f);
             autoShopTable.Row();
+            SetDesignateCropsActive(false);
 
             string excessTooltip = GetText(TextType.UI, UITextKey.SettingsAutoSellExcessItemsTooltip);
             _autoSellExcessCheckBox = new HoverableCheckBox(
@@ -955,10 +955,7 @@ namespace PitHero.UI
             {
                 var svc = Core.Services?.GetService<AutoSellExcessItemsService>();
                 if (svc != null) svc.Enabled = isChecked;
-                _sellPriorityLabel?.SetVisible(isChecked);
-                _sellPriorityList?.SetVisible(isChecked);
-                _sellRaritiesLabel?.SetVisible(isChecked);
-                _sellRaritiesTable?.SetVisible(isChecked);
+                SetExcessItemControlsActive(isChecked);
             };
             autoShopTable.Add(_autoSellExcessCheckBox).Left().SetPadTop(15f).SetPadBottom(8f);
             autoShopTable.Row();
@@ -1011,8 +1008,65 @@ namespace PitHero.UI
                     _sellRaritiesTable.Row();
             }
             autoShopTable.Add(_sellRaritiesTable).Left();
+            SetExcessItemControlsActive(_autoSellExcessCheckBox.IsChecked);
 
             automationTab.Add(autoShopTable).Expand().Top().Left();
+        }
+
+        /// <summary>
+        /// Activates or deactivates the crop designation button. When deactivated it stays on
+        /// screen but is drawn grayed out with hover and click disabled.
+        /// </summary>
+        private void SetDesignateCropsActive(bool active)
+        {
+            if (_designateCropsButton == null)
+                return;
+
+            var skin = PitHeroSkin.CreateSkin();
+            _designateCropsButton.SetDisabled(!active);
+            _designateCropsButton.SetStyle(skin.Get<TextButtonStyle>(active ? "ph-default" : "ph-grayed"));
+            _designateCropsButton.SetTouchable(active ? Touchable.Enabled : Touchable.Disabled);
+        }
+
+        /// <summary>
+        /// Activates or deactivates the auto-sell-excess sub-controls (sell priority list and gear
+        /// rarity checkboxes). When deactivated they stay on screen but are drawn grayed out with
+        /// tooltips, hover and click disabled.
+        /// </summary>
+        private void SetExcessItemControlsActive(bool active)
+        {
+            var skin = PitHeroSkin.CreateSkin();
+            var labelStyle = skin.Get<LabelStyle>(active ? "ph-default" : "ph-grayed");
+            var checkBoxStyle = skin.Get<CheckBoxStyle>(active ? "ph-default" : "ph-grayed");
+            var touchable = active ? Touchable.Enabled : Touchable.Disabled;
+
+            if (_sellPriorityLabel != null)
+            {
+                _sellPriorityLabel.SetStyle(labelStyle);
+                _sellPriorityLabel.SetTooltipEnabled(active);
+            }
+
+            _sellPriorityList?.SetGrayed(!active);
+
+            if (_sellRaritiesLabel != null)
+            {
+                _sellRaritiesLabel.SetStyle(labelStyle);
+                _sellRaritiesLabel.SetTooltipEnabled(active);
+            }
+
+            if (_sellRarityCheckBoxes == null)
+                return;
+
+            for (int i = 0; i < _sellRarityCheckBoxes.Length; i++)
+            {
+                var rarityCheckBox = _sellRarityCheckBoxes[i];
+                if (rarityCheckBox == null)
+                    continue;
+
+                rarityCheckBox.SetDisabled(!active);
+                rarityCheckBox.SetStyle(checkBoxStyle);
+                rarityCheckBox.SetTouchable(touchable);
+            }
         }
 
         /// <summary>Writes the reordered sell priority (top entry sells first) to the service.</summary>
@@ -1050,7 +1104,7 @@ namespace PitHero.UI
             {
                 if (_autoSellCropsCheckBox != null)
                     _autoSellCropsCheckBox.IsChecked = cropSellSvc.Enabled;
-                _designateCropsButton?.SetVisible(cropSellSvc.Enabled);
+                SetDesignateCropsActive(cropSellSvc.Enabled);
                 _autoSellCropTypesDialog?.SyncFromService();
             }
 
@@ -1073,10 +1127,7 @@ namespace PitHero.UI
                     for (int i = 0; i < _sellRarityCheckBoxes.Length && i < excessSvc.RarityAllowed.Length; i++)
                         _sellRarityCheckBoxes[i].IsChecked = excessSvc.RarityAllowed[i];
                 }
-                _sellPriorityLabel?.SetVisible(excessSvc.Enabled);
-                _sellPriorityList?.SetVisible(excessSvc.Enabled);
-                _sellRaritiesLabel?.SetVisible(excessSvc.Enabled);
-                _sellRaritiesTable?.SetVisible(excessSvc.Enabled);
+                SetExcessItemControlsActive(excessSvc.Enabled);
             }
         }
 

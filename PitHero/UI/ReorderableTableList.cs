@@ -11,6 +11,7 @@ namespace PitHero.UI
     {
         private readonly List<T> _items;
         private readonly Skin _skin;
+        private bool _grayed;
 
         public Action<int, int, T> OnReordered;
 
@@ -29,6 +30,19 @@ namespace PitHero.UI
             Build();
         }
 
+        /// <summary>
+        /// Draws the list faded out with the reorder buttons deactivated. Used when the owning
+        /// feature is switched off but the list stays on screen.
+        /// </summary>
+        public void SetGrayed(bool grayed)
+        {
+            if (_grayed == grayed)
+                return;
+
+            _grayed = grayed;
+            Rebuild();
+        }
+
         private void Build()
         {
             // All rows share this table's columns so the Up/Down buttons align across rows
@@ -43,20 +57,22 @@ namespace PitHero.UI
 
         private void AddRowCells(int index, T item)
         {
-            // Priority number label - use ph-default style
-            var num = new Label((index + 1).ToString(), _skin, "ph-default");
+            var styleName = _grayed ? "ph-grayed" : "ph-default";
 
-            // Item text - use ph-default style
-            var txt = new Label(item?.ToString() ?? string.Empty, _skin, "ph-default");
+            // Priority number label
+            var num = new Label((index + 1).ToString(), _skin, styleName);
+
+            // Item text
+            var txt = new Label(item?.ToString() ?? string.Empty, _skin, styleName);
 
             // Up button
-            var upButton = new TextButton("Up", _skin, "ph-default");
-            upButton.SetDisabled(index == 0); // Disable if first item
+            var upButton = new TextButton("Up", _skin, styleName);
+            upButton.SetDisabled(_grayed || index == 0); // Disable if first item
             upButton.OnClicked += (btn) => MoveItemUp(index);
 
             // Down button
-            var downButton = new TextButton("Down", _skin, "ph-default");
-            downButton.SetDisabled(index == _items.Count - 1); // Disable if last item
+            var downButton = new TextButton("Down", _skin, styleName);
+            downButton.SetDisabled(_grayed || index == _items.Count - 1); // Disable if last item
             downButton.OnClicked += (btn) => MoveItemDown(index);
 
             Add(num).SetMinWidth(30f).SetPadRight(5f).SetPadBottom(2f);
