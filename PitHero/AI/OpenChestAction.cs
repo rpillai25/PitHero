@@ -295,6 +295,18 @@ namespace PitHero.AI
                 Debug.Log($"[OpenChest] Created pickup animation for {containedItem.Name} at position X: {_chestEntity.Transform.Position.X}, Y: {_chestEntity.Transform.Position.Y}");
             }
 
+            // When the bag is full, auto-sell the weakest excess item to make room (if enabled).
+            // SoldIncoming means the new item itself was the weakest and was sold directly.
+            if (hero.Bag != null && hero.Bag.IsFull)
+            {
+                var autoSellSvc = Core.Services.GetService<Services.AutoSellExcessItemsService>();
+                if (autoSellSvc?.TryMakeRoom(hero.Bag, containedItem) == Services.AutoSellOutcome.SoldIncoming)
+                {
+                    treasureComponent.ContainedItem = null;
+                    return;
+                }
+            }
+
             // Try to add item using hero's TryAddItem method (handles consumable priority logic)
             if (hero.TryAddItem(containedItem))
             {
@@ -323,7 +335,13 @@ namespace PitHero.AI
             }
             else
             {
-                Debug.Warn($"[OpenChest] Hero's bags are full! Could not add {containedItem.Name}");
+                // Bag is full and nothing could be sold. The chest is already OPEN and is never
+                // re-targeted, so send the item to the Second Chance vault instead of losing it.
+                Debug.Warn($"[OpenChest] Hero's bags are full! Sending {containedItem.Name} to the Second Chance vault");
+                Core.Services.GetService<PitHero.Services.SecondChanceMerchantVault>()?.AddItem(containedItem);
+                Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleItemSentToVault,
+                    (containedItem.Name, RarityUtils.GetRarityColor(containedItem.Rarity)));
+                treasureComponent.ContainedItem = null;
             }
         }
 

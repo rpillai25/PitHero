@@ -6,6 +6,7 @@ using PitHero.ECS.Components;
 using PitHero.ECS.Scenes;
 using PitHero.Services;
 using System;
+using System.Collections.Generic;
 
 namespace PitHero.UI
 {
@@ -67,6 +68,13 @@ namespace PitHero.UI
         private HoverableCheckBox _autoSellCropsCheckBox;
         private TextButton _designateCropsButton;
         private AutoSellCropTypesDialog _autoSellCropTypesDialog;
+        private HoverableCheckBox _autoSellExcessCheckBox;
+        private HoverableLabel _sellPriorityLabel;
+        private ReorderableTableList<string> _sellPriorityList;
+        private List<string> _sellPriorityItems;
+        private HoverableLabel _sellRaritiesLabel;
+        private CheckBox[] _sellRarityCheckBoxes;
+        private Table _sellRaritiesTable;
 
         // Confirmation dialogs
         private Window _exitConfirmationDialog;
@@ -934,8 +942,85 @@ namespace PitHero.UI
             };
             _designateCropsButton.SetVisible(false);
             autoShopTable.Add(_designateCropsButton).Left().Width(140f);
+            autoShopTable.Row();
+
+            string excessTooltip = GetText(TextType.UI, UITextKey.SettingsAutoSellExcessItemsTooltip);
+            _autoSellExcessCheckBox = new HoverableCheckBox(
+                GetText(TextType.UI, UITextKey.SettingsAutoSellExcessItems),
+                skin,
+                excessTooltip,
+                _stage);
+            _autoSellExcessCheckBox.IsChecked = true;
+            _autoSellExcessCheckBox.OnChanged += (isChecked) =>
+            {
+                var svc = Core.Services?.GetService<AutoSellExcessItemsService>();
+                if (svc != null) svc.Enabled = isChecked;
+                _sellPriorityLabel?.SetVisible(isChecked);
+                _sellPriorityList?.SetVisible(isChecked);
+                _sellRaritiesLabel?.SetVisible(isChecked);
+                _sellRaritiesTable?.SetVisible(isChecked);
+            };
+            autoShopTable.Add(_autoSellExcessCheckBox).Left().SetPadTop(15f).SetPadBottom(8f);
+            autoShopTable.Row();
+
+            string sellPriorityTooltip = GetText(TextType.UI, UITextKey.SettingsSellPriorityTooltip);
+            _sellPriorityLabel = new HoverableLabel(
+                GetText(TextType.UI, UITextKey.SettingsSellPriority),
+                skin, "ph-default", sellPriorityTooltip, _stage);
+            autoShopTable.Add(_sellPriorityLabel).Left().SetPadBottom(4f);
+            autoShopTable.Row();
+
+            _sellPriorityItems = new List<string>(2)
+            {
+                GetText(TextType.UI, UITextKey.SellPriorityConsumables),
+                GetText(TextType.UI, UITextKey.SellPriorityGear)
+            };
+            _sellPriorityList = new ReorderableTableList<string>(skin, _sellPriorityItems, OnSellPriorityReordered);
+            autoShopTable.Add(_sellPriorityList).Left().Width(240f).SetPadBottom(8f);
+            autoShopTable.Row();
+
+            string raritiesTooltip = GetText(TextType.UI, UITextKey.SettingsSellRaritiesTooltip);
+            _sellRaritiesLabel = new HoverableLabel(
+                GetText(TextType.UI, UITextKey.SettingsSellRarities),
+                skin, "ph-default", raritiesTooltip, _stage);
+            autoShopTable.Add(_sellRaritiesLabel).Left().SetPadBottom(4f);
+            autoShopTable.Row();
+
+            _sellRaritiesTable = new Table();
+            var rarityKeys = new[]
+            {
+                UITextKey.RarityNormal, UITextKey.RarityUncommon, UITextKey.RarityRare,
+                UITextKey.RarityEpic, UITextKey.RarityLegendary
+            };
+            _sellRarityCheckBoxes = new CheckBox[rarityKeys.Length];
+            for (int i = 0; i < rarityKeys.Length; i++)
+            {
+                int rarityIndex = i;
+                var rarityCheckBox = new CheckBox(GetText(TextType.UI, rarityKeys[i]), skin, "ph-default");
+                rarityCheckBox.IsChecked = true;
+                rarityCheckBox.OnChanged += (isChecked) =>
+                {
+                    var svc = Core.Services?.GetService<AutoSellExcessItemsService>();
+                    if (svc != null) svc.RarityAllowed[rarityIndex] = isChecked;
+                };
+                _sellRarityCheckBoxes[i] = rarityCheckBox;
+                _sellRaritiesTable.Add(rarityCheckBox).Left().SetPadRight(12f).SetPadBottom(4f);
+
+                // Two rows (Normal/Uncommon/Rare, then Epic/Legendary) so the tab isn't widened
+                if (i == 2)
+                    _sellRaritiesTable.Row();
+            }
+            autoShopTable.Add(_sellRaritiesTable).Left();
 
             automationTab.Add(autoShopTable).Expand().Top().Left();
+        }
+
+        /// <summary>Writes the reordered sell priority (top entry sells first) to the service.</summary>
+        private void OnSellPriorityReordered(int from, int to, string item)
+        {
+            var svc = Core.Services?.GetService<AutoSellExcessItemsService>();
+            if (svc != null && _sellPriorityItems != null && _sellPriorityItems.Count > 0)
+                svc.ConsumablesFirst = _sellPriorityItems[0] == GetText(TextType.UI, UITextKey.SellPriorityConsumables);
         }
 
         /// <summary>
@@ -967,6 +1052,31 @@ namespace PitHero.UI
                     _autoSellCropsCheckBox.IsChecked = cropSellSvc.Enabled;
                 _designateCropsButton?.SetVisible(cropSellSvc.Enabled);
                 _autoSellCropTypesDialog?.SyncFromService();
+            }
+
+            var excessSvc = Core.Services?.GetService<AutoSellExcessItemsService>();
+            if (excessSvc != null)
+            {
+                if (_autoSellExcessCheckBox != null)
+                    _autoSellExcessCheckBox.IsChecked = excessSvc.Enabled;
+                if (_sellPriorityItems != null)
+                {
+                    _sellPriorityItems.Clear();
+                    var consumablesText = GetText(TextType.UI, UITextKey.SellPriorityConsumables);
+                    var gearText = GetText(TextType.UI, UITextKey.SellPriorityGear);
+                    _sellPriorityItems.Add(excessSvc.ConsumablesFirst ? consumablesText : gearText);
+                    _sellPriorityItems.Add(excessSvc.ConsumablesFirst ? gearText : consumablesText);
+                    _sellPriorityList?.Rebuild();
+                }
+                if (_sellRarityCheckBoxes != null)
+                {
+                    for (int i = 0; i < _sellRarityCheckBoxes.Length && i < excessSvc.RarityAllowed.Length; i++)
+                        _sellRarityCheckBoxes[i].IsChecked = excessSvc.RarityAllowed[i];
+                }
+                _sellPriorityLabel?.SetVisible(excessSvc.Enabled);
+                _sellPriorityList?.SetVisible(excessSvc.Enabled);
+                _sellRaritiesLabel?.SetVisible(excessSvc.Enabled);
+                _sellRaritiesTable?.SetVisible(excessSvc.Enabled);
             }
         }
 

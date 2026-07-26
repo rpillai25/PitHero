@@ -255,12 +255,13 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 20;
+        public const int CurrentVersion = 22;
 
         /// <summary>
-        /// Oldest save file version this build can still load. v17–v19 files are byte-exact
-        /// prefixes of v20 (sections 33 dining, 34 automation, and 35 auto-dine resume were
-        /// appended at the end), so they load with default state for the missing sections.
+        /// Oldest save file version this build can still load. v17–v21 files are byte-exact
+        /// prefixes of v22 (sections 33 dining, 34 automation, 35 auto-dine resume,
+        /// 36 auto-sell excess items, and 37 auto-sell priority were appended at the end),
+        /// so they load with default state for the missing sections.
         /// </summary>
         public const int MinSupportedVersion = 17;
 
@@ -507,6 +508,17 @@ namespace PitHero.Services
         // Auto-dine resume (v20)
         /// <summary>Whether a breakfast trip in progress should auto-resume adventuring when done.</summary>
         public bool PartyAutoDineResume = false;
+
+        // Auto-sell excess items (v21)
+        /// <summary>Whether auto-selling the weakest excess item on full-bag chest pickup is enabled. On by default.</summary>
+        public bool AutoSellExcessItems = true;
+
+        /// <summary>Which gear rarities may be auto-sold, indexed by ItemRarity. Null until Recover normalizes it.</summary>
+        public bool[] AutoSellRarityAllowed;
+
+        // Auto-sell priority (v22)
+        /// <summary>Sell priority for auto-selling excess items: true sells consumables before gear (default).</summary>
+        public bool AutoSellConsumablesFirst = true;
 
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
@@ -913,6 +925,16 @@ namespace PitHero.Services
 
             // 35. Auto-dine resume (v20)
             writer.Write(PartyAutoDineResume);
+
+            // 36. Auto-sell excess items (v21)
+            writer.Write(AutoSellExcessItems);
+            int rarityCount = AutoSellRarityAllowed != null ? AutoSellRarityAllowed.Length : 0;
+            writer.Write(rarityCount);
+            for (int i = 0; i < rarityCount; i++)
+                writer.Write(AutoSellRarityAllowed[i]);
+
+            // 37. Auto-sell priority (v22)
+            writer.Write(AutoSellConsumablesFirst);
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -1326,6 +1348,29 @@ namespace PitHero.Services
                     }
                 }
             }
+
+            // 36. Auto-sell excess items (v21+). Older files end at section 35 — defaults apply
+            // (enabled, all rarities allowed). Rarities default to all-true so rarities added
+            // after the save was written behave like a fresh enable.
+            AutoSellRarityAllowed = new bool[5];
+            for (int i = 0; i < AutoSellRarityAllowed.Length; i++)
+                AutoSellRarityAllowed[i] = true;
+            if (fileVersion >= 21)
+            {
+                AutoSellExcessItems = reader.ReadBool();
+                int rarityCount = reader.ReadInt();
+                for (int i = 0; i < rarityCount; i++)
+                {
+                    bool allowed = reader.ReadBool();
+                    if (i < AutoSellRarityAllowed.Length)
+                        AutoSellRarityAllowed[i] = allowed;
+                }
+            }
+
+            // 37. Auto-sell priority (v22+). Older files default to consumables-first.
+            AutoSellConsumablesFirst = true;
+            if (fileVersion >= 22)
+                AutoSellConsumablesFirst = reader.ReadBool();
         }
 
         /// <summary>Writes a Color as four individual int components (R, G, B, A).</summary>

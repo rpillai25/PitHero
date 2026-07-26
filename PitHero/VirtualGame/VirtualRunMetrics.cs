@@ -51,6 +51,12 @@ namespace PitHero.VirtualGame
         /// <summary>Total gold earned from defeated monsters on this pit level.</summary>
         public int GoldEarned;
 
+        /// <summary>Total items auto-sold to make bag room on this pit level.</summary>
+        public int ItemsAutoSold;
+
+        /// <summary>Total gold earned from auto-selling excess items on this pit level.</summary>
+        public int AutoSellGold;
+
         /// <summary>
         /// Gold wallet balance at the end of this pit level, after crediting <see cref="GoldEarned"/>.
         /// In a <see cref="VirtualGameSimulation.RunLevelRange"/> run, between-level spending
@@ -130,7 +136,7 @@ namespace PitHero.VirtualGame
         /// </summary>
         public static void WriteCsvHeader(TextWriter writer)
         {
-            writer.WriteLine("pitLevel,battles,rounds,dmgDealt,dmgTaken,hpLossPct,healing,deaths,wiped,treasures,gearEquipped,goldEarned,wallet,innRested,mercsHired,pitTier,displayedLevel,heroLevel");
+            writer.WriteLine("pitLevel,battles,rounds,dmgDealt,dmgTaken,hpLossPct,healing,deaths,wiped,treasures,gearEquipped,goldEarned,itemsAutoSold,autoSellGold,wallet,innRested,mercsHired,pitTier,displayedLevel,heroLevel");
         }
 
         /// <summary>
@@ -141,7 +147,7 @@ namespace PitHero.VirtualGame
             writer.WriteLine(
                 $"{PitLevel},{BattleCount},{TotalRounds},{DamageDealt},{DamageTaken}," +
                 $"{HpLossPercent:F4},{HealingConsumed},{PartyDeaths},{(Wiped ? 1 : 0)}," +
-                $"{TreasuresOpened},{GearEquipped},{GoldEarned},{Wallet},{(InnRested ? 1 : 0)},{MercsHired}," +
+                $"{TreasuresOpened},{GearEquipped},{GoldEarned},{ItemsAutoSold},{AutoSellGold},{Wallet},{(InnRested ? 1 : 0)},{MercsHired}," +
                 $"{PitTier},{DisplayedLevel},{HeroLevel}");
         }
 

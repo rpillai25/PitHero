@@ -211,6 +211,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.CropGrowthService));
             Core.Services.RemoveService(typeof(Services.AutoSeedPurchaseService));
             Core.Services.RemoveService(typeof(Services.AutoCropSellService));
+            Core.Services.RemoveService(typeof(Services.AutoSellExcessItemsService));
             Core.Services.GetService<Services.FarmTaskCoordinator>()?.Detach();
             Core.Services.RemoveService(typeof(Services.FarmTaskCoordinator));
             Core.Services.RemoveService(typeof(Services.MealBuffService));
@@ -293,6 +294,9 @@ namespace PitHero.ECS.Scenes
                 Core.Services.GetService<Services.CropStorageInventoryService>(),
                 Core.Services.GetService<Services.GameStateService>());
             Core.Services.AddService(autoCropSellService);
+
+            // Auto-sell excess items service frees a bag slot when a chest item arrives and the bag is full
+            Core.Services.AddService(new Services.AutoSellExcessItemsService());
 
             // Meal buff service holds each party member's day-long food buffs (issue #319)
             Core.Services.AddService(new Services.MealBuffService());
@@ -527,6 +531,20 @@ namespace PitHero.ECS.Scenes
             var autoJobSvc = Core.Services.GetService<Services.AutoJobAssignmentService>();
             if (autoJobSvc != null)
                 autoJobSvc.Enabled = pendingData.AutomateMonsterJobs;
+            var autoSellExcessSvc = Core.Services.GetService<Services.AutoSellExcessItemsService>();
+            if (autoSellExcessSvc != null)
+            {
+                autoSellExcessSvc.Enabled = pendingData.AutoSellExcessItems;
+                autoSellExcessSvc.ConsumablesFirst = pendingData.AutoSellConsumablesFirst;
+                if (pendingData.AutoSellRarityAllowed != null)
+                {
+                    int count = pendingData.AutoSellRarityAllowed.Length < autoSellExcessSvc.RarityAllowed.Length
+                        ? pendingData.AutoSellRarityAllowed.Length
+                        : autoSellExcessSvc.RarityAllowed.Length;
+                    for (int i = 0; i < count; i++)
+                        autoSellExcessSvc.RarityAllowed[i] = pendingData.AutoSellRarityAllowed[i];
+                }
+            }
             _settingsUI?.SyncAutomationControlsFromService();
 
             // Rebuild the plant queue now that both tile states and crop plans are restored

@@ -66,6 +66,7 @@ interpretation caveats that are not obvious from the raw data.
 |---|---|---|
 | `item_acquired` | `item`, `kind`, `rarity`, `pitLevel`, `chestLevel` | Item actually collected from a chest. Pair with `chest_spawned` (availability) — they answer different questions. |
 | `gear_equipped` | `character`, `charType`, `slot`, `item`, `rarity`, `str/agi/vit/mag`, `maxHP`, `maxMP` | Stats are the character's **resulting totals after** the equip. Save-restore re-equips are deliberately not logged. |
+| `item_sold` | `item`, `kind`, `rarity`, `qty`, `gold`, `source` | Item sold to the Second Chance vault. `qty` is the stack count for consumables, else 1. `source`: `"manual"` (player sell) or `"auto_excess"` (AutoSellExcessItemsService making bag room). Gold arrives via the paired `gold_gained (source:"sell_item")`. |
 | `gold_gained` | `amount`, `source`, `sessionTotal`, `currentGold` | `source`: `"battle"`, `"sell_item"`, `"sell_building"`, `"sell_crops"`, `"refund"`. `sessionTotal` resets each `session_start`. Spends are mostly not logged; infer from `currentGold` deltas (e.g. `inn_sleep.goldAfter`). Exceptions: `seed_purchased` and `building_created` (below) record their own spends. `source:"sell_crops"` lines pair with per-stack `crop_sold` detail lines. |
 
 ### Battle

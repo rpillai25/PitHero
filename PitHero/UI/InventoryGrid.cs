@@ -854,23 +854,32 @@ namespace PitHero.UI
             if (_heroComponent?.Bag == null)
                 return;
 
-            var item = _heroComponent.Bag.GetSlotItem(bagIndex);
-            if (item != null)
+            if (PitHero.Services.ItemSellHelper.SellBagItem(_heroComponent.Bag, bagIndex, "manual") > 0)
             {
-                int qty = (item is RolePlayingFramework.Equipment.Consumable c) ? c.StackCount : 1;
-                int gold = item.GetSellPrice() * qty;
-
-                var vault = Core.Services?.GetService<PitHero.Services.SecondChanceMerchantVault>();
-                vault?.AddItem(item);
-
-                var gameState = Core.Services?.GetService<PitHero.Services.GameStateService>();
-                gameState?.AddFunds(gold, "sell_item");
-
-                _heroComponent.Bag.SetSlotItem(bagIndex, null);
-                Debug.Log($"Sold {item.Name} x{qty} for {gold}G");
                 UpdateItemsFromBag();
                 OnItemSoldToVault?.Invoke();
             }
+        }
+
+        /// <summary>
+        /// True when the bag slot's item must never be auto-sold: it participates in an active synergy
+        /// or sits under a placed stencil on the grid. Callers must refresh the grid from the bag first
+        /// (UpdateItemsFromBag) so the synergy cache reflects the current bag contents.
+        /// </summary>
+        public bool IsBagIndexProtected(int bagIndex)
+        {
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null || slot.SlotData.SlotType != InventorySlotType.Inventory || slot.SlotData.BagIndex != bagIndex)
+                    continue;
+
+                var gridPos = new Point(slot.SlotData.X, slot.SlotData.Y);
+                if (GetSynergiesForSlot(gridPos).Count > 0)
+                    return true;
+                return _stencilManager.FindStencilAtPosition(gridPos) != null;
+            }
+            return false;
         }
 
         /// <summary>Swaps two slot items (if legal) and persists bag ordering.</summary>
