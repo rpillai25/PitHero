@@ -14,7 +14,8 @@
       "PowerShell(dotnet test *)",
       "mcp__github__update_pull_request",
       "Bash(grep -n \"public \\\\|///\" PitHero/Services/PartyDiningService.cs)",
-      "mcp__github__pull_request_read"
+      "mcp__github__pull_request_read",
+      "mcp__github__create_pull_request"
     ]
   }
 }
