@@ -36,6 +36,26 @@ Equipment Name
 - Epic: 2.5x
 - Legendary: 3.5x
 
+### Tier Scaling (+N Gear)
+
+Gear found in subsequent dungeon cycles (pit tier 2+) is a scaled copy of a base item with a "+N" name suffix, produced by `Gear.CreateTierScaledCopy` with `depthDelta = (tier - 1) × MaxBiomeLevel`. A +N item is a stronger version of the *same* item — only stats the base item actually has are scaled (issue #341):
+
+- **Attack / Defense:** if nonzero on the base, add `CalculateEquipmentAttackBonusDelta` / `CalculateEquipmentDefenseBonusDelta` (same depth formulas as above, using depthDelta). Zero stays zero.
+- **STR/AGI/VIT/MAG:** per-stat — nonzero base stats gain `CalculateEquipmentStatBonusDelta`; zero stats stay zero.
+- **HP/MP:** multiplied by tier (zero stays zero).
+- **Price:** multiplied by tier. Rarity, element, allowed jobs, and sprite are unchanged.
+
+**Kind-based bonus stat:** each +N copy additionally gains `max(1, statDelta / 5)` (e.g., +1 at tier 2 Normal, +3 at tier 2 Legendary) in exactly one stat chosen by gear kind:
+
+| Gear kind | Bonus stat |
+|---|---|
+| Sword, Knuckle, Hammer | Strength |
+| Knife, Bow, Accessory | Agility |
+| Staff, Rod | Magic |
+| Mail, Gi, Robe, Helm, Headband, Wizard Hat, Priest Hat, Shield | Vitality |
+
+Scaling is fully deterministic — saves store only the "+N" name and `ItemRegistry` reconstructs identical stats on load. Gear that boosts all stats across the board is reserved for future special items.
+
 ### Spawn Window System
 
 Equipment spawns using a sliding window system:

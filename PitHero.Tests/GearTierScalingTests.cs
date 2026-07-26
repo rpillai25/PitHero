@@ -177,6 +177,124 @@ namespace PitHero.Tests
                 "Stat delta for depthDelta=25, Normal rarity should be 5 (25/5 = 5)");
         }
 
+        // ── Issue #341: only base stats scale, plus one minimal kind-based bonus ──────
+
+        private static Gear MakeKindGear(ItemKind kind, int atk = 0, int def = 0)
+        {
+            var stats = new StatBlock(0, 0, 0, 0);
+            return new Gear("TestGear", kind, ItemRarity.Normal, "TestDesc", 100, in stats, atk: atk, def: def);
+        }
+
+        [TestMethod]
+        public void CreateTierScaledCopy_AttackOnlyWeapon_ZeroStatsStayZero()
+        {
+            // A plain atk-only sword must not gain defense or across-the-board stats.
+            var gear = MakeKindGear(ItemKind.WeaponSword, atk: 10);
+            var scaled = Gear.CreateTierScaledCopy(gear, 2, 25);
+
+            Assert.AreEqual(22, scaled.AttackBonus, "atk 10 + delta 12 = 22");
+            Assert.AreEqual(0, scaled.DefenseBonus, "Zero base defense must stay zero");
+            Assert.AreEqual(0, scaled.StatBonus.Agility, "Zero base AGI must stay zero");
+            Assert.AreEqual(0, scaled.StatBonus.Vitality, "Zero base VIT must stay zero");
+            Assert.AreEqual(0, scaled.StatBonus.Magic, "Zero base MAG must stay zero");
+            Assert.AreEqual(0, scaled.HPBonus, "Zero base HP must stay zero");
+            Assert.AreEqual(0, scaled.MPBonus, "Zero base MP must stay zero");
+        }
+
+        [TestMethod]
+        public void CreateTierScaledCopy_DefenseOnlyArmor_NoAttackCreated()
+        {
+            var gear = MakeKindGear(ItemKind.ArmorMail, def: 5);
+            var scaled = Gear.CreateTierScaledCopy(gear, 2, 25);
+
+            Assert.AreEqual(0, scaled.AttackBonus, "Zero base attack must stay zero");
+            Assert.AreEqual(13, scaled.DefenseBonus, "def 5 + delta 8 = 13");
+        }
+
+        [TestMethod]
+        public void CreateTierScaledCopy_NonzeroStatsScale()
+        {
+            // MakeBaseGear: sword with STR 2, AGI 1, VIT 1, MAG 0. statDelta = 5, sword bonus stat = STR (+1).
+            var gear = MakeBaseGear();
+            var scaled = Gear.CreateTierScaledCopy(gear, 2, 25);
+
+            Assert.AreEqual(8, scaled.StatBonus.Strength, "STR 2 + statDelta 5 + kind bonus 1 = 8");
+            Assert.AreEqual(6, scaled.StatBonus.Agility, "AGI 1 + statDelta 5 = 6");
+            Assert.AreEqual(6, scaled.StatBonus.Vitality, "VIT 1 + statDelta 5 = 6");
+            Assert.AreEqual(0, scaled.StatBonus.Magic, "Zero base MAG must stay zero");
+        }
+
+        [TestMethod]
+        public void CreateTierScaledCopy_KindBonusStat_Sword_IsStrength()
+        {
+            var scaled = Gear.CreateTierScaledCopy(MakeKindGear(ItemKind.WeaponSword, atk: 10), 2, 25);
+            Assert.AreEqual(1, scaled.StatBonus.Strength, "Sword bonus stat is STR: max(1, 5/5) = 1");
+        }
+
+        [TestMethod]
+        public void CreateTierScaledCopy_KindBonusStat_Rod_IsMagic()
+        {
+            var scaled = Gear.CreateTierScaledCopy(MakeKindGear(ItemKind.WeaponRod, atk: 10), 2, 25);
+            Assert.AreEqual(1, scaled.StatBonus.Magic);
+            Assert.AreEqual(0, scaled.StatBonus.Strength);
+        }
+
+        [TestMethod]
+        public void CreateTierScaledCopy_KindBonusStat_Bow_IsAgility()
+        {
+            var scaled = Gear.CreateTierScaledCopy(MakeKindGear(ItemKind.WeaponBow, atk: 10), 2, 25);
+            Assert.AreEqual(1, scaled.StatBonus.Agility);
+        }
+
+        [TestMethod]
+        public void CreateTierScaledCopy_KindBonusStat_Mail_IsVitality()
+        {
+            var scaled = Gear.CreateTierScaledCopy(MakeKindGear(ItemKind.ArmorMail, def: 5), 2, 25);
+            Assert.AreEqual(1, scaled.StatBonus.Vitality);
+        }
+
+        [TestMethod]
+        public void CreateTierScaledCopy_KindBonusStat_Accessory_IsAgility()
+        {
+            var scaled = Gear.CreateTierScaledCopy(MakeKindGear(ItemKind.Accessory), 2, 25);
+            Assert.AreEqual(1, scaled.StatBonus.Agility);
+        }
+
+        [TestMethod]
+        public void CreateTierScaledCopy_HigherRarity_BonusStatScalesMinimally()
+        {
+            // Legendary statDelta @ 25 = (25/5)*3.5 = 17 → bonus = max(1, 17/5) = 3.
+            var stats = new StatBlock(0, 0, 0, 0);
+            var gear = new Gear("TestGear", ItemKind.WeaponSword, ItemRarity.Legendary, "TestDesc", 100, in stats, atk: 10);
+            var scaled = Gear.CreateTierScaledCopy(gear, 2, 25);
+            Assert.AreEqual(3, scaled.StatBonus.Strength);
+        }
+
+        [TestMethod]
+        public void CreateTierScaledCopy_SaveLoadRoundTrip_ProducesIdenticalStats()
+        {
+            // Save serializes only "BaseName+N"; load rebuilds via ItemRegistry. Stats must match
+            // what the chest originally produced, so scaling must be deterministic.
+            Assert.IsTrue(ItemRegistry.TryCreateItem("Inv_RustyBlade_Name", out var baseItem));
+            var baseGear = (Gear)baseItem;
+
+            ItemRegistry.TierDepthStride = BiomeProgressionConfig.MaxBiomeLevel;
+            int depthDelta = 1 * ItemRegistry.TierDepthStride;
+            var direct = Gear.CreateTierScaledCopy(baseGear, 2, depthDelta);
+
+            Assert.IsTrue(ItemRegistry.TryCreateItem(baseGear.Name + "+2", out var loadedItem));
+            var loaded = (Gear)loadedItem;
+
+            Assert.AreEqual(direct.AttackBonus, loaded.AttackBonus);
+            Assert.AreEqual(direct.DefenseBonus, loaded.DefenseBonus);
+            Assert.AreEqual(direct.StatBonus.Strength, loaded.StatBonus.Strength);
+            Assert.AreEqual(direct.StatBonus.Agility, loaded.StatBonus.Agility);
+            Assert.AreEqual(direct.StatBonus.Vitality, loaded.StatBonus.Vitality);
+            Assert.AreEqual(direct.StatBonus.Magic, loaded.StatBonus.Magic);
+            Assert.AreEqual(direct.HPBonus, loaded.HPBonus);
+            Assert.AreEqual(direct.MPBonus, loaded.MPBonus);
+        }
+
         // ── ItemRegistry "+N" round-trip ─────────────────────────────────────────────
 
         [TestMethod]
