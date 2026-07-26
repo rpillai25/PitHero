@@ -20,9 +20,10 @@ namespace RolePlayingFramework.Equipment
 
     /// <summary>
     /// Pure selection logic for auto-selling excess items when the bag is full (issue: auto-sell excess items).
-    /// Consumables are always sold before gear; among gear, weakness is compared across ALL gear types at once
-    /// so a lone strong item of one type never sells before a weak item of another. The incoming item participates
-    /// in the comparison so junk loot never displaces better items.
+    /// The player chooses whether consumables or gear sell first; within the second category items are only
+    /// considered when the first category has no sellable candidate. Among gear, weakness is compared across
+    /// ALL gear types at once so a lone strong item of one type never sells before a weak item of another.
+    /// The incoming item participates in the comparison so junk loot never displaces better items.
     /// </summary>
     public static class ExcessItemSellSelector
     {
@@ -31,17 +32,31 @@ namespace RolePlayingFramework.Equipment
 
         /// <summary>
         /// Selects the item to sell to free a bag slot for <paramref name="incoming"/>.
-        /// Step 1: weakest-effect unprotected consumable stack (HP+MP restore, then sell price, then stack count).
-        /// Step 2 (only if no sellable consumable): weakest unprotected gear across all types by gear score
-        /// (then rarity, then sell price), filtered by <paramref name="rarityAllowed"/> (gear only).
+        /// Consumable pass: weakest-effect unprotected consumable stack (HP+MP restore, then sell price, then stack count).
+        /// Gear pass: weakest unprotected gear across all types by gear score (then rarity, then sell price),
+        /// filtered by <paramref name="rarityAllowed"/> (gear only). <paramref name="consumablesFirst"/> picks
+        /// which pass runs first; the other pass only runs when the first finds no candidate.
         /// Bag items win ties against the incoming item.
         /// </summary>
-        public static SellSelection Select(ItemBag bag, IItem incoming, Func<int, bool> isProtectedBagIndex, Func<ItemRarity, bool> rarityAllowed)
+        public static SellSelection Select(ItemBag bag, IItem incoming, Func<int, bool> isProtectedBagIndex, Func<ItemRarity, bool> rarityAllowed, bool consumablesFirst = true)
         {
             if (bag == null)
                 return SellSelection.None;
 
-            // Step 1: consumables
+            var first = consumablesFirst
+                ? SelectConsumable(bag, incoming, isProtectedBagIndex)
+                : SelectGear(bag, incoming, isProtectedBagIndex, rarityAllowed);
+            if (first.HasSelection)
+                return first;
+
+            return consumablesFirst
+                ? SelectGear(bag, incoming, isProtectedBagIndex, rarityAllowed)
+                : SelectConsumable(bag, incoming, isProtectedBagIndex);
+        }
+
+        /// <summary>Picks the weakest-effect unprotected consumable stack, or none.</summary>
+        private static SellSelection SelectConsumable(ItemBag bag, IItem incoming, Func<int, bool> isProtectedBagIndex)
+        {
             int bestIndex = -1;
             long bestKeyA = 0, bestKeyB = 0, bestKeyC = 0;
             for (int i = 0; i < bag.Capacity; i++)
@@ -52,10 +67,14 @@ namespace RolePlayingFramework.Equipment
             if (incoming is Consumable incomingConsumable)
                 ConsiderConsumable(incomingConsumable, IncomingIndex, ref bestIndex, ref bestKeyA, ref bestKeyB, ref bestKeyC);
 
-            if (bestIndex >= 0)
-                return bestIndex == IncomingIndex ? SellSelection.Incoming : SellSelection.AtIndex(bestIndex);
+            return ToSelection(bestIndex);
+        }
 
-            // Step 2: gear across all types
+        /// <summary>Picks the weakest unprotected gear across all gear types (rarity-filtered), or none.</summary>
+        private static SellSelection SelectGear(ItemBag bag, IItem incoming, Func<int, bool> isProtectedBagIndex, Func<ItemRarity, bool> rarityAllowed)
+        {
+            int bestIndex = -1;
+            long bestKeyA = 0, bestKeyB = 0, bestKeyC = 0;
             for (int i = 0; i < bag.Capacity; i++)
             {
                 if (bag.GetSlotItem(i) is IGear g && RarityOk(rarityAllowed, g.Rarity) && !IsProtected(isProtectedBagIndex, i))
@@ -64,10 +83,14 @@ namespace RolePlayingFramework.Equipment
             if (incoming is IGear incomingGear && RarityOk(rarityAllowed, incomingGear.Rarity))
                 ConsiderGear(incomingGear, IncomingIndex, ref bestIndex, ref bestKeyA, ref bestKeyB, ref bestKeyC);
 
-            if (bestIndex >= 0)
-                return bestIndex == IncomingIndex ? SellSelection.Incoming : SellSelection.AtIndex(bestIndex);
+            return ToSelection(bestIndex);
+        }
 
-            return SellSelection.None;
+        private static SellSelection ToSelection(int bestIndex)
+        {
+            if (bestIndex < 0)
+                return SellSelection.None;
+            return bestIndex == IncomingIndex ? SellSelection.Incoming : SellSelection.AtIndex(bestIndex);
         }
 
         private static bool IsProtected(Func<int, bool> isProtectedBagIndex, int bagIndex)

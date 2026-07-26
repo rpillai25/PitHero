@@ -535,6 +535,7 @@ namespace PitHero.ECS.Scenes
             if (autoSellExcessSvc != null)
             {
                 autoSellExcessSvc.Enabled = pendingData.AutoSellExcessItems;
+                autoSellExcessSvc.ConsumablesFirst = pendingData.AutoSellConsumablesFirst;
                 if (pendingData.AutoSellRarityAllowed != null)
                 {
                     int count = pendingData.AutoSellRarityAllowed.Length < autoSellExcessSvc.RarityAllowed.Length

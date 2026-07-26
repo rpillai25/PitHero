@@ -645,6 +645,7 @@ namespace PitHero.Tests
 
                 var original = new SaveData();
                 original.AutoSellExcessItems = false;               // non-default (defaults to true)
+                original.AutoSellConsumablesFirst = false;          // non-default (defaults to true, v22)
                 original.AutoSellRarityAllowed = new bool[] { true, true, true, false, false };
 
                 dataStore.Save("v21_autosellexcess.bin", original);
@@ -653,6 +654,7 @@ namespace PitHero.Tests
                 dataStore.Load("v21_autosellexcess.bin", loaded);
 
                 Assert.AreEqual(false, loaded.AutoSellExcessItems, "AutoSellExcessItems=false should round-trip");
+                Assert.AreEqual(false, loaded.AutoSellConsumablesFirst, "AutoSellConsumablesFirst=false should round-trip");
                 Assert.IsNotNull(loaded.AutoSellRarityAllowed, "RarityAllowed should be recovered");
                 Assert.AreEqual(5, loaded.AutoSellRarityAllowed.Length);
                 Assert.AreEqual(true, loaded.AutoSellRarityAllowed[(int)ItemRarity.Normal]);
@@ -674,6 +676,7 @@ namespace PitHero.Tests
         public void SaveData_V21_AutoSellExcessItems_Defaults()
         {
             Assert.AreEqual(true, new SaveData().AutoSellExcessItems, "Auto-sell excess items defaults to ON");
+            Assert.AreEqual(true, new SaveData().AutoSellConsumablesFirst, "Sell priority defaults to consumables-first");
 
             var tempDir = Path.Combine(Path.GetTempPath(), "pithero_v21d_" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(tempDir);
@@ -692,6 +695,7 @@ namespace PitHero.Tests
                 dataStore.Load("v21_defaults.bin", loaded);
 
                 Assert.AreEqual(true, loaded.AutoSellExcessItems);
+                Assert.AreEqual(true, loaded.AutoSellConsumablesFirst, "Sell priority should recover as consumables-first by default");
                 Assert.IsNotNull(loaded.AutoSellRarityAllowed);
                 for (int i = 0; i < loaded.AutoSellRarityAllowed.Length; i++)
                     Assert.AreEqual(true, loaded.AutoSellRarityAllowed[i], $"Rarity {i} should default to allowed");

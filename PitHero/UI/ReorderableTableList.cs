@@ -31,20 +31,18 @@ namespace PitHero.UI
 
         private void Build()
         {
+            // All rows share this table's columns so the Up/Down buttons align across rows
+            // regardless of each item's text width.
             for (int i = 0; i < _items.Count; i++)
             {
-                var row = MakeRow(i, _items[i]);
-                Add(row).SetFillX().SetPadBottom(2f);
+                AddRowCells(i, _items[i]);
                 Row();
             }
             Pack();
         }
 
-        private Table MakeRow(int index, T item)
+        private void AddRowCells(int index, T item)
         {
-            var row = new Table();
-            row.SetTouchable(Touchable.Enabled);
-
             // Priority number label - use ph-default style
             var num = new Label((index + 1).ToString(), _skin, "ph-default");
 
@@ -52,21 +50,20 @@ namespace PitHero.UI
             var txt = new Label(item?.ToString() ?? string.Empty, _skin, "ph-default");
 
             // Up button
-            var upButton = new TextButton("Up", _skin, "ph-default");           
+            var upButton = new TextButton("Up", _skin, "ph-default");
             upButton.SetDisabled(index == 0); // Disable if first item
             upButton.OnClicked += (btn) => MoveItemUp(index);
 
-            // Down button  
+            // Down button
             var downButton = new TextButton("Down", _skin, "ph-default");
             downButton.SetDisabled(index == _items.Count - 1); // Disable if last item
             downButton.OnClicked += (btn) => MoveItemDown(index);
 
-            row.Add(num).SetMinWidth(30f).SetPadRight(5f);
-            row.Add(txt).SetExpandX().Left().SetPadRight(5f);
-            row.Add(upButton).SetMinWidth(30f).SetMinHeight(16f).SetPadRight(2f);
-            row.Add(downButton).SetMinWidth(30f).SetMinHeight(16f);
-
-            return row;
+            Add(num).SetMinWidth(30f).SetPadRight(5f).SetPadBottom(2f);
+            Add(txt).Left().SetPadRight(5f).SetPadBottom(2f);
+            Add(upButton).SetMinWidth(30f).SetMinHeight(16f).SetPadRight(2f).SetPadBottom(2f);
+            Add(downButton).SetMinWidth(30f).SetMinHeight(16f).SetPadBottom(2f);
+            Add().SetExpandX(); // spacer soaks leftover width so the buttons stay next to the text
         }
 
         private void MoveItemUp(int index)

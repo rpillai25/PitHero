@@ -255,13 +255,13 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 21;
+        public const int CurrentVersion = 22;
 
         /// <summary>
-        /// Oldest save file version this build can still load. v17–v20 files are byte-exact
-        /// prefixes of v21 (sections 33 dining, 34 automation, 35 auto-dine resume, and
-        /// 36 auto-sell excess items were appended at the end), so they load with default
-        /// state for the missing sections.
+        /// Oldest save file version this build can still load. v17–v21 files are byte-exact
+        /// prefixes of v22 (sections 33 dining, 34 automation, 35 auto-dine resume,
+        /// 36 auto-sell excess items, and 37 auto-sell priority were appended at the end),
+        /// so they load with default state for the missing sections.
         /// </summary>
         public const int MinSupportedVersion = 17;
 
@@ -515,6 +515,10 @@ namespace PitHero.Services
 
         /// <summary>Which gear rarities may be auto-sold, indexed by ItemRarity. Null until Recover normalizes it.</summary>
         public bool[] AutoSellRarityAllowed;
+
+        // Auto-sell priority (v22)
+        /// <summary>Sell priority for auto-selling excess items: true sells consumables before gear (default).</summary>
+        public bool AutoSellConsumablesFirst = true;
 
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
@@ -928,6 +932,9 @@ namespace PitHero.Services
             writer.Write(rarityCount);
             for (int i = 0; i < rarityCount; i++)
                 writer.Write(AutoSellRarityAllowed[i]);
+
+            // 37. Auto-sell priority (v22)
+            writer.Write(AutoSellConsumablesFirst);
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -1359,6 +1366,11 @@ namespace PitHero.Services
                         AutoSellRarityAllowed[i] = allowed;
                 }
             }
+
+            // 37. Auto-sell priority (v22+). Older files default to consumables-first.
+            AutoSellConsumablesFirst = true;
+            if (fileVersion >= 22)
+                AutoSellConsumablesFirst = reader.ReadBool();
         }
 
         /// <summary>Writes a Color as four individual int components (R, G, B, A).</summary>

@@ -90,6 +90,43 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void Selector_GearFirst_SellsGearBeforeConsumable()
+        {
+            var bag = new ItemBag("Test", 2);
+            bag.SetSlotItem(0, new TestPotion("WeakPotion", 5, 10));
+            bag.SetSlotItem(1, MakeGear("Shield", ItemKind.Shield, 10));
+
+            var selection = ExcessItemSellSelector.Select(bag, MakeGear("NewSword", ItemKind.WeaponSword, 20), null, null, consumablesFirst: false);
+
+            Assert.AreEqual(1, selection.BagIndex, "With gear priority the weakest gear sells even when a weaker consumable exists");
+        }
+
+        [TestMethod]
+        public void Selector_GearFirst_FallsBackToConsumableWhenNoSellableGear()
+        {
+            var bag = new ItemBag("Test", 2);
+            bag.SetSlotItem(0, new TestPotion("Potion", 20, 30));
+            bag.SetSlotItem(1, MakeGear("Legendary", ItemKind.WeaponSword, 5, ItemRarity.Legendary));
+
+            var selection = ExcessItemSellSelector.Select(bag, new TestPotion("StrongPotion", 30, 250),
+                null, r => r != ItemRarity.Legendary, consumablesFirst: false);
+
+            Assert.AreEqual(0, selection.BagIndex, "With no sellable gear the weakest consumable is the fallback");
+        }
+
+        [TestMethod]
+        public void Selector_GearFirst_IncomingWeakestGear_SellsIncoming()
+        {
+            var bag = new ItemBag("Test", 2);
+            bag.SetSlotItem(0, new TestPotion("Potion", 20, 30));
+            bag.SetSlotItem(1, MakeGear("GoodSword", ItemKind.WeaponSword, 30));
+
+            var selection = ExcessItemSellSelector.Select(bag, MakeGear("Junk", ItemKind.Shield, 1), null, null, consumablesFirst: false);
+
+            Assert.IsTrue(selection.SellIncoming, "Incoming junk gear is the weakest gear and sells directly");
+        }
+
+        [TestMethod]
         public void Selector_RarityFilterExcludesGear()
         {
             var bag = new ItemBag("Test", 2);
@@ -224,6 +261,7 @@ namespace PitHero.Tests
         {
             Assert.IsTrue(new AutoSellExcessItemsService().Enabled);
             var svc = new AutoSellExcessItemsService();
+            Assert.IsTrue(svc.ConsumablesFirst, "Sell priority should default to consumables-first");
             for (int i = 0; i < svc.RarityAllowed.Length; i++)
                 Assert.IsTrue(svc.RarityAllowed[i], $"Rarity {i} should be allowed by default");
         }
@@ -266,6 +304,22 @@ namespace PitHero.Tests
             Assert.AreEqual(AutoSellOutcome.SoldBagItem, outcome);
             Assert.IsNull(bag.GetSlotItem(1), "The weakest gear should have been sold");
             Assert.IsTrue(bag.TryAdd(incoming), "A slot must now be free for the incoming item");
+        }
+
+        [TestMethod]
+        public void Service_GearFirst_SellsWeakestGearOverConsumable()
+        {
+            var svc = new AutoSellExcessItemsService { ConsumablesFirst = false };
+            var bag = new ItemBag("Test", 2);
+            bag.SetSlotItem(0, new TestPotion("WeakPotion", 5, 10));
+            bag.SetSlotItem(1, MakeGear("JunkShield", ItemKind.Shield, 2));
+            var incoming = MakeGear("NewArmor", ItemKind.ArmorMail, 20);
+
+            var outcome = svc.TryMakeRoom(bag, incoming);
+
+            Assert.AreEqual(AutoSellOutcome.SoldBagItem, outcome);
+            Assert.IsNull(bag.GetSlotItem(1), "With gear priority the junk shield sells, not the potion");
+            Assert.IsNotNull(bag.GetSlotItem(0), "The consumable must be untouched");
         }
 
         [TestMethod]
@@ -323,6 +377,24 @@ namespace PitHero.Tests
 
             Assert.AreEqual(1, runner.ItemsAutoSold);
             Assert.IsTrue(runner.AutoSellGold > 0, "Gold from the sold junk shield should be credited");
+            Assert.AreEqual(2, bag.Count, "Junk shield sold, new armor collected");
+        }
+
+        [TestMethod]
+        public void VirtualRunner_GearFirst_SellsGearBeforeConsumable()
+        {
+            var (runner, bag) = CreateVirtualRunner(2);
+            runner.AutoSellExcessItems = true;
+            runner.AutoSellConsumablesFirst = false;
+            runner.AutoEquipHero = false;
+            runner.AutoEquipMercenaries = false;
+            bag.SetSlotItem(0, new TestPotion("WeakPotion", 5, 10));
+            bag.SetSlotItem(1, MakeGear("JunkShield", ItemKind.Shield, 2));
+
+            runner.CollectChestItem(MakeGear("NewArmor", ItemKind.ArmorMail, 20));
+
+            Assert.AreEqual(1, runner.ItemsAutoSold);
+            Assert.IsNotNull(bag.GetSlotItem(0), "The consumable must survive under gear-first priority");
             Assert.AreEqual(2, bag.Count, "Junk shield sold, new armor collected");
         }
 

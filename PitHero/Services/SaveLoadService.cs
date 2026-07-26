@@ -808,6 +808,7 @@ namespace PitHero.Services
             if (autoSellExcessService != null)
             {
                 data.AutoSellExcessItems = autoSellExcessService.Enabled;
+                data.AutoSellConsumablesFirst = autoSellExcessService.ConsumablesFirst;
                 data.AutoSellRarityAllowed = new bool[autoSellExcessService.RarityAllowed.Length];
                 for (int i = 0; i < data.AutoSellRarityAllowed.Length; i++)
                     data.AutoSellRarityAllowed[i] = autoSellExcessService.RarityAllowed[i];

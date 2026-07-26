@@ -352,6 +352,10 @@ namespace PitHero
         public const string DishHarvestFeastPlatter = "DishHarvestFeastPlatter";
         public const string SettingsAutoSellExcessItems = "SettingsAutoSellExcessItems";
         public const string SettingsAutoSellExcessItemsTooltip = "SettingsAutoSellExcessItemsTooltip";
+        public const string SettingsSellPriority = "SettingsSellPriority";
+        public const string SettingsSellPriorityTooltip = "SettingsSellPriorityTooltip";
+        public const string SellPriorityConsumables = "SellPriorityConsumables";
+        public const string SellPriorityGear = "SellPriorityGear";
         public const string SettingsSellRarities = "SettingsSellRarities";
         public const string SettingsSellRaritiesTooltip = "SettingsSellRaritiesTooltip";
         public const string RarityNormal = "RarityNormal";

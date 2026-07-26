@@ -108,12 +108,15 @@ namespace PitHero.VirtualGame
 
         /// <summary>
         /// When true, <see cref="CollectChestItem"/> mirrors <c>AutoSellExcessItemsService</c>:
-        /// on a full bag the weakest item (consumables first, then gear across all types) is
-        /// sold to make room. Off by default to preserve existing balance baselines.
-        /// The virtual layer has no synergy/stencil model, so nothing is protected and all
-        /// rarities are sellable (documented Delta-Plan gap).
+        /// on a full bag the weakest item is sold to make room, ordered by
+        /// <see cref="AutoSellConsumablesFirst"/>. Off by default to preserve existing balance
+        /// baselines. The virtual layer has no synergy/stencil model, so nothing is protected
+        /// and all rarities are sellable (documented Delta-Plan gap).
         /// </summary>
         public bool AutoSellExcessItems { get; set; } = false;
+
+        /// <summary>Sell priority mirror of <c>AutoSellExcessItemsService.ConsumablesFirst</c>: true sells consumables before gear.</summary>
+        public bool AutoSellConsumablesFirst { get; set; } = true;
 
         /// <summary>Number of items auto-sold to make room since this runner was created.</summary>
         public int ItemsAutoSold { get; private set; }
@@ -238,7 +241,7 @@ namespace PitHero.VirtualGame
                 bool added = false;
                 if (AutoSellExcessItems)
                 {
-                    var selection = ExcessItemSellSelector.Select(bag, item, null, null);
+                    var selection = ExcessItemSellSelector.Select(bag, item, null, null, AutoSellConsumablesFirst);
                     if (selection.SellIncoming)
                     {
                         ItemsAutoSold++;

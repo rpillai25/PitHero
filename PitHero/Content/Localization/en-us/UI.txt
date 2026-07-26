@@ -355,6 +355,10 @@ DishChilledWatermelonSorbet,Chilled Watermelon Sorbet
 DishHarvestFeastPlatter,Harvest Feast Platter
 SettingsAutoSellExcessItems,Auto-Sell Excess Items
 SettingsAutoSellExcessItemsTooltip,Auto-Sell items to make room for new loot
+SettingsSellPriority,Item Sell Priority
+SettingsSellPriorityTooltip,Items of the top category are sold first to make room
+SellPriorityConsumables,Consumables
+SellPriorityGear,Gear
 SettingsSellRarities,Gear Rarities to Sell
 SettingsSellRaritiesTooltip,Gear of unchecked rarities will never be auto-sold
 RarityNormal,Normal

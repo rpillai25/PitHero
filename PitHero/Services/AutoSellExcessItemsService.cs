@@ -21,8 +21,8 @@ namespace PitHero.Services
     /// Auto-sells the weakest excess item when the bag is full and a new chest item arrives.
     /// Call-driven (no update loop): OpenChestAction invokes TryMakeRoom before adding the item.
     /// Items in an active synergy or under a placed stencil are never sold; gear rarities can be
-    /// excluded via RarityAllowed. Consumables always sell before gear; gear weakness is compared
-    /// across all gear types at once.
+    /// excluded via RarityAllowed. ConsumablesFirst picks whether the weakest consumable or the
+    /// weakest gear (compared across all gear types at once) sells first.
     /// </summary>
     public class AutoSellExcessItemsService
     {
@@ -30,6 +30,9 @@ namespace PitHero.Services
 
         /// <summary>Master toggle. On by default (unlike other automation toggles) — this guards against loot loss.</summary>
         public bool Enabled { get; set; } = true;
+
+        /// <summary>Sell priority: true sells consumables before gear (default), false sells gear before consumables.</summary>
+        public bool ConsumablesFirst { get; set; } = true;
 
         /// <summary>Whether gear of each rarity may be auto-sold, indexed by ItemRarity. All true by default.</summary>
         public bool[] RarityAllowed { get; } = new bool[5];
@@ -65,7 +68,7 @@ namespace PitHero.Services
             grid?.UpdateItemsFromBag();
             System.Func<int, bool> isProtected = grid != null ? grid.IsBagIndexProtected : (System.Func<int, bool>)null;
 
-            var selection = ExcessItemSellSelector.Select(bag, incoming, isProtected, IsRarityAllowed);
+            var selection = ExcessItemSellSelector.Select(bag, incoming, isProtected, IsRarityAllowed, ConsumablesFirst);
             if (!selection.HasSelection)
                 return AutoSellOutcome.None;
 
