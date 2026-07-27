@@ -977,5 +977,143 @@ namespace PitHero.Tests
                     Directory.Delete(tempDir, true);
             }
         }
+
+        /// <summary>
+        /// Verifies the v23 sections (gear sell types, auto-purchase items, auto-equip) round-trip
+        /// through Persist/Recover with non-default values.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V23_AutomationUpdates_RoundTrip()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_v23_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+
+                var original = new SaveData();
+
+                // 38. Gear sell types
+                original.AutoSellGearTypeAllowed = new bool[GearCategoryUtils.Count];
+                for (int i = 0; i < original.AutoSellGearTypeAllowed.Length; i++)
+                    original.AutoSellGearTypeAllowed[i] = true;
+                original.AutoSellGearTypeAllowed[(int)GearCategory.Weapon] = false;
+
+                // 39. Auto-purchase items
+                original.AutoPurchaseItems = true;
+                original.AutoPurchaseConsumablesFirst = true;      // non-default (defaults to gear-first)
+                original.AutoPurchaseMercenaryGear = true;
+                original.AutoPurchaseConsumables = true;
+                original.AutoPurchaseRarityAllowed = new bool[] { true, true, true, false, false };
+                original.AutoPurchaseGearTypeAllowed = new bool[GearCategoryUtils.Count];
+                for (int i = 0; i < original.AutoPurchaseGearTypeAllowed.Length; i++)
+                    original.AutoPurchaseGearTypeAllowed[i] = true;
+                original.AutoPurchaseGearTypeAllowed[(int)GearCategory.Accessory] = false;
+                original.AutoPurchaseConsumableSelected = new bool[ConsumableCatalog.Count];
+                original.AutoPurchaseConsumableStacks = new int[ConsumableCatalog.Count];
+                for (int i = 0; i < ConsumableCatalog.Count; i++)
+                    original.AutoPurchaseConsumableStacks[i] = 1;
+                original.AutoPurchaseConsumableSelected[2] = true;
+                original.AutoPurchaseConsumableStacks[2] = 3;
+
+                // 40. Auto-equip
+                original.AutoEquipHero = false;
+                original.AutoEquipMercenaries = false;
+
+                dataStore.Save("v23_automation.bin", original);
+
+                var loaded = new SaveData();
+                dataStore.Load("v23_automation.bin", loaded);
+
+                Assert.IsNotNull(loaded.AutoSellGearTypeAllowed);
+                Assert.AreEqual(GearCategoryUtils.Count, loaded.AutoSellGearTypeAllowed.Length);
+                Assert.IsFalse(loaded.AutoSellGearTypeAllowed[(int)GearCategory.Weapon], "Unchecked Weapon sell type should round-trip");
+                Assert.IsTrue(loaded.AutoSellGearTypeAllowed[(int)GearCategory.Shield]);
+
+                Assert.IsTrue(loaded.AutoPurchaseItems);
+                Assert.IsTrue(loaded.AutoPurchaseConsumablesFirst);
+                Assert.IsTrue(loaded.AutoPurchaseMercenaryGear);
+                Assert.IsTrue(loaded.AutoPurchaseConsumables);
+                Assert.IsFalse(loaded.AutoPurchaseRarityAllowed[(int)ItemRarity.Epic]);
+                Assert.IsFalse(loaded.AutoPurchaseGearTypeAllowed[(int)GearCategory.Accessory]);
+                Assert.IsTrue(loaded.AutoPurchaseConsumableSelected[2], "Selected consumable should round-trip");
+                Assert.AreEqual(3, loaded.AutoPurchaseConsumableStacks[2], "Stack target should round-trip");
+                Assert.IsFalse(loaded.AutoPurchaseConsumableSelected[0]);
+                Assert.AreEqual(1, loaded.AutoPurchaseConsumableStacks[0]);
+
+                Assert.IsFalse(loaded.AutoEquipHero);
+                Assert.IsFalse(loaded.AutoEquipMercenaries);
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
+        /// <summary>
+        /// Verifies the v23 defaults: everything permissive/off, matching a fresh game. Null arrays
+        /// persist a zero count, so this also covers the "older file, section absent" path.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V23_AutomationUpdates_Defaults()
+        {
+            var fresh = new SaveData();
+            Assert.IsFalse(fresh.AutoPurchaseItems, "Auto-purchase defaults to off");
+            Assert.IsFalse(fresh.AutoPurchaseConsumablesFirst, "Purchase priority defaults to gear-first");
+            Assert.IsFalse(fresh.AutoPurchaseMercenaryGear);
+            Assert.IsFalse(fresh.AutoPurchaseConsumables);
+            Assert.IsTrue(fresh.AutoEquipHero, "Auto-equip defaults to on");
+            Assert.IsTrue(fresh.AutoEquipMercenaries, "Auto-equip defaults to on");
+
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_v23d_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+
+                var original = new SaveData();
+                original.AutoSellGearTypeAllowed = null;
+                original.AutoPurchaseRarityAllowed = null;
+                original.AutoPurchaseGearTypeAllowed = null;
+                original.AutoPurchaseConsumableSelected = null;
+                original.AutoPurchaseConsumableStacks = null;
+
+                dataStore.Save("v23_defaults.bin", original);
+
+                var loaded = new SaveData();
+                dataStore.Load("v23_defaults.bin", loaded);
+
+                Assert.IsNotNull(loaded.AutoSellGearTypeAllowed);
+                for (int i = 0; i < loaded.AutoSellGearTypeAllowed.Length; i++)
+                    Assert.IsTrue(loaded.AutoSellGearTypeAllowed[i], $"Gear sell category {i} should default to allowed");
+
+                Assert.IsNotNull(loaded.AutoPurchaseRarityAllowed);
+                for (int i = 0; i < loaded.AutoPurchaseRarityAllowed.Length; i++)
+                    Assert.IsTrue(loaded.AutoPurchaseRarityAllowed[i], $"Buy rarity {i} should default to allowed");
+
+                Assert.IsNotNull(loaded.AutoPurchaseGearTypeAllowed);
+                for (int i = 0; i < loaded.AutoPurchaseGearTypeAllowed.Length; i++)
+                    Assert.IsTrue(loaded.AutoPurchaseGearTypeAllowed[i], $"Buy gear category {i} should default to allowed");
+
+                Assert.IsNotNull(loaded.AutoPurchaseConsumableSelected);
+                Assert.AreEqual(ConsumableCatalog.Count, loaded.AutoPurchaseConsumableSelected.Length);
+                for (int i = 0; i < loaded.AutoPurchaseConsumableSelected.Length; i++)
+                {
+                    Assert.IsFalse(loaded.AutoPurchaseConsumableSelected[i], $"Consumable {i} should default to unselected");
+                    Assert.AreEqual(1, loaded.AutoPurchaseConsumableStacks[i], $"Consumable {i} should default to one stack");
+                }
+
+                Assert.IsTrue(loaded.AutoEquipHero);
+                Assert.IsTrue(loaded.AutoEquipMercenaries);
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
     }
 }

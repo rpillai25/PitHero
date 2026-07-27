@@ -265,7 +265,7 @@ namespace RolePlayingFramework.Equipment
         }
 
         /// <summary>Gets the gear item in the specified slot for a hero.</summary>
-        private static IGear GetHeroItemInSlot(Hero hero, EquipmentSlot slot)
+        public static IGear GetHeroItemInSlot(Hero hero, EquipmentSlot slot)
         {
             if (hero == null) return null;
 
@@ -289,7 +289,7 @@ namespace RolePlayingFramework.Equipment
         }
 
         /// <summary>Gets the gear item in the specified slot for a mercenary.</summary>
-        private static IGear GetMercItemInSlot(Mercenary merc, EquipmentSlot slot)
+        public static IGear GetMercItemInSlot(Mercenary merc, EquipmentSlot slot)
         {
             if (merc == null) return null;
 

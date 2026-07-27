@@ -10,24 +10,21 @@ namespace RolePlayingFramework.Equipment
         /// <summary>Gets the display type string for an item kind.</summary>
         public static string GetItemTypeString(ItemKind kind)
         {
-            return kind switch
+            if (kind == ItemKind.Consumable)
+                return "Consumable";
+
+            // Delegate to the shared kind→category mapping so this list can never drift out of
+            // sync with the auto-sell / auto-purchase gear-type filters.
+            if (!GearCategoryUtils.TryGetCategory(kind, out GearCategory category))
+                return "Unknown";
+
+            return category switch
             {
-                ItemKind.Consumable => "Consumable",
-                ItemKind.WeaponSword => "Weapon",
-                ItemKind.WeaponKnife => "Weapon",
-                ItemKind.WeaponKnuckle => "Weapon",
-                ItemKind.WeaponStaff => "Weapon",
-                ItemKind.WeaponRod => "Weapon",
-                ItemKind.WeaponHammer => "Weapon",
-                ItemKind.ArmorMail => "Armor",
-                ItemKind.ArmorGi => "Armor",
-                ItemKind.ArmorRobe => "Armor",
-                ItemKind.HatHelm => "Helm",
-                ItemKind.HatHeadband => "Helm",
-                ItemKind.HatWizard => "Helm",
-                ItemKind.HatPriest => "Helm",
-                ItemKind.Shield => "Shield",
-                ItemKind.Accessory => "Accessory",
+                GearCategory.Weapon => "Weapon",
+                GearCategory.Helm => "Helm",
+                GearCategory.Shield => "Shield",
+                GearCategory.Armor => "Armor",
+                GearCategory.Accessory => "Accessory",
                 _ => "Unknown"
             };
         }

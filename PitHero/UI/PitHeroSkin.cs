@@ -282,12 +282,19 @@ namespace PitHero.UI
             var sliderKnobOver = new SpriteDrawable(uiAtlas.GetSprite("UISliderKnobOver"));
             var sliderKnobDown = new SpriteDrawable(uiAtlas.GetSprite("UISliderKnobDown"));
 
+            // Deactivated appearance: a slider with Disabled = true draws these instead, matching
+            // the faded look of the "ph-grayed" label / checkbox / button styles.
+            var sliderBackgroundGrayed = new PrimitiveDrawable(6, GrayedFontColor);
+            var sliderKnobGrayed = sliderKnob.NewTintedDrawable(GrayedTint);
+
             var sliderStyle = new SliderStyle
             {
                 Background = sliderBackground,
                 Knob = sliderKnob,
                 KnobOver = sliderKnobOver,
-                KnobDown = sliderKnobDown
+                KnobDown = sliderKnobDown,
+                DisabledBackground = sliderBackgroundGrayed,
+                DisabledKnob = sliderKnobGrayed
             };
             skin.Add("ph-default", sliderStyle);
 

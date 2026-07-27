@@ -103,7 +103,7 @@ HudGold,Gold: {0}
 HudLevelPrefix,Lv 
 TabWindow,Window
 TabSession,Session
-TabButtons,UI Options
+TabButtons,UI Buttons
 SettingsAlwaysOnTop,Always On Top
 SettingsAutoScrollToHero,Auto-scroll to Hero
 SettingsSwapMonitor,Swap Monitor
@@ -120,9 +120,9 @@ SettingsReplenishLabel,Replenish Button Thresholds
 SettingsReplenishThresholdHint,(HP or MP must be below this level to replenish)
 SettingsHpThreshold,HP Threshold: {0}%
 SettingsMpThreshold,MP Threshold: {0}%
-SettingsHideBarLabel,Hide Bar Settings
+SettingsHideBarLabel,Hide Settings
 SettingsAutoHideUIBars,Auto-hide UI Bar(s)
-SettingsHideButtonBar,Hide Button Bar
+SettingsHideButtonBar,Hide Top Button Bar
 SettingsHideShortcutBar,Hide Shortcut Bar
 SettingsHideEventConsole,Hide Event Console
 TabInventory,Inventory
@@ -168,7 +168,7 @@ BehaviorTacticDefensiveDesc,  Prioritize survival, heal at 60%
 BehaviorConsumableOptions,Consumable Options
 BehaviorUseConsumablesOnMerc,Use consumable items on mercenaries
 BehaviorMercCanUseConsumables,Mercenaries can use consumable items
-BehaviorAutoEquipOptions,Auto Equip Options
+BehaviorAutoEquipOptions,Auto-Equip Options
 BehaviorAutoEquipHero,Auto Equip Hero
 BehaviorAutoEquipMercenaries,Auto Equip Mercenaries
 AppearanceNameLabel,Name:
@@ -368,3 +368,34 @@ RarityEpic,Epic
 RarityLegendary,Legendary
 ConsoleAutoSoldItem,Auto-sold {0} for {1}G to make room.
 ConsoleItemSentToVault,Bag full! {0} was sent to the Second Chance shop.
+
+# Automation updates (issue #345)
+ButtonGearSellOptions,Gear Sell Options
+WindowGearSellOptions,Gear Sell Options
+SettingsSellGearTypes,Gear Types to Sell
+SettingsSellGearTypesTooltip,Gear of unchecked types will never be auto-sold
+GearTypeWeapon,Weapon
+GearTypeHelm,Helm
+GearTypeShield,Shield
+GearTypeArmor,Armor
+GearTypeAccessory,Accessory
+SettingsAutoPurchaseItems,Auto-Purchase Items
+SettingsAutoPurchaseItemsTooltip,Auto-Purchase items before entering pit. Gear is auto-equipped according to Auto-Equip options
+SettingsPurchasePriority,Item Purchase Priority
+SettingsPurchasePriorityTooltip,Items of the top category are bought first while gold lasts
+SettingsAutoPurchaseMercGear,Auto-Purchase Mercenary Gear
+SettingsAutoPurchaseMercGearTooltip,Also buy the best gear for hired mercenaries
+ButtonGearPurchaseOptions,Gear Purchase Options
+WindowGearPurchaseOptions,Gear Purchase Options
+SettingsBuyRarities,Gear Rarities to Buy
+SettingsBuyRaritiesTooltip,Gear of unchecked rarities will never be auto-purchased
+SettingsBuyGearTypes,Gear Types to Buy
+SettingsBuyGearTypesTooltip,Gear of unchecked types will never be auto-purchased
+SettingsAutoPurchaseConsumables,Auto-Purchase Consumables
+SettingsAutoPurchaseConsumablesTooltip,Also buy the selected consumables before entering pit
+ButtonConsumablePurchaseOptions,Consumable Purchase Options
+WindowConsumablePurchaseOptions,Consumable Purchase Options
+SettingsConsumableStacks,Stacks: {0}
+SettingsConsumableStacksTooltip,Minimum stacks to maintain in inventory if space allows
+SettingsAutoEquipOptionsTooltip,Auto-equip gear after finding in chest or auto-purchased
+ConsoleAutoPurchasedItem,Auto-purchased {0} for {1}G.

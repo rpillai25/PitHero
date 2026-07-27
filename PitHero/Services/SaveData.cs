@@ -255,12 +255,13 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 22;
+        public const int CurrentVersion = 23;
 
         /// <summary>
-        /// Oldest save file version this build can still load. v17–v21 files are byte-exact
-        /// prefixes of v22 (sections 33 dining, 34 automation, 35 auto-dine resume,
-        /// 36 auto-sell excess items, and 37 auto-sell priority were appended at the end),
+        /// Oldest save file version this build can still load. v17–v22 files are byte-exact
+        /// prefixes of v23 (sections 33 dining, 34 automation, 35 auto-dine resume,
+        /// 36 auto-sell excess items, 37 auto-sell priority, 38 gear sell types,
+        /// 39 auto-purchase items, and 40 auto-equip were appended at the end),
         /// so they load with default state for the missing sections.
         /// </summary>
         public const int MinSupportedVersion = 17;
@@ -519,6 +520,42 @@ namespace PitHero.Services
         // Auto-sell priority (v22)
         /// <summary>Sell priority for auto-selling excess items: true sells consumables before gear (default).</summary>
         public bool AutoSellConsumablesFirst = true;
+
+        // Gear sell types (v23)
+        /// <summary>Which gear categories may be auto-sold, indexed by GearCategory. Null until Recover normalizes it.</summary>
+        public bool[] AutoSellGearTypeAllowed;
+
+        // Auto-purchase items (v23)
+        /// <summary>Whether items are auto-purchased from the Second Chance shop before entering the pit.</summary>
+        public bool AutoPurchaseItems = false;
+
+        /// <summary>Purchase priority: true buys consumables before gear; false (default) buys gear first.</summary>
+        public bool AutoPurchaseConsumablesFirst = false;
+
+        /// <summary>Whether gear is also auto-purchased for hired mercenaries.</summary>
+        public bool AutoPurchaseMercenaryGear = false;
+
+        /// <summary>Whether the selected consumables are auto-purchased.</summary>
+        public bool AutoPurchaseConsumables = false;
+
+        /// <summary>Which gear rarities may be auto-purchased, indexed by ItemRarity. Null until Recover normalizes it.</summary>
+        public bool[] AutoPurchaseRarityAllowed;
+
+        /// <summary>Which gear categories may be auto-purchased, indexed by GearCategory. Null until Recover normalizes it.</summary>
+        public bool[] AutoPurchaseGearTypeAllowed;
+
+        /// <summary>Which catalog consumables are auto-purchased, indexed by ConsumableCatalog index. Null until Recover normalizes it.</summary>
+        public bool[] AutoPurchaseConsumableSelected;
+
+        /// <summary>Stack target per catalog consumable, indexed by ConsumableCatalog index. Null until Recover normalizes it.</summary>
+        public int[] AutoPurchaseConsumableStacks;
+
+        // Auto-equip (v23; previously runtime-only on HeroComponent)
+        /// <summary>Whether looted or purchased gear is auto-equipped on the hero.</summary>
+        public bool AutoEquipHero = true;
+
+        /// <summary>Whether looted or purchased gear is auto-equipped on mercenaries.</summary>
+        public bool AutoEquipMercenaries = true;
 
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
@@ -935,6 +972,42 @@ namespace PitHero.Services
 
             // 37. Auto-sell priority (v22)
             writer.Write(AutoSellConsumablesFirst);
+
+            // 38. Gear sell types (v23)
+            int sellTypeCount = AutoSellGearTypeAllowed != null ? AutoSellGearTypeAllowed.Length : 0;
+            writer.Write(sellTypeCount);
+            for (int i = 0; i < sellTypeCount; i++)
+                writer.Write(AutoSellGearTypeAllowed[i]);
+
+            // 39. Auto-purchase items (v23)
+            writer.Write(AutoPurchaseItems);
+            writer.Write(AutoPurchaseConsumablesFirst);
+            writer.Write(AutoPurchaseMercenaryGear);
+            writer.Write(AutoPurchaseConsumables);
+
+            int buyRarityCount = AutoPurchaseRarityAllowed != null ? AutoPurchaseRarityAllowed.Length : 0;
+            writer.Write(buyRarityCount);
+            for (int i = 0; i < buyRarityCount; i++)
+                writer.Write(AutoPurchaseRarityAllowed[i]);
+
+            int buyTypeCount = AutoPurchaseGearTypeAllowed != null ? AutoPurchaseGearTypeAllowed.Length : 0;
+            writer.Write(buyTypeCount);
+            for (int i = 0; i < buyTypeCount; i++)
+                writer.Write(AutoPurchaseGearTypeAllowed[i]);
+
+            int consumableCount = AutoPurchaseConsumableSelected != null ? AutoPurchaseConsumableSelected.Length : 0;
+            writer.Write(consumableCount);
+            for (int i = 0; i < consumableCount; i++)
+            {
+                writer.Write(AutoPurchaseConsumableSelected[i]);
+                writer.Write(AutoPurchaseConsumableStacks != null && i < AutoPurchaseConsumableStacks.Length
+                    ? AutoPurchaseConsumableStacks[i]
+                    : 1);
+            }
+
+            // 40. Auto-equip (v23)
+            writer.Write(AutoEquipHero);
+            writer.Write(AutoEquipMercenaries);
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -1371,6 +1444,81 @@ namespace PitHero.Services
             AutoSellConsumablesFirst = true;
             if (fileVersion >= 22)
                 AutoSellConsumablesFirst = reader.ReadBool();
+
+            // 38. Gear sell types (v23+). Older files end at section 37 — all categories sellable.
+            AutoSellGearTypeAllowed = new bool[RolePlayingFramework.Equipment.GearCategoryUtils.Count];
+            for (int i = 0; i < AutoSellGearTypeAllowed.Length; i++)
+                AutoSellGearTypeAllowed[i] = true;
+            if (fileVersion >= 23)
+            {
+                int sellTypeCount = reader.ReadInt();
+                for (int i = 0; i < sellTypeCount; i++)
+                {
+                    bool allowed = reader.ReadBool();
+                    if (i < AutoSellGearTypeAllowed.Length)
+                        AutoSellGearTypeAllowed[i] = allowed;
+                }
+            }
+
+            // 39. Auto-purchase items (v23+). Older files default to disabled with all filters open.
+            AutoPurchaseItems = false;
+            AutoPurchaseConsumablesFirst = false;
+            AutoPurchaseMercenaryGear = false;
+            AutoPurchaseConsumables = false;
+            AutoPurchaseRarityAllowed = new bool[5];
+            for (int i = 0; i < AutoPurchaseRarityAllowed.Length; i++)
+                AutoPurchaseRarityAllowed[i] = true;
+            AutoPurchaseGearTypeAllowed = new bool[RolePlayingFramework.Equipment.GearCategoryUtils.Count];
+            for (int i = 0; i < AutoPurchaseGearTypeAllowed.Length; i++)
+                AutoPurchaseGearTypeAllowed[i] = true;
+            AutoPurchaseConsumableSelected = new bool[RolePlayingFramework.Equipment.ConsumableCatalog.Count];
+            AutoPurchaseConsumableStacks = new int[RolePlayingFramework.Equipment.ConsumableCatalog.Count];
+            for (int i = 0; i < AutoPurchaseConsumableStacks.Length; i++)
+                AutoPurchaseConsumableStacks[i] = 1;
+            if (fileVersion >= 23)
+            {
+                AutoPurchaseItems = reader.ReadBool();
+                AutoPurchaseConsumablesFirst = reader.ReadBool();
+                AutoPurchaseMercenaryGear = reader.ReadBool();
+                AutoPurchaseConsumables = reader.ReadBool();
+
+                int buyRarityCount = reader.ReadInt();
+                for (int i = 0; i < buyRarityCount; i++)
+                {
+                    bool allowed = reader.ReadBool();
+                    if (i < AutoPurchaseRarityAllowed.Length)
+                        AutoPurchaseRarityAllowed[i] = allowed;
+                }
+
+                int buyTypeCount = reader.ReadInt();
+                for (int i = 0; i < buyTypeCount; i++)
+                {
+                    bool allowed = reader.ReadBool();
+                    if (i < AutoPurchaseGearTypeAllowed.Length)
+                        AutoPurchaseGearTypeAllowed[i] = allowed;
+                }
+
+                int consumableCount = reader.ReadInt();
+                for (int i = 0; i < consumableCount; i++)
+                {
+                    bool selected = reader.ReadBool();
+                    int stacks = reader.ReadInt();
+                    if (i < AutoPurchaseConsumableSelected.Length)
+                    {
+                        AutoPurchaseConsumableSelected[i] = selected;
+                        AutoPurchaseConsumableStacks[i] = stacks;
+                    }
+                }
+            }
+
+            // 40. Auto-equip (v23+). Older files default to both on, matching the runtime defaults.
+            AutoEquipHero = true;
+            AutoEquipMercenaries = true;
+            if (fileVersion >= 23)
+            {
+                AutoEquipHero = reader.ReadBool();
+                AutoEquipMercenaries = reader.ReadBool();
+            }
         }
 
         /// <summary>Writes a Color as four individual int components (R, G, B, A).</summary>

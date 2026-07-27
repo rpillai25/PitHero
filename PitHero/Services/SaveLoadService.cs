@@ -322,6 +322,10 @@ namespace PitHero.Services
                     data.BattleTacticValue = (int)heroComp.CurrentBattleTactic;
                     data.UseConsumablesOnMercenaries = heroComp.UseConsumablesOnMercenaries;
                     data.MercenariesCanUseConsumables = heroComp.MercenariesCanUseConsumables;
+
+                    // Auto-equip options (v23+; edited from the Settings Automation tab)
+                    data.AutoEquipHero = heroComp.AutoEquipHero;
+                    data.AutoEquipMercenaries = heroComp.AutoEquipMercenaries;
                 }
             }
 
@@ -803,7 +807,7 @@ namespace PitHero.Services
             if (partyDiningService != null)
                 data.PartyAutoDineResume = partyDiningService.AutoResumeWhenDone;
 
-            // Auto-sell excess items (v21+)
+            // Auto-sell excess items (v21+), plus gear-type filter (v23+)
             var autoSellExcessService = Core.Services.GetService<AutoSellExcessItemsService>();
             if (autoSellExcessService != null)
             {
@@ -812,6 +816,35 @@ namespace PitHero.Services
                 data.AutoSellRarityAllowed = new bool[autoSellExcessService.RarityAllowed.Length];
                 for (int i = 0; i < data.AutoSellRarityAllowed.Length; i++)
                     data.AutoSellRarityAllowed[i] = autoSellExcessService.RarityAllowed[i];
+                data.AutoSellGearTypeAllowed = new bool[autoSellExcessService.GearTypeAllowed.Length];
+                for (int i = 0; i < data.AutoSellGearTypeAllowed.Length; i++)
+                    data.AutoSellGearTypeAllowed[i] = autoSellExcessService.GearTypeAllowed[i];
+            }
+
+            // Auto-purchase items (v23+)
+            var autoItemPurchaseService = Core.Services.GetService<AutoItemPurchaseService>();
+            if (autoItemPurchaseService != null)
+            {
+                data.AutoPurchaseItems = autoItemPurchaseService.Enabled;
+                data.AutoPurchaseConsumablesFirst = autoItemPurchaseService.ConsumablesFirst;
+                data.AutoPurchaseMercenaryGear = autoItemPurchaseService.PurchaseMercenaryGear;
+                data.AutoPurchaseConsumables = autoItemPurchaseService.PurchaseConsumables;
+
+                data.AutoPurchaseRarityAllowed = new bool[autoItemPurchaseService.BuyRarityAllowed.Length];
+                for (int i = 0; i < data.AutoPurchaseRarityAllowed.Length; i++)
+                    data.AutoPurchaseRarityAllowed[i] = autoItemPurchaseService.BuyRarityAllowed[i];
+
+                data.AutoPurchaseGearTypeAllowed = new bool[autoItemPurchaseService.BuyGearTypeAllowed.Length];
+                for (int i = 0; i < data.AutoPurchaseGearTypeAllowed.Length; i++)
+                    data.AutoPurchaseGearTypeAllowed[i] = autoItemPurchaseService.BuyGearTypeAllowed[i];
+
+                data.AutoPurchaseConsumableSelected = new bool[autoItemPurchaseService.ConsumableSelected.Length];
+                data.AutoPurchaseConsumableStacks = new int[autoItemPurchaseService.ConsumableStackTargets.Length];
+                for (int i = 0; i < data.AutoPurchaseConsumableSelected.Length; i++)
+                {
+                    data.AutoPurchaseConsumableSelected[i] = autoItemPurchaseService.ConsumableSelected[i];
+                    data.AutoPurchaseConsumableStacks[i] = autoItemPurchaseService.ConsumableStackTargets[i];
+                }
             }
 
             return data;

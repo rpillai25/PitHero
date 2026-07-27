@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.AI.Interfaces;
@@ -328,7 +327,7 @@ namespace PitHero.AI
                 }
 
                 // Try to auto-equip if gear item
-                TryAutoEquipFromChest(hero, containedItem);
+                PartyAutoEquipHelper.TryAutoEquipForParty(hero, containedItem);
 
                 // Clear the item from the treasure chest
                 treasureComponent.ContainedItem = null;
@@ -366,78 +365,5 @@ namespace PitHero.AI
             }
         }
 
-        /// <summary>Emits a console event for a successful auto-equip.</summary>
-        private void EmitAutoEquipEvent(string characterName, IGear gear)
-        {
-            Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleAutoEquip,
-                (characterName, GameConfig.ConsoleColorHeroName),
-                (gear.Name, RarityUtils.GetRarityColor(gear.Rarity)));
-        }
-
-        /// <summary>Attempts to auto-equip gear on hero and mercenaries, then cascades any displaced gear as hand-me-downs.</summary>
-        private void TryAutoEquipFromChest(HeroComponent heroComp, IItem item)
-        {
-            if (!(item is IGear gear))
-                return;
-
-            if (heroComp.LinkedHero == null)
-                return;
-
-            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
-            List<Entity> hiredMercenaries = heroComp.AutoEquipMercenaries ? mercenaryManager?.GetHiredMercenaries() : null;
-
-            if (heroComp.AutoEquipHero)
-            {
-                if (GearAutoEquipService.TryAutoEquipOnHero(heroComp.LinkedHero, heroComp.Bag, gear, out IGear heroDisplaced))
-                {
-                    Debug.Log($"[OpenChest] Auto-equipped {gear.Name} on hero");
-                    EmitAutoEquipEvent(heroComp.LinkedHero.Name, gear);
-                    if (heroDisplaced != null && hiredMercenaries != null)
-                        TryHandMeDownToMercs(heroComp, hiredMercenaries, heroDisplaced, 0);
-                    return;
-                }
-            }
-
-            if (hiredMercenaries == null)
-                return;
-
-            for (int i = 0; i < hiredMercenaries.Count; i++)
-            {
-                var mercEntity = hiredMercenaries[i];
-                var mercComp = mercEntity.GetComponent<MercenaryComponent>();
-                if (mercComp?.LinkedMercenary == null) continue;
-
-                if (GearAutoEquipService.TryAutoEquipOnMercenary(mercComp.LinkedMercenary, heroComp.Bag, gear, out IGear mercDisplaced))
-                {
-                    Debug.Log($"[OpenChest] Auto-equipped {gear.Name} on mercenary {mercComp.LinkedMercenary.Name}");
-                    EmitAutoEquipEvent(mercComp.LinkedMercenary.Name, gear);
-                    if (mercDisplaced != null)
-                        TryHandMeDownToMercs(heroComp, hiredMercenaries, mercDisplaced, i + 1);
-                    return;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Offers a displaced piece of gear to mercenaries starting at the given index.
-        /// If a mercenary equips it and displaces their own gear, that gear is recursively offered to subsequent mercenaries.
-        /// </summary>
-        private void TryHandMeDownToMercs(HeroComponent heroComp, List<Entity> hiredMercenaries, IGear displacedGear, int startIndex)
-        {
-            for (int i = startIndex; i < hiredMercenaries.Count; i++)
-            {
-                var mercComp = hiredMercenaries[i].GetComponent<MercenaryComponent>();
-                if (mercComp?.LinkedMercenary == null) continue;
-
-                if (GearAutoEquipService.TryAutoEquipOnMercenary(mercComp.LinkedMercenary, heroComp.Bag, displacedGear, out IGear chainDisplaced))
-                {
-                    Debug.Log($"[OpenChest] Hand-me-down: {displacedGear.Name} auto-equipped on {mercComp.LinkedMercenary.Name}");
-                    EmitAutoEquipEvent(mercComp.LinkedMercenary.Name, displacedGear);
-                    if (chainDisplaced != null)
-                        TryHandMeDownToMercs(heroComp, hiredMercenaries, chainDisplaced, i + 1);
-                    return;
-                }
-            }
-        }
     }
 }

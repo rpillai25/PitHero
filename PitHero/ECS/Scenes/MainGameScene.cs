@@ -212,6 +212,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.AutoSeedPurchaseService));
             Core.Services.RemoveService(typeof(Services.AutoCropSellService));
             Core.Services.RemoveService(typeof(Services.AutoSellExcessItemsService));
+            Core.Services.RemoveService(typeof(Services.AutoItemPurchaseService));
             Core.Services.GetService<Services.FarmTaskCoordinator>()?.Detach();
             Core.Services.RemoveService(typeof(Services.FarmTaskCoordinator));
             Core.Services.RemoveService(typeof(Services.MealBuffService));
@@ -297,6 +298,14 @@ namespace PitHero.ECS.Scenes
 
             // Auto-sell excess items service frees a bag slot when a chest item arrives and the bag is full
             Core.Services.AddService(new Services.AutoSellExcessItemsService());
+
+            // Auto item purchase service buys gear/consumables back from the Second Chance shop before
+            // the party jumps into the pit. Registered after AutoSeedPurchaseService, which owns the
+            // shared Gold Buffer setting it reads (issue #345).
+            Core.Services.AddService(new Services.AutoItemPurchaseService(
+                Core.Services.GetService<Services.GameStateService>(),
+                Core.Services.GetService<Services.SecondChanceMerchantVault>(),
+                autoSeedPurchaseService));
 
             // Meal buff service holds each party member's day-long food buffs (issue #319)
             Core.Services.AddService(new Services.MealBuffService());
@@ -544,6 +553,54 @@ namespace PitHero.ECS.Scenes
                     for (int i = 0; i < count; i++)
                         autoSellExcessSvc.RarityAllowed[i] = pendingData.AutoSellRarityAllowed[i];
                 }
+                if (pendingData.AutoSellGearTypeAllowed != null)
+                {
+                    int count = pendingData.AutoSellGearTypeAllowed.Length < autoSellExcessSvc.GearTypeAllowed.Length
+                        ? pendingData.AutoSellGearTypeAllowed.Length
+                        : autoSellExcessSvc.GearTypeAllowed.Length;
+                    for (int i = 0; i < count; i++)
+                        autoSellExcessSvc.GearTypeAllowed[i] = pendingData.AutoSellGearTypeAllowed[i];
+                }
+            }
+            var autoItemPurchaseSvc = Core.Services.GetService<Services.AutoItemPurchaseService>();
+            if (autoItemPurchaseSvc != null)
+            {
+                autoItemPurchaseSvc.Enabled = pendingData.AutoPurchaseItems;
+                autoItemPurchaseSvc.ConsumablesFirst = pendingData.AutoPurchaseConsumablesFirst;
+                autoItemPurchaseSvc.PurchaseMercenaryGear = pendingData.AutoPurchaseMercenaryGear;
+                autoItemPurchaseSvc.PurchaseConsumables = pendingData.AutoPurchaseConsumables;
+                if (pendingData.AutoPurchaseRarityAllowed != null)
+                {
+                    int count = pendingData.AutoPurchaseRarityAllowed.Length < autoItemPurchaseSvc.BuyRarityAllowed.Length
+                        ? pendingData.AutoPurchaseRarityAllowed.Length
+                        : autoItemPurchaseSvc.BuyRarityAllowed.Length;
+                    for (int i = 0; i < count; i++)
+                        autoItemPurchaseSvc.BuyRarityAllowed[i] = pendingData.AutoPurchaseRarityAllowed[i];
+                }
+                if (pendingData.AutoPurchaseGearTypeAllowed != null)
+                {
+                    int count = pendingData.AutoPurchaseGearTypeAllowed.Length < autoItemPurchaseSvc.BuyGearTypeAllowed.Length
+                        ? pendingData.AutoPurchaseGearTypeAllowed.Length
+                        : autoItemPurchaseSvc.BuyGearTypeAllowed.Length;
+                    for (int i = 0; i < count; i++)
+                        autoItemPurchaseSvc.BuyGearTypeAllowed[i] = pendingData.AutoPurchaseGearTypeAllowed[i];
+                }
+                if (pendingData.AutoPurchaseConsumableSelected != null)
+                {
+                    int count = pendingData.AutoPurchaseConsumableSelected.Length < autoItemPurchaseSvc.ConsumableSelected.Length
+                        ? pendingData.AutoPurchaseConsumableSelected.Length
+                        : autoItemPurchaseSvc.ConsumableSelected.Length;
+                    for (int i = 0; i < count; i++)
+                        autoItemPurchaseSvc.ConsumableSelected[i] = pendingData.AutoPurchaseConsumableSelected[i];
+                }
+                if (pendingData.AutoPurchaseConsumableStacks != null)
+                {
+                    int count = pendingData.AutoPurchaseConsumableStacks.Length < autoItemPurchaseSvc.ConsumableStackTargets.Length
+                        ? pendingData.AutoPurchaseConsumableStacks.Length
+                        : autoItemPurchaseSvc.ConsumableStackTargets.Length;
+                    for (int i = 0; i < count; i++)
+                        autoItemPurchaseSvc.ConsumableStackTargets[i] = pendingData.AutoPurchaseConsumableStacks[i];
+                }
             }
             _settingsUI?.SyncAutomationControlsFromService();
 
@@ -686,7 +743,14 @@ namespace PitHero.ECS.Scenes
             heroComp.CurrentBattleTactic = (BattleTactic)pendingData.BattleTacticValue;
             heroComp.UseConsumablesOnMercenaries = pendingData.UseConsumablesOnMercenaries;
             heroComp.MercenariesCanUseConsumables = pendingData.MercenariesCanUseConsumables;
-            
+
+            // Auto-equip options live on the hero but are edited from the Settings Automation tab,
+            // which syncs earlier in this load than the hero rebuild — so refresh those controls now.
+            heroComp.AutoEquipHero = pendingData.AutoEquipHero;
+            heroComp.AutoEquipMercenaries = pendingData.AutoEquipMercenaries;
+            _settingsUI?.SyncAutoEquipControlsFromHero();
+
+
             // Restore pit tier and base level BEFORE pit level so that width-regen uses
             // the correct effective depth (tier 1 behaviour is identical to before).
             var pitManager = Core.Services.GetService<PitWidthManager>();
