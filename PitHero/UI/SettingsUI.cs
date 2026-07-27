@@ -895,21 +895,8 @@ namespace PitHero.UI
             autoShopTable.Add(_automateMonsterJobsCheckBox).Left().SetPadBottom(15f);
             autoShopTable.Row();
 
-            string checkboxTooltip = GetText(TextType.UI, UITextKey.SettingsAutomateSeedPurchasesTooltip);
-            _automateSeedsCheckBox = new HoverableCheckBox(
-                GetText(TextType.UI, UITextKey.SettingsAutomateSeedPurchases),
-                skin,
-                checkboxTooltip,
-                _stage);
-            _automateSeedsCheckBox.IsChecked = false;
-            _automateSeedsCheckBox.OnChanged += (isChecked) =>
-            {
-                var svc = Core.Services?.GetService<AutoSeedPurchaseService>();
-                if (svc != null) svc.Enabled = isChecked;
-            };
-            autoShopTable.Add(_automateSeedsCheckBox).Left().SetPadBottom(15f);
-            autoShopTable.Row();
-
+            // The Gold Buffer gates every auto-purchase (seeds and items alike), so it sits above
+            // the individual purchase toggles it applies to.
             string bufferTooltip = GetText(TextType.UI, UITextKey.SettingsAutoShopGoldBufferTooltip);
             _goldBufferLabel = new HoverableLabel(
                 string.Format(GetText(TextType.UI, UITextKey.SettingsAutoShopGoldBuffer), 200),
@@ -929,6 +916,21 @@ namespace PitHero.UI
                 if (svc != null) svc.GoldBuffer = (int)value;
             };
             autoShopTable.Add(_goldBufferSlider).Width(240).Left().SetPadBottom(15f);
+            autoShopTable.Row();
+
+            string checkboxTooltip = GetText(TextType.UI, UITextKey.SettingsAutomateSeedPurchasesTooltip);
+            _automateSeedsCheckBox = new HoverableCheckBox(
+                GetText(TextType.UI, UITextKey.SettingsAutomateSeedPurchases),
+                skin,
+                checkboxTooltip,
+                _stage);
+            _automateSeedsCheckBox.IsChecked = false;
+            _automateSeedsCheckBox.OnChanged += (isChecked) =>
+            {
+                var svc = Core.Services?.GetService<AutoSeedPurchaseService>();
+                if (svc != null) svc.Enabled = isChecked;
+            };
+            autoShopTable.Add(_automateSeedsCheckBox).Left().SetPadBottom(15f);
             autoShopTable.Row();
 
             string autoSellTooltip = GetText(TextType.UI, UITextKey.SettingsAutoSellCropsTooltip);
