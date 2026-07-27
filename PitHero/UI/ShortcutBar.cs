@@ -409,6 +409,10 @@ namespace PitHero.UI
         /// <summary>Clears skill slots whose owning mercenary is no longer in the hired party.</summary>
         private void ValidateMercenaryOwnedSlots()
         {
+            // Core is null in unit tests (no game instance)
+            if (Core.Instance == null)
+                return;
+
             var mercManager = Core.Services.GetService<MercenaryManager>();
             if (mercManager == null)
                 return;
@@ -722,14 +726,30 @@ namespace PitHero.UI
         }
 
         /// <summary>
+        /// Unsubscribes this bar from all static events. Must be called when the owning scene
+        /// unloads (MainGameScene.Unload): the events are static, so a bar from a dead scene
+        /// otherwise stays subscribed forever. Its handlers run BEFORE the new scene's bar
+        /// (subscription order) and its GetStage() is still non-null (Stage.Dispose never nulls
+        /// child stages), so the stale skill-drop handler cancelled the drag before the live
+        /// bar could handle it — skills could no longer be dropped after loading another game.
+        /// </summary>
+        public void DisconnectFromStaticEvents()
+        {
+            InventoryDragManager.OnDropRequested -= HandleInventoryDropOnShortcut;
+            InventoryDragManager.OnSkillDropRequested -= HandleSkillDropOnShortcut;
+            InventorySelectionManager.OnInventoryChanged -= RefreshVisualSlots;
+        }
+
+        /// <summary>
         /// Handles an inventory item dropped onto a shortcut slot.
         /// Only consumables are accepted; other item types are rejected.
         /// </summary>
         private void HandleInventoryDropOnShortcut(InventorySlot inventorySource, Vector2 stagePos)
         {
-            // Ignore drops when this bar is not live on a stage or the drag already ended
-            // (protects against stale scene instances still subscribed to the static event)
-            if (GetStage() == null || !InventoryDragManager.IsDragging)
+            // Ignore drops when this bar is not live on a stage, the drag already ended, or the
+            // drag belongs to a different stage (protects against stale scene instances still
+            // subscribed to the static event — their GetStage() is non-null but points at a dead stage)
+            if (GetStage() == null || !InventoryDragManager.IsDragging || GetStage() != InventoryDragManager.DragStage)
                 return;
 
             int index = GetShortcutIndexAtStagePosition(stagePos);
@@ -751,9 +771,11 @@ namespace PitHero.UI
         /// <summary>Handles a skill dragged from a skill list dropped onto a shortcut slot.</summary>
         private void HandleSkillDropOnShortcut(ISkill skill, Vector2 stagePos)
         {
-            // Ignore drops when this bar is not live on a stage or the drag already ended
-            // (protects against stale scene instances still subscribed to the static event)
-            if (GetStage() == null || !InventoryDragManager.IsDragging)
+            // Ignore drops when this bar is not live on a stage, the drag already ended, or the
+            // drag belongs to a different stage. The stage check is critical here: a stale bar
+            // from an unloaded scene would otherwise reach the CancelDrag below (its slot lookup
+            // misses) and kill the drag before the live bar's handler runs.
+            if (GetStage() == null || !InventoryDragManager.IsDragging || GetStage() != InventoryDragManager.DragStage)
                 return;
 
             int index = GetShortcutIndexAtStagePosition(stagePos);

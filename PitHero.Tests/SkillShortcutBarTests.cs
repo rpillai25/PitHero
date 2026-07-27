@@ -1,4 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Microsoft.Xna.Framework;
+using Nez.UI;
 using PitHero.UI;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Skills;
@@ -129,6 +131,95 @@ namespace PitHero.Tests
             {
                 InventoryDragManager.OnDropRequested = previousDrop;
                 InventoryDragManager.OnSkillDropRequested = previousSkillDrop;
+            }
+        }
+
+        [TestMethod]
+        public void ShortcutBar_SkillDrop_LandsInSlot()
+        {
+            var prevDrop = InventoryDragManager.OnDropRequested;
+            var prevSkillDrop = InventoryDragManager.OnSkillDropRequested;
+            try
+            {
+                InventoryDragManager.OnDropRequested = null;
+                InventoryDragManager.OnSkillDropRequested = null;
+
+                var stage = new Stage();
+                var bar = new ShortcutBar();
+                stage.AddElement(bar);
+                bar.SetBasePosition(100f, 200f);
+                bar.ConnectToDragManager();
+
+                var skill = new KnightSkills.SpinSlashSkill();
+                InventoryDragManager.BeginSkillDrag(skill, stage);
+
+                // slot 0 occupies 32x32 at (100,200); drop on its center
+                InventoryDragManager.NotifySkillDropRequested(skill, new Vector2(116f, 216f));
+
+                var data = bar.GetShortcutSlotData(0);
+                Assert.AreEqual(ShortcutSlotType.Skill, data.SlotType, "skill should land in slot 0");
+                Assert.AreEqual(skill, data.ReferencedSkill);
+                Assert.IsFalse(InventoryDragManager.IsDragging, "drag should end after a successful drop");
+            }
+            finally
+            {
+                if (InventoryDragManager.IsDragging)
+                    InventoryDragManager.CancelDrag();
+                InventoryDragManager.OnDropRequested = prevDrop;
+                InventoryDragManager.OnSkillDropRequested = prevSkillDrop;
+            }
+        }
+
+        [TestMethod]
+        public void ShortcutBar_StaleBarFromUnloadedScene_DoesNotSwallowSkillDrop()
+        {
+            // Regression: after returning to the title and loading another game, skill drops
+            // stopped working. The old scene's bar stayed subscribed to the static events,
+            // its handler ran first (subscription order), missed the slot lookup on its dead
+            // stage, and cancelled the drag before the live bar could handle it.
+            var prevDrop = InventoryDragManager.OnDropRequested;
+            var prevSkillDrop = InventoryDragManager.OnSkillDropRequested;
+            try
+            {
+                InventoryDragManager.OnDropRequested = null;
+                InventoryDragManager.OnSkillDropRequested = null;
+
+                // First game session: bar on stage A (positioned so the drop point would miss it)
+                var staleStage = new Stage();
+                var staleBar = new ShortcutBar();
+                staleStage.AddElement(staleBar);
+                staleBar.SetBasePosition(500f, 500f);
+                staleBar.ConnectToDragManager();
+
+                // Second game session: new bar on stage B, subscribed after the stale bar
+                var liveStage = new Stage();
+                var liveBar = new ShortcutBar();
+                liveStage.AddElement(liveBar);
+                liveBar.SetBasePosition(100f, 200f);
+                liveBar.ConnectToDragManager();
+
+                var skill = new KnightSkills.SpinSlashSkill();
+                InventoryDragManager.BeginSkillDrag(skill, liveStage);
+                InventoryDragManager.NotifySkillDropRequested(skill, new Vector2(116f, 216f));
+
+                Assert.AreEqual(ShortcutSlotType.Skill, liveBar.GetShortcutSlotData(0).SlotType,
+                    "live bar must receive the skill even with a stale bar subscribed first");
+                Assert.AreEqual(ShortcutSlotType.Empty, staleBar.GetShortcutSlotData(0).SlotType,
+                    "stale bar must not consume the drop");
+
+                // And once the old scene unloads properly, its bar must fully unsubscribe
+                staleBar.DisconnectFromStaticEvents();
+                Assert.AreEqual(1, InventoryDragManager.OnSkillDropRequested.GetInvocationList().Length,
+                    "DisconnectFromStaticEvents must remove the stale bar's skill-drop handler");
+                Assert.AreEqual(1, InventoryDragManager.OnDropRequested.GetInvocationList().Length,
+                    "DisconnectFromStaticEvents must remove the stale bar's item-drop handler");
+            }
+            finally
+            {
+                if (InventoryDragManager.IsDragging)
+                    InventoryDragManager.CancelDrag();
+                InventoryDragManager.OnDropRequested = prevDrop;
+                InventoryDragManager.OnSkillDropRequested = prevSkillDrop;
             }
         }
 

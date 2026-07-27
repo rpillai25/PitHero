@@ -30,6 +30,13 @@ namespace PitHero.UI
         /// <summary>Gets whether a drag operation is currently in progress.</summary>
         public static bool IsDragging => _isDragging;
 
+        /// <summary>
+        /// Gets the stage the current drag is running on. Drop handlers subscribed to the static
+        /// events must ignore drags from a different stage — scene changes leave stale subscribers
+        /// whose elements still reference the dead stage (Stage.Dispose never nulls child stages).
+        /// </summary>
+        public static Stage DragStage => _stage;
+
         /// <summary>Gets the inventory slot that the drag originated from.</summary>
         public static InventorySlot SourceSlot => _sourceSlot;
 

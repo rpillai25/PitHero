@@ -195,6 +195,10 @@ namespace PitHero.ECS.Scenes
         /// </summary>
         public override void Unload()
         {
+            // Unsubscribe the shortcut bar from static drag events. Without this, the dead
+            // scene's bar keeps intercepting skill drops in the next game session (its stale
+            // handler runs first and cancels the drag before the new bar can handle it).
+            _shortcutBar?.DisconnectFromStaticEvents();
             Core.Services.RemoveService(typeof(Rendering.ColorGradingController));
             _colorGrading?.Dispose();
             _colorGrading = null;
