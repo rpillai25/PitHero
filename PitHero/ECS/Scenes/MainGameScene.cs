@@ -394,6 +394,8 @@ namespace PitHero.ECS.Scenes
             if (pendingData == null)
             {
                 Core.Services.GetService<SaveLoadService>()?.ResetForNewGame();
+                // InGameTimeService survives a quit to title, so a fresh hero must start the clock over
+                Core.Services.GetService<InGameTimeService>()?.ResetToDefault();
                 SetupNewGameFarmContent();
                 return;
             }
@@ -608,8 +610,14 @@ namespace PitHero.ECS.Scenes
             Core.Services.GetService<Services.FarmTaskCoordinator>()?.RescanForPlanting();
 
             // Restore in-game time so Color Grading reflects the correct time of day
-            if (pendingData.InGameTimeAccumulatedSeconds > 0)
-                Core.Services.GetService<InGameTimeService>()?.SetAccumulatedTime(pendingData.InGameTimeAccumulatedSeconds);
+            var inGameTimeService = Core.Services.GetService<InGameTimeService>();
+            if (inGameTimeService != null)
+            {
+                if (pendingData.InGameTimeAccumulatedSeconds > 0)
+                    inGameTimeService.SetAccumulatedTime(pendingData.InGameTimeAccumulatedSeconds);
+                else
+                    inGameTimeService.ResetToDefault(); // never inherit the previous session's clock
+            }
 
             Debug.Log("[MainGameScene] Applying pending load data...");
             

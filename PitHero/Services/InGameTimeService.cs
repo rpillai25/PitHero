@@ -10,7 +10,9 @@ namespace PitHero.Services
         private const float SecondsPerInGameDay = 1440f;
 
         // Start at 6:00 AM so heroes begin active
-        private float _accumulatedSeconds = 6 * SecondsPerInGameHour;
+        public const float DefaultStartAccumulatedSeconds = 6 * SecondsPerInGameHour;
+
+        private float _accumulatedSeconds = DefaultStartAccumulatedSeconds;
 
         public int Hour => (int)(_accumulatedSeconds / SecondsPerInGameHour) % 24;
         public int Minute => (int)(_accumulatedSeconds % SecondsPerInGameHour);
@@ -21,6 +23,10 @@ namespace PitHero.Services
         public float AccumulatedSeconds => _accumulatedSeconds;
 
         public void SetAccumulatedTime(float seconds) => _accumulatedSeconds = seconds;
+
+        /// <summary>Restores the default 6:00 AM start. The service is a long-lived singleton, so a new
+        /// game started after quitting to title must reset it or the previous game's time carries over.</summary>
+        public void ResetToDefault() => _accumulatedSeconds = DefaultStartAccumulatedSeconds;
 
         public void Update()
         {
