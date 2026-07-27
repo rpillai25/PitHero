@@ -396,6 +396,6 @@ SettingsAutoPurchaseConsumablesTooltip,Also buy the selected consumables before 
 ButtonConsumablePurchaseOptions,Consumable Purchase Options
 WindowConsumablePurchaseOptions,Consumable Purchase Options
 SettingsConsumableStacks,Stacks: {0}
-SettingsConsumableStacksTooltip,Number of stacks to purchase if space allows
+SettingsConsumableStacksTooltip,Minimum stacks to maintain in inventory if space allows
 SettingsAutoEquipOptionsTooltip,Auto-equip gear after finding in chest or auto-purchased
 ConsoleAutoPurchasedItem,Auto-purchased {0} for {1}G.

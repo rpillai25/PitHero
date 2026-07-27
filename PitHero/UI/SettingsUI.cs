@@ -1015,11 +1015,12 @@ namespace PitHero.UI
             PopulateAutoPurchaseControls(autoShopTable, skin);
             PopulateAutoEquipControls(autoShopTable, skin);
 
-            // The tab keeps growing as automation options are added, so it scrolls vertically
+            // The tab keeps growing as automation options are added, so it scrolls vertically.
+            // The right pad insets the scrollbar from the window edge instead of hugging it.
             var automationScrollPane = new ScrollPane(autoShopTable, skin, "ph-default");
             automationScrollPane.SetScrollingDisabled(true, false);
             automationScrollPane.SetFadeScrollBars(false);
-            automationTab.Add(automationScrollPane).Expand().Fill();
+            automationTab.Add(automationScrollPane).Expand().Fill().SetPadRight(12f);
         }
 
         /// <summary>Adds the "Auto-Purchase Items" checkbox and its sub-controls to the Automation tab.</summary>

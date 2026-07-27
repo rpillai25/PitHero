@@ -78,6 +78,7 @@ namespace PitHero.UI
                     var svc = Core.Services?.GetService<AutoItemPurchaseService>();
                     if (svc != null && index < svc.ConsumableSelected.Length)
                         svc.ConsumableSelected[index] = isChecked;
+                    SetStackControlsActive(index, isChecked);
                 };
                 _checks[i] = check;
                 topRow.Add(check).Left();
@@ -108,6 +109,9 @@ namespace PitHero.UI
                 _stackSliders[i] = slider;
                 cell.Add(slider).Width(SliderWidth).Left();
 
+                // Nothing is selected by default, so every stack control starts deactivated
+                SetStackControlsActive(i, false);
+
                 grid.Add(cell).Left().Top().Pad(6f);
                 if ((i + 1) % Columns == 0)
                     grid.Row();
@@ -120,6 +124,10 @@ namespace PitHero.UI
             content.Row();
 
             var buttonRow = new Table();
+            var selectAllButton = new TextButton(GetText(UITextKey.ButtonSelectAll), skin, "ph-default");
+            selectAllButton.OnClicked += (_) => SetAllSelected(true);
+            buttonRow.Add(selectAllButton).Width(110f).SetPadRight(8f);
+
             var deselectAllButton = new TextButton(GetText(UITextKey.ButtonDeselectAll), skin, "ph-default");
             deselectAllButton.OnClicked += (_) => SetAllSelected(false);
             buttonRow.Add(deselectAllButton).Width(110f).SetPadRight(8f);
@@ -166,6 +174,34 @@ namespace PitHero.UI
                     svc.ConsumableSelected[i] = selected;
                 if (_checks[i] != null)
                     _checks[i].IsChecked = selected;
+                SetStackControlsActive(i, selected);
+            }
+        }
+
+        /// <summary>
+        /// Activates or deactivates one row's "Stacks" label and slider. When deactivated they stay
+        /// on screen but are drawn grayed out with the tooltip, hover and dragging disabled — the
+        /// stack target only means anything while that consumable is selected.
+        /// </summary>
+        private void SetStackControlsActive(int index, bool active)
+        {
+            if (index < 0 || index >= _stackSliders.Length)
+                return;
+
+            var skin = PitHeroSkin.CreateSkin();
+
+            var label = _stackLabels[index];
+            if (label != null)
+            {
+                label.SetStyle(skin.Get<LabelStyle>(active ? "ph-default" : "ph-grayed"));
+                label.SetTooltipEnabled(active);
+            }
+
+            var slider = _stackSliders[index];
+            if (slider != null)
+            {
+                slider.Disabled = !active;
+                slider.SetTouchable(active ? Touchable.Enabled : Touchable.Disabled);
             }
         }
 
@@ -187,6 +223,9 @@ namespace PitHero.UI
                 _stackSliders[i]?.SetValueAndCommit(target);
                 _stackLabels[i]?.SetText(string.Format(GetText(UITextKey.SettingsConsumableStacks), target));
             }
+
+            for (int i = 0; i < _stackSliders.Length; i++)
+                SetStackControlsActive(i, i < svc.ConsumableSelected.Length && svc.ConsumableSelected[i]);
         }
     }
 }
