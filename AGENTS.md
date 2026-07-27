@@ -185,6 +185,7 @@ Design docs under `PitHero/docs/` (kept as standalone references — don't dupli
 - `PitHero/docs/CrystalCeremony.md` — Post-death hero respawn and crystal imbuement at the statue
 - `PitHero/docs/TavernDiningSystem.md` — Kitchen/tavern dining: ticket lifecycle, worker FSM roles, patron + party dining flows, meal buffs, dish pricing, save v18 dining state
 - `PitHero/docs/AutoJobAssignmentSystem.md` — Automated monster job assignment: demand evaluators, pure solver, day/night shifts, reassess cadence, and the step-by-step recipe for adding a new job (e.g. fishing)
+- `PitHero/docs/AutomationSystem.md` — The Settings → Automation tab as a whole: which service owns each toggle, ticked vs call-driven automations, the shared Gold Buffer, append-only save sections, the two-phase load sync, the grayed-control recipe, and how to add a new Automation option
 
 **Per-feature docs:**
 - `features/`
