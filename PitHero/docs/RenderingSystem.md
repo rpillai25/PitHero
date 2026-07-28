@@ -38,6 +38,13 @@ cost nothing after the first frame. It sits in front of the Base/Detail tilemap 
 fringe that spills over the map edge covers terrain) but behind fog and actors, and it is
 deliberately not 60/61 so `YSortManager` ignores it — the bands are static and never sort.
 
+Each band first tiles the map tileset's grass tile (`GameConfig.TreeBandGrassTileGid`, resolved via
+`TmxMap.GetTilesetForTileGid` + `TmxTileset.TileRegions`) across the part of the band outside the
+map, then draws trees over it. Without that backdrop the gaps between trunks fall through to the
+window's ungraded background colour — which passes for grass by day but stands out badly once the
+terrain is graded at night. Grass stops at the map edge so the strip the trees overhang stays
+transparent and the real tilemap shows through.
+
 Each band anchors its rows on the edge that faces the map. The **top** band's trees stand above the
 map, so rows anchor by **trunk base** and the render texture clips those trunks flush at
 `TreeBandMapOverlapPx` — a cut trunk just reads as the tree standing on the ground. The **bottom**

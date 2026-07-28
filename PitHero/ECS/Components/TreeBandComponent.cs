@@ -19,6 +19,9 @@ namespace PitHero.ECS.Components
     {
         private readonly Sprite _tree;
         private readonly Sprite _tree2;
+        private readonly Sprite _grass;
+        private readonly float _grassTopY;
+        private readonly float _grassBottomY;
         private readonly int _startTileY;
         private readonly int _endTileY;
         private readonly int _seed;
@@ -35,7 +38,12 @@ namespace PitHero.ECS.Components
 
         /// <param name="tree">The shorter tree sprite (center origin).</param>
         /// <param name="tree2">The taller tree sprite (center origin).</param>
+        /// <param name="grass">
+        ///   Grass tile from the map tileset (top-left origin), tiled behind the trees so the band
+        ///   sits on graded grass instead of the ungraded window background.
+        /// </param>
         /// <param name="mapWidthPx">Full map width in pixels — the band spans all of it.</param>
+        /// <param name="mapHeightPx">Full map height in pixels — grass is only painted outside it.</param>
         /// <param name="startTileY">First tile row of the band (inclusive, may be negative).</param>
         /// <param name="endTileY">Last tile row of the band (inclusive).</param>
         /// <param name="seed">Seed for this band's local deterministic RNG.</param>
@@ -43,11 +51,12 @@ namespace PitHero.ECS.Components
         ///   True for the top band (trees spill downward into the map), false for the bottom band
         ///   (trees spill upward into the map).
         /// </param>
-        public TreeBandComponent(Sprite tree, Sprite tree2, int mapWidthPx,
+        public TreeBandComponent(Sprite tree, Sprite tree2, Sprite grass, int mapWidthPx, int mapHeightPx,
                                  int startTileY, int endTileY, int seed, bool overlapBelow)
         {
             _tree = tree;
             _tree2 = tree2;
+            _grass = grass;
             _startTileY = startTileY;
             _endTileY = endTileY;
             _seed = seed;
@@ -71,6 +80,10 @@ namespace PitHero.ECS.Components
                 _firstRowAnchorY = bandTop + GameConfig.TileSize;
                 _rtWorldTop = bandTop;
                 _rtHeight = _rowCount * GameConfig.TileSize + GameConfig.TreeBandMapOverlapPx;
+                // Grass stops at the map's top edge — the strip the trunks overhang must stay
+                // transparent so the real tilemap shows through it.
+                _grassTopY = _rtWorldTop;
+                _grassBottomY = 0f;
             }
             else
             {
@@ -83,6 +96,10 @@ namespace PitHero.ECS.Components
                 _rtWorldTop = _firstRowAnchorY - GameConfig.TreeBandRowYJitterPx;
                 var lastRowAnchorY = _firstRowAnchorY + (_rowCount - 1) * GameConfig.TileSize;
                 _rtHeight = (int)(lastRowAnchorY + GameConfig.TreeBandRowYJitterPx + maxTreeHeight - _rtWorldTop);
+                // Grass starts at the map's bottom edge — the strip the crowns poke into must stay
+                // transparent so the real tilemap (tilled soil included) shows through it.
+                _grassTopY = mapHeightPx;
+                _grassBottomY = _rtWorldTop + _rtHeight;
             }
         }
 
@@ -166,6 +183,7 @@ namespace PitHero.ECS.Components
             var rtTransform = Matrix.CreateTranslation(0f, -_rtWorldTop, 0f);
             batcher.Begin(BlendState.AlphaBlend, SamplerState.PointClamp, DepthStencilState.None,
                 RasterizerState.CullCounterClockwise, null, rtTransform, false);
+            PaintGrass(batcher);
             PaintTrees(batcher);
             batcher.End();
 
@@ -178,6 +196,27 @@ namespace PitHero.ECS.Components
 
             Debug.Log("[TreeBand] Painted band rows {0}..{1} into a {2}x{3} render texture",
                 _startTileY, _endTileY, _rtWidth, _rtHeight);
+        }
+
+        /// <summary>
+        /// Tiles the map tileset's grass tile across the part of the band that lies outside the map,
+        /// before any tree is drawn. Without it the gaps between trunks fall through to the window's
+        /// ungraded background colour, which matches grass by day but stands out badly once the
+        /// terrain is graded at night. Because the grass shares the band's render texture, it is
+        /// graded by the same material as the trees drawn on top of it.
+        /// </summary>
+        private void PaintGrass(Batcher batcher)
+        {
+            if (_grass == null || _grassBottomY <= _grassTopY)
+                return;
+
+            // Align to the world tile grid so the fill lines up seamlessly with the real tilemap.
+            for (var y = _grassTopY; y < _grassBottomY; y += GameConfig.TileSize)
+            {
+                for (var x = 0; x < _rtWidth; x += GameConfig.TileSize)
+                    batcher.Draw(_grass, new Vector2(x, y), Color.White, 0f, Vector2.Zero, Vector2.One,
+                        SpriteEffects.None, 0f);
+            }
         }
 
         /// <summary>
