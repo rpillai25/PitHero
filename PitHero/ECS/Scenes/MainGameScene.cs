@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework;
 using Nez;
 using Nez.BitmapFonts;
 using Nez.Sprites;
+using Nez.Textures;
 using Nez.Tiled;
 using Nez.UI; // Added for Label
 using PitHero.AI;
@@ -1063,6 +1064,8 @@ namespace PitHero.ECS.Scenes
             detailLayerRenderer.SetMaterial(_colorGrading.Material);
             topLayerRenderer.SetMaterial(_colorGrading.Material);
 
+            SpawnTreeBands();
+
             _cameraController?.ConfigureZoomForMap(_mapPath);
 
             // Initialize till mode overlay now that the map is loaded. SetupUIOverlay() runs
@@ -1141,6 +1144,69 @@ namespace PitHero.ECS.Scenes
 
             // Initialize pit width manager after map and services are set up
             SetupPitWidthManager();
+        }
+
+        /// <summary>
+        /// Creates the decorative tree bands north and south of the map (#348). Each band paints
+        /// itself once into its own RenderTexture on the first frame, then blits a single quad.
+        /// </summary>
+        private void SpawnTreeBands()
+        {
+            if (_tmxMap == null)
+                return;
+
+            var atlas = Core.Content.LoadSpriteAtlas("Content/Atlases/CropsProps.atlas");
+            var tree = atlas?.GetSprite("Tree");
+            var tree2 = atlas?.GetSprite("Tree2");
+            if (tree == null || tree2 == null)
+            {
+                Debug.Warn("[MainGameScene] Tree sprites missing from CropsProps atlas; skipping tree bands");
+                return;
+            }
+
+            var grass = GetMapTileSprite(GameConfig.TreeBandGrassTileGid);
+            var mapWidthPx = _tmxMap.Width * _tmxMap.TileWidth;
+            var mapHeightPx = _tmxMap.Height * _tmxMap.TileHeight;
+            var bandEntity = CreateEntity("tree-bands");
+
+            AddTreeBand(bandEntity, tree, tree2, grass, mapWidthPx, mapHeightPx,
+                GameConfig.TreeBandTopStartTileY, GameConfig.TreeBandTopEndTileY,
+                GameConfig.TreeBandSeed, true);
+            AddTreeBand(bandEntity, tree, tree2, grass, mapWidthPx, mapHeightPx,
+                GameConfig.TreeBandBottomStartTileY, GameConfig.TreeBandBottomEndTileY,
+                GameConfig.TreeBandSeed + 1, false);
+        }
+
+        /// <summary>
+        /// Builds a top-left-origin sprite for a single tile of the map tileset, by global tile id
+        /// (the same 1-based numbering Tiled shows, since the tileset's firstgid is 1).
+        /// </summary>
+        private Sprite GetMapTileSprite(int gid)
+        {
+            var tileset = _tmxMap?.GetTilesetForTileGid(gid);
+            if (tileset?.Image?.Texture == null)
+                return null;
+            if (!tileset.TileRegions.TryGetValue(gid, out var region))
+            {
+                Debug.Warn("[MainGameScene] Map tileset has no region for gid {0}", gid);
+                return null;
+            }
+
+            var sprite = new Sprite(tileset.Image.Texture,
+                new Rectangle((int)region.X, (int)region.Y, (int)region.Width, (int)region.Height));
+            sprite.Origin = Vector2.Zero;
+            return sprite;
+        }
+
+        /// <summary>Adds one tree band component to the shared band entity and grades it day/night.</summary>
+        private void AddTreeBand(Entity bandEntity, Sprite tree, Sprite tree2, Sprite grass,
+            int mapWidthPx, int mapHeightPx, int startTileY, int endTileY, int seed, bool overlapBelow)
+        {
+            var band = bandEntity.AddComponent(new TreeBandComponent(
+                tree, tree2, grass, mapWidthPx, mapHeightPx, startTileY, endTileY, seed, overlapBelow));
+            band.SetRenderLayer(GameConfig.RenderLayerTreeBand);
+            if (_colorGrading?.Material != null)
+                band.SetMaterial(_colorGrading.Material);
         }
 
         private void SetupPitWidthManager()

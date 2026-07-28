@@ -1,0 +1,261 @@
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Nez;
+using Nez.Textures;
+
+namespace PitHero.ECS.Components
+{
+    /// <summary>
+    /// A decorative band of deterministic random trees filling the empty space north or south of the
+    /// map (#348). The whole band is painted once into its own RenderTexture — trees are drawn
+    /// top-to-bottom like a painter, so lower trees overdraw higher ones — and every frame after that
+    /// only blits that single texture, instead of redrawing ~1900 sprites.
+    ///
+    /// The render texture covers the band rect plus TreeBandMapOverlapPx on the map-facing side, so
+    /// trees may spill slightly over the map edge for an organic seam while anything beyond that is
+    /// clipped for free by the texture bounds.
+    /// </summary>
+    public class TreeBandComponent : RenderableComponent
+    {
+        private readonly Sprite _tree;
+        private readonly Sprite _tree2;
+        private readonly Sprite _grass;
+        private readonly float _grassTopY;
+        private readonly float _grassBottomY;
+        private readonly int _startTileY;
+        private readonly int _endTileY;
+        private readonly int _seed;
+        private readonly int _rtWidth;
+        private readonly int _rtHeight;
+        private readonly float _rtWorldTop;
+        private readonly int _rowCount;
+        private readonly float _firstRowAnchorY;
+        private readonly bool _anchorByTop;
+
+        private RenderTexture _renderTexture;
+        private Sprite _bandSprite;
+        private bool _needsPaint = true;
+
+        /// <param name="tree">The shorter tree sprite (center origin).</param>
+        /// <param name="tree2">The taller tree sprite (center origin).</param>
+        /// <param name="grass">
+        ///   Grass tile from the map tileset (top-left origin), tiled behind the trees so the band
+        ///   sits on graded grass instead of the ungraded window background.
+        /// </param>
+        /// <param name="mapWidthPx">Full map width in pixels — the band spans all of it.</param>
+        /// <param name="mapHeightPx">Full map height in pixels — grass is only painted outside it.</param>
+        /// <param name="startTileY">First tile row of the band (inclusive, may be negative).</param>
+        /// <param name="endTileY">Last tile row of the band (inclusive).</param>
+        /// <param name="seed">Seed for this band's local deterministic RNG.</param>
+        /// <param name="overlapBelow">
+        ///   True for the top band (trees spill downward into the map), false for the bottom band
+        ///   (trees spill upward into the map).
+        /// </param>
+        public TreeBandComponent(Sprite tree, Sprite tree2, Sprite grass, int mapWidthPx, int mapHeightPx,
+                                 int startTileY, int endTileY, int seed, bool overlapBelow)
+        {
+            _tree = tree;
+            _tree2 = tree2;
+            _grass = grass;
+            _startTileY = startTileY;
+            _endTileY = endTileY;
+            _seed = seed;
+
+            var bandTop = startTileY * GameConfig.TileSize;
+            var maxTreeHeight = tree.SourceRect.Height > tree2.SourceRect.Height
+                ? tree.SourceRect.Height
+                : tree2.SourceRect.Height;
+
+            _rowCount = endTileY - startTileY + 1;
+            _rtWidth = mapWidthPx;
+
+            // Each band anchors its rows on the edge that faces the map, so the seam is governed by
+            // the part of the tree the player actually sees against the terrain.
+            if (overlapBelow)
+            {
+                // Top band: trees stand above the map, so anchor each row by its trunk base. Only
+                // trunk bottoms reach the map, and the texture clips them flush at the overlap line
+                // — a cut trunk simply reads as the tree standing on the ground there.
+                _anchorByTop = false;
+                _firstRowAnchorY = bandTop + GameConfig.TileSize;
+                _rtWorldTop = bandTop;
+                _rtHeight = _rowCount * GameConfig.TileSize + GameConfig.TreeBandMapOverlapPx;
+                // Grass stops at the map's top edge — the strip the trunks overhang must stay
+                // transparent so the real tilemap shows through it.
+                _grassTopY = _rtWorldTop;
+                _grassBottomY = 0f;
+            }
+            else
+            {
+                // Bottom band: trees stand below the map and grow up toward it, so anchor each row by
+                // its canopy TOP. That keeps the first row's crowns just grazing the map's bottom tile
+                // row instead of burying it, and it holds regardless of which sprite is picked. The
+                // texture is sized to contain whole trees, so no canopy is ever cut.
+                _anchorByTop = true;
+                _firstRowAnchorY = bandTop - GameConfig.TreeBandCanopyPeekPx;
+                _rtWorldTop = _firstRowAnchorY - GameConfig.TreeBandRowYJitterPx;
+                var lastRowAnchorY = _firstRowAnchorY + (_rowCount - 1) * GameConfig.TileSize;
+                _rtHeight = (int)(lastRowAnchorY + GameConfig.TreeBandRowYJitterPx + maxTreeHeight - _rtWorldTop);
+                // Grass starts at the map's bottom edge — the strip the crowns poke into must stay
+                // transparent so the real tilemap (tilled soil included) shows through it.
+                _grassTopY = mapHeightPx;
+                _grassBottomY = _rtWorldTop + _rtHeight;
+            }
+        }
+
+        /// <summary>Band rect in world space. Overridden so camera culling uses the real extents.</summary>
+        public override RectangleF Bounds
+        {
+            get
+            {
+                if (_areBoundsDirty)
+                {
+                    _bounds.X = Entity.Transform.Position.X + _localOffset.X;
+                    _bounds.Y = Entity.Transform.Position.Y + _localOffset.Y;
+                    _bounds.Width = _rtWidth;
+                    _bounds.Height = _rtHeight;
+                    _areBoundsDirty = false;
+                }
+                return _bounds;
+            }
+        }
+
+        public override void OnAddedToEntity()
+        {
+            SetLocalOffset(new Vector2(0f, _rtWorldTop));
+
+            _renderTexture = new RenderTexture(_rtWidth, _rtHeight, SurfaceFormat.Color, DepthFormat.None);
+            _renderTexture.ResizeBehavior = RenderTexture.RenderTextureResizeBehavior.None;
+
+            _bandSprite = new Sprite(_renderTexture.RenderTarget);
+            _bandSprite.Origin = Vector2.Zero;
+        }
+
+        public override void OnRemovedFromEntity()
+        {
+            _renderTexture?.Dispose();
+            _renderTexture = null;
+            _bandSprite = null;
+        }
+
+        /// <summary>
+        /// Forces one Render call before the band has been painted. Both bands sit entirely outside
+        /// the viewport at the default 1x zoom, so the normal camera cull would defer the one-time
+        /// paint until the player first zooms out — a visible hitch. The extra off-screen quad drawn
+        /// on frame one is free (the GPU clips it).
+        /// </summary>
+        public override bool IsVisibleFromCamera(Camera camera)
+        {
+            if (_needsPaint)
+                return true;
+            return base.IsVisibleFromCamera(camera);
+        }
+
+        public override void Render(Batcher batcher, Camera camera)
+        {
+            if (_bandSprite == null)
+                return;
+
+            if (_needsPaint)
+            {
+                PaintBandOnce(batcher, camera);
+                _needsPaint = false;
+            }
+
+            batcher.Draw(_bandSprite, Entity.Transform.Position + _localOffset, Color,
+                0f, Vector2.Zero, Vector2.One, SpriteEffects.None, _layerDepth);
+        }
+
+        /// <summary>
+        /// Renders every tree into the band's RenderTexture a single time. Follows the render-target
+        /// save/restore sequence documented in docs/RenderingSystem.md: flush the outer batch, swap
+        /// render targets, paint, then restore the scene target and resume the outer batch.
+        /// </summary>
+        private void PaintBandOnce(Batcher batcher, Camera camera)
+        {
+            var prevRTs = Core.GraphicsDevice.GetRenderTargets();
+            batcher.End();
+
+            Core.GraphicsDevice.SetRenderTarget(_renderTexture);
+            Core.GraphicsDevice.Clear(Color.Transparent);
+
+            // World -> render-texture-local, so PaintTrees can work in plain world coordinates.
+            var rtTransform = Matrix.CreateTranslation(0f, -_rtWorldTop, 0f);
+            batcher.Begin(BlendState.AlphaBlend, SamplerState.PointClamp, DepthStencilState.None,
+                RasterizerState.CullCounterClockwise, null, rtTransform, false);
+            PaintGrass(batcher);
+            PaintTrees(batcher);
+            batcher.End();
+
+            Core.GraphicsDevice.SetRenderTargets(prevRTs.Length > 0 ? prevRTs : null);
+            // Resume with our own effect bound. The renderer still believes the grading material is
+            // active and so will not re-Begin for us; passing null here would drop grading from this
+            // band AND from the Base tilemap that shares the material later in the same batch.
+            batcher.Begin(BlendState.AlphaBlend, SamplerState.PointClamp, DepthStencilState.None,
+                RasterizerState.CullCounterClockwise, Material?.Effect, camera.TransformMatrix, false);
+
+            Debug.Log("[TreeBand] Painted band rows {0}..{1} into a {2}x{3} render texture",
+                _startTileY, _endTileY, _rtWidth, _rtHeight);
+        }
+
+        /// <summary>
+        /// Tiles the map tileset's grass tile across the part of the band that lies outside the map,
+        /// before any tree is drawn. Without it the gaps between trunks fall through to the window's
+        /// ungraded background colour, which matches grass by day but stands out badly once the
+        /// terrain is graded at night. Because the grass shares the band's render texture, it is
+        /// graded by the same material as the trees drawn on top of it.
+        /// </summary>
+        private void PaintGrass(Batcher batcher)
+        {
+            if (_grass == null || _grassBottomY <= _grassTopY)
+                return;
+
+            // Align to the world tile grid so the fill lines up seamlessly with the real tilemap.
+            for (var y = _grassTopY; y < _grassBottomY; y += GameConfig.TileSize)
+            {
+                for (var x = 0; x < _rtWidth; x += GameConfig.TileSize)
+                    batcher.Draw(_grass, new Vector2(x, y), Color.White, 0f, Vector2.Zero, Vector2.One,
+                        SpriteEffects.None, 0f);
+            }
+        }
+
+        /// <summary>
+        /// Paints the band row by row, top to bottom. Uses a local System.Random seeded from a fixed
+        /// key so the layout is identical every run without touching the global Nez.Random stream
+        /// (whose call order is a combat save/replay contract).
+        /// </summary>
+        private void PaintTrees(Batcher batcher)
+        {
+            var rng = new System.Random(_seed);
+
+            for (int i = 0; i < _rowCount; i++)
+            {
+                var rowAnchorY = _firstRowAnchorY + i * GameConfig.TileSize;
+
+                // Start off the left edge by a random amount and stagger each row so rows never line up.
+                var x = -rng.Next(0, GameConfig.TreeBandBaseSpacingPx)
+                      + rng.Next(-GameConfig.TreeBandRowXOffsetPx, GameConfig.TreeBandRowXOffsetPx + 1);
+
+                while (x < _rtWidth + GameConfig.TreeBandBaseSpacingPx)
+                {
+                    var sprite = rng.NextDouble() < GameConfig.TreeBandTree2Chance ? _tree2 : _tree;
+                    var effects = rng.NextDouble() < GameConfig.TreeBandFlipChance
+                        ? SpriteEffects.FlipHorizontally
+                        : SpriteEffects.None;
+                    var anchorY = rowAnchorY + rng.Next(-GameConfig.TreeBandRowYJitterPx,
+                                                         GameConfig.TreeBandRowYJitterPx + 1);
+
+                    // Sprites are center-origin, so shift by half the height to put the anchored edge
+                    // (canopy top or trunk base, per the band) on anchorY.
+                    var halfHeight = sprite.SourceRect.Height * 0.5f;
+                    var pos = new Vector2(x, _anchorByTop ? anchorY + halfHeight : anchorY - halfHeight);
+                    batcher.Draw(sprite, pos, Color.White, 0f, sprite.Origin, Vector2.One, effects, 0f);
+
+                    x += GameConfig.TreeBandBaseSpacingPx
+                       + rng.Next(-GameConfig.TreeBandSpacingJitterPx,
+                                   GameConfig.TreeBandSpacingJitterPx + 1);
+                }
+            }
+        }
+    }
+}

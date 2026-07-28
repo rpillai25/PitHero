@@ -19,6 +19,7 @@ Higher number = drawn first = further back.  Lower number = drawn later = in fro
 | `RenderLayerSingleTileObject` | 61 | Static 32×32 world objects: treasure chests, walls/obstacles (Y-sorted) |
 | `RenderLayerDroppedItems` | 65 | Dropped loot items |
 | `RenderLayerFogOfWar` | 70 | Tilemap fog-of-war overlay — renders **behind** actors/objects (#337) |
+| `RenderLayerTreeBand` | 80 | Decorative tree bands north/south of the map (#348) |
 | `RenderLayerBase` | 100 | Tilemap base layer |
 
 Fog of war renders behind actors so the party is never partially covered when walking next
@@ -29,6 +30,27 @@ renderable while the entity's tile is fogged, and `TiledMapService.RefreshFogHid
 animators. Monsters additionally self-hide/self-reveal when they move between fogged and
 clear tiles (`EnemyAnimationComponent.CheckFogVisibility` / `TileByTileMover.CompleteMove`).
 Heroes and mercenaries are never fog-hidden.
+
+`RenderLayerTreeBand` holds the two decorative tree bands that fill the empty space above and
+below the map when the player zooms out (`TreeBandComponent`, #348). Each band is painted **once**
+into its own `RenderTexture` at map load and then blits a single quad per frame, so its ~1900 trees
+cost nothing after the first frame. It sits in front of the Base/Detail tilemap layers (so the
+fringe that spills over the map edge covers terrain) but behind fog and actors, and it is
+deliberately not 60/61 so `YSortManager` ignores it — the bands are static and never sort.
+
+Each band first tiles the map tileset's grass tile (`GameConfig.TreeBandGrassTileGid`, resolved via
+`TmxMap.GetTilesetForTileGid` + `TmxTileset.TileRegions`) across the part of the band outside the
+map, then draws trees over it. Without that backdrop the gaps between trunks fall through to the
+window's ungraded background colour — which passes for grass by day but stands out badly once the
+terrain is graded at night. Grass stops at the map edge so the strip the trees overhang stays
+transparent and the real tilemap shows through.
+
+Each band anchors its rows on the edge that faces the map. The **top** band's trees stand above the
+map, so rows anchor by **trunk base** and the render texture clips those trunks flush at
+`TreeBandMapOverlapPx` — a cut trunk just reads as the tree standing on the ground. The **bottom**
+band's trees grow upward toward the map, so rows anchor by **canopy top**, holding the first row's
+crowns `TreeBandCanopyPeekPx` over the map's bottom tile row instead of burying it; that texture is
+sized to contain whole trees so no canopy is ever cut.
 
 UI / HUD layers (screen-space, unaffected by camera): `RenderLayerActionQueue` (996),
 `RenderLayerGraphicalHUD` (997), `RenderLayerUI` (998), `TransparentPauseOverlay` (999).
