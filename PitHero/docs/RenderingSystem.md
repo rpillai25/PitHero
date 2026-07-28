@@ -19,6 +19,7 @@ Higher number = drawn first = further back.  Lower number = drawn later = in fro
 | `RenderLayerSingleTileObject` | 61 | Static 32×32 world objects: treasure chests, walls/obstacles (Y-sorted) |
 | `RenderLayerDroppedItems` | 65 | Dropped loot items |
 | `RenderLayerFogOfWar` | 70 | Tilemap fog-of-war overlay — renders **behind** actors/objects (#337) |
+| `RenderLayerTreeBand` | 80 | Decorative tree bands north/south of the map (#348) |
 | `RenderLayerBase` | 100 | Tilemap base layer |
 
 Fog of war renders behind actors so the party is never partially covered when walking next
@@ -29,6 +30,13 @@ renderable while the entity's tile is fogged, and `TiledMapService.RefreshFogHid
 animators. Monsters additionally self-hide/self-reveal when they move between fogged and
 clear tiles (`EnemyAnimationComponent.CheckFogVisibility` / `TileByTileMover.CompleteMove`).
 Heroes and mercenaries are never fog-hidden.
+
+`RenderLayerTreeBand` holds the two decorative tree bands that fill the empty space above and
+below the map when the player zooms out (`TreeBandComponent`, #348). Each band is painted **once**
+into its own `RenderTexture` at map load and then blits a single quad per frame, so its ~1900 trees
+cost nothing after the first frame. It sits in front of the Base/Detail tilemap layers (so the
+fringe that spills over the map edge covers terrain) but behind fog and actors, and it is
+deliberately not 60/61 so `YSortManager` ignores it — the bands are static and never sort.
 
 UI / HUD layers (screen-space, unaffected by camera): `RenderLayerActionQueue` (996),
 `RenderLayerGraphicalHUD` (997), `RenderLayerUI` (998), `TransparentPauseOverlay` (999).

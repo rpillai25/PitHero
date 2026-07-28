@@ -358,6 +358,10 @@ namespace PitHero
         public const int RenderLayerFogOfWar = 70;
         // NOTE: Placed buildings (Monster House / Crop Storage) render at RenderLayerActors and are
         // Y-sorted with monsters via YSortSpriteRenderer.YSortOffset (see IYSortOffset / YSortManager).
+        // Decorative tree bands north/south of the map (#348). Above the Base/Detail tilemap layers so the
+        // fringe that spills over the map edge covers terrain, but behind fog and actors. Deliberately not
+        // 60/61 so YSortManager ignores it — the bands are static and never sort.
+        public const int RenderLayerTreeBand = 80;
         public const int RenderLayerDetail = 90; // Detail tilemap layer (tilled soil, etc.) — above base, below actors
         public const int RenderLayerBase = 100; // Background layer
 
@@ -369,6 +373,21 @@ namespace PitHero
         // Y-sort: LayerDepth = Mathf.Clamp01(1f - entity.Y * YSortDepthScale)
         // Higher world-Y (closer to camera) → smaller depth → drawn in front.
         public const float YSortDepthScale = 1f / 100000f;
+
+        // Tree Bands (#348) — decorative deterministic tree fills above and below the map, painted
+        // once into a RenderTexture at map load so zooming out never exposes empty space north/south.
+        public const int TreeBandTopStartTileY = -10;   // first tile row of the top band (inclusive)
+        public const int TreeBandTopEndTileY = -1;      // last tile row of the top band (inclusive)
+        public const int TreeBandBottomStartTileY = 12; // first tile row of the bottom band (inclusive)
+        public const int TreeBandBottomEndTileY = 21;   // last tile row of the bottom band (inclusive)
+        public const int TreeBandSeed = 348;            // fixed seed — bands look identical every run
+        public const int TreeBandMapOverlapPx = 16;     // px a band may spill over the map edge for an organic seam
+        public const int TreeBandBaseSpacingPx = 40;    // nominal horizontal step between trunks
+        public const int TreeBandSpacingJitterPx = 18;  // +/- horizontal jitter added to the step
+        public const int TreeBandRowYJitterPx = 10;     // +/- vertical jitter applied per tree
+        public const int TreeBandRowXOffsetPx = 20;     // +/- per-row horizontal stagger so rows do not line up
+        public const float TreeBandTree2Chance = 0.45f; // probability a tree uses the taller Tree2 sprite
+        public const float TreeBandFlipChance = 0.5f;   // probability a tree is mirrored horizontally
 
         // Font paths
         public const string FontMainUI = "Content/Fonts/Express.fnt";
