@@ -381,7 +381,8 @@ namespace PitHero
         public const int TreeBandBottomStartTileY = 12; // first tile row of the bottom band (inclusive)
         public const int TreeBandBottomEndTileY = 21;   // last tile row of the bottom band (inclusive)
         public const int TreeBandSeed = 348;            // fixed seed — bands look identical every run
-        public const int TreeBandMapOverlapPx = 16;     // px a band may spill over the map edge for an organic seam
+        public const int TreeBandMapOverlapPx = 16;     // px the top band's trunks may spill over the map edge
+        public const int TreeBandCanopyPeekPx = 6;      // px the bottom band's canopy tops poke over the map's bottom edge
         public const int TreeBandBaseSpacingPx = 40;    // nominal horizontal step between trunks
         public const int TreeBandSpacingJitterPx = 18;  // +/- horizontal jitter added to the step
         public const int TreeBandRowYJitterPx = 10;     // +/- vertical jitter applied per tree

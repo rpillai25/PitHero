@@ -25,6 +25,9 @@ namespace PitHero.ECS.Components
         private readonly int _rtWidth;
         private readonly int _rtHeight;
         private readonly float _rtWorldTop;
+        private readonly int _rowCount;
+        private readonly float _firstRowAnchorY;
+        private readonly bool _anchorByTop;
 
         private RenderTexture _renderTexture;
         private Sprite _bandSprite;
@@ -50,13 +53,37 @@ namespace PitHero.ECS.Components
             _seed = seed;
 
             var bandTop = startTileY * GameConfig.TileSize;
-            var rows = endTileY - startTileY + 1;
+            var maxTreeHeight = tree.SourceRect.Height > tree2.SourceRect.Height
+                ? tree.SourceRect.Height
+                : tree2.SourceRect.Height;
 
+            _rowCount = endTileY - startTileY + 1;
             _rtWidth = mapWidthPx;
-            _rtHeight = rows * GameConfig.TileSize + GameConfig.TreeBandMapOverlapPx;
-            // The overlap is added on the map-facing side: below for the top band (texture keeps its
-            // top edge), above for the bottom band (texture top moves up into the map).
-            _rtWorldTop = overlapBelow ? bandTop : bandTop - GameConfig.TreeBandMapOverlapPx;
+
+            // Each band anchors its rows on the edge that faces the map, so the seam is governed by
+            // the part of the tree the player actually sees against the terrain.
+            if (overlapBelow)
+            {
+                // Top band: trees stand above the map, so anchor each row by its trunk base. Only
+                // trunk bottoms reach the map, and the texture clips them flush at the overlap line
+                // — a cut trunk simply reads as the tree standing on the ground there.
+                _anchorByTop = false;
+                _firstRowAnchorY = bandTop + GameConfig.TileSize;
+                _rtWorldTop = bandTop;
+                _rtHeight = _rowCount * GameConfig.TileSize + GameConfig.TreeBandMapOverlapPx;
+            }
+            else
+            {
+                // Bottom band: trees stand below the map and grow up toward it, so anchor each row by
+                // its canopy TOP. That keeps the first row's crowns just grazing the map's bottom tile
+                // row instead of burying it, and it holds regardless of which sprite is picked. The
+                // texture is sized to contain whole trees, so no canopy is ever cut.
+                _anchorByTop = true;
+                _firstRowAnchorY = bandTop - GameConfig.TreeBandCanopyPeekPx;
+                _rtWorldTop = _firstRowAnchorY - GameConfig.TreeBandRowYJitterPx;
+                var lastRowAnchorY = _firstRowAnchorY + (_rowCount - 1) * GameConfig.TileSize;
+                _rtHeight = (int)(lastRowAnchorY + GameConfig.TreeBandRowYJitterPx + maxTreeHeight - _rtWorldTop);
+            }
         }
 
         /// <summary>Band rect in world space. Overridden so camera culling uses the real extents.</summary>
@@ -162,10 +189,9 @@ namespace PitHero.ECS.Components
         {
             var rng = new System.Random(_seed);
 
-            for (int row = _startTileY; row <= _endTileY; row++)
+            for (int i = 0; i < _rowCount; i++)
             {
-                // Trunks sit on the row's bottom edge, jittered per tree.
-                var rowBaseY = row * GameConfig.TileSize + GameConfig.TileSize;
+                var rowAnchorY = _firstRowAnchorY + i * GameConfig.TileSize;
 
                 // Start off the left edge by a random amount and stagger each row so rows never line up.
                 var x = -rng.Next(0, GameConfig.TreeBandBaseSpacingPx)
@@ -177,11 +203,13 @@ namespace PitHero.ECS.Components
                     var effects = rng.NextDouble() < GameConfig.TreeBandFlipChance
                         ? SpriteEffects.FlipHorizontally
                         : SpriteEffects.None;
-                    var baseY = rowBaseY + rng.Next(-GameConfig.TreeBandRowYJitterPx,
-                                                     GameConfig.TreeBandRowYJitterPx + 1);
+                    var anchorY = rowAnchorY + rng.Next(-GameConfig.TreeBandRowYJitterPx,
+                                                         GameConfig.TreeBandRowYJitterPx + 1);
 
-                    // Sprites are center-origin, so lift by half the height to put the trunk base on baseY.
-                    var pos = new Vector2(x, baseY - sprite.SourceRect.Height * 0.5f);
+                    // Sprites are center-origin, so shift by half the height to put the anchored edge
+                    // (canopy top or trunk base, per the band) on anchorY.
+                    var halfHeight = sprite.SourceRect.Height * 0.5f;
+                    var pos = new Vector2(x, _anchorByTop ? anchorY + halfHeight : anchorY - halfHeight);
                     batcher.Draw(sprite, pos, Color.White, 0f, sprite.Origin, Vector2.One, effects, 0f);
 
                     x += GameConfig.TreeBandBaseSpacingPx

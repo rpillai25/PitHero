@@ -38,6 +38,13 @@ cost nothing after the first frame. It sits in front of the Base/Detail tilemap 
 fringe that spills over the map edge covers terrain) but behind fog and actors, and it is
 deliberately not 60/61 so `YSortManager` ignores it — the bands are static and never sort.
 
+Each band anchors its rows on the edge that faces the map. The **top** band's trees stand above the
+map, so rows anchor by **trunk base** and the render texture clips those trunks flush at
+`TreeBandMapOverlapPx` — a cut trunk just reads as the tree standing on the ground. The **bottom**
+band's trees grow upward toward the map, so rows anchor by **canopy top**, holding the first row's
+crowns `TreeBandCanopyPeekPx` over the map's bottom tile row instead of burying it; that texture is
+sized to contain whole trees so no canopy is ever cut.
+
 UI / HUD layers (screen-space, unaffected by camera): `RenderLayerActionQueue` (996),
 `RenderLayerGraphicalHUD` (997), `RenderLayerUI` (998), `TransparentPauseOverlay` (999).
 
