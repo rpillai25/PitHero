@@ -10,10 +10,11 @@ Monster job assignment is the one automation with its own deep-dive — see
 
 ## The tab at a glance
 
-Built by `SettingsUI.PopulateAutomationTab` (`PitHero/UI/SettingsUI.cs`), which delegates the two
-newest blocks to `PopulateAutoPurchaseControls` and `PopulateAutoEquipControls`. The whole tab is
-wrapped in a vertical `ScrollPane` — it has outgrown the 450×350 settings window, so **new controls
-just get appended; do not try to keep the tab short**.
+Built by `SettingsUI.PopulateAutomationTab` (`PitHero/UI/SettingsUI.cs`), which delegates the
+newest blocks to `PopulateAutoPurchaseControls`, `PopulateAutoEquipControls` and
+`PopulateAutoHireControls`. The whole tab is wrapped in a vertical `ScrollPane` — it has outgrown
+the 450×350 settings window, so **new controls just get appended; do not try to keep the tab
+short**.
 
 | Control group | Owning service / state | Runs | Save section |
 |---|---|---|---|
@@ -24,6 +25,7 @@ just get appended; do not try to keep the tab short**.
 | Auto-Sell Excess Items + priority + "Gear Sell Options" | `AutoSellExcessItemsService` | Call-driven | 36–38 (v21/v22/v23) |
 | Auto-Purchase Items + priority + merc opt-in + "Gear Purchase Options" + "Consumable Purchase Options" | `AutoItemPurchaseService` | Call-driven | 39 (v23) |
 | Auto-Equip Options | `HeroComponent.AutoEquipHero` / `.AutoEquipMercenaries` (**no service**) | Call-driven | 40 (v23) |
+| Auto-Hire Mercenaries + two "MercenaryN Job" cyclers | `AutoHireMercenaryService` | Call-driven | 41 (v24) |
 
 Dialogs opened from the tab:
 
@@ -45,8 +47,8 @@ setting predates item purchasing and kept its home, so `AutoItemPurchaseService`
 `AutoSeedPurchaseService` by constructor injection and exposes a read-only
 `GoldBuffer => _goldBufferSource?.GoldBuffer ?? 0`. Consequences:
 
-- `AutoItemPurchaseService` **must be registered after** `AutoSeedPurchaseService` in
-  `MainGameScene.Begin()`.
+- `AutoItemPurchaseService` and `AutoHireMercenaryService` **must be registered after**
+  `AutoSeedPurchaseService` in `MainGameScene.Begin()`.
 - There is exactly one slider in the UI and one persisted field (`SaveData.AutoShopGoldBuffer`).
   Do not add a second buffer; route new automated spending through the same property.
 
@@ -74,6 +76,12 @@ Two distinct patterns — pick deliberately:
     after validation means an aborted jump never spends gold; the branch runs once per jump.
   - `PartyAutoEquipHelper.TryAutoEquipForParty(heroComp, item)` ← `OpenChestAction` (chest loot) and
     `AutoItemPurchaseService` (each purchased item).
+  - `AutoHireMercenaryService.TryAutoHire(mercEntity)` ← `MercenaryManager.WalkToTavern`, after the
+    merc is seated (`IsWaitingInTavern` + patron component) — hiring earlier corrupts seat state.
+    `TryHirePass()` ← both settings-close paths (`ToggleSettingsVisibility`, `ForceCloseSettings`),
+    so mercs already seated when the option is configured get hired on exit. The service pre-checks
+    `CanHireMore()` (which covers the hero-dead hiring block) and the Gold Buffer, because
+    `MercenaryManager.HireMercenary` enforces neither.
 
 ## Persistence
 
@@ -137,8 +145,8 @@ hoverableLabel.SetTooltipEnabled(active);   // hoverable labels only
 
 `PitHeroSkin` provides `ph-grayed` variants of `LabelStyle`, `TextButtonStyle` and `CheckBoxStyle`.
 Helpers in `SettingsUI`: `SetButtonActive` (shared), `SetDesignateCropsActive`,
-`SetExcessItemControlsActive`, `SetItemPurchaseControlsActive`, `SetConsumablePurchaseControlsActive`.
-`ReorderableTableList` has its own `SetGrayed(bool)`.
+`SetExcessItemControlsActive`, `SetItemPurchaseControlsActive`, `SetConsumablePurchaseControlsActive`,
+`SetAutoHireControlsActive`. `ReorderableTableList` has its own `SetGrayed(bool)`.
 
 Gotchas:
 
@@ -149,7 +157,9 @@ Gotchas:
 - **Nested gates compose.** "Consumable Purchase Options" is enabled only when *both*
   "Auto-Purchase Items" and "Auto-Purchase Consumables" are checked;
   `SetItemPurchaseControlsActive` ends by calling `SetConsumablePurchaseControlsActive` with the
-  combined condition. Follow that pattern rather than gating on one checkbox.
+  combined condition. Follow that pattern rather than gating on one checkbox. Same for the
+  "Mercenary2 Job" cycler, which needs the auto-hire checkbox on *and* slot 1 holding a job
+  (cycling slot 1 to None also resets slot 2 to None).
 - **Hide open dialogs when the parent turns off**, or a deactivated feature's dialog stays on screen.
 - `PitHeroSkin.CreateSkin()` returns a **cached singleton** — never mutate a shared style; `Clone()`
   first if you need a variant (see `VaultBuyQuantityDialog`).
@@ -212,6 +222,7 @@ and call the pass method rather than simulating frames:
 | Excess-item selling + gear filters | `PitHero.Tests/AutoSellExcessItemsTests.cs` |
 | Item purchasing | `PitHero.Tests/AutoItemPurchaseServiceTests.cs` |
 | Auto-equip | `PitHero.Tests/GearAutoEquipServiceTests.cs` |
+| Mercenary auto-hire matching | `PitHero.Tests/AutoHireMercenaryServiceTests.cs` |
 | Save round-trips + defaults | `PitHero.Tests/SaveLoadTests.cs` |
 
 `AutoItemPurchaseService` splits its entry point for this reason: `TryPurchasePass(HeroComponent)`

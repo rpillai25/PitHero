@@ -394,5 +394,11 @@ namespace PitHero
         public const string SettingsConsumableStacksTooltip = "SettingsConsumableStacksTooltip";
         public const string SettingsAutoEquipOptionsTooltip = "SettingsAutoEquipOptionsTooltip";
         public const string ConsoleAutoPurchasedItem = "ConsoleAutoPurchasedItem";
+        public const string SettingsAutoHireMercenaries = "SettingsAutoHireMercenaries";
+        public const string SettingsAutoHireMercenariesTooltip = "SettingsAutoHireMercenariesTooltip";
+        public const string SettingsAutoHireMerc1Job = "SettingsAutoHireMerc1Job";
+        public const string SettingsAutoHireMerc1JobTooltip = "SettingsAutoHireMerc1JobTooltip";
+        public const string SettingsAutoHireMerc2Job = "SettingsAutoHireMerc2Job";
+        public const string SettingsAutoHireMerc2JobTooltip = "SettingsAutoHireMerc2JobTooltip";
     }
 }

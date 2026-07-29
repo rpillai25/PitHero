@@ -218,6 +218,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.AutoCropSellService));
             Core.Services.RemoveService(typeof(Services.AutoSellExcessItemsService));
             Core.Services.RemoveService(typeof(Services.AutoItemPurchaseService));
+            Core.Services.RemoveService(typeof(Services.AutoHireMercenaryService));
             Core.Services.GetService<Services.FarmTaskCoordinator>()?.Detach();
             Core.Services.RemoveService(typeof(Services.FarmTaskCoordinator));
             Core.Services.RemoveService(typeof(Services.MealBuffService));
@@ -311,6 +312,14 @@ namespace PitHero.ECS.Scenes
                 Core.Services.GetService<Services.GameStateService>(),
                 Core.Services.GetService<Services.SecondChanceMerchantVault>(),
                 autoSeedPurchaseService));
+
+            // Auto-hire mercenary service hires tavern mercenaries matching the configured job slots.
+            // Registered after AutoSeedPurchaseService, which owns the shared Gold Buffer setting it
+            // reads (issue #350).
+            Core.Services.AddService(new Services.AutoHireMercenaryService(
+                Core.Services.GetService<Services.GameStateService>(),
+                autoSeedPurchaseService,
+                mercenaryManager));
 
             // Meal buff service holds each party member's day-long food buffs (issue #319)
             Core.Services.AddService(new Services.MealBuffService());
@@ -608,6 +617,18 @@ namespace PitHero.ECS.Scenes
                     for (int i = 0; i < count; i++)
                         autoItemPurchaseSvc.ConsumableStackTargets[i] = pendingData.AutoPurchaseConsumableStacks[i];
                 }
+            }
+            var autoHireSvc = Core.Services.GetService<Services.AutoHireMercenaryService>();
+            if (autoHireSvc != null)
+            {
+                autoHireSvc.Enabled = pendingData.AutoHireMercenariesEnabled;
+                autoHireSvc.Merc1Job = Services.AutoHireMercenaryService.SanitizeJob(
+                    (RolePlayingFramework.Jobs.JobType)pendingData.AutoHireMerc1Job);
+                autoHireSvc.Merc2Job = Services.AutoHireMercenaryService.SanitizeJob(
+                    (RolePlayingFramework.Jobs.JobType)pendingData.AutoHireMerc2Job);
+                // Slot 2 is only meaningful while slot 1 holds a job — enforce the invariant on load
+                if (autoHireSvc.Merc1Job == RolePlayingFramework.Jobs.JobType.None)
+                    autoHireSvc.Merc2Job = RolePlayingFramework.Jobs.JobType.None;
             }
             _settingsUI?.SyncAutomationControlsFromService();
 
