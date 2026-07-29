@@ -89,6 +89,22 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void PitWidthManager_IsTileInsidePitInterior_UninitializedUsesDefaultEdge()
+        {
+            // Uninitialized fallback right edge is x=13 (matching GetCurrentPitCandidateTargets),
+            // so the walkable interior spans x=2..11, y=3..9.
+            var pitWidthManager = new PitWidthManager();
+
+            Assert.IsTrue(pitWidthManager.IsTileInsidePitInterior(new Microsoft.Xna.Framework.Point(2, 3)), "Top-left interior tile");
+            Assert.IsTrue(pitWidthManager.IsTileInsidePitInterior(new Microsoft.Xna.Framework.Point(11, 9)), "Bottom-right interior tile");
+            Assert.IsFalse(pitWidthManager.IsTileInsidePitInterior(new Microsoft.Xna.Framework.Point(1, 6)), "Left wall ring is not interior");
+            Assert.IsFalse(pitWidthManager.IsTileInsidePitInterior(new Microsoft.Xna.Framework.Point(12, 6)), "Wall column (rightEdge-1) is not interior");
+            Assert.IsFalse(pitWidthManager.IsTileInsidePitInterior(new Microsoft.Xna.Framework.Point(13, 6)), "Jump rim (rightEdge) is not interior");
+            Assert.IsFalse(pitWidthManager.IsTileInsidePitInterior(new Microsoft.Xna.Framework.Point(6, 2)), "Top wall row is not interior");
+            Assert.IsFalse(pitWidthManager.IsTileInsidePitInterior(new Microsoft.Xna.Framework.Point(6, 10)), "Bottom wall row is not interior");
+        }
+
+        [TestMethod]
         public void GameConfig_PitRectConfiguration_ShouldSupportDynamicExpansion()
         {
             // Arrange & Act

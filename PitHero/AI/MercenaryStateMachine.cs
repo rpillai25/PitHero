@@ -273,8 +273,11 @@ namespace PitHero.AI
 
         private bool IsMercenaryInsidePit()
         {
-            var myTile = GetCurrentTile();
-            return IsInsidePit(myTile);
+            // The flag is authoritative: it flips only when a jump completes (or the follow
+            // component warps across the pit boundary). Deriving it from position misclassifies
+            // a merc standing over the pit rect that never jumped in (e.g. the pit widened
+            // underneath it), which silently disables the walk-to-edge -> jump plan.
+            return _mercenary != null && _mercenary.InsidePit;
         }
 
         private bool IsTargetInsidePit()
@@ -288,14 +291,12 @@ namespace PitHero.AI
                 return targetHero.InsidePit;
             }
 
+            // Same flag-based read as the hero path. A position-derived answer flickers while
+            // the target lerps over the pit wall mid-jump, aborting this merc's plan every time.
             var targetMerc = _mercenary.FollowTarget.GetComponent<MercenaryComponent>();
             if (targetMerc != null)
             {
-                var targetTile = new Point(
-                    (int)(targetMerc.Entity.Transform.Position.X / GameConfig.TileSize),
-                    (int)(targetMerc.Entity.Transform.Position.Y / GameConfig.TileSize)
-                );
-                return IsInsidePit(targetTile);
+                return targetMerc.InsidePit;
             }
 
             return false;
@@ -328,23 +329,6 @@ namespace PitHero.AI
                 (int)(pos.X / GameConfig.TileSize),
                 (int)(pos.Y / GameConfig.TileSize)
             );
-        }
-
-        private bool IsInsidePit(Point tile)
-        {
-            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
-            if (pitWidthManager == null)
-                return false;
-
-            var pitLeft = GameConfig.PitRectX;
-            var pitTop = GameConfig.PitRectY;
-            var pitWidth = pitWidthManager.CurrentPitRectWidthTiles;
-            var pitHeight = GameConfig.PitRectHeight;
-            var pitRight = pitLeft + pitWidth - 1;
-            var pitBottom = pitTop + pitHeight - 1;
-
-            // Use exclusive boundaries - pit edge is NOT inside the pit
-            return tile.X > pitLeft && tile.X < pitRight && tile.Y > pitTop && tile.Y < pitBottom;
         }
     }
 }

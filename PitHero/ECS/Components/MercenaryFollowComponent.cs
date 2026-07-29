@@ -120,8 +120,24 @@ namespace PitHero.ECS.Components
             // Stuck detection: if mercenary has been at the same tile too long while needing to move, warp near target
             if (_stuckTimer >= GameConfig.MovementStuckTimeoutSeconds && _tileMover != null)
             {
+                // Never warp onto an impassable tile — the target's truncated position sits on the
+                // pit wall while it lerps through a jump. Keep the timer running and retry next frame.
+                if (_pathfinding.PathfindingGraph?.Walls?.Contains(targetTile) == true)
+                {
+                    return;
+                }
+
                 Debug.Warn($"[MercenaryFollowComponent] {Entity.Name} stuck at ({myTile.X},{myTile.Y}) for {_stuckTimer:F1}s, warping near target ({targetTile.X},{targetTile.Y})");
                 _tileMover.WarpToTile(targetTile);
+
+                // A warp can cross the pit boundary without a jump — keep the authoritative
+                // InsidePit flag and this merc's pathfinding graph in sync, exactly as the jump
+                // actions do after landing.
+                var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+                if (pitWidthManager != null)
+                    _mercComponent.InsidePit = pitWidthManager.IsTileInsidePitInterior(targetTile);
+                _pathfinding.RefreshPathfindingWithObstacles();
+
                 _currentPath = null;
                 _pathIndex = 0;
                 _stuckTimer = 0f;

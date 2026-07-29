@@ -116,6 +116,30 @@ namespace PitHero.ECS.Components
         }
 
         /// <summary>
+        /// Refreshes the graph from the collision layer and re-adds every obstacle entity's tile.
+        /// Use after any teleport across the pit boundary — a bare refresh loses runtime obstacles.
+        /// </summary>
+        public virtual void RefreshPathfindingWithObstacles()
+        {
+            RefreshPathfinding();
+            if (!_isPathfindingInitialized)
+                return;
+
+            var scene = Entity?.Scene;
+            if (scene == null)
+                return;
+
+            var obstacles = scene.FindEntitiesWithTag(GameConfig.TAG_OBSTACLE);
+            for (int i = 0; i < obstacles.Count; i++)
+            {
+                var obstaclePos = obstacles[i].Transform.Position;
+                _astarGraph.Walls.Add(new Point(
+                    (int)(obstaclePos.X / GameConfig.TileSize),
+                    (int)(obstaclePos.Y / GameConfig.TileSize)));
+            }
+        }
+
+        /// <summary>
         /// Calculate a path from start to target using A* pathfinding
         /// </summary>
         public virtual List<Point> CalculatePath(Point start, Point target)

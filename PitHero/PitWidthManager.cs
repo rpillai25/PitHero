@@ -93,6 +93,26 @@ namespace PitHero
             }
         }
 
+        /// <summary>
+        /// True when the tile is on the pit's walkable interior floor. Excludes the wall ring and
+        /// the jump rim: interior x spans PitRectX+1 .. CurrentPitRightEdge-2 (the wall column sits
+        /// at CurrentPitRightEdge-1 and the rim actors jump from at CurrentPitRightEdge).
+        /// </summary>
+        public bool IsTileInsidePitInterior(Point tile)
+        {
+            int rightEdge = _isInitialized
+                ? _currentPitRightEdge
+                : GameConfig.PitRectX + GameConfig.PitRectWidth;
+
+            int leftInteriorX = GameConfig.PitRectX + 1;
+            int rightInteriorX = rightEdge - 2;
+            int topInteriorY = GameConfig.PitRectY + 1;
+            int bottomInteriorY = GameConfig.PitRectY + GameConfig.PitRectHeight - 2;
+
+            return tile.X >= leftInteriorX && tile.X <= rightInteriorX
+                && tile.Y >= topInteriorY && tile.Y <= bottomInteriorY;
+        }
+
 
         /// <summary>
         /// Initialize the tile pattern dictionaries from the map
