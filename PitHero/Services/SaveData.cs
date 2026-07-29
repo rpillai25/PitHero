@@ -255,14 +255,14 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 23;
+        public const int CurrentVersion = 24;
 
         /// <summary>
-        /// Oldest save file version this build can still load. v17–v22 files are byte-exact
-        /// prefixes of v23 (sections 33 dining, 34 automation, 35 auto-dine resume,
+        /// Oldest save file version this build can still load. v17–v23 files are byte-exact
+        /// prefixes of v24 (sections 33 dining, 34 automation, 35 auto-dine resume,
         /// 36 auto-sell excess items, 37 auto-sell priority, 38 gear sell types,
-        /// 39 auto-purchase items, and 40 auto-equip were appended at the end),
-        /// so they load with default state for the missing sections.
+        /// 39 auto-purchase items, 40 auto-equip, and 41 auto-hire mercenaries were
+        /// appended at the end), so they load with default state for the missing sections.
         /// </summary>
         public const int MinSupportedVersion = 17;
 
@@ -556,6 +556,16 @@ namespace PitHero.Services
 
         /// <summary>Whether looted or purchased gear is auto-equipped on mercenaries.</summary>
         public bool AutoEquipMercenaries = true;
+
+        // Auto-hire mercenaries (v24)
+        /// <summary>Whether tavern mercenaries matching the configured job slots are auto-hired.</summary>
+        public bool AutoHireMercenariesEnabled = false;
+
+        /// <summary>Job auto-hired for the first party slot as a raw JobType value (0 = None).</summary>
+        public int AutoHireMerc1Job = 0;
+
+        /// <summary>Job auto-hired for the second party slot as a raw JobType value (0 = None).</summary>
+        public int AutoHireMerc2Job = 0;
 
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
@@ -1008,6 +1018,11 @@ namespace PitHero.Services
             // 40. Auto-equip (v23)
             writer.Write(AutoEquipHero);
             writer.Write(AutoEquipMercenaries);
+
+            // 41. Auto-hire mercenaries (v24)
+            writer.Write(AutoHireMercenariesEnabled);
+            writer.Write(AutoHireMerc1Job);
+            writer.Write(AutoHireMerc2Job);
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -1518,6 +1533,17 @@ namespace PitHero.Services
             {
                 AutoEquipHero = reader.ReadBool();
                 AutoEquipMercenaries = reader.ReadBool();
+            }
+
+            // 41. Auto-hire mercenaries (v24+). Older files default to disabled, both slots None.
+            AutoHireMercenariesEnabled = false;
+            AutoHireMerc1Job = 0;
+            AutoHireMerc2Job = 0;
+            if (fileVersion >= 24)
+            {
+                AutoHireMercenariesEnabled = reader.ReadBool();
+                AutoHireMerc1Job = reader.ReadInt();
+                AutoHireMerc2Job = reader.ReadInt();
             }
         }
 

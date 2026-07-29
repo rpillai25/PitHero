@@ -399,3 +399,9 @@ SettingsConsumableStacks,Stacks: {0}
 SettingsConsumableStacksTooltip,Minimum stacks to maintain in inventory if space allows
 SettingsAutoEquipOptionsTooltip,Auto-equip gear after finding in chest or auto-purchased
 ConsoleAutoPurchasedItem,Auto-purchased {0} for {1}G.
+SettingsAutoHireMercenaries,Auto-Hire Mercenaries
+SettingsAutoHireMercenariesTooltip,Automatically hire tavern mercenaries whose job matches a configured slot
+SettingsAutoHireMerc1Job,Mercenary1 Job
+SettingsAutoHireMerc1JobTooltip,Job to auto-hire for the first mercenary slot. None disables auto-hiring this slot
+SettingsAutoHireMerc2Job,Mercenary2 Job
+SettingsAutoHireMerc2JobTooltip,Job to auto-hire for the second mercenary slot. Requires Mercenary1 Job to be set

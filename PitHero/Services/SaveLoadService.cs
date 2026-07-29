@@ -847,6 +847,15 @@ namespace PitHero.Services
                 }
             }
 
+            // Auto-hire mercenaries (v24+)
+            var autoHireService = Core.Services.GetService<AutoHireMercenaryService>();
+            if (autoHireService != null)
+            {
+                data.AutoHireMercenariesEnabled = autoHireService.Enabled;
+                data.AutoHireMerc1Job = (int)autoHireService.Merc1Job;
+                data.AutoHireMerc2Job = (int)autoHireService.Merc2Job;
+            }
+
             return data;
         }
 

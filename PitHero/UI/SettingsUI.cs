@@ -5,6 +5,7 @@ using Nez.UI;
 using PitHero.ECS.Components;
 using PitHero.ECS.Scenes;
 using PitHero.Services;
+using RolePlayingFramework.Jobs;
 using System;
 using System.Collections.Generic;
 
@@ -91,6 +92,24 @@ namespace PitHero.UI
         private HoverableLabel _autoEquipOptionsLabel;
         private CheckBox _autoEquipHeroCheckBox;
         private CheckBox _autoEquipMercsCheckBox;
+
+        // Automation tab — auto-hire mercenaries (issue #350)
+        private static readonly JobType[] AutoHireJobOptions =
+        {
+            JobType.None, JobType.Priest, JobType.Mage, JobType.Knight,
+            JobType.Thief, JobType.Monk, JobType.Archer
+        };
+        private HoverableCheckBox _autoHireMercsCheckBox;
+        private HoverableLabel _autoHireMerc1Label;
+        private HoverableLabel _autoHireMerc2Label;
+        private Label _autoHireMerc1ValueLabel;
+        private Label _autoHireMerc2ValueLabel;
+        private TextButton _autoHireMerc1LeftButton;
+        private TextButton _autoHireMerc1RightButton;
+        private TextButton _autoHireMerc2LeftButton;
+        private TextButton _autoHireMerc2RightButton;
+        private int _autoHireMerc1Index;
+        private int _autoHireMerc2Index;
 
         // Confirmation dialogs
         private Window _exitConfirmationDialog;
@@ -1016,6 +1035,7 @@ namespace PitHero.UI
 
             PopulateAutoPurchaseControls(autoShopTable, skin);
             PopulateAutoEquipControls(autoShopTable, skin);
+            PopulateAutoHireControls(autoShopTable, skin);
 
             // The tab keeps growing as automation options are added, so it scrolls vertically.
             // The right pad insets the scrollbar from the window edge instead of hugging it.
@@ -1168,6 +1188,161 @@ namespace PitHero.UI
             _designateCropsButton.SetDisabled(!active);
             _designateCropsButton.SetStyle(skin.Get<TextButtonStyle>(active ? "ph-default" : "ph-grayed"));
             _designateCropsButton.SetTouchable(active ? Touchable.Enabled : Touchable.Disabled);
+        }
+
+        /// <summary>Adds the "Auto-Hire Mercenaries" checkbox and its two job cyclers to the Automation tab.</summary>
+        private void PopulateAutoHireControls(Table autoShopTable, Skin skin)
+        {
+            string autoHireTooltip = GetText(TextType.UI, UITextKey.SettingsAutoHireMercenariesTooltip);
+            _autoHireMercsCheckBox = new HoverableCheckBox(
+                GetText(TextType.UI, UITextKey.SettingsAutoHireMercenaries),
+                skin,
+                autoHireTooltip,
+                _stage);
+            _autoHireMercsCheckBox.IsChecked = false;
+            _autoHireMercsCheckBox.OnChanged += (isChecked) =>
+            {
+                var svc = Core.Services?.GetService<AutoHireMercenaryService>();
+                if (svc != null) svc.Enabled = isChecked;
+                SetAutoHireControlsActive(isChecked);
+            };
+            autoShopTable.Add(_autoHireMercsCheckBox).Left().SetPadTop(15f).SetPadBottom(8f);
+            autoShopTable.Row();
+
+            BuildAutoHireCyclerRow(autoShopTable, skin, 1,
+                UITextKey.SettingsAutoHireMerc1Job, UITextKey.SettingsAutoHireMerc1JobTooltip,
+                out _autoHireMerc1Label, out _autoHireMerc1LeftButton,
+                out _autoHireMerc1ValueLabel, out _autoHireMerc1RightButton);
+            BuildAutoHireCyclerRow(autoShopTable, skin, 2,
+                UITextKey.SettingsAutoHireMerc2Job, UITextKey.SettingsAutoHireMerc2JobTooltip,
+                out _autoHireMerc2Label, out _autoHireMerc2LeftButton,
+                out _autoHireMerc2ValueLabel, out _autoHireMerc2RightButton);
+
+            SetAutoHireControlsActive(false);
+        }
+
+        /// <summary>Builds one "MercenaryN Job" cycler row: caption, left arrow, value label, right arrow.</summary>
+        private void BuildAutoHireCyclerRow(Table autoShopTable, Skin skin, int slot,
+            string captionKey, string tooltipKey,
+            out HoverableLabel captionLabel, out TextButton leftButton,
+            out Label valueLabel, out TextButton rightButton)
+        {
+            captionLabel = new HoverableLabel(
+                GetText(TextType.UI, captionKey),
+                skin, "ph-default",
+                GetText(TextType.UI, tooltipKey), _stage);
+            leftButton = new TextButton("<", skin, "ph-default");
+            valueLabel = new Label(GetAutoHireJobDisplayName(JobType.None), skin, "ph-default");
+            rightButton = new TextButton(">", skin, "ph-default");
+            leftButton.OnClicked += (_) => CycleAutoHireJob(slot, -1);
+            rightButton.OnClicked += (_) => CycleAutoHireJob(slot, +1);
+
+            var row = new Table();
+            row.Add(captionLabel).Left().Width(110f).SetPadRight(10f);
+            row.Add(leftButton).Size(30f, 22f);
+            row.Add(valueLabel).Width(70f).SetPadLeft(6f).SetPadRight(6f);
+            row.Add(rightButton).Size(30f, 22f);
+            autoShopTable.Add(row).Left().SetPadBottom(8f);
+            autoShopTable.Row();
+        }
+
+        /// <summary>
+        /// Cycles one auto-hire job slot by the given direction, wrapping at both ends, and pushes
+        /// the selection to the service. Clearing slot 1 also clears slot 2, which is only
+        /// selectable while slot 1 holds a job.
+        /// </summary>
+        private void CycleAutoHireJob(int slot, int delta)
+        {
+            var svc = Core.Services?.GetService<AutoHireMercenaryService>();
+            if (slot == 1)
+            {
+                _autoHireMerc1Index += delta;
+                if (_autoHireMerc1Index < 0)
+                    _autoHireMerc1Index = AutoHireJobOptions.Length - 1;
+                else if (_autoHireMerc1Index >= AutoHireJobOptions.Length)
+                    _autoHireMerc1Index = 0;
+
+                var job = AutoHireJobOptions[_autoHireMerc1Index];
+                if (svc != null) svc.Merc1Job = job;
+                _autoHireMerc1ValueLabel?.SetText(GetAutoHireJobDisplayName(job));
+
+                if (job == JobType.None && _autoHireMerc2Index != 0)
+                {
+                    _autoHireMerc2Index = 0;
+                    if (svc != null) svc.Merc2Job = JobType.None;
+                    _autoHireMerc2ValueLabel?.SetText(GetAutoHireJobDisplayName(JobType.None));
+                }
+            }
+            else
+            {
+                _autoHireMerc2Index += delta;
+                if (_autoHireMerc2Index < 0)
+                    _autoHireMerc2Index = AutoHireJobOptions.Length - 1;
+                else if (_autoHireMerc2Index >= AutoHireJobOptions.Length)
+                    _autoHireMerc2Index = 0;
+
+                var job = AutoHireJobOptions[_autoHireMerc2Index];
+                if (svc != null) svc.Merc2Job = job;
+                _autoHireMerc2ValueLabel?.SetText(GetAutoHireJobDisplayName(job));
+            }
+
+            SetAutoHireControlsActive(_autoHireMercsCheckBox?.IsChecked ?? false);
+        }
+
+        /// <summary>
+        /// Activates or deactivates the auto-hire job cyclers. Slot 2 additionally requires slot 1
+        /// to hold a job, so the two gates compose.
+        /// </summary>
+        private void SetAutoHireControlsActive(bool active)
+        {
+            var skin = PitHeroSkin.CreateSkin();
+            var labelStyle = skin.Get<LabelStyle>(active ? "ph-default" : "ph-grayed");
+
+            if (_autoHireMerc1Label != null)
+            {
+                _autoHireMerc1Label.SetStyle(labelStyle);
+                _autoHireMerc1Label.SetTooltipEnabled(active);
+            }
+            _autoHireMerc1ValueLabel?.SetStyle(labelStyle);
+            SetButtonActive(_autoHireMerc1LeftButton, active, skin);
+            SetButtonActive(_autoHireMerc1RightButton, active, skin);
+
+            var merc2Active = active && AutoHireJobOptions[_autoHireMerc1Index] != JobType.None;
+            var merc2LabelStyle = skin.Get<LabelStyle>(merc2Active ? "ph-default" : "ph-grayed");
+            if (_autoHireMerc2Label != null)
+            {
+                _autoHireMerc2Label.SetStyle(merc2LabelStyle);
+                _autoHireMerc2Label.SetTooltipEnabled(merc2Active);
+            }
+            _autoHireMerc2ValueLabel?.SetStyle(merc2LabelStyle);
+            SetButtonActive(_autoHireMerc2LeftButton, merc2Active, skin);
+            SetButtonActive(_autoHireMerc2RightButton, merc2Active, skin);
+        }
+
+        /// <summary>Localized display name for an auto-hire cycler option.</summary>
+        private string GetAutoHireJobDisplayName(JobType job)
+        {
+            switch (job)
+            {
+                case JobType.Knight: return GetText(TextType.Job, JobTextKey.Job_Knight_Name);
+                case JobType.Monk: return GetText(TextType.Job, JobTextKey.Job_Monk_Name);
+                case JobType.Mage: return GetText(TextType.Job, JobTextKey.Job_Mage_Name);
+                case JobType.Priest: return GetText(TextType.Job, JobTextKey.Job_Priest_Name);
+                case JobType.Thief: return GetText(TextType.Job, JobTextKey.Job_Thief_Name);
+                case JobType.Archer: return GetText(TextType.Job, JobTextKey.Job_Archer_Name);
+                default: return GetText(TextType.UI, UITextKey.JobNameNone);
+            }
+        }
+
+        /// <summary>Index of a job in the cycler options (unknown values fall back to None at index 0).</summary>
+        private static int IndexOfAutoHireJob(JobType job)
+        {
+            for (int i = 0; i < AutoHireJobOptions.Length; i++)
+            {
+                if (AutoHireJobOptions[i] == job)
+                    return i;
+            }
+            return 0;
         }
 
         /// <summary>
@@ -1343,6 +1518,18 @@ namespace PitHero.UI
                 {
                     _consumablePurchaseOptionsDialog?.Hide();
                 }
+            }
+
+            var autoHireSvc = Core.Services?.GetService<AutoHireMercenaryService>();
+            if (autoHireSvc != null)
+            {
+                if (_autoHireMercsCheckBox != null)
+                    _autoHireMercsCheckBox.IsChecked = autoHireSvc.Enabled;
+                _autoHireMerc1Index = IndexOfAutoHireJob(autoHireSvc.Merc1Job);
+                _autoHireMerc2Index = IndexOfAutoHireJob(autoHireSvc.Merc2Job);
+                _autoHireMerc1ValueLabel?.SetText(GetAutoHireJobDisplayName(AutoHireJobOptions[_autoHireMerc1Index]));
+                _autoHireMerc2ValueLabel?.SetText(GetAutoHireJobDisplayName(AutoHireJobOptions[_autoHireMerc2Index]));
+                SetAutoHireControlsActive(autoHireSvc.Enabled);
             }
         }
 
@@ -1679,6 +1866,11 @@ namespace PitHero.UI
             if (_isVisible)
                 _settingsWindow.ToFront();
             LayoutUI();
+
+            // Closing settings sweeps the tavern so mercs seated before auto-hire was configured
+            // are considered (TryHirePass no-ops while the option is disabled)
+            if (!_isVisible)
+                Core.Services.GetService<AutoHireMercenaryService>()?.TryHirePass();
         }
 
         /// <summary>
@@ -1698,6 +1890,7 @@ namespace PitHero.UI
                 if (pauseService != null)
                     pauseService.IsPaused = false;
                 LayoutUI();
+                Core.Services.GetService<AutoHireMercenaryService>()?.TryHirePass();
                 Debug.Log("[SettingsUI] Settings force closed by single window policy");
             }
         }

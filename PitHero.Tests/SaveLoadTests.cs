@@ -1115,5 +1115,71 @@ namespace PitHero.Tests
                     Directory.Delete(tempDir, true);
             }
         }
+
+        /// <summary>Verifies the v24 auto-hire mercenary settings round-trip, including duplicate job slots.</summary>
+        [TestMethod]
+        public void SaveData_V24_AutoHireMercenaries_RoundTrip()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_v24_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+
+                var original = new SaveData();
+                original.AutoHireMercenariesEnabled = true;
+                original.AutoHireMerc1Job = (int)JobType.Knight;
+                original.AutoHireMerc2Job = (int)JobType.Knight;
+
+                dataStore.Save("v24_autohire.bin", original);
+
+                var loaded = new SaveData();
+                dataStore.Load("v24_autohire.bin", loaded);
+
+                Assert.IsTrue(loaded.AutoHireMercenariesEnabled, "Auto-hire enabled should round-trip");
+                Assert.AreEqual((int)JobType.Knight, loaded.AutoHireMerc1Job, "Slot 1 job should round-trip");
+                Assert.AreEqual((int)JobType.Knight, loaded.AutoHireMerc2Job, "Duplicate slot 2 job should round-trip");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
+        /// <summary>
+        /// Verifies the v24 auto-hire defaults: disabled with both slots None, both on a fresh
+        /// SaveData and after a default save/load cycle (the state older files recover with).
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V24_AutoHireMercenaries_Defaults()
+        {
+            var fresh = new SaveData();
+            Assert.IsFalse(fresh.AutoHireMercenariesEnabled, "Auto-hire defaults to OFF");
+            Assert.AreEqual((int)JobType.None, fresh.AutoHireMerc1Job, "Slot 1 defaults to None");
+            Assert.AreEqual((int)JobType.None, fresh.AutoHireMerc2Job, "Slot 2 defaults to None");
+
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_v24d_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+                dataStore.Save("v24_defaults.bin", new SaveData());
+
+                var loaded = new SaveData();
+                dataStore.Load("v24_defaults.bin", loaded);
+
+                Assert.IsFalse(loaded.AutoHireMercenariesEnabled);
+                Assert.AreEqual((int)JobType.None, loaded.AutoHireMerc1Job);
+                Assert.AreEqual((int)JobType.None, loaded.AutoHireMerc2Job);
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
     }
 }

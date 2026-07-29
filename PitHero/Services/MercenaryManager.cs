@@ -361,6 +361,9 @@ namespace PitHero.Services
             }
 
             Debug.Log($"[MercenaryManager] Mercenary {mercComponent.LinkedMercenary.Name} arrived at tavern");
+
+            // Now that the merc is seated (IsWaitingInTavern + patron component), offer it to auto-hire
+            Core.Services.GetService<AutoHireMercenaryService>()?.TryAutoHire(mercEntity);
         }
 
         /// <summary>

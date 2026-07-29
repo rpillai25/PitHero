@@ -57,6 +57,22 @@ namespace PitHero.AI
             var path = pathfinding.CalculatePath(currentTile, _pitEdgeTile);
             if (path == null || path.Count == 0)
             {
+                // Never cache the edge tile across attempts — the pit can widen between them
+                _pathCalculated = false;
+
+                // A merc standing on the pit's interior floor without ever having jumped (the pit
+                // widened underneath it mid-walk) can never reach the rim on foot. Adopt the
+                // position as truth so the next plan follows the target inside instead of walking
+                // to the edge forever.
+                var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+                if (pitWidthManager != null && pitWidthManager.IsTileInsidePitInterior(currentTile))
+                {
+                    Debug.Warn($"[WalkToPitEdge] {mercenary.Entity.Name} is stranded on the pit floor at ({currentTile.X},{currentTile.Y}) — marking InsidePit and refreshing pathfinding");
+                    mercenary.InsidePit = true;
+                    pathfinding.RefreshPathfindingWithObstacles();
+                    return true;
+                }
+
                 Debug.Warn($"[WalkToPitEdge] {mercenary.Entity.Name} cannot find path to pit edge");
                 return true;
             }
