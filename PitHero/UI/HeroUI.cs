@@ -794,9 +794,9 @@ namespace PitHero.UI
             }
             else
             {
-                _healPriorityItems.Add(HeroHealPriority.Inn.ToString());
                 _healPriorityItems.Add(HeroHealPriority.HealingItem.ToString());
                 _healPriorityItems.Add(HeroHealPriority.HealingSkill.ToString());
+                _healPriorityItems.Add(HeroHealPriority.Inn.ToString());
             }
         }
 
