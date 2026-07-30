@@ -34,10 +34,25 @@ namespace PitHero.ECS.Components
                     return;
 
                 _insidePit = value;
+                PitIntent = PitIntentRules.Settle(PitIntent, value);
                 ApplyMovementSpeedForPitState();
             }
         }
         public bool OutsidePit => !InsidePit;                        // Opposite of InsidePit (calculated)
+
+        /// <summary>
+        /// The pit transition the hero's current GOAP plan intends. Set by HeroStateMachine at
+        /// plan formation, cleared by the InsidePit setter once the flag reaches the intended
+        /// state. Transient — not saved; the hero replans within a second of load.
+        /// </summary>
+        public HeroPitIntent PitIntent { get; set; }
+
+        /// <summary>
+        /// InsidePit adjusted by plan intent — the pit state the hero is heading toward.
+        /// Mercenaries key their own jump-in/jump-out goals off this so all party members
+        /// move to the pit edge concurrently instead of waiting for the hero to land.
+        /// </summary>
+        public bool IntendsInsidePit => PitIntentRules.EffectiveInsidePit(PitIntent, InsidePit);
         public bool ExploredPit { get; set; }                        // True after all reachable FogOfWar uncovered, false upon pit regeneration
 
         // Track wizard orb discovery with a backing field (no side-effect logic here)

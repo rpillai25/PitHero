@@ -329,47 +329,30 @@ namespace PitHero.AI
                 return;
             }
 
-            // Get pit bounds for checking if mercenary is inside pit
-            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
-            var pitLeft = GameConfig.PitRectX;
-            var pitTop = GameConfig.PitRectY;
-            var pitWidth = pitWidthManager?.CurrentPitRectWidthTiles ?? GameConfig.PitRectWidth;
-            var pitHeight = GameConfig.PitRectHeight;
-            var pitRight = pitLeft + pitWidth - 1;
-            var pitBottom = pitTop + pitHeight - 1;
-
             var heroPosition = hero.Entity.Transform.Position;
             int repositionedCount = 0;
             int skippedCount = 0;
 
-            Debug.Log($"[ActivateWizardOrb] Checking {hiredMercenaries.Count} mercenaries for repositioning. Pit bounds: ({pitLeft},{pitTop}) to ({pitRight},{pitBottom})");
+            Debug.Log($"[ActivateWizardOrb] Checking {hiredMercenaries.Count} mercenaries for repositioning");
 
             for (int i = 0; i < hiredMercenaries.Count; i++)
             {
                 var mercEntity = hiredMercenaries[i];
                 var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
-                
+
                 if (mercComponent == null)
                     continue;
 
-                // Check if mercenary is inside the pit
-                var mercTile = new Point(
-                    (int)(mercEntity.Transform.Position.X / GameConfig.TileSize),
-                    (int)(mercEntity.Transform.Position.Y / GameConfig.TileSize)
-                );
-
-                // Use exclusive boundaries - pit edge is NOT inside the pit (same logic as HeroComponent)
-                bool mercInsidePit = mercTile.X > pitLeft && mercTile.X < pitRight && 
-                                     mercTile.Y > pitTop && mercTile.Y < pitBottom;
-
-                if (!mercInsidePit)
+                // Membership is flag-based (issue #350): tile math misclassifies a merc that is
+                // standing over a widened pit rect but never jumped in
+                if (!mercComponent.InsidePit)
                 {
-                    Debug.Log($"[ActivateWizardOrb] Mercenary {mercComponent.LinkedMercenary.Name} is outside pit at ({mercTile.X},{mercTile.Y}) - skipping repositioning");
+                    Debug.Log($"[ActivateWizardOrb] Mercenary {mercComponent.LinkedMercenary.Name} is outside pit - skipping repositioning");
                     skippedCount++;
                     continue;
                 }
 
-                Debug.Log($"[ActivateWizardOrb] Mercenary {mercComponent.LinkedMercenary.Name} is inside pit at ({mercTile.X},{mercTile.Y}) - repositioning to hero");
+                Debug.Log($"[ActivateWizardOrb] Mercenary {mercComponent.LinkedMercenary.Name} is inside pit - repositioning to hero");
 
                 // Stop any in-progress movement first
                 var tileMover = mercEntity.GetComponent<TileByTileMover>();
@@ -394,6 +377,12 @@ namespace PitHero.AI
 
                 // Update mercenary's last tile position to match hero's
                 mercComponent.LastTilePosition = hero.LastTilePosition;
+
+                // Teleport across the pit boundary of the regenerated pit — keep the
+                // authoritative flag and this merc's pathfinding graph in sync (issue #350:
+                // teleports must sync flag + RefreshPathfindingWithObstacles)
+                mercComponent.InsidePit = true;
+                mercEntity.GetComponent<PathfindingActorComponent>()?.RefreshPathfindingWithObstacles();
 
                 Debug.Log($"[ActivateWizardOrb] Mercenary {mercComponent.LinkedMercenary.Name}: Position=({mercEntity.Transform.Position.X},{mercEntity.Transform.Position.Y}), LastTilePosition=({mercComponent.LastTilePosition.X},{mercComponent.LastTilePosition.Y})");
 

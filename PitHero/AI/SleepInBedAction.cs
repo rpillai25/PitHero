@@ -402,8 +402,13 @@ namespace PitHero.AI
                     if (mercComp != null)
                     {
                         mercComp.LastTilePosition = bedPos;
+
+                        // Bed teleport can cross the pit boundary (safety net — mercs normally
+                        // already exited on their own): sync the authoritative flag + graph
+                        mercComp.InsidePit = false;
+                        merc.GetComponent<PathfindingActorComponent>()?.RefreshPathfindingWithObstacles();
                     }
-                    
+
                     Debug.Log($"[SleepInBedAction] Teleported mercenary {i + 1} to bed at ({bedPos.X},{bedPos.Y})");
                 }
             }

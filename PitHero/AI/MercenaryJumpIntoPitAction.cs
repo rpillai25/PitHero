@@ -82,6 +82,16 @@ namespace PitHero.AI
                 return true;
             }
 
+            // Same guard as the hero's JumpIntoPitAction: never start a jump whose landing tile
+            // is not pit interior. WalkToPitEdgeAction can "complete" on a path failure, and a
+            // blind 2-tile jump from a random tile would corrupt the authoritative InsidePit flag.
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            if (pitWidthManager == null || !pitWidthManager.IsTileInsidePitInterior(targetTile.Value))
+            {
+                Debug.Warn($"[MercenaryJumpIntoPit] {mercenary.Entity.Name} aborting jump from ({currentStartTile.X},{currentStartTile.Y}) — landing tile ({targetTile.Value.X},{targetTile.Value.Y}) is not inside the pit interior");
+                return true;
+            }
+
             _plannedTargetTile = targetTile.Value;
 
             StartJumpMovement(mercenary, _plannedTargetTile);

@@ -1078,6 +1078,11 @@ namespace PitHero.Services
                 (int)(spawnWorldPos.X / GameConfig.TileSize),
                 (int)(spawnWorldPos.Y / GameConfig.TileSize));
 
+            // Sync the authoritative pit flag at spawn — the merc may restore adjacent to a
+            // hero standing inside the pit (WalkToPitEdgeAction's stranded recovery is the fallback)
+            var pitWidthManagerForSpawn = Core.Services.GetService<PitWidthManager>();
+            var spawnInsidePit = pitWidthManagerForSpawn?.IsTileInsidePitInterior(currentTile) ?? false;
+
             var mercComponent = mercEntity.AddComponent(new MercenaryComponent
             {
                 LinkedMercenary = mercenary,
@@ -1087,6 +1092,7 @@ namespace PitHero.Services
                 SpawnTime = Time.TotalTime,
                 SpawnId = _nextSpawnId,
                 LastTilePosition = currentTile,
+                InsidePit = spawnInsidePit,
                 FollowTarget = followTarget,
                 SkinColor = saved.SkinColor,
                 HairColor = saved.HairColor,

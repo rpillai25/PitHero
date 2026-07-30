@@ -16,6 +16,9 @@ namespace PitHero.AI
         {
             SetPrecondition(GoapConstants.HeroInitialized, true);
             SetPrecondition(GoapConstants.PitInitialized, true);
+            // Following never bridges the pit boundary — crossing happens exclusively via the
+            // walk-to-edge + jump actions, so a merc mid-transition waits instead of following
+            SetPrecondition(GoapConstants.PitStateMatchesHero, true);
 
             SetPostcondition(GoapConstants.MercenaryFollowingTarget, true);
         }
@@ -23,6 +26,13 @@ namespace PitHero.AI
         public override bool Execute(MercenaryComponent mercenary)
         {
             if (mercenary?.FollowTarget == null)
+                return true;
+
+            // Runtime mirror of the PitStateMatchesHero precondition: the pit states can diverge
+            // after the plan was formed (this merc landed first, or the hero jumped). Complete so
+            // the state machine replans — it will wait until the states match again.
+            var heroComponent = mercenary.Entity.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
+            if (heroComponent != null && mercenary.InsidePit != heroComponent.InsidePit)
                 return true;
 
             var mercTile = new Microsoft.Xna.Framework.Point(

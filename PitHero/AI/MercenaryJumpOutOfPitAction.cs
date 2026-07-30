@@ -72,6 +72,10 @@ namespace PitHero.AI
 
                 mercenary.InsidePit = false;
 
+                // Symmetric with MercenaryJumpIntoPitAction: rebuild the graph (collision layer
+                // plus runtime obstacles) after crossing the pit boundary
+                mercenary.Entity.GetComponent<PathfindingActorComponent>()?.RefreshPathfindingWithObstacles();
+
                 Debug.Log($"[MercenaryJumpOutOfPit] {mercenary.Entity.Name} jump out completed successfully");
                 return true;
             }

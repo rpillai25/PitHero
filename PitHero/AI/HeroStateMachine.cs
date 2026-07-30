@@ -209,6 +209,8 @@ namespace PitHero.AI
                 _lastHealPriority3 = _hero.HealPriority3;
                 _hasTrackedPriorities = true;
 
+                _hero.PitIntent = ComputePitIntentFromPlan(_actionPlan);
+
                 if (PlanContainsSleepInBed(_actionPlan))
                 {
                     if (!_innRestEmitted)
@@ -270,6 +272,8 @@ namespace PitHero.AI
                         _lastHealPriority2 = _hero.HealPriority2;
                         _lastHealPriority3 = _hero.HealPriority3;
                         _hasTrackedPriorities = true;
+
+                        _hero.PitIntent = ComputePitIntentFromPlan(_actionPlan);
 
                         if (PlanContainsSleepInBed(_actionPlan))
                         {
@@ -922,6 +926,26 @@ namespace PitHero.AI
         #endregion
 
         #region Planning Helpers
+
+        /// <summary>
+        /// Derives the hero's pit-transition intent from a freshly formed plan. Mercenaries key
+        /// off this so the whole party heads for the pit edge as soon as the hero decides to
+        /// jump, instead of waiting for the hero's InsidePit flag to flip after landing.
+        /// Intent is deliberately NOT cleared when a plan is abandoned — the next successful
+        /// plan recomputes it, and clearing it transiently would cause mercenary replan churn.
+        /// </summary>
+        public static HeroPitIntent ComputePitIntentFromPlan(Stack<Nez.AI.GOAP.Action> plan)
+        {
+            var actions = plan.ToArray();
+            for (int i = 0; i < actions.Length; i++)
+            {
+                if (actions[i] is JumpIntoPitAction)
+                    return HeroPitIntent.EnteringPit;
+                if (actions[i] is JumpOutOfPitForInnAction || actions[i] is JumpOutOfPitForStopAction)
+                    return HeroPitIntent.ExitingPit;
+            }
+            return HeroPitIntent.None;
+        }
 
         /// <summary>Returns true if the given plan contains a SleepInBedAction step.</summary>
         private bool PlanContainsSleepInBed(Stack<Nez.AI.GOAP.Action> plan)

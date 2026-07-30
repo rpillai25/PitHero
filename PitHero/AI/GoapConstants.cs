@@ -25,6 +25,7 @@
         public const string TargetInsidePit = "TargetInsidePit";
         public const string MercenaryFollowingTarget = "MercenaryFollowingTarget";
         public const string MercenaryAtPitEdge = "MercenaryAtPitEdge";
+        public const string PitStateMatchesHero = "PitStateMatchesHero";
 
         // Hero crystal promotion states (hero respawning without crystal)
         public const string NeedsCrystal = "NeedsCrystal";

@@ -15,6 +15,8 @@ namespace PitHero.ECS.Components
         private TileByTileMover _tileMover;
         private MercenaryComponent _mercComponent;
         private PathfindingActorComponent _pathfinding;
+        private HeroComponent _heroComponent;
+        private AI.MercenaryStateMachine _stateMachine;
         private List<Point> _currentPath;
         private int _pathIndex;
         private Point _lastTargetTile;
@@ -64,6 +66,29 @@ namespace PitHero.ECS.Components
 
             if (_pathfinding == null || !_pathfinding.IsPathfindingInitialized)
             {
+                return;
+            }
+
+            // Hard gate: following is only allowed while this merc and the hero are on the same
+            // side of the pit boundary. Crossing the boundary is exclusively the GOAP jump
+            // actions' job — this component must never drag a merc into or out of the pit.
+            var hero = GetHeroComponent();
+            if (hero != null && hero.InsidePit != _mercComponent.InsidePit)
+            {
+                _currentPath = null;
+                _stuckTimer = 0f;
+                return;
+            }
+
+            // Hard gate: only the FollowTargetAction may drive this component. While the state
+            // machine runs any other action (walk-to-edge, a jump) or waits with no plan, moving
+            // toward the follow target would fight that action for the mover/transform — the
+            // "jump and bounce back off the pit wall" loop.
+            var stateMachine = GetStateMachine();
+            if (stateMachine != null && !stateMachine.IsExecutingFollowAction)
+            {
+                _currentPath = null;
+                _stuckTimer = 0f;
                 return;
             }
 
@@ -127,15 +152,16 @@ namespace PitHero.ECS.Components
                     return;
                 }
 
+                // Never warp across the pit boundary — pit crossing is exclusively the GOAP jump
+                // actions' job. Keep the timer running; the state machine will replan a jump.
+                var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+                if (pitWidthManager != null && pitWidthManager.IsTileInsidePitInterior(targetTile) != _mercComponent.InsidePit)
+                {
+                    return;
+                }
+
                 Debug.Warn($"[MercenaryFollowComponent] {Entity.Name} stuck at ({myTile.X},{myTile.Y}) for {_stuckTimer:F1}s, warping near target ({targetTile.X},{targetTile.Y})");
                 _tileMover.WarpToTile(targetTile);
-
-                // A warp can cross the pit boundary without a jump — keep the authoritative
-                // InsidePit flag and this merc's pathfinding graph in sync, exactly as the jump
-                // actions do after landing.
-                var pitWidthManager = Core.Services.GetService<PitWidthManager>();
-                if (pitWidthManager != null)
-                    _mercComponent.InsidePit = pitWidthManager.IsTileInsidePitInterior(targetTile);
                 _pathfinding.RefreshPathfindingWithObstacles();
 
                 _currentPath = null;
@@ -189,6 +215,28 @@ namespace PitHero.ECS.Components
                     _tileMover.StartMoving(direction.Value);
                 }
             }
+        }
+
+        /// <summary>
+        /// Resolves this merc's state machine (lazy — the follow component can be added before
+        /// or after the state machine depending on the hire flow)
+        /// </summary>
+        private AI.MercenaryStateMachine GetStateMachine()
+        {
+            if (_stateMachine == null)
+                _stateMachine = Entity.GetComponent<AI.MercenaryStateMachine>();
+            return _stateMachine;
+        }
+
+        /// <summary>
+        /// Resolves the hero component, re-resolving when stale (hero promotion destroys the
+        /// old hero entity and spawns a new one)
+        /// </summary>
+        private HeroComponent GetHeroComponent()
+        {
+            if (_heroComponent == null || _heroComponent.Entity == null || _heroComponent.Entity.IsDestroyed)
+                _heroComponent = Entity?.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
+            return _heroComponent;
         }
 
         /// <summary>

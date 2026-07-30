@@ -16,6 +16,7 @@ namespace PitHero.AI
     public class MercenaryStateMachine : SimpleStateMachine<ActorState>, IPausableComponent
     {
         private MercenaryComponent _mercenary;
+        private HeroComponent _heroComponent;
         private ActionPlanner _planner;
         private Stack<Nez.AI.GOAP.Action> _actionPlan;
         private MercenaryActionBase _currentAction;
@@ -24,7 +25,21 @@ namespace PitHero.AI
         private bool _expectedMercInPit;
         private bool _expectedTargetInPit;
 
+        // Throttles replan attempts while legitimately waiting without a plan (e.g. the merc
+        // jumped in ahead of the hero and following is blocked until the hero lands)
+        private float _planRetryTimer;
+
         public bool ShouldPause => true;
+
+        /// <summary>
+        /// True only while the GOAP executor is actively running FollowTargetAction. This is
+        /// the sole window in which MercenaryFollowComponent may move the merc — during any
+        /// other action (walk-to-edge, jumps) or a planless wait, following must not fight the
+        /// current action for control of the mover/transform.
+        /// </summary>
+        public bool IsExecutingFollowAction => CurrentState == ActorState.PerformAction
+            && _currentAction != null
+            && _currentAction.Name == GoapConstants.FollowTargetAction;
 
         public MercenaryStateMachine()
         {
@@ -87,26 +102,38 @@ namespace PitHero.AI
 
         private void Idle_Enter()
         {
+            _planRetryTimer = 0f;
             _actionPlan = _planner.Plan(GetCurrentState(), GetGoalState());
 
             if (_actionPlan != null && _actionPlan.Count > 0)
             {
                 // Store the expected world state when this plan was created
                 _expectedMercInPit = IsMercenaryInsidePit();
-                _expectedTargetInPit = IsTargetInsidePit();
+                _expectedTargetInPit = IsHeroEffectivelyInsidePit();
 
                 CurrentState = ActorState.PerformAction;
             }
             else
             {
-                Debug.Warn($"[MercenaryStateMachine] {Entity.Name} no action plan found!");
-                Debug.Log($"[MercenaryStateMachine] Current state: MercInPit={IsMercenaryInsidePit()}, TargetInPit={IsTargetInsidePit()}, AtPitEdge={IsAtPitEdge()}");
-                Debug.Log($"[MercenaryStateMachine] Goal: MercFollowingTarget=true, MercInPit={IsTargetInsidePit()}");
+                // A planless wait is legitimate mid-transition: e.g. the merc already jumped in
+                // but the hero is still walking to the rim, so following is blocked until the
+                // pit states match again. Idle_Tick retries until the world catches up.
+                Debug.Log($"[MercenaryStateMachine] {Entity.Name} no action plan found — waiting. " +
+                    $"MercInPit={IsMercenaryInsidePit()}, HeroEffectiveInPit={IsHeroEffectivelyInsidePit()}, " +
+                    $"HeroActualInPit={IsHeroActuallyInsidePit()}, AtPitEdge={IsAtPitEdge()}");
             }
         }
 
         private void Idle_Tick()
         {
+            if (_actionPlan != null && _actionPlan.Count > 0)
+                return;
+
+            _planRetryTimer += Time.DeltaTime;
+            if (_planRetryTimer < 1f)
+                return;
+
+            Idle_Enter();
         }
 
         private void PerformAction_Enter()
@@ -183,9 +210,9 @@ namespace PitHero.AI
             if (_currentAction == null)
                 return false;
 
-            // Get current pit states
+            // Get current pit states (hero intent counts — see IsHeroEffectivelyInsidePit)
             bool mercInPit = IsMercenaryInsidePit();
-            bool targetInPit = IsTargetInsidePit();
+            bool targetInPit = IsHeroEffectivelyInsidePit();
 
             // If currently following and both are in same location, no need to replan
             if (_currentAction.Name == GoapConstants.FollowTargetAction)
@@ -200,15 +227,16 @@ namespace PitHero.AI
                     Debug.Log($"[MercenaryStateMachine] {Entity.Name} target location changed unexpectedly: expected={_expectedTargetInPit}, actual={targetInPit}");
                     return true;
                 }
-                
-                // If mercenary and target are in same location now, we're good (plan succeeded)
-                if (mercInPit == targetInPit)
+
+                // Following is only allowed while merc and hero are on the same side of the pit
+                // boundary — if the states diverged (e.g. a stranded-recovery flag flip), replan
+                // so the merc jumps rather than follows across
+                if (mercInPit != IsHeroActuallyInsidePit())
                 {
-                    return false;
+                    Debug.Log($"[MercenaryStateMachine] {Entity.Name} pit state no longer matches hero while following — replanning");
+                    return true;
                 }
-                
-                // If mercenary hasn't reached target's location yet, but target location hasn't changed,
-                // continue with current plan (don't replan)
+
                 return false;
             }
 
@@ -249,12 +277,13 @@ namespace PitHero.AI
             state.Set(GoapConstants.IsAlive, true);
 
             bool mercInPit = IsMercenaryInsidePit();
-            bool targetInPit = IsTargetInsidePit();
+            bool targetInPit = IsHeroEffectivelyInsidePit();
             bool atPitEdge = IsAtPitEdge();
 
             state.Set(GoapConstants.MercenaryInsidePit, mercInPit);
             state.Set(GoapConstants.TargetInsidePit, targetInPit);
             state.Set(GoapConstants.MercenaryAtPitEdge, atPitEdge);
+            state.Set(GoapConstants.PitStateMatchesHero, mercInPit == IsHeroActuallyInsidePit());
 
             return state;
         }
@@ -263,8 +292,10 @@ namespace PitHero.AI
         {
             var goal = WorldState.Create(_planner);
 
-            bool targetInPit = IsTargetInsidePit();
-            
+            // The hero's plan intent drives the goal: when the hero decides to jump in or out,
+            // every merc adopts the same destination immediately and gets there on its own
+            bool targetInPit = IsHeroEffectivelyInsidePit();
+
             goal.Set(GoapConstants.MercenaryFollowingTarget, true);
             goal.Set(GoapConstants.MercenaryInsidePit, targetInPit);
 
@@ -280,26 +311,33 @@ namespace PitHero.AI
             return _mercenary != null && _mercenary.InsidePit;
         }
 
-        private bool IsTargetInsidePit()
+        /// <summary>
+        /// Pit reads always target the HERO, never the follow target: merc #2 follows merc #1
+        /// for formation only, and keying pit decisions off another merc would chain the party's
+        /// pit entry/exit instead of keeping each member independent.
+        /// </summary>
+        private HeroComponent GetHeroComponent()
         {
-            if (_mercenary?.FollowTarget == null)
-                return false;
+            // Hero promotion destroys the old hero entity and spawns a new one — re-resolve when stale
+            if (_heroComponent == null || _heroComponent.Entity == null || _heroComponent.Entity.IsDestroyed)
+                _heroComponent = Entity?.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
+            return _heroComponent;
+        }
 
-            var targetHero = _mercenary.FollowTarget.GetComponent<HeroComponent>();
-            if (targetHero != null)
-            {
-                return targetHero.InsidePit;
-            }
+        private bool IsHeroActuallyInsidePit()
+        {
+            // Flag-based read (never tile geometry): a position-derived answer flickers while
+            // the hero lerps over the pit wall mid-jump, aborting this merc's plan every time.
+            var hero = GetHeroComponent();
+            return hero != null && hero.InsidePit;
+        }
 
-            // Same flag-based read as the hero path. A position-derived answer flickers while
-            // the target lerps over the pit wall mid-jump, aborting this merc's plan every time.
-            var targetMerc = _mercenary.FollowTarget.GetComponent<MercenaryComponent>();
-            if (targetMerc != null)
-            {
-                return targetMerc.InsidePit;
-            }
-
-            return false;
+        private bool IsHeroEffectivelyInsidePit()
+        {
+            // The hero's plan intent counts as much as the flag: when the hero *plans* a jump
+            // the mercs adopt the same goal immediately instead of waiting for the landing
+            var hero = GetHeroComponent();
+            return hero != null && hero.IntendsInsidePit;
         }
 
         private bool IsAtPitEdge()

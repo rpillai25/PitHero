@@ -189,6 +189,14 @@ namespace PitHero.AI
                 followComponent.ResetPathfinding();
             }
 
+            // Seat teleport lands outside the pit — sync the authoritative flag + graph
+            var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
+            if (mercComponent != null)
+            {
+                mercComponent.InsidePit = false;
+            }
+            mercEntity.GetComponent<PathfindingActorComponent>()?.RefreshPathfindingWithObstacles();
+
             Debug.Log($"[WalkToTavernForStop] Mercenary {mercNumber} seated at ({seatTile.X},{seatTile.Y}) facing {facing}");
         }
 
