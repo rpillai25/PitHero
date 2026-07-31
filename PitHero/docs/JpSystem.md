@@ -96,9 +96,57 @@ The `Hero` class now supports JP mechanics through its bound crystal:
   3. Power Shot (Active, JP: 130, Level: 2) - AP: 4, 1.5x damage
   4. Volley (Active, JP: 200, Level: 3) - AP: 7, ranged AoE
 
+## Starting JP
+
+Heroes start a new game with **0 JP** (issue #353 removed the 550 JP startup grant). JP is earned
+exclusively from kills (`BattleEngine.AwardEnemyDeathRewards`) and accumulates on `HeroCrystal`.
+
+## Auto-Learn Hero Skills
+
+Issue #353 adds an automation option in **Settings → Automation → Auto-Learn Hero Skills** that
+spends available JP on skills automatically once per second. It is **off by default**.
+
+### Learn Mode
+
+Three modes are selectable via a `<`/`>` cycler:
+
+| Mode | Behaviour |
+|---|---|
+| **Smart** (default) | Learns skills in a job-defined priority order (signature active first, then passives cheapest-to-most-expensive, then second active). Unknown skill IDs (e.g. from composite jobs) sort last, deterministically by cost then job-list index. |
+| **Active** | Cheapest unlearned active first; when all actives are learned, switches to cheapest unlearned passive. |
+| **Passive** | Mirror of Active (passives first). |
+
+### Smart-mode priority table
+
+| Job | Rank 0 (first) | Rank 1 | Rank 2 | Rank 3 (last) |
+|---|---|---|---|---|
+| Knight | knight.spin_slash (120 JP) | knight.light_armor (50 JP) | knight.heavy_armor (100 JP) | knight.heavy_strike (180 JP) |
+| Mage | mage.fire (120 JP) | mage.heart_fire (60 JP) | mage.economist (80 JP) | mage.firestorm (200 JP) |
+| Priest | priest.heal (100 JP) | priest.calm_spirit (50 JP) | priest.mender (80 JP) | priest.defup (160 JP) |
+| Monk | monk.roundhouse (120 JP) | monk.counter (70 JP) | monk.deflect (90 JP) | monk.flaming_fist (170 JP) |
+| Thief | thief.sneak_attack (130 JP) | thief.shadowstep (70 JP) | thief.trap_sense (90 JP) | thief.vanish (180 JP) |
+| Archer | archer.power_shot (130 JP) | archer.eagle_eye (70 JP) | archer.quickdraw (100 JP) | archer.volley (200 JP) |
+
+### Strict-order semantics and tie-breaks
+
+Smart mode uses **strict order**: if the next-priority skill is unaffordable, the service waits —
+it never skips to a cheaper lower-priority skill. This guarantees the learning order is always
+correct regardless of how JP arrives (e.g. a Priest with 60 JP will not buy Calm Spirit before
+earning the 100 JP needed for Heal).
+
+Tie-break rule when two skills share the same rank and cost (common in composite jobs):
+lower job-list index wins. Knight's SpinSlash (index 2 in the composite list) beats Mage's Fire
+(index 6) when both have rank 0 and cost 120 JP.
+
+### Persistence
+
+Stored in save section 42 (v25): `AutoLearnSkillsEnabled` (bool) and `AutoLearnMode` (int 0–2).
+Older saves default to off and Smart. The mode is clamped via `AutoLearnSkillsService.SanitizeMode`
+on load.
+
 ## JP Progression Flow
 
-1. **Earn JP**: Heroes earn JP through battles, chests, events, or quests
+1. **Earn JP**: Heroes earn JP through kills (no startup grant)
 2. **Check Requirements**: To purchase a skill, hero must:
    - Have sufficient CurrentJP to pay the skill's JPCost
    - Meet the hero level requirement (Level >= skill.LearnLevel)
