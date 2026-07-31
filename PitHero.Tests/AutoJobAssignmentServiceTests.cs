@@ -1,8 +1,10 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PitHero;
+using PitHero.Dining;
 using PitHero.Farming;
 using PitHero.Services;
 using PitHero.Services.AutoJob;
+using PitHero.Util;
 using RolePlayingFramework.AlliedMonsters;
 
 namespace PitHero.Tests
@@ -465,6 +467,82 @@ namespace PitHero.Tests
             var d = KitchenJobDemandEvaluator.ComputeDemand(1000, rosterSize: 20, availableWorkers: 20);
             Assert.AreEqual(GameConfig.AutoJobKitchenMaxWorkers, d.DesiredWorkers,
                 "Kitchen demand is capped at the coordinator's worker limit");
+        }
+
+        [TestMethod]
+        public void KitchenDemand_NothingOrderable_FieldsNoOne()
+        {
+            // No coverable dish means servers can never take an order, so no ticket can ever
+            // exist — staffing the kitchen would be dead weight.
+            var d = KitchenJobDemandEvaluator.ComputeDemand(0, rosterSize: 10, availableWorkers: 10,
+                anyDishOrderable: false);
+            Assert.AreEqual(0, d.DesiredWorkers);
+            Assert.AreEqual(0, d.MinWorkers);
+            Assert.IsTrue(d.Sticky,
+                "Workers already in the kitchen stay put when the larder runs dry mid-day");
+        }
+
+        // ── Kitchen evaluator: empty-larder gate ─────────────────────────────
+
+        private static KitchenTaskCoordinator CreateHeadlessKitchen(
+            out BuildingService buildings, out CropStorageInventoryService storage)
+        {
+            buildings = new BuildingService();
+            buildings.AddBuilding(new PlacedBuilding
+            {
+                Type = BuildingType.CropStorage,
+                TileX = GameConfig.NewGameCropStorageAnchorTileX,
+                TileY = GameConfig.NewGameCropStorageAnchorTileY,
+                UniqueId = 1,
+            });
+            storage = new CropStorageInventoryService(buildings);
+            var coordinator = new KitchenTaskCoordinator(null, buildings, 240, 12);
+            coordinator.SetHeadlessServices(storage, new GameStateService());
+            return coordinator;
+        }
+
+        [TestMethod]
+        public void KitchenEvaluator_EmptyLarder_ReportsZeroDemand()
+        {
+            var coordinator = CreateHeadlessKitchen(out _, out _);
+            var evaluator = new KitchenJobDemandEvaluator(coordinator, null, null);
+
+            var d = evaluator.EvaluateDemand(rosterSize: 3, availableWorkers: 3);
+
+            Assert.AreEqual(0, d.DesiredWorkers, "Empty fridge + storage: no dish is coverable");
+            Assert.AreEqual(0, d.MinWorkers);
+        }
+
+        [TestMethod]
+        public void KitchenEvaluator_StockedLarder_WantsBaseCrew()
+        {
+            var coordinator = CreateHeadlessKitchen(out _, out var storage);
+            var def = DishConfig.GetDefinition((DishType)0);
+            for (int i = 0; i < def.Recipe.Length; i++)
+                Assert.IsTrue(storage.TryDeposit(1, def.Recipe[i].Crop, def.Recipe[i].Qty));
+            var evaluator = new KitchenJobDemandEvaluator(coordinator, null, null);
+
+            var d = evaluator.EvaluateDemand(rosterSize: 3, availableWorkers: 3);
+
+            Assert.AreEqual(GameConfig.AutoJobKitchenBaseStaff, d.DesiredWorkers,
+                "One coverable dish is enough to staff the kitchen");
+        }
+
+        [TestMethod]
+        public void ReassessNow_LoneMonsterNewGame_StaysHomeInsteadOfKitchen()
+        {
+            // The reported scenario: fresh game, one monster, no farm workload, nothing in
+            // storage to cook with. The monster must stay home, not take the chef hat.
+            var coordinator = CreateHeadlessKitchen(out _, out _);
+            var roster = new AlliedMonsterManager();
+            roster.AddAlliedMonster(Monster("Solo", 1, 9, 1));
+            var service = new AutoJobAssignmentService(roster,
+                new KitchenJobDemandEvaluator(coordinator, null, null),
+                new FarmingJobDemandEvaluator(null, null, null));
+
+            service.ReassessNow();
+
+            Assert.AreEqual(MonsterJob.None, roster.AlliedMonsters[0].Job);
         }
     }
 }

@@ -96,6 +96,11 @@ so a lower-priority job only claims workers its betters don't need.
   (`availableWorkers < baseStaff && availableWorkers < rosterSize`), the kitchen fields no one — a
   partial kitchen has no runner, and with no farm workers there'd be no ingredients anyway. On
   tiny rosters with no farm workload, the base crew still clamps down to the roster as before.
+  **Empty-larder gate:** demand is also zero while no dish is coverable from fridge + storage
+  (`KitchenTaskCoordinator.HasAnyOrderableDish`) — servers refuse orders they can't cover, so
+  staff would be dead weight (a new game's lone monster stays home instead of taking the chef
+  hat). Workers already in the kitchen stay (sticky) if the larder runs dry mid-day; the gate
+  only blocks fresh staffing until the next cadence tick after crops land in storage.
 
   The demand model's granularity is `MonsterJob`, not `KitchenRole` — it asks for *N kitchen
   workers* and the coordinator decides the cook/server/runner split (`FillRoleMix`).
