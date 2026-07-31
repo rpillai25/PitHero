@@ -7,6 +7,11 @@ assignment action: `FarmTaskCoordinator.Update()` and `KitchenTaskCoordinator.Up
 worker entities against `Job` + awake state every frame, so no entity or FSM code is involved in
 assignment.
 
+The coordinators are peered via `IMonsterWorkerHost` (`MainGameScene` wires `AddPeer` both ways):
+on a mid-shift job change the monster's old-job worker entity must walk home and despawn before
+the new job's coordinator spawns its worker — never two entities for the same monster at once.
+The same gate covers kitchen role changes (the replacement waits for the old worker to despawn).
+
 ## Components
 
 | Piece | File | Role |
@@ -51,9 +56,16 @@ assigned normally — the coordinators keep them home until their work window.
 2. **Min pass** — each demand, in list order, fills up to `MinWorkers` from unassigned monsters by
    highest proficiency for that job.
 3. **Desired pass** — same, up to `DesiredWorkers`.
-4. **Swap pass** — a sticky worker swaps with a non-sticky assignee only when **both** jobs
+4. **Starvation release pass** — the one exception to stickiness. A demand with `MinWorkers > 0`
+   that ends the fill passes with **zero** workers (proof that every candidate is sticky-locked
+   elsewhere — fill exhausts free monsters first) pulls sticky-held workers from **lower-priority**
+   demands only, up to its `DesiredWorkers`, never dropping a raided job below its own
+   `MinWorkers`. In practice: farm tasks with no farmer at all release kitchen workers to the farm
+   (kitchen work is pointless with nothing being grown), but the kitchen is never raided below its
+   base crew when the shift is big enough to field one.
+5. **Swap pass** — a sticky worker swaps with a non-sticky assignee only when **both** jobs
    strictly gain proficiency (prevents oscillation between reassessments).
-5. Everyone unassigned gets `MonsterJob.None` → the coordinators send them home.
+6. Everyone unassigned gets `MonsterJob.None` → the coordinators send them home.
 
 A monster holding a job with **no demand entry** is non-sticky by definition and gets pooled and
 reassigned — this is the extensibility guarantee (a Fishing-assigned monster before a fishing
@@ -61,22 +73,40 @@ evaluator exists just returns to the pool).
 
 ## Current demand models
 
-- **Kitchen** (`Sticky = true`, listed first so its small crew staffs before farming absorbs the
-  rest): base crew `AutoJobKitchenBaseStaff` = 3 — **cook + server + runner; never less, a
-  runner-less kitchen runs the fridge dry and leaves dirty plates on the tables** — plus one
-  worker per `AutoJobKitchenBacklogPerExtraWorker` backlog items (open tickets + seated patrons +
-  pending party diners), capped at `AutoJobKitchenMaxWorkers` (must mirror
+Evaluators run in priority order (**farming first** — the kitchen depends on farm output, so farm
+demand is covered before the kitchen staffs). Each evaluator receives the shift's `rosterSize` and
+`availableWorkers` = roster minus the `MinWorkers` already reserved by higher-priority evaluators,
+so a lower-priority job only claims workers its betters don't need.
+
+- **Farming** (`Sticky = false`, listed first): `max(burst, baseline)` where burst =
+  `FarmTaskCoordinator.OutstandingTaskCount / AutoJobFarmTasksPerWorker` (catches watering/harvest
+  waves) and baseline = `(CropCount + PlanCount) / AutoJobFarmCropsPerWorkerBaseline` (quiet
+  growth periods), ceil-divided, clamped to available workers. `MinWorkers` = 1 whenever any
+  workload exists — the ≥1-farmer guarantee. Released farmers become the pool that staffs the
+  kitchen or goes home.
+- **Kitchen** (`Sticky = true`): base crew `AutoJobKitchenBaseStaff` = 3 — **cook + server +
+  runner; never less, a runner-less kitchen runs the fridge dry and leaves dirty plates on the
+  tables** — plus one worker per `AutoJobKitchenBacklogPerExtraWorker` backlog items (open tickets
+  + seated patrons + pending party diners), capped at `AutoJobKitchenMaxWorkers` (must mirror
   `KitchenTaskCoordinator.MaxWorkerPosts` = 3 cooks + 2 servers + 3 runners = 8; asserted by
   `KitchenServiceLoopTests.RoleMix_RespectsPerRoleCapsAndNeverExceedsMaxPosts`).
-  `MinWorkers` = base crew only when backlog > 0.
+  `MinWorkers` = the base crew (firm, so it fills ahead of farming's desired extras and doubles as
+  the floor the starvation release pass won't raid below). **All-or-nothing when competing with
+  farming:** if farming's reservation leaves fewer than the base crew available
+  (`availableWorkers < baseStaff && availableWorkers < rosterSize`), the kitchen fields no one — a
+  partial kitchen has no runner, and with no farm workers there'd be no ingredients anyway. On
+  tiny rosters with no farm workload, the base crew still clamps down to the roster as before.
+  **Empty-larder gate:** demand is also zero while no dish is coverable from fridge + storage
+  (`KitchenTaskCoordinator.HasAnyOrderableDish`) — servers refuse orders they can't cover, so
+  staff would be dead weight (a new game's lone monster stays home instead of taking the chef
+  hat). Workers already in the kitchen stay (sticky) if the larder runs dry mid-day; the gate
+  only blocks fresh staffing until the next cadence tick after crops land in storage.
 
   The demand model's granularity is `MonsterJob`, not `KitchenRole` — it asks for *N kitchen
   workers* and the coordinator decides the cook/server/runner split (`FillRoleMix`).
-- **Farming** (`Sticky = false`): `max(burst, baseline)` where burst =
-  `FarmTaskCoordinator.OutstandingTaskCount / AutoJobFarmTasksPerWorker` (catches watering/harvest
-  waves) and baseline = `(CropCount + PlanCount) / AutoJobFarmCropsPerWorkerBaseline` (quiet
-  growth periods), ceil-divided, clamped to shift size. Released farmers become the pool that
-  staffs the kitchen or goes home.
+
+Worked examples (farm workload present): 2 monsters → both farm, no kitchen. Exactly 4 → 1 farmer
++ 3 kitchen (even if farming wants more). 6 with light farm work → 1 farmer + 3 kitchen + 2 home.
 
 Workload getters added for this system: `FarmTaskCoordinator.OutstandingTaskCount`,
 `KitchenTaskCoordinator.ActiveTicketCount`, `CropGrowthService.CropCount`,
@@ -94,12 +124,14 @@ The solver never changes. Steps:
    `IJobDemandEvaluator`: report `Job = MonsterJob.Fishing` and a `JobDemandEntry` computed from
    whatever workload signal fits (keep the arithmetic in a `public static ComputeDemand(...)` so
    it's unit-testable headless, like the existing evaluators; take service dependencies as
-   nullable constructor params).
+   nullable constructor params). `EvaluateDemand(rosterSize, availableWorkers)` — clamp to
+   `availableWorkers`, the workers left after higher-priority evaluators' minimums.
 3. Decide `Sticky`: true only if pulling workers off the job mid-shift is harmful (kitchen-style
    continuity); false if workers can be freely rebalanced (farming-style).
 4. Register it in `MainGameScene.Begin()` via `autoJobAssignmentService.AddEvaluator(...)` —
    or add a constructor parameter if it should always exist. **List order = priority order** for
-   the min/desired fill passes.
+   the min/desired fill passes, the `availableWorkers` reservation, and the starvation release
+   pass (which only raids lower-priority jobs).
 5. Add `GameConfig` constants for its tunables (`AutoJob*` prefix).
 6. Proficiency: `JobAssignmentSolver.GetProficiency` already maps `MonsterJob.Fishing` →
    `FishingProficiency`. A brand-new job beyond the existing three needs a case added there.

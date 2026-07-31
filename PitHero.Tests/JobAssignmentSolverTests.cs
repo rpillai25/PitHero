@@ -7,7 +7,8 @@ namespace PitHero.Tests
 {
     /// <summary>
     /// Tests for the pure JobAssignmentSolver: sticky/min/desired fill order, proficiency selection
-    /// with deterministic tie-breaks, surplus demotion, and the strict-double-improvement swap pass.
+    /// with deterministic tie-breaks, surplus demotion, the starvation release pass (the one
+    /// exception to stickiness), and the strict-double-improvement swap pass.
     /// </summary>
     [TestClass]
     public class JobAssignmentSolverTests
@@ -93,9 +94,10 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
-        public void Solve_KitchenMin_FilledByCookingSkillBeforeFarmingDesired()
+        public void Solve_FirstListedDemandMin_OutranksLaterListedDemands()
         {
-            // One monster, kitchen min 1 listed first: kitchen wins even though farming wants 1 too.
+            // One monster, two competing minimums: demand-list order is priority, so the
+            // first-listed job wins the lone worker.
             var monsters = new List<MonsterJobSnapshot>
             {
                 Monster(0, MonsterJob.None, 9, 2),
@@ -257,6 +259,178 @@ namespace PitHero.Tests
 
             Assert.AreEqual(MonsterJob.Cooking, _result[0], "First-listed demand takes the whole short roster");
             Assert.AreEqual(MonsterJob.Cooking, _result[1], "First-listed demand takes the whole short roster");
+        }
+
+        // ── Starvation release: the one exception to kitchen stickiness ──────
+
+        [TestMethod]
+        public void Solve_StarvedFarming_PullsStickyKitchenWorker()
+        {
+            // Every monster is sticky-locked in the kitchen while farming demands workers:
+            // with no kitchen floor (min 0), farming pulls as many as it needs.
+            var monsters = new List<MonsterJobSnapshot>
+            {
+                Monster(0, MonsterJob.Cooking, 5, 5),
+                Monster(1, MonsterJob.Cooking, 5, 5),
+            };
+            var demands = new List<JobDemandEntry>
+            {
+                Demand(MonsterJob.Farming, 1, 2, sticky: false),
+                Demand(MonsterJob.Cooking, 0, 0, sticky: true),
+            };
+
+            JobAssignmentSolver.Solve(monsters, demands, _result);
+
+            Assert.AreEqual(MonsterJob.Farming, _result[0], "Sticky cook is released when farming has zero workers");
+            Assert.AreEqual(MonsterJob.Farming, _result[1], "Farming pulls up to its desired count");
+        }
+
+        [TestMethod]
+        public void Solve_StarvedFarming_RespectsRaidedJobMinimum()
+        {
+            // Four sticky cooks; farming wants 3 but the kitchen's own minimum of 3 is a floor
+            // the release pass never raids below — exactly one worker is pulled.
+            var monsters = new List<MonsterJobSnapshot>
+            {
+                Monster(0, MonsterJob.Cooking, 5, 5),
+                Monster(1, MonsterJob.Cooking, 5, 5),
+                Monster(2, MonsterJob.Cooking, 5, 5),
+                Monster(3, MonsterJob.Cooking, 5, 5),
+            };
+            var demands = new List<JobDemandEntry>
+            {
+                Demand(MonsterJob.Farming, 1, 3, sticky: false),
+                Demand(MonsterJob.Cooking, 3, 3, sticky: true),
+            };
+
+            JobAssignmentSolver.Solve(monsters, demands, _result);
+
+            int farmers = 0, cooks = 0;
+            for (int i = 0; i < _result.Count; i++)
+            {
+                if (_result[i] == MonsterJob.Farming) farmers++;
+                if (_result[i] == MonsterJob.Cooking) cooks++;
+            }
+            Assert.AreEqual(1, farmers, "Only one worker can be pulled before the kitchen hits its minimum");
+            Assert.AreEqual(3, cooks, "Kitchen never drops below its own MinWorkers");
+        }
+
+        [TestMethod]
+        public void Solve_StarvedFarming_PicksBestFarmerFromKitchen()
+        {
+            var monsters = new List<MonsterJobSnapshot>
+            {
+                Monster(0, MonsterJob.Cooking, 3, 5),
+                Monster(1, MonsterJob.Cooking, 9, 5),
+                Monster(2, MonsterJob.Cooking, 9, 5),
+            };
+            var demands = new List<JobDemandEntry>
+            {
+                Demand(MonsterJob.Farming, 1, 1, sticky: false),
+                Demand(MonsterJob.Cooking, 0, 0, sticky: true),
+            };
+
+            JobAssignmentSolver.Solve(monsters, demands, _result);
+
+            Assert.AreEqual(MonsterJob.Cooking, _result[0], "Weakest farmer stays in the kitchen");
+            Assert.AreEqual(MonsterJob.Farming, _result[1], "Best farmer is pulled; proficiency tie breaks to lowest index");
+            Assert.AreEqual(MonsterJob.Cooking, _result[2]);
+        }
+
+        [TestMethod]
+        public void Solve_FarmingHasAnyWorker_KitchenStickinessHolds()
+        {
+            // The exception fires only at ZERO farm workers: with one free monster available for
+            // farming, understaffed farming never raids the sticky kitchen.
+            var monsters = new List<MonsterJobSnapshot>
+            {
+                Monster(0, MonsterJob.None, 5, 5),
+                Monster(1, MonsterJob.Cooking, 5, 5),
+                Monster(2, MonsterJob.Cooking, 5, 5),
+            };
+            var demands = new List<JobDemandEntry>
+            {
+                Demand(MonsterJob.Farming, 1, 3, sticky: false),
+                Demand(MonsterJob.Cooking, 0, 3, sticky: true),
+            };
+
+            JobAssignmentSolver.Solve(monsters, demands, _result);
+
+            Assert.AreEqual(MonsterJob.Farming, _result[0], "Free monster staffs the farm");
+            Assert.AreEqual(MonsterJob.Cooking, _result[1], "Sticky cook stays — farming has a worker");
+            Assert.AreEqual(MonsterJob.Cooking, _result[2], "Sticky cook stays — farming has a worker");
+        }
+
+        [TestMethod]
+        public void Solve_StarvedDemand_NeverRaidsHigherPriorityStickyJob()
+        {
+            var monsters = new List<MonsterJobSnapshot>
+            {
+                Monster(0, MonsterJob.Cooking, 5, 5),
+                Monster(1, MonsterJob.Cooking, 5, 5),
+            };
+            var demands = new List<JobDemandEntry>
+            {
+                Demand(MonsterJob.Cooking, 0, 0, sticky: true),
+                Demand(MonsterJob.Farming, 1, 2, sticky: false),
+            };
+
+            JobAssignmentSolver.Solve(monsters, demands, _result);
+
+            Assert.AreEqual(MonsterJob.Cooking, _result[0], "A starved demand only raids lower-priority jobs");
+            Assert.AreEqual(MonsterJob.Cooking, _result[1], "A starved demand only raids lower-priority jobs");
+        }
+
+        [TestMethod]
+        public void Solve_ZeroFarmingDemand_NoStickyRelease()
+        {
+            var monsters = new List<MonsterJobSnapshot>
+            {
+                Monster(0, MonsterJob.Cooking, 9, 5),
+                Monster(1, MonsterJob.Cooking, 9, 5),
+            };
+            var demands = new List<JobDemandEntry>
+            {
+                Demand(MonsterJob.Farming, 0, 0, sticky: false),
+                Demand(MonsterJob.Cooking, 0, 3, sticky: true),
+            };
+
+            JobAssignmentSolver.Solve(monsters, demands, _result);
+
+            Assert.AreEqual(MonsterJob.Cooking, _result[0], "No farm workload — no exception, cooks stay");
+            Assert.AreEqual(MonsterJob.Cooking, _result[1], "No farm workload — no exception, cooks stay");
+        }
+
+        [TestMethod]
+        public void Solve_AfterStickyRelease_NextSolveIsStable()
+        {
+            var monsters = new List<MonsterJobSnapshot>
+            {
+                Monster(0, MonsterJob.Cooking, 5, 5),
+                Monster(1, MonsterJob.Cooking, 5, 5),
+                Monster(2, MonsterJob.Cooking, 5, 5),
+                Monster(3, MonsterJob.Cooking, 5, 5),
+            };
+            var demands = new List<JobDemandEntry>
+            {
+                Demand(MonsterJob.Farming, 1, 3, sticky: false),
+                Demand(MonsterJob.Cooking, 3, 3, sticky: true),
+            };
+
+            JobAssignmentSolver.Solve(monsters, demands, _result);
+            var first = new List<MonsterJob>(_result);
+
+            // Apply the results as the new current jobs and solve again with identical demands.
+            for (int i = 0; i < monsters.Count; i++)
+            {
+                var m = monsters[i];
+                m.CurrentJob = first[i];
+                monsters[i] = m;
+            }
+            JobAssignmentSolver.Solve(monsters, demands, _result);
+
+            CollectionAssert.AreEqual(first, _result,
+                "Release must not oscillate: once a farmer exists the exception never re-fires");
         }
 
         [TestMethod]

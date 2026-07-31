@@ -1,8 +1,10 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using PitHero;
+using PitHero.Dining;
 using PitHero.Farming;
 using PitHero.Services;
 using PitHero.Services.AutoJob;
+using PitHero.Util;
 using RolePlayingFramework.AlliedMonsters;
 
 namespace PitHero.Tests
@@ -56,8 +58,8 @@ namespace PitHero.Tests
         [TestMethod]
         public void ReassessNow_AppliesSolverOutputToRoster()
         {
-            // Zero backlog/workload: kitchen still wants its base crew of 3 (desired, non-min),
-            // farming wants none. The 3 best cooks staff the kitchen; the rest go home.
+            // Zero backlog/workload: kitchen still wants its base crew of 3, farming wants none.
+            // The 3 best cooks staff the kitchen; the rest go home.
             var roster = new AlliedMonsterManager();
             roster.AddAlliedMonster(Monster("A", 1, 2, 9, MonsterJob.Farming));
             roster.AddAlliedMonster(Monster("B", 1, 8, 1));
@@ -230,13 +232,139 @@ namespace PitHero.Tests
                 "Sticky night kitchen worker keeps the job");
         }
 
+        // ── Farming priority over kitchen (issue: dead-end kitchen with unworked farm) ──
+
+        /// <summary>Service whose farming evaluator sees a real workload of planCount placed plans.</summary>
+        private static AutoJobAssignmentService CreateServiceWithFarmWorkload(
+            AlliedMonsterManager roster, int planCount)
+        {
+            var planting = new CropPlantingService();
+            var growth = new CropGrowthService(planting);
+            for (int i = 0; i < planCount; i++)
+                planting.AddPlan(new PlacedCropPlan { Type = CropType.Wheat, TileX = i, TileY = 0 });
+            return new AutoJobAssignmentService(roster,
+                new KitchenJobDemandEvaluator(null, null, null),
+                new FarmingJobDemandEvaluator(null, growth, planting));
+        }
+
+        [TestMethod]
+        public void ReassessNow_TwoMonstersWithFarmWorkload_BothFarm()
+        {
+            // The reported bug: with only 2 workers and farm work outstanding, both used to be
+            // sunk into a dead-end kitchen. Farming now takes priority and the kitchen (which
+            // can't field its 3-monster crew anyway) stands down.
+            var roster = new AlliedMonsterManager();
+            roster.AddAlliedMonster(Monster("A", 1, 5, 5));
+            roster.AddAlliedMonster(Monster("B", 1, 5, 5));
+            var service = CreateServiceWithFarmWorkload(roster,
+                planCount: GameConfig.AutoJobFarmCropsPerWorkerBaseline + 1);   // farming desired = 2
+
+            service.ReassessNow();
+
+            Assert.AreEqual(MonsterJob.Farming, roster.AlliedMonsters[0].Job, "Both workers farm");
+            Assert.AreEqual(MonsterJob.Farming, roster.AlliedMonsters[1].Job, "Both workers farm");
+        }
+
+        [TestMethod]
+        public void ReassessNow_FourMonsters_OneFarmerThreeKitchen()
+        {
+            // With 4 monsters the kitchen's full crew fits alongside the guaranteed farmer:
+            // 1 farms (even though farming wants 2), 3 staff the kitchen.
+            var roster = new AlliedMonsterManager();
+            roster.AddAlliedMonster(Monster("A", 1, 5, 5));
+            roster.AddAlliedMonster(Monster("B", 1, 5, 5));
+            roster.AddAlliedMonster(Monster("C", 1, 5, 5));
+            roster.AddAlliedMonster(Monster("D", 1, 5, 5));
+            var service = CreateServiceWithFarmWorkload(roster,
+                planCount: GameConfig.AutoJobFarmCropsPerWorkerBaseline + 1);   // farming desired = 2
+
+            service.ReassessNow();
+
+            int farmers = 0, cooks = 0;
+            for (int i = 0; i < roster.AlliedMonsters.Count; i++)
+            {
+                if (roster.AlliedMonsters[i].Job == MonsterJob.Farming) farmers++;
+                if (roster.AlliedMonsters[i].Job == MonsterJob.Cooking) cooks++;
+            }
+            Assert.AreEqual(1, farmers, "One guaranteed farmer");
+            Assert.AreEqual(3, cooks, "Kitchen keeps its full base crew");
+        }
+
+        [TestMethod]
+        public void ReassessNow_StickyKitchenCrew_ReleasedWhenFarmTasksAppearWithZeroFarmers()
+        {
+            // The one exception to all-day kitchen stickiness: farm work exists but nobody at all
+            // is farming, so kitchen work is pointless and the crew is released to the farm.
+            var roster = new AlliedMonsterManager();
+            roster.AddAlliedMonster(Monster("A", 1, 5, 5, MonsterJob.Cooking));
+            roster.AddAlliedMonster(Monster("B", 1, 5, 5, MonsterJob.Cooking));
+            var service = CreateServiceWithFarmWorkload(roster, planCount: 1);
+
+            service.ReassessNow();
+
+            int farmers = 0;
+            for (int i = 0; i < roster.AlliedMonsters.Count; i++)
+            {
+                if (roster.AlliedMonsters[i].Job == MonsterJob.Farming) farmers++;
+            }
+            Assert.IsTrue(farmers >= 1, "At least one sticky kitchen worker must be released to the farm");
+        }
+
+        [TestMethod]
+        public void ReassessNow_FarmerGuaranteeHoldsPerShift()
+        {
+            // Each shift is a disjoint workforce, so the ≥1-farmer guarantee applies to the day
+            // crew and the night crew independently.
+            var roster = new AlliedMonsterManager();
+            roster.AddAlliedMonster(Monster("DayA", 1, 5, 5, MonsterJob.Cooking));
+            roster.AddAlliedMonster(Monster("DayB", 1, 5, 5, MonsterJob.Cooking));
+            roster.AddAlliedMonster(Monster("NightA", 1, 5, 5, MonsterJob.Cooking, typeName: "Monster_Orc"));
+            roster.AddAlliedMonster(Monster("NightB", 1, 5, 5, MonsterJob.Cooking, typeName: "Monster_Orc"));
+            var service = CreateServiceWithFarmWorkload(roster, planCount: 1);
+
+            service.ReassessNow();
+
+            int dayFarmers = 0, nightFarmers = 0;
+            for (int i = 0; i < roster.AlliedMonsters.Count; i++)
+            {
+                if (roster.AlliedMonsters[i].Job != MonsterJob.Farming)
+                    continue;
+                if (roster.AlliedMonsters[i].MonsterTypeName == "Monster_Orc") nightFarmers++;
+                else dayFarmers++;
+            }
+            Assert.IsTrue(dayFarmers >= 1, "Day shift must field its own farmer");
+            Assert.IsTrue(nightFarmers >= 1, "Night shift must field its own farmer");
+        }
+
+        [TestMethod]
+        public void ReassessNow_LargeRoster_KitchenStillFieldsBaseCrew()
+        {
+            // Regression guard: farming priority must not starve the kitchen when workers are
+            // plentiful — 6 monsters with a small farm workload still yield a full kitchen crew.
+            var roster = new AlliedMonsterManager();
+            for (int i = 0; i < 6; i++)
+                roster.AddAlliedMonster(Monster($"M{i}", 1, 5, 5));
+            var service = CreateServiceWithFarmWorkload(roster, planCount: 1);   // farming desired = 1
+
+            service.ReassessNow();
+
+            int farmers = 0, cooks = 0;
+            for (int i = 0; i < roster.AlliedMonsters.Count; i++)
+            {
+                if (roster.AlliedMonsters[i].Job == MonsterJob.Farming) farmers++;
+                if (roster.AlliedMonsters[i].Job == MonsterJob.Cooking) cooks++;
+            }
+            Assert.AreEqual(1, farmers, "Small farm workload wants exactly one farmer");
+            Assert.AreEqual(3, cooks, "Kitchen fields its full base crew from the surplus");
+        }
+
         private sealed class FixedDemandEvaluator : IJobDemandEvaluator
         {
             private readonly JobDemandEntry _entry;
             public FixedDemandEvaluator(MonsterJob job, int min, int desired)
                 => _entry = new JobDemandEntry { Job = job, MinWorkers = min, DesiredWorkers = desired, Sticky = false };
             public MonsterJob Job => _entry.Job;
-            public JobDemandEntry EvaluateDemand(int rosterSize) => _entry;
+            public JobDemandEntry EvaluateDemand(int rosterSize, int availableWorkers) => _entry;
         }
 
         // ── Farming demand math ──────────────────────────────────────────────
@@ -244,7 +372,7 @@ namespace PitHero.Tests
         [TestMethod]
         public void FarmingDemand_ZeroWorkload_WantsNoWorkers()
         {
-            var d = FarmingJobDemandEvaluator.ComputeDemand(0, 0, rosterSize: 10);
+            var d = FarmingJobDemandEvaluator.ComputeDemand(0, 0, availableWorkers: 10);
             Assert.AreEqual(0, d.DesiredWorkers);
             Assert.AreEqual(0, d.MinWorkers);
             Assert.IsFalse(d.Sticky, "Farming is not sticky — farmers are released during lulls");
@@ -265,16 +393,16 @@ namespace PitHero.Tests
             // A watering/harvest wave (many outstanding tasks) demands more workers than the
             // baseline care load alone would.
             int tasksPer = GameConfig.AutoJobFarmTasksPerWorker;
-            var d = FarmingJobDemandEvaluator.ComputeDemand(tasksPer * 3, careLoad: 1, rosterSize: 10);
+            var d = FarmingJobDemandEvaluator.ComputeDemand(tasksPer * 3, careLoad: 1, availableWorkers: 10);
             Assert.AreEqual(3, d.DesiredWorkers, "Burst signal should win when larger than baseline");
             Assert.AreEqual(1, d.MinWorkers, "At least one farmer whenever any workload exists");
         }
 
         [TestMethod]
-        public void FarmingDemand_ClampsToRosterSize()
+        public void FarmingDemand_ClampsToAvailableWorkers()
         {
-            var d = FarmingJobDemandEvaluator.ComputeDemand(1000, 1000, rosterSize: 4);
-            Assert.AreEqual(4, d.DesiredWorkers, "Demand can never exceed the roster");
+            var d = FarmingJobDemandEvaluator.ComputeDemand(1000, 1000, availableWorkers: 4);
+            Assert.AreEqual(4, d.DesiredWorkers, "Demand can never exceed the available workers");
         }
 
         [TestMethod]
@@ -287,7 +415,7 @@ namespace PitHero.Tests
                 planting.AddPlan(new PlacedCropPlan { Type = CropType.Wheat, TileX = i, TileY = 0 });
             var evaluator = new FarmingJobDemandEvaluator(null, growth, planting);
 
-            var d = evaluator.EvaluateDemand(rosterSize: 10);
+            var d = evaluator.EvaluateDemand(rosterSize: 10, availableWorkers: 10);
 
             Assert.AreEqual(2, d.DesiredWorkers, "Placed plans count toward the baseline care load");
         }
@@ -297,36 +425,124 @@ namespace PitHero.Tests
         [TestMethod]
         public void KitchenDemand_ZeroBacklog_StillWantsBaseCrew()
         {
-            var d = KitchenJobDemandEvaluator.ComputeDemand(0, rosterSize: 10);
+            var d = KitchenJobDemandEvaluator.ComputeDemand(0, rosterSize: 10, availableWorkers: 10);
             Assert.AreEqual(GameConfig.AutoJobKitchenBaseStaff, d.DesiredWorkers,
                 "Kitchen keeps a cook + server + runner crew even with no orders");
-            Assert.AreEqual(0, d.MinWorkers, "Base crew is desired, not mandatory, when there is no backlog");
+            Assert.AreEqual(GameConfig.AutoJobKitchenBaseStaff, d.MinWorkers,
+                "Base crew is a firm minimum so it fills before farming's desired extras");
             Assert.IsTrue(d.Sticky, "Kitchen workers must never be pulled away");
         }
 
         [TestMethod]
         public void KitchenDemand_BaseCrewClampsToTinyRoster()
         {
-            var d = KitchenJobDemandEvaluator.ComputeDemand(0, rosterSize: 2);
+            // Available equals the full roster (no farming reservation), so a partial crew is
+            // still fielded on tiny rosters, exactly as before the farming-priority change.
+            var d = KitchenJobDemandEvaluator.ComputeDemand(0, rosterSize: 2, availableWorkers: 2);
             Assert.AreEqual(2, d.DesiredWorkers);
+        }
+
+        [TestMethod]
+        public void KitchenDemand_ZeroedWhenFarmingReservationLeavesUnderBaseCrew()
+        {
+            // Farming reserved a worker and fewer than cook+server+runner remain: a partial
+            // kitchen has no runner and is pointless, so the kitchen cedes the shortage entirely.
+            var d = KitchenJobDemandEvaluator.ComputeDemand(0, rosterSize: 3, availableWorkers: 2);
+            Assert.AreEqual(0, d.DesiredWorkers, "All-or-nothing when competing with farming");
+            Assert.AreEqual(0, d.MinWorkers);
         }
 
         [TestMethod]
         public void KitchenDemand_BacklogAddsExtraWorkers()
         {
             int per = GameConfig.AutoJobKitchenBacklogPerExtraWorker;
-            var d = KitchenJobDemandEvaluator.ComputeDemand(per * 2, rosterSize: 10);
+            var d = KitchenJobDemandEvaluator.ComputeDemand(per * 2, rosterSize: 10, availableWorkers: 10);
             Assert.AreEqual(GameConfig.AutoJobKitchenBaseStaff + 2, d.DesiredWorkers);
-            Assert.AreEqual(GameConfig.AutoJobKitchenBaseStaff, d.MinWorkers,
-                "With a backlog the base crew becomes mandatory");
+            Assert.AreEqual(GameConfig.AutoJobKitchenBaseStaff, d.MinWorkers);
         }
 
         [TestMethod]
         public void KitchenDemand_CapsAtMaxWorkers()
         {
-            var d = KitchenJobDemandEvaluator.ComputeDemand(1000, rosterSize: 20);
+            var d = KitchenJobDemandEvaluator.ComputeDemand(1000, rosterSize: 20, availableWorkers: 20);
             Assert.AreEqual(GameConfig.AutoJobKitchenMaxWorkers, d.DesiredWorkers,
                 "Kitchen demand is capped at the coordinator's worker limit");
+        }
+
+        [TestMethod]
+        public void KitchenDemand_NothingOrderable_FieldsNoOne()
+        {
+            // No coverable dish means servers can never take an order, so no ticket can ever
+            // exist — staffing the kitchen would be dead weight.
+            var d = KitchenJobDemandEvaluator.ComputeDemand(0, rosterSize: 10, availableWorkers: 10,
+                anyDishOrderable: false);
+            Assert.AreEqual(0, d.DesiredWorkers);
+            Assert.AreEqual(0, d.MinWorkers);
+            Assert.IsTrue(d.Sticky,
+                "Workers already in the kitchen stay put when the larder runs dry mid-day");
+        }
+
+        // ── Kitchen evaluator: empty-larder gate ─────────────────────────────
+
+        private static KitchenTaskCoordinator CreateHeadlessKitchen(
+            out BuildingService buildings, out CropStorageInventoryService storage)
+        {
+            buildings = new BuildingService();
+            buildings.AddBuilding(new PlacedBuilding
+            {
+                Type = BuildingType.CropStorage,
+                TileX = GameConfig.NewGameCropStorageAnchorTileX,
+                TileY = GameConfig.NewGameCropStorageAnchorTileY,
+                UniqueId = 1,
+            });
+            storage = new CropStorageInventoryService(buildings);
+            var coordinator = new KitchenTaskCoordinator(null, buildings, 240, 12);
+            coordinator.SetHeadlessServices(storage, new GameStateService());
+            return coordinator;
+        }
+
+        [TestMethod]
+        public void KitchenEvaluator_EmptyLarder_ReportsZeroDemand()
+        {
+            var coordinator = CreateHeadlessKitchen(out _, out _);
+            var evaluator = new KitchenJobDemandEvaluator(coordinator, null, null);
+
+            var d = evaluator.EvaluateDemand(rosterSize: 3, availableWorkers: 3);
+
+            Assert.AreEqual(0, d.DesiredWorkers, "Empty fridge + storage: no dish is coverable");
+            Assert.AreEqual(0, d.MinWorkers);
+        }
+
+        [TestMethod]
+        public void KitchenEvaluator_StockedLarder_WantsBaseCrew()
+        {
+            var coordinator = CreateHeadlessKitchen(out _, out var storage);
+            var def = DishConfig.GetDefinition((DishType)0);
+            for (int i = 0; i < def.Recipe.Length; i++)
+                Assert.IsTrue(storage.TryDeposit(1, def.Recipe[i].Crop, def.Recipe[i].Qty));
+            var evaluator = new KitchenJobDemandEvaluator(coordinator, null, null);
+
+            var d = evaluator.EvaluateDemand(rosterSize: 3, availableWorkers: 3);
+
+            Assert.AreEqual(GameConfig.AutoJobKitchenBaseStaff, d.DesiredWorkers,
+                "One coverable dish is enough to staff the kitchen");
+        }
+
+        [TestMethod]
+        public void ReassessNow_LoneMonsterNewGame_StaysHomeInsteadOfKitchen()
+        {
+            // The reported scenario: fresh game, one monster, no farm workload, nothing in
+            // storage to cook with. The monster must stay home, not take the chef hat.
+            var coordinator = CreateHeadlessKitchen(out _, out _);
+            var roster = new AlliedMonsterManager();
+            roster.AddAlliedMonster(Monster("Solo", 1, 9, 1));
+            var service = new AutoJobAssignmentService(roster,
+                new KitchenJobDemandEvaluator(coordinator, null, null),
+                new FarmingJobDemandEvaluator(null, null, null));
+
+            service.ReassessNow();
+
+            Assert.AreEqual(MonsterJob.None, roster.AlliedMonsters[0].Job);
         }
     }
 }

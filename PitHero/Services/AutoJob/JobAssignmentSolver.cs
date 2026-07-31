@@ -40,8 +40,10 @@ namespace PitHero.Services.AutoJob
 
     /// <summary>
     /// Pure, deterministic assignment solver: fills each job's minimum staffing first (by proficiency),
-    /// then desired staffing, honoring sticky jobs whose workers are never demoted. Monsters left
-    /// unassigned get MonsterJob.None so the coordinators send them home.
+    /// then desired staffing, honoring sticky jobs whose workers are never demoted — except that a
+    /// higher-priority job left with zero workers may pull sticky workers from lower-priority jobs
+    /// (StarvationReleasePass). Monsters left unassigned get MonsterJob.None so the coordinators
+    /// send them home.
     /// </summary>
     public static class JobAssignmentSolver
     {
@@ -87,6 +89,7 @@ namespace PitHero.Services.AutoJob
 
             FillPass(monsters, demands, resultJobs, true);
             FillPass(monsters, demands, resultJobs, false);
+            StarvationReleasePass(monsters, demands, resultJobs);
             SwapPass(monsters, demands, resultJobs);
         }
 
@@ -106,6 +109,55 @@ namespace PitHero.Services.AutoJob
                     for (int i = 0; i < monsters.Count; i++)
                     {
                         if (resultJobs[i] != MonsterJob.None)
+                            continue;
+                        int proficiency = GetProficiency(monsters[i], demand.Job);
+                        if (proficiency > bestProficiency)
+                        {
+                            best = i;
+                            bestProficiency = proficiency;
+                        }
+                    }
+                    if (best < 0)
+                        break;
+                    resultJobs[best] = demand.Job;
+                    assigned++;
+                }
+            }
+        }
+
+        /// <summary>
+        /// The one exception to stickiness: a demand with MinWorkers > 0 that ends the fill passes with
+        /// ZERO workers proves every candidate is sticky-locked elsewhere (fill exhausts free monsters
+        /// first). Pull sticky-held workers from LOWER-priority demands, up to the starved job's
+        /// DesiredWorkers, never dropping a raided job below its own MinWorkers.
+        /// </summary>
+        private static void StarvationReleasePass(List<MonsterJobSnapshot> monsters,
+            List<JobDemandEntry> demands, List<MonsterJob> resultJobs)
+        {
+            for (int d = 0; d < demands.Count; d++)
+            {
+                var demand = demands[d];
+                if (demand.MinWorkers <= 0)
+                    continue;
+                if (CountAssigned(resultJobs, demand.Job) > 0)
+                    continue;
+
+                int assigned = 0;
+                while (assigned < demand.DesiredWorkers)
+                {
+                    int best = -1;
+                    int bestProficiency = -1;
+                    for (int i = 0; i < monsters.Count; i++)
+                    {
+                        var job = resultJobs[i];
+                        if (job == MonsterJob.None || job == demand.Job)
+                            continue;
+                        int otherIndex = IndexOfDemand(demands, job);
+                        if (otherIndex <= d)
+                            continue;
+                        if (!demands[otherIndex].Sticky || monsters[i].CurrentJob != job)
+                            continue;
+                        if (CountAssigned(resultJobs, job) <= demands[otherIndex].MinWorkers)
                             continue;
                         int proficiency = GetProficiency(monsters[i], demand.Job);
                         if (proficiency > bestProficiency)
@@ -165,6 +217,16 @@ namespace PitHero.Services.AutoJob
                     }
                 }
             }
+        }
+
+        private static int IndexOfDemand(List<JobDemandEntry> demands, MonsterJob job)
+        {
+            for (int d = 0; d < demands.Count; d++)
+            {
+                if (demands[d].Job == job)
+                    return d;
+            }
+            return -1;
         }
 
         private static bool IsSticky(List<JobDemandEntry> demands, MonsterJob job)

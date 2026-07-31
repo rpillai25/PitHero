@@ -33,16 +33,17 @@ namespace PitHero.Services
 
         /// <summary>
         /// Initialises the service with the roster and the initial demand evaluators, in priority order
-        /// (kitchen first: its small sticky crew is staffed before farming absorbs the rest).
+        /// (farming first: the kitchen depends on farm output, so farm demand is covered before the
+        /// kitchen staffs — kitchen work is a dead end with nothing being grown).
         /// </summary>
         public AutoJobAssignmentService(AlliedMonsterManager alliedMonsters,
             KitchenJobDemandEvaluator kitchenEvaluator, FarmingJobDemandEvaluator farmingEvaluator)
         {
             _alliedMonsters = alliedMonsters;
-            if (kitchenEvaluator != null)
-                _evaluators.Add(kitchenEvaluator);
             if (farmingEvaluator != null)
                 _evaluators.Add(farmingEvaluator);
+            if (kitchenEvaluator != null)
+                _evaluators.Add(kitchenEvaluator);
         }
 
         /// <summary>Registers an additional demand evaluator (future jobs, e.g. fishing).</summary>
@@ -137,9 +138,19 @@ namespace PitHero.Services
             if (_snapshots.Count == 0)
                 return;
 
+            // Each evaluator sees the roster minus the minimums already reserved by higher-priority
+            // evaluators, so a lower-priority job (kitchen) only claims workers farming doesn't need.
             _demands.Clear();
+            int reserved = 0;
             for (int i = 0; i < _evaluators.Count; i++)
-                _demands.Add(_evaluators[i].EvaluateDemand(_snapshots.Count));
+            {
+                int available = _snapshots.Count - reserved;
+                if (available < 0)
+                    available = 0;
+                var demand = _evaluators[i].EvaluateDemand(_snapshots.Count, available);
+                _demands.Add(demand);
+                reserved += demand.MinWorkers;
+            }
 
             JobAssignmentSolver.Solve(_snapshots, _demands, _resultJobs);
 

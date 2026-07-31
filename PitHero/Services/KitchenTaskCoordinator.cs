@@ -23,7 +23,7 @@ namespace PitHero.Services
     /// all three are full. The server whose zone owns the table picks up (up to 2 dishes) and
     /// delivers; dishes whose patron left go to the sink (86,2).
     /// </summary>
-    public class KitchenTaskCoordinator
+    public class KitchenTaskCoordinator : IMonsterWorkerHost
     {
         // ── Internal types ──────────────────────────────────────────────────────
 
@@ -58,13 +58,13 @@ namespace PitHero.Services
 
         // ── Workers ─────────────────────────────────────────────────────────────
         private readonly List<ActiveWorker> _workers = new List<ActiveWorker>(8);
+        private readonly List<IMonsterWorkerHost> _peers = new List<IMonsterWorkerHost>(2);
         private Scene _scene;
         private float _hatCheckElapsed;
 
         // Scratch arrays for role assignment (pre-allocated, reset each reconcile)
         private readonly List<AlliedMonster> _wantedAssignments = new List<AlliedMonster>(8);
         private readonly List<KitchenRole> _wantedRoles = new List<KitchenRole>(8);
-        private readonly List<bool> _matchedWorkerScratch = new List<bool>(8);
 
         // ── Pathfinder ──────────────────────────────────────────────────────────
         /// <summary>Shared A* grid for all kitchen monsters.</summary>
@@ -201,6 +201,33 @@ namespace PitHero.Services
                 _buildingService.BuildingsChanged -= HandleBuildingsChanged;
         }
 
+        /// <summary>
+        /// Registers a coordinator for another job. A kitchen worker is only spawned once no peer
+        /// still has a live entity for the monster (its old-job worker walked home and despawned).
+        /// </summary>
+        public void AddPeer(IMonsterWorkerHost peer)
+        {
+            if (peer != null && !ReferenceEquals(peer, this))
+                _peers.Add(peer);
+        }
+
+        /// <inheritdoc/>
+        public bool HasLiveWorkerFor(AlliedMonster monster)
+        {
+            for (int i = 0; i < _workers.Count; i++)
+                if (ReferenceEquals(_workers[i].Monster, monster) && !_workers[i].Entity.IsDestroyed)
+                    return true;
+            return false;
+        }
+
+        private bool AnyPeerHasLiveWorkerFor(AlliedMonster monster)
+        {
+            for (int i = 0; i < _peers.Count; i++)
+                if (_peers[i].HasLiveWorkerFor(monster))
+                    return true;
+            return false;
+        }
+
         // ── Per-frame tick ───────────────────────────────────────────────────────
 
         /// <summary>Per-frame tick: reconciles worker assignments and reaps destroyed entities.</summary>
@@ -241,12 +268,8 @@ namespace PitHero.Services
                 ? _wantedAssignments.Count : MaxWorkerPosts;
             FillRoleMix(postCount, _wantedRoles);
 
-            // Track which pre-existing workers keep their assignment. SpawnWorker appends to
-            // _workers mid-pass, so snapshot the count and never index past it.
+            // SpawnWorker appends to _workers mid-pass, so snapshot the count and never index past it.
             int existingWorkerCount = _workers.Count;
-            _matchedWorkerScratch.Clear();
-            for (int wi = 0; wi < existingWorkerCount; wi++)
-                _matchedWorkerScratch.Add(false);
 
             for (int wi = 0; wi < existingWorkerCount; wi++)
             {
@@ -268,7 +291,6 @@ namespace PitHero.Services
                 else if (w.Role == _wantedRoles[wantedIdx])
                 {
                     w.Fsm.CancelReturnHome();
-                    _matchedWorkerScratch[wi] = true;
                 }
                 else
                 {
@@ -280,16 +302,10 @@ namespace PitHero.Services
             for (int j = 0; j < postCount; j++)
             {
                 var monster = _wantedAssignments[j];
-                bool hasWorker = false;
-                for (int wi = 0; wi < existingWorkerCount; wi++)
-                {
-                    if (_matchedWorkerScratch[wi] && ReferenceEquals(_workers[wi].Monster, monster))
-                    {
-                        hasWorker = true;
-                        break;
-                    }
-                }
-                if (!hasWorker)
+                // A live worker for this monster is either the matched one keeping its role, or
+                // one still walking home (role change here, or a farm worker after a job change —
+                // peers). Either way, never spawn until it's gone: one entity per monster, ever.
+                if (!HasLiveWorkerFor(monster) && !AnyPeerHasLiveWorkerFor(monster))
                     SpawnWorker(monster, _wantedRoles[j]);
             }
 

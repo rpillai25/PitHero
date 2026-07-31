@@ -26,22 +26,22 @@ namespace PitHero.Services.AutoJob
         public MonsterJob Job => MonsterJob.Farming;
 
         /// <inheritdoc/>
-        public JobDemandEntry EvaluateDemand(int rosterSize)
+        public JobDemandEntry EvaluateDemand(int rosterSize, int availableWorkers)
         {
             int outstanding = _coordinator != null ? _coordinator.OutstandingTaskCount : 0;
             int careLoad = (_cropGrowth != null ? _cropGrowth.CropCount : 0)
                 + (_cropPlanting != null ? _cropPlanting.PlanCount : 0);
-            return ComputeDemand(outstanding, careLoad, rosterSize);
+            return ComputeDemand(outstanding, careLoad, availableWorkers);
         }
 
-        /// <summary>Pure demand math: max of the burst and baseline worker counts, clamped to the roster.</summary>
-        public static JobDemandEntry ComputeDemand(int outstandingTasks, int careLoad, int rosterSize)
+        /// <summary>Pure demand math: max of the burst and baseline worker counts, clamped to the available workers.</summary>
+        public static JobDemandEntry ComputeDemand(int outstandingTasks, int careLoad, int availableWorkers)
         {
             int burst = CeilDiv(outstandingTasks, GameConfig.AutoJobFarmTasksPerWorker);
             int baseline = CeilDiv(careLoad, GameConfig.AutoJobFarmCropsPerWorkerBaseline);
             int desired = burst > baseline ? burst : baseline;
-            if (desired > rosterSize)
-                desired = rosterSize;
+            if (desired > availableWorkers)
+                desired = availableWorkers;
 
             return new JobDemandEntry
             {

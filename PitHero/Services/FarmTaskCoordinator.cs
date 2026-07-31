@@ -14,7 +14,7 @@ namespace PitHero.Services
     /// — no per-frame scans) and hands actions out to farming monsters so multiple workers never
     /// target the same tile. Also owns the shared farm pathfinder.
     /// </summary>
-    public class FarmTaskCoordinator
+    public class FarmTaskCoordinator : IMonsterWorkerHost
     {
         private struct ActiveWorker
         {
@@ -56,6 +56,7 @@ namespace PitHero.Services
         private DroppedCropService _droppedCropService;
 
         private readonly List<ActiveWorker> _workers = new List<ActiveWorker>(16);
+        private readonly List<IMonsterWorkerHost> _peers = new List<IMonsterWorkerHost>(2);
         private Scene _scene;
 
         /// <summary>Provides the dropped-crop service used to recover crops dropped on the ground.</summary>
@@ -115,6 +116,33 @@ namespace PitHero.Services
         public void Initialize(Scene scene) => _scene = scene;
 
         /// <summary>
+        /// Registers a coordinator for another job. A farm worker is only spawned once no peer
+        /// still has a live entity for the monster (its old-job worker walked home and despawned).
+        /// </summary>
+        public void AddPeer(IMonsterWorkerHost peer)
+        {
+            if (peer != null && !ReferenceEquals(peer, this))
+                _peers.Add(peer);
+        }
+
+        /// <inheritdoc/>
+        public bool HasLiveWorkerFor(AlliedMonster monster)
+        {
+            for (int i = 0; i < _workers.Count; i++)
+                if (ReferenceEquals(_workers[i].Monster, monster) && !_workers[i].Entity.IsDestroyed)
+                    return true;
+            return false;
+        }
+
+        private bool AnyPeerHasLiveWorkerFor(AlliedMonster monster)
+        {
+            for (int i = 0; i < _peers.Count; i++)
+                if (_peers[i].HasLiveWorkerFor(monster))
+                    return true;
+            return false;
+        }
+
+        /// <summary>
         /// Per-frame tick: keeps world entities in sync with job assignments. Spawns a worker for
         /// every Farming-job allied monster, asks workers whose job changed to walk home, and reaps
         /// despawned entities. One code path covers UI assignment, load restore, and reassignment.
@@ -137,10 +165,12 @@ namespace PitHero.Services
 
                 if (monster.Job == MonsterJob.Farming && awake)
                 {
-                    if (workerIndex < 0)
-                        SpawnWorker(monster);
-                    else
+                    if (workerIndex >= 0)
                         _workers[workerIndex].Fsm.CancelReturnHome();
+                    else if (!AnyPeerHasLiveWorkerFor(monster))
+                        // A job change mid-shift waits for the old job's entity to walk home and
+                        // despawn before this one emerges — one entity per monster, ever.
+                        SpawnWorker(monster);
                 }
                 else if (workerIndex >= 0)
                 {
