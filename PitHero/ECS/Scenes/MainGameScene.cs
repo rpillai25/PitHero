@@ -333,6 +333,11 @@ namespace PitHero.ECS.Scenes
             kitchenCoordinator.Initialize(this);
             Core.Services.AddService(kitchenCoordinator);
 
+            // Peer the worker coordinators: on a job change, the monster's old-job entity must
+            // walk home and despawn before the new job's entity spawns (one entity per monster).
+            farmTaskCoordinator.AddPeer(kitchenCoordinator);
+            kitchenCoordinator.AddPeer(farmTaskCoordinator);
+
             // Party dining service orchestrates once-a-day tavern meals for the party (issue #319)
             var partyDiningService = new Services.PartyDiningService();
             kitchenCoordinator.SetPartyOrderSource(partyDiningService);

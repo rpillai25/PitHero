@@ -7,6 +7,11 @@ assignment action: `FarmTaskCoordinator.Update()` and `KitchenTaskCoordinator.Up
 worker entities against `Job` + awake state every frame, so no entity or FSM code is involved in
 assignment.
 
+The coordinators are peered via `IMonsterWorkerHost` (`MainGameScene` wires `AddPeer` both ways):
+on a mid-shift job change the monster's old-job worker entity must walk home and despawn before
+the new job's coordinator spawns its worker — never two entities for the same monster at once.
+The same gate covers kitchen role changes (the replacement waits for the old worker to despawn).
+
 ## Components
 
 | Piece | File | Role |
