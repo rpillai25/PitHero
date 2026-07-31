@@ -405,3 +405,11 @@ SettingsAutoHireMerc1Job,Mercenary1 Job
 SettingsAutoHireMerc1JobTooltip,Job to auto-hire for the first mercenary slot. None disables auto-hiring this slot
 SettingsAutoHireMerc2Job,Mercenary2 Job
 SettingsAutoHireMerc2JobTooltip,Job to auto-hire for the second mercenary slot. Requires Mercenary1 Job to be set
+SettingsAutoLearnSkills,Auto-Learn Hero Skills
+SettingsAutoLearnSkillsTooltip,Automatically spend hero JP on skills between pit dives
+SettingsAutoLearnMode,Learn Mode
+SettingsAutoLearnModeTooltip,Smart: priority order per job. Active: cheapest active first then passives. Passive: mirror
+AutoLearnModeSmart,Smart
+AutoLearnModeActive,Active
+AutoLearnModePassive,Passive
+ConsoleAutoLearnedSkill,{0} learned {1}!

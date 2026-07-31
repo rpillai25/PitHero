@@ -400,5 +400,15 @@ namespace PitHero
         public const string SettingsAutoHireMerc1JobTooltip = "SettingsAutoHireMerc1JobTooltip";
         public const string SettingsAutoHireMerc2Job = "SettingsAutoHireMerc2Job";
         public const string SettingsAutoHireMerc2JobTooltip = "SettingsAutoHireMerc2JobTooltip";
+
+        // Auto-Learn Hero Skills (v25 / issue #353)
+        public const string SettingsAutoLearnSkills = "SettingsAutoLearnSkills";
+        public const string SettingsAutoLearnSkillsTooltip = "SettingsAutoLearnSkillsTooltip";
+        public const string SettingsAutoLearnMode = "SettingsAutoLearnMode";
+        public const string SettingsAutoLearnModeTooltip = "SettingsAutoLearnModeTooltip";
+        public const string AutoLearnModeSmart = "AutoLearnModeSmart";
+        public const string AutoLearnModeActive = "AutoLearnModeActive";
+        public const string AutoLearnModePassive = "AutoLearnModePassive";
+        public const string ConsoleAutoLearnedSkill = "ConsoleAutoLearnedSkill";
     }
 }
