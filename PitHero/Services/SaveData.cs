@@ -255,14 +255,15 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 24;
+        public const int CurrentVersion = 25;
 
         /// <summary>
-        /// Oldest save file version this build can still load. v17–v23 files are byte-exact
-        /// prefixes of v24 (sections 33 dining, 34 automation, 35 auto-dine resume,
+        /// Oldest save file version this build can still load. v17–v24 files are byte-exact
+        /// prefixes of v25 (sections 33 dining, 34 automation, 35 auto-dine resume,
         /// 36 auto-sell excess items, 37 auto-sell priority, 38 gear sell types,
-        /// 39 auto-purchase items, 40 auto-equip, and 41 auto-hire mercenaries were
-        /// appended at the end), so they load with default state for the missing sections.
+        /// 39 auto-purchase items, 40 auto-equip, 41 auto-hire mercenaries, and
+        /// 42 auto-learn hero skills were appended at the end), so they load with default
+        /// state for the missing sections.
         /// </summary>
         public const int MinSupportedVersion = 17;
 
@@ -566,6 +567,13 @@ namespace PitHero.Services
 
         /// <summary>Job auto-hired for the second party slot as a raw JobType value (0 = None).</summary>
         public int AutoHireMerc2Job = 0;
+
+        // Auto-learn hero skills (v25)
+        /// <summary>Whether automatic hero skill learning is active (issue #353).</summary>
+        public bool AutoLearnSkillsEnabled = false;
+
+        /// <summary>Raw AutoLearnMode value: 0=Smart, 1=Active, 2=Passive.</summary>
+        public int AutoLearnMode = 0;
 
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
@@ -1023,6 +1031,10 @@ namespace PitHero.Services
             writer.Write(AutoHireMercenariesEnabled);
             writer.Write(AutoHireMerc1Job);
             writer.Write(AutoHireMerc2Job);
+
+            // 42. Auto-learn hero skills (v25)
+            writer.Write(AutoLearnSkillsEnabled);
+            writer.Write(AutoLearnMode);
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -1544,6 +1556,15 @@ namespace PitHero.Services
                 AutoHireMercenariesEnabled = reader.ReadBool();
                 AutoHireMerc1Job = reader.ReadInt();
                 AutoHireMerc2Job = reader.ReadInt();
+            }
+
+            // 42. Auto-learn hero skills (v25+). Older files default to disabled, Smart mode.
+            AutoLearnSkillsEnabled = false;
+            AutoLearnMode = 0;
+            if (fileVersion >= 25)
+            {
+                AutoLearnSkillsEnabled = reader.ReadBool();
+                AutoLearnMode = reader.ReadInt();
             }
         }
 

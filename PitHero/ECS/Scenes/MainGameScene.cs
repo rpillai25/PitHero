@@ -219,6 +219,7 @@ namespace PitHero.ECS.Scenes
             Core.Services.RemoveService(typeof(Services.AutoSellExcessItemsService));
             Core.Services.RemoveService(typeof(Services.AutoItemPurchaseService));
             Core.Services.RemoveService(typeof(Services.AutoHireMercenaryService));
+            Core.Services.RemoveService(typeof(Services.AutoLearnSkillsService));
             Core.Services.GetService<Services.FarmTaskCoordinator>()?.Detach();
             Core.Services.RemoveService(typeof(Services.FarmTaskCoordinator));
             Core.Services.RemoveService(typeof(Services.MealBuffService));
@@ -320,6 +321,10 @@ namespace PitHero.ECS.Scenes
                 Core.Services.GetService<Services.GameStateService>(),
                 autoSeedPurchaseService,
                 mercenaryManager));
+
+            // Auto-learn skills service spends hero JP automatically (issue #353).
+            // Registered after AutoHireMercenaryService to keep service order consistent.
+            Core.Services.AddService(new Services.AutoLearnSkillsService());
 
             // Meal buff service holds each party member's day-long food buffs (issue #319)
             Core.Services.AddService(new Services.MealBuffService());
@@ -634,6 +639,12 @@ namespace PitHero.ECS.Scenes
                 // Slot 2 is only meaningful while slot 1 holds a job — enforce the invariant on load
                 if (autoHireSvc.Merc1Job == RolePlayingFramework.Jobs.JobType.None)
                     autoHireSvc.Merc2Job = RolePlayingFramework.Jobs.JobType.None;
+            }
+            var autoLearnSvc = Core.Services.GetService<Services.AutoLearnSkillsService>();
+            if (autoLearnSvc != null)
+            {
+                autoLearnSvc.Enabled = pendingData.AutoLearnSkillsEnabled;
+                autoLearnSvc.Mode = Services.AutoLearnSkillsService.SanitizeMode(pendingData.AutoLearnMode);
             }
             _settingsUI?.SyncAutomationControlsFromService();
 
@@ -1402,7 +1413,6 @@ namespace PitHero.ECS.Scenes
                 var heroJob = JobFactory.CreateJob(design.JobName);
                 var baseStats = new StatBlock(strength: 4, agility: 3, vitality: 5, magic: 1);
                 var heroCrystal = new HeroCrystal(design.Name, heroJob, 1, baseStats);
-                heroCrystal.EarnJP(550);
 
                 // Create the linked Hero from the crystal
                 heroComponent.LinkedHero = new RolePlayingFramework.Heroes.Hero(design.Name, heroJob, 1, baseStats, heroCrystal);
@@ -2531,6 +2541,7 @@ namespace PitHero.ECS.Scenes
                 Core.Services.GetService<Services.AutoSeedPurchaseService>()?.Update();
                 Core.Services.GetService<Services.AutoCropSellService>()?.Update();
                 Core.Services.GetService<Services.AutoJobAssignmentService>()?.Update();
+                Core.Services.GetService<Services.AutoLearnSkillsService>()?.Update();
             }
 
             // Check if a living hero who respawned without a crystal has arrived at the statue
