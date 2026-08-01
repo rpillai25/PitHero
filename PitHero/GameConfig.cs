@@ -256,6 +256,7 @@ namespace PitHero
         public const float CameraFollowLerpSpeed = 5f; // speed at which camera lerps to hero position
         public const float CameraManualControlTimeout = 7f; // seconds of inactivity before auto-following resumes (paused when player interacts with selectables)
         public const bool CameraAutoScrollToHeroDefault = true; // default value for auto-scroll to hero setting
+        public const int MapQuadrantCount = 4; // horizontal map quadrants reachable via keys 1-4
 
         // World Bounds
         public static readonly Rectangle WorldBounds = new Rectangle(0, 0, InternalWorldWidth, InternalWorldHeight);
