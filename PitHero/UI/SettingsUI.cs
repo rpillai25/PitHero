@@ -2123,13 +2123,14 @@ namespace PitHero.UI
             if (JustPressed(Microsoft.Xna.Framework.Input.Keys.Tab))
                 ToggleUIBarVisibility();
 
-            // If the shortcut bar is hidden and a shortcut number key is pressed, unhide it for feedback.
+            // If the shortcut bar is hidden and a SHIFT+number shortcut is pressed, unhide it for feedback.
+            // Plain 1-4 is reserved for camera quadrant jumps and must not unhide the bar.
             if (_shortcutBarHidden)
             {
                 for (int k = 0; k < 8; k++)
                 {
                     var numKey = (Microsoft.Xna.Framework.Input.Keys)((int)Microsoft.Xna.Framework.Input.Keys.D1 + k);
-                    if (JustPressed(numKey))
+                    if (ShortcutPressed(numKey))
                     {
                         ShowShortcutBar();
                         break;

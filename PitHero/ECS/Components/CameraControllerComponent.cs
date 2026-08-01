@@ -32,6 +32,12 @@ namespace PitHero.ECS.Components
         public System.Func<bool> IsPointerOverUI;
 
         /// <summary>
+        /// Optional hook set by the scene; returns true when a UI text field has keyboard focus.
+        /// Gates the quadrant jump keys so typing digits into a text field doesn't move the camera.
+        /// </summary>
+        public System.Func<bool> HasKeyboardFocus;
+
+        /// <summary>
         /// Gets whether this component should respect the manual pause state.
         /// We shouldn't modify camera size or zoom while paused from menu.
         /// The farm-mode pause gate is deliberately ignored so the player can pan/zoom the map
@@ -94,6 +100,7 @@ namespace PitHero.ECS.Components
 
             HandleZoomInput();
             HandlePanInput();
+            HandleQuadrantJumpInput();
             HandleKeyboardPanInput();
             HandleHeroFollowing();
         }
@@ -258,6 +265,43 @@ namespace PitHero.ECS.Components
             pos.X = (float)System.Math.Round(pos.X / step) * step;
             pos.Y = (float)System.Math.Round(pos.Y / step) * step;
             _camera.Position = pos;
+        }
+
+        /// <summary>
+        /// Returns the world-space center of the given horizontal map quadrant (0-based index).
+        /// </summary>
+        public static Vector2 GetQuadrantCenter(Rectangle mapBounds, int quadrantIndex)
+        {
+            return new Vector2(
+                mapBounds.X + mapBounds.Width * (quadrantIndex + 0.5f) / GameConfig.MapQuadrantCount,
+                mapBounds.Y + mapBounds.Height / 2f);
+        }
+
+        /// <summary>
+        /// Centers the camera on one of the horizontal map quadrants when keys 1-4 are pressed.
+        /// SHIFT+number is reserved for the shortcut bar and CTRL for zoom modifiers.
+        /// </summary>
+        private void HandleQuadrantJumpInput()
+        {
+            if (Input.IsKeyDown(Keys.LeftShift) || Input.IsKeyDown(Keys.RightShift) ||
+                Input.IsKeyDown(Keys.LeftControl) || Input.IsKeyDown(Keys.RightControl))
+                return;
+
+            if (HasKeyboardFocus?.Invoke() == true)
+                return;
+
+            for (int i = 0; i < GameConfig.MapQuadrantCount; i++)
+            {
+                var key = (Keys)((int)Keys.D1 + i);
+                if (!Input.IsKeyPressed(key)) continue;
+
+                SwitchToManualControl();
+                _manualControlTimer = 0f;
+                _camera.Position = ConstrainCameraPosition(GetQuadrantCenter(_tileMapBounds, i));
+                QuantizeCameraPosition();
+                Debug.Log($"[CameraController] Quadrant jump {i + 1} positionX={_camera.Position.X} positionY={_camera.Position.Y}");
+                break;
+            }
         }
 
         private void CenterCameraOnMap()

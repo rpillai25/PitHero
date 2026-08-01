@@ -543,9 +543,12 @@ namespace PitHero.UI
             }
         }
 
-        /// <summary>Handles shortcut key presses (1-8).</summary>
+        /// <summary>Handles shortcut key presses (SHIFT+1-8). Plain 1-4 is reserved for camera quadrant jumps.</summary>
         public void HandleKeyboardShortcuts()
         {
+            if (!Input.IsKeyDown(Keys.LeftShift) && !Input.IsKeyDown(Keys.RightShift))
+                return;
+
             for (int keyOffset = 0; keyOffset < 8; keyOffset++)
             {
                 var key = (Keys)((int)Keys.D1 + keyOffset);
