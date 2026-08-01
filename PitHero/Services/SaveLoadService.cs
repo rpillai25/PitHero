@@ -856,6 +856,14 @@ namespace PitHero.Services
                 data.AutoHireMerc2Job = (int)autoHireService.Merc2Job;
             }
 
+            // Auto-learn hero skills (v25+)
+            var autoLearnService = Core.Services.GetService<AutoLearnSkillsService>();
+            if (autoLearnService != null)
+            {
+                data.AutoLearnSkillsEnabled = autoLearnService.Enabled;
+                data.AutoLearnMode = (int)autoLearnService.Mode;
+            }
+
             return data;
         }
 

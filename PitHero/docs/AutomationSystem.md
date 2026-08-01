@@ -11,10 +11,10 @@ Monster job assignment is the one automation with its own deep-dive — see
 ## The tab at a glance
 
 Built by `SettingsUI.PopulateAutomationTab` (`PitHero/UI/SettingsUI.cs`), which delegates the
-newest blocks to `PopulateAutoPurchaseControls`, `PopulateAutoEquipControls` and
-`PopulateAutoHireControls`. The whole tab is wrapped in a vertical `ScrollPane` — it has outgrown
-the 450×350 settings window, so **new controls just get appended; do not try to keep the tab
-short**.
+newest blocks to `PopulateAutoPurchaseControls`, `PopulateAutoEquipControls`,
+`PopulateAutoLearnControls` and `PopulateAutoHireControls`. The whole tab is wrapped in a vertical
+`ScrollPane` — it has outgrown the 450×350 settings window, so **new controls just get appended;
+do not try to keep the tab short**.
 
 | Control group | Owning service / state | Runs | Save section |
 |---|---|---|---|
@@ -25,6 +25,7 @@ short**.
 | Auto-Sell Excess Items + priority + "Gear Sell Options" | `AutoSellExcessItemsService` | Call-driven | 36–38 (v21/v22/v23) |
 | Auto-Purchase Items + priority + merc opt-in + "Gear Purchase Options" + "Consumable Purchase Options" | `AutoItemPurchaseService` | Call-driven | 39 (v23) |
 | Auto-Equip Options | `HeroComponent.AutoEquipHero` / `.AutoEquipMercenaries` (**no service**) | Call-driven | 40 (v23) |
+| Auto-Learn Hero Skills + "Learn Mode" cycler | `AutoLearnSkillsService` | Ticked (1s throttle) | 42 (v25) |
 | Auto-Hire Mercenaries + two "MercenaryN Job" cyclers | `AutoHireMercenaryService` | Call-driven | 41 (v24) |
 
 Dialogs opened from the tab:
@@ -65,9 +66,10 @@ together near the top of `Unload()`.
 Two distinct patterns — pick deliberately:
 
 - **Ticked** — `Update()` called from the unpaused block of `MainGameScene.Update()`.
-  `AutoSeedPurchaseService` (1-second throttle), `AutoCropSellService`, `AutoJobAssignmentService`.
+  `AutoSeedPurchaseService` (1-second throttle), `AutoCropSellService`, `AutoJobAssignmentService`,
+  `AutoLearnSkillsService` (1-second throttle).
   Each exposes a public, throttle-free pass method (`TryPurchasePass()`, `TrySellPass()`,
-  `ReassessNow()`) so tests can drive it directly.
+  `ReassessNow()`, `TryLearnPass()`) so tests can drive it directly.
 - **Call-driven** — no update loop; invoked from the game action that creates the situation.
   - `AutoSellExcessItemsService.TryMakeRoom(bag, incoming)` ← `OpenChestAction`, before adding a
     chest item to a full bag.
@@ -222,6 +224,7 @@ and call the pass method rather than simulating frames:
 | Excess-item selling + gear filters | `PitHero.Tests/AutoSellExcessItemsTests.cs` |
 | Item purchasing | `PitHero.Tests/AutoItemPurchaseServiceTests.cs` |
 | Auto-equip | `PitHero.Tests/GearAutoEquipServiceTests.cs` |
+| Hero skill auto-learn | `PitHero.Tests/AutoLearnSkillsServiceTests.cs` |
 | Mercenary auto-hire matching | `PitHero.Tests/AutoHireMercenaryServiceTests.cs` |
 | Save round-trips + defaults | `PitHero.Tests/SaveLoadTests.cs` |
 

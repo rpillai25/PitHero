@@ -111,6 +111,14 @@ namespace PitHero.UI
         private int _autoHireMerc1Index;
         private int _autoHireMerc2Index;
 
+        // Auto-learn hero skills (issue #353)
+        private HoverableCheckBox _autoLearnSkillsCheckBox;
+        private HoverableLabel _autoLearnModeLabel;
+        private TextButton _autoLearnModeLeftButton;
+        private TextButton _autoLearnModeRightButton;
+        private Label _autoLearnModeValueLabel;
+        private int _autoLearnModeIndex;
+
         // Confirmation dialogs
         private Window _exitConfirmationDialog;
         private Window _quitToTitleConfirmationDialog;
@@ -1035,6 +1043,7 @@ namespace PitHero.UI
 
             PopulateAutoPurchaseControls(autoShopTable, skin);
             PopulateAutoEquipControls(autoShopTable, skin);
+            PopulateAutoLearnControls(autoShopTable, skin);
             PopulateAutoHireControls(autoShopTable, skin);
 
             // The tab keeps growing as automation options are added, so it scrolls vertically.
@@ -1219,6 +1228,102 @@ namespace PitHero.UI
                 out _autoHireMerc2ValueLabel, out _autoHireMerc2RightButton);
 
             SetAutoHireControlsActive(false);
+        }
+
+        /// <summary>Adds the "Auto-Learn Hero Skills" checkbox and its mode cycler to the Automation tab.</summary>
+        private void PopulateAutoLearnControls(Table autoShopTable, Skin skin)
+        {
+            string autoLearnTooltip = GetText(TextType.UI, UITextKey.SettingsAutoLearnSkillsTooltip);
+            _autoLearnSkillsCheckBox = new HoverableCheckBox(
+                GetText(TextType.UI, UITextKey.SettingsAutoLearnSkills),
+                skin,
+                autoLearnTooltip,
+                _stage);
+            _autoLearnSkillsCheckBox.IsChecked = false;
+            _autoLearnSkillsCheckBox.OnChanged += (isChecked) =>
+            {
+                var svc = Core.Services?.GetService<AutoLearnSkillsService>();
+                if (svc != null)
+                {
+                    svc.Enabled = isChecked;
+                    if (isChecked)
+                        svc.TryLearnNow();
+                }
+                SetAutoLearnControlsActive(isChecked);
+            };
+            autoShopTable.Add(_autoLearnSkillsCheckBox).Left().SetPadTop(15f).SetPadBottom(8f);
+            autoShopTable.Row();
+
+            // "Learn Mode" cycler row
+            _autoLearnModeLabel = new HoverableLabel(
+                GetText(TextType.UI, UITextKey.SettingsAutoLearnMode),
+                skin, "ph-default",
+                GetText(TextType.UI, UITextKey.SettingsAutoLearnModeTooltip), _stage);
+            _autoLearnModeLeftButton  = new TextButton("<", skin, "ph-default");
+            _autoLearnModeRightButton = new TextButton(">", skin, "ph-default");
+            _autoLearnModeValueLabel  = new Label(GetAutoLearnModeDisplayName(AutoLearnMode.Smart), skin, "ph-default");
+            _autoLearnModeLeftButton.OnClicked  += (_) => CycleAutoLearnMode(-1);
+            _autoLearnModeRightButton.OnClicked += (_) => CycleAutoLearnMode(+1);
+
+            var modeRow = new Table();
+            modeRow.Add(_autoLearnModeLabel).Left().Width(110f).SetPadRight(10f);
+            modeRow.Add(_autoLearnModeLeftButton).Size(30f, 22f);
+            modeRow.Add(_autoLearnModeValueLabel).Width(70f).SetPadLeft(6f).SetPadRight(6f);
+            modeRow.Add(_autoLearnModeRightButton).Size(30f, 22f);
+            autoShopTable.Add(modeRow).Left().SetPadBottom(8f);
+            autoShopTable.Row();
+
+            SetAutoLearnControlsActive(false);
+        }
+
+        /// <summary>
+        /// Cycles the auto-learn mode by the given direction, wrapping at both ends, and pushes the
+        /// selection to the service. If the service is enabled a learn pass fires immediately.
+        /// </summary>
+        private void CycleAutoLearnMode(int delta)
+        {
+            const int modeCount = 3; // Smart=0, Active=1, Passive=2
+            _autoLearnModeIndex += delta;
+            if (_autoLearnModeIndex < 0)
+                _autoLearnModeIndex = modeCount - 1;
+            else if (_autoLearnModeIndex >= modeCount)
+                _autoLearnModeIndex = 0;
+
+            var mode = AutoLearnSkillsService.SanitizeMode(_autoLearnModeIndex);
+            var svc  = Core.Services?.GetService<AutoLearnSkillsService>();
+            if (svc != null)
+            {
+                svc.Mode = mode;
+                if (svc.Enabled) svc.TryLearnNow();
+            }
+            _autoLearnModeValueLabel?.SetText(GetAutoLearnModeDisplayName(mode));
+        }
+
+        /// <summary>Activates or deactivates the auto-learn mode cycler controls.</summary>
+        private void SetAutoLearnControlsActive(bool active)
+        {
+            var skin       = PitHeroSkin.CreateSkin();
+            var labelStyle = skin.Get<LabelStyle>(active ? "ph-default" : "ph-grayed");
+
+            if (_autoLearnModeLabel != null)
+            {
+                _autoLearnModeLabel.SetStyle(labelStyle);
+                _autoLearnModeLabel.SetTooltipEnabled(active);
+            }
+            _autoLearnModeValueLabel?.SetStyle(labelStyle);
+            SetButtonActive(_autoLearnModeLeftButton, active, skin);
+            SetButtonActive(_autoLearnModeRightButton, active, skin);
+        }
+
+        /// <summary>Localized display name for an auto-learn mode option.</summary>
+        private string GetAutoLearnModeDisplayName(AutoLearnMode mode)
+        {
+            switch (mode)
+            {
+                case AutoLearnMode.Active:  return GetText(TextType.UI, UITextKey.AutoLearnModeActive);
+                case AutoLearnMode.Passive: return GetText(TextType.UI, UITextKey.AutoLearnModePassive);
+                default:                    return GetText(TextType.UI, UITextKey.AutoLearnModeSmart);
+            }
         }
 
         /// <summary>Builds one "MercenaryN Job" cycler row: caption, left arrow, value label, right arrow.</summary>
@@ -1530,6 +1635,17 @@ namespace PitHero.UI
                 _autoHireMerc1ValueLabel?.SetText(GetAutoHireJobDisplayName(AutoHireJobOptions[_autoHireMerc1Index]));
                 _autoHireMerc2ValueLabel?.SetText(GetAutoHireJobDisplayName(AutoHireJobOptions[_autoHireMerc2Index]));
                 SetAutoHireControlsActive(autoHireSvc.Enabled);
+            }
+
+            var autoLearnSvc = Core.Services?.GetService<AutoLearnSkillsService>();
+            if (autoLearnSvc != null)
+            {
+                // Programmatic IsChecked assignment does not fire OnChanged — safe to set directly.
+                if (_autoLearnSkillsCheckBox != null)
+                    _autoLearnSkillsCheckBox.IsChecked = autoLearnSvc.Enabled;
+                _autoLearnModeIndex = (int)autoLearnSvc.Mode;
+                _autoLearnModeValueLabel?.SetText(GetAutoLearnModeDisplayName(autoLearnSvc.Mode));
+                SetAutoLearnControlsActive(autoLearnSvc.Enabled);
             }
         }
 

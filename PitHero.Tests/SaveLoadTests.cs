@@ -1181,5 +1181,69 @@ namespace PitHero.Tests
                     Directory.Delete(tempDir, true);
             }
         }
+
+        /// <summary>Verifies the v25 auto-learn settings round-trip (enabled, Passive mode).</summary>
+        [TestMethod]
+        public void SaveData_V25_AutoLearnSkills_RoundTrip()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_v25_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+
+                var original = new SaveData();
+                original.AutoLearnSkillsEnabled = true;
+                original.AutoLearnMode = (int)PitHero.Services.AutoLearnMode.Passive;
+
+                dataStore.Save("v25_autolearn.bin", original);
+
+                var loaded = new SaveData();
+                dataStore.Load("v25_autolearn.bin", loaded);
+
+                Assert.IsTrue(loaded.AutoLearnSkillsEnabled, "AutoLearnSkillsEnabled should round-trip");
+                Assert.AreEqual((int)PitHero.Services.AutoLearnMode.Passive, loaded.AutoLearnMode,
+                    "AutoLearnMode Passive should round-trip");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
+        /// <summary>
+        /// Verifies the v25 auto-learn defaults: disabled and Smart mode, both on a fresh SaveData
+        /// and after a default save/load cycle.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V25_AutoLearnSkills_Defaults()
+        {
+            var fresh = new SaveData();
+            Assert.IsFalse(fresh.AutoLearnSkillsEnabled, "AutoLearnSkillsEnabled defaults to OFF");
+            Assert.AreEqual((int)PitHero.Services.AutoLearnMode.Smart, fresh.AutoLearnMode,
+                "AutoLearnMode defaults to Smart (0)");
+
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_v25d_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+                dataStore.Save("v25_defaults.bin", new SaveData());
+
+                var loaded = new SaveData();
+                dataStore.Load("v25_defaults.bin", loaded);
+
+                Assert.IsFalse(loaded.AutoLearnSkillsEnabled);
+                Assert.AreEqual((int)PitHero.Services.AutoLearnMode.Smart, loaded.AutoLearnMode);
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
     }
 }
