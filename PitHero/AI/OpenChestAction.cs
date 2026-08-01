@@ -198,7 +198,6 @@ namespace PitHero.AI
                 faceDir = delta.Y < 0 ? Direction.Up : Direction.Down;
             var facing = hero.Entity.GetComponent<ActorFacingComponent>();
             facing?.SetFacing(faceDir);
-            Debug.Log($"[OpenChest] Hero facing direction set to {faceDir} using delta ({delta.X},{delta.Y})");
         }
 
         /// <summary>
@@ -291,7 +290,6 @@ namespace PitHero.AI
                 animationEntity.Transform.Position = _chestEntity.Transform.Position;
                 animationEntity.AddComponent(new ItemPickupAnimationComponent(containedItem));
 
-                Debug.Log($"[OpenChest] Created pickup animation for {containedItem.Name} at position X: {_chestEntity.Transform.Position.X}, Y: {_chestEntity.Transform.Position.Y}");
             }
 
             // When the bag is full, auto-sell the weakest excess item to make room (if enabled).
@@ -309,7 +307,7 @@ namespace PitHero.AI
             // Try to add item using hero's TryAddItem method (handles consumable priority logic)
             if (hero.TryAddItem(containedItem))
             {
-                Debug.Log($"[OpenChest] Added {containedItem.Name} to hero's main bag. Bag contents:");
+                Debug.Log($"[OpenChest] Added {containedItem.Name} to hero's main bag");
 
                 Services.Analytics.AnalyticsService.LogItemAcquired(containedItem,
                     Core.Services.GetService<PitWidthManager>()?.CurrentPitLevel ?? 0, treasureComponent.Level);
@@ -317,7 +315,6 @@ namespace PitHero.AI
                 Core.Services.GetService<GameEventService>()?.EmitLocalized(UITextKey.ConsoleItemFound,
                     (hero.LinkedHero.Name, GameConfig.ConsoleColorHeroName),
                     (containedItem.Name, RarityUtils.GetRarityColor(containedItem.Rarity)));
-                LogBagContents(hero.Bag);
 
                 // Reset HealingItemExhausted if picked up item is a healing consumable
                 if (containedItem is Consumable consumable && consumable.HPRestoreAmount > 0)
@@ -352,18 +349,5 @@ namespace PitHero.AI
             return item is Consumable || item is IGear;
         }
 
-        /// <summary>
-        /// Debug log the contents of the hero's bag
-        /// </summary>
-        private void LogBagContents(RolePlayingFramework.Inventory.ItemBag bag)
-        {
-            Debug.Log($"[OpenChest] Hero bag contains {bag.Count}/{bag.Capacity} items:");
-            for (int i = 0; i < bag.Items.Count; i++)
-            {
-                var item = bag.Items[i];
-                Debug.Log($"[OpenChest]   {i + 1}. {item.Name} ({item.Rarity})");
-            }
-        }
-
-    }
+}
 }

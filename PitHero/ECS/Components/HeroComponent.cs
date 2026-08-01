@@ -636,7 +636,6 @@ namespace PitHero.ECS.Components
                             consumable.StackCount = savedItem.StackCount;
                         }
                         Bag.SetSlotItem(savedItem.SlotIndex, item);
-                        Debug.Log("[HeroComponent] Restored item '" + savedItem.Name + "' at slot " + savedItem.SlotIndex);
                     }
                     else
                     {
@@ -848,7 +847,6 @@ namespace PitHero.ECS.Components
 
             mover.MovementSpeed = newSpeed;
 
-            Debug.Log($"[HeroComponent] Movement speed set based on pit state. InsidePit={_insidePit}, FogCooldown={_fogCooldown:F2}, Speed={newSpeed}");
         }
 
         /// <summary>
@@ -860,7 +858,6 @@ namespace PitHero.ECS.Components
             {
                 _fogCooldown = GameConfig.HeroFogCooldownDuration;
                 ApplyMovementSpeedForPitState();
-                Debug.Log($"[HeroComponent] Fog cooldown triggered. Duration={_fogCooldown:F2}s");
             }
         }
 
@@ -1026,11 +1023,6 @@ namespace PitHero.ECS.Components
         public override void OnTriggerEnter(Collider other, Collider local)
         {
             base.OnTriggerEnter(other, local);
-
-            Debug.Log($"[HeroComponent] OnTriggerEnter: other.Entity.Name={other.Entity.Name}, " +
-                      $"other.Entity.Tag={other.Entity.Tag}, " +
-                      $"other.PhysicsLayer={other.PhysicsLayer}, " +
-                      $"HeroPos={Entity.Transform.Position.X},{Entity.Transform.Position.Y}");
 
             // Handle pit trigger separately from tilemap
             if (other.Entity.Tag == GameConfig.TAG_PIT)

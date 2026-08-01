@@ -226,7 +226,6 @@ namespace PitHero.ECS.Components
 
             _camera.RawZoom = newZoom;
             RecenterAroundMouse(mouseWorldPos);
-            Debug.Log($"[CameraController] Wheel zoom newZoom={_camera.RawZoom}");
         }
 
         /// <summary>

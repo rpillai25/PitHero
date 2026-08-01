@@ -1585,7 +1585,6 @@ namespace PitHero.ECS.Scenes
                 // Add wall to hero's pathfinding graph
                 heroComponent.AddWall(tilePos);
                 addedWalls++;
-                Debug.Log($"[MainGameScene] Added existing obstacle at ({tileX},{tileY}) to hero pathfinding");
             }
 
             Debug.Log($"[MainGameScene] Added {addedWalls} existing obstacle walls to hero pathfinding graph");

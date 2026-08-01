@@ -758,11 +758,6 @@ namespace PitHero
                         if (heroComponent != null && heroComponent.IsPathfindingInitialized)
                         {
                             heroComponent.AddWall(tilePos);
-                            Debug.Log($"[PitGenerator] Added obstacle tile to hero pathfinding at ({tilePos.X},{tilePos.Y})");
-                        }
-                        else
-                        {
-                            Debug.Log($"[PitGenerator] Hero found but pathfinding not initialized for obstacle at ({tilePos.X},{tilePos.Y})");
                         }
                     }
                     else
@@ -789,10 +784,6 @@ namespace PitHero
                             }
                         }
                         
-                        if (mercenariesUpdated > 0)
-                        {
-                            Debug.Log($"[PitGenerator] Added obstacle tile to {mercenariesUpdated} mercenary pathfinding graphs at ({tilePos.X},{tilePos.Y})");
-                        }
                     }
 
                     // Leave collider defaults so hero collides with obstacle (physics layer 0)
@@ -909,7 +900,6 @@ namespace PitHero
                     Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
                 }
 
-                Debug.Log($"[PitGenerator] Created {entityTypeName} at tile ({tilePos.X},{tilePos.Y}), world ({worldPos.X},{worldPos.Y})");
             }
         }
 
@@ -1074,7 +1064,6 @@ namespace PitHero
                 collider.IsTrigger = true;
                 Flags.SetFlagExclusive(ref collider.PhysicsLayer, GameConfig.PhysicsHeroWorldLayer);
 
-                Debug.Log($"[PitGenerator] Created trap at tile ({tilePos.X},{tilePos.Y}), damage={5 + effectiveDepth * 2}");
             }
         }
 

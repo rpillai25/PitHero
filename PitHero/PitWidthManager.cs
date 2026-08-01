@@ -229,7 +229,6 @@ namespace PitHero
                 var tile = layer.GetTile(x, y);
                 int tileIndex = tile?.Gid ?? 0;
                 dictionary[y] = tileIndex;
-                Debug.Log($"[PitWidthManager] {patternName}[{y}] = {tileIndex}");
                 if (tileIndex != 0) nonZeroCount++;
             }
             Debug.Log($"[PitWidthManager] {patternName} total: {dictionary.Count} tiles, {nonZeroCount} non-zero");
@@ -527,34 +526,6 @@ namespace PitHero
                 r.AddColliders();
                 rebuiltCount++;
 
-                // After rebuild, validate collision at expanded inner floor columns
-                var collisionLayer = r.CollisionLayer;
-                int tileSize = GameConfig.TileSize;
-
-                // We expect x=12 and x=13 (new inner floors at level 10) to be passable for y=3..9
-                for (int x = 12; x <= 13; x++)
-                {
-                    for (int y = 3; y <= 9; y++)
-                    {
-                        int gid = 0;
-                        var t = collisionLayer.GetTile(x, y);
-                        gid = t != null ? t.Gid : 0;
-
-                        // Count how many collision rectangles intersect this tile area
-                        var tileRect = new Rectangle(x * tileSize, y * tileSize, tileSize, tileSize);
-                        int intersectCount = 0;
-                        var rects = collisionLayer.GetCollisionRectangles();
-                        for (int ri = 0; ri < rects.Count; ri++)
-                        {
-                            if (rects[ri].Intersects(tileRect))
-                                intersectCount++;
-                        }
-
-                        Debug.Log($"[PitWidthManager] Post-rebuild check: Collision[{x},{y}] gid={gid}, intersectingRects={intersectCount}");
-                    }
-                }
-
-                // Also log rectangle count after rebuild
                 var afterRects = r.CollisionLayer.GetCollisionRectangles();
                 Debug.Log($"[PitWidthManager] Collision rectangles AFTER rebuild: {afterRects.Count}");
             }
@@ -644,8 +615,6 @@ namespace PitHero
         /// </summary>
         private void ExtendColumn(ITiledMapService tiledMapService, int x, Dictionary<int, int> basePattern, Dictionary<int, int> collisionPattern, string columnType)
         {
-            Debug.Log($"[PitWidthManager] Extending {columnType} column at x={x}");
-
             // Set tiles from y=1 to y=11
             for (int y = 1; y <= 11; y++)
             {

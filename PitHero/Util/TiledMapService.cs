@@ -91,7 +91,6 @@ namespace PitHero.Util
             }
 
             RemoveTile("FogOfWar", tileX, tileY);
-            Debug.Log($"FogOfWar tile removed at {tileX}, {tileY}");
             UpdateFogBitmasks(tileX, tileY);
             return true;
         }
