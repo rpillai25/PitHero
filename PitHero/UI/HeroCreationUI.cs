@@ -51,7 +51,7 @@ namespace PitHero.UI
 
         // Direction cycling for preview
         private int _currentDirectionIndex;
-        private static readonly Direction[] PreviewDirections = { Direction.Down, Direction.Left, Direction.Up, Direction.Right };
+        private static readonly Direction[] PreviewDirections = { Direction.Down, Direction.Right, Direction.Up, Direction.Left };
 
         // Job Info window elements
         private Table _jobInfoContentTable;

@@ -573,7 +573,6 @@ namespace PitHero.AI
 
             if (_currentAction == null)
             {
-                Debug.Warn("[HeroStateMachine] PerformAction_Tick: No current action");
                 CurrentState = ActorState.Idle;
                 return;
             }
@@ -1476,16 +1475,10 @@ namespace PitHero.AI
             int cost = stopped ? 1 : 99;
 
             if (_jumpOutOfPitForStopAction != null)
-            {
                 _jumpOutOfPitForStopAction.Cost = cost;
-                Debug.Log($"[HeroStateMachine] Set JumpOutOfPitForStopAction cost to {cost}");
-            }
 
             if (_walkToTavernForStopAction != null)
-            {
                 _walkToTavernForStopAction.Cost = cost;
-                Debug.Log($"[HeroStateMachine] Set WalkToTavernForStopAction cost to {cost}");
-            }
 
             _lastStoppedAdventure = stopped;
         }

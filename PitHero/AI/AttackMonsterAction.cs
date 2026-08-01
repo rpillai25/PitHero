@@ -35,7 +35,6 @@ namespace PitHero.AI
         {
             if (_battleCoroutine != null)
             {
-                Debug.Log("[AttackMonster] Multi-participant battle already in progress");
                 return !HeroStateMachine.IsBattleInProgress;
             }
 

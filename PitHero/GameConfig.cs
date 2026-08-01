@@ -396,7 +396,7 @@ namespace PitHero
         public const string FontMainUI = "Content/Fonts/Express.fnt";
         public const string FontPathHud = "Content/Fonts/Skullboy.fnt";
         public const string FontPathHud2x = "Content/Fonts/Skullboy2x.fnt";
-        public const string FontPathHudSmall = "Content/Fonts/CratesSmall.fnt";
+        public const string FontPathHudSmall = "Content/Fonts/SkullboySmall.fnt";
 
         // UI Button Spacing
         public const float UIButtonPadding = 4f; // Padding between UI buttons

@@ -59,7 +59,6 @@ namespace PitHero.ECS.Components
                 {
                     AddAnimationsFromAtlas(actorsAtlas);
                     Play(DefaultAnimation, LoopMode.Loop);
-                    Debug.Log($"[EnemyAnimationComponent] Loaded animations from Actors.atlas and started {DefaultAnimation}");
                 }
                 else
                 {
@@ -278,7 +277,6 @@ namespace PitHero.ECS.Components
             if (Animations != null && Animations.ContainsKey(animationName))
             {
                 Play(animationName, LoopMode.Loop);
-                Debug.Log($"[EnemyAnimationComponent] Switched to animation: {animationName} for direction: {direction}");
             }
             else
             {

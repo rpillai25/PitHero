@@ -69,7 +69,6 @@ namespace PitHero.ECS.Components
                 {
                     AddAnimationsFromAtlas(actorsAtlas);
                     Play(DefaultAnimation, LoopMode.Loop);
-                    Debug.Log($"[HeroAnimationComponent] Loaded animations from Actors.atlas and started {DefaultAnimation}");
                 }
                 else
                 {
@@ -165,7 +164,6 @@ namespace PitHero.ECS.Components
             if (Animations != null && Animations.ContainsKey(animationName))
             {
                 Play(animationName, LoopMode.Once);
-                Debug.Log($"[HeroAnimationComponent] Started jump animation: {animationName} for direction: {direction}");
             }
             else
             {
