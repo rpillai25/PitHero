@@ -132,13 +132,11 @@ namespace PitHero.UI
         /// <summary>Registers default synergy patterns for detection.</summary>
         private void RegisterDefaultSynergyPatterns()
         {
-            KnightSynergyPatterns.RegisterAllKnightPatterns(_synergyDetector);
-            MageSynergyPatterns.RegisterAllMagePatterns(_synergyDetector);
-            PriestSynergyPatterns.RegisterAllPriestPatterns(_synergyDetector);
-            MonkSynergyPatterns.RegisterAllMonkPatterns(_synergyDetector);
-            ThiefSynergyPatterns.RegisterAllThiefPatterns(_synergyDetector);
-            ArcherSynergyPatterns.RegisterAllArcherPatterns(_synergyDetector);
-            CrossClassSynergyPatterns.RegisterAllCrossClassPatterns(_synergyDetector);
+            var all = SynergyPatternRegistry.All;
+            for (int i = 0; i < all.Count; i++)
+            {
+                _synergyDetector.RegisterPattern(all[i]);
+            }
         }
 
         /// <summary>Clears all slot hover states and fires OnItemUnhovered, used when context menu closes.</summary>
