@@ -1195,6 +1195,20 @@ namespace PitHero.UI
             }
         }
 
+        /// <summary>Scrambles bits so per-sparkle positions are well scattered (Wang hash).</summary>
+        private static int HashSparkle(int v)
+        {
+            unchecked
+            {
+                v = (v ^ 61) ^ (v >> 16);
+                v *= 9;
+                v ^= v >> 4;
+                v *= 0x27d4eb2d;
+                v ^= v >> 15;
+                return v;
+            }
+        }
+
         /// <summary>Draws twinkling blue sparkles over slots holding unviewed newly acquired gear.</summary>
         private void DrawUnviewedGearSparkles(Batcher batcher)
         {
@@ -1219,21 +1233,25 @@ namespace PitHero.UI
 
                 for (int k = 0; k < SPARKLE_COUNT; k++)
                 {
-                    int h = seed ^ (k * 83492791);
-                    float px = 4f + ((h >> 3) & 0x1F) % 24;
-                    float py = 4f + ((h >> 9) & 0x1F) % 24;
-                    float phase = ((h >> 15) & 0xFF) / 255f * MathHelper.TwoPi;
+                    int h = HashSparkle(seed + k * 486187739);
+                    float px = 4f + (h & 0xFF) / 255f * 24f;         // 4..28 within the 32px slot
+                    float py = 4f + ((h >> 8) & 0xFF) / 255f * 24f;
+                    float phase = ((h >> 16) & 0xFF) / 255f * MathHelper.TwoPi;
                     float twinkle = Mathf.Sin(Time.TotalTime * 4f + phase) * 0.5f + 0.5f;
                     if (twinkle < 0.15f) continue; // "off" part of the twinkle cycle
 
-                    batcher.DrawPixel(sx + px, sy + py, coreColor * twinkle, 2);
-                    if (twinkle > 0.6f)
+                    // Core pulses out and back in with the twinkle (4px at peak)
+                    int coreSize = 2 + (int)(twinkle * 2.5f);
+                    batcher.DrawPixel(sx + px, sy + py, coreColor * twinkle, coreSize);
+                    if (twinkle > 0.5f)
                     {
+                        // Star arms extend outward as the sparkle brightens
+                        float reach = 2f + twinkle * 3f;
                         var arm = armColor * (twinkle * 0.8f);
-                        batcher.DrawPixel(sx + px - 2, sy + py, arm, 1);
-                        batcher.DrawPixel(sx + px + 2, sy + py, arm, 1);
-                        batcher.DrawPixel(sx + px, sy + py - 2, arm, 1);
-                        batcher.DrawPixel(sx + px, sy + py + 2, arm, 1);
+                        batcher.DrawPixel(sx + px - reach, sy + py, arm, 2);
+                        batcher.DrawPixel(sx + px + reach, sy + py, arm, 2);
+                        batcher.DrawPixel(sx + px, sy + py - reach, arm, 2);
+                        batcher.DrawPixel(sx + px, sy + py + reach, arm, 2);
                     }
                 }
             }
