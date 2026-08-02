@@ -41,7 +41,8 @@ namespace PitHero.UI
         private InventoryContextMenu _contextMenu;
         private Stage _stage; // Reference to stage for tooltip management
 
-        private static readonly Color NameFontColor = new Color(71, 36, 7); // Brown, matches button font color (PitHeroSkin)
+        private static readonly Color MercenaryNameFontColor = new Color(71, 36, 7); // Brown, matches button font color (PitHeroSkin)
+        private static readonly Color HeroNameFontColor = new Color(0, 128, 255); // Brighter Blue for hero name
 
         /// <summary>When true, unviewed newly acquired gear draws a blue sparkle overlay (HeroUI grid only).</summary>
         public bool ShowUnviewedGearSparkles;
@@ -269,13 +270,15 @@ namespace PitHero.UI
         /// <summary>Connects grid to hero and loads items.</summary>
         public void ConnectToHero(HeroComponent heroComponent)
         {
-            // Only reset mappings if connecting to a different hero instance
+            // Only reset mappings if connecting to a different hero instance.
+            // Note: UnviewedGearTracker is deliberately NOT cleared here — multiple grids
+            // (HeroUI, SecondChanceShopUI) connect to the same hero and a first-connect
+            // would falsely wipe unviewed-gear state; stale refs are purged on viewed-clear.
             if (!object.ReferenceEquals(_heroComponent, heroComponent))
             {
                 _acquireIndexMap.Clear();
                 _itemStackMap.Clear();
                 _nextAcquireIndex = 1;
-                UnviewedGearTracker.ClearAll();
             }
 
             _heroComponent = heroComponent;
@@ -1122,7 +1125,7 @@ namespace PitHero.UI
                 var textSize = _nameFont.MeasureString(nameText);
                 var textX = centerX - textSize.X / 2f;
 
-                batcher.DrawString(_nameFont, nameText, new Vector2(textX, nameY), NameFontColor, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
+                batcher.DrawString(_nameFont, nameText, new Vector2(textX, nameY), MercenaryNameFontColor, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
             }
 
             // Draw hero name at the same Y position, centered above hero equip columns (8-10)
@@ -1138,7 +1141,7 @@ namespace PitHero.UI
                 var heroTextSize = _nameFont.MeasureString(heroNameText);
                 var heroTextX = heroCenterX - heroTextSize.X / 2f;
 
-                batcher.DrawString(_nameFont, heroNameText, new Vector2(heroTextX, heroNameY), NameFontColor, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
+                batcher.DrawString(_nameFont, heroNameText, new Vector2(heroTextX, heroNameY), HeroNameFontColor, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
             }
         }
 
