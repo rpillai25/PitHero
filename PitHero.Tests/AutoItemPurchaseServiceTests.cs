@@ -224,7 +224,7 @@ namespace PitHero.Tests
         // ── Consumables ───────────────────────────────────────────────────────────
 
         [TestMethod]
-        public void Consumables_NotBoughtWhenToggleOff()
+        public void Consumables_NotBoughtWhenNoneSelected()
         {
             var gameState = new GameStateService { Funds = 10000 };
             var vault = new SecondChanceMerchantVault();
@@ -232,9 +232,8 @@ namespace PitHero.Tests
             potion.StackCount = 8;
             vault.AddItem(potion);
 
+            // No ConsumableSelected entries checked — selection alone gates consumable buying
             var svc = MakeService(gameState, vault);
-            svc.PurchaseConsumables = false;
-            svc.ConsumableSelected[0] = true;
 
             Assert.AreEqual(0, RunPass(svc, MakeHero(), new ItemBag("Test", 10)));
             Assert.AreEqual(10000, gameState.Funds);
@@ -252,7 +251,6 @@ namespace PitHero.Tests
             vault.AddItem(stocked);
 
             var svc = MakeService(gameState, vault);
-            svc.PurchaseConsumables = true;
             svc.ConsumableSelected[0] = true;
             svc.ConsumableStackTargets[0] = 2;
 
@@ -275,7 +273,6 @@ namespace PitHero.Tests
             vault.AddItem(stocked);
 
             var svc = MakeService(gameState, vault);
-            svc.PurchaseConsumables = true;
             svc.ConsumableSelected[0] = true;
             svc.ConsumableStackTargets[0] = 3;
 
@@ -291,7 +288,6 @@ namespace PitHero.Tests
         {
             var gameState = new GameStateService { Funds = 10000 };
             var svc = MakeService(gameState, new SecondChanceMerchantVault());
-            svc.PurchaseConsumables = true;
             svc.ConsumableSelected[0] = true;
 
             Assert.AreEqual(0, RunPass(svc, MakeHero(), new ItemBag("Test", 10)));
@@ -313,7 +309,6 @@ namespace PitHero.Tests
             var gearFirstState = new GameStateService { Funds = funds };
             var gearFirstVault = BuildMixedVault(funds);
             var gearFirst = MakeService(gearFirstState, gearFirstVault);
-            gearFirst.PurchaseConsumables = true;
             gearFirst.ConsumableSelected[0] = true;
             gearFirst.ConsumablesFirst = false;
 
@@ -324,7 +319,6 @@ namespace PitHero.Tests
             var consumablesFirstState = new GameStateService { Funds = funds };
             var consumablesFirstVault = BuildMixedVault(funds);
             var consumablesFirst = MakeService(consumablesFirstState, consumablesFirstVault);
-            consumablesFirst.PurchaseConsumables = true;
             consumablesFirst.ConsumableSelected[0] = true;
             consumablesFirst.ConsumablesFirst = true;
 
@@ -353,7 +347,6 @@ namespace PitHero.Tests
             Assert.IsFalse(svc.Enabled, "Auto-purchase is off by default");
             Assert.IsFalse(svc.ConsumablesFirst, "Gear outranks consumables by default");
             Assert.IsFalse(svc.PurchaseMercenaryGear, "Mercenary gear is opt-in");
-            Assert.IsFalse(svc.PurchaseConsumables, "Consumable buying is opt-in");
 
             for (int i = 0; i < svc.BuyRarityAllowed.Length; i++)
                 Assert.IsTrue(svc.BuyRarityAllowed[i], $"Rarity {i} should be buyable by default");

@@ -224,6 +224,106 @@ namespace PitHero.Tests
             Assert.AreEqual(0, selection.BagIndex);
         }
 
+        // ── Consumable sell options (selection + min-stacks floor) ────────────────
+
+        [TestMethod]
+        public void Selector_UnselectedConsumable_NeverSells_FallsThroughToGear()
+        {
+            var bag = new ItemBag("Test", 2);
+            bag.SetSlotItem(0, new TestPotion("Potion", 20, 30));
+            bag.SetSlotItem(1, MakeGear("JunkShield", ItemKind.Shield, 1));
+
+            var selection = ExcessItemSellSelector.Select(bag, MakeGear("New", ItemKind.WeaponSword, 10), null, null,
+                consumableSellAllowed: c => false);
+
+            Assert.AreEqual(1, selection.BagIndex, "With every consumable deselected the weakest gear sells instead");
+        }
+
+        [TestMethod]
+        public void Selector_UnselectedIncomingConsumable_SellsGearToMakeRoom()
+        {
+            var bag = new ItemBag("Test", 1);
+            bag.SetSlotItem(0, MakeGear("Shield", ItemKind.Shield, 5));
+
+            var selection = ExcessItemSellSelector.Select(bag, new TestPotion("Potion", 20, 30), null, null,
+                consumableSellAllowed: c => false);
+
+            Assert.IsFalse(selection.SellIncoming, "A never-sell incoming consumable must be kept");
+            Assert.AreEqual(0, selection.BagIndex, "Gear sells to make room for it");
+        }
+
+        [TestMethod]
+        public void Selector_MinStacksFloor_BlocksSellingTheLastStack()
+        {
+            var bag = new ItemBag("Test", 2);
+            bag.SetSlotItem(0, new TestPotion("Potion", 20, 30));
+            bag.SetSlotItem(1, MakeGear("JunkShield", ItemKind.Shield, 1));
+
+            var selection = ExcessItemSellSelector.Select(bag, MakeGear("New", ItemKind.WeaponSword, 10), null, null,
+                consumableKeepStacks: c => 1);
+
+            Assert.AreEqual(1, selection.BagIndex, "Selling the only Potion stack would drop below the floor of 1");
+        }
+
+        [TestMethod]
+        public void Selector_MinStacksFloor_AllowsSellingExcessStacks()
+        {
+            var bag = new ItemBag("Test", 3);
+            var partial = new TestPotion("Potion", 20, 30);
+            var full = new TestPotion("Potion", 20, 30);
+            full.StackCount = full.StackSize;
+            bag.SetSlotItem(0, full);
+            bag.SetSlotItem(1, partial);
+            bag.SetSlotItem(2, MakeGear("JunkShield", ItemKind.Shield, 1));
+
+            var selection = ExcessItemSellSelector.Select(bag, MakeGear("New", ItemKind.WeaponSword, 10), null, null,
+                consumableKeepStacks: c => 1);
+
+            Assert.AreEqual(1, selection.BagIndex, "Two stacks minus one sale still meets the floor; the smaller stack sells");
+        }
+
+        [TestMethod]
+        public void Selector_MinStacksFloor_IncomingSellableWhenBagMeetsFloor()
+        {
+            // One Potion stack in the bag satisfies a floor of 1 on its own, so the incoming
+            // duplicate may sell (N >= floor); the bag stack may not (N-1 < floor).
+            var bag = new ItemBag("Test", 1);
+            var carried = new TestPotion("Potion", 20, 30);
+            carried.StackCount = carried.StackSize;
+            bag.SetSlotItem(0, carried);
+
+            var selection = ExcessItemSellSelector.Select(bag, new TestPotion("Potion", 20, 30), null, null,
+                consumableKeepStacks: c => 1);
+
+            Assert.IsTrue(selection.SellIncoming);
+        }
+
+        [TestMethod]
+        public void Selector_ZeroFloor_ReproducesUnflooredBehavior()
+        {
+            var bag = new ItemBag("Test", 2);
+            bag.SetSlotItem(0, new TestPotion("Potion", 20, 30));
+            bag.SetSlotItem(1, MakeGear("JunkShield", ItemKind.Shield, 1));
+
+            var selection = ExcessItemSellSelector.Select(bag, MakeGear("New", ItemKind.WeaponSword, 10), null, null,
+                consumableSellAllowed: c => true, consumableKeepStacks: c => 0);
+
+            Assert.AreEqual(0, selection.BagIndex, "Floor 0 lets the last consumable stack sell, as before");
+        }
+
+        [TestMethod]
+        public void Selector_AllConsumablesBlockedAndGearFiltered_ReturnsNone()
+        {
+            var bag = new ItemBag("Test", 2);
+            bag.SetSlotItem(0, new TestPotion("Potion", 20, 30));
+            bag.SetSlotItem(1, MakeGear("Legendary", ItemKind.WeaponSword, 50, ItemRarity.Legendary));
+
+            var selection = ExcessItemSellSelector.Select(bag, MakeGear("New", ItemKind.WeaponSword, 10, ItemRarity.Legendary),
+                null, r => r != ItemRarity.Legendary, consumableSellAllowed: c => false);
+
+            Assert.IsFalse(selection.HasSelection);
+        }
+
         // ── ItemBag full-bag stacking fix ─────────────────────────────────────────
 
         [TestMethod]
@@ -264,6 +364,11 @@ namespace PitHero.Tests
             Assert.IsTrue(svc.ConsumablesFirst, "Sell priority should default to consumables-first");
             for (int i = 0; i < svc.RarityAllowed.Length; i++)
                 Assert.IsTrue(svc.RarityAllowed[i], $"Rarity {i} should be allowed by default");
+            for (int i = 0; i < svc.ConsumableSellAllowed.Length; i++)
+            {
+                Assert.IsTrue(svc.ConsumableSellAllowed[i], $"Consumable {i} should be sellable by default");
+                Assert.AreEqual(1, svc.ConsumableMinStacks[i], $"Consumable {i} should keep one stack by default");
+            }
         }
 
         [TestMethod]
@@ -333,6 +438,95 @@ namespace PitHero.Tests
 
             Assert.AreEqual(AutoSellOutcome.SoldIncoming, outcome);
             Assert.IsNotNull(bag.GetSlotItem(0), "The bag item must be untouched when the incoming item sells");
+        }
+
+        [TestMethod]
+        public void Service_DefaultFloor_ProtectsLastCatalogConsumableStack()
+        {
+            var svc = new AutoSellExcessItemsService();
+            var bag = new ItemBag("Test", 2);
+            bag.SetSlotItem(0, ConsumableCatalog.CreateFresh(0));   // the party's only HP Potion stack
+            bag.SetSlotItem(1, MakeGear("JunkShield", ItemKind.Shield, 2));
+
+            var outcome = svc.TryMakeRoom(bag, MakeGear("NewArmor", ItemKind.ArmorMail, 20));
+
+            Assert.AreEqual(AutoSellOutcome.SoldBagItem, outcome);
+            Assert.IsNotNull(bag.GetSlotItem(0), "The last potion stack is floored at 1 and must survive");
+            Assert.IsNull(bag.GetSlotItem(1), "The weakest gear sells instead");
+        }
+
+        [TestMethod]
+        public void Service_DefaultFloor_SellsExcessCatalogConsumableStack()
+        {
+            var svc = new AutoSellExcessItemsService();
+            var bag = new ItemBag("Test", 3);
+            var full = ConsumableCatalog.CreateFresh(0);
+            full.StackCount = full.StackSize;
+            bag.SetSlotItem(0, full);
+            bag.SetSlotItem(1, ConsumableCatalog.CreateFresh(0));   // second, partial stack — above the floor
+            bag.SetSlotItem(2, MakeGear("GoodSword", ItemKind.WeaponSword, 30));
+
+            var outcome = svc.TryMakeRoom(bag, MakeGear("NewArmor", ItemKind.ArmorMail, 20));
+
+            Assert.AreEqual(AutoSellOutcome.SoldBagItem, outcome);
+            Assert.IsNull(bag.GetSlotItem(1), "With two stacks the smaller one may sell");
+            Assert.IsNotNull(bag.GetSlotItem(0), "One stack must remain");
+        }
+
+        [TestMethod]
+        public void Service_UnselectedCatalogConsumable_NeverSold()
+        {
+            var svc = new AutoSellExcessItemsService();
+            svc.ConsumableSellAllowed[0] = false;
+            svc.ConsumableMinStacks[0] = 0;                          // even with no floor…
+            var bag = new ItemBag("Test", 2);
+            bag.SetSlotItem(0, ConsumableCatalog.CreateFresh(0));
+            bag.SetSlotItem(1, MakeGear("JunkShield", ItemKind.Shield, 2));
+
+            var outcome = svc.TryMakeRoom(bag, MakeGear("NewArmor", ItemKind.ArmorMail, 20));
+
+            Assert.AreEqual(AutoSellOutcome.SoldBagItem, outcome);
+            Assert.IsNotNull(bag.GetSlotItem(0), "…a deselected consumable is never auto-sold");
+            Assert.IsNull(bag.GetSlotItem(1));
+        }
+
+        [TestMethod]
+        public void Service_EffectiveMinStacks_RaisedToPurchaseTarget()
+        {
+            var sellSvc = new AutoSellExcessItemsService();
+            sellSvc.ConsumableMinStacks[0] = 1;
+
+            var gameState = new GameStateService();
+            var seedSvc = new AutoSeedPurchaseService(null, null, gameState, null);
+            var purchaseSvc = new AutoItemPurchaseService(gameState, new SecondChanceMerchantVault(), seedSvc) { Enabled = true };
+            purchaseSvc.ConsumableSelected[0] = true;
+            purchaseSvc.ConsumableStackTargets[0] = 3;
+
+            var potion = ConsumableCatalog.CreateFresh(0);
+            Assert.AreEqual(3, sellSvc.GetEffectiveMinStacks(potion, purchaseSvc),
+                "Selling below the purchase target would just be bought back at a loss");
+
+            purchaseSvc.Enabled = false;
+            Assert.AreEqual(1, sellSvc.GetEffectiveMinStacks(potion, purchaseSvc),
+                "A disabled purchase service cannot raise the floor");
+
+            purchaseSvc.Enabled = true;
+            purchaseSvc.ConsumableSelected[0] = false;
+            Assert.AreEqual(1, sellSvc.GetEffectiveMinStacks(potion, purchaseSvc),
+                "An unselected consumable cannot raise the floor");
+
+            Assert.AreEqual(1, sellSvc.GetEffectiveMinStacks(potion, null),
+                "No purchase service leaves the player's floor untouched");
+        }
+
+        [TestMethod]
+        public void Service_NonCatalogConsumable_SellableWithNoFloor()
+        {
+            var svc = new AutoSellExcessItemsService();
+            var potion = new TestPotion("Potion", 20, 30);
+
+            Assert.IsTrue(svc.IsConsumableSellAllowed(potion));
+            Assert.AreEqual(0, svc.GetEffectiveMinStacks(potion, null));
         }
 
         // ── Virtual layer (VirtualBattleRunner.CollectChestItem) ──────────────────

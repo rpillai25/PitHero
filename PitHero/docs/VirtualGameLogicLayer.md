@@ -157,8 +157,9 @@ same-seed ⇒ identical-event-stream determinism test that catches accidental dr
   baselines) mirrors the live `AutoSellExcessItemsService` — on a full bag the weakest item
   (consumables by restore effect first, then gear across all types by gear score, via the
   shared `ExcessItemSellSelector`) is sold and the gold lands in `AutoSellGold`/the wallet.
-  Delta-Plan gap: the virtual layer has no synergy/stencil model, so nothing is protected
-  and all rarities are sellable; selling consumes no RNG, so parity is unaffected either way.
+  Delta-Plan gap: the virtual layer has no synergy/stencil model, so nothing is protected,
+  all rarities are sellable, and the per-consumable sell selections / min-stack floors (v26)
+  are not applied; selling consumes no RNG, so parity is unaffected either way.
 
 ## Metrics & CSV Reference
 

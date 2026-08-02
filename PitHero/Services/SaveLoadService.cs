@@ -819,6 +819,15 @@ namespace PitHero.Services
                 data.AutoSellGearTypeAllowed = new bool[autoSellExcessService.GearTypeAllowed.Length];
                 for (int i = 0; i < data.AutoSellGearTypeAllowed.Length; i++)
                     data.AutoSellGearTypeAllowed[i] = autoSellExcessService.GearTypeAllowed[i];
+
+                // Consumable sell options (v26+)
+                data.AutoSellConsumableSelected = new bool[autoSellExcessService.ConsumableSellAllowed.Length];
+                data.AutoSellConsumableMinStacks = new int[autoSellExcessService.ConsumableMinStacks.Length];
+                for (int i = 0; i < data.AutoSellConsumableSelected.Length; i++)
+                {
+                    data.AutoSellConsumableSelected[i] = autoSellExcessService.ConsumableSellAllowed[i];
+                    data.AutoSellConsumableMinStacks[i] = autoSellExcessService.ConsumableMinStacks[i];
+                }
             }
 
             // Auto-purchase items (v23+)
@@ -828,7 +837,6 @@ namespace PitHero.Services
                 data.AutoPurchaseItems = autoItemPurchaseService.Enabled;
                 data.AutoPurchaseConsumablesFirst = autoItemPurchaseService.ConsumablesFirst;
                 data.AutoPurchaseMercenaryGear = autoItemPurchaseService.PurchaseMercenaryGear;
-                data.AutoPurchaseConsumables = autoItemPurchaseService.PurchaseConsumables;
 
                 data.AutoPurchaseRarityAllowed = new bool[autoItemPurchaseService.BuyRarityAllowed.Length];
                 for (int i = 0; i < data.AutoPurchaseRarityAllowed.Length; i++)

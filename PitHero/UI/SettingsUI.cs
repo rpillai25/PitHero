@@ -75,6 +75,8 @@ namespace PitHero.UI
         private List<string> _sellPriorityItems;
         private TextButton _gearSellOptionsButton;
         private GearFilterOptionsDialog _gearSellOptionsDialog;
+        private TextButton _consumableSellOptionsButton;
+        private ConsumableSellOptionsDialog _consumableSellOptionsDialog;
 
         // Automation tab — auto-purchase items (issue #345)
         private HoverableCheckBox _autoPurchaseItemsCheckBox;
@@ -84,7 +86,6 @@ namespace PitHero.UI
         private HoverableCheckBox _autoPurchaseMercGearCheckBox;
         private TextButton _gearPurchaseOptionsButton;
         private GearFilterOptionsDialog _gearPurchaseOptionsDialog;
-        private HoverableCheckBox _autoPurchaseConsumablesCheckBox;
         private TextButton _consumablePurchaseOptionsButton;
         private ConsumablePurchaseOptionsDialog _consumablePurchaseOptionsDialog;
 
@@ -1002,7 +1003,10 @@ namespace PitHero.UI
                 if (svc != null) svc.Enabled = isChecked;
                 SetExcessItemControlsActive(isChecked);
                 if (!isChecked)
+                {
                     _gearSellOptionsDialog?.Hide();
+                    _consumableSellOptionsDialog?.Hide();
+                }
             };
             autoShopTable.Add(_autoSellExcessCheckBox).Left().SetPadTop(15f).SetPadBottom(8f);
             autoShopTable.Row();
@@ -1037,7 +1041,17 @@ namespace PitHero.UI
                 }
                 _gearSellOptionsDialog.Show();
             };
-            autoShopTable.Add(_gearSellOptionsButton).Left().SetMinWidth(140f).SetMinHeight(16f);
+            autoShopTable.Add(_gearSellOptionsButton).Left().SetMinWidth(140f).SetMinHeight(16f).SetPadBottom(8f);
+            autoShopTable.Row();
+
+            _consumableSellOptionsButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonConsumableSellOptions), skin, "ph-default");
+            _consumableSellOptionsButton.OnClicked += (_) =>
+            {
+                if (_consumableSellOptionsDialog == null)
+                    _consumableSellOptionsDialog = new ConsumableSellOptionsDialog(_stage);
+                _consumableSellOptionsDialog.Show();
+            };
+            autoShopTable.Add(_consumableSellOptionsButton).Left().SetMinWidth(180f).SetMinHeight(16f);
             autoShopTable.Row();
             SetExcessItemControlsActive(_autoSellExcessCheckBox.IsChecked);
 
@@ -1122,23 +1136,6 @@ namespace PitHero.UI
                 _gearPurchaseOptionsDialog.Show();
             };
             autoShopTable.Add(_gearPurchaseOptionsButton).Left().SetMinWidth(140f).SetMinHeight(16f).SetPadBottom(8f);
-            autoShopTable.Row();
-
-            _autoPurchaseConsumablesCheckBox = new HoverableCheckBox(
-                GetText(TextType.UI, UITextKey.SettingsAutoPurchaseConsumables),
-                skin,
-                GetText(TextType.UI, UITextKey.SettingsAutoPurchaseConsumablesTooltip),
-                _stage);
-            _autoPurchaseConsumablesCheckBox.IsChecked = false;
-            _autoPurchaseConsumablesCheckBox.OnChanged += (isChecked) =>
-            {
-                var svc = Core.Services?.GetService<AutoItemPurchaseService>();
-                if (svc != null) svc.PurchaseConsumables = isChecked;
-                SetConsumablePurchaseControlsActive(isChecked && _autoPurchaseItemsCheckBox.IsChecked);
-                if (!isChecked)
-                    _consumablePurchaseOptionsDialog?.Hide();
-            };
-            autoShopTable.Add(_autoPurchaseConsumablesCheckBox).Left().SetPadBottom(8f);
             autoShopTable.Row();
 
             _consumablePurchaseOptionsButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonConsumablePurchaseOptions), skin, "ph-default");
@@ -1452,8 +1449,8 @@ namespace PitHero.UI
 
         /// <summary>
         /// Activates or deactivates the auto-sell-excess sub-controls (sell priority list and the
-        /// "Gear Sell Options" button). When deactivated they stay on screen but are drawn grayed
-        /// out with tooltips, hover and click disabled.
+        /// "Gear Sell Options" / "Consumable Sell Options" buttons). When deactivated they stay on
+        /// screen but are drawn grayed out with tooltips, hover and click disabled.
         /// </summary>
         private void SetExcessItemControlsActive(bool active)
         {
@@ -1468,12 +1465,10 @@ namespace PitHero.UI
 
             _sellPriorityList?.SetGrayed(!active);
             SetButtonActive(_gearSellOptionsButton, active, skin);
+            SetButtonActive(_consumableSellOptionsButton, active, skin);
         }
 
-        /// <summary>
-        /// Activates or deactivates the auto-purchase sub-controls. The consumable options button
-        /// additionally needs its own checkbox on, so the two gates compose.
-        /// </summary>
+        /// <summary>Activates or deactivates the auto-purchase sub-controls.</summary>
         private void SetItemPurchaseControlsActive(bool active)
         {
             var skin = PitHeroSkin.CreateSkin();
@@ -1496,15 +1491,8 @@ namespace PitHero.UI
                 _autoPurchaseMercGearCheckBox.SetTouchable(touchable);
             }
 
-            if (_autoPurchaseConsumablesCheckBox != null)
-            {
-                _autoPurchaseConsumablesCheckBox.SetDisabled(!active);
-                _autoPurchaseConsumablesCheckBox.SetStyle(checkBoxStyle);
-                _autoPurchaseConsumablesCheckBox.SetTouchable(touchable);
-            }
-
             SetButtonActive(_gearPurchaseOptionsButton, active, skin);
-            SetConsumablePurchaseControlsActive(active && (_autoPurchaseConsumablesCheckBox?.IsChecked ?? false));
+            SetConsumablePurchaseControlsActive(active);
         }
 
         /// <summary>Activates or deactivates the "Consumable Purchase Options" button.</summary>
@@ -1586,9 +1574,13 @@ namespace PitHero.UI
                     _sellPriorityList?.Rebuild();
                 }
                 _gearSellOptionsDialog?.SyncFromService();
+                _consumableSellOptionsDialog?.SyncFromService();
                 SetExcessItemControlsActive(excessSvc.Enabled);
                 if (!excessSvc.Enabled)
+                {
                     _gearSellOptionsDialog?.Hide();
+                    _consumableSellOptionsDialog?.Hide();
+                }
             }
 
             var purchaseSvc = Core.Services?.GetService<AutoItemPurchaseService>();
@@ -1598,8 +1590,6 @@ namespace PitHero.UI
                     _autoPurchaseItemsCheckBox.IsChecked = purchaseSvc.Enabled;
                 if (_autoPurchaseMercGearCheckBox != null)
                     _autoPurchaseMercGearCheckBox.IsChecked = purchaseSvc.PurchaseMercenaryGear;
-                if (_autoPurchaseConsumablesCheckBox != null)
-                    _autoPurchaseConsumablesCheckBox.IsChecked = purchaseSvc.PurchaseConsumables;
 
                 if (_purchasePriorityItems != null)
                 {
@@ -1617,10 +1607,6 @@ namespace PitHero.UI
                 if (!purchaseSvc.Enabled)
                 {
                     _gearPurchaseOptionsDialog?.Hide();
-                    _consumablePurchaseOptionsDialog?.Hide();
-                }
-                else if (!purchaseSvc.PurchaseConsumables)
-                {
                     _consumablePurchaseOptionsDialog?.Hide();
                 }
             }

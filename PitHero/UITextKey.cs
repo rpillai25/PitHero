@@ -369,6 +369,12 @@ namespace PitHero
         public const string WindowGearSellOptions = "WindowGearSellOptions";
         public const string SettingsSellGearTypes = "SettingsSellGearTypes";
         public const string SettingsSellGearTypesTooltip = "SettingsSellGearTypesTooltip";
+        public const string ButtonConsumableSellOptions = "ButtonConsumableSellOptions";
+        public const string WindowConsumableSellOptions = "WindowConsumableSellOptions";
+        public const string LabelConsumablesAutoSold = "LabelConsumablesAutoSold";
+        public const string LabelConsumablesAutoPurchased = "LabelConsumablesAutoPurchased";
+        public const string SettingsConsumableMinStacks = "SettingsConsumableMinStacks";
+        public const string SettingsConsumableMinStacksTooltip = "SettingsConsumableMinStacksTooltip";
         public const string GearTypeWeapon = "GearTypeWeapon";
         public const string GearTypeHelm = "GearTypeHelm";
         public const string GearTypeShield = "GearTypeShield";
@@ -386,8 +392,6 @@ namespace PitHero
         public const string SettingsBuyRaritiesTooltip = "SettingsBuyRaritiesTooltip";
         public const string SettingsBuyGearTypes = "SettingsBuyGearTypes";
         public const string SettingsBuyGearTypesTooltip = "SettingsBuyGearTypesTooltip";
-        public const string SettingsAutoPurchaseConsumables = "SettingsAutoPurchaseConsumables";
-        public const string SettingsAutoPurchaseConsumablesTooltip = "SettingsAutoPurchaseConsumablesTooltip";
         public const string ButtonConsumablePurchaseOptions = "ButtonConsumablePurchaseOptions";
         public const string WindowConsumablePurchaseOptions = "WindowConsumablePurchaseOptions";
         public const string SettingsConsumableStacks = "SettingsConsumableStacks";
