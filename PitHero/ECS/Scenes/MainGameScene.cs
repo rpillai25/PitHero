@@ -588,6 +588,22 @@ namespace PitHero.ECS.Scenes
                     for (int i = 0; i < count; i++)
                         autoSellExcessSvc.GearTypeAllowed[i] = pendingData.AutoSellGearTypeAllowed[i];
                 }
+                if (pendingData.AutoSellConsumableSelected != null)
+                {
+                    int count = pendingData.AutoSellConsumableSelected.Length < autoSellExcessSvc.ConsumableSellAllowed.Length
+                        ? pendingData.AutoSellConsumableSelected.Length
+                        : autoSellExcessSvc.ConsumableSellAllowed.Length;
+                    for (int i = 0; i < count; i++)
+                        autoSellExcessSvc.ConsumableSellAllowed[i] = pendingData.AutoSellConsumableSelected[i];
+                }
+                if (pendingData.AutoSellConsumableMinStacks != null)
+                {
+                    int count = pendingData.AutoSellConsumableMinStacks.Length < autoSellExcessSvc.ConsumableMinStacks.Length
+                        ? pendingData.AutoSellConsumableMinStacks.Length
+                        : autoSellExcessSvc.ConsumableMinStacks.Length;
+                    for (int i = 0; i < count; i++)
+                        autoSellExcessSvc.ConsumableMinStacks[i] = pendingData.AutoSellConsumableMinStacks[i];
+                }
             }
             var autoItemPurchaseSvc = Core.Services.GetService<Services.AutoItemPurchaseService>();
             if (autoItemPurchaseSvc != null)
@@ -595,7 +611,6 @@ namespace PitHero.ECS.Scenes
                 autoItemPurchaseSvc.Enabled = pendingData.AutoPurchaseItems;
                 autoItemPurchaseSvc.ConsumablesFirst = pendingData.AutoPurchaseConsumablesFirst;
                 autoItemPurchaseSvc.PurchaseMercenaryGear = pendingData.AutoPurchaseMercenaryGear;
-                autoItemPurchaseSvc.PurchaseConsumables = pendingData.AutoPurchaseConsumables;
                 if (pendingData.AutoPurchaseRarityAllowed != null)
                 {
                     int count = pendingData.AutoPurchaseRarityAllowed.Length < autoItemPurchaseSvc.BuyRarityAllowed.Length

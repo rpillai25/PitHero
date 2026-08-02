@@ -8,13 +8,14 @@ using RolePlayingFramework.Equipment;
 namespace PitHero.UI
 {
     /// <summary>
-    /// The "Consumable Purchase Options" window opened from the Automation tab (issue #345).
-    /// Shows every catalog consumable with its sprite, a selection checkbox, and a 1-3 "Stacks"
-    /// slider naming how many stacks of that item the party should hold. Changes commit immediately
-    /// to <see cref="AutoItemPurchaseService.ConsumableSelected"/> /
-    /// <see cref="AutoItemPurchaseService.ConsumableStackTargets"/>.
+    /// The "Consumable Sell Options" window opened from the Automation tab. Shows every catalog
+    /// consumable with its sprite, a selection checkbox (checked = may be auto-sold; everything is
+    /// selected by default), and a 0-3 "Min Stacks" slider naming how many stacks auto-sell must
+    /// leave in the bag. Changes commit immediately to
+    /// <see cref="AutoSellExcessItemsService.ConsumableSellAllowed"/> /
+    /// <see cref="AutoSellExcessItemsService.ConsumableMinStacks"/>.
     /// </summary>
-    public class ConsumablePurchaseOptionsDialog
+    public class ConsumableSellOptionsDialog
     {
         private const int Columns = 3;
         private const float SpriteSize = 32f;
@@ -31,7 +32,7 @@ namespace PitHero.UI
         private Window _window;
         private TextService _textService;
 
-        public ConsumablePurchaseOptionsDialog(Stage stage)
+        public ConsumableSellOptionsDialog(Stage stage)
         {
             _stage = stage;
             _itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
@@ -49,14 +50,14 @@ namespace PitHero.UI
         private void CreateWindow()
         {
             var skin = PitHeroSkin.CreateSkin();
-            _window = new Window(GetText(UITextKey.WindowConsumablePurchaseOptions), skin, "ph-default");
+            _window = new Window(GetText(UITextKey.WindowConsumableSellOptions), skin, "ph-default");
             _window.SetMovable(false);
             _window.SetResizable(false);
 
             var content = new Table();
             content.Pad(WinPad);
 
-            content.Add(new Label(GetText(UITextKey.LabelConsumablesAutoPurchased), skin, "ph-default")).Left().SetPadBottom(8f);
+            content.Add(new Label(GetText(UITextKey.LabelConsumablesAutoSold), skin, "ph-default")).Left().SetPadBottom(8f);
             content.Row();
 
             var grid = new Table();
@@ -75,12 +76,12 @@ namespace PitHero.UI
                 }
 
                 var check = new CheckBox(ConsumableCatalog.GetDisplayName(i), skin, "ph-default");
-                check.IsChecked = false;
+                check.IsChecked = true;
                 check.OnChanged += (isChecked) =>
                 {
-                    var svc = Core.Services?.GetService<AutoItemPurchaseService>();
-                    if (svc != null && index < svc.ConsumableSelected.Length)
-                        svc.ConsumableSelected[index] = isChecked;
+                    var svc = Core.Services?.GetService<AutoSellExcessItemsService>();
+                    if (svc != null && index < svc.ConsumableSellAllowed.Length)
+                        svc.ConsumableSellAllowed[index] = isChecked;
                     SetStackControlsActive(index, isChecked);
                 };
                 _checks[i] = check;
@@ -90,30 +91,27 @@ namespace PitHero.UI
                 cell.Row();
 
                 var stackLabel = new HoverableLabel(
-                    string.Format(GetText(UITextKey.SettingsConsumableStacks), AutoItemPurchaseService.MinStackTarget),
-                    skin, "ph-default", GetText(UITextKey.SettingsConsumableStacksTooltip), _stage);
+                    string.Format(GetText(UITextKey.SettingsConsumableMinStacks), 1),
+                    skin, "ph-default", GetText(UITextKey.SettingsConsumableMinStacksTooltip), _stage);
                 _stackLabels[i] = stackLabel;
                 cell.Add(stackLabel).Left().SetPadTop(2f);
                 cell.Row();
 
                 var slider = new EnhancedSlider(
-                    AutoItemPurchaseService.MinStackTarget, AutoItemPurchaseService.MaxStackTarget, 1, false, skin, null, false);
-                slider.SetValueAndCommit(AutoItemPurchaseService.MinStackTarget);
+                    AutoSellExcessItemsService.MinKeepStacks, AutoSellExcessItemsService.MaxKeepStacks, 1, false, skin, null, false);
+                slider.SetValueAndCommit(1);
                 slider.OnChanged += (value) =>
                 {
-                    _stackLabels[index].SetText(string.Format(GetText(UITextKey.SettingsConsumableStacks), (int)value));
+                    _stackLabels[index].SetText(string.Format(GetText(UITextKey.SettingsConsumableMinStacks), (int)value));
                 };
                 slider.OnValueCommitted += (value) =>
                 {
-                    var svc = Core.Services?.GetService<AutoItemPurchaseService>();
-                    if (svc != null && index < svc.ConsumableStackTargets.Length)
-                        svc.ConsumableStackTargets[index] = (int)value;
+                    var svc = Core.Services?.GetService<AutoSellExcessItemsService>();
+                    if (svc != null && index < svc.ConsumableMinStacks.Length)
+                        svc.ConsumableMinStacks[index] = (int)value;
                 };
                 _stackSliders[i] = slider;
                 cell.Add(slider).Width(SliderWidth).Left();
-
-                // Nothing is selected by default, so every stack control starts deactivated
-                SetStackControlsActive(i, false);
 
                 grid.Add(cell).Left().Top().Pad(6f);
                 if ((i + 1) % Columns == 0)
@@ -170,11 +168,11 @@ namespace PitHero.UI
         /// </summary>
         private void SetAllSelected(bool selected)
         {
-            var svc = Core.Services?.GetService<AutoItemPurchaseService>();
+            var svc = Core.Services?.GetService<AutoSellExcessItemsService>();
             for (int i = 0; i < _checks.Length; i++)
             {
-                if (svc != null && i < svc.ConsumableSelected.Length)
-                    svc.ConsumableSelected[i] = selected;
+                if (svc != null && i < svc.ConsumableSellAllowed.Length)
+                    svc.ConsumableSellAllowed[i] = selected;
                 if (_checks[i] != null)
                     _checks[i].IsChecked = selected;
                 SetStackControlsActive(i, selected);
@@ -182,9 +180,9 @@ namespace PitHero.UI
         }
 
         /// <summary>
-        /// Activates or deactivates one row's "Stacks" label and slider. When deactivated they stay
-        /// on screen but are drawn grayed out with the tooltip, hover and dragging disabled — the
-        /// stack target only means anything while that consumable is selected.
+        /// Activates or deactivates one row's "Min Stacks" label and slider. When deactivated they
+        /// stay on screen but are drawn grayed out with the tooltip, hover and dragging disabled —
+        /// an unselected consumable is never auto-sold, so its floor means nothing.
         /// </summary>
         private void SetStackControlsActive(int index, bool active)
         {
@@ -208,27 +206,27 @@ namespace PitHero.UI
             }
         }
 
-        /// <summary>Copies the service's current selections and stack targets into the controls.</summary>
+        /// <summary>Copies the service's current selections and stack floors into the controls.</summary>
         public void SyncFromService()
         {
-            var svc = Core.Services?.GetService<AutoItemPurchaseService>();
+            var svc = Core.Services?.GetService<AutoSellExcessItemsService>();
             if (svc == null) return;
 
-            for (int i = 0; i < _checks.Length && i < svc.ConsumableSelected.Length; i++)
+            for (int i = 0; i < _checks.Length && i < svc.ConsumableSellAllowed.Length; i++)
             {
                 if (_checks[i] != null)
-                    _checks[i].IsChecked = svc.ConsumableSelected[i];
+                    _checks[i].IsChecked = svc.ConsumableSellAllowed[i];
             }
 
-            for (int i = 0; i < _stackSliders.Length && i < svc.ConsumableStackTargets.Length; i++)
+            for (int i = 0; i < _stackSliders.Length && i < svc.ConsumableMinStacks.Length; i++)
             {
-                int target = svc.ConsumableStackTargets[i];
-                _stackSliders[i]?.SetValueAndCommit(target);
-                _stackLabels[i]?.SetText(string.Format(GetText(UITextKey.SettingsConsumableStacks), target));
+                int floor = svc.ConsumableMinStacks[i];
+                _stackSliders[i]?.SetValueAndCommit(floor);
+                _stackLabels[i]?.SetText(string.Format(GetText(UITextKey.SettingsConsumableMinStacks), floor));
             }
 
             for (int i = 0; i < _stackSliders.Length; i++)
-                SetStackControlsActive(i, i < svc.ConsumableSelected.Length && svc.ConsumableSelected[i]);
+                SetStackControlsActive(i, i < svc.ConsumableSellAllowed.Length && svc.ConsumableSellAllowed[i]);
         }
     }
 }

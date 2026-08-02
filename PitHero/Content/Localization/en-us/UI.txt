@@ -374,6 +374,12 @@ ButtonGearSellOptions,Gear Sell Options
 WindowGearSellOptions,Gear Sell Options
 SettingsSellGearTypes,Gear Types to Sell
 SettingsSellGearTypesTooltip,Gear of unchecked types will never be auto-sold
+ButtonConsumableSellOptions,Consumable Sell Options
+WindowConsumableSellOptions,Consumable Sell Options
+LabelConsumablesAutoSold,Selected items are auto-sold
+LabelConsumablesAutoPurchased,Selected items are auto-purchased
+SettingsConsumableMinStacks,Min Stacks: {0}
+SettingsConsumableMinStacksTooltip,Minimum stacks to keep in inventory; never auto-sold below this
 GearTypeWeapon,Weapon
 GearTypeHelm,Helm
 GearTypeShield,Shield
@@ -391,8 +397,6 @@ SettingsBuyRarities,Gear Rarities to Buy
 SettingsBuyRaritiesTooltip,Gear of unchecked rarities will never be auto-purchased
 SettingsBuyGearTypes,Gear Types to Buy
 SettingsBuyGearTypesTooltip,Gear of unchecked types will never be auto-purchased
-SettingsAutoPurchaseConsumables,Auto-Purchase Consumables
-SettingsAutoPurchaseConsumablesTooltip,Also buy the selected consumables before entering pit
 ButtonConsumablePurchaseOptions,Consumable Purchase Options
 WindowConsumablePurchaseOptions,Consumable Purchase Options
 SettingsConsumableStacks,Stacks: {0}

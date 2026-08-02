@@ -22,7 +22,7 @@ do not try to keep the tab short**.
 | **Gold Buffer** (label + slider) | `AutoSeedPurchaseService.GoldBuffer` | — (read by others) | 30 (v15) |
 | Auto-Purchase Seeds | `AutoSeedPurchaseService` | Ticked (1s throttle) | 30 (v15) |
 | Auto-Sell Crops + "Choose Crops to Sell" | `AutoCropSellService` | Ticked | 31–32 (v16/v17) |
-| Auto-Sell Excess Items + priority + "Gear Sell Options" | `AutoSellExcessItemsService` | Call-driven | 36–38 (v21/v22/v23) |
+| Auto-Sell Excess Items + priority + "Gear Sell Options" + "Consumable Sell Options" | `AutoSellExcessItemsService` | Call-driven | 36–38, 43 (v21/v22/v23/v26) |
 | Auto-Purchase Items + priority + merc opt-in + "Gear Purchase Options" + "Consumable Purchase Options" | `AutoItemPurchaseService` | Call-driven | 39 (v23) |
 | Auto-Equip Options | `HeroComponent.AutoEquipHero` / `.AutoEquipMercenaries` (**no service**) | Call-driven | 40 (v23) |
 | Auto-Learn Hero Skills + "Learn Mode" cycler | `AutoLearnSkillsService` | Ticked (1s throttle) | 42 (v25) |
@@ -34,7 +34,8 @@ Dialogs opened from the tab:
 |---|---|---|
 | Auto-Sell Crop Types | `PitHero/UI/AutoSellCropTypesDialog.cs` | Per-crop checkboxes + keep-stacks slider |
 | Gear Sell Options / Gear Purchase Options | `PitHero/UI/GearFilterOptionsDialog.cs` | **One class, two instances** — rarity + gear-type filters, parameterized by title/label keys and `Func<bool[]>` accessors |
-| Consumable Purchase Options | `PitHero/UI/ConsumablePurchaseOptionsDialog.cs` | Sprite + checkbox + per-item 1–3 "Stacks" slider |
+| Consumable Purchase Options | `PitHero/UI/ConsumablePurchaseOptionsDialog.cs` | Sprite + checkbox + per-item 1–3 "Stacks" slider; nothing selected by default |
+| Consumable Sell Options | `PitHero/UI/ConsumableSellOptionsDialog.cs` | Sprite + checkbox + per-item 0–3 "Min Stacks" floor; everything selected by default, floor 1 — auto-sell never drains a potion to zero unless asked |
 
 All dialogs follow the same shape: a plain class owning a `Nez.UI.Window`, built once in the
 constructor, `SetVisible(false)`, added to the stage; `Show()` syncs from the service, packs,
@@ -91,6 +92,12 @@ Save version constants live in `PitHero/Services/SaveData.cs` (`CurrentVersion`,
 `MinSupportedVersion`). The format is **strictly append-only**: older files are byte-exact prefixes
 of newer ones, so a v17 file still loads into a v23 build with defaults for the missing tail.
 
+Removing a setting does **not** remove its bytes. The v26 removal of the "Auto-Purchase
+Consumables" master flag kept its bool slot in section 39 (always written `true` now) so older
+files stay byte-exact prefixes; `SaveData.ApplyLegacyPurchaseConsumablesMigration` translates a
+pre-v26 flag-off file into cleared selections on load. Follow that pattern — a dead slot plus a
+version-gated migration — rather than reshaping an existing section.
+
 Adding a persisted setting means, in order:
 
 1. Add the field to `SaveData` with a default and a `// Feature name (vNN)` comment.
@@ -109,8 +116,9 @@ Adding a persisted setting means, in order:
 **Two indices are persisted identities and must stay append-only:**
 
 - `ConsumableCatalog` (`PitHero/RolePlayingFramework/Equipment/ConsumableCatalog.cs`) — the order of
-  its 9 entries is what `AutoPurchaseConsumableSelected` / `AutoPurchaseConsumableStacks` index
-  into. Reordering silently remaps a player's selections onto the wrong potions.
+  its 9 entries is what `AutoPurchaseConsumableSelected` / `AutoPurchaseConsumableStacks` and
+  `AutoSellConsumableSelected` / `AutoSellConsumableMinStacks` index into. Reordering silently
+  remaps a player's selections onto the wrong potions.
 - `GearCategory` — indexes every gear filter array (`AutoSellGearTypeAllowed`,
   `AutoPurchaseGearTypeAllowed`).
 
@@ -156,12 +164,11 @@ Gotchas:
   `ph-default` `SliderStyle`, so deactivating one is `slider.Disabled = true` for the look — and
   Nez's `Slider` input listener **ignores `Disabled`**, so `SetTouchable(Touchable.Disabled)` is
   what actually stops dragging. You need both.
-- **Nested gates compose.** "Consumable Purchase Options" is enabled only when *both*
-  "Auto-Purchase Items" and "Auto-Purchase Consumables" are checked;
-  `SetItemPurchaseControlsActive` ends by calling `SetConsumablePurchaseControlsActive` with the
-  combined condition. Follow that pattern rather than gating on one checkbox. Same for the
-  "Mercenary2 Job" cycler, which needs the auto-hire checkbox on *and* slot 1 holding a job
-  (cycling slot 1 to None also resets slot 2 to None).
+- **Nested gates compose.** The "Mercenary2 Job" cycler needs the auto-hire checkbox on *and*
+  slot 1 holding a job (cycling slot 1 to None also resets slot 2 to None) —
+  `SetAutoHireControlsActive` passes the combined condition down rather than gating on one
+  checkbox. (The old "Auto-Purchase Consumables" master checkbox was the other example until v26
+  removed it as redundant: with nothing selected in the dialog, nothing is bought anyway.)
 - **Hide open dialogs when the parent turns off**, or a deactivated feature's dialog stays on screen.
 - `PitHeroSkin.CreateSkin()` returns a **cached singleton** — never mutate a shared style; `Clone()`
   first if you need a variant (see `VaultBuyQuantityDialog`).
@@ -221,7 +228,7 @@ and call the pass method rather than simulating frames:
 | Seed purchasing | `PitHero.Tests/AutoSeedPurchaseServiceTests.cs` |
 | Crop selling | `PitHero.Tests/AutoCropSellServiceTests.cs` |
 | Monster jobs | `PitHero.Tests/AutoJobAssignmentServiceTests.cs` |
-| Excess-item selling + gear filters | `PitHero.Tests/AutoSellExcessItemsTests.cs` |
+| Excess-item selling + gear filters + consumable sell options | `PitHero.Tests/AutoSellExcessItemsTests.cs` |
 | Item purchasing | `PitHero.Tests/AutoItemPurchaseServiceTests.cs` |
 | Auto-equip | `PitHero.Tests/GearAutoEquipServiceTests.cs` |
 | Hero skill auto-learn | `PitHero.Tests/AutoLearnSkillsServiceTests.cs` |

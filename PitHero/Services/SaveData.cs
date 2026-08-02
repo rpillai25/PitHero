@@ -255,15 +255,15 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 25;
+        public const int CurrentVersion = 26;
 
         /// <summary>
-        /// Oldest save file version this build can still load. v17–v24 files are byte-exact
-        /// prefixes of v25 (sections 33 dining, 34 automation, 35 auto-dine resume,
+        /// Oldest save file version this build can still load. v17–v25 files are byte-exact
+        /// prefixes of v26 (sections 33 dining, 34 automation, 35 auto-dine resume,
         /// 36 auto-sell excess items, 37 auto-sell priority, 38 gear sell types,
-        /// 39 auto-purchase items, 40 auto-equip, 41 auto-hire mercenaries, and
-        /// 42 auto-learn hero skills were appended at the end), so they load with default
-        /// state for the missing sections.
+        /// 39 auto-purchase items, 40 auto-equip, 41 auto-hire mercenaries,
+        /// 42 auto-learn hero skills, and 43 consumable sell options were appended at
+        /// the end), so they load with default state for the missing sections.
         /// </summary>
         public const int MinSupportedVersion = 17;
 
@@ -536,8 +536,13 @@ namespace PitHero.Services
         /// <summary>Whether gear is also auto-purchased for hired mercenaries.</summary>
         public bool AutoPurchaseMercenaryGear = false;
 
-        /// <summary>Whether the selected consumables are auto-purchased.</summary>
-        public bool AutoPurchaseConsumables = false;
+        /// <summary>
+        /// Legacy (v23–v25): whether the selected consumables were auto-purchased. The master flag
+        /// was removed in v26 — selection alone decides — but the slot stays in section 39 to keep
+        /// old files byte-exact prefixes; v26+ always writes true. On pre-v26 loads a false value
+        /// clears AutoPurchaseConsumableSelected so old behavior is preserved.
+        /// </summary>
+        public bool AutoPurchaseConsumables = true;
 
         /// <summary>Which gear rarities may be auto-purchased, indexed by ItemRarity. Null until Recover normalizes it.</summary>
         public bool[] AutoPurchaseRarityAllowed;
@@ -574,6 +579,13 @@ namespace PitHero.Services
 
         /// <summary>Raw AutoLearnMode value: 0=Smart, 1=Active, 2=Passive.</summary>
         public int AutoLearnMode = 0;
+
+        // Consumable sell options (v26)
+        /// <summary>Which catalog consumables may be auto-sold, indexed by ConsumableCatalog index. Null until Recover normalizes it.</summary>
+        public bool[] AutoSellConsumableSelected;
+
+        /// <summary>Minimum stacks to keep per catalog consumable, indexed by ConsumableCatalog index. Null until Recover normalizes it.</summary>
+        public int[] AutoSellConsumableMinStacks;
 
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
@@ -1001,7 +1013,7 @@ namespace PitHero.Services
             writer.Write(AutoPurchaseItems);
             writer.Write(AutoPurchaseConsumablesFirst);
             writer.Write(AutoPurchaseMercenaryGear);
-            writer.Write(AutoPurchaseConsumables);
+            writer.Write(true); // legacy AutoPurchaseConsumables slot — master flag removed in v26
 
             int buyRarityCount = AutoPurchaseRarityAllowed != null ? AutoPurchaseRarityAllowed.Length : 0;
             writer.Write(buyRarityCount);
@@ -1035,6 +1047,17 @@ namespace PitHero.Services
             // 42. Auto-learn hero skills (v25)
             writer.Write(AutoLearnSkillsEnabled);
             writer.Write(AutoLearnMode);
+
+            // 43. Consumable sell options (v26)
+            int sellConsumableCount = AutoSellConsumableSelected != null ? AutoSellConsumableSelected.Length : 0;
+            writer.Write(sellConsumableCount);
+            for (int i = 0; i < sellConsumableCount; i++)
+            {
+                writer.Write(AutoSellConsumableSelected[i]);
+                writer.Write(AutoSellConsumableMinStacks != null && i < AutoSellConsumableMinStacks.Length
+                    ? AutoSellConsumableMinStacks[i]
+                    : 1);
+            }
         }
 
         /// <summary>Reads all game state from the persistence reader.</summary>
@@ -1491,7 +1514,7 @@ namespace PitHero.Services
             AutoPurchaseItems = false;
             AutoPurchaseConsumablesFirst = false;
             AutoPurchaseMercenaryGear = false;
-            AutoPurchaseConsumables = false;
+            AutoPurchaseConsumables = true;
             AutoPurchaseRarityAllowed = new bool[5];
             for (int i = 0; i < AutoPurchaseRarityAllowed.Length; i++)
                 AutoPurchaseRarityAllowed[i] = true;
@@ -1536,6 +1559,8 @@ namespace PitHero.Services
                         AutoPurchaseConsumableStacks[i] = stacks;
                     }
                 }
+
+                ApplyLegacyPurchaseConsumablesMigration(fileVersion, AutoPurchaseConsumables, AutoPurchaseConsumableSelected);
             }
 
             // 40. Auto-equip (v23+). Older files default to both on, matching the runtime defaults.
@@ -1566,6 +1591,42 @@ namespace PitHero.Services
                 AutoLearnSkillsEnabled = reader.ReadBool();
                 AutoLearnMode = reader.ReadInt();
             }
+
+            // 43. Consumable sell options (v26+). Older files default to everything sellable, keep 1 stack.
+            AutoSellConsumableSelected = new bool[RolePlayingFramework.Equipment.ConsumableCatalog.Count];
+            AutoSellConsumableMinStacks = new int[RolePlayingFramework.Equipment.ConsumableCatalog.Count];
+            for (int i = 0; i < AutoSellConsumableSelected.Length; i++)
+            {
+                AutoSellConsumableSelected[i] = true;
+                AutoSellConsumableMinStacks[i] = 1;
+            }
+            if (fileVersion >= 26)
+            {
+                int sellConsumableCount = reader.ReadInt();
+                for (int i = 0; i < sellConsumableCount; i++)
+                {
+                    bool selected = reader.ReadBool();
+                    int minStacks = reader.ReadInt();
+                    if (i < AutoSellConsumableSelected.Length)
+                    {
+                        AutoSellConsumableSelected[i] = selected;
+                        AutoSellConsumableMinStacks[i] = minStacks;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// v23–v25 gated consumable auto-purchasing behind a master flag that v26 removed. A pre-v26
+        /// file with the flag off must come back with no consumables selected, otherwise selections
+        /// the player made while the flag was off would silently start purchasing.
+        /// </summary>
+        public static void ApplyLegacyPurchaseConsumablesMigration(int fileVersion, bool purchaseConsumables, bool[] consumableSelected)
+        {
+            if (fileVersion >= 26 || purchaseConsumables || consumableSelected == null)
+                return;
+            for (int i = 0; i < consumableSelected.Length; i++)
+                consumableSelected[i] = false;
         }
 
         /// <summary>Writes a Color as four individual int components (R, G, B, A).</summary>

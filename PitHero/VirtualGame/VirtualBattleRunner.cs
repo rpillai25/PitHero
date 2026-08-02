@@ -110,8 +110,9 @@ namespace PitHero.VirtualGame
         /// When true, <see cref="CollectChestItem"/> mirrors <c>AutoSellExcessItemsService</c>:
         /// on a full bag the weakest item is sold to make room, ordered by
         /// <see cref="AutoSellConsumablesFirst"/>. Off by default to preserve existing balance
-        /// baselines. The virtual layer has no synergy/stencil model, so nothing is protected
-        /// and all rarities are sellable (documented Delta-Plan gap).
+        /// baselines. The virtual layer has no synergy/stencil model, so nothing is protected,
+        /// all rarities are sellable, and the per-consumable sell selections / min-stack floors
+        /// are not applied (documented Delta-Plan gap).
         /// </summary>
         public bool AutoSellExcessItems { get; set; } = false;
 

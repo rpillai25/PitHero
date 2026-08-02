@@ -1063,7 +1063,7 @@ namespace PitHero.Tests
             Assert.IsFalse(fresh.AutoPurchaseItems, "Auto-purchase defaults to off");
             Assert.IsFalse(fresh.AutoPurchaseConsumablesFirst, "Purchase priority defaults to gear-first");
             Assert.IsFalse(fresh.AutoPurchaseMercenaryGear);
-            Assert.IsFalse(fresh.AutoPurchaseConsumables);
+            Assert.IsTrue(fresh.AutoPurchaseConsumables, "Legacy v23-v25 slot; v26 removed the master flag and always writes true");
             Assert.IsTrue(fresh.AutoEquipHero, "Auto-equip defaults to on");
             Assert.IsTrue(fresh.AutoEquipMercenaries, "Auto-equip defaults to on");
 
@@ -1244,6 +1244,99 @@ namespace PitHero.Tests
                 if (Directory.Exists(tempDir))
                     Directory.Delete(tempDir, true);
             }
+        }
+
+        /// <summary>Verifies the v26 consumable sell options round-trip (mixed selections and floors).</summary>
+        [TestMethod]
+        public void SaveData_V26_ConsumableSellOptions_RoundTrip()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_v26_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+
+                int count = RolePlayingFramework.Equipment.ConsumableCatalog.Count;
+                var original = new SaveData();
+                original.AutoSellConsumableSelected = new bool[count];
+                original.AutoSellConsumableMinStacks = new int[count];
+                for (int i = 0; i < count; i++)
+                {
+                    original.AutoSellConsumableSelected[i] = i % 2 == 0;
+                    original.AutoSellConsumableMinStacks[i] = i % 4;
+                }
+
+                dataStore.Save("v26_sellopts.bin", original);
+
+                var loaded = new SaveData();
+                dataStore.Load("v26_sellopts.bin", loaded);
+
+                for (int i = 0; i < count; i++)
+                {
+                    Assert.AreEqual(i % 2 == 0, loaded.AutoSellConsumableSelected[i], $"Selection {i} should round-trip");
+                    Assert.AreEqual(i % 4, loaded.AutoSellConsumableMinStacks[i], $"Min stacks {i} should round-trip");
+                }
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
+        /// <summary>
+        /// Verifies the v26 consumable sell defaults: everything sellable with a floor of one stack,
+        /// both after Recover normalizes a default save and on the wire.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V26_ConsumableSellOptions_Defaults()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_v26d_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+                dataStore.Save("v26_defaults.bin", new SaveData());
+
+                var loaded = new SaveData();
+                dataStore.Load("v26_defaults.bin", loaded);
+
+                Assert.AreEqual(RolePlayingFramework.Equipment.ConsumableCatalog.Count, loaded.AutoSellConsumableSelected.Length);
+                for (int i = 0; i < loaded.AutoSellConsumableSelected.Length; i++)
+                {
+                    Assert.IsTrue(loaded.AutoSellConsumableSelected[i], $"Consumable {i} should be sellable by default");
+                    Assert.AreEqual(1, loaded.AutoSellConsumableMinStacks[i], $"Consumable {i} should keep one stack by default");
+                }
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir))
+                    Directory.Delete(tempDir, true);
+            }
+        }
+
+        /// <summary>
+        /// v23–v25 gated consumable auto-purchasing behind a master flag v26 removed. Loading an old
+        /// file with the flag off must clear the selections so behavior is preserved; v26+ files and
+        /// flag-on files must keep them.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_LegacyPurchaseConsumablesMigration()
+        {
+            var selected = new bool[] { true, false, true };
+
+            SaveData.ApplyLegacyPurchaseConsumablesMigration(25, purchaseConsumables: false, selected);
+            CollectionAssert.AreEqual(new bool[3], selected, "Pre-v26 with the flag off clears every selection");
+
+            selected = new bool[] { true, false, true };
+            SaveData.ApplyLegacyPurchaseConsumablesMigration(25, purchaseConsumables: true, selected);
+            CollectionAssert.AreEqual(new[] { true, false, true }, selected, "Pre-v26 with the flag on keeps selections");
+
+            selected = new bool[] { true, false, true };
+            SaveData.ApplyLegacyPurchaseConsumablesMigration(26, purchaseConsumables: false, selected);
+            CollectionAssert.AreEqual(new[] { true, false, true }, selected, "v26+ files never migrate — the flag is a dead slot");
         }
     }
 }

@@ -22,8 +22,11 @@ namespace PitHero.Services
     /// Call-driven (no update loop): OpenChestAction invokes TryMakeRoom before adding the item.
     /// Items in an active synergy or under a placed stencil are never sold; gear rarities and gear
     /// categories can be excluded via RarityAllowed / GearTypeAllowed (both edited from the
-    /// "Gear Sell Options" dialog). ConsumablesFirst picks whether the weakest consumable or the
-    /// weakest gear (compared across all gear types at once) sells first.
+    /// "Gear Sell Options" dialog). Consumables can be excluded or floored per catalog entry via
+    /// ConsumableSellAllowed / ConsumableMinStacks (the "Consumable Sell Options" dialog); the floor
+    /// is raised to the auto-purchase stack target so auto-sell never undoes what auto-purchase just
+    /// bought. ConsumablesFirst picks whether the weakest consumable or the weakest gear (compared
+    /// across all gear types at once) sells first.
     /// </summary>
     public class AutoSellExcessItemsService
     {
@@ -41,12 +44,26 @@ namespace PitHero.Services
         /// <summary>Whether gear of each category may be auto-sold, indexed by GearCategory. All true by default.</summary>
         public bool[] GearTypeAllowed { get; } = new bool[GearCategoryUtils.Count];
 
+        /// <summary>Whether each catalog consumable may be auto-sold, indexed by ConsumableCatalog index. All true by default.</summary>
+        public bool[] ConsumableSellAllowed { get; } = new bool[ConsumableCatalog.Count];
+
+        /// <summary>Minimum stacks of each catalog consumable to keep in the bag, indexed by ConsumableCatalog index. 1 by default.</summary>
+        public int[] ConsumableMinStacks { get; } = new int[ConsumableCatalog.Count];
+
+        /// <summary>Lowest and highest minimum-stacks value the options slider offers (0 = may sell every stack).</summary>
+        public const int MinKeepStacks = 0;
+        public const int MaxKeepStacks = 3;
+
         public AutoSellExcessItemsService()
         {
             for (int i = 0; i < RarityAllowed.Length; i++)
                 RarityAllowed[i] = true;
             for (int i = 0; i < GearTypeAllowed.Length; i++)
                 GearTypeAllowed[i] = true;
+            for (int i = 0; i < ConsumableSellAllowed.Length; i++)
+                ConsumableSellAllowed[i] = true;
+            for (int i = 0; i < ConsumableMinStacks.Length; i++)
+                ConsumableMinStacks[i] = 1;
         }
 
         /// <summary>True when gear of the given rarity may be auto-sold. Consumables are never rarity-filtered.</summary>
@@ -60,6 +77,31 @@ namespace PitHero.Services
         public bool IsGearTypeAllowed(ItemKind kind)
         {
             return GearCategoryUtils.IsAllowed(GearTypeAllowed, kind);
+        }
+
+        /// <summary>True when the given consumable may be auto-sold. Unknown (non-catalog) consumables are sellable.</summary>
+        public bool IsConsumableSellAllowed(Consumable consumable)
+        {
+            int i = ConsumableCatalog.IndexOfSpriteName(consumable?.SpriteName);
+            return i < 0 || ConsumableSellAllowed[i];
+        }
+
+        /// <summary>
+        /// Minimum stacks of the given consumable that must remain in the bag after an auto-sale.
+        /// The player's floor is raised to the auto-purchase stack target when that service would just
+        /// buy the stacks back — selling below the target burns gold on the round trip for nothing.
+        /// </summary>
+        public int GetEffectiveMinStacks(Consumable consumable, AutoItemPurchaseService purchaseSvc)
+        {
+            int i = ConsumableCatalog.IndexOfSpriteName(consumable?.SpriteName);
+            if (i < 0)
+                return 0;
+
+            int floor = ConsumableMinStacks[i];
+            if (purchaseSvc != null && purchaseSvc.Enabled && purchaseSvc.ConsumableSelected[i] &&
+                purchaseSvc.ConsumableStackTargets[i] > floor)
+                floor = purchaseSvc.ConsumableStackTargets[i];
+            return floor;
         }
 
         /// <summary>
@@ -80,7 +122,9 @@ namespace PitHero.Services
             grid?.UpdateItemsFromBag();
             System.Func<int, bool> isProtected = grid != null ? grid.IsBagIndexProtected : (System.Func<int, bool>)null;
 
-            var selection = ExcessItemSellSelector.Select(bag, incoming, isProtected, IsRarityAllowed, ConsumablesFirst, IsGearTypeAllowed);
+            var purchaseSvc = Core.Instance != null ? Core.Services?.GetService<AutoItemPurchaseService>() : null;
+            var selection = ExcessItemSellSelector.Select(bag, incoming, isProtected, IsRarityAllowed, ConsumablesFirst, IsGearTypeAllowed,
+                IsConsumableSellAllowed, c => GetEffectiveMinStacks(c, purchaseSvc));
             if (!selection.HasSelection)
                 return AutoSellOutcome.None;
 

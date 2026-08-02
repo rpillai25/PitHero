@@ -52,9 +52,6 @@ namespace PitHero.Services
         /// <summary>Whether gear is also bought for hired mercenaries. Off by default.</summary>
         public bool PurchaseMercenaryGear { get; set; } = false;
 
-        /// <summary>Whether the selected consumables are bought. Off by default.</summary>
-        public bool PurchaseConsumables { get; set; } = false;
-
         /// <summary>Whether gear of each rarity may be auto-purchased, indexed by ItemRarity. All true by default.</summary>
         public bool[] BuyRarityAllowed { get; } = new bool[5];
 
@@ -315,9 +312,6 @@ namespace PitHero.Services
         /// <summary>Tops each selected consumable up to its stack target, buying whole stacks from the vault.</summary>
         private int BuyConsumables(ItemBag bag, List<IItem> purchasedOut)
         {
-            if (!PurchaseConsumables)
-                return 0;
-
             int bought = 0;
             for (int i = 0; i < ConsumableCatalog.Count; i++)
             {
