@@ -41,8 +41,10 @@ namespace PitHero.UI
         private InventoryContextMenu _contextMenu;
         private Stage _stage; // Reference to stage for tooltip management
 
-        private static readonly Color MercenaryNameFontColor = new Color(71, 36, 7); // Default Brown for names
-        private static readonly Color HeroNameFontColor = new Color(0, 128, 255); // Brighter Blue for hero name
+        private static readonly Color NameFontColor = new Color(71, 36, 7); // Brown, matches button font color (PitHeroSkin)
+
+        /// <summary>When true, unviewed newly acquired gear draws a blue sparkle overlay (HeroUI grid only).</summary>
+        public bool ShowUnviewedGearSparkles;
 
         // Mercenary references for equip slot groups
         private readonly Mercenary[] _mercenaryRefs = new Mercenary[MAX_MERCENARY_SLOTS];
@@ -273,6 +275,7 @@ namespace PitHero.UI
                 _acquireIndexMap.Clear();
                 _itemStackMap.Clear();
                 _nextAcquireIndex = 1;
+                UnviewedGearTracker.ClearAll();
             }
 
             _heroComponent = heroComponent;
@@ -289,19 +292,13 @@ namespace PitHero.UI
             // Subscribe to cross-component inventory changes
             InventorySelectionManager.OnInventoryChanged += UpdateItemsFromBag;
 
-            // Load name font for drawing mercenary names
-            if (_nameFont == null && Core.Content != null)
+            // Names use the same font as buttons (Graphics.Instance.BitmapFont = Express, see PitHeroSkin)
+            if (_nameFont == null)
             {
-                try
-                {
-                    _nameFont = Core.Content.LoadBitmapFont(GameConfig.FontPathHudSmall);
-                }
-                catch (System.Exception ex)
-                {
-                    Debug.Log("Failed to load mercenary name font: " + ex.Message);
-                    if (Graphics.Instance != null)
-                        _nameFont = Graphics.Instance.BitmapFont;
-                }
+                if (Graphics.Instance != null)
+                    _nameFont = Graphics.Instance.BitmapFont;
+                else if (Core.Content != null)
+                    _nameFont = Core.Content.LoadBitmapFont(GameConfig.FontMainUI);
             }
         }
 
@@ -1082,6 +1079,9 @@ namespace PitHero.UI
             // Draw mercenary names above their equip slot areas
             DrawMercenaryNames(batcher);
 
+            // Sparkle overlay on newly acquired gear the player has not viewed yet
+            DrawUnviewedGearSparkles(batcher);
+
             // Legacy UI tween disabled when using manager overlay
             if (!_uiSwapActive) return;
 
@@ -1122,7 +1122,7 @@ namespace PitHero.UI
                 var textSize = _nameFont.MeasureString(nameText);
                 var textX = centerX - textSize.X / 2f;
 
-                batcher.DrawString(_nameFont, nameText, new Vector2(textX, nameY), MercenaryNameFontColor, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
+                batcher.DrawString(_nameFont, nameText, new Vector2(textX, nameY), NameFontColor, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
             }
 
             // Draw hero name at the same Y position, centered above hero equip columns (8-10)
@@ -1138,7 +1138,7 @@ namespace PitHero.UI
                 var heroTextSize = _nameFont.MeasureString(heroNameText);
                 var heroTextX = heroCenterX - heroTextSize.X / 2f;
 
-                batcher.DrawString(_nameFont, heroNameText, new Vector2(heroTextX, heroNameY), HeroNameFontColor, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
+                batcher.DrawString(_nameFont, heroNameText, new Vector2(heroTextX, heroNameY), NameFontColor, 0f, Vector2.Zero, 1f, SpriteEffects.None, 0f);
             }
         }
 
@@ -1189,6 +1189,50 @@ namespace PitHero.UI
                 var slotH = slot.GetHeight();
 
                 highlightDrawable.Draw(batcher, slotX, slotY, slotW, slotH, Color.White);
+            }
+        }
+
+        /// <summary>Draws twinkling blue sparkles over slots holding unviewed newly acquired gear.</summary>
+        private void DrawUnviewedGearSparkles(Batcher batcher)
+        {
+            if (!ShowUnviewedGearSparkles || UnviewedGearTracker.Count == 0)
+                return;
+
+            const int SPARKLE_COUNT = 5;
+            var coreColor = new Color(190, 225, 255); // pale blue-white center
+            var armColor = new Color(80, 160, 255);   // saturated blue star arms
+
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+
+                var item = slot.SlotData.Item;
+                if (item == null || !UnviewedGearTracker.IsUnviewed(item)) continue;
+
+                float sx = slot.GetX();
+                float sy = slot.GetY();
+                int seed = slot.SlotData.X * 73856093 ^ slot.SlotData.Y * 19349663;
+
+                for (int k = 0; k < SPARKLE_COUNT; k++)
+                {
+                    int h = seed ^ (k * 83492791);
+                    float px = 4f + ((h >> 3) & 0x1F) % 24;
+                    float py = 4f + ((h >> 9) & 0x1F) % 24;
+                    float phase = ((h >> 15) & 0xFF) / 255f * MathHelper.TwoPi;
+                    float twinkle = Mathf.Sin(Time.TotalTime * 4f + phase) * 0.5f + 0.5f;
+                    if (twinkle < 0.15f) continue; // "off" part of the twinkle cycle
+
+                    batcher.DrawPixel(sx + px, sy + py, coreColor * twinkle, 2);
+                    if (twinkle > 0.6f)
+                    {
+                        var arm = armColor * (twinkle * 0.8f);
+                        batcher.DrawPixel(sx + px - 2, sy + py, arm, 1);
+                        batcher.DrawPixel(sx + px + 2, sy + py, arm, 1);
+                        batcher.DrawPixel(sx + px, sy + py - 2, arm, 1);
+                        batcher.DrawPixel(sx + px, sy + py + 2, arm, 1);
+                    }
+                }
             }
         }
 

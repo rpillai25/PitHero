@@ -133,7 +133,10 @@ namespace PitHero.Services
                 return;
 
             for (int i = 0; i < _purchased.Count; i++)
+            {
+                UnviewedGearTracker.MarkNew(_purchased[i]);
                 PartyAutoEquipHelper.TryAutoEquipForParty(heroComp, _purchased[i]);
+            }
 
             // The bag changed outside the inventory UI — refresh any open grid
             UI.InventorySelectionManager.OnInventoryChanged?.Invoke();

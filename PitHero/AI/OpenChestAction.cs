@@ -323,6 +323,9 @@ namespace PitHero.AI
                     Debug.Log($"[OpenChest] Reset HealingItemExhausted flag (picked up {containedItem.Name})");
                 }
 
+                // New gear sparkles in the inventory until viewed (survives auto-equip; same reference)
+                Services.UnviewedGearTracker.MarkNew(containedItem);
+
                 // Try to auto-equip if gear item
                 PartyAutoEquipHelper.TryAutoEquipForParty(hero, containedItem);
 
