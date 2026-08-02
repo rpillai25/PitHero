@@ -359,6 +359,7 @@ namespace PitHero.UI
             var inventoryContainer = new Table();
 
             _inventoryGrid = new InventoryGrid();
+            _inventoryGrid.ShowUnviewedGearSparkles = true;
             _inventoryGrid.OnItemHovered += HandleItemHovered;
             _inventoryGrid.OnItemUnhovered += HandleItemUnhovered;
             _inventoryGrid.OnDragEquipTargetChanged += HandleDragEquipTargetChanged;
@@ -1197,6 +1198,9 @@ namespace PitHero.UI
         {
             // Suppress hover tooltips during drags (PerformPeriodicHoverCheck bypasses hover events)
             if (item == null || InventoryDragManager.IsDragging) return;
+
+            // Hovering the item acknowledges new gear and stops its sparkle
+            UnviewedGearTracker.MarkViewed(item);
 
             // Get synergies for the hovered slot (passed directly, no search needed)
             var synergies = slot != null ? _inventoryGrid?.GetSynergiesForSlot(slot) : null;

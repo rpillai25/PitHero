@@ -84,7 +84,7 @@ namespace PitHero.ECS.Scenes
         // Cached base positions for top-left anchored UI (so offsets are relative and centralized)
         private const float PitLabelBaseX = 10f; // X position for Pit Lv label (bottom-left)
         private const float PitLabelBaseY = 350f; // Y position for Pit Lv label (bottom-left, ~30px from bottom at 360px height)
-        private const float FundsLabelBaseX = 120f; // X position for Funds label (next to Pit Lv)
+        private const float FundsLabelGapX = 16f; // Gap between the measured Pit Lv label text and the Funds label
         private const float ClockLabelRightPadding = 32f; // Pixels from right edge for clock label
         private const float ClockLabelBaseY = 16f; // Y position for clock label (top area, offset to avoid cutoff)
         private const float FundsLabelBaseY = 350f; // Y position for Funds label (same as Pit Lv)
@@ -1753,7 +1753,7 @@ namespace PitHero.ECS.Scenes
             // Funds label (bottom-left next to Pit Lv, always visible, no scaling)
             _fundsLabel = uiCanvas.Stage.AddElement(new Label("Gold: 0", _hudFontNormal));
             _fundsLabel.SetStyle(_pitLevelStyleNormal);
-            _fundsLabel.SetPosition(FundsLabelBaseX, FundsLabelBaseY);
+            RepositionFundsLabel();
 
             // Clock label (upper-right, position adjusted dynamically based on text width)
             _clockLabel = uiCanvas.Stage.AddElement(new Label("6:00 AM", _hudFontNormal));
@@ -1903,7 +1903,20 @@ namespace PitHero.ECS.Scenes
                     _pitLevelLabel.SetText($"Pit Lv. {currentLevel}");
                 _lastDisplayedPitLevel = currentLevel;
                 _lastDisplayedPitTier = currentTier;
+                RepositionFundsLabel();
             }
+        }
+
+        /// <summary>
+        /// Position the Funds label just right of the Pit Lv label based on its measured text width
+        /// </summary>
+        private void RepositionFundsLabel()
+        {
+            if (_fundsLabel == null || _pitLevelLabel == null || _hudFontNormal == null)
+                return;
+
+            float pitLabelWidth = _hudFontNormal.MeasureString(_pitLevelLabel.GetText()).X;
+            _fundsLabel.SetPosition(PitLabelBaseX + pitLabelWidth + FundsLabelGapX, FundsLabelBaseY);
         }
 
         /// <summary>
