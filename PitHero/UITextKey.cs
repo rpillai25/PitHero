@@ -414,5 +414,6 @@ namespace PitHero
         public const string AutoLearnModeActive = "AutoLearnModeActive";
         public const string AutoLearnModePassive = "AutoLearnModePassive";
         public const string ConsoleAutoLearnedSkill = "ConsoleAutoLearnedSkill";
+        public const string ConsoleStencilFound = "ConsoleStencilFound";
     }
 }
