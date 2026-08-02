@@ -64,17 +64,13 @@ namespace PitHero.UI
         {
             var mainTable = new Table();
             mainTable.SetFillParent(true);
-            mainTable.Pad(5f); // Reduced padding for less empty space
+            mainTable.Pad(5f);
 
-            // Create content table to hold grid and details
-            var contentTable = new Table();
-            contentTable.Pad(0f); // Remove content table padding
-
-            // Add title label at the top (centered)
+            // Title label — pinned above the scroll area
             var titleLabel = new Label(GetText(TextType.UI, UITextKey.StencilSynergyStencils), skin);
             titleLabel.SetAlignment(Nez.UI.Align.Center);
-            contentTable.Add(titleLabel).Pad(0f, 0f, 5f, 0f).Top().Center();
-            contentTable.Row();
+            mainTable.Add(titleLabel).Pad(0f, 0f, 5f, 0f).Top().Center();
+            mainTable.Row();
 
             // Create grid table
             _gridTable = new Table();
@@ -94,10 +90,17 @@ namespace PitHero.UI
                     _gridTable.Row();
             }
 
-            // Create details panel
+            // Only the grid scrolls — title and details are pinned outside the scroll pane
+            var scrollPane = new ScrollPane(_gridTable, skin, "ph-default");
+            scrollPane.SetScrollingDisabled(true, false);
+            scrollPane.SetFadeScrollBars(false);
+            mainTable.Add(scrollPane).Height(300f).Width(420f).Top().Left();
+            mainTable.Row();
+
+            // Details panel — pinned below the scroll area
             var detailsTable = new Table();
             detailsTable.Pad(10f);
-            detailsTable.SetBackground(skin.Get<WindowStyle>().Background); // Add background for visibility
+            detailsTable.SetBackground(skin.Get<WindowStyle>().Background);
 
             _detailsLabel = new Label(GetText(TextType.UI, UITextKey.StencilSelectPrompt), skin);
             _detailsLabel.SetWrap(true);
@@ -115,18 +118,7 @@ namespace PitHero.UI
             buttonsTable.Add(_closeButton).Pad(10f, 24f, 0, 0).Width(150f).Height(30f);
             detailsTable.Add(buttonsTable).Top().Left();
 
-            // Add grid and details to content table
-            contentTable.Add(_gridTable).Width(420f).Top().Left();
-            contentTable.Row();
-            contentTable.Add(detailsTable).Height(64f).Width(420f).Top().Left();
-
-            // Wrap content in scroll pane
-            var scrollPane = new ScrollPane(contentTable, skin);
-            scrollPane.SetScrollingDisabled(true, false); // Disable horizontal, enable vertical scrolling
-            scrollPane.SetFadeScrollBars(false); // Always show scroll bar
-
-            // Add scroll pane to main table
-            mainTable.Add(scrollPane).Height(350f).Width(420f).Top().Left();
+            mainTable.Add(detailsTable).Height(120f).Width(420f).Top().Left();
 
             Add(mainTable);
         }
@@ -206,33 +198,30 @@ namespace PitHero.UI
             _activateButton.SetTouchable(Touchable.Enabled);
         }
 
+        /// <summary>Clears the current selection and resets the details panel. Call before showing the panel.</summary>
+        public void ResetSelection()
+        {
+            _selectedPattern = null;
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                _slots[i].IsSelected = false;
+            }
+            UpdateDetailsPanel();
+        }
+
         private void HandleActivateClicked(Button button)
         {
             if (_selectedPattern != null)
             {
                 OnStencilActivated?.Invoke(_selectedPattern);
-                _selectedPattern = null;
-
-                // Clear selection state
-                for (int i = 0; i < _slots.Length; i++)
-                {
-                    _slots[i].IsSelected = false;
-                }
-
+                ResetSelection();
                 SetVisible(false);
             }
         }
 
         private void HandleCloseClicked(Button button)
         {
-            _selectedPattern = null;
-
-            // Clear selection state
-            for (int i = 0; i < _slots.Length; i++)
-            {
-                _slots[i].IsSelected = false;
-            }
-
+            ResetSelection();
             SetVisible(false);
         }
 

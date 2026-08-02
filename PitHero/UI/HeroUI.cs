@@ -320,17 +320,17 @@ namespace PitHero.UI
             buttonTable.Add().Height(64f);
             buttonTable.Row();
 
-            _viewStencilsButton = new TextButton("View Stencils", skin, "ph-default");
+            _viewStencilsButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonViewStencils), skin, "ph-default");
             _viewStencilsButton.OnClicked += HandleViewStencilsClicked;
             buttonTable.Add(_viewStencilsButton);
             buttonTable.Row();
 
-            _moveStencilsButton = new TextButton("Move Stencils", skin, "ph-default");
+            _moveStencilsButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonMoveStencils), skin, "ph-default");
             _moveStencilsButton.OnClicked += HandleMoveStencilsClicked;
             buttonTable.Add(_moveStencilsButton);
             buttonTable.Row();
 
-            _removeStencilButton = new TextButton("Remove Stencil", skin, "ph-default");
+            _removeStencilButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonRemoveStencil), skin, "ph-default");
             _removeStencilButton.OnClicked += HandleRemoveStencilClicked;
             buttonTable.Add(_removeStencilButton);
 
@@ -346,6 +346,8 @@ namespace PitHero.UI
             _stencilLibraryPanel = new StencilLibraryPanel(skin);
             _stencilLibraryPanel.OnStencilActivated += HandleStencilActivated;
             _stencilLibraryPanel.SetVisible(false);
+
+            UpdateStencilButtonStates();
         }
 
         private void HandleStencilRemovalRequested(PlacedStencil stencil)
@@ -389,6 +391,7 @@ namespace PitHero.UI
                     _stencilLibraryPanel.Refresh();
                 }
 
+                _stencilLibraryPanel.ResetSelection();
                 _stencilLibraryPanel.SetPosition(100f, 100f);
                 _stage.AddElement(_stencilLibraryPanel);
                 _stencilLibraryPanel.SetVisible(true);
@@ -403,7 +406,7 @@ namespace PitHero.UI
                 if (_inventoryGrid.IsRemoveStencilsModeActive())
                 {
                     _inventoryGrid.SetRemoveStencilsMode(false);
-                    _removeStencilButton.SetText("Remove Stencil");
+                    _removeStencilButton.SetText(GetText(TextType.UI, UITextKey.ButtonRemoveStencil));
                 }
 
                 bool newMode = !_inventoryGrid.IsMoveStencilsModeActive();
@@ -412,11 +415,11 @@ namespace PitHero.UI
                 // Update button appearance to show mode
                 if (newMode)
                 {
-                    _moveStencilsButton.SetText("Exit Move Mode");
+                    _moveStencilsButton.SetText(GetText(TextType.UI, UITextKey.ButtonExitMoveMode));
                 }
                 else
                 {
-                    _moveStencilsButton.SetText("Move Stencils");
+                    _moveStencilsButton.SetText(GetText(TextType.UI, UITextKey.ButtonMoveStencils));
                 }
             }
         }
@@ -429,7 +432,7 @@ namespace PitHero.UI
                 if (_inventoryGrid.IsMoveStencilsModeActive())
                 {
                     _inventoryGrid.SetMoveStencilsMode(false);
-                    _moveStencilsButton.SetText("Move Stencils");
+                    _moveStencilsButton.SetText(GetText(TextType.UI, UITextKey.ButtonMoveStencils));
                 }
 
                 // Check if we're currently in remove mode
@@ -447,15 +450,42 @@ namespace PitHero.UI
 
                     // Activate remove mode - user must now click a stencil
                     _inventoryGrid.SetRemoveStencilsMode(true);
-                    _removeStencilButton.SetText("Exit Remove Mode");
+                    _removeStencilButton.SetText(GetText(TextType.UI, UITextKey.ButtonExitRemoveMode));
                     Debug.Log("Remove Stencils mode activated - click a stencil to remove it");
                 }
                 else
                 {
                     // Exiting remove mode - just exit without showing any dialog
                     _inventoryGrid.SetRemoveStencilsMode(false);
-                    _removeStencilButton.SetText("Remove Stencil");
+                    _removeStencilButton.SetText(GetText(TextType.UI, UITextKey.ButtonRemoveStencil));
                     Debug.Log("Exited Remove Stencils mode");
+                }
+            }
+        }
+
+        /// <summary>Grays out Move/Remove buttons when no stencils are placed; exits any active mode.</summary>
+        private void UpdateStencilButtonStates()
+        {
+            bool hasStencils = _inventoryGrid != null && _inventoryGrid.GetPlacedStencils().Count > 0;
+            var skin = PitHeroSkin.CreateSkin();
+
+            if (_moveStencilsButton != null)
+            {
+                SettingsUI.SetButtonActive(_moveStencilsButton, hasStencils, skin);
+                if (!hasStencils && _inventoryGrid != null && _inventoryGrid.IsMoveStencilsModeActive())
+                {
+                    _inventoryGrid.SetMoveStencilsMode(false);
+                    _moveStencilsButton.SetText(GetText(TextType.UI, UITextKey.ButtonMoveStencils));
+                }
+            }
+
+            if (_removeStencilButton != null)
+            {
+                SettingsUI.SetButtonActive(_removeStencilButton, hasStencils, skin);
+                if (!hasStencils && _inventoryGrid != null && _inventoryGrid.IsRemoveStencilsModeActive())
+                {
+                    _inventoryGrid.SetRemoveStencilsMode(false);
+                    _removeStencilButton.SetText(GetText(TextType.UI, UITextKey.ButtonRemoveStencil));
                 }
             }
         }
@@ -473,7 +503,8 @@ namespace PitHero.UI
 
                     // Exit remove mode after removal
                     _inventoryGrid.SetRemoveStencilsMode(false);
-                    _removeStencilButton.SetText("Remove Stencil");
+                    _removeStencilButton.SetText(GetText(TextType.UI, UITextKey.ButtonRemoveStencil));
+                    UpdateStencilButtonStates();
                 },
                 onNo: () =>
                 {
@@ -514,6 +545,7 @@ namespace PitHero.UI
 
                 _inventoryGrid.PlaceStencil(pattern, targetAnchor.Value);
                 Debug.Log($"Activated stencil: {pattern.Name}");
+                UpdateStencilButtonStates();
             }
         }
 
@@ -806,6 +838,7 @@ namespace PitHero.UI
                     {
                         _inventoryGrid.ConnectToHero(heroComponent);
                         RefreshMercenaryEquipSlots();
+                        UpdateStencilButtonStates();
                     }
                 }
                 else
@@ -847,6 +880,7 @@ namespace PitHero.UI
                 UIWindowManager.OnUIWindowClosing();
                 _selectedItemCard?.Hide();
                 _crystalsTabComponent?.Cleanup();
+                _stencilLibraryPanel?.SetVisible(false);
                 _heroWindow.SetVisible(false);
                 _heroWindow.Remove();
                 var pauseService = Core.Services.GetService<PauseService>();
@@ -1119,7 +1153,7 @@ namespace PitHero.UI
         {
             if (_windowVisible)
             {
-                _windowVisible = false; UIWindowManager.OnUIWindowClosing(); _selectedItemCard?.Hide(); _crystalsTabComponent?.Cleanup(); _heroWindow?.SetVisible(false); _heroWindow?.Remove(); var pauseService = Core.Services.GetService<PauseService>(); if (pauseService != null) pauseService.IsPaused = false; Debug.Log("[HeroUI] Hero window force closed by single window policy");
+                _windowVisible = false; UIWindowManager.OnUIWindowClosing(); _selectedItemCard?.Hide(); _crystalsTabComponent?.Cleanup(); _stencilLibraryPanel?.SetVisible(false); _heroWindow?.SetVisible(false); _heroWindow?.Remove(); var pauseService = Core.Services.GetService<PauseService>(); if (pauseService != null) pauseService.IsPaused = false; Debug.Log("[HeroUI] Hero window force closed by single window policy");
             }
         }
 
