@@ -44,7 +44,8 @@ namespace PitHero.UI
         private static readonly Color MercenaryNameFontColor = new Color(71, 36, 7); // Brown, matches button font color (PitHeroSkin)
         private static readonly Color HeroNameFontColor = new Color(0, 128, 255); // Brighter Blue for hero name
 
-        /// <summary>When true, unviewed newly acquired gear draws a blue sparkle overlay (HeroUI grid only).</summary>
+        /// <summary>When true, unviewed newly acquired gear draws a blue sparkle overlay. Grids that enable
+        /// this must also MarkViewed on item hover so the player can acknowledge the gear.</summary>
         public bool ShowUnviewedGearSparkles;
 
         // Mercenary references for equip slot groups

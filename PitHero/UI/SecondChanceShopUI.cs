@@ -176,6 +176,7 @@ namespace PitHero.UI
             _heroInventoryWindow.SetSize(GameConfig.SecondChanceHeroPanelWidth, GameConfig.SecondChanceHeroPanelHeight);
 
             _heroInventoryGrid = new InventoryGrid();
+            _heroInventoryGrid.ShowUnviewedGearSparkles = true;
             _heroInventoryGrid.InitializeContextMenu(_stage, skin);
             _heroInventoryGrid.OnVaultItemDropRequested += HandleVaultItemDrop;
             _heroInventoryGrid.OnItemSoldToVault += HandleHeroInventorySell;
@@ -669,6 +670,10 @@ namespace PitHero.UI
         private void HandleHeroInventoryItemHovered(IItem item, InventorySlot slot)
         {
             if (item == null || _heroInventoryTooltip == null) return;
+
+            // Hovering the item acknowledges new gear and stops its sparkle (mirrors HeroUI)
+            if (!InventoryDragManager.IsDragging)
+                UnviewedGearTracker.MarkViewed(item);
             _heroInventoryTooltip.ShowItem(item, showBuyPrice: false);
             var container = _heroInventoryTooltip.GetContainer();
             if (container.GetParent() == null)
