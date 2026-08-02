@@ -61,6 +61,30 @@ namespace PitHero.Tests
         }
 
         [TestMethod]
+        public void MarkViewed_RemovesOnlyThatItem()
+        {
+            var gear1 = MakeGear("A");
+            var gear2 = MakeGear("B");
+            UnviewedGearTracker.MarkNew(gear1);
+            UnviewedGearTracker.MarkNew(gear2);
+
+            UnviewedGearTracker.MarkViewed(gear1);
+
+            Assert.IsFalse(UnviewedGearTracker.IsUnviewed(gear1));
+            Assert.IsTrue(UnviewedGearTracker.IsUnviewed(gear2));
+            Assert.AreEqual(1, UnviewedGearTracker.Count);
+        }
+
+        [TestMethod]
+        public void MarkViewed_NullOrUntracked_IsSafe()
+        {
+            UnviewedGearTracker.MarkViewed(null);
+            UnviewedGearTracker.MarkViewed(MakeGear());
+
+            Assert.AreEqual(0, UnviewedGearTracker.Count);
+        }
+
+        [TestMethod]
         public void ClearAll_EmptiesTracker()
         {
             UnviewedGearTracker.MarkNew(MakeGear("A"));

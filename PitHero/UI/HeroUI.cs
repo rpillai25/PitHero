@@ -32,8 +32,6 @@ namespace PitHero.UI
         private Tab _mercenariesTab;
         private Tab _foodTab;
         private bool _windowVisible = false;
-        /// <summary>True once the inventory tab has been shown this open; gates new-gear sparkle clearing.</summary>
-        private bool _inventoryTabViewed = false;
 
         // References for single window policy enforcement
         private SettingsUI _settingsUI;
@@ -301,15 +299,6 @@ namespace PitHero.UI
         private void HandleTabChanged(Tab selectedTab)
         {
             if (_heroWindow == null) return;
-
-            // New-gear sparkles: leaving the inventory tab after viewing it marks gear as viewed
-            if (_windowVisible)
-            {
-                if (selectedTab == _inventoryTab)
-                    _inventoryTabViewed = true;
-                else
-                    MarkGearViewedIfInventorySeen();
-            }
 
             float newWidth;
             if (selectedTab == _inventoryTab)
@@ -920,8 +909,6 @@ namespace PitHero.UI
                 _stage.AddElement(_heroWindow);
                 _heroWindow.SetVisible(true);
                 _heroWindow.ToFront();
-                if (_tabPane?.CurrentTab == _inventoryTab)
-                    _inventoryTabViewed = true;
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null) pauseService.IsPaused = true;
                 Debug.Log("Hero window opened and game paused");
@@ -929,7 +916,6 @@ namespace PitHero.UI
             else
             {
                 UIWindowManager.OnUIWindowClosing();
-                MarkGearViewedIfInventorySeen();
                 _selectedItemCard?.Hide();
                 _crystalsTabComponent?.Cleanup();
                 _heroWindow.SetVisible(false);
@@ -938,14 +924,6 @@ namespace PitHero.UI
                 if (pauseService != null) pauseService.IsPaused = false;
                 Debug.Log("Hero window closed and game unpaused");
             }
-        }
-
-        /// <summary>Clears new-gear sparkles if the inventory tab was shown since they were last cleared.</summary>
-        private void MarkGearViewedIfInventorySeen()
-        {
-            if (!_inventoryTabViewed) return;
-            UnviewedGearTracker.ClearAll();
-            _inventoryTabViewed = false;
         }
 
         private void PositionHeroWindow()
@@ -1212,7 +1190,7 @@ namespace PitHero.UI
         {
             if (_windowVisible)
             {
-                _windowVisible = false; UIWindowManager.OnUIWindowClosing(); MarkGearViewedIfInventorySeen(); _selectedItemCard?.Hide(); _crystalsTabComponent?.Cleanup(); _heroWindow?.SetVisible(false); _heroWindow?.Remove(); var pauseService = Core.Services.GetService<PauseService>(); if (pauseService != null) pauseService.IsPaused = false; Debug.Log("[HeroUI] Hero window force closed by single window policy");
+                _windowVisible = false; UIWindowManager.OnUIWindowClosing(); _selectedItemCard?.Hide(); _crystalsTabComponent?.Cleanup(); _heroWindow?.SetVisible(false); _heroWindow?.Remove(); var pauseService = Core.Services.GetService<PauseService>(); if (pauseService != null) pauseService.IsPaused = false; Debug.Log("[HeroUI] Hero window force closed by single window policy");
             }
         }
 
@@ -1220,6 +1198,9 @@ namespace PitHero.UI
         {
             // Suppress hover tooltips during drags (PerformPeriodicHoverCheck bypasses hover events)
             if (item == null || InventoryDragManager.IsDragging) return;
+
+            // Hovering the item acknowledges new gear and stops its sparkle
+            UnviewedGearTracker.MarkViewed(item);
 
             // Get synergies for the hovered slot (passed directly, no search needed)
             var synergies = slot != null ? _inventoryGrid?.GetSynergiesForSlot(slot) : null;

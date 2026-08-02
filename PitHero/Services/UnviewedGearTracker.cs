@@ -28,6 +28,13 @@ namespace PitHero.Services
             return item != null && _unviewed.Contains(item);
         }
 
+        /// <summary>Marks a single item as viewed (player hovered it in the inventory).</summary>
+        public static void MarkViewed(IItem item)
+        {
+            if (item != null)
+                _unviewed.Remove(item);
+        }
+
         /// <summary>Marks everything as viewed.</summary>
         public static void ClearAll()
         {
