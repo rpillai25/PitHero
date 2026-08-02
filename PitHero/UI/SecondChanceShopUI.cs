@@ -177,6 +177,7 @@ namespace PitHero.UI
 
             _heroInventoryGrid = new InventoryGrid();
             _heroInventoryGrid.ShowUnviewedGearSparkles = true;
+            _heroInventoryGrid.SyncStencilsToGameState = true;
             _heroInventoryGrid.InitializeContextMenu(_stage, skin);
             _heroInventoryGrid.OnVaultItemDropRequested += HandleVaultItemDrop;
             _heroInventoryGrid.OnItemSoldToVault += HandleHeroInventorySell;

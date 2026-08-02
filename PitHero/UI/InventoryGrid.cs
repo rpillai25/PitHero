@@ -48,6 +48,10 @@ namespace PitHero.UI
         /// this must also MarkViewed on item hover so the player can acknowledge the gear.</summary>
         public bool ShowUnviewedGearSparkles;
 
+        /// <summary>When true, PlaceStencil/RemoveStencil/MoveStencil commits mirror into
+        /// <see cref="GameStateService"/> and ConnectToHero restores the grid from that snapshot.</summary>
+        public bool SyncStencilsToGameState { get; set; }
+
         // Mercenary references for equip slot groups
         private readonly Mercenary[] _mercenaryRefs = new Mercenary[MAX_MERCENARY_SLOTS];
         private BitmapFont _nameFont; // Font for drawing mercenary/hero names above equip slots
@@ -301,6 +305,25 @@ namespace PitHero.UI
                     _nameFont = Graphics.Instance.BitmapFont;
                 else if (Core.Content != null)
                     _nameFont = Core.Content.LoadBitmapFont(GameConfig.FontMainUI);
+            }
+
+            // Restore placed stencils from the non-UI snapshot (direction: snapshot → grid only).
+            // Use the manager directly to avoid re-mirroring back into the snapshot.
+            if (SyncStencilsToGameState)
+            {
+                var gameState = Core.Services?.GetService<GameStateService>();
+                if (gameState != null)
+                {
+                    _stencilManager.ClearAll();
+                    var records = gameState.PlacedStencils;
+                    for (int i = 0; i < records.Count; i++)
+                    {
+                        var record = records[i];
+                        var pattern = SynergyPatternRegistry.GetById(record.PatternId);
+                        if (pattern == null) continue;
+                        _stencilManager.PlaceStencil(pattern, new Point(record.AnchorX, record.AnchorY));
+                    }
+                }
             }
         }
 
@@ -652,6 +675,12 @@ namespace PitHero.UI
                     var newAnchor = new Point(gridPos.X - _stencilDragOffset.Value.X, gridPos.Y - _stencilDragOffset.Value.Y);
                     _stencilManager.MoveStencil(_selectedStencil, newAnchor, GRID_WIDTH, GRID_HEIGHT);
                     Debug.Log($"Moved stencil to anchor: ({newAnchor.X}, {newAnchor.Y})");
+                    // Mirror the clamped anchor (MoveStencil may clamp, so read back from the stencil)
+                    if (SyncStencilsToGameState)
+                        Core.Services?.GetService<GameStateService>()?.SetPlacedStencil(
+                            _selectedStencil.Pattern.Id,
+                            _selectedStencil.Anchor.X,
+                            _selectedStencil.Anchor.Y);
                 }
 
                 // Deselect stencil after move
@@ -1622,12 +1651,16 @@ namespace PitHero.UI
         public void PlaceStencil(RolePlayingFramework.Synergies.SynergyPattern pattern, Point anchor)
         {
             _stencilManager.PlaceStencil(pattern, anchor);
+            if (SyncStencilsToGameState)
+                Core.Services?.GetService<GameStateService>()?.SetPlacedStencil(pattern.Id, anchor.X, anchor.Y);
         }
 
         /// <summary>Removes a stencil from the grid.</summary>
         public void RemoveStencil(PlacedStencil stencil)
         {
             _stencilManager.RemoveStencil(stencil);
+            if (SyncStencilsToGameState)
+                Core.Services?.GetService<GameStateService>()?.RemovePlacedStencil(stencil.Pattern.Id);
         }
 
         /// <summary>Toggles move stencils mode.</summary>

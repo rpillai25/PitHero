@@ -288,6 +288,7 @@ namespace PitHero.UI
 
             _inventoryGrid = new InventoryGrid();
             _inventoryGrid.ShowUnviewedGearSparkles = true;
+            _inventoryGrid.SyncStencilsToGameState = true;
             _inventoryGrid.OnItemHovered += HandleItemHovered;
             _inventoryGrid.OnItemUnhovered += HandleItemUnhovered;
             _inventoryGrid.OnDragEquipTargetChanged += HandleDragEquipTargetChanged;
