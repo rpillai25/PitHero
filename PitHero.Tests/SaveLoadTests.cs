@@ -1338,5 +1338,107 @@ namespace PitHero.Tests
             SaveData.ApplyLegacyPurchaseConsumablesMigration(26, purchaseConsumables: false, selected);
             CollectionAssert.AreEqual(new[] { true, false, true }, selected, "v26+ files never migrate — the flag is a dead slot");
         }
+
+        /// <summary>
+        /// v27 round-trip: SaveData.PlacedStencils (2 records) persists and recovers correctly
+        /// through the binary serializer (section 44).
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V27_PlacedStencils_RoundTrip()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "pithero_v27_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                var dataStore = new FileDataStore(tempDir);
+
+                var original = new SaveData();
+                original.HeroName = "StencilHero";
+                original.PlacedStencils = new List<SavedPlacedStencil>
+                {
+                    new SavedPlacedStencil { PatternId = "knight.shield_mastery", AnchorX = 0, AnchorY = 3 },
+                    new SavedPlacedStencil { PatternId = "knight.heavy_fortification", AnchorX = 10, AnchorY = 5 },
+                };
+
+                dataStore.Save("v27_stencils.bin", original);
+
+                var loaded = new SaveData();
+                dataStore.Load("v27_stencils.bin", loaded);
+
+                Assert.IsNotNull(loaded.PlacedStencils, "PlacedStencils must not be null after recovery");
+                Assert.AreEqual(2, loaded.PlacedStencils.Count, "Both records must survive the round-trip");
+
+                Assert.AreEqual("knight.shield_mastery", loaded.PlacedStencils[0].PatternId);
+                Assert.AreEqual(0, loaded.PlacedStencils[0].AnchorX);
+                Assert.AreEqual(3, loaded.PlacedStencils[0].AnchorY);
+
+                Assert.AreEqual("knight.heavy_fortification", loaded.PlacedStencils[1].PatternId);
+                Assert.AreEqual(10, loaded.PlacedStencils[1].AnchorX);
+                Assert.AreEqual(5, loaded.PlacedStencils[1].AnchorY);
+            }
+            finally
+            {
+                try { Directory.Delete(tempDir, recursive: true); } catch { }
+            }
+        }
+
+        /// <summary>
+        /// Backward-compatibility: a v26 binary (no section 44) loads with an empty PlacedStencils
+        /// list. This mirrors the v17-file pattern in SaveData_V17File_LoadsWithDefaultDining.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_V26File_LoadsWithEmptyPlacedStencils()
+        {
+            // Write a v27 (current-version) binary.
+            var ms = new MemoryStream();
+            using (var writer = new BinaryPersistableWriter(ms))
+            {
+                var original = new SaveData();
+                original.HeroName = "PreStencilHero";
+                writer.Write(original);
+            }
+            byte[] currentBytes = ms.ToArray();
+
+            // Measure the encoded size of one int (the stencil count for an empty list = writer.Write(0)).
+            var probe = new MemoryStream();
+            int intSize;
+            using (var probeWriter = new BinaryPersistableWriter(probe))
+            {
+                probeWriter.Write(0);
+                intSize = (int)probe.Length;
+            }
+
+            // Truncate the last intSize bytes (section 44: count=0 is the only byte written for an empty list).
+            byte[] v26Bytes = new byte[currentBytes.Length - intSize];
+            System.Array.Copy(currentBytes, v26Bytes, v26Bytes.Length);
+
+            // Patch the version header to 26 (little-endian int at bytes 0-3).
+            v26Bytes[0] = 26;
+            v26Bytes[1] = 0;
+            v26Bytes[2] = 0;
+            v26Bytes[3] = 0;
+
+            var loaded = new SaveData();
+            using (var rdr = new BinaryPersistableReader(new MemoryStream(v26Bytes)))
+            {
+                rdr.ReadPersistableInto(loaded);
+            }
+
+            Assert.AreEqual("PreStencilHero", loaded.HeroName, "v26 body must still load correctly");
+            Assert.IsNotNull(loaded.PlacedStencils, "v26 load must initialize PlacedStencils to an empty list");
+            Assert.AreEqual(0, loaded.PlacedStencils.Count, "v26 load must yield zero placed stencils");
+        }
+
+        /// <summary>
+        /// A fresh SaveData defaults PlacedStencils to an empty (non-null) list.
+        /// </summary>
+        [TestMethod]
+        public void SaveData_PlacedStencils_DefaultsToEmptyList()
+        {
+            var data = new SaveData();
+            Assert.IsNotNull(data.PlacedStencils, "PlacedStencils must default to non-null");
+            Assert.AreEqual(0, data.PlacedStencils.Count, "PlacedStencils must default to empty");
+        }
     }
 }

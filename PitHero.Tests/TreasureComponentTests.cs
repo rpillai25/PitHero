@@ -511,5 +511,59 @@ namespace PitHero.Tests
             }
             Assert.IsTrue(seedChestsFound > 0, "Expected at least one seed chest in 5000 rolls at pit level 22");
         }
+
+        // ---- Stencil chest null-safety (issue #362) ---------------------------------
+        //
+        // In headless tests, Core.Instance == null, so the stencil branch in
+        // InitializeForPitLevel is fully bypassed.  These tests verify that null-safety guard:
+        // ContainedStencilPatternId must never be set when Core.Instance is absent.
+
+        [TestMethod]
+        public void InitializeForPitLevel_Headless_NeverSetsStencilPatternId()
+        {
+            // Core.Instance is null in the test harness — the stencil branch is guarded by
+            // "Core.Instance != null" so it must remain completely inert.
+            for (int pitLevel = 2; pitLevel <= 25; pitLevel++)
+            {
+                for (int i = 0; i < 20; i++)
+                {
+                    var component = new TreasureComponent();
+                    component.InitializeForPitLevel(pitLevel);
+                    Assert.IsNull(component.ContainedStencilPatternId,
+                        $"ContainedStencilPatternId must be null in headless tests (Core.Instance == null) at pit level {pitLevel}, iteration {i}");
+                }
+            }
+        }
+
+        [TestMethod]
+        public void InitializeForPitLevel_PitLevel1_Headless_NeverSetsStencilPatternId()
+        {
+            // Level 1 chests are always level 1 (no stencil branch — requires level >= 2)
+            for (int i = 0; i < 50; i++)
+            {
+                var component = new TreasureComponent();
+                component.InitializeForPitLevel(1);
+                Assert.IsNull(component.ContainedStencilPatternId,
+                    $"Pit-level 1 must never set ContainedStencilPatternId (iteration {i})");
+            }
+        }
+
+        [TestMethod]
+        public void TreasureComponent_ContainedStencilPatternId_DefaultsToNull()
+        {
+            var component = new TreasureComponent();
+            Assert.IsNull(component.ContainedStencilPatternId,
+                "ContainedStencilPatternId must default to null before InitializeForPitLevel is called");
+        }
+
+        /// <summary>
+        /// BalanceConfig.StencilChestDropRate must be 0.08f (8%) as specified in issue #362.
+        /// </summary>
+        [TestMethod]
+        public void BalanceConfig_StencilChestDropRate_Is8Percent()
+        {
+            Assert.AreEqual(0.08f, BalanceConfig.StencilChestDropRate,
+                "StencilChestDropRate must be 0.08f (8%)");
+        }
     }
 }

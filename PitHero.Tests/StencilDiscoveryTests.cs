@@ -217,5 +217,84 @@ namespace PitHero.Tests
             // Synergy should still be active
             Assert.AreEqual(1, hero.ActiveSynergies.Count);
         }
+
+        /// <summary>
+        /// DiscoverStencil with StencilDiscoverySource.LootReward records that source correctly.
+        /// </summary>
+        [TestMethod]
+        public void GameStateService_DiscoverStencil_LootRewardSourceIsRecorded()
+        {
+            var service = new GameStateService();
+
+            service.DiscoverStencil("knight.shield_mastery", StencilDiscoverySource.LootReward);
+
+            Assert.IsTrue(service.IsStencilDiscovered("knight.shield_mastery"),
+                "Stencil must be marked discovered after LootReward discovery");
+            Assert.AreEqual(StencilDiscoverySource.LootReward,
+                service.DiscoveredStencils["knight.shield_mastery"],
+                "Discovery source must be LootReward");
+        }
+
+        /// <summary>
+        /// LootReward discovery does not overwrite an earlier PlayerMatch source (first-source-wins rule).
+        /// </summary>
+        [TestMethod]
+        public void GameStateService_DiscoverStencil_LootRewardDoesNotOverwritePlayerMatch()
+        {
+            var service = new GameStateService();
+
+            service.DiscoverStencil("knight.shield_mastery", StencilDiscoverySource.PlayerMatch);
+            service.DiscoverStencil("knight.shield_mastery", StencilDiscoverySource.LootReward);
+
+            Assert.AreEqual(StencilDiscoverySource.PlayerMatch,
+                service.DiscoveredStencils["knight.shield_mastery"],
+                "First-source-wins: PlayerMatch recorded first must not be overwritten by LootReward");
+        }
+
+        /// <summary>
+        /// PlayerMatch does not overwrite an earlier LootReward source.
+        /// </summary>
+        [TestMethod]
+        public void GameStateService_DiscoverStencil_PlayerMatchDoesNotOverwriteLootReward()
+        {
+            var service = new GameStateService();
+
+            service.DiscoverStencil("knight.shield_mastery", StencilDiscoverySource.LootReward);
+            service.DiscoverStencil("knight.shield_mastery", StencilDiscoverySource.PlayerMatch);
+
+            Assert.AreEqual(StencilDiscoverySource.LootReward,
+                service.DiscoveredStencils["knight.shield_mastery"],
+                "First-source-wins: LootReward recorded first must not be overwritten by PlayerMatch");
+        }
+
+        /// <summary>
+        /// LootReward discovery round-trips through SaveData (DiscoveredStencils dict, section persisted pre-v27).
+        /// </summary>
+        [TestMethod]
+        public void LootRewardDiscovery_RoundTripsThroughSaveData()
+        {
+            // SaveData.DiscoveredStencils stores the source as an int.
+            // Verify the int encoding of LootReward survives a round-trip via the in-memory dict.
+            var original = new SaveData();
+            original.DiscoveredStencils["knight.shield_mastery"] = (int)StencilDiscoverySource.LootReward;
+            original.DiscoveredStencils["knight.holy_strike"]    = (int)StencilDiscoverySource.PlayerMatch;
+
+            // Simulate what SaveLoadService does on load: copy into GameStateService.
+            var service = new GameStateService();
+            var enumerator = original.DiscoveredStencils.GetEnumerator();
+            while (enumerator.MoveNext())
+            {
+                var src = (StencilDiscoverySource)enumerator.Current.Value;
+                service.DiscoverStencil(enumerator.Current.Key, src);
+            }
+            enumerator.Dispose();
+
+            Assert.AreEqual(StencilDiscoverySource.LootReward,
+                service.DiscoveredStencils["knight.shield_mastery"],
+                "LootReward source must survive the SaveData → GameStateService copy");
+            Assert.AreEqual(StencilDiscoverySource.PlayerMatch,
+                service.DiscoveredStencils["knight.holy_strike"],
+                "PlayerMatch source must survive the SaveData → GameStateService copy");
+        }
     }
 }
