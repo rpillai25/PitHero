@@ -134,6 +134,11 @@ namespace PitHero.UI
         private FreeMoveInputBlocker _freeMoveBlocker;
         private TextButton _freeMoveExitButton;
         private TextButton _freeMoveButton;
+        // Half-size position picked via free move, reapplied after the settings-close shrink
+        // re-centers X (the drag position wouldn't survive the Normal->Half round trip otherwise)
+        private bool _hasFreeMoveSavedHalfPosition;
+        private int _freeMoveSavedHalfX;
+        private int _freeMoveSavedHalfY;
 
         private Game _game;
         private TextService _textService;
@@ -615,6 +620,8 @@ namespace PitHero.UI
             _swapMonitorButton.OnClicked += (button) =>
             {
                 WindowManager.SwapToNextMonitor(_game);
+                // The saved free-move position belongs to the previous monitor
+                _hasFreeMoveSavedHalfPosition = false;
                 // Reapply current docking after monitor swap
                 ApplyCurrentWindowPosition();
             };
@@ -1971,6 +1978,9 @@ namespace PitHero.UI
                 // Use centralized UI window manager for closing behavior
                 UIWindowManager.OnUIWindowClosing();
 
+                // The shrink back to Half re-centers X; restore the free-move dragged position
+                ReapplyFreeMoveHalfPositionIfNeeded();
+
                 // Hide any open confirmation dialogs
                 HideConfirmationDialog(_exitConfirmationDialog);
                 HideConfirmationDialog(_quitToTitleConfirmationDialog);
@@ -2001,6 +2011,7 @@ namespace PitHero.UI
             {
                 _isVisible = false;
                 UIWindowManager.OnUIWindowClosing();
+                ReapplyFreeMoveHalfPositionIfNeeded();
                 HideConfirmationDialog(_exitConfirmationDialog);
                 HideConfirmationDialog(_quitToTitleConfirmationDialog);
                 _settingsWindow.SetVisible(false);
@@ -2367,6 +2378,10 @@ namespace PitHero.UI
             // Stop any ongoing animation and apply immediately
             _isAnimatingToOffset = false;
 
+            // Docking takes over positioning: forget any free-move dragged position
+            if (_isDockedTop || _isDockedBottom || _isDockedCenter)
+                _hasFreeMoveSavedHalfPosition = false;
+
             if (_isDockedTop)
             {
                 WindowManager.DockTop(_game, _currentYOffset);
@@ -2436,6 +2451,12 @@ namespace PitHero.UI
                 return;
 
             _freeMoveDragging = false;
+
+            // Save the dragged half-size position: the Normal restore below forces X back to the
+            // display edge (full-width strip) and the settings-close shrink re-centers X, so the
+            // dragged X must be reapplied after that shrink (ReapplyFreeMoveHalfPositionIfNeeded)
+            _hasFreeMoveSavedHalfPosition = WindowManager.IsHalfHeightMode() &&
+                WindowManager.TryGetWindowRect(_game, out _freeMoveSavedHalfX, out _freeMoveSavedHalfY, out _, out _);
 
             // Mirror OnUIWindowOpening's temp-restore: settings is reappearing, so a Half window
             // goes back to Normal for UI viewing. Dock mode is None, so this anchors to the
@@ -2508,6 +2529,17 @@ namespace PitHero.UI
                 int newY = _freeMoveDragStartWindowY + (int)(gy - _freeMoveDragStartMouseY);
                 WindowManager.MoveWindowClampedToCurrentDisplay(_game, newX, newY);
             }
+        }
+
+        /// <summary>
+        /// Reapplies the half-size position picked via free move after the settings-close shrink
+        /// re-centered X. Kept across open/close cycles so the spot doesn't drift; invalidated when
+        /// docking or swapping monitors takes over positioning.
+        /// </summary>
+        private void ReapplyFreeMoveHalfPositionIfNeeded()
+        {
+            if (_hasFreeMoveSavedHalfPosition && WindowManager.IsHalfHeightMode())
+                WindowManager.MoveWindowClampedToCurrentDisplay(_game, _freeMoveSavedHalfX, _freeMoveSavedHalfY);
         }
 
         /// <summary>Creates the free-move input blocker and exit button on first use</summary>
