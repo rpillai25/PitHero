@@ -501,8 +501,23 @@ namespace PitHero
                     break;
             }
 
-            SDL.SDL_SetWindowSize(sdlWindow, targetWidth, targetHeight);
+            // Move first, then resize: a resize issued while the window is still on the old monitor
+            // gets processed in that monitor's context (DPI/resolution) and comes out wrong after
+            // the move. Re-assert the position afterwards since resizing can shift the window, and
+            // sync between operations (SDL3 window ops are asynchronous).
             SDL.SDL_SetWindowPosition(sdlWindow, targetX, targetY);
+            SDL.SDL_SyncWindow(sdlWindow);
+            SDL.SDL_SetWindowSize(sdlWindow, targetWidth, targetHeight);
+            SDL.SDL_SyncWindow(sdlWindow);
+            SDL.SDL_SetWindowPosition(sdlWindow, targetX, targetY);
+            SDL.SDL_SyncWindow(sdlWindow);
+
+            // The Normal-size strip now belongs to the new monitor; keep shrink/restore consistent
+            if (_storedOriginalSize)
+            {
+                _originalWindowWidth = targetWidth;
+                _originalWindowHeight = targetHeight;
+            }
 
             SetCurrentDisplay(nextDisplayID, nextBounds);
 
