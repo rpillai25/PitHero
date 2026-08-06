@@ -392,9 +392,16 @@ namespace PitHero.UI
                 }
 
                 _stencilLibraryPanel.ResetSelection();
-                _stencilLibraryPanel.SetPosition(
-                    (_stage.GetWidth() - _stencilLibraryPanel.GetWidth()) * 0.5f,
-                    (_stage.GetHeight() - _stencilLibraryPanel.GetHeight()) * 0.5f);
+                // Dock flush against the Hero window's left edge so the two never overlap;
+                // fall back to its right edge when there is no room on the left
+                float panelX = _heroWindow.GetX() - _stencilLibraryPanel.GetWidth();
+                if (panelX < 0f)
+                    panelX = _heroWindow.GetX() + _heroWindow.GetWidth();
+                float panelY = _heroWindow.GetY();
+                float maxY = _stage.GetHeight() - _stencilLibraryPanel.GetHeight();
+                if (panelY > maxY) panelY = maxY;
+                if (panelY < 0f) panelY = 0f;
+                _stencilLibraryPanel.SetPosition(panelX, panelY);
                 _stage.AddElement(_stencilLibraryPanel);
                 _stencilLibraryPanel.SetVisible(true);
             }
