@@ -124,9 +124,10 @@ namespace PitHero
         public const string TabSession = "TabSession";
         public const string TabButtons = "TabButtons";
         public const string SettingsAlwaysOnTop = "SettingsAlwaysOnTop";
+        public const string SettingsAlwaysOnTopTooltip = "SettingsAlwaysOnTopTooltip";
         public const string SettingsAutoScrollToHero = "SettingsAutoScrollToHero";
+        public const string SettingsAutoScrollToHeroTooltip = "SettingsAutoScrollToHeroTooltip";
         public const string SettingsSwapMonitor = "SettingsSwapMonitor";
-        public const string SettingsYOffset = "SettingsYOffset";
         public const string SettingsZoom = "SettingsZoom";
         public const string SettingsWindowSize = "SettingsWindowSize";
         public const string SettingsWindowSizeNormal = "SettingsWindowSizeNormal";
@@ -134,6 +135,8 @@ namespace PitHero
         public const string SettingsDockTop = "SettingsDockTop";
         public const string SettingsDockBottom = "SettingsDockBottom";
         public const string SettingsDockCenter = "SettingsDockCenter";
+        public const string SettingsFreeMoveWindow = "SettingsFreeMoveWindow";
+        public const string SettingsExitFreeMove = "SettingsExitFreeMove";
         public const string SettingsGameSession = "SettingsGameSession";
         public const string SettingsReplenishLabel = "SettingsReplenishLabel";
         public const string SettingsReplenishThresholdHint = "SettingsReplenishThresholdHint";

@@ -2400,11 +2400,13 @@ namespace PitHero.ECS.Scenes
             _settingsUI?.Update();
             // Remove duplicate HeroUI update since SettingsUI handles it
 
-            // Update pause overlay visibility based on pause state
+            // Update pause overlay visibility based on pause state. During free-move mode the
+            // overlay (which renders above the UI stage) is suppressed — the free-move blocker
+            // draws the identical dim below the Exit Free Move button so the button stays bright.
             var pauseService = Core.Services.GetService<PauseService>();
             if (pauseService != null && _pauseOverlayEntity != null)
             {
-                _pauseOverlayEntity.SetEnabled(pauseService.IsPaused);
+                _pauseOverlayEntity.SetEnabled(pauseService.IsPaused && !(_settingsUI?.IsFreeMoveModeActive ?? false));
             }
 
             // Keep pit level label up to date
@@ -2779,7 +2781,8 @@ namespace PitHero.ECS.Scenes
                 return true;
             if (_settingsUI != null &&
                 (_settingsUI.IsFarmSubMenuOpen || _settingsUI.IsTillModeActive || _settingsUI.IsBuildingModeActive ||
-                 _settingsUI.IsSeedModeActive || _settingsUI.IsRemoveCropsModeActive || _settingsUI.IsHarvestedCropsModeActive))
+                 _settingsUI.IsSeedModeActive || _settingsUI.IsRemoveCropsModeActive || _settingsUI.IsHarvestedCropsModeActive ||
+                 _settingsUI.IsFreeMoveModeActive))
                 return true;
             if (_uiStage != null && _uiStage.Hit(_uiStage.GetMousePosition()) != null)
                 return true;

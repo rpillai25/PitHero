@@ -86,7 +86,6 @@ namespace PitHero
 
             // Default horizontal behavior: center relative to previous
             int newX = prevX + (prevW - newWidth) / 2;
-            if (newX < 0) newX = 0;
 
             // Determine Y based on docking mode (fix: keep top-docked windows at top when shrinking)
             int newY;
@@ -119,9 +118,12 @@ namespace PitHero
                     // legacy behavior: anchor bottom edge as before
                     int bottomY = prevY + prevH; // previous bottom pixel
                     newY = bottomY - newHeight;
-                    if (newY < 0) newY = 0;
                     break;
             }
+
+            // Clamp inside display bounds (display-origin aware for secondary monitors)
+            ClampRectToBounds(ref newX, ref newY, newWidth, newHeight,
+                _currentDisplayBounds.x, _currentDisplayBounds.y, _currentDisplayBounds.w, _currentDisplayBounds.h);
 
             SDL.SDL_SetWindowSize(sdlWindow, newWidth, newHeight);
             SDL.SDL_SetWindowPosition(sdlWindow, newX, newY);
@@ -146,7 +148,6 @@ namespace PitHero
             SDL.SDL_GetWindowPosition(sdlWindow, out int prevX, out int prevY);
 
             int newX = prevX - (_originalWindowWidth - prevW) / 2;
-            if (newX < 0) newX = 0;
 
             int newY;
             switch (_currentDockMode)
@@ -168,10 +169,10 @@ namespace PitHero
                     break;
             }
 
-            // Clamp inside display bounds
-            if (newY < _currentDisplayBounds.y) newY = _currentDisplayBounds.y;
-            if (newY + _originalWindowHeight > _currentDisplayBounds.y + _currentDisplayBounds.h)
-                newY = _currentDisplayBounds.y + _currentDisplayBounds.h - _originalWindowHeight;
+            // Clamp inside display bounds (a full-display-width window pins X to the display edge,
+            // so restoring from an off-center half-size window can't hang past the right edge)
+            ClampRectToBounds(ref newX, ref newY, _originalWindowWidth, _originalWindowHeight,
+                _currentDisplayBounds.x, _currentDisplayBounds.y, _currentDisplayBounds.w, _currentDisplayBounds.h);
 
             SDL.SDL_SetWindowSize(sdlWindow, _originalWindowWidth, _originalWindowHeight);
             SDL.SDL_SetWindowPosition(sdlWindow, newX, newY);
@@ -288,6 +289,72 @@ namespace PitHero
                 return;
 
             SDL.SDL_SetWindowAlwaysOnTop(sdlWindow, alwaysOnTop ? true : false);
+        }
+
+        /// <summary>
+        /// Clears dock tracking so later shrink/restore anchor to the window's current position
+        /// instead of snapping back to a dock (used by free-move mode).
+        /// </summary>
+        public static void ClearDockMode()
+        {
+            _currentDockMode = DockMode.None;
+            _currentDockYOffset = 0;
+        }
+
+        /// <summary>
+        /// Gets the window's position and size in global desktop coordinates. False if the SDL handle is unavailable.
+        /// </summary>
+        public static bool TryGetWindowRect(Game game, out int x, out int y, out int w, out int h)
+        {
+            x = y = w = h = 0;
+            IntPtr sdlWindow = game.Window.Handle;
+            if (sdlWindow == IntPtr.Zero)
+                return false;
+
+            SDL.SDL_GetWindowPosition(sdlWindow, out x, out y);
+            SDL.SDL_GetWindowSize(sdlWindow, out w, out h);
+            return true;
+        }
+
+        /// <summary>
+        /// Reads the global desktop mouse position. Returns true while the left button is held.
+        /// </summary>
+        public static bool GetGlobalMouseLeftDown(out float x, out float y)
+        {
+            return (SDL.SDL_GetGlobalMouseState(out x, out y) & SDL.SDL_MouseButtonFlags.SDL_BUTTON_LMASK) != 0;
+        }
+
+        /// <summary>
+        /// Moves the window to (x, y) clamped inside the current display's bounds. Supports negative desktop coordinates.
+        /// </summary>
+        public static void MoveWindowClampedToCurrentDisplay(Game game, int x, int y)
+        {
+            IntPtr sdlWindow = game.Window.Handle;
+            if (sdlWindow == IntPtr.Zero)
+                return;
+            EnsureCurrentDisplay(sdlWindow);
+
+            SDL.SDL_GetWindowSize(sdlWindow, out int winW, out int winH);
+            ClampRectToBounds(ref x, ref y, winW, winH,
+                _currentDisplayBounds.x, _currentDisplayBounds.y, _currentDisplayBounds.w, _currentDisplayBounds.h);
+            SDL.SDL_SetWindowPosition(sdlWindow, x, y);
+        }
+
+        /// <summary>
+        /// Clamps a window rect into display bounds. A window as wide/tall as the bounds pins to the
+        /// bounds origin on that axis, so full-display-width windows can only move vertically.
+        /// </summary>
+        public static void ClampRectToBounds(ref int x, ref int y, int winW, int winH, int bx, int by, int bw, int bh)
+        {
+            int maxX = bx + bw - winW;
+            if (maxX < bx) maxX = bx;
+            int maxY = by + bh - winH;
+            if (maxY < by) maxY = by;
+
+            if (x < bx) x = bx;
+            else if (x > maxX) x = maxX;
+            if (y < by) y = by;
+            else if (y > maxY) y = maxY;
         }
 
         /// <summary>
@@ -434,8 +501,23 @@ namespace PitHero
                     break;
             }
 
-            SDL.SDL_SetWindowSize(sdlWindow, targetWidth, targetHeight);
+            // Move first, then resize: a resize issued while the window is still on the old monitor
+            // gets processed in that monitor's context (DPI/resolution) and comes out wrong after
+            // the move. Re-assert the position afterwards since resizing can shift the window, and
+            // sync between operations (SDL3 window ops are asynchronous).
             SDL.SDL_SetWindowPosition(sdlWindow, targetX, targetY);
+            SDL.SDL_SyncWindow(sdlWindow);
+            SDL.SDL_SetWindowSize(sdlWindow, targetWidth, targetHeight);
+            SDL.SDL_SyncWindow(sdlWindow);
+            SDL.SDL_SetWindowPosition(sdlWindow, targetX, targetY);
+            SDL.SDL_SyncWindow(sdlWindow);
+
+            // The Normal-size strip now belongs to the new monitor; keep shrink/restore consistent
+            if (_storedOriginalSize)
+            {
+                _originalWindowWidth = targetWidth;
+                _originalWindowHeight = targetHeight;
+            }
 
             SetCurrentDisplay(nextDisplayID, nextBounds);
 

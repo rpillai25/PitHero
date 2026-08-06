@@ -106,9 +106,10 @@ TabWindow,Window
 TabSession,Session
 TabButtons,UI Buttons
 SettingsAlwaysOnTop,Always On Top
+SettingsAlwaysOnTopTooltip,Game window is always on top of everything
 SettingsAutoScrollToHero,Auto-scroll to Hero
+SettingsAutoScrollToHeroTooltip,Window follows hero and auto-scrolls back after being scrolled elsewhere
 SettingsSwapMonitor,Swap Monitor
-SettingsYOffset,Y Offset: {0}
 SettingsZoom,Zoom: {0}x
 SettingsWindowSize,Window Size:
 SettingsWindowSizeNormal,Normal
@@ -116,6 +117,8 @@ SettingsWindowSizeHalf,Half
 SettingsDockTop,Dock Top
 SettingsDockBottom,Dock Bottom
 SettingsDockCenter,Dock Center
+SettingsFreeMoveWindow,Free Move Window
+SettingsExitFreeMove,Exit Free Move
 SettingsGameSession,Game Session
 SettingsReplenishLabel,Replenish Button Thresholds
 SettingsReplenishThresholdHint,(HP or MP must be below this level to replenish)

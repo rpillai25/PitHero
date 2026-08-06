@@ -30,12 +30,10 @@ namespace PitHero.UI
         private Tab _automationTab;
 
         // Window positioning controls
-        private EnhancedSlider _yOffsetSlider;
         private EnhancedSlider _zoomSlider;
         private TextButton _dockTopButton;
         private TextButton _dockBottomButton;
         private TextButton _dockCenterButton;
-        private Label _yOffsetLabel;
         private Label _zoomLabel;
         private TextButton _resetZoomButton;
 
@@ -124,20 +122,23 @@ namespace PitHero.UI
         private Window _exitConfirmationDialog;
         private Window _quitToTitleConfirmationDialog;
 
+        // Free-move window mode (issue #364)
+        private bool _isFreeMoveModeActive;
+        private bool _freeMoveDragging;
+        private float _freeMoveDragStartMouseX;
+        private float _freeMoveDragStartMouseY;
+        private int _freeMoveDragStartWindowX;
+        private int _freeMoveDragStartWindowY;
+        private FreeMoveInputBlocker _freeMoveBlocker;
+        private TextButton _freeMoveExitButton;
+        private TextButton _freeMoveButton;
+
         private Game _game;
         private TextService _textService;
-        private int _currentYOffset = 0;
         private bool _isDockedTop = false;
         private bool _isDockedBottom = true; // Default to bottom dock
         private bool _isDockedCenter = false;
         private bool _alwaysOnTop = true; // Track current always-on-top state
-
-        // Smooth scrolling animation
-        private bool _isAnimatingToOffset = false;
-        private float _animationStartOffset;
-        private float _animationTargetOffset;
-        private float _animationDuration = 0.3f; // 300ms
-        private float _animationTimer = 0f;
 
         // Track previous shrink mode so we can restore it after closing settings
         private bool _prevWasHalfShrink = false;
@@ -579,7 +580,11 @@ namespace PitHero.UI
             var scrollContent = new Table();
 
             // Always On Top checkbox
-            _alwaysOnTopCheckBox = new CheckBox(GetText(TextType.UI, UITextKey.SettingsAlwaysOnTop), skin, "ph-default");
+            _alwaysOnTopCheckBox = new HoverableCheckBox(
+                GetText(TextType.UI, UITextKey.SettingsAlwaysOnTop),
+                skin,
+                GetText(TextType.UI, UITextKey.SettingsAlwaysOnTopTooltip),
+                _stage);
             _alwaysOnTopCheckBox.IsChecked = _alwaysOnTop;
             _alwaysOnTopCheckBox.OnChanged += (isChecked) =>
             {
@@ -590,64 +595,17 @@ namespace PitHero.UI
             scrollContent.Row();
 
             // Auto-scroll to Hero checkbox
-            _autoScrollToHeroCheckBox = new CheckBox(GetText(TextType.UI, UITextKey.SettingsAutoScrollToHero), skin, "ph-default");
+            _autoScrollToHeroCheckBox = new HoverableCheckBox(
+                GetText(TextType.UI, UITextKey.SettingsAutoScrollToHero),
+                skin,
+                GetText(TextType.UI, UITextKey.SettingsAutoScrollToHeroTooltip),
+                _stage);
             _autoScrollToHeroCheckBox.IsChecked = UIWindowManager.AutoScrollToHeroEnabled;
             _autoScrollToHeroCheckBox.OnChanged += (isChecked) =>
             {
                 UIWindowManager.SetAutoScrollToHero(isChecked);
             };
             scrollContent.Add(_autoScrollToHeroCheckBox).Left().SetPadBottom(15);
-            scrollContent.Row();
-
-            // Swap Monitor button
-            _swapMonitorButton = new TextButton(GetText(TextType.UI, UITextKey.SettingsSwapMonitor), skin, "ph-default");
-            _swapMonitorButton.OnClicked += (button) =>
-            {
-                WindowManager.SwapToNextMonitor(_game);
-                // Reapply current docking after monitor swap
-                ApplyCurrentWindowPosition();
-            };
-            scrollContent.Add(_swapMonitorButton).Width(100f).Height(24f).SetPadBottom(15);
-            scrollContent.Row();
-
-            // Y Offset slider (left-aligned label)
-            _yOffsetLabel = new Label(string.Format(GetText(TextType.UI, UITextKey.SettingsYOffset), 0), skin, "ph-default");
-            scrollContent.Add(_yOffsetLabel).Left().SetPadBottom(10);
-            scrollContent.Row();
-
-
-            // Create table for y offset slider and reset button side by side
-            var yOffsetTable = new Table();
-
-            // Create enhanced slider with initial range for bottom dock
-            _yOffsetSlider = new EnhancedSlider(-200, 0, 1, false, skin, null, false);
-            _yOffsetSlider.SetValueAndCommit(0);
-
-            // Update label during dragging (immediate feedback)
-            _yOffsetSlider.OnChanged += (value) =>
-            {
-                _yOffsetLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsYOffset), (int)value));
-            };
-
-            // Apply window position when value is committed (mouse released)
-            _yOffsetSlider.OnValueCommitted += (value) =>
-            {
-                _currentYOffset = (int)value;
-                StartSmoothScrollToOffset(_currentYOffset);
-            };
-
-            yOffsetTable.Add(_yOffsetSlider).Width(240).SetPadRight(10);
-
-            // Reset Y Offset button
-            var resetYOffsetButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonReset), skin, "ph-default");
-            resetYOffsetButton.OnClicked += (button) =>
-            {
-                _yOffsetSlider.SetValueAndCommit(0);
-                _yOffsetLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsYOffset), 0));
-            };
-            yOffsetTable.Add(resetYOffsetButton).Width(50).Height(16f);
-
-            scrollContent.Add(yOffsetTable).SetPadBottom(20);
             scrollContent.Row();
 
             // Zoom level slider with reset button (left-aligned label)
@@ -735,6 +693,19 @@ namespace PitHero.UI
             scrollContent.Add(windowSizeTable).Left().SetPadBottom(20);
             scrollContent.Row();
 
+            // Swap Monitor button
+            _swapMonitorButton = new TextButton(GetText(TextType.UI, UITextKey.SettingsSwapMonitor), skin, "ph-default");
+            _swapMonitorButton.OnClicked += (button) =>
+            {
+                WindowManager.SwapToNextMonitor(_game);
+                // The saved free-move position belongs to the previous monitor
+                UIWindowManager.ClearFreeMoveHalfPosition();
+                // Reapply current docking after monitor swap
+                ApplyCurrentWindowPosition();
+            };
+            scrollContent.Add(_swapMonitorButton).Width(100f).Height(24f).SetPadBottom(10);
+            scrollContent.Row();
+
             // Dock buttons
             _dockTopButton = new TextButton(GetText(TextType.UI, UITextKey.SettingsDockTop), skin, "ph-default");
             _dockTopButton.OnClicked += (button) => DockTop();
@@ -748,7 +719,12 @@ namespace PitHero.UI
 
             _dockCenterButton = new TextButton(GetText(TextType.UI, UITextKey.SettingsDockCenter), skin, "ph-default");
             _dockCenterButton.OnClicked += (button) => DockCenter();
-            scrollContent.Add(_dockCenterButton).Width(100f).Height(24f);
+            scrollContent.Add(_dockCenterButton).Width(100f).Height(24f).SetPadBottom(10);
+            scrollContent.Row();
+
+            _freeMoveButton = new TextButton(GetText(TextType.UI, UITextKey.SettingsFreeMoveWindow), skin, "ph-default");
+            _freeMoveButton.OnClicked += (button) => EnterFreeMoveMode();
+            scrollContent.Add(_freeMoveButton).Width(140f).Height(24f);
 
             // Create scroll pane with the content
             var scrollPane = new ScrollPane(scrollContent, skin, "ph-default");
@@ -2132,6 +2108,13 @@ namespace PitHero.UI
         /// </summary>
         public void Update()
         {
+            // Free-move mode suspends shortcuts, farm modes, auto-hide and smooth scrolling for its duration
+            if (_isFreeMoveModeActive)
+            {
+                UpdateFreeMoveMode();
+                return;
+            }
+
             // OnClicked (mouse-up) already ran in base.Update() before this method is called.
             // If till mode is now active but wasn't at the end of last frame, the click that activated
             // it is the same LeftMouseButtonReleased event we'd use to exit — suppress the exit check
@@ -2165,9 +2148,6 @@ namespace PitHero.UI
                 || (_secondChanceShopUI?.IsWindowVisible ?? false);
             if (anyNonFarmPanelOpen && (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive || IsHarvestedCropsModeActive))
                 DismissAllFarmUI();
-
-            // Update smooth scrolling animation
-            UpdateSmoothScrolling();
 
             // Update gear button style dynamically when shrink mode changes
             UpdateGearButtonStyleIfNeeded();
@@ -2245,10 +2225,6 @@ namespace PitHero.UI
             _isDockedTop = true;
             _isDockedBottom = false;
             _isDockedCenter = false;
-            _currentYOffset = 0;
-            UpdateSliderRange(0, 200);
-            _yOffsetSlider.SetValueAndCommit(0);
-            _yOffsetLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsYOffset), 0));
             ApplyCurrentWindowPosition();
         }
 
@@ -2257,10 +2233,6 @@ namespace PitHero.UI
             _isDockedTop = false;
             _isDockedBottom = true;
             _isDockedCenter = false;
-            _currentYOffset = 0;
-            UpdateSliderRange(-200, 0);
-            _yOffsetSlider.SetValueAndCommit(0);
-            _yOffsetLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsYOffset), 0));
             ApplyCurrentWindowPosition();
         }
 
@@ -2269,93 +2241,231 @@ namespace PitHero.UI
             _isDockedTop = false;
             _isDockedBottom = false;
             _isDockedCenter = true;
-            _currentYOffset = 0;
-            UpdateSliderRange(-200, 200);
-            _yOffsetSlider.SetValueAndCommit(0);
-            _yOffsetLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsYOffset), 0));
             ApplyCurrentWindowPosition();
-        }
-
-        private void UpdateSliderRange(float min, float max)
-        {
-            _yOffsetSlider.SetMinMax(min, max);
-        }
-
-        /// <summary>
-        /// Starts smooth scrolling animation to the target offset
-        /// </summary>
-        private void StartSmoothScrollToOffset(int targetOffset)
-        {
-            if (_isAnimatingToOffset)
-            {
-                // If already animating, update the target
-                _animationTargetOffset = targetOffset;
-            }
-            else
-            {
-                _animationStartOffset = _currentYOffset;
-                _animationTargetOffset = targetOffset;
-                _animationTimer = 0f;
-                _isAnimatingToOffset = true;
-            }
-        }
-
-        /// <summary>
-        /// Updates smooth scrolling animation
-        /// </summary>
-        private void UpdateSmoothScrolling()
-        {
-            if (!_isAnimatingToOffset)
-                return;
-
-            _animationTimer += Time.DeltaTime;
-            float progress = Math.Min(1f, _animationTimer / _animationDuration);
-
-            // Use easing for smooth animation (ease out)
-            float easedProgress = 1f - (1f - progress) * (1f - progress);
-
-            float currentOffset = _animationStartOffset + (_animationTargetOffset - _animationStartOffset) * easedProgress;
-
-            // Apply the interpolated position
-            int roundedOffset = (int)Math.Round(currentOffset);
-            if (_isDockedTop)
-            {
-                WindowManager.DockTop(_game, roundedOffset);
-            }
-            else if (_isDockedBottom)
-            {
-                WindowManager.DockBottom(_game, roundedOffset);
-            }
-            else if (_isDockedCenter)
-            {
-                WindowManager.DockCenter(_game, roundedOffset);
-            }
-
-            // Check if animation is complete
-            if (progress >= 1f)
-            {
-                _isAnimatingToOffset = false;
-                _currentYOffset = (int)_animationTargetOffset;
-            }
         }
 
         private void ApplyCurrentWindowPosition()
         {
-            // Stop any ongoing animation and apply immediately
-            _isAnimatingToOffset = false;
+            // Docking takes over positioning: forget any free-move dragged position
+            if (_isDockedTop || _isDockedBottom || _isDockedCenter)
+                UIWindowManager.ClearFreeMoveHalfPosition();
 
             if (_isDockedTop)
             {
-                WindowManager.DockTop(_game, _currentYOffset);
+                WindowManager.DockTop(_game);
             }
             else if (_isDockedBottom)
             {
-                WindowManager.DockBottom(_game, _currentYOffset);
+                WindowManager.DockBottom(_game);
             }
             else if (_isDockedCenter)
             {
-                WindowManager.DockCenter(_game, _currentYOffset);
+                WindowManager.DockCenter(_game);
             }
+        }
+
+        // ── Free-move window mode (issue #364) ───────────────────────────────────
+
+        /// <summary>Returns true while the player is in free window move mode</summary>
+        public bool IsFreeMoveModeActive => _isFreeMoveModeActive;
+
+        /// <summary>
+        /// Enters free window move mode: hides settings while keeping it logically open (pause and
+        /// UIWindowManager refcount untouched), shrinks to the persistent Half size if applicable,
+        /// and shows the drag overlay with a centered Exit Free Move button.
+        /// </summary>
+        public void EnterFreeMoveMode()
+        {
+            if (!_isVisible || _isFreeMoveModeActive)
+                return;
+
+            // Hide settings WITHOUT the close path: no OnUIWindowClosing, no unpause, _isVisible stays true
+            HideConfirmationDialog(_exitConfirmationDialog);
+            HideConfirmationDialog(_quitToTitleConfirmationDialog);
+            _settingsWindow.SetVisible(false);
+
+            // Forget docking so the exit-time shrink/restore anchors to the dragged position
+            // instead of snapping back to the old dock
+            _isDockedTop = false;
+            _isDockedBottom = false;
+            _isDockedCenter = false;
+            WindowManager.ClearDockMode();
+
+            // Half-persistent users drag the half-size window (settings had temp-restored it to Normal)
+            if (UIWindowManager.PersistentWindowSize == UIWindowManager.WindowSizeMode.Half)
+                WindowManager.ShrinkHeightToHalf(_game);
+
+            EnsureFreeMoveOverlayCreated();
+            _freeMoveBlocker.SetVisible(true);
+            _freeMoveBlocker.ToFront();
+            _freeMoveExitButton.SetVisible(true);
+            _freeMoveExitButton.ToFront();
+            LayoutFreeMoveOverlay();
+
+            _isFreeMoveModeActive = true;
+            _freeMoveDragging = false;
+            LayoutUI();
+            PositionUI();
+        }
+
+        /// <summary>
+        /// Exits free move mode: restores Normal size for UI viewing if needed (anchored at the
+        /// dragged position), hides the overlay, and re-shows the settings window.
+        /// </summary>
+        public void ExitFreeMoveMode()
+        {
+            if (!_isFreeMoveModeActive)
+                return;
+
+            _freeMoveDragging = false;
+
+            // Save the dragged half-size position: the Normal restore below forces X back to the
+            // display edge (full-width strip) and every UI window's close-time shrink re-centers X.
+            // UIWindowManager reapplies this after each Half restore (settings, hero, monster, shop)
+            if (WindowManager.IsHalfHeightMode() &&
+                WindowManager.TryGetWindowRect(_game, out int halfX, out int halfY, out _, out _))
+                UIWindowManager.SetFreeMoveHalfPosition(halfX, halfY);
+            else
+                UIWindowManager.ClearFreeMoveHalfPosition();
+
+            // Mirror OnUIWindowOpening's temp-restore: settings is reappearing, so a Half window
+            // goes back to Normal for UI viewing. Dock mode is None, so this anchors to the
+            // window's current bottom edge.
+            if (WindowManager.IsHalfHeightMode())
+                WindowManager.RestoreOriginalSize(_game);
+
+            // RestoreOriginalSize's X handling isn't display-aware after a drag; snap fully back inside
+            if (WindowManager.TryGetWindowRect(_game, out int wx, out int wy, out _, out _))
+                WindowManager.MoveWindowClampedToCurrentDisplay(_game, wx, wy);
+
+            _freeMoveBlocker.SetVisible(false);
+            _freeMoveExitButton.SetVisible(false);
+            _settingsWindow.SetVisible(true);
+            _settingsWindow.ToFront();
+
+            _isFreeMoveModeActive = false;
+            LayoutUI();
+            PositionUI();
+        }
+
+        /// <summary>
+        /// Per-frame free-move handling: Escape exit, drag start/track/release. Uses global desktop
+        /// mouse coordinates because client-relative coordinates shift as the window moves under the cursor.
+        /// </summary>
+        private void UpdateFreeMoveMode()
+        {
+            LayoutFreeMoveOverlay();
+
+            if (Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape))
+            {
+                ExitFreeMoveMode();
+                return;
+            }
+
+            bool leftDown = WindowManager.GetGlobalMouseLeftDown(out float gx, out float gy);
+
+            if (!_freeMoveDragging)
+            {
+                if (Input.LeftMouseButtonPressed && Util.MouseUtils.IsMouseInsideWindow())
+                {
+                    // Presses on the Exit Free Move button must not start a drag
+                    var hit = _stage.Hit(_stage.GetMousePosition());
+                    bool onExitButton = false;
+                    for (Element e = hit; e != null; e = e.GetParent())
+                    {
+                        if (e == _freeMoveExitButton)
+                        {
+                            onExitButton = true;
+                            break;
+                        }
+                    }
+
+                    if (!onExitButton &&
+                        WindowManager.TryGetWindowRect(_game, out _freeMoveDragStartWindowX, out _freeMoveDragStartWindowY, out _, out _))
+                    {
+                        _freeMoveDragStartMouseX = gx;
+                        _freeMoveDragStartMouseY = gy;
+                        _freeMoveDragging = true;
+                    }
+                }
+            }
+            else if (!leftDown)
+            {
+                _freeMoveDragging = false;
+            }
+            else
+            {
+                int newX = _freeMoveDragStartWindowX + (int)(gx - _freeMoveDragStartMouseX);
+                int newY = _freeMoveDragStartWindowY + (int)(gy - _freeMoveDragStartMouseY);
+                WindowManager.MoveWindowClampedToCurrentDisplay(_game, newX, newY);
+            }
+        }
+
+        /// <summary>Creates the free-move input blocker and exit button on first use</summary>
+        private void EnsureFreeMoveOverlayCreated()
+        {
+            if (_freeMoveBlocker != null)
+                return;
+
+            var skin = PitHeroSkin.CreateSkin();
+
+            _freeMoveBlocker = new FreeMoveInputBlocker();
+            _stage.AddElement(_freeMoveBlocker);
+
+            _freeMoveExitButton = new TextButton(GetText(TextType.UI, UITextKey.SettingsExitFreeMove), skin, "ph-default");
+            _freeMoveExitButton.OnClicked += (button) => ExitFreeMoveMode();
+            _freeMoveExitButton.SetSize(160f, 32f);
+            _stage.AddElement(_freeMoveExitButton);
+
+            _freeMoveBlocker.SetVisible(false);
+            _freeMoveExitButton.SetVisible(false);
+        }
+
+        /// <summary>Keeps the blocker full-stage and the exit button centered (stage dims change on shrink/move)</summary>
+        private void LayoutFreeMoveOverlay()
+        {
+            if (_freeMoveBlocker == null)
+                return;
+
+            _freeMoveBlocker.SetBounds(0, 0, _stage.GetWidth(), _stage.GetHeight());
+            _freeMoveExitButton.SetPosition(
+                (_stage.GetWidth() - _freeMoveExitButton.GetWidth()) / 2f,
+                (_stage.GetHeight() - _freeMoveExitButton.GetHeight()) / 2f);
+        }
+
+        /// <summary>
+        /// Full-screen element that swallows every click while free-move mode is active and draws the
+        /// pause dim below the exit button (the engine pause overlay is suppressed during the mode so
+        /// the button renders bright). Making stage.Hit non-null everywhere also blocks the camera
+        /// controller and world interactions.
+        /// </summary>
+        private class FreeMoveInputBlocker : Element, IInputListener
+        {
+            public FreeMoveInputBlocker()
+            {
+                SetTouchable(Touchable.Enabled);
+            }
+
+            public override void Draw(Batcher batcher, float parentAlpha)
+            {
+                batcher.DrawRect(GetX(), GetY(), GetWidth(), GetHeight(), new Color(0, 0, 0, 100));
+            }
+
+            void IInputListener.OnMouseEnter() { }
+
+            void IInputListener.OnMouseExit() { }
+
+            void IInputListener.OnMouseMoved(Vector2 mousePos) { }
+
+            bool IInputListener.OnLeftMousePressed(Vector2 mousePos) => true;
+
+            void IInputListener.OnLeftMouseUp(Vector2 mousePos) { }
+
+            bool IInputListener.OnRightMousePressed(Vector2 mousePos) => true;
+
+            void IInputListener.OnRightMouseUp(Vector2 mousePos) { }
+
+            bool IInputListener.OnMouseScrolled(int mouseWheelDelta) => true;
         }
 
         /// <summary>
