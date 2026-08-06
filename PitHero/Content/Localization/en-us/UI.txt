@@ -1,5 +1,6 @@
 ButtonYes,Yes
 ButtonNo,No
+ButtonOK,OK
 ButtonCancel,Cancel
 ButtonClose,Close
 ButtonMove,Move
@@ -185,6 +186,7 @@ SaveLoadLevelLabel,Level {0}
 SaveLoadUnknown,Unknown
 StencilSynergyStencils,Synergy Stencils
 StencilSelectPrompt,Select a stencil to view details
+StencilNoFreeSlots,No free stencil slots
 MonsterNoAlliedMonsters,No allied monsters yet.
 ItemSellPrice,Sell Price: {0}G
 ItemRestoresHp,Restores {0} HP

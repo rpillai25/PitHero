@@ -392,7 +392,9 @@ namespace PitHero.UI
                 }
 
                 _stencilLibraryPanel.ResetSelection();
-                _stencilLibraryPanel.SetPosition(100f, 100f);
+                _stencilLibraryPanel.SetPosition(
+                    (_stage.GetWidth() - _stencilLibraryPanel.GetWidth()) * 0.5f,
+                    (_stage.GetHeight() - _stencilLibraryPanel.GetHeight()) * 0.5f);
                 _stage.AddElement(_stencilLibraryPanel);
                 _stencilLibraryPanel.SetVisible(true);
             }
@@ -527,41 +529,23 @@ namespace PitHero.UI
 
         private void HandleStencilActivated(RolePlayingFramework.Synergies.SynergyPattern pattern)
         {
-            if (_inventoryGrid != null)
+            if (_inventoryGrid == null) return;
+
+            // Prefers all-empty cells, falls back to item-occupied cells; never overlaps another stencil
+            var targetAnchor = _inventoryGrid.FindFreeStencilAnchor(pattern);
+            if (!targetAnchor.HasValue)
             {
-                // Try to find the first empty inventory slot (row 2+, any column)
-                Point? targetAnchor = FindFirstEmptyInventorySlot();
-
-                if (!targetAnchor.HasValue)
-                {
-                    // No empty slots found, use default position (top-left of inventory area, row 3)
-                    targetAnchor = new Point(0, 3);
-                    Debug.Log($"No empty inventory slots found, placing stencil at default position: {targetAnchor.Value}");
-                }
-                else
-                {
-                    Debug.Log($"Found empty inventory slot at ({targetAnchor.Value.X},{targetAnchor.Value.Y}) for stencil placement");
-                }
-
-                _inventoryGrid.PlaceStencil(pattern, targetAnchor.Value);
-                Debug.Log($"Activated stencil: {pattern.Name}");
-                UpdateStencilButtonStates();
-            }
-        }
-
-        /// <summary>Finds the first empty inventory slot in the grid.</summary>
-        private Point? FindFirstEmptyInventorySlot()
-        {
-            if (_inventoryGrid == null) return null;
-
-            // Get the available slot from the inventory grid
-            var availableSlot = _inventoryGrid.FindNextAvailableSlot();
-            if (availableSlot != null)
-            {
-                return new Point(availableSlot.X, availableSlot.Y);
+                var skin = PitHeroSkin.CreateSkin();
+                var dialog = new MessageDialog(GetText(TextType.UI, UITextKey.ButtonActivateStencil),
+                    GetText(TextType.UI, UITextKey.StencilNoFreeSlots), skin);
+                dialog.Show(_stage);
+                Debug.Log($"No free stencil slots for: {pattern.Name}");
+                return;
             }
 
-            return null;
+            _inventoryGrid.PlaceStencil(pattern, targetAnchor.Value);
+            Debug.Log($"Activated stencil {pattern.Name} at ({targetAnchor.Value.X},{targetAnchor.Value.Y})");
+            UpdateStencilButtonStates();
         }
 
         private void PopulatePrioritiesTab(Tab prioritiesTab, Skin skin)

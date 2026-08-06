@@ -1655,6 +1655,56 @@ namespace PitHero.UI
                 Core.Services?.GetService<GameStateService>()?.SetPlacedStencil(pattern.Id, anchor.X, anchor.Y);
         }
 
+        /// <summary>Finds an anchor where the pattern fits entirely on enabled inventory slots without overlapping another stencil. Prefers anchors whose cells are all empty; cells holding items are acceptable. Returns null when no anchor fits.</summary>
+        public Point? FindFreeStencilAnchor(RolePlayingFramework.Synergies.SynergyPattern pattern)
+        {
+            if (pattern == null) return null;
+
+            // Build a coordinate lookup so per-offset cell checks are O(1)
+            var byCell = new InventorySlot[CELL_COUNT];
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                var d = slot.SlotData;
+                int idx = d.Y * GRID_WIDTH + d.X;
+                if (idx >= 0 && idx < CELL_COUNT) byCell[idx] = slot;
+            }
+
+            var anchor = FindStencilAnchorPass(pattern, byCell, true);
+            if (!anchor.HasValue) anchor = FindStencilAnchorPass(pattern, byCell, false);
+            return anchor;
+        }
+
+        /// <summary>Scans anchors row-major for one where every pattern cell is an enabled inventory slot free of other stencils and (optionally) empty.</summary>
+        private Point? FindStencilAnchorPass(RolePlayingFramework.Synergies.SynergyPattern pattern, InventorySlot[] byCell, bool requireEmptyCells)
+        {
+            var offsets = pattern.GridOffsets;
+            for (int y = 0; y < GRID_HEIGHT; y++)
+            {
+                for (int x = 0; x < GRID_WIDTH; x++)
+                {
+                    bool fits = true;
+                    for (int i = 0; i < offsets.Count; i++)
+                    {
+                        int cx = x + offsets[i].X;
+                        int cy = y + offsets[i].Y;
+                        if (cx < 0 || cx >= GRID_WIDTH || cy < 0 || cy >= GRID_HEIGHT) { fits = false; break; }
+
+                        var slot = byCell[cy * GRID_WIDTH + cx];
+                        if (slot == null || slot.SlotData.SlotType != InventorySlotType.Inventory) { fits = false; break; }
+                        if (requireEmptyCells && slot.SlotData.Item != null) { fits = false; break; }
+
+                        // Re-activating a pattern relocates it, so its own cells count as free
+                        var occupying = _stencilManager.FindStencilAtPosition(new Point(cx, cy));
+                        if (occupying != null && occupying.Pattern.Id != pattern.Id) { fits = false; break; }
+                    }
+                    if (fits) return new Point(x, y);
+                }
+            }
+            return null;
+        }
+
         /// <summary>Removes a stencil from the grid.</summary>
         public void RemoveStencil(PlacedStencil stencil)
         {
