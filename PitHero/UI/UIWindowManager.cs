@@ -27,6 +27,26 @@ namespace PitHero.UI
         // Track auto-scroll to hero setting
         private static bool _autoScrollToHeroEnabled = GameConfig.CameraAutoScrollToHeroDefault;
 
+        // Half-size position picked via free move (issue #364), reapplied whenever the persistent
+        // Half size is restored on a UI window close (the shrink itself re-centers X)
+        private static bool _hasFreeMoveHalfPosition;
+        private static int _freeMoveHalfX;
+        private static int _freeMoveHalfY;
+
+        /// <summary>Remembers the half-size position picked via free move for later Half restores</summary>
+        public static void SetFreeMoveHalfPosition(int x, int y)
+        {
+            _freeMoveHalfX = x;
+            _freeMoveHalfY = y;
+            _hasFreeMoveHalfPosition = true;
+        }
+
+        /// <summary>Forgets the free-move half position (docking or a monitor swap took over positioning)</summary>
+        public static void ClearFreeMoveHalfPosition()
+        {
+            _hasFreeMoveHalfPosition = false;
+        }
+
         /// <summary>
         /// Initialize the UI window manager with the game instance
         /// </summary>
@@ -277,6 +297,11 @@ namespace PitHero.UI
                     {
                         Debug.Log("[UIWindowManager] Already at Half size");
                     }
+
+                    // The shrink re-centers X; land on the position picked via free move instead.
+                    // This runs on every UI window's close path (settings, hero, monster, shop)
+                    if (_hasFreeMoveHalfPosition)
+                        WindowManager.MoveWindowClampedToCurrentDisplay(_game, _freeMoveHalfX, _freeMoveHalfY);
                     break;
             }
 
