@@ -86,7 +86,6 @@ namespace PitHero
 
             // Default horizontal behavior: center relative to previous
             int newX = prevX + (prevW - newWidth) / 2;
-            if (newX < 0) newX = 0;
 
             // Determine Y based on docking mode (fix: keep top-docked windows at top when shrinking)
             int newY;
@@ -119,9 +118,12 @@ namespace PitHero
                     // legacy behavior: anchor bottom edge as before
                     int bottomY = prevY + prevH; // previous bottom pixel
                     newY = bottomY - newHeight;
-                    if (newY < 0) newY = 0;
                     break;
             }
+
+            // Clamp inside display bounds (display-origin aware for secondary monitors)
+            ClampRectToBounds(ref newX, ref newY, newWidth, newHeight,
+                _currentDisplayBounds.x, _currentDisplayBounds.y, _currentDisplayBounds.w, _currentDisplayBounds.h);
 
             SDL.SDL_SetWindowSize(sdlWindow, newWidth, newHeight);
             SDL.SDL_SetWindowPosition(sdlWindow, newX, newY);
@@ -146,7 +148,6 @@ namespace PitHero
             SDL.SDL_GetWindowPosition(sdlWindow, out int prevX, out int prevY);
 
             int newX = prevX - (_originalWindowWidth - prevW) / 2;
-            if (newX < 0) newX = 0;
 
             int newY;
             switch (_currentDockMode)
@@ -168,10 +169,10 @@ namespace PitHero
                     break;
             }
 
-            // Clamp inside display bounds
-            if (newY < _currentDisplayBounds.y) newY = _currentDisplayBounds.y;
-            if (newY + _originalWindowHeight > _currentDisplayBounds.y + _currentDisplayBounds.h)
-                newY = _currentDisplayBounds.y + _currentDisplayBounds.h - _originalWindowHeight;
+            // Clamp inside display bounds (a full-display-width window pins X to the display edge,
+            // so restoring from an off-center half-size window can't hang past the right edge)
+            ClampRectToBounds(ref newX, ref newY, _originalWindowWidth, _originalWindowHeight,
+                _currentDisplayBounds.x, _currentDisplayBounds.y, _currentDisplayBounds.w, _currentDisplayBounds.h);
 
             SDL.SDL_SetWindowSize(sdlWindow, _originalWindowWidth, _originalWindowHeight);
             SDL.SDL_SetWindowPosition(sdlWindow, newX, newY);
