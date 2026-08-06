@@ -50,13 +50,25 @@ namespace PitHero.Tests
         }
         
         [TestMethod]
-        public void SynergyEffectAggregator_FourthInstance_DoesNotExceedCap()
+        public void SynergyEffectAggregator_FourthInstance_AddsSteeperDiminishedReturn()
         {
             // Act
             float multiplier = SynergyEffectAggregator.GetTotalMultiplier(4);
-            
-            // Assert: Should still be 1.75, fourth instance is rejected at aggregator level
-            Assert.AreEqual(1.75f, multiplier, 0.001f, "Fourth instance should be capped at 1.75x");
+
+            // Assert: 1.0 + 0.5 + 0.25 + 0.125 = 1.875
+            Assert.AreEqual(1.875f, multiplier, 0.001f, "Fourth instance should add a diminished 0.125");
+        }
+
+        [TestMethod]
+        public void SynergyEffectAggregator_ManyInstances_AsymptoteBelowTwo()
+        {
+            // Act
+            float multiplier = SynergyEffectAggregator.GetTotalMultiplier(100);
+
+            // Assert: Geometric decay bounds the total at 2.0 no matter how many copies stack
+            // (the true sum is always < 2.0; float rounding can land exactly on 2.0f)
+            Assert.IsTrue(multiplier <= 2.0f, "Total multiplier should never exceed 2.0");
+            Assert.IsTrue(multiplier > 1.99f, "Total multiplier should approach 2.0");
         }
         
         [TestMethod]
@@ -76,7 +88,8 @@ namespace PitHero.Tests
             Assert.AreEqual(1.0f, SynergyEffectAggregator.GetInstanceMultiplier(0), 0.001f, "First instance index 0 = 1.0");
             Assert.AreEqual(0.5f, SynergyEffectAggregator.GetInstanceMultiplier(1), 0.001f, "Second instance index 1 = 0.5");
             Assert.AreEqual(0.25f, SynergyEffectAggregator.GetInstanceMultiplier(2), 0.001f, "Third instance index 2 = 0.25");
-            Assert.AreEqual(0f, SynergyEffectAggregator.GetInstanceMultiplier(3), 0.001f, "Fourth instance index 3 = 0 (beyond cap)");
+            Assert.AreEqual(0.125f, SynergyEffectAggregator.GetInstanceMultiplier(3), 0.001f, "Fourth instance index 3 = 0.125 (continued decay)");
+            Assert.AreEqual(0.0625f, SynergyEffectAggregator.GetInstanceMultiplier(4), 0.001f, "Fifth instance index 4 = 0.0625");
             Assert.AreEqual(0f, SynergyEffectAggregator.GetInstanceMultiplier(-1), 0.001f, "Negative index = 0");
         }
         
@@ -225,30 +238,31 @@ namespace PitHero.Tests
         }
         
         [TestMethod]
-        public void ActiveSynergyGroup_TryAddInstance_RejectsAtMaxCap()
+        public void ActiveSynergyGroup_TryAddInstance_AcceptsBeyondThreeInstances()
         {
             // Arrange
             var pattern = CreateTestPattern("test");
             var group = new ActiveSynergyGroup(pattern);
-            
-            // Add max instances (3)
-            for (int i = 0; i < SynergyEffectAggregator.MaxInstancesPerPattern; i++)
+
+            // Add 3 instances (the normal-return region)
+            for (int i = 0; i < SynergyEffectAggregator.NormalReturnInstances; i++)
             {
-                var synergy = new ActiveSynergy(pattern, new Point(i * 10, 0), 
+                var synergy = new ActiveSynergy(pattern, new Point(i * 10, 0),
                     new List<Point> { new Point(i * 10, 0), new Point(i * 10 + 1, 0) });
                 group.TryAddInstance(synergy);
             }
-            
-            // Try to add 4th
-            var synergy4 = new ActiveSynergy(pattern, new Point(100, 0), 
+
+            // Add a 4th non-overlapping instance
+            var synergy4 = new ActiveSynergy(pattern, new Point(100, 0),
                 new List<Point> { new Point(100, 0), new Point(101, 0) });
-            
+
             // Act
             bool added4 = group.TryAddInstance(synergy4);
-            
-            // Assert
-            Assert.IsFalse(added4, "Fourth instance should be rejected at cap");
-            Assert.AreEqual(3, group.InstanceCount, "Group should have max 3 instances");
+
+            // Assert: no hard cap — the 4th copy is tracked and contributes diminished returns
+            Assert.IsTrue(added4, "Fourth non-overlapping instance should be accepted");
+            Assert.AreEqual(4, group.InstanceCount, "Group should have 4 instances");
+            Assert.AreEqual(1.875f, group.TotalMultiplier, 0.001f, "4 instances = 1.875x");
         }
         
         [TestMethod]
@@ -343,12 +357,12 @@ namespace PitHero.Tests
         }
         
         [TestMethod]
-        public void SynergyDetector_DetectSynergiesGrouped_CapsAtThreeInstances()
+        public void SynergyDetector_DetectSynergiesGrouped_TracksAllInstancesWithDiminishingReturns()
         {
             // Arrange
             var detector = new SynergyDetector();
             detector.RegisterPattern(KnightSynergyPatterns.CreateShieldMastery());
-            
+
             // Create grid with 5 separate sword+shield pairs
             var grid = new IItem[50, 8];
             for (int i = 0; i < 5; i++)
@@ -356,14 +370,14 @@ namespace PitHero.Tests
                 grid[i * 10, 0] = GearItems.ShortSword();
                 grid[i * 10 + 1, 0] = GearItems.WoodenShield();
             }
-            
+
             // Act
             var groups = detector.DetectSynergiesGrouped(grid, 50, 8);
-            
-            // Assert
+
+            // Assert: all 5 copies count, later ones at steeply diminished value
             Assert.AreEqual(1, groups.Count);
-            Assert.AreEqual(3, groups[0].InstanceCount, "Should cap at 3 instances even with 5 available");
-            Assert.AreEqual(1.75f, groups[0].TotalMultiplier, 0.001f, "3 instances = 1.75x");
+            Assert.AreEqual(5, groups[0].InstanceCount, "All 5 instances should be tracked");
+            Assert.AreEqual(1.9375f, groups[0].TotalMultiplier, 0.001f, "5 instances = 1.0+0.5+0.25+0.125+0.0625 = 1.9375x");
         }
         
         #endregion

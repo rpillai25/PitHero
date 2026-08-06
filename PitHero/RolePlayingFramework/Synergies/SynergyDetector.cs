@@ -70,7 +70,7 @@ namespace RolePlayingFramework.Synergies
         }
 
         /// <summary>
-        /// Detects all active synergies grouped by pattern, with overlap rejection and cap enforcement.
+        /// Detects all active synergies grouped by pattern, with overlap rejection.
         /// Issue #133 - Synergy Stacking System
         /// </summary>
         /// <param name="gridItems">2D array of items in the grid (null for empty slots).</param>
@@ -99,7 +99,7 @@ namespace RolePlayingFramework.Synergies
                 }
             }
 
-            // Group by pattern ID with overlap rejection and cap enforcement
+            // Group by pattern ID with overlap rejection
             var grouped = new Dictionary<string, ActiveSynergyGroup>();
 
             for (int i = 0; i < rawMatches.Count; i++)
@@ -113,7 +113,7 @@ namespace RolePlayingFramework.Synergies
                     grouped[id] = group;
                 }
 
-                // TryAddInstance handles overlap rejection and cap enforcement
+                // TryAddInstance handles overlap rejection
                 group.TryAddInstance(match);
             }
 

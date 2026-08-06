@@ -21,6 +21,14 @@ When a pattern is detected in the inventory, an **ActiveSynergy** is created tha
 - Accumulates synergy points earned through combat
 - Unlocks special skills when point thresholds are met
 
+**Stacking:** there is no limit on how many distinct patterns can be active at once, and no
+hard cap on copies of the same pattern. Non-overlapping copies of one pattern stack additively
+with diminishing returns (`SynergyEffectAggregator`): the first three copies are the
+normal-return region (1.0 / 0.5 / 0.25 → 1.75x total), and every copy past that keeps halving
+(0.125, 0.0625, ...), so the total multiplier asymptotes just under **2.0x** no matter how many
+copies are stacked. Copies that share an item with an already-counted copy are rejected
+(overlap rule). Synergy-point acceleration is capped separately at +70% (`MaxAccelerationCap`).
+
 ### 3. Synergy Effects
 
 Effects are modular and can be combined:
