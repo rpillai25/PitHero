@@ -134,6 +134,8 @@ namespace PitHero
         public const string SettingsDockTop = "SettingsDockTop";
         public const string SettingsDockBottom = "SettingsDockBottom";
         public const string SettingsDockCenter = "SettingsDockCenter";
+        public const string SettingsFreeMoveWindow = "SettingsFreeMoveWindow";
+        public const string SettingsExitFreeMove = "SettingsExitFreeMove";
         public const string SettingsGameSession = "SettingsGameSession";
         public const string SettingsReplenishLabel = "SettingsReplenishLabel";
         public const string SettingsReplenishThresholdHint = "SettingsReplenishThresholdHint";

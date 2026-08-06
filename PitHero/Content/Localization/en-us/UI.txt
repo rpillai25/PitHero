@@ -116,6 +116,8 @@ SettingsWindowSizeHalf,Half
 SettingsDockTop,Dock Top
 SettingsDockBottom,Dock Bottom
 SettingsDockCenter,Dock Center
+SettingsFreeMoveWindow,Free Move Window
+SettingsExitFreeMove,Exit Free Move
 SettingsGameSession,Game Session
 SettingsReplenishLabel,Replenish Button Thresholds
 SettingsReplenishThresholdHint,(HP or MP must be below this level to replenish)

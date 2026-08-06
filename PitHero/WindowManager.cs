@@ -291,6 +291,72 @@ namespace PitHero
         }
 
         /// <summary>
+        /// Clears dock tracking so later shrink/restore anchor to the window's current position
+        /// instead of snapping back to a dock (used by free-move mode).
+        /// </summary>
+        public static void ClearDockMode()
+        {
+            _currentDockMode = DockMode.None;
+            _currentDockYOffset = 0;
+        }
+
+        /// <summary>
+        /// Gets the window's position and size in global desktop coordinates. False if the SDL handle is unavailable.
+        /// </summary>
+        public static bool TryGetWindowRect(Game game, out int x, out int y, out int w, out int h)
+        {
+            x = y = w = h = 0;
+            IntPtr sdlWindow = game.Window.Handle;
+            if (sdlWindow == IntPtr.Zero)
+                return false;
+
+            SDL.SDL_GetWindowPosition(sdlWindow, out x, out y);
+            SDL.SDL_GetWindowSize(sdlWindow, out w, out h);
+            return true;
+        }
+
+        /// <summary>
+        /// Reads the global desktop mouse position. Returns true while the left button is held.
+        /// </summary>
+        public static bool GetGlobalMouseLeftDown(out float x, out float y)
+        {
+            return (SDL.SDL_GetGlobalMouseState(out x, out y) & SDL.SDL_MouseButtonFlags.SDL_BUTTON_LMASK) != 0;
+        }
+
+        /// <summary>
+        /// Moves the window to (x, y) clamped inside the current display's bounds. Supports negative desktop coordinates.
+        /// </summary>
+        public static void MoveWindowClampedToCurrentDisplay(Game game, int x, int y)
+        {
+            IntPtr sdlWindow = game.Window.Handle;
+            if (sdlWindow == IntPtr.Zero)
+                return;
+            EnsureCurrentDisplay(sdlWindow);
+
+            SDL.SDL_GetWindowSize(sdlWindow, out int winW, out int winH);
+            ClampRectToBounds(ref x, ref y, winW, winH,
+                _currentDisplayBounds.x, _currentDisplayBounds.y, _currentDisplayBounds.w, _currentDisplayBounds.h);
+            SDL.SDL_SetWindowPosition(sdlWindow, x, y);
+        }
+
+        /// <summary>
+        /// Clamps a window rect into display bounds. A window as wide/tall as the bounds pins to the
+        /// bounds origin on that axis, so full-display-width windows can only move vertically.
+        /// </summary>
+        public static void ClampRectToBounds(ref int x, ref int y, int winW, int winH, int bx, int by, int bw, int bh)
+        {
+            int maxX = bx + bw - winW;
+            if (maxX < bx) maxX = bx;
+            int maxY = by + bh - winH;
+            if (maxY < by) maxY = by;
+
+            if (x < bx) x = bx;
+            else if (x > maxX) x = maxX;
+            if (y < by) y = by;
+            else if (y > maxY) y = maxY;
+        }
+
+        /// <summary>
         /// Docks the window to the top of the screen with optional Y offset for fine-tuning.
         /// </summary>
         public static void DockTop(Game game, int yOffset = 0)
