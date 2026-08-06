@@ -108,7 +108,6 @@ TabButtons,UI Buttons
 SettingsAlwaysOnTop,Always On Top
 SettingsAutoScrollToHero,Auto-scroll to Hero
 SettingsSwapMonitor,Swap Monitor
-SettingsYOffset,Y Offset: {0}
 SettingsZoom,Zoom: {0}x
 SettingsWindowSize,Window Size:
 SettingsWindowSizeNormal,Normal

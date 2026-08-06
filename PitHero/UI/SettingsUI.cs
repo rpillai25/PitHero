@@ -30,12 +30,10 @@ namespace PitHero.UI
         private Tab _automationTab;
 
         // Window positioning controls
-        private EnhancedSlider _yOffsetSlider;
         private EnhancedSlider _zoomSlider;
         private TextButton _dockTopButton;
         private TextButton _dockBottomButton;
         private TextButton _dockCenterButton;
-        private Label _yOffsetLabel;
         private Label _zoomLabel;
         private TextButton _resetZoomButton;
 
@@ -137,18 +135,10 @@ namespace PitHero.UI
 
         private Game _game;
         private TextService _textService;
-        private int _currentYOffset = 0;
         private bool _isDockedTop = false;
         private bool _isDockedBottom = true; // Default to bottom dock
         private bool _isDockedCenter = false;
         private bool _alwaysOnTop = true; // Track current always-on-top state
-
-        // Smooth scrolling animation
-        private bool _isAnimatingToOffset = false;
-        private float _animationStartOffset;
-        private float _animationTargetOffset;
-        private float _animationDuration = 0.3f; // 300ms
-        private float _animationTimer = 0f;
 
         // Track previous shrink mode so we can restore it after closing settings
         private bool _prevWasHalfShrink = false;
@@ -610,59 +600,6 @@ namespace PitHero.UI
             scrollContent.Add(_autoScrollToHeroCheckBox).Left().SetPadBottom(15);
             scrollContent.Row();
 
-            // Swap Monitor button
-            _swapMonitorButton = new TextButton(GetText(TextType.UI, UITextKey.SettingsSwapMonitor), skin, "ph-default");
-            _swapMonitorButton.OnClicked += (button) =>
-            {
-                WindowManager.SwapToNextMonitor(_game);
-                // The saved free-move position belongs to the previous monitor
-                UIWindowManager.ClearFreeMoveHalfPosition();
-                // Reapply current docking after monitor swap
-                ApplyCurrentWindowPosition();
-            };
-            scrollContent.Add(_swapMonitorButton).Width(100f).Height(24f).SetPadBottom(15);
-            scrollContent.Row();
-
-            // Y Offset slider (left-aligned label)
-            _yOffsetLabel = new Label(string.Format(GetText(TextType.UI, UITextKey.SettingsYOffset), 0), skin, "ph-default");
-            scrollContent.Add(_yOffsetLabel).Left().SetPadBottom(10);
-            scrollContent.Row();
-
-
-            // Create table for y offset slider and reset button side by side
-            var yOffsetTable = new Table();
-
-            // Create enhanced slider with initial range for bottom dock
-            _yOffsetSlider = new EnhancedSlider(-200, 0, 1, false, skin, null, false);
-            _yOffsetSlider.SetValueAndCommit(0);
-
-            // Update label during dragging (immediate feedback)
-            _yOffsetSlider.OnChanged += (value) =>
-            {
-                _yOffsetLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsYOffset), (int)value));
-            };
-
-            // Apply window position when value is committed (mouse released)
-            _yOffsetSlider.OnValueCommitted += (value) =>
-            {
-                _currentYOffset = (int)value;
-                StartSmoothScrollToOffset(_currentYOffset);
-            };
-
-            yOffsetTable.Add(_yOffsetSlider).Width(240).SetPadRight(10);
-
-            // Reset Y Offset button
-            var resetYOffsetButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonReset), skin, "ph-default");
-            resetYOffsetButton.OnClicked += (button) =>
-            {
-                _yOffsetSlider.SetValueAndCommit(0);
-                _yOffsetLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsYOffset), 0));
-            };
-            yOffsetTable.Add(resetYOffsetButton).Width(50).Height(16f);
-
-            scrollContent.Add(yOffsetTable).SetPadBottom(20);
-            scrollContent.Row();
-
             // Zoom level slider with reset button (left-aligned label)
             _zoomLabel = new Label(string.Format(GetText(TextType.UI, UITextKey.SettingsZoom), GameConfig.CameraDefaultZoom.ToString("F2")), skin, "ph-default");
             scrollContent.Add(_zoomLabel).Left().SetPadBottom(10);
@@ -746,6 +683,19 @@ namespace PitHero.UI
             windowSizeTable.Add(_halfSizeButton);
 
             scrollContent.Add(windowSizeTable).Left().SetPadBottom(20);
+            scrollContent.Row();
+
+            // Swap Monitor button
+            _swapMonitorButton = new TextButton(GetText(TextType.UI, UITextKey.SettingsSwapMonitor), skin, "ph-default");
+            _swapMonitorButton.OnClicked += (button) =>
+            {
+                WindowManager.SwapToNextMonitor(_game);
+                // The saved free-move position belongs to the previous monitor
+                UIWindowManager.ClearFreeMoveHalfPosition();
+                // Reapply current docking after monitor swap
+                ApplyCurrentWindowPosition();
+            };
+            scrollContent.Add(_swapMonitorButton).Width(100f).Height(24f).SetPadBottom(10);
             scrollContent.Row();
 
             // Dock buttons
@@ -2191,9 +2141,6 @@ namespace PitHero.UI
             if (anyNonFarmPanelOpen && (IsFarmSubMenuOpen || IsTillModeActive || IsBuildingModeActive || IsSeedModeActive || IsRemoveCropsModeActive || IsHarvestedCropsModeActive))
                 DismissAllFarmUI();
 
-            // Update smooth scrolling animation
-            UpdateSmoothScrolling();
-
             // Update gear button style dynamically when shrink mode changes
             UpdateGearButtonStyleIfNeeded();
 
@@ -2270,10 +2217,6 @@ namespace PitHero.UI
             _isDockedTop = true;
             _isDockedBottom = false;
             _isDockedCenter = false;
-            _currentYOffset = 0;
-            UpdateSliderRange(0, 200);
-            _yOffsetSlider.SetValueAndCommit(0);
-            _yOffsetLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsYOffset), 0));
             ApplyCurrentWindowPosition();
         }
 
@@ -2282,10 +2225,6 @@ namespace PitHero.UI
             _isDockedTop = false;
             _isDockedBottom = true;
             _isDockedCenter = false;
-            _currentYOffset = 0;
-            UpdateSliderRange(-200, 0);
-            _yOffsetSlider.SetValueAndCommit(0);
-            _yOffsetLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsYOffset), 0));
             ApplyCurrentWindowPosition();
         }
 
@@ -2294,96 +2233,26 @@ namespace PitHero.UI
             _isDockedTop = false;
             _isDockedBottom = false;
             _isDockedCenter = true;
-            _currentYOffset = 0;
-            UpdateSliderRange(-200, 200);
-            _yOffsetSlider.SetValueAndCommit(0);
-            _yOffsetLabel.SetText(string.Format(GetText(TextType.UI, UITextKey.SettingsYOffset), 0));
             ApplyCurrentWindowPosition();
-        }
-
-        private void UpdateSliderRange(float min, float max)
-        {
-            _yOffsetSlider.SetMinMax(min, max);
-        }
-
-        /// <summary>
-        /// Starts smooth scrolling animation to the target offset
-        /// </summary>
-        private void StartSmoothScrollToOffset(int targetOffset)
-        {
-            if (_isAnimatingToOffset)
-            {
-                // If already animating, update the target
-                _animationTargetOffset = targetOffset;
-            }
-            else
-            {
-                _animationStartOffset = _currentYOffset;
-                _animationTargetOffset = targetOffset;
-                _animationTimer = 0f;
-                _isAnimatingToOffset = true;
-            }
-        }
-
-        /// <summary>
-        /// Updates smooth scrolling animation
-        /// </summary>
-        private void UpdateSmoothScrolling()
-        {
-            if (!_isAnimatingToOffset)
-                return;
-
-            _animationTimer += Time.DeltaTime;
-            float progress = Math.Min(1f, _animationTimer / _animationDuration);
-
-            // Use easing for smooth animation (ease out)
-            float easedProgress = 1f - (1f - progress) * (1f - progress);
-
-            float currentOffset = _animationStartOffset + (_animationTargetOffset - _animationStartOffset) * easedProgress;
-
-            // Apply the interpolated position
-            int roundedOffset = (int)Math.Round(currentOffset);
-            if (_isDockedTop)
-            {
-                WindowManager.DockTop(_game, roundedOffset);
-            }
-            else if (_isDockedBottom)
-            {
-                WindowManager.DockBottom(_game, roundedOffset);
-            }
-            else if (_isDockedCenter)
-            {
-                WindowManager.DockCenter(_game, roundedOffset);
-            }
-
-            // Check if animation is complete
-            if (progress >= 1f)
-            {
-                _isAnimatingToOffset = false;
-                _currentYOffset = (int)_animationTargetOffset;
-            }
         }
 
         private void ApplyCurrentWindowPosition()
         {
-            // Stop any ongoing animation and apply immediately
-            _isAnimatingToOffset = false;
-
             // Docking takes over positioning: forget any free-move dragged position
             if (_isDockedTop || _isDockedBottom || _isDockedCenter)
                 UIWindowManager.ClearFreeMoveHalfPosition();
 
             if (_isDockedTop)
             {
-                WindowManager.DockTop(_game, _currentYOffset);
+                WindowManager.DockTop(_game);
             }
             else if (_isDockedBottom)
             {
-                WindowManager.DockBottom(_game, _currentYOffset);
+                WindowManager.DockBottom(_game);
             }
             else if (_isDockedCenter)
             {
-                WindowManager.DockCenter(_game, _currentYOffset);
+                WindowManager.DockCenter(_game);
             }
         }
 
@@ -2409,7 +2278,6 @@ namespace PitHero.UI
 
             // Forget docking so the exit-time shrink/restore anchors to the dragged position
             // instead of snapping back to the old dock
-            _isAnimatingToOffset = false;
             _isDockedTop = false;
             _isDockedBottom = false;
             _isDockedCenter = false;

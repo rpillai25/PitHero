@@ -126,7 +126,6 @@ namespace PitHero
         public const string SettingsAlwaysOnTop = "SettingsAlwaysOnTop";
         public const string SettingsAutoScrollToHero = "SettingsAutoScrollToHero";
         public const string SettingsSwapMonitor = "SettingsSwapMonitor";
-        public const string SettingsYOffset = "SettingsYOffset";
         public const string SettingsZoom = "SettingsZoom";
         public const string SettingsWindowSize = "SettingsWindowSize";
         public const string SettingsWindowSizeNormal = "SettingsWindowSizeNormal";
