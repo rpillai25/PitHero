@@ -46,7 +46,7 @@ interpretation caveats that are not obvious from the raw data.
 | `e` | Fields | Notes |
 |---|---|---|
 | `pit_generated` | `pitLevel`, `pitTier`, `isBossFloor`, `monsterCount`, `chestCount` | Fires on every pit (re)generation, including the initial load-time generation. `isBossFloor` comes from `CaveBiomeConfig.IsBossFloor` — see caveat below. `pitTier` is 1 until the player completes pit 25, after which it increments and `pitLevel` resets to 1 for the new tier. |
-| `chest_spawned` | `pitLevel`, `pitTier`, `x`, `y`, `chestLevel` (1–5), `item`, `kind`, `rarity`, optional `seedType` + `seedCount` | Contents decided at spawn time. `item` is `null` for seed chests. |
+| `chest_spawned` | `pitLevel`, `pitTier`, `x`, `y`, `chestLevel` (1–5), `item`, `kind`, `rarity`, optional `seedType` + `seedCount`, optional `stencilPatternId` | Contents decided at spawn time. `item` is `null` for seed chests and stencil chests. `stencilPatternId` is present (non-null) only for stencil chests (issue #362); when present the chest is always level 4 (purple). |
 | `monster_spawned` | `pitLevel`, `pitTier`, `x`, `y`, `name`, `enemyId`, `level`, `maxHP`, `isBoss` | `level` is the enemy's own level (often a per-type preset — see caveats). |
 | `trap_triggered` | `pitLevel`, `x`, `y`, `damage` | Hero stepped on a hidden trap. `damage` is the clamped value actually applied (hero's HP is never reduced below 1 out-of-battle). Formula: `5 + (tier-1)*25*2 + pitLevel * 2` (effective depth scaling) before clamping. |
 | `trap_disarmed` | `pitLevel`, `x`, `y` | A party member with the TrapSense passive auto-disarmed a trap when fog was cleared over it. No damage dealt. |

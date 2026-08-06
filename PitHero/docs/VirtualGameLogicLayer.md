@@ -160,6 +160,12 @@ same-seed ⇒ identical-event-stream determinism test that catches accidental dr
   Delta-Plan gap: the virtual layer has no synergy/stencil model, so nothing is protected,
   all rarities are sellable, and the per-consumable sell selections / min-stack floors (v26)
   are not applied; selling consumes no RNG, so parity is unaffected either way.
+- **Stencil chest drops (issue #362):** `TreasureComponent.InitializeForPitLevel` gates the
+  stencil branch on `Core.Instance != null`. Because the virtual layer runs headless (no Nez
+  core), stencil chests are never generated in `VirtualPitGenerator`. This is the same gap as
+  seed chests — neither stencil nor seed contents affect the combat/balance metrics the
+  virtual layer is designed to measure. No RNG is consumed by the absent branch, so parity
+  with live RNG streams is unaffected.
 
 ## Metrics & CSV Reference
 

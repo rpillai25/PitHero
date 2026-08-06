@@ -92,6 +92,104 @@ namespace PitHero.Tests
 
     }
 
+    /// <summary>
+    /// Tests for the IBagSlotPreferenceProvider seam introduced in issue #362.
+    /// Uses a lightweight fake provider to verify ItemBag honors/ignores the hint correctly.
+    /// </summary>
+    [TestClass]
+    public class ItemBagSlotProviderSeamTests
+    {
+        // A simple provider that always returns a fixed preferred slot.
+        private sealed class FixedSlotProvider : RolePlayingFramework.Inventory.IBagSlotPreferenceProvider
+        {
+            private readonly int _slot;
+            public FixedSlotProvider(int slot) { _slot = slot; }
+            public int GetPreferredEmptySlot(RolePlayingFramework.Inventory.ItemBag bag, RolePlayingFramework.Equipment.IItem item) => _slot;
+        }
+
+        [TestMethod]
+        public void ItemBag_Provider_PreferredEmptySlotIsHonored()
+        {
+            var bag = new RolePlayingFramework.Inventory.ItemBag("Test", 10);
+            bag.SlotPreferenceProvider = new FixedSlotProvider(7);
+
+            var sword = GearItems.ShortSword();
+            Assert.IsTrue(bag.TryAdd(sword));
+
+            Assert.AreSame(sword, bag.GetSlotItem(7),
+                "Provider preference of slot 7 should be honored when that slot is empty");
+        }
+
+        [TestMethod]
+        public void ItemBag_Provider_OutOfRangeIndexFallsBackToFirstEmpty()
+        {
+            var bag = new RolePlayingFramework.Inventory.ItemBag("Test", 4);
+            // Provider returns index 99 which is >= capacity (4)
+            bag.SlotPreferenceProvider = new FixedSlotProvider(99);
+
+            var sword = GearItems.ShortSword();
+            Assert.IsTrue(bag.TryAdd(sword));
+
+            // Should fall back to slot 0 (first empty)
+            Assert.AreSame(sword, bag.GetSlotItem(0),
+                "Out-of-range preferred index must fall back to first-empty slot");
+        }
+
+        [TestMethod]
+        public void ItemBag_Provider_OccupiedPreferredIndexFallsBackToFirstEmpty()
+        {
+            var bag = new RolePlayingFramework.Inventory.ItemBag("Test", 10);
+            // Pre-occupy slot 5
+            var existing = GearItems.IronHelm();
+            bag.SetSlotItem(5, existing);
+
+            // Provider always returns 5, which is occupied
+            bag.SlotPreferenceProvider = new FixedSlotProvider(5);
+
+            var incoming = GearItems.ShortSword();
+            Assert.IsTrue(bag.TryAdd(incoming));
+
+            // Slot 5 is occupied; incoming must go to the first empty slot (slot 0)
+            Assert.AreSame(existing, bag.GetSlotItem(5), "Pre-existing item at slot 5 should not move");
+            Assert.AreSame(incoming, bag.GetSlotItem(0),
+                "Occupied preferred slot must fall back to first-empty (slot 0)");
+        }
+
+        [TestMethod]
+        public void ItemBag_Provider_ConsumableStackingWinsOverPreference()
+        {
+            var bag = new RolePlayingFramework.Inventory.ItemBag("Test", 10);
+            // Pre-stack at slot 3
+            var existingPotion = PotionItems.HPPotion();
+            bag.SetSlotItem(3, existingPotion);
+
+            // Provider would steer to slot 7, but stacking must take priority
+            bag.SlotPreferenceProvider = new FixedSlotProvider(7);
+
+            var incoming = PotionItems.HPPotion();
+            Assert.IsTrue(bag.TryAdd(incoming));
+
+            Assert.AreEqual(2, existingPotion.StackCount,
+                "Consumable stacking must win over provider preference — stack count should be 2");
+            Assert.IsNull(bag.GetSlotItem(7),
+                "Provider's preferred slot (7) must remain empty when stacking absorbed the item");
+        }
+
+        [TestMethod]
+        public void ItemBag_NullProvider_BehavesAsBeforeProviderSeam()
+        {
+            var bag = new RolePlayingFramework.Inventory.ItemBag("Test", 10);
+            // SlotPreferenceProvider defaults to null — no change in behavior expected
+            Assert.IsNull(bag.SlotPreferenceProvider);
+
+            var sword = GearItems.ShortSword();
+            bag.TryAdd(sword);
+
+            Assert.AreSame(sword, bag.GetSlotItem(0),
+                "Null provider: item must land at slot 0 (first-empty scan as before)");
+        }
+    }
+
     [TestClass]
     public class RarityAndHPMPBonusTests
     {

@@ -807,7 +807,8 @@ namespace PitHero
 
                     Services.Analytics.AnalyticsService.LogChestSpawned(currentPitLevel, tilePos.X, tilePos.Y,
                         treasureComponent.Level, treasureComponent.ContainedItem,
-                        treasureComponent.ContainedSeedType?.ToString(), treasureComponent.ContainedSeedCount);
+                        treasureComponent.ContainedSeedType?.ToString(), treasureComponent.ContainedSeedCount,
+                        treasureComponent.ContainedStencilPatternId);
                 }
                 else if (tag == GameConfig.TAG_WIZARD_ORB)
                 {

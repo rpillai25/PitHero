@@ -150,8 +150,10 @@ namespace PitHero.UI
             _contentTable.Add(nameLabel).Left();
             _contentTable.Row();
 
-            // Instance count and multiplier
-            var instanceText = string.Format(GetText(TextType.UI, UITextKey.SkillActiveMultiplier), instanceCount, multiplier);
+            // Instance count and multiplier, truncated (not rounded) to 2 decimals so the
+            // display never overstates the bonus (e.g. 1.9375 shows as 1.93, not 1.94)
+            var truncatedMultiplier = System.MathF.Truncate(multiplier * 100f) / 100f;
+            var instanceText = string.Format(GetText(TextType.UI, UITextKey.SkillActiveMultiplier), instanceCount, truncatedMultiplier);
             var instanceLabel = new Label(SanitizeText(instanceText), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = SynergyGreen });
             _contentTable.Add(instanceLabel).Left();
             _contentTable.Row();

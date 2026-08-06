@@ -1502,7 +1502,7 @@ namespace PitHero.UI
         }
 
         /// <summary>Grays out (or restores) a text button, disabling hover and clicks while inactive.</summary>
-        private static void SetButtonActive(TextButton button, bool active, Skin skin)
+        public static void SetButtonActive(TextButton button, bool active, Skin skin)
         {
             if (button == null)
                 return;

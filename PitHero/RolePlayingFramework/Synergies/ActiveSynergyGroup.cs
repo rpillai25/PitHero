@@ -23,7 +23,7 @@ namespace RolePlayingFramework.Synergies
 
         /// <summary>
         /// Total additive multiplier for effects based on instance count.
-        /// Uses diminishing returns: 1 instance = 1.0, 2 = 1.5, 3 = 1.75
+        /// Uses diminishing returns: 1 instance = 1.0, 2 = 1.5, 3 = 1.75, then asymptotes below 2.0.
         /// </summary>
         public float TotalMultiplier => SynergyEffectAggregator.GetTotalMultiplier(InstanceCount);
 
@@ -32,21 +32,18 @@ namespace RolePlayingFramework.Synergies
         public ActiveSynergyGroup(SynergyPattern pattern)
         {
             Pattern = pattern;
-            _instances = new List<ActiveSynergy>(SynergyEffectAggregator.MaxInstancesPerPattern);
+            _instances = new List<ActiveSynergy>(SynergyEffectAggregator.NormalReturnInstances);
         }
 
         /// <summary>
         /// Attempts to add an instance to this group.
-        /// Rejects if max instances reached or if instance overlaps with existing ones.
+        /// Rejects only if the instance overlaps items with an existing one; extra copies
+        /// are always tracked and contribute via diminishing returns.
         /// </summary>
         /// <param name="instance">The instance to add.</param>
-        /// <returns>True if added, false if rejected due to cap or overlap.</returns>
+        /// <returns>True if added, false if rejected due to overlap.</returns>
         public bool TryAddInstance(ActiveSynergy instance)
         {
-            // Check cap
-            if (_instances.Count >= SynergyEffectAggregator.MaxInstancesPerPattern)
-                return false;
-
             // Check overlap with existing instances
             for (int i = 0; i < _instances.Count; i++)
             {

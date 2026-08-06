@@ -21,6 +21,14 @@ When a pattern is detected in the inventory, an **ActiveSynergy** is created tha
 - Accumulates synergy points earned through combat
 - Unlocks special skills when point thresholds are met
 
+**Stacking:** there is no limit on how many distinct patterns can be active at once, and no
+hard cap on copies of the same pattern. Non-overlapping copies of one pattern stack additively
+with diminishing returns (`SynergyEffectAggregator`): the first three copies are the
+normal-return region (1.0 / 0.5 / 0.25 → 1.75x total), and every copy past that keeps halving
+(0.125, 0.0625, ...), so the total multiplier asymptotes just under **2.0x** no matter how many
+copies are stacked. Copies that share an item with an already-counted copy are rejected
+(overlap rule). Synergy-point acceleration is capped separately at +70% (`MaxAccelerationCap`).
+
 ### 3. Synergy Effects
 
 Effects are modular and can be combined:
@@ -37,6 +45,7 @@ RolePlayingFramework/Synergies/
 ├── SynergyPattern.cs           # Pattern definition
 ├── ActiveSynergy.cs            # Active pattern instance
 ├── SynergyDetector.cs          # Pattern detection engine
+├── SynergyPatternRegistry.cs   # Single shared registry of all 63 patterns (canonical slot order)
 ├── StatBonusEffect.cs          # Stat bonus implementation
 ├── SkillModifierEffect.cs      # Skill modifier implementation
 ├── PassiveAbilityEffect.cs     # Passive ability implementation
@@ -383,18 +392,82 @@ public sealed class PassiveAbilityEffect : ISynergyEffect
 3. Confirm synergy ID matches pattern ID
 4. Check that active synergy exists
 
+## SynergyPatternRegistry
+
+`SynergyPatternRegistry` (in `RolePlayingFramework/Synergies/SynergyPatternRegistry.cs`) is the
+**single source of truth** for all patterns. It is initialized once at startup via a static
+constructor (AOT-safe, no reflection) and exposes:
+
+- `All` — `IReadOnlyList<SynergyPattern>` (63 patterns) in canonical stencil library panel slot order.
+- `GetById(string id)` — O(1) dictionary lookup; returns null for unknown / null ids.
+
+Always use `SynergyPatternRegistry.All` and `GetById` rather than constructing patterns directly.
+The canonical order matches the HeroUI stencil-library panel so slot indices are stable.
+
+## Placed-Stencil Persistence
+
+When the player places a stencil onto the inventory grid, the position is mirrored as a non-UI
+snapshot in `GameStateService.PlacedStencils` (`List<PlacedStencilRecord>`, each record holding
+`PatternId`, `AnchorX`, `AnchorY`).
+
+**API on `GameStateService`:**
+- `SetPlacedStencil(patternId, anchorX, anchorY)` — upserts (same patternId replaces the old record).
+- `RemovePlacedStencil(patternId)` — no-op when absent.
+- `ClearPlacedStencils()` — removes all records.
+
+This list is persisted in **save v27, section 44** (appended after section 43, gated
+`fileVersion >= 27`). Older files (v17–v26) recover with an empty list; the grid re-mirrors
+placements on its next `ConnectToHero` call after loading.
+
+`SaveLoadService` copies `GameStateService.PlacedStencils ↔ SaveData.PlacedStencils`
+(`List<SavedPlacedStencil>`) on save and load respectively.
+
+## Auto-Slotting (StencilBagSlotPreferenceProvider)
+
+`StencilBagSlotPreferenceProvider` implements `IBagSlotPreferenceProvider` and steers incoming
+bag items toward the first empty stencil cell whose `RequiredKind` matches the item's `ItemKind`.
+
+**Rules (in priority order):**
+1. **Consumable stacking always wins.** If the bag already has a non-full stack of the same
+   consumable, the item absorbs into it — the provider is never consulted.
+2. **First matching empty cell wins.** The provider iterates `PlacedStencils` in list order
+   (placement order). Within each stencil, it iterates the pattern's offsets in definition order.
+   The first cell whose kind matches and whose bag slot is empty is returned.
+3. **Out-of-bounds cells are skipped.** Only cells in grid rows 3–8 (the 120 bag slots,
+   `bagIndex = (gridY-3)*20 + gridX`) and columns 0–19 are valid.
+4. **Occupied cells are skipped.** If the preferred slot is already taken the provider returns -1
+   for that candidate and the next valid candidate is tried.
+5. **Fallback to first-empty.** A return value of -1 from the provider causes `ItemBag.TryAdd`
+   to fall back to the traditional first-empty scan.
+
+The provider is set on `ItemBag.SlotPreferenceProvider`. A test constructor
+`StencilBagSlotPreferenceProvider(GameStateService)` is available for headless unit tests.
+
+## Chest Stencil Drops
+
+Chests at pit level 2+ have an **8% chance** (`BalanceConfig.StencilChestDropRate = 0.08f`) to
+yield an undiscovered stencil instead of normal loot. This branch:
+- Collects all `SynergyPatternRegistry.All` entries where `HasStencil && !IsStencilDiscovered`.
+- If any candidates exist, rolls the 8% chance, picks one at random, and sets
+  `TreasureComponent.ContainedStencilPatternId` to its pattern ID.
+- The chest becomes **purple** (level 4, `GameConfig.TREASURE_SHADE_4` color-matches-contents rule).
+- After pickup via `OpenChestAction`, the pattern is discovered with source `StencilDiscoverySource.LootReward`.
+- **Headless / test path:** the stencil branch requires `Core.Instance != null` to reach
+  `GameStateService`; in the test harness (Core absent) the branch is fully inert.
+- **VirtualPitGenerator gap:** stencil drops are not simulated in the virtual layer (same gap as seed chests).
+
 ## Version History
 
-### v1.0.0 (Current)
+### v1.0.0
 - Initial implementation of core synergy system
 - Pattern detection engine
 - Four effect types implemented
 - Integration with Hero and HeroCrystal
-- Comprehensive unit tests (20 tests)
+- Comprehensive unit tests
 - Example patterns demonstrating system
 
-### Planned v1.1.0
-- Visual UI integration
-- Synergy discovery system
-- Pattern rotation support
-- Additional effect types
+### v1.1.0 (issue #362)
+- `SynergyPatternRegistry` — single source of truth (63 patterns, AOT-safe static init)
+- Placed-stencil snapshot: `GameStateService.PlacedStencils` + persistence in save v27 section 44
+- Auto-slotting: `IBagSlotPreferenceProvider` seam on `ItemBag`, `StencilBagSlotPreferenceProvider`
+- Chest stencil drops: 8% on level-2+ chests, purple chest, `LootReward` source

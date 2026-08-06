@@ -241,6 +241,14 @@ namespace PitHero.Services
         public Color ShirtColor;
     }
 
+    /// <summary>Lightweight struct representing a placed stencil saved to disk (v27).</summary>
+    public struct SavedPlacedStencil
+    {
+        public string PatternId;
+        public int AnchorX;
+        public int AnchorY;
+    }
+
     /// <summary>One party member's tavern-dining state for the day (issue #319).</summary>
     public struct SavedDiningRecord
     {
@@ -255,15 +263,16 @@ namespace PitHero.Services
     public class SaveData : IPersistable
     {
         /// <summary>Current save file version.</summary>
-        public const int CurrentVersion = 26;
+        public const int CurrentVersion = 27;
 
         /// <summary>
-        /// Oldest save file version this build can still load. v17–v25 files are byte-exact
-        /// prefixes of v26 (sections 33 dining, 34 automation, 35 auto-dine resume,
+        /// Oldest save file version this build can still load. v17–v26 files are byte-exact
+        /// prefixes of v27 (sections 33 dining, 34 automation, 35 auto-dine resume,
         /// 36 auto-sell excess items, 37 auto-sell priority, 38 gear sell types,
         /// 39 auto-purchase items, 40 auto-equip, 41 auto-hire mercenaries,
-        /// 42 auto-learn hero skills, and 43 consumable sell options were appended at
-        /// the end), so they load with default state for the missing sections.
+        /// 42 auto-learn hero skills, 43 consumable sell options, and
+        /// 44 placed stencils were appended at the end), so they load with default
+        /// state for the missing sections.
         /// </summary>
         public const int MinSupportedVersion = 17;
 
@@ -587,6 +596,10 @@ namespace PitHero.Services
         /// <summary>Minimum stacks to keep per catalog consumable, indexed by ConsumableCatalog index. Null until Recover normalizes it.</summary>
         public int[] AutoSellConsumableMinStacks;
 
+        // Placed stencils (v27)
+        /// <summary>Stencils currently placed on the inventory grid.</summary>
+        public List<SavedPlacedStencil> PlacedStencils;
+
         /// <summary>Initializes a new SaveData with default empty collections.</summary>
         public SaveData()
         {
@@ -620,6 +633,7 @@ namespace PitHero.Services
             DroppedCrops = new List<SavedDroppedCrop>();
             DefeatedMonsterTypes = new List<string>();
             PartyDining = CreateDefaultDiningRecords();
+            PlacedStencils = new List<SavedPlacedStencil>();
         }
 
         /// <summary>Creates the default 3-slot dining record array (no orders, no meals).</summary>
@@ -1057,6 +1071,16 @@ namespace PitHero.Services
                 writer.Write(AutoSellConsumableMinStacks != null && i < AutoSellConsumableMinStacks.Length
                     ? AutoSellConsumableMinStacks[i]
                     : 1);
+            }
+
+            // 44. Placed stencils (v27)
+            int stencilCount = PlacedStencils != null ? PlacedStencils.Count : 0;
+            writer.Write(stencilCount);
+            for (int i = 0; i < stencilCount; i++)
+            {
+                writer.Write(PlacedStencils[i].PatternId ?? string.Empty);
+                writer.Write(PlacedStencils[i].AnchorX);
+                writer.Write(PlacedStencils[i].AnchorY);
             }
         }
 
@@ -1612,6 +1636,21 @@ namespace PitHero.Services
                         AutoSellConsumableSelected[i] = selected;
                         AutoSellConsumableMinStacks[i] = minStacks;
                     }
+                }
+            }
+
+            // 44. Placed stencils (v27+). Older files default to no placed stencils.
+            PlacedStencils = new List<SavedPlacedStencil>();
+            if (fileVersion >= 27)
+            {
+                int placedCount = reader.ReadInt();
+                for (int i = 0; i < placedCount; i++)
+                {
+                    SavedPlacedStencil s;
+                    s.PatternId = reader.ReadString();
+                    s.AnchorX = reader.ReadInt();
+                    s.AnchorY = reader.ReadInt();
+                    PlacedStencils.Add(s);
                 }
             }
         }

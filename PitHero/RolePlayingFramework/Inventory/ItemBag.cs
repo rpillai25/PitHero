@@ -22,6 +22,9 @@ namespace RolePlayingFramework.Inventory
         /// <summary>Non-null items in insertion/slot order (reused list, do not modify).</summary>
         public IReadOnlyList<IItem> Items { get { EnsureCompact(); return _compact; } }
 
+        /// <summary>Optional provider that steers incoming items toward a preferred empty slot (e.g. stencil cells). Null means default first-empty scan.</summary>
+        public IBagSlotPreferenceProvider SlotPreferenceProvider { get; set; }
+
         public ItemBag(string bagName = "Inventory", int capacity = 120)
         {
             BagName = bagName;
@@ -56,6 +59,20 @@ namespace RolePlayingFramework.Inventory
             }
 
             if (IsFull) return false;
+
+            // Ask the preference provider for a preferred empty slot (e.g. a matching stencil cell).
+            // Consumable stacking above already had first crack; stacking always wins over stencil cells.
+            if (SlotPreferenceProvider != null)
+            {
+                int pref = SlotPreferenceProvider.GetPreferredEmptySlot(this, item);
+                if (pref >= 0 && pref < _slots.Length && _slots[pref] == null)
+                {
+                    _slots[pref] = item;
+                    _count++;
+                    _compactDirty = true;
+                    return true;
+                }
+            }
 
             // If not stackable or no existing stack found, add to first empty slot
             for (int i = 0; i < _slots.Length; i++)

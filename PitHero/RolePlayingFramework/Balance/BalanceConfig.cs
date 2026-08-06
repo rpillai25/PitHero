@@ -144,6 +144,14 @@ namespace RolePlayingFramework.Balance
         /// </summary>
         public const float SeedChestDropRate = 0.10f;
 
+        /// <summary>
+        /// Probability that a chest of level 2 or higher contains an undiscovered stencil pattern instead of normal loot.
+        /// The RNG roll is only made when at least one undiscovered stencil exists, so late-game RNG streams are
+        /// unaffected once all stencils have been found.
+        /// 0.08 = 8% of eligible chests.
+        /// </summary>
+        public const float StencilChestDropRate = 0.08f;
+
         /// <summary>Drop weight multiplier for gear matching the hero's job class.</summary>
         public const int LootWeightHeroJob = 4;
 

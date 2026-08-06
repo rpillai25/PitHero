@@ -27,6 +27,7 @@ do not try to keep the tab short**.
 | Auto-Equip Options | `HeroComponent.AutoEquipHero` / `.AutoEquipMercenaries` (**no service**) | Call-driven | 40 (v23) |
 | Auto-Learn Hero Skills + "Learn Mode" cycler | `AutoLearnSkillsService` | Ticked (1s throttle) | 42 (v25) |
 | Auto-Hire Mercenaries + two "MercenaryN Job" cyclers | `AutoHireMercenaryService` | Call-driven | 41 (v24) |
+| Placed stencils (inventory grid snapshot) | `GameStateService.PlacedStencils` | — (save/load only) | 44 (v27) |
 
 Dialogs opened from the tab:
 

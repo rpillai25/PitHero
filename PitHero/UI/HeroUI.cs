@@ -96,85 +96,13 @@ namespace PitHero.UI
 
         public HeroUI()
         {
-            // Initialize all synergy patterns - must include ALL patterns for proper sprite display
+            // Populate from the shared registry so the stencil library panel slot order is authoritative.
             _allSynergyPatterns = new List<RolePlayingFramework.Synergies.SynergyPattern>();
-
-            // Knight patterns
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateHolyStrike());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateIaidoSlash());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateShadowSlash());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateSpellblade());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateArmorMastery());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateSwordProficiency());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateGuardiansResolve());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateBerserkerRage());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateShieldMastery());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.KnightSynergyPatterns.CreateHeavyFortification());
-
-            // Mage patterns
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateMeteor());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateShadowBolt());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateElementalVolley());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateBlitz());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateArcaneFocus());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateElementalMastery());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateSpellWeaving());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateManaConvergence());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MageSynergyPatterns.CreateRodFocus());
-
-            // Priest patterns
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateAuraHeal());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreatePurify());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateSacredStrike());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateLifeLeech());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateDivineProtection());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateHealingAmplification());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateHolyAura());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateSanctifiedMind());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.PriestSynergyPatterns.CreateDivineVestments());
-
-            // Monk patterns
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateDragonClaw());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateEnergyBurst());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateDragonKick());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateSneakPunch());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateIronFist());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateMartialFocus());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateKiMastery());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateEvasionTraining());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.MonkSynergyPatterns.CreateBalanceTraining());
-
-            // Thief patterns
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreateSmokeBomb());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreatePoisonArrow());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreateFade());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreateKiCloak());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreateShadowStep());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreateLockpicking());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreateTrapMastery());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ThiefSynergyPatterns.CreateAssassinsEdge());
-
-            // Archer patterns
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ArcherSynergyPatterns.CreatePiercingArrow());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ArcherSynergyPatterns.CreateLightshot());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ArcherSynergyPatterns.CreateKiArrow());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ArcherSynergyPatterns.CreateArrowFlurry());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ArcherSynergyPatterns.CreateMarksman());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ArcherSynergyPatterns.CreateSharpAim());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ArcherSynergyPatterns.CreateRangersPath());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.ArcherSynergyPatterns.CreateWindArcher());
-
-            // Cross-class patterns
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateSacredBlade());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateFlashStrike());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateSoulWard());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateDragonBolt());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateElementalStorm());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateBattleMage());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateHolyWarrior());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateShadowMaster());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateArcaneProtector());
-            _allSynergyPatterns.Add(RolePlayingFramework.Synergies.CrossClassSynergyPatterns.CreateElementalChampion());
+            var all = RolePlayingFramework.Synergies.SynergyPatternRegistry.All;
+            for (int i = 0; i < all.Count; i++)
+            {
+                _allSynergyPatterns.Add(all[i]);
+            }
         }
 
         /// <summary>
@@ -360,6 +288,7 @@ namespace PitHero.UI
 
             _inventoryGrid = new InventoryGrid();
             _inventoryGrid.ShowUnviewedGearSparkles = true;
+            _inventoryGrid.SyncStencilsToGameState = true;
             _inventoryGrid.OnItemHovered += HandleItemHovered;
             _inventoryGrid.OnItemUnhovered += HandleItemUnhovered;
             _inventoryGrid.OnDragEquipTargetChanged += HandleDragEquipTargetChanged;
@@ -391,17 +320,17 @@ namespace PitHero.UI
             buttonTable.Add().Height(64f);
             buttonTable.Row();
 
-            _viewStencilsButton = new TextButton("View Stencils", skin, "ph-default");
+            _viewStencilsButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonViewStencils), skin, "ph-default");
             _viewStencilsButton.OnClicked += HandleViewStencilsClicked;
             buttonTable.Add(_viewStencilsButton);
             buttonTable.Row();
 
-            _moveStencilsButton = new TextButton("Move Stencils", skin, "ph-default");
+            _moveStencilsButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonMoveStencils), skin, "ph-default");
             _moveStencilsButton.OnClicked += HandleMoveStencilsClicked;
             buttonTable.Add(_moveStencilsButton);
             buttonTable.Row();
 
-            _removeStencilButton = new TextButton("Remove Stencil", skin, "ph-default");
+            _removeStencilButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonRemoveStencil), skin, "ph-default");
             _removeStencilButton.OnClicked += HandleRemoveStencilClicked;
             buttonTable.Add(_removeStencilButton);
 
@@ -417,6 +346,8 @@ namespace PitHero.UI
             _stencilLibraryPanel = new StencilLibraryPanel(skin);
             _stencilLibraryPanel.OnStencilActivated += HandleStencilActivated;
             _stencilLibraryPanel.SetVisible(false);
+
+            UpdateStencilButtonStates();
         }
 
         private void HandleStencilRemovalRequested(PlacedStencil stencil)
@@ -460,7 +391,17 @@ namespace PitHero.UI
                     _stencilLibraryPanel.Refresh();
                 }
 
-                _stencilLibraryPanel.SetPosition(100f, 100f);
+                _stencilLibraryPanel.ResetSelection();
+                // Dock flush against the Hero window's left edge so the two never overlap;
+                // fall back to its right edge when there is no room on the left
+                float panelX = _heroWindow.GetX() - _stencilLibraryPanel.GetWidth();
+                if (panelX < 0f)
+                    panelX = _heroWindow.GetX() + _heroWindow.GetWidth();
+                float panelY = _heroWindow.GetY();
+                float maxY = _stage.GetHeight() - _stencilLibraryPanel.GetHeight();
+                if (panelY > maxY) panelY = maxY;
+                if (panelY < 0f) panelY = 0f;
+                _stencilLibraryPanel.SetPosition(panelX, panelY);
                 _stage.AddElement(_stencilLibraryPanel);
                 _stencilLibraryPanel.SetVisible(true);
             }
@@ -474,7 +415,7 @@ namespace PitHero.UI
                 if (_inventoryGrid.IsRemoveStencilsModeActive())
                 {
                     _inventoryGrid.SetRemoveStencilsMode(false);
-                    _removeStencilButton.SetText("Remove Stencil");
+                    _removeStencilButton.SetText(GetText(TextType.UI, UITextKey.ButtonRemoveStencil));
                 }
 
                 bool newMode = !_inventoryGrid.IsMoveStencilsModeActive();
@@ -483,11 +424,11 @@ namespace PitHero.UI
                 // Update button appearance to show mode
                 if (newMode)
                 {
-                    _moveStencilsButton.SetText("Exit Move Mode");
+                    _moveStencilsButton.SetText(GetText(TextType.UI, UITextKey.ButtonExitMoveMode));
                 }
                 else
                 {
-                    _moveStencilsButton.SetText("Move Stencils");
+                    _moveStencilsButton.SetText(GetText(TextType.UI, UITextKey.ButtonMoveStencils));
                 }
             }
         }
@@ -500,7 +441,7 @@ namespace PitHero.UI
                 if (_inventoryGrid.IsMoveStencilsModeActive())
                 {
                     _inventoryGrid.SetMoveStencilsMode(false);
-                    _moveStencilsButton.SetText("Move Stencils");
+                    _moveStencilsButton.SetText(GetText(TextType.UI, UITextKey.ButtonMoveStencils));
                 }
 
                 // Check if we're currently in remove mode
@@ -518,15 +459,42 @@ namespace PitHero.UI
 
                     // Activate remove mode - user must now click a stencil
                     _inventoryGrid.SetRemoveStencilsMode(true);
-                    _removeStencilButton.SetText("Exit Remove Mode");
+                    _removeStencilButton.SetText(GetText(TextType.UI, UITextKey.ButtonExitRemoveMode));
                     Debug.Log("Remove Stencils mode activated - click a stencil to remove it");
                 }
                 else
                 {
                     // Exiting remove mode - just exit without showing any dialog
                     _inventoryGrid.SetRemoveStencilsMode(false);
-                    _removeStencilButton.SetText("Remove Stencil");
+                    _removeStencilButton.SetText(GetText(TextType.UI, UITextKey.ButtonRemoveStencil));
                     Debug.Log("Exited Remove Stencils mode");
+                }
+            }
+        }
+
+        /// <summary>Grays out Move/Remove buttons when no stencils are placed; exits any active mode.</summary>
+        private void UpdateStencilButtonStates()
+        {
+            bool hasStencils = _inventoryGrid != null && _inventoryGrid.GetPlacedStencils().Count > 0;
+            var skin = PitHeroSkin.CreateSkin();
+
+            if (_moveStencilsButton != null)
+            {
+                SettingsUI.SetButtonActive(_moveStencilsButton, hasStencils, skin);
+                if (!hasStencils && _inventoryGrid != null && _inventoryGrid.IsMoveStencilsModeActive())
+                {
+                    _inventoryGrid.SetMoveStencilsMode(false);
+                    _moveStencilsButton.SetText(GetText(TextType.UI, UITextKey.ButtonMoveStencils));
+                }
+            }
+
+            if (_removeStencilButton != null)
+            {
+                SettingsUI.SetButtonActive(_removeStencilButton, hasStencils, skin);
+                if (!hasStencils && _inventoryGrid != null && _inventoryGrid.IsRemoveStencilsModeActive())
+                {
+                    _inventoryGrid.SetRemoveStencilsMode(false);
+                    _removeStencilButton.SetText(GetText(TextType.UI, UITextKey.ButtonRemoveStencil));
                 }
             }
         }
@@ -544,7 +512,8 @@ namespace PitHero.UI
 
                     // Exit remove mode after removal
                     _inventoryGrid.SetRemoveStencilsMode(false);
-                    _removeStencilButton.SetText("Remove Stencil");
+                    _removeStencilButton.SetText(GetText(TextType.UI, UITextKey.ButtonRemoveStencil));
+                    UpdateStencilButtonStates();
                 },
                 onNo: () =>
                 {
@@ -567,40 +536,23 @@ namespace PitHero.UI
 
         private void HandleStencilActivated(RolePlayingFramework.Synergies.SynergyPattern pattern)
         {
-            if (_inventoryGrid != null)
+            if (_inventoryGrid == null) return;
+
+            // Prefers all-empty cells, falls back to item-occupied cells; never overlaps another stencil
+            var targetAnchor = _inventoryGrid.FindFreeStencilAnchor(pattern);
+            if (!targetAnchor.HasValue)
             {
-                // Try to find the first empty inventory slot (row 2+, any column)
-                Point? targetAnchor = FindFirstEmptyInventorySlot();
-
-                if (!targetAnchor.HasValue)
-                {
-                    // No empty slots found, use default position (top-left of inventory area, row 3)
-                    targetAnchor = new Point(0, 3);
-                    Debug.Log($"No empty inventory slots found, placing stencil at default position: {targetAnchor.Value}");
-                }
-                else
-                {
-                    Debug.Log($"Found empty inventory slot at ({targetAnchor.Value.X},{targetAnchor.Value.Y}) for stencil placement");
-                }
-
-                _inventoryGrid.PlaceStencil(pattern, targetAnchor.Value);
-                Debug.Log($"Activated stencil: {pattern.Name}");
-            }
-        }
-
-        /// <summary>Finds the first empty inventory slot in the grid.</summary>
-        private Point? FindFirstEmptyInventorySlot()
-        {
-            if (_inventoryGrid == null) return null;
-
-            // Get the available slot from the inventory grid
-            var availableSlot = _inventoryGrid.FindNextAvailableSlot();
-            if (availableSlot != null)
-            {
-                return new Point(availableSlot.X, availableSlot.Y);
+                var skin = PitHeroSkin.CreateSkin();
+                var dialog = new MessageDialog(GetText(TextType.UI, UITextKey.ButtonActivateStencil),
+                    GetText(TextType.UI, UITextKey.StencilNoFreeSlots), skin);
+                dialog.Show(_stage);
+                Debug.Log($"No free stencil slots for: {pattern.Name}");
+                return;
             }
 
-            return null;
+            _inventoryGrid.PlaceStencil(pattern, targetAnchor.Value);
+            Debug.Log($"Activated stencil {pattern.Name} at ({targetAnchor.Value.X},{targetAnchor.Value.Y})");
+            UpdateStencilButtonStates();
         }
 
         private void PopulatePrioritiesTab(Tab prioritiesTab, Skin skin)
@@ -877,6 +829,7 @@ namespace PitHero.UI
                     {
                         _inventoryGrid.ConnectToHero(heroComponent);
                         RefreshMercenaryEquipSlots();
+                        UpdateStencilButtonStates();
                     }
                 }
                 else
@@ -918,6 +871,7 @@ namespace PitHero.UI
                 UIWindowManager.OnUIWindowClosing();
                 _selectedItemCard?.Hide();
                 _crystalsTabComponent?.Cleanup();
+                _stencilLibraryPanel?.SetVisible(false);
                 _heroWindow.SetVisible(false);
                 _heroWindow.Remove();
                 var pauseService = Core.Services.GetService<PauseService>();
@@ -1190,7 +1144,7 @@ namespace PitHero.UI
         {
             if (_windowVisible)
             {
-                _windowVisible = false; UIWindowManager.OnUIWindowClosing(); _selectedItemCard?.Hide(); _crystalsTabComponent?.Cleanup(); _heroWindow?.SetVisible(false); _heroWindow?.Remove(); var pauseService = Core.Services.GetService<PauseService>(); if (pauseService != null) pauseService.IsPaused = false; Debug.Log("[HeroUI] Hero window force closed by single window policy");
+                _windowVisible = false; UIWindowManager.OnUIWindowClosing(); _selectedItemCard?.Hide(); _crystalsTabComponent?.Cleanup(); _stencilLibraryPanel?.SetVisible(false); _heroWindow?.SetVisible(false); _heroWindow?.Remove(); var pauseService = Core.Services.GetService<PauseService>(); if (pauseService != null) pauseService.IsPaused = false; Debug.Log("[HeroUI] Hero window force closed by single window policy");
             }
         }
 

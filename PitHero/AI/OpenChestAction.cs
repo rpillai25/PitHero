@@ -7,6 +7,7 @@ using PitHero.Services;
 using PitHero.Util;
 using PitHero.Util.SoundEffectTypes;
 using RolePlayingFramework.Equipment;
+using RolePlayingFramework.Synergies;
 
 namespace PitHero.AI
 {
@@ -271,6 +272,48 @@ namespace PitHero.AI
 
                 treasureComponent.ContainedSeedType  = null;
                 treasureComponent.ContainedSeedCount = 0;
+                return;
+            }
+
+            // Stencil chest: discover the pattern and show a pickup animation.
+            if (!string.IsNullOrEmpty(treasureComponent.ContainedStencilPatternId))
+            {
+                var pattern = SynergyPatternRegistry.GetById(treasureComponent.ContainedStencilPatternId);
+                if (pattern == null)
+                {
+                    treasureComponent.ContainedStencilPatternId = null;
+                    return;
+                }
+
+                Core.Services.GetService<GameStateService>()?.DiscoverStencil(pattern.Id, StencilDiscoverySource.LootReward);
+
+                // Pickup animation: resolve stencil sprite from SkillsStencils atlas, falling back to Items atlas.
+                string primarySpriteName = pattern.UnlockedSkill?.Id ?? pattern.Id;
+                var skillsStencilsAtlas = Core.Content?.LoadSpriteAtlas("Content/Atlases/SkillsStencils.atlas");
+                var stencilSprite = skillsStencilsAtlas?.GetSprite(primarySpriteName);
+                if (stencilSprite == null && pattern.RequiredKinds.Count > 0)
+                {
+                    var itemsAtlas = Core.Content?.LoadSpriteAtlas("Content/Atlases/Items.atlas");
+                    stencilSprite = itemsAtlas?.GetSprite($"Stencil{pattern.RequiredKinds[0]}");
+                }
+                if (stencilSprite != null)
+                {
+                    var scene = Core.Scene;
+                    var animEntity = scene?.CreateEntity("itemPickupAnimation");
+                    if (animEntity != null)
+                    {
+                        animEntity.Transform.Position = _chestEntity.Transform.Position;
+                        animEntity.AddComponent(new ItemPickupAnimationComponent(stencilSprite, pattern.Name));
+                    }
+                }
+
+                // Console event
+                var gameEventSvc = Core.Services.GetService<GameEventService>();
+                gameEventSvc?.EmitLocalized(UITextKey.ConsoleStencilFound,
+                    (hero.LinkedHero.Name, GameConfig.ConsoleColorHeroName),
+                    (pattern.Name, GameConfig.RARITY_EPIC));
+
+                treasureComponent.ContainedStencilPatternId = null;
                 return;
             }
 

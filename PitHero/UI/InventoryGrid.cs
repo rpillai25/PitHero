@@ -48,6 +48,10 @@ namespace PitHero.UI
         /// this must also MarkViewed on item hover so the player can acknowledge the gear.</summary>
         public bool ShowUnviewedGearSparkles;
 
+        /// <summary>When true, PlaceStencil/RemoveStencil/MoveStencil commits mirror into
+        /// <see cref="GameStateService"/> and ConnectToHero restores the grid from that snapshot.</summary>
+        public bool SyncStencilsToGameState { get; set; }
+
         // Mercenary references for equip slot groups
         private readonly Mercenary[] _mercenaryRefs = new Mercenary[MAX_MERCENARY_SLOTS];
         private BitmapFont _nameFont; // Font for drawing mercenary/hero names above equip slots
@@ -132,13 +136,11 @@ namespace PitHero.UI
         /// <summary>Registers default synergy patterns for detection.</summary>
         private void RegisterDefaultSynergyPatterns()
         {
-            KnightSynergyPatterns.RegisterAllKnightPatterns(_synergyDetector);
-            MageSynergyPatterns.RegisterAllMagePatterns(_synergyDetector);
-            PriestSynergyPatterns.RegisterAllPriestPatterns(_synergyDetector);
-            MonkSynergyPatterns.RegisterAllMonkPatterns(_synergyDetector);
-            ThiefSynergyPatterns.RegisterAllThiefPatterns(_synergyDetector);
-            ArcherSynergyPatterns.RegisterAllArcherPatterns(_synergyDetector);
-            CrossClassSynergyPatterns.RegisterAllCrossClassPatterns(_synergyDetector);
+            var all = SynergyPatternRegistry.All;
+            for (int i = 0; i < all.Count; i++)
+            {
+                _synergyDetector.RegisterPattern(all[i]);
+            }
         }
 
         /// <summary>Clears all slot hover states and fires OnItemUnhovered, used when context menu closes.</summary>
@@ -303,6 +305,25 @@ namespace PitHero.UI
                     _nameFont = Graphics.Instance.BitmapFont;
                 else if (Core.Content != null)
                     _nameFont = Core.Content.LoadBitmapFont(GameConfig.FontMainUI);
+            }
+
+            // Restore placed stencils from the non-UI snapshot (direction: snapshot → grid only).
+            // Use the manager directly to avoid re-mirroring back into the snapshot.
+            if (SyncStencilsToGameState)
+            {
+                var gameState = Core.Services?.GetService<GameStateService>();
+                if (gameState != null)
+                {
+                    _stencilManager.ClearAll();
+                    var records = gameState.PlacedStencils;
+                    for (int i = 0; i < records.Count; i++)
+                    {
+                        var record = records[i];
+                        var pattern = SynergyPatternRegistry.GetById(record.PatternId);
+                        if (pattern == null) continue;
+                        _stencilManager.PlaceStencil(pattern, new Point(record.AnchorX, record.AnchorY));
+                    }
+                }
             }
         }
 
@@ -654,6 +675,12 @@ namespace PitHero.UI
                     var newAnchor = new Point(gridPos.X - _stencilDragOffset.Value.X, gridPos.Y - _stencilDragOffset.Value.Y);
                     _stencilManager.MoveStencil(_selectedStencil, newAnchor, GRID_WIDTH, GRID_HEIGHT);
                     Debug.Log($"Moved stencil to anchor: ({newAnchor.X}, {newAnchor.Y})");
+                    // Mirror the clamped anchor (MoveStencil may clamp, so read back from the stencil)
+                    if (SyncStencilsToGameState)
+                        Core.Services?.GetService<GameStateService>()?.SetPlacedStencil(
+                            _selectedStencil.Pattern.Id,
+                            _selectedStencil.Anchor.X,
+                            _selectedStencil.Anchor.Y);
                 }
 
                 // Deselect stencil after move
@@ -1624,12 +1651,66 @@ namespace PitHero.UI
         public void PlaceStencil(RolePlayingFramework.Synergies.SynergyPattern pattern, Point anchor)
         {
             _stencilManager.PlaceStencil(pattern, anchor);
+            if (SyncStencilsToGameState)
+                Core.Services?.GetService<GameStateService>()?.SetPlacedStencil(pattern.Id, anchor.X, anchor.Y);
+        }
+
+        /// <summary>Finds an anchor where the pattern fits entirely on enabled inventory slots without overlapping another stencil. Prefers anchors whose cells are all empty; cells holding items are acceptable. Returns null when no anchor fits.</summary>
+        public Point? FindFreeStencilAnchor(RolePlayingFramework.Synergies.SynergyPattern pattern)
+        {
+            if (pattern == null) return null;
+
+            // Build a coordinate lookup so per-offset cell checks are O(1)
+            var byCell = new InventorySlot[CELL_COUNT];
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                var slot = _slots.Buffer[i];
+                if (slot == null) continue;
+                var d = slot.SlotData;
+                int idx = d.Y * GRID_WIDTH + d.X;
+                if (idx >= 0 && idx < CELL_COUNT) byCell[idx] = slot;
+            }
+
+            var anchor = FindStencilAnchorPass(pattern, byCell, true);
+            if (!anchor.HasValue) anchor = FindStencilAnchorPass(pattern, byCell, false);
+            return anchor;
+        }
+
+        /// <summary>Scans anchors row-major for one where every pattern cell is an enabled inventory slot free of other stencils and (optionally) empty.</summary>
+        private Point? FindStencilAnchorPass(RolePlayingFramework.Synergies.SynergyPattern pattern, InventorySlot[] byCell, bool requireEmptyCells)
+        {
+            var offsets = pattern.GridOffsets;
+            for (int y = 0; y < GRID_HEIGHT; y++)
+            {
+                for (int x = 0; x < GRID_WIDTH; x++)
+                {
+                    bool fits = true;
+                    for (int i = 0; i < offsets.Count; i++)
+                    {
+                        int cx = x + offsets[i].X;
+                        int cy = y + offsets[i].Y;
+                        if (cx < 0 || cx >= GRID_WIDTH || cy < 0 || cy >= GRID_HEIGHT) { fits = false; break; }
+
+                        var slot = byCell[cy * GRID_WIDTH + cx];
+                        if (slot == null || slot.SlotData.SlotType != InventorySlotType.Inventory) { fits = false; break; }
+                        if (requireEmptyCells && slot.SlotData.Item != null) { fits = false; break; }
+
+                        // Re-activating a pattern relocates it, so its own cells count as free
+                        var occupying = _stencilManager.FindStencilAtPosition(new Point(cx, cy));
+                        if (occupying != null && occupying.Pattern.Id != pattern.Id) { fits = false; break; }
+                    }
+                    if (fits) return new Point(x, y);
+                }
+            }
+            return null;
         }
 
         /// <summary>Removes a stencil from the grid.</summary>
         public void RemoveStencil(PlacedStencil stencil)
         {
             _stencilManager.RemoveStencil(stencil);
+            if (SyncStencilsToGameState)
+                Core.Services?.GetService<GameStateService>()?.RemovePlacedStencil(stencil.Pattern.Id);
         }
 
         /// <summary>Toggles move stencils mode.</summary>

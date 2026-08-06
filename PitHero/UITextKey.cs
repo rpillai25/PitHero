@@ -5,6 +5,7 @@ namespace PitHero
     {
         public const string ButtonYes = "ButtonYes";
         public const string ButtonNo = "ButtonNo";
+        public const string ButtonOK = "ButtonOK";
         public const string ButtonCancel = "ButtonCancel";
         public const string ButtonClose = "ButtonClose";
         public const string ButtonMove = "ButtonMove";
@@ -203,6 +204,7 @@ namespace PitHero
         public const string SaveLoadUnknown = "SaveLoadUnknown";
         public const string StencilSynergyStencils = "StencilSynergyStencils";
         public const string StencilSelectPrompt = "StencilSelectPrompt";
+        public const string StencilNoFreeSlots = "StencilNoFreeSlots";
         public const string MonsterNoAlliedMonsters = "MonsterNoAlliedMonsters";
         public const string ItemSellPrice = "ItemSellPrice";
         public const string ItemRestoresHp = "ItemRestoresHp";
@@ -414,5 +416,6 @@ namespace PitHero
         public const string AutoLearnModeActive = "AutoLearnModeActive";
         public const string AutoLearnModePassive = "AutoLearnModePassive";
         public const string ConsoleAutoLearnedSkill = "ConsoleAutoLearnedSkill";
+        public const string ConsoleStencilFound = "ConsoleStencilFound";
     }
 }

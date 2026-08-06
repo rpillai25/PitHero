@@ -343,6 +343,19 @@ namespace PitHero.Services
                     data.DiscoveredStencils[stencilEnumerator.Current.Key] = (int)stencilEnumerator.Current.Value;
                 }
                 stencilEnumerator.Dispose();
+
+                // Copy placed stencil positions
+                var placed = gameState.PlacedStencils;
+                data.PlacedStencils = new List<SavedPlacedStencil>(placed.Count);
+                for (int i = 0; i < placed.Count; i++)
+                {
+                    data.PlacedStencils.Add(new SavedPlacedStencil
+                    {
+                        PatternId = placed[i].PatternId,
+                        AnchorX = placed[i].AnchorX,
+                        AnchorY = placed[i].AnchorY
+                    });
+                }
             }
 
             // Pit level, tier, and base level
@@ -911,6 +924,17 @@ namespace PitHero.Services
                         (StencilDiscoverySource)stencilEnumerator.Current.Value;
                 }
                 stencilEnumerator.Dispose();
+
+                // Restore placed stencil positions (grid re-mirrors on its next ConnectToHero)
+                gameState.ClearPlacedStencils();
+                if (data.PlacedStencils != null)
+                {
+                    for (int i = 0; i < data.PlacedStencils.Count; i++)
+                    {
+                        var s = data.PlacedStencils[i];
+                        gameState.SetPlacedStencil(s.PatternId, s.AnchorX, s.AnchorY);
+                    }
+                }
             }
 
             // Store pending data for MainGameScene to apply during Begin()

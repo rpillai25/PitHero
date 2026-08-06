@@ -29,15 +29,19 @@ namespace PitHero.UI
 
         public event System.Action<SynergyPattern> OnStencilActivated;
 
-        public StencilLibraryPanel(Skin skin) : base("Stencil Library", skin)
+        public StencilLibraryPanel(Skin skin) : base("", skin)
         {
             _slots = new StencilSlot[TOTAL_SLOTS];
             _allPatterns = new List<SynergyPattern>();
-            SetSize(450f, 500f); // Increased size to accommodate scroll pane and details
             SetMovable(true);
             SetResizable(false);
 
+            GetTitleLabel().SetText(GetText(TextType.UI, UITextKey.StencilSynergyStencils));
             BuildUI(skin);
+
+            // Size the window to exactly fit its rows — the stage is only ~360 tall,
+            // so any slack height pushes the title bar off-screen.
+            Pack();
         }
         /// <summary>
         /// Safely retrieves TextService. Returns null if Core is not initialized (e.g., in unit tests).
@@ -62,20 +66,6 @@ namespace PitHero.UI
 
         private void BuildUI(Skin skin)
         {
-            var mainTable = new Table();
-            mainTable.SetFillParent(true);
-            mainTable.Pad(5f); // Reduced padding for less empty space
-
-            // Create content table to hold grid and details
-            var contentTable = new Table();
-            contentTable.Pad(0f); // Remove content table padding
-
-            // Add title label at the top (centered)
-            var titleLabel = new Label(GetText(TextType.UI, UITextKey.StencilSynergyStencils), skin);
-            titleLabel.SetAlignment(Nez.UI.Align.Center);
-            contentTable.Add(titleLabel).Pad(0f, 0f, 5f, 0f).Top().Center();
-            contentTable.Row();
-
             // Create grid table
             _gridTable = new Table();
             _gridTable.Pad(5f);
@@ -94,15 +84,18 @@ namespace PitHero.UI
                     _gridTable.Row();
             }
 
-            // Create details panel
-            var detailsTable = new Table();
-            detailsTable.Pad(10f);
-            detailsTable.SetBackground(skin.Get<WindowStyle>().Background); // Add background for visibility
+            // Rows go directly into the window table (the title bar is the window's top padding):
+            // scrollable slot grid, details label beneath it, buttons beneath the label.
+            var scrollPane = new ScrollPane(_gridTable, skin, "ph-default");
+            scrollPane.SetScrollingDisabled(true, false);
+            scrollPane.SetFadeScrollBars(false);
+            Add(scrollPane).Height(200f).Width(420f).Pad(5f).Top();
+            Row();
 
             _detailsLabel = new Label(GetText(TextType.UI, UITextKey.StencilSelectPrompt), skin);
             _detailsLabel.SetWrap(true);
-            detailsTable.Add(_detailsLabel).Pad(20f, 0, 0, 0).Width(380f).Top().Left();
-            detailsTable.Row();
+            Add(_detailsLabel).Width(400f).Height(48f).Pad(8f, 15f, 0f, 15f).Top().Left();
+            Row();
 
             _activateButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonActivateStencil), skin);
             _activateButton.SetTouchable(Touchable.Disabled);
@@ -111,24 +104,9 @@ namespace PitHero.UI
             _closeButton.OnClicked += HandleCloseClicked;
 
             var buttonsTable = new Table();
-            buttonsTable.Add(_activateButton).Pad(10f, 10f, 0, 0).Width(150f).Height(30f);
-            buttonsTable.Add(_closeButton).Pad(10f, 24f, 0, 0).Width(150f).Height(30f);
-            detailsTable.Add(buttonsTable).Top().Left();
-
-            // Add grid and details to content table
-            contentTable.Add(_gridTable).Width(420f).Top().Left();
-            contentTable.Row();
-            contentTable.Add(detailsTable).Height(64f).Width(420f).Top().Left();
-
-            // Wrap content in scroll pane
-            var scrollPane = new ScrollPane(contentTable, skin);
-            scrollPane.SetScrollingDisabled(true, false); // Disable horizontal, enable vertical scrolling
-            scrollPane.SetFadeScrollBars(false); // Always show scroll bar
-
-            // Add scroll pane to main table
-            mainTable.Add(scrollPane).Height(350f).Width(420f).Top().Left();
-
-            Add(mainTable);
+            buttonsTable.Add(_activateButton).Width(150f).Height(30f).Pad(0f, 0f, 0f, 12f);
+            buttonsTable.Add(_closeButton).Width(150f).Height(30f).Pad(0f, 12f, 0f, 0f);
+            Add(buttonsTable).Pad(4f, 0f, 6f, 0f);
         }
 
         /// <summary>Updates the panel with current game state and patterns.</summary>
@@ -206,33 +184,30 @@ namespace PitHero.UI
             _activateButton.SetTouchable(Touchable.Enabled);
         }
 
+        /// <summary>Clears the current selection and resets the details panel. Call before showing the panel.</summary>
+        public void ResetSelection()
+        {
+            _selectedPattern = null;
+            for (int i = 0; i < _slots.Length; i++)
+            {
+                _slots[i].IsSelected = false;
+            }
+            UpdateDetailsPanel();
+        }
+
         private void HandleActivateClicked(Button button)
         {
             if (_selectedPattern != null)
             {
                 OnStencilActivated?.Invoke(_selectedPattern);
-                _selectedPattern = null;
-
-                // Clear selection state
-                for (int i = 0; i < _slots.Length; i++)
-                {
-                    _slots[i].IsSelected = false;
-                }
-
+                ResetSelection();
                 SetVisible(false);
             }
         }
 
         private void HandleCloseClicked(Button button)
         {
-            _selectedPattern = null;
-
-            // Clear selection state
-            for (int i = 0; i < _slots.Length; i++)
-            {
-                _slots[i].IsSelected = false;
-            }
-
+            ResetSelection();
             SetVisible(false);
         }
 

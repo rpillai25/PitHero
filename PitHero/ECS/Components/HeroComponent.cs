@@ -621,6 +621,7 @@ namespace PitHero.ECS.Components
 
             // Initialize hero's item bag with full 120 capacity (20x6 grid)
             Bag = new RolePlayingFramework.Inventory.ItemBag("Inventory", 120);
+            Bag.SlotPreferenceProvider = new PitHero.Services.StencilBagSlotPreferenceProvider();
 
             // Restore pending inventory items from save data (must happen after Bag is created)
             // (Nez defers OnAddedToEntity, so Bag is null during ApplyPendingLoadData in Begin)

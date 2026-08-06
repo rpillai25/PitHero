@@ -2,9 +2,12 @@ using Nez;
 using Nez.Sprites;
 using PitHero.Config;
 using PitHero.Farming;
+using PitHero.Services;
 using RolePlayingFramework.Balance;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Jobs;
+using RolePlayingFramework.Synergies;
+using System.Collections.Generic;
 
 namespace PitHero.ECS.Components
 {
@@ -91,6 +94,12 @@ namespace PitHero.ECS.Components
 
         /// <summary>Number of seeds to award when <see cref="ContainedSeedType"/> is set.</summary>
         public int ContainedSeedCount;
+
+        /// <summary>
+        /// When non-null, this chest yields a stencil pattern with the given ID instead of a normal item.
+        /// Transient — set during <see cref="InitializeForPitLevel"/>; cleared after pickup.
+        /// </summary>
+        public string ContainedStencilPatternId;
 
         public override void OnAddedToEntity()
         {
@@ -870,6 +879,32 @@ namespace PitHero.ECS.Components
                 ContainedItem = null;
                 Level = 1; // seeds are consumables — always a brown chest (#337)
                 return;
+            }
+
+            // Stencil drop: chests of level 2+ have an 8% chance to yield an undiscovered stencil.
+            // The RNG roll is only made when undiscovered stencils exist, so late-game RNG streams
+            // are unchanged once all stencils have been found.
+            if (Level >= 2)
+            {
+                var gameState = Core.Instance != null ? Core.Services.GetService<GameStateService>() : null;
+                if (gameState != null)
+                {
+                    var all = SynergyPatternRegistry.All;
+                    var candidates = new List<SynergyPattern>(all.Count);
+                    for (int i = 0; i < all.Count; i++)
+                    {
+                        var p = all[i];
+                        if (p.HasStencil && !gameState.IsStencilDiscovered(p.Id))
+                            candidates.Add(p);
+                    }
+                    if (candidates.Count > 0 && Nez.Random.NextFloat() < BalanceConfig.StencilChestDropRate)
+                    {
+                        ContainedStencilPatternId = candidates[Nez.Random.NextInt(candidates.Count)].Id;
+                        ContainedItem = null;
+                        Level = 4; // Purple chest — stencils are special finds (#337 color-matches-contents)
+                        return;
+                    }
+                }
             }
 
             if (CaveBiomeConfig.IsCaveLevel(pitLevel))

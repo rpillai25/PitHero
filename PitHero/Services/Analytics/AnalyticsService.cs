@@ -180,7 +180,7 @@ namespace PitHero.Services.Analytics
 
         /// <summary>Logs a spawned treasure chest and its contents.</summary>
         [Conditional("DEBUG")]
-        public static void LogChestSpawned(int pitLevel, int x, int y, int chestLevel, IItem item, string seedType, int seedCount)
+        public static void LogChestSpawned(int pitLevel, int x, int y, int chestLevel, IItem item, string seedType, int seedCount, string stencilPatternId)
         {
 #if DEBUG
             if (!_enabled)
@@ -199,6 +199,10 @@ namespace PitHero.Services.Analytics
             {
                 _json.Field("seedType", seedType);
                 _json.Field("seedCount", seedCount);
+            }
+            if (stencilPatternId != null)
+            {
+                _json.Field("stencilPatternId", stencilPatternId);
             }
             EndEvent();
 #endif

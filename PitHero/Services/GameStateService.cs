@@ -3,6 +3,14 @@ using System.Collections.Generic;
 
 namespace PitHero.Services
 {
+    /// <summary>Non-UI snapshot of a stencil placed on the inventory grid.</summary>
+    public struct PlacedStencilRecord
+    {
+        public string PatternId;
+        public int AnchorX;
+        public int AnchorY;
+    }
+
     /// <summary>
     /// Represents Game State that exists independently of heroes.  This will be persisted independently of heroes.
     /// </summary>
@@ -34,6 +42,42 @@ namespace PitHero.Services
         public bool IsStencilDiscovered(string patternId)
         {
             return DiscoveredStencils.ContainsKey(patternId);
+        }
+
+        /// <summary>Non-UI source of truth for stencils currently placed on the inventory grid.</summary>
+        public List<PlacedStencilRecord> PlacedStencils { get; } = new List<PlacedStencilRecord>();
+
+        /// <summary>Adds or replaces the record for the given pattern ID.</summary>
+        public void SetPlacedStencil(string patternId, int anchorX, int anchorY)
+        {
+            for (int i = 0; i < PlacedStencils.Count; i++)
+            {
+                if (PlacedStencils[i].PatternId == patternId)
+                {
+                    PlacedStencils[i] = new PlacedStencilRecord { PatternId = patternId, AnchorX = anchorX, AnchorY = anchorY };
+                    return;
+                }
+            }
+            PlacedStencils.Add(new PlacedStencilRecord { PatternId = patternId, AnchorX = anchorX, AnchorY = anchorY });
+        }
+
+        /// <summary>Removes the record for the given pattern ID (no-op if absent).</summary>
+        public void RemovePlacedStencil(string patternId)
+        {
+            for (int i = PlacedStencils.Count - 1; i >= 0; i--)
+            {
+                if (PlacedStencils[i].PatternId == patternId)
+                {
+                    PlacedStencils.RemoveAt(i);
+                    return;
+                }
+            }
+        }
+
+        /// <summary>Removes all placed stencil records.</summary>
+        public void ClearPlacedStencils()
+        {
+            PlacedStencils.Clear();
         }
     }
 }
