@@ -124,7 +124,9 @@ namespace PitHero
         public const string TabSession = "TabSession";
         public const string TabButtons = "TabButtons";
         public const string SettingsAlwaysOnTop = "SettingsAlwaysOnTop";
+        public const string SettingsAlwaysOnTopTooltip = "SettingsAlwaysOnTopTooltip";
         public const string SettingsAutoScrollToHero = "SettingsAutoScrollToHero";
+        public const string SettingsAutoScrollToHeroTooltip = "SettingsAutoScrollToHeroTooltip";
         public const string SettingsSwapMonitor = "SettingsSwapMonitor";
         public const string SettingsZoom = "SettingsZoom";
         public const string SettingsWindowSize = "SettingsWindowSize";

@@ -106,7 +106,9 @@ TabWindow,Window
 TabSession,Session
 TabButtons,UI Buttons
 SettingsAlwaysOnTop,Always On Top
+SettingsAlwaysOnTopTooltip,Game window always on top of everything
 SettingsAutoScrollToHero,Auto-scroll to Hero
+SettingsAutoScrollToHeroTooltip,Window follows hero and auto-scrolls back after being scrolled elsewhere
 SettingsSwapMonitor,Swap Monitor
 SettingsZoom,Zoom: {0}x
 SettingsWindowSize,Window Size:

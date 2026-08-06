@@ -580,7 +580,11 @@ namespace PitHero.UI
             var scrollContent = new Table();
 
             // Always On Top checkbox
-            _alwaysOnTopCheckBox = new CheckBox(GetText(TextType.UI, UITextKey.SettingsAlwaysOnTop), skin, "ph-default");
+            _alwaysOnTopCheckBox = new HoverableCheckBox(
+                GetText(TextType.UI, UITextKey.SettingsAlwaysOnTop),
+                skin,
+                GetText(TextType.UI, UITextKey.SettingsAlwaysOnTopTooltip),
+                _stage);
             _alwaysOnTopCheckBox.IsChecked = _alwaysOnTop;
             _alwaysOnTopCheckBox.OnChanged += (isChecked) =>
             {
@@ -591,7 +595,11 @@ namespace PitHero.UI
             scrollContent.Row();
 
             // Auto-scroll to Hero checkbox
-            _autoScrollToHeroCheckBox = new CheckBox(GetText(TextType.UI, UITextKey.SettingsAutoScrollToHero), skin, "ph-default");
+            _autoScrollToHeroCheckBox = new HoverableCheckBox(
+                GetText(TextType.UI, UITextKey.SettingsAutoScrollToHero),
+                skin,
+                GetText(TextType.UI, UITextKey.SettingsAutoScrollToHeroTooltip),
+                _stage);
             _autoScrollToHeroCheckBox.IsChecked = UIWindowManager.AutoScrollToHeroEnabled;
             _autoScrollToHeroCheckBox.OnChanged += (isChecked) =>
             {
