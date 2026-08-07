@@ -104,6 +104,7 @@ namespace PitHero.UI
             };
 
             _monsterButton = new HoverableImageButton(_monsterNormalStyle, GetText(TextType.UI, UITextKey.WindowMonsters));
+            _monsterButton.ClickSoundCategory = ButtonClickCategory.TopBar;
             _monsterButton.SetSize(sprite.SourceRect.Width, sprite.SourceRect.Height);
             _monsterButton.OnClicked += (button) => TriggerToggle();
         }

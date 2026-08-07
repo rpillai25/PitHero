@@ -128,6 +128,7 @@ namespace PitHero.UI
 
             // Close button at the bottom
             var closeButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonClose), _skin, "ph-default");
+            closeButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             closeButton.OnClicked += (button) => Hide();
             contentTable.Add(closeButton).SetMinWidth(80f).Height(28f);
 
@@ -272,6 +273,7 @@ namespace PitHero.UI
             buttonTable.Add(confirmButton).SetMinWidth(80f).Height(24f).SetPadRight(10f);
 
             var cancelButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonCancel), _skin, "ph-default");
+            cancelButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             cancelButton.OnClicked += (button) => HideConfirmDialog();
             buttonTable.Add(cancelButton).SetMinWidth(80f).Height(24f);
 

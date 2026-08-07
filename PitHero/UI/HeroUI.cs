@@ -151,6 +151,7 @@ namespace PitHero.UI
             _heroHalfStyle = new ImageButtonStyle { ImageUp = new SpriteDrawable(heroSprite2x), ImageDown = new SpriteDrawable(heroInverse2x), ImageOver = new SpriteDrawable(heroHighlight2x) };
 
             _heroButton = new HoverableImageButton(_heroNormalStyle, "Party");
+            _heroButton.ClickSoundCategory = ButtonClickCategory.TopBar;
             _heroButton.SetSize(heroSprite.SourceRect.Width, heroSprite.SourceRect.Height);
             _heroButton.OnClicked += (button) => HandleHeroButtonClick();
         }

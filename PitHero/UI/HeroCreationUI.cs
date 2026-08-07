@@ -307,6 +307,7 @@ namespace PitHero.UI
             createButton.OnClicked += (btn) => OnCreateHero();
 
             var cancelButton = new TextButton(_textService.DisplayText(TextType.UI, UITextKey.ButtonCancel), skin);
+            cancelButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             cancelButton.OnClicked += (btn) => OnCancel();
 
             var buttonsTable = new Table();

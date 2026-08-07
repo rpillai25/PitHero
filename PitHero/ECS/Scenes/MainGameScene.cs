@@ -1185,9 +1185,11 @@ namespace PitHero.ECS.Scenes
                     {
                         var gameState = Core.Services.GetService<Services.GameStateService>();
                         gameState?.AddFunds(gold, "sell_building");
+                        Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(Util.SoundEffectTypes.SoundEffectType.ItemSell);
                         pb.WorldEntity?.Destroy();
                         Core.Services.GetService<Services.BuildingService>()?.RemoveBuilding(pb);
                     });
+                dialog.YesButton.SuppressGlobalClick = true;
                 dialog.Show(_uiStage);
             };
 

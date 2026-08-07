@@ -119,6 +119,7 @@ namespace PitHero.UI
             _dismissButton.OnClicked += OnDismissClicked;
 
             _cancelButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonCancel), skin, "ph-default");
+            _cancelButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             _cancelButton.OnClicked += OnCancelClicked;
 
             // Place all buttons in a sub-table so we can show/hide Hire cleanly

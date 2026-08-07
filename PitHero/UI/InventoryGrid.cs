@@ -8,6 +8,7 @@ using Nez.UI;
 using PitHero.ECS.Components;
 using PitHero.Services;
 using PitHero.Util;
+using PitHero.Util.SoundEffectTypes;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Mercenaries;
 using RolePlayingFramework.Synergies;
@@ -887,6 +888,7 @@ namespace PitHero.UI
 
             if (PitHero.Services.ItemSellHelper.SellBagItem(_heroComponent.Bag, bagIndex, "manual") > 0)
             {
+                Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
                 UpdateItemsFromBag();
                 OnItemSoldToVault?.Invoke();
             }

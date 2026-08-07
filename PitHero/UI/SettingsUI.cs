@@ -484,6 +484,7 @@ namespace PitHero.UI
             };
 
             _gearButton = new HoverableImageButton(_gearNormalStyle, "Settings");
+            _gearButton.ClickSoundCategory = ButtonClickCategory.TopBar;
             // Explicitly size to the image (avoids hard-coded magic numbers)
             _gearButton.SetSize(gearSprite.SourceRect.Width, gearSprite.SourceRect.Height);
 
@@ -1675,6 +1676,7 @@ namespace PitHero.UI
             exitButtonTable.Add(exitYesButton).Width(80).Height(24).SetPadRight(10);
 
             var exitNoButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonNo), skin, "ph-default");
+            exitNoButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             exitNoButton.OnClicked += (button) => HideConfirmationDialog(_exitConfirmationDialog);
             exitButtonTable.Add(exitNoButton).Width(80).Height(24);
 
@@ -1716,6 +1718,7 @@ namespace PitHero.UI
             quitToTitleButtonTable.Add(quitToTitleYesButton).Width(80).Height(24).SetPadRight(10);
 
             var quitToTitleNoButton = new TextButton(GetText(TextType.UI, UITextKey.ButtonNo), skin, "ph-default");
+            quitToTitleNoButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             quitToTitleNoButton.OnClicked += (button) => HideConfirmationDialog(_quitToTitleConfirmationDialog);
             quitToTitleButtonTable.Add(quitToTitleNoButton).Width(80).Height(24);
 

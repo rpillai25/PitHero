@@ -65,6 +65,7 @@ namespace PitHero.UI
             _sellBuildingButton.OnClicked += (_) => OnActionClicked(OnSellBuilding);
 
             _cancelButton = new TextButton(GetText(UITextKey.ButtonCancel), skin, "ph-default");
+            _cancelButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             _cancelButton.OnClicked += (_) => Hide();
 
             Add(_content).Expand().Fill();

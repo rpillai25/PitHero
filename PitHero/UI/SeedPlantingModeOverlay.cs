@@ -371,6 +371,7 @@ namespace PitHero.UI
             outer.Row();
 
             var cancelButton = new TextButton(GetText(UITextKey.ButtonCancel), skin, "ph-default");
+            cancelButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             cancelButton.OnClicked += (_) => RequestExitSeedMode?.Invoke();
             outer.Add(cancelButton).Width(100f).SetPadTop(8f);
 
