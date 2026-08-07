@@ -50,7 +50,74 @@ namespace PitHero.Util
                         Content.LoadSoundEffect("Content/Audio/SoundEffects/Restore2.wav"),
                         Content.LoadSoundEffect("Content/Audio/SoundEffects/Restore3.wav")
                     }));
-               
+
+                soundEffectDict.Add(SoundEffectType.ItemPurchase,
+                    new NormalSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/ItemPurchase.wav")));
+
+                soundEffectDict.Add(SoundEffectType.ItemSell,
+                    new NormalSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/ItemSell.wav")));
+
+                soundEffectDict.Add(SoundEffectType.PickCrop,
+                    new GroupSoundEffect(new SoundEffect[]
+                    {
+                        Content.LoadSoundEffect("Content/Audio/SoundEffects/PickCrop1.wav"),
+                        Content.LoadSoundEffect("Content/Audio/SoundEffects/PickCrop2.wav"),
+                        Content.LoadSoundEffect("Content/Audio/SoundEffects/PickCrop3.wav")
+                    }));
+
+                soundEffectDict.Add(SoundEffectType.StoreCrop,
+                    new GroupSoundEffect(new SoundEffect[]
+                    {
+                        Content.LoadSoundEffect("Content/Audio/SoundEffects/StoreCrop1.wav"),
+                        Content.LoadSoundEffect("Content/Audio/SoundEffects/StoreCrop2.wav")
+                    }));
+
+                soundEffectDict.Add(SoundEffectType.RetrieveCrop,
+                    new NormalSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/RetrieveCrop.wav")));
+
+                soundEffectDict.Add(SoundEffectType.TopBarButtonClick,
+                    new NormalSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/TopBarButtonClick.wav")));
+
+                soundEffectDict.Add(SoundEffectType.TabButtonClick,
+                    new NormalSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/TabButtonClick.wav")));
+
+                soundEffectDict.Add(SoundEffectType.CancelButtonClick,
+                    new NormalSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/CancelButtonClick.wav")));
+
+                soundEffectDict.Add(SoundEffectType.NormalButtonClick,
+                    new NormalSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/NormalButtonClick.wav")));
+
+                soundEffectDict.Add(SoundEffectType.FoodReady,
+                    new GroupSoundEffect(new SoundEffect[]
+                    {
+                        Content.LoadSoundEffect("Content/Audio/SoundEffects/FoodReady1.wav"),
+                        Content.LoadSoundEffect("Content/Audio/SoundEffects/FoodReady2.wav")
+                    }));
+
+                soundEffectDict.Add(SoundEffectType.TicketPosted,
+                    new NormalSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/TicketPosted.wav")));
+
+                soundEffectDict.Add(SoundEffectType.TakeOrder,
+                    new GroupSoundEffect(new SoundEffect[]
+                    {
+                        Content.LoadSoundEffect("Content/Audio/SoundEffects/TakeOrder1.wav"),
+                        Content.LoadSoundEffect("Content/Audio/SoundEffects/TakeOrder2.wav")
+                    }));
+
+                soundEffectDict.Add(SoundEffectType.PartyFinishedEating,
+                    new NormalSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/PartyFinishedEating.wav")));
+
+                soundEffectDict.Add(SoundEffectType.Digging,
+                    new NormalSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/Digging.wav")));
+
+                soundEffectDict.Add(SoundEffectType.Watering,
+                    new NormalSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/Watering.wav")));
+
+                soundEffectDict.Add(SoundEffectType.PlaceFoodOnTable,
+                    new NormalSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/PlaceFoodOnTable.wav")));
+
+                soundEffectDict.Add(SoundEffectType.DropEmptyDish,
+                    new NormalSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/DropEmptyDish.wav")));
 
                 SoundVolume = GameConfig.MasterVolume;
 

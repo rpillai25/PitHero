@@ -10,6 +10,23 @@
         SwordSlash,
         TakeDamage,
         EnemyDefeat,
-        PayGold
+        PayGold,
+        ItemPurchase,
+        ItemSell,
+        PickCrop,
+        StoreCrop,
+        RetrieveCrop,
+        TopBarButtonClick,
+        TabButtonClick,
+        CancelButtonClick,
+        NormalButtonClick,
+        FoodReady,
+        TicketPosted,
+        TakeOrder,
+        PartyFinishedEating,
+        Digging,
+        Watering,
+        PlaceFoodOnTable,
+        DropEmptyDish
     }
 }
