@@ -2,6 +2,8 @@ using Nez;
 using PitHero.Dining;
 using PitHero.ECS.Components;
 using PitHero.UI;
+using PitHero.Util;
+using PitHero.Util.SoundEffectTypes;
 using RolePlayingFramework.Combat;
 
 namespace PitHero.Services
@@ -339,7 +341,10 @@ namespace PitHero.Services
         {
             var gameState = Core.Services.GetService<GameStateService>();
             if (gameState != null)
+            {
                 gameState.Funds -= DishConfig.GetPrice(ticket.Dish);
+                PlaySoundAtHero(SoundEffectType.PayGold);
+            }
 
             _slots[partySlot].OrderedDishId = (int)ticket.Dish;
             _slots[partySlot].HasPaid = true;
@@ -412,6 +417,7 @@ namespace PitHero.Services
 
             _autoResumeWhenDone = false;
             Debug.Log("[PartyDiningService] Breakfast finished — party resuming adventure");
+            PlaySoundAtHero(SoundEffectType.PartyFinishedEating);
             GetStopUI()?.SetStopped(false);
         }
 
@@ -518,6 +524,17 @@ namespace PitHero.Services
 
         private HeroComponent GetHeroComponent()
             => Core.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
+
+        /// <summary>Positional sound at the hero's seat; guarded because this service also runs headless in tests.</summary>
+        private static void PlaySoundAtHero(SoundEffectType soundEffectType)
+        {
+            if (Core.Instance == null)
+                return;
+            var heroEntity = Core.Scene?.FindEntity("hero");
+            if (heroEntity == null)
+                return;
+            Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(soundEffectType, heroEntity.Transform.Position);
+        }
 
         private StopAdventuringUI GetStopUI()
             => Core.Services.GetService<SettingsUI>()?.StopAdventuringUI;

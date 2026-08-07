@@ -4,6 +4,8 @@ using Nez.AI.FSM;
 using PitHero.Config;
 using PitHero.Dining;
 using PitHero.Services;
+using PitHero.Util;
+using PitHero.Util.SoundEffectTypes;
 using RolePlayingFramework.AlliedMonsters;
 
 namespace PitHero.ECS.Components
@@ -368,6 +370,7 @@ namespace PitHero.ECS.Components
                     {
                         _coordinator.NotifyPartyOrderTaken(_targetPartySlot, ticket);
                         _takenOrders.Add(ticket);
+                        Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.TakeOrder, Entity.Transform.Position);
                     }
                 }
                 _targetPartySlot = -1;
@@ -392,6 +395,7 @@ namespace PitHero.ECS.Components
             {
                 comp.OnOrderTaken(t);
                 _takenOrders.Add(t);
+                Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.TakeOrder, Entity.Transform.Position);
             }
         }
 
@@ -411,6 +415,8 @@ namespace PitHero.ECS.Components
         {
             if (elapsedTimeInState < GameConfig.TicketBoardPauseSeconds)
                 return;
+            if (_takenOrders.Count > 0)
+                Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.TicketPosted, Entity.Transform.Position);
             for (int i = 0; i < _takenOrders.Count; i++)
                 _coordinator.PostTicket(_takenOrders[i]);
             _takenOrders.Clear();
@@ -517,6 +523,7 @@ namespace PitHero.ECS.Components
                     _carried.Add(new CarriedDish { Ticket = null, ToSink = true });
                 }
                 dishEntity = _coordinator.DishService?.SpawnDishAtWorldPos(c.Ticket.Dish, platePos);
+                Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.PlaceFoodOnTable, platePos);
             }
             _coordinator.OnTicketDelivered(c.Ticket, dishEntity);
             _carried.RemoveAt(0);
@@ -533,7 +540,10 @@ namespace PitHero.ECS.Components
             if (_mover.IsMoving)
                 return;
             if (_carried.Count > 0)
+            {
                 _carried.RemoveAt(0); // dish disposed at the sink
+                Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.DropEmptyDish, Entity.Transform.Position);
+            }
             BeginNextCarriedLeg();
         }
 
@@ -882,6 +892,7 @@ namespace PitHero.ECS.Components
                 var tile = KitchenTaskCoordinator.GetServingTile(_cookTicket.ServingSlot);
                 var entity = _coordinator.DishService?.SpawnDishAtTile(_cookTicket.Dish, tile);
                 _coordinator.PlaceDishOnServing(_cookTicket, entity);
+                Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.FoodReady, Entity.Transform.Position);
                 HideCarryDish();
                 _cookTicket = null;
             }
@@ -1029,7 +1040,10 @@ namespace PitHero.ECS.Components
                 ? _fetchRoute[_fetchStopIndex].BuildingId : -1;
             _coordinator.RunnerCollectAtStorage(_fetchTicket, buildingId);
             if (_fetchTicket != null)
+            {
                 ShowCarryCrops(_fetchTicket.Dish);
+                Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.RetrieveCrop, Entity.Transform.Position);
+            }
 
             _fetchStopIndex++;
             if (!_goHome && _fetchStopIndex < _fetchRoute.Count)
@@ -1052,6 +1066,7 @@ namespace PitHero.ECS.Components
                 return;
             // The held crops vanish into the fridge
             HideCarryDish();
+            Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.StoreCrop, Entity.Transform.Position);
             _coordinator.CompleteFetch(_fetchTicket);
             _fetchTicket = null;
             EndFetchTrip();
@@ -1121,6 +1136,8 @@ namespace PitHero.ECS.Components
                 return;
             // Plates go in the sink; if the sink was unreachable they're washed where we stand —
             // either way the tables are clear, which is what the seat gate cares about.
+            if (_platesCarried > 0)
+                Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.DropEmptyDish, Entity.Transform.Position);
             HideCarryDish();
             _platesCarried = 0;
             CurrentState = _goHome ? KitchenMonsterState.ReturnHome : KitchenMonsterState.RunnerIdle;

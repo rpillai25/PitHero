@@ -4,6 +4,8 @@ using Nez.AI.FSM;
 using PitHero.Farming;
 using PitHero.Services;
 using PitHero.Services.Analytics;
+using PitHero.Util;
+using PitHero.Util.SoundEffectTypes;
 using RolePlayingFramework.AlliedMonsters;
 
 namespace PitHero.ECS.Components
@@ -55,6 +57,10 @@ namespace PitHero.ECS.Components
         private bool _returnReachedExit; // ReturnHome phase: walked to the exit tile, stepping into the door
         private float _tillDuration;
         private float _waterDuration;
+
+        // Seconds between Digging sound plays while the tilling animation loops
+        private const float DigSfxIntervalSeconds = 0.4f;
+        private float _digSfxTimer;
         private float _plantDuration;
 
         // Harvest state
@@ -473,6 +479,9 @@ namespace PitHero.ECS.Components
             float proficiencyScale = 1f - GameConfig.TillProficiencySpeedStep * (_monster.FarmingProficiency - 1);
             _tillDuration = GameConfig.TillBaseDurationSeconds * proficiencyScale;
 
+            // First Digging sound plays on the first tick, then repeats every interval
+            _digSfxTimer = DigSfxIntervalSeconds;
+
             if (HoeAnimator != null)
             {
                 // Lower-left quadrant of the 32px monster sprite (mirrored when standing left of the target)
@@ -489,7 +498,15 @@ namespace PitHero.ECS.Components
         private void PerformTill_Tick()
         {
             if (elapsedTimeInState < _tillDuration)
+            {
+                _digSfxTimer += Time.DeltaTime;
+                if (_digSfxTimer >= DigSfxIntervalSeconds)
+                {
+                    _digSfxTimer = 0f;
+                    Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.Digging, Entity.Transform.Position);
+                }
                 return;
+            }
 
             // Complete before TillTile so the ReadyToTill-cleared event is a no-op for the queue
             _coordinator.CompleteAction(in _currentAction);
@@ -638,6 +655,8 @@ namespace PitHero.ECS.Components
                 WateringAnimator.SetEnabled(true);
                 WateringAnimator.Play("Watering", Nez.Sprites.SpriteAnimator.LoopMode.Loop);
             }
+
+            Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.Watering, Entity.Transform.Position);
         }
 
         private void PerformWater_Tick()
@@ -863,6 +882,7 @@ namespace PitHero.ECS.Components
             _harvestCarryCount = drop.Count;
             dropped.RemoveAt(tile);
             ShowCarrySprite();
+            Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.PickCrop, Entity.Transform.Position);
             _harvestPickedUp = true;
 
             if (_coordinator.TryFindNearestStorageWithCapacity(_mover.CurrentTile, _harvestCropType,
@@ -927,6 +947,7 @@ namespace PitHero.ECS.Components
             ApplyHarvestResult(tile);
             AnalyticsService.LogCropHarvested(_harvestCropType.ToString(), tile.X, tile.Y, _harvestCarryCount, _monster.Name, _monster.MonsterTypeName);
             ShowCarrySprite();
+            Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.PickCrop, Entity.Transform.Position);
             _harvestPickedUp = true;
             return true;
         }
@@ -980,7 +1001,10 @@ namespace PitHero.ECS.Components
             int stored = storage != null ? storage.DepositReturningStored(_harvestBuildingId, _harvestCropType, carried) : 0;
             int remaining = carried - stored;
             if (stored > 0)
+            {
+                Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.StoreCrop, Entity.Transform.Position);
                 AnalyticsService.LogCropStored(_harvestCropType.ToString(), stored, _monster.Name, _monster.MonsterTypeName);
+            }
 
             if (remaining > 0 && storage != null)
             {
@@ -996,7 +1020,10 @@ namespace PitHero.ECS.Components
                     stored = storage.DepositReturningStored(_harvestBuildingId, _harvestCropType, remaining); // adjacent fallback
                     remaining -= stored;
                     if (stored > 0)
+                    {
+                        Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.StoreCrop, Entity.Transform.Position);
                         AnalyticsService.LogCropStored(_harvestCropType.ToString(), stored, _monster.Name, _monster.MonsterTypeName);
+                    }
                 }
 
                 // Still holding crops with nowhere to go — drop them on the ground for later pickup.
