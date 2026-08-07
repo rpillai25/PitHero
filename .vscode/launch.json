@@ -11,7 +11,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "dotnet: build (Debug)",
-            "program": "${workspaceFolder}/PitHero/bin/Debug/PitHero.dll",
+            "program": "${workspaceFolder}/PitHero/bin/Debug/FeedTheHero.dll",
             "args": [],
             "cwd": "${workspaceFolder}/PitHero",
             "stopAtEntry": false,
@@ -21,7 +21,7 @@
             "name": ".NET: Launch Without Building",
             "type": "coreclr",
             "request": "launch",
-            "program": "${workspaceFolder}/PitHero/bin/Debug/PitHero.dll",
+            "program": "${workspaceFolder}/PitHero/bin/Debug/FeedTheHero.dll",
             "args": [],
             "cwd": "${workspaceFolder}/PitHero",
             "stopAtEntry": false,
@@ -38,7 +38,7 @@
             "name": "Launch (Mac)",
             "type": "mono",
             "request": "launch",
-            "program": "${workspaceFolder}/PitHero/bin/Debug/PitHero.exe",
+            "program": "${workspaceFolder}/PitHero/bin/Debug/FeedTheHero.exe",
             "cwd": "${workspaceFolder}/PitHero",
             "preLaunchTask": "Build (Debug)",
             "osx":{
@@ -52,7 +52,7 @@
             "name": "Launch Without Building (Mac)",
             "type": "mono",
             "request": "launch",
-            "program": "${workspaceFolder}/PitHero/bin/Debug/PitHero.exe",
+            "program": "${workspaceFolder}/PitHero/bin/Debug/FeedTheHero.exe",
             "cwd": "${workspaceFolder}",
             "osx":{
                 "env": {
@@ -65,7 +65,7 @@
             "name": "Launch (Windows)",
             "type": "clr",
             "request": "launch",
-            "program": "${workspaceFolder}/PitHero/bin/Debug/PitHero.exe",
+            "program": "${workspaceFolder}/PitHero/bin/Debug/FeedTheHero.exe",
             "cwd": "${workspaceFolder}/PitHero",
             "preLaunchTask": "Build (Debug)"
         },
@@ -74,7 +74,7 @@
             "name": "Launch Without Building (Windows)",
             "type": "clr",
             "request": "launch",
-            "program": "${workspaceFolder}/PitHero/bin/Debug/PitHero.exe",
+            "program": "${workspaceFolder}/PitHero/bin/Debug/FeedTheHero.exe",
             "cwd": "${workspaceFolder}"
         },
 

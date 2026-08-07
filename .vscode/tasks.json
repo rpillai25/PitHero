@@ -149,12 +149,12 @@
             "type": "shell",
             "group": "build",
             "osx":{
-                "command": "DYLD_LIBRARY_PATH=${workspaceFolder}/PitHero/bin/Debug/osx/ mono ${workspaceFolder}/PitHero/bin/Debug/PitHero.exe"
+                "command": "DYLD_LIBRARY_PATH=${workspaceFolder}/PitHero/bin/Debug/osx/ mono ${workspaceFolder}/PitHero/bin/Debug/FeedTheHero.exe"
             },
             "windows":{
                 "command": "start",
                 "args": [
-                    "${workspaceFolder}/PitHero/bin/Debug/PitHero.exe"
+                    "${workspaceFolder}/PitHero/bin/Debug/FeedTheHero.exe"
                 ]
             },
             "dependsOn": "Build (Debug)",
@@ -166,12 +166,12 @@
             "type": "shell",
             "group": "build",
             "osx":{
-                "command": "DYLD_LIBRARY_PATH=${workspaceFolder}/PitHero/bin/Release/osx/ mono ${workspaceFolder}/PitHero/bin/Release/PitHero.exe"
+                "command": "DYLD_LIBRARY_PATH=${workspaceFolder}/PitHero/bin/Release/osx/ mono ${workspaceFolder}/PitHero/bin/Release/FeedTheHero.exe"
             },
             "windows":{
                 "command": "start",
                 "args": [
-                    "${workspaceFolder}/PitHero/bin/Release/PitHero.exe"
+                    "${workspaceFolder}/PitHero/bin/Release/FeedTheHero.exe"
                 ]
             },
             "dependsOn": "Build (Release)",

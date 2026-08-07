@@ -11,7 +11,7 @@ namespace PitHero
 {
     class Game1 : Core
     {
-        public Game1() : base(GameConfig.VirtualWidth, GameConfig.VirtualHeight, false, "PitHero")
+        public Game1() : base(GameConfig.VirtualWidth, GameConfig.VirtualHeight, false, "Feed the Hero")
         {
             // Set up for pixel-perfect rendering - uncomment for scaled pixel art
             System.Environment.SetEnvironmentVariable("FNA_OPENGL_BACKBUFFER_SCALE_NEAREST", "1");
