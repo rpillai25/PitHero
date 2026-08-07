@@ -45,12 +45,14 @@ namespace PitHero.Services.Analytics
 #endif
         }
 
-        /// <summary>Initializes analytics using the default output directory (%LOCALAPPDATA%\PitHero\analytics).</summary>
+        /// <summary>Initializes analytics using the default output directory (%LOCALAPPDATA%\&lt;exeName&gt;\analytics, alongside FileDataStore saves).</summary>
         [Conditional("DEBUG")]
         public static void Initialize()
         {
 #if DEBUG
-            var baseDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "PitHero");
+            // Same derivation Nez's FileDataStore uses so analytics always co-locates with save files
+            var exeName = Path.GetFileNameWithoutExtension(AppDomain.CurrentDomain.FriendlyName);
+            var baseDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), exeName);
             Initialize(Path.Combine(baseDir, GameConfig.AnalyticsDirectoryName));
 #endif
         }
