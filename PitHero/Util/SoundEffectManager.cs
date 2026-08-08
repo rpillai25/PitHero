@@ -108,7 +108,7 @@ namespace PitHero.Util
                     new NormalSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/PartyFinishedEating.wav")));
 
                 soundEffectDict.Add(SoundEffectType.Digging,
-                    new NormalSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/Digging.wav")));
+                    new SingleSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/Digging.wav")));
 
                 soundEffectDict.Add(SoundEffectType.Watering,
                     new NormalSoundEffect(Content.LoadSoundEffect("Content/Audio/SoundEffects/Watering.wav")));
