@@ -310,7 +310,10 @@ namespace PitHero.UI
         {
             if (slot.Crystal == null || _hoverTooltip == null || _stage == null) return;
             var crystal = slot.Crystal;
-            _hoverLabel.SetText(crystal.Name + " (Lv." + crystal.Level + ")");
+            string skillsText = crystal.IsJobMastered()
+                ? "Mastered"
+                : crystal.JobLevel + "/" + crystal.Job.Skills.Count + " skills";
+            _hoverLabel.SetText(crystal.Name + " (" + skillsText + ")");
             _hoverTooltip.Pack();
             if (_hoverTooltip.GetParent() == null)
                 _stage.AddElement(_hoverTooltip);

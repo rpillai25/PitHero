@@ -173,7 +173,10 @@ namespace PitHero.UI
         {
             if (slot.Crystal == null || _hoverTooltip == null || _tooltipStage == null) return;
             var crystal = slot.Crystal;
-            _hoverLabel.SetText(crystal.Job.Name + " (Lv." + crystal.Level + ") - " + (GameConfig.CrystalBuyBackBasePrice * crystal.Level) + "g");
+            string skillsText = crystal.IsJobMastered()
+                ? "Mastered"
+                : crystal.JobLevel + "/" + crystal.Job.Skills.Count + " skills";
+            _hoverLabel.SetText(crystal.Job.Name + " (" + skillsText + ") - " + crystal.CalculateBuyBackPrice() + "g");
             // Add to stage first so Pack()/GetHeight() returns correct dimensions
             if (_hoverTooltip.GetParent() == null)
                 _tooltipStage.AddElement(_hoverTooltip);

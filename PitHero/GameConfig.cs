@@ -106,6 +106,8 @@ namespace PitHero
         public static int GetInnCostForMember(int level)
             => InnCostBaseGoldPerMember + InnCostGoldPerTenLevels * (level / 10);
         public const int CrystalBuyBackBasePrice = 100; // Base gold cost per crystal level for Second Chance Shop
+        public const float CrystalJPToGoldRate = 0.5f;  // Gold per JP invested in learned job skills (buy-back premium)
+        public const int CrystalSynergySkillFee = 150;  // Flat gold per learned synergy skill (buy-back premium)
 
         // Tavern seat configuration (for Stop Adventuring)
         public const int TavernHeroSeatTileX = 93;
