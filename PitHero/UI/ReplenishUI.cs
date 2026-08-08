@@ -87,6 +87,7 @@ namespace PitHero.UI
             };
 
             _button = new HoverableImageButton(_normalStyle, GetText(TextType.UI, UITextKey.ButtonReplenish));
+            _button.ClickSoundCategory = ButtonClickCategory.TopBar;
             _button.SetSize(sprite.SourceRect.Width, sprite.SourceRect.Height);
 
             _button.OnClicked += (button) => TriggerReplenish();

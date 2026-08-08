@@ -3,6 +3,8 @@ using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.Dining;
 using PitHero.Services;
+using PitHero.Util;
+using PitHero.Util.SoundEffectTypes;
 
 namespace PitHero.ECS.Components
 {
@@ -153,6 +155,10 @@ namespace PitHero.ECS.Components
                 {
                     int price = DishConfig.GetPrice(ActiveTicket.Dish);
                     _gameState.AddFunds(price, "dish_sale");
+
+                    // Guarded: this component also runs headless in tests (no Core, no Entity)
+                    if (Core.Instance != null && Entity != null)
+                        Core.GetGlobalManager<SoundEffectManager>()?.PlaySoundAt(SoundEffectType.PayGold, Entity.Transform.Position);
 
                     // Tip roll
                     int tip = 0;

@@ -7,6 +7,9 @@ namespace PitHero.UI
     /// <summary>Simple confirmation dialog for yes/no choices.</summary>
     public class ConfirmationDialog : Window
     {
+        public TextButton YesButton { get; }
+        public TextButton NoButton { get; }
+
         public ConfirmationDialog(string title, string message, Skin skin, System.Action onYes, System.Action onNo = null) : base(title, skin)
         {
             var textService = Core.Services.GetService<TextService>();
@@ -36,12 +39,16 @@ namespace PitHero.UI
             buttonTable.Add(yesButton).Width(80).SetPadRight(10);
 
             var noButton = new TextButton(textService.DisplayText(TextType.UI, UITextKey.ButtonNo), skin, "ph-default");
+            noButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             noButton.OnClicked += (button) =>
             {
                 onNo?.Invoke();
                 Remove();
             };
             buttonTable.Add(noButton).Width(80);
+
+            YesButton = yesButton;
+            NoButton = noButton;
 
             dialogTable.Add(buttonTable);
 

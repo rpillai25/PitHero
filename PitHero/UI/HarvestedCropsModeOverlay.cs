@@ -7,6 +7,7 @@ using PitHero.Farming;
 using PitHero.Services;
 using PitHero.Services.Analytics;
 using PitHero.Util;
+using PitHero.Util.SoundEffectTypes;
 
 namespace PitHero.UI
 {
@@ -234,6 +235,7 @@ namespace PitHero.UI
                 {
                     var gameState = Core.Services.GetService<GameStateService>();
                     gameState?.AddFunds(totalGold, "sell_crops");
+                    Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
 #if DEBUG
                     // Per-stack detail lines for the analytics log; re-read live slots because
                     // auto-sell may have emptied some while the dialog was open.
@@ -247,6 +249,7 @@ namespace PitHero.UI
                     _descWindow?.SetVisible(false);
                     RefreshViewer();
                 });
+            dialog.YesButton.SuppressGlobalClick = true;
             dialog.Show(_stage);
         }
 
@@ -278,6 +281,7 @@ namespace PitHero.UI
                 {
                     var gameState = Core.Services.GetService<GameStateService>();
                     gameState?.AddFunds(totalGold, "sell_crops");
+                    Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
 #if DEBUG
                     // Per-stack detail lines for the analytics log; re-read live slots because
                     // auto-sell may have emptied some while the dialog was open.
@@ -298,6 +302,7 @@ namespace PitHero.UI
                     _descWindow?.SetVisible(false);
                     RefreshViewer();
                 });
+            dialog.YesButton.SuppressGlobalClick = true;
             dialog.Show(_stage);
         }
 
@@ -350,6 +355,7 @@ namespace PitHero.UI
             _sellStorageButton = new TextButton(GetText(UITextKey.ButtonSellTheseCrops), skin, "ph-default");
             _sellStorageButton.OnClicked += (_) => OnSellStorageClicked();
             _closeButton = new TextButton(GetText(UITextKey.ButtonClose), skin, "ph-default");
+            _closeButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             _closeButton.OnClicked += (_) => RequestExitHarvestedCropsMode?.Invoke();
             outer.Add(_buttonRow).SetPadTop(8f);
 
@@ -453,6 +459,7 @@ namespace PitHero.UI
             content.Row();
 
             var closeButton = new TextButton(GetText(UITextKey.ButtonClose), skin, "ph-default");
+            closeButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             closeButton.OnClicked += (_) => _descWindow.SetVisible(false);
             content.Add(closeButton).Width(80f);
 
@@ -502,12 +509,14 @@ namespace PitHero.UI
                     {
                         int liveGold = CropConfig.GetHarvestStackSellPrice(liveSlot.Type, liveSlot.Count);
                         gameState?.AddFunds(liveGold, "sell_crops");
+                        Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemSell);
                         AnalyticsService.LogCropSold(liveSlot.Type.ToString(), liveSlot.Count, liveGold, "manual");
                         storage?.ClearSlot(buildingId, slotIndex);
                     }
                     _descWindow.SetVisible(false);
                     RefreshViewer();
                 });
+            dialog.YesButton.SuppressGlobalClick = true;
             dialog.Show(_stage);
         }
 

@@ -57,6 +57,7 @@ namespace PitHero.UI
             Row();
 
             var closeButton = new TextButton(GetText(UITextKey.ButtonClose), skin, "ph-default");
+            closeButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             closeButton.OnClicked += (_) => Close();
             Add(closeButton).Width(120f).Pad(4f, 8f, 8f, 8f);
 

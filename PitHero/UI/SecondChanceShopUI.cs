@@ -7,6 +7,7 @@ using PitHero.Farming;
 using PitHero.Services;
 using PitHero.Services.Analytics;
 using PitHero.Util;
+using PitHero.Util.SoundEffectTypes;
 using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Heroes;
 using RolePlayingFramework.Mercenaries;
@@ -98,6 +99,7 @@ namespace PitHero.UI
             };
 
             _shopButton = new HoverableImageButton(_shopNormalStyle, GetText(TextType.UI, UITextKey.WindowSecondChanceShop));
+            _shopButton.ClickSoundCategory = ButtonClickCategory.TopBar;
             _shopButton.SetSize(sprite.SourceRect.Width, sprite.SourceRect.Height);
             _shopButton.OnClicked += (button) => TriggerToggle();
 
@@ -379,6 +381,7 @@ namespace PitHero.UI
                     if (gameState.Funds < totalPrice) return;
                     gameState.Funds -= totalPrice;
                     cropPlantingService.AddSeeds(crop, qty);
+                    Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemPurchase);
                     AnalyticsService.LogSeedPurchased(crop.ToString(), qty, totalPrice, "manual", gameState.Funds);
                     Core.Services?.GetService<FarmTaskCoordinator>()?.RescanForPlanting();
                 },
@@ -791,6 +794,7 @@ namespace PitHero.UI
                 var dialog = new ConfirmationDialog(shopTitle, promptText, _skin,
                     onYes: () => ExecuteItemPurchase(vaultStack, destSlot, 1, unitPrice, vault, gameState),
                     onNo:  cancelAction);
+                dialog.YesButton.SuppressGlobalClick = true;
                 dialog.Show(_stage);
             }
             else
@@ -857,6 +861,7 @@ namespace PitHero.UI
             }
 
             gameState.Funds -= totalPrice;
+            Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemPurchase);
 
             var item = vaultStack.ItemTemplate;
             if (destSlot.SlotData.SlotType == InventorySlotType.MercenaryEquipment && destSlot.SlotData.EquipmentSlot.HasValue)
@@ -951,6 +956,7 @@ namespace PitHero.UI
                 },
                 onNo: () => InventoryDragManager.CancelDrag()
             );
+            dialog.YesButton.SuppressGlobalClick = true;
             dialog.Show(_stage);
         }
 
@@ -1074,6 +1080,7 @@ namespace PitHero.UI
                     _vaultCrystalGrid?.ShowAllCrystalSprites();
                 }
             );
+            dialog.YesButton.SuppressGlobalClick = true;
             dialog.Show(_stage);
         }
 
@@ -1105,6 +1112,8 @@ namespace PitHero.UI
                 _vaultCrystalGrid?.ShowAllCrystalSprites();
                 return;
             }
+
+            Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemPurchase);
 
             vault.RemoveCrystal(crystal);
             _vaultCrystalGrid?.RefreshFromVault(vault);

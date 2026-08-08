@@ -177,6 +177,7 @@ namespace PitHero.UI
             var buttonTable = new Table();
 
             var yesButton = new TextButton(textService.DisplayText(TextType.UI, UITextKey.ButtonYes), buttonStyle);
+            yesButton.SuppressGlobalClick = true;
             yesButton.SetDisabled(!_canAffordAny);
             yesButton.OnClicked += (b) =>
             {
@@ -188,6 +189,7 @@ namespace PitHero.UI
             buttonTable.Add(yesButton).Width(80).SetMinHeight(ButtonHeight).SetPadRight(10);
 
             var noButton = new TextButton(textService.DisplayText(TextType.UI, UITextKey.ButtonNo), skin, "ph-default");
+            noButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             noButton.OnClicked += (b) =>
             {
                 onCancel?.Invoke();

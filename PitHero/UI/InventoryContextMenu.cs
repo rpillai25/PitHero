@@ -74,6 +74,7 @@ namespace PitHero.UI
             table.Row();
 
             _cancelButton = new ResettableTextButton(_textService.DisplayText(TextType.UI, UITextKey.ButtonCancel), _skin);
+            _cancelButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             _cancelButton.OnClicked += (btn) => Hide();
             table.Add(_cancelButton).Width(100).Height(25).SetPadTop(5);
 
@@ -101,6 +102,7 @@ namespace PitHero.UI
             };
             buttonTable.Add(yesButton).Width(60);
             var noButton = new TextButton(_textService.DisplayText(TextType.UI, UITextKey.ButtonNo), _skin);
+            noButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             noButton.OnClicked += (btn) => HideDiscardConfirmation();
             buttonTable.Add(noButton).Width(60).SetPadLeft(10);
             table.Add(buttonTable);

@@ -49,6 +49,10 @@ namespace PitHero
             soundEffectManager.Init(Content);
             RegisterGlobalManager(soundEffectManager);
 
+            // Centralized UI click sounds (issue #367)
+            Nez.UI.Button.OnGlobalClicked = HandleGlobalButtonClick;
+            Nez.UI.TabButton.OnGlobalClicked = HandleGlobalTabClick;
+
             ParticleEffectManager particleEffectManager = new ParticleEffectManager();
             particleEffectManager.Init(Content);
             RegisterGlobalManager(particleEffectManager);
@@ -66,6 +70,35 @@ namespace PitHero
 
             var scene = new TitleScreenScene();
             Scene = scene;
+        }
+
+        private static void HandleGlobalButtonClick(Nez.UI.Button button)
+        {
+            // Checkboxes and radio-style widgets (CheckBox subclasses) stay silent
+            if (button is Nez.UI.CheckBox)
+                return;
+
+            var sfx = GetGlobalManager<SoundEffectManager>();
+            if (sfx == null)
+                return;
+
+            switch (button.ClickSoundCategory)
+            {
+                case UI.ButtonClickCategory.TopBar:
+                    sfx.PlaySound(Util.SoundEffectTypes.SoundEffectType.TopBarButtonClick);
+                    break;
+                case UI.ButtonClickCategory.Cancel:
+                    sfx.PlaySound(Util.SoundEffectTypes.SoundEffectType.CancelButtonClick);
+                    break;
+                default:
+                    sfx.PlaySound(Util.SoundEffectTypes.SoundEffectType.NormalButtonClick);
+                    break;
+            }
+        }
+
+        private static void HandleGlobalTabClick(Nez.UI.TabButton tabButton)
+        {
+            GetGlobalManager<SoundEffectManager>()?.PlaySound(Util.SoundEffectTypes.SoundEffectType.TabButtonClick);
         }
 
         protected override void LoadContent()

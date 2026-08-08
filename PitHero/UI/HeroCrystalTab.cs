@@ -541,6 +541,7 @@ namespace PitHero.UI
             buttonTable.Add(yesButton).Width(80f).Pad(5f);
 
             var noButton = new TextButton("No", skin);
+            noButton.ClickSoundCategory = ButtonClickCategory.Cancel;
             noButton.OnClicked += (btn) => CancelPurchase();
             buttonTable.Add(noButton).Width(80f).Pad(5f);
         }

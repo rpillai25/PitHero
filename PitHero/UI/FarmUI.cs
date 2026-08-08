@@ -117,6 +117,7 @@ namespace PitHero.UI
             };
 
             _farmButton = new HoverableImageButton(_farmNormalStyle, GetText(TextType.UI, UITextKey.ButtonFarm));
+            _farmButton.ClickSoundCategory = ButtonClickCategory.TopBar;
             _farmButton.SetSize(sprite.SourceRect.Width, sprite.SourceRect.Height);
             _farmButton.OnClicked += (_) => ToggleSubButtons();
         }
@@ -155,6 +156,7 @@ namespace PitHero.UI
                 };
 
                 _subButtons[i] = new HoverableImageButton(_subNormalStyles[i], GetText(TextType.UI, SubButtonTextKeys[i]));
+                _subButtons[i].ClickSoundCategory = ButtonClickCategory.TopBar;
                 _subButtons[i].SetSize(sprite.SourceRect.Width, sprite.SourceRect.Height);
                 _subButtons[i].SetVisible(false);
             }

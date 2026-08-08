@@ -109,6 +109,7 @@ namespace PitHero.UI
             };
 
             _fastFButton = new HoverableImageButton(_fastFNormalStyle, GetText(TextType.UI, UITextKey.ButtonFastForward));
+            _fastFButton.ClickSoundCategory = ButtonClickCategory.TopBar;
             // Explicitly size to the image
             _fastFButton.SetSize(fastFSprite.SourceRect.Width, fastFSprite.SourceRect.Height);
 
