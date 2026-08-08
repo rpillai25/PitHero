@@ -1959,6 +1959,16 @@ namespace PitHero.UI
                 Core.Services.GetService<AutoHireMercenaryService>()?.TryHirePass();
         }
 
+        /// <summary>True while any Automation tab option dialog is visible.</summary>
+        private bool AnyAutomationDialogVisible()
+        {
+            return (_autoSellCropTypesDialog != null && _autoSellCropTypesDialog.IsVisible())
+                || (_gearSellOptionsDialog != null && _gearSellOptionsDialog.IsVisible())
+                || (_consumableSellOptionsDialog != null && _consumableSellOptionsDialog.IsVisible())
+                || (_gearPurchaseOptionsDialog != null && _gearPurchaseOptionsDialog.IsVisible())
+                || (_consumablePurchaseOptionsDialog != null && _consumablePurchaseOptionsDialog.IsVisible());
+        }
+
         /// <summary>Hides all Automation tab option dialogs (designation, gear/consumable filters).</summary>
         private void HideAutomationDialogs()
         {
@@ -2140,6 +2150,22 @@ namespace PitHero.UI
             _consumableSellOptionsDialog?.Update();
             _gearPurchaseOptionsDialog?.Update();
             _consumablePurchaseOptionsDialog?.Update();
+
+            // Escape peels one layer at a time: confirmation dialog, then automation dialogs, then
+            // the settings window itself. Settings deliberately has no outside-click dismissal —
+            // it's the window where an accidental close costs the most re-navigation.
+            if (_isVisible && Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape)
+                && _stage.GetKeyboardFocus() == null)
+            {
+                if (_exitConfirmationDialog != null && _exitConfirmationDialog.IsVisible())
+                    HideConfirmationDialog(_exitConfirmationDialog);
+                else if (_quitToTitleConfirmationDialog != null && _quitToTitleConfirmationDialog.IsVisible())
+                    HideConfirmationDialog(_quitToTitleConfirmationDialog);
+                else if (AnyAutomationDialogVisible())
+                    HideAutomationDialogs();
+                else
+                    ToggleSettingsVisibility();
+            }
 
             // OnClicked (mouse-up) already ran in base.Update() before this method is called.
             // If till mode is now active but wasn't at the end of last frame, the click that activated

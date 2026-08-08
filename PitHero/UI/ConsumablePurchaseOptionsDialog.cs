@@ -167,6 +167,9 @@ namespace PitHero.UI
             _window?.SetVisible(false);
         }
 
+        /// <summary>True while the dialog window is visible.</summary>
+        public bool IsVisible() => _window != null && _window.IsVisible();
+
         /// <summary>Hides the dialog when a click lands outside it without consuming the click. Call once per frame.</summary>
         public void Update()
         {

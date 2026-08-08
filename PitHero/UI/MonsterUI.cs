@@ -15,6 +15,7 @@ namespace PitHero.UI
         private HoverableImageButton _monsterButton;
         private Window _monsterWindow;
         private bool _windowVisible = false;
+        private uint _windowShownFrame;
         private ImageButtonStyle _monsterNormalStyle;
         private ImageButtonStyle _monsterHalfStyle;
         private bool _styleChanged = false;
@@ -199,6 +200,8 @@ namespace PitHero.UI
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null)
                     pauseService.IsPaused = true;
+                // Stamp the frame so the click that opened the window can't also dismiss it
+                _windowShownFrame = Time.FrameCount;
             }
             else
             {
@@ -575,7 +578,33 @@ namespace PitHero.UI
         public void Update()
         {
             UpdateButtonStyleIfNeeded();
-            if (_windowVisible) PositionWindow();
+            if (_windowVisible)
+            {
+                PositionWindow();
+                HandleWindowDismissInput();
+            }
+        }
+
+        /// <summary>
+        /// Closes the monster window on Escape or on a click outside it. Defers to any open
+        /// confirmation dialog.
+        /// </summary>
+        private void HandleWindowDismissInput()
+        {
+            bool escPressed = Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape)
+                && _stage.GetKeyboardFocus() == null;
+            if (escPressed)
+            {
+                if (!ConfirmationDialog.TryCancelTopMost())
+                    ToggleMonsterWindow();
+                return;
+            }
+
+            if (ConfirmationDialog.AnyVisible) return;
+            // Clicks on the window's own top-bar button are the toggle handler's job, not ours
+            if (OutsideClickDismissal.IsMouseInside(_monsterButton, _stage)) return;
+            if (OutsideClickDismissal.ShouldDismiss(_monsterWindow, _stage, _windowShownFrame))
+                ToggleMonsterWindow();
         }
     }
 }

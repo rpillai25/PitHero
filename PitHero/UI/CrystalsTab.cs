@@ -448,6 +448,9 @@ namespace PitHero.UI
             }
         }
 
+        /// <summary>The crystal info card element, for parent-window bounds checks (may be null).</summary>
+        public Element CrystalCardElement => _crystalCard;
+
         /// <summary>Hides any open crystal card. Called when the parent Hero UI window closes.</summary>
         public void Cleanup()
         {

@@ -59,6 +59,8 @@ namespace PitHero.UI
         private SecondChanceHeroCrystalPanel _heroCrystalPanel;
         private HeroCrystalCard _vaultCrystalCard;
         private uint _cardShownFrame;
+        private uint _windowShownFrame;
+        private List<Nez.UI.Element> _windowBoundsElements;
 
         // Which tab is currently active (0=Items, 1=Crystals)
         private int _activeTabIndex = 0;
@@ -481,6 +483,9 @@ namespace PitHero.UI
 
                 if (_pauseService != null)
                     _pauseService.IsPaused = true;
+
+                // Stamp the frame so the click that opened the shop can't also dismiss it
+                _windowShownFrame = Time.FrameCount;
             }
             else
             {
@@ -601,7 +606,48 @@ namespace PitHero.UI
                     _heroCrystalPanel?.Update(mousePos);
                 }
                 // Seeds tab (index 2): no per-frame grid update needed
+
+                HandleWindowDismissInput();
             }
+        }
+
+        /// <summary>
+        /// Closes the shop on Escape or on a click outside its window envelope. Defers to any open
+        /// confirmation dialog and stays put mid-drag.
+        /// </summary>
+        private void HandleWindowDismissInput()
+        {
+            if (InventoryDragManager.IsDragging) return;
+
+            bool escPressed = Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape)
+                && _stage.GetKeyboardFocus() == null;
+            if (escPressed)
+            {
+                if (ConfirmationDialog.TryCancelTopMost()) return;
+                if (_vaultCrystalCard != null && _vaultCrystalCard.IsVisible()) { HideVaultCrystalCard(); return; }
+                ToggleShopWindow();
+                return;
+            }
+
+            if (ConfirmationDialog.AnyVisible) return;
+            // Clicks on the window's own top-bar button are the toggle handler's job, not ours
+            if (OutsideClickDismissal.IsMouseInside(_shopButton, _stage)) return;
+            if (OutsideClickDismissal.ShouldDismiss(GetWindowBoundsElements(), _stage, _windowShownFrame))
+                ToggleShopWindow();
+        }
+
+        /// <summary>All elements whose bounding envelope counts as "inside the shop" for outside-click dismissal.</summary>
+        private List<Nez.UI.Element> GetWindowBoundsElements()
+        {
+            if (_windowBoundsElements == null)
+                _windowBoundsElements = new List<Nez.UI.Element>(5);
+            _windowBoundsElements.Clear();
+            _windowBoundsElements.Add(_shopWindow);
+            _windowBoundsElements.Add(_merchantSprite);
+            _windowBoundsElements.Add(_heroInventoryWindow);
+            _windowBoundsElements.Add(_heroCrystalWindow);
+            _windowBoundsElements.Add(_vaultCrystalCard);
+            return _windowBoundsElements;
         }
 
         /// <summary>Periodic safety-net hover check for the hero inventory tooltip in the shop.</summary>
