@@ -47,6 +47,9 @@ namespace PitHero.UI
 
         // Stencil system
         private StencilLibraryPanel _stencilLibraryPanel;
+        private uint _stencilPanelShownFrame;
+        private uint _windowShownFrame;
+        private List<Element> _windowBoundsElements;
         private List<RolePlayingFramework.Synergies.SynergyPattern> _allSynergyPatterns;
 
         // Item card for selection only (hover uses tooltip)
@@ -229,6 +232,8 @@ namespace PitHero.UI
         {
             if (_heroWindow == null) return;
 
+            _stencilLibraryPanel?.SetVisible(false);
+
             float newWidth;
             if (selectedTab == _inventoryTab)
             {
@@ -405,7 +410,21 @@ namespace PitHero.UI
                 _stencilLibraryPanel.SetPosition(panelX, panelY);
                 _stage.AddElement(_stencilLibraryPanel);
                 _stencilLibraryPanel.SetVisible(true);
+                // Stamp the frame so the same click that opened the panel can't also dismiss it
+                _stencilPanelShownFrame = Time.FrameCount;
             }
+        }
+
+        /// <summary>
+        /// Dismisses the stencil library panel on any click outside it. Polls global mouse state
+        /// instead of using a click-consuming overlay so the same click still reaches whatever was
+        /// under it (top bar buttons, tabs, other windows). Clicking View Stencils while the panel
+        /// is open closes it via this path, making the button an effective toggle.
+        /// </summary>
+        private void DismissStencilPanelOnOutsideClick()
+        {
+            if (OutsideClickDismissal.ShouldDismiss(_stencilLibraryPanel, _stage, _stencilPanelShownFrame))
+                _stencilLibraryPanel.SetVisible(false);
         }
 
         private void HandleMoveStencilsClicked(Button button)
@@ -865,6 +884,8 @@ namespace PitHero.UI
                 _heroWindow.ToFront();
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null) pauseService.IsPaused = true;
+                // Stamp the frame so the click that opened the window can't also dismiss it
+                _windowShownFrame = Time.FrameCount;
                 Debug.Log("Hero window opened and game paused");
             }
             else
@@ -1112,11 +1133,58 @@ namespace PitHero.UI
                 // Update crystals collection tab hover check
                 _crystalsTabComponent?.Update();
 
+                // Dismiss stencil library panel on outside click
+                DismissStencilPanelOnOutsideClick();
+
+                HandleWindowDismissInput();
+
                 // Periodic hover check — safety net for missed hover events
                 _hoverCheckFrame++;
                 if (_hoverCheckFrame % 5 == 0)
                     PerformPeriodicHoverCheck();
             }
+        }
+
+        /// <summary>
+        /// Closes the hero window on Escape or on a click outside its window envelope (window,
+        /// stencil panel, item card, crystal card). Escape peels one layer at a time: confirmation
+        /// dialog, then panel/cards, then the window. Defers mid-drag.
+        /// </summary>
+        private void HandleWindowDismissInput()
+        {
+            if (InventoryDragManager.IsDragging) return;
+
+            bool escPressed = Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape)
+                && _stage.GetKeyboardFocus() == null;
+            if (escPressed)
+            {
+                if (ConfirmationDialog.TryCancelTopMost()) return;
+                if (_stencilLibraryPanel != null && _stencilLibraryPanel.IsVisible()) { _stencilLibraryPanel.SetVisible(false); return; }
+                var crystalCard = _crystalsTabComponent?.CrystalCardElement;
+                if (crystalCard != null && crystalCard.IsVisible()) { _crystalsTabComponent.Cleanup(); return; }
+                if (_selectedItemCard != null && _selectedItemCard.IsVisible()) { _selectedItemCard.Hide(); return; }
+                ToggleHeroWindow();
+                return;
+            }
+
+            if (ConfirmationDialog.AnyVisible) return;
+            // Clicks on the window's own top-bar button are the toggle handler's job, not ours
+            if (OutsideClickDismissal.IsMouseInside(_heroButton, _stage)) return;
+            if (OutsideClickDismissal.ShouldDismiss(GetWindowBoundsElements(), _stage, _windowShownFrame))
+                ToggleHeroWindow();
+        }
+
+        /// <summary>All elements whose bounding envelope counts as "inside the hero UI" for outside-click dismissal.</summary>
+        private List<Element> GetWindowBoundsElements()
+        {
+            if (_windowBoundsElements == null)
+                _windowBoundsElements = new List<Element>(4);
+            _windowBoundsElements.Clear();
+            _windowBoundsElements.Add(_heroWindow);
+            _windowBoundsElements.Add(_stencilLibraryPanel);
+            _windowBoundsElements.Add(_selectedItemCard);
+            _windowBoundsElements.Add(_crystalsTabComponent?.CrystalCardElement);
+            return _windowBoundsElements;
         }
 
         /// <summary>Periodic safety-net hover check: ensures the item tooltip appears if the mouse is

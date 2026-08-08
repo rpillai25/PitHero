@@ -30,6 +30,7 @@ namespace PitHero.UI
         private readonly EnhancedSlider[] _stackSliders = new EnhancedSlider[ConsumableCatalog.Count];
 
         private Window _window;
+        private uint _shownFrame;
         private TextService _textService;
 
         public ConsumableSellOptionsDialog(Stage stage)
@@ -155,12 +156,23 @@ namespace PitHero.UI
                 (_stage.GetHeight() - _window.GetHeight()) / 2f);
             _window.SetVisible(true);
             _window.ToFront();
+            _shownFrame = Time.FrameCount;
         }
 
         /// <summary>Hides the window.</summary>
         public void Hide()
         {
             _window?.SetVisible(false);
+        }
+
+        /// <summary>True while the dialog window is visible.</summary>
+        public bool IsVisible() => _window != null && _window.IsVisible();
+
+        /// <summary>Hides the dialog when a click lands outside it without consuming the click. Call once per frame.</summary>
+        public void Update()
+        {
+            if (OutsideClickDismissal.ShouldDismiss(_window, _stage, _shownFrame))
+                Hide();
         }
 
         /// <summary>

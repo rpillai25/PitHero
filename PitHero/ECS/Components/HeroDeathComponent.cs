@@ -222,7 +222,7 @@ namespace PitHero.ECS.Components
             if (vault != null)
             {
                 vault.AddCrystal(crystal);
-                Debug.Log($"[HeroDeathComponent] Added crystal to vault. Crystal sell value: {crystal.CalculateSellValue()} gold");
+                Debug.Log($"[HeroDeathComponent] Added crystal to vault. Buy-back price: {crystal.CalculateBuyBackPrice()} gold");
             }
             else
             {

@@ -215,6 +215,30 @@ namespace RolePlayingFramework.Heroes
             return (int)(BaseValuePerLevel * Level * tierMultiplier);
         }
 
+        /// <summary>
+        /// Calculates the Second Chance buy-back price: base gold per level plus a premium for
+        /// learned skills, anchored to the JP invested in them. The premium is capped at the base
+        /// price so recovering a mastered crystal never costs more than double the flat price.
+        /// </summary>
+        public int CalculateBuyBackPrice()
+        {
+            int basePrice = Level * PitHero.GameConfig.CrystalBuyBackBasePrice;
+
+            int jpInvested = 0;
+            var jobSkills = Job.Skills;
+            for (int i = 0; i < jobSkills.Count; i++)
+            {
+                if (_learnedSkillIds.Contains(jobSkills[i].Id))
+                    jpInvested += jobSkills[i].JPCost;
+            }
+
+            int premium = (int)(jpInvested * PitHero.GameConfig.CrystalJPToGoldRate)
+                + _learnedSynergySkillIds.Count * PitHero.GameConfig.CrystalSynergySkillFee;
+            if (premium > basePrice) premium = basePrice;
+
+            return basePrice + premium;
+        }
+
         /// <summary>Combines two crystals by averaging level, summing base stats, unioning skills and composing jobs.</summary>
         public static HeroCrystal Combine(string combinedName, HeroCrystal a, HeroCrystal b)
         {

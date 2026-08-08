@@ -138,7 +138,8 @@ namespace PitHero.UI
             for (int i = 0; i < jobSkills.Count; i++)
             {
                 var skill = jobSkills[i];
-                var btn = new SkillIconButton(skill, false);
+                bool isLearned = _crystal.HasSkill(skill.Id);
+                var btn = new SkillIconButton(skill, isLearned, false);
                 btn.OnHover += OnSkillHover;
                 btn.OnUnhover += OnSkillUnhover;
                 _skillButtons.Add(btn);
@@ -165,17 +166,21 @@ namespace PitHero.UI
             var discoveredSynergyIds = _crystal.DiscoveredSynergyIds;
             // Cast to ICollection<string> to access Contains without LINQ
             var learnedSynergyIds = _crystal.LearnedSynergySkillIds as ICollection<string>;
+            var processedSkillIds = new HashSet<string>();
 
             int synergyCount = 0;
             // IReadOnlyCollection has no indexer, use GetEnumerator manually (UI-only code path)
             var discoveredEnumerator = discoveredSynergyIds.GetEnumerator();
             while (discoveredEnumerator.MoveNext())
             {
-                var pattern = SynergyDetector.GetPatternById(discoveredEnumerator.Current);
+                var synergyId = discoveredEnumerator.Current;
+                var pattern = SynergyPatternRegistry.GetById(synergyId);
                 if (pattern?.UnlockedSkill == null) continue;
                 var skill = pattern.UnlockedSkill;
-                if (learnedSynergyIds == null || !learnedSynergyIds.Contains(skill.Id)) continue;
-                var btn = new SkillIconButton(skill, true);
+                if (!processedSkillIds.Add(skill.Id)) continue;
+                bool isLearned = learnedSynergyIds != null && learnedSynergyIds.Contains(skill.Id);
+                var btn = new SkillIconButton(skill, isLearned, true,
+                    _crystal.GetSynergyPoints(synergyId), pattern.SynergyPointsRequired);
                 btn.OnHover += OnSkillHover;
                 btn.OnUnhover += OnSkillUnhover;
                 _skillButtons.Add(btn);
@@ -203,10 +208,10 @@ namespace PitHero.UI
             _contentTable.Row();
         }
 
-        private void OnSkillHover(ISkill skill)
+        private void OnSkillHover(ISkill skill, bool isLearned, bool isSynergy, int synergyCurrentPoints, int synergyRequiredPoints)
         {
             if (_stage == null) return;
-            _skillTooltip.ShowSkill(skill, false, null, false, 0, 0, showCostAndStatus: false);
+            _skillTooltip.ShowSkill(skill, isLearned, null, isSynergy, synergyCurrentPoints, synergyRequiredPoints);
             if (_skillTooltip.GetContainer().GetParent() == null)
                 _stage.AddElement(_skillTooltip.GetContainer());
             _skillTooltip.PositionWithinBounds(_stage.GetMousePosition(), _stage);
@@ -223,23 +228,33 @@ namespace PitHero.UI
         private class SkillIconButton : Element, IInputListener
         {
             private readonly ISkill _skill;
+            private readonly bool _isLearned;
+            private readonly bool _isSynergy;
+            private readonly int _synergyCurrentPoints;
+            private readonly int _synergyRequiredPoints;
             private SpriteDrawable _iconDrawable;
             private SpriteDrawable _highlightBoxDrawable;
             private bool _isHovered;
 
-            public event Action<ISkill> OnHover;
+            public event Action<ISkill, bool, bool, int, int> OnHover;
             public event Action OnUnhover;
 
-            public SkillIconButton(ISkill skill, bool isSynergy)
+            public SkillIconButton(ISkill skill, bool isLearned, bool isSynergy,
+                int synergyCurrentPoints = 0, int synergyRequiredPoints = 0)
             {
                 _skill = skill;
+                _isLearned = isLearned;
+                _isSynergy = isSynergy;
+                _synergyCurrentPoints = synergyCurrentPoints;
+                _synergyRequiredPoints = synergyRequiredPoints;
                 if (Core.Content != null)
                 {
                     var skillsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/SkillsStencils.atlas");
                     var uiAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/UI.atlas");
                     var icon = skillsAtlas.GetSprite(skill.Id) ?? uiAtlas.GetSprite("SkillIcon1");
                     _iconDrawable = new SpriteDrawable(icon);
-                    if (!isSynergy) _iconDrawable.TintColor = Color.White;
+                    // Unlearned skills draw faded, matching HeroCrystalTab
+                    _iconDrawable.TintColor = isLearned ? Color.White : new Color(128, 128, 128, 200);
                     var hl = uiAtlas.GetSprite("HighlightBox");
                     if (hl != null) _highlightBoxDrawable = new SpriteDrawable(hl);
                 }
@@ -255,7 +270,7 @@ namespace PitHero.UI
                     _highlightBoxDrawable.Draw(batcher, GetX(), GetY(), GetWidth(), GetHeight(), Color.White);
             }
 
-            void IInputListener.OnMouseEnter()  { _isHovered = true;  OnHover?.Invoke(_skill); }
+            void IInputListener.OnMouseEnter()  { _isHovered = true;  OnHover?.Invoke(_skill, _isLearned, _isSynergy, _synergyCurrentPoints, _synergyRequiredPoints); }
             void IInputListener.OnMouseExit()   { _isHovered = false; OnUnhover?.Invoke(); }
             void IInputListener.OnMouseMoved(Vector2 _) { }
             bool IInputListener.OnLeftMousePressed(Vector2 _)  => true;

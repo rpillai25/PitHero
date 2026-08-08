@@ -58,7 +58,9 @@ namespace PitHero.UI
         private VaultCrystalGrid _vaultCrystalGrid;
         private SecondChanceHeroCrystalPanel _heroCrystalPanel;
         private HeroCrystalCard _vaultCrystalCard;
-        private VaultCrystalCardDismissLayer _vaultCrystalCardDismissLayer;
+        private uint _cardShownFrame;
+        private uint _windowShownFrame;
+        private List<Nez.UI.Element> _windowBoundsElements;
 
         // Which tab is currently active (0=Items, 1=Crystals)
         private int _activeTabIndex = 0;
@@ -400,6 +402,7 @@ namespace PitHero.UI
         private void HandleTabChanged(int tabIndex)
         {
             _activeTabIndex = tabIndex;
+            HideVaultCrystalCard();
             if (!_windowVisible) return;
 
             if (tabIndex == 0) // Items tab
@@ -480,6 +483,9 @@ namespace PitHero.UI
 
                 if (_pauseService != null)
                     _pauseService.IsPaused = true;
+
+                // Stamp the frame so the click that opened the shop can't also dismiss it
+                _windowShownFrame = Time.FrameCount;
             }
             else
             {
@@ -584,6 +590,7 @@ namespace PitHero.UI
             UpdatePromotionVisibilityIfNeeded();
             UpdateButtonStyleIfNeeded();
             UpdateHeroInventoryTooltipPosition();
+            DismissVaultCrystalCardOnOutsideClick();
 
             if (_windowVisible && _stage != null)
             {
@@ -599,7 +606,48 @@ namespace PitHero.UI
                     _heroCrystalPanel?.Update(mousePos);
                 }
                 // Seeds tab (index 2): no per-frame grid update needed
+
+                HandleWindowDismissInput();
             }
+        }
+
+        /// <summary>
+        /// Closes the shop on Escape or on a click outside its window envelope. Defers to any open
+        /// confirmation dialog and stays put mid-drag.
+        /// </summary>
+        private void HandleWindowDismissInput()
+        {
+            if (InventoryDragManager.IsDragging) return;
+
+            bool escPressed = Input.IsKeyPressed(Microsoft.Xna.Framework.Input.Keys.Escape)
+                && _stage.GetKeyboardFocus() == null;
+            if (escPressed)
+            {
+                if (ConfirmationDialog.TryCancelTopMost()) return;
+                if (_vaultCrystalCard != null && _vaultCrystalCard.IsVisible()) { HideVaultCrystalCard(); return; }
+                ToggleShopWindow();
+                return;
+            }
+
+            if (ConfirmationDialog.AnyVisible) return;
+            // Clicks on the window's own top-bar button are the toggle handler's job, not ours
+            if (OutsideClickDismissal.IsMouseInside(_shopButton, _stage)) return;
+            if (OutsideClickDismissal.ShouldDismiss(GetWindowBoundsElements(), _stage, _windowShownFrame))
+                ToggleShopWindow();
+        }
+
+        /// <summary>All elements whose bounding envelope counts as "inside the shop" for outside-click dismissal.</summary>
+        private List<Nez.UI.Element> GetWindowBoundsElements()
+        {
+            if (_windowBoundsElements == null)
+                _windowBoundsElements = new List<Nez.UI.Element>(5);
+            _windowBoundsElements.Clear();
+            _windowBoundsElements.Add(_shopWindow);
+            _windowBoundsElements.Add(_merchantSprite);
+            _windowBoundsElements.Add(_heroInventoryWindow);
+            _windowBoundsElements.Add(_heroCrystalWindow);
+            _windowBoundsElements.Add(_vaultCrystalCard);
+            return _windowBoundsElements;
         }
 
         /// <summary>Periodic safety-net hover check for the hero inventory tooltip in the shop.</summary>
@@ -1066,7 +1114,7 @@ namespace PitHero.UI
                 return;
             }
 
-            int price = crystal.Level * GameConfig.CrystalBuyBackBasePrice;
+            int price = crystal.CalculateBuyBackPrice();
             string promptText = string.Format(GetText(TextType.UI, UITextKey.SecondChanceBuyPrompt), price);
 
             var dialog = new ConfirmationDialog(
@@ -1177,30 +1225,25 @@ namespace PitHero.UI
             _vaultCrystalCard.ShowCrystal(crystal);
             _vaultCrystalCard.Pack();
             _vaultCrystalCard.PositionAtWindowLeft(_shopWindow);
-
-            if (_vaultCrystalCardDismissLayer == null)
-                _vaultCrystalCardDismissLayer = new VaultCrystalCardDismissLayer(HideVaultCrystalCard);
-            if (_vaultCrystalCardDismissLayer.GetParent() == null)
-                _stage.AddElement(_vaultCrystalCardDismissLayer);
-            _vaultCrystalCardDismissLayer.SetSize(_stage.GetWidth(), _stage.GetHeight());
-            _vaultCrystalCardDismissLayer.SetVisible(true);
-            // Bring shop and hero-crystal windows above the dismiss layer so their
-            // crystal-slot children receive native click/hover events. Set ChildrenOnly
-            // touchable on both so empty background areas fall through to the dismiss layer.
-            _shopWindow?.ToFront();
-            _shopWindow?.SetTouchable(Touchable.ChildrenOnly);
-            _heroCrystalWindow?.ToFront();
-            _heroCrystalWindow?.SetTouchable(Touchable.ChildrenOnly);
             _vaultCrystalCard.ToFront();
+            // Stamp the frame so the same click that opened the card can't also dismiss it
+            _cardShownFrame = Time.FrameCount;
         }
 
         private void HideVaultCrystalCard()
         {
             _vaultCrystalCard?.Hide();
-            if (_vaultCrystalCardDismissLayer != null)
-                _vaultCrystalCardDismissLayer.SetVisible(false);
-            _shopWindow?.SetTouchable(Touchable.Enabled);
-            _heroCrystalWindow?.SetTouchable(Touchable.Enabled);
+        }
+
+        /// <summary>
+        /// Dismisses the crystal card on any click outside it. Polls global mouse state instead of
+        /// using a click-consuming overlay so the same click still reaches whatever was under it
+        /// (top bar buttons, shop tabs, other windows).
+        /// </summary>
+        private void DismissVaultCrystalCardOnOutsideClick()
+        {
+            if (OutsideClickDismissal.ShouldDismiss(_vaultCrystalCard, _stage, _cardShownFrame))
+                HideVaultCrystalCard();
         }
 
         // ──────────────────────────────────────────────────────────────────────────
@@ -1396,25 +1439,5 @@ namespace PitHero.UI
 
         /// <summary>Full-stage transparent overlay that dismisses the vault crystal card on any click.
         /// Crystal-slot clicks are handled by the slots themselves (windows use ChildrenOnly touchable).</summary>
-        private class VaultCrystalCardDismissLayer : Element, IInputListener
-        {
-            private readonly System.Action _onDismiss;
-
-            public VaultCrystalCardDismissLayer(System.Action onDismiss)
-            {
-                _onDismiss = onDismiss;
-                SetTouchable(Touchable.Enabled);
-                SetVisible(false);
-            }
-
-            bool IInputListener.OnLeftMousePressed(Vector2 mousePos)  { _onDismiss?.Invoke(); return true; }
-            bool IInputListener.OnRightMousePressed(Vector2 mousePos) { _onDismiss?.Invoke(); return true; }
-            void IInputListener.OnMouseEnter()  { }
-            void IInputListener.OnMouseExit()   { }
-            void IInputListener.OnMouseMoved(Vector2 mousePos) { }
-            void IInputListener.OnLeftMouseUp(Vector2 mousePos)  { }
-            void IInputListener.OnRightMouseUp(Vector2 mousePos) { }
-            bool IInputListener.OnMouseScrolled(int mouseWheelDelta) => false;
-        }
     }
 }

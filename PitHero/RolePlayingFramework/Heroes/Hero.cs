@@ -94,6 +94,22 @@ namespace RolePlayingFramework.Heroes
                     if (fromCrystal.HasSkill(s.Id))
                         _learnedSkills[s.Id] = s;
                 }
+
+                // preload synergy skills permanently bound to the crystal
+                foreach (var synergySkillId in fromCrystal.LearnedSynergySkillIds)
+                {
+                    if (_learnedSkills.ContainsKey(synergySkillId)) continue;
+                    var patterns = SynergyPatternRegistry.All;
+                    for (int i = 0; i < patterns.Count; i++)
+                    {
+                        var unlocked = patterns[i].UnlockedSkill;
+                        if (unlocked != null && unlocked.Id == synergySkillId)
+                        {
+                            _learnedSkills[synergySkillId] = unlocked;
+                            break;
+                        }
+                    }
+                }
             }
             ApplyPassiveSkills();
             RecalculateDerived();

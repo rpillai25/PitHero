@@ -45,8 +45,8 @@ namespace PitHero.UI
         private CrystalSlotElement _dragHoveredSlot;
         private int _hoverCheckFrame;
 
-        // Full-screen dismiss layer for the crystal card (hides card when clicking outside it)
-        private Element _cardDismissLayer;
+        // Frame on which the crystal card was last shown (guards the outside-click dismiss poll)
+        private uint _cardShownFrame;
 
         /// <summary>Creates and returns the tab content table.</summary>
         public Table CreateContent(Skin skin, Stage stage, Window heroWindow)
@@ -358,36 +358,33 @@ namespace PitHero.UI
             _crystalCard.ShowCrystal(crystal);
             _crystalCard.Pack();
             _crystalCard.PositionAtWindowRight(_heroWindow);
-
-            // Ensure card dismiss layer exists and is wired up
-            if (_cardDismissLayer == null)
-            {
-                _cardDismissLayer = new DismissLayer(() => HideCrystalCard());
-                _stage.AddElement(_cardDismissLayer);
-            }
-            _cardDismissLayer.SetSize(_stage.GetWidth(), _stage.GetHeight());
-            _cardDismissLayer.SetVisible(true);
-            // Bring hero window above the dismiss layer so its crystal-slot children receive
-            // native click/hover events.  Set ChildrenOnly touchable so empty areas in the
-            // window background are NOT hit by the window, letting those clicks fall through
-            // to the dismiss layer behind it.  The card sits at the very front.
-            _heroWindow?.ToFront();
-            _heroWindow?.SetTouchable(Touchable.ChildrenOnly);
             _crystalCard.ToFront();
+            // Stamp the frame so the same click that opened the card can't also dismiss it
+            _cardShownFrame = Time.FrameCount;
         }
 
         private void HideCrystalCard()
         {
             _crystalCard?.Hide();
-            if (_cardDismissLayer != null)
-                _cardDismissLayer.SetVisible(false);
-            _heroWindow?.SetTouchable(Touchable.Enabled);
+        }
+
+        /// <summary>
+        /// Dismisses the crystal card on any click outside it. Polls global mouse state instead of
+        /// using a click-consuming overlay so the same click still reaches whatever was under it
+        /// (top bar buttons, tabs, other windows).
+        /// </summary>
+        private void DismissCrystalCardOnOutsideClick()
+        {
+            if (OutsideClickDismissal.ShouldDismiss(_crystalCard, _stage, _cardShownFrame))
+                HideCrystalCard();
         }
 
         /// <summary>Called every frame by HeroUI to run periodic hover checks and keep tooltip visible.</summary>
         public void Update()
         {
             if (_stage == null) return;
+
+            DismissCrystalCardOnOutsideClick();
 
             _hoverCheckFrame++;
             if (_hoverCheckFrame % 5 != 0) return;
@@ -450,6 +447,9 @@ namespace PitHero.UI
                 }
             }
         }
+
+        /// <summary>The crystal info card element, for parent-window bounds checks (may be null).</summary>
+        public Element CrystalCardElement => _crystalCard;
 
         /// <summary>Hides any open crystal card. Called when the parent Hero UI window closes.</summary>
         public void Cleanup()
