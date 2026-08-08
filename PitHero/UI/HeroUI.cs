@@ -47,6 +47,7 @@ namespace PitHero.UI
 
         // Stencil system
         private StencilLibraryPanel _stencilLibraryPanel;
+        private uint _stencilPanelShownFrame;
         private List<RolePlayingFramework.Synergies.SynergyPattern> _allSynergyPatterns;
 
         // Item card for selection only (hover uses tooltip)
@@ -229,6 +230,8 @@ namespace PitHero.UI
         {
             if (_heroWindow == null) return;
 
+            _stencilLibraryPanel?.SetVisible(false);
+
             float newWidth;
             if (selectedTab == _inventoryTab)
             {
@@ -405,7 +408,30 @@ namespace PitHero.UI
                 _stencilLibraryPanel.SetPosition(panelX, panelY);
                 _stage.AddElement(_stencilLibraryPanel);
                 _stencilLibraryPanel.SetVisible(true);
+                // Stamp the frame so the same click that opened the panel can't also dismiss it
+                _stencilPanelShownFrame = Time.FrameCount;
             }
+        }
+
+        /// <summary>
+        /// Dismisses the stencil library panel on any click outside it. Polls global mouse state
+        /// instead of using a click-consuming overlay so the same click still reaches whatever was
+        /// under it (top bar buttons, tabs, other windows). Clicking View Stencils while the panel
+        /// is open closes it via this path, making the button an effective toggle.
+        /// </summary>
+        private void DismissStencilPanelOnOutsideClick()
+        {
+            if (_stencilLibraryPanel == null || !_stencilLibraryPanel.IsVisible()) return;
+            if (!Input.LeftMouseButtonPressed && !Input.RightMouseButtonPressed) return;
+            if (Time.FrameCount == _stencilPanelShownFrame) return;
+
+            var mousePos = _stage.GetMousePosition();
+            bool insidePanel = mousePos.X >= _stencilLibraryPanel.GetX()
+                && mousePos.X <= _stencilLibraryPanel.GetX() + _stencilLibraryPanel.GetWidth()
+                && mousePos.Y >= _stencilLibraryPanel.GetY()
+                && mousePos.Y <= _stencilLibraryPanel.GetY() + _stencilLibraryPanel.GetHeight();
+            if (!insidePanel)
+                _stencilLibraryPanel.SetVisible(false);
         }
 
         private void HandleMoveStencilsClicked(Button button)
@@ -1111,6 +1137,9 @@ namespace PitHero.UI
 
                 // Update crystals collection tab hover check
                 _crystalsTabComponent?.Update();
+
+                // Dismiss stencil library panel on outside click
+                DismissStencilPanelOnOutsideClick();
 
                 // Periodic hover check — safety net for missed hover events
                 _hoverCheckFrame++;
