@@ -375,16 +375,7 @@ namespace PitHero.UI
         /// </summary>
         private void DismissCrystalCardOnOutsideClick()
         {
-            if (_crystalCard == null || !_crystalCard.IsVisible()) return;
-            if (!Input.LeftMouseButtonPressed && !Input.RightMouseButtonPressed) return;
-            if (Time.FrameCount == _cardShownFrame) return;
-
-            var mousePos = _stage.GetMousePosition();
-            bool insideCard = mousePos.X >= _crystalCard.GetX()
-                && mousePos.X <= _crystalCard.GetX() + _crystalCard.GetWidth()
-                && mousePos.Y >= _crystalCard.GetY()
-                && mousePos.Y <= _crystalCard.GetY() + _crystalCard.GetHeight();
-            if (!insideCard)
+            if (OutsideClickDismissal.ShouldDismiss(_crystalCard, _stage, _cardShownFrame))
                 HideCrystalCard();
         }
 

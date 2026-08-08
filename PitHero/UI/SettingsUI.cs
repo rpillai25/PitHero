@@ -551,6 +551,10 @@ namespace PitHero.UI
             _tabPane.AddTab(_buttonsTab);
             _tabPane.AddTab(_automationTab);
 
+            // Switching settings tabs dismisses any open automation dialog
+            for (int i = 0; i < _tabPane.TabButtons.Count; i++)
+                _tabPane.TabButtons[i].OnClick += HideAutomationDialogs;
+
             // Add TabPane to settings window
             _settingsWindow.Add(_tabPane).Expand().Fill().Pad(0); // No cell padding - tabs flush with window edges
 
@@ -1937,6 +1941,7 @@ namespace PitHero.UI
                 // Hide any open confirmation dialogs
                 HideConfirmationDialog(_exitConfirmationDialog);
                 HideConfirmationDialog(_quitToTitleConfirmationDialog);
+                HideAutomationDialogs();
             }
 
             _isVisible = willShow;
@@ -1954,6 +1959,16 @@ namespace PitHero.UI
                 Core.Services.GetService<AutoHireMercenaryService>()?.TryHirePass();
         }
 
+        /// <summary>Hides all Automation tab option dialogs (designation, gear/consumable filters).</summary>
+        private void HideAutomationDialogs()
+        {
+            _autoSellCropTypesDialog?.Hide();
+            _gearSellOptionsDialog?.Hide();
+            _consumableSellOptionsDialog?.Hide();
+            _gearPurchaseOptionsDialog?.Hide();
+            _consumablePurchaseOptionsDialog?.Hide();
+        }
+
         /// <summary>
         /// Force closes the settings window and updates internal state.
         /// Called by other UIs (HeroUI, MonsterUI) when enforcing the single window policy.
@@ -1966,6 +1981,7 @@ namespace PitHero.UI
                 UIWindowManager.OnUIWindowClosing();
                 HideConfirmationDialog(_exitConfirmationDialog);
                 HideConfirmationDialog(_quitToTitleConfirmationDialog);
+                HideAutomationDialogs();
                 _settingsWindow.SetVisible(false);
                 var pauseService = Core.Services.GetService<PauseService>();
                 if (pauseService != null)
@@ -2117,6 +2133,13 @@ namespace PitHero.UI
                 UpdateFreeMoveMode();
                 return;
             }
+
+            // Dismiss automation option dialogs on outside click (without consuming the click)
+            _autoSellCropTypesDialog?.Update();
+            _gearSellOptionsDialog?.Update();
+            _consumableSellOptionsDialog?.Update();
+            _gearPurchaseOptionsDialog?.Update();
+            _consumablePurchaseOptionsDialog?.Update();
 
             // OnClicked (mouse-up) already ran in base.Update() before this method is called.
             // If till mode is now active but wasn't at the end of last frame, the click that activated
@@ -2285,6 +2308,7 @@ namespace PitHero.UI
             // Hide settings WITHOUT the close path: no OnUIWindowClosing, no unpause, _isVisible stays true
             HideConfirmationDialog(_exitConfirmationDialog);
             HideConfirmationDialog(_quitToTitleConfirmationDialog);
+            HideAutomationDialogs();
             _settingsWindow.SetVisible(false);
 
             // Forget docking so the exit-time shrink/restore anchors to the dragged position

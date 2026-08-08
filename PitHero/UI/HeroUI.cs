@@ -421,16 +421,7 @@ namespace PitHero.UI
         /// </summary>
         private void DismissStencilPanelOnOutsideClick()
         {
-            if (_stencilLibraryPanel == null || !_stencilLibraryPanel.IsVisible()) return;
-            if (!Input.LeftMouseButtonPressed && !Input.RightMouseButtonPressed) return;
-            if (Time.FrameCount == _stencilPanelShownFrame) return;
-
-            var mousePos = _stage.GetMousePosition();
-            bool insidePanel = mousePos.X >= _stencilLibraryPanel.GetX()
-                && mousePos.X <= _stencilLibraryPanel.GetX() + _stencilLibraryPanel.GetWidth()
-                && mousePos.Y >= _stencilLibraryPanel.GetY()
-                && mousePos.Y <= _stencilLibraryPanel.GetY() + _stencilLibraryPanel.GetHeight();
-            if (!insidePanel)
+            if (OutsideClickDismissal.ShouldDismiss(_stencilLibraryPanel, _stage, _stencilPanelShownFrame))
                 _stencilLibraryPanel.SetVisible(false);
         }
 
