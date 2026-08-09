@@ -958,8 +958,18 @@ namespace PitHero.ECS.Components
             // HIGHEST PRIORITY: Player stopped adventuring — go to tavern and stay there.
             // When SeatedInTavern is already true the goal is already satisfied, so the
             // planner returns no actions and the hero stays idle until Continue is pressed.
+            // Night sleep still preempts the seat: at 10 PM the party leaves the table,
+            // sleeps at the inn, and returns to the table after waking because
+            // StoppedAdventure stays true throughout.
             if (StoppedAdventure)
             {
+                var stopTimeService = Core.Services.GetService<InGameTimeService>();
+                if (stopTimeService?.IsNighttime == true)
+                {
+                    goalState.Set(GoapConstants.IsNighttime, false);
+                    return;
+                }
+
                 goalState.Set(GoapConstants.SeatedInTavern, true);
                 return;
             }

@@ -218,6 +218,8 @@ namespace PitHero.AI
                         EmitInnRestEvent();
                         _innRestEmitted = true;
                     }
+
+                    StandUpForNightSleepIfSeated();
                 }
                 else
                 {
@@ -282,6 +284,8 @@ namespace PitHero.AI
                                 EmitInnRestEvent();
                                 _innRestEmitted = true;
                             }
+
+                            StandUpForNightSleepIfSeated();
                         }
                         else
                         {
@@ -954,6 +958,23 @@ namespace PitHero.AI
                 if (actions[i] is SleepInBedAction)
                     return true;
             return false;
+        }
+
+        /// <summary>
+        /// A stopped party adopting a night-sleep plan leaves the table: clearing SeatedInTavern
+        /// stops the kitchen from taking party orders during the walk to the inn, and the dining
+        /// service settles outstanding tickets. Mercenaries get up and follow the hero to the inn
+        /// (the sleep coroutine re-disables following when it puts them to bed). StoppedAdventure
+        /// stays true, so the party walks back to the table after waking.
+        /// </summary>
+        private void StandUpForNightSleepIfSeated()
+        {
+            if (_hero.StoppedAdventure && _hero.SeatedInTavern)
+            {
+                _hero.SeatedInTavern = false;
+                WalkToTavernForStopAction.ReenableMercenaryFollowing();
+                Core.Services.GetService<PartyDiningService>()?.OnNightSleepDeparture();
+            }
         }
 
         /// <summary>Emits the inn-rest console event, using night-specific text when it's nighttime.</summary>
