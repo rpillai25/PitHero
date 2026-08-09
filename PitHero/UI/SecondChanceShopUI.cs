@@ -51,11 +51,13 @@ namespace PitHero.UI
 
         // Items tab components
         private VaultItemGrid _vaultItemGrid;
+        private PagerRow _itemsPager;
         private InventoryGrid _heroInventoryGrid;
         private ItemCardTooltip _heroInventoryTooltip;
 
         // Crystals tab components
         private VaultCrystalGrid _vaultCrystalGrid;
+        private PagerRow _crystalsPager;
         private SecondChanceHeroCrystalPanel _heroCrystalPanel;
         private HeroCrystalCard _vaultCrystalCard;
         private uint _cardShownFrame;
@@ -236,15 +238,11 @@ namespace PitHero.UI
         // Tab population (vault grids only — no hero panel content here)
         // ──────────────────────────────────────────────────────────────────────────
 
-        /// <summary>Populates the Items tab with the vault item grid.</summary>
+        /// <summary>Populates the Items tab with the vault item grid and pagination row.</summary>
         private void PopulateItemsTab(Tab tab, Skin skin)
         {
-            var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
-
             _vaultItemGrid = new VaultItemGrid();
             _vaultItemGrid.InitializeTooltip(_stage, skin);
-            if (vault != null)
-                _vaultItemGrid.RefreshFromVault(vault);
 
             // Cancel drag when it lands outside the hero inventory grid
             _vaultItemGrid.OnVaultSlotDragDropped += HandleVaultDragDropped;
@@ -253,23 +251,27 @@ namespace PitHero.UI
             scrollPane.SetScrollingDisabled(true, false);
             scrollPane.SetFadeScrollBars(false);
 
+            _itemsPager = new PagerRow(skin);
+            _itemsPager.OnPageChanged += RefreshVaultItemsView;
+
             var content = new Table();
             content.Top().Left().Pad(8f);
             content.Add(scrollPane).Size(297f, 198f).Top().Left();
+            content.Row();
+            content.Add(_itemsPager).SetPadTop(2f);
 
             tab.ClearChildren();
             tab.Add(content).Expand().Fill();
+
+            // Initial population
+            RefreshVaultItemsView();
         }
 
-        /// <summary>Populates the Crystals tab with the vault crystal grid.</summary>
+        /// <summary>Populates the Crystals tab with the vault crystal grid and pagination row.</summary>
         private void PopulateCrystalsTab(Tab tab, Skin skin)
         {
-            var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
-
             _vaultCrystalGrid = new VaultCrystalGrid();
             _vaultCrystalGrid.InitializeTooltip(_stage, skin);
-            if (vault != null)
-                _vaultCrystalGrid.RefreshFromVault(vault);
 
             // Cancel drag when it lands outside the hero crystal panel
             _vaultCrystalGrid.OnVaultCrystalDragDropped += HandleVaultCrystalDragDropped;
@@ -286,12 +288,20 @@ namespace PitHero.UI
             scrollPane.SetScrollingDisabled(true, false);
             scrollPane.SetFadeScrollBars(false);
 
+            _crystalsPager = new PagerRow(skin);
+            _crystalsPager.OnPageChanged += RefreshVaultCrystalsView;
+
             var content = new Table();
             content.Top().Left().Pad(8f);
             content.Add(scrollPane).Size(297f, 198f).Top().Left();
+            content.Row();
+            content.Add(_crystalsPager).SetPadTop(2f);
 
             tab.ClearChildren();
             tab.Add(content).Expand().Fill();
+
+            // Initial population
+            RefreshVaultCrystalsView();
         }
 
         /// <summary>Populates the Seeds tab with a 4-per-row grid of purchasable crop seed slots.</summary>
@@ -499,6 +509,8 @@ namespace PitHero.UI
                 _heroCrystalWindow.Remove();
                 _heroInventoryTooltip?.GetContainer().Remove();
                 HideVaultCrystalCard();
+                _itemsPager?.Reset();
+                _crystalsPager?.Reset();
 
                 if (_pauseService != null)
                     _pauseService.IsPaused = false;
@@ -521,6 +533,8 @@ namespace PitHero.UI
                 _heroCrystalWindow?.Remove();
                 _heroInventoryTooltip?.GetContainer().Remove();
                 HideVaultCrystalCard();
+                _itemsPager?.Reset();
+                _crystalsPager?.Reset();
 
                 if (_pauseService != null)
                     _pauseService.IsPaused = false;
@@ -961,7 +975,7 @@ namespace PitHero.UI
                 vault.RemoveQuantity(vaultStack, qty);
             }
 
-            _vaultItemGrid?.RefreshFromVault(vault);
+            RefreshVaultItemsView();
             InventorySelectionManager.OnInventoryChanged?.Invoke();
             InventoryDragManager.EndDrag();
         }
@@ -969,9 +983,7 @@ namespace PitHero.UI
         /// <summary>Refreshes the vault item grid when the hero sells an item from their inventory.</summary>
         private void HandleHeroInventorySell()
         {
-            var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
-            if (vault != null)
-                _vaultItemGrid?.RefreshFromVault(vault);
+            RefreshVaultItemsView();
         }
 
         /// <summary>
@@ -1164,7 +1176,7 @@ namespace PitHero.UI
             Core.GetGlobalManager<SoundEffectManager>()?.PlaySound(SoundEffectType.ItemPurchase);
 
             vault.RemoveCrystal(crystal);
-            _vaultCrystalGrid?.RefreshFromVault(vault);
+            RefreshVaultCrystalsView();
             _heroCrystalPanel?.RefreshAll();
             InventoryDragManager.EndDrag();
         }
@@ -1276,17 +1288,41 @@ namespace PitHero.UI
             _heroInventoryGrid.RefreshMercenarySlots(hiredMercs);
         }
 
+        /// <summary>
+        /// Syncs the items pager to the current vault stack count, then refreshes the item grid
+        /// from the current page.  Configure is called before RefreshFromVault so the cursor is
+        /// clamped before the grid reads PageIndex (e.g., when the last item on the last page is
+        /// purchased and the page count shrinks).
+        /// </summary>
+        private void RefreshVaultItemsView()
+        {
+            var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
+            int stackCount = vault?.StackCount ?? 0;
+            int pageCount = (stackCount + SecondChanceMerchantVault.SlotsPerPage - 1) / SecondChanceMerchantVault.SlotsPerPage;
+            _itemsPager?.Configure(pageCount);
+            _vaultItemGrid?.RefreshFromVault(vault, _itemsPager?.PageIndex ?? 0);
+        }
+
+        /// <summary>
+        /// Syncs the crystals pager to the current vault crystal count, then refreshes the crystal
+        /// grid from the current page.
+        /// </summary>
+        private void RefreshVaultCrystalsView()
+        {
+            var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
+            int crystalCount = vault?.CrystalCount ?? 0;
+            int pageCount = (crystalCount + SecondChanceMerchantVault.SlotsPerPage - 1) / SecondChanceMerchantVault.SlotsPerPage;
+            _crystalsPager?.Configure(pageCount);
+            _vaultCrystalGrid?.RefreshFromVault(vault, _crystalsPager?.PageIndex ?? 0);
+        }
+
         /// <summary>Refreshes all shop data when the window is opened.</summary>
         private void RefreshShopData()
         {
             _heroInventoryTooltip?.InvalidateCache();
 
-            var vault = Core.Services?.GetService<SecondChanceMerchantVault>();
-            if (vault != null)
-            {
-                _vaultItemGrid?.RefreshFromVault(vault);
-                _vaultCrystalGrid?.RefreshFromVault(vault);
-            }
+            RefreshVaultItemsView();
+            RefreshVaultCrystalsView();
 
             var heroComp = Core.Scene?.FindEntity("hero")?.GetComponent<HeroComponent>();
             if (heroComp != null)

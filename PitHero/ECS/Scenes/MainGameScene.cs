@@ -1050,14 +1050,14 @@ namespace PitHero.ECS.Scenes
                             if (itemTemplate is Consumable consumable)
                             {
                                 consumable.StackCount = vi.Quantity;
-                                vaultService.AddItem(consumable);
+                                vaultService.AddItem(consumable, logEvictions: false);
                             }
                             else
                             {
                                 for (int q = 0; q < vi.Quantity; q++)
                                 {
                                     if (ItemRegistry.TryCreateItem(vi.Name, out var gearCopy))
-                                        vaultService.AddItem(gearCopy);
+                                        vaultService.AddItem(gearCopy, logEvictions: false);
                                 }
                             }
                         }

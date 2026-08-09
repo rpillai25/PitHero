@@ -373,6 +373,8 @@ namespace PitHero
         public const string RarityLegendary = "RarityLegendary";
         public const string ConsoleAutoSoldItem = "ConsoleAutoSoldItem";
         public const string ConsoleItemSentToVault = "ConsoleItemSentToVault";
+        public const string ConsoleVaultItemEvicted = "ConsoleVaultItemEvicted";
+        public const string ConsoleVaultItemRejected = "ConsoleVaultItemRejected";
         public const string ButtonGearSellOptions = "ButtonGearSellOptions";
         public const string WindowGearSellOptions = "WindowGearSellOptions";
         public const string SettingsSellGearTypes = "SettingsSellGearTypes";

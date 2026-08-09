@@ -377,6 +377,8 @@ RarityEpic,Epic
 RarityLegendary,Legendary
 ConsoleAutoSoldItem,Auto-sold {0} for {1}G to make room.
 ConsoleItemSentToVault,Bag full! {0} was sent to the Second Chance shop.
+ConsoleVaultItemEvicted,The Second Chance shop is full! {0} left the shop to make room for {1}.
+ConsoleVaultItemRejected,The Second Chance shop is full! {0} could not be added.
 
 # Automation updates (issue #345)
 ButtonGearSellOptions,Gear Sell Options

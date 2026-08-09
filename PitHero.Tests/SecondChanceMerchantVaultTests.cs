@@ -4,6 +4,7 @@ using RolePlayingFramework.Equipment;
 using RolePlayingFramework.Equipment.Swords;
 using RolePlayingFramework.Equipment.Armor;
 using RolePlayingFramework.Equipment.Accessories;
+using RolePlayingFramework.Stats;
 using System.Linq;
 using PitHero;
 
@@ -22,6 +23,33 @@ namespace PitHero.Tests
         public void SetUp()
         {
             _vault = new SecondChanceMerchantVault();
+        }
+
+        // ── Helpers for eviction tests ────────────────────────────────────────────
+
+        /// <summary>Creates a gear item with a given name and attack-score (other stats zero).</summary>
+        private static Gear MakeGear(string name, int score, ItemRarity rarity = ItemRarity.Normal, int price = 100)
+            => new Gear(name, ItemKind.WeaponSword, rarity, "desc", price,
+                        new StatBlock(0, 0, 0, 0), atk: score);
+
+        private sealed class TestPotion : Consumable
+        {
+            private readonly int _hp;
+            private readonly int _mp;
+            public TestPotion(string name, int price, int hp, int mp = 0)
+                : base(name, ItemRarity.Normal, "desc", price, hp, mp)
+            { _hp = hp; _mp = mp; }
+            public override Consumable CreateFreshInstance() => new TestPotion(Name, Price, _hp, _mp);
+        }
+
+        /// <summary>
+        /// Fills the vault to exactly <see cref="SecondChanceMerchantVault.MaxStacks"/> distinct
+        /// gear stacks (names "VaultGear0"…"VaultGear{N-1}", score == index + baseScore).
+        /// </summary>
+        private void FillVaultWithDistinctGear(int baseScore = 100)
+        {
+            for (int i = 0; i < SecondChanceMerchantVault.MaxStacks; i++)
+                _vault.AddItem(MakeGear($"VaultGear{i}", baseScore + i));
         }
 
         [TestMethod]
@@ -292,12 +320,178 @@ namespace PitHero.Tests
             // Act - Total should be 10 * 150 = 1500 potions
 
             // Assert
-            Assert.AreEqual(2, _vault.Stacks.Count(s => s.ItemTemplate.Kind == ItemKind.Consumable), 
+            Assert.AreEqual(2, _vault.Stacks.Count(s => s.ItemTemplate.Kind == ItemKind.Consumable),
                 "Should have 2 stacks: 999 + 501");
-            
+
             var potionStacks = _vault.Stacks.Where(s => s.ItemTemplate.Kind == ItemKind.Consumable).ToList();
             var totalPotions = potionStacks.Sum(s => s.Quantity);
             Assert.AreEqual(1500, totalPotions, "Total potions should be 1500");
+        }
+
+        // ── Capacity / eviction tests (issue #373) ────────────────────────────────
+
+        [TestMethod]
+        public void Cap_EnforceMaxStacks_540Limit()
+        {
+            // Add MaxStacks distinct gear items then one more (score is always strictly higher
+            // than all in-vault items so the weakest in-vault item gets evicted, not incoming).
+            FillVaultWithDistinctGear(baseScore: 1);
+            Assert.AreEqual(SecondChanceMerchantVault.MaxStacks, _vault.StackCount,
+                "Vault should be at capacity after filling");
+
+            // The 541st item has score MaxStacks+1, stronger than all existing (score 1..MaxStacks)
+            // so the weakest existing (score=1, name "VaultGear0") is evicted.
+            var superGear = MakeGear("SuperGear", score: SecondChanceMerchantVault.MaxStacks + 1);
+            _vault.AddItem(superGear);
+
+            Assert.AreEqual(SecondChanceMerchantVault.MaxStacks, _vault.StackCount,
+                "StackCount must stay at cap after eviction");
+            Assert.IsFalse(_vault.Stacks.Any(s => s.ItemTemplate.Name == "VaultGear0"),
+                "Weakest item (VaultGear0, score=1) must have been evicted");
+            Assert.IsTrue(_vault.Stacks.Any(s => s.ItemTemplate.Name == "SuperGear"),
+                "The superior incoming item must be present");
+        }
+
+        [TestMethod]
+        public void Cap_WeakestGearEvicted_IncomingPresent()
+        {
+            // Vault of moderately strong gear; a stronger incoming displaces the weakest.
+            for (int i = 0; i < SecondChanceMerchantVault.MaxStacks; i++)
+                _vault.AddItem(MakeGear($"Gear{i}", score: 50 + i)); // scores 50..589
+
+            var strongIncoming = MakeGear("StrongIncoming", score: 9999);
+            _vault.AddItem(strongIncoming);
+
+            Assert.AreEqual(SecondChanceMerchantVault.MaxStacks, _vault.StackCount);
+            Assert.IsFalse(_vault.Stacks.Any(s => s.ItemTemplate.Name == "Gear0"),
+                "Gear0 (weakest, score=50) should be gone");
+            Assert.IsTrue(_vault.Stacks.Any(s => s.ItemTemplate.Name == "StrongIncoming"),
+                "StrongIncoming must enter the vault");
+        }
+
+        [TestMethod]
+        public void Cap_ConsumablesEvictedBeforeGear()
+        {
+            // 539 strong gear items + 1 cheap consumable = 540 stacks.
+            for (int i = 0; i < SecondChanceMerchantVault.MaxStacks - 1; i++)
+                _vault.AddItem(MakeGear($"StrongGear{i}", score: 100));
+
+            var weakPotion = new TestPotion("WeakPotion", price: 5, hp: 10);
+            weakPotion.StackCount = 1;
+            _vault.AddItem(weakPotion);
+
+            Assert.AreEqual(SecondChanceMerchantVault.MaxStacks, _vault.StackCount);
+
+            // Now add a new gear item — consumable pass fires first and finds the weakPotion
+            var newGear = MakeGear("NewGear", score: 50);
+            _vault.AddItem(newGear);
+
+            Assert.AreEqual(SecondChanceMerchantVault.MaxStacks, _vault.StackCount);
+            Assert.IsFalse(_vault.Stacks.Any(s => s.ItemTemplate.Name == "WeakPotion"),
+                "The consumable must be evicted before any gear");
+            Assert.IsTrue(_vault.Stacks.Any(s => s.ItemTemplate.Name == "NewGear"),
+                "The new gear must enter the vault");
+            Assert.AreEqual(SecondChanceMerchantVault.MaxStacks,
+                _vault.Stacks.Count(s => s.ItemTemplate.Kind != ItemKind.Consumable),
+                "539 original gear stacks + 1 new gear = 540 gear items, 0 consumables");
+        }
+
+        [TestMethod]
+        public void Cap_IncomingWeakGear_IsRejected()
+        {
+            // All 540 slots filled with strong gear; an arriving junk piece must be discarded.
+            FillVaultWithDistinctGear(baseScore: 100); // scores 100..639
+
+            var junkGear = MakeGear("JunkGear", score: 1); // weaker than all existing
+            _vault.AddItem(junkGear);
+
+            Assert.AreEqual(SecondChanceMerchantVault.MaxStacks, _vault.StackCount,
+                "Count must not change when incoming is weakest");
+            Assert.IsFalse(_vault.Stacks.Any(s => s.ItemTemplate.Name == "JunkGear"),
+                "Junk gear must not enter the vault");
+        }
+
+        [TestMethod]
+        public void Cap_StackingIntoExistingStack_NeverTriggersEviction()
+        {
+            // Fill to cap with distinct gear, one of which is a ShortSword (qty=1).
+            // Adding a second ShortSword stacks into the existing slot — no new stack is created
+            // and therefore no eviction should occur.
+            for (int i = 0; i < SecondChanceMerchantVault.MaxStacks - 1; i++)
+                _vault.AddItem(MakeGear($"UniqueGear{i}", score: 100 + i));
+
+            var firstSword = ShortSword.Create();
+            _vault.AddItem(firstSword);
+            Assert.AreEqual(SecondChanceMerchantVault.MaxStacks, _vault.StackCount);
+
+            var secondSword = ShortSword.Create();
+            _vault.AddItem(secondSword);
+
+            // Stack count must remain the same; the ShortSword stack gains +1 quantity
+            Assert.AreEqual(SecondChanceMerchantVault.MaxStacks, _vault.StackCount,
+                "Stacking into an existing slot must never evict anything");
+            var swordStack = _vault.Stacks.FirstOrDefault(s => s.ItemTemplate.Name == firstSword.Name);
+            Assert.IsNotNull(swordStack, "ShortSword stack must still exist");
+            Assert.AreEqual(2, swordStack.Quantity, "Stack quantity must grow to 2");
+        }
+
+        [TestMethod]
+        public void Cap_FullKeyTie_ExistingEvicted_IncomingEnters()
+        {
+            // All 540 items share the same gear key (score=10, Normal, price=100) but have
+            // unique names.  A 541st item with the same key causes the slot at index 0 to be
+            // evicted (lower index wins tie-breaking) and the incoming item to enter.
+            for (int i = 0; i < SecondChanceMerchantVault.MaxStacks; i++)
+                _vault.AddItem(MakeGear($"TiedGear{i}", score: 10, price: 100));
+
+            var sameKeyIncoming = MakeGear("TiedIncoming", score: 10, price: 100);
+            _vault.AddItem(sameKeyIncoming);
+
+            Assert.AreEqual(SecondChanceMerchantVault.MaxStacks, _vault.StackCount,
+                "Count must not change");
+            Assert.IsFalse(_vault.Stacks.Any(s => s.ItemTemplate.Name == "TiedGear0"),
+                "Index-0 item (TiedGear0) must be evicted — lower index wins the full-key tie");
+            Assert.IsTrue(_vault.Stacks.Any(s => s.ItemTemplate.Name == "TiedIncoming"),
+                "Incoming item with same key must enter the vault");
+        }
+
+        [TestMethod]
+        public void Cap_LargeConsumable_EvictionCheckFiresPerNewStack()
+        {
+            // Vault: 538 strong gear + 2 weak consumables = 540 stacks.
+            // Adding a strong consumable with qty=1001 (→ 2 new stacks: 999 + 2).
+            // First new stack: weakest consumable (Potion0, index 538) is evicted.
+            // Second new stack: weakest remaining consumable (Potion1, now at index 538) is evicted.
+            for (int i = 0; i < SecondChanceMerchantVault.MaxStacks - 2; i++)
+                _vault.AddItem(MakeGear($"StrongGear{i}", score: 100));
+
+            var weakPotion0 = new TestPotion("WeakPotion0", price: 5, hp: 5);
+            weakPotion0.StackCount = 1;
+            _vault.AddItem(weakPotion0);
+
+            var weakPotion1 = new TestPotion("WeakPotion1", price: 5, hp: 5);
+            weakPotion1.StackCount = 1;
+            _vault.AddItem(weakPotion1);
+
+            Assert.AreEqual(SecondChanceMerchantVault.MaxStacks, _vault.StackCount);
+
+            // Strong consumable with qty > 999 — requires 2 new stacks (999 + 2)
+            var strongPotion = new TestPotion("StrongPotion", price: 200, hp: 200);
+            strongPotion.StackCount = 1001;
+            _vault.AddItem(strongPotion);
+
+            Assert.AreEqual(SecondChanceMerchantVault.MaxStacks, _vault.StackCount,
+                "StackCount must remain at cap");
+            Assert.IsFalse(_vault.Stacks.Any(s => s.ItemTemplate.Name == "WeakPotion0"),
+                "WeakPotion0 must be evicted on the first new-stack check");
+            Assert.IsFalse(_vault.Stacks.Any(s => s.ItemTemplate.Name == "WeakPotion1"),
+                "WeakPotion1 must be evicted on the second new-stack check");
+
+            // Two StrongPotion stacks: 999 + 2
+            var strongStacks = _vault.Stacks.Where(s => s.ItemTemplate.Name == "StrongPotion").ToList();
+            Assert.AreEqual(2, strongStacks.Count, "StrongPotion must occupy 2 new stacks");
+            CollectionAssert.AreEquivalent(new[] { 999, 2 }, strongStacks.Select(s => s.Quantity).ToList(),
+                "Stack quantities must be 999 + 2");
         }
     }
 }
