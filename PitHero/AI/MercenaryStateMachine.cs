@@ -344,7 +344,14 @@ namespace PitHero.AI
         {
             var currentTile = GetCurrentTile();
             var pitEdgeTile = FindPitEdge();
-            return currentTile == pitEdgeTile;
+            if (pitEdgeTile == Point.Zero)
+                return false;
+            if (currentTile == pitEdgeTile)
+                return true;
+
+            // WalkToPitEdgeAction falls back to the shared center rim tile when this merc's
+            // offset tile is unreachable — standing there counts as at-edge too.
+            return currentTile == new Point(pitEdgeTile.X, GameConfig.PitCenterTileY);
         }
 
         private Point FindPitEdge()
@@ -357,7 +364,17 @@ namespace PitHero.AI
             var pitWidth = pitWidthManager.CurrentPitRectWidthTiles;
             var pitRight = pitLeft + pitWidth - 1;
 
-            return new Point(pitRight, GameConfig.PitCenterTileY);
+            // Same per-merc offset WalkToPitEdgeAction targets, keyed by hire order
+            int mercIndex = 0;
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager != null)
+            {
+                var index = mercenaryManager.GetHiredMercenaries().IndexOf(Entity);
+                if (index >= 0)
+                    mercIndex = index;
+            }
+
+            return WalkToPitEdgeAction.CalculatePitEdgeTileForPartyIndex(pitRight, mercIndex);
         }
 
         private Point GetCurrentTile()

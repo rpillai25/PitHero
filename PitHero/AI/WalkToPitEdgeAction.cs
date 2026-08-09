@@ -57,6 +57,24 @@ namespace PitHero.AI
             var path = pathfinding.CalculatePath(currentTile, _pitEdgeTile);
             if (path == null || path.Count == 0)
             {
+                // The per-merc offset tile may be unreachable (map decor, runtime obstacles) —
+                // fall back to the shared center rim tile rather than dead-ending the plan.
+                // Overlapping at the edge beats a merc that never leaves for the pit at all.
+                var centerEdgeTile = new Point(_pitEdgeTile.X, GameConfig.PitCenterTileY);
+                if (_pitEdgeTile != centerEdgeTile)
+                {
+                    var fallbackPath = pathfinding.CalculatePath(currentTile, centerEdgeTile);
+                    if (fallbackPath != null && fallbackPath.Count > 0)
+                    {
+                        Debug.Warn($"[WalkToPitEdge] {mercenary.Entity.Name} cannot reach offset edge tile ({_pitEdgeTile.X},{_pitEdgeTile.Y}), falling back to center ({centerEdgeTile.X},{centerEdgeTile.Y})");
+                        _pitEdgeTile = centerEdgeTile;
+                        path = fallbackPath;
+                    }
+                }
+            }
+
+            if (path == null || path.Count == 0)
+            {
                 // Never cache the edge tile across attempts — the pit can widen between them
                 _pathCalculated = false;
 
@@ -124,10 +142,12 @@ namespace PitHero.AI
         /// <summary>
         /// The hero targets (edgeX, PitCenterTileY); mercs offset vertically by hire order so the
         /// party never converges on one tile — and their subsequent jump landings stay distinct too.
+        /// The rim rows directly adjacent to center (5 and 7) are collision tiles in the map's rim
+        /// column pattern, so the offsets must be ±2 to land on the open rows (4 and 8).
         /// </summary>
         public static Point CalculatePitEdgeTileForPartyIndex(int pitEdgeX, int mercIndex)
         {
-            int yOffset = mercIndex == 0 ? -1 : 1;
+            int yOffset = mercIndex == 0 ? -2 : 2;
             return new Point(pitEdgeX, GameConfig.PitCenterTileY + yOffset);
         }
 

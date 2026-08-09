@@ -44,5 +44,23 @@ namespace PitHero.Tests
                     $"Merc {mercIndex} edge row {tile.Y} must be within interior rows {InteriorRowMin}..{InteriorRowMax}");
             }
         }
+
+        [TestMethod]
+        public void PartyPitEdgeTiles_AvoidBlockedRimRows()
+        {
+            // The map's rim column pattern (PitHero.tmx Collision layer, stamped at every pit
+            // width by PitWidthManager) has collision tiles at rows 5 and 7 — only rows 4, 6
+            // and 8 are open within the interior span. Offsets that target 5 or 7 dead-end the
+            // merc's walk-to-edge plan and strand the party (issue #371 regression).
+            const int edgeX = 13;
+            for (int mercIndex = 0; mercIndex < 2; mercIndex++)
+            {
+                var tile = WalkToPitEdgeAction.CalculatePitEdgeTileForPartyIndex(edgeX, mercIndex);
+                Assert.AreNotEqual(GameConfig.PitCenterTileY - 1, tile.Y,
+                    $"Merc {mercIndex} must not target blocked rim row {GameConfig.PitCenterTileY - 1}");
+                Assert.AreNotEqual(GameConfig.PitCenterTileY + 1, tile.Y,
+                    $"Merc {mercIndex} must not target blocked rim row {GameConfig.PitCenterTileY + 1}");
+            }
+        }
     }
 }
