@@ -156,10 +156,10 @@ namespace PitHero.UI
         /// </summary>
         public void ShowSynergyPattern(SynergyPattern pattern)
         {
-            BuildSynergyCard(pattern, null);
+            BuildSynergyCard(pattern, null, showGrantsSkillNote: pattern.UnlockedSkill != null);
         }
 
-        private void BuildSynergyCard(SynergyPattern pattern, string multiplierLine)
+        private void BuildSynergyCard(SynergyPattern pattern, string multiplierLine, bool showGrantsSkillNote = false)
         {
             _contentTable.Clear();
 
@@ -209,6 +209,13 @@ namespace PitHero.UI
             var noteLabel = new Label(GetText(TextType.UI, UITextKey.SkillActivePatternNote), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = SynergyOrange });
             _contentTable.Add(noteLabel).Left().SetPadTop(5f);
             _contentTable.Row();
+
+            if (showGrantsSkillNote)
+            {
+                var grantsLabel = new Label(GetText(TextType.UI, UITextKey.SkillGrantsSynergySkill), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = SynergyGreen });
+                _contentTable.Add(grantsLabel).Left().SetPadTop(5f);
+                _contentTable.Row();
+            }
 
             _container.SetVisible(true);
             _container.Pack();
