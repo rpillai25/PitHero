@@ -206,6 +206,18 @@ namespace PitHero.ECS.Components
             }
         }
 
+        /// <summary>
+        /// Instantly freezes this layer in its sleep pose for the given direction. Syncs the
+        /// direction cache so the next Update doesn't re-play the walk animation over the pose;
+        /// callers must also consume the facing component's dirty flag.
+        /// </summary>
+        public void ForceSleepPose(Direction direction)
+        {
+            _lastDirection = direction;
+            PlaySleepAnimationForDirection(direction);
+            PauseAnimation();
+        }
+
         /// <summary>Updates the jump animation flip state (called during jump updates)</summary>
         public void UpdateJumpAnimationFlip(Direction direction)
         {

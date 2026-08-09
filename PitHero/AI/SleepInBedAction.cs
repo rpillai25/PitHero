@@ -95,6 +95,42 @@ namespace PitHero.AI
         }
 
         /// <summary>
+        /// Instantly poses an actor asleep in bed: random sleep facing, closed-eye sleep
+        /// animation, paused. Used by the night-load spawn path so the party never renders
+        /// awake (open eyes, walk-cycle bobbing) while waiting for the sleep plan to start.
+        /// </summary>
+        public static void ApplySleepPose(Entity entity)
+        {
+            var dir = SleepFacingDirections[Nez.Random.Range(0, 4)];
+            var facing = entity.GetComponent<ActorFacingComponent>();
+            if (facing != null)
+            {
+                facing.SetFacing(dir);
+                facing.ConsumeDirtyFlag();
+            }
+
+            var animComps = entity.GetComponents<HeroAnimationComponent>();
+            for (int i = 0; i < animComps.Count; i++)
+                animComps[i].ForceSleepPose(dir);
+        }
+
+        /// <summary>Unpauses every animation layer on the hero and all hired mercenaries.</summary>
+        private static void UnpausePartyAnimations(Entity heroEntity)
+        {
+            var heroAnims = heroEntity.GetComponents<HeroAnimationComponent>();
+            for (int i = 0; i < heroAnims.Count; i++)
+                heroAnims[i].UnpauseAnimation();
+
+            var hired = Core.Services.GetService<MercenaryManager>()?.GetHiredMercenaries();
+            for (int i = 0; hired != null && i < hired.Count; i++)
+            {
+                var mercAnims = hired[i].GetComponents<HeroAnimationComponent>();
+                for (int j = 0; j < mercAnims.Count; j++)
+                    mercAnims[j].UnpauseAnimation();
+            }
+        }
+
+        /// <summary>
         /// Execute the sleep action - walk to payment tile, pay innkeeper (if not night sleep), then sleep and restore HP/MP
         /// NOTE: Gold check happens here since we can't add dynamic preconditions
         /// </summary>
@@ -128,8 +164,9 @@ namespace PitHero.AI
             if (spawnAsleep && !isNightSleep)
             {
                 // Clock crossed 6 AM between load and the first plan — undo the spawn-asleep
-                // staging and behave like a normal (paid) inn visit.
+                // staging (including the paused sleep poses) and behave like a normal (paid) inn visit.
                 hero.IsSleeping = false;
+                UnpausePartyAnimations(hero.Entity);
                 WalkToTavernForStopAction.ReenableMercenaryFollowing();
                 spawnAsleep = false;
             }
@@ -432,36 +469,41 @@ namespace PitHero.AI
                 }
             }
 
-            // Set random facing direction for sleep
-            Direction heroSleepDir = SleepFacingDirections[Nez.Random.Range(0, 4)];
-            if (facingComponent != null)
-                facingComponent.SetFacing(heroSleepDir);
-
-            for (int i = 0; i < hiredMercenaries.Count && i < 2; i++)
+            // Set random facing and freeze everyone into their sleep pose. Skipped when the
+            // party spawned asleep — the night-load path already posed them (ApplySleepPose),
+            // and re-randomizing here would visibly flip facings mid-sleep.
+            if (!spawnAsleep)
             {
-                var mercFacing = hiredMercenaries[i].GetComponent<ActorFacingComponent>();
-                mercFacing?.SetFacing(SleepFacingDirections[Nez.Random.Range(0, 4)]);
-            }
+                Direction heroSleepDir = SleepFacingDirections[Nez.Random.Range(0, 4)];
+                if (facingComponent != null)
+                    facingComponent.SetFacing(heroSleepDir);
 
-            // Wait one frame so HeroAnimationComponent.Update() picks up new facing direction before freeze
-            yield return null;
+                for (int i = 0; i < hiredMercenaries.Count && i < 2; i++)
+                {
+                    var mercFacing = hiredMercenaries[i].GetComponent<ActorFacingComponent>();
+                    mercFacing?.SetFacing(SleepFacingDirections[Nez.Random.Range(0, 4)]);
+                }
 
-            // Play sleep animations then pause all hero animation layers so hero looks still while sleeping
-            var heroAnimComps = heroEntity.GetComponents<HeroAnimationComponent>();
-            for (int i = 0; i < heroAnimComps.Count; i++)
-                heroAnimComps[i].PlaySleepAnimationForDirection(heroSleepDir);
-            for (int i = 0; i < heroAnimComps.Count; i++)
-                heroAnimComps[i].PauseAnimation();
+                // Wait one frame so HeroAnimationComponent.Update() picks up new facing direction before freeze
+                yield return null;
 
-            // Play sleep animations then pause all mercenary animation layers
-            for (int i = 0; i < hiredMercenaries.Count && i < 2; i++)
-            {
-                Direction mercSleepDir = hiredMercenaries[i].GetComponent<ActorFacingComponent>()?.Facing ?? Direction.Down;
-                var mercAnimComps = hiredMercenaries[i].GetComponents<HeroAnimationComponent>();
-                for (int j = 0; j < mercAnimComps.Count; j++)
-                    mercAnimComps[j].PlaySleepAnimationForDirection(mercSleepDir);
-                for (int j = 0; j < mercAnimComps.Count; j++)
-                    mercAnimComps[j].PauseAnimation();
+                // Play sleep animations then pause all hero animation layers so hero looks still while sleeping
+                var heroAnimComps = heroEntity.GetComponents<HeroAnimationComponent>();
+                for (int i = 0; i < heroAnimComps.Count; i++)
+                    heroAnimComps[i].PlaySleepAnimationForDirection(heroSleepDir);
+                for (int i = 0; i < heroAnimComps.Count; i++)
+                    heroAnimComps[i].PauseAnimation();
+
+                // Play sleep animations then pause all mercenary animation layers
+                for (int i = 0; i < hiredMercenaries.Count && i < 2; i++)
+                {
+                    Direction mercSleepDir = hiredMercenaries[i].GetComponent<ActorFacingComponent>()?.Facing ?? Direction.Down;
+                    var mercAnimComps = hiredMercenaries[i].GetComponents<HeroAnimationComponent>();
+                    for (int j = 0; j < mercAnimComps.Count; j++)
+                        mercAnimComps[j].PlaySleepAnimationForDirection(mercSleepDir);
+                    for (int j = 0; j < mercAnimComps.Count; j++)
+                        mercAnimComps[j].PauseAnimation();
+                }
             }
 
             // Night sleep: wait until 6 AM; healing sleep: wait 10 seconds

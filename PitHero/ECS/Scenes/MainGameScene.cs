@@ -1394,7 +1394,38 @@ namespace PitHero.ECS.Scenes
                 followComp.Enabled = false;
             }
 
+            // Freeze everyone into their sleep pose (closed eyes, paused animation) right away —
+            // without this the party stands in the beds playing the open-eyed walk cycle until
+            // the GOAP sleep action's coroutine catches up.
+            Core.StartCoroutine(ApplySpawnSleepPoses(heroEntity, heroComp));
+
             Debug.Log("[MainGameScene] Night load — party spawned asleep in the inn beds");
+        }
+
+        /// <summary>
+        /// Waits for the party's animation layers to initialize (the atlas loads in
+        /// OnAddedToEntity, which can run after the load restore), then poses the hero and
+        /// hired mercenaries asleep in their beds. Bails if the party already woke up
+        /// (degenerate load right as the clock crosses 6 AM).
+        /// </summary>
+        private System.Collections.IEnumerator ApplySpawnSleepPoses(Entity heroEntity, HeroComponent heroComp)
+        {
+            for (int frame = 0; frame < 10; frame++)
+            {
+                yield return null;
+                var anim = heroEntity.GetComponent<HeroAnimationComponent>();
+                if (anim != null && anim.Animations != null && anim.Animations.Count > 0)
+                    break;
+            }
+
+            if (!heroComp.IsSleeping)
+                yield break;
+
+            AI.SleepInBedAction.ApplySleepPose(heroEntity);
+
+            var hiredMercenaries = Core.Services.GetService<MercenaryManager>()?.GetHiredMercenaries();
+            for (int i = 0; hiredMercenaries != null && i < hiredMercenaries.Count && i < 2; i++)
+                AI.SleepInBedAction.ApplySleepPose(hiredMercenaries[i]);
         }
 
         /// <summary>
