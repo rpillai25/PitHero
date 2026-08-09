@@ -105,6 +105,9 @@ namespace PitHero
         public const int InnMercBed2TileY = 7;
         public const int InnExitTileX = 71; // Hero walks here after waking, between payment tile and bed
         public const int InnExitTileY = 3;
+        // Render-only Y offset applied to a sleeping actor's composite sprite so they nestle
+        // into the bed instead of standing on top of it
+        public const float SleepInBedSpriteOffsetY = 8f;
         // Inn nap cost scales with the party: each member costs the base fee plus a surcharge
         // per full 10 levels (level 30 -> 10 + 30 = 40g). Night sleep stays free.
         public const int InnCostBaseGoldPerMember = 10;

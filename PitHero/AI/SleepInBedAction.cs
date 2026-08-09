@@ -112,6 +112,21 @@ namespace PitHero.AI
             var animComps = entity.GetComponents<HeroAnimationComponent>();
             for (int i = 0; i < animComps.Count; i++)
                 animComps[i].ForceSleepPose(dir);
+
+            SetSleepRenderOffset(entity, true);
+        }
+
+        /// <summary>
+        /// Shifts the actor's composited sprite down into the bed while asleep (render-only —
+        /// entity position, tile coordinates and pathfinding are untouched). Idempotent.
+        /// </summary>
+        private static void SetSleepRenderOffset(Entity entity, bool asleep)
+        {
+            var compositor = entity.GetComponent<MultiSpriteAnimator>();
+            if (compositor != null)
+                compositor.SetLocalOffset(new Vector2(
+                    compositor.LocalOffset.X,
+                    asleep ? GameConfig.SleepInBedSpriteOffsetY : 0f));
         }
 
         /// <summary>Unpauses every animation layer on the hero and all hired mercenaries.</summary>
@@ -121,12 +136,15 @@ namespace PitHero.AI
             for (int i = 0; i < heroAnims.Count; i++)
                 heroAnims[i].UnpauseAnimation();
 
+            SetSleepRenderOffset(heroEntity, false);
+
             var hired = Core.Services.GetService<MercenaryManager>()?.GetHiredMercenaries();
             for (int i = 0; hired != null && i < hired.Count; i++)
             {
                 var mercAnims = hired[i].GetComponents<HeroAnimationComponent>();
                 for (int j = 0; j < mercAnims.Count; j++)
                     mercAnims[j].UnpauseAnimation();
+                SetSleepRenderOffset(hired[i], false);
             }
         }
 
@@ -493,6 +511,7 @@ namespace PitHero.AI
                     heroAnimComps[i].PlaySleepAnimationForDirection(heroSleepDir);
                 for (int i = 0; i < heroAnimComps.Count; i++)
                     heroAnimComps[i].PauseAnimation();
+                SetSleepRenderOffset(heroEntity, true);
 
                 // Play sleep animations then pause all mercenary animation layers
                 for (int i = 0; i < hiredMercenaries.Count && i < 2; i++)
@@ -503,6 +522,7 @@ namespace PitHero.AI
                         mercAnimComps[j].PlaySleepAnimationForDirection(mercSleepDir);
                     for (int j = 0; j < mercAnimComps.Count; j++)
                         mercAnimComps[j].PauseAnimation();
+                    SetSleepRenderOffset(hiredMercenaries[i], true);
                 }
             }
 
@@ -623,6 +643,7 @@ namespace PitHero.AI
                     var mercAnimCompsWake = merc.GetComponents<HeroAnimationComponent>();
                     for (int j = 0; j < mercAnimCompsWake.Count; j++)
                         mercAnimCompsWake[j].UnpauseAnimation();
+                    SetSleepRenderOffset(merc, false);
 
                     Debug.Log($"[SleepInBedAction] Re-enabled following for mercenary {i + 1}");
                 }
@@ -641,6 +662,7 @@ namespace PitHero.AI
             var heroAnimCompsWake = heroEntity.GetComponents<HeroAnimationComponent>();
             for (int i = 0; i < heroAnimCompsWake.Count; i++)
                 heroAnimCompsWake[i].UnpauseAnimation();
+            SetSleepRenderOffset(heroEntity, false);
 
             // Step 5: Walk hero out of bed to exit tile (71, 3) - between payment tile and bed
             var exitTile = new Point(GameConfig.InnExitTileX, GameConfig.InnExitTileY);
