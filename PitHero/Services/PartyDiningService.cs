@@ -1,3 +1,4 @@
+using Microsoft.Xna.Framework;
 using Nez;
 using PitHero.Dining;
 using PitHero.ECS.Components;
@@ -31,8 +32,9 @@ namespace PitHero.Services
         /// <summary>The hero's favorite dish chosen in the Food tab.</summary>
         public int FavoriteDishId = (int)DishType.RoastedOnionSkewers;
 
-        /// <summary>When true, the party auto-dines at the tavern after waking each morning.</summary>
-        public bool EatAtTavern;
+        /// <summary>When true, the party auto-dines at the tavern after waking each morning. On by
+        /// default so new players see the dining system in action; saves restore the player's choice.</summary>
+        public bool EatAtTavern = true;
 
         private readonly MemberDining[] _slots = new MemberDining[PartySlots];
         private readonly KitchenTicket[] _tickets = new KitchenTicket[PartySlots];
@@ -154,13 +156,22 @@ namespace PitHero.Services
 
         /// <summary>
         /// Morning auto-dine (called from SleepInBedAction after night sleep). Enters Stop mode
-        /// and walks the party to the tavern for breakfast — skipped entirely when no member
-        /// could actually order (gold, storage coverage, or the kitchen can't serve).
+        /// and walks the party to the tavern for breakfast — skipped entirely when the hero,
+        /// who leads the meal, can't order (gold, storage coverage, or the kitchen can't serve).
         /// </summary>
         public void BeginAutoDine()
         {
             if (!EatAtTavern)
                 return;
+
+            var heroComponent = GetHeroComponent();
+            if (heroComponent != null && heroComponent.StoppedAdventure)
+            {
+                // A player-stopped party returns to the table on its own (SeatedInTavern goal)
+                // and orders once seated; arming auto-resume here would cancel the player's stop.
+                Debug.Log("[PartyDiningService] Skipping breakfast trip — party already stopped");
+                return;
+            }
 
             var coordinator = Core.Services.GetService<KitchenTaskCoordinator>();
             if (coordinator == null || !coordinator.IsKitchenOpen)
@@ -169,9 +180,29 @@ namespace PitHero.Services
                 return;
             }
 
-            if (!AnyMemberCanDine(coordinator))
+            // The hero leads the meal — mercs eat free but only when he eats — so the trip
+            // hinges entirely on his favorite dish being makeable and affordable.
+            if (_slots[0].HasEatenToday || GetCombatant(0) == null)
             {
-                Debug.Log("[PartyDiningService] Skipping breakfast trip — no party member can order");
+                Debug.Log("[PartyDiningService] Skipping breakfast trip — hero already ate");
+                return;
+            }
+
+            var favorite = FavoriteDishId >= 0 && FavoriteDishId < DishTypeInfo.Count
+                ? (DishType)FavoriteDishId
+                : DishType.RoastedOnionSkewers;
+            if (!coordinator.CanCoverRecipe(favorite))
+            {
+                EmitBreakfastSkipped(UITextKey.ConsoleBreakfastSkipped, favorite);
+                Debug.Log("[PartyDiningService] Skipping breakfast trip — no ingredients for favorite dish");
+                return;
+            }
+
+            var gameState = Core.Services.GetService<GameStateService>();
+            if (gameState == null || gameState.Funds < DishConfig.GetPrice(favorite))
+            {
+                EmitBreakfastSkipped(UITextKey.ConsoleBreakfastSkippedGold, favorite);
+                Debug.Log("[PartyDiningService] Skipping breakfast trip — not enough gold for favorite dish");
                 return;
             }
 
@@ -199,6 +230,21 @@ namespace PitHero.Services
         public void OnResumed()
         {
             _autoResumeWhenDone = false;
+            CancelOrFastTrackOutstandingOrders();
+        }
+
+        /// <summary>
+        /// Called when the party leaves the table for night sleep while Stop mode persists
+        /// (10 PM). Outstanding orders are settled like a resume, but AutoResumeWhenDone is
+        /// deliberately untouched so a manual stop survives the night.
+        /// </summary>
+        public void OnNightSleepDeparture()
+        {
+            CancelOrFastTrackOutstandingOrders();
+        }
+
+        private void CancelOrFastTrackOutstandingOrders()
+        {
             var coordinator = Core.Services.GetService<KitchenTaskCoordinator>();
             var gameState = Core.Services.GetService<GameStateService>();
 
@@ -284,13 +330,23 @@ namespace PitHero.Services
         // ── IPartyOrderSource ───────────────────────────────────────────────────
 
         /// <summary>
-        /// Next seated party member wanting to order, gold-gated hero-first. Members whose
-        /// favorite can't be covered by storage are skipped without substitution.
+        /// Next seated party member wanting to order. The hero leads the meal: he orders his
+        /// favorite dish only and pays for it; if it can't be made or afforded, the servers
+        /// skip the entire party — mercenaries never eat unless the hero eats. Mercenary meals
+        /// are free (job favorite, then the job's cheap fallbacks, ingredient-gated only).
+        /// Skips are re-evaluated on every poll, so the party is still served if ingredients
+        /// or gold appear while they remain seated.
         /// </summary>
         public bool TryGetNextPartyOrder(out int partySlot, out DishType dish)
         {
             partySlot = -1;
             dish = default;
+
+            // Eat-at-tavern off: the party may sit at the table, but servers ignore them and
+            // focus on walk-in patrons. Toggling it back on while seated (and not yet fed
+            // today) makes them orderable again on the next poll.
+            if (!EatAtTavern)
+                return false;
 
             var hero = GetHeroComponent();
             if (hero == null || !hero.StoppedAdventure || !hero.SeatedInTavern)
@@ -301,9 +357,29 @@ namespace PitHero.Services
             if (coordinator == null || gameState == null)
                 return false;
 
-            for (int slot = 0; slot < PartySlots; slot++)
+            bool heroLeads = _slots[0].OrderedDishId >= 0 || _slots[0].HasEatenToday;
+            if (!heroLeads)
             {
-                if (_slots[slot].OrderedDishId >= 0 || _skippedThisSeating[slot])
+                var heroCombatant = GetCombatant(0);
+                if (heroCombatant == null || !TryGetFavorite(0, out var heroFavorite))
+                    return false;
+
+                if (!coordinator.CanCoverRecipe(heroFavorite)
+                    || gameState.Funds < DishConfig.GetPrice(heroFavorite))
+                {
+                    MarkPartySkippedByHero(coordinator, heroFavorite, heroCombatant.Name);
+                    return false;
+                }
+
+                _skippedThisSeating[0] = false;
+                partySlot = 0;
+                dish = heroFavorite;
+                return true;
+            }
+
+            for (int slot = 1; slot < PartySlots; slot++)
+            {
+                if (_slots[slot].OrderedDishId >= 0)
                     continue;
                 var combatant = GetCombatant(slot);
                 if (combatant == null)
@@ -313,22 +389,27 @@ namespace PitHero.Services
 
                 if (_slots[slot].HasEatenToday)
                 {
-                    _skippedThisSeating[slot] = true;
-                    Analytics.AnalyticsService.LogPartyDineSkipped(slot, combatant.Name,
-                        favorite.ToString(), "already_ate");
+                    if (!_skippedThisSeating[slot])
+                    {
+                        _skippedThisSeating[slot] = true;
+                        Analytics.AnalyticsService.LogPartyDineSkipped(slot, combatant.Name,
+                            favorite.ToString(), "already_ate");
+                    }
                     continue;
                 }
 
-                // Favorite first, then the job class's two cheap fallbacks
-                if (!TryPickOrderableDish(slot, favorite, coordinator, gameState, out var chosen))
+                if (!TryPickMercDish(slot, favorite, coordinator, out var chosen))
                 {
-                    _skippedThisSeating[slot] = true;
-                    string reason = !coordinator.CanCoverRecipe(favorite) ? "no_ingredients" : "no_gold";
-                    Analytics.AnalyticsService.LogPartyDineSkipped(slot, combatant.Name,
-                        favorite.ToString(), reason);
+                    if (!_skippedThisSeating[slot])
+                    {
+                        _skippedThisSeating[slot] = true;
+                        Analytics.AnalyticsService.LogPartyDineSkipped(slot, combatant.Name,
+                            favorite.ToString(), "no_ingredients");
+                    }
                     continue;
                 }
 
+                _skippedThisSeating[slot] = false;
                 partySlot = slot;
                 dish = chosen;
                 return true;
@@ -336,18 +417,24 @@ namespace PitHero.Services
             return false;
         }
 
-        /// <summary>Party pays at order time (unlike walk-in patrons).</summary>
+        /// <summary>
+        /// The hero pays for his own meal at order time (unlike walk-in patrons, who pay when
+        /// they finish). Mercenary meals are free — no gold moves in either direction.
+        /// </summary>
         public void OnPartyOrderTaken(int partySlot, KitchenTicket ticket)
         {
-            var gameState = Core.Services.GetService<GameStateService>();
-            if (gameState != null)
+            if (partySlot == 0)
             {
-                gameState.Funds -= DishConfig.GetPrice(ticket.Dish);
-                PlaySoundAtHero(SoundEffectType.PayGold);
+                var gameState = Core.Services.GetService<GameStateService>();
+                if (gameState != null)
+                {
+                    gameState.Funds -= DishConfig.GetPrice(ticket.Dish);
+                    PlaySoundAtHero(SoundEffectType.PayGold);
+                }
             }
 
             _slots[partySlot].OrderedDishId = (int)ticket.Dish;
-            _slots[partySlot].HasPaid = true;
+            _slots[partySlot].HasPaid = partySlot == 0;
             _tickets[partySlot] = ticket;
         }
 
@@ -406,11 +493,16 @@ namespace PitHero.Services
             }
 
             // Still waiting on anything? (open order, eating, or an un-skipped eligible member)
+            // Eligible members only hold the trip while they can actually be served: if the
+            // player disabled EatAtTavern mid-trip or the kitchen lost its staff, they can
+            // never order, so only in-flight meals keep the party seated.
+            bool canStillServe = EatAtTavern
+                && Core.Services.GetService<KitchenTaskCoordinator>()?.IsKitchenOpen == true;
             for (int slot = 0; slot < PartySlots; slot++)
             {
                 if (_tickets[slot] != null || _eating[slot])
                     return;
-                if (!_slots[slot].HasEatenToday && !_skippedThisSeating[slot]
+                if (canStillServe && !_slots[slot].HasEatenToday && !_skippedThisSeating[slot]
                     && GetCombatant(slot) != null && TryGetFavorite(slot, out _))
                     return;
             }
@@ -423,30 +515,46 @@ namespace PitHero.Services
 
         // ── Helpers ─────────────────────────────────────────────────────────────
 
-        private bool AnyMemberCanDine(KitchenTaskCoordinator coordinator)
+        /// <summary>Session-log line explaining why the wake-up breakfast trip was skipped.</summary>
+        private void EmitBreakfastSkipped(string textKey, DishType favorite)
         {
-            var gameState = Core.Services.GetService<GameStateService>();
-            if (gameState == null)
-                return false;
-
-            for (int slot = 0; slot < PartySlots; slot++)
-            {
-                if (_slots[slot].HasEatenToday || GetCombatant(slot) == null)
-                    continue;
-                if (!TryGetFavorite(slot, out var favorite))
-                    continue;
-                if (TryPickOrderableDish(slot, favorite, coordinator, gameState, out _))
-                    return true;
-            }
-            return false;
+            var events = Core.Services.GetService<GameEventService>();
+            if (events == null)
+                return;
+            string dishName = events.LocalizeUI(DishConfig.GetDefinition(favorite).NameKey);
+            events.EmitLocalized(textKey, (dishName, Color.Green));
         }
 
         /// <summary>
-        /// Picks the dish this member would order right now: their favorite, or — when it can't
-        /// be made or afforded — the job class's two cheap fallback dishes, in order.
+        /// The hero can't order (ingredients or gold), so nobody eats this poll. Marks every
+        /// un-fed, order-free slot skipped so CheckAllDone can end a breakfast trip instead of
+        /// waiting forever; flags don't block later polls, so the party is still served if
+        /// supplies appear while seated.
         /// </summary>
-        private bool TryPickOrderableDish(int slot, DishType favorite,
-            KitchenTaskCoordinator coordinator, GameStateService gameState, out DishType dish)
+        private void MarkPartySkippedByHero(KitchenTaskCoordinator coordinator,
+            DishType heroFavorite, string heroName)
+        {
+            if (!_skippedThisSeating[0])
+            {
+                string reason = !coordinator.CanCoverRecipe(heroFavorite) ? "no_ingredients" : "no_gold";
+                Analytics.AnalyticsService.LogPartyDineSkipped(0, heroName,
+                    heroFavorite.ToString(), reason);
+            }
+
+            for (int slot = 0; slot < PartySlots; slot++)
+            {
+                if (_slots[slot].OrderedDishId < 0 && !_slots[slot].HasEatenToday)
+                    _skippedThisSeating[slot] = true;
+            }
+        }
+
+        /// <summary>
+        /// Picks the free dish a mercenary would order right now: their job favorite, or — when
+        /// it can't be made — the job class's two cheap fallback dishes, in order. Ingredient-
+        /// gated only; mercenary meals never touch gold.
+        /// </summary>
+        private bool TryPickMercDish(int slot, DishType favorite,
+            KitchenTaskCoordinator coordinator, out DishType dish)
         {
             string jobName = GetJobName(slot);
             for (int c = 0; c < 3; c++)
@@ -455,8 +563,6 @@ namespace PitHero.Services
                 if (c > 0 && candidate == favorite)
                     continue; // favorite already failed — don't re-check it
                 if (!coordinator.CanCoverRecipe(candidate))
-                    continue;
-                if (gameState.Funds < DishConfig.GetPrice(candidate))
                     continue;
                 dish = candidate;
                 return true;

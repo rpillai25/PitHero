@@ -207,24 +207,36 @@ after eating they linger 5 min. On delivery the patron faces their table
 Rides **Stop mode** — no new GOAP surface. Entry paths:
 
 - **Manual**: player hits Stop; hero (and hired mercs) walk to the tavern and sit
-  (`WalkToTavernForStopAction`, `HeroComponent.StoppedAdventure && SeatedInTavern`).
+  (`WalkToTavernForStopAction`, `HeroComponent.StoppedAdventure && SeatedInTavern`). The party
+  sits regardless of the "Eat at tavern" checkbox; when it's off, servers ignore them entirely
+  and focus on walk-in patrons.
 - **Morning auto-dine**: `SleepInBedAction` calls `BeginAutoDine()` after waking if the
-  Food-tab "Eat at tavern" checkbox is on, the kitchen is open, and at least one member can
-  dine; it force-stops, and `CheckAllDone()` auto-resumes when everyone finishes.
+  Food-tab "Eat at tavern" checkbox is on (default **on** for new games), the kitchen is open,
+  and the hero can order (favorite makeable + affordable — an ingredient or gold shortfall
+  skips the trip with a session-console line); it force-stops, and `CheckAllDone()`
+  auto-resumes when everyone finishes. `BeginAutoDine` no-ops when the party is already
+  player-stopped so it can't cancel a manual stop. At 10 PM a stopped party leaves the table
+  for night sleep (`OnNightSleepDeparture` settles tickets like a resume) and returns after
+  waking — `StoppedAdventure` stays true throughout.
 
 `PartyDiningService` implements `IPartyOrderSource`; the coordinator polls
-`TryGetNextPartyOrder` (hero first — slot 0, then hired mercs 1/2). Dish choice: hero uses the
-Food-tab favorite (`FavoriteDishId`); mercs use `DishConfig.GetFavoriteForJob(job)`, falling
-back through two job-specific cheap dishes. A member whose candidates are all uncoverable or
-unaffordable is **skipped for that seating, with no substitution** (`party_dine_skipped`
-analytics with reason `already_ate` / `no_ingredients` / `no_gold`). One meal per member per
-day (`HasEatenToday`, reset at the 6 AM daily tick along with `MealBuffService.ClearAll()`).
+`TryGetNextPartyOrder`. **The hero leads the meal**: he orders only the Food-tab favorite
+(`FavoriteDishId`) and pays for it; if it can't be made or afforded, the servers skip the
+whole party — mercenaries never eat unless the hero eats. Mercenary meals are **free** (no
+gold in or out): job favorite via `DishConfig.GetFavoriteForJob(job)`, falling back through
+two job-specific cheap dishes, ingredient-gated only. Skips log `party_dine_skipped`
+analytics once (reason `already_ate` / `no_ingredients` / `no_gold`) but are **re-evaluated
+every poll**, so a seated party is still served when ingredients/gold appear later. One meal
+per member per day (`HasEatenToday`, reset at the 6 AM daily tick along with
+`MealBuffService.ClearAll()`).
 
-**Party pays at order time** (`OnPartyOrderTaken`), unlike patrons who pay after eating.
+**The hero pays at order time** (`OnPartyOrderTaken`), unlike patrons who pay after eating.
 Eating runs on `GetEatSeconds` (5/7/10s by class); `FinishMember` applies the meal buff, logs
 `dish_served` (party=true, tip=0), and notifies the coordinator. Resuming play mid-meal
-cancels outstanding tickets (refunding gold only while `CropsRefundable`), but a `Delivered`
-dish is fast-tracked — buffs still granted.
+cancels outstanding tickets (refunding gold only while `CropsRefundable` and `HasPaid`), but
+a `Delivered` dish is fast-tracked — buffs still granted. `CheckAllDone` holds the trip open
+for un-fed members only while they can actually be served (EatAtTavern on + kitchen staffed);
+otherwise in-flight meals finish and the party resumes — no endless sitting.
 
 ## Meal buffs
 
