@@ -2,6 +2,8 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.Xna.Framework;
 using PitHero.AI;
 
+// Also covers WalkToPitEdgeAction.PartyMemberBlocksStep (anti-overlap yield rule)
+
 namespace PitHero.Tests
 {
     [TestClass]
@@ -61,6 +63,49 @@ namespace PitHero.Tests
                 Assert.AreNotEqual(GameConfig.PitCenterTileY + 1, tile.Y,
                     $"Merc {mercIndex} must not target blocked rim row {GameConfig.PitCenterTileY + 1}");
             }
+        }
+
+        // ── Anti-overlap yield rule ──────────────────────────────────────────────
+
+        private static Vector2 TileCenter(int tileX, int tileY) => new Vector2(
+            tileX * GameConfig.TileSize + GameConfig.TileSize / 2,
+            tileY * GameConfig.TileSize + GameConfig.TileSize / 2);
+
+        [TestMethod]
+        public void PartyMemberBlocksStep_OverlappingBoundingBoxes_Blocks()
+        {
+            // Same tile — fully overlapped
+            Assert.IsTrue(WalkToPitEdgeAction.PartyMemberBlocksStep(
+                TileCenter(50, 6), TileCenter(50, 6), new Point(49, 6)));
+
+            // Partially overlapped (other is mid-move, half a tile ahead)
+            var halfTile = TileCenter(50, 6) + new Vector2(GameConfig.TileSize / 2f, 0);
+            Assert.IsTrue(WalkToPitEdgeAction.PartyMemberBlocksStep(
+                halfTile, TileCenter(50, 6), new Point(49, 6)));
+        }
+
+        [TestMethod]
+        public void PartyMemberBlocksStep_NextTileOccupied_Blocks()
+        {
+            // Other stands two tiles away but on the step destination
+            Assert.IsTrue(WalkToPitEdgeAction.PartyMemberBlocksStep(
+                TileCenter(48, 6), TileCenter(50, 6), new Point(48, 6)));
+        }
+
+        [TestMethod]
+        public void PartyMemberBlocksStep_AdjacentGridAligned_AllowsSingleFile()
+        {
+            // Grid-aligned actors on adjacent tiles are exactly TileSize apart — trailing
+            // single-file must not be blocked, or the party could never walk in a line.
+            Assert.IsFalse(WalkToPitEdgeAction.PartyMemberBlocksStep(
+                TileCenter(49, 6), TileCenter(50, 6), new Point(51, 6)));
+        }
+
+        [TestMethod]
+        public void PartyMemberBlocksStep_FarAway_DoesNotBlock()
+        {
+            Assert.IsFalse(WalkToPitEdgeAction.PartyMemberBlocksStep(
+                TileCenter(10, 4), TileCenter(50, 6), new Point(49, 6)));
         }
     }
 }
