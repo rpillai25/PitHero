@@ -255,7 +255,7 @@ namespace PitHero.UI
             _itemsPager.OnPageChanged += RefreshVaultItemsView;
 
             var content = new Table();
-            content.Top().Left().Pad(8f);
+            content.Top().Left().Pad(8f).PadLeft(24f);
             content.Add(scrollPane).Size(297f, 198f).Top().Left();
             content.Row();
             content.Add(_itemsPager).SetPadTop(2f);
@@ -292,7 +292,7 @@ namespace PitHero.UI
             _crystalsPager.OnPageChanged += RefreshVaultCrystalsView;
 
             var content = new Table();
-            content.Top().Left().Pad(8f);
+            content.Top().Left().Pad(8f).PadLeft(24f);
             content.Add(scrollPane).Size(297f, 198f).Top().Left();
             content.Row();
             content.Add(_crystalsPager).SetPadTop(2f);
@@ -342,7 +342,7 @@ namespace PitHero.UI
             scrollPane.SetFadeScrollBars(false);
 
             var content = new Table();
-            content.Top().Left().Pad(8f);
+            content.Top().Left().Pad(8f).PadLeft(24f);
             content.Add(scrollPane).Size(297f, 198f).Top().Left();
 
             tab.ClearChildren();
