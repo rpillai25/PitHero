@@ -258,7 +258,7 @@ namespace PitHero.UI
             content.Top().Left().Pad(8f).PadLeft(24f);
             content.Add(scrollPane).Size(297f, 198f).Top().Left();
             content.Row();
-            content.Add(_itemsPager).SetPadTop(2f);
+            content.Add(_itemsPager).SetPadTop(10f);
 
             tab.ClearChildren();
             tab.Add(content).Expand().Fill();
@@ -295,7 +295,7 @@ namespace PitHero.UI
             content.Top().Left().Pad(8f).PadLeft(24f);
             content.Add(scrollPane).Size(297f, 198f).Top().Left();
             content.Row();
-            content.Add(_crystalsPager).SetPadTop(2f);
+            content.Add(_crystalsPager).SetPadTop(10f);
 
             tab.ClearChildren();
             tab.Add(content).Expand().Fill();
