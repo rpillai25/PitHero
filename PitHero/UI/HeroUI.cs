@@ -1133,6 +1133,9 @@ namespace PitHero.UI
                 // Update crystals collection tab hover check
                 _crystalsTabComponent?.Update();
 
+                // Keep the stencil library hover card glued to the cursor
+                _stencilLibraryPanel?.UpdateHoverTooltip();
+
                 // Dismiss stencil library panel on outside click
                 DismissStencilPanelOnOutsideClick();
 

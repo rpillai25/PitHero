@@ -13,12 +13,13 @@ namespace PitHero.AI.Interfaces
         int CurrentPitLevel { get; }
 
         /// <summary>
-        /// Current pit tier (1–99, permanent, never decreases).
+        /// Current pit tier (1–99, resets to 1 when the hero dies).
         /// </summary>
         int CurrentPitTier { get; }
 
         /// <summary>
         /// Hero level recorded when the tier first incremented; respawned heroes start here.
+        /// Resets to 1 when the hero dies.
         /// </summary>
         int TierBaseLevel { get; }
 

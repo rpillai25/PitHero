@@ -8,13 +8,13 @@ When a hero dies (see [Permadeath.md](Permadeath.md) for the death animation and
 ## Flow
 
 1. **Hero death** — `HeroDeathComponent` plays the death animation and moves the hero's crystal to the vault (see Permadeath.md). `MainGameScene.RespawnHeroAfterDelay` → `RespawnHero()` runs afterward.
-2. **Respawn** — `RespawnHero()` calls `CreateHeroEntity(34, 6, needsCrystal: true)`. The hero spawns with `HeroComponent.NeedsCrystal = true` and no `LinkedHero`. Saving is disabled during this transitional state. Hired mercenaries are unfrozen and reassigned to follow the new hero; the pit resets to level 1 once all mercenaries have exited (or a safety timeout elapses).
+2. **Respawn** — `RespawnHero()` calls `CreateHeroEntity(34, 6, needsCrystal: true)`. The hero spawns with `HeroComponent.NeedsCrystal = true` and no `LinkedHero`. Saving is disabled during this transitional state. Hired mercenaries are unfrozen and reassigned to follow the new hero; the pit tier resets to 1 immediately (`PitWidthManager.ResetTierForNewCycle`), and the pit resets to level 1 once all mercenaries have exited (or a safety timeout elapses).
 3. **Walk to statue** — the GOAP action `WalkToStatueForCrystalAction` (`PitHero/AI/WalkToStatueForCrystalAction.cs`) paths the hero to the statue and sets `HeroComponent.HasArrivedAtStatueForCrystal = true`. GOAP states: `GoapConstants.NeedsCrystal`, `GoapConstants.HasArrivedAtStatueForCrystal`.
 4. **Ceremony** — `HeroPromotionService.CheckAndPromoteHeroIfNeeded()` (called every frame from `MainGameScene.Update()`) detects `NeedsCrystal && HasArrivedAtStatueForCrystal` and starts `ExecuteHeroCrystalCeremony`:
    - Movement and AI are disabled; the hero faces the statue (`Direction.Up`) for 1 second
    - The "LightningStrike" animation from Actors.atlas plays (`PlayLightningStrikeAtHero`)
    - `GetNextCrystalForHero()` selects the crystal: dequeue from `CrystalCollectionService`, else `GenerateRandomHeroCrystal()` (random primary job, level 1, random 2–5 base stats)
-   - A new `Hero` is created with the chosen crystal. Spawn level is `max(crystal level, TierBaseLevel)` so tier ≥ 2 heroes respawn at the recorded tier base level
+   - A new `Hero` is created with the chosen crystal. Spawn level is `max(crystal level, TierBaseLevel)`; since hero death resets the pit cycle (`ResetTierForNewCycle` sets `TierBaseLevel` back to 1), this is effectively the crystal level
    - `NeedsCrystal`/`HasArrivedAtStatueForCrystal` are cleared, movement/AI re-enabled
    - `ReconnectUIToHero()` reconnects the ShortcutBar and InventoryGrid to the new hero (these reconnects are idempotent — the underlying events are static, see `ShortcutBar.ConnectToDragManager`)
    - The Save button is re-enabled

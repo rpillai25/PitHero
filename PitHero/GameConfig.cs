@@ -97,6 +97,14 @@ namespace PitHero
         public const int InnkeeperTileY = 3;
         public const int InnPaymentTileX = 67; // Hero pays at (67, 3) facing right
         public const int InnPaymentTileY = 3;
+        public const int InnHeroBedTileX = 73; // Hero sleeps at (73, 3)
+        public const int InnHeroBedTileY = 3;
+        public const int InnMercBed1TileX = 76; // First hired merc sleeps at (76, 3)
+        public const int InnMercBed1TileY = 3;
+        public const int InnMercBed2TileX = 73; // Second hired merc sleeps at (73, 7)
+        public const int InnMercBed2TileY = 7;
+        public const int InnExitTileX = 71; // Hero walks here after waking, between payment tile and bed
+        public const int InnExitTileY = 3;
         // Inn nap cost scales with the party: each member costs the base fee plus a surcharge
         // per full 10 levels (level 30 -> 10 + 30 = 40g). Night sleep stays free.
         public const int InnCostBaseGoldPerMember = 10;
@@ -257,7 +265,7 @@ namespace PitHero
         public const float CameraKeyboardPanAccelSeconds = 1.5f; // seconds of continuous key-hold to ramp pan speed from starting to top
         public const float CameraFollowLerpSpeed = 5f; // speed at which camera lerps to hero position
         public const float CameraManualControlTimeout = 7f; // seconds of inactivity before auto-following resumes (paused when player interacts with selectables)
-        public const bool CameraAutoScrollToHeroDefault = true; // default value for auto-scroll to hero setting
+        public const bool CameraAutoScrollToHeroDefault = false; // default value for auto-scroll to hero setting
         public const int MapQuadrantCount = 4; // horizontal map quadrants reachable via keys 1-4
 
         // World Bounds

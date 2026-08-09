@@ -122,6 +122,18 @@ namespace PitHero.AI
             var timeService = Core.Services.GetService<InGameTimeService>();
             bool isNightSleep = timeService?.IsNighttime == true;
 
+            // Night-time load spawned the party already in bed — skip the walk/pay steps.
+            bool spawnAsleep = hero.SpawnedAsleepPending;
+            hero.SpawnedAsleepPending = false;
+            if (spawnAsleep && !isNightSleep)
+            {
+                // Clock crossed 6 AM between load and the first plan — undo the spawn-asleep
+                // staging and behave like a normal (paid) inn visit.
+                hero.IsSleeping = false;
+                WalkToTavernForStopAction.ReenableMercenaryFollowing();
+                spawnAsleep = false;
+            }
+
             // Night sleep is free — skip gold check
             if (!isNightSleep)
             {
@@ -135,17 +147,18 @@ namespace PitHero.AI
             }
 
             // Start the sleep coroutine
-            Debug.Log($"[SleepInBedAction] Starting sleep action (isNightSleep={isNightSleep})");
+            Debug.Log($"[SleepInBedAction] Starting sleep action (isNightSleep={isNightSleep}, spawnAsleep={spawnAsleep})");
             _isSleeping = true;
             hero.IsSleeping = true;
-            _sleepCoroutine = Core.StartCoroutine(SleepCoroutine(hero, isNightSleep));
+            _sleepCoroutine = Core.StartCoroutine(SleepCoroutine(hero, isNightSleep, spawnAsleep));
             return false; // Not complete yet
         }
 
         /// <summary>
-        /// Coroutine that walks to payment tile, optionally pays innkeeper (free for night sleep), then sleeps and heals the hero and hired mercenaries
+        /// Coroutine that walks to payment tile, optionally pays innkeeper (free for night sleep), then sleeps and heals the hero and hired mercenaries.
+        /// When spawnAsleep is set (night-time load placed the party in the beds already), the innkeeper walk/pay steps are skipped.
         /// </summary>
-        private IEnumerator SleepCoroutine(HeroComponent hero, bool isNightSleep)
+        private IEnumerator SleepCoroutine(HeroComponent hero, bool isNightSleep, bool spawnAsleep)
         {
             var heroEntity = hero.Entity;
             var tileMover = heroEntity.GetComponent<TileByTileMover>();
@@ -166,8 +179,9 @@ namespace PitHero.AI
 
             Debug.Log($"[SleepInBedAction] Starting sleep action at ({currentTile.X},{currentTile.Y})");
 
-            // If not at payment tile, walk there directly (shouldn't normally happen)
-            if (currentTile != paymentTile)
+            // If not at payment tile, walk there directly (shouldn't normally happen).
+            // Skipped entirely when the party spawned asleep — they're already in the beds.
+            if (!spawnAsleep && currentTile != paymentTile)
             {
                 Debug.Warn($"[SleepInBedAction] Hero not at payment tile, walking from ({currentTile.X},{currentTile.Y}) to ({paymentTile.X},{paymentTile.Y})");
                 
@@ -239,15 +253,16 @@ namespace PitHero.AI
 
             _hasReachedPaymentTile = true;
 
-            // Step 2: Face right (towards innkeeper)
-            if (facingComponent != null)
+            // Step 2: Face right (towards innkeeper) — skipped when already in bed
+            if (!spawnAsleep && facingComponent != null)
             {
                 facingComponent.SetFacing(Direction.Right);
                 Debug.Log("[SleepInBedAction] Hero facing right towards innkeeper");
             }
 
             // Wait a brief moment (payment animation would go here)
-            yield return Coroutine.WaitForSeconds(0.5f);
+            if (!spawnAsleep)
+                yield return Coroutine.WaitForSeconds(0.5f);
 
             // Step 3: Pay the innkeeper (skipped for free night sleep)
             if (!isNightSleep)
@@ -273,7 +288,7 @@ namespace PitHero.AI
                     yield break;
                 }
             }
-            else
+            else if (!spawnAsleep) // save-restore of an in-progress night sleep isn't a new inn stay
             {
                 Debug.Log("[SleepInBedAction] Night sleep — innkeeper stay is free");
 
@@ -282,7 +297,7 @@ namespace PitHero.AI
             }
 
             // Step 4: Walk to bed (73, 3)
-            var bedTile = new Point(73, 3);
+            var bedTile = new Point(GameConfig.InnHeroBedTileX, GameConfig.InnHeroBedTileY);
             currentTile = tileMover.GetCurrentTileCoordinates();
 
             Debug.Log($"[SleepInBedAction] Walking to bed ({bedTile.X},{bedTile.Y}) from ({currentTile.X},{currentTile.Y})");
@@ -365,7 +380,11 @@ namespace PitHero.AI
             
             Debug.Log($"[SleepInBedAction] Found {hiredMercenaries.Count} hired mercenaries to teleport to beds");
             
-            var mercBedPositions = new Point[] { new Point(76, 3), new Point(73, 7) };
+            var mercBedPositions = new Point[]
+            {
+                new Point(GameConfig.InnMercBed1TileX, GameConfig.InnMercBed1TileY),
+                new Point(GameConfig.InnMercBed2TileX, GameConfig.InnMercBed2TileY)
+            };
             
             for (int i = 0; i < hiredMercenaries.Count && i < 2; i++)
             {
@@ -582,7 +601,7 @@ namespace PitHero.AI
                 heroAnimCompsWake[i].UnpauseAnimation();
 
             // Step 5: Walk hero out of bed to exit tile (71, 3) - between payment tile and bed
-            var exitTile = new Point(71, 3);
+            var exitTile = new Point(GameConfig.InnExitTileX, GameConfig.InnExitTileY);
             currentTile = tileMover.GetCurrentTileCoordinates();
 
             Debug.Log($"[SleepInBedAction] Waking up - walking to exit tile ({exitTile.X},{exitTile.Y}) from ({currentTile.X},{currentTile.Y})");

@@ -29,7 +29,7 @@ namespace PitHero.AI
         {
             if (!_pathCalculated)
             {
-                _pitEdgeTile = FindNearestPitEdge();
+                _pitEdgeTile = FindNearestPitEdge(mercenary);
                 _pathCalculated = true;
             }
 
@@ -99,7 +99,7 @@ namespace PitHero.AI
             );
         }
 
-        private Point FindNearestPitEdge()
+        private Point FindNearestPitEdge(MercenaryComponent mercenary)
         {
             var pitWidthManager = Core.Services.GetService<PitWidthManager>();
             if (pitWidthManager == null)
@@ -108,10 +108,27 @@ namespace PitHero.AI
             var pitLeft = GameConfig.PitRectX;
             var pitWidth = pitWidthManager.CurrentPitRectWidthTiles;
             var pitRight = pitLeft + pitWidth - 1;
-            var pitEdgeX = pitRight;
-            var pitEdgeY = GameConfig.PitCenterTileY;
 
-            return new Point(pitEdgeX, pitEdgeY);
+            int mercIndex = 0;
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager != null)
+            {
+                var index = mercenaryManager.GetHiredMercenaries().IndexOf(mercenary.Entity);
+                if (index >= 0)
+                    mercIndex = index;
+            }
+
+            return CalculatePitEdgeTileForPartyIndex(pitRight, mercIndex);
+        }
+
+        /// <summary>
+        /// The hero targets (edgeX, PitCenterTileY); mercs offset vertically by hire order so the
+        /// party never converges on one tile — and their subsequent jump landings stay distinct too.
+        /// </summary>
+        public static Point CalculatePitEdgeTileForPartyIndex(int pitEdgeX, int mercIndex)
+        {
+            int yOffset = mercIndex == 0 ? -1 : 1;
+            return new Point(pitEdgeX, GameConfig.PitCenterTileY + yOffset);
         }
 
         private Direction? GetDirectionToTile(Point current, Point target)

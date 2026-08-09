@@ -154,6 +154,17 @@ namespace PitHero.VirtualGame
         }
 
         /// <summary>
+        /// Resets tier progression to the first cycle after permadeath. Bypasses the monotonic
+        /// guard in SetTierBaseLevel, which stays monotonic for normal progression.
+        /// </summary>
+        public void ResetTierForNewCycle()
+        {
+            _currentPitTier = 1;
+            _tierBaseLevel = 1;
+            Console.WriteLine("[VirtualPitWidthManager] Tier reset to 1 for new cycle (hero death)");
+        }
+
+        /// <summary>
         /// Increments the pit tier by 1 (clamped at MaxPitTier) and records the hero level as the new tier base level.
         /// </summary>
         public void IncrementPitTier(int heroLevelAtEntry)

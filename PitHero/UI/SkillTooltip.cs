@@ -143,6 +143,24 @@ namespace PitHero.UI
 
         public void ShowSynergyEffect(SynergyPattern pattern, int instanceCount, float multiplier)
         {
+            // Instance count and multiplier, truncated (not rounded) to 2 decimals so the
+            // display never overstates the bonus (e.g. 1.9375 shows as 1.93, not 1.94)
+            var truncatedMultiplier = System.MathF.Truncate(multiplier * 100f) / 100f;
+            var instanceText = string.Format(GetText(TextType.UI, UITextKey.SkillActiveMultiplier), instanceCount, truncatedMultiplier);
+            BuildSynergyCard(pattern, instanceText);
+        }
+
+        /// <summary>
+        /// Shows the synergy card for a pattern without any active-instance multiplier info —
+        /// used by the stencil library, where the pattern isn't tied to a hero's active synergies.
+        /// </summary>
+        public void ShowSynergyPattern(SynergyPattern pattern)
+        {
+            BuildSynergyCard(pattern, null);
+        }
+
+        private void BuildSynergyCard(SynergyPattern pattern, string multiplierLine)
+        {
             _contentTable.Clear();
 
             // Pattern name
@@ -150,13 +168,12 @@ namespace PitHero.UI
             _contentTable.Add(nameLabel).Left();
             _contentTable.Row();
 
-            // Instance count and multiplier, truncated (not rounded) to 2 decimals so the
-            // display never overstates the bonus (e.g. 1.9375 shows as 1.93, not 1.94)
-            var truncatedMultiplier = System.MathF.Truncate(multiplier * 100f) / 100f;
-            var instanceText = string.Format(GetText(TextType.UI, UITextKey.SkillActiveMultiplier), instanceCount, truncatedMultiplier);
-            var instanceLabel = new Label(SanitizeText(instanceText), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = SynergyGreen });
-            _contentTable.Add(instanceLabel).Left();
-            _contentTable.Row();
+            if (multiplierLine != null)
+            {
+                var instanceLabel = new Label(SanitizeText(multiplierLine), new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = SynergyGreen });
+                _contentTable.Add(instanceLabel).Left();
+                _contentTable.Row();
+            }
 
             // Description
             if (!string.IsNullOrEmpty(pattern.Description))

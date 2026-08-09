@@ -873,6 +873,11 @@ namespace PitHero.AI
         /// </summary>
         private Point? CalculateBedLocation()
         {
+            // Night-time load spawned the hero already in bed — target the bed so GoTo is a
+            // no-op and the FSM proceeds straight to the sleep action.
+            if (_hero != null && _hero.SpawnedAsleepPending)
+                return new Point(GameConfig.InnHeroBedTileX, GameConfig.InnHeroBedTileY);
+
             // Return the payment tile position (67, 3) instead of bed position (73, 3)
             // This ensures hero walks to innkeeper first to pay before sleeping
             return new Point(GameConfig.InnPaymentTileX, GameConfig.InnPaymentTileY);
