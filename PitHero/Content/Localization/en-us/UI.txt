@@ -221,6 +221,7 @@ SkillProgress,Progress: {0} / {1} SP
 SkillJpCost,Cost: {0} JP
 SkillOwnerFormat,{0} ({1})
 SkillActiveMultiplier,Active: {0}x (Multiplier: {1:F2}x)
+SkillGrantsSynergySkill,Grants Synergy Skill!
 EquipPreviewChanges,Changes
 TabCrystals,Crystals
 CrystalForgeTitle,Crystal Forge

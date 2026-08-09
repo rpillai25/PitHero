@@ -160,15 +160,16 @@ namespace PitHero.ECS.Components
                     return;
                 }
 
-                Debug.Warn($"[MercenaryFollowComponent] {Entity.Name} stuck at ({myTile.X},{myTile.Y}) for {_stuckTimer:F1}s, warping near target ({targetTile.X},{targetTile.Y})");
-                _tileMover.WarpToTile(targetTile);
+                var warpTile = PickWarpTile(targetTile, myTile);
+                Debug.Warn($"[MercenaryFollowComponent] {Entity.Name} stuck at ({myTile.X},{myTile.Y}) for {_stuckTimer:F1}s, warping to ({warpTile.X},{warpTile.Y}) near target ({targetTile.X},{targetTile.Y})");
+                _tileMover.WarpToTile(warpTile);
                 _pathfinding.RefreshPathfindingWithObstacles();
 
                 _currentPath = null;
                 _pathIndex = 0;
                 _stuckTimer = 0f;
-                _lastStuckCheckTile = targetTile;
-                _mercComponent.LastTilePosition = targetTile;
+                _lastStuckCheckTile = warpTile;
+                _mercComponent.LastTilePosition = warpTile;
                 return;
             }
 
@@ -226,6 +227,72 @@ namespace PitHero.ECS.Components
             if (_stateMachine == null)
                 _stateMachine = Entity.GetComponent<AI.MercenaryStateMachine>();
             return _stateMachine;
+        }
+
+        /// <summary>
+        /// Picks a free tile orthogonally adjacent to the follow target for a stuck-warp so the
+        /// merc never lands on top of the target or another party member. Falls back to the
+        /// target tile itself if every neighbor is walled, across the pit boundary, or occupied.
+        /// </summary>
+        private Point PickWarpTile(Point targetTile, Point myTile)
+        {
+            var candidates = new Point[]
+            {
+                new Point(targetTile.X - 1, targetTile.Y),
+                new Point(targetTile.X + 1, targetTile.Y),
+                new Point(targetTile.X, targetTile.Y - 1),
+                new Point(targetTile.X, targetTile.Y + 1),
+            };
+
+            // Nearest to the merc first so the warp covers the least distance
+            System.Array.Sort(candidates, (a, b) =>
+                (System.Math.Abs(a.X - myTile.X) + System.Math.Abs(a.Y - myTile.Y))
+                    .CompareTo(System.Math.Abs(b.X - myTile.X) + System.Math.Abs(b.Y - myTile.Y)));
+
+            var pitWidthManager = Core.Services.GetService<PitWidthManager>();
+            for (int i = 0; i < candidates.Length; i++)
+            {
+                var candidate = candidates[i];
+                if (_pathfinding.PathfindingGraph?.Walls?.Contains(candidate) == true)
+                    continue;
+                if (pitWidthManager != null && pitWidthManager.IsTileInsidePitInterior(candidate) != _mercComponent.InsidePit)
+                    continue;
+                if (IsTileOccupiedByPartyMember(candidate))
+                    continue;
+                return candidate;
+            }
+
+            return targetTile;
+        }
+
+        /// <summary>True when the hero or another hired mercenary currently stands on the tile.</summary>
+        private bool IsTileOccupiedByPartyMember(Point tile)
+        {
+            var hero = GetHeroComponent();
+            if (hero?.Entity != null && GetEntityTile(hero.Entity) == tile)
+                return true;
+
+            var mercenaryManager = Core.Services.GetService<MercenaryManager>();
+            if (mercenaryManager != null)
+            {
+                var hired = mercenaryManager.GetHiredMercenaries();
+                for (int i = 0; i < hired.Count; i++)
+                {
+                    if (hired[i] != Entity && GetEntityTile(hired[i]) == tile)
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static Point GetEntityTile(Entity entity)
+        {
+            var pos = entity.Transform.Position;
+            return new Point(
+                (int)(pos.X / GameConfig.TileSize),
+                (int)(pos.Y / GameConfig.TileSize)
+            );
         }
 
         /// <summary>

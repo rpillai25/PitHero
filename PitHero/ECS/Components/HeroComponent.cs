@@ -327,6 +327,12 @@ namespace PitHero.ECS.Components
         /// </summary>
         public bool IsSleeping { get; set; }
 
+        /// <summary>
+        /// Set when a night-time load spawns the party directly in the inn beds; consumed by
+        /// SleepInBedAction to skip the walk-to-innkeeper/payment steps on its first execution.
+        /// </summary>
+        public bool SpawnedAsleepPending { get; set; }
+
         // Replenish override tracking - per-character flags set when Replenish button is pressed
         private bool _replenishHPOverrideHero;
         private bool _replenishMPOverrideHero;

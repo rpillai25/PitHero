@@ -26,6 +26,7 @@ namespace PitHero.UI
         private TextButton _closeButton;
         private SynergyPattern _selectedPattern;
         private TextService _textService;
+        private SkillTooltip _hoverTooltip;
 
         public event System.Action<SynergyPattern> OnStencilActivated;
 
@@ -37,6 +38,7 @@ namespace PitHero.UI
             SetResizable(false);
 
             GetTitleLabel().SetText(GetText(TextType.UI, UITextKey.StencilSynergyStencils));
+            _hoverTooltip = new SkillTooltip(this, skin);
             BuildUI(skin);
 
             // Size the window to exactly fit its rows — the stage is only ~360 tall,
@@ -75,6 +77,8 @@ namespace PitHero.UI
             {
                 var slot = new StencilSlot(i, skin);
                 slot.OnSlotClicked += HandleSlotClicked;
+                slot.OnSlotHoverStart += HandleSlotHoverStart;
+                slot.OnSlotHoverEnd += HandleSlotHoverEnd;
                 _slots[i] = slot;
 
                 _gridTable.Add(slot).Size(SLOT_SIZE, SLOT_SIZE).Pad(SLOT_PADDING);
@@ -201,6 +205,7 @@ namespace PitHero.UI
             {
                 OnStencilActivated?.Invoke(_selectedPattern);
                 ResetSelection();
+                HandleSlotHoverEnd();
                 SetVisible(false);
             }
         }
@@ -208,7 +213,52 @@ namespace PitHero.UI
         private void HandleCloseClicked(Button button)
         {
             ResetSelection();
+            HandleSlotHoverEnd();
             SetVisible(false);
+        }
+
+        private void HandleSlotHoverStart(SynergyPattern pattern)
+        {
+            var stage = GetStage();
+            if (stage == null)
+                return;
+
+            _hoverTooltip.ShowSynergyPattern(pattern);
+            if (_hoverTooltip.GetContainer().GetParent() == null)
+            {
+                stage.AddElement(_hoverTooltip.GetContainer());
+            }
+
+            _hoverTooltip.PositionWithinBounds(stage.GetMousePosition(), stage);
+            _hoverTooltip.GetContainer().ToFront();
+        }
+
+        private void HandleSlotHoverEnd()
+        {
+            _hoverTooltip.GetContainer().Remove();
+        }
+
+        /// <summary>
+        /// Repositions the hover card at the cursor each frame and removes it when the panel is
+        /// hidden without a mouse-exit event (outside-click dismissal sets visibility directly).
+        /// </summary>
+        public void UpdateHoverTooltip()
+        {
+            var container = _hoverTooltip?.GetContainer();
+            if (container == null || !container.HasParent())
+                return;
+
+            if (!IsVisible())
+            {
+                container.Remove();
+                return;
+            }
+
+            var stage = GetStage();
+            if (stage != null)
+            {
+                _hoverTooltip.PositionWithinBounds(stage.GetMousePosition(), stage);
+            }
         }
 
         /// <summary>Individual slot in the stencil library grid.</summary>
@@ -224,10 +274,10 @@ namespace PitHero.UI
             private SynergyPattern _pattern;
             private bool _isDiscovered;
             private bool _isHovered;
-            private Tooltip _tooltip;
-            private Skin _skin;
 
             public event System.Action<int> OnSlotClicked;
+            public event System.Action<SynergyPattern> OnSlotHoverStart;
+            public event System.Action OnSlotHoverEnd;
 
             public SynergyPattern Pattern { get; private set; }
             public bool IsSelected { get; set; }
@@ -235,7 +285,6 @@ namespace PitHero.UI
             public StencilSlot(int index, Skin skin)
             {
                 _index = index;
-                _skin = skin;
                 IsSelected = false;
 
                 var itemsAtlas = Core.Content.LoadSpriteAtlas("Content/Atlases/Items.atlas");
@@ -261,21 +310,6 @@ namespace PitHero.UI
                 _pattern = pattern;
                 Pattern = pattern;
                 _isDiscovered = discovered;
-
-                // Update tooltip
-                if (_tooltip != null && _skin != null)
-                {
-                    _tooltip = null;
-                }
-
-                if (_isDiscovered && _pattern != null)
-                {
-                    var tooltipStyle = new TextTooltipStyle
-                    {
-                        LabelStyle = new LabelStyle { Font = Graphics.Instance.BitmapFont, FontColor = Color.White }
-                    };
-                    _tooltip = new TextTooltip(_pattern.Name, this, tooltipStyle);
-                }
             }
 
             public override void Draw(Batcher batcher, float parentAlpha)
@@ -416,27 +450,20 @@ namespace PitHero.UI
             void IInputListener.OnMouseEnter()
             {
                 _isHovered = true;
-                if (_tooltip != null && _isDiscovered)
+                if (_isDiscovered && _pattern != null)
                 {
-                    _tooltip.Hit(Nez.Input.MousePosition);
+                    OnSlotHoverStart?.Invoke(_pattern);
                 }
             }
 
             void IInputListener.OnMouseExit()
             {
                 _isHovered = false;
-                if (_tooltip != null)
-                {
-                    _tooltip.Hit(new Vector2(-10000f, -10000f));
-                }
+                OnSlotHoverEnd?.Invoke();
             }
 
             void IInputListener.OnMouseMoved(Vector2 mousePos)
             {
-                if (_tooltip != null && _isDiscovered)
-                {
-                    _tooltip.Hit(Nez.Input.MousePosition);
-                }
             }
 
             bool IInputListener.OnLeftMousePressed(Vector2 mousePos)

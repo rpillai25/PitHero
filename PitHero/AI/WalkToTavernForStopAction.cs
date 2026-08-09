@@ -300,6 +300,9 @@ namespace PitHero.AI
                 var followComponent = mercEntity.GetComponent<MercenaryFollowComponent>();
                 if (followComponent != null)
                 {
+                    // Clear paths and stuck timers left over from before the party was seated —
+                    // stale state here triggers immediate stuck-warps onto the follow target.
+                    followComponent.ResetPathfinding();
                     followComponent.Enabled = true;
                     Debug.Log($"[WalkToTavernForStop] Re-enabled following for mercenary {i + 1}");
                 }

@@ -868,6 +868,15 @@ namespace PitHero.ECS.Scenes
                 Debug.Log("[MainGameScene] Restored " + pendingData.HiredMercenaries.Count + " hired mercenaries");
             }
 
+            // Loading during sleeping hours: spawn the party directly in the inn beds instead of
+            // making them walk to the innkeeper first. Must run after the mercenaries are spawned
+            // (their default spawn positions derive from the hero's). SleepInBedAction consumes
+            // SpawnedAsleepPending and takes over from the in-bed state.
+            if (Core.Services.GetService<InGameTimeService>()?.IsNighttime == true)
+            {
+                PositionPartyInBedsForNightLoad(heroEntity, heroComp);
+            }
+
             // Restore party dining state (issue #319) — after hero + hired mercs exist so
             // active meal buffs can be re-registered against their combatants
             Core.Services.GetService<Services.PartyDiningService>()?.RestoreFromSave(pendingData);
@@ -1339,6 +1348,87 @@ namespace PitHero.ECS.Scenes
         }
 
         /// <summary>
+        /// Places the hero and hired mercenaries directly into the inn beds after a night-time
+        /// load, so they wake through the normal SleepInBedAction path instead of walking to the
+        /// innkeeper first (issue #371).
+        /// </summary>
+        private void PositionPartyInBedsForNightLoad(Entity heroEntity, HeroComponent heroComp)
+        {
+            heroEntity.Transform.Position = new Vector2(
+                GameConfig.InnHeroBedTileX * GameConfig.TileSize + GameConfig.TileSize / 2,
+                GameConfig.InnHeroBedTileY * GameConfig.TileSize + GameConfig.TileSize / 2);
+            heroEntity.GetComponent<TileByTileMover>()?.SnapToTileGrid();
+            heroComp.IsSleeping = true;
+            heroComp.SpawnedAsleepPending = true;
+
+            var mercBedTiles = new Point[]
+            {
+                new Point(GameConfig.InnMercBed1TileX, GameConfig.InnMercBed1TileY),
+                new Point(GameConfig.InnMercBed2TileX, GameConfig.InnMercBed2TileY),
+            };
+
+            var hiredMercenaries = Core.Services.GetService<MercenaryManager>()?.GetHiredMercenaries();
+            for (int i = 0; hiredMercenaries != null && i < hiredMercenaries.Count && i < 2; i++)
+            {
+                var merc = hiredMercenaries[i];
+                var bedTile = mercBedTiles[i];
+                merc.Transform.Position = new Vector2(
+                    bedTile.X * GameConfig.TileSize + GameConfig.TileSize / 2,
+                    bedTile.Y * GameConfig.TileSize + GameConfig.TileSize / 2);
+                merc.GetComponent<TileByTileMover>()?.SnapToTileGrid();
+
+                var mercComp = merc.GetComponent<MercenaryComponent>();
+                if (mercComp != null)
+                {
+                    mercComp.LastTilePosition = bedTile;
+                    mercComp.InsidePit = false;
+                    merc.GetComponent<PathfindingActorComponent>()?.RefreshPathfindingWithObstacles();
+                }
+
+                // Pre-add the follow component disabled so the merc stays in bed until the sleep
+                // action's wake path re-enables it (FollowTargetAction only adds-if-missing and
+                // never forces Enabled back on).
+                var followComp = merc.GetComponent<MercenaryFollowComponent>();
+                if (followComp == null)
+                    followComp = merc.AddComponent(new MercenaryFollowComponent());
+                followComp.Enabled = false;
+            }
+
+            // Freeze everyone into their sleep pose (closed eyes, paused animation) right away —
+            // without this the party stands in the beds playing the open-eyed walk cycle until
+            // the GOAP sleep action's coroutine catches up.
+            Core.StartCoroutine(ApplySpawnSleepPoses(heroEntity, heroComp));
+
+            Debug.Log("[MainGameScene] Night load — party spawned asleep in the inn beds");
+        }
+
+        /// <summary>
+        /// Waits for the party's animation layers to initialize (the atlas loads in
+        /// OnAddedToEntity, which can run after the load restore), then poses the hero and
+        /// hired mercenaries asleep in their beds. Bails if the party already woke up
+        /// (degenerate load right as the clock crosses 6 AM).
+        /// </summary>
+        private System.Collections.IEnumerator ApplySpawnSleepPoses(Entity heroEntity, HeroComponent heroComp)
+        {
+            for (int frame = 0; frame < 10; frame++)
+            {
+                yield return null;
+                var anim = heroEntity.GetComponent<HeroAnimationComponent>();
+                if (anim != null && anim.Animations != null && anim.Animations.Count > 0)
+                    break;
+            }
+
+            if (!heroComp.IsSleeping)
+                yield break;
+
+            AI.SleepInBedAction.ApplySleepPose(heroEntity);
+
+            var hiredMercenaries = Core.Services.GetService<MercenaryManager>()?.GetHiredMercenaries();
+            for (int i = 0; hiredMercenaries != null && i < hiredMercenaries.Count && i < 2; i++)
+                AI.SleepInBedAction.ApplySleepPose(hiredMercenaries[i]);
+        }
+
+        /// <summary>
         /// Creates a hero entity at the specified tile coordinates using HeroDesign for appearance.
         /// When needsCrystal is true, the hero spawns without a crystal and waits for the promotion ceremony.
         /// </summary>
@@ -1489,6 +1579,10 @@ namespace PitHero.ECS.Scenes
         /// </summary>
         private void RespawnHero()
         {
+            // Reset the pit cycle before the crystal ceremony so the new hero's spawn level
+            // is computed from a fresh TierBaseLevel, not the dead run's progression.
+            Core.Services.GetService<PitWidthManager>()?.ResetTierForNewCycle();
+
             CreateHeroEntity(34, 6, needsCrystal: true);
 
             // Disable save while hero walks to statue — saving in this transitional state puts the game in an odd state
@@ -1552,7 +1646,8 @@ namespace PitHero.ECS.Scenes
                 return;
             }
 
-            Debug.Log($"[MainGameScene] Resetting pit from level {pitManager.CurrentPitLevel} to level 1 after hero death.");
+            Debug.Log($"[MainGameScene] Resetting pit from level {pitManager.CurrentPitLevel} (tier {pitManager.CurrentPitTier}) to level 1, tier 1 after hero death.");
+            pitManager.ResetTierForNewCycle();
             pitManager.SetPitLevel(1);
         }
 
@@ -2601,11 +2696,11 @@ namespace PitHero.ECS.Scenes
             
             Entity newHoveredMercenary = null;
 
-            // Suppress hover entirely while the cursor is outside the game window so the SelectBox
-            // doesn't latch onto a mercenary the user isn't actually pointing at.
-            bool mouseInWindow = Util.MouseUtils.IsMouseInsideWindow();
+            // Suppress hover while the cursor is outside the game window or over open UI so the
+            // SelectBox doesn't latch onto a mercenary the user isn't actually pointing at.
+            bool interactable = !MercenaryInteractionsBlocked();
 
-            for (int i = 0; mouseInWindow && i < mercenaries.Count; i++)
+            for (int i = 0; interactable && i < mercenaries.Count; i++)
             {
                 var mercEntity = mercenaries[i];
                 var mercComponent = mercEntity.GetComponent<MercenaryComponent>();
@@ -2723,12 +2818,7 @@ namespace PitHero.ECS.Scenes
             if (!Input.LeftMouseButtonPressed)
                 return;
 
-            // Ignore clicks made while the cursor is outside the game window (e.g. on a second monitor).
-            if (!Util.MouseUtils.IsMouseInsideWindow())
-                return;
-
-            // Don't process clicks if dialog is already open
-            if (_mercenaryHireDialog?.IsDialogVisible == true)
+            if (MercenaryInteractionsBlocked())
                 return;
 
             var mercenaryManager = Core.Services.GetService<MercenaryManager>();
@@ -2766,6 +2856,22 @@ namespace PitHero.ECS.Scenes
                     break;
                 }
             }
+        }
+
+        /// <summary>
+        /// True when tavern-mercenary hover/click interactions should be suppressed — while the
+        /// cursor is outside the game window, while the hire dialog is already open, or when the
+        /// pointer is over UI (so mercs behind an open window can't be clicked through it).
+        /// </summary>
+        private bool MercenaryInteractionsBlocked()
+        {
+            if (!Util.MouseUtils.IsMouseInsideWindow())
+                return true;
+            if (_mercenaryHireDialog?.IsDialogVisible == true)
+                return true;
+            if (_uiStage != null && _uiStage.Hit(_uiStage.GetMousePosition()) != null)
+                return true;
+            return false;
         }
 
         /// <summary>

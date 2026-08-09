@@ -3,7 +3,7 @@ namespace PitHero.Config
     /// <summary>
     /// Biome progression rules for pit tier rollover and effective cumulative depth calculations.
     /// The pit loops back to level 1 when it would exceed MaxBiomeLevel; each loop increments
-    /// the pit tier (1–99, permanent, survives hero death).
+    /// the pit tier (1–99). Hero death resets the tier to 1 along with the pit level.
     /// </summary>
     public static class BiomeProgressionConfig
     {
@@ -12,7 +12,7 @@ namespace PitHero.Config
         /// </summary>
         public static int MaxBiomeLevel => CaveBiomeConfig.CaveEndLevel;
 
-        /// <summary>Maximum pit tier. Tier is permanent and never decreases.</summary>
+        /// <summary>Maximum pit tier. Tier only decreases when hero death resets the cycle.</summary>
         public const int MaxPitTier = 99;
 
         /// <summary>

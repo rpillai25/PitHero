@@ -79,9 +79,25 @@ namespace PitHero.Tests
         // ── Tier state ────────────────────────────────────────────────────────────
 
         [TestMethod]
-        public void TierAndBaseLevel_SurviveSetPitLevel1()
+        public void ResetTierForNewCycle_ResetsTierAndBaseLevel()
         {
-            // Tier and base level must NOT reset when the pit resets to level 1 on hero death.
+            // Hero death resets the whole pit cycle: tier and base level go back to 1.
+            var pitManager = CreatePitManager();
+            pitManager.Initialize();
+            pitManager.SetPitTier(3);
+            pitManager.SetTierBaseLevel(20);
+
+            pitManager.ResetTierForNewCycle();
+
+            Assert.AreEqual(1, pitManager.CurrentPitTier, "PitTier must reset to 1 on death");
+            Assert.AreEqual(1, pitManager.TierBaseLevel, "TierBaseLevel must reset to 1 on death");
+        }
+
+        [TestMethod]
+        public void SetPitLevel1_AloneDoesNotTouchTier()
+        {
+            // The tier reset is an explicit death-path call (ResetTierForNewCycle),
+            // not a side effect of SetPitLevel(1) — normal tier rollover also passes through level 1.
             var pitManager = CreatePitManager();
             pitManager.Initialize();
             pitManager.SetPitTier(3);
@@ -89,8 +105,8 @@ namespace PitHero.Tests
 
             pitManager.SetPitLevel(1);
 
-            Assert.AreEqual(3, pitManager.CurrentPitTier, "PitTier must survive death reset");
-            Assert.AreEqual(20, pitManager.TierBaseLevel, "TierBaseLevel must survive death reset");
+            Assert.AreEqual(3, pitManager.CurrentPitTier, "SetPitLevel must not change tier");
+            Assert.AreEqual(20, pitManager.TierBaseLevel, "SetPitLevel must not change base level");
             Assert.AreEqual(1, pitManager.CurrentPitLevel, "PitLevel should be 1 after reset");
         }
 
@@ -138,6 +154,7 @@ namespace PitHero.Tests
         [TestMethod]
         public void SetTierBaseLevel_IsMonotonicNonDecreasing()
         {
+            // ResetTierForNewCycle is the only sanctioned way to lower the base level.
             var pitManager = CreatePitManager();
             pitManager.Initialize();
             pitManager.SetTierBaseLevel(50);
@@ -150,6 +167,11 @@ namespace PitHero.Tests
             // Higher value is accepted.
             pitManager.SetTierBaseLevel(60);
             Assert.AreEqual(60, pitManager.TierBaseLevel);
+
+            // After a cycle reset, the monotonic guard restarts from 1.
+            pitManager.ResetTierForNewCycle();
+            pitManager.SetTierBaseLevel(5);
+            Assert.AreEqual(5, pitManager.TierBaseLevel, "Base level should be settable again after reset");
         }
 
         [TestMethod]

@@ -239,6 +239,7 @@ namespace PitHero
         public const string SkillJpCost = "SkillJpCost";
         public const string SkillOwnerFormat = "SkillOwnerFormat";
         public const string SkillActiveMultiplier = "SkillActiveMultiplier";
+        public const string SkillGrantsSynergySkill = "SkillGrantsSynergySkill";
         public const string EquipPreviewChanges = "EquipPreviewChanges";
         public const string TabCrystals = "TabCrystals";
         public const string CrystalForgeTitle = "CrystalForgeTitle";
