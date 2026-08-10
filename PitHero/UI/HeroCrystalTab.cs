@@ -851,10 +851,9 @@ namespace PitHero.UI
                     iconSprite = uiAtlas.GetSprite("SkillIcon1");
                 }
 
+                // Active synergy effects are always shown in full color (no tint) — only
+                // unlearned synergy SKILLS render faded.
                 _iconDrawable = new SpriteDrawable(iconSprite);
-                _iconDrawable.TintColor = new Color(200, 255, 128, 200);
-
-                // Active synergy effects are always shown in full color
 
                 SetSize(24f, 24f);
             }
