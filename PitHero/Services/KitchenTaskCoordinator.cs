@@ -5,6 +5,7 @@ using PitHero.Config;
 using PitHero.Dining;
 using PitHero.ECS.Components;
 using PitHero.Farming;
+using PitHero.Services.Analytics;
 using PitHero.Util;
 using RolePlayingFramework.AlliedMonsters;
 
@@ -500,7 +501,13 @@ namespace PitHero.Services
                 }
                 else
                 {
-                    // Role changed — send home; will be respawned next reconcile
+                    // Role changed — send home; will be respawned next reconcile. Log only on the
+                    // transition (this branch repeats every frame until the worker despawns).
+                    if (!w.Fsm.IsReturningHome)
+                    {
+                        AnalyticsService.LogKitchenRoleChanged(w.Monster.Name, w.Monster.MonsterTypeName,
+                            w.Role.ToString(), _wantedRoles[wantedIdx].ToString());
+                    }
                     w.Fsm.RequestReturnHome();
                 }
             }

@@ -3,6 +3,7 @@ using Nez;
 using Nez.UI;
 using PitHero.Config;
 using PitHero.Services;
+using PitHero.Services.Analytics;
 using PitHero.Util;
 using RolePlayingFramework.AlliedMonsters;
 
@@ -456,6 +457,12 @@ namespace PitHero.UI
                             var closuredJob = jobValue;
                             jobBtn.OnClicked += (_) =>
                             {
+                                if (closuredMonster.Job != closuredJob)
+                                {
+                                    AnalyticsService.LogMonsterJobChanged(closuredMonster.Name,
+                                        closuredMonster.MonsterTypeName, closuredMonster.Job.ToString(),
+                                        closuredJob.ToString(), "manual");
+                                }
                                 closuredMonster.Job = closuredJob;
                                 RefreshMonsterList();
                             };

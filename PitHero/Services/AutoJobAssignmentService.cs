@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Nez;
 using PitHero.Config;
+using PitHero.Services.Analytics;
 using PitHero.Services.AutoJob;
 using RolePlayingFramework.AlliedMonsters;
 
@@ -174,7 +175,11 @@ namespace PitHero.Services
             {
                 var monster = roster[_snapshots[i].RosterIndex];
                 if (monster.Job != _resultJobs[i])
+                {
+                    AnalyticsService.LogMonsterJobChanged(monster.Name, monster.MonsterTypeName,
+                        monster.Job.ToString(), _resultJobs[i].ToString(), "auto");
                     monster.Job = _resultJobs[i];
+                }
             }
         }
     }

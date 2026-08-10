@@ -251,7 +251,7 @@ namespace PitHero
         public const float AutoJobReassessIntervalSeconds = 15f;   // scaled seconds between solve/apply passes (15 in-game minutes)
         public const float AutoJobPressureSampleIntervalSeconds = 5f;  // scaled seconds between backpressure signal samples
         public const float AutoJobScaleDownDrainIntervalSeconds = 60f; // min scaled seconds between releasing successive workers per job (farming)
-        public const float AutoJobKitchenScaleDownDrainIntervalSeconds = 180f; // kitchen drains slower — departures are highly visible in a service area
+        public const float AutoJobKitchenScaleDownDrainIntervalSeconds = 360f; // kitchen drains slower — departures are highly visible in a service area
         public const float AutoJobPressureDecayAlpha = 0.15f;      // per-sample EMA decay on falling pressure (rising pressure is instant)
         public const float AutoJobKitchenHighWaitSeconds = 60f;    // a patron waiting this long (1 in-game hour) adds a worker of pressure
         public const int AutoJobFarmTasksPerWorker = 6;            // burst demand: outstanding farm tasks each farmer can absorb

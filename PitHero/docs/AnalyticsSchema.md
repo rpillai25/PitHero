@@ -108,6 +108,17 @@ All farming work is performed by allied monsters; `monster` is the worker's disp
 | `dish_served` | `dish`, `price`, `tip`, `isParty`, `deluxe` | One line per finished meal. `dish` is the `DishType` enum name. Patron meals (`isParty:false`) pair with `gold_gained (source:"dish_sale")` and, when `tip > 0`, `gold_gained (source:"dish_tip")`. Party meals (`isParty:true`) never tip and paid at order time (spend not logged — infer from `currentGold` deltas). A patron who leaves after cooking started (patience expiry or hired mid-dining) still pays via `gold_gained (source:"dish_sale")` but logs no `dish_served`. |
 | `party_dine_skipped` | `slot`, `member`, `dish`, `reason` | A party member was passed over during a tavern seating — no order, no charge. `slot`: 0 = hero, 1/2 = hired mercs. `dish` is the favorite that would have been ordered. `reason`: `no_ingredients` (fridge + storage can't cover the favorite's recipe — no substitution by design), `no_gold` (funds below the dish price), or `already_ate` (member already dined today; normal after breakfast if the party stops again). At most one line per member per seating. |
 
+### Monster job staffing (issue #375)
+
+For analyzing auto-assignment scaling and kitchen churn. `monster` is the allied monster's
+display name and `monsterType` its species key (nocturnal/day schedule is derivable from the
+type via `MonsterScheduleConfig`).
+
+| `e` | Fields | Notes |
+|---|---|---|
+| `monster_job_changed` | `monster`, `monsterType`, `fromJob`, `toJob`, `trigger` | An allied monster's `MonsterJob` changed. Jobs are the `MonsterJob` enum names (`None`, `Farming`, `Cooking`, `Fishing`); `toJob:"None"` means sent home, `fromJob:"None"` means newly staffed. `trigger`: `"auto"` (AutoJobAssignmentService reassessment — fires per shift solve, so a burst of lines at one timestamp is one reassessment) or `"manual"` (job button in the Monsters window; only possible while automation is off). Save restore never logs. |
+| `kitchen_role_changed` | `monster`, `monsterType`, `fromRole`, `toRole` | A live kitchen worker was sent home to respawn in a different role (`Cook`/`Server`/`Runner`). Logged once at the send-home decision; `toRole` is the role wanted at that moment and can in rare cases differ from the role actually taken after the walk-home/respawn round trip (the mix may shift meanwhile). Workers leaving the kitchen entirely log `monster_job_changed` instead, not this. With role retention this should be RARE — a sustained stream of these lines means the role mix is thrashing and `KitchenRoleMixDwellSeconds` needs raising. |
+
 ## Interpretation caveats
 
 - **Names are text keys, not display names.** Monsters log localization keys
