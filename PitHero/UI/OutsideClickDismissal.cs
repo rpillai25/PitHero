@@ -19,6 +19,7 @@ namespace PitHero.UI
             if (popup == null || stage == null || !popup.IsVisible()) return false;
             if (!Input.LeftMouseButtonPressed && !Input.RightMouseButtonPressed) return false;
             if (Time.FrameCount == shownFrame) return false;
+            if (!ClickIsInGameWindow()) return false;
 
             return !IsInside(popup, stage.GetMousePosition());
         }
@@ -36,6 +37,7 @@ namespace PitHero.UI
             if (insideAny == null || stage == null) return false;
             if (!Input.LeftMouseButtonPressed && !Input.RightMouseButtonPressed) return false;
             if (Time.FrameCount == shownFrame) return false;
+            if (!ClickIsInGameWindow()) return false;
 
             float minX = float.MaxValue, minY = float.MaxValue;
             float maxX = float.MinValue, maxY = float.MinValue;
@@ -66,6 +68,17 @@ namespace PitHero.UI
         {
             if (element == null || stage == null || !element.IsVisible()) return false;
             return IsInside(element, stage.GetMousePosition());
+        }
+
+        /// <summary>
+        /// True only when the click actually landed in the game window. MonoGame's desktop mouse
+        /// state reports button presses even when the window is unfocused, so without this guard a
+        /// click on another app (browser, OS folders) while the game runs in the background
+        /// dismisses open UI.
+        /// </summary>
+        private static bool ClickIsInGameWindow()
+        {
+            return Util.MouseUtils.IsMouseInsideWindow();
         }
 
         private static bool IsInside(Element element, Vector2 stagePos)

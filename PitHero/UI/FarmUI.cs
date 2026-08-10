@@ -443,7 +443,8 @@ namespace PitHero.UI
             // While a sub-mode is active (placing crops, tilling, etc.) world clicks belong
             // to that mode and must not collapse the sub-button row.
             bool anySubModeActive = IsInTillMode || IsInBuildingMode || IsInSeedMode || IsInRemoveCropsMode || IsInHarvestedCropsMode;
-            if (_subButtonsVisible && !anySubModeActive && Input.LeftMouseButtonPressed)
+            if (_subButtonsVisible && !anySubModeActive && Input.LeftMouseButtonPressed
+                && Util.MouseUtils.IsMouseInsideWindow())
             {
                 var mousePos = _stage.GetMousePosition();
                 if (!IsMouseOverAnyFarmButton(mousePos) && _stage.Hit(mousePos) == null)
