@@ -62,6 +62,7 @@ namespace PitHero.Services
         // recomputed at most once per dwell period (head-count changes recompute immediately —
         // spawns/despawns are happening anyway).
         private readonly List<KitchenRole> _cachedRoles = new List<KitchenRole>(8);
+        private readonly List<int> _currentRoleByPost = new List<int>(8);
         private int _cachedPostCount = -1;
         private float _roleMixElapsed = GameConfig.KitchenRoleMixDwellSeconds;
 
@@ -196,6 +197,59 @@ namespace PitHero.Services
                         runners++; into.Add(KitchenRole.Runner); break;
                     }
                 }
+            }
+        }
+
+        /// <summary>
+        /// Maps the role mix onto the actual posts with minimum churn (issue #375 follow-up): the
+        /// mix is treated as a multiset of role COUNTS, and a live worker keeps its current role
+        /// as long as that role still has quota — quota is consumed in post order (= proficiency
+        /// order), so when a role shrinks, the best holders keep it and only the worst is
+        /// reassigned. Remaining quota goes to unmatched posts in Cook → Server → Runner order.
+        /// Without this, roles were tied to sorted-list positions, and any recompute could flip
+        /// two positions' roles — sending BOTH workers home to respawn in each other's role, a
+        /// pure-waste "cook leaves, different cook walks in" shuffle.
+        /// currentRoleByPost[j] = (int)KitchenRole of post j's live worker, or -1 if none.
+        /// </summary>
+        public static void AssignRolesWithRetention(List<KitchenRole> mix,
+            List<int> currentRoleByPost, List<KitchenRole> into)
+        {
+            int cooks = 0, servers = 0, runners = 0;
+            for (int j = 0; j < mix.Count; j++)
+            {
+                if (mix[j] == KitchenRole.Cook) cooks++;
+                else if (mix[j] == KitchenRole.Server) servers++;
+                else runners++;
+            }
+
+            // Pass 1: retention. keptMask bit j = post j kept its current role (mix.Count ≤ 8).
+            int keptMask = 0;
+            for (int j = 0; j < mix.Count; j++)
+            {
+                into.Add(KitchenRole.Cook);   // placeholder; every post is overwritten below
+                int current = currentRoleByPost[j];
+                if (current == (int)KitchenRole.Cook && cooks > 0)
+                {
+                    cooks--; into[j] = KitchenRole.Cook; keptMask |= 1 << j;
+                }
+                else if (current == (int)KitchenRole.Server && servers > 0)
+                {
+                    servers--; into[j] = KitchenRole.Server; keptMask |= 1 << j;
+                }
+                else if (current == (int)KitchenRole.Runner && runners > 0)
+                {
+                    runners--; into[j] = KitchenRole.Runner; keptMask |= 1 << j;
+                }
+            }
+
+            // Pass 2: remaining quota to unmatched posts, best proficiency toward Cook first.
+            for (int j = 0; j < mix.Count; j++)
+            {
+                if ((keptMask & (1 << j)) != 0)
+                    continue;
+                if (cooks > 0) { cooks--; into[j] = KitchenRole.Cook; }
+                else if (servers > 0) { servers--; into[j] = KitchenRole.Server; }
+                else { runners--; into[j] = KitchenRole.Runner; }
             }
         }
 
@@ -400,8 +454,25 @@ namespace PitHero.Services
                     + (_mercenaryManager != null ? _mercenaryManager.CountPatronsWaitingToOrder() : 0);
                 FillRoleMix(postCount, cookPressure, serverPressure, runnerPressure, _cachedRoles);
             }
-            for (int i = 0; i < _cachedRoles.Count; i++)
-                _wantedRoles.Add(_cachedRoles[i]);
+
+            // Map the mix's role COUNTS onto posts so live workers keep their roles wherever the
+            // quota allows — only genuine count changes cause a walk-home/respawn.
+            _currentRoleByPost.Clear();
+            for (int j = 0; j < postCount; j++)
+            {
+                int currentRole = -1;
+                for (int wi = 0; wi < _workers.Count; wi++)
+                {
+                    if (ReferenceEquals(_workers[wi].Monster, _wantedAssignments[j])
+                        && !_workers[wi].Entity.IsDestroyed)
+                    {
+                        currentRole = (int)_workers[wi].Role;
+                        break;
+                    }
+                }
+                _currentRoleByPost.Add(currentRole);
+            }
+            AssignRolesWithRetention(_cachedRoles, _currentRoleByPost, _wantedRoles);
 
             // SpawnWorker appends to _workers mid-pass, so snapshot the count and never index past it.
             int existingWorkerCount = _workers.Count;

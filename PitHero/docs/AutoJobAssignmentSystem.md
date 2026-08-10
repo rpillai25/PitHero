@@ -56,9 +56,11 @@ Tunables live in `GameConfig` under the `AutoJob*` prefix.
 - **Decay is smoothed**: falling raw decays through an EMA (`AutoJobPressureDecayAlpha`), so
   pressure must stay low across several samples before a grant becomes releasable.
 - **Drain is rate-limited**: a grant level is released only when smoothed pressure sits below
-  `granted − 0.5` (half-worker release hysteresis) AND a full
-  `AutoJobScaleDownDrainIntervalSeconds` (60 scaled seconds) has passed since the last change —
-  one worker per interval, never more.
+  `granted − 0.5` (half-worker release hysteresis) AND a full drain interval has passed since the
+  last change — one worker per interval, never more. The interval is per-job (tracker constructor
+  param): farming uses `AutoJobScaleDownDrainIntervalSeconds` (60 scaled seconds); the kitchen
+  uses `AutoJobKitchenScaleDownDrainIntervalSeconds` (180) because a worker walking out of a
+  service area mid-rush is far more noticeable than a farmer leaving a field.
 
 Tracker state is transient (never persisted); it rebuilds within a few samples after a load.
 
@@ -182,6 +184,15 @@ Per-role pressure signals, computed in the coordinator's `Update()`:
 weighted mix is recomputed at most once per `GameConfig.KitchenRoleMixDwellSeconds` (45 scaled
 seconds) — except when the post count itself changes, which recomputes immediately (spawns and
 despawns are happening anyway).
+
+**Role retention:** the mix is applied as a multiset of role *counts*
+(`AssignRolesWithRetention`), not position-by-position: a live worker keeps its current role as
+long as that role still has quota, with quota consumed in proficiency order so a shrinking role
+sheds its worst holder first; only leftover quota is assigned to unmatched posts (Cook → Server →
+Runner). A recompute whose counts don't change therefore causes **zero** churn. Before this,
+roles were tied to sorted-list positions and a recompute could flip two positions — sending both
+workers home to respawn in each other's roles (the visible "one cook leaves and another cook
+immediately replaces it" shuffle).
 
 Workload getters: `FarmTaskCoordinator.OutstandingTaskCount`,
 `KitchenTaskCoordinator.ActiveTicketCount` / `AwaitingIngredientsTicketCount` /

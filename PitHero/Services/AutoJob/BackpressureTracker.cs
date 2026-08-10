@@ -12,9 +12,16 @@ namespace PitHero.Services.AutoJob
     /// </summary>
     public sealed class BackpressureTracker
     {
+        private readonly float _drainIntervalSeconds;
         private float _smoothed;
         private int _granted;
         private float _lastChangeSeconds;
+
+        /// <summary>drainIntervalSeconds: min scaled seconds between releasing successive workers.</summary>
+        public BackpressureTracker(float drainIntervalSeconds = GameConfig.AutoJobScaleDownDrainIntervalSeconds)
+        {
+            _drainIntervalSeconds = drainIntervalSeconds;
+        }
 
         /// <summary>Smoothed pressure in workers-worth units (instant attack, EMA decay).</summary>
         public float SmoothedPressure => _smoothed;
@@ -54,7 +61,7 @@ namespace PitHero.Services.AutoJob
                 _lastChangeSeconds = nowSeconds;
             }
             else if (_granted > 0 && _smoothed <= _granted - 0.5f
-                && nowSeconds - _lastChangeSeconds >= GameConfig.AutoJobScaleDownDrainIntervalSeconds)
+                && nowSeconds - _lastChangeSeconds >= _drainIntervalSeconds)
             {
                 // Scale down one worker per drain interval, never more. The half-worker margin is
                 // the release hysteresis: pressure hovering just under the grant keeps the crew,

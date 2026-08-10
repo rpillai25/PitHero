@@ -126,9 +126,11 @@ cooks, plated dishes + patrons waiting to order → servers; D'Hondt greedy). Wi
 falls back to the legacy Cook → Server → Runner cycle — **cook1, server1, runner1, cook2,
 server2, runner2, cook3, runner3** (`MaxWorkerPosts` = 8 = 3 cooks + 2 servers + 3 runners). The
 weighted mix is recomputed at most once per `KitchenRoleMixDwellSeconds` (role changes are
-expensive walk-home/respawn round trips), except immediately on head-count changes. Change a
-`GameConfig.MaxKitchen*` constant and the order re-derives — but keep `AutoJobKitchenMaxWorkers`
-in sync (a test asserts it). Workers whose role/slot disappears get `RequestReturnHome()` (finish current task,
+expensive walk-home/respawn round trips), except immediately on head-count changes. The mix is
+applied as role *counts* with retention (`AssignRolesWithRetention`): live workers keep their
+current role while quota remains, so a recompute with unchanged counts never reshuffles anyone.
+Change a `GameConfig.MaxKitchen*` constant and the order re-derives — but keep
+`AutoJobKitchenMaxWorkers` in sync (a test asserts it). Workers whose role/slot disappears get `RequestReturnHome()` (finish current task,
 walk into the house, despawn); a restored assignment calls `CancelReturnHome()`. Spawn is at
 their Monster House door (anchor +2 south); no collider/TAG_MONSTER, so workers never trigger
 battles. A 5s sweep calls `EnsureHat()` — `KitchenHatService` pools 7 hat entities

@@ -625,9 +625,12 @@ namespace PitHero.Tests
             Assert.AreEqual(0, coordinator.ActiveTicketCount);
 
             // Let the real cadence run: samples decay the pressure, grants drain one worker per
-            // drain interval, and each reassessment releases at most one cook.
+            // KITCHEN drain interval (slower than farming's — service-area departures are highly
+            // visible), and each reassessment releases at most one cook.
             int cooks = CountJobs(roster, MonsterJob.Cooking);
-            for (float t = sample * 2f; t <= GameConfig.AutoJobScaleDownDrainIntervalSeconds * 4f; t += sample)
+            float drainWindow = GameConfig.AutoJobKitchenScaleDownDrainIntervalSeconds * 3f
+                + GameConfig.AutoJobReassessIntervalSeconds + sample;
+            for (float t = sample * 2f; t <= drainWindow; t += sample)
             {
                 service.TickCadence(t, isNighttime: false);
                 int now = CountJobs(roster, MonsterJob.Cooking);

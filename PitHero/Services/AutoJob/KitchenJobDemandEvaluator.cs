@@ -21,7 +21,10 @@ namespace PitHero.Services.AutoJob
         private readonly KitchenTaskCoordinator _coordinator;
         private readonly MercenaryManager _mercenaryManager;
         private readonly PartyDiningService _partyDining;
-        private readonly BackpressureTracker _tracker = new BackpressureTracker();
+        // Kitchen crews drain on their own slower interval: a worker walking out of a service
+        // area mid-rush is far more noticeable than a farmer leaving a field.
+        private readonly BackpressureTracker _tracker =
+            new BackpressureTracker(GameConfig.AutoJobKitchenScaleDownDrainIntervalSeconds);
 
         /// <summary>All dependencies are optional so the evaluator can run headless in tests.</summary>
         public KitchenJobDemandEvaluator(KitchenTaskCoordinator coordinator,
