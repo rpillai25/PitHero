@@ -66,15 +66,21 @@ namespace PitHero.UI
             _hoverTooltip.SetVisible(false);
         }
 
-        /// <summary>Refreshes the grid from the vault, displaying up to 54 crystals.</summary>
-        public void RefreshFromVault(SecondChanceMerchantVault vault)
+        /// <summary>
+        /// Refreshes the grid from the vault, displaying the 54 crystals on the given page.
+        /// <paramref name="pageIndex"/> is zero-based; crystals shown are at indices
+        /// [pageIndex * MAX_VISIBLE … pageIndex * MAX_VISIBLE + MAX_VISIBLE).
+        /// </summary>
+        public void RefreshFromVault(SecondChanceMerchantVault vault, int pageIndex = 0)
         {
             var crystals = vault?.LostCrystals;
             int count = crystals != null ? crystals.Count : 0;
+            int offset = pageIndex * MAX_VISIBLE;
             for (int i = 0; i < MAX_VISIBLE; i++)
             {
-                if (i < count)
-                    _slots[i].SetCrystal(crystals[i]);
+                int crystalIdx = offset + i;
+                if (crystalIdx < count)
+                    _slots[i].SetCrystal(crystals[crystalIdx]);
                 else
                     _slots[i].SetCrystal(null);
             }

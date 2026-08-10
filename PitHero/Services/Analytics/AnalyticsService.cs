@@ -396,6 +396,28 @@ namespace PitHero.Services.Analytics
 #endif
         }
 
+        /// <summary>
+        /// Logs an item evicted from or rejected by the Second Chance vault when it reached capacity (issue #373).
+        /// <paramref name="evicted"/> is the item that left the vault; <paramref name="incoming"/> is the item
+        /// that triggered the eviction (null when the incoming item itself was rejected).
+        /// </summary>
+        [Conditional("DEBUG")]
+        public static void LogVaultEviction(IItem evicted, int qty, IItem incoming)
+        {
+#if DEBUG
+            if (!_enabled)
+                return;
+            if (!BeginEvent("vault_eviction"))
+                return;
+            _json.Field("evicted", evicted.Name);
+            _json.Field("kind", evicted.Kind.ToString());
+            _json.Field("rarity", evicted.Rarity.ToString());
+            _json.Field("qty", qty);
+            _json.Field("incoming", incoming?.Name ?? "");
+            EndEvent();
+#endif
+        }
+
         /// <summary>Logs an item bought back from the Second Chance vault (manually or by auto-purchase).</summary>
         [Conditional("DEBUG")]
         public static void LogItemPurchased(IItem item, int qty, int gold, string source, int currentGold)

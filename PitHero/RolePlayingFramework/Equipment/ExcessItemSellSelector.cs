@@ -147,10 +147,8 @@ namespace RolePlayingFramework.Equipment
         /// <summary>Weakness key: restore effect, then sell price, then stack count. Lower wins; bag index breaks final ties.</summary>
         private static void ConsiderConsumable(Consumable c, int index, ref int bestIndex, ref long keyA, ref long keyB, ref long keyC)
         {
-            long a = c.HPRestoreAmount + c.MPRestoreAmount;
-            long b = ((IItem)c).GetSellPrice();
-            long k = c.StackCount;
-            if (bestIndex < 0 || IsWeaker(a, b, k, index, keyA, keyB, keyC, bestIndex))
+            ItemWeaknessRanking.ConsumableKey(c, c.StackCount, out long a, out long b, out long k);
+            if (bestIndex < 0 || ItemWeaknessRanking.IsWeaker(a, b, k, index, keyA, keyB, keyC, bestIndex))
             {
                 bestIndex = index; keyA = a; keyB = b; keyC = k;
             }
@@ -159,21 +157,14 @@ namespace RolePlayingFramework.Equipment
         /// <summary>Weakness key: gear score, then rarity, then sell price. Lower wins; bag index breaks final ties.</summary>
         private static void ConsiderGear(IGear g, int index, ref int bestIndex, ref long keyA, ref long keyB, ref long keyC)
         {
-            long a = GearAutoEquipService.GetGearScore(g);
-            long b = (long)g.Rarity;
-            long c = ((IItem)g).GetSellPrice();
-            if (bestIndex < 0 || IsWeaker(a, b, c, index, keyA, keyB, keyC, bestIndex))
+            ItemWeaknessRanking.GearKey(g, out long a, out long b, out long c);
+            if (bestIndex < 0 || ItemWeaknessRanking.IsWeaker(a, b, c, index, keyA, keyB, keyC, bestIndex))
             {
                 bestIndex = index; keyA = a; keyB = b; keyC = c;
             }
         }
 
         private static bool IsWeaker(long a, long b, long c, int index, long bestA, long bestB, long bestC, int bestIndex)
-        {
-            if (a != bestA) return a < bestA;
-            if (b != bestB) return b < bestB;
-            if (c != bestC) return c < bestC;
-            return index < bestIndex;
-        }
+            => ItemWeaknessRanking.IsWeaker(a, b, c, index, bestA, bestB, bestC, bestIndex);
     }
 }
